@@ -109,3 +109,50 @@ and fails if the canvas is a flat field of one colour.
 workflow and no build step. It needs one switch that only a repo admin can
 flip: Settings, Pages, Source "Deploy from a branch", branch `main`, folder
 `/docs`. The Vercel link above works either way.
+
+## Turn-based combat
+
+Swim into the goblin guarding the salvage and the game cuts to a turn-based
+fight. Beat it and the site is clear; the salvage is yours. Swim past it and
+nothing happens, which is the point: the enemy is visible, fixed, and sitting
+on the thing you came for, so the question is never "must I fight this" but
+"is it worth what it costs".
+
+The fight is SALVAGE's combat sim, ported whole from `~/salvage/sim`. It is
+1271 lines with no dependency on nodes, scenes or timers, and it brings a
+shared air budget, stations you stand on, limb targeting, announced enemy
+attacks, strain and desperation, already tuned against four playtesters.
+Nothing in `game/battle.gd` decides a rule; it reads the sim and plays the
+motion the models have.
+
+Stations are why this wants to be 3D. FRONT, FLANK, UNDER and REAR were
+abstract in a 2D game. Here they are rings on the floor with somebody
+standing in them, and the announced attack names the ring it is coming for.
+
+### Tuning is measured, not chosen
+
+`verify/sweep.gd` walks limb HP against attack damage and reports which
+configurations land inside the bands SALVAGE pinned: casual wins 55 to 90
+percent, a greedy player needs at least 6 turns and loses at least 8 squad
+HP. The first guess measured casual at 100 percent, which is not a fight.
+The shipped numbers are +3 limb HP and +1 damage off that, and measure:
+
+    casual   win  79.5%   turns 15.4   squad HP lost 38.5
+    greedy   win 100.0%   turns  9.0   squad HP lost 12.0
+
+### Two deliveries, neither complete
+
+`Main_Team_Rigging.fbx` has 3 characters, 132 bones each and 45 clips, and
+no textures at all. `Main_Team_Rigging_2.fbx` has newer, textured meshes and
+no rig. The fight uses the rigged one and tints the clay so you can tell the
+divers apart. That tint disappears the day one file has both.
+
+`GoblinGrunt.fbx` is rigged and textured, with Idle, Shooting1, Shooting2,
+Taunt1 and Walking. It has no damage reaction, so damage is shown as a
+number over the limb rather than mimed with a motion nobody authored.
+
+### Checks
+
+    godot --headless --path . --script verify/fight.gd   # is the fight fair
+    godot --headless --path . --script verify/sweep.gd   # what else lands in band
+    godot --headless --path . --script verify/loop.gd    # swim, fight, return

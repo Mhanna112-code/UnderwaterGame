@@ -33,7 +33,7 @@ func _process(_dt: float) -> bool:
 		return false
 
 	for i in range(world.divers.size()):
-		var d: Diver = world.divers[i]
+		var d: Swimmer = world.divers[i]
 		var moved: float = (d.global_position - (start[i] as Vector3)).length()
 		var who := String(d.model_name)
 		print("%-20s moved %5.2f m, now at %s, pitch %+.2f rad" % [
@@ -45,7 +45,7 @@ func _process(_dt: float) -> bool:
 		if not is_finite(d.global_position.length()):
 			findings.append("NOT A NUMBER: %s has a non-finite position" % who)
 
-	var player: Diver = world.divers[world.active]
+	var player: Swimmer = world.divers[world.active]
 	if absf(player.model.rotation.x) < 0.3:
 		findings.append("NO SWIM POSTURE: the player is still upright (pitch %.2f) after swimming" % player.model.rotation.x)
 	var cam: Camera3D = world.get_node("Camera3D")

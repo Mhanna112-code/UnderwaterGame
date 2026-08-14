@@ -7,7 +7,10 @@
 # X rotation and a scale of 100, and the models face +Z while Godot treats
 # -Z as forward. Fix it once, here, and the rest of the game can just place
 # a Diver and forget the export ever had opinions.
-class_name Diver
+# Named Swimmer, not Diver: sim/combat.gd carries its own inner Diver class
+# for the turn-based fight, and two globals with one name fails the project
+# at parse time.
+class_name Swimmer
 extends CharacterBody3D
 
 const SRC := preload("res://art/characters/divers.glb")

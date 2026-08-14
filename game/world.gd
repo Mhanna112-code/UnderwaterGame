@@ -6,6 +6,18 @@
 extends Node3D
 
 const SRC := preload("res://art/characters/divers.glb")
+const GOBLIN := preload("res://GoblinGrunt.fbx")
+const ActorScript := preload("res://game/actor.gd")
+
+# Where the fights are. Visible, fixed, and sitting on something: you can
+# always swim past one, and swimming past means surfacing without whatever
+# it was standing over. Nothing here is random, which is the whole point.
+const ENEMIES := [
+	{"name": "grunt_shallows", "encounter": "goblin", "at": Vector3(14.0, 1.6, -12.0)},
+]
+const TOUCH := 2.6
+
+signal encountered(enemy_name: String, encounter: String)
 
 const CAST := [
 	{"model": "Staff_Diver", "at": Vector3(0, 2.0, 0)},
@@ -23,6 +35,9 @@ var hud: Label
 var mouse_look := false
 var _t := 0.0
 var lantern: Node3D
+var beaten: Dictionary = {}
+var marks: Array = []
+var _fired := false
 # test seam: verify/swim.gd steers the player without a keyboard. Nothing in
 # the game writes these, so the shipped build reads the real keys.
 var scripted := false
@@ -34,13 +49,39 @@ func _ready() -> void:
 	hud = $HUD/Controls
 	_build_site()
 	for c in CAST:
-		var d := Diver.new()
+		var d := Swimmer.new()
 		d.model_name = String(c.model)
 		d.position = c.at as Vector3
 		add_child(d)
 		divers.append(d)
 	_carry_lantern()
+	_place_enemies()
 	_update_hud()
+
+func _place_enemies() -> void:
+	for e in ENEMIES:
+		if beaten.get(String(e.name), false):
+			continue
+		var a: RiggedActor = ActorScript.new()
+		add_child(a)
+		a.setup(GOBLIN, "GoblinGrunt", "rig|", "Idle")
+		a.position = e.at as Vector3
+		marks.append({"node": a, "data": e})
+
+		# something to be standing over, so the fight is about the thing
+		# rather than about the enemy being in the way
+		var loot := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.8, 0.5, 0.6)
+		loot.mesh = box
+		var lm := StandardMaterial3D.new()
+		lm.albedo_color = Color(0.75, 0.62, 0.3)
+		lm.emission_enabled = true
+		lm.emission = Color(0.5, 0.4, 0.15)
+		lm.emission_energy_multiplier = 0.6
+		loot.material_override = lm
+		loot.position = (e.at as Vector3) + Vector3(0.0, -1.4, 0.0)
+		add_child(loot)
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -153,13 +194,29 @@ func _physics_process(dt: float) -> void:
 		pitch = clampf(pitch - dt * 1.2, -1.1, 0.7)
 
 	for i in range(divers.size()):
-		var d: Diver = divers[i]
+		var d: Swimmer = divers[i]
 		if i == active:
 			d.swim(_player_dir(), _player_rise(), dt)
 		else:
 			_drift(d, i, dt)
 	_move_camera(dt)
 	_move_lantern(dt)
+	_check_contact()
+
+# Contact starts the fight. Visible enemy, fixed place, no invisible trigger:
+# a player who wants no part of this can see it from a distance and go round.
+func _check_contact() -> void:
+	if _fired:
+		return
+	var p: Vector3 = (divers[active] as Swimmer).global_position
+	for m in marks:
+		var n: Node3D = m.node
+		if not is_instance_valid(n):
+			continue
+		if p.distance_to(n.global_position) <= TOUCH:
+			_fired = true
+			encountered.emit(String((m.data as Dictionary).name), String((m.data as Dictionary).encounter))
+			return
 
 func _player_dir() -> Vector3:
 	if scripted:
@@ -197,7 +254,7 @@ func _player_rise() -> float:
 
 # the divers you are not steering keep swimming a slow circuit, so the site
 # never looks like a museum of three statues
-func _drift(d: Diver, i: int, dt: float) -> void:
+func _drift(d: Swimmer, i: int, dt: float) -> void:
 	var phase := _t * 0.25 + float(i) * 2.1
 	var centre: Vector3 = (CAST[i].at as Vector3)
 	var target := centre + Vector3(cos(phase) * 6.0, sin(phase * 0.7) * 1.2, sin(phase) * 6.0)
@@ -207,7 +264,7 @@ func _drift(d: Diver, i: int, dt: float) -> void:
 	d.swim(to.normalized() if to.length() > 0.4 else Vector3.ZERO, rise, dt)
 
 func _move_camera(dt: float) -> void:
-	var d: Diver = divers[active]
+	var d: Swimmer = divers[active]
 	var focus: Vector3 = d.global_position + Vector3(0, d.height * 0.35, 0)
 	var dir := Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch))
 	var want: Vector3 = focus - dir * cam_dist
@@ -221,9 +278,14 @@ func _move_lantern(_dt: float) -> void:
 	lantern.rotation.z = sin(_t * 0.8) * 0.05      # a slow sway in the current
 
 func _update_hud() -> void:
-	var d: Diver = divers[active]
-	hud.text = "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
-		String(d.model_name), d.height]
+	var d: Swimmer = divers[active]
+	var left := 0
+	for m in marks:
+		if is_instance_valid(m.node as Node):
+			left += 1
+	hud.text = "%s  (%.2f m)    %s\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
+		String(d.model_name), d.height,
+		"salvage guarded: %d" % left if left > 0 else "the site is clear"]
 
 func _find(n: Node, nm: String) -> MeshInstance3D:
 	if n is MeshInstance3D and String(n.name) == nm:
