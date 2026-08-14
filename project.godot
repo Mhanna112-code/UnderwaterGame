@@ -1,11 +1,18 @@
 ; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
 
 [application]
 
 config/name="UnderwaterGame"
-config/features=PackedStringArray("4.4", "Forward Plus")
 run/main_scene="res://game/world.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
 
 [display]
 
@@ -14,8 +21,4 @@ window/size/viewport_height=720
 
 [rendering]
 
-renderer/rendering_method="forward_plus"
-; the web export has to run on WebGL2, so it gets the compatibility renderer.
-; Without this the browser build shows a black screen and nobody plays it.
-renderer/rendering_method.web="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

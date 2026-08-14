@@ -173,10 +173,14 @@ func _player_dir() -> Vector3:
 	if f == Vector2.ZERO:
 		return Vector3.ZERO
 	f = f.normalized()
-	# swim where the camera is looking, not where the world's axes point
+	# swim where the camera is looking, not where the world's axes point.
+	# fwd matches the camera's actual look direction (see _move_camera's
+	# `dir`); right is fwd rotated -90 around Y so it points to screen-right
+	# regardless of which way the diver model currently happens to be
+	# facing. W/A/S/D always map to camera-forward/left/back/right.
 	var fwd := Vector3(sin(yaw), 0, cos(yaw))
-	var right := Vector3(cos(yaw), 0, -sin(yaw))
-	return (fwd * f.y + right * f.x).normalized()
+	var right := Vector3(-cos(yaw), 0, sin(yaw))
+	return (right * f.x - fwd * f.y).normalized()
 
 func _player_rise() -> float:
 	if scripted:

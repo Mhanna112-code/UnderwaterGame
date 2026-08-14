@@ -1,6 +1,6 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=5 format=3 uid="uid://1x28xamcvwdl"]
 
-[ext_resource type="Script" path="res://game/lineup.gd" id="1"]
+[ext_resource type="Script" uid="uid://cxbvxgicio8tn" path="res://game/lineup.gd" id="1"]
 
 [sub_resource type="Environment" id="Env"]
 background_mode = 1

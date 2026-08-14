@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cmtqo5as8t3ut"
-path="res://.godot/imported/Main_Team_Rigging_2.fbx-78633591de7d5892196a35751faa6dd5.scn"
+uid="uid://dhe2k23duy5a7"
+path="res://.godot/imported/Main_Team_Rigging_2.fbx-929bd951aa2046aa598441a3a74016b6.scn"
 
 [deps]
 
-source_file="res://art/characters/Main_Team_Rigging_2.fbx"
-dest_files=["res://.godot/imported/Main_Team_Rigging_2.fbx-78633591de7d5892196a35751faa6dd5.scn"]
+source_file="res://Main_Team_Rigging_2.fbx"
+dest_files=["res://.godot/imported/Main_Team_Rigging_2.fbx-929bd951aa2046aa598441a3a74016b6.scn"]
 
 [params]
 

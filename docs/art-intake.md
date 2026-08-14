@@ -13,10 +13,10 @@ textures embedded in the FBX are extracted automatically into
 
 Reproduce:
 
-    godot --headless --path . --editor --quit        # import
-    godot --headless --path . --script tools/dump_fbx.gd
-    godot --headless --path . --script tools/measure_fbx.gd
-    godot --path . --script tools/shoot_scene.gd -- res://game/lineup.tscn out.png 10
+	godot --headless --path . --editor --quit        # import
+	godot --headless --path . --script tools/dump_fbx.gd
+	godot --headless --path . --script tools/measure_fbx.gd
+	godot --path . --script tools/shoot_scene.gd -- res://game/lineup.tscn out.png 10
 
 Or just open the project: `game/lineup.tscn` is the main scene and stands the
 whole cast on a floor, turning, labelled with their measured sizes.

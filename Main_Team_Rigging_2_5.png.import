@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://hrk2msamma8a"
-path.s3tc="res://.godot/imported/Main_Team_Rigging_2_5.png-b88fd2852dcdb880ba019248b8691dd9.s3tc.ctex"
+uid="uid://t85id6rosnh3"
+path.s3tc="res://.godot/imported/Main_Team_Rigging_2_5.png-390ef1b6a5f801984e227abf915a733b.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -14,8 +14,8 @@ generator_parameters={
 
 [deps]
 
-source_file="res://art/characters/Main_Team_Rigging_2_5.png"
-dest_files=["res://.godot/imported/Main_Team_Rigging_2_5.png-b88fd2852dcdb880ba019248b8691dd9.s3tc.ctex"]
+source_file="res://Main_Team_Rigging_2_5.png"
+dest_files=["res://.godot/imported/Main_Team_Rigging_2_5.png-390ef1b6a5f801984e227abf915a733b.s3tc.ctex"]
 
 [params]
 
