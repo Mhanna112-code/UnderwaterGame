@@ -20,16 +20,31 @@ then:
 
 The two divers you are not steering swim a slow circuit of their own.
 
-## Run it from source
+First load takes 35 to 50 seconds and the progress bar sits full for most of
+it. That is the engine starting, not a hang. See "Why the first load is slow"
+below. Once it is up it runs fine.
 
-Godot 4.7.1, no plugins, no build step. Clone and open the folder as a
-project, then press F5. `game/world.tscn` is the main scene.
+## Open it in Godot
+
+Godot 4.7.1, no plugins, no build step.
+
+1. Clone the repo, or use the copy you already have.
+2. Open Godot. In the Projects list press **Import**, not Create.
+3. Point it at the **`project.godot` file** inside the repo folder. Selecting
+   the folder alone is not enough on some builds; pick the file.
+4. Press Import & Edit.
+5. Press **F5** to play. `game/world.tscn` is the main scene.
+
+Any "Missing Project" rows already in your list are old paths from other work
+and have nothing to do with this repo. "Remove Missing" clears them.
 
 ## What is here
 
-- `art/characters/Main_Team_Rigging_2.fbx` as delivered, plus Godot's import
-  settings beside it. Godot 4.7 reads FBX natively, so there is no conversion
-  step and no committed intermediate.
+- `art/source/Main_Team_Rigging_2.fbx` is the delivery, kept behind a
+  `.gdignore` so no editor has to import FBX to open this repo.
+- `art/characters/divers.glb` is what the game loads, converted from it by
+  `tools/fbx_to_glb.gd`. Same four meshes, same vertex counts, same nine
+  materials.
 - `game/diver.gd` handles everything the export has opinions about: the models
   stack on one origin, carry a -90 degree X rotation with a scale of 100, and
   face +Z where Godot's forward is -Z. Fixed once, there.
@@ -55,6 +70,27 @@ lands, that code is where the real animation replaces it.
 The lantern is planted in the seabed as a beacon for the same reason. Carried,
 it read as a stick floating beside somebody, because no diver in this export
 has a hand to hold it with.
+
+## Why the first load is slow
+
+Measured on a 2026 M1, not guessed:
+
+| milestone | when |
+|---|---|
+| wasm downloaded (37.7 MB, brotli to about 9) | under 1s |
+| engine running | about 4s |
+| first drawn frame | 35 to 50s |
+
+An empty scene in the same build draws at 15s, so about 15s is Godot's own
+web boot and the rest is this scene compiling its shaders in the browser's
+compatibility renderer. Fog accounts for about 3.5s of it. There is no
+second-visit discount: the shader cache does not survive a reload here.
+
+The lever that would actually move this is material count. The models arrive
+with nine materials and each one costs a shader compile in the browser. Fewer
+materials on the art side, or merged surfaces, would cut the wait roughly in
+proportion. That is an art call, not a code one, so it is written down here
+rather than done quietly.
 
 ## Checks
 

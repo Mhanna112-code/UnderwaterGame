@@ -2,20 +2,31 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://brlkh54xd1rl1"
+<<<<<<<< HEAD:art/characters/Main_Team_Rigging_2_5.png.import
+uid="uid://hrk2msamma8a"
+path.s3tc="res://.godot/imported/Main_Team_Rigging_2_5.png-b88fd2852dcdb880ba019248b8691dd9.s3tc.ctex"
+========
+uid="uid://patvw5pmbipf"
 path="res://.godot/imported/index.apple-touch-icon.png-b21a756d869f84af832970a74d8371bc.ctex"
+>>>>>>>> 5c012a7b445fa6c86685cdac1aa74d214e0d94f8:docs/index.apple-touch-icon.png.import
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
+<<<<<<<< HEAD:art/characters/Main_Team_Rigging_2_5.png.import
+source_file="res://art/characters/Main_Team_Rigging_2_5.png"
+dest_files=["res://.godot/imported/Main_Team_Rigging_2_5.png-b88fd2852dcdb880ba019248b8691dd9.s3tc.ctex"]
+========
 source_file="res://docs/index.apple-touch-icon.png"
 dest_files=["res://.godot/imported/index.apple-touch-icon.png-b21a756d869f84af832970a74d8371bc.ctex"]
+>>>>>>>> 5c012a7b445fa6c86685cdac1aa74d214e0d94f8:docs/index.apple-touch-icon.png.import
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/hdr_compression=1
@@ -31,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

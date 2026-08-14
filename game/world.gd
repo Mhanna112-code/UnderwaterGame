@@ -5,7 +5,7 @@
 # so the next argument about the art is had in front of something playable.
 extends Node3D
 
-const SRC := preload("res://art/characters/Main_Team_Rigging_2.fbx")
+const SRC := preload("res://art/characters/divers.glb")
 
 const CAST := [
 	{"model": "Staff_Diver", "at": Vector3(0, 2.0, 0)},
@@ -63,35 +63,38 @@ func _build_site() -> void:
 	floor_body.add_child(fs)
 	add_child(floor_body)
 
+	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
+	# was taking most of a minute to show its first frame and every node set up
+	# at startup was part of that bill. Rocks are scenery: they do not need to
+	# be solid, and they do not need to be separate objects.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260814          # same site every run: a level you can talk about
+	var rock := SphereMesh.new()
+	rock.radius = 0.5
+	rock.height = 0.7
+	rock.radial_segments = 7
+	rock.rings = 4
 	var rock_mat := StandardMaterial3D.new()
 	rock_mat.albedo_color = Color(0.13, 0.19, 0.21)
 	rock_mat.roughness = 1.0
+	rock.surface_set_material(0, rock_mat)
+
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = rock
+	mm.instance_count = 46
 	for i in range(46):
-		var r := MeshInstance3D.new()
-		var s := SphereMesh.new()
 		var sz := rng.randf_range(0.8, 3.6)
-		s.radius = sz * 0.5
-		s.height = sz * rng.randf_range(0.5, 0.9)
-		s.radial_segments = 7
-		s.rings = 4
-		r.mesh = s
-		r.material_override = rock_mat
 		var a := rng.randf() * TAU
 		var dist := rng.randf_range(7.0, 48.0)
-		r.position = Vector3(cos(a) * dist, s.height * 0.25, sin(a) * dist)
-		r.rotation.y = rng.randf() * TAU
-		add_child(r)
-
-		var rb := StaticBody3D.new()
-		var cs := CollisionShape3D.new()
-		var sp := SphereShape3D.new()
-		sp.radius = sz * 0.5
-		cs.shape = sp
-		rb.add_child(cs)
-		rb.position = r.position
-		add_child(rb)
+		var t := Transform3D()
+		t = t.scaled(Vector3(sz, sz * rng.randf_range(0.5, 0.9), sz))
+		t = t.rotated(Vector3.UP, rng.randf() * TAU)
+		t.origin = Vector3(cos(a) * dist, sz * 0.15, sin(a) * dist)
+		mm.set_instance_transform(i, t)
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	add_child(mmi)
 
 # The fourth model is a staff. Nothing in this FBX is rigged, so no diver has
 # a hand to put it in: carried, it read as a stick floating beside somebody.
