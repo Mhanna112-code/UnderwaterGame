@@ -40,11 +40,11 @@ func _ready() -> void:
 # model and the framing follows
 func _frame_camera(n: int, gap: float) -> void:
 	var cam: Camera3D = $Camera3D
-	var span: float = max(gap * (n - 1) + 2.0, 4.0)
+	var span: float = maxf(gap * float(n - 1) + 2.0, 4.0)
 	# fov is VERTICAL. Sizing a horizontal lineup against it pushed the
 	# camera nearly twice as far back as it needed to be.
 	var vp: Vector2 = Vector2(get_viewport().get_visible_rect().size)
-	var aspect: float = vp.x / max(1.0, vp.y)
+	var aspect: float = vp.x / maxf(1.0, vp.y)
 	var htan: float = tan(deg_to_rad(cam.fov * 0.5)) * aspect
 	var dist: float = span * 0.5 / htan * 1.1
 	cam.position = Vector3(0.0, 1.4, dist)
