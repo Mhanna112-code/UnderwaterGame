@@ -2,19 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dp4qmlek1f6e2"
-path="res://.godot/imported/Main_Team_Rigging_2_2.png-6f76640e998fa1e77ce346f3754930fd.ctex"
+uid="uid://br8f1o20vwa0y"
+path="res://.godot/imported/index.png-0c78d14d192abe5f22f8c25928ca1ab8.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "5577b82221f90f00ed840d80629d9142"
 }
 
 [deps]
 
-source_file="res://art/characters/Main_Team_Rigging_2_2.png"
-dest_files=["res://.godot/imported/Main_Team_Rigging_2_2.png-6f76640e998fa1e77ce346f3754930fd.ctex"]
+source_file="res://docs/index.png"
+dest_files=["res://.godot/imported/index.png-0c78d14d192abe5f22f8c25928ca1ab8.ctex"]
 
 [params]
 
@@ -26,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

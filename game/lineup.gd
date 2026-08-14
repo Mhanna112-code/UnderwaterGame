@@ -6,7 +6,7 @@
 # models" and "look at the models" are not the same job.
 extends Node3D
 
-const SRC := preload("res://art/characters/Main_Team_Rigging_2.fbx")
+const SRC := preload("res://art/characters/divers.glb")
 
 var turners: Array = []
 

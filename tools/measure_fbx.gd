@@ -7,7 +7,7 @@
 # Usage: godot --headless --path ~/underwatergame --script tools/measure_fbx.gd
 extends SceneTree
 
-const PATH := "res://art/characters/Main_Team_Rigging_2.fbx"
+const PATH := "res://art/characters/divers.glb"
 
 var subject: Node3D
 var frames := 0

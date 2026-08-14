@@ -10,7 +10,7 @@
 class_name Diver
 extends CharacterBody3D
 
-const SRC := preload("res://art/characters/Main_Team_Rigging_2.fbx")
+const SRC := preload("res://art/characters/divers.glb")
 
 @export var model_name := "Staff_Diver"
 @export var tint := Color(1, 1, 1)

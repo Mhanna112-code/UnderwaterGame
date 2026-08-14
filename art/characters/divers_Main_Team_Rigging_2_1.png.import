@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d4fj865dl4vku"
-path="res://.godot/imported/Main_Team_Rigging_2_8.png-aea8c059d58adb9a3878a5c869ba78ae.ctex"
+uid="uid://cnppb6d0cqh3n"
+path="res://.godot/imported/divers_Main_Team_Rigging_2_1.png-f63f9b9aeb47c2e6b487d74e54d61fac.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "dc6370c8e506e35f08dcbd5117ae5887"
+"md5": "df1dfa8e93834054341849c106feeeaf"
 }
 
 [deps]
 
-source_file="res://art/characters/Main_Team_Rigging_2_8.png"
-dest_files=["res://.godot/imported/Main_Team_Rigging_2_8.png-aea8c059d58adb9a3878a5c869ba78ae.ctex"]
+source_file="res://art/characters/divers_Main_Team_Rigging_2_1.png"
+dest_files=["res://.godot/imported/divers_Main_Team_Rigging_2_1.png-f63f9b9aeb47c2e6b487d74e54d61fac.ctex"]
 
 [params]
 

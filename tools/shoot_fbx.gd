@@ -5,7 +5,7 @@
 # Usage: godot --path ~/underwatergame --script tools/shoot_fbx.gd -- <outdir>
 extends SceneTree
 
-const PATH := "res://art/characters/Main_Team_Rigging_2.fbx"
+const PATH := "res://art/characters/divers.glb"
 
 var outdir := "/tmp"
 var shots: Array = []      # [name, node-or-null for whole scene]
