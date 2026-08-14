@@ -1,0 +1,6 @@
+# Godot's import cache: regenerated on first open, never committed
+.godot/
+*.import.bak
+
+# macOS
+.DS_Store
