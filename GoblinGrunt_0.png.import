@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cbclnn2wfh6l4"
-path.s3tc="res://.godot/imported/Main_Team_Rigging_2_8.png-d456b5ba894cfce0132d4807ae858fc2.s3tc.ctex"
+uid="uid://iqtrl8p40s2n"
+path.s3tc="res://.godot/imported/GoblinGrunt_0.png-51fdf0ba6a0d547e583a3b61649e5f20.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "dc6370c8e506e35f08dcbd5117ae5887"
+"md5": "2931563dd079b982efe76cb152f143b5"
 }
 
 [deps]
 
-source_file="res://Main_Team_Rigging_2_8.png"
-dest_files=["res://.godot/imported/Main_Team_Rigging_2_8.png-d456b5ba894cfce0132d4807ae858fc2.s3tc.ctex"]
+source_file="res://GoblinGrunt_0.png"
+dest_files=["res://.godot/imported/GoblinGrunt_0.png-51fdf0ba6a0d547e583a3b61649e5f20.s3tc.ctex"]
 
 [params]
 

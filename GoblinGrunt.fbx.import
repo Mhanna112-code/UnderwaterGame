@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dhe2k23duy5a7"
-path="res://.godot/imported/Main_Team_Rigging_2.fbx-929bd951aa2046aa598441a3a74016b6.scn"
+uid="uid://bsk75k2rusddn"
+path="res://.godot/imported/GoblinGrunt.fbx-9ecaba7270b88c767b009d2a3ee60441.scn"
 
 [deps]
 
-source_file="res://Main_Team_Rigging_2.fbx"
-dest_files=["res://.godot/imported/Main_Team_Rigging_2.fbx-929bd951aa2046aa598441a3a74016b6.scn"]
+source_file="res://GoblinGrunt.fbx"
+dest_files=["res://.godot/imported/GoblinGrunt.fbx-9ecaba7270b88c767b009d2a3ee60441.scn"]
 
 [params]
 
