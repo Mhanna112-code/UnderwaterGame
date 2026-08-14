@@ -12,6 +12,9 @@ const out = process.argv[3] || '/tmp/web.png';
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.wasm':'application/wasm',
   '.pck':'application/octet-stream', '.png':'image/png', '.json':'application/json' };
 
+// point it at a live URL to check the thing Marc will actually open, or at a
+// local directory to check the build before it ships
+const live = dir.startsWith('http');
 const server = http.createServer((req, res) => {
   let f = decodeURIComponent(req.url.split('?')[0]);
   if (f === '/') f = '/index.html';
@@ -25,7 +28,7 @@ const server = http.createServer((req, res) => {
   });
   fs.createReadStream(p).pipe(res);
 });
-await new Promise(r => server.listen(8765, r));
+if (!live) await new Promise(r => server.listen(8765, r));
 
 // headless Chromium ships without WebGL2, and Godot's web build needs it.
 // SwiftShader gives us a real GL2 context in software so this gate tests the
@@ -39,7 +42,7 @@ const errors = [];
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', e => errors.push(String(e)));
 
-await page.goto('http://localhost:8765/', { waitUntil: 'load' });
+await page.goto(live ? dir : 'http://localhost:8765/', { waitUntil: 'load' });
 await page.waitForTimeout(25000);          // wasm compile + engine boot + first frames
 await page.mouse.click(640, 400);          // the click that takes the pointer
 await page.keyboard.down('w');
@@ -65,7 +68,7 @@ const spread = await page.evaluate(() => {
 console.log('canvas    ' + JSON.stringify(spread));
 if (errors.length) console.log('console   ' + errors.slice(0, 6).join(' | '));
 await browser.close();
-server.close();
+if (!live) server.close();
 
 if (!spread.ok) { console.log('WEB: ' + spread.why); process.exit(1); }
 if (spread.colours < 12) { console.log('WEB: canvas shows only ' + spread.colours + ' colours, the build is not drawing'); process.exit(1); }
