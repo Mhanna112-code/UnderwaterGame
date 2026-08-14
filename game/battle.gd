@@ -88,11 +88,11 @@ func _frame_camera() -> void:
 	var centre: Vector3 = box.get_center() + Vector3(0.0, 1.0, 0.0)
 	var vp: Vector2 = Vector2(get_viewport().get_visible_rect().size)
 	var htan: float = tan(deg_to_rad(cam.fov * 0.5)) * (vp.x / maxf(1.0, vp.y))
-	var span: float = maxf(box.size.x, box.size.z) + 3.0
+	var span: float = maxf(box.size.x, box.size.z) * 0.72
 	var dist: float = span / htan
 	# offset to the right so the readout on the left does not sit on anybody
-	cam.position = centre + Vector3(0.62, 0.52, 0.86).normalized() * dist + Vector3(1.8, 0.0, 0.0)
-	cam.look_at(centre + Vector3(1.4, 0.0, 0.0), Vector3.UP)
+	cam.position = centre + Vector3(0.66, 0.40, 0.86).normalized() * dist + Vector3(2.2, 0.0, 0.0)
+	cam.look_at(centre + Vector3(1.9, 0.1, 0.0), Vector3.UP)
 
 func _build_stage() -> void:
 	var floor_mesh := MeshInstance3D.new()
