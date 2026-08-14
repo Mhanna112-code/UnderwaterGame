@@ -40,9 +40,11 @@ and have nothing to do with this repo. "Remove Missing" clears them.
 
 ## What is here
 
-- `art/characters/Main_Team_Rigging_2.fbx` as delivered, plus Godot's import
-  settings beside it. Godot 4.7 reads FBX natively, so there is no conversion
-  step and no committed intermediate.
+- `art/source/Main_Team_Rigging_2.fbx` is the delivery, kept behind a
+  `.gdignore` so no editor has to import FBX to open this repo.
+- `art/characters/divers.glb` is what the game loads, converted from it by
+  `tools/fbx_to_glb.gd`. Same four meshes, same vertex counts, same nine
+  materials.
 - `game/diver.gd` handles everything the export has opinions about: the models
   stack on one origin, carry a -90 degree X rotation with a scale of 100, and
   face +Z where Godot's forward is -Z. Fixed once, there.
