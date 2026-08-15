@@ -15,6 +15,15 @@ const CAST := [
 
 var divers: Array = []
 var active := 0
+
+# random encounters: each Diver tracks its own distance swum and fires
+# encounter_triggered when it rolls one (see diver.gd). This just reacts -
+# drops into a turn-based fight against a goblin grunt, Pokemon-style, and
+# freezes the dive while game/battle.gd runs it.
+var banner: Label
+var _banner_timer := 0.0
+var battling := false
+var battle: Battle
 var yaw := 0.0
 var pitch := -0.16
 var cam_dist := 6.5
@@ -32,6 +41,15 @@ var scripted_rise := 0.0
 func _ready() -> void:
 	cam = $Camera3D
 	hud = $HUD/Controls
+	banner = Label.new()
+	banner.name = "Banner"
+	banner.offset_left = 16.0
+	banner.offset_top = 80.0
+	banner.offset_right = 900.0
+	banner.offset_bottom = 130.0
+	banner.add_theme_font_size_override("font_size", 20)
+	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
+	$HUD.add_child(banner)
 	_build_site()
 	for c in CAST:
 		var d := Diver.new()
@@ -39,6 +57,7 @@ func _ready() -> void:
 		d.position = c.at as Vector3
 		add_child(d)
 		divers.append(d)
+		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 	_carry_lantern()
 	_update_hud()
 
@@ -122,6 +141,8 @@ func _carry_lantern() -> void:
 	src.queue_free()
 
 func _unhandled_input(e: InputEvent) -> void:
+	if battling:
+		return
 	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 		# the web build starts with a free cursor; the first click takes it
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -141,6 +162,8 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	if battling:
+		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
 	# browser, and a build nobody can steer is a build nobody plays
 	if Input.is_key_pressed(KEY_LEFT):
@@ -160,6 +183,7 @@ func _physics_process(dt: float) -> void:
 			_drift(d, i, dt)
 	_move_camera(dt)
 	_move_lantern(dt)
+	_update_banner(dt)
 
 func _player_dir() -> Vector3:
 	if scripted:
@@ -219,6 +243,48 @@ func _move_lantern(_dt: float) -> void:
 	if lantern == null:
 		return
 	lantern.rotation.z = sin(_t * 0.8) * 0.05      # a slow sway in the current
+
+# fade the banner. Only called while not battling: _physics_process skips
+# this whole side of the world once a fight is up.
+func _update_banner(dt: float) -> void:
+	if _banner_timer > 0.0:
+		_banner_timer -= dt
+		if _banner_timer <= 0.0:
+			banner.text = ""
+
+# a Diver rolled an encounter (see diver.gd's distance-based check). Only the
+# diver you're actually steering gets to start one - the two drifting NPCs
+# roll independently but their triggers are ignored here.
+func _on_encounter_triggered(d: Diver) -> void:
+	if battling or d != divers[active]:
+		return
+	_start_battle()
+
+func _start_battle() -> void:
+	battling = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
+	mouse_look = false
+	_announce("Something grunts out of the murk!")
+	battle = Battle.new()
+	battle.diver_model_name = divers[active].model_name
+	battle.finished.connect(_on_battle_finished)
+	add_child(battle)
+
+func _on_battle_finished(result: String) -> void:
+	battle.queue_free()
+	battle = null
+	battling = false
+	match result:
+		"won":
+			_announce("The grunt backs off into the dark.")
+		"fled":
+			_announce("You put some distance between you.")
+		_:
+			_announce("You regroup and catch your breath.")
+
+func _announce(text: String) -> void:
+	banner.text = text
+	_banner_timer = 4.0
 
 func _update_hud() -> void:
 	var d: Diver = divers[active]

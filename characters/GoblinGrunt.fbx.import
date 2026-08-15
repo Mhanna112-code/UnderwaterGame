@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bsk75k2rusddn"
-path="res://.godot/imported/GoblinGrunt.fbx-9ecaba7270b88c767b009d2a3ee60441.scn"
+path="res://.godot/imported/GoblinGrunt.fbx-1c5d76ee0b2ec49c3d933fe3fbf1da37.scn"
 
 [deps]
 
-source_file="res://GoblinGrunt.fbx"
-dest_files=["res://.godot/imported/GoblinGrunt.fbx-9ecaba7270b88c767b009d2a3ee60441.scn"]
+source_file="res://characters/GoblinGrunt.fbx"
+dest_files=["res://.godot/imported/GoblinGrunt.fbx-1c5d76ee0b2ec49c3d933fe3fbf1da37.scn"]
 
 [params]
 

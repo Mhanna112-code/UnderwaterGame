@@ -1,8 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://mxhs2oww3e23"]
-
-[ext_resource type="PackedScene" uid="uid://dhe2k23duy5a7" path="res://Main_Team_Rigging_2.fbx" id="1_fesod"]
-
-[node name="Node3D" type="Node3D"]
-
-[node name="Main_Team_Rigging_2" parent="." instance=ExtResource("1_fesod")]
-transform = Transform3D(-0.917692, 0, -0.397292, 0, 1, 0, 0.397292, 0, -0.917692, -1.25251, 0, 3.34659)

@@ -48,7 +48,20 @@ and have nothing to do with this repo. "Remove Missing" clears them.
 - `game/diver.gd` handles everything the export has opinions about: the models
   stack on one origin, carry a -90 degree X rotation with a scale of 100, and
   face +Z where Godot's forward is -Z. Fixed once, there.
-- `game/world.gd` is the dive site and the camera.
+- `game/diver.gd` also tracks how far each diver has swum and rolls a random
+  encounter (tall-grass style) every 20-40 meters, at a 25% chance per roll.
+- `game/world.gd` is the dive site and the camera. It listens for the diver
+  you're steering to roll an encounter, then freezes the dive and drops into
+  a turn-based fight, Pokemon-style.
+- `game/battle.gd` is that fight: a small isolated 3D stage (your diver's
+  back, the grunt facing you) with a menu underneath - Attack opens a move
+  list (Jab / Kick / Haymaker), Run ends the fight on the spot. Win, flee, or
+  get beaten off and control returns to the dive site.
+- `game/goblin.gd` handles `characters/GoblinGrunt.fbx`, the grunt's model.
+  Unlike the divers this FBX arrives rigged (an Idle and a Walking take), so
+  it gets a real animation instead of procedural posture. Its scale was never
+  hand-measured, so it's rescaled to a target height at runtime rather than
+  trusting the export's units.
 - `game/lineup.tscn` stands the whole cast in a row with their measured sizes,
   for looking at rather than playing.
 - `docs/` is the exported browser build.
@@ -95,13 +108,18 @@ rather than done quietly.
 ## Checks
 
     godot --headless --path . --script verify/swim.gd     # do they actually move
+    godot --headless --path . --script tools/test_goblin.gd  # does the grunt's model load and size correctly
+    godot --headless --path . --script tools/test_battle.gd  # does the fight screen build without erroring
     node verify/webcheck.mjs docs out.png                 # does the build boot
     node verify/webcheck.mjs <live-url> out.png           # does the live link boot
 
 `verify/swim.gd` drives the real scene for two seconds of play and fails if a
 diver did not move, fell through the floor, stayed bolt upright, or lost the
-camera. `verify/webcheck.mjs` loads the build in Chromium with software WebGL2
-and fails if the canvas is a flat field of one colour.
+camera. `tools/test_goblin.gd` and `tools/test_battle.gd` instantiate those
+two systems in isolation - useful for telling a bug in the game itself apart
+from an editor/Play problem, since they run the exact same scripts outside
+the editor. `verify/webcheck.mjs` loads the build in Chromium with software
+WebGL2 and fails if the canvas is a flat field of one colour.
 
 ## GitHub Pages
 
