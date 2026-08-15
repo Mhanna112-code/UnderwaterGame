@@ -30,6 +30,20 @@ var _kick := 0.0
 var _lean := 0.0
 var bubbles: CPUParticles3D
 
+# If the delivered model carries real swim clips, play them. If it does not,
+# fall back to the procedural bob and pitch below. Glass_Goat's swim
+# animations exist in Blender and have never been in an export; this is here
+# so the day one arrives, wiring it is nothing.
+var anim: AnimationPlayer = null
+var clip_prefix := ""
+var swim_clip := ""
+var idle_clip := ""
+var _playing := ""
+
+# any clip whose name contains one of these is taken to be that motion
+const SWIM_WORDS := ["swim", "tread", "paddle", "float", "kick_cycle"]
+const IDLE_WORDS := ["idle"]
+
 func _ready() -> void:
 	var src: Node3D = SRC.instantiate()
 	var mesh: MeshInstance3D = _find(src, model_name)
@@ -70,9 +84,54 @@ func _ready() -> void:
 	shape.shape = cap
 	add_child(shape)
 
+	_find_clips(src)
 	_bob = randf() * TAU
 	_add_bubbles()
 	src.queue_free()
+
+func _find_clips(src: Node) -> void:
+	anim = _first_player(model)
+	if anim == null:
+		return
+	for name in anim.get_animation_list():
+		var bare := String(name)
+		var bar := bare.rfind("|")
+		var stem := bare.substr(bar + 1).to_lower() if bar >= 0 else bare.to_lower()
+		if bar >= 0 and clip_prefix == "":
+			clip_prefix = bare.substr(0, bar + 1)
+		if anim.get_animation(bare).length <= 0.05:
+			continue                       # a zero length take is a pose
+		for w in SWIM_WORDS:
+			if stem.contains(w) and swim_clip == "":
+				swim_clip = bare
+		for w2 in IDLE_WORDS:
+			if stem.contains(w2) and idle_clip == "":
+				idle_clip = bare
+
+func _first_player(n: Node) -> AnimationPlayer:
+	if n is AnimationPlayer:
+		return n
+	for c in n.get_children():
+		var r := _first_player(c)
+		if r != null:
+			return r
+	return null
+
+# play a clip if the model has one for this state, and report whether it did
+func _drive_clip(moving: bool) -> bool:
+	if anim == null:
+		return false
+	var want := swim_clip if moving else idle_clip
+	if want == "":
+		want = idle_clip if idle_clip != "" else swim_clip
+	if want == "":
+		return false
+	if want != _playing:
+		var a: Animation = anim.get_animation(want)
+		a.loop_mode = Animation.LOOP_LINEAR
+		anim.play(want)
+		_playing = want
+	return true
 
 func _add_bubbles() -> void:
 	# CPU particles, not GPU: this has to survive the web export's
@@ -119,6 +178,9 @@ func _animate(dir: Vector3, dt: float) -> void:
 	if model == null:
 		return
 	var moving := velocity.length() > 0.4
+	# A real swim cycle beats anything procedural. When one exists, the whole
+	# model stops being pitched and bobbed by hand and just plays.
+	var clipped := _drive_clip(moving)
 	_bob += dt * (3.4 if moving else 1.1)
 	_kick += dt * (6.0 if moving else 0.0)
 
@@ -136,6 +198,12 @@ func _animate(dir: Vector3, dt: float) -> void:
 	var want_pitch: float = -1.15 * clampf(flat / speed, 0.0, 1.0) - clampf(velocity.y * 0.12, -0.3, 0.3)
 	_lean = lerpf(_lean, want_pitch, clampf(dt * 3.0, 0.0, 1.0))
 
+	if clipped:
+		# the clip owns the body; keep only the lean into a dive or a climb
+		model.position.y = 0.0
+		model.rotation.x = clampf(-velocity.y * 0.16, -0.4, 0.4)
+		model.rotation.z = 0.0
+		return
 	model.position.y = sin(_bob) * (0.09 if moving else 0.05)
 	model.rotation.x = _lean + sin(_kick) * (0.09 if moving else 0.0)
 	model.rotation.z = sin(_kick * 0.5) * (0.08 if moving else 0.02)
