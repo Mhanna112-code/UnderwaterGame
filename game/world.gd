@@ -56,6 +56,7 @@ func _ready() -> void:
 		divers.append(d)
 	_carry_lantern()
 	_place_enemies()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_update_hud()
 
 func _place_enemies() -> void:
@@ -167,10 +168,15 @@ func _carry_lantern() -> void:
 	src.queue_free()
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
-		# the web build starts with a free cursor; the first click takes it
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-		mouse_look = true
+	# DRAG to look, rather than swallowing the cursor on the first click.
+	# Taking the mouse and keeping it meant the only way to get it back was
+	# to guess at ESC, which is exactly the wrong thing to make somebody
+	# guess at before they have worked out any of the other controls.
+	if e is InputEventMouseButton:
+		var mb := e as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_RIGHT:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if mb.pressed else Input.MOUSE_MODE_VISIBLE
+			mouse_look = mb.pressed
 	elif e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		mouse_look = false
@@ -287,7 +293,7 @@ func _update_hud() -> void:
 	for m in marks:
 		if is_instance_valid(m.node as Node):
 			left += 1
-	hud.text = "%s  (%.2f m)    %s\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
+	hud.text = "%s  (%.2f m)    %s\nWASD swim · SPACE up · SHIFT down · hold mouse or use arrows to look · TAB switch diver" % [
 		String(d.model_name), d.height,
 		"salvage guarded: %d" % left if left > 0 else "the site is clear"]
 

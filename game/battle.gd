@@ -75,6 +75,10 @@ var rings: Dictionary = {}
 @onready var hud: Control = $HUD/Root
 
 func _ready() -> void:
+	# the fight is played with the pointer, so take the cursor back the
+	# moment it starts. Arriving here with it still captured meant the
+	# buttons could not be clicked at all.
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	combat = Combat.new(encounter)
 	_build_stage()
 	_build_actors()
