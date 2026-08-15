@@ -68,20 +68,13 @@ func _place_enemies() -> void:
 		a.position = e.at as Vector3
 		marks.append({"node": a, "data": e})
 
-		# something to be standing over, so the fight is about the thing
-		# rather than about the enemy being in the way
-		var loot := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(0.8, 0.5, 0.6)
-		loot.mesh = box
-		var lm := StandardMaterial3D.new()
-		lm.albedo_color = Color(0.75, 0.62, 0.3)
-		lm.emission_enabled = true
-		lm.emission = Color(0.5, 0.4, 0.15)
-		lm.emission_energy_multiplier = 0.6
-		loot.material_override = lm
-		loot.position = (e.at as Vector3) + Vector3(0.0, -1.4, 0.0)
-		add_child(loot)
+		# The rig component the enemy is standing over. Marc's ruling: you
+		# take what it guards and it is a part for the surface rig. A gold
+		# box said nothing; a lit regulator on a dark seabed is the only
+		# warm thing down here and the player swims at it unprompted.
+		var part := SalvagePart.new()
+		part.position = (e.at as Vector3) + Vector3(0.0, -1.5, 0.0)
+		add_child(part)
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.

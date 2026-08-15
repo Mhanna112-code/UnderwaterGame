@@ -67,6 +67,9 @@ var _phase := "player"            # player | enemy_windup | enemy_settle
 var _timer := 0.0
 var _hp_before: Array = []
 var _popups: Array = []
+var _pulse := 0.0
+
+var rings: Dictionary = {}
 
 @onready var cam: Camera3D = $Camera3D
 @onready var hud: Control = $HUD/Root
@@ -76,7 +79,23 @@ func _ready() -> void:
 	_build_stage()
 	_build_actors()
 	_frame_camera()
+	hud.combat = combat
+	hud.tint_of = RIG_TINT
+	hud.station_dir = Callable(self, "_screen_dir")
+	hud.chose.connect(_do)
+	hud.ended_turn.connect(_end_turn)
+	hud.picked_diver.connect(func(i: int): selected = i; _refresh())
+	hud.dismissed.connect(func(): finished.emit(combat.outcome))
 	_refresh()
+
+# Which way is that station, on screen, from where this diver stands? The move
+# button draws an arrow with it, so the button explains itself by pointing at
+# the answer instead of naming it.
+func _screen_dir(to_station: int, from_station: int) -> Vector2:
+	var a: Vector2 = cam.unproject_position(_place(from_station) + Vector3(0, 0.6, 0))
+	var b: Vector2 = cam.unproject_position(_place(to_station) + Vector3(0, 0.6, 0))
+	var d := b - a
+	return d.normalized() if d.length() > 1.0 else Vector2.RIGHT
 
 # Frame the whole board from the stations themselves, so moving a station
 # never quietly pushes somebody out of shot.
@@ -120,14 +139,7 @@ func _build_stage() -> void:
 		ring.position = _place(int(s)) + Vector3(0, 0.03, 0)
 		ring.name = "ring_%d" % int(s)
 		add_child(ring)
-
-		var tag := Label3D.new()
-		tag.text = Combat.STATION_NAMES[int(s)]
-		tag.font_size = 40
-		tag.pixel_size = 0.006
-		tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		tag.position = _place(int(s)) + Vector3(0, 0.25, 0)
-		add_child(tag)
+		rings[int(s)] = ring
 
 func _place(station: int) -> Vector3:
 	return STATION_POS.get(station, Vector3.ZERO)
@@ -151,6 +163,7 @@ func _build_actors() -> void:
 	enemy.face(_place(int(combat.divers[0].station)))
 
 func _process(dt: float) -> void:
+	_pulse += dt
 	for i in range(actors.size()):
 		var d = combat.divers[i]
 		var want: Vector3 = _place(int(d.station))
@@ -171,6 +184,8 @@ func _process(dt: float) -> void:
 			_popups.erase(n)
 			lab.queue_free()
 
+	_light_rings()
+
 	if _phase == "enemy_windup":
 		_timer -= dt
 		if _timer <= 0.0:
@@ -180,6 +195,18 @@ func _process(dt: float) -> void:
 		if _timer <= 0.0:
 			_phase = "player"
 			_refresh()
+
+# The announced attack, shown on the floor rather than described in a
+# sentence: the ring you are about to be hit on turns red and pulses.
+func _light_rings() -> void:
+	var hot: Array = combat.threatened_stations() if combat != null else []
+	for st in rings.keys():
+		var mat: StandardMaterial3D = (rings[st] as MeshInstance3D).material_override
+		if int(st) in hot:
+			var p := 0.6 + 0.4 * sin(_pulse * 6.0)
+			mat.albedo_color = Color(0.96, 0.35, 0.28) * p
+		else:
+			mat.albedo_color = Color(0.35, 0.55, 0.6)
 
 # ---- turn flow ---------------------------------------------------------
 
@@ -252,106 +279,11 @@ func _limb_hp() -> Array:
 	return combat.limb_hp.duplicate()
 
 # ---- the readout ------------------------------------------------------
+#
+# There is nothing to build here any more. game/battle_hud.gd draws the whole
+# fight every frame from the sim, so "refresh" is telling it what changed.
 
 func _refresh() -> void:
-	for c in hud.get_children():
-		c.queue_free()
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 4)
-	hud.add_child(col)
-
-	_line(col, "%s    turn %d    air %d" % [
-		String(combat.enc.title), combat.turn, combat.air_this_turn()])
-
-	# the enemy, limb by limb, with what each one has announced
-	var aimed: Dictionary = {}
-	for it in combat.intents():
-		var where: Array = []
-		for st in it.stations:
-			where.append(Combat.STATION_NAMES[int(st)])
-		aimed[int(it.limb)] = "%s %s for %d" % [String(it.name), ", ".join(where), int(it.dmg)]
-	for li in range(combat.LIMB_NAMES.size()):
-		var state := "broken" if combat.limb_broken[li] else "%d hp" % int(combat.limb_hp[li])
-		var extra := ""
-		if combat.limb_broken[li]:
-			extra = ""
-		elif int(combat.limb_stun[li]) > 0:
-			extra = "   shut, cannot swing"
-		elif aimed.has(li):
-			extra = "   " + String(aimed[li])
-		var tr := combat.trait_of(li)
-		var tr_txt: String = ("  [%s]" % tr) if (tr != "" and combat.known(li)) else ("  [?]" if tr != "" else "")
-		_line(col, "  %-9s %-8s%s%s" % [String(combat.LIMB_NAMES[li]), state, tr_txt, extra])
-
-	_line(col, "")
-	for d in combat.divers:
-		var mark := ">" if int(d.id) == selected else " "
-		var st := "down" if d.down else "%d/%d hp at %s" % [int(d.hp), int(d.max_hp), Combat.STATION_NAMES[int(d.station)]]
-		_line(col, "%s %-7s %s" % [mark, String(d.dname), st])
-
-	if combat.outcome != "ongoing":
-		_line(col, "")
-		_line(col, "the squad wins" if combat.outcome == "victory" else "the squad is beaten")
-		var back := Button.new()
-		back.text = "surface"
-		back.pressed.connect(func(): finished.emit(combat.outcome))
-		col.add_child(back)
-		return
-
-	if _phase != "player":
-		_line(col, "")
-		_line(col, "the grunt is swinging")
-		return
-
-	# who am I ordering
-	var who := HBoxContainer.new()
-	col.add_child(who)
-	for d in combat.divers:
-		if d.down:
-			continue
-		var b := Button.new()
-		b.text = String(d.dname)
-		var idx := int(d.id)
-		b.pressed.connect(func(): selected = idx; _refresh())
-		who.add_child(b)
-
-	# and what that diver may legally do, straight from the sim
-	var acts := HBoxContainer.new()
-	acts.add_theme_constant_override("separation", 4)
-	col.add_child(acts)
-	var any := false
-	for a in Bots.legal(combat):
-		if int(a.i) != selected:
-			continue
-		any = true
-		var b := Button.new()
-		b.text = _label(a)
-		var act: Dictionary = a
-		b.pressed.connect(func(): _do(act))
-		acts.add_child(b)
-	if not any:
-		_line(col, "  nothing left to spend here")
-
-	var e := Button.new()
-	e.text = "end turn"
-	e.pressed.connect(_end_turn)
-	col.add_child(e)
-
-func _label(a: Dictionary) -> String:
-	match String(a.kind):
-		"attack":
-			var d = combat.divers[int(a.i)]
-			var k: Dictionary = d.kit[int(a.get("slot", 0))]
-			return "%s (%d air)" % [String(k.name), int(d.cost)]
-		"analyze":
-			return "read (%d air)" % Combat.ANALYZE_COST
-		"move":
-			return "move to %s" % Combat.STATION_NAMES[int(a.s)]
-	return String(a.kind)
-
-func _line(col: VBoxContainer, text: String) -> void:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 16)
-	col.add_child(l)
+	hud.combat = combat
+	hud.selected = selected
+	hud.locked_out = _phase != "player"
