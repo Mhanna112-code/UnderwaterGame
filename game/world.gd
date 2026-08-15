@@ -13,7 +13,7 @@ const ActorScript := preload("res://game/actor.gd")
 # always swim past one, and swimming past means surfacing without whatever
 # it was standing over. Nothing here is random, which is the whole point.
 const ENEMIES := [
-	{"name": "grunt_shallows", "encounter": "goblin", "at": Vector3(14.0, 1.6, -12.0)},
+	{"name": "grunt_shallows", "encounter": "goblin", "at": Vector3(6.5, 1.7, -6.5)},
 ]
 const TOUCH := 2.6
 
