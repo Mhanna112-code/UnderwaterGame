@@ -36,8 +36,8 @@ func _process(_dt: float) -> bool:
 		var d: Swimmer = world.divers[i]
 		var moved: float = (d.global_position - (start[i] as Vector3)).length()
 		var who := String(d.model_name)
-		print("%-20s moved %5.2f m, now at %s, pitch %+.2f rad" % [
-			who, moved, _short(d.global_position), d.model.rotation.x])
+		var motion := String(d._playing) if d.anim != null and String(d._playing) != "" else "procedural"
+		print("%-20s moved %5.2f m, %-34s pitch %+.2f" % [who, moved, motion, d.model.rotation.x])
 		if moved < 0.5:
 			findings.append("STILL: %s moved only %.2f m in ~2s of swimming" % [who, moved])
 		if d.global_position.y < -0.5:

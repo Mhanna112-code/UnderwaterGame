@@ -6,6 +6,10 @@
 extends Node3D
 
 const SRC := preload("res://art/characters/divers.glb")
+# The Aug 15 delivery: rigged AND textured, with a real swim cycle. Only the
+# Scuba diver is in it, so the other two keep coming out of the older file
+# until their own arrives.
+const SCUBA := preload("res://art/characters/Main_Team_Rigging_3.fbx")
 const GOBLIN := preload("res://GoblinGrunt.fbx")
 const ActorScript := preload("res://game/actor.gd")
 
@@ -20,7 +24,7 @@ const TOUCH := 2.6
 signal encountered(enemy_name: String, encounter: String)
 
 const CAST := [
-	{"model": "Staff_Diver", "at": Vector3(0, 2.0, 0)},
+	{"model": "Staff_Diver", "at": Vector3(0, 2.0, 0), "rigged": true, "family": "Scuba"},
 	{"model": "Prototype_1(1910)", "at": Vector3(-3.6, 2.2, -3.0)},
 	{"model": "Prototype_V(1922)", "at": Vector3(3.6, 2.4, -3.0)},
 ]
@@ -50,6 +54,9 @@ func _ready() -> void:
 	_build_site()
 	for c in CAST:
 		var d := Swimmer.new()
+		if bool(c.get("rigged", false)):
+			d.source = SCUBA
+			d.clip_family = String(c.get("family", ""))
 		d.model_name = String(c.model)
 		d.position = c.at as Vector3
 		add_child(d)

@@ -15,6 +15,11 @@ extends CharacterBody3D
 
 const SRC := preload("res://art/characters/divers.glb")
 
+# Which file this diver comes out of. Deliveries arrive one character at a
+# time, so each diver names its own source rather than the whole cast waiting
+# on one file that has everybody in it.
+var source: PackedScene = SRC
+
 @export var model_name := "Staff_Diver"
 @export var tint := Color(1, 1, 1)
 
@@ -37,6 +42,10 @@ var bubbles: CPUParticles3D
 var anim: AnimationPlayer = null
 var clip_prefix := ""
 var swim_clip := ""
+# All three characters' motions live on one shared rig, so a clip search that
+# only matches "idle" happily hands the scuba diver the brass suit's stance.
+# The family is the character's name in the clip list, not the mesh name.
+var clip_family := ""
 var idle_clip := ""
 var _playing := ""
 
@@ -45,37 +54,46 @@ const SWIM_WORDS := ["swim", "tread", "paddle", "float", "kick_cycle"]
 const IDLE_WORDS := ["idle"]
 
 func _ready() -> void:
-	var src: Node3D = SRC.instantiate()
+	var src: Node3D = (source if source != null else SRC).instantiate()
 	var mesh: MeshInstance3D = _find(src, model_name)
 	if mesh == null:
-		push_error("NO SUCH MODEL '%s' in the FBX" % model_name)
+		push_error("NO SUCH MODEL '%s' in this file" % model_name)
 		return
 
 	model = Node3D.new()
 	model.name = "Model"
 	add_child(model)
-	# the models face +Z and Godot's forward is -Z. That flip lives on its own
-	# node so posture maths below can assume a plain -Z-forward body: folding
-	# it into the same node made every pitch sign a coin toss.
-	var flip := Node3D.new()
-	flip.name = "Flip"
-	flip.rotation.y = PI
-	model.add_child(flip)
 
-	# keep the mesh's own transform: the -90 X rotation IS what stands it up
-	var keep: Transform3D = mesh.transform
-	mesh.owner = null            # else reparenting warns about a stale owner
-	mesh.get_parent().remove_child(mesh)
-	flip.add_child(mesh)
-	mesh.transform = keep
+	# A rigged file keeps its tree INTACT. The AnimationPlayer's track paths
+	# are relative to that file's own root, so pulling the mesh out of it
+	# leaves the player driving nodes that are no longer there. The first
+	# version reparented first and then went looking for clips in a subtree
+	# that never had any, and silently fell back to hand-driven motion.
+	var clipped := _has_clips(src)
+	var box: AABB
+	if clipped:
+		for m in _all_meshes(src):
+			(m as MeshInstance3D).visible = (String(m.name) == model_name)
+		model.add_child(src)
+		model.rotation.y = PI       # the models face +Z, Godot forward is -Z
+		box = _chain_aabb(mesh, src)
+		model.position.y = -(box.position.y + box.size.y * 0.5)
+		_find_clips(src)
+	else:
+		var flip := Node3D.new()
+		flip.name = "Flip"
+		flip.rotation.y = PI
+		model.add_child(flip)
+		var keep: Transform3D = mesh.transform
+		mesh.owner = null
+		mesh.get_parent().remove_child(mesh)
+		flip.add_child(mesh)
+		mesh.transform = keep
+		box = _chain_aabb(mesh, mesh)
+		mesh.position.y -= box.position.y + box.size.y * 0.5
 
-	# measure where the model actually sits, then drop its feet to the
-	# body's floor. The FBX centres each model on its own origin, which is
-	# not the same as standing on the ground.
-	var box: AABB = _world_aabb(mesh)
 	height = box.size.y
 	radius = maxf(0.25, minf(box.size.x, box.size.z) * 0.5)
-	mesh.position.y -= box.position.y + height * 0.5
 
 	var shape := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
@@ -84,13 +102,48 @@ func _ready() -> void:
 	shape.shape = cap
 	add_child(shape)
 
-	_find_clips(src)
 	_bob = randf() * TAU
 	_add_bubbles()
-	src.queue_free()
+	if not clipped:
+		src.queue_free()
+
+func _has_clips(n: Node) -> bool:
+	var ap := _first_player(n)
+	if ap == null:
+		return false
+	for a in ap.get_animation_list():
+		var stem := String(a).to_lower()
+		if ap.get_animation(String(a)).length <= 0.05:
+			continue
+		for w in SWIM_WORDS + IDLE_WORDS:
+			if stem.contains(w):
+				return true
+	return false
+
+func _all_meshes(n: Node) -> Array:
+	var out: Array = []
+	if n is MeshInstance3D:
+		out.append(n)
+	for c in n.get_children():
+		out.append_array(_all_meshes(c))
+	return out
+
+# the mesh box in the space of `upto`, walking the transforms by hand because
+# nothing is in the tree yet when this runs
+func _chain_aabb(m: MeshInstance3D, upto: Node) -> AABB:
+	var a: AABB = m.get_aabb()
+	var t: Transform3D = m.transform
+	var p: Node = m.get_parent()
+	while p != null and p is Node3D and p != upto:
+		t = (p as Node3D).transform * t
+		p = p.get_parent()
+	var out := AABB(t * a.get_endpoint(0), Vector3.ZERO)
+	for i in range(8):
+		out = out.expand(t * a.get_endpoint(i))
+	return out
 
 func _find_clips(src: Node) -> void:
-	anim = _first_player(model)
+	anim = _first_player(src)
 	if anim == null:
 		return
 	for name in anim.get_animation_list():
@@ -102,11 +155,32 @@ func _find_clips(src: Node) -> void:
 		if anim.get_animation(bare).length <= 0.05:
 			continue                       # a zero length take is a pose
 		for w in SWIM_WORDS:
-			if stem.contains(w) and swim_clip == "":
+			if stem.contains(w) and _better(bare, swim_clip):
 				swim_clip = bare
 		for w2 in IDLE_WORDS:
-			if stem.contains(w2) and idle_clip == "":
+			if stem.contains(w2) and _better(bare, idle_clip):
 				idle_clip = bare
+
+# The delivery splits every motion into Start, Mid (Loop) and End. For a
+# state you hold, the middle is the one that reads: taking whichever matched
+# first would have played the half second wind-up on repeat forever.
+func _better(candidate: String, held: String) -> bool:
+	if held == "":
+		return true
+	if _score(candidate) != _score(held):
+		return _score(candidate) > _score(held)
+	return candidate.length() < held.length()
+
+func _score(name: String) -> int:
+	var n := name.to_lower()
+	var k := 0
+	if clip_family != "" and n.contains(clip_family.to_lower()):
+		k += 10                       # the right character beats everything
+	if n.contains("loop"):
+		k += 2                        # the part you hold, not the wind-up
+	if n.contains("mid"):
+		k += 1
+	return k
 
 func _first_player(n: Node) -> AnimationPlayer:
 	if n is AnimationPlayer:
