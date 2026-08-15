@@ -128,6 +128,17 @@ func _build_site() -> void:
 		var sz := rng.randf_range(0.8, 3.6)
 		var a := rng.randf() * TAU
 		var dist := rng.randf_range(7.0, 48.0)
+		# keep the scenery off the fights: rocks spawn from 7m out and the
+		# guarded salvage sits at 9m, so one could land on top of the enemy
+		# and wall the player off from the only thing to do here
+		var here := Vector3(cos(a) * dist, 0.0, sin(a) * dist)
+		var blocked := false
+		for e in ENEMIES:
+			if here.distance_to(Vector3((e.at as Vector3).x, 0.0, (e.at as Vector3).z)) < 5.0:
+				blocked = true
+		if blocked:
+			mm.set_instance_transform(i, Transform3D().scaled(Vector3.ONE * 0.001))
+			continue
 		var t := Transform3D()
 		t = t.scaled(Vector3(sz, sz * rng.randf_range(0.5, 0.9), sz))
 		t = t.rotated(Vector3.UP, rng.randf() * TAU)

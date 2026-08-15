@@ -26,3 +26,8 @@ window/size/viewport_height=720
 [rendering]
 
 renderer/rendering_method.mobile="gl_compatibility"
+; the web build runs the compatibility renderer, which needs ETC2 textures.
+; Without these the export refuses outright, or ships a build whose every
+; model renders white because no texture variant can be sampled.
+textures/vram_compression/import_etc2_astc=true
+textures/vram_compression/import_s3tc_bptc=true
