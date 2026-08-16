@@ -11,21 +11,8 @@
 # round" reads off the screen instead of off a label.
 extends Node3D
 
-const RIGGED := preload("res://art/characters/Main_Team_Rigging.fbx")
 const GOBLIN := preload("res://GoblinGrunt.fbx")
 const ActorScript := preload("res://game/actor.gd")
-
-# Which clip belongs to which diver and which ability. SALVAGE named its
-# abilities after these clips on purpose, so this table is a lookup rather
-# than an invention. Keyed by roster index, matching sim/combat.gd.
-const RIGS := [
-	{"mesh": "Diver_Full_Gear", "prefix": "rig|", "idle": "Scuba_Idle1", "hurt": "Scuba_Damaged1",
-	 "abilities": {"Axe Kick": "Scuba_Axe_Kick", "Double Knee": "Scuba_Double_Knee"}},
-	{"mesh": "Prototype_1(1910)", "prefix": "rig_001|", "idle": "Prototype1_Idle1", "hurt": "Prototype1_Damaged",
-	 "abilities": {"Palm Strike": "Prototype1_Palm_Strike", "Dual Palm": "Prototype1_DualPalm"}},
-	{"mesh": "Prototype_V(1922)", "prefix": "rig_002|", "idle": "Proto5_Idle", "hurt": "Proto5_damaged",
-	 "abilities": {"Piston Swing": "Proto5_Attck1", "Wide Sweep": "Proto5_Attck2"}},
-]
 
 # The enemy has Idle, Shooting1, Shooting2, Taunt1, Walking and no damage
 # reaction. Getting hit is shown by a flash rather than a clip, because
@@ -45,16 +32,8 @@ const STATION_POS := {
 	4: Vector3(0.8, 0.0, 7.6),      # BACKLINE
 }
 
-# The rigged delivery is a CLAY BAKE: 132 bones and 45 clips, and not one
-# texture on any of the three. The textured delivery is the other file, and
-# that one has no rig. Until one file has both, the divers are told apart by
-# colour rather than by material, which is a stopgap and is meant to look
-# like one.
-const RIG_TINT := [
-	Color(0.42, 0.62, 0.72),   # Scuba, wetsuit
-	Color(0.94, 0.58, 0.26),   # Drum, orange hardsuit
-	Color(0.72, 0.68, 0.58),   # Brass, the big suit
-]
+# The tint table is gone. Every character now arrives rigged AND textured, so
+# there is nothing left to tell apart by colour.
 
 signal finished(outcome: String)
 
@@ -84,7 +63,7 @@ func _ready() -> void:
 	_build_actors()
 	_frame_camera()
 	hud.combat = combat
-	hud.tint_of = RIG_TINT
+	hud.tint_of = _chip_colours()
 	hud.station_dir = Callable(self, "_screen_dir")
 	hud.chose.connect(_do)
 	hud.ended_turn.connect(_end_turn)
@@ -95,6 +74,14 @@ func _ready() -> void:
 # Which way is that station, on screen, from where this diver stands? The move
 # button draws an arrow with it, so the button explains itself by pointing at
 # the answer instead of naming it.
+# the HUD still wants a colour per diver for its chips; take it from the
+# model rather than from a table that has to be kept in step by hand
+func _chip_colours() -> Array:
+	var out: Array = []
+	for i in range(combat.divers.size()):
+		out.append(Color.from_hsv(fmod(0.55 + float(i) * 0.19, 1.0), 0.45, 0.95))
+	return out
+
 func _screen_dir(to_station: int, from_station: int) -> Vector2:
 	var a: Vector2 = cam.unproject_position(_place(from_station) + Vector3(0, 0.6, 0))
 	var b: Vector2 = cam.unproject_position(_place(to_station) + Vector3(0, 0.6, 0))
@@ -156,11 +143,11 @@ func _build_actors() -> void:
 
 	actors = []
 	for d in combat.divers:
-		var r: Dictionary = RIGS[int(d.id) % RIGS.size()]
+		var c: Dictionary = Cast.by_index(int(d.id))
 		var a: RiggedActor = ActorScript.new()
 		add_child(a)
-		a.setup(RIGGED, String(r.mesh), String(r.prefix), String(r.idle))
-		a.tint(RIG_TINT[int(d.id) % RIG_TINT.size()])
+		a.setup(load(String(c.file)) as PackedScene, String(c.mesh), "",
+			Cast.clip(String(c.family), "idle"), (c.carries as Array))
 		a.position = _place(int(d.station))
 		a.face(Vector3.ZERO)
 		actors.append(a)
@@ -225,7 +212,7 @@ func _do(action: Dictionary) -> void:
 	if String(action.kind) == "attack":
 		var d = combat.divers[i]
 		var ability := String((d.kit[int(action.get("slot", 0))] as Dictionary).name)
-		var clip := String((RIGS[i % RIGS.size()].abilities as Dictionary).get(ability, ""))
+		var clip := String((Cast.by_index(i).abilities as Dictionary).get(ability, ""))
 		if clip != "":
 			(actors[i] as RiggedActor).act(clip)
 		var after: Array = _limb_hp()
@@ -257,8 +244,11 @@ func _resolve_enemy() -> void:
 	for i in range(combat.divers.size()):
 		var d = combat.divers[i]
 		if i < _hp_before.size() and int(d.hp) < int(_hp_before[i]) and not d.down:
-			var hurt := String(RIGS[i % RIGS.size()].hurt)
-			(actors[i] as RiggedActor).act(hurt)
+			# two damage reactions now ship: a heavy hit reads differently
+			# from a graze, and the sim already knows which this was
+			var lost: int = int(_hp_before[i]) - int(d.hp)
+			var fam := String(Cast.by_index(i).family)
+			(actors[i] as RiggedActor).act(Cast.clip(fam, "hurt_bad" if lost >= 5 else "hurt"))
 	_phase = "enemy_settle"
 	_timer = 0.8
 	_refresh()

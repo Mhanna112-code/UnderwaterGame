@@ -19,7 +19,7 @@ var height := 1.8
 var _busy_until := 0.0
 var _clock := 0.0
 
-func setup(packed: PackedScene, keep_mesh: String, clip_prefix: String, idle: String) -> void:
+func setup(packed: PackedScene, keep_mesh: String, clip_prefix: String, idle: String, carries: Array = []) -> void:
 	var inst: Node = packed.instantiate()
 	add_child(inst)
 	prefix = clip_prefix
@@ -27,8 +27,12 @@ func setup(packed: PackedScene, keep_mesh: String, clip_prefix: String, idle: St
 
 	var kept: MeshInstance3D = null
 	for m in _meshes(inst):
+		# what the character carries is skinned to the same rig and animates
+		# with them, so it stays visible. Hiding it is what left the staff
+		# floating on its own beside her.
 		var mine: bool = keep_mesh == "" or String(m.name) == keep_mesh
-		(m as MeshInstance3D).visible = mine
+		var carried: bool = String(m.name) in carries
+		(m as MeshInstance3D).visible = mine or carried
 		if mine:
 			kept = m
 	if kept == null:
@@ -59,12 +63,29 @@ func tint(c: Color) -> void:
 		if (mesh as MeshInstance3D).visible:
 			(mesh as MeshInstance3D).material_override = m
 
+# Each delivery names its armature node differently (rig, rig_001, rig_002),
+# so clip names arrive prefixed differently per file. Ask for the motion by
+# its stem and let the actor find whichever prefix this file happens to use.
+func resolve(stem: String) -> String:
+	if anim == null or stem == "":
+		return ""
+	if anim.has_animation(stem):
+		return stem
+	if prefix != "" and anim.has_animation(prefix + stem):
+		return prefix + stem
+	for a in anim.get_animation_list():
+		var name := String(a)
+		var bar := name.rfind("|")
+		if (name.substr(bar + 1) if bar >= 0 else name) == stem:
+			return name
+	return ""
+
 func play(clip: String, loop := true) -> void:
 	if anim == null or clip == "":
 		return
-	var full := prefix + clip
-	if not anim.has_animation(full):
-		push_error("NO CLIP '%s'" % full)
+	var full := resolve(clip)
+	if full == "":
+		push_error("NO CLIP '%s'" % clip)
 		return
 	var a: Animation = anim.get_animation(full)
 	a.loop_mode = Animation.LOOP_LINEAR if loop else Animation.LOOP_NONE
@@ -75,7 +96,8 @@ func play(clip: String, loop := true) -> void:
 # play a one-shot and fall back to idle when it is done
 func act(clip: String) -> float:
 	play(clip, false)
-	var a: Animation = anim.get_animation(prefix + clip) if anim != null and anim.has_animation(prefix + clip) else null
+	var full := resolve(clip)
+	var a: Animation = anim.get_animation(full) if full != "" else null
 	return a.length if a != null else 0.0
 
 func _process(dt: float) -> void:

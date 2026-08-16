@@ -46,6 +46,7 @@ var swim_clip := ""
 # only matches "idle" happily hands the scuba diver the brass suit's stance.
 # The family is the character's name in the clip list, not the mesh name.
 var clip_family := ""
+var carries: Array = []
 var idle_clip := ""
 var _playing := ""
 
@@ -73,7 +74,8 @@ func _ready() -> void:
 	var box: AABB
 	if clipped:
 		for m in _all_meshes(src):
-			(m as MeshInstance3D).visible = (String(m.name) == model_name)
+			(m as MeshInstance3D).visible = (String(m.name) == model_name
+				or String(m.name) in carries)
 		model.add_child(src)
 		model.rotation.y = PI       # the models face +Z, Godot forward is -Z
 		box = _chain_aabb(mesh, src)

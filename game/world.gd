@@ -5,11 +5,8 @@
 # so the next argument about the art is had in front of something playable.
 extends Node3D
 
-const SRC := preload("res://art/characters/divers.glb")
-# The Aug 15 delivery: rigged AND textured, with a real swim cycle. Only the
-# Scuba diver is in it, so the other two keep coming out of the older file
-# until their own arrives.
-const SCUBA := preload("res://art/characters/Main_Team_Rigging_3.fbx")
+# Every diver now arrives rigged, textured and animated in a file of its own.
+# content/cast.gd says which is which.
 const GOBLIN := preload("res://GoblinGrunt.fbx")
 const ActorScript := preload("res://game/actor.gd")
 
@@ -23,11 +20,7 @@ const TOUCH := 2.6
 
 signal encountered(enemy_name: String, encounter: String)
 
-const CAST := [
-	{"model": "Staff_Diver", "at": Vector3(0, 2.0, 0), "rigged": true, "family": "Scuba"},
-	{"model": "Prototype_1(1910)", "at": Vector3(-3.6, 2.2, -3.0)},
-	{"model": "Prototype_V(1922)", "at": Vector3(3.6, 2.4, -3.0)},
-]
+const SPAWN := [Vector3(0, 2.0, 0), Vector3(-3.6, 2.2, -3.0), Vector3(3.6, 2.4, -3.0)]
 
 var divers: Array = []
 var active := 0
@@ -52,16 +45,16 @@ func _ready() -> void:
 	cam = $Camera3D
 	hud = $HUD/Controls
 	_build_site()
-	for c in CAST:
+	for i in range(Cast.ALL.size()):
+		var c: Dictionary = Cast.by_index(i)
 		var d := Swimmer.new()
-		if bool(c.get("rigged", false)):
-			d.source = SCUBA
-			d.clip_family = String(c.get("family", ""))
-		d.model_name = String(c.model)
-		d.position = c.at as Vector3
+		d.source = load(String(c.file)) as PackedScene
+		d.clip_family = String(c.family)
+		d.carries = (c.carries as Array).duplicate()
+		d.model_name = String(c.mesh)
+		d.position = SPAWN[i % SPAWN.size()]
 		add_child(d)
 		divers.append(d)
-	_carry_lantern()
 	_place_enemies()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_update_hud()
@@ -149,30 +142,9 @@ func _build_site() -> void:
 	mmi.multimesh = mm
 	add_child(mmi)
 
-# The fourth model is a staff. Nothing in this FBX is rigged, so no diver has
-# a hand to put it in: carried, it read as a stick floating beside somebody.
-# Planted in the seabed as a site beacon it reads as a decision.
-func _carry_lantern() -> void:
-	var src: Node3D = SRC.instantiate()
-	var m: MeshInstance3D = _find(src, "Staff_Lantern")
-	if m == null:
-		return
-	var keep: Transform3D = m.transform
-	m.owner = null
-	m.get_parent().remove_child(m)
-	lantern = Node3D.new()
-	lantern.add_child(m)
-	m.transform = keep
-	lantern.position = Vector3(1.8, 0.0, 2.6)
-	lantern.rotation.x = -PI * 0.5      # the staff arrives lying along Z; stand it up
-	var glow := OmniLight3D.new()
-	glow.light_color = Color(1.0, 0.86, 0.6)
-	glow.light_energy = 3.0
-	glow.omni_range = 12.0
-	glow.position.y = 1.5
-	lantern.add_child(glow)
-	add_child(lantern)
-	src.queue_free()
+# The staff used to be placed here as scenery because the old delivery had it
+# as a loose mesh. It is skinned to the diver's rig now and she carries it, so
+# there is nothing to put on the seabed.
 
 func _unhandled_input(e: InputEvent) -> void:
 	# DRAG to look, rather than swallowing the cursor on the first click.
@@ -217,7 +189,6 @@ func _physics_process(dt: float) -> void:
 		else:
 			_drift(d, i, dt)
 	_move_camera(dt)
-	_move_lantern(dt)
 	_check_contact()
 
 # Contact starts the fight. Visible enemy, fixed place, no invisible trigger:
@@ -273,7 +244,7 @@ func _player_rise() -> float:
 # never looks like a museum of three statues
 func _drift(d: Swimmer, i: int, dt: float) -> void:
 	var phase := _t * 0.25 + float(i) * 2.1
-	var centre: Vector3 = (CAST[i].at as Vector3)
+	var centre: Vector3 = SPAWN[i % SPAWN.size()]
 	var target := centre + Vector3(cos(phase) * 6.0, sin(phase * 0.7) * 1.2, sin(phase) * 6.0)
 	var to := target - d.global_position
 	to.y = 0.0
@@ -288,11 +259,6 @@ func _move_camera(dt: float) -> void:
 	want.y = maxf(want.y, 0.6)      # never bury the camera in the seabed
 	cam.global_position = cam.global_position.lerp(want, clampf(dt * 8.0, 0.0, 1.0))
 	cam.look_at(focus, Vector3.UP)
-
-func _move_lantern(_dt: float) -> void:
-	if lantern == null:
-		return
-	lantern.rotation.z = sin(_t * 0.8) * 0.05      # a slow sway in the current
 
 func _update_hud() -> void:
 	var d: Swimmer = divers[active]
