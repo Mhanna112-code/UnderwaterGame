@@ -9,18 +9,18 @@ extends Node3D
 # content/cast.gd says which is which.
 const GOBLIN := preload("res://GoblinGrunt.fbx")
 const ActorScript := preload("res://game/actor.gd")
+const SiteScript := preload("res://game/site.gd")
+const BeaconScript := preload("res://game/beacon.gd")
 
-# Where the fights are. Visible, fixed, and sitting on something: you can
-# always swim past one, and swimming past means surfacing without whatever
-# it was standing over. Nothing here is random, which is the whole point.
-const ENEMIES := [
-	{"name": "grunt_shallows", "encounter": "goblin", "at": Vector3(6.5, 1.7, -6.5)},
-]
+# Where the fights are lives in content/sites.gd now: a graph of places
+# joined by routes, so adding an area is a data entry and the map is checked
+# by verify/sites.gd rather than by eye.
 const TOUCH := 2.6
 
 signal encountered(enemy_name: String, encounter: String)
 
-const SPAWN := [Vector3(0, 2.0, 0), Vector3(-3.6, 2.2, -3.0), Vector3(3.6, 2.4, -3.0)]
+# the squad starts at the anchor, under the descent line they came down
+const SPAWN := [Vector3(0.0, 2.0, 3.0), Vector3(-3.4, 2.2, 0.4), Vector3(3.4, 2.4, 0.4)]
 
 var divers: Array = []
 var active := 0
@@ -29,11 +29,15 @@ var pitch := -0.16
 var cam_dist := 6.5
 var cam: Camera3D
 var hud: Label
+var parts: Control
+var _hint_left := 15.0
 var mouse_look := false
 var _t := 0.0
 var lantern: Node3D
 var beaten: Dictionary = {}
-var marks: Array = []
+var marks: Array = []          # live guards: {node, site}
+var site_nodes: Dictionary = {}
+var routes: Array = []         # {from, to, beacons: [Beacon]}
 var _fired := false
 # test seam: verify/swim.gd steers the player without a keyboard. Nothing in
 # the game writes these, so the shipped build reads the real keys.
@@ -44,6 +48,7 @@ var scripted_rise := 0.0
 func _ready() -> void:
 	cam = $Camera3D
 	hud = $HUD/Controls
+	parts = $HUD/Parts
 	_build_site()
 	for i in range(Cast.ALL.size()):
 		var c: Dictionary = Cast.by_index(i)
@@ -56,79 +61,92 @@ func _ready() -> void:
 		add_child(d)
 		divers.append(d)
 	_place_enemies()
+	_face_the_trail()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_update_hud()
 
-func _place_enemies() -> void:
-	for e in ENEMIES:
-		if beaten.get(String(e.name), false):
-			continue
-		var a: RiggedActor = ActorScript.new()
-		add_child(a)
-		a.setup(GOBLIN, "GoblinGrunt", "rig|", "Idle")
-		a.position = e.at as Vector3
-		marks.append({"node": a, "data": e})
+# Start looking down the road. The lit beacons were behind the camera on
+# spawn, which threw away the entire point of building them: the first thing
+# a player sees should be the way on, not the empty water opposite it.
+func _face_the_trail() -> void:
+	var lead: Node3D = null
+	var best := INF
+	var me: Vector3 = SPAWN[0]
+	for r in routes:
+		for b in r.beacons:
+			if (b as Beacon).state != Beacon.State.ONWARD:
+				continue
+			var d: float = me.distance_to((b as Node3D).global_position)
+			if d < best:
+				best = d
+				lead = b
+	if lead == null:
+		return
+	var v: Vector3 = lead.global_position - me
+	v.y = 0.0
+	if v.length() < 0.5:
+		return
+	v = v.normalized()
+	yaw = atan2(v.x, v.z)
 
-		# The rig component the enemy is standing over. Marc's ruling: you
-		# take what it guards and it is a part for the surface rig. A gold
-		# box said nothing; a lit regulator on a dark seabed is the only
-		# warm thing down here and the player swims at it unprompted.
-		var part := SalvagePart.new()
-		part.position = (e.at as Vector3) + Vector3(0.0, -1.5, 0.0)
-		add_child(part)
-
-# A floor and some rock so there is parallax to swim past: without something
-# to move relative to, motion at this scale reads as standing still.
+# The seabed everything stands on, and rock scattered across it for parallax.
+# Without something to move relative to, swimming at this scale reads as
+# standing still.
 func _build_site() -> void:
 	var floor_body := StaticBody3D.new()
 	var floor_mesh := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(120, 120)
+	plane.size = Vector2(200, 200)
 	floor_mesh.mesh = plane
 	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(0.16, 0.24, 0.24)
+	fm.albedo_color = Color(0.16, 0.23, 0.23)
 	fm.roughness = 1.0
 	floor_mesh.material_override = fm
 	floor_body.add_child(floor_mesh)
 	var fs := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(120, 0.4, 120)
+	box.size = Vector3(200, 0.4, 200)
 	fs.shape = box
 	fs.position.y = -0.2
 	floor_body.add_child(fs)
 	add_child(floor_body)
 
-	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
-	# was taking most of a minute to show its first frame and every node set up
-	# at startup was part of that bill. Rocks are scenery: they do not need to
-	# be solid, and they do not need to be separate objects.
+	# One MultiMesh, not a node per rock. Scenery keeps clear of every site
+	# and of every route, so nothing can wall the player off from a place
+	# they are being led to.
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260814          # same site every run: a level you can talk about
+	rng.seed = 20260815
 	var rock := SphereMesh.new()
 	rock.radius = 0.5
 	rock.height = 0.7
 	rock.radial_segments = 7
 	rock.rings = 4
-	var rock_mat := StandardMaterial3D.new()
-	rock_mat.albedo_color = Color(0.13, 0.19, 0.21)
-	rock_mat.roughness = 1.0
-	rock.surface_set_material(0, rock_mat)
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(0.13, 0.19, 0.21)
+	rm.roughness = 1.0
+	rock.surface_set_material(0, rm)
+
+	var lanes: Array = []
+	for r in Sites.routes():
+		for b in r.beacons:
+			lanes.append(b as Vector3)
 
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = rock
-	mm.instance_count = 46
-	for i in range(46):
-		var sz := rng.randf_range(0.8, 3.6)
+	mm.instance_count = 120
+	for i in range(120):
+		var sz := rng.randf_range(0.8, 3.8)
 		var a := rng.randf() * TAU
-		var dist := rng.randf_range(7.0, 48.0)
-		# keep the scenery off the fights: rocks spawn from 7m out and the
-		# guarded salvage sits at 9m, so one could land on top of the enemy
-		# and wall the player off from the only thing to do here
+		var dist := rng.randf_range(6.0, 78.0)
 		var here := Vector3(cos(a) * dist, 0.0, sin(a) * dist)
 		var blocked := false
-		for e in ENEMIES:
-			if here.distance_to(Vector3((e.at as Vector3).x, 0.0, (e.at as Vector3).z)) < 5.0:
+		for d in Sites.ALL:
+			var c: Vector3 = d.at
+			if here.distance_to(Vector3(c.x, 0.0, c.z)) < float(d.radius) + 2.5:
+				blocked = true
+		for l in lanes:
+			if here.distance_to(Vector3((l as Vector3).x, 0.0, (l as Vector3).z)) < 3.0:
 				blocked = true
 		if blocked:
 			mm.set_instance_transform(i, Transform3D().scaled(Vector3.ONE * 0.001))
@@ -136,11 +154,77 @@ func _build_site() -> void:
 		var t := Transform3D()
 		t = t.scaled(Vector3(sz, sz * rng.randf_range(0.5, 0.9), sz))
 		t = t.rotated(Vector3.UP, rng.randf() * TAU)
-		t.origin = Vector3(cos(a) * dist, sz * 0.15, sin(a) * dist)
+		t.origin = Vector3(here.x, sz * 0.15, here.z)
 		mm.set_instance_transform(i, t)
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	add_child(mmi)
+
+func _place_enemies() -> void:
+	_build_sites()
+	_build_routes()
+	_light_route()
+
+func _build_sites() -> void:
+	for d in Sites.ALL:
+		var site: Site = SiteScript.new()
+		add_child(site)
+		site.build(d)
+		site_nodes[String(d.id)] = site
+		if String(d.kind) != "combat":
+			continue
+		var done: bool = bool(beaten.get(String(d.guard), false))
+		site.set_cleared(done)
+		if done:
+			continue
+		# the guard, standing over the thing it guards
+		var a: RiggedActor = ActorScript.new()
+		add_child(a)
+		a.setup(GOBLIN, "GoblinGrunt", "rig|", "Idle")
+		a.position = (d.at as Vector3) + Vector3(1.4, 0.0, 0.6)
+		a.position.y = 0.0
+		marks.append({"node": a, "site": d})
+
+		var part := SalvagePart.new()
+		part.position = (d.at as Vector3) + Vector3(0.0, -0.6, 0.0)
+		part.position.y = 1.0
+		add_child(part)
+
+func _build_routes() -> void:
+	for r in Sites.routes():
+		var made: Array = []
+		var order := 0
+		for at in r.beacons:
+			var b: Beacon = BeaconScript.new()
+			add_child(b)
+			b.build(at as Vector3, order)
+			made.append(b)
+			order += 1
+		routes.append({"from": String(r.from), "to": String(r.to), "beacons": made})
+
+# The route to the next place with something still on it is the lit one.
+# Everything already done goes green, everything past it stays dim, so at any
+# moment exactly one line of lights is telling you where to go.
+func _light_route() -> void:
+	var target := ""
+	for d in Sites.ALL:
+		if String(d.kind) == "combat" and not bool(beaten.get(String(d.guard), false)):
+			target = String(d.id)
+			break
+	for r in routes:
+		var st: int = Beacon.State.IDLE
+		if String(r.to) == target:
+			st = Beacon.State.ONWARD
+		elif _is_done(String(r.to)):
+			st = Beacon.State.DONE
+		for b in r.beacons:
+			(b as Beacon).set_state(st)
+
+func _is_done(site_id: String) -> bool:
+	var d: Dictionary = Sites.by_id(site_id)
+	if d.is_empty() or String(d.kind) != "combat":
+		return true
+	return bool(beaten.get(String(d.guard), false))
 
 # The staff used to be placed here as scenery because the old delivery had it
 # as a loose mesh. It is skinned to the diver's rig now and she carries it, so
@@ -190,6 +274,9 @@ func _physics_process(dt: float) -> void:
 			_drift(d, i, dt)
 	_move_camera(dt)
 	_check_contact()
+	if _hint_left > 0.0:
+		_hint_left -= dt
+		hud.modulate.a = clampf(_hint_left / 4.0, 0.0, 1.0)
 
 # Contact starts the fight. Visible enemy, fixed place, no invisible trigger:
 # a player who wants no part of this can see it from a distance and go round.
@@ -203,7 +290,8 @@ func _check_contact() -> void:
 			continue
 		if p.distance_to(n.global_position) <= TOUCH:
 			_fired = true
-			encountered.emit(String((m.data as Dictionary).name), String((m.data as Dictionary).encounter))
+			var site: Dictionary = m.site
+			encountered.emit(String(site.guard), String(site.encounter))
 			return
 
 func _player_dir() -> Vector3:
@@ -266,9 +354,18 @@ func _update_hud() -> void:
 	for m in marks:
 		if is_instance_valid(m.node as Node):
 			left += 1
-	hud.text = "%s  (%.2f m)    %s\nWASD swim · SPACE up · SHIFT down · hold mouse or use arrows to look · TAB switch diver" % [
-		String(d.model_name), d.height,
-		"salvage guarded: %d" % left if left > 0 else "the site is clear"]
+	var sites := 0
+	for sd in Sites.ALL:
+		if String(sd.kind) == "combat":
+			sites += 1
+	if parts != null:
+		parts.guarded = left
+		parts.total = sites
+		parts.queue_redraw()
+	# The controls hint is the last text in the game and it fades: a player
+	# needs it for the first few seconds and never again, and leaving it up
+	# is how a screen full of words starts.
+	hud.text = "WASD swim · SPACE up · SHIFT down · hold mouse or use arrows to look · TAB switch diver"
 
 func _find(n: Node, nm: String) -> MeshInstance3D:
 	if n is MeshInstance3D and String(n.name) == nm:

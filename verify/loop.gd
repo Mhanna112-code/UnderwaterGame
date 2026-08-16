@@ -107,11 +107,17 @@ func _back() -> bool:
 		return false      # deferred reopen has not run yet
 	var w = game.get("world")
 	print("battle     %s in %d turns" % [outcome if outcome != "" else "?", battle_turns])
-	print("returned   overworld is back up, %d mark(s) left" % w.marks.size())
+	print("returned   overworld is back up, %d guard(s) still out there" % w.marks.size())
 	if game.get("battle") != null:
 		findings.append("TWO SCENES: the battle is still alive after returning to the world")
-	if outcome == "victory" and not w.marks.is_empty():
-		findings.append("WON AND STILL GUARDED: the enemy is back after being beaten")
+	# the map has several sites now, so a mark left over is expected. What
+	# must be gone is the ONE that was just beaten.
+	var still_there := false
+	for m in w.marks:
+		if String((m.site as Dictionary).guard) == "grunt_shallows":
+			still_there = true
+	if outcome == "victory" and still_there:
+		findings.append("WON AND STILL GUARDED: the guard we beat is back on its site")
 	if outcome == "victory" and not bool(game.get("beaten").get("grunt_shallows", false)):
 		findings.append("WIN NOT RECORDED: beating the grunt did not stick")
 	return _report()
