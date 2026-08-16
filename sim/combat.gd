@@ -47,6 +47,12 @@ class Diver extends RefCounted:
 	var dmg: int
 	var station: int
 	var down: bool = false
+	# Glass_Goat's stat block. Neutral by default so the rules can land
+	# without moving a single measured band; the roster fills it in below.
+	var stats: Dictionary = Stats.neutral()
+	var barrier: int = 0          # spends down as it soaks, refills at the boat
+	var ailment: String = ""
+	var ailment_turns: int = 0
 	func _init(i: int, n: String, c: int, h: int, d: int, s: int) -> void:
 		id = i; dname = n; cost = c; max_hp = h; hp = h; dmg = d; station = s
 
@@ -116,6 +122,18 @@ var _no_reshut: Dictionary = {}  # limb index -> true while a re-shut will not h
 # takes the hit instead. It cannot win or lose the fight; it decides
 # what you surface WITH, which is the ending screen's story. Offense
 # and defense finally compete for the same free move.
+# how well this creature shoots past a dodge. Per attack if the content says
+# so, otherwise the encounter's own number.
+var enemy_accuracy := 0
+
+# ROW MODE. Playtest note from the Aug 15 meeting: nobody wanted to pick which
+# of four places each diver stands in. In row mode there are two, front and
+# back, and the trade is plain. The front row can reach the creature and the
+# creature can reach it. The back row is safe from most of what it does and
+# cannot swing at all, so standing back is a real choice with a real cost
+# rather than a positional puzzle.
+var rows_mode := false
+
 var salvage_hp := 0
 var salvage_station := -1
 var salvage_crushed := false
@@ -170,6 +188,15 @@ func _init(encounter := "crab", kit_size := 0) -> void:
 	# callsign IS the readable fact about each diver: the bare swimmer,
 	# the drum carrier, the brass suit.
 	var roster := [["Scuba", 1, false], ["Drum", 2, false], ["Brass", 3, false]]
+	# Three answers to being hit, one per body. The bare swimmer gets out of
+	# the way, the hardsuit shrugs it off, the brass suit soaks it and keeps
+	# standing there. Swept afterwards, not guessed: verify/sweep.gd re-ran
+	# the bands with these in place.
+	var stat_block := [
+		{"str": 0, "def": 0, "dodge": 2, "acc": 2, "barrier": 0, "ail_res": 1, "ail_heal": 2},
+		{"str": 1, "def": 1, "dodge": 0, "acc": 1, "barrier": 0, "ail_res": 2, "ail_heal": 2},
+		{"str": 2, "def": 2, "dodge": 0, "acc": 0, "barrier": 3, "ail_res": 3, "ail_heal": 3},
+	]
 	# Two abilities per diver, named for the clips that actually exist in
 	# the rig (standing rule: ability names come FROM the animation list).
 	# SPEC 2.9 gives each diver one verb expressed twice.
@@ -203,10 +230,14 @@ func _init(encounter := "crab", kit_size := 0) -> void:
 		var start: int = int(starts[i]) if i < starts.size() else int(OPEN_STATIONS[i % OPEN_STATIONS.size()])
 		var dv := Diver.new(i, String(roster[i][0]), int(roster[i][1]), int(hp[i]), int(dm[i]), start)
 		dv.disables = String(roster[i][0]) == "Drum" and bool(enc.get("drum", false))
+		dv.stats = Stats.of(stat_block[i % stat_block.size()])
+		dv.barrier = int(dv.stats.barrier)
 		dv.kit = (kits[i] as Array).duplicate(true)
 		if kit_size > 0 and dv.kit.size() > kit_size:
 			dv.kit.resize(kit_size)
 		divers.append(dv)
+	rows_mode = bool(enc.get("rows", false))
+	enemy_accuracy = int(enc.get("accuracy", 0))
 	air = int(TUNE.air)
 	_lock_intent()
 
@@ -377,6 +408,18 @@ func can_attack(d) -> bool:
 
 # which limb this diver would hit from where it stands
 func target_limb(d) -> int:
+	# Row mode: the front row can hit whatever is still standing, the back
+	# row cannot reach at all. Station mode keeps the original geography,
+	# where where you stand decides which limb you can touch.
+	if rows_mode:
+		# The back row reaches, but weakly. Barring it from attacking outright
+		# measured casual play at 10.5 percent: a careless player who drifted
+		# backwards could no longer win at all, which is a punishment, not a
+		# trade. Half damage is the limitation; see act_ability.
+		for i in range(limb_hp.size()):
+			if not limb_broken[i]:
+				return i
+		return -1
 	if d.disables and d.station == BACKLINE:
 		# from range the drum shuts down whichever announced limb is not
 		# already down: the first one still able to swing and able to be
@@ -482,7 +525,10 @@ func act_ability(i: int, slot: int) -> bool:
 	else:
 		air -= int(d.cost)
 	var at_range: bool = d.disables and d.station == BACKLINE
-	var dmg: int = 0 if at_range else int(eff.dmg)
+	var dmg: int = 0 if at_range else Stats.outgoing(int(eff.dmg), int(d.stats.str))
+	# reaching from the back row costs you half the swing
+	if rows_mode and int(d.station) == BACKLINE:
+		dmg = dmg / 2
 	dmg = _after_trait(limb, dmg)
 	if dmg > 0:
 		limb_hp[limb] -= dmg
@@ -633,9 +679,14 @@ func can_move_now(i: int) -> bool:
 # and the Double Knee step. The step went around it for a day (Aug 8
 # audit): one keypress restacked the divers act_move had just unstacked.
 func station_free(station: int) -> bool:
-	for o in divers:
-		if not o.down and int(o.station) == station:
-			return false
+	# A ROW holds the whole squad; a station holds one diver. Without this,
+	# two divers in a two-row fight each stood on the only other place there
+	# was to go, so neither could ever move and the row choice was frozen at
+	# whatever the encounter happened to start with.
+	if not rows_mode:
+		for o in divers:
+			if not o.down and int(o.station) == station:
+				return false
 	var bl: int = STATION_LIMB[station]
 	if bl >= 0 and not limb_broken[bl] and bool((enc.limbs[bl] as Dictionary).get("blocks", false)):
 		return false
@@ -718,8 +769,22 @@ func end_turn() -> void:
 			if d.station in a.stations:
 				hit = true
 				any_hit = true
-				d.hp -= int(a.dmg)
-				log_lines.append("the %s %s %s for %d" % [LIMB_NAMES[a.limb], a.name, d.dname, int(a.dmg)])
+				# Dodge is a count, not a coin flip: accuracy eats it one for
+				# one, and a dodge that gets used is a dodge that is spent.
+				var acc: int = int(a.get("acc", enemy_accuracy))
+				if Stats.evades(int(d.stats.dodge), acc):
+					d.stats.dodge = int(d.stats.dodge) - 1
+					log_lines.append("%s slips the %s" % [d.dname, LIMB_NAMES[a.limb]])
+					continue
+				var res: Dictionary = Stats.resolve(int(a.dmg), int(d.stats.def), int(d.barrier))
+				d.barrier = int(res.barrier_left)
+				var landed: int = int(res.dealt)
+				d.hp -= landed
+				if landed < int(a.dmg):
+					log_lines.append("the %s %s %s for %d, %d turned aside" % [
+						LIMB_NAMES[a.limb], a.name, d.dname, landed, int(a.dmg) - landed])
+				else:
+					log_lines.append("the %s %s %s for %d" % [LIMB_NAMES[a.limb], a.name, d.dname, landed])
 				if d.hp <= 0:
 					d.hp = 0
 					d.down = true

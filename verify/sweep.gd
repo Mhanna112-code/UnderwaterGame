@@ -14,13 +14,13 @@ func _init() -> void:
 	var base: Dictionary = (Encounters.ALL["goblin"] as Dictionary)
 	print("%-14s %-8s %-8s %-8s %s" % ["limb hp", "casual", "g.turns", "g.hp", ""])
 	var landed: Array = []
-	for hp_add in [0, 3, 6, 9]:
-		for dmg_add in [0, 1, 2]:
+	for hp_add in [-6, -3, 0, 3]:
+		for dmg_add in [-3, -2, -1, 0]:
 			var enc: Dictionary = base.duplicate(true)
 			for l in enc.limbs:
-				l.hp = int(l.hp) + hp_add
+				l.hp = maxi(2, int(l.hp) + hp_add)
 			for a in enc.attacks:
-				a.dmg = int(a.dmg) + dmg_add
+				a.dmg = maxi(1, int(a.dmg) + dmg_add)
 			Encounters.ALL["goblin_probe"] = enc
 
 			var cas := _run("casual")

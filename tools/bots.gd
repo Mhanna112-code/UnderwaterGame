@@ -20,14 +20,9 @@ static func legal(c: Combat) -> Array:
 			for s in c.OPEN_STATIONS:
 				if s == d.station:
 					continue
-				var busy := false
-				for o in c.divers:
-					if not o.down and int(o.station) == int(s):
-						busy = true
-				var bl2: int = c.STATION_LIMB[int(s)]
-				if bl2 >= 0 and not c.limb_broken[bl2] and bool((c.enc.limbs[bl2] as Dictionary).get("blocks", false)):
-					busy = true
-				if not busy:
+				# ask the sim rather than reimplementing its rule here: the
+				# duplicate copy of this check did not know about row mode
+				if c.station_free(int(s)):
 					out.append({"kind": "move", "i": d.id, "s": int(s)})
 	return out
 

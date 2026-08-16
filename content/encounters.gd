@@ -257,28 +257,48 @@ static var ALL := {
 		# the gun arm comes already read, so the first read a player does is
 		# one they chose rather than one they owed
 		"read_free": 0,
-		"open_stations": [FRONT, FLANK, UNDER, REAR],
-		"starts": [FRONT, UNDER],
-		# Swept, not chosen. verify/sweep.gd walked limb HP against damage
-		# over 12 configurations at 60 seeds each; four landed inside the
-		# bands SALVAGE pinned (casual 55 to 90 percent, greedy at least 6
-		# turns and at least 8 squad HP). This is +3 limb HP and +1 damage
-		# off the first guess, which measured casual 100 percent: winnable
-		# by anyone, which is not a fight.
+		# it shoots: accuracy eats a point of anyone's dodge
+		"accuracy": 1,
+		# Two rows, not four stations. Nobody at the Aug 15 meeting wanted to
+		# choose which of four places each diver stood in; the trade they did
+		# want is front reaches and is reached, back is safe and cannot swing.
+		"rows": true,
+		"open_stations": [FRONT, BACKLINE],
+		"starts": [FRONT, BACKLINE],
+		# Swept four times, not chosen. The last pass had to sweep DOWNWARD:
+		# once the back row could reach at half damage and the whole squad
+		# could share a row, the creature I had paid up was far too strong
+		# and casual play measured 7 percent. Bands never move; the enemy
+		# does, in both directions.
+		#
+		# Swept three times before that. Rows changed the shape again: with
+		# only two places to stand the front row eats everything, so the
+		# creature was paid in damage rather than in limb health, which was
+		# already long enough to sit through.
+		#
+		# Swept twice before that. The first pass put a fight with no stat
+		# system into band. Adding dodge, armour and barriers handed the
+		# squad most of it back (casual 79.5 to 98.5 percent), so the
+		# creature was re-paid in the same currency: another +3 limb HP and
+		# +1 damage, measured, not guessed. Bands never move; the enemy does.
 		"limbs": [
+			# in row mode a limb's station is what the FRONT row exposes, so
+			# the geography is carried by which of them is still standing
 			{"name": "gun arm", "hp": 11, "station": FRONT, "trait": "brittle"},
-			{"name": "satchel", "hp": 10, "station": FLANK, "trait": "pressurised"},
-			{"name": "legs", "hp": 10, "station": REAR, "trait": "plated"},
+			{"name": "satchel", "hp": 10, "station": BACKLINE, "trait": "pressurised"},
+			{"name": "legs", "hp": 10, "station": FRONT, "trait": "plated"},
 		],
 		# Every limb reaches something, so no station is free parking. The
 		# hunt is what a gun is FOR: it announces a station a turn early and
 		# tracks whoever stood there, so moving after the announcement is the
 		# dodge and standing still is a decision.
 		"attacks": [
-			{"limb": 0, "stations": [FRONT, FLANK], "dmg": 5, "name": "fires on"},
-			{"limb": 0, "hunts": true, "stations": [], "dmg": 5, "name": "draws a bead on"},
-			{"limb": 1, "stations": [UNDER], "dmg": 4, "name": "lobs a charge at"},
-			{"limb": 2, "stations": [REAR], "dmg": 4, "name": "kicks back at"},
+			{"limb": 0, "stations": [FRONT], "dmg": 6, "name": "fires on"},
+			{"limb": 0, "hunts": true, "stations": [], "dmg": 6, "name": "draws a bead on"},
+			# the satchel is what stops the back row being free parking: a
+			# lobbed charge is the one thing that reaches it
+			{"limb": 1, "stations": [BACKLINE], "dmg": 5, "name": "lobs a charge at"},
+			{"limb": 2, "stations": [FRONT], "dmg": 5, "name": "kicks back at"},
 		],
 	},
 }

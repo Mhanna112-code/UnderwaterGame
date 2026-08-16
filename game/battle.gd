@@ -24,12 +24,15 @@ const ENEMY_RIG := {"mesh": "GoblinGrunt", "prefix": "rig|", "idle": "Idle",
 # floor, which buried the diver standing there up to the shoulders and read
 # as a bug rather than a station. It is in close now instead of underneath,
 # which is what the name meant anyway.
+# Two rows in row mode: front is close enough to reach and be reached, back
+# is out of most of it and cannot swing. The other three stay defined because
+# the sim still supports the older station geography for other encounters.
 const STATION_POS := {
-	0: Vector3(0.0, 0.0, 4.0),      # FRONT
+	0: Vector3(0.0, 0.0, 3.4),      # FRONT row
 	1: Vector3(3.8, 0.0, 1.2),      # FLANK
-	2: Vector3(-2.0, 0.0, 1.8),     # UNDER, in close
+	2: Vector3(-2.0, 0.0, 1.8),     # UNDER
 	3: Vector3(0.0, 0.0, -3.8),     # REAR
-	4: Vector3(0.8, 0.0, 7.6),      # BACKLINE
+	4: Vector3(0.0, 0.0, 7.4),      # BACK row
 }
 
 # The tint table is gone. Every character now arrives rigged AND textured, so
@@ -135,6 +138,21 @@ func _build_stage() -> void:
 func _place(station: int) -> Vector3:
 	return STATION_POS.get(station, Vector3.ZERO)
 
+# two divers sharing a row stand beside each other rather than inside
+func _row_offset(i: int, station: int) -> Vector3:
+	if not combat.rows_mode:
+		return Vector3.ZERO
+	var same := 0
+	var mine := 0
+	for k in range(combat.divers.size()):
+		if int(combat.divers[k].station) == station:
+			if k == i:
+				mine = same
+			same += 1
+	if same <= 1:
+		return Vector3.ZERO
+	return Vector3((float(mine) - float(same - 1) * 0.5) * 2.2, 0.0, 0.0)
+
 func _build_actors() -> void:
 	enemy = ActorScript.new()
 	add_child(enemy)
@@ -148,7 +166,7 @@ func _build_actors() -> void:
 		add_child(a)
 		a.setup(load(String(c.file)) as PackedScene, String(c.mesh), "",
 			Cast.clip(String(c.family), "idle"), (c.carries as Array))
-		a.position = _place(int(d.station))
+		a.position = _place(int(d.station)) + _row_offset(int(d.id), int(d.station))
 		a.face(Vector3.ZERO)
 		actors.append(a)
 	enemy.face(_place(int(combat.divers[0].station)))
@@ -157,7 +175,7 @@ func _process(dt: float) -> void:
 	_pulse += dt
 	for i in range(actors.size()):
 		var d = combat.divers[i]
-		var want: Vector3 = _place(int(d.station))
+		var want: Vector3 = _place(int(d.station)) + _row_offset(i, int(d.station))
 		var a: RiggedActor = actors[i]
 		a.position = a.position.lerp(want, clampf(dt * 4.0, 0.0, 1.0))
 		a.visible = not d.down

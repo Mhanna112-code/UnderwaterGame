@@ -121,11 +121,11 @@ func _limb_max(li: int) -> int:
 # ---- the squad: a chip each, click to pick ----------------------------
 
 func _draw_divers() -> void:
-	var y := size.y - 132.0
+	var y := size.y - 146.0
 	for i in range(combat.divers.size()):
 		var d = combat.divers[i]
-		var x := 30.0 + float(i) * 150.0
-		var r := Rect2(x, y, 132.0, 44.0)
+		var x := 30.0 + float(i) * 152.0
+		var r := Rect2(x, y, 132.0, 58.0)
 		draw_rect(r, PANEL)
 		var col: Color = tint_of[i] if i < tint_of.size() else INK
 		# the colour block IS the diver: it matches the model on the stage
@@ -137,6 +137,16 @@ func _draw_divers() -> void:
 		draw_rect(Rect2(x + 34.0, y + 14.0, 90.0, 14.0), DIM, false, 1.0)
 		if d.down:
 			_glyph("down", Vector2(x + 79.0, y + 21.0), 10.0, WARN)
+		# Defences as icon plus numeral, the habit the status screens Marc
+		# sent all share: a glyph carries which stat it is, a digit carries
+		# how much. Nothing that reads as zero is drawn at all.
+		var sx := x + 34.0
+		for pair in [["shield", int(d.stats.def)], ["swerve", int(d.stats.dodge)], ["hex", int(d.barrier)]]:
+			if int(pair[1]) <= 0:
+				continue
+			_glyph(String(pair[0]), Vector2(sx + 6.0, y + 36.0), 6.0, AIR)
+			_number(int(pair[1]), Vector2(sx + 19.0, y + 36.0), AIR)
+			sx += 30.0
 		if i == selected and not d.down:
 			draw_rect(r, INK, false, 2.0)
 		if not d.down and not locked_out:
@@ -272,6 +282,15 @@ func _glyph(kind: String, at: Vector2, r: float, col: Color, hollow := false) ->
 		"drop":
 			draw_circle(at + Vector2(0, r * 0.25), r * 0.55, col)
 			draw_polyline([at + Vector2(-r * 0.3, 0), at + Vector2(0, -r), at + Vector2(r * 0.3, 0)], col, w)
+		"swerve":
+			draw_arc(at, r * 0.9, PI * 0.15, PI * 1.15, 16, col, w)
+			_arrow(at + Vector2(r * 0.6, -r * 0.5), Vector2(0.8, -0.6), r * 0.6, col)
+		"hex":
+			var pts: PackedVector2Array = PackedVector2Array()
+			for i in range(7):
+				var a3 := TAU * float(i) / 6.0
+				pts.append(at + Vector2(cos(a3), sin(a3)) * r)
+			draw_polyline(pts, col, w)
 		"down":
 			draw_line(at + Vector2(-r * 0.7, -r * 0.7), at + Vector2(r * 0.7, r * 0.7), col, w)
 			draw_line(at + Vector2(r * 0.7, -r * 0.7), at + Vector2(-r * 0.7, r * 0.7), col, w)
