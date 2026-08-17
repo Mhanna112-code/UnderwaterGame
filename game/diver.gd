@@ -34,6 +34,45 @@ var drag := 2.2
 
 
 # ============================================================
+# COMBAT STATS
+# ============================================================
+
+# One spread per playable model, chosen to give TAB an actual reason to
+# matter in a fight rather than just changing which mesh is on screen:
+# Staff_Diver even, Prototype_1 fast/fragile, Prototype_V slow/sturdy.
+# grow_* is how much each stat ticks up per level (see combatant_stats.gd) -
+# different per diver so leveling reinforces the spread instead of
+# flattening it out.
+# dodge/accuracy/barrier_max are identity traits, not leveled (no grow_*
+# for them) - Prototype_1 is nimble (high dodge) rather than shielded,
+# Prototype_V is the reverse. Keeps the three spreads distinct even after
+# several level-ups, instead of every stat converging as they grow.
+const BASE_STATS := {
+	"Staff_Diver": {
+		"hp": 34, "attack": 5, "defense": 3, "speed": 5, "luck": 5,
+		"dodge": 0.10, "accuracy": 0.10, "barrier_max": 5,
+		"grow_hp": 4, "grow_attack": 1, "grow_defense": 1, "grow_speed": 1, "grow_luck": 1,
+	},
+	"Prototype_1(1910)": {
+		"hp": 26, "attack": 8, "defense": 1, "speed": 7, "luck": 4,
+		"dodge": 0.18, "accuracy": 0.15, "barrier_max": 0,
+		"grow_hp": 2, "grow_attack": 2, "grow_defense": 0, "grow_speed": 2, "grow_luck": 1,
+	},
+	"Prototype_V(1922)": {
+		"hp": 42, "attack": 3, "defense": 5, "speed": 3, "luck": 6,
+		"dodge": 0.04, "accuracy": 0.06, "barrier_max": 10,
+		"grow_hp": 6, "grow_attack": 1, "grow_defense": 2, "grow_speed": 0, "grow_luck": 1,
+	},
+}
+
+# Lives on the Diver node itself, so level/XP survive between encounters for
+# as long as this Diver does (the length of one play session - nothing
+# persists across a reload yet). game/world.gd hands this to game/battle.gd
+# when a fight starts.
+var stats: CombatantStats
+
+
+# ============================================================
 # DISTANCE / RANDOM ENCOUNTER SETTINGS
 # ============================================================
 
@@ -81,6 +120,8 @@ var bubbles: CPUParticles3D
 # ============================================================
 
 func _ready() -> void:
+
+	_build_stats()
 
 	# Choose the distance required before the first encounter check.
 	encounter_distance = randf_range(
@@ -175,6 +216,34 @@ func _ready() -> void:
 
 	# We no longer need the temporary source scene.
 	src.queue_free()
+
+
+# ============================================================
+# COMBAT STATS SETUP
+# ============================================================
+
+func _build_stats() -> void:
+
+	var base: Dictionary = BASE_STATS.get(
+		model_name,
+		BASE_STATS["Staff_Diver"]
+	)
+
+	stats = CombatantStats.new()
+	stats.hp_max = int(base.hp)
+	stats.attack = int(base.attack)
+	stats.defense = int(base.defense)
+	stats.speed = int(base.speed)
+	stats.luck = int(base.luck)
+	stats.dodge = float(base.dodge)
+	stats.accuracy = float(base.accuracy)
+	stats.barrier_max = int(base.barrier_max)
+	stats.grow_hp = int(base.grow_hp)
+	stats.grow_attack = int(base.grow_attack)
+	stats.grow_defense = int(base.grow_defense)
+	stats.grow_speed = int(base.grow_speed)
+	stats.grow_luck = int(base.grow_luck)
+	stats.fill()
 
 
 # ============================================================

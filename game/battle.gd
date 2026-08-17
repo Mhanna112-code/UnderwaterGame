@@ -10,10 +10,13 @@ signal finished(result: String)     # "won", "fled", or "lost"
 
 var diver_model_name := "Staff_Diver"
 
-var player_hp := 30
-var player_hp_max := 30
-var enemy_hp := 16
-var enemy_hp_max := 16
+# Set by world.gd before add_child, so the diver's level/XP carry in and
+# level-ups carry back out (CombatantStats is a Resource - shared by
+# reference, not copied). If nothing sets this (tools/test_battle.gd
+# instantiates a bare Battle), _ready builds a stand-in from Diver's own
+# base-stat table so the fight still runs.
+var player_stats: CombatantStats
+var enemy_stats: CombatantStats
 var _busy := false
 
 # FF-style flee: not guaranteed. Failing costs the turn and the grunt gets a
@@ -24,16 +27,22 @@ const RUN_CHANCE := 0.6
 # instead of swinging right away. Each move sits on the same accuracy/power
 # axis (safe and light vs risky and heavy) and says so on its own button, so
 # the choice is legible before you commit rather than something you only
-# learn from the log after the fact.
+# learn from the log after the fact. `power` feeds _resolve_attack() below,
+# same formula as the grunt's own attack - stats do the differentiating
+# between combatants, not separate damage math per side.
 const MOVES := [
-	{"name": "Jab", "min": 3, "max": 5, "acc": 1.0, "hint": "Always hits, light", "text": "You jab the grunt"},
-	{"name": "Kick", "min": 5, "max": 9, "acc": 0.85, "hint": "Balanced", "text": "You kick the grunt"},
-	{"name": "Haymaker", "min": 8, "max": 15, "acc": 0.55, "hint": "Heavy, often misses", "text": "You wind up and swing at the grunt"},
+	{"name": "Jab", "power": 4, "acc": 1.0, "hint": "Always hits, light", "text": "You jab the grunt"},
+	{"name": "Kick", "power": 7, "acc": 0.85, "hint": "Balanced", "text": "You kick the grunt"},
+	{"name": "Haymaker", "power": 12, "acc": 0.55, "hint": "Heavy, often misses", "text": "You wind up and swing at the grunt"},
 ]
 
+const ENEMY_MOVE := {"power": 5, "acc": 0.85}
+
 var player_bar: ProgressBar
+var player_barrier_bar: ProgressBar
 var player_hp_label: Label
 var enemy_bar: ProgressBar
+var enemy_barrier_bar: ProgressBar
 var enemy_hp_label: Label
 var log_label: Label
 var main_menu: HBoxContainer
@@ -46,10 +55,35 @@ var enemy_actor: Goblin
 
 func _ready() -> void:
 	layer = 10
+	if player_stats == null:
+		player_stats = _default_player_stats()
 	_build_stage()
 	_build_ui()
 	_refresh_hp()
 	_log("A goblin grunt blocks the way!")
+
+# Stand-in used only when nothing hands this Battle a player_stats before it
+# enters the tree - mirrors whatever Diver would have built for
+# diver_model_name, so a standalone Battle (see tools/test_battle.gd) still
+# has real numbers to fight with instead of nulls.
+func _default_player_stats() -> CombatantStats:
+	var base: Dictionary = Diver.BASE_STATS.get(diver_model_name, Diver.BASE_STATS["Staff_Diver"])
+	var s := CombatantStats.new()
+	s.hp_max = int(base.hp)
+	s.attack = int(base.attack)
+	s.defense = int(base.defense)
+	s.speed = int(base.speed)
+	s.luck = int(base.luck)
+	s.dodge = float(base.dodge)
+	s.accuracy = float(base.accuracy)
+	s.barrier_max = int(base.barrier_max)
+	s.grow_hp = int(base.grow_hp)
+	s.grow_attack = int(base.grow_attack)
+	s.grow_defense = int(base.grow_defense)
+	s.grow_speed = int(base.grow_speed)
+	s.grow_luck = int(base.grow_luck)
+	s.fill()
+	return s
 
 # A SubViewport with its own camera, light and fog: isolated from the dive
 # site's World3D (own_world_3d) so the two scenes can't see each other.
@@ -103,6 +137,7 @@ func _build_stage() -> void:
 	enemy_actor.position = Vector3(1.0, 0.0, -2.2)
 	enemy_actor.rotation.y = PI
 	vp.add_child(enemy_actor)
+	enemy_stats = enemy_actor.make_stats(player_stats.level)
 
 func _build_ui() -> void:
 	var panel := PanelContainer.new()
@@ -131,9 +166,11 @@ func _build_ui() -> void:
 	var pb := _add_bar(bars, "You")
 	player_bar = pb[0]
 	player_hp_label = pb[1]
+	player_barrier_bar = pb[2]
 	var eb := _add_bar(bars, "Grunt")
 	enemy_bar = eb[0]
 	enemy_hp_label = eb[1]
+	enemy_barrier_bar = eb[2]
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 40)
@@ -177,21 +214,56 @@ func _add_bar(parent: Control, label_text: String) -> Array:
 	var l := Label.new()
 	l.text = label_text
 	wrap.add_child(l)
+
+	# HP bar and its barrier bar sit side by side, not stacked - "next to
+	# health," not overlapping it, so a full shield never hides how much HP
+	# is actually left underneath.
+	var bar_row := HBoxContainer.new()
+	bar_row.add_theme_constant_override("separation", 6)
+	wrap.add_child(bar_row)
+
 	var bar := ProgressBar.new()
 	bar.custom_minimum_size = Vector2(200, 20)
 	bar.show_percentage = false
-	wrap.add_child(bar)
+	var hp_fill := StyleBoxFlat.new()
+	hp_fill.bg_color = Color(0.78, 0.15, 0.15)
+	bar.add_theme_stylebox_override("fill", hp_fill)
+	bar_row.add_child(bar)
+
+	# Gray fill via a StyleBox override on just the "fill" slot, not
+	# modulate - modulate would also tint the empty track, not only the
+	# part that reads as "this much barrier is left."
+	var barrier_bar := ProgressBar.new()
+	barrier_bar.custom_minimum_size = Vector2(48, 20)
+	barrier_bar.show_percentage = false
+	var barrier_fill := StyleBoxFlat.new()
+	barrier_fill.bg_color = Color(0.62, 0.64, 0.68)
+	barrier_bar.add_theme_stylebox_override("fill", barrier_fill)
+	bar_row.add_child(barrier_bar)
+
 	var hp_label := Label.new()
 	wrap.add_child(hp_label)
-	return [bar, hp_label]
+	return [bar, hp_label, barrier_bar]
 
 func _refresh_hp() -> void:
-	player_bar.max_value = player_hp_max
-	player_bar.value = player_hp
-	player_hp_label.text = "%d / %d" % [player_hp, player_hp_max]
-	enemy_bar.max_value = enemy_hp_max
-	enemy_bar.value = enemy_hp
-	enemy_hp_label.text = "%d / %d" % [enemy_hp, enemy_hp_max]
+	player_bar.max_value = player_stats.hp_max
+	player_bar.value = player_stats.hp
+	player_hp_label.text = "%d / %d   Lv %d" % [player_stats.hp, player_stats.hp_max, player_stats.level]
+	_refresh_barrier_bar(player_barrier_bar, player_stats)
+
+	enemy_bar.max_value = enemy_stats.hp_max
+	enemy_bar.value = enemy_stats.hp
+	enemy_hp_label.text = "%d / %d" % [enemy_stats.hp, enemy_stats.hp_max]
+	_refresh_barrier_bar(enemy_barrier_bar, enemy_stats)
+
+# Hidden entirely for a combatant with no barrier at all (the grunt, right
+# now) rather than showing a permanently-empty gray sliver next to their HP.
+func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
+	bar.visible = stats.barrier_max > 0
+	if not bar.visible:
+		return
+	bar.max_value = stats.barrier_max
+	bar.value = stats.barrier
 
 func _log(text: String) -> void:
 	log_label.text = text
@@ -208,46 +280,125 @@ func _show_main() -> void:
 	move_menu.visible = false
 	main_menu.visible = true
 
+# One damage roll, used identically for the player's moves and the grunt's
+# counter - stats (not separate formulas per side) are what make the two
+# feel different.
+#
+# Resolution order:
+#  1. Dodge. defender.dodge is a flat chance to avoid the hit completely,
+#     no matter how hard it would have landed. attacker.accuracy cancels
+#     that chance point-for-point (never past zero) rather than adding a
+#     bonus of its own - it only ever makes a dodgy target easier to hit.
+#  2. Power + attack, with variance and crit.
+#  3. Defense subtracts flat from that raw amount - unlike a percentage
+#     mitigation, this can floor a hit at 0: a well-armoured target can
+#     shrug a weak attack off entirely, not just take less from it.
+#  4. Barrier - a temporary shield that eats damage before HP does. Doesn't
+#     refill on its own (see CombatantStats.fill()/gain_xp()), so once
+#     it's spent it stays spent until the next level-up.
+func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
+	var effective_dodge: float = maxf(0.0, defender.dodge - attacker.accuracy)
+	var hit_chance: float = clampf(float(move.acc) - effective_dodge, 0.05, 0.95)
+	if randf() > hit_chance:
+		return {"hit": false, "crit": false, "damage": 0, "absorbed": 0}
+
+	var crit: bool = randf() <= 0.05 + float(attacker.luck) * 0.01
+	var variance: float = randf_range(0.85, 1.15)
+	var raw: float = (float(move.power) + float(attacker.attack)) * variance * (1.5 if crit else 1.0)
+	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+
+	var absorbed: int = 0
+	if defender.barrier > 0 and incoming > 0:
+		absorbed = mini(defender.barrier, incoming)
+		defender.barrier -= absorbed
+	var to_hp: int = incoming - absorbed
+	defender.hp = maxi(0, defender.hp - to_hp)
+
+	return {"hit": true, "crit": crit, "damage": to_hp, "absorbed": absorbed}
+
+func _do_player_attack(move: Dictionary) -> void:
+	var r: Dictionary = _resolve_attack(player_stats, enemy_stats, move)
+	_refresh_hp()
+	if not r.hit:
+		_log("%s - it dodges!" % String(move.text))
+	elif int(r.damage) == 0 and int(r.absorbed) > 0:
+		_log("%s - its barrier soaks the hit completely!" % String(move.text))
+	elif int(r.absorbed) > 0:
+		_log("%s for %d (%d soaked by its barrier)." % [String(move.text), int(r.damage), int(r.absorbed)])
+	elif r.crit:
+		_log("%s for %d. Critical hit!" % [String(move.text), int(r.damage)])
+	else:
+		_log("%s for %d." % [String(move.text), int(r.damage)])
+	if r.hit:
+		enemy_actor.play("walk")
+	await get_tree().create_timer(0.8).timeout
+	enemy_actor.play("idle")
+
+func _do_enemy_attack(verb: String) -> void:
+	var r: Dictionary = _resolve_attack(enemy_stats, player_stats, ENEMY_MOVE)
+	_refresh_hp()
+	if not r.hit:
+		_log("The grunt lunges, but you dodge clear.")
+	elif int(r.damage) == 0 and int(r.absorbed) > 0:
+		_log("%s - your barrier soaks the hit completely!" % verb)
+	elif int(r.absorbed) > 0:
+		_log("%s for %d (%d soaked by your barrier)." % [verb, int(r.damage), int(r.absorbed)])
+	elif r.crit:
+		_log("%s for %d! A solid hit." % [verb, int(r.damage)])
+	else:
+		_log("%s for %d." % [verb, int(r.damage)])
+	await get_tree().create_timer(0.9).timeout
+
 func _on_move(i: int) -> void:
 	if _busy:
 		return
 	_busy = true
 	_set_buttons(false)
-
-	var mv: Dictionary = MOVES[i]
-	if randf() <= float(mv.acc):
-		var dmg := randi_range(int(mv.min), int(mv.max))
-		enemy_hp = maxi(0, enemy_hp - dmg)
-		_refresh_hp()
-		enemy_actor.play("walk")
-		_log("%s for %d." % [String(mv.text), dmg])
-	else:
-		_log("%s - it misses!" % String(mv.text))
-	await get_tree().create_timer(0.8).timeout
-	enemy_actor.play("idle")
-
-	if enemy_hp <= 0:
-		_log("The grunt backs off, beaten.")
-		await get_tree().create_timer(0.9).timeout
-		finished.emit("won")
-		return
-
-	var back := randi_range(2, 7)
-	player_hp = maxi(0, player_hp - back)
-	_refresh_hp()
-	_log("The grunt claws back for %d." % back)
-	await get_tree().create_timer(0.9).timeout
-
-	if player_hp <= 0:
-		_log("You're battered and pull back.")
-		await get_tree().create_timer(0.9).timeout
-		finished.emit("lost")
-		return
-
 	move_menu.visible = false
+
+	var p_move: Dictionary = MOVES[i]
+	var player_first: bool
+	if player_stats.speed == enemy_stats.speed:
+		player_first = randf() < 0.5
+	else:
+		player_first = player_stats.speed > enemy_stats.speed
+
+	if player_first:
+		await _do_player_attack(p_move)
+		if enemy_stats.hp <= 0:
+			await _win()
+			return
+		await _do_enemy_attack("The grunt claws back")
+		if player_stats.hp <= 0:
+			await _lose()
+			return
+	else:
+		await _do_enemy_attack("The grunt is faster - it claws first")
+		if player_stats.hp <= 0:
+			await _lose()
+			return
+		await _do_player_attack(p_move)
+		if enemy_stats.hp <= 0:
+			await _win()
+			return
+
 	main_menu.visible = true
 	_busy = false
 	_set_buttons(true)
+
+func _win() -> void:
+	_log("The grunt backs off, beaten.")
+	await get_tree().create_timer(0.9).timeout
+	var levels: Array = player_stats.gain_xp(enemy_actor.xp_reward)
+	for lv in levels:
+		_log("%s reached level %d!" % [diver_model_name, int(lv)])
+		await get_tree().create_timer(1.0).timeout
+	finished.emit("won")
+
+func _lose() -> void:
+	_log("You're battered and pull back.")
+	await get_tree().create_timer(0.9).timeout
+	finished.emit("lost")
 
 func _on_run() -> void:
 	if _busy:
@@ -263,17 +414,9 @@ func _on_run() -> void:
 
 	_log("Can't get clear - the grunt cuts you off!")
 	await get_tree().create_timer(0.8).timeout
-
-	var back := randi_range(2, 7)
-	player_hp = maxi(0, player_hp - back)
-	_refresh_hp()
-	_log("It claws you for %d as you struggle free." % back)
-	await get_tree().create_timer(0.9).timeout
-
-	if player_hp <= 0:
-		_log("You're battered and pull back.")
-		await get_tree().create_timer(0.9).timeout
-		finished.emit("lost")
+	await _do_enemy_attack("It claws you as you struggle free")
+	if player_stats.hp <= 0:
+		await _lose()
 		return
 
 	_busy = false

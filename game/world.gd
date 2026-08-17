@@ -267,6 +267,7 @@ func _start_battle() -> void:
 	_announce("Something grunts out of the murk!")
 	battle = Battle.new()
 	battle.diver_model_name = divers[active].model_name
+	battle.player_stats = divers[active].stats
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 

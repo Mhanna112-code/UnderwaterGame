@@ -17,6 +17,6 @@ func _process(_dt: float) -> bool:
 	frames += 1
 	if frames < 5:
 		return false
-	print("BATTLE OK  player_hp=%d enemy_hp=%d" % [b.player_hp, b.enemy_hp])
+	print("BATTLE OK  player_hp=%d enemy_hp=%d" % [b.player_stats.hp, b.enemy_stats.hp])
 	quit(0)
 	return true
