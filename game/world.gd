@@ -3,6 +3,11 @@
 # Deliberately small. This exists so the team can get hands on the models and
 # feel their scale and speed in motion, which no screenshot can settle, and
 # so the next argument about the art is had in front of something playable.
+#
+# class_name so other nodes that need a live reference (MiniMap,
+# TargetSelector) can type it properly instead of reading dynamic
+# properties off a plain Node3D.
+class_name World
 extends Node3D
 
 const SRC := preload("res://art/characters/divers.glb")
@@ -32,6 +37,66 @@ var hud: Label
 var mouse_look := false
 var _t := 0.0
 var lantern: Node3D
+
+# First-person aim mode for aimed abilities (grapple): E enters it instead
+# of firing right away, camera cuts to the diver's own eye line, left click
+# fires, right click backs out. Nothing about the ability itself changes -
+# use_ability() still does the actual raycast/pull, this only decides when
+# it gets called.
+var aiming := false
+
+# Swap goes through TargetSelector instead of first-person aim: cycle
+# between allies with Left/Right, Enter confirms, Escape cancels. See
+# target_selector.gd for the selection logic and _start_ability()/
+# _unhandled_input() below for how E and the arrow keys route into it.
+var target_selector: TargetSelector
+
+# P opens save_point_menu, but only while standing on a SavePoint (see
+# _save_points/_toggle_save_menu/_update_save_point_prompt) - spell
+# learning/equipping is deliberately unavailable anywhere else.
+var save_point_menu: SavePointMenu
+var _save_points: Array = []
+var _showing_save_prompt := false
+
+# Party-wide, not per-diver - a key item (current_pearl/reef_plate) unlocks
+# a spell for whichever diver's tree gates on it, it isn't "held" by
+# whoever happened to win the guardian fight. Same array object gets handed
+# to save_point_menu.learn_ui in _ready() (see SpellTree.can_learn()'s
+# key_items param) rather than copied, so appending here is automatically
+# visible there without any extra sync step.
+var key_items: Array[String] = []
+
+# Set right before a guardian fight starts (see _on_item_guardian_triggered
+# ()), read once in _on_battle_finished() and cleared immediately after -
+# "" means an ordinary random encounter, nothing to hand out on a win.
+var _pending_reward_item := ""
+
+# The gap sequence's three-plate finale (see _build_highway()). Populated
+# there, checked every physics frame in _check_gap_puzzle().
+var _lock_plates: Array = []
+var _doors: Array = []
+var _puzzle_goal: Waypoint
+var _puzzle_solved := false
+
+# [a, b] Vector3 endpoint pairs, one per wall built by _build_wall() -
+# read directly by game/mini_map.gd (world.gd has a class_name now, so
+# MiniMap can type its reference and read this like any other property).
+var _wall_segments: Array = []
+var minimap: MiniMap
+
+# The camera's one alternate mode: instead of chasing the active diver,
+# hold on `_camera_focus_target` (used both by TargetSelector while
+# picking a swap target, and for a brief confirmation hold on whoever a
+# swap just traded places with - see focus_camera_on()/
+# return_camera_to_player() and _on_diver_swapped()). auto_return_after
+# is 0 for "stay until told otherwise" (TargetSelector explicitly calls
+# return_camera_to_player() on confirm/cancel) or >0 for "hold this long,
+# then snap back to the player on its own."
+enum CameraMode { PLAYER, FOCUS }
+var camera_mode := CameraMode.PLAYER
+var _camera_focus_target: Node3D = null
+var _camera_focus_timer := 0.0
+
 # test seam: verify/swim.gd steers the player without a keyboard. Nothing in
 # the game writes these, so the shipped build reads the real keys.
 var scripted := false
@@ -50,6 +115,30 @@ func _ready() -> void:
 	banner.add_theme_font_size_override("font_size", 20)
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	$HUD.add_child(banner)
+
+	minimap = MiniMap.new()
+	minimap.world = self
+	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	minimap.offset_left = -166.0
+	minimap.offset_top = 10.0
+	minimap.offset_right = -10.0
+	minimap.offset_bottom = 166.0
+	$HUD.add_child(minimap)
+
+	save_point_menu = SavePointMenu.new()
+	save_point_menu.save_requested.connect(_on_save_requested)
+	$HUD.add_child(save_point_menu)
+	save_point_menu.learn_ui.key_items = key_items
+
+	_build_hp_bar()
+	_build_oxygen_bar()
+
+	target_selector = TargetSelector.new()
+	target_selector.world = self
+	target_selector.confirmed.connect(_on_swap_target_confirmed)
+	target_selector.cancelled.connect(_on_swap_target_cancelled)
+	add_child(target_selector)
+
 	_build_site()
 	for c in CAST:
 		var d := Diver.new()
@@ -58,6 +147,8 @@ func _ready() -> void:
 		add_child(d)
 		divers.append(d)
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
+		d.swapped_with.connect(_on_diver_swapped.bind(d))
+		target_selector.register_character(d)
 	_carry_lantern()
 	_update_hud()
 
@@ -115,6 +206,278 @@ func _build_site() -> void:
 	mmi.multimesh = mm
 	add_child(mmi)
 
+	_build_breakable_rocks()
+	_build_highway()
+	_build_item_guardians()
+
+# A couple of small CrackedWalls scattered in the open dive site, before
+# the tunnel entrance - unlike the entrance blockade (a full-width gate),
+# these are just optional side pickups: break one with shockwave and it
+# pops an ItemOrb instead of handing out a fixed reward directly (see
+# _on_breakable_rock_broken()) - what actually comes out is rolled fresh
+# per break (Items.random_drop()), not always the same potion. No invisible
+# collision extension (collision_height/width stay 0) since nothing needs
+# to stop a diver going around one, only breaking it matters.
+func _build_breakable_rocks() -> void:
+	const SPOTS := [Vector3(6.0, 1.0, -7.0), Vector3(-7.0, 1.0, 5.0)]
+	for spot in SPOTS:
+		var rock := CrackedWall.new()
+		rock.span = Vector3(1.1, 1.1, 1.1)
+		rock.position = spot
+		rock.broken.connect(_on_breakable_rock_broken.bind(spot))
+		add_child(rock)
+
+# spot is bound at connect time (see _build_breakable_rocks()) - the
+# `broken` signal itself carries no position (cracked_wall.gd stays
+# ability/reward-agnostic on purpose, see its header comment), and by the
+# time this fires the rock has already queue_free()'d itself, so there's no
+# node left to read a position off of.
+func _on_breakable_rock_broken(spot: Vector3) -> void:
+	var orb := ItemOrb.new()
+	orb.item_id = Items.random_drop()
+	# Small scatter so a pop doesn't sit dead-center in the rubble - purely
+	# cosmetic, the pickup radius (see item_orb.gd) covers either way.
+	orb.position = spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
+	orb.collected.connect(_on_item_orb_collected)
+	add_child(orb)
+
+func _on_item_orb_collected(item_id: String, d: Diver) -> void:
+	var msg := Items.grant(item_id, d)
+	if msg != "":
+		_announce(msg)
+	_update_hp_bar()
+
+# Two fixed guardian spots, each sitting on exactly the key item
+# spell_tree.gd's two capstone spells are gated behind (current_pearl for
+# Staff_Diver's Tidal Burst, reef_plate for Prototype_V(1922)'s Bulwark
+# Stance) - see items.gd's ITEMS entries for both. Placed well clear of the
+# scattered rocks/CAST start positions/highway, out in the open dive site
+# where _build_site()'s rock scatter already reaches (dist up to 48).
+func _build_item_guardians() -> void:
+	const SPOTS := [
+		{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0)},
+		{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0)},
+	]
+	for entry in SPOTS:
+		var guardian := ItemGuardian.new()
+		guardian.item_id = String(entry.item)
+		guardian.position = entry.at as Vector3
+		add_child(guardian)
+
+		# Decorative only - a real Goblin instance standing just beside the
+		# guardian spot so "an enemy is here" is visible before you ever get
+		# close enough to trigger the fight, not just an invisible volume
+		# (offset sideways so it doesn't visually clip through the spiky
+		# guardian mesh). No collision (see goblin.gd's own header - display
+		# only), so it can't block movement or be mistaken for the trigger
+		# itself.
+		var decoy := Goblin.new()
+		decoy.position = (entry.at as Vector3) + Vector3(1.1, 0.0, 0.0)
+		add_child(decoy)
+
+		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
+
+# A straight corridor out past the rest of the scattered rocks - and the
+# whole first real gate, not just scenery to swim through. In order:
+#   0. A save point sits before the entrance blockade, in the open dive
+#      site - a rest/prep stop before the gate, not a reward for clearing
+#      it (see save_point.gd).
+#   1. Rubble blocks the entrance - only Marine Man's shockwave clears it
+#      (an invisible collision extension well above the visible rocks
+#      rules out just swimming over the top - see cracked_wall.gd).
+#   2. A whirlpool over a real gap in the floor. Getting close warns you;
+#      getting caught sucks you in, costs HP, and sweeps you back - unless
+#      you're mid-grapple, which is exempt (see whirlpool.gd). Nothing
+#      ever disarms it - there is no bridge, no permanent safe crossing.
+#      Every plain swim through it gets caught, every single time. A
+#      second GrappleAnchor sits right before it as a staging point; the
+#      real crossing anchor is on the far side.
+#   3. Reaching that far anchor (Diver Boy's grapple) unlocks Mermaid's
+#      locked "swap" ability (see grapple_anchor.gd's on_grappled_to()).
+#      That's all it does - grapple and swap are the only two ways across
+#      the whirlpool, permanently, not just until some gate opens.
+#   4. Three lit plates on the far side. All three divers standing on
+#      their own plate at once opens the way past END_X - which means
+#      getting all three across by grapple/swap alone, since nothing
+#      ever makes the whirlpool safe to swim through.
+# Every piece here is a reusable class (CrackedWall, GrappleAnchor,
+# Whirlpool, LockPlate, Waypoint) - this function is just where they get
+# placed and wired together for this one gate.
+func _build_highway() -> void:
+	const START_X := 15.0
+	const GAP_START_X := 24.0
+	const GAP_END_X := 30.0
+	const END_X := 45.0
+	const LANE_Z := 10.0
+	const LANE_HALF_WIDTH := 4.0
+	const WALL_HEIGHT := 6.0
+
+	var length := END_X - START_X
+	var center_x := (START_X + END_X) * 0.5
+
+	# 0. A save point before the corridor even starts - the first place in
+	# the game spell learning/equipping becomes available at all (see
+	# save_point.gd/SavePointMenu). Sits in the open dive site ahead of the
+	# entrance blockade, not inside the walled corridor, so it reads as
+	# "rest here before attempting the gate," not "partway through it."
+	var save_point := SavePoint.new()
+	save_point.position = Vector3(START_X - 5.0, 2.0, LANE_Z)
+	add_child(save_point)
+	_save_points.append(save_point)
+
+	_build_wall(
+		Vector3(center_x, WALL_HEIGHT * 0.5, LANE_Z - LANE_HALF_WIDTH),
+		Vector3(length, WALL_HEIGHT, 0.6)
+	)
+	_build_wall(
+		Vector3(center_x, WALL_HEIGHT * 0.5, LANE_Z + LANE_HALF_WIDTH),
+		Vector3(length, WALL_HEIGHT, 0.6)
+	)
+
+	# 1. The entrance blockade - one solid rock formation spanning the full
+	# lane width and wall height, no gaps to swim around or over. Only
+	# Marine Man's shockwave clears it.
+	var entrance_rocks := CrackedWall.new()
+	entrance_rocks.span = Vector3(2.0, WALL_HEIGHT, LANE_HALF_WIDTH * 2.0)
+	# Invisible collision extends far above the visible rocks - divers rise
+	# freely in 3D, so a blockade that only matched its visible height
+	# could just be swum over, the same gap the corridor's own walls have
+	# (and accept, since going over a wall to cut a corner isn't the same
+	# problem as skipping a gate entirely).
+	entrance_rocks.collision_height = 40.0
+	# Also wider than the visible rocks - the corridor's own side walls
+	# don't cap their outer ends, so without this a diver could swim wide
+	# around the whole corridor from the open dive site and cut back in
+	# past the blockade entirely.
+	entrance_rocks.collision_width = 60.0
+	entrance_rocks.position = Vector3(START_X + 1.0, WALL_HEIGHT * 0.5, LANE_Z)
+	add_child(entrance_rocks)
+
+	# 2. The gap itself: a dark visual patch plus the whirlpool hazard.
+	var gap_center_x := (GAP_START_X + GAP_END_X) * 0.5
+	var gap_width := GAP_END_X - GAP_START_X
+
+	# Sits just ABOVE the floor's own surface (y=0), not below it - a patch
+	# placed under the floor is invisible, since the floor is one big
+	# opaque plane covering the same footprint and renders right over it.
+	# Unshaded so it reads as pure void regardless of the site's lighting,
+	# not just "a dark rock."
+	var void_mesh := MeshInstance3D.new()
+	var void_plane := BoxMesh.new()
+	void_plane.size = Vector3(gap_width, 0.06, LANE_HALF_WIDTH * 2.0)
+	void_mesh.mesh = void_plane
+	var void_mat := StandardMaterial3D.new()
+	void_mat.albedo_color = Color(0.015, 0.02, 0.03)
+	void_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	void_mesh.material_override = void_mat
+	void_mesh.position = Vector3(gap_center_x, 0.03, LANE_Z)
+	add_child(void_mesh)
+
+	var whirlpool := Whirlpool.new()
+	whirlpool.position = Vector3(gap_center_x, 2.0, LANE_Z)
+	whirlpool.reset_to = Vector3(GAP_START_X - 4.0, 2.0, LANE_Z)
+	whirlpool.warned.connect(_on_whirlpool_warned)
+	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
+	add_child(whirlpool)
+
+	# A second anchor right before the gap, in addition to the one on the
+	# far side - a staging point for Diver Boy on the approach, not itself
+	# a way across.
+	var near_anchor := GrappleAnchor.new()
+	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z)
+	add_child(near_anchor)
+
+	# 3. The anchor that unlocks Mermaid's swap - reaching it is the
+	# "you made it across" beat, but it doesn't disarm anything. The
+	# whirlpool stays armed forever; grapple and swap are the permanent
+	# way across, not a one-time gate.
+	var anchor := GrappleAnchor.new()
+	anchor.position = Vector3(GAP_END_X + 2.0, 2.0, LANE_Z)
+	anchor.unlocks_diver_ability_for = "Staff_Diver"
+	add_child(anchor)
+
+	# 5. Three lit plates - the actual finale. All three occupied at once
+	# (checked in _physics_process via _check_gap_puzzle) reveals the goal.
+	var plate_x := lerpf(GAP_END_X, END_X, 0.6)
+	for z_off in [-2.5, 0.0, 2.5]:
+		var plate := LockPlate.new()
+		plate.position = Vector3(plate_x, 2.0, LANE_Z + z_off)
+		add_child(plate)
+		_lock_plates.append(plate)
+
+		# One door per plate, a little further down the lane than its own
+		# plate - solid until _check_gap_puzzle opens all three together,
+		# once every plate is occupied at once.
+		var door := Door.new()
+		door.position = Vector3(plate_x + 1.6, WALL_HEIGHT * 0.5, LANE_Z + z_off)
+		add_child(door)
+		_doors.append(door)
+
+	_puzzle_goal = Waypoint.new()
+	_puzzle_goal.is_goal = true
+	_puzzle_goal.position = Vector3(END_X + 2.0, 2.0, LANE_Z)
+	_puzzle_goal.visible = false
+	add_child(_puzzle_goal)
+
+func _on_whirlpool_warned() -> void:
+	_announce("Danger - a whirlpool lies just ahead!")
+
+func _on_diver_sucked_in(d: Diver, amount: int) -> void:
+	_announce("You were sucked into the whirlpool! (-%d HP)" % amount)
+	if d == divers[active]:
+		_flash_hp_bar()
+
+# Polled rather than signal-driven, since "solved" is a fact about all
+# three plates at once, not something any single plate can know on its
+# own - simplest to just check the three of them each frame.
+func _check_gap_puzzle() -> void:
+	if _puzzle_solved or _lock_plates.size() < 3 or _puzzle_goal == null:
+		return
+	for p in _lock_plates:
+		if not (p as LockPlate).is_occupied():
+			return
+	_puzzle_solved = true
+	for d in _doors:
+		(d as Door).open()
+	var cutscene := Cutscene.new()
+	add_child(cutscene)
+	cutscene.play_scroll_text("Welcome to the Deep Sea")
+	_puzzle_goal.visible = true
+	_announce("All three in place - the way ahead opens!")
+
+# One plain wall segment: a StaticBody3D box, solid (divers collide with
+# it via CharacterBody3D's own move_and_slide, same as the floor), centered
+# on `center` with total dimensions `size`.
+func _build_wall(center: Vector3, size: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.position = center
+
+	var mesh_inst := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	mesh_inst.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.2, 0.27, 0.3)
+	mat.roughness = 1.0
+	mesh_inst.material_override = mat
+	body.add_child(mesh_inst)
+
+	var shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = size
+	shape.shape = box_shape
+	body.add_child(shape)
+
+	add_child(body)
+
+	# Minimap segment: along whichever horizontal axis is actually the
+	# wall's length. Every wall built here is axis-aligned, so this is
+	# just picking x vs z, not reading the body's real rotation.
+	if size.x >= size.z:
+		_wall_segments.append([center - Vector3(size.x * 0.5, 0.0, 0.0), center + Vector3(size.x * 0.5, 0.0, 0.0)])
+	else:
+		_wall_segments.append([center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5)])
+
 # The fourth model is a staff. Nothing in this FBX is rigged, so no diver has
 # a hand to put it in: carried, it read as a stick floating beside somebody.
 # Planted in the seabed as a site beacon it reads as a decision.
@@ -143,11 +506,49 @@ func _carry_lantern() -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if battling:
 		return
+
+	# Aim mode intercepts clicks before the normal "first click captures
+	# the mouse" handling below - a click here means fire/cancel, not
+	# "start looking around" (mouse is already captured to get here in the
+	# first place in any normal session).
+	if aiming and e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+		var mb := e as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			_fire_aimed_ability()
+			return
+		elif mb.button_index == MOUSE_BUTTON_RIGHT:
+			_cancel_aim()
+			return
+
+	# TargetSelector intercepts Left/Right/Enter the same way aim mode
+	# intercepts clicks - before they'd otherwise turn the camera or do
+	# nothing at all (see _physics_process, which suppresses the normal
+	# arrow-key camera turn outright while target_selector.selecting).
+	if target_selector.selecting and e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
+		var sk := (e as InputEventKey).keycode
+		if sk == KEY_RIGHT:
+			target_selector.select_next()
+			_update_hud()
+			return
+		elif sk == KEY_LEFT:
+			target_selector.select_previous()
+			_update_hud()
+			return
+		elif sk == KEY_ENTER or sk == KEY_KP_ENTER:
+			target_selector.confirm_selection()
+			return
+
 	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 		# the web build starts with a free cursor; the first click takes it
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		mouse_look = true
 	elif e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
+		if aiming:
+			_cancel_aim()
+		if target_selector.selecting:
+			target_selector.cancel_selection()
+		if save_point_menu.visible:
+			save_point_menu.close()
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		mouse_look = false
 	elif e is InputEventMouseMotion and mouse_look:
@@ -157,18 +558,147 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var k := (e as InputEventKey).keycode
 		if k == KEY_TAB:
-			active = (active + 1) % divers.size()
-			_update_hud()
+			if not aiming and not target_selector.selecting:
+				active = (active + 1) % divers.size()
+				_update_hud()
+		elif k == KEY_E:
+			_start_ability()
+		elif k == KEY_P:
+			_toggle_save_menu()
+		elif k == KEY_Q:
+			_toggle_sonar()
+
+# E's actual behavior depends on the active diver's ability: shockwave has
+# nothing to aim, fires immediately. Grapple enters first-person aim mode.
+# Swap goes through TargetSelector's cycle-through-candidates flow instead
+# of either - see target_selector.gd.
+func _start_ability() -> void:
+	if aiming or target_selector.selecting:
+		return
+	var d: Diver = divers[active]
+	if not d.can_use_ability():
+		return
+	if d.ability_id == "swap":
+		target_selector.start_selection(d)
+		_update_hud()
+	elif d.ability_needs_aim():
+		aiming = true
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		mouse_look = true
+		_update_hud()
+	else:
+		d.use_ability(_aim_dir())
+
+# Q, separate from E - sonar isn't the active diver's "ability" (that slot
+# is swap, on this same diver), it's a passive being switched on and off,
+# so it gets its own key rather than competing with _start_ability(). Only
+# does anything for whichever diver actually has the sonar passive; a
+# stray Q on anyone else is a silent no-op just like it would be on a
+# diver with no ability at all.
+func _toggle_sonar() -> void:
+	var d: Diver = divers[active]
+	if d.passive_id != "sonar":
+		return
+	var was_active := d.sonar_active
+	var now_active := d.toggle_sonar()
+	if now_active:
+		_announce("Sonar on.")
+	elif was_active:
+		_announce("Sonar off.")
+	else:
+		_announce("Not enough oxygen for sonar.")
+
+# Only opens if the active diver is actually standing on a save point -
+# see save_point.gd.has_diver(). Closes on a second press; won't open
+# while aiming or mid-swap-selection, same guard _start_ability() already
+# applies for the same reason (those modes already own the mouse/camera).
+func _toggle_save_menu() -> void:
+	if save_point_menu.visible:
+		save_point_menu.close()
+		return
+	if aiming or target_selector.selecting:
+		return
+	# Pressing P off a save point used to just silently do nothing - which
+	# reads identically to "the menu is broken" from the player's side.
+	# Bannering it means a stray P press is never mistaken for a bug.
+	if not _diver_on_save_point(divers[active]):
+		_announce("No save point nearby.")
+		return
+	save_point_menu.open_for(divers[active], _display_name(divers[active].model_name))
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	mouse_look = false
+
+func _diver_on_save_point(d: Diver) -> bool:
+	for sp in _save_points:
+		if (sp as SavePoint).has_diver(d):
+			return true
+	return false
+
+# world.gd owns showing the confirmation and closing the menu - the menu
+# itself only ever emits the request, it doesn't know whether saving
+# "worked" since there's nothing real to fail yet (see save_point_menu.gd).
+#
+# Also the only way oxygen ever comes back now that there's no passive
+# regen - a save point is a real destination to swim for once you've spent
+# it down on abilities/sonar/spells, not just a spell-loadout menu.
+func _on_save_requested(d: Diver) -> void:
+	d.stats.oxygen = d.stats.oxygen_max
+	_announce("Progress saved.")
+	save_point_menu.close()
+
+# Shows "Save/Update Spells" while standing on a save point with the menu
+# closed, clears it the moment either stops being true. Tracked separately
+# from _announce()'s normal fade (_banner_timer stays 0 here) so the
+# prompt persists exactly as long as you're standing there, not for a
+# fixed few seconds - but that also means it only ever clears its own
+# text, never a real announcement's, via _showing_save_prompt.
+func _update_save_point_prompt() -> void:
+	if save_point_menu.visible:
+		if _showing_save_prompt:
+			banner.text = ""
+			_showing_save_prompt = false
+		return
+	var on_point := _diver_on_save_point(divers[active])
+	if on_point and not _showing_save_prompt:
+		banner.text = "Save/Update Spells - Press P"
+		_banner_timer = 0.0
+		_showing_save_prompt = true
+	elif not on_point and _showing_save_prompt:
+		banner.text = ""
+		_showing_save_prompt = false
+
+func _fire_aimed_ability() -> void:
+	aiming = false
+	divers[active].use_ability(_aim_dir())
+	_update_hud()
+
+func _cancel_aim() -> void:
+	aiming = false
+	_update_hud()
+
+# TargetSelector confirmed a target (Enter, with a valid candidate
+# currently selected) - fire the active diver's ability at them.
+func _on_swap_target_confirmed(target: Node3D) -> void:
+	divers[active].use_ability(Vector3.ZERO, target)
+	_update_hud()
+
+# TargetSelector cancelled (Escape, or Left/Right cancel handling) - just
+# needs the HUD put back, TargetSelector already returned the camera.
+func _on_swap_target_cancelled() -> void:
+	_update_hud()
 
 func _physics_process(dt: float) -> void:
 	_t += dt
 	if battling:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
-	# browser, and a build nobody can steer is a build nobody plays
-	if Input.is_key_pressed(KEY_LEFT):
+	# browser, and a build nobody can steer is a build nobody plays.
+	# Suppressed while target_selector.selecting - Left/Right are
+	# repurposed there for cycling (see _unhandled_input), so they'd
+	# otherwise both spin the camera AND change the selection on one press.
+	if not target_selector.selecting and Input.is_key_pressed(KEY_LEFT):
 		yaw += dt * 2.0
-	if Input.is_key_pressed(KEY_RIGHT):
+	if not target_selector.selecting and Input.is_key_pressed(KEY_RIGHT):
 		yaw -= dt * 2.0
 	if Input.is_key_pressed(KEY_UP):
 		pitch = clampf(pitch + dt * 1.2, -1.1, 0.7)
@@ -177,13 +707,26 @@ func _physics_process(dt: float) -> void:
 
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
-		if i == active:
+		# Movement pauses for the active diver while picking a swap target
+		# too - the camera's busy showing an ally, swimming around blind
+		# to where your own diver actually is would be confusing controls.
+		if i == active and not target_selector.selecting:
 			d.swim(_player_dir(), _player_rise(), dt)
 		else:
-			_drift(d, i, dt)
+			# Zero input, not skipped entirely - swim() still drains
+			# velocity to a stop and keeps bob/bubble animation ticking,
+			# it just never gives them anywhere new to go. A diver you
+			# TAB away from (mid-gap-crossing, standing on a lock plate)
+			# now stays exactly where you left it instead of drifting off.
+			d.swim(Vector3.ZERO, 0.0, dt)
 	_move_camera(dt)
+	_update_aim_marker()
+	_update_hp_bar()
+	_update_oxygen_bar()
 	_move_lantern(dt)
 	_update_banner(dt)
+	_update_save_point_prompt()
+	_check_gap_puzzle()
 
 func _player_dir() -> Vector3:
 	if scripted:
@@ -219,25 +762,120 @@ func _player_rise() -> float:
 		r -= 1.0
 	return r
 
-# the divers you are not steering keep swimming a slow circuit, so the site
-# never looks like a museum of three statues
-func _drift(d: Diver, i: int, dt: float) -> void:
-	var phase := _t * 0.25 + float(i) * 2.1
-	var centre: Vector3 = (CAST[i].at as Vector3)
-	var target := centre + Vector3(cos(phase) * 6.0, sin(phase * 0.7) * 1.2, sin(phase) * 6.0)
-	var to := target - d.global_position
-	to.y = 0.0
-	var rise: float = clampf((target.y - d.global_position.y) * 0.6, -1.0, 1.0)
-	d.swim(to.normalized() if to.length() > 0.4 else Vector3.ZERO, rise, dt)
-
 func _move_camera(dt: float) -> void:
 	var d: Diver = divers[active]
+	var dir := _aim_dir()
+
+	if camera_mode == CameraMode.FOCUS and is_instance_valid(_camera_focus_target):
+		_camera_pan_toward(_camera_focus_target, dir, dt)
+		if _camera_focus_timer > 0.0:
+			_camera_focus_timer -= dt
+			if _camera_focus_timer <= 0.0:
+				return_camera_to_player()
+		return
+
+	if aiming:
+		# Cut to the diver's own eye line instead of the chase framing -
+		# same eye height _grapple() itself fires from (diver.gd's
+		# height * 0.4), so what you see lines up with what the raycast
+		# actually checks.
+		var eye: Vector3 = d.global_position + Vector3(0, d.height * 0.4, 0)
+		cam.global_position = cam.global_position.lerp(eye, clampf(dt * 14.0, 0.0, 1.0))
+		cam.look_at(eye + dir * 10.0, Vector3.UP)
+		return
+
 	var focus: Vector3 = d.global_position + Vector3(0, d.height * 0.35, 0)
-	var dir := Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch))
 	var want: Vector3 = focus - dir * cam_dist
 	want.y = maxf(want.y, 0.6)      # never bury the camera in the seabed
 	cam.global_position = cam.global_position.lerp(want, clampf(dt * 8.0, 0.0, 1.0))
 	cam.look_at(focus, Vector3.UP)
+
+# Shared chase-style framing centered on `target` instead of the active
+# diver - the one camera behavior behind both CameraMode.FOCUS uses
+# (TargetSelector picking a swap candidate, and the post-swap confirmation
+# hold in _on_diver_swapped), so both look and feel identical rather than
+# being two independent implementations of "look at someone else."
+func _camera_pan_toward(target: Node3D, dir: Vector3, dt: float) -> void:
+	var lift := 0.35
+	if target is Diver:
+		lift = (target as Diver).height * 0.35
+	var focus: Vector3 = target.global_position + Vector3(0, lift, 0)
+	var want: Vector3 = focus - dir * (cam_dist * 0.85)
+	want.y = maxf(want.y, 0.6)
+	cam.global_position = cam.global_position.lerp(want, clampf(dt * 6.0, 0.0, 1.0))
+	cam.look_at(focus, Vector3.UP)
+
+# Called by TargetSelector while cycling (no auto-return - TargetSelector
+# explicitly calls return_camera_to_player() on confirm/cancel) and by
+# _on_diver_swapped for the brief post-swap confirmation hold (auto-return
+# after 1.1s, since nothing else ends that one on its own).
+func focus_camera_on(target: Node3D, auto_return_after: float = 0.0) -> void:
+	camera_mode = CameraMode.FOCUS
+	_camera_focus_target = target
+	_camera_focus_timer = auto_return_after
+
+func return_camera_to_player() -> void:
+	camera_mode = CameraMode.PLAYER
+	_camera_focus_target = null
+	_camera_focus_timer = 0.0
+
+# Where the camera is actually looking, from yaw/pitch (mouse-look or
+# arrow keys) - matches _player_dir()'s horizontal forward when pitch is 0.
+# Shared by the camera itself and by aimed abilities (grapple), so "what
+# you're looking at" and "what you're aiming at" are always the same thing.
+func _aim_dir() -> Vector3:
+	return Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch))
+
+var _aim_marker: MeshInstance3D
+var _aim_marker_mat: StandardMaterial3D
+
+func _ensure_aim_marker() -> void:
+	if _aim_marker != null:
+		return
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.22
+	ring.outer_radius = 0.32
+	_aim_marker = MeshInstance3D.new()
+	_aim_marker.mesh = ring
+	_aim_marker_mat = StandardMaterial3D.new()
+	_aim_marker_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_aim_marker_mat.emission_enabled = true
+	_aim_marker.material_override = _aim_marker_mat
+	_aim_marker.visible = false
+	add_child(_aim_marker)
+
+# Runs the same raycast grapple will fire, every frame while aiming,
+# purely so the player can see where a shot would land before committing
+# to it - a preview, not a hitbox. Turns green on a valid grapple_anchor,
+# gray otherwise. Grapple-only now - swap goes through TargetSelector's
+# cycle-through-candidates flow instead, with its own cursor (see
+# target_selector.gd), not this raycast-based ring reticle.
+func _update_aim_marker() -> void:
+	if not aiming:
+		if _aim_marker != null:
+			_aim_marker.visible = false
+		return
+	_ensure_aim_marker()
+
+	var d: Diver = divers[active]
+	var dir := _aim_dir()
+	var from: Vector3 = d.global_position + Vector3(0, d.height * 0.4, 0)
+	var to: Vector3 = from + dir * Diver.GRAPPLE_RANGE
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [d.get_rid()]
+	var result := space.intersect_ray(query)
+
+	var point: Vector3 = to if result.is_empty() else (result.position as Vector3)
+	var on_target: bool = not result.is_empty() and (result.collider as Node).is_in_group("grapple_anchor")
+
+	_aim_marker.visible = true
+	_aim_marker.global_position = point
+	_aim_marker.look_at(from, Vector3.UP)
+	var c: Color = Color(0.35, 0.95, 0.4) if on_target else Color(0.75, 0.78, 0.8)
+	_aim_marker_mat.albedo_color = c
+	_aim_marker_mat.emission = c
+	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
 
 func _move_lantern(_dt: float) -> void:
 	if lantern == null:
@@ -260,14 +898,37 @@ func _on_encounter_triggered(d: Diver) -> void:
 		return
 	_start_battle()
 
-func _start_battle() -> void:
+# guardian/decoy are bound at connect time (see _build_item_guardians()).
+# Both get freed the instant this fires, win or lose the fight that
+# follows - a guardian is a one-time gate on its item, not a repeatable
+# encounter spot, so there's nothing left here to trigger again either way.
+func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin) -> void:
+	if battling:
+		return
+	guardian.call_deferred("queue_free")
+	decoy.call_deferred("queue_free")
+	_start_battle(item_id)
+
+# `d` (bound at connect time) is whoever's swapped_with just fired - only
+# react if it's the diver currently being steered, same guard shape as
+# _on_encounter_triggered, so a background diver's stray signal (there
+# shouldn't be one, but nothing enforces that) can't hijack the camera.
+func _on_diver_swapped(target: Diver, d: Diver) -> void:
+	if d != divers[active]:
+		return
+	focus_camera_on(target, 1.1)
+
+# reward_item carries straight into _pending_reward_item - "" (the
+# default, what every ordinary random encounter passes) means an
+# unmodified fight with nothing riding on it, same as before this existed.
+func _start_battle(reward_item: String = "") -> void:
 	battling = true
+	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
 	_announce("Something grunts out of the murk!")
 	battle = Battle.new()
-	battle.diver_model_name = divers[active].model_name
-	battle.player_stats = divers[active].stats
+	battle.party_source = divers
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
@@ -277,20 +938,147 @@ func _on_battle_finished(result: String) -> void:
 	battling = false
 	match result:
 		"won":
-			_announce("The grunt backs off into the dark.")
+			if _pending_reward_item != "":
+				_grant_reward_item(_pending_reward_item)
+			else:
+				_announce("The grunt backs off into the dark.")
 		"fled":
 			_announce("You put some distance between you.")
 		_:
 			_announce("You regroup and catch your breath.")
+	_pending_reward_item = ""
+
+# Key items (current_pearl/reef_plate) go straight into the party-wide
+# key_items array - Items.grant() refuses those on purpose (see its own
+# header comment), a guardian's reward isn't "held" by whichever diver's
+# turn it was when the fight ended. Everything else Items.ITEMS could
+# theoretically hold goes through grant() on the active diver same as an
+# orb pickup would, in case a future guardian ever guards a consumable
+# instead of a key item.
+func _grant_reward_item(item_id: String) -> void:
+	if Items.is_key_item(item_id):
+		if not key_items.has(item_id):
+			key_items.append(item_id)
+		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
+		_announce("The guardian falls back - you claim the %s!" % display)
+	else:
+		var msg := Items.grant(item_id, divers[active])
+		_announce(msg if msg != "" else "The guardian falls back.")
+	_update_hp_bar()
 
 func _announce(text: String) -> void:
 	banner.text = text
 	_banner_timer = 4.0
 
+# Display-only nicknames, not used anywhere gameplay reads model_name -
+# purely so the HUD reads "Marine Man" instead of "Prototype_V(1922)".
+const DISPLAY_NAMES := {
+	"Staff_Diver": "Mermaid",
+	"Prototype_1(1910)": "Diver Boy",
+	"Prototype_V(1922)": "Marine Man",
+}
+
+func _display_name(model_name: String) -> String:
+	return String(DISPLAY_NAMES.get(model_name, model_name))
+
 func _update_hud() -> void:
+	if target_selector.selecting:
+		var t := target_selector.current_target()
+		if t != null and t is Diver:
+			hud.text = "Swap with %s?\nLeft/Right: cycle   ·   Enter: confirm   ·   Esc: cancel" % _display_name((t as Diver).model_name)
+		else:
+			hud.text = "Left/Right: cycle   ·   Enter: confirm   ·   Esc: cancel"
+		return
+	if aiming:
+		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
+		return
 	var d: Diver = divers[active]
-	hud.text = "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
-		String(d.model_name), d.height]
+	var line := "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
+		_display_name(d.model_name), d.height]
+	if d.ability_id != "":
+		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+	hud.text = line
+
+# A persistent readout of the active diver's HP, always visible during
+# free swimming (not just during Battle, which has its own separate HP
+# bars on its own screen) - bottom-center, red fill matching Battle's own
+# bar styling (see battle.gd's _add_bar) so the same number reads the
+# same way in both places.
+var hp_bar: ProgressBar
+var hp_bar_label: Label
+var _hp_bar_mat: StyleBoxFlat
+
+func _build_hp_bar() -> void:
+	var wrap := VBoxContainer.new()
+	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	wrap.offset_top = -56.0
+	wrap.offset_bottom = -10.0
+	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	$HUD.add_child(wrap)
+
+	hp_bar = ProgressBar.new()
+	hp_bar.custom_minimum_size = Vector2(220, 20)
+	hp_bar.show_percentage = false
+	hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_hp_bar_mat = StyleBoxFlat.new()
+	_hp_bar_mat.bg_color = Color(0.78, 0.15, 0.15)
+	hp_bar.add_theme_stylebox_override("fill", _hp_bar_mat)
+	wrap.add_child(hp_bar)
+
+	hp_bar_label = Label.new()
+	hp_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wrap.add_child(hp_bar_label)
+
+func _update_hp_bar() -> void:
+	var d: Diver = divers[active]
+	hp_bar.max_value = d.stats.hp_max
+	hp_bar.value = d.stats.hp
+	hp_bar_label.text = "%s   %d / %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max]
+
+# Same wrap/bar/label shape as the HP bar, stacked just above it - O2 is
+# read continuously (sonar drains it every frame while active - see
+# Diver._physics_process()) so it's updated every physics frame right
+# alongside HP rather than only on discrete events like the HP bar's other
+# callers do. No regen to show ticking here - the only thing that ever
+# moves this bar back up is a save point (_on_save_requested()).
+var oxygen_bar: ProgressBar
+var oxygen_bar_label: Label
+
+func _build_oxygen_bar() -> void:
+	var wrap := VBoxContainer.new()
+	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	wrap.offset_top = -82.0
+	wrap.offset_bottom = -58.0
+	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	$HUD.add_child(wrap)
+
+	oxygen_bar = ProgressBar.new()
+	oxygen_bar.custom_minimum_size = Vector2(220, 14)
+	oxygen_bar.show_percentage = false
+	oxygen_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var mat := StyleBoxFlat.new()
+	mat.bg_color = Color(0.25, 0.65, 0.85)
+	oxygen_bar.add_theme_stylebox_override("fill", mat)
+	wrap.add_child(oxygen_bar)
+
+	oxygen_bar_label = Label.new()
+	oxygen_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	oxygen_bar_label.add_theme_font_size_override("font_size", 13)
+	wrap.add_child(oxygen_bar_label)
+
+func _update_oxygen_bar() -> void:
+	var d: Diver = divers[active]
+	oxygen_bar.max_value = d.stats.oxygen_max
+	oxygen_bar.value = d.stats.oxygen
+	oxygen_bar_label.text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
+
+# Called on top of the normal value drop (which already reads as "the bar
+# is noticeably lower now") for a brief extra flash, so a hit lands even
+# if you're not staring at the bar the instant it happens.
+func _flash_hp_bar() -> void:
+	var tw := create_tween()
+	tw.tween_property(_hp_bar_mat, "bg_color", Color(1.0, 0.9, 0.85), 0.1)
+	tw.tween_property(_hp_bar_mat, "bg_color", Color(0.78, 0.15, 0.15), 0.3)
 
 func _find(n: Node, nm: String) -> MeshInstance3D:
 	if n is MeshInstance3D and String(n.name) == nm:

@@ -17,13 +17,14 @@ const TARGET_HEIGHT := 1.6
 # few times. When a second enemy type shows up, it gets its own script with
 # its own BASE_STATS/SCALE_PER_LEVEL instead of this one growing extra cases.
 const BASE_STATS := {
-	"hp": 20, "attack": 4, "defense": 2, "speed": 4, "luck": 3,
-	"dodge": 0.05, "accuracy": 0.05, "barrier_max": 0,
+	"hp": 20, "strength": 4, "defense": 2, "agility": 4,
+	"evasion": 3, "accuracy": 5, "barrier_max": 0,
 }
 
 # +12% to every stat per player level above 1. Multiplicative, not additive,
-# so the ratio between hp/attack/defense/speed/luck stays the grunt's own
-# shape at any level - it just gets uniformly tougher, not lopsided.
+# so the ratio between strength/defense/agility/evasion/accuracy stays the
+# grunt's own shape at any level - it just gets uniformly tougher, not
+# lopsided.
 const SCALE_PER_LEVEL := 0.12
 
 # XP a win pays out, before scaling (see make_stats). Read by
@@ -66,21 +67,29 @@ func _ready() -> void:
 # battles, so unlike Diver.stats this isn't built once and kept - battle.gd
 # calls this each time it stands a grunt up, passing the player's current
 # level so the grunt scales to match instead of always fighting at level 1.
-func make_stats(player_level: int = 1) -> CombatantStats:
+#
+# jitter_pct applies an independent random multiplier per stat (not one
+# shared multiplier for the whole grunt) so a pack of several doesn't read
+# as identical clones - one might land a bit tougher, another a bit more
+# accurate, purely by chance. 0 (the default) means no jitter at all, the
+# exact scaled BASE_STATS - what a lone grunt still gets.
+func make_stats(player_level: int = 1, jitter_pct: float = 0.0) -> CombatantStats:
 	var scale: float = 1.0 + float(maxi(player_level - 1, 0)) * SCALE_PER_LEVEL
 	xp_reward = maxi(1, int(round(float(BASE_XP) * scale)))
 
 	var s := CombatantStats.new()
-	s.hp_max = maxi(1, int(round(float(BASE_STATS.hp) * scale)))
-	s.attack = maxi(1, int(round(float(BASE_STATS.attack) * scale)))
-	s.defense = maxi(0, int(round(float(BASE_STATS.defense) * scale)))
-	s.speed = maxi(1, int(round(float(BASE_STATS.speed) * scale)))
-	s.luck = maxi(0, int(round(float(BASE_STATS.luck) * scale)))
-	s.dodge = clampf(float(BASE_STATS.dodge) * scale, 0.0, 0.95)
-	s.accuracy = clampf(float(BASE_STATS.accuracy) * scale, 0.0, 0.95)
-	s.barrier_max = maxi(0, int(round(float(BASE_STATS.barrier_max) * scale)))
+	s.hp_max = maxi(1, int(round(float(BASE_STATS.hp) * scale * _jit(jitter_pct))))
+	s.strength = maxi(1, int(round(float(BASE_STATS.strength) * scale * _jit(jitter_pct))))
+	s.defense = maxi(0, int(round(float(BASE_STATS.defense) * scale * _jit(jitter_pct))))
+	s.agility = maxi(1, int(round(float(BASE_STATS.agility) * scale * _jit(jitter_pct))))
+	s.evasion = maxi(0, int(round(float(BASE_STATS.evasion) * scale * _jit(jitter_pct))))
+	s.accuracy = maxi(0, int(round(float(BASE_STATS.accuracy) * scale * _jit(jitter_pct))))
+	s.barrier_max = maxi(0, int(round(float(BASE_STATS.barrier_max) * scale * _jit(jitter_pct))))
 	s.fill()
 	return s
+
+func _jit(pct: float) -> float:
+	return 1.0 if pct <= 0.0 else randf_range(1.0 - pct, 1.0 + pct)
 
 # substr: "idle" or "walk", matched loosely against the FBX's own take names
 # ("rig|Idle", "rig|Walking", ...) so exact capitalisation doesn't matter.
@@ -92,6 +101,37 @@ func play(substr: String) -> void:
 		want = anim.get_animation_list()[0]
 	if want != "" and anim.current_animation != want:
 		anim.play(want)
+
+# Called by battle.gd the instant a hit actually brings this grunt to 0 HP.
+# Fades every mesh surface to transparent while the whole model sinks and
+# shrinks slightly - reads as "dying and disappearing," not just "the model
+# popped out of existence." Fire-and-forget: nothing awaits this, it just
+# queue_free()s itself once the tween's done, same pattern diver.gd's own
+# throwaway VFX (_shockwave_vfx(), _swap_flash()) already use.
+#
+# Duplicates each surface's material before touching it rather than editing
+# in place - the imported FBX's materials may be shared resources (Godot
+# caches imported materials across instances of the same asset), so
+# mutating one in place could fade every other living grunt on the stage
+# along with this one.
+func play_death_fade() -> void:
+	play("idle")
+	var tw := create_tween()
+	tw.set_parallel(true)
+	for m in _meshes(self):
+		var mesh_instance := m as MeshInstance3D
+		for surface in range(mesh_instance.mesh.get_surface_count()):
+			var mat := mesh_instance.get_active_material(surface)
+			if mat == null or not (mat is BaseMaterial3D):
+				continue
+			var mat_copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
+			mat_copy.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mesh_instance.set_surface_override_material(surface, mat_copy)
+			tw.tween_property(mat_copy, "albedo_color:a", 0.0, 0.9)
+	tw.tween_property(self, "position:y", position.y - 0.6, 0.9)
+	tw.tween_property(self, "scale", scale * 0.7, 0.9)
+	tw.set_parallel(false)
+	tw.tween_callback(queue_free)
 
 func _find_anim(n: Node) -> AnimationPlayer:
 	if n is AnimationPlayer:

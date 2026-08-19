@@ -7,16 +7,15 @@ class_name CombatantStats
 extends Resource
 
 @export var hp_max: int = 20
-@export var attack: int = 5      # adds straight onto a move's power
+@export var strength: int = 5    # adds straight onto a move's power
 @export var defense: int = 2     # subtracted flat from incoming damage - can floor a hit at 0
-@export var speed: int = 5       # decides who acts first each round
-@export var luck: int = 5        # crit chance only - dodge/accuracy below handle whether a hit lands
+@export var agility: int = 5     # decides who acts first each round - not part of hit/miss at all
 
-# dodge: chance (0.0-1.0) to avoid a hit completely, regardless of its
-# damage. accuracy: cancels the attacker's target's dodge point-for-point -
-# it doesn't add a bonus to hit, it just eats into how dodgy they are.
-@export var dodge: float = 0.05
-@export var accuracy: float = 0.05
+# Hit/miss is a straight comparison, no roll: an attack lands if the
+# attacker's accuracy (plus the move's own acc_mod) is greater than the
+# defender's evasion. No luck, no crit - two numbers decide it.
+@export var accuracy: int = 5
+@export var evasion: int = 5
 
 # A temporary shield: absorbs damage before HP does, doesn't come back on
 # its own once spent (see fill() and gain_xp() below - a level-up is the
@@ -24,9 +23,24 @@ extends Resource
 @export var barrier_max: int = 0
 var barrier: int
 
+# Spent on ability use (Diver.use_ability()), on the sonar passive while
+# it's active, and on casting an equipped spell in battle (battle.gd's
+# _resolve_party_move()) - float rather than int like hp/barrier so a
+# continuous drain (sonar) and passive regen (Diver._process) don't get
+# rounded to zero every frame. Same fill()-on-level-up/refill story as
+# barrier: nothing but a level-up tops it off instantly, everything else is
+# gradual regen.
+@export var oxygen_max: float = 100.0
+var oxygen: float
+
 @export var level: int = 1
 @export var xp: int = 0
 @export var xp_to_next: int = 30
+
+# Currency spent in game/spell_tree.gd - one per level-up, awarded in the
+# same loop that already applies growth stats (see gain_xp below), so it
+# rides along with leveling rather than needing its own trigger.
+@export var spell_points: int = 0
 
 # FF-style XP curve: each level needs XP_BASE * level^XP_CURVE, not a flat
 # amount more than the last. Early levels stay cheap (level 1->2 is still
@@ -37,18 +51,20 @@ const XP_BASE := 30.0
 const XP_CURVE := 1.5
 
 # Per-level growth. Zero on all of these (the default) means "doesn't
-# level" - what enemies get, since only divers gain XP.
+# level" - what enemies get, since only divers gain XP. accuracy/evasion
+# have no grow_* - they're identity traits like barrier_max, not something
+# that climbs with level (see diver.gd's BASE_STATS).
 @export var grow_hp: int = 0
-@export var grow_attack: int = 0
+@export var grow_strength: int = 0
 @export var grow_defense: int = 0
-@export var grow_speed: int = 0
-@export var grow_luck: int = 0
+@export var grow_agility: int = 0
 
 var hp: int
 
 func _init() -> void:
 	hp = hp_max
 	barrier = barrier_max
+	oxygen = oxygen_max
 
 # Call after setting hp_max/barrier_max/etc from a base-stat table, so
 # current HP and barrier start full rather than at whatever the Resource
@@ -56,6 +72,7 @@ func _init() -> void:
 func fill() -> void:
 	hp = hp_max
 	barrier = barrier_max
+	oxygen = oxygen_max
 
 # Adds XP and applies every level-up it crosses (a big win can jump more
 # than one level at once). Returns the list of levels reached, empty if
@@ -67,11 +84,11 @@ func gain_xp(amount: int) -> Array:
 		xp -= xp_to_next
 		level += 1
 		hp_max += grow_hp
-		attack += grow_attack
+		strength += grow_strength
 		defense += grow_defense
-		speed += grow_speed
-		luck += grow_luck
+		agility += grow_agility
 		xp_to_next = int(round(XP_BASE * pow(float(level), XP_CURVE)))
+		spell_points += 1
 		levels_gained.append(level)
 	if not levels_gained.is_empty():
 		fill()      # a level-up is the game's only heal/recharge right now

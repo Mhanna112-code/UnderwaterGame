@@ -1,92 +1,173 @@
 # The turn-based screen a random encounter drops you into: a small 3D stage
-# showing the diver you're steering and the grunt that stopped you, with a
-# menu underneath (Attack opens a move list, Run gambles on getting clear).
-# world.gd freezes the dive and hands over the mouse while this is up, then
-# un-freezes once `finished` fires.
+# showing all three divers and however many grunts stopped you, with a menu
+# underneath. world.gd freezes the dive and hands over the mouse while this
+# is up, then un-freezes once `finished` fires.
+#
+# Combatants live as plain Dictionaries (not a class) in two arrays -
+# `party` and `enemies` - each entry shaped
+# {kind, stats, model_name, display_name, equipped_spells, actor, hp_bar,
+# hp_label, barrier_bar}. A Dictionary rather than a real class because
+# nothing here needs identity beyond "the fields", and it's the same
+# lightweight shape MOVES entries already use in this file.
+#
+# Turn order is a live queue (`_queue`), not a fixed two-actor ping-pong:
+# every living combatant is sorted by current agility at the start of each
+# round, one entry is popped off and acts, and a landed agility-changing
+# debuff re-sorts whatever's still waiting immediately - see
+# _rebuild_queue()/_resort_pending()/_advance_turn().
 class_name Battle
 extends CanvasLayer
 
 signal finished(result: String)     # "won", "fled", or "lost"
 
+# Set by world.gd before add_child - the real Diver nodes from the dive
+# site (world.divers), so .stats (shared by reference - a Resource, not
+# copied) carries level-ups back out, and .equipped_spells says what each
+# one can actually cast here. Nothing about these nodes is touched beyond
+# reading those three fields - they stay right where they are in the dive
+# site the whole fight, frozen like everything else while battling.
+var party_source: Array = []
+
+# Fallback identity only for the no-party_source case (tools/test_battle.gd
+# instantiating a bare Battle) - mirrors whatever Diver would have built.
 var diver_model_name := "Staff_Diver"
 
-# Set by world.gd before add_child, so the diver's level/XP carry in and
-# level-ups carry back out (CombatantStats is a Resource - shared by
-# reference, not copied). If nothing sets this (tools/test_battle.gd
-# instantiates a bare Battle), _ready builds a stand-in from Diver's own
-# base-stat table so the fight still runs.
-var player_stats: CombatantStats
-var enemy_stats: CombatantStats
-var _busy := false
-
-# FF-style flee: not guaranteed. Failing costs the turn and the grunt gets a
-# free swing, same as the moves you'd rather have picked instead.
 const RUN_CHANCE := 0.6
+const MIN_ENEMIES := 1
+const MAX_ENEMIES := 3
+const STAT_JITTER := 0.15
 
-# Attack is a category, not a single action: pressing it opens this list
-# instead of swinging right away. Each move sits on the same accuracy/power
-# axis (safe and light vs risky and heavy) and says so on its own button, so
-# the choice is legible before you commit rather than something you only
-# learn from the log after the fact. `power` feeds _resolve_attack() below,
-# same formula as the grunt's own attack - stats do the differentiating
-# between combatants, not separate damage math per side.
+const DISPLAY_NAMES := {
+	"Staff_Diver": "Mermaid",
+	"Prototype_1(1910)": "Diver Boy",
+	"Prototype_V(1922)": "Marine Man",
+}
+
+# Attack is a category, not a single action: pressing it opens a move list
+# instead of swinging right away. These base moves are always available to
+# everyone, on top of whichever spells that specific party member has
+# equipped (see _moves_for()) - `power` feeds the damage half of
+# _resolve_attack() below; `acc_mod` is added to the attacker's accuracy
+# for that swing only, before it's compared to the defender's evasion.
+#
+# Weaken/Slow are the odd ones out: `power` is unused for them (see
+# _resolve_attack's effect branch) - a `debuff`/`amount` pair instead,
+# read by _apply_debuff(). They still have to clear the same
+# accuracy-vs-evasion check as a damaging move: a turn spent on one can
+# whiff outright, same as swinging and missing.
+#
+# Jab is the one basic attack with no `oxygen_cost` key at all - the free
+# fallback every diver can always throw out even at 0 oxygen, same role
+# Diver.gd's abilities and every equipped spell (see _moves_for()) can't
+# fill once the tank's empty. Everything else here costs oxygen same as a
+# spell would, on the same scale (_populate_move_menu() reads oxygen_cost
+# with a 0.0 default, so Jab simply never shows a cost or blocks on one).
 const MOVES := [
-	{"name": "Jab", "power": 4, "acc": 1.0, "hint": "Always hits, light", "text": "You jab the grunt"},
-	{"name": "Kick", "power": 7, "acc": 0.85, "hint": "Balanced", "text": "You kick the grunt"},
-	{"name": "Haymaker", "power": 12, "acc": 0.55, "hint": "Heavy, often misses", "text": "You wind up and swing at the grunt"},
+	{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers its defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
+	{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers its agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
+	{"name": "Jab", "power": 4, "acc_mod": 5, "hint": "Always hits, light", "text": "You jab it"},
+	{"name": "Kick", "power": 7, "acc_mod": 1, "hint": "Balanced", "text": "You kick it", "oxygen_cost": 10.0},
+	{"name": "Haymaker", "power": 12, "acc_mod": -2, "hint": "Heavy, riskier", "text": "You wind up and swing", "oxygen_cost": 16.0},
 ]
 
-const ENEMY_MOVE := {"power": 5, "acc": 0.85}
+const ENEMY_MOVE := {"power": 5, "acc_mod": 1, "quick_time_bool": true}
 
-var player_bar: ProgressBar
-var player_barrier_bar: ProgressBar
-var player_hp_label: Label
-var enemy_bar: ProgressBar
-var enemy_barrier_bar: ProgressBar
-var enemy_hp_label: Label
+var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
+var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
+
+var _queue: Array = []     # combatants (same dict refs as party/enemies) still waiting to act this round
+var _acting: Dictionary = {}
+var _pending_move: Dictionary = {}
+var _busy := false
+
 var log_label: Label
+var queue_row: HBoxContainer
 var main_menu: HBoxContainer
 var move_menu: HBoxContainer
+var target_menu: HBoxContainer
 var attack_btn: Button
 var run_btn: Button
-var move_buttons: Array = []
 var back_btn: Button
-var enemy_actor: Goblin
+var move_buttons: Array = []
+var target_buttons: Array = []
+
+# The dodge prompt: an X-glyph panel to its left (what to press, static),
+# a track to its right (when to press it, the part that actually moves).
+# Built once here and reused every _quick_time_event() call, same
+# build-once/reuse approach move_menu/target_menu already use, rather than
+# constructing fresh nodes per QTE and leaking the old ones.
+var qte_root: HBoxContainer
+var qte_track: Control
+var qte_zone: ColorRect
+var qte_indicator: ColorRect
+const QTE_TRACK_WIDTH := 150.0
+const QTE_TRACK_HEIGHT := 14.0
+
+# Set for the duration of one _quick_time_event() call - _unhandled_input()
+# only ever looks at these while _qte_active is true, so a stray X press
+# outside a QTE (or during one that already resolved this frame) does
+# nothing. No stored zone/duration fields alongside these two - qte_zone's
+# and qte_indicator's own position/size ARE the hit-test data now (see
+# _unhandled_input()), not a separate time-domain copy of them.
+var _qte_active := false
+var _qte_success := false
 
 func _ready() -> void:
 	layer = 10
-	if player_stats == null:
-		player_stats = _default_player_stats()
+	_build_party()
 	_build_stage()
 	_build_ui()
-	_refresh_hp()
-	_log("A goblin grunt blocks the way!")
+	_build_quick_time_ui()
+	_refresh_all_bars()
+	_rebuild_queue()
+	_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
+	_advance_turn()
 
-# Stand-in used only when nothing hands this Battle a player_stats before it
+func _display(model_name: String) -> String:
+	return String(DISPLAY_NAMES.get(model_name, model_name))
+
+# Stand-in used only when nothing hands this Battle a party before it
 # enters the tree - mirrors whatever Diver would have built for
-# diver_model_name, so a standalone Battle (see tools/test_battle.gd) still
-# has real numbers to fight with instead of nulls.
+# diver_model_name, so a standalone Battle (see tools/test_battle.gd)
+# still has real numbers to fight with instead of nulls.
 func _default_player_stats() -> CombatantStats:
 	var base: Dictionary = Diver.BASE_STATS.get(diver_model_name, Diver.BASE_STATS["Staff_Diver"])
 	var s := CombatantStats.new()
 	s.hp_max = int(base.hp)
-	s.attack = int(base.attack)
+	s.strength = int(base.strength)
 	s.defense = int(base.defense)
-	s.speed = int(base.speed)
-	s.luck = int(base.luck)
-	s.dodge = float(base.dodge)
-	s.accuracy = float(base.accuracy)
+	s.agility = int(base.agility)
+	s.evasion = int(base.evasion)
+	s.accuracy = int(base.accuracy)
 	s.barrier_max = int(base.barrier_max)
 	s.grow_hp = int(base.grow_hp)
-	s.grow_attack = int(base.grow_attack)
+	s.grow_strength = int(base.grow_strength)
 	s.grow_defense = int(base.grow_defense)
-	s.grow_speed = int(base.grow_speed)
-	s.grow_luck = int(base.grow_luck)
+	s.grow_agility = int(base.grow_agility)
 	s.fill()
 	return s
 
+func _build_party() -> void:
+	if party_source.is_empty():
+		party.append({
+			"kind": "party", "stats": _default_player_stats(),
+			"model_name": diver_model_name, "display_name": _display(diver_model_name),
+			"equipped_spells": [],
+		})
+		return
+	for d in party_source:
+		var dv := d as Diver
+		party.append({
+			"kind": "party", "stats": dv.stats,
+			"model_name": dv.model_name, "display_name": _display(dv.model_name),
+			"equipped_spells": dv.equipped_spells,
+		})
+
 # A SubViewport with its own camera, light and fog: isolated from the dive
 # site's World3D (own_world_3d) so the two scenes can't see each other.
+# Builds one throwaway visual Diver per party member and however many
+# Goblins the encounter rolled - these actors are display-only, the real
+# stats live in party[]/enemies[], not on these nodes.
 func _build_stage() -> void:
 	var container := SubViewportContainer.new()
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -117,63 +198,94 @@ func _build_stage() -> void:
 	vp.add_child(light)
 
 	var cam := Camera3D.new()
-	cam.position = Vector3(0.0, 1.5, 4.5)
+	cam.position = Vector3(0.0, 1.8, 5.5)
+	cam.fov = 70.0
 	vp.add_child(cam)
 	# look_at() needs the node in the tree first - it operates on global
 	# transform, which doesn't exist until add_child runs.
 	cam.look_at(Vector3(0.0, 1.1, -1.5), Vector3.UP)
 
+	# Party visuals, spread left-to-right so 1-3 divers don't overlap.
 	# Diver.rotation.y == 0 is the model's own rest-facing direction (-Z, see
 	# diver.gd), so leaving it untouched here is what puts its back to camera.
-	var player := Diver.new()
-	player.model_name = diver_model_name
-	player.position = Vector3(-1.1, 0.0, 1.0)
-	vp.add_child(player)
+	var pn := party.size()
+	for i in range(pn):
+		var actor := Diver.new()
+		actor.model_name = String(party[i].model_name)
+		actor.position = Vector3(_spread(i, pn, 1.3) - 0.4, 0.0, 1.0)
+		vp.add_child(actor)
+		party[i]["actor"] = actor
 
-	# The grunt's own rest facing was never checked against the camera (no
-	# editor open to look): 180 is a guess. Flip to 0 here if it turns out to
-	# be facing away instead of into shot.
-	enemy_actor = Goblin.new()
-	enemy_actor.position = Vector3(1.0, 0.0, -2.2)
-	enemy_actor.rotation.y = PI
-	vp.add_child(enemy_actor)
-	enemy_stats = enemy_actor.make_stats(player_stats.level)
+	# Enemies: a random count, each with its own level-scaled + jittered
+	# stats - see goblin.gd's make_stats(). The grunt's own rest facing was
+	# never checked against the camera (no editor open to look): 180 is a
+	# guess. Flip to 0 here if it turns out to be facing away instead of
+	# into shot.
+	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
+	var count := randi_range(MIN_ENEMIES, MAX_ENEMIES)
+	for i in range(count):
+		var g := Goblin.new()
+		g.position = Vector3(_spread(i, count, 1.1) + 0.6, 0.0, -2.2)
+		g.rotation.y = PI
+		vp.add_child(g)
+		var st: CombatantStats = g.make_stats(lvl, STAT_JITTER)
+		enemies.append({
+			"kind": "enemy", "stats": st,
+			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
+			"actor": g,
+		})
+
+# Evenly spaces `n` actors around x=0, `step` apart - shared by the party
+# row and the enemy row so both scale the same way from 1 up to 3 without
+# separate hand-picked positions for each possible count.
+func _spread(i: int, n: int, step: float) -> float:
+	return (float(i) - float(n - 1) * 0.5) * step
 
 func _build_ui() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	# Generous on purpose: two-line buttons plus the HP readouts need more
-	# than a guess's worth of room, and PanelContainer won't clip or shrink
-	# its child to fit - anything that doesn't fit just renders past the
-	# bottom of the screen instead of wrapping or scrolling.
-	panel.offset_top = -240.0
+	# Generous on purpose: a queue row, up to 3 party bars, up to 3 enemy
+	# bars, the log, and two menus need more than a guess's worth of room -
+	# PanelContainer won't clip or shrink its child to fit, so anything
+	# that doesn't fit just renders past the bottom instead of wrapping.
+	panel.offset_top = -300.0
 	add_child(panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_bottom", 16)
 	panel.add_child(margin)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
+	col.add_theme_constant_override("separation", 8)
 	margin.add_child(col)
 
-	var bars := HBoxContainer.new()
-	bars.add_theme_constant_override("separation", 40)
-	col.add_child(bars)
-	var pb := _add_bar(bars, "You")
-	player_bar = pb[0]
-	player_hp_label = pb[1]
-	player_barrier_bar = pb[2]
-	var eb := _add_bar(bars, "Grunt")
-	enemy_bar = eb[0]
-	enemy_hp_label = eb[1]
-	enemy_barrier_bar = eb[2]
+	queue_row = HBoxContainer.new()
+	queue_row.add_theme_constant_override("separation", 10)
+	col.add_child(queue_row)
+
+	var party_row := HBoxContainer.new()
+	party_row.add_theme_constant_override("separation", 24)
+	col.add_child(party_row)
+	for entry in party:
+		var b := _add_bar(party_row, String(entry.display_name))
+		entry["hp_bar"] = b[0]
+		entry["hp_label"] = b[1]
+		entry["barrier_bar"] = b[2]
+
+	var enemy_row := HBoxContainer.new()
+	enemy_row.add_theme_constant_override("separation", 24)
+	col.add_child(enemy_row)
+	for entry in enemies:
+		var b := _add_bar(enemy_row, String(entry.display_name))
+		entry["hp_bar"] = b[0]
+		entry["hp_label"] = b[1]
+		entry["barrier_bar"] = b[2]
 
 	log_label = Label.new()
-	log_label.custom_minimum_size = Vector2(0, 40)
+	log_label.custom_minimum_size = Vector2(0, 36)
 	col.add_child(log_label)
 
 	main_menu = HBoxContainer.new()
@@ -190,15 +302,14 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("separation", 12)
 	move_menu.visible = false
 	col.add_child(move_menu)
-	for i in range(MOVES.size()):
-		var mv: Dictionary = MOVES[i]
-		var b := _menu_button(String(mv.name), String(mv.hint))
-		b.pressed.connect(_on_move.bind(i))
-		move_menu.add_child(b)
-		move_buttons.append(b)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
+
+	target_menu = HBoxContainer.new()
+	target_menu.add_theme_constant_override("separation", 12)
+	target_menu.visible = false
+	col.add_child(target_menu)
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -207,6 +318,122 @@ func _menu_button(title: String, hint: String) -> Button:
 	b.text = title if hint == "" else "%s\n%s" % [title, hint]
 	b.custom_minimum_size = Vector2(150, 46)
 	return b
+
+# X-glyph panel (what to press) beside a track (when to press it), laid out
+# by an HBoxContainer so "button then gauge" is just child order, not a
+# hand-picked offset. Centered on screen, hidden until a QTE actually
+# starts - see _quick_time_event().
+func _build_quick_time_ui() -> void:
+	qte_root = HBoxContainer.new()
+	qte_root.set_anchors_preset(Control.PRESET_CENTER)
+	qte_root.add_theme_constant_override("separation", 14)
+	qte_root.visible = false
+	add_child(qte_root)
+
+	var button_panel := Panel.new()
+	button_panel.custom_minimum_size = Vector2(34, 34)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.85, 0.75, 0.2)
+	style.set_corner_radius_all(17)
+	button_panel.add_theme_stylebox_override("panel", style)
+	qte_root.add_child(button_panel)
+
+	var glyph := Label.new()
+	glyph.text = "X"
+	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	glyph.add_theme_font_size_override("font_size", 18)
+	glyph.add_theme_color_override("font_color", Color(0.12, 0.09, 0.02))
+	button_panel.add_child(glyph)
+
+	qte_track = Control.new()
+	qte_track.custom_minimum_size = Vector2(QTE_TRACK_WIDTH, QTE_TRACK_HEIGHT)
+	qte_root.add_child(qte_track)
+
+	var track_bg := ColorRect.new()
+	track_bg.color = Color(0.15, 0.18, 0.2)
+	track_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	qte_track.add_child(track_bg)
+
+	# Position/size get set fresh every _quick_time_event() call (the zone
+	# moves and resizes per attack) - these are just placeholders until then.
+	qte_zone = ColorRect.new()
+	qte_zone.color = Color(0.85, 0.2, 0.2)
+	qte_zone.size = Vector2(24, QTE_TRACK_HEIGHT)
+	qte_track.add_child(qte_zone)
+
+	qte_indicator = ColorRect.new()
+	qte_indicator.color = Color(0.95, 0.95, 0.9)
+	qte_indicator.size = Vector2(3, QTE_TRACK_HEIGHT)
+	qte_track.add_child(qte_indicator)
+
+# Races a keypress against the sweep reaching the end of the track - both
+# sides now read the same pixel-space state the player can actually see
+# (qte_zone's/qte_indicator's own position/size), nothing measured in
+# seconds. _unhandled_input() is the keypress side (checks where the
+# indicator visually is against the zone rect the instant X is pressed);
+# tw.finished (below) is the timeout side, for a press that never came at
+# all. The while loop just waits for whichever one flips _qte_active off,
+# once per frame via `await get_tree().process_frame`.
+func _quick_time_event() -> bool:
+	var duration := 1.6
+	var zone_width_frac := randf_range(0.18, 0.32)
+	# Margin on both ends so the zone never touches the very start (an
+	# instant, no-real-choice press) or the very end (indistinguishable
+	# from a timeout) of the sweep.
+	var zone_start_frac := randf_range(0.15, 1.0 - zone_width_frac - 0.15)
+
+	qte_zone.position.x = zone_start_frac * QTE_TRACK_WIDTH
+	qte_zone.size.x = zone_width_frac * QTE_TRACK_WIDTH
+	qte_indicator.position.x = 0.0
+
+	qte_root.visible = true
+	_qte_active = true
+	_qte_success = false
+
+	var tw := create_tween()
+	tw.tween_property(qte_indicator, "position:x", QTE_TRACK_WIDTH - qte_indicator.size.x, duration)
+	tw.finished.connect(_on_qte_timeout)
+
+	while _qte_active:
+		await get_tree().process_frame
+
+	if tw.finished.is_connected(_on_qte_timeout):
+		tw.finished.disconnect(_on_qte_timeout)
+	tw.kill()
+	qte_root.visible = false
+	return _qte_success
+
+# tw.finished only ever means "the sweep reached the end with nobody
+# pressing anything" - a press that resolves the QTE early kills the tween
+# (see _quick_time_event()'s loop exit) via kill(), which does not emit
+# finished, so there's no risk of this overwriting an already-decided
+# result. The `if _qte_active` guard is still here defensively, same
+# spirit as _unhandled_input()'s own guard below.
+func _on_qte_timeout() -> void:
+	if _qte_active:
+		_qte_success = false
+		_qte_active = false
+
+# Only ever looked at while _qte_active is true (see _quick_time_event()) -
+# a stray X press between fights, or one arriving the same frame the sweep
+# already timed out, does nothing. The hit check compares the indicator's
+# actual current position (wherever the tween has it as of the last
+# processed frame - Godot handles input before advancing tweens within a
+# frame, so this is accurate to well under a frame's worth of time, far
+# tighter than human reaction time) against the zone ColorRect's own
+# position/size - the same rect drawn on screen, not a parallel copy of it.
+func _unhandled_input(event: InputEvent) -> void:
+	if not _qte_active:
+		return
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_X:
+		var indicator_center: float = qte_indicator.position.x + qte_indicator.size.x * 0.5
+		var zone_left: float = qte_zone.position.x
+		var zone_right: float = qte_zone.position.x + qte_zone.size.x
+		_qte_success = indicator_center >= zone_left and indicator_center <= zone_right
+		_qte_active = false
+
 
 func _add_bar(parent: Control, label_text: String) -> Array:
 	var wrap := VBoxContainer.new()
@@ -223,7 +450,7 @@ func _add_bar(parent: Control, label_text: String) -> Array:
 	wrap.add_child(bar_row)
 
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(200, 20)
+	bar.custom_minimum_size = Vector2(160, 18)
 	bar.show_percentage = false
 	var hp_fill := StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.78, 0.15, 0.15)
@@ -234,7 +461,7 @@ func _add_bar(parent: Control, label_text: String) -> Array:
 	# modulate - modulate would also tint the empty track, not only the
 	# part that reads as "this much barrier is left."
 	var barrier_bar := ProgressBar.new()
-	barrier_bar.custom_minimum_size = Vector2(48, 20)
+	barrier_bar.custom_minimum_size = Vector2(40, 18)
 	barrier_bar.show_percentage = false
 	var barrier_fill := StyleBoxFlat.new()
 	barrier_fill.bg_color = Color(0.62, 0.64, 0.68)
@@ -245,19 +472,26 @@ func _add_bar(parent: Control, label_text: String) -> Array:
 	wrap.add_child(hp_label)
 	return [bar, hp_label, barrier_bar]
 
-func _refresh_hp() -> void:
-	player_bar.max_value = player_stats.hp_max
-	player_bar.value = player_stats.hp
-	player_hp_label.text = "%d / %d   Lv %d" % [player_stats.hp, player_stats.hp_max, player_stats.level]
-	_refresh_barrier_bar(player_barrier_bar, player_stats)
+func _refresh_all_bars() -> void:
+	for e in party:
+		_refresh_bar(e)
+	for e in enemies:
+		_refresh_bar(e)
 
-	enemy_bar.max_value = enemy_stats.hp_max
-	enemy_bar.value = enemy_stats.hp
-	enemy_hp_label.text = "%d / %d" % [enemy_stats.hp, enemy_stats.hp_max]
-	_refresh_barrier_bar(enemy_barrier_bar, enemy_stats)
+func _refresh_bar(entry: Dictionary) -> void:
+	if not entry.has("hp_bar"):
+		return
+	var s := entry.stats as CombatantStats
+	(entry.hp_bar as ProgressBar).max_value = s.hp_max
+	(entry.hp_bar as ProgressBar).value = s.hp
+	var txt := "%d / %d" % [s.hp, s.hp_max]
+	if String(entry.kind) == "party":
+		txt += "   Lv %d" % s.level
+	(entry.hp_label as Label).text = txt
+	_refresh_barrier_bar(entry.barrier_bar, s)
 
-# Hidden entirely for a combatant with no barrier at all (the grunt, right
-# now) rather than showing a permanently-empty gray sliver next to their HP.
+# Hidden entirely for a combatant with no barrier at all, rather than
+# showing a permanently-empty gray sliver next to their HP.
 func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
 	bar.visible = stats.barrier_max > 0
 	if not bar.visible:
@@ -268,44 +502,248 @@ func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
 func _log(text: String) -> void:
 	log_label.text = text
 
+func _living(list: Array) -> Array:
+	return list.filter(func(e: Dictionary) -> bool: return (e.stats as CombatantStats).hp > 0)
+
+# One sort, shared by the initial build and every later re-sort - highest
+# agility first. GDScript's sort_custom isn't guaranteed stable, so ties
+# can shuffle relative to each other; nothing here depends on tie order
+# staying fixed.
+func _by_agility(a: Dictionary, b: Dictionary) -> bool:
+	return (a.stats as CombatantStats).agility > (b.stats as CombatantStats).agility
+
+# Called whenever the queue empties (a full round has acted) - gathers
+# every still-living combatant fresh and sorts by their CURRENT agility,
+# so any debuff/buff applied last round is already reflected in this
+# round's order without any special-casing.
+func _rebuild_queue() -> void:
+	_queue = _living(party) + _living(enemies)
+	_queue.sort_custom(_by_agility)
+	_refresh_queue_row()
+
+# Called the instant a landed move changes someone's agility mid-round -
+# only reorders _queue itself, which by construction only ever holds
+# combatants still waiting to act (whoever already acted this round was
+# already popped off), so this can never let someone go twice.
+func _resort_pending() -> void:
+	_queue.sort_custom(_by_agility)
+	_refresh_queue_row()
+
+func _refresh_queue_row() -> void:
+	for c in queue_row.get_children():
+		c.queue_free()
+	var header := Label.new()
+	header.text = "Turn Order"
+	header.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
+	header.add_theme_font_size_override("font_size", 13)
+	queue_row.add_child(header)
+	for i in range(_queue.size()):
+		queue_row.add_child(_build_queue_chip(_queue[i], i))
+
+# A shrinking, fading run of cards instead of a flat list of names - the
+# next-to-act entry (index 0) is the full-size, full-opacity, bright-bordered
+# "spotlight" card; everyone behind it gets a little smaller and dimmer per
+# step back, so the row reads as "how soon," not just "who," at a glance -
+# the same visual language a Final Fantasy-style ATB rail uses, just laid
+# out horizontally here instead of a vertical strip. Party cards and enemy
+# cards get their own color family so the row also reads "whose side" on
+# sight, matching the blue-ish O2 bar / red-ish HP bar split already used
+# elsewhere in this HUD.
+func _build_queue_chip(entry: Dictionary, index: int) -> Control:
+	var is_enemy := String(entry.kind) == "enemy"
+	var base_color := Color(0.5, 0.18, 0.2) if is_enemy else Color(0.2, 0.4, 0.56)
+	var glow_color := Color(0.85, 0.3, 0.3) if is_enemy else Color(0.4, 0.85, 0.95)
+
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = base_color
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 8.0
+	style.content_margin_right = 8.0
+	style.content_margin_top = 3.0
+	style.content_margin_bottom = 3.0
+	if index == 0:
+		style.set_border_width_all(2)
+		style.border_color = glow_color
+	panel.add_theme_stylebox_override("panel", style)
+
+	var label := Label.new()
+	label.text = String(entry.display_name)
+	label.add_theme_font_size_override("font_size", 15 if index == 0 else 12)
+	label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0) if index == 0 else Color(0.8, 0.82, 0.85))
+	panel.add_child(label)
+
+	# Falls off toward the back of the line, clamped so nothing several
+	# turns out goes fully invisible - still legible, just visibly "later."
+	panel.modulate.a = maxf(0.4, 1.0 - float(index) * 0.22)
+	return panel
+
+# The dispatcher between rounds/turns: checks for a battle-ending wipe on
+# either side first (before whoever's "next in line" on a side that no
+# longer exists gets a phantom turn), rebuilds the queue if the round just
+# ended, then hands off to the enemy-AI path or the player-menu path
+# depending on who's up.
+func _advance_turn() -> void:
+	if _living(enemies).is_empty():
+		_win()
+		return
+	if _living(party).is_empty():
+		_lose()
+		return
+	if _queue.is_empty():
+		_rebuild_queue()
+	_acting = _queue.pop_front()
+	_refresh_queue_row()
+	if (_acting.stats as CombatantStats).hp <= 0:
+		_advance_turn()   # downed since the queue was built - skip them
+		return
+	if String(_acting.kind) == "enemy":
+		_do_enemy_turn(_acting)
+	else:
+		_start_party_turn(_acting)
+
+func _start_party_turn(actor: Dictionary) -> void:
+	_busy = false
+	move_menu.visible = false
+	target_menu.visible = false
+	main_menu.visible = true
+	_log("%s's turn." % String(actor.display_name))
+	_set_all_buttons(true)
+
+# Base MOVES plus whatever this specific party member currently has
+# equipped, translated from spell data into the same move shape battle
+# resolution already expects - see SpellTree.find_def()'s header comment
+# on why spell defs double as move defs directly.
+func _moves_for(entry: Dictionary) -> Array:
+	var out: Array = MOVES.duplicate()
+	for spell_id in entry.get("equipped_spells", []):
+		var def: Dictionary = SpellTree.find_def(String(entry.model_name), spell_id)
+		if def.is_empty():
+			continue
+		out.append({
+			"name": String(def.get("display", spell_id)),
+			"power": int(def.get("power", 0)),
+			"acc_mod": int(def.get("acc_mod", 0)),
+			"effect": String(def.get("effect", "")),
+			"debuff": String(def.get("debuff", "")),
+			"amount": int(def.get("amount", 0)),
+			"hint": String(def.get("hint", "")),
+			"text": String(def.get("text", "You cast %s" % String(def.get("display", spell_id)))),
+			"oxygen_cost": float(def.get("oxygen_cost", 0.0)),
+		})
+	return out
+
 func _show_moves() -> void:
 	if _busy:
 		return
 	main_menu.visible = false
+	_populate_move_menu(_acting)
 	move_menu.visible = true
+
+func _populate_move_menu(actor: Dictionary) -> void:
+	for b in move_buttons:
+		(b as Button).queue_free()
+	move_buttons.clear()
+	var available: float = (actor.stats as CombatantStats).oxygen
+	for mv in _moves_for(actor):
+		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
+		var hint: String = String(mv.hint)
+		if ox_cost > 0.0:
+			hint = "%s - %d O2" % [hint, int(ox_cost)]
+		var b := _menu_button(String(mv.name), hint)
+		b.disabled = available < ox_cost
+		b.pressed.connect(_on_move_chosen.bind(mv))
+		move_menu.add_child(b)
+		move_buttons.append(b)
+	# Keep Back last - it's a persistent child of move_menu, not rebuilt
+	# here, so re-adding fresh move buttons pushes it out of place unless
+	# it's explicitly moved back to the end each time.
+	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
 
 func _show_main() -> void:
 	if _busy:
 		return
 	move_menu.visible = false
+	target_menu.visible = false
 	main_menu.visible = true
 
-# One damage roll, used identically for the player's moves and the grunt's
-# counter - stats (not separate formulas per side) are what make the two
-# feel different.
+# Barrier moves target the caster and always succeed - no target picker,
+# straight to resolution. Everything else targets an enemy: skip the
+# picker entirely when there's only one left standing (no real choice to
+# make), otherwise show one button per living enemy.
+func _on_move_chosen(mv: Dictionary) -> void:
+	if _busy:
+		return
+	if (_acting.stats as CombatantStats).oxygen < float(mv.get("oxygen_cost", 0.0)):
+		return
+	move_menu.visible = false
+	if String(mv.get("effect", "")) == "barrier":
+		_resolve_party_move(mv, _acting)
+		return
+	var living_enemies := _living(enemies)
+	if living_enemies.size() <= 1:
+		_resolve_party_move(mv, living_enemies[0] if not living_enemies.is_empty() else {})
+		return
+	_pending_move = mv
+	_populate_target_menu(living_enemies)
+	target_menu.visible = true
+
+func _populate_target_menu(targets: Array) -> void:
+	for b in target_buttons:
+		(b as Button).queue_free()
+	target_buttons.clear()
+	for t in targets:
+		var s := t.stats as CombatantStats
+		var b := _menu_button(String(t.display_name), "%d / %d HP" % [s.hp, s.hp_max])
+		b.pressed.connect(_on_target_chosen.bind(t))
+		target_menu.add_child(b)
+		target_buttons.append(b)
+
+func _on_target_chosen(target: Dictionary) -> void:
+	target_menu.visible = false
+	_resolve_party_move(_pending_move, target)
+
+# One damage/effect roll, used identically for the player's moves and the
+# grunt's counter - stats (not separate formulas per side) are what make
+# the two feel different.
 #
 # Resolution order:
-#  1. Dodge. defender.dodge is a flat chance to avoid the hit completely,
-#     no matter how hard it would have landed. attacker.accuracy cancels
-#     that chance point-for-point (never past zero) rather than adding a
-#     bonus of its own - it only ever makes a dodgy target easier to hit.
-#  2. Power + attack, with variance and crit.
-#  3. Defense subtracts flat from that raw amount - unlike a percentage
-#     mitigation, this can floor a hit at 0: a well-armoured target can
-#     shrug a weak attack off entirely, not just take less from it.
+#  1. Hit/miss is a flat comparison, not a roll: attacker.accuracy plus
+#     this move's own acc_mod against defender.evasion. Strictly greater
+#     wins; a tie misses. No RNG here at all.
+#  2. Power + strength, with damage variance (this is the only randomness
+#     left in the whole resolve - whether you hit is deterministic, how
+#     hard is not).
+#  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
 #  4. Barrier - a temporary shield that eats damage before HP does. Doesn't
-#     refill on its own (see CombatantStats.fill()/gain_xp()), so once
-#     it's spent it stays spent until the next level-up.
+#     refill on its own (see CombatantStats.fill()/gain_xp() and, now,
+#     _apply_barrier() below), so once it's spent it stays spent until the
+#     next level-up or barrier spell.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
-	var effective_dodge: float = maxf(0.0, defender.dodge - attacker.accuracy)
-	var hit_chance: float = clampf(float(move.acc) - effective_dodge, 0.05, 0.95)
-	if randf() > hit_chance:
-		return {"hit": false, "crit": false, "damage": 0, "absorbed": 0}
+	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
+	if effective_accuracy <= defender.evasion:
+		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false}
 
-	var crit: bool = randf() <= 0.05 + float(attacker.luck) * 0.01
+	var debuff: String = String(move.get("debuff", ""))
+	if debuff != "":
+		return _apply_debuff(defender, debuff, int(move.get("amount", 0)))
+
 	var variance: float = randf_range(0.85, 1.15)
-	var raw: float = (float(move.power) + float(attacker.attack)) * variance * (1.5 if crit else 1.0)
+	var raw: float = (float(move.power) + float(attacker.strength)) * variance
 	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+
+	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
+	# triggers a QTE - a player's own attacks never set quick_time_bool, so
+	# this is a no-op for anything the player swings themselves. A
+	# successful dodge zeroes incoming outright rather than just skipping
+	# barrier absorption below - the reward for timing it right is not
+	# needing the barrier to save you at all, not just saving the barrier
+	# for later.
+	var player_dodge := false
+	if bool(move.get("quick_time_bool", false)):
+		player_dodge = await _quick_time_event()
+		if player_dodge:
+			incoming = 0
 
 	var absorbed: int = 0
 	if defender.barrier > 0 and incoming > 0:
@@ -314,89 +752,171 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	var to_hp: int = incoming - absorbed
 	defender.hp = maxi(0, defender.hp - to_hp)
 
-	return {"hit": true, "crit": crit, "damage": to_hp, "absorbed": absorbed}
+	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": player_dodge}
 
-func _do_player_attack(move: Dictionary) -> void:
-	var r: Dictionary = _resolve_attack(player_stats, enemy_stats, move)
-	_refresh_hp()
+# Dispatches on the move's "effect" key before falling through to the
+# normal attack/debuff resolution above - the one new branch is "barrier"
+# (defense-branch spells, see spell_tree.gd), which targets the caster
+# instead of the defender and always succeeds, no accuracy check at all:
+# raising your own shield isn't something the target could "evade."
+func _resolve_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
+	if String(move.get("effect", "")) == "barrier":
+		return _apply_barrier(attacker, int(move.get("amount", 0)))
+	return await _resolve_attack(attacker, defender, move)
+
+func _apply_barrier(caster: CombatantStats, amount: int) -> Dictionary:
+	var before := caster.barrier
+	caster.barrier = mini(caster.barrier_max, caster.barrier + amount)
+	var changed := caster.barrier - before
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "barrier", "changed": changed}
+
+# Directly mutates the target's CombatantStats. Safe for enemies (rebuilt
+# fresh every battle, so nothing to reset after); safe for party members
+# too, since CombatantStats.fill() on the next level-up resets everything
+# a debuff could have touched, and nothing persists a mid-battle debuff
+# past the fight ending. Floored so repeated use has a hard ceiling:
+# defense/accuracy can't go below 0, agility can't go below 1 (0 agility
+# would make "who goes first" meaningless rather than just "always last").
+# `changed` is how much actually moved - 0 once a stat's already at its
+# floor, so the log can say so instead of claiming points came off a stat
+# that had none left to lose.
+func _apply_debuff(defender: CombatantStats, debuff: String, amount: int) -> Dictionary:
+	var changed := 0
+	match debuff:
+		"defense":
+			var before := defender.defense
+			defender.defense = maxi(0, defender.defense - amount)
+			changed = before - defender.defense
+		"agility":
+			var before := defender.agility
+			defender.agility = maxi(1, defender.agility - amount)
+			changed = before - defender.agility
+		"accuracy":
+			var before := defender.accuracy
+			defender.accuracy = maxi(0, defender.accuracy - amount)
+			changed = before - defender.accuracy
+		"strength":
+			var before := defender.strength
+			defender.strength = maxi(0, defender.strength - amount)
+			changed = before - defender.strength
+		"evasion":
+			var before := defender.evasion
+			defender.evasion = maxi(0, defender.evasion - amount)
+			changed = before - defender.evasion
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": debuff, "changed": changed}
+
+func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r: Dictionary) -> void:
+	var text: String = String(mv.get("text", "You use %s" % String(mv.name)))
 	if not r.hit:
-		_log("%s - it dodges!" % String(move.text))
-	elif int(r.damage) == 0 and int(r.absorbed) > 0:
-		_log("%s - its barrier soaks the hit completely!" % String(move.text))
+		_log("%s - %s evades!" % [text, String(target.display_name)])
+		return
+	if String(r.debuff) == "barrier":
+		if int(r.changed) > 0:
+			_log("%s - %s's barrier rises by %d." % [text, String(actor.display_name), int(r.changed)])
+		else:
+			_log("%s - %s's barrier is already full." % [text, String(actor.display_name)])
+		return
+	if String(r.debuff) != "":
+		if int(r.changed) > 0:
+			_log("%s on %s by %d." % [text, String(target.display_name), int(r.changed)])
+		else:
+			_log("%s - %s has nothing left to lose there." % [text, String(target.display_name)])
+		return
+	if int(r.damage) == 0 and int(r.absorbed) > 0:
+		_log("%s - %s's barrier soaks it completely!" % [text, String(target.display_name)])
 	elif int(r.absorbed) > 0:
-		_log("%s for %d (%d soaked by its barrier)." % [String(move.text), int(r.damage), int(r.absorbed)])
-	elif r.crit:
-		_log("%s for %d. Critical hit!" % [String(move.text), int(r.damage)])
+		_log("%s for %d (%d soaked by barrier)." % [text, int(r.damage), int(r.absorbed)])
 	else:
-		_log("%s for %d." % [String(move.text), int(r.damage)])
-	if r.hit:
-		enemy_actor.play("walk")
-	await get_tree().create_timer(0.8).timeout
-	enemy_actor.play("idle")
+		_log("%s for %d." % [text, int(r.damage)])
 
-func _do_enemy_attack(verb: String) -> void:
-	var r: Dictionary = _resolve_attack(enemy_stats, player_stats, ENEMY_MOVE)
-	_refresh_hp()
-	if not r.hit:
-		_log("The grunt lunges, but you dodge clear.")
-	elif int(r.damage) == 0 and int(r.absorbed) > 0:
-		_log("%s - your barrier soaks the hit completely!" % verb)
-	elif int(r.absorbed) > 0:
-		_log("%s for %d (%d soaked by your barrier)." % [verb, int(r.damage), int(r.absorbed)])
-	elif r.crit:
-		_log("%s for %d! A solid hit." % [verb, int(r.damage)])
-	else:
-		_log("%s for %d." % [verb, int(r.damage)])
-	await get_tree().create_timer(0.9).timeout
-
-func _on_move(i: int) -> void:
-	if _busy:
+func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
+	if target.is_empty():
+		_advance_turn()
 		return
 	_busy = true
-	_set_buttons(false)
+	_set_all_buttons(false)
+
+	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
+	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
+	if r.hit and String(r.debuff) == "agility":
+		_resort_pending()
+	_refresh_bar(target)
+	_refresh_bar(_acting)
+	_log_player_result(_acting, target, mv, r)
+
+	# A killing blow gets the fade instead of the usual walk/idle reaction -
+	# a dying grunt shouldn't play a normal hit-react animation, the fade
+	# itself is the reaction. play_death_fade() frees the actor once it
+	# finishes (goblin.gd), so nothing after this point may safely touch it
+	# again - is_instance_valid() below is what keeps the idle call honest
+	# about that instead of assuming 0.8s and 0.9s never overlap.
+	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
+	if target_died and target.has("actor") and target.actor is Goblin:
+		(target.actor as Goblin).play_death_fade()
+	elif r.hit and String(r.debuff) == "" and target.has("actor") and target.actor is Goblin:
+		(target.actor as Goblin).play("walk")
+	await get_tree().create_timer(0.8).timeout
+	if not target_died and target.has("actor") and is_instance_valid(target.actor) and target.actor is Goblin:
+		(target.actor as Goblin).play("idle")
+	_advance_turn()
+
+func _do_enemy_turn(actor: Dictionary) -> void:
+	_set_all_buttons(false)
+	main_menu.visible = false
 	move_menu.visible = false
+	target_menu.visible = false
 
-	var p_move: Dictionary = MOVES[i]
-	var player_first: bool
-	if player_stats.speed == enemy_stats.speed:
-		player_first = randf() < 0.5
+	var alive_party := _living(party)
+	if alive_party.is_empty():
+		_advance_turn()
+		return
+	var target: Dictionary = alive_party[randi_range(0, alive_party.size() - 1)]
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_MOVE)
+	_refresh_bar(target)
+	var verb := "%s claws at %s" % [String(actor.display_name), String(target.display_name)]
+	if bool(r.get("dodged", false)):
+		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
+	elif not r.hit:
+		_log("%s, but %s evades!" % [verb, String(target.display_name)])
+	elif int(r.damage) == 0 and int(r.absorbed) > 0:
+		_log("%s - barrier soaks it completely!" % verb)
+	elif int(r.absorbed) > 0:
+		_log("%s for %d (%d soaked by barrier)." % [verb, int(r.damage), int(r.absorbed)])
 	else:
-		player_first = player_stats.speed > enemy_stats.speed
-
-	if player_first:
-		await _do_player_attack(p_move)
-		if enemy_stats.hp <= 0:
-			await _win()
-			return
-		await _do_enemy_attack("The grunt claws back")
-		if player_stats.hp <= 0:
-			await _lose()
-			return
-	else:
-		await _do_enemy_attack("The grunt is faster - it claws first")
-		if player_stats.hp <= 0:
-			await _lose()
-			return
-		await _do_player_attack(p_move)
-		if enemy_stats.hp <= 0:
-			await _win()
-			return
-
-	main_menu.visible = true
-	_busy = false
-	_set_buttons(true)
+		_log("%s for %d." % [verb, int(r.damage)])
+	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
+		(target.actor as Diver).play_death_fade()
+	await get_tree().create_timer(0.9).timeout
+	_advance_turn()
 
 func _win() -> void:
-	_log("The grunt backs off, beaten.")
+	_set_all_buttons(false)
+	main_menu.visible = false
+	move_menu.visible = false
+	target_menu.visible = false
+	_log("The enemies back off, beaten.")
 	await get_tree().create_timer(0.9).timeout
-	var levels: Array = player_stats.gain_xp(enemy_actor.xp_reward)
-	for lv in levels:
-		_log("%s reached level %d!" % [diver_model_name, int(lv)])
-		await get_tree().create_timer(1.0).timeout
+	var total_xp := 0
+	for e in enemies:
+		if e.has("actor") and e.actor is Goblin:
+			total_xp += int((e.actor as Goblin).xp_reward)
+	# Every party member gets the full amount, not a split share - there's
+	# no shared party XP pool concept in this game, and splitting it would
+	# just make leveling slower for the same fights without adding a
+	# meaningful choice anywhere.
+	for entry in party:
+		var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
+		for lv in levels:
+			_log("%s reached level %d!" % [String(entry.display_name), int(lv)])
+			await get_tree().create_timer(0.8).timeout
 	finished.emit("won")
 
 func _lose() -> void:
-	_log("You're battered and pull back.")
+	_set_all_buttons(false)
+	main_menu.visible = false
+	move_menu.visible = false
+	target_menu.visible = false
+	_log("The party is battered and pulls back.")
 	await get_tree().create_timer(0.9).timeout
 	finished.emit("lost")
 
@@ -404,27 +924,40 @@ func _on_run() -> void:
 	if _busy:
 		return
 	_busy = true
-	_set_buttons(false)
+	_set_all_buttons(false)
+	main_menu.visible = false
 
 	if randf() <= RUN_CHANCE:
-		_log("You break off and swim for it.")
+		_log("The party breaks off and swims for it.")
 		await get_tree().create_timer(0.7).timeout
 		finished.emit("fled")
 		return
 
-	_log("Can't get clear - the grunt cuts you off!")
+	var living_enemies := _living(enemies)
+	var blocker := String(living_enemies[0].display_name) if not living_enemies.is_empty() else "something"
+	_log("Can't get clear - %s cuts you off!" % blocker)
 	await get_tree().create_timer(0.8).timeout
-	await _do_enemy_attack("It claws you as you struggle free")
-	if player_stats.hp <= 0:
-		await _lose()
-		return
+	if not living_enemies.is_empty():
+		var attacker: Dictionary = living_enemies[randi_range(0, living_enemies.size() - 1)]
+		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, ENEMY_MOVE)
+		_refresh_bar(_acting)
+		if bool(r.get("dodged", false)):
+			_log("%s lunges - you time it perfectly and dodge clear!" % String(attacker.display_name))
+		elif not r.hit:
+			_log("%s lunges, but you evade clear." % String(attacker.display_name))
+		elif int(r.damage) == 0 and int(r.absorbed) > 0:
+			_log("%s - your barrier soaks it completely!" % String(attacker.display_name))
+		else:
+			_log("%s claws you for %d as you struggle free." % [String(attacker.display_name), int(r.damage)])
+		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
+			(_acting.actor as Diver).play_death_fade()
+	_advance_turn()
 
-	_busy = false
-	_set_buttons(true)
-
-func _set_buttons(enabled: bool) -> void:
+func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled
 	run_btn.disabled = not enabled
 	back_btn.disabled = not enabled
 	for b in move_buttons:
+		(b as Button).disabled = not enabled
+	for b in target_buttons:
 		(b as Button).disabled = not enabled

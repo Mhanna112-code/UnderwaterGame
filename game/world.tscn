@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://dl4vtc2jnc8wy"]
+[gd_scene load_steps=3 format=3 uid="uid://dl4vtc2jnc8wy"]
 
 [ext_resource type="Script" uid="uid://dt04xq272rf1m" path="res://game/world.gd" id="1"]
 
@@ -12,32 +12,32 @@ fog_enabled = true
 fog_light_color = Color(0.05, 0.16, 0.2, 1)
 fog_density = 0.035
 
-[node name="World" type="Node3D" unique_id=1292465385]
+[node name="World" type="Node3D"]
 script = ExtResource("1")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1668861774]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Env")
 
-[node name="Sun" type="DirectionalLight3D" parent="." unique_id=372911246]
+[node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 20, 0)
 light_color = Color(0.72, 0.88, 1, 1)
 light_energy = 1.6
 
-[node name="Camera3D" type="Camera3D" parent="." unique_id=1955783107]
+[node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 7)
 fov = 65.0
 far = 200.0
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=2014027496]
+[node name="HUD" type="CanvasLayer" parent="."]
 
-[node name="Controls" type="Label" parent="HUD" unique_id=1034428963]
+[node name="Controls" type="Label" parent="HUD"]
 offset_left = 16.0
 offset_top = 12.0
 offset_right = 900.0
 offset_bottom = 70.0
 text = "loading"
 
-[node name="Distance" type="Label" parent="." unique_id=1009576715]
+[node name="Distance" type="Label" parent="."]
 unique_name_in_owner = true
 offset_right = 40.0
 offset_bottom = 23.0

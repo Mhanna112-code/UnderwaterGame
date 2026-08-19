@@ -1,5 +1,5 @@
-# Does instantiating a Battle (SubViewport stage, Diver + Goblin, UI) crash
-# on its own?
+# Does instantiating a Battle (SubViewport stage, party + N goblins, UI)
+# crash on its own?
 #
 # Usage: godot --headless --path . --script tools/test_battle.gd
 extends SceneTree
@@ -17,6 +17,10 @@ func _process(_dt: float) -> bool:
 	frames += 1
 	if frames < 5:
 		return false
-	print("BATTLE OK  player_hp=%d enemy_hp=%d" % [b.player_stats.hp, b.enemy_stats.hp])
+	var bt := b as Battle
+	print("BATTLE OK  party_hp=%s enemy_hp=%s" % [
+		str((bt.party[0].stats as CombatantStats).hp),
+		str(bt.enemies.map(func(e): return (e.stats as CombatantStats).hp)),
+	])
 	quit(0)
 	return true

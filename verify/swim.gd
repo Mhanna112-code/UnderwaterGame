@@ -32,14 +32,23 @@ func _process(_dt: float) -> bool:
 			world.scripted_rise = 1.0
 		return false
 
+	# Only the active diver is steered - the other two now hold position
+	# once you're not controlling them (world.gd stopped drifting them on
+	# purpose, so a diver parked on a gap-sequence lock plate stays put),
+	# so "did it move" only means something for whichever one is active.
 	for i in range(world.divers.size()):
 		var d: Diver = world.divers[i]
 		var moved: float = (d.global_position - (start[i] as Vector3)).length()
 		var who := String(d.model_name)
-		print("%-20s moved %5.2f m, now at %s, pitch %+.2f rad" % [
-			who, moved, _short(d.global_position), d.model.rotation.x])
-		if moved < 0.5:
-			findings.append("STILL: %s moved only %.2f m in ~2s of swimming" % [who, moved])
+		var is_active: bool = (i == world.active)
+		print("%-20s moved %5.2f m, now at %s, pitch %+.2f rad%s" % [
+			who, moved, _short(d.global_position), d.model.rotation.x,
+			"  (active)" if is_active else "  (should hold still)",
+		])
+		if is_active and moved < 0.5:
+			findings.append("STILL: %s (active) moved only %.2f m in ~2s of swimming" % [who, moved])
+		elif not is_active and moved > 0.1:
+			findings.append("DRIFTED: %s moved %.2f m while not being steered" % [who, moved])
 		if d.global_position.y < -0.5:
 			findings.append("THROUGH THE FLOOR: %s is at y=%.2f" % [who, d.global_position.y])
 		if not is_finite(d.global_position.length()):
