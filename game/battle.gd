@@ -104,14 +104,40 @@ var _busy := false
 
 var log_label: Label
 var queue_row: HBoxContainer
-var main_menu: HBoxContainer
-var move_menu: HBoxContainer
-var target_menu: HBoxContainer
+# HFlowContainer, not HBoxContainer - main_menu only ever has 2 buttons so
+# it never mattered, but move_menu can hold up to 3 base moves + 4 equipped
+# spells + Back (8 buttons at 150px each, wider than the whole viewport at
+# 1280px) and target_menu can hold one button per living enemy/ally. A
+# plain HBoxContainer doesn't wrap - it would just run buttons off the
+# right edge instead of overflowing downward, the same "off-screen" bug
+# class as _bottom_panel not sizing to content (see _fit_panel_height()).
+var main_menu: HFlowContainer
+var move_menu: HFlowContainer
+var target_menu: HFlowContainer
 var attack_btn: Button
 var run_btn: Button
 var back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
+
+# The battle-stage SubViewport (see _build_stage()) - stored so
+# _turn_cursor can be built as a child of the same 3D world the party/enemy
+# actors live in, not the CanvasLayer's 2D UI tree.
+var _stage_vp: SubViewport
+
+# Same green downward cone world.gd's own active-diver cursor uses (see
+# World._active_cursor) - marks whichever DIVER's turn it currently is on
+# the battle stage itself, not just the queue row's "NOW" card. Only ever
+# shown during a party member's turn (_start_party_turn()); hidden the
+# instant it's an enemy's turn (_do_enemy_turn()) - there's no equivalent
+# "whose turn" marker needed over a grunt, the move log already says who's
+# attacking.
+var _turn_cursor: MeshInstance3D
+
+# Stored so _fit_panel_height() can resize it from anywhere menu visibility
+# changes (_show_moves(), _show_main(), _on_move_chosen(), etc.), not just
+# once at the end of _build_ui().
+var _bottom_panel: PanelContainer
 
 # The dodge prompt: an X-glyph panel to its left (what to press, static),
 # a track to its right (when to press it, the part that actually moves).
@@ -202,6 +228,7 @@ func _build_stage() -> void:
 	vp.size = Vector2i(960, 540)
 	vp.own_world_3d = true
 	container.add_child(vp)
+	_stage_vp = vp
 
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
@@ -240,6 +267,8 @@ func _build_stage() -> void:
 		vp.add_child(actor)
 		party[i]["actor"] = actor
 
+	_build_turn_cursor()
+
 	# Enemies: a random count, each with stats rolled close to the party's
 	# own current average (see _party_average_stats()/goblin.gd's
 	# make_stats()) rather than an independent level curve. The grunt's own
@@ -260,6 +289,28 @@ func _build_stage() -> void:
 			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
 			"actor": g,
 		})
+
+# Built once, hidden until the first party turn (_start_party_turn() shows
+# and positions it; _do_enemy_turn() hides it) - same downward-cone shape
+# and color as target_selector.gd's and world.gd's own cursors, added to
+# _stage_vp so it lives in the same 3D world as the actors it's marking,
+# not the CanvasLayer's UI tree.
+func _build_turn_cursor() -> void:
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 0.2
+	cone.height = 0.35
+	_turn_cursor = MeshInstance3D.new()
+	_turn_cursor.mesh = cone
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.albedo_color = Color(0.35, 0.95, 0.4)
+	mat.emission = Color(0.35, 0.95, 0.4)
+	_turn_cursor.material_override = mat
+	_turn_cursor.rotation_degrees.x = 180.0
+	_turn_cursor.visible = false
+	_stage_vp.add_child(_turn_cursor)
 
 # Averages every living party member's CombatantStats into one reference
 # point for Goblin.make_stats() to roll grunts against - a fresh Resource,
@@ -312,21 +363,16 @@ func _spread(i: int, n: int, step: float) -> float:
 	return (float(i) - float(n - 1) * 0.5) * step
 
 func _build_ui() -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	# Generous on purpose: a queue row, up to 3 party bars, up to 3 enemy
-	# bars, the log, and two menus need more than a guess's worth of room -
-	# PanelContainer won't clip or shrink its child to fit, so anything
-	# that doesn't fit just renders past the bottom instead of wrapping.
-	panel.offset_top = -300.0
-	add_child(panel)
+	_bottom_panel = PanelContainer.new()
+	_bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	add_child(_bottom_panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_right", 16)
 	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_bottom", 16)
-	panel.add_child(margin)
+	_bottom_panel.add_child(margin)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
@@ -358,8 +404,9 @@ func _build_ui() -> void:
 	log_label.custom_minimum_size = Vector2(0, 36)
 	col.add_child(log_label)
 
-	main_menu = HBoxContainer.new()
-	main_menu.add_theme_constant_override("separation", 12)
+	main_menu = HFlowContainer.new()
+	main_menu.add_theme_constant_override("h_separation", 12)
+	main_menu.add_theme_constant_override("v_separation", 8)
 	col.add_child(main_menu)
 	attack_btn = _menu_button("Attack", "Pick a move")
 	attack_btn.pressed.connect(_show_moves)
@@ -368,18 +415,39 @@ func _build_ui() -> void:
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
 
-	move_menu = HBoxContainer.new()
-	move_menu.add_theme_constant_override("separation", 12)
+	move_menu = HFlowContainer.new()
+	move_menu.add_theme_constant_override("h_separation", 12)
+	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
 
-	target_menu = HBoxContainer.new()
-	target_menu.add_theme_constant_override("separation", 12)
+	target_menu = HFlowContainer.new()
+	target_menu.add_theme_constant_override("h_separation", 12)
+	target_menu.add_theme_constant_override("v_separation", 8)
 	target_menu.visible = false
 	col.add_child(target_menu)
+
+	call_deferred("_fit_panel_height")
+
+# The bug this exists to fix: _bottom_panel used to have a single
+# hand-guessed fixed height (300px). Godot Containers skip invisible
+# children when computing minimum size, so the panel's actual required
+# height changes depending on which of main_menu/move_menu/target_menu is
+# currently showing (and, since those are HFlowContainers now, on how many
+# rows a big move list wraps to) - a fixed number was always going to be
+# wrong for some state eventually. Every call site uses
+# call_deferred("_fit_panel_height") rather than calling this directly -
+# get_combined_minimum_size() needs Godot's own container re-sort to have
+# already run for a just-changed visible/child set, and that re-sort is
+# queued for later in the frame rather than happening synchronously the
+# instant a property changes, so reading it immediately after flipping
+# .visible can still return the previous, stale size.
+func _fit_panel_height() -> void:
+	_bottom_panel.offset_bottom = 0.0
+	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -724,8 +792,20 @@ func _start_party_turn(actor: Dictionary) -> void:
 	move_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
+	call_deferred("_fit_panel_height")
+	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
+
+# Only ever called with a party entry (see _advance_turn()'s kind check) -
+# actor.actor is always the Diver battle-stage instance built in
+# _build_stage(), never a Goblin, so no type check needed before the cast.
+func _show_turn_cursor_on(actor: Dictionary) -> void:
+	if not actor.has("actor") or not is_instance_valid(actor.actor):
+		return
+	var d := actor.actor as Diver
+	_turn_cursor.visible = true
+	_turn_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.4)
 
 # This diver's own BASE_MOVES plus whatever they currently have equipped,
 # translated from spell data into the same move shape battle resolution
@@ -759,6 +839,7 @@ func _show_moves() -> void:
 	main_menu.visible = false
 	_populate_move_menu(_acting)
 	move_menu.visible = true
+	call_deferred("_fit_panel_height")
 
 func _populate_move_menu(actor: Dictionary) -> void:
 	for b in move_buttons:
@@ -786,6 +867,7 @@ func _show_main() -> void:
 	move_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
+	call_deferred("_fit_panel_height")
 
 # Barrier moves target the caster and always succeed - no target picker,
 # straight to resolution. Heal targets a living ally (a downed one has
@@ -817,6 +899,7 @@ func _on_move_chosen(mv: Dictionary) -> void:
 
 	if targets.is_empty():
 		move_menu.visible = true
+		call_deferred("_fit_panel_height")
 		return
 	if targets.size() <= 1:
 		_resolve_party_move(mv, targets[0])
@@ -824,6 +907,7 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	_pending_move = mv
 	_populate_target_menu(targets)
 	target_menu.visible = true
+	call_deferred("_fit_panel_height")
 
 func _populate_target_menu(targets: Array) -> void:
 	for b in target_buttons:
@@ -1053,6 +1137,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	main_menu.visible = false
 	move_menu.visible = false
 	target_menu.visible = false
+	_turn_cursor.visible = false
 
 	var alive_party := _living(party)
 	if alive_party.is_empty():
