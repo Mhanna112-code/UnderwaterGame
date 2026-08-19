@@ -71,6 +71,52 @@ var key_items: Array[String] = []
 # "" means an ordinary random encounter, nothing to hand out on a win.
 var _pending_reward_item := ""
 
+# One snapshot per diver, parallel to divers[] - position plus a full
+# CombatantStats copy (CombatantStats.copy_from()) plus known/equipped
+# spells and whether the ability's still locked. Captured on every real
+# save (_on_save_requested()) and once automatically at the very end of
+# _ready(), so there's always somewhere to restore to even before the
+# party's ever found a save point. Restored wholesale on a game over (see
+# _on_battle_finished()'s "lost" branch) - "start from your last save
+# point" without a real save-file format existing yet (save_point_menu.gd's
+# own header comment already flags that roadmap gap) - this is a
+# same-session checkpoint, not persistence across actually closing the game.
+var _checkpoint: Array = []
+
+func _capture_checkpoint() -> void:
+	_checkpoint.clear()
+	for d in divers:
+		var stats_copy := CombatantStats.new()
+		stats_copy.copy_from(d.stats)
+		_checkpoint.append({
+			"position": d.position,
+			"stats": stats_copy,
+			"known_spells": (d.known_spells as Array).duplicate(),
+			"equipped_spells": (d.equipped_spells as Array).duplicate(),
+			"ability_locked": d.ability_locked,
+		})
+
+# Bails out and does nothing rather than a half-restore if the checkpoint
+# doesn't actually match divers[] one-to-one - shouldn't happen (_ready()
+# always captures one before anything else can run), but a wrong-shaped
+# restore silently leaving some divers untouched would be a worse bug than
+# just not restoring at all.
+func _restore_checkpoint() -> void:
+	if _checkpoint.size() != divers.size():
+		return
+	for i in range(divers.size()):
+		var d: Diver = divers[i]
+		var snap: Dictionary = _checkpoint[i]
+		d.position = snap.position
+		d.stats.copy_from(snap.stats as CombatantStats)
+		d.known_spells.assign((snap.known_spells as Array).duplicate())
+		d.equipped_spells.assign((snap.equipped_spells as Array).duplicate())
+		d.ability_locked = bool(snap.ability_locked)
+	active = 0
+	_update_hud()
+	_update_hp_bar()
+	_update_oxygen_bar()
+
 # The gap sequence's three-plate finale (see _build_highway()). Populated
 # there, checked every physics frame in _check_gap_puzzle().
 var _lock_plates: Array = []
@@ -151,6 +197,11 @@ func _ready() -> void:
 		target_selector.register_character(d)
 	_carry_lantern()
 	_update_hud()
+	# An implicit checkpoint at the game's actual start - _restore_checkpoint()
+	# should always have somewhere to go on a game over, even for a party
+	# that's never once stood on a save point yet (see _capture_checkpoint()/
+	# _restore_checkpoint() below).
+	_capture_checkpoint()
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -640,9 +691,12 @@ func _diver_on_save_point(d: Diver) -> bool:
 #
 # Also the only way oxygen ever comes back now that there's no passive
 # regen - a save point is a real destination to swim for once you've spent
-# it down on abilities/sonar/spells, not just a spell-loadout menu.
+# it down on abilities/sonar/spells, not just a spell-loadout menu. And now
+# the checkpoint a game over rewinds the whole party back to - see
+# _capture_checkpoint().
 func _on_save_requested(d: Diver) -> void:
 	d.stats.oxygen = d.stats.oxygen_max
+	_capture_checkpoint()
 	_announce("Progress saved.")
 	save_point_menu.close()
 
@@ -944,6 +998,15 @@ func _on_battle_finished(result: String) -> void:
 				_announce("The grunt backs off into the dark.")
 		"fled":
 			_announce("You put some distance between you.")
+		"lost":
+			# All three divers down - Battle._lose() fires this the instant
+			# _living(party) is empty, same trigger this whole checkpoint
+			# system exists for. Snap the entire party back to whatever
+			# _capture_checkpoint() last recorded (a real save, or the
+			# implicit one from _ready() if they never found one) rather
+			# than leaving the world in a wiped, unplayable state.
+			_restore_checkpoint()
+			_announce("The party is overwhelmed... you wake back at your last save.")
 		_:
 			_announce("You regroup and catch your breath.")
 	_pending_reward_item = ""

@@ -8,7 +8,7 @@
 # {kind, stats, model_name, display_name, equipped_spells, actor, hp_bar,
 # hp_label, barrier_bar}. A Dictionary rather than a real class because
 # nothing here needs identity beyond "the fields", and it's the same
-# lightweight shape MOVES entries already use in this file.
+# lightweight shape BASE_MOVES entries already use in this file.
 #
 # Turn order is a live queue (`_queue`), not a fixed two-actor ping-pong:
 # every living combatant is sorted by current agility at the start of each
@@ -44,33 +44,56 @@ const DISPLAY_NAMES := {
 }
 
 # Attack is a category, not a single action: pressing it opens a move list
-# instead of swinging right away. These base moves are always available to
-# everyone, on top of whichever spells that specific party member has
-# equipped (see _moves_for()) - `power` feeds the damage half of
+# instead of swinging right away. These base moves are always available -
+# on top of whichever spells that specific party member has equipped (see
+# _moves_for()) - and now differ per diver instead of being one shared
+# list, so the base kit itself carries some identity too, not just the
+# spell tree layered on top of it. `power` feeds the damage half of
 # _resolve_attack() below; `acc_mod` is added to the attacker's accuracy
 # for that swing only, before it's compared to the defender's evasion.
 #
-# Weaken/Slow are the odd ones out: `power` is unused for them (see
-# _resolve_attack's effect branch) - a `debuff`/`amount` pair instead,
-# read by _apply_debuff(). They still have to clear the same
-# accuracy-vs-evasion check as a damaging move: a turn spent on one can
-# whiff outright, same as swinging and missing.
+# Prototype_1(1910) keeps Weaken/Slow as its base kit rather than damage
+# moves - its whole identity is debuff support (see spell_tree.gd's header
+# comment), so even the free moves everyone always has lean into that
+# instead of being generic damage like the other two divers get.
 #
-# Jab is the one basic attack with no `oxygen_cost` key at all - the free
-# fallback every diver can always throw out even at 0 oxygen, same role
+# Every diver's first move is its free basic attack - no `oxygen_cost` key
+# at all, the fallback that still works even at 0 oxygen, same role
 # Diver.gd's abilities and every equipped spell (see _moves_for()) can't
-# fill once the tank's empty. Everything else here costs oxygen same as a
-# spell would, on the same scale (_populate_move_menu() reads oxygen_cost
-# with a 0.0 default, so Jab simply never shows a cost or blocks on one).
-const MOVES := [
-	{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers its defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
-	{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers its agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
-	{"name": "Jab", "power": 4, "acc_mod": 5, "hint": "Always hits, light", "text": "You jab it"},
-	{"name": "Kick", "power": 7, "acc_mod": 1, "hint": "Balanced", "text": "You kick it", "oxygen_cost": 10.0},
-	{"name": "Haymaker", "power": 12, "acc_mod": -2, "hint": "Heavy, riskier", "text": "You wind up and swing", "oxygen_cost": 16.0},
-]
+# fill once the tank's empty. Everything else costs oxygen same as a spell
+# would (_populate_move_menu() reads oxygen_cost with a 0.0 default, so the
+# free move simply never shows a cost or blocks on one).
+const BASE_MOVES := {
+	"Staff_Diver": [
+		{"name": "Swift Jab", "power": 4, "acc_mod": 6, "hint": "Fast, reliable", "text": "You jab it in a burst of speed"},
+		{"name": "Riptide Kick", "power": 7, "acc_mod": 2, "hint": "Balanced", "text": "You kick it on a current", "oxygen_cost": 10.0},
+		{"name": "Crashing Wave", "power": 12, "acc_mod": -2, "hint": "Heavy, riskier", "text": "You crash into it like a wave", "oxygen_cost": 16.0},
+	],
+	"Prototype_1(1910)": [
+		{"name": "Precise Tap", "power": 3, "acc_mod": 9, "hint": "Nearly unmissable, light", "text": "You land a precise tap"},
+		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers its defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
+		{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers its agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
+	],
+	"Prototype_V(1922)": [
+		{"name": "Guard Bash", "power": 6, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
+		{"name": "Heavy Kick", "power": 10, "acc_mod": 0, "hint": "Balanced, heavier", "text": "You drive a heavy kick home", "oxygen_cost": 10.0},
+		{"name": "Crushing Haymaker", "power": 15, "acc_mod": -3, "hint": "Very heavy, slow", "text": "You wind up and crush it", "oxygen_cost": 16.0},
+	],
+}
 
 const ENEMY_MOVE := {"power": 5, "acc_mod": 1, "quick_time_bool": true}
+
+# A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
+# branch for how heavy_min/heavy_max actually turn into damage (a fraction
+# of the DEFENDER's max HP, not power/strength like ENEMY_MOVE). Lower
+# acc_mod than the normal swing - a hit this dangerous should be a little
+# more telegraphed/missable, not just as reliable as a Jab. Definitely
+# QTE-gated: this is exactly the swing the dodge system exists for.
+const ENEMY_HEAVY_MOVE := {
+	"power": 0, "acc_mod": -1, "quick_time_bool": true,
+	"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
+}
+const ENEMY_HEAVY_CHANCE := 0.25
 
 var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
 var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
@@ -144,6 +167,8 @@ func _default_player_stats() -> CombatantStats:
 	s.grow_strength = int(base.grow_strength)
 	s.grow_defense = int(base.grow_defense)
 	s.grow_agility = int(base.grow_agility)
+	s.grow_accuracy = int(base.get("grow_accuracy", 0))
+	s.grow_evasion = int(base.get("grow_evasion", 0))
 	s.fill()
 	return s
 
@@ -216,24 +241,70 @@ func _build_stage() -> void:
 		vp.add_child(actor)
 		party[i]["actor"] = actor
 
-	# Enemies: a random count, each with its own level-scaled + jittered
-	# stats - see goblin.gd's make_stats(). The grunt's own rest facing was
-	# never checked against the camera (no editor open to look): 180 is a
-	# guess. Flip to 0 here if it turns out to be facing away instead of
-	# into shot.
+	# Enemies: a random count, each with stats rolled close to the party's
+	# own current average (see _party_average_stats()/goblin.gd's
+	# make_stats()) rather than an independent level curve. The grunt's own
+	# rest facing was never checked against the camera (no editor open to
+	# look): 180 is a guess. Flip to 0 here if it turns out to be facing
+	# away instead of into shot.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
+	var ref_stats := _party_average_stats()
 	var count := randi_range(MIN_ENEMIES, MAX_ENEMIES)
 	for i in range(count):
 		var g := Goblin.new()
 		g.position = Vector3(_spread(i, count, 1.1) + 0.6, 0.0, -2.2)
 		g.rotation.y = PI
 		vp.add_child(g)
-		var st: CombatantStats = g.make_stats(lvl, STAT_JITTER)
+		var st: CombatantStats = g.make_stats(ref_stats, lvl, STAT_JITTER)
 		enemies.append({
 			"kind": "enemy", "stats": st,
 			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
 			"actor": g,
 		})
+
+# Averages every living party member's CombatantStats into one reference
+# point for Goblin.make_stats() to roll grunts against - a fresh Resource,
+# not a reference to any real diver's stats, so nothing here can ever leak
+# a mutation back onto a party member. Falls back to whichever party
+# entries exist at all if somehow nobody's currently alive (shouldn't
+# happen - world.gd never starts a battle with a wiped party - but
+# _living() returning empty shouldn't be able to divide by zero here).
+func _party_average_stats() -> CombatantStats:
+	var living := _living(party)
+	var pool: Array = living if not living.is_empty() else party
+	var avg := CombatantStats.new()
+	if pool.is_empty():
+		return avg
+	# Summed into plain ints first, not straight into avg's own fields -
+	# CombatantStats.new() starts with its own non-zero defaults (hp_max
+	# 20, strength 5, ...), so accumulating directly onto avg would be
+	# adding every party member's stat on top of those defaults instead of
+	# starting from zero.
+	var n := float(pool.size())
+	var sum_hp := 0
+	var sum_str := 0
+	var sum_def := 0
+	var sum_agi := 0
+	var sum_eva := 0
+	var sum_acc := 0
+	var sum_bar := 0
+	for entry in pool:
+		var s := entry.stats as CombatantStats
+		sum_hp += s.hp_max
+		sum_str += s.strength
+		sum_def += s.defense
+		sum_agi += s.agility
+		sum_eva += s.evasion
+		sum_acc += s.accuracy
+		sum_bar += s.barrier_max
+	avg.hp_max = int(round(float(sum_hp) / n))
+	avg.strength = int(round(float(sum_str) / n))
+	avg.defense = int(round(float(sum_def) / n))
+	avg.agility = int(round(float(sum_agi) / n))
+	avg.evasion = int(round(float(sum_eva) / n))
+	avg.accuracy = int(round(float(sum_acc) / n))
+	avg.barrier_max = int(round(float(sum_bar) / n))
+	return avg
 
 # Evenly spaces `n` actors around x=0, `step` apart - shared by the party
 # row and the enemy row so both scale the same way from 1 up to 3 without
@@ -610,12 +681,15 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
 
-# Base MOVES plus whatever this specific party member currently has
-# equipped, translated from spell data into the same move shape battle
-# resolution already expects - see SpellTree.find_def()'s header comment
-# on why spell defs double as move defs directly.
+# This diver's own BASE_MOVES plus whatever they currently have equipped,
+# translated from spell data into the same move shape battle resolution
+# already expects - see SpellTree.find_def()'s header comment on why spell
+# defs double as move defs directly. Falls back to Staff_Diver's kit for
+# the standalone-Battle stand-in case (tools/test_battle.gd), same fallback
+# Diver.BASE_STATS.get() already uses elsewhere.
 func _moves_for(entry: Dictionary) -> Array:
-	var out: Array = MOVES.duplicate()
+	var base: Array = BASE_MOVES.get(String(entry.model_name), BASE_MOVES["Staff_Diver"])
+	var out: Array = base.duplicate()
 	for spell_id in entry.get("equipped_spells", []):
 		var def: Dictionary = SpellTree.find_def(String(entry.model_name), spell_id)
 		if def.is_empty():
@@ -668,24 +742,41 @@ func _show_main() -> void:
 	main_menu.visible = true
 
 # Barrier moves target the caster and always succeed - no target picker,
-# straight to resolution. Everything else targets an enemy: skip the
-# picker entirely when there's only one left standing (no real choice to
-# make), otherwise show one button per living enemy.
+# straight to resolution. Heal targets a living ally (a downed one has
+# nothing a heal can do for it - see _apply_revive() for that); revive
+# targets a downed one specifically. Everything else still targets an
+# enemy. In every case: skip the picker entirely when there's only one
+# valid target (no real choice to make), otherwise show one button per
+# candidate. An empty pool (e.g. Revive with nobody actually down) just
+# reopens the move menu instead of silently eating the button press.
 func _on_move_chosen(mv: Dictionary) -> void:
 	if _busy:
 		return
 	if (_acting.stats as CombatantStats).oxygen < float(mv.get("oxygen_cost", 0.0)):
 		return
 	move_menu.visible = false
-	if String(mv.get("effect", "")) == "barrier":
+	var effect := String(mv.get("effect", ""))
+	if effect == "barrier":
 		_resolve_party_move(mv, _acting)
 		return
-	var living_enemies := _living(enemies)
-	if living_enemies.size() <= 1:
-		_resolve_party_move(mv, living_enemies[0] if not living_enemies.is_empty() else {})
+
+	var targets: Array
+	match effect:
+		"heal":
+			targets = _living(party)
+		"revive":
+			targets = party.filter(func(e: Dictionary) -> bool: return (e.stats as CombatantStats).hp <= 0)
+		_:
+			targets = _living(enemies)
+
+	if targets.is_empty():
+		move_menu.visible = true
+		return
+	if targets.size() <= 1:
+		_resolve_party_move(mv, targets[0])
 		return
 	_pending_move = mv
-	_populate_target_menu(living_enemies)
+	_populate_target_menu(targets)
 	target_menu.visible = true
 
 func _populate_target_menu(targets: Array) -> void:
@@ -729,7 +820,19 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 		return _apply_debuff(defender, debuff, int(move.get("amount", 0)))
 
 	var variance: float = randf_range(0.85, 1.15)
-	var raw: float = (float(move.power) + float(attacker.strength)) * variance
+	var raw: float
+	if String(move.get("effect", "")) == "heavy":
+		# A telegraphed signature hit, scaled off the DEFENDER's own max HP
+		# rather than the attacker's power/strength - "a quarter to half of
+		# your health," not a number that happens to land in that range at
+		# the moment it was tuned. Still runs through the normal
+		# defense/barrier mitigation below and the same QTE dodge check
+		# right after (see ENEMY_HEAVY_MOVE's quick_time_bool) - investing
+		# in defense/barrier or just timing the dodge both still matter,
+		# this only changes how big the raw threat is before either kicks in.
+		raw = float(defender.hp_max) * randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
+	else:
+		raw = (float(move.power) + float(attacker.strength)) * variance
 	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
 
 	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
@@ -755,13 +858,23 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": player_dodge}
 
 # Dispatches on the move's "effect" key before falling through to the
-# normal attack/debuff resolution above - the one new branch is "barrier"
-# (defense-branch spells, see spell_tree.gd), which targets the caster
-# instead of the defender and always succeeds, no accuracy check at all:
-# raising your own shield isn't something the target could "evade."
+# normal attack/debuff resolution above. "barrier" (defense-branch spells)
+# targets the caster instead of the defender and always succeeds, no
+# accuracy check - raising your own shield isn't something the target
+# could "evade." "heal"/"revive" (support-branch spells, see spell_tree.gd)
+# target an ally instead of an enemy - `defender` here is really just
+# "whoever _on_move_chosen()'s target picker resolved to," which for these
+# two effects is a living or downed ally respectively, not literally a
+# defender - and same as barrier, always succeed: nothing about mending a
+# wound is something the ally being healed could fail to receive.
 func _resolve_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
-	if String(move.get("effect", "")) == "barrier":
+	var effect := String(move.get("effect", ""))
+	if effect == "barrier":
 		return _apply_barrier(attacker, int(move.get("amount", 0)))
+	if effect == "heal":
+		return _apply_heal(defender, int(move.get("amount", 0)))
+	if effect == "revive":
+		return _apply_revive(defender, int(move.get("amount", 0)))
 	return await _resolve_attack(attacker, defender, move)
 
 func _apply_barrier(caster: CombatantStats, amount: int) -> Dictionary:
@@ -769,6 +882,26 @@ func _apply_barrier(caster: CombatantStats, amount: int) -> Dictionary:
 	caster.barrier = mini(caster.barrier_max, caster.barrier + amount)
 	var changed := caster.barrier - before
 	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "barrier", "changed": changed}
+
+# Restores flat `amount` HP, capped at hp_max - only ever called with a
+# living ally as the target (see _on_move_chosen()'s "heal" target pool),
+# reviving a downed ally is _apply_revive()'s job specifically, not an
+# edge case of this one.
+func _apply_heal(target: CombatantStats, amount: int) -> Dictionary:
+	var before := target.hp
+	target.hp = mini(target.hp_max, target.hp + amount)
+	var changed := target.hp - before
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "heal", "changed": changed}
+
+# Only ever called on a downed ally (see _on_move_chosen()'s "revive"
+# target pool, which only ever lists party members at 0 HP) - amount is
+# how much HP they come back with, not a bonus added on top of whatever
+# they had, since a downed target always has exactly 0. Capped at hp_max
+# same as a heal, in case amount was ever tuned above what a low-level
+# reviver's hp_max could actually hold.
+func _apply_revive(target: CombatantStats, amount: int) -> Dictionary:
+	target.hp = mini(target.hp_max, amount)
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "revive", "changed": target.hp}
 
 # Directly mutates the target's CombatantStats. Safe for enemies (rebuilt
 # fresh every battle, so nothing to reset after); safe for party members
@@ -815,6 +948,15 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 			_log("%s - %s's barrier rises by %d." % [text, String(actor.display_name), int(r.changed)])
 		else:
 			_log("%s - %s's barrier is already full." % [text, String(actor.display_name)])
+		return
+	if String(r.debuff) == "heal":
+		if int(r.changed) > 0:
+			_log("%s - %s recovers %d HP." % [text, String(target.display_name), int(r.changed)])
+		else:
+			_log("%s - %s is already at full health." % [text, String(target.display_name)])
+		return
+	if String(r.debuff) == "revive":
+		_log("%s - %s is back on their feet with %d HP!" % [text, String(target.display_name), int(r.changed)])
 		return
 	if String(r.debuff) != "":
 		if int(r.changed) > 0:
@@ -871,9 +1013,10 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		_advance_turn()
 		return
 	var target: Dictionary = alive_party[randi_range(0, alive_party.size() - 1)]
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_MOVE)
+	var heavy := randf() < ENEMY_HEAVY_CHANCE
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
 	_refresh_bar(target)
-	var verb := "%s claws at %s" % [String(actor.display_name), String(target.display_name)]
+	var verb := ("%s winds up and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s claws at %s" % [String(actor.display_name), String(target.display_name)])
 	if bool(r.get("dodged", false)):
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
 	elif not r.hit:

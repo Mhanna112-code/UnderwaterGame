@@ -61,18 +61,21 @@ const BASE_STATS := {
 		"hp": 34, "strength": 5, "defense": 3, "agility": 5,
 		"evasion": 5, "accuracy": 6, "barrier_max": 5,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
+		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "ability_locked": true, "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 26, "strength": 8, "defense": 1, "agility": 8,
 		"evasion": 8, "accuracy": 8, "barrier_max": 0,
 		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
+		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 42, "strength": 3, "defense": 6, "agility": 3,
 		"evasion": 2, "accuracy": 4, "barrier_max": 10,
 		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
+		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
 	},
 }
@@ -290,6 +293,8 @@ func _build_stats() -> void:
 	stats.grow_strength = int(base.grow_strength)
 	stats.grow_defense = int(base.grow_defense)
 	stats.grow_agility = int(base.grow_agility)
+	stats.grow_accuracy = int(base.get("grow_accuracy", 0))
+	stats.grow_evasion = int(base.get("grow_evasion", 0))
 	stats.fill()
 
 	# Not a CombatantStats field - an ability isn't part of the damage

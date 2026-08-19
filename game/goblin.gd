@@ -10,27 +10,24 @@ extends Node3D
 const SRC := preload("res://characters/GoblinGrunt.fbx")
 const TARGET_HEIGHT := 1.6
 
-# No grow_* here - the grunt doesn't level on its own timeline the way a
-# diver does. Instead make_stats() scales this base spread up against
-# whatever level the player is at when the fight starts (SCALE_PER_LEVEL
-# below), so it stays a real fight instead of free XP once you've leveled a
-# few times. When a second enemy type shows up, it gets its own script with
-# its own BASE_STATS/SCALE_PER_LEVEL instead of this one growing extra cases.
-const BASE_STATS := {
-	"hp": 20, "strength": 4, "defense": 2, "agility": 4,
-	"evasion": 3, "accuracy": 5, "barrier_max": 0,
+# No grow_* here, and no independent base spread either anymore - a grunt's
+# stats are derived straight from the party's own current stats in
+# make_stats() (battle.gd hands it the party's average CombatantStats), not
+# a separate curve that could drift away from what the party can actually
+# do. floor_stats is the only thing still fixed here: a bare-minimum shape
+# for the extreme edge case of an empty/all-zero reference (shouldn't
+# happen in practice - there's always at least one living party member by
+# the time a Battle exists - but make_stats() has to return *something*
+# sane rather than a grunt with 0 evasion/accuracy/agility).
+const FLOOR_STATS := {
+	"hp": 12, "strength": 3, "defense": 1, "agility": 3,
+	"evasion": 2, "accuracy": 3, "barrier_max": 0,
 }
 
-# +12% to every stat per player level above 1. Multiplicative, not additive,
-# so the ratio between strength/defense/agility/evasion/accuracy stays the
-# grunt's own shape at any level - it just gets uniformly tougher, not
-# lopsided.
-const SCALE_PER_LEVEL := 0.12
-
-# XP a win pays out, before scaling (see make_stats). Read by
-# game/battle.gd's _win() as enemy_actor.xp_reward - a grunt scaled up to
-# match a high-level player is worth more than the same grunt at level 1,
-# not a flat amount regardless of how hard the fight actually was.
+# XP a win pays out, before level scaling (see make_stats). Read by
+# game/battle.gd's _win() as enemy_actor.xp_reward - a grunt matched to a
+# high-level party is worth more than the same fight at level 1, not a flat
+# amount regardless of how tough the party it was scaled against actually is.
 const BASE_XP := 10
 var xp_reward: int = BASE_XP
 
@@ -63,28 +60,32 @@ func _ready() -> void:
 				_idle_anim = a
 	play("idle")
 
-# Fresh, level-scaled stats for one fight. Enemies don't persist between
-# battles, so unlike Diver.stats this isn't built once and kept - battle.gd
-# calls this each time it stands a grunt up, passing the player's current
-# level so the grunt scales to match instead of always fighting at level 1.
+# Fresh stats for one fight, rolled close to ref (the party's average
+# CombatantStats - see battle.gd's _build_stage(), which builds that
+# average across every living party member before calling this). Enemies
+# don't persist between battles, so unlike Diver.stats this isn't built
+# once and kept - battle.gd calls this each time it stands a grunt up.
 #
 # jitter_pct applies an independent random multiplier per stat (not one
 # shared multiplier for the whole grunt) so a pack of several doesn't read
 # as identical clones - one might land a bit tougher, another a bit more
-# accurate, purely by chance. 0 (the default) means no jitter at all, the
-# exact scaled BASE_STATS - what a lone grunt still gets.
-func make_stats(player_level: int = 1, jitter_pct: float = 0.0) -> CombatantStats:
-	var scale: float = 1.0 + float(maxi(player_level - 1, 0)) * SCALE_PER_LEVEL
-	xp_reward = maxi(1, int(round(float(BASE_XP) * scale)))
+# accurate, purely by chance, but all of them centered on the party's own
+# numbers rather than a separate balance curve. barrier_max gets halved
+# before jitter - matching the party's barrier outright would make every
+# grunt as shielded as a Prototype_V(1922) that's been stacking barrier
+# spells, which reads as a tank-specialist trait borrowed wholesale rather
+# than "a grunt that happens to be roughly your size."
+func make_stats(ref: CombatantStats, player_level: int = 1, jitter_pct: float = 0.18) -> CombatantStats:
+	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
 
 	var s := CombatantStats.new()
-	s.hp_max = maxi(1, int(round(float(BASE_STATS.hp) * scale * _jit(jitter_pct))))
-	s.strength = maxi(1, int(round(float(BASE_STATS.strength) * scale * _jit(jitter_pct))))
-	s.defense = maxi(0, int(round(float(BASE_STATS.defense) * scale * _jit(jitter_pct))))
-	s.agility = maxi(1, int(round(float(BASE_STATS.agility) * scale * _jit(jitter_pct))))
-	s.evasion = maxi(0, int(round(float(BASE_STATS.evasion) * scale * _jit(jitter_pct))))
-	s.accuracy = maxi(0, int(round(float(BASE_STATS.accuracy) * scale * _jit(jitter_pct))))
-	s.barrier_max = maxi(0, int(round(float(BASE_STATS.barrier_max) * scale * _jit(jitter_pct))))
+	s.hp_max = maxi(1, int(round(maxf(float(FLOOR_STATS.hp), float(ref.hp_max)) * _jit(jitter_pct))))
+	s.strength = maxi(1, int(round(maxf(float(FLOOR_STATS.strength), float(ref.strength)) * _jit(jitter_pct))))
+	s.defense = maxi(0, int(round(maxf(float(FLOOR_STATS.defense), float(ref.defense)) * _jit(jitter_pct))))
+	s.agility = maxi(1, int(round(maxf(float(FLOOR_STATS.agility), float(ref.agility)) * _jit(jitter_pct))))
+	s.evasion = maxi(0, int(round(maxf(float(FLOOR_STATS.evasion), float(ref.evasion)) * _jit(jitter_pct))))
+	s.accuracy = maxi(0, int(round(maxf(float(FLOOR_STATS.accuracy), float(ref.accuracy)) * _jit(jitter_pct))))
+	s.barrier_max = maxi(0, int(round(float(ref.barrier_max) * 0.5 * _jit(jitter_pct))))
 	s.fill()
 	return s
 

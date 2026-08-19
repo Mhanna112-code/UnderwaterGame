@@ -51,13 +51,26 @@ const XP_BASE := 30.0
 const XP_CURVE := 1.5
 
 # Per-level growth. Zero on all of these (the default) means "doesn't
-# level" - what enemies get, since only divers gain XP. accuracy/evasion
-# have no grow_* - they're identity traits like barrier_max, not something
-# that climbs with level (see diver.gd's BASE_STATS).
+# level" - what enemies get, since only divers gain XP.
+#
+# grow_accuracy/grow_evasion exist so neither side of _resolve_attack's
+# accuracy-vs-evasion comparison can permanently cross the other and get
+# stuck there. Before these existed, a diver's accuracy/evasion were fixed
+# forever while Goblin.SCALE_PER_LEVEL scaled a grunt's accuracy AND
+# evasion up every player level - eventually a low-accuracy diver would
+# start missing every grunt permanently (or a low-evasion one would start
+# getting hit by everything), with no way back since only one side of the
+# comparison was ever moving. Small growth on both stats keeps the
+# player's own numbers climbing roughly in step with whatever they're
+# fighting, on top of goblin.gd now deriving enemy stats from the party's
+# current numbers directly rather than an independent curve (see
+# Goblin.make_stats()) - belt and suspenders against the same failure mode.
 @export var grow_hp: int = 0
 @export var grow_strength: int = 0
 @export var grow_defense: int = 0
 @export var grow_agility: int = 0
+@export var grow_accuracy: int = 0
+@export var grow_evasion: int = 0
 
 var hp: int
 
@@ -87,9 +100,41 @@ func gain_xp(amount: int) -> Array:
 		strength += grow_strength
 		defense += grow_defense
 		agility += grow_agility
+		accuracy += grow_accuracy
+		evasion += grow_evasion
 		xp_to_next = int(round(XP_BASE * pow(float(level), XP_CURVE)))
 		spell_points += 1
 		levels_gained.append(level)
 	if not levels_gained.is_empty():
 		fill()      # a level-up is the game's only heal/recharge right now
 	return levels_gained
+
+# Copies every field from `other` onto self - used by world.gd's save
+# checkpoint system (see World._capture_checkpoint()/_restore_checkpoint())
+# to snapshot and later restore a diver's stats. Explicit field-by-field
+# rather than Resource.duplicate(), so it's unambiguous exactly which
+# fields travel with a checkpoint - same explicit-assignment habit
+# diver.gd's _build_stats() already uses rather than leaning on an
+# implicit copy.
+func copy_from(other: CombatantStats) -> void:
+	hp_max = other.hp_max
+	strength = other.strength
+	defense = other.defense
+	agility = other.agility
+	accuracy = other.accuracy
+	evasion = other.evasion
+	barrier_max = other.barrier_max
+	barrier = other.barrier
+	oxygen_max = other.oxygen_max
+	oxygen = other.oxygen
+	level = other.level
+	xp = other.xp
+	xp_to_next = other.xp_to_next
+	spell_points = other.spell_points
+	grow_hp = other.grow_hp
+	grow_strength = other.grow_strength
+	grow_defense = other.grow_defense
+	grow_agility = other.grow_agility
+	grow_accuracy = other.grow_accuracy
+	grow_evasion = other.grow_evasion
+	hp = other.hp

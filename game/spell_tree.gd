@@ -22,7 +22,7 @@
 # since this system was scaffolded.
 #
 # Every spell doubles as a battle.gd move definition - "power"/"acc_mod"
-# work exactly like MOVES entries there. "effect" picks how the move
+# work exactly like BASE_MOVES entries there. "effect" picks how the move
 # resolves: "damage" (default, omitted) hits the target normally, "debuff"
 # (paired with a "debuff"/"amount" key) lowers one of the target's stats,
 # "barrier" targets the caster instead and adds "amount" to their own
@@ -34,8 +34,8 @@
 # spend from "cost" above, which only pays for *learning* it once at a save
 # point. Every spell here uses cost*8 so a spell's up-front point price and
 # its per-cast oxygen price stay proportional without needing two numbers
-# hand-tuned per entry - see battle.gd's MOVES for the one move that's
-# exempt from any oxygen cost at all (Jab, the free basic attack).
+# hand-tuned per entry - see battle.gd's BASE_MOVES for each diver's one
+# move that's exempt from any oxygen cost at all (their free basic attack).
 class_name SpellTree
 extends RefCounted
 
@@ -175,6 +175,29 @@ const SPELL_TREES := {
 				"hint": "Cracks the target's defense", "text": "You batter through the target's guard",
 			},
 		},
+		# Nobody else has this branch - Prototype_V(1922) is this game's one
+		# tank/support diver (see this file's header comment), and healing/
+		# reviving an ally is the clearest possible expression of "support"
+		# a spell can be. "effect": "heal"/"revive" here are read by
+		# battle.gd's _resolve_move() exactly like "barrier" already is -
+		# always succeeds, no accuracy check, targets an ally instead of an
+		# enemy (see _on_move_chosen()'s target-pool branch for each).
+		"support": {
+			"mending_current": {
+				"display": "Mending Current", "cost": 1,
+				"description": "Wraps an ally in a warm current, restoring some HP.",
+				"requires_spells": [], "requires_items": [],
+				"effect": "heal", "amount": 8, "oxygen_cost": 8.0,
+				"hint": "Restores an ally's HP", "text": "You wrap an ally in a mending current",
+			},
+			"tidal_revival": {
+				"display": "Tidal Revival", "cost": 3,
+				"description": "Pulls a downed ally back up on a surge of current. The tank's other capstone - reviving an ally is worth more than any amount of raw defense.",
+				"requires_spells": ["mending_current"], "requires_items": [],
+				"effect": "revive", "amount": 12, "oxygen_cost": 28.0,
+				"hint": "Revives a downed ally", "text": "A surge of current pulls an ally back up",
+			},
+		},
 	},
 }
 
@@ -186,7 +209,7 @@ static func tree_for(model_name: String) -> Dictionary:
 # comes first, for readability in the data above), but the UI's three
 # columns need to land in the same left-to-right order for every diver, or
 # switching whose tree you're viewing would shuffle the whole screen.
-const BRANCH_ORDER := ["offense", "debuff", "defense"]
+const BRANCH_ORDER := ["offense", "debuff", "defense", "support"]
 
 static func branches(model_name: String) -> Array:
 	var tree: Dictionary = tree_for(model_name)
