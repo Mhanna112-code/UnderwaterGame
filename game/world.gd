@@ -149,6 +149,17 @@ var scripted := false
 var scripted_dir := Vector3.ZERO
 var scripted_rise := 0.0
 
+# Marks whichever diver TAB currently has you steering - same green cone,
+# same "hover above the head" positioning target_selector.gd's own cursor
+# already uses for a swap target, so "this is who you're currently in
+# control of" reads as the same visual language as "this is who you're
+# about to swap into." Hidden rather than left dangling over a diver that
+# doesn't apply right now: mid-swap-selection (target_selector's own cursor
+# is already doing this job for the target being picked), first-person aim
+# (there's no "above your own head" view to show it in), and battling (the
+# dive site isn't even what's on screen).
+var _active_cursor: MeshInstance3D
+
 func _ready() -> void:
 	cam = $Camera3D
 	hud = $HUD/Controls
@@ -178,6 +189,7 @@ func _ready() -> void:
 
 	_build_hp_bar()
 	_build_oxygen_bar()
+	_build_active_cursor()
 
 	target_selector = TargetSelector.new()
 	target_selector.world = self
@@ -777,6 +789,7 @@ func _physics_process(dt: float) -> void:
 	_update_aim_marker()
 	_update_hp_bar()
 	_update_oxygen_bar()
+	_update_active_cursor()
 	_move_lantern(dt)
 	_update_banner(dt)
 	_update_save_point_prompt()
@@ -1134,6 +1147,40 @@ func _update_oxygen_bar() -> void:
 	oxygen_bar.max_value = d.stats.oxygen_max
 	oxygen_bar.value = d.stats.oxygen
 	oxygen_bar_label.text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
+
+# Same downward-pointing cone TargetSelector's own cursor uses, same green,
+# built once here rather than in TargetSelector since this one's purpose is
+# different (mark who you're steering, not who you're about to swap into)
+# even though the shape is deliberately identical.
+func _build_active_cursor() -> void:
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 0.22
+	cone.height = 0.4
+	_active_cursor = MeshInstance3D.new()
+	_active_cursor.mesh = cone
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.albedo_color = Color(0.35, 0.95, 0.4)
+	mat.emission = Color(0.35, 0.95, 0.4)
+	_active_cursor.material_override = mat
+	_active_cursor.rotation_degrees.x = 180.0   # cone points down at the diver's head
+	add_child(_active_cursor)
+
+# Refreshed every physics frame (same cadence as _update_hp_bar()/
+# _update_oxygen_bar()) so it keeps following the active diver as they
+# swim, not just snapping into place on a TAB press. Hidden during
+# target_selector.selecting/aiming/battling - see _active_cursor's own
+# header comment for why each of those isn't a "hover over your own head"
+# moment.
+func _update_active_cursor() -> void:
+	if battling or aiming or target_selector.selecting or divers.is_empty():
+		_active_cursor.visible = false
+		return
+	var d: Diver = divers[active]
+	_active_cursor.visible = true
+	_active_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.5)
 
 # Called on top of the normal value drop (which already reads as "the bar
 # is noticeably lower now") for a brief extra flash, so a hit lands even

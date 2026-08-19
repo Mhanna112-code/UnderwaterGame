@@ -60,37 +60,42 @@ func _ready() -> void:
 				_idle_anim = a
 	play("idle")
 
-# Fresh stats for one fight, rolled close to ref (the party's average
+# Always at least a little stronger than ref on every stat, never weaker
+# and never exactly equal - a fight should never quietly be easier than the
+# party's own numbers just because the roll happened to land low. _edge()
+# is one-sided (always > 1.0), independently rolled per stat rather than
+# one shared multiplier for the whole grunt, so a pack of several still
+# doesn't read as identical clones - one might land a bit tougher, another
+# a bit more accurate, but never a bit weaker.
+const MIN_EDGE := 1.08
+const MAX_EDGE := 1.35
+
+# Fresh stats for one fight, rolled off ref (the party's average
 # CombatantStats - see battle.gd's _build_stage(), which builds that
 # average across every living party member before calling this). Enemies
 # don't persist between battles, so unlike Diver.stats this isn't built
 # once and kept - battle.gd calls this each time it stands a grunt up.
-#
-# jitter_pct applies an independent random multiplier per stat (not one
-# shared multiplier for the whole grunt) so a pack of several doesn't read
-# as identical clones - one might land a bit tougher, another a bit more
-# accurate, purely by chance, but all of them centered on the party's own
-# numbers rather than a separate balance curve. barrier_max gets halved
-# before jitter - matching the party's barrier outright would make every
-# grunt as shielded as a Prototype_V(1922) that's been stacking barrier
-# spells, which reads as a tank-specialist trait borrowed wholesale rather
-# than "a grunt that happens to be roughly your size."
-func make_stats(ref: CombatantStats, player_level: int = 1, jitter_pct: float = 0.18) -> CombatantStats:
+# barrier_max is halved before the edge is applied - matching the party's
+# barrier outright would make every grunt as shielded as a Prototype_V
+# (1922) that's been stacking barrier spells, which reads as a
+# tank-specialist trait borrowed wholesale rather than "a grunt that
+# happens to be roughly your size, just a bit tougher."
+func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
 
 	var s := CombatantStats.new()
-	s.hp_max = maxi(1, int(round(maxf(float(FLOOR_STATS.hp), float(ref.hp_max)) * _jit(jitter_pct))))
-	s.strength = maxi(1, int(round(maxf(float(FLOOR_STATS.strength), float(ref.strength)) * _jit(jitter_pct))))
-	s.defense = maxi(0, int(round(maxf(float(FLOOR_STATS.defense), float(ref.defense)) * _jit(jitter_pct))))
-	s.agility = maxi(1, int(round(maxf(float(FLOOR_STATS.agility), float(ref.agility)) * _jit(jitter_pct))))
-	s.evasion = maxi(0, int(round(maxf(float(FLOOR_STATS.evasion), float(ref.evasion)) * _jit(jitter_pct))))
-	s.accuracy = maxi(0, int(round(maxf(float(FLOOR_STATS.accuracy), float(ref.accuracy)) * _jit(jitter_pct))))
-	s.barrier_max = maxi(0, int(round(float(ref.barrier_max) * 0.5 * _jit(jitter_pct))))
+	s.hp_max = maxi(1, int(round(maxf(float(FLOOR_STATS.hp), float(ref.hp_max)) * _edge())))
+	s.strength = maxi(1, int(round(maxf(float(FLOOR_STATS.strength), float(ref.strength)) * _edge())))
+	s.defense = maxi(0, int(round(maxf(float(FLOOR_STATS.defense), float(ref.defense)) * _edge())))
+	s.agility = maxi(1, int(round(maxf(float(FLOOR_STATS.agility), float(ref.agility)) * _edge())))
+	s.evasion = maxi(0, int(round(maxf(float(FLOOR_STATS.evasion), float(ref.evasion)) * _edge())))
+	s.accuracy = maxi(0, int(round(maxf(float(FLOOR_STATS.accuracy), float(ref.accuracy)) * _edge())))
+	s.barrier_max = maxi(0, int(round(float(ref.barrier_max) * 0.5 * _edge())))
 	s.fill()
 	return s
 
-func _jit(pct: float) -> float:
-	return 1.0 if pct <= 0.0 else randf_range(1.0 - pct, 1.0 + pct)
+func _edge() -> float:
+	return randf_range(MIN_EDGE, MAX_EDGE)
 
 # substr: "idle" or "walk", matched loosely against the FBX's own take names
 # ("rig|Idle", "rig|Walking", ...) so exact capitalisation doesn't matter.

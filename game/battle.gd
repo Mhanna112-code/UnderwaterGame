@@ -35,7 +35,6 @@ var diver_model_name := "Staff_Diver"
 const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
-const STAT_JITTER := 0.15
 
 const DISPLAY_NAMES := {
 	"Staff_Diver": "Mermaid",
@@ -81,7 +80,7 @@ const BASE_MOVES := {
 	],
 }
 
-const ENEMY_MOVE := {"power": 5, "acc_mod": 1, "quick_time_bool": true}
+const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": true}
 
 # A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
 # branch for how heavy_min/heavy_max actually turn into damage (a fraction
@@ -93,7 +92,7 @@ const ENEMY_HEAVY_MOVE := {
 	"power": 0, "acc_mod": -1, "quick_time_bool": true,
 	"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
 }
-const ENEMY_HEAVY_CHANCE := 0.25
+const ENEMY_HEAVY_CHANCE := 0.3
 
 var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
 var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
@@ -255,7 +254,7 @@ func _build_stage() -> void:
 		g.position = Vector3(_spread(i, count, 1.1) + 0.6, 0.0, -2.2)
 		g.rotation.y = PI
 		vp.add_child(g)
-		var st: CombatantStats = g.make_stats(ref_stats, lvl, STAT_JITTER)
+		var st: CombatantStats = g.make_stats(ref_stats, lvl)
 		enemies.append({
 			"kind": "enemy", "stats": st,
 			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
@@ -449,7 +448,7 @@ func _build_quick_time_ui() -> void:
 # once per frame via `await get_tree().process_frame`.
 func _quick_time_event() -> bool:
 	var duration := 1.6
-	var zone_width_frac := randf_range(0.18, 0.32)
+	var zone_width_frac := randf_range(0.06, 0.12)
 	# Margin on both ends so the zone never touches the very start (an
 	# instant, no-real-choice press) or the very end (indistinguishable
 	# from a timeout) of the sweep.
@@ -603,13 +602,60 @@ func _resort_pending() -> void:
 func _refresh_queue_row() -> void:
 	for c in queue_row.get_children():
 		c.queue_free()
+	# _acting is whoever's turn it actually is right now - already popped
+	# off _queue by the time this runs (see _advance_turn()), so it's never
+	# one of the cards _build_queue_chip() below would render. Its own
+	# "NOW" card goes first and reads as a different tier entirely (gold
+	# border, biggest text) rather than just another "next" card, since
+	# "happening right now" and "coming up" are genuinely different things
+	# to know at a glance mid-fight.
+	if not _acting.is_empty():
+		queue_row.add_child(_build_acting_chip(_acting))
 	var header := Label.new()
-	header.text = "Turn Order"
+	header.text = "Next"
 	header.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	header.add_theme_font_size_override("font_size", 13)
 	queue_row.add_child(header)
 	for i in range(_queue.size()):
 		queue_row.add_child(_build_queue_chip(_queue[i], i))
+
+# The single spotlight card for whoever's turn it is right now - gold
+# border regardless of party/enemy side, so "this is happening" reads as
+# its own tier rather than competing with _build_queue_chip()'s "how soon"
+# sizing/fading scheme below.
+func _build_acting_chip(entry: Dictionary) -> Control:
+	var is_enemy := String(entry.kind) == "enemy"
+	var base_color := Color(0.55, 0.2, 0.22) if is_enemy else Color(0.22, 0.42, 0.58)
+
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = base_color
+	style.set_corner_radius_all(7)
+	style.content_margin_left = 10.0
+	style.content_margin_right = 10.0
+	style.content_margin_top = 4.0
+	style.content_margin_bottom = 4.0
+	style.set_border_width_all(3)
+	style.border_color = Color(0.95, 0.85, 0.35)
+	panel.add_theme_stylebox_override("panel", style)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	panel.add_child(box)
+
+	var tag := Label.new()
+	tag.text = "NOW"
+	tag.add_theme_font_size_override("font_size", 10)
+	tag.add_theme_color_override("font_color", Color(0.95, 0.85, 0.35))
+	box.add_child(tag)
+
+	var label := Label.new()
+	label.text = String(entry.display_name)
+	label.add_theme_font_size_override("font_size", 17)
+	label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	box.add_child(label)
+
+	return panel
 
 # A shrinking, fading run of cards instead of a flat list of names - the
 # next-to-act entry (index 0) is the full-size, full-opacity, bright-bordered
@@ -1041,7 +1087,7 @@ func _win() -> void:
 	await get_tree().create_timer(0.9).timeout
 	var total_xp := 0
 	for e in enemies:
-		if e.has("actor") and e.actor is Goblin:
+		if e.has("actor") and is_instance_valid(e.actor) and e.actor is Goblin:
 			total_xp += int((e.actor as Goblin).xp_reward)
 	# Every party member gets the full amount, not a split share - there's
 	# no shared party XP pool concept in this game, and splitting it would
