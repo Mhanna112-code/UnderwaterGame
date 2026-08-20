@@ -18,6 +18,17 @@ func _initialize() -> void:
 
 func _process(_dt: float) -> bool:
 	frames += 1
+	# World._ready() has not run yet in _initialize() - a node added to the
+	# root before the loop starts gets its _ready on the first iteration -
+	# so the title screen only exists from here on.
+	if frames == 1:
+		# _ready() ends on the title screen, which sets get_tree().paused
+		# and freezes every diver. Without this the gate measured a game
+		# nobody had started yet and reported that nothing moved, which was
+		# true and useless. Going through the signal rather than poking
+		# `paused` keeps the gate on the path a player actually takes.
+		world.title_screen.new_game_chosen.emit(1)
+		return false
 	if frames == 2:
 		if world.divers.size() != 3:
 			findings.append("CAST SHORT: %d divers spawned, expected 3" % world.divers.size())
@@ -54,9 +65,39 @@ func _process(_dt: float) -> bool:
 		if not is_finite(d.global_position.length()):
 			findings.append("NOT A NUMBER: %s has a non-finite position" % who)
 
+		# A rigged diver that is not playing anything is the failure the
+		# old procedural code could not have: the clips resolve, the body
+		# stands still, and it looks like a frozen game rather than a
+		# missing animation.
+		if d.anim == null:
+			findings.append("NO RIG: %s has no AnimationPlayer" % who)
+			continue
+		var playing := String(d.anim.current_animation)
+		print("%-20s playing %s" % ["", playing if playing != "" else "NOTHING"])
+		if playing == "":
+			findings.append("NOT ANIMATING: %s is playing no clip at all" % who)
+			continue
+		var want_motion := "swim" if is_active else "idle"
+		var want := d.resolve(Cast.motion(who, want_motion))
+		if playing != want:
+			findings.append("WRONG CLIP: %s is playing '%s', expected the %s clip '%s'" % [
+				who, playing, want_motion, want])
+		# Every file carries all three characters' clips, so playing SOME
+		# idle is not the same as playing YOUR idle. This is the check that
+		# catches the scuba diver standing in the brass suit's stance.
+		var fam := Cast.family(who)
+		if not playing.contains(fam + "_"):
+			findings.append("WRONG CHARACTER'S CLIP: %s (%s) is playing '%s'" % [who, fam, playing])
+
+	# The body's swimming posture comes out of the clip now, so there is no
+	# pitch to assert while swimming level - that check used to be here and
+	# it belongs to the unrigged code it was written for. What is still
+	# code's job, because no clip can know it, is angling the body when the
+	# diver is heading up or down. This gate has been climbing since frame
+	# 70, so the nose should be up by now.
 	var player: Diver = world.divers[world.active]
-	if absf(player.model.rotation.x) < 0.3:
-		findings.append("NO SWIM POSTURE: the player is still upright (pitch %.2f) after swimming" % player.model.rotation.x)
+	if player.model.rotation.x < 0.05:
+		findings.append("NOT CLIMBING: the player has been swimming upward and is pitched %.2f rad, expected nose up" % player.model.rotation.x)
 	var cam: Camera3D = world.get_node("Camera3D")
 	var gap: float = cam.global_position.distance_to(player.global_position)
 	print("camera               %.2f m behind the player" % gap)
