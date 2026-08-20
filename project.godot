@@ -8,6 +8,10 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="UnderwaterGame"
@@ -19,6 +23,18 @@ config/features=PackedStringArray("4.4", "Forward Plus")
 window/size/viewport_width=1280
 window/size/viewport_height=720
 
+[editor]
+
+run/main_run_args="--rendering-driver opengl3"
+
 [rendering]
+
+; Required for the web export to work at all. Without the .web override the
+; export uses Forward Plus, which browsers cannot run, so the build is a
+; black screen. Without ETC2 and S3TC there is no texture format the
+; compatibility renderer can sample, so every model renders white. See #5.
+renderer/rendering_method.web="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+textures/vram_compression/import_s3tc_bptc=true
 
 renderer/rendering_method.mobile="gl_compatibility"
