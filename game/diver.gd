@@ -825,6 +825,12 @@ func play_motion(name: String) -> void:
 	if full == "":
 		return
 	_motion = name
+	# Animation resources are shared between every instance of the same
+	# file, so this writes loop_mode on the same object the other divers
+	# wearing this model are reading. Safe as it stands, because no clip is
+	# ever used as both a loop and a one-shot: swim, idle, down and win loop,
+	# and attacks and hit reactions do not. Reuse one in both modes and the
+	# two divers will fight over it.
 	var a: Animation = anim.get_animation(full)
 	a.loop_mode = Animation.LOOP_LINEAR
 	anim.play(full)

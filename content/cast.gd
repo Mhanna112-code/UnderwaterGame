@@ -112,8 +112,20 @@ const FALLBACK_ATTACK := {
 	"Proto5": "Proto5_(Attack)Hammer",
 }
 
+static func knows(model_name: String) -> bool:
+	return ALL.has(model_name)
+
+# Falls back rather than returning nothing, because every caller here is on
+# a path that has to produce a diver, and a diver wearing the wrong model is
+# at least visible. It says so loudly, though: a silent fallback would show
+# the scuba diver in place of a character somebody just added and look like
+# an art bug rather than a missing table entry. verify/clips.gd fails the
+# build before this can happen at runtime.
 static func entry(model_name: String) -> Dictionary:
-	return ALL.get(model_name, ALL["Staff_Diver"]) as Dictionary
+	if not ALL.has(model_name):
+		push_error("Cast has no entry for '%s', falling back to Staff_Diver" % model_name)
+		return ALL["Staff_Diver"] as Dictionary
+	return ALL[model_name] as Dictionary
 
 static func family(model_name: String) -> String:
 	return String(entry(model_name).family)
