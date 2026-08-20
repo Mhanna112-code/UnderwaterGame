@@ -43,9 +43,15 @@ const ALL := {
 # in one file and "rig|Scuba_(Idle)1(Loop)" in another. Diver.resolve() matches
 # on the part after the bar, so this table never has to care which file it is.
 #
-# Held motions ship as Start / Mid (Loop) / End. The loop is the one to play:
-# the Start plays once and then the character snaps back to a rest pose, which
-# is what "the animation does not work" looked like the first time.
+# Held motions ship as Start / Mid (Loop) / End, and all three get used. The
+# loop is what holds the state; the Start and End are the way in and out of it.
+# Playing only the loop is what Glass_Goat spotted on the first build: the
+# diver went from standing to swimming and back with nothing in between, and
+# he had animated those transitions specifically.
+#
+# Playing only the Start is the opposite mistake, and it is what "the animation
+# does not work" looked like before that: it runs once and drops the character
+# back to a rest pose.
 #
 # The irregular entries are not typos. Proto5 has no (Win) clips at all, so it
 # celebrates with the thumbs up it does have, and its heavy hit reaction is
@@ -57,6 +63,7 @@ const MOTIONS := {
 		"idle": "Scuba_(Idle)1(Loop)",
 		"swim": "Scuba_(Swimming1)(Mid)(Loop)",
 		"swim_start": "Scuba_(Swimming1)(Start)",
+		"swim_end": "Scuba_(Swimming1)(End)",
 		"hurt": "Scuba_(Damaged1)Weak_Hit",
 		"hurt_bad": "Scuba_(Damaged2)Heavy_Hit",
 		"down": "Scuba_(Faint)(Mid)(Loop)",
@@ -67,6 +74,7 @@ const MOTIONS := {
 		"idle": "Proto1_(Idle1)",
 		"swim": "Proto1_(Swimming1)(Mid)(Loop)",
 		"swim_start": "Proto1_(Swimming1)(Start)",
+		"swim_end": "Proto1_(Swimming1)(End)",
 		"hurt": "Proto1_(Damaged1)Weak_Hit",
 		"hurt_bad": "Proto1_(Damaged2)Heavy_Hit",
 		"down": "Proto1_(Faint)(Mid)(Loop)",
@@ -77,6 +85,7 @@ const MOTIONS := {
 		"idle": "Proto5_(Idle)(Loop)",
 		"swim": "Proto5_(Swimming1)(Mid)(Loop)",
 		"swim_start": "Proto5_(Swimming1)(Start)",
+		"swim_end": "Proto5_(Swimming1)(End)",
 		"hurt": "Proto5_(Damaged1)Weak_Hit",
 		"hurt_bad": "Proto5_(Damaged2)Strong_Hit",
 		"down": "Proto5_(Faint)(Mid)(Loop)",

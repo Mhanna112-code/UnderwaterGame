@@ -285,7 +285,11 @@ func _build_stage() -> void:
 	vp.add_child(light)
 
 	var cam := Camera3D.new()
-	cam.position = Vector3(0.0, 1.8, 5.5)
+	# Glass_Goat authored the attacks for a 2D presentation, so the arm travel
+	# and body recoil read better from a three-quarter angle than from directly
+	# behind the party. This camera belongs only to the isolated battle viewport:
+	# the overworld chase camera remains driven by mouse/arrow yaw and pitch.
+	cam.position = Vector3(3.5, 1.8, 4.5)
 	cam.fov = 70.0
 	vp.add_child(cam)
 	# look_at() needs the node in the tree first - it operates on global

@@ -175,6 +175,9 @@ var _motion := ""
 # who has fainted or won a fight sets it, so the pose holds instead of
 # snapping back to a neutral float one frame after it lands.
 var _hold := ""
+# Whether the diver was swimming last frame, so the change can be caught and
+# the Start and End clips played into and out of the loop.
+var _was_moving := false
 
 var _lean := 0.0
 
@@ -835,6 +838,33 @@ func play_motion(name: String) -> void:
 	a.loop_mode = Animation.LOOP_LINEAR
 	anim.play(full)
 
+# Swimming or floating, with the way in and out of each.
+#
+# The swim clips ship as Start / Mid (Loop) / End and the first build played
+# only the loop, so a diver went from standing to full stroke and back with
+# nothing between. Glass_Goat animated those transitions on purpose and
+# noticed immediately that they were missing.
+#
+# A one-shot already in progress outranks all of this. A swing or a hit
+# reaction is more important than a swim transition, and interrupting one to
+# play the other would be the wrong trade.
+func _update_motion(moving: bool) -> void:
+	if moving == _was_moving:
+		play_motion("swim" if moving else "idle")
+		return
+
+	_was_moving = moving
+	if _busy_until > 0.0:
+		# Mid swing or mid recoil. Skip the transition rather than cutting
+		# the clip short; _process() hands the body back to the right loop
+		# when it finishes.
+		_hold = "swim" if moving else "idle"
+		return
+
+	_hold = "swim" if moving else "idle"
+	if play_clip(Cast.motion(model_name, "swim_start" if moving else "swim_end")) <= 0.0:
+		play_motion(_hold)
+
 # A one-shot: a swing, a hit reaction. Returns how long it runs, so the
 # fight can wait exactly that long instead of guessing at a delay. Takes
 # the full stem rather than a motion name because attack clips come from
@@ -1088,14 +1118,18 @@ func _animate(dir: Vector3, dt: float) -> void:
 		return
 
 
-	var moving := velocity.length() > 0.4
+	# Two thresholds rather than one, because a single one at the speed a
+	# diver drifts at makes this flip several times a second, and each flip
+	# would restart a transition clip. Start swimming decisively, stop
+	# swimming lazily.
+	var speed_now := velocity.length()
+	var moving := _was_moving
+	if speed_now > 0.6:
+		moving = true
+	elif speed_now < 0.25:
+		moving = false
 
-
-	# Swimming or floating. A one-shot in progress (a swing, a hit
-	# reaction) outranks both and is left alone until it finishes - see
-	# play_clip()/_process().
-	play_motion("swim" if moving else "idle")
-
+	_update_motion(moving)
 
 	# ========================================================
 	# FACE SWIMMING DIRECTION

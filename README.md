@@ -162,10 +162,12 @@ fails on the first name `content/cast.gd` gets wrong. Roughly thirty clip
 names are hand-written in that table and a re-rig or a renamed export turns
 any one of them into a diver standing still in the middle of a fight.
 
-`verify/swim.gd` drives the real scene for two seconds of play and fails if a
-diver did not move, fell through the floor, stayed bolt upright, lost the
-camera, or is playing the wrong clip, including another character's clip off
-the shared rig.
+`verify/swim.gd` drives the real scene through swimming and coming to rest. It
+fails if a diver does not move, falls through the floor, loses the camera, or
+plays the wrong character's clip off the shared rig. It also requires the full
+idle → swim start → swim loop → swim end → idle sequence and feeds a real mouse
+motion event through Godot's input pipeline, so hard-coding the exploration
+camera instead of preserving mouse-look fails the gate.
 
 `verify/fight.gd` starts a real encounter from the overworld and plays it to
 the end by pressing the actual buttons, then checks the world came back. It
