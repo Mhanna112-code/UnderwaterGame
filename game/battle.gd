@@ -62,14 +62,24 @@ const DISPLAY_NAMES := {
 # fill once the tank's empty. Everything else costs oxygen same as a spell
 # would (_populate_move_menu() reads oxygen_cost with a 0.0 default, so the
 # free move simply never shows a cost or blocks on one).
+#
+# `inventory: true` (Mermaid's Heal, below) marks a move as also usable
+# outside battle, from the Escape-key pause menu's "Party Spells" tab (see
+# inventory_menu.gd/World._inventory_spells_for()/World.use_party_spell()).
+# Only "heal"/"revive" effect moves make sense to tag this way - there's no
+# opponent to swing "damage"/"debuff" at while just swimming around, and
+# World.use_party_spell() only knows how to resolve those two effects.
+# Same tag exists on spell_tree.gd entries, for spells learned later that
+# should carry the same out-of-battle use.
 const BASE_MOVES := {
 	"Staff_Diver": [
-		{"name": "Swift Jab", "power": 4, "acc_mod": 6, "hint": "Fast, reliable", "text": "You jab it in a burst of speed"},
+		{"name": "Heal", "power": 0, "effect": "heal", "amount": 5, "inventory": true, "oxygen_cost": 6.0, "hint": "Restores an ally's HP", "text": "You recover some health"},
+		{"name": "Swift Jab", "power": 1, "acc_mod": 6, "hint": "Fast, reliable", "text": "You jab it in a burst of speed"},
 		{"name": "Riptide Kick", "power": 7, "acc_mod": 2, "hint": "Balanced", "text": "You kick it on a current", "oxygen_cost": 10.0},
 		{"name": "Crashing Wave", "power": 12, "acc_mod": -2, "hint": "Heavy, riskier", "text": "You crash into it like a wave", "oxygen_cost": 16.0},
 	],
 	"Prototype_1(1910)": [
-		{"name": "Precise Tap", "power": 3, "acc_mod": 9, "hint": "Nearly unmissable, light", "text": "You land a precise tap"},
+		{"name": "Precise Tap", "power": 1, "acc_mod": 9, "hint": "Nearly unmissable, light", "text": "You land a precise tap"},
 		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers its defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
 		{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers its agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
 	],
@@ -80,7 +90,7 @@ const BASE_MOVES := {
 	],
 }
 
-const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": true}
+const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": false}
 
 # A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
 # branch for how heavy_min/heavy_max actually turn into damage (a fraction
@@ -93,6 +103,24 @@ const ENEMY_HEAVY_MOVE := {
 	"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
 }
 const ENEMY_HEAVY_CHANCE := 0.3
+
+# Raised in place of ENEMY_HEAVY_CHANCE when the chosen target is already
+# low enough that a heavy swing's own damage range could plausibly finish
+# them (see _do_enemy_turn()) - an enemy that's just rolling dice every
+# turn doesn't read as smart; one that goes for the kill when it's actually
+# lined up does, without making the heavy swing itself hit any harder or
+# any more reliably than it already did.
+const ENEMY_HEAVY_FINISH_CHANCE := 0.65
+
+# How long a move's result stays on screen (log_label text) before whatever
+# happens next - the next turn's own _log() call, or a win/lose/flee banner
+# - overwrites it. log_label only ever shows one line at a time, no
+# scrollback, so this is the entire reading window a player gets for any
+# given message. Every create_timer() call directly after a _log() in this
+# file uses this same constant now (they used to be separate 0.7/0.8/0.9
+# magic numbers, all too short to actually read a sentence in) so pacing
+# stays consistent and only needs tuning in one place.
+const LOG_READ_DELAY := 1.6
 
 var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
 var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
@@ -117,6 +145,7 @@ var target_menu: HFlowContainer
 var attack_btn: Button
 var run_btn: Button
 var back_btn: Button
+var target_back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
 
@@ -429,6 +458,9 @@ func _build_ui() -> void:
 	target_menu.add_theme_constant_override("v_separation", 8)
 	target_menu.visible = false
 	col.add_child(target_menu)
+	target_back_btn = _menu_button("Back", "")
+	target_back_btn.pressed.connect(_show_moves_from_target_menu)
+	target_menu.add_child(target_back_btn)
 
 	call_deferred("_fit_panel_height")
 
@@ -869,14 +901,19 @@ func _show_main() -> void:
 	main_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Barrier moves target the caster and always succeed - no target picker,
-# straight to resolution. Heal targets a living ally (a downed one has
+# Barrier moves target the caster - a single-entry target list rather than
+# an immediate resolve, same as everything else below, so choosing a
+# barrier spell still lands on a screen with Back rather than committing
+# the instant it's picked. Heal targets a living ally (a downed one has
 # nothing a heal can do for it - see _apply_revive() for that); revive
 # targets a downed one specifically. Everything else still targets an
-# enemy. In every case: skip the picker entirely when there's only one
-# valid target (no real choice to make), otherwise show one button per
-# candidate. An empty pool (e.g. Revive with nobody actually down) just
-# reopens the move menu instead of silently eating the button press.
+# enemy. Always shows the target picker, even for a single candidate
+# (e.g. the common one-enemy fight) - that single extra button is what
+# gives the player a Back to bail out on a move they picked by mistake
+# (see target_back_btn/_show_moves_from_target_menu()); previously a
+# lone target skipped straight to resolution with no way back at all. An
+# empty pool (e.g. Revive with nobody actually down) just reopens the
+# move menu instead of silently eating the button press.
 func _on_move_chosen(mv: Dictionary) -> void:
 	if _busy:
 		return
@@ -884,12 +921,10 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		return
 	move_menu.visible = false
 	var effect := String(mv.get("effect", ""))
-	if effect == "barrier":
-		_resolve_party_move(mv, _acting)
-		return
-
 	var targets: Array
 	match effect:
+		"barrier":
+			targets = [_acting]
 		"heal":
 			targets = _living(party)
 		"revive":
@@ -900,9 +935,6 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	if targets.is_empty():
 		move_menu.visible = true
 		call_deferred("_fit_panel_height")
-		return
-	if targets.size() <= 1:
-		_resolve_party_move(mv, targets[0])
 		return
 	_pending_move = mv
 	_populate_target_menu(targets)
@@ -919,10 +951,26 @@ func _populate_target_menu(targets: Array) -> void:
 		b.pressed.connect(_on_target_chosen.bind(t))
 		target_menu.add_child(b)
 		target_buttons.append(b)
+	# Keep Back last - same reason move_menu's own back_btn gets
+	# re-positioned in _populate_move_menu(): it's a persistent child, not
+	# rebuilt above, so re-adding fresh target buttons pushes it out of
+	# place unless it's explicitly moved back to the end each time.
+	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
 
 func _on_target_chosen(target: Dictionary) -> void:
 	target_menu.visible = false
 	_resolve_party_move(_pending_move, target)
+
+# No cost has actually been spent yet at this point - _on_move_chosen()
+# only checks whether the oxygen is there, the real deduction happens in
+# _resolve_party_move() once a target's actually been resolved against -
+# so backing out here is free, nothing to refund.
+func _show_moves_from_target_menu() -> void:
+	if _busy:
+		return
+	target_menu.visible = false
+	move_menu.visible = true
+	call_deferred("_fit_panel_height")
 
 # One damage/effect roll, used identically for the player's moves and the
 # grunt's counter - stats (not separate formulas per side) are what make
@@ -1121,16 +1169,41 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# itself is the reaction. play_death_fade() frees the actor once it
 	# finishes (goblin.gd), so nothing after this point may safely touch it
 	# again - is_instance_valid() below is what keeps the idle call honest
-	# about that instead of assuming 0.8s and 0.9s never overlap.
+	# about that instead of assuming LOG_READ_DELAY and the fade duration
+	# never overlap.
 	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
 	if target_died and target.has("actor") and target.actor is Goblin:
 		(target.actor as Goblin).play_death_fade()
 	elif r.hit and String(r.debuff) == "" and target.has("actor") and target.actor is Goblin:
 		(target.actor as Goblin).play("walk")
-	await get_tree().create_timer(0.8).timeout
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not target_died and target.has("actor") and is_instance_valid(target.actor) and target.actor is Goblin:
 		(target.actor as Goblin).play("idle")
 	_advance_turn()
+
+# Weighted random rather than always-lowest-HP - a party member missing
+# more of their max HP is proportionally more likely to get picked, but a
+# full-HP member always keeps some nonzero shot too (the +0.15 floor
+# below). Reads as "the enemy is going after the hurt one" over a few
+# turns without ever being a deterministic focus-fire that feels like the
+# AI is cheating rather than playing smart.
+func _pick_enemy_target(alive_party: Array) -> Dictionary:
+	if alive_party.size() <= 1:
+		return alive_party[0]
+	var weights: Array = []
+	var total := 0.0
+	for e in alive_party:
+		var s := (e.stats as CombatantStats)
+		var missing_frac: float = 1.0 - (float(s.hp) / float(s.hp_max))
+		var w: float = 0.15 + missing_frac
+		weights.append(w)
+		total += w
+	var roll := randf() * total
+	for i in range(alive_party.size()):
+		roll -= float(weights[i])
+		if roll <= 0.0:
+			return alive_party[i]
+	return alive_party[alive_party.size() - 1]
 
 func _do_enemy_turn(actor: Dictionary) -> void:
 	_set_all_buttons(false)
@@ -1143,8 +1216,15 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	if alive_party.is_empty():
 		_advance_turn()
 		return
-	var target: Dictionary = alive_party[randi_range(0, alive_party.size() - 1)]
-	var heavy := randf() < ENEMY_HEAVY_CHANCE
+	var target: Dictionary = _pick_enemy_target(alive_party)
+	var target_stats := target.stats as CombatantStats
+	# "Lined up" means the target's already low enough that a heavy swing's
+	# own damage range (see ENEMY_HEAVY_MOVE's heavy_max, a fraction of
+	# their OWN max HP) could plausibly be a kill - not a fixed HP number,
+	# so this scales correctly across levels the same way the heavy swing's
+	# damage itself already does.
+	var lined_up: bool = float(target_stats.hp) <= float(target_stats.hp_max) * float(ENEMY_HEAVY_MOVE.heavy_max)
+	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
 	_refresh_bar(target)
 	var verb := ("%s winds up and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s claws at %s" % [String(actor.display_name), String(target.display_name)])
@@ -1160,7 +1240,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		_log("%s for %d." % [verb, int(r.damage)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
 func _win() -> void:
@@ -1169,7 +1249,7 @@ func _win() -> void:
 	move_menu.visible = false
 	target_menu.visible = false
 	_log("The enemies back off, beaten.")
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	var total_xp := 0
 	for e in enemies:
 		if e.has("actor") and is_instance_valid(e.actor) and e.actor is Goblin:
@@ -1182,7 +1262,7 @@ func _win() -> void:
 		var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
 		for lv in levels:
 			_log("%s reached level %d!" % [String(entry.display_name), int(lv)])
-			await get_tree().create_timer(0.8).timeout
+			await get_tree().create_timer(LOG_READ_DELAY).timeout
 	finished.emit("won")
 
 func _lose() -> void:
@@ -1191,7 +1271,7 @@ func _lose() -> void:
 	move_menu.visible = false
 	target_menu.visible = false
 	_log("The party is battered and pulls back.")
-	await get_tree().create_timer(0.9).timeout
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	finished.emit("lost")
 
 func _on_run() -> void:
@@ -1203,14 +1283,14 @@ func _on_run() -> void:
 
 	if randf() <= RUN_CHANCE:
 		_log("The party breaks off and swims for it.")
-		await get_tree().create_timer(0.7).timeout
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
 		finished.emit("fled")
 		return
 
 	var living_enemies := _living(enemies)
 	var blocker := String(living_enemies[0].display_name) if not living_enemies.is_empty() else "something"
 	_log("Can't get clear - %s cuts you off!" % blocker)
-	await get_tree().create_timer(0.8).timeout
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not living_enemies.is_empty():
 		var attacker: Dictionary = living_enemies[randi_range(0, living_enemies.size() - 1)]
 		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, ENEMY_MOVE)
@@ -1225,12 +1305,14 @@ func _on_run() -> void:
 			_log("%s claws you for %d as you struggle free." % [String(attacker.display_name), int(r.damage)])
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
 			(_acting.actor as Diver).play_death_fade()
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
 func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled
 	run_btn.disabled = not enabled
 	back_btn.disabled = not enabled
+	target_back_btn.disabled = not enabled
 	for b in move_buttons:
 		(b as Button).disabled = not enabled
 	for b in target_buttons:

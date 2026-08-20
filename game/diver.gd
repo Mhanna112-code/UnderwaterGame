@@ -34,6 +34,13 @@ const SRC := preload("res://art/characters/divers.glb")
 @export var model_name := "Staff_Diver"
 @export var tint := Color(1, 1, 1)
 
+# Set by world.gd right after add_child(), same convention MiniMap/
+# InventoryMenu/TargetSelector already use for their own `world` refs -
+# added specifically so update_sonar() (below) can reach World.key_items/
+# World.revealed_key_items without constructing a throwaway World.new()
+# that has none of the real game's state on it.
+var world: World
+
 var speed := 5.0
 var accel := 6.0
 var drag := 2.2
@@ -62,7 +69,7 @@ const BASE_STATS := {
 		"evasion": 5, "accuracy": 6, "barrier_max": 5,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
-		"ability": "swap", "ability_locked": true, "passive": "sonar"
+		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 26, "strength": 8, "defense": 1, "agility": 8,
@@ -90,10 +97,12 @@ var passive_id := ""
 # an empty id, so nothing needs to special-case "does this diver have one."
 var ability_id := ""
 
-# A locked ability exists (ability_id is set) but can't be used yet - it's
-# there to be unlocked by something in the world (see unlock_ability(),
-# called by grapple_anchor.gd's on_grappled_to()), not earned by leveling.
-# Only Staff_Diver's BASE_STATS entry sets this true.
+# A locked ability exists (ability_id is set) but can't be used yet - the
+# mechanism is still here (unlock_ability(), called by grapple_anchor.gd's
+# on_grappled_to()) for any diver a future BASE_STATS entry gates this way,
+# but nothing currently sets ability_locked true - Mermaid's swap used to
+# gate on reaching a grapple anchor, but now starts available like every
+# other diver's ability.
 var ability_locked := false
 
 # Spell ids this diver has bought from game/spell_tree.gd, across all three
@@ -335,12 +344,23 @@ const SWAP_COOLDOWN := 2.0
 const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0, "swap": 15.0}
 
 # No passive regen at all - a save point (world.gd's _on_save_requested())
-# is the only way oxygen comes back, so every ability use and every second
+# is the only way oxygen comes back, so every ability use and every tick
 # of sonar is spending down a tank that stays spent until you actually go
 # find one. Lower than the old always-on-passive drain used to need, since
 # there's no regen fighting it anymore - this is the whole cost, not a net
-# rate against something clawing it back.
+# rate against something clawing it back. Still expressed as a per-second
+# rate for balance purposes (tune this the same way you always would), but
+# charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather than
+# smoothly every physics frame - see _physics_process()'s _sonar_drain_timer.
 const SONAR_OXYGEN_DRAIN_PER_SEC := 3.0
+
+# How often the sonar drain actually gets charged - a few seconds, not
+# every frame. Separate from SONAR_INTERVAL (the ping/update_sonar() tick
+# rate, currently 0.2s) on purpose: how often the minimap re-checks for
+# nearby zones and how often oxygen gets billed for having sonar on are
+# two different cadences that don't need to match.
+const SONAR_DRAIN_INTERVAL := 3.0
+var _sonar_drain_timer := 0.0
 
 var _ability_cooldown := 0.0
 var _is_grappling := false
@@ -457,22 +477,64 @@ func toggle_sonar() -> bool:
 	if passive_id != "sonar":
 		return false
 	sonar_active = not sonar_active and stats.oxygen > 0.0
+	if sonar_active:
+		# Starts the drain clock fresh on every fresh toggle-on, so turning
+		# sonar on always buys a full SONAR_DRAIN_INTERVAL of free use
+		# before the first charge - without this, _sonar_drain_timer could
+		# still be sitting near/at 0 from however it was left, charging
+		# almost immediately instead of after a few real seconds.
+		_sonar_drain_timer = SONAR_DRAIN_INTERVAL
 	return sonar_active
 
 func _physics_process(delta: float) -> void:
 	if passive_id == "sonar" and sonar_active:
-		stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC * delta)
-		if stats.oxygen <= 0.0:
-			sonar_active = false
+		_sonar_drain_timer -= delta
+		if _sonar_drain_timer <= 0.0:
+			_sonar_drain_timer = SONAR_DRAIN_INTERVAL
+			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC * SONAR_DRAIN_INTERVAL)
+			if stats.oxygen <= 0.0:
+				sonar_active = false
 		sonar_timer -= delta
 		if sonar_timer <= 0.0:
 			sonar_timer = SONAR_INTERVAL
 			update_sonar()
 
-# TODO: not implemented yet - sonar toggle currently ticks pings while on
-# but they have no effect.
+# Marks every not-yet-claimed key-item zone as "revealed" - MiniMap draws
+# a pulsing red marker for anything in World.revealed_key_items that isn't
+# also in World.key_items yet (dot if it's within the minimap's own
+# view_radius, a small arrow at the rim pointing toward it otherwise - see
+# mini_map.gd's _draw()). Once revealed it stays revealed for the rest of
+# the run (nothing here ever removes an id from revealed_key_items except
+# a claim clearing it via key_items) - sonar's job is finding it, not
+# re-finding it every single ping.
+#
+# MODIFIED from the original draft: that version built a fresh
+# `World.new()`/`ItemGuardian.new()` each call - `World.new()` is an
+# empty, disconnected World with its own blank key_items array (not the
+# real game's), so `world.key_items.has(item)` could never actually match
+# anything, and constructing two throwaway objects every 0.2s (this runs
+# on every sonar ping, see SONAR_INTERVAL) leaked the work of building
+# them for nothing. Fixed by using the `world` reference world.gd now
+# assigns after add_child() (see the new `var world: World` above)
+# instead of a fresh instance, and reading ItemGuardian.SPOTS directly off
+# the class (it's a const - no instance needed to read it, same reason
+# battle.gd's BASE_MOVES gets read as Battle.BASE_MOVES elsewhere).
+# Also fixed: `world.key_items.has(item)` was checking the whole SPOTS
+# dictionary against key_items (which only ever holds item-id strings),
+# never `item.item` (the actual id) - always false, so nothing was ever
+# actually being skipped as already-claimed.
 func update_sonar() -> void:
-	pass
+	if world == null:
+		return
+	var s_items := []
+	for item in ItemGuardian.SPOTS:
+		if world.key_items.has(String(item.item)):
+			continue
+		s_items.append(item)
+	for entry in s_items:
+		var item_id := String(entry.item)
+		if not world.revealed_key_items.has(item_id):
+			world.revealed_key_items.append(item_id)
 
 # Aimed - the one ability that isn't omnidirectional. `aim_dir` comes from
 # world.gd's camera yaw/pitch (where the player is actually looking, via

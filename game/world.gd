@@ -66,56 +66,179 @@ var _showing_save_prompt := false
 # visible there without any extra sync step.
 var key_items: Array[String] = []
 
+# Which ItemGuardian.SPOTS item ids sonar has ever pinged (see
+# Diver.update_sonar()) - MiniMap draws a marker for anything in here
+# that isn't also in key_items yet (still unclaimed). Party-wide like
+# key_items, not per-diver, and never cleared except implicitly by an id
+# leaving this "revealed but unclaimed" state once it's actually claimed.
+var revealed_key_items: Array[String] = []
+
+# Party-wide consumables (item_id -> count) - what an ItemOrb pickup or a
+# non-key guardian reward actually adds to now, instead of Items.grant()
+# applying instantly on pickup (see _on_item_orb_collected()/
+# _grant_reward_item()). Only ever spent from inventory_menu.gd's Use
+# button, via use_inventory_item() below - that's the one place
+# Items.grant() is still called from.
+var inventory: Dictionary = {}
+
+# Escape's pause menu - see _unhandled_input()'s ESCAPE branch for how it
+# opens/closes (mutually exclusive with aiming/target_selector.selecting/
+# save_point_menu, same guard shape those already use against each other)
+# and _physics_process()'s gate for why movement actually stops while it's
+# open, unlike save_point_menu (that gap predates this and isn't this
+# menu's problem to fix).
+var inventory_menu: InventoryMenu
+
+# The title screen (New Game/Load Game, shown once at start and again on
+# "Return to Title") and the game-over screen ("lost" a battle) - see
+# _show_title_screen()/_show_game_over() below.
+var title_screen: TitleScreen
+var game_over_screen: GameOverScreen
+
 # Set right before a guardian fight starts (see _on_item_guardian_triggered
 # ()), read once in _on_battle_finished() and cleared immediately after -
 # "" means an ordinary random encounter, nothing to hand out on a win.
 var _pending_reward_item := ""
 
-# One snapshot per diver, parallel to divers[] - position plus a full
-# CombatantStats copy (CombatantStats.copy_from()) plus known/equipped
-# spells and whether the ability's still locked. Captured on every real
-# save (_on_save_requested()) and once automatically at the very end of
-# _ready(), so there's always somewhere to restore to even before the
-# party's ever found a save point. Restored wholesale on a game over (see
-# _on_battle_finished()'s "lost" branch) - "start from your last save
-# point" without a real save-file format existing yet (save_point_menu.gd's
-# own header comment already flags that roadmap gap) - this is a
-# same-session checkpoint, not persistence across actually closing the game.
-var _checkpoint: Array = []
+# Which save slot this run is playing into - set the instant the title
+# screen resolves (New Game picks one and writes an initial save into it;
+# Load Game picks one and reads from it), -1 only while the title screen
+# itself is still up and nothing's been chosen yet. Everything that used
+# to be an in-memory-only checkpoint (see _write_save()/_load_save() below)
+# now reads/writes SaveManager.slot_path(_current_slot) instead, so a game
+# over's "restart from save point" and an actual save-point visit are the
+# same real file, and it all survives closing the game entirely.
+var _current_slot := -1
 
-func _capture_checkpoint() -> void:
-	_checkpoint.clear()
+# Full state: per-diver position/stats/spells plus the world-level
+# inventory/key_items/active - everything _write_save()'s caller (a save
+# point) or the initial New Game write needs to reproduce the run exactly.
+# Vector3 isn't JSON-serializable, so position goes in as a plain [x,y,z]
+# array (see _load_save()'s reverse conversion).
+func _serialize_state() -> Dictionary:
+	var divers_data: Array = []
 	for d in divers:
-		var stats_copy := CombatantStats.new()
-		stats_copy.copy_from(d.stats)
-		_checkpoint.append({
-			"position": d.position,
-			"stats": stats_copy,
+		var s: CombatantStats = d.stats
+		divers_data.append({
+			"position": [d.position.x, d.position.y, d.position.z],
 			"known_spells": (d.known_spells as Array).duplicate(),
 			"equipped_spells": (d.equipped_spells as Array).duplicate(),
-			"ability_locked": d.ability_locked,
+			"stats": {
+				"hp_max": s.hp_max, "strength": s.strength, "defense": s.defense,
+				"agility": s.agility, "accuracy": s.accuracy, "evasion": s.evasion,
+				"barrier_max": s.barrier_max, "oxygen_max": s.oxygen_max,
+				"level": s.level, "xp": s.xp, "xp_to_next": s.xp_to_next,
+				"spell_points": s.spell_points,
+				"grow_hp": s.grow_hp, "grow_strength": s.grow_strength,
+				"grow_defense": s.grow_defense, "grow_agility": s.grow_agility,
+				"grow_accuracy": s.grow_accuracy, "grow_evasion": s.grow_evasion,
+				"hp": s.hp, "barrier": s.barrier, "oxygen": s.oxygen,
+			},
 		})
+	return {
+		"active": active,
+		"inventory": inventory.duplicate(),
+		"key_items": key_items.duplicate(),
+		"divers": divers_data,
+	}
 
-# Bails out and does nothing rather than a half-restore if the checkpoint
-# doesn't actually match divers[] one-to-one - shouldn't happen (_ready()
-# always captures one before anything else can run), but a wrong-shaped
-# restore silently leaving some divers untouched would be a worse bug than
-# just not restoring at all.
-func _restore_checkpoint() -> void:
-	if _checkpoint.size() != divers.size():
+func _write_save() -> void:
+	if _current_slot < 0:
+		return
+	SaveManager.write_slot(_current_slot, _serialize_state())
+
+# Bails out and does nothing rather than a half-restore if the save data
+# doesn't actually match divers[] one-to-one (a missing/corrupt slot reads
+# back as {} from SaveManager, whose "divers" key then defaults to []) -
+# a wrong-shaped restore silently leaving some divers untouched would be a
+# worse bug than just not restoring at all.
+func _load_save() -> void:
+	var data: Dictionary = SaveManager.read_slot(_current_slot)
+	var divers_data: Array = data.get("divers", [])
+	if divers_data.size() != divers.size():
 		return
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
-		var snap: Dictionary = _checkpoint[i]
-		d.position = snap.position
-		d.stats.copy_from(snap.stats as CombatantStats)
-		d.known_spells.assign((snap.known_spells as Array).duplicate())
-		d.equipped_spells.assign((snap.equipped_spells as Array).duplicate())
-		d.ability_locked = bool(snap.ability_locked)
-	active = 0
+		var snap: Dictionary = divers_data[i]
+		var pos: Array = snap.get("position", [d.position.x, d.position.y, d.position.z])
+		d.position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+		d.known_spells.assign((snap.get("known_spells", []) as Array).duplicate())
+		d.equipped_spells.assign((snap.get("equipped_spells", []) as Array).duplicate())
+		var sd: Dictionary = snap.get("stats", {})
+		var s: CombatantStats = d.stats
+		s.hp_max = int(sd.get("hp_max", s.hp_max))
+		s.strength = int(sd.get("strength", s.strength))
+		s.defense = int(sd.get("defense", s.defense))
+		s.agility = int(sd.get("agility", s.agility))
+		s.accuracy = int(sd.get("accuracy", s.accuracy))
+		s.evasion = int(sd.get("evasion", s.evasion))
+		s.barrier_max = int(sd.get("barrier_max", s.barrier_max))
+		s.oxygen_max = float(sd.get("oxygen_max", s.oxygen_max))
+		s.level = int(sd.get("level", s.level))
+		s.xp = int(sd.get("xp", s.xp))
+		s.xp_to_next = int(sd.get("xp_to_next", s.xp_to_next))
+		s.spell_points = int(sd.get("spell_points", s.spell_points))
+		s.grow_hp = int(sd.get("grow_hp", s.grow_hp))
+		s.grow_strength = int(sd.get("grow_strength", s.grow_strength))
+		s.grow_defense = int(sd.get("grow_defense", s.grow_defense))
+		s.grow_agility = int(sd.get("grow_agility", s.grow_agility))
+		s.grow_accuracy = int(sd.get("grow_accuracy", s.grow_accuracy))
+		s.grow_evasion = int(sd.get("grow_evasion", s.grow_evasion))
+		s.hp = int(sd.get("hp", s.hp_max))
+		s.barrier = int(sd.get("barrier", s.barrier_max))
+		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
+	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
+	key_items = (data.get("key_items", []) as Array).duplicate()
+	active = int(data.get("active", 0))
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
+
+# get_tree().paused freezes every node whose process_mode isn't ALWAYS -
+# the whole world (movement, physics, encounters, the HUD's own per-frame
+# updates) just stops, and TitleScreen/GameOverScreen (both explicitly
+# ALWAYS, see their own _ready()) are the only things still receiving
+# input. Mirrors the pause Battle already puts the world into during a
+# fight, just triggered by a menu screen instead of battle.gd.
+func _show_title_screen() -> void:
+	get_tree().paused = true
+	title_screen.open()
+
+# New Game always starts from the fresh, level-1 divers _ready()'s CAST
+# loop just built (nothing here resets stats - there's nothing to reset
+# yet) - just claims a slot and writes the very first save into it, same
+# role the old implicit end-of-_ready() checkpoint used to serve, now a
+# real file instead of an in-memory snapshot.
+func _on_title_new_game(slot: int) -> void:
+	_current_slot = slot
+	_write_save()
+	title_screen.close()
+	get_tree().paused = false
+
+func _on_title_load_game(slot: int) -> void:
+	_current_slot = slot
+	_load_save()
+	title_screen.close()
+	get_tree().paused = false
+
+func _show_game_over() -> void:
+	get_tree().paused = true
+	game_over_screen.open()
+
+func _on_game_over_restart() -> void:
+	_load_save()
+	game_over_screen.close()
+	get_tree().paused = false
+	_announce("You wake back at your last save.")
+
+# reload_current_scene() re-runs World._ready() from scratch - every rock,
+# cracked wall, item guardian and diver goes back to its pristine starting
+# state, which a hand-written "reset everything" function would otherwise
+# have to reproduce piece by piece. Lands back on the title screen exactly
+# like a cold launch does, since _ready() always ends by showing it.
+func _on_game_over_title() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 # The gap sequence's three-plate finale (see _build_highway()). Populated
 # there, checked every physics frame in _check_gap_puzzle().
@@ -187,6 +310,10 @@ func _ready() -> void:
 	$HUD.add_child(save_point_menu)
 	save_point_menu.learn_ui.key_items = key_items
 
+	inventory_menu = InventoryMenu.new()
+	inventory_menu.world = self
+	$HUD.add_child(inventory_menu)
+
 	_build_hp_bar()
 	_build_oxygen_bar()
 	_build_active_cursor()
@@ -202,6 +329,7 @@ func _ready() -> void:
 		var d := Diver.new()
 		d.model_name = String(c.model)
 		d.position = c.at as Vector3
+		d.world = self
 		add_child(d)
 		divers.append(d)
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
@@ -209,11 +337,22 @@ func _ready() -> void:
 		target_selector.register_character(d)
 	_carry_lantern()
 	_update_hud()
-	# An implicit checkpoint at the game's actual start - _restore_checkpoint()
-	# should always have somewhere to go on a game over, even for a party
-	# that's never once stood on a save point yet (see _capture_checkpoint()/
-	# _restore_checkpoint() below).
-	_capture_checkpoint()
+
+	title_screen = TitleScreen.new()
+	title_screen.new_game_chosen.connect(_on_title_new_game)
+	title_screen.load_game_chosen.connect(_on_title_load_game)
+	$HUD.add_child(title_screen)
+
+	game_over_screen = GameOverScreen.new()
+	game_over_screen.restart_chosen.connect(_on_game_over_restart)
+	game_over_screen.title_chosen.connect(_on_game_over_title)
+	$HUD.add_child(game_over_screen)
+
+	# The world/party/HUD are all fully built at this point, same as ever -
+	# this just freezes everything (get_tree().paused, see _show_title_
+	# screen()) and shows the title on top until a slot's chosen, rather
+	# than restructuring _ready() around "don't build the world yet."
+	_show_title_screen()
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -305,10 +444,100 @@ func _on_breakable_rock_broken(spot: Vector3) -> void:
 	add_child(orb)
 
 func _on_item_orb_collected(item_id: String, d: Diver) -> void:
-	var msg := Items.grant(item_id, d)
+	_add_to_inventory(item_id)
+
+# Party-wide, not applied to `d` (who physically swam into the orb) at all
+# anymore - see inventory/use_inventory_item()'s own header comments for
+# why an item sits in the inventory until the player chooses to use it
+# instead of applying itself the instant it's picked up.
+func _add_to_inventory(item_id: String) -> void:
+	inventory[item_id] = int(inventory.get(item_id, 0)) + 1
+	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
+	_announce("Picked up a %s." % display)
+
+# The only place Items.grant() still runs from - called by
+# inventory_menu.gd's Use button. Applies to whichever diver is currently
+# being steered, same as the old instant-pickup behavior did, just delayed
+# until the player actually chooses to spend it.
+func use_inventory_item(item_id: String) -> void:
+	var count: int = int(inventory.get(item_id, 0))
+	if count <= 0 or divers.is_empty():
+		return
+	var msg := Items.grant(item_id, divers[active])
 	if msg != "":
 		_announce(msg)
+	inventory[item_id] = count - 1
+	if inventory[item_id] <= 0:
+		inventory.erase(item_id)
 	_update_hp_bar()
+
+# Every move/spell a given diver can use from the pause menu's "Party
+# Spells" tab right now - their BASE_MOVES entries (see battle.gd) plus
+# whatever they've learned in the spell tree (known_spells, not just
+# equipped_spells - see spell_tree.gd's own header comment on why), each
+# filtered down to just the ones tagged "inventory": true. Returns move/
+# spell-def dictionaries as-is (mixed shape - BASE_MOVES uses "name",
+# spell defs use "display" - see _party_spell_label() below for reading
+# either one back).
+func _inventory_spells_for(d: Diver) -> Array:
+	var out: Array = []
+	for mv in Battle.BASE_MOVES.get(d.model_name, []):
+		if bool((mv as Dictionary).get("inventory", false)):
+			out.append(mv)
+	for spell_id in d.known_spells:
+		var def: Dictionary = SpellTree.find_def(d.model_name, spell_id)
+		if bool(def.get("inventory", false)):
+			out.append(def)
+	return out
+
+func _party_spell_label(spell: Dictionary) -> String:
+	return String(spell.get("display", spell.get("name", "")))
+
+# Same oxygen economy as casting it in battle - a spell that costs 16
+# oxygen there shouldn't become a free, infinite-use heal just because
+# there's no battle running right now (oxygen_cost defaults to 0.0 same as
+# battle.gd, so Mermaid's free base Heal really does stay free here too).
+# Called by the menu before it lets a spell be picked at all - see
+# inventory_menu.gd's caster-picker, which disables anyone who can't
+# currently afford it, same as battle.gd's move menu already does.
+func can_afford_party_spell(spell: Dictionary, caster: Diver) -> bool:
+	return caster.stats.oxygen >= float(spell.get("oxygen_cost", 0.0))
+
+# Resolves a "heal"/"revive" party spell straight against target.stats,
+# same math battle.gd's _apply_heal()/_apply_revive() use, just without a
+# live Battle around to run it through - there's no accuracy check and no
+# enemy to miss against, so this is the minimum needed to reuse the same
+# effect data in both places. Deducts the caster's oxygen same as a real
+# cast would (see can_afford_party_spell() above); does nothing if the
+# spell's effect isn't one this menu knows how to apply (e.g. someone
+# mistags a damage move "inventory" - there's no opponent to swing it at
+# outside battle, so it's a silent no-op rather than a crash).
+func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
+	if not can_afford_party_spell(spell, caster):
+		return
+	caster.stats.oxygen -= float(spell.get("oxygen_cost", 0.0))
+	var s := target.stats
+	var amount := int(spell.get("amount", 0))
+	var label := _party_spell_label(spell)
+	match String(spell.get("effect", "")):
+		"heal":
+			var before := s.hp
+			s.hp = mini(s.hp_max, s.hp + amount)
+			var changed := s.hp - before
+			if changed > 0:
+				_announce("%s - %s recovers %d HP." % [label, _display_name(target.model_name), changed])
+			else:
+				_announce("%s - %s is already at full health." % [label, _display_name(target.model_name)])
+		"revive":
+			if s.hp > 0:
+				_announce("%s isn't down." % _display_name(target.model_name))
+				return
+			s.hp = mini(s.hp_max, amount)
+			_announce("%s - %s is back up!" % [label, _display_name(target.model_name)])
+		_:
+			return
+	_update_hp_bar()
+	_update_oxygen_bar()
 
 # Two fixed guardian spots, each sitting on exactly the key item
 # spell_tree.gd's two capstone spells are gated behind (current_pearl for
@@ -318,10 +547,10 @@ func _on_item_orb_collected(item_id: String, d: Diver) -> void:
 # where _build_site()'s rock scatter already reaches (dist up to 48).
 func _build_item_guardians() -> void:
 	const SPOTS := [
-		{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0)},
-		{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0)},
+		{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
+		{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
 	]
-	for entry in SPOTS:
+	"""for entry in SPOTS:
 		var guardian := ItemGuardian.new()
 		guardian.item_id = String(entry.item)
 		guardian.position = entry.at as Vector3
@@ -338,7 +567,7 @@ func _build_item_guardians() -> void:
 		decoy.position = (entry.at as Vector3) + Vector3(1.1, 0.0, 0.0)
 		add_child(decoy)
 
-		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
+		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))"""
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -355,10 +584,11 @@ func _build_item_guardians() -> void:
 #      Every plain swim through it gets caught, every single time. A
 #      second GrappleAnchor sits right before it as a staging point; the
 #      real crossing anchor is on the far side.
-#   3. Reaching that far anchor (Diver Boy's grapple) unlocks Mermaid's
-#      locked "swap" ability (see grapple_anchor.gd's on_grappled_to()).
-#      That's all it does - grapple and swap are the only two ways across
-#      the whirlpool, permanently, not just until some gate opens.
+#   3. Reaching that far anchor used to unlock Mermaid's swap ability (see
+#      grapple_anchor.gd's on_grappled_to()) - swap now starts available
+#      from the beginning like every other diver's ability (see diver.gd's
+#      BASE_STATS), so this anchor's unlock call is a no-op today. Grapple
+#      and swap are still the only two ways across the whirlpool.
 #   4. Three lit plates on the far side. All three divers standing on
 #      their own plate at once opens the way past END_X - which means
 #      getting all three across by grapple/swap alone, since nothing
@@ -606,12 +836,22 @@ func _unhandled_input(e: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		mouse_look = true
 	elif e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
+		# elif, not a run of independent ifs like this used to be - opening
+		# the inventory menu only makes sense when NONE of the others were
+		# already true (otherwise a stray Escape while aiming would both
+		# cancel the aim AND pop the pause menu open in the same press).
+		# Closing it is the mirror of save_point_menu's own close branch
+		# right above it.
 		if aiming:
 			_cancel_aim()
-		if target_selector.selecting:
+		elif target_selector.selecting:
 			target_selector.cancel_selection()
-		if save_point_menu.visible:
+		elif save_point_menu.visible:
 			save_point_menu.close()
+		elif inventory_menu.visible:
+			inventory_menu.close()
+		elif not battling:
+			inventory_menu.open()
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		mouse_look = false
 	elif e is InputEventMouseMotion and mouse_look:
@@ -704,11 +944,24 @@ func _diver_on_save_point(d: Diver) -> bool:
 # Also the only way oxygen ever comes back now that there's no passive
 # regen - a save point is a real destination to swim for once you've spent
 # it down on abilities/sonar/spells, not just a spell-loadout menu. And now
-# the checkpoint a game over rewinds the whole party back to - see
-# _capture_checkpoint().
-func _on_save_requested(d: Diver) -> void:
-	d.stats.oxygen = d.stats.oxygen_max
-	_capture_checkpoint()
+# a real save-file write (_write_save()) to whichever slot this run is
+# playing into - a game over's "Restart from Save Point" (see
+# _show_game_over()/_on_game_over_restart()) reads back exactly this.
+#
+# HP/barrier/oxygen restore for the WHOLE party, not just whoever's
+# physically standing on the point - battle damage (and oxygen spend) is
+# shared across all three divers, so a rest stop patching up only the one
+# you happened to be steering would leave the other two stuck damaged/
+# drained with no other way to recover.
+func _on_save_requested(_d: Diver) -> void:
+	for other in divers:
+		var s: CombatantStats = (other as Diver).stats
+		s.hp = s.hp_max
+		s.barrier = s.barrier_max
+		s.oxygen = s.oxygen_max
+	_update_hp_bar()
+	_update_oxygen_bar()
+	_write_save()
 	_announce("Progress saved.")
 	save_point_menu.close()
 
@@ -755,7 +1008,7 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
-	if battling:
+	if battling or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
 	# browser, and a build nobody can steer is a build nobody plays.
@@ -963,6 +1216,10 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active]:
 		return
+	var i = ItemGuardian.new()
+	for item in i.SPOTS:
+		if d.position.distance_to(item.at) <= item.radius:
+			_start_battle(item.item_id)
 	_start_battle()
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
@@ -990,6 +1247,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # unmodified fight with nothing riding on it, same as before this existed.
 func _start_battle(reward_item: String = "") -> void:
 	battling = true
+	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
@@ -1013,13 +1271,11 @@ func _on_battle_finished(result: String) -> void:
 			_announce("You put some distance between you.")
 		"lost":
 			# All three divers down - Battle._lose() fires this the instant
-			# _living(party) is empty, same trigger this whole checkpoint
-			# system exists for. Snap the entire party back to whatever
-			# _capture_checkpoint() last recorded (a real save, or the
-			# implicit one from _ready() if they never found one) rather
-			# than leaving the world in a wiped, unplayable state.
-			_restore_checkpoint()
-			_announce("The party is overwhelmed... you wake back at your last save.")
+			# _living(party) is empty. Used to auto-restore the checkpoint
+			# instantly and silently; now hands the player an actual choice
+			# instead (see _show_game_over()) - restart from the current
+			# slot's last save, or bail out to the title screen entirely.
+			_show_game_over()
 		_:
 			_announce("You regroup and catch your breath.")
 	_pending_reward_item = ""
@@ -1028,19 +1284,17 @@ func _on_battle_finished(result: String) -> void:
 # key_items array - Items.grant() refuses those on purpose (see its own
 # header comment), a guardian's reward isn't "held" by whichever diver's
 # turn it was when the fight ended. Everything else Items.ITEMS could
-# theoretically hold goes through grant() on the active diver same as an
-# orb pickup would, in case a future guardian ever guards a consumable
-# instead of a key item.
+# theoretically hold goes into the shared inventory same as an orb pickup
+# would (see _add_to_inventory()), in case a future guardian ever guards a
+# consumable instead of a key item.
 func _grant_reward_item(item_id: String) -> void:
 	if Items.is_key_item(item_id):
 		if not key_items.has(item_id):
 			key_items.append(item_id)
 		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
-		_announce("The guardian falls back - you claim the %s!" % display)
+		_announce("Victory - you claim the key item %s!" % display)
 	else:
-		var msg := Items.grant(item_id, divers[active])
-		_announce(msg if msg != "" else "The guardian falls back.")
-	_update_hp_bar()
+		_add_to_inventory(item_id)
 
 func _announce(text: String) -> void:
 	banner.text = text

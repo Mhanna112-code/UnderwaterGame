@@ -108,33 +108,3 @@ func gain_xp(amount: int) -> Array:
 	if not levels_gained.is_empty():
 		fill()      # a level-up is the game's only heal/recharge right now
 	return levels_gained
-
-# Copies every field from `other` onto self - used by world.gd's save
-# checkpoint system (see World._capture_checkpoint()/_restore_checkpoint())
-# to snapshot and later restore a diver's stats. Explicit field-by-field
-# rather than Resource.duplicate(), so it's unambiguous exactly which
-# fields travel with a checkpoint - same explicit-assignment habit
-# diver.gd's _build_stats() already uses rather than leaning on an
-# implicit copy.
-func copy_from(other: CombatantStats) -> void:
-	hp_max = other.hp_max
-	strength = other.strength
-	defense = other.defense
-	agility = other.agility
-	accuracy = other.accuracy
-	evasion = other.evasion
-	barrier_max = other.barrier_max
-	barrier = other.barrier
-	oxygen_max = other.oxygen_max
-	oxygen = other.oxygen
-	level = other.level
-	xp = other.xp
-	xp_to_next = other.xp_to_next
-	spell_points = other.spell_points
-	grow_hp = other.grow_hp
-	grow_strength = other.grow_strength
-	grow_defense = other.grow_defense
-	grow_agility = other.grow_agility
-	grow_accuracy = other.grow_accuracy
-	grow_evasion = other.grow_evasion
-	hp = other.hp

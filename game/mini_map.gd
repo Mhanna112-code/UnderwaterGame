@@ -74,6 +74,45 @@ func _draw() -> void:
 		else:
 			draw_circle(p, 4.0, Color(0.85, 0.8, 0.3))
 
+	_draw_key_item_markers(center, r, px_per_unit, mid)
+
+# One pulsing red marker per key-item zone (ItemGuardian.SPOTS) sonar has
+# ever revealed (World.revealed_key_items) that hasn't been claimed yet
+# (World.key_items) - a dot at its real position if that's within
+# view_radius of the map center, otherwise a small arrow pinned to the
+# rim and pointing toward it, so a revealed item never just disappears
+# for being far away (the plain-cull the diver dots above use would do
+# exactly that). Drawn after the diver dots, on top, since a revealed
+# item is more actionable information than a background NPC diver.
+const MARKER_PULSE_SPEED := 3.0
+
+func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: Vector2) -> void:
+	var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 1000.0 * MARKER_PULSE_SPEED)
+	var marker_color := Color(0.95, 0.15, 0.15, pulse)
+	for entry in ItemGuardian.SPOTS:
+		var item_id := String(entry.item)
+		if world.key_items.has(item_id) or not world.revealed_key_items.has(item_id):
+			continue
+		var pos: Vector3 = entry.at
+		var rel := Vector2(pos.x, pos.z) - Vector2(center.x, center.z)
+		var dist: float = maxf(rel.length(), 0.01)   # guards the /dist normalize below
+		if dist <= view_radius:
+			draw_circle(mid + rel * px_per_unit, 5.0, marker_color)
+		else:
+			var dir := rel / dist
+			_draw_marker_arrow(mid + dir * (r - 8.0), dir, marker_color)
+
+# Same small-triangle shape _draw_arrow() below uses for the active
+# diver, just parameterized on color/facing instead of hardcoded green
+# and diver-sized - this one's a rim-pinned pointer toward an
+# out-of-range key item, not a "this is you" marker.
+func _draw_marker_arrow(p: Vector2, facing: Vector2, color: Color) -> void:
+	var side := Vector2(-facing.y, facing.x)
+	var tip := p + facing * 5.0
+	var back_l := p - facing * 3.0 + side * 3.0
+	var back_r := p - facing * 3.0 - side * 3.0
+	draw_polygon(PackedVector2Array([tip, back_l, back_r]), PackedColorArray([color]))
+
 func _project(pos: Vector3, center: Vector3, px_per_unit: float, mid: Vector2) -> Vector2:
 	return mid + Vector2(pos.x - center.x, pos.z - center.z) * px_per_unit
 

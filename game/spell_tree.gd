@@ -7,6 +7,9 @@
 # through which branch is deep vs. shallow, not just through numbers:
 #   Staff_Diver (Mermaid): offense is the deep branch, defense is a single
 #     weak node - a fast glass cannon with almost nothing to fall back on.
+#     support is a single node too, upgrading the free "Heal" base move she
+#     starts every game with (see battle.gd's BASE_MOVES) rather than
+#     giving her a real sustain branch to lean on.
 #   Prototype_1(1910) (Diver Boy): debuff is the deep branch, with four
 #     different status effects to chain - utility, not raw power.
 #   Prototype_V(1922) (Marine Man): defense is the deep branch, all barrier
@@ -36,6 +39,15 @@
 # its per-cast oxygen price stay proportional without needing two numbers
 # hand-tuned per entry - see battle.gd's BASE_MOVES for each diver's one
 # move that's exempt from any oxygen cost at all (their free basic attack).
+#
+# "inventory": true marks a "heal"/"revive" spell as also usable outside
+# battle, from the Escape-key pause menu's "Party Spells" tab - see
+# World._inventory_spells_for()/World.use_party_spell(), which only know
+# how to resolve those two effects (same restriction as battle.gd's
+# BASE_MOVES' own "inventory" tag). A known spell shows up there the moment
+# it's learned, whether or not it's actually equipped for battle - the
+# 4-slot equip cap (Diver.MAX_EQUIPPED_SPELLS) is a battle-loadout
+# restriction, not a "can this diver use it at all" one.
 class_name SpellTree
 extends RefCounted
 
@@ -80,6 +92,20 @@ const SPELL_TREES := {
 				"requires_spells": [], "requires_items": [],
 				"effect": "barrier", "amount": 4, "oxygen_cost": 16.0,
 				"hint": "A thin shield", "text": "A thin veil of current wraps you",
+			},
+		},
+		# A single improvement over her free base "Heal" move (see
+		# battle.gd's BASE_MOVES), not a real support branch to rival
+		# Prototype_V(1922)'s - she still has nothing to fall back on for
+		# actual survivability, just a stronger version of the sustain she
+		# already starts with.
+		"support": {
+			"healing_current": {
+				"display": "Healing Current", "cost": 2,
+				"description": "A stronger current than her free heal knows - restores more HP.",
+				"requires_spells": [], "requires_items": [],
+				"effect": "heal", "amount": 10, "oxygen_cost": 16.0, "inventory": true,
+				"hint": "Restores more HP than her base heal", "text": "You channel a stronger mending current",
 			},
 		},
 	},
@@ -187,14 +213,14 @@ const SPELL_TREES := {
 				"display": "Mending Current", "cost": 1,
 				"description": "Wraps an ally in a warm current, restoring some HP.",
 				"requires_spells": [], "requires_items": [],
-				"effect": "heal", "amount": 8, "oxygen_cost": 8.0,
+				"effect": "heal", "amount": 8, "oxygen_cost": 8.0, "inventory": true,
 				"hint": "Restores an ally's HP", "text": "You wrap an ally in a mending current",
 			},
 			"tidal_revival": {
 				"display": "Tidal Revival", "cost": 3,
 				"description": "Pulls a downed ally back up on a surge of current. The tank's other capstone - reviving an ally is worth more than any amount of raw defense.",
 				"requires_spells": ["mending_current"], "requires_items": [],
-				"effect": "revive", "amount": 12, "oxygen_cost": 28.0,
+				"effect": "revive", "amount": 12, "oxygen_cost": 28.0, "inventory": true,
 				"hint": "Revives a downed ally", "text": "A surge of current pulls an ally back up",
 			},
 		},

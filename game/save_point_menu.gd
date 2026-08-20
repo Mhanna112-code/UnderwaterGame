@@ -139,11 +139,11 @@ func _show_update() -> void:
 	_root_panel.visible = false
 	_update_panel.visible = true
 
-# No real persistence exists yet (see the wider save/load roadmap this was
-# scaffolded ahead of) - this is honest about that rather than pretending
-# to write anything. world.gd's handler just banners a confirmation; the
-# signal is here so a real save_manager.gd can hook in later without this
-# file changing at all.
+# Real persistence now exists (see game/save_manager.gd) - world.gd's
+# handler (_on_save_requested()) writes the current run to whichever slot
+# was chosen at the title screen and banners a confirmation. This file
+# still doesn't know or care about any of that; it only ever emits the
+# request.
 func _on_save_pressed() -> void:
 	save_requested.emit(diver)
 

@@ -16,6 +16,11 @@ signal triggered(item_id: String)
 
 @export var item_id := ""
 
+const SPOTS := [
+	{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
+	{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
+]
+
 func _ready() -> void:
 	collision_mask = 2
 
@@ -34,6 +39,7 @@ func _ready() -> void:
 	mat.emission_energy_multiplier = 1.2
 	mat.roughness = 0.6
 	core_mesh.material_override = mat
+	core_mesh.visible = false
 	add_child(core_mesh)
 
 	var rng := RandomNumberGenerator.new()
