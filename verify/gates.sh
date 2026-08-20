@@ -10,6 +10,12 @@ cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
 fails=0
 
+# Godot scans everything under the project root, and playwright has to be
+# installed here for node to resolve it from verify/*.mjs. A .gdignore stops
+# the scan at the directory boundary, which is the difference between a clean
+# run and a screenful of complaints about files inside npm packages.
+[ -d node_modules ] && [ ! -f node_modules/.gdignore ] && touch node_modules/.gdignore
+
 run() {
 	echo
 	echo "=== $1 ==="
@@ -23,6 +29,7 @@ run() {
 
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
+run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
 run "battle: does the fight screen build"             "$GODOT" --headless --path . --script tools/test_battle.gd

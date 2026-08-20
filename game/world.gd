@@ -1216,11 +1216,28 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active]:
 		return
-	var i = ItemGuardian.new()
-	for item in i.SPOTS:
-		if d.position.distance_to(item.at) <= item.radius:
-			_start_battle(item.item_id)
-	_start_battle()
+	# Standing on a key item's spot turns the next random encounter into
+	# that item's guardian fight. Everywhere else it is an ordinary one.
+	#
+	# Two bugs lived in these five lines. The spot dictionaries are keyed
+	# "item", not "item_id", so this threw, and a throw inside a signal
+	# handler takes the rest of the handler with it: an encounter rolled
+	# anywhere within 10 m of either spot started nothing at all. No fight,
+	# no message, and check_for_encounter() had already reset the counter,
+	# so the only symptom was a stretch of map that never attacked you. And
+	# had it not thrown, the unconditional _start_battle() underneath would
+	# have stacked a second battle screen on the same encounter.
+	#
+	# ItemGuardian.new() went with them. SPOTS is a const on the class, so
+	# reading it never needed an instance, and that instance was an Area3D
+	# that was never added to the tree and never freed. One leak per
+	# encounter for the whole session.
+	var reward := ""
+	for spot in ItemGuardian.SPOTS:
+		if d.position.distance_to(spot.at as Vector3) <= float(spot.radius):
+			reward = String(spot.item)
+			break
+	_start_battle(reward)
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 # Both get freed the instant this fires, win or lose the fight that

@@ -42,7 +42,15 @@ var turns := 0
 var swings_seen: Dictionary = {}
 var reactions_seen: Dictionary = {}
 var party_names: Array = []
+var display_names: Array = []
 var back_in_world := false
+# One pass through every combat menu's Back button before the bot settles
+# into actually fighting. Issue #37 asked for exactly this: any combat menu
+# can be left without taking an action.
+var backed_out_of_moves := false
+var backed_out_of_targets := false
+var backing := ""
+
 
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
@@ -64,6 +72,11 @@ func _process(_dt: float) -> bool:
 			party_names.append(String((d as Diver).model_name))
 		world._start_battle()
 		return false
+	if frames == 3 and world.battle != null:
+		for e in (world.battle as Battle).party:
+			display_names.append(String(e.display_name))
+		for e in (world.battle as Battle).enemies:
+			display_names.append(String(e.display_name))
 
 	var battle: Battle = world.battle
 	if battle != null and not battle.finished.is_connected(_on_finished):
@@ -118,9 +131,36 @@ func _note(into: Dictionary, who: String, clip: String) -> void:
 # is for, and picking the literal first button makes Staff_Diver open with
 # Heal every turn and lose to a fight she is meant to win.
 func _press_something(battle: Battle) -> void:
+	# Check the result of a Back press before doing anything else with the
+	# menus, since the whole claim is about where it lands you.
+	if backing == "moves":
+		backing = ""
+		if not battle.main_menu.visible:
+			findings.append("BACK GOES NOWHERE: Back on the move menu did not return to the main menu")
+		backed_out_of_moves = true
+		return
+	if backing == "targets":
+		backing = ""
+		if not battle.move_menu.visible:
+			findings.append("BACK GOES NOWHERE: Back on the target picker did not return to the move menu")
+		backed_out_of_targets = true
+		return
+
 	if battle.target_menu.visible:
+		if not backed_out_of_targets and is_instance_valid(battle.target_back_btn):
+			battle.target_back_btn.pressed.emit()
+			presses += 1
+			last_press_ms = Time.get_ticks_msec()
+			backing = "targets"
+			return
 		_press_first(battle.target_buttons)
 	elif battle.move_menu.visible:
+		if not backed_out_of_moves and is_instance_valid(battle.back_btn):
+			battle.back_btn.pressed.emit()
+			presses += 1
+			last_press_ms = Time.get_ticks_msec()
+			backing = "moves"
+			return
 		_press_attacking_move(battle)
 	elif battle.main_menu.visible and is_instance_valid(battle.attack_btn) and not battle.attack_btn.disabled:
 		battle.attack_btn.pressed.emit()
@@ -172,6 +212,22 @@ func _report() -> bool:
 		for clip in swings.keys():
 			if not String(clip).contains(fam + "_(Attack)"):
 				findings.append("WRONG CHARACTER'S SWING: %s (%s) played '%s'" % [who, fam, clip])
+
+	print("backed out of the move menu: %s, out of the target picker: %s" % [
+		"yes" if backed_out_of_moves else "NO", "yes" if backed_out_of_targets else "NO"])
+	if not backed_out_of_moves:
+		findings.append("NO WAY BACK: the move menu's Back button was never usable")
+	if not backed_out_of_targets:
+		findings.append("NO WAY BACK: the target picker's Back button was never usable")
+
+	# Nobody should be able to end up in a fight where two combatants answer
+	# to the same name. #23 was reported against exactly this.
+	var seen: Dictionary = {}
+	for who in display_names:
+		if seen.has(who):
+			findings.append("DUPLICATE NAME: two combatants are both called '%s'" % who)
+		seen[who] = true
+	print("names on screen: %s" % ", ".join(display_names))
 
 	if result == "":
 		findings.append("NO RESULT: the fight never emitted one")

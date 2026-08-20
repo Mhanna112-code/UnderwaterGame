@@ -25,6 +25,13 @@ func _init() -> void:
 		var moves: Array = Battle.BASE_MOVES.get(model_name, []) as Array
 		if moves.is_empty():
 			findings.append("NO MOVES: %s has no entry in battle.gd BASE_MOVES" % model_name)
+	# Everyone the world actually spawns has to be in the table. Adding a
+	# fourth diver to world.gd and forgetting this file would otherwise show
+	# up as that character wearing the scuba diver's model, which reads as an
+	# art problem rather than a missing line.
+	for c in World.CAST:
+		if not Cast.knows(String(c.model)):
+			findings.append("NOT IN THE CAST TABLE: world.gd spawns '%s' and content/cast.gd has no entry for it" % String(c.model))
 	for f in findings:
 		print("FINDING  " + f)
 	print("CLIPS: clean" if findings.is_empty() else "CLIPS: %d finding(s)" % findings.size())
