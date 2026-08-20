@@ -1,12 +1,17 @@
-# A diver you can swim around. The models arrived unrigged, so there is no
-# swim cycle to play: all the life in these is procedural, applied to the
-# whole model rather than to bones. Bob, bank, kick-pitch and a bubble trail.
+# A diver you can swim around, and the one place the model's arrival is
+# handled: the export faces +Z where Godot treats -Z as forward, and the
+# rig sits at its own origin rather than on its feet. Fix it once, here,
+# and the rest of the game can place a Diver and forget the export ever
+# had opinions.
 #
-# Everything about the model's arrival is handled here in one place: the
-# GLB stacks all four models on one origin, every mesh node carries a -90
-# X rotation and a scale of 100, and the models face +Z while Godot treats
-# -Z as forward. Fix it once, here, and the rest of the game can just place
-# a Diver and forget the export ever had opinions.
+# The divers used to be one unrigged mesh each, pulled out of divers.glb,
+# with every bit of life faked by rotating the whole model: bob, bank and
+# a kick-pitch. Glass_Goat's rigged deliveries replaced that. Each diver
+# now instantiates their own rigged file whole and plays real clips off
+# its AnimationPlayer, and content/cast.gd is the table of which clip is
+# which. The procedural part that survived is the yaw turn and the pitch
+# into a glide, because those follow the camera and the velocity rather
+# than the animation, and the bubble trail.
 
 class_name Diver
 extends CharacterBody3D
@@ -24,7 +29,6 @@ signal encounter_triggered
 signal swapped_with(target: Diver)
 
 
-const SRC := preload("res://art/characters/divers.glb")
 
 
 # ============================================================
@@ -154,8 +158,24 @@ var model: Node3D
 var height := 1.9
 var radius := 0.4
 
-var _bob := 0.0
-var _kick := 0.0
+# The rigged file's own AnimationPlayer, left where it was inside the
+# imported tree. See _ready() for why it is not moved.
+var anim: AnimationPlayer
+# Whichever armature name this particular delivery used - "rig",
+# "rig_001", "rig_002". Learned from the file rather than assumed.
+var _prefix := ""
+# A one-shot (a swing, a hit reaction) owns the body until this many
+# seconds have passed, then the diver falls back to whatever motion its
+# movement says it should be in.
+var _busy_until := 0.0
+var _clock := 0.0
+var _motion := ""
+# What to return to when a one-shot ends. Empty means "whatever the
+# movement says", which is how a diver swimming around behaves. A diver
+# who has fainted or won a fight sets it, so the pose holds instead of
+# snapping back to a neutral float one frame after it lands.
+var _hold := ""
+
 var _lean := 0.0
 
 var bubbles: CPUParticles3D
@@ -175,14 +195,21 @@ func _ready() -> void:
 		max_encounter_distance
 	)
 
-	var src: Node3D = SRC.instantiate()
+	# The rigged file carries ONE AnimationPlayer whose track paths are
+	# relative to that file's own tree. Lifting a single mesh out of it,
+	# which is what this did while the models were unrigged, breaks every
+	# one of those paths: the clips still resolve by name and then animate
+	# nothing. So the whole file is instantiated intact and the meshes that
+	# are not this character get hidden instead.
+	#
+	# Every delivery contains every character's animations and only one
+	# character's mesh, which is why the file is chosen per diver rather
+	# than shared. Meshes and animations are shared resources underneath,
+	# so six of these on screen is six node trees, not six copies of a
+	# 38 MB export.
+	var file := Cast.file(model_name)
 
-	var mesh: MeshInstance3D = _find(src, model_name)
-
-	if mesh == null:
-		push_error("NO SUCH MODEL '%s' in the GLB" % model_name)
-		src.queue_free()
-		return
+	var src: Node3D = (load(file) as PackedScene).instantiate()
 
 
 	# ========================================================
@@ -201,24 +228,69 @@ func _ready() -> void:
 	flip.rotation.y = PI
 	model.add_child(flip)
 
+	flip.add_child(src)
 
-	# Keep the mesh's original transform.
-	var keep: Transform3D = mesh.transform
 
-	mesh.owner = null
+	# ========================================================
+	# PICK THIS CHARACTER OUT OF THE SHARED RIG
+	# ========================================================
 
-	mesh.get_parent().remove_child(mesh)
+	var carried: Array = Cast.carries(model_name)
 
-	flip.add_child(mesh)
+	var mesh: MeshInstance3D = null
 
-	mesh.transform = keep
+	for m in _all_meshes(src):
+
+		var mi := m as MeshInstance3D
+
+		var mine: bool = String(mi.name) == model_name
+
+		# What a character carries is skinned to the same rig and swims
+		# with them, so it is part of the character, not a prop standing
+		# nearby. Hiding it is what left the staff floating on its own
+		# beside her - see issue #26.
+		mi.visible = mine or carried.has(String(mi.name))
+
+		if mine:
+			mesh = mi
+
+	if mesh == null:
+		push_error("NO SUCH MODEL '%s' in %s" % [model_name, file])
+		src.queue_free()
+		return
+
+
+	# ========================================================
+	# ANIMATION
+	# ========================================================
+
+	anim = _find_anim(src)
+
+	if anim == null:
+		push_error("NO AnimationPlayer in %s" % file)
+	else:
+		# Keep animating while the tree is paused. _ready() runs under the
+		# title screen, which pauses everything, and a paused
+		# AnimationPlayer never advances a frame - so calling play() below
+		# set up an idle that never applied and the first thing anybody saw
+		# on loading the game was three characters standing in bind pose
+		# with their arms straight out. Only the AnimationPlayer is set to
+		# ALWAYS, not the Diver: movement, physics and encounter rolls
+		# still stop dead when the game is paused, which is the point of
+		# pausing it.
+		anim.process_mode = Node.PROCESS_MODE_ALWAYS
+		# Learn this file's armature prefix once, from a clip we know it
+		# has, instead of hard-coding "rig" and getting it wrong for two
+		# of the three deliveries.
+		_learn_prefix(Cast.motion(model_name, "idle"))
+		play_motion("idle")
 
 
 	# ========================================================
 	# CALCULATE MODEL SIZE
 	# ========================================================
 
-	var box: AABB = _world_aabb(mesh)
+	var box: AABB = _world_aabb(mesh, src)
 
 	height = box.size.y
 
@@ -227,8 +299,10 @@ func _ready() -> void:
 		minf(box.size.x, box.size.z) * 0.5
 	)
 
-	# Move the model so its feet sit on the body's floor.
-	mesh.position.y -= box.position.y + height * 0.5
+	# Move the model so its feet sit on the body's floor. Applied to the
+	# whole imported tree rather than to the mesh, because moving the mesh
+	# alone would slide it out from under the skeleton driving it.
+	src.position.y -= box.position.y + height * 0.5
 
 
 	# ========================================================
@@ -267,16 +341,10 @@ func _ready() -> void:
 
 
 	# ========================================================
-	# INITIAL ANIMATION STATE
+	# BUBBLES
 	# ========================================================
 
-	_bob = randf() * TAU
-
 	_add_bubbles()
-
-
-	# We no longer need the temporary source scene.
-	src.queue_free()
 
 
 # ============================================================
@@ -374,6 +442,21 @@ var sonar_active := false
 
 func _process(dt: float) -> void:
 	_ability_cooldown = maxf(0.0, _ability_cooldown - dt)
+
+	# A one-shot clip holds the body for its own length and then hands it
+	# back. Timed off an accumulated clock rather than an AnimationPlayer
+	# signal because a diver can be freed mid swing (play_death_fade) and
+	# a pending signal on a freed node is a crash, not an animation bug.
+	if _busy_until > 0.0:
+		_clock += dt
+		if _clock >= _busy_until:
+			_busy_until = 0.0
+			_motion = ""
+			# On the battle stage nothing drives _animate(), so without
+			# this a diver would stand frozen on the last frame of the
+			# swing it just threw. In the world _animate() overrides this
+			# on the very next physics frame, so it costs nothing there.
+			play_motion(_hold if _hold != "" else "idle")
 
 func _ability_oxygen_cost() -> float:
 	return float(ABILITY_OXYGEN_COST.get(ability_id, 0.0))
@@ -676,6 +759,9 @@ func _swap_flash(at: Vector3) -> void:
 func flash_damage() -> void:
 	if model == null:
 		return
+	# The flicker stays because it reads at any distance and through the
+	# fog. The rigged deliveries added a real recoil on top of it.
+	play_hit_reaction(false)
 	var tw := create_tween()
 	for i in range(4):
 		tw.tween_property(model, "visible", false, 0.08)
@@ -688,6 +774,110 @@ func flash_damage() -> void:
 func set_model_visible(v: bool) -> void:
 	if model != null:
 		model.visible = v
+
+
+# ============================================================
+# PLAYING CLIPS
+# ============================================================
+
+# Each delivery names its armature node differently - the clips inside
+# Scuba_Rigged.fbx are "rig|Scuba_(Idle)1(Loop)" and the same motion in
+# PrototypeV_Rigged.fbx is "rig_002|Scuba_(Idle)1(Loop)". Ask the file
+# once, using a clip cast.gd guarantees is in there, and remember the
+# answer instead of hard-coding a prefix that is wrong for two files in
+# three.
+func _learn_prefix(known_stem: String) -> void:
+	_prefix = ""
+	if anim == null or known_stem == "":
+		return
+	for a in anim.get_animation_list():
+		var nm := String(a)
+		var bar := nm.rfind("|")
+		if bar >= 0 and nm.substr(bar + 1) == known_stem:
+			_prefix = nm.substr(0, bar + 1)
+			return
+
+# Stem (what cast.gd stores) to the full clip name this file uses. Matches
+# on the part AFTER the bar, never the part before it: a prefix match
+# would happily hand back another character's clip, which is how the scuba
+# diver ended up standing in the brass suit's idle.
+func resolve(stem: String) -> String:
+	if anim == null or stem == "":
+		return ""
+	if _prefix != "" and anim.has_animation(_prefix + stem):
+		return _prefix + stem
+	if anim.has_animation(stem):
+		return stem
+	for a in anim.get_animation_list():
+		var nm := String(a)
+		var bar := nm.rfind("|")
+		if (nm.substr(bar + 1) if bar >= 0 else nm) == stem:
+			return nm
+	return ""
+
+# A looping state: swimming, floating, downed. Cheap to call every frame -
+# it returns immediately if this motion is already the one playing, and it
+# never interrupts a one-shot that is still running.
+func play_motion(name: String) -> void:
+	if anim == null or _busy_until > 0.0 or _motion == name:
+		return
+	var full := resolve(Cast.motion(model_name, name))
+	if full == "":
+		return
+	_motion = name
+	var a: Animation = anim.get_animation(full)
+	a.loop_mode = Animation.LOOP_LINEAR
+	anim.play(full)
+
+# A one-shot: a swing, a hit reaction. Returns how long it runs, so the
+# fight can wait exactly that long instead of guessing at a delay. Takes
+# the full stem rather than a motion name because attack clips come from
+# the move being used, not from a fixed list.
+func play_clip(stem: String) -> float:
+	if anim == null:
+		return 0.0
+	var full := resolve(stem)
+	if full == "":
+		push_error("NO CLIP '%s' for %s" % [stem, model_name])
+		return 0.0
+	var a: Animation = anim.get_animation(full)
+	a.loop_mode = Animation.LOOP_NONE
+	anim.play(full)
+	_motion = ""
+	_clock = 0.0
+	_busy_until = a.length
+	return a.length
+
+# The reaction to being hit, chosen by how hard. Two clips exist per
+# character and using only one of them wastes half of what was delivered.
+func play_hit_reaction(heavy: bool) -> float:
+	return play_clip(Cast.motion(model_name, "hurt_bad" if heavy else "hurt"))
+
+# Won the fight. Loops, because the victory screen sits there for a while.
+func play_win() -> void:
+	_busy_until = 0.0
+	_motion = ""
+	_hold = "win"
+	play_motion("win")
+
+# Out of the fight. The Start plays once and the Mid loop holds the pose,
+# which is the difference between a diver who has fainted and a diver who
+# faints and then springs back to attention.
+func play_down() -> void:
+	# Set before the lead clip, not after: _process() hands the body back
+	# the instant the Start finishes, and without this it would hand it
+	# back to a neutral float for the one frame before the loop starts.
+	_hold = "down"
+	play_clip(Cast.motion(model_name, "down_start"))
+
+func _find_anim(n: Node) -> AnimationPlayer:
+	if n is AnimationPlayer:
+		return n
+	for c in n.get_children():
+		var r := _find_anim(c)
+		if r != null:
+			return r
+	return null
 
 # ============================================================
 # BUBBLES
@@ -895,10 +1085,10 @@ func _animate(dir: Vector3, dt: float) -> void:
 	var moving := velocity.length() > 0.4
 
 
-	# Animation timers.
-	_bob += dt * (3.4 if moving else 1.1)
-
-	_kick += dt * (6.0 if moving else 0.0)
+	# Swimming or floating. A one-shot in progress (a swing, a hit
+	# reaction) outranks both and is left alone until it finishes - see
+	# play_clip()/_process().
+	play_motion("swim" if moving else "idle")
 
 
 	# ========================================================
@@ -929,24 +1119,20 @@ func _animate(dir: Vector3, dt: float) -> void:
 	# SWIM POSTURE
 	# ========================================================
 
-	var flat := Vector2(
-		velocity.x,
-		velocity.z
-	).length()
-
-
-	var want_pitch: float = (
-		-1.15
-		* clampf(
-			flat / speed,
-			0.0,
-			1.0
-		)
-		- clampf(
-			velocity.y * 0.12,
-			-0.3,
-			0.3
-		)
+	# The big one this used to apply, pitching the body most of the way
+	# forward once you got moving, is gone. It existed because the models
+	# were unrigged and something had to sell "swimming" - and it was
+	# nearly the right angle, which is why it survived. The swim clip is
+	# authored horizontal already, so applying it on top left the diver
+	# nose-diving head first into the seabed at every speed. Verified by
+	# screenshot, not by reading the numbers.
+	#
+	# What no clip can know is whether you are heading up or down, so that
+	# part stays, on its own, and small.
+	var want_pitch: float = clampf(
+		velocity.y * 0.12,
+		-0.35,
+		0.35
 	)
 
 
@@ -962,25 +1148,12 @@ func _animate(dir: Vector3, dt: float) -> void:
 
 
 	# ========================================================
-	# BODY BOB / KICK
+	# NOSE UP TO CLIMB, NOSE DOWN TO DIVE
 	# ========================================================
 
-	model.position.y = sin(_bob) * (
-		0.09 if moving else 0.05
-	)
-
-
-	model.rotation.x = (
-		_lean
-		+ sin(_kick)
-		* (0.09 if moving else 0.0)
-	)
-
-
-	model.rotation.z = (
-		sin(_kick * 0.5)
-		* (0.08 if moving else 0.02)
-	)
+	# The bob and the kick-swing that used to live here are in the swim
+	# clip now, and doubling them up read as a diver having a seizure.
+	model.rotation.x = _lean
 
 
 	# ========================================================
@@ -1004,10 +1177,21 @@ func _animate(dir: Vector3, dt: float) -> void:
 # mutating one in place would fade every other diver wearing that model
 # too, including the real party member's own battle-stage neighbors.
 func play_death_fade() -> void:
+	# Faint first. The fade is what removes the body from the stage; the
+	# faint is what says it went down rather than blinked out.
+	play_down()
 	var tw := create_tween()
 	tw.set_parallel(true)
 	for m in _all_meshes(model):
 		var mesh_instance := m as MeshInstance3D
+		# Every diver's file carries all three characters' meshes and hides
+		# the two it is not (see _ready()). Fading those too would spend
+		# the tween on geometry nobody can see, and worse, it duplicates
+		# and mutates their materials.
+		if not mesh_instance.is_visible_in_tree():
+			continue
+		if mesh_instance.mesh == null:
+			continue
 		for surface in range(mesh_instance.mesh.get_surface_count()):
 			var mat := mesh_instance.get_active_material(surface)
 			if mat == null or not (mat is BaseMaterial3D):
@@ -1030,37 +1214,28 @@ func _all_meshes(n: Node) -> Array:
 	return out
 
 # ============================================================
-# FIND MODEL
-# ============================================================
-
-func _find(n: Node, nm: String) -> MeshInstance3D:
-
-	if n is MeshInstance3D and String(n.name) == nm:
-
-		return n
-
-
-	for c in n.get_children():
-
-		var r := _find(c, nm)
-
-		if r != null:
-
-			return r
-
-
-	return null
-
-
-# ============================================================
 # WORLD AABB
 # ============================================================
 
-func _world_aabb(m: MeshInstance3D) -> AABB:
+# The mesh's box in `root`'s space. It used to be enough to read the
+# mesh's own transform, because the mesh was reparented straight onto the
+# model node. Inside a rigged file it sits several nodes deep, under a
+# Skeleton3D with its own scale, so the transforms in between have to be
+# walked or the diver comes out a hundred times too tall.
+func _world_aabb(m: MeshInstance3D, root: Node) -> AABB:
 
 	var a: AABB = m.get_aabb()
 
 	var t: Transform3D = m.transform
+
+	var p: Node = m.get_parent()
+
+	while p != null and p is Node3D and p != root:
+
+		t = (p as Node3D).transform * t
+
+		p = p.get_parent()
+
 
 	var out := AABB(
 		t * a.get_endpoint(0),
