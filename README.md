@@ -68,58 +68,121 @@ and have nothing to do with this repo. "Remove Missing" clears them.
 - `verify/` and `tools/` are the checks. Every number in `docs/art-intake.md`
   comes out of one of them.
 
-## The models are not rigged
+## The models are rigged now
 
-The FBX is called `Main_Team_Rigging_2` but it carries no bones, no skin
-deformers and no blend shapes. See `docs/art-intake.md` for the evidence and
-for what to change on the Blender side.
+The first delivery, `Main_Team_Rigging_2`, carried no bones, no skin deformers
+and no blend shapes, so every bit of motion in this game used to be procedural
+and applied to the whole model: pitch into a glide, bob, bank, trail bubbles.
+`docs/art-intake.md` still has the evidence for that, and it is the reason the
+lantern was planted in the seabed rather than carried. No diver in that export
+had a hand to hold it with.
 
-That is why nobody here has a swim stroke. Every bit of motion is procedural
-and applied to the whole model: the body pitches into a glide when it gets
-moving, stands up when it stops, bobs, banks, and trails bubbles. It reads as
-alive from a distance and it will not survive a close-up. Once a rigged export
-lands, that code is where the real animation replaces it.
+Glass_Goat's rigged deliveries replaced it. There are three of them,
+`Scuba_Rigged.fbx`, `Prototype1_Rigged.fbx` and `PrototypeV_Rigged.fbx`, and
+they work differently to how you might expect: all three characters share a
+single 132 bone rig, so **every file contains every character's animations and
+only one character's mesh**. That has two consequences the code has to respect.
 
-The lantern is planted in the seabed as a beacon for the same reason. Carried,
-it read as a stick floating beside somebody, because no diver in this export
-has a hand to hold it with.
+1. A clip has to be matched by character family, not by motion. Match on
+   "idle" alone and the scuba diver gets handed the brass suit's stance.
+2. The imported tree cannot be taken apart. The AnimationPlayer's track paths
+   are relative to that file's own root, so lifting one mesh out of it, which
+   is what the unrigged code did, leaves clips that resolve by name and then
+   animate nothing. `game/diver.gd` instantiates the whole file and hides the
+   two characters it is not.
+
+`content/cast.gd` is the table of which file, which mesh and which clip belongs
+to whom. Every clip name in it was read out of the imported files rather than
+guessed, and `verify/clips.gd` fails the build if any of them stops resolving.
+Three of them were wrong on the first pass and only that gate found them:
+Proto5 has no win clip at all and celebrates with a thumbs up, its heavy hit
+reaction is called `Strong_Hit` where the other two say `Heavy_Hit`, and the
+scuba diver's win loop is `(Mid2)(Loop)` rather than `(Mid)(Loop)`.
+
+Held motions ship as Start / Mid (Loop) / End. The loop is the one to play. A
+Start on its own plays once and drops back to a rest pose, which is what "the
+animation is broken" looked like the first time.
+
+The staff is skinned to the same rig as the diver holding it and swims with
+her, so it is part of the character rather than a prop parked nearby. Hiding it
+along with the other characters' meshes is what left it floating on its own
+beside her.
+
+What survived from the procedural code is the yaw turn and the pitch into a
+glide, because those follow the camera and the velocity rather than the
+animation, and the bubble trail.
 
 ## Why the first load is slow
 
-Measured on a 2026 M1, not guessed:
+Measured on a 2026 M1, not guessed, both builds served the same way in the
+same session by `verify/ffcheck.mjs`:
 
-| milestone | when |
-|---|---|
-| wasm downloaded (37.7 MB, brotli to about 9) | under 1s |
-| engine running | about 4s |
-| first drawn frame | 35 to 50s |
+| build | pck | first drawn frame, Firefox |
+|---|---|---|
+| before the rigged models | 0.9 MB | 36.7s |
+| with the rigged models | 9.3 MB | 57.5s |
 
-An empty scene in the same build draws at 15s, so about 15s is Godot's own
-web boot and the rest is this scene compiling its shaders in the browser's
-compatibility renderer. Fog accounts for about 3.5s of it. There is no
-second-visit discount: the shader cache does not survive a reload here.
+The download is not the problem. The wasm is 37.7 MB and arrives in under a
+second on this connection; the pck arrives in a tenth of one. The wait is
+almost entirely the scene compiling its shaders in the browser's
+compatibility renderer, and rigged characters cost more of them than one
+untextured mesh did. An empty scene in the same build draws at 15s, so about
+15s of any of these numbers is Godot's own web boot. There is no second-visit
+discount: the shader cache does not survive a reload here.
 
-The lever that would actually move this is material count. The models arrive
-with nine materials and each one costs a shader compile in the browser. Fewer
-materials on the art side, or merged surfaces, would cut the wait roughly in
-proportion. That is an art call, not a code one, so it is written down here
-rather than done quietly.
+So the animations cost about 21 seconds of first load. That is a real price
+and it is written down rather than buried: three textured, rigged, animated
+characters instead of three untextured ones standing in bind pose is worth it,
+but 57 seconds of staring at a blank page is not something to be relaxed
+about. See #40.
+
+The lever that would actually move it is material count, and it is an art
+call rather than a code one. Each material costs a shader compile in the
+browser, and fewer materials or merged surfaces would cut the wait roughly in
+proportion. Chromium is several times faster than Firefox on the same build,
+which is worth knowing before anyone concludes the game is broken.
 
 ## Checks
 
-    godot --headless --path . --script verify/swim.gd     # do they actually move
+    ./verify/gates.sh                                     # all of the below, in order
+
+    godot --headless --path . --script verify/clips.gd    # does every clip the game asks for exist
+    godot --headless --path . --script verify/swim.gd     # do they actually move, and animate while moving
+    godot --headless --path . --script verify/fight.gd    # play a whole fight and come back to the world
     godot --headless --path . --script tools/test_goblin.gd  # does the grunt's model load and size correctly
     godot --headless --path . --script tools/test_battle.gd  # does the fight screen build without erroring
     node verify/webcheck.mjs docs out.png                 # does the build boot
     node verify/webcheck.mjs <live-url> out.png           # does the live link boot
 
+Each of these exits non-zero on a finding and prints what it found, so
+`./verify/gates.sh` is the one command to run before pushing.
+
+`verify/clips.gd` asks each delivered file what animations it contains and
+fails on the first name `content/cast.gd` gets wrong. Roughly thirty clip
+names are hand-written in that table and a re-rig or a renamed export turns
+any one of them into a diver standing still in the middle of a fight.
+
 `verify/swim.gd` drives the real scene for two seconds of play and fails if a
-diver did not move, fell through the floor, stayed bolt upright, or lost the
-camera. `tools/test_goblin.gd` and `tools/test_battle.gd` instantiate those
-two systems in isolation - useful for telling a bug in the game itself apart
-from an editor/Play problem, since they run the exact same scripts outside
-the editor. `verify/webcheck.mjs` loads the build in Chromium with software
-WebGL2 and fails if the canvas is a flat field of one colour.
+diver did not move, fell through the floor, stayed bolt upright, lost the
+camera, or is playing the wrong clip, including another character's clip off
+the shared rig.
+
+`verify/fight.gd` starts a real encounter from the overworld and plays it to
+the end by pressing the actual buttons, then checks the world came back. It
+fails if the fight never resolves, if the battle screen ever has nothing left
+to press, if any of the three never swings, or if somebody swings with another
+character's animation. A full fight is about 50 party turns' worth of button
+presses and takes a bit over a minute.
+
+`tools/test_goblin.gd` and `tools/test_battle.gd` instantiate those two systems
+in isolation - useful for telling a bug in the game itself apart from an
+editor/Play problem, since they run the exact same scripts outside the editor.
+
+`verify/webcheck.mjs` loads the build in Chromium with software WebGL2 and
+fails if the canvas is a flat field of one colour. `verify/ffcheck.mjs` does
+the same in Firefox, which is worth running separately: it is several times
+slower to first frame than Chromium here, and a build that looks fine in one
+can stall in the other.
 
 ## GitHub Pages
 
