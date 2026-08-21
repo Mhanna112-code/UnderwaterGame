@@ -28,6 +28,12 @@ signal finished(result: String)     # "won", "fled", or "lost"
 # site the whole fight, frozen like everything else while battling.
 var party_source: Array = []
 
+# Set by world.gd alongside party_source - the only reason battle.gd needs
+# this is to reach World.inventory for the Items menu below (see
+# _show_items()/_populate_item_menu()). Nothing else in this file touches
+# world at all.
+var world: World
+
 # Fallback identity only for the no-party_source case (tools/test_battle.gd
 # instantiating a bare Battle) - mirrors whatever Diver would have built.
 var diver_model_name := "Staff_Diver"
@@ -142,12 +148,23 @@ var queue_row: HBoxContainer
 var main_menu: HFlowContainer
 var move_menu: HFlowContainer
 var target_menu: HFlowContainer
+var item_menu: HFlowContainer
 var attack_btn: Button
 var run_btn: Button
+var items_btn: Button
 var back_btn: Button
+var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
+var item_buttons: Array = []
+
+# Set alongside _pending_move for a move, this for an item - exactly one
+# of the two is ever non-empty at a time. _on_target_chosen() (target_menu's
+# shared confirm handler) reads whichever one is set to know if it's
+# resolving a move or an item use; target_back_btn reads it too, to know
+# whether Back should return to move_menu or item_menu.
+var _pending_item := ""
 
 # The battle-stage SubViewport (see _build_stage()) - stored so
 # _turn_cursor can be built as a child of the same 3D world the party/enemy
@@ -443,6 +460,9 @@ func _build_ui() -> void:
 	run_btn = _menu_button("Run", "Might not escape")
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
+	items_btn = _menu_button("Items", "")
+	items_btn.pressed.connect(_show_items)
+	main_menu.add_child(items_btn)
 
 	move_menu = HFlowContainer.new()
 	move_menu.add_theme_constant_override("h_separation", 12)
@@ -453,13 +473,27 @@ func _build_ui() -> void:
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
 
+	item_menu = HFlowContainer.new()
+	item_menu.add_theme_constant_override("h_separation", 12)
+	item_menu.add_theme_constant_override("v_separation", 8)
+	item_menu.visible = false
+	col.add_child(item_menu)
+	item_back_btn = _menu_button("Back", "")
+	item_back_btn.pressed.connect(_show_main)
+	item_menu.add_child(item_back_btn)
+
 	target_menu = HFlowContainer.new()
 	target_menu.add_theme_constant_override("h_separation", 12)
 	target_menu.add_theme_constant_override("v_separation", 8)
 	target_menu.visible = false
 	col.add_child(target_menu)
 	target_back_btn = _menu_button("Back", "")
-	target_back_btn.pressed.connect(_show_moves_from_target_menu)
+	# Routes to whichever menu actually opened the target picker - a move
+	# (move_menu) or an item (item_menu), based on which of _pending_move/
+	# _pending_item is currently set. See _show_moves_or_items_from_target_
+	# menu() below; this used to be hardwired to _show_moves_from_target_
+	# menu() alone, which would send an item's Back to the wrong menu.
+	target_back_btn.pressed.connect(_show_moves_or_items_from_target_menu)
 	target_menu.add_child(target_back_btn)
 
 	call_deferred("_fit_panel_height")
@@ -822,6 +856,7 @@ func _advance_turn() -> void:
 func _start_party_turn(actor: Dictionary) -> void:
 	_busy = false
 	move_menu.visible = false
+	item_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
 	call_deferred("_fit_panel_height")
@@ -893,10 +928,89 @@ func _populate_move_menu(actor: Dictionary) -> void:
 	# it's explicitly moved back to the end each time.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
 
+func _show_items() -> void:
+	if _busy:
+		return
+	main_menu.visible = false
+	_populate_item_menu()
+	item_menu.visible = true
+	call_deferred("_fit_panel_height")
+
+# Unlike _populate_move_menu(), this doesn't take an actor - items aren't
+# owned by whoever's turn it is (see world.gd's shared, party-wide
+# World.inventory), anyone can use any item on anyone. So there's no
+# per-actor filtering here at all; that happens later, per-target, in
+# _on_item_chosen() (Items.would_help() against each candidate target).
+func _populate_item_menu() -> void:
+	for b in item_buttons:
+		(b as Button).queue_free()
+	item_buttons.clear()
+	if world != null:
+		for item_id in world.inventory.keys():
+			var count: int = int(world.inventory[item_id])
+			if count <= 0:
+				continue
+			var def: Dictionary = Items.ITEMS.get(item_id, {})
+			var b := _menu_button("%s (x%d)" % [String(def.get("display", item_id)), count],
+				String(def.get("description", "")))
+			b.pressed.connect(_on_item_chosen.bind(item_id))
+			item_menu.add_child(b)
+			item_buttons.append(b)
+	# Keep Back last - same reason move_menu's own back_btn gets
+	# re-positioned in _populate_move_menu(): it's a persistent child, not
+	# rebuilt above, so re-adding fresh item buttons pushes it out of
+	# place unless it's explicitly moved back to the end each time.
+	item_menu.move_child(item_back_btn, item_menu.get_child_count() - 1)
+
+# heal/oxygen/barrier items only ever make sense on a living party member
+# (a downed diver has no oxygen tank to top off or shield to raise either)
+# - _living(party) same as a heal move's own target pool. Filtered further
+# by Items.would_help() per candidate, not by who's acting - an item
+# isn't cast BY someone the way a move is, it's just applied TO someone,
+# so there's no "does the acting diver have enough X" check the way
+# _on_move_chosen() checks oxygen. If nobody would actually benefit, kick
+# back to item_menu instead of opening an empty/useless target picker.
+func _on_item_chosen(item_id: String) -> void:
+	if _busy:
+		return
+	item_menu.visible = false
+	var targets: Array = _living(party).filter(func(e: Dictionary) -> bool:
+		return Items.would_help(item_id, e.stats as CombatantStats))
+	if targets.is_empty():
+		item_menu.visible = true
+		call_deferred("_fit_panel_height")
+		return
+	_pending_item = item_id
+	_populate_target_menu(targets)
+	target_menu.visible = true
+	call_deferred("_fit_panel_height")
+
+# Always succeeds, no accuracy roll - same as _apply_heal()/_apply_barrier(),
+# nothing about using an item on an ally is something they could evade.
+# Mirrors _resolve_party_move()'s tail exactly (log, refresh bars, advance
+# turn) so an item-use turn reads identically to a move turn.
+func _resolve_item(item_id: String, target: Dictionary) -> void:
+	if world == null:
+		_advance_turn()
+		return
+	_busy = true
+	_set_all_buttons(false)
+	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
+	var msg := Items.grant(item_id, target.stats as CombatantStats)
+	var count: int = int(world.inventory.get(item_id, 0))
+	world.inventory[item_id] = count - 1
+	if world.inventory[item_id] <= 0:
+		world.inventory.erase(item_id)
+	_refresh_bar(target)
+	_log(msg if msg != "" else "%s - nothing happened." % display)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_advance_turn()
+
 func _show_main() -> void:
 	if _busy:
 		return
 	move_menu.visible = false
+	item_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
 	call_deferred("_fit_panel_height")
@@ -957,19 +1071,39 @@ func _populate_target_menu(targets: Array) -> void:
 	# place unless it's explicitly moved back to the end each time.
 	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
 
+# Exactly one of _pending_move/_pending_item is ever set when target_menu
+# is showing (see _on_move_chosen()/_on_item_chosen()) - branch on which,
+# resolve it, then clear both so a stale pending value can never leak into
+# the next turn's target picker.
 func _on_target_chosen(target: Dictionary) -> void:
 	target_menu.visible = false
+	if _pending_item != "":
+		var item_id := _pending_item
+		_pending_item = ""
+		_resolve_item(item_id, target)
+		return
 	_resolve_party_move(_pending_move, target)
 
-# No cost has actually been spent yet at this point - _on_move_chosen()
-# only checks whether the oxygen is there, the real deduction happens in
-# _resolve_party_move() once a target's actually been resolved against -
-# so backing out here is free, nothing to refund.
-func _show_moves_from_target_menu() -> void:
+# No cost has actually been spent yet at this point - _on_move_chosen()/
+# _on_item_chosen() only check whether the move's affordable/the item
+# would help, the real deduction happens once a target's actually been
+# resolved against (_resolve_party_move()/_resolve_item()) - so backing
+# out here is free, nothing to refund either way.
+#
+# Routes to whichever menu actually opened the target picker, based on
+# the same _pending_item/_pending_move split _on_target_chosen() reads -
+# used to be hardwired to move_menu alone (_show_moves_from_target_menu),
+# which sent an item's Back to the wrong screen.
+func _show_moves_or_items_from_target_menu() -> void:
 	if _busy:
 		return
 	target_menu.visible = false
-	move_menu.visible = true
+	if _pending_item != "":
+		_pending_item = ""
+		item_menu.visible = true
+	else:
+		_pending_move = {}
+		move_menu.visible = true
 	call_deferred("_fit_panel_height")
 
 # One damage/effect roll, used identically for the player's moves and the
@@ -1209,6 +1343,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	_set_all_buttons(false)
 	main_menu.visible = false
 	move_menu.visible = false
+	item_menu.visible = false
 	target_menu.visible = false
 	_turn_cursor.visible = false
 
@@ -1247,6 +1382,7 @@ func _win() -> void:
 	_set_all_buttons(false)
 	main_menu.visible = false
 	move_menu.visible = false
+	item_menu.visible = false
 	target_menu.visible = false
 	_log("The enemies back off, beaten.")
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -1269,6 +1405,7 @@ func _lose() -> void:
 	_set_all_buttons(false)
 	main_menu.visible = false
 	move_menu.visible = false
+	item_menu.visible = false
 	target_menu.visible = false
 	_log("The party is battered and pulls back.")
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -1311,9 +1448,13 @@ func _on_run() -> void:
 func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled
 	run_btn.disabled = not enabled
+	items_btn.disabled = not enabled
 	back_btn.disabled = not enabled
+	item_back_btn.disabled = not enabled
 	target_back_btn.disabled = not enabled
 	for b in move_buttons:
 		(b as Button).disabled = not enabled
 	for b in target_buttons:
+		(b as Button).disabled = not enabled
+	for b in item_buttons:
 		(b as Button).disabled = not enabled

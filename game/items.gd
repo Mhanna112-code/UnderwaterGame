@@ -62,34 +62,69 @@ static func random_drop() -> String:
 static func is_key_item(item_id: String) -> bool:
 	return String(ITEMS.get(item_id, {}).get("kind", "")) == "key"
 
-# Applies a consumable straight to the diver's stats and returns a message
-# fit to hand to World._announce() as-is - callers shouldn't need to know
-# what kind of item they just granted to say something sensible about it.
-# Does nothing and returns "" for a key item or an unknown id - key items
-# are World.key_items's business (see the header comment above), not a
-# single Diver's, so this refuses rather than guessing which diver "holds"
-# a party-wide item.
-static func grant(item_id: String, diver: Diver) -> String:
+# Whether using this item right now would actually change anything -
+# checked before grant() ever runs (see world.gd's use_inventory_item(),
+# inventory_menu.gd's Use buttons, and battle.gd's item-target filtering)
+# so a potion at full HP gets refused outright instead of being silently
+# consumed for nothing, which is what grant() alone used to let happen
+# (it already messaged "already at full health," but still returned a
+# real message either way, and its caller never distinguished the two to
+# skip the actual deduction). spell_point has no cap (CombatantStats.
+# spell_points has no _max field to check against) - it always helps,
+# same as a key item request always fails since is_key_item() catches it
+# separately.
+#
+# MODIFIED: took a Diver originally - changed to CombatantStats directly
+# so battle.gd's party entries (which only ever carry {stats, actor, ...}
+# dicts, not real Diver nodes tied to world.divers - see battle.gd's own
+# party_source loop) can call this without needing a Diver that doesn't
+# exist in that context. A caller with a real Diver just passes
+# `diver.stats` instead of `diver` now (see world.gd/inventory_menu.gd).
+static func would_help(item_id: String, s: CombatantStats) -> bool:
+	match String(ITEMS.get(item_id, {}).get("kind", "")):
+		"heal":
+			return s.hp < s.hp_max
+		"oxygen":
+			return s.oxygen < s.oxygen_max
+		"barrier":
+			return s.barrier < s.barrier_max
+		"spell_point":
+			return true
+		_:
+			return false
+
+# Applies a consumable straight to `s` and returns a message fit to hand
+# to World._announce() as-is - callers shouldn't need to know what kind
+# of item they just granted to say something sensible about it. Does
+# nothing and returns "" for a key item or an unknown id - key items are
+# World.key_items's business (see the header comment above), not a
+# single Diver's, so this refuses rather than guessing which diver
+# "holds" a party-wide item.
+#
+# MODIFIED: took a Diver originally, same reason/same fix as would_help()
+# above - now takes the CombatantStats directly so battle.gd (whose party
+# entries carry .stats but not a real linked Diver) can call this too.
+static func grant(item_id: String, s: CombatantStats) -> String:
 	if not ITEMS.has(item_id):
 		return ""
 	var def: Dictionary = ITEMS[item_id]
 	var display := String(def.display)
 	match String(def.kind):
 		"heal":
-			var before := diver.stats.hp
-			diver.stats.hp = mini(diver.stats.hp_max, diver.stats.hp + int(def.amount))
-			var gained := diver.stats.hp - before
+			var before := s.hp
+			s.hp = mini(s.hp_max, s.hp + int(def.amount))
+			var gained := s.hp - before
 			return "Found a %s! +%d HP" % [display, gained] if gained > 0 else "Found a %s, but you're already at full health." % display
 		"oxygen":
-			var before_ox := diver.stats.oxygen
-			diver.stats.oxygen = minf(diver.stats.oxygen_max, diver.stats.oxygen + float(def.amount))
-			var gained_ox := diver.stats.oxygen - before_ox
+			var before_ox := s.oxygen
+			s.oxygen = minf(s.oxygen_max, s.oxygen + float(def.amount))
+			var gained_ox := s.oxygen - before_ox
 			return "Found an %s! +%d O2" % [display, int(round(gained_ox))] if gained_ox > 0.0 else "Found an %s, but your tank's already full." % display
 		"spell_point":
-			diver.stats.spell_points += int(def.amount)
+			s.spell_points += int(def.amount)
 			return "Found a %s! +%d spell point" % [display, int(def.amount)]
 		"barrier":
-			diver.stats.barrier = diver.stats.barrier_max
+			s.barrier = s.barrier_max
 			return "Found a %s! Barrier fully restored." % display
 		_:
 			return ""

@@ -84,9 +84,31 @@ func _draw() -> void:
 # for being far away (the plain-cull the diver dots above use would do
 # exactly that). Drawn after the diver dots, on top, since a revealed
 # item is more actionable information than a background NPC diver.
+#
+# Only actually drawn while sonar is currently ON, though
+# (_sonar_currently_active() below) - revealed_key_items is permanent
+# memory (an id never leaves it just because sonar turned off), but the
+# minimap markers themselves are meant to read as "sonar is showing you
+# this right now," not "sonar has ever shown you this" - toggling off
+# hides both the dot and the arrow immediately, toggling back on brings
+# back whatever's already been revealed with no re-ping needed.
 const MARKER_PULSE_SPEED := 3.0
 
+# Sonar lives on whichever Diver has passive_id == "sonar" (Mermaid), not
+# necessarily divers[active] - sonar_active persists on her own instance
+# even after TAB-switching to someone else, since _physics_process() runs
+# on every diver node independently regardless of which one's currently
+# steered. So this has to search for her rather than just checking
+# world.divers[world.active].
+func _sonar_currently_active() -> bool:
+	for d in world.divers:
+		if (d as Diver).passive_id == "sonar":
+			return (d as Diver).sonar_active
+	return false
+
 func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: Vector2) -> void:
+	if not _sonar_currently_active():
+		return
 	var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 1000.0 * MARKER_PULSE_SPEED)
 	var marker_color := Color(0.95, 0.15, 0.15, pulse)
 	for entry in ItemGuardian.SPOTS:
@@ -99,6 +121,10 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 		if dist <= view_radius:
 			draw_circle(mid + rel * px_per_unit, 5.0, marker_color)
 		else:
+			# RESTORED: this branch had gone missing, leaving
+			# _draw_marker_arrow() defined but never called - an
+			# out-of-range revealed item drew nothing at all instead of
+			# the rim arrow the comment above already promised.
 			var dir := rel / dist
 			_draw_marker_arrow(mid + dir * (r - 8.0), dir, marker_color)
 
