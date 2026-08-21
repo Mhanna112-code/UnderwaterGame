@@ -128,6 +128,13 @@ const ENEMY_HEAVY_FINISH_CHANCE := 0.65
 # stays consistent and only needs tuning in one place.
 const LOG_READ_DELAY := 1.6
 
+# How far into a swing the hit is supposed to land. Waiting out the whole
+# clip before resolving reads as the damage arriving after the attack has
+# already finished, and skipping the wait entirely reads as the numbers
+# moving before anyone has moved. Roughly half way is where a swing looks
+# like it connects.
+const IMPACT_FRACTION := 0.55
+
 var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
 var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
 
@@ -295,7 +302,11 @@ func _build_stage() -> void:
 	vp.add_child(light)
 
 	var cam := Camera3D.new()
-	cam.position = Vector3(0.0, 1.8, 5.5)
+	# Glass_Goat authored the attacks for a 2D presentation, so the arm travel
+	# and body recoil read better from a three-quarter angle than from directly
+	# behind the party. This camera belongs only to the isolated battle viewport:
+	# the overworld chase camera remains driven by mouse/arrow yaw and pitch.
+	cam.position = Vector3(3.5, 1.8, 4.5)
 	cam.fov = 70.0
 	vp.add_child(cam)
 	# look_at() needs the node in the tree first - it operates on global
@@ -1131,21 +1142,13 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if debuff != "":
 		return _apply_debuff(defender, debuff, int(move.get("amount", 0)))
 
-	var variance: float = randf_range(0.85, 1.15)
-	var raw: float
+	# Preserve the production RNG order: variance was sampled before the
+	# heavy fraction and before the QTE prior to splitting out the deterministic
+	# damage helper for the balance gate.
+	var variance := randf_range(0.85, 1.15)
+	var heavy_fraction := 0.0
 	if String(move.get("effect", "")) == "heavy":
-		# A telegraphed signature hit, scaled off the DEFENDER's own max HP
-		# rather than the attacker's power/strength - "a quarter to half of
-		# your health," not a number that happens to land in that range at
-		# the moment it was tuned. Still runs through the normal
-		# defense/barrier mitigation below and the same QTE dodge check
-		# right after (see ENEMY_HEAVY_MOVE's quick_time_bool) - investing
-		# in defense/barrier or just timing the dodge both still matter,
-		# this only changes how big the raw threat is before either kicks in.
-		raw = float(defender.hp_max) * randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
-	else:
-		raw = (float(move.power) + float(attacker.strength)) * variance
-	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+		heavy_fraction = randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
 
 	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
 	# triggers a QTE - a player's own attacks never set quick_time_bool, so
@@ -1157,17 +1160,35 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	var player_dodge := false
 	if bool(move.get("quick_time_bool", false)):
 		player_dodge = await _quick_time_event()
-		if player_dodge:
-			incoming = 0
 
-	var absorbed: int = 0
+	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
+
+# The deterministic half of _resolve_attack(), shared with verify/balance.gd.
+# Production samples the variance/heavy fraction and the QTE result above;
+# the seeded balance gate supplies those same inputs itself. Keeping the actual
+# mutation and mitigation here prevents a test-only copy of the combat math
+# drifting away from what players receive.
+static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, variance: float, heavy_fraction: float = 0.0, dodged: bool = false) -> Dictionary:
+	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
+	if effective_accuracy <= defender.evasion:
+		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false}
+
+	var raw: float
+	if String(move.get("effect", "")) == "heavy":
+		raw = float(defender.hp_max) * heavy_fraction
+	else:
+		raw = (float(move.power) + float(attacker.strength)) * variance
+	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+	if dodged:
+		incoming = 0
+
+	var absorbed := 0
 	if defender.barrier > 0 and incoming > 0:
 		absorbed = mini(defender.barrier, incoming)
 		defender.barrier -= absorbed
 	var to_hp: int = incoming - absorbed
 	defender.hp = maxi(0, defender.hp - to_hp)
-
-	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": player_dodge}
+	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged}
 
 # Dispatches on the move's "effect" key before falling through to the
 # normal attack/debuff resolution above. "barrier" (defense-branch spells)
@@ -1283,6 +1304,35 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 	else:
 		_log("%s for %d." % [text, int(r.damage)])
 
+# Swing first, resolve at the moment of impact. Returns once the hit is
+# supposed to land, leaving the rest of the clip to play out underneath the
+# damage log. A move with no actor (a headless run, see verify/battle.gd)
+# resolves instantly, so the gates are not paying for animation time.
+func _swing(entry: Dictionary, mv: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
+		return
+	var d := entry.actor as Diver
+	var length: float = d.play_clip(Cast.ability(String(entry.model_name), String(mv.get("name", ""))))
+	if length <= 0.0:
+		return
+	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
+
+# The recoil on whoever just got hit. Only for a hit that actually landed
+# damage: a heal targets an ally, and flinching at being healed is worse
+# than not reacting at all.
+func _react(entry: Dictionary, r: Dictionary) -> void:
+	if not bool(r.get("hit", false)) or int(r.get("damage", 0)) <= 0:
+		return
+	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
+		return
+	if (entry.stats as CombatantStats).hp <= 0:
+		return   # going down has its own animation, see play_death_fade()
+	# Two reactions ship per character. "Heavy" is a hit worth a fifth of
+	# what this one can take, so the big recoil means something rather than
+	# being the one that always plays.
+	var heavy: bool = float(r.damage) >= float((entry.stats as CombatantStats).hp_max) * 0.2
+	(entry.actor as Diver).play_hit_reaction(heavy)
+
 func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	if target.is_empty():
 		_advance_turn()
@@ -1291,7 +1341,9 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	_set_all_buttons(false)
 
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
+	await _swing(_acting, mv)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
+	_react(target, r)
 	if r.hit and String(r.debuff) == "agility":
 		_resort_pending()
 	_refresh_bar(target)
@@ -1362,6 +1414,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
 	_refresh_bar(target)
+	_react(target, r)
 	var verb := ("%s winds up and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s claws at %s" % [String(actor.display_name), String(target.display_name)])
 	if bool(r.get("dodged", false)):
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
@@ -1385,6 +1438,11 @@ func _win() -> void:
 	item_menu.visible = false
 	target_menu.visible = false
 	_log("The enemies back off, beaten.")
+	# Whoever is still standing celebrates. The clip loops, so it holds for
+	# as long as the XP lines take to read.
+	for entry in _living(party):
+		if entry.has("actor") and is_instance_valid(entry.actor) and entry.actor is Diver:
+			(entry.actor as Diver).play_win()
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	var total_xp := 0
 	for e in enemies:
