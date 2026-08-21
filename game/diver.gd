@@ -561,7 +561,7 @@ func update_sonar() -> void:
 		# two different numbers that happen to both be called "radius."
 		if position.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
-	
+
 
 # Aimed - the one ability that isn't omnidirectional. `aim_dir` comes from
 # world.gd's camera yaw/pitch (where the player is actually looking, via
