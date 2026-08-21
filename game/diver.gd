@@ -468,7 +468,7 @@ func _shockwave_vfx() -> void:
 	tw.tween_property(vfx, "scale", Vector3.ONE * (SHOCKWAVE_RADIUS / 0.3), 0.35)
 	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.35)
 	tw.tween_callback(vfx.queue_free)
-	
+
 # toggle_sonar() is the only thing that ever sets sonar_active true - once
 # oxygen actually runs out it also turns itself back off (rather than
 # leaving it "on" but silently inert), so a player checking sonar_active

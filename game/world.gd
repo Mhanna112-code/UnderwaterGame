@@ -98,6 +98,13 @@ var _cracked_walls: Dictionary = {}
 # Items.grant() is still called from.
 var inventory: Dictionary = {}
 
+# Stable rock id -> {item, position:[x,y,z]} for a reward that has spawned
+# but has not entered inventory yet. This is the third mutually-exclusive
+# reward state alongside an intact source rock and a collected inventory
+# entry; serializing it prevents save-after-break-before-pickup from erasing
+# the reward when the consumed rock is removed on load.
+var pending_world_drops: Dictionary = {}
+
 # Escape's pause menu - see _unhandled_input()'s ESCAPE branch for how it
 # opens/closes (mutually exclusive with aiming/target_selector.selecting/
 # save_point_menu, same guard shape those already use against each other)
@@ -127,6 +134,13 @@ var _pending_reward_item := ""
 # same real file, and it all survives closing the game entirely.
 var _current_slot := -1
 
+# Scene reload is the only honest way to roll mutable geometry back to a
+# checkpoint: _load_save() can remove objects a save says are consumed, but
+# it cannot recreate a CrackedWall already queue_free()'d after that save.
+# This one-shot handoff survives reload_current_scene(), then the fresh World
+# consumes and clears it at the end of _ready().
+static var _restart_slot := -1
+
 # Full state: per-diver position/stats/spells plus the world-level
 # inventory/key_items/active - everything _write_save()'s caller (a save
 # point) or the initial New Game write needs to reproduce the run exactly.
@@ -155,6 +169,7 @@ func _serialize_state() -> Dictionary:
 	return {
 		"active": active,
 		"inventory": inventory.duplicate(),
+		"pending_world_drops": pending_world_drops.duplicate(true),
 		"key_items": key_items.duplicate(),
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
@@ -207,6 +222,7 @@ func _load_save() -> void:
 		s.barrier = int(sd.get("barrier", s.barrier_max))
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
+	pending_world_drops = (data.get("pending_world_drops", {}) as Dictionary).duplicate(true)
 	# .assign(), not a plain `=` - key_items/revealed_key_items/
 	# consumed_world_ids are all typed Array[String], and JSON.parse_string()
 	# only ever hands back a plain untyped Array. Plain `=` replaces the
@@ -230,6 +246,12 @@ func _load_save() -> void:
 		if _cracked_walls.has(id):
 			(_cracked_walls[id] as CrackedWall).queue_free()
 			_cracked_walls.erase(id)
+	for id in pending_world_drops:
+		var drop: Dictionary = pending_world_drops[id]
+		var saved_position: Array = drop.get("position", [])
+		if saved_position.size() == 3:
+			_spawn_world_drop(String(id), String(drop.get("item", "")), Vector3(
+				float(saved_position[0]), float(saved_position[1]), float(saved_position[2])))
 
 	_update_hud()
 	_update_hp_bar()
@@ -267,10 +289,9 @@ func _show_game_over() -> void:
 	game_over_screen.open()
 
 func _on_game_over_restart() -> void:
-	_load_save()
-	game_over_screen.close()
+	_restart_slot = _current_slot
 	get_tree().paused = false
-	_announce("You wake back at your last save.")
+	get_tree().reload_current_scene()
 
 # reload_current_scene() re-runs World._ready() from scratch - every rock,
 # cracked wall, item guardian and diver goes back to its pristine starting
@@ -389,11 +410,18 @@ func _ready() -> void:
 	game_over_screen.title_chosen.connect(_on_game_over_title)
 	$HUD.add_child(game_over_screen)
 
-	# The world/party/HUD are all fully built at this point, same as ever -
-	# this just freezes everything (get_tree().paused, see _show_title_
-	# screen()) and shows the title on top until a slot's chosen, rather
-	# than restructuring _ready() around "don't build the world yet."
-	_show_title_screen()
+	# A game-over restart must rebuild the scene before applying its save so
+	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
+	# still opens the title screen exactly as before.
+	if _restart_slot >= 0:
+		_current_slot = _restart_slot
+		_restart_slot = -1
+		_load_save()
+		title_screen.close()
+		get_tree().paused = false
+		_announce("You wake back at your last save.")
+	else:
+		_show_title_screen()
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -477,7 +505,7 @@ func _build_breakable_rocks() -> void:
 		rock.span = Vector3(1.1, 1.1, 1.1)
 		rock.disguised_as_scenery_rock = true
 		rock.position = spot
-		rock.broken.connect(_on_breakable_rock_broken.bind(spot))
+		rock.broken.connect(_on_breakable_rock_broken.bind(id, spot))
 		# Separate listener purely for save persistence (see
 		# _on_world_object_consumed()/consumed_world_ids) - kept apart from
 		# _on_breakable_rock_broken() above so "spawn a reward" and "record
@@ -488,18 +516,27 @@ func _build_breakable_rocks() -> void:
 		add_child(rock)
 		_cracked_walls[id] = rock
 
-# spot is bound at connect time (see _build_breakable_rocks()) - the
-# `broken` signal itself carries no position (cracked_wall.gd stays
-# ability/reward-agnostic on purpose, see its header comment), and by the
-# time this fires the rock has already queue_free()'d itself, so there's no
-# node left to read a position off of.
-func _on_breakable_rock_broken(spot: Vector3) -> void:
+# id and spot are bound at connect time (see _build_breakable_rocks()) - the
+# `broken` signal stays ability/reward-agnostic. The stable id ties together
+# the consumed source and its pending reward across save/load.
+func _on_breakable_rock_broken(id: String, spot: Vector3) -> void:
+	var item_id := Items.random_drop()
+	var drop_position := spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
+	pending_world_drops[id] = {
+		"item": item_id,
+		"position": [drop_position.x, drop_position.y, drop_position.z],
+	}
+	_spawn_world_drop(id, item_id, drop_position)
+
+func _spawn_world_drop(id: String, item_id: String, drop_position: Vector3) -> void:
+	if item_id == "":
+		return
 	var orb := ItemOrb.new()
-	orb.item_id = Items.random_drop()
+	orb.item_id = item_id
 	# Small scatter so a pop doesn't sit dead-center in the rubble - purely
 	# cosmetic, the pickup radius (see item_orb.gd) covers either way.
-	orb.position = spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
-	orb.collected.connect(_on_item_orb_collected)
+	orb.position = drop_position
+	orb.collected.connect(_on_item_orb_collected.bind(id))
 	add_child(orb)
 
 # Shared by every persistable CrackedWall's `broken` signal (reward rocks
@@ -515,7 +552,8 @@ func _on_world_object_consumed(id: String) -> void:
 		consumed_world_ids.append(id)
 	_cracked_walls.erase(id)
 
-func _on_item_orb_collected(item_id: String, d: Diver) -> void:
+func _on_item_orb_collected(item_id: String, _d: Diver, drop_id: String) -> void:
+	pending_world_drops.erase(drop_id)
 	_add_to_inventory(item_id)
 
 # Party-wide, not applied to `d` (who physically swam into the orb) at all
@@ -1302,14 +1340,28 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active]:
 		return
-	var i = ItemGuardian.new()
-	var item_found := false
-	for item in i.SPOTS:
-		if d.position.distance_to(item.at) <= item.radius:
-			_start_battle(item.item)
-			item_found = true
-	if !item_found:
-		_start_battle()
+	# Standing on a key item's spot turns the next random encounter into
+	# that item's guardian fight. Everywhere else it is an ordinary one.
+	#
+	# Two bugs lived in these five lines. The spot dictionaries are keyed
+	# "item", not "item_id", so this threw, and a throw inside a signal
+	# handler takes the rest of the handler with it: an encounter rolled
+	# anywhere within 10 m of either spot started nothing at all. No fight,
+	# no message, and check_for_encounter() had already reset the counter,
+	# so the only symptom was a stretch of map that never attacked you. And
+	# had it not thrown, the unconditional _start_battle() underneath would
+	# have stacked a second battle screen on the same encounter.
+	#
+	# ItemGuardian.new() went with them. SPOTS is a const on the class, so
+	# reading it never needed an instance, and that instance was an Area3D
+	# that was never added to the tree and never freed. One leak per
+	# encounter for the whole session.
+	var reward := ""
+	for spot in ItemGuardian.SPOTS:
+		if d.position.distance_to(spot.at as Vector3) <= float(spot.radius):
+			reward = String(spot.item)
+			break
+	_start_battle(reward)
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 # Both get freed the instant this fires, win or lose the fight that
