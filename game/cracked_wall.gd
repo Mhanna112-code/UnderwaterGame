@@ -4,12 +4,14 @@
 # range, the same call_group broadcast any future ability-reactive object
 # would use.
 #
-# `span` sizes it as a solid box, not a fixed small sphere - a single
-# CrackedWall spanning a whole corridor's width and height (see
-# world.gd's entrance blockade) reads as a genuine "nobody passes without
-# shockwave" barrier, the same solidity as the corridor's own walls,
-# rather than a scatter of small rocks with gaps a diver can just swim
-# around or over.
+# `span` always sizes the collision box - a single CrackedWall spanning a
+# whole corridor's width and height (see world.gd's entrance blockade)
+# reads as a genuine "nobody passes without shockwave" barrier, the same
+# solidity as the corridor's own walls, rather than a scatter of small
+# rocks with gaps a diver can just swim around or over. The VISUAL mesh is
+# either a box sized to `span` (the default) or a small sphere disguised
+# as ambient scenery (see disguised_as_scenery_rock below) - span still
+# governs blast detection either way, only the look changes.
 class_name CrackedWall
 extends StaticBody3D
 
@@ -46,21 +48,48 @@ signal broken
 # means "no wider than what's visible."
 @export var collision_width := 0.0
 
+# When true, looks exactly like one of the ambient scenery rocks from
+# world.gd's _build_site() (same SphereMesh dimensions/color) instead of
+# the default brown box - used for the reward rocks specifically (see
+# _build_breakable_rocks()) so they read as "just another rock" until
+# shockwaved, discoverable by exploring/sweeping the site rather than
+# telegraphed from across the map. The entrance blockade leaves this
+# false on purpose - a gate SHOULD read as obviously different from
+# scenery; only the hidden reward rocks want to disappear into it.
+# `span` still governs the (invisible either way) collision box - a
+# sphere's visual size doesn't need to match its blast-detection box
+# exactly, same approximation the box mesh itself already was.
+@export var disguised_as_scenery_rock := false
+
 var _mesh: MeshInstance3D
 
 func _ready() -> void:
 	add_to_group("shockwave_breakable")
 
-	var box := BoxMesh.new()
-	box.size = span
 	_mesh = MeshInstance3D.new()
-	_mesh.mesh = box
 	var mat := StandardMaterial3D.new()
-	# Visibly different from the scenery rocks in world.gd - a player
-	# should be able to tell "this one's a kind of thing" before they have
-	# any ability that reacts to it.
-	mat.albedo_color = Color(0.42, 0.22, 0.14)
-	mat.roughness = 0.9
+	if disguised_as_scenery_rock:
+		var rock := SphereMesh.new()
+		rock.radius = 0.5
+		rock.height = 0.7
+		rock.radial_segments = 7
+		rock.rings = 4
+		_mesh.mesh = rock
+		# Matches _build_site()'s ambient rock color/roughness exactly -
+		# the whole point is being indistinguishable from one until broken.
+		mat.albedo_color = Color(0.13, 0.19, 0.21)
+		mat.roughness = 1.0
+	else:
+		var box := BoxMesh.new()
+		box.size = span
+		_mesh.mesh = box
+		# Visibly different from the scenery rocks in world.gd - a player
+		# should be able to tell "this one's a kind of thing" before they
+		# have any ability that reacts to it. (Only true when NOT
+		# disguised - see disguised_as_scenery_rock above for the opposite
+		# case, used by the two reward rocks.)
+		mat.albedo_color = Color(0.42, 0.22, 0.14)
+		mat.roughness = 0.9
 	_mesh.material_override = mat
 	add_child(_mesh)
 

@@ -491,7 +491,15 @@ func _physics_process(delta: float) -> void:
 		_sonar_drain_timer -= delta
 		if _sonar_drain_timer <= 0.0:
 			_sonar_drain_timer = SONAR_DRAIN_INTERVAL
-			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC * SONAR_DRAIN_INTERVAL)
+			# Flat per-tick cost, not SONAR_OXYGEN_DRAIN_PER_SEC * INTERVAL -
+			# that multiplication used to preserve the old smooth-drain
+			# rate exactly (3.0/sec average), but 3 charged every 3 seconds
+			# (a 1.0/sec effective rate, 3x cheaper) is the actual wanted
+			# cost. SONAR_OXYGEN_DRAIN_PER_SEC's name is now a bit stale -
+			# it's really "oxygen per tick" - but kept as-is rather than
+			# renaming, since a rename with no behavior change isn't worth
+			# the diff on its own.
+			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC)
 			if stats.oxygen <= 0.0:
 				sonar_active = false
 		sonar_timer -= delta
@@ -499,14 +507,23 @@ func _physics_process(delta: float) -> void:
 			sonar_timer = SONAR_INTERVAL
 			update_sonar()
 
-# Marks every not-yet-claimed key-item zone as "revealed" - MiniMap draws
-# a pulsing red marker for anything in World.revealed_key_items that isn't
-# also in World.key_items yet (dot if it's within the minimap's own
-# view_radius, a small arrow at the rim pointing toward it otherwise - see
-# mini_map.gd's _draw()). Once revealed it stays revealed for the rest of
-# the run (nothing here ever removes an id from revealed_key_items except
-# a claim clearing it via key_items) - sonar's job is finding it, not
-# re-finding it every single ping.
+# Marks every not-yet-claimed key-item zone the diver is currently within
+# range of as "revealed" - MiniMap draws a pulsing red marker for anything
+# in World.revealed_key_items that isn't also in World.key_items yet (dot
+# if it's within the minimap's own view_radius, a small arrow at the rim
+# pointing toward it otherwise - see mini_map.gd's _draw()). Once revealed
+# it stays revealed for the rest of the run (nothing here ever removes an
+# id from revealed_key_items except a claim clearing it via key_items) -
+# sonar's job is confirming something's nearby, not re-confirming it every
+# single ping once you already know.
+#
+# MODIFIED again: reveal used to be unconditional - one ping, anywhere on
+# the whole map, revealed every remaining key item regardless of distance.
+# Now gated on entry.radius (the same guaranteed-encounter radius
+# ItemGuardian.SPOTS already carries per zone) - sonar has to actually be
+# on AND the diver has to be within that zone's own radius before it
+# reveals, so the minimap marker means "you're close, and pinged," not
+# "sonar has ever been used once anywhere."
 #
 # MODIFIED from the original draft: that version built a fresh
 # `World.new()`/`ItemGuardian.new()` each call - `World.new()` is an
@@ -533,8 +550,18 @@ func update_sonar() -> void:
 		s_items.append(item)
 	for entry in s_items:
 		var item_id := String(entry.item)
-		if not world.revealed_key_items.has(item_id):
+		if world.revealed_key_items.has(item_id):
+			continue
+		# MODIFIED: gated on entry.radius originally (the guaranteed-
+		# encounter radius, a separate concept). Changed to
+		# world.minimap.view_radius - "revealed" should mean "you actually
+		# saw it as a dot on the minimap at some point," so the reveal
+		# distance and the dot/arrow display distance (see mini_map.gd's
+		# _draw_key_item_markers()) need to be the exact same radius, not
+		# two different numbers that happen to both be called "radius."
+		if position.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
+	
 
 # Aimed - the one ability that isn't omnidirectional. `aim_dir` comes from
 # world.gd's camera yaw/pitch (where the player is actually looking, via

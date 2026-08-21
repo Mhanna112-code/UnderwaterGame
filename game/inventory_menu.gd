@@ -125,6 +125,14 @@ func _refresh_items() -> void:
 		btn.text = "Use %s (x%d)" % [String(def.get("display", item_id)), count]
 		btn.tooltip_text = String(def.get("description", ""))
 		btn.custom_minimum_size = Vector2(340, 40)
+		# Disabled rather than hidden when it wouldn't help the currently
+		# steered diver right now (full HP for a potion, full oxygen for a
+		# cell, etc.) - same "show what you can't use yet" convention
+		# spell_tree_ui.gd/the Party Spells tab already use, so the item
+		# doesn't just vanish from the list, and world.use_inventory_item()
+		# refuses the same way if this were ever somehow clicked anyway.
+		if not world.divers.is_empty():
+			btn.disabled = not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
 		btn.pressed.connect(_on_use_item_pressed.bind(item_id))
 		_list.add_child(btn)
 
