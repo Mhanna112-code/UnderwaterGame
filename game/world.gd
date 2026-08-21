@@ -1303,10 +1303,13 @@ func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active]:
 		return
 	var i = ItemGuardian.new()
+	var item_found := false
 	for item in i.SPOTS:
 		if d.position.distance_to(item.at) <= item.radius:
-			_start_battle(item.item_id)
-	_start_battle()
+			_start_battle(item.item)
+			item_found = true
+	if !item_found:
+		_start_battle()
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 # Both get freed the instant this fires, win or lose the fight that
