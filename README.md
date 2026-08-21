@@ -147,7 +147,10 @@ which is worth knowing before anyone concludes the game is broken.
     ./verify/gates.sh                                     # all of the below, in order
 
     godot --headless --path . --script verify/clips.gd    # does every clip the game asks for exist
+    godot --headless --path . --script verify/animations.gd # do all three rigs change state correctly
     godot --headless --path . --script verify/swim.gd     # do they actually move, and animate while moving
+    godot --headless --path . --script verify/balance.gd  # seeded casual/greedy difficulty policies
+    godot --headless --path . --script verify/encounters.gd # does a fight start correctly from every area
     godot --headless --path . --script verify/fight.gd    # play a whole fight and come back to the world
     godot --headless --path . --script tools/test_goblin.gd  # does the grunt's model load and size correctly
     godot --headless --path . --script tools/test_battle.gd  # does the fight screen build without erroring
@@ -155,12 +158,19 @@ which is worth knowing before anyone concludes the game is broken.
     node verify/webcheck.mjs <live-url> out.png           # does the live link boot
 
 Each of these exits non-zero on a finding and prints what it found, so
-`./verify/gates.sh` is the one command to run before pushing.
+`./verify/gates.sh` is the one command to run before pushing. The browser
+check is explicitly reported as skipped when Playwright is unavailable;
+gameplay checks can still pass in that environment, but the aggregate result
+will not claim that every gate ran.
 
 `verify/clips.gd` asks each delivered file what animations it contains and
 fails on the first name `content/cast.gd` gets wrong. Roughly thirty clip
 names are hand-written in that table and a re-rig or a renamed export turns
 any one of them into a diver standing still in the middle of a fight.
+
+`verify/animations.gd` instantiates every delivered rig and drives it through
+idle → swim start → loop → end → idle plus both damage reactions. Mermaid's
+carried staff must be present, visible and skinned to the same skeleton.
 
 `verify/swim.gd` drives the real scene through swimming and coming to rest. It
 fails if a diver does not move, falls through the floor, loses the camera, or
@@ -168,6 +178,12 @@ plays the wrong character's clip off the shared rig. It also requires the full
 idle → swim start → swim loop → swim end → idle sequence and feeds a real mouse
 motion event through Godot's input pipeline, so hard-coding the exploration
 camera instead of preserving mouse-look fails the gate.
+
+`verify/balance.gd` runs 120 deterministic seeds through a careless policy
+and a greedy policy using the production roster, moves, enemy scaling and
+damage/mitigation function. It fails when careless play almost always wins or
+loses, when better choices do not improve the result, or when even winning
+fights cost too little time or HP to exert pressure.
 
 `verify/fight.gd` starts a real encounter from the overworld and plays it to
 the end by pressing the actual buttons, then checks the world came back. It

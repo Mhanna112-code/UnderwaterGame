@@ -12,7 +12,7 @@
 # Usage: godot --headless --path . --script verify/clips.gd
 extends SceneTree
 
-const MOTIONS := ["idle", "swim", "swim_start", "hurt", "hurt_bad", "down", "down_start", "win"]
+const MOTIONS := ["idle", "swim", "swim_start", "swim_end", "hurt", "hurt_bad", "down", "down_start", "win"]
 
 var findings: Array = []
 

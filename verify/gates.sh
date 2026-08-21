@@ -9,6 +9,7 @@ cd "$(dirname "$0")/.."
 
 GODOT="${GODOT:-godot}"
 fails=0
+skips=0
 
 # Godot scans everything under the project root, and playwright has to be
 # installed here for node to resolve it from verify/*.mjs. A .gdignore stops
@@ -28,7 +29,9 @@ run() {
 }
 
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
+run "animations: does every rig change state correctly" "$GODOT" --headless --path . --script verify/animations.gd
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
+run "balance: do careless and greedy policies land in band" "$GODOT" --headless --path . --script verify/balance.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
@@ -41,17 +44,23 @@ run "battle: does the fight screen build"             "$GODOT" --headless --path
 if [ ! -f docs/index.wasm ]; then
 	echo
 	echo "=== webcheck: skipped, no docs/index.wasm to serve ==="
+	skips=$((skips + 1))
 elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	echo
 	echo "=== webcheck: skipped, playwright not resolvable ==="
 	echo "    npm i playwright && npx playwright install chromium"
+	skips=$((skips + 1))
 else
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs docs /tmp/gate-chromium.png
 fi
 
 echo
 if [ "$fails" -eq 0 ]; then
-	echo "GATES: all clean"
+	if [ "$skips" -gt 0 ]; then
+		echo "GATES: gameplay clean; $skips skipped"
+	else
+		echo "GATES: all clean"
+	fi
 	exit 0
 fi
 echo "GATES: $fails failed"

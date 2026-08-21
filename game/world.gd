@@ -10,8 +10,6 @@
 class_name World
 extends Node3D
 
-const SRC := preload("res://art/characters/divers.glb")
-
 const CAST := [
 	{"model": "Staff_Diver", "at": Vector3(0, 2.0, 0)},
 	{"model": "Prototype_1(1910)", "at": Vector3(-3.6, 2.2, -3.0)},
@@ -36,7 +34,6 @@ var cam: Camera3D
 var hud: Label
 var mouse_look := false
 var _t := 0.0
-var lantern: Node3D
 
 # First-person aim mode for aimed abilities (grapple): E enters it instead
 # of firing right away, camera cuts to the diver's own eye line, left click
@@ -335,7 +332,6 @@ func _ready() -> void:
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
-	_carry_lantern()
 	_update_hud()
 
 	title_screen = TitleScreen.new()
@@ -771,31 +767,6 @@ func _build_wall(center: Vector3, size: Vector3) -> void:
 	else:
 		_wall_segments.append([center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5)])
 
-# The fourth model is a staff. Nothing in this FBX is rigged, so no diver has
-# a hand to put it in: carried, it read as a stick floating beside somebody.
-# Planted in the seabed as a site beacon it reads as a decision.
-func _carry_lantern() -> void:
-	var src: Node3D = SRC.instantiate()
-	var m: MeshInstance3D = _find(src, "Staff_Lantern")
-	if m == null:
-		return
-	var keep: Transform3D = m.transform
-	m.owner = null
-	m.get_parent().remove_child(m)
-	lantern = Node3D.new()
-	lantern.add_child(m)
-	m.transform = keep
-	lantern.position = Vector3(1.8, 0.0, 2.6)
-	lantern.rotation.x = -PI * 0.5      # the staff arrives lying along Z; stand it up
-	var glow := OmniLight3D.new()
-	glow.light_color = Color(1.0, 0.86, 0.6)
-	glow.light_energy = 3.0
-	glow.omni_range = 12.0
-	glow.position.y = 1.5
-	lantern.add_child(glow)
-	add_child(lantern)
-	src.queue_free()
-
 func _unhandled_input(e: InputEvent) -> void:
 	if battling:
 		return
@@ -1043,7 +1014,6 @@ func _physics_process(dt: float) -> void:
 	_update_hp_bar()
 	_update_oxygen_bar()
 	_update_active_cursor()
-	_move_lantern(dt)
 	_update_banner(dt)
 	_update_save_point_prompt()
 	_check_gap_puzzle()
@@ -1196,11 +1166,6 @@ func _update_aim_marker() -> void:
 	_aim_marker_mat.albedo_color = c
 	_aim_marker_mat.emission = c
 	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
-
-func _move_lantern(_dt: float) -> void:
-	if lantern == null:
-		return
-	lantern.rotation.z = sin(_t * 0.8) * 0.05      # a slow sway in the current
 
 # fade the banner. Only called while not battling: _physics_process skips
 # this whole side of the world once a fight is up.

@@ -1008,21 +1008,13 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if debuff != "":
 		return _apply_debuff(defender, debuff, int(move.get("amount", 0)))
 
-	var variance: float = randf_range(0.85, 1.15)
-	var raw: float
+	# Preserve the production RNG order: variance was sampled before the
+	# heavy fraction and before the QTE prior to splitting out the deterministic
+	# damage helper for the balance gate.
+	var variance := randf_range(0.85, 1.15)
+	var heavy_fraction := 0.0
 	if String(move.get("effect", "")) == "heavy":
-		# A telegraphed signature hit, scaled off the DEFENDER's own max HP
-		# rather than the attacker's power/strength - "a quarter to half of
-		# your health," not a number that happens to land in that range at
-		# the moment it was tuned. Still runs through the normal
-		# defense/barrier mitigation below and the same QTE dodge check
-		# right after (see ENEMY_HEAVY_MOVE's quick_time_bool) - investing
-		# in defense/barrier or just timing the dodge both still matter,
-		# this only changes how big the raw threat is before either kicks in.
-		raw = float(defender.hp_max) * randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
-	else:
-		raw = (float(move.power) + float(attacker.strength)) * variance
-	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+		heavy_fraction = randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
 
 	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
 	# triggers a QTE - a player's own attacks never set quick_time_bool, so
@@ -1034,17 +1026,35 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	var player_dodge := false
 	if bool(move.get("quick_time_bool", false)):
 		player_dodge = await _quick_time_event()
-		if player_dodge:
-			incoming = 0
 
-	var absorbed: int = 0
+	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
+
+# The deterministic half of _resolve_attack(), shared with verify/balance.gd.
+# Production samples the variance/heavy fraction and the QTE result above;
+# the seeded balance gate supplies those same inputs itself. Keeping the actual
+# mutation and mitigation here prevents a test-only copy of the combat math
+# drifting away from what players receive.
+static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, variance: float, heavy_fraction: float = 0.0, dodged: bool = false) -> Dictionary:
+	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
+	if effective_accuracy <= defender.evasion:
+		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false}
+
+	var raw: float
+	if String(move.get("effect", "")) == "heavy":
+		raw = float(defender.hp_max) * heavy_fraction
+	else:
+		raw = (float(move.power) + float(attacker.strength)) * variance
+	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+	if dodged:
+		incoming = 0
+
+	var absorbed := 0
 	if defender.barrier > 0 and incoming > 0:
 		absorbed = mini(defender.barrier, incoming)
 		defender.barrier -= absorbed
 	var to_hp: int = incoming - absorbed
 	defender.hp = maxi(0, defender.hp - to_hp)
-
-	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": player_dodge}
+	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged}
 
 # Dispatches on the move's "effect" key before falling through to the
 # normal attack/debuff resolution above. "barrier" (defense-branch spells)
