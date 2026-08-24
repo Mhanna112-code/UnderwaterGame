@@ -35,6 +35,7 @@ run "current: can full upstream input cross the flow" "$GODOT" --headless --path
 run "balance: do careless and greedy policies land in band" "$GODOT" --headless --path . --script verify/balance.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
+run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd
 run "maze: do both walls rotate 90 degrees and meet their named targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
