@@ -1,11 +1,12 @@
 # Captures the hallway before and after its programmatic rotation from the
 # same top-down camera. This is the visual counterpart to verify/maze.gd's
 # transform invariants.
-# Usage: godot --path . --script tools/shoot_maze.gd -- /tmp/maze-before.png /tmp/maze-after.png
+# Usage: godot --path . --script tools/shoot_maze.gd -- /tmp/maze-before.png /tmp/maze-after.png [/tmp/maze-frames]
 extends SceneTree
 
 var before_path := "/tmp/maze-before.png"
 var after_path := "/tmp/maze-after.png"
+var frame_dir := ""
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -13,6 +14,8 @@ func _initialize() -> void:
 		before_path = String(args[0])
 	if args.size() > 1:
 		after_path = String(args[1])
+	if args.size() > 2:
+		frame_dir = String(args[2])
 	call_deferred("_run")
 
 func _capture(path: String) -> void:
@@ -44,6 +47,14 @@ func _run() -> void:
 	camera.look_at_from_position(Vector3(5.0, 45.0, 0.0), Vector3(5.0, 0.0, 0.0), Vector3.FORWARD)
 	await _capture(before_path)
 	maze._rotate_hallway_1_2()
-	await create_timer(1.4).timeout
+	if frame_dir.is_empty():
+		await create_timer(1.4).timeout
+	else:
+		DirAccess.make_dir_recursive_absolute(frame_dir)
+		for frame in range(43):
+			await create_timer(1.0 / 30.0).timeout
+			root.get_texture().get_image().save_png(
+				frame_dir.path_join("frame_%03d.png" % frame)
+			)
 	await _capture(after_path)
 	quit()
