@@ -79,6 +79,29 @@ func _wall_endpoint(wall: CSGBox3D, positive_end: bool = false) -> Vector3:
 	var forward: Vector3 = wall.global_transform.basis.x.normalized()
 	return wall.global_position + forward * wall.size.x * 0.5 * (1.0 if positive_end else -1.0)
 
+# Rotates one wall counterclockwise by exactly 90 degrees, then translates
+# it so it continues the named destination wall end-to-end. There are two
+# valid non-overlapping continuations (off either end of `target`); choose
+# the one requiring the least travel from the moving wall's current centre.
+func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tween:
+	var target_axis := target.global_transform.basis.x.normalized()
+	var target_negative := _wall_endpoint(target)
+	var target_positive := _wall_endpoint(target, true)
+	var half_length := wall.size.x * 0.5
+	var off_negative := target_negative - target_axis * half_length
+	var off_positive := target_positive + target_axis * half_length
+	var destination := off_negative if wall.global_position.distance_squared_to(off_negative) < wall.global_position.distance_squared_to(off_positive) else off_positive
+	destination.y = target.global_position.y
+
+	var start_position := wall.global_position
+	var start_yaw := wall.rotation.y
+	var end_yaw := start_yaw + PI * 0.5
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(wall, "global_position", destination, duration)
+	tw.tween_property(wall, "rotation:y", end_yaw, duration)
+	return tw
+
 var _endpoint_marker: MeshInstance3D = null
 
 func _show_endpoint_marker(at: Vector3) -> void:
@@ -109,9 +132,9 @@ func _show_endpoint_marker(at: Vector3) -> void:
 func _rotate_hallway_1_2() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_b: CSGBox3D = $CurrentWall2
-	var pivot := _wall_endpoint(wall_a)
-	_show_endpoint_marker(pivot)
-	swing_hallway(wall_a, wall_b, pivot, 90.0)
+	_show_endpoint_marker(_wall_endpoint($CSGBox3D, true))
+	_rotate_wall_flush(wall_a, $CSGBox3D)
+	_rotate_wall_flush(wall_b, $CurrentWall3)
 	$HUD/Controls.text = "Hallway swinging..."
 
 # Each WaterCurrent is a plain controller object, not something attached
