@@ -31,6 +31,9 @@ func _run() -> void:
 	var maze := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
 	root.add_child(maze)
 	await process_frame
+	# The gameplay physics loop continuously restores the normal third-person
+	# camera. Freeze it so this diagnostic retains its fixed overhead view.
+	maze.set_physics_process(false)
 	var camera := maze.get_node("Camera3D") as Camera3D
 	_color(maze.get_node("CurrentWall1"), Color(1.0, 0.25, 0.25))
 	_color(maze.get_node("CSGBox3D"), Color(1.0, 0.75, 0.15))
