@@ -61,6 +61,21 @@ var area: Area3D = null
 var _visual_node: MeshInstance3D = null
 var _bubbles_node: CPUParticles3D = null
 
+# Area3D entry signals are edge-triggered: after a rejected entry, normal
+# swimming can overwrite the one-frame bounce while the diver remains inside,
+# and body_entered will not fire again. Reassert the flow for the full overlap
+# so current strength and steering constraints remain authoritative.
+func _physics_process(_delta: float) -> void:
+	if area == null or orientation == Vector3.ZERO:
+		return
+	for body in area.get_overlapping_bodies():
+		if body is Diver:
+			_apply_to_diver(body as Diver)
+
+func _apply_to_diver(diver: Diver) -> void:
+	diver.external_push = orientation * strength
+	diver.current_axis = orientation
+
 # Called right after add_child()-ing this node - wires this controller up
 # to whichever Area3D it should actually watch and which way it pushes.
 # push_strength defaults to the field above if not given. show_debug_visual
@@ -141,19 +156,18 @@ func _on_entered(body: Node3D) -> void:
 	if not (body is Diver) or orientation == Vector3.ZERO:
 		return
 	var d := body as Diver
+	_apply_to_diver(d)
 	var vel_flat := Vector3(d.velocity.x, 0.0, d.velocity.z)
 	if vel_flat.length() > 0.05 and absf(vel_flat.normalized().dot(orientation)) < ENTRY_ALIGNMENT_MIN:
 		d.velocity = -vel_flat.normalized() * REJECT_BOUNCE
 		return
-	d.external_push = orientation * strength
-	# MODIFIED (added): external_push alone only ever made swimming
+	# external_push alone only ever made swimming
 	# upstream a losing fight - it did nothing about swimming SIDEWAYS
 	# out of the current, since that's a direction external_push doesn't
 	# oppose at all. current_axis is what Diver.swim() actually uses to
 	# strip lateral steering input once inside (see its own comment) -
 	# without setting it here, entering "correctly" still left the door
 	# open to just strafing out through where a wall should be.
-	d.current_axis = orientation
 
 func _on_exited(body: Node3D) -> void:
 	if body is Diver:

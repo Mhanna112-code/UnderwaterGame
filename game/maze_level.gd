@@ -269,7 +269,9 @@ func _add_current(target_area: Area3D, dir: WaterCurrent.Direction) -> void:
 	# show_debug_visual = false - a real current shouldn't render as a
 	# visible glowing box, that was only ever a development aid to see the
 	# push zone while getting the sizing/direction right.
-	current.setup(target_area, WaterCurrent.direction_to_vector(dir), 3.0, false)
+	# Diver swim speed is 5.0. A traversal-blocking current must exceed that
+	# speed, otherwise holding directly upstream still produces forward motion.
+	current.setup(target_area, WaterCurrent.direction_to_vector(dir), 7.0, false)
 	_currents_by_corridor[target_area] = current
 
 # Moves the WaterCurrent that's currently at origArea over to newArea,
