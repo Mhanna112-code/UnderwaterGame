@@ -79,64 +79,24 @@ func _wall_endpoint(wall: CSGBox3D, positive_end: bool = false) -> Vector3:
 	var forward: Vector3 = wall.global_transform.basis.x.normalized()
 	return wall.global_position + forward * wall.size.x * 0.5 * (1.0 if positive_end else -1.0)
 
-func _closest_endpoint_pair(wall_a: CSGBox3D, wall_b: CSGBox3D) -> Array[Vector3]:
-	var a_ends: Array[Vector3] = [_wall_endpoint(wall_a), _wall_endpoint(wall_a, true)]
-	var b_ends: Array[Vector3] = [_wall_endpoint(wall_b), _wall_endpoint(wall_b, true)]
-	var closest: Array[Vector3] = [a_ends[0], b_ends[0]]
-	var closest_distance := INF
-	for a_end in a_ends:
-		for b_end in b_ends:
-			var distance := a_end.distance_squared_to(b_end)
-			if distance < closest_distance:
-				closest_distance = distance
-				closest = [a_end, b_end]
-	return closest
+var _endpoint_marker: MeshInstance3D = null
 
-# Makes `wall` exactly span the nearest endpoints of the two reference
-# walls. Position, yaw and length all come from those endpoints; height
-# and vertical centre come from the destination wall so the top and bottom
-# co-align instead of depending on hand-tuned scene coordinates.
-func _fit_wall_between(wall: CSGBox3D, from_wall: CSGBox3D, to_wall: CSGBox3D) -> void:
-	var endpoints := _closest_endpoint_pair(from_wall, to_wall)
-	var from: Vector3 = endpoints[0]
-	var to: Vector3 = endpoints[1]
-	var delta := to - from
-	var horizontal := Vector2(delta.x, delta.z)
-	if horizontal.length_squared() <= 0.0001:
-		push_warning("fit_wall_between: reference endpoints overlap")
-		return
-	wall.global_position = (from + to) * 0.5
-	wall.global_position.y = to_wall.global_position.y
-	wall.rotation.y = atan2(-delta.z, delta.x)
-	wall.size.x = horizontal.length()
-	wall.size.y = to_wall.size.y
-	_show_endpoint_markers(from, to)
-
-# A small glowing sphere at wherever _wall_endpoint() last computed -
-# purely a debug aid to actually SEE where the pivot lands, since "is
-# this the right end" is impossible to judge from numbers alone. Reuses
-# the same node across calls (built once, just repositioned after) so
-# repeated H presses don't leave a trail of markers behind.
-var _endpoint_markers: Array[MeshInstance3D] = []
-
-func _show_endpoint_markers(from: Vector3, to: Vector3) -> void:
-	while _endpoint_markers.size() < 2:
-		var marker := MeshInstance3D.new()
+func _show_endpoint_marker(at: Vector3) -> void:
+	if _endpoint_marker == null:
+		_endpoint_marker = MeshInstance3D.new()
 		var sphere := SphereMesh.new()
 		sphere.radius = 0.5
 		sphere.height = 1.0
-		marker.mesh = sphere
+		_endpoint_marker.mesh = sphere
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(1.0, 0.15, 0.85) if _endpoint_markers.is_empty() else Color(0.15, 1.0, 0.85)
+		mat.albedo_color = Color(1.0, 0.15, 0.85)
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.emission_enabled = true
 		mat.emission = mat.albedo_color
 		mat.emission_energy_multiplier = 2.0
-		marker.material_override = mat
-		add_child(marker)
-		_endpoint_markers.append(marker)
-	_endpoint_markers[0].global_position = from
-	_endpoint_markers[1].global_position = to
+		_endpoint_marker.material_override = mat
+		add_child(_endpoint_marker)
+	_endpoint_marker.global_position = at
 
 # MODIFIED: was wall_a spinning around its own CENTER while wall_b swung
 # around wall_a's position - that only keeps wall_a's own center fixed,
@@ -149,12 +109,9 @@ func _show_endpoint_markers(from: Vector3, to: Vector3) -> void:
 func _rotate_hallway_1_2() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_b: CSGBox3D = $CurrentWall2
-	var tween := swing_hallway(wall_a, wall_b, _wall_endpoint(wall_a), 90.0)
-	# Once the rotation finishes, CurrentWall2 becomes the exact connector
-	# between the rotated hallway and CurrentWall3. The endpoint pair is
-	# selected from geometry at that moment, so no editor marker or magic
-	# coordinate can drift out of alignment.
-	tween.finished.connect(func() -> void: _fit_wall_between(wall_b, wall_a, $CurrentWall3))
+	var pivot := _wall_endpoint(wall_a)
+	_show_endpoint_marker(pivot)
+	swing_hallway(wall_a, wall_b, pivot, 90.0)
 	$HUD/Controls.text = "Hallway swinging..."
 
 # Each WaterCurrent is a plain controller object, not something attached

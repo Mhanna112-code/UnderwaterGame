@@ -29,7 +29,7 @@ A random encounter at an unclaimed key-item spot pauses the world, asks the play
 | 2 | Losing a special battle opens game over or preserves combat damage/oxygen spend. | High — the prompt's explicit no-loss promise is false. | State is snapshotted before one node is created and restored after it is freed. | round-trip | characterized |
 | 3 | Winning fails to heal the chosen diver or grant the guarded item. | High — the player completes a progression fight without its reward. | Reward and restoration are separate branches after battle teardown. | decision table | characterized |
 | 4 | The maze scene crashes before play because corridor node paths resolve too early. | High — the PR's named feature cannot start. | Scene-node references were stored in a member initializer. | captured startup test | fixed |
-| 5 | The rotated hallway looks close but its connector misses an endpoint or has a mismatched height. | High — the maze route remains visibly or physically broken. | Independent hand-tuned transforms drift after rotation. | geometric invariant | characterized |
+| 5 | The hallway turns by something other than 90°, moves its pivot endpoint, or distorts the two-wall assembly. | High — the rotated route is visibly wrong. | Tweened transforms can accidentally rotate around the wrong point or mutate one wall after rotation. | geometric invariant | characterized |
 
 ## Test plan
 
@@ -53,10 +53,10 @@ A random encounter at an unclaimed key-item spot pauses the world, asks the play
 - **Description:** `maze scene: starts without missing-node errors — guards against pre-tree corridor lookup`
 - **Self-critique:** Runs the actual packed scene; layout refactors pass as long as the scene still starts.
 
-### Bug #5 — programmatic endpoint alignment
+### Bug #5 — rigid 90° hallway rotation
 
-- **Description:** `maze alignment: connector endpoints meet both reference walls and inherit destination height — guards against hand-tuned transform drift`
-- **Self-critique:** Asserts geometric contact and height after the public rotation action; node movement and tween refactors pass if the resulting geometry is unchanged.
+- **Description:** `maze rotation: both walls turn 90°, preserve the computed pivot, and retain their spacing — guards against distorted hallway transforms`
+- **Self-critique:** Asserts resulting geometry after the rotation action without assuming an unrelated destination wall; tween and scene-layout refactors pass if the rigid rotation remains correct.
 
 ## Skipped
 
