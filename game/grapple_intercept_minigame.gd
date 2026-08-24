@@ -11,9 +11,9 @@ signal wrong_object_hit
 
 const TARGET_COUNT := 8
 const TITLE_HOLD := 0.8
-const MIN_SPAWN_GAP := 0.45
-const MAX_SPAWN_GAP := 0.85
-const FLIGHT_TIME := 2.3
+const MIN_SPAWN_GAP := 0.60
+const MAX_SPAWN_GAP := 1.0
+const FLIGHT_TIME := 3.2
 const HIT_ANGLE := deg_to_rad(7.0)
 const LOOK_SENSITIVITY := 0.0035
 const MAX_YAW := 0.75
@@ -333,4 +333,16 @@ func auto_hit_decoy() -> bool:
 		return false
 	stage_camera.look_at(_decoys[0].global_position, Vector3.UP)
 	_shoot()
+	return true
+
+# Battle-lifecycle verification uses direct resolution so its assertions
+# isolate HP/camera/visibility wiring from the separate aim-selection test.
+func verification_resolve_closest() -> bool:
+	if _targets.is_empty():
+		return false
+	var closest := _targets[0]
+	for target in _targets:
+		if stage_camera.global_position.distance_to(target.global_position) < stage_camera.global_position.distance_to(closest.global_position):
+			closest = target
+	_destroy_target(closest)
 	return true
