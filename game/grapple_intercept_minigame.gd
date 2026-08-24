@@ -7,6 +7,7 @@ extends Control
 
 signal finished(hits: int, total: int)
 signal object_hit
+signal wrong_object_hit
 
 const TARGET_COUNT := 8
 const TITLE_HOLD := 0.8
@@ -25,9 +26,12 @@ var source_position := Vector3.ZERO
 
 var _targets: Array[MeshInstance3D] = []
 var _target_tweens: Dictionary = {}
+var _decoys: Array[MeshInstance3D] = []
+var _decoy_tweens: Dictionary = {}
 var _spawned := 0
 var _resolved := 0
 var _hits := 0
+var _penalties := 0
 var _yaw := 0.0
 var _pitch := 0.0
 var _base_forward := Vector3.FORWARD
@@ -61,7 +65,7 @@ func _ready() -> void:
 	add_child(title)
 
 	var hint := Label.new()
-	hint.text = "Move mouse to aim • Left click to grapple incoming targets"
+	hint.text = "Grapple ORANGE threats • Avoid BLUE decoys (they damage you)"
 	hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	hint.offset_top = 78.0
 	hint.offset_left = -330.0
@@ -133,6 +137,8 @@ func _spawn_loop() -> void:
 		if not is_instance_valid(self):
 			return
 		_spawn_target()
+		if _spawned % 2 == 0:
+			_spawn_decoy()
 		_spawned += 1
 
 func _spawn_target() -> void:
@@ -161,20 +167,90 @@ func _spawn_target() -> void:
 	tween.tween_property(target, "global_position", eye, FLIGHT_TIME)
 	tween.finished.connect(func() -> void: _land(target))
 
+func _spawn_decoy() -> void:
+	var eye := stage_camera.global_position
+	var forward := _base_forward
+	var right := forward.cross(Vector3.UP).normalized()
+	var side := -1.0 if randf() < 0.5 else 1.0
+	var start := eye + forward * randf_range(6.5, 9.5) + right * side * 4.5 + Vector3.UP * randf_range(-1.8, 2.2)
+	var finish := start - right * side * randf_range(5.0, 7.0)
+
+	var decoy := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.75, 0.75, 0.75)
+	decoy.mesh = mesh
+	decoy.rotation = Vector3(randf(), randf(), randf())
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.15, 0.55, 1.0)
+	material.emission_enabled = true
+	material.emission = Color(0.04, 0.25, 0.9)
+	material.emission_energy_multiplier = 1.4
+	decoy.material_override = material
+	stage_root.add_child(decoy)
+	decoy.global_position = start
+	_decoys.append(decoy)
+	var tween := decoy.create_tween()
+	_decoy_tweens[decoy] = tween
+	tween.tween_property(decoy, "global_position", finish, 3.2)
+	tween.parallel().tween_property(decoy, "rotation", decoy.rotation + Vector3(2.0, 3.0, 2.5), 3.2)
+	tween.finished.connect(func() -> void: _clear_decoy(decoy))
+
 func _shoot() -> void:
-	if _targets.is_empty():
+	if _targets.is_empty() and _decoys.is_empty():
 		return
 	var aim := -stage_camera.global_transform.basis.z.normalized()
 	var best: MeshInstance3D = null
 	var best_angle := HIT_ANGLE
-	for target in _targets:
-		var to_target: Vector3 = (target.global_position - stage_camera.global_position).normalized()
+	for candidate in _targets + _decoys:
+		var to_target: Vector3 = (candidate.global_position - stage_camera.global_position).normalized()
 		var angle := aim.angle_to(to_target)
 		if angle <= best_angle:
-			best = target
+			best = candidate
 			best_angle = angle
 	if best != null:
-		_destroy_target(best)
+		if _decoys.has(best):
+			_hit_decoy(best)
+		else:
+			_destroy_target(best)
+
+func _hit_decoy(decoy: MeshInstance3D) -> void:
+	_decoys.erase(decoy)
+	var flight: Tween = _decoy_tweens.get(decoy, null)
+	if flight != null and flight.is_valid():
+		flight.kill()
+	_decoy_tweens.erase(decoy)
+	_penalties += 1
+	_grapple_beam(stage_camera.global_position, decoy.global_position)
+	wrong_object_hit.emit()
+	_show_wrong_hit()
+	var flash := decoy.create_tween()
+	flash.tween_property(decoy, "scale", Vector3.ONE * 1.6, 0.08)
+	flash.tween_property(decoy, "scale", Vector3.ZERO, 0.12)
+	flash.tween_callback(decoy.queue_free)
+	_update_progress()
+
+func _show_wrong_hit() -> void:
+	var warning := Label.new()
+	warning.text = "WRONG OBJECT — DAMAGE!"
+	warning.set_anchors_preset(Control.PRESET_CENTER)
+	warning.offset_left = -220.0
+	warning.offset_top = 55.0
+	warning.offset_right = 220.0
+	warning.offset_bottom = 105.0
+	warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	warning.add_theme_font_size_override("font_size", 28)
+	warning.add_theme_color_override("font_color", Color(1.0, 0.22, 0.18))
+	add_child(warning)
+	var fade := warning.create_tween()
+	fade.tween_interval(0.35)
+	fade.tween_property(warning, "modulate:a", 0.0, 0.45)
+	fade.tween_callback(warning.queue_free)
+
+func _clear_decoy(decoy: MeshInstance3D) -> void:
+	_decoys.erase(decoy)
+	_decoy_tweens.erase(decoy)
+	if is_instance_valid(decoy):
+		decoy.queue_free()
 
 func _destroy_target(target: MeshInstance3D) -> void:
 	_targets.erase(target)
@@ -225,7 +301,7 @@ func _grapple_beam(from: Vector3, to: Vector3) -> void:
 
 func _update_progress() -> void:
 	if _progress != null:
-		_progress.text = "%d / %d intercepted" % [_hits, TARGET_COUNT]
+		_progress.text = "%d / %d intercepted   Wrong objects: %d" % [_hits, TARGET_COUNT, _penalties]
 
 func _maybe_finish() -> void:
 	if _resolved < TARGET_COUNT:
@@ -233,6 +309,10 @@ func _maybe_finish() -> void:
 	Input.mouse_mode = _old_mouse_mode
 	if target_actor != null and is_instance_valid(target_actor):
 		target_actor.visible = _target_was_visible
+	for decoy in _decoys:
+		if is_instance_valid(decoy):
+			decoy.queue_free()
+	_decoys.clear()
 	finished.emit(_hits, TARGET_COUNT)
 
 # Verification hook: aim directly at the closest target and fire through
@@ -245,5 +325,12 @@ func auto_intercept_closest() -> bool:
 		if stage_camera.global_position.distance_to(target.global_position) < stage_camera.global_position.distance_to(closest.global_position):
 			closest = target
 	stage_camera.look_at(closest.global_position, Vector3.UP)
+	_shoot()
+	return true
+
+func auto_hit_decoy() -> bool:
+	if _decoys.is_empty() or stage_camera == null:
+		return false
+	stage_camera.look_at(_decoys[0].global_position, Vector3.UP)
 	_shoot()
 	return true

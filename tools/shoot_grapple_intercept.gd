@@ -56,13 +56,19 @@ func _run() -> void:
 	await process_frame
 	var frame := 0
 	var next_shot := Time.get_ticks_msec() + 900
+	var demonstrated_decoy := false
 	while result.is_empty() and frame < 260:
-		if Time.get_ticks_msec() >= next_shot and minigame.auto_intercept_closest():
-			next_shot = Time.get_ticks_msec() + 430
+		if Time.get_ticks_msec() >= next_shot:
+			if not demonstrated_decoy and minigame.auto_hit_decoy():
+				demonstrated_decoy = true
+				next_shot = Time.get_ticks_msec() + 650
+			elif minigame.auto_intercept_closest():
+				next_shot = Time.get_ticks_msec() + 430
 		await create_timer(1.0 / 20.0).timeout
 		root.get_texture().get_image().save_png(frame_dir.path_join("frame_%03d.png" % frame))
 		frame += 1
 	# Hold the completed score long enough to read in the loop.
+	diver.visible = false
 	for hold in range(20):
 		await create_timer(1.0 / 20.0).timeout
 		root.get_texture().get_image().save_png(frame_dir.path_join("frame_%03d.png" % frame))

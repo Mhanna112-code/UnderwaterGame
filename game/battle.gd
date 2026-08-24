@@ -1586,6 +1586,15 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, targ
 		_refresh_bar(target)
 		_show_damage_popup(incoming)
 	)
+	minigame.wrong_object_hit.connect(func() -> void:
+		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * 0.75
+		var incoming := maxi(1, int(round(raw)) - target_stats.defense)
+		target_stats.hp = maxi(0, target_stats.hp - incoming)
+		total_taken += incoming
+		_refresh_bar(target)
+		_show_damage_popup(incoming)
+		_log("Wrong target! The decoy lashes back for %d." % incoming)
+	)
 	minigame.run()
 	var result: Array = await minigame.finished
 	minigame.queue_free()
