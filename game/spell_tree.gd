@@ -12,10 +12,9 @@
 #     giving her a real sustain branch to lean on.
 #   Prototype_1(1910) (Diver Boy): debuff is the deep branch, with four
 #     different status effects to chain - utility, not raw power.
-#   Prototype_V(1922) (Marine Man): defense is the deep branch, all buff
-#     spells that permanently raise his own defense for the rest of the
-#     fight - tank/support, reliable rather than flashy (buff spells
-#     never miss, unlike everything else).
+#   Prototype_V(1922) (Marine Man): defense is the deep branch, all barrier
+#     spells that scale up to a real wall - tank/support, reliable rather
+#     than flashy (barrier spells never miss, unlike everything else).
 #
 # Each branch is a small DAG, not a straight line: a spell's
 # "requires_spells" can point at any earlier node in its branch, so one
@@ -29,10 +28,9 @@
 # work exactly like BASE_MOVES entries there. "effect" picks how the move
 # resolves: "damage" (default, omitted) hits the target normally, "debuff"
 # (paired with a "debuff"/"amount" key) lowers one of the target's stats,
-# "buff" (paired with a "stat"/"amount" key) targets the caster instead
-# and permanently raises that stat for the rest of the fight, always
-# succeeding (no accuracy check) - see battle.gd's _resolve_move()/
-# _apply_buff().
+# "barrier" targets the caster instead and adds "amount" to their own
+# barrier, capped at barrier_max, always succeeding (no accuracy check) -
+# see battle.gd's _resolve_move().
 #
 # "oxygen_cost" is what casting the spell actually costs in battle (read by
 # battle.gd's _moves_for()/_resolve_party_move()) - a completely different
@@ -90,10 +88,10 @@ const SPELL_TREES := {
 		"defense": {
 			"brief_ward": {
 				"display": "Brief Ward", "cost": 2,
-				"description": "A brace of current toughens your hide, permanently. The only defensive trick a glass cannon keeps around.",
+				"description": "A thin veil of current - a small, temporary shield. The only defensive trick a glass cannon keeps around.",
 				"requires_spells": [], "requires_items": [],
-				"effect": "buff", "stat": "defense", "amount": 2, "oxygen_cost": 16.0,
-				"hint": "Raises your defense", "text": "A brace of current toughens you",
+				"effect": "barrier", "amount": 4, "oxygen_cost": 16.0,
+				"hint": "A thin shield", "text": "A thin veil of current wraps you",
 			},
 		},
 		# A single improvement over her free base "Heal" move (see
@@ -154,35 +152,35 @@ const SPELL_TREES := {
 		"defense": {
 			"evasive_ward": {
 				"display": "Evasive Ward", "cost": 2,
-				"description": "Weaves a current around you that's harder to land a hit through - fits the nimble fighter better than a shield would.",
+				"description": "Weaves a moderate shield from open water.",
 				"requires_spells": [], "requires_items": [],
-				"effect": "buff", "stat": "evasion", "amount": 3, "oxygen_cost": 16.0,
-				"hint": "Raises your evasion", "text": "You weave an evasive current",
+				"effect": "barrier", "amount": 5, "oxygen_cost": 16.0,
+				"hint": "A moderate shield", "text": "You weave an evasive ward",
 			},
 		},
 	},
 	"Prototype_V(1922)": {
 		"defense": {
-			"steel_stance": {
-				"display": "Steel Stance", "cost": 1,
-				"description": "Braces your stance, permanently raising your defense. Never misses.",
+			"barrier_pulse": {
+				"display": "Barrier Pulse", "cost": 1,
+				"description": "A pulse of pressure raises a shield. Never misses.",
 				"requires_spells": [], "requires_items": [],
-				"effect": "buff", "stat": "defense", "amount": 2, "oxygen_cost": 8.0,
-				"hint": "Raises your defense", "text": "You brace into a steel stance",
+				"effect": "barrier", "amount": 5, "oxygen_cost": 8.0,
+				"hint": "Raises a shield", "text": "A pulse of pressure raises your shield",
 			},
-			"iron_resolve": {
-				"display": "Iron Resolve", "cost": 2,
-				"description": "Hardens your resolve further, building on Steel Stance.",
-				"requires_spells": ["steel_stance"], "requires_items": [],
-				"effect": "buff", "stat": "defense", "amount": 4, "oxygen_cost": 16.0,
-				"hint": "Raises your defense further", "text": "Your resolve hardens further",
+			"iron_shell": {
+				"display": "Iron Shell", "cost": 2,
+				"description": "Hardens your shield further, building on Barrier Pulse.",
+				"requires_spells": ["barrier_pulse"], "requires_items": [],
+				"effect": "barrier", "amount": 9, "oxygen_cost": 16.0,
+				"hint": "A heavier shield", "text": "Your shell hardens further",
 			},
 			"bulwark_stance": {
 				"display": "Bulwark Stance", "cost": 3,
-				"description": "A near-unbreakable defensive posture - the tank's capstone. Needs a reef plate to learn.",
-				"requires_spells": ["iron_resolve"], "requires_items": ["reef_plate"],
-				"effect": "buff", "stat": "defense", "amount": 6, "oxygen_cost": 24.0,
-				"hint": "A massive defense boost", "text": "You brace into an unbreakable bulwark",
+				"description": "A near-total shield - the tank's capstone. Needs a reef plate to learn.",
+				"requires_spells": ["iron_shell"], "requires_items": ["reef_plate"],
+				"effect": "barrier", "amount": 14, "oxygen_cost": 24.0,
+				"hint": "A near-total shield", "text": "You brace into an unbreakable bulwark",
 			},
 		},
 		"offense": {
@@ -207,7 +205,7 @@ const SPELL_TREES := {
 		# tank/support diver (see this file's header comment), and healing/
 		# reviving an ally is the clearest possible expression of "support"
 		# a spell can be. "effect": "heal"/"revive" here are read by
-		# battle.gd's _resolve_move() exactly like "buff" already is -
+		# battle.gd's _resolve_move() exactly like "barrier" already is -
 		# always succeeds, no accuracy check, targets an ally instead of an
 		# enemy (see _on_move_chosen()'s target-pool branch for each).
 		"support": {
