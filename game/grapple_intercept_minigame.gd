@@ -38,6 +38,7 @@ var _base_forward := Vector3.FORWARD
 var _old_mouse_mode := Input.MOUSE_MODE_VISIBLE
 var _target_was_visible := true
 var _progress: Label
+var _start_button: Button
 
 func _ready() -> void:
 	if get_parent() is Control:
@@ -95,12 +96,30 @@ func _ready() -> void:
 	crosshair.add_theme_color_override("font_color", Color(0.95, 0.9, 0.45))
 	add_child(crosshair)
 
+	_start_button = Button.new()
+	_start_button.text = "CLICK TO START PLAYTEST"
+	_start_button.set_anchors_preset(Control.PRESET_CENTER)
+	_start_button.offset_left = -170.0
+	_start_button.offset_top = 70.0
+	_start_button.offset_right = 170.0
+	_start_button.offset_bottom = 122.0
+	_start_button.add_theme_font_size_override("font_size", 20)
+	_start_button.visible = false
+	add_child(_start_button)
+
 func run() -> void:
 	if stage_camera == null or target_actor == null or stage_root == null:
 		push_error("GrappleInterceptMinigame requires stage_root, stage_camera, and target_actor")
 		finished.emit(0, TARGET_COUNT)
 		return
 	_old_mouse_mode = Input.mouse_mode
+	# Browsers reject pointer lock unless it is requested from a user gesture.
+	# The dedicated web playtest therefore waits on a real click; desktop keeps
+	# the immediate start used by automated/local playtests.
+	if OS.has_feature("web"):
+		_start_button.visible = true
+		await _start_button.pressed
+		_start_button.visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_target_was_visible = target_actor.visible
 	target_actor.visible = false
