@@ -2,5 +2,13 @@
 .godot/
 *.import.bak
 
+# playwright, for the browser gates. Installed in the project so node can
+# resolve it from verify/*.mjs; kept out of the export by the Web preset's
+# exclude_filter, because Godot scans everything under the project root and
+# a 500 MB pck of javascript is not a web build.
+node_modules/
+package-lock.json
+package.json
+
 # macOS
 .DS_Store

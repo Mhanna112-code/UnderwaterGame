@@ -3,7 +3,10 @@ extends Node3D
 
 var markers: Array[Marker3D] = []
 
-var corridors: Array[Area3D] = [$WindCorridor1,$WindCorridor2,$WindCorridor3,$WindCorridor4,$WindCorridor5,$WindCorridor6,$WindCorridor7,$WindCorridor8]
+@onready var corridors: Array[Area3D] = [
+	$WindCorridor1, $WindCorridor2, $WindCorridor3, $WindCorridor4,
+	$WindCorridor5, $WindCorridor6, $WindCorridor7, $WindCorridor8,
+]
 
 
 func _ready() -> void:

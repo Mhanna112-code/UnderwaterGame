@@ -10,8 +10,6 @@
 class_name World
 extends Node3D
 
-const SRC := preload("res://art/characters/divers.glb")
-
 const CAST := [
 	{"model": "Staff_Diver", "at": Vector3(0, 2.0, 0)},
 	{"model": "Prototype_1(1910)", "at": Vector3(-3.6, 2.2, -3.0)},
@@ -36,7 +34,6 @@ var cam: Camera3D
 var hud: Label
 var mouse_look := false
 var _t := 0.0
-var lantern: Node3D
 
 # First-person aim mode for aimed abilities (grapple): E enters it instead
 # of firing right away, camera cuts to the diver's own eye line, left click
@@ -98,6 +95,13 @@ var _cracked_walls: Dictionary = {}
 # Items.grant() is still called from.
 var inventory: Dictionary = {}
 
+# Stable rock id -> {item, position:[x,y,z]} for a reward that has spawned
+# but has not entered inventory yet. This is the third mutually-exclusive
+# reward state alongside an intact source rock and a collected inventory
+# entry; serializing it prevents save-after-break-before-pickup from erasing
+# the reward when the consumed rock is removed on load.
+var pending_world_drops: Dictionary = {}
+
 # Escape's pause menu - see _unhandled_input()'s ESCAPE branch for how it
 # opens/closes (mutually exclusive with aiming/target_selector.selecting/
 # save_point_menu, same guard shape those already use against each other)
@@ -147,6 +151,13 @@ var _pending_reward_item := ""
 # same real file, and it all survives closing the game entirely.
 var _current_slot := -1
 
+# Scene reload is the only honest way to roll mutable geometry back to a
+# checkpoint: _load_save() can remove objects a save says are consumed, but
+# it cannot recreate a CrackedWall already queue_free()'d after that save.
+# This one-shot handoff survives reload_current_scene(), then the fresh World
+# consumes and clears it at the end of _ready().
+static var _restart_slot := -1
+
 # Full state: per-diver position/stats/spells plus the world-level
 # inventory/key_items/active - everything _write_save()'s caller (a save
 # point) or the initial New Game write needs to reproduce the run exactly.
@@ -163,18 +174,19 @@ func _serialize_state() -> Dictionary:
 			"stats": {
 				"hp_max": s.hp_max, "strength": s.strength, "defense": s.defense,
 				"agility": s.agility, "accuracy": s.accuracy, "evasion": s.evasion,
-				"oxygen_max": s.oxygen_max,
+				"barrier_max": s.barrier_max, "oxygen_max": s.oxygen_max,
 				"level": s.level, "xp": s.xp, "xp_to_next": s.xp_to_next,
 				"spell_points": s.spell_points,
 				"grow_hp": s.grow_hp, "grow_strength": s.grow_strength,
 				"grow_defense": s.grow_defense, "grow_agility": s.grow_agility,
 				"grow_accuracy": s.grow_accuracy, "grow_evasion": s.grow_evasion,
-				"hp": s.hp, "oxygen": s.oxygen,
+				"hp": s.hp, "barrier": s.barrier, "oxygen": s.oxygen,
 			},
 		})
 	return {
 		"active": active,
 		"inventory": inventory.duplicate(),
+		"pending_world_drops": pending_world_drops.duplicate(true),
 		"key_items": key_items.duplicate(),
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
@@ -211,6 +223,7 @@ func _load_save() -> void:
 		s.agility = int(sd.get("agility", s.agility))
 		s.accuracy = int(sd.get("accuracy", s.accuracy))
 		s.evasion = int(sd.get("evasion", s.evasion))
+		s.barrier_max = int(sd.get("barrier_max", s.barrier_max))
 		s.oxygen_max = float(sd.get("oxygen_max", s.oxygen_max))
 		s.level = int(sd.get("level", s.level))
 		s.xp = int(sd.get("xp", s.xp))
@@ -223,8 +236,10 @@ func _load_save() -> void:
 		s.grow_accuracy = int(sd.get("grow_accuracy", s.grow_accuracy))
 		s.grow_evasion = int(sd.get("grow_evasion", s.grow_evasion))
 		s.hp = int(sd.get("hp", s.hp_max))
+		s.barrier = int(sd.get("barrier", s.barrier_max))
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
+	pending_world_drops = (data.get("pending_world_drops", {}) as Dictionary).duplicate(true)
 	# .assign(), not a plain `=` - key_items/revealed_key_items/
 	# consumed_world_ids are all typed Array[String], and JSON.parse_string()
 	# only ever hands back a plain untyped Array. Plain `=` replaces the
@@ -248,6 +263,12 @@ func _load_save() -> void:
 		if _cracked_walls.has(id):
 			(_cracked_walls[id] as CrackedWall).queue_free()
 			_cracked_walls.erase(id)
+	for id in pending_world_drops:
+		var drop: Dictionary = pending_world_drops[id]
+		var saved_position: Array = drop.get("position", [])
+		if saved_position.size() == 3:
+			_spawn_world_drop(String(id), String(drop.get("item", "")), Vector3(
+				float(saved_position[0]), float(saved_position[1]), float(saved_position[2])))
 
 	_update_hud()
 	_update_hp_bar()
@@ -285,10 +306,9 @@ func _show_game_over() -> void:
 	game_over_screen.open()
 
 func _on_game_over_restart() -> void:
-	_load_save()
-	game_over_screen.close()
+	_restart_slot = _current_slot
 	get_tree().paused = false
-	_announce("You wake back at your last save.")
+	get_tree().reload_current_scene()
 
 # reload_current_scene() re-runs World._ready() from scratch - every rock,
 # cracked wall, item guardian and diver goes back to its pristine starting
@@ -311,29 +331,6 @@ var _puzzle_solved := false
 # MiniMap can type its reference and read this like any other property).
 var _wall_segments: Array = []
 var minimap: MiniMap
-
-# Party-wide switch, not per-diver - every Diver still independently
-# tracks its own distance_since_encounter/rolls its own encounter_chance
-# (see diver.gd's distance-based check) regardless of this flag, since
-# that bookkeeping has no observable effect on its own. This is checked
-# in exactly one place - _on_encounter_triggered() below - which just
-# ignores the signal entirely while it's off, same as it already ignores
-# a signal from a diver that isn't the one currently being steered.
-var encounters_enabled := true
-
-# MODIFIED: was a clickable bottom-left Button - replaced with a plain
-# keybind (N, see _unhandled_input()) instead of a mouse target, same
-# input style as every other world-state toggle here (Q for sonar, P for
-# the save menu) rather than being the one thing on screen you'd have to
-# reach for the mouse to use.
-func _on_toggle_encounters_pressed() -> void:
-	encounters_enabled = not encounters_enabled
-	_announce("Random encounters are now %s." % ("on" if encounters_enabled else "off"))
-	# MODIFIED (added): _update_hud()'s own top-left line now mentions this
-	# button's current On/Off state (see its own comment) - without this it
-	# would just sit stale until something else happened to call
-	# _update_hud() next (TAB, sonar toggle, etc).
-	_update_hud()
 
 # The camera's one alternate mode: instead of chasing the active diver,
 # hold on `_camera_focus_target` (used both by TargetSelector while
@@ -417,7 +414,6 @@ func _ready() -> void:
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
-	_carry_lantern()
 	_update_hud()
 
 	title_screen = TitleScreen.new()
@@ -435,11 +431,18 @@ func _ready() -> void:
 	special_encounter_prompt.cancelled.connect(_on_special_encounter_cancelled)
 	$HUD.add_child(special_encounter_prompt)
 
-	# The world/party/HUD are all fully built at this point, same as ever -
-	# this just freezes everything (get_tree().paused, see _show_title_
-	# screen()) and shows the title on top until a slot's chosen, rather
-	# than restructuring _ready() around "don't build the world yet."
-	_show_title_screen()
+	# A game-over restart must rebuild the scene before applying its save so
+	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
+	# still opens the title screen exactly as before.
+	if _restart_slot >= 0:
+		_current_slot = _restart_slot
+		_restart_slot = -1
+		_load_save()
+		title_screen.close()
+		get_tree().paused = false
+		_announce("You wake back at your last save.")
+	else:
+		_show_title_screen()
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -554,7 +557,7 @@ func _build_breakable_rocks() -> void:
 		rock.span = Vector3(1.1, 1.1, 1.1)
 		rock.disguised_as_scenery_rock = true
 		rock.position = spot
-		rock.broken.connect(_on_breakable_rock_broken.bind(spot))
+		rock.broken.connect(_on_breakable_rock_broken.bind(id, spot))
 		# Separate listener purely for save persistence (see
 		# _on_world_object_consumed()/consumed_world_ids) - kept apart from
 		# _on_breakable_rock_broken() above so "spawn a reward" and "record
@@ -565,18 +568,27 @@ func _build_breakable_rocks() -> void:
 		add_child(rock)
 		_cracked_walls[id] = rock
 
-# spot is bound at connect time (see _build_breakable_rocks()) - the
-# `broken` signal itself carries no position (cracked_wall.gd stays
-# ability/reward-agnostic on purpose, see its header comment), and by the
-# time this fires the rock has already queue_free()'d itself, so there's no
-# node left to read a position off of.
-func _on_breakable_rock_broken(spot: Vector3) -> void:
+# id and spot are bound at connect time (see _build_breakable_rocks()) - the
+# `broken` signal stays ability/reward-agnostic. The stable id ties together
+# the consumed source and its pending reward across save/load.
+func _on_breakable_rock_broken(id: String, spot: Vector3) -> void:
+	var item_id := Items.random_drop()
+	var drop_position := spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
+	pending_world_drops[id] = {
+		"item": item_id,
+		"position": [drop_position.x, drop_position.y, drop_position.z],
+	}
+	_spawn_world_drop(id, item_id, drop_position)
+
+func _spawn_world_drop(id: String, item_id: String, drop_position: Vector3) -> void:
+	if item_id == "":
+		return
 	var orb := ItemOrb.new()
-	orb.item_id = Items.random_drop()
+	orb.item_id = item_id
 	# Small scatter so a pop doesn't sit dead-center in the rubble - purely
 	# cosmetic, the pickup radius (see item_orb.gd) covers either way.
-	orb.position = spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
-	orb.collected.connect(_on_item_orb_collected)
+	orb.position = drop_position
+	orb.collected.connect(_on_item_orb_collected.bind(id))
 	add_child(orb)
 
 # Shared by every persistable CrackedWall's `broken` signal (reward rocks
@@ -592,7 +604,8 @@ func _on_world_object_consumed(id: String) -> void:
 		consumed_world_ids.append(id)
 	_cracked_walls.erase(id)
 
-func _on_item_orb_collected(item_id: String, d: Diver) -> void:
+func _on_item_orb_collected(item_id: String, _d: Diver, drop_id: String) -> void:
+	pending_world_drops.erase(drop_id)
 	_add_to_inventory(item_id)
 
 # Party-wide, not applied to `d` (who physically swam into the orb) at all
@@ -941,31 +954,6 @@ func _build_wall(center: Vector3, size: Vector3) -> void:
 	else:
 		_wall_segments.append([center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5)])
 
-# The fourth model is a staff. Nothing in this FBX is rigged, so no diver has
-# a hand to put it in: carried, it read as a stick floating beside somebody.
-# Planted in the seabed as a site beacon it reads as a decision.
-func _carry_lantern() -> void:
-	var src: Node3D = SRC.instantiate()
-	var m: MeshInstance3D = _find(src, "Staff_Lantern")
-	if m == null:
-		return
-	var keep: Transform3D = m.transform
-	m.owner = null
-	m.get_parent().remove_child(m)
-	lantern = Node3D.new()
-	lantern.add_child(m)
-	m.transform = keep
-	lantern.position = Vector3(1.8, 0.0, 2.6)
-	lantern.rotation.x = -PI * 0.5      # the staff arrives lying along Z; stand it up
-	var glow := OmniLight3D.new()
-	glow.light_color = Color(1.0, 0.86, 0.6)
-	glow.light_energy = 3.0
-	glow.omni_range = 12.0
-	glow.position.y = 1.5
-	lantern.add_child(glow)
-	add_child(lantern)
-	src.queue_free()
-
 func _unhandled_input(e: InputEvent) -> void:
 	if battling:
 		return
@@ -1040,9 +1028,6 @@ func _unhandled_input(e: InputEvent) -> void:
 			_toggle_save_menu()
 		elif k == KEY_Q:
 			_toggle_sonar()
-		elif k == KEY_N:
-			_on_toggle_encounters_pressed()
-			_update_hud()   # top-left line's own "Encounters: On/Off" needs a refresh, same as toggling sonar does
 
 # E's actual behavior depends on the active diver's ability: shockwave has
 # nothing to aim, fires immediately. Grapple enters first-person aim mode.
@@ -1122,7 +1107,7 @@ func _diver_on_save_point(d: Diver) -> bool:
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
 #
-# HP/oxygen restore for the WHOLE party, not just whoever's physically
+# HP/barrier/oxygen restore for the WHOLE party, not just whoever's physically
 # standing on the point - battle damage (and oxygen spend) is shared
 # across all three divers, so a rest stop patching up only the one you
 # happened to be steering would leave the other two stuck damaged/
@@ -1131,6 +1116,7 @@ func _on_save_requested(_d: Diver) -> void:
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
+		s.barrier = s.barrier_max
 		s.oxygen = s.oxygen_max
 	_update_hp_bar()
 	_update_oxygen_bar()
@@ -1204,7 +1190,6 @@ func _physics_process(dt: float) -> void:
 		# to where your own diver actually is would be confusing controls.
 		if i == active and not target_selector.selecting:
 			d.swim(_player_dir(), _player_rise(), dt)
-			_announce("%s" % d.position)
 		else:
 			# Zero input, not skipped entirely - swim() still drains
 			# velocity to a stop and keeps bob/bubble animation ticking,
@@ -1217,7 +1202,6 @@ func _physics_process(dt: float) -> void:
 	_update_hp_bar()
 	_update_oxygen_bar()
 	_update_active_cursor()
-	_move_lantern(dt)
 	_update_banner(dt)
 	_update_save_point_prompt()
 	_check_gap_puzzle()
@@ -1371,11 +1355,6 @@ func _update_aim_marker() -> void:
 	_aim_marker_mat.emission = c
 	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
 
-func _move_lantern(_dt: float) -> void:
-	if lantern == null:
-		return
-	lantern.rotation.z = sin(_t * 0.8) * 0.05      # a slow sway in the current
-
 # fade the banner. Only called while not battling: _physics_process skips
 # this whole side of the world once a fight is up.
 func _update_banner(dt: float) -> void:
@@ -1398,7 +1377,7 @@ func _update_banner(dt: float) -> void:
 # prompt (see _offer_special_encounter()) instead of forcing straight
 # into a fight - a guarded key item is a real choice, not an ambush.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active] or not encounters_enabled:
+	if battling or d != divers[active]:
 		return
 	for entry in ItemGuardian.SPOTS:
 		var item_id := String(entry.item)
@@ -1594,11 +1573,6 @@ func _update_hud() -> void:
 	# ability_id.
 	if d.passive_id == "sonar":
 		line += "  ·  Q: Sonar (%s)" % ("On" if d.sonar_active else "Off")
-	# MODIFIED: was "(button, bottom-left)" - the toggle itself moved from a
-	# clickable Button to a plain N keybind (see _unhandled_input()'s KEY_N
-	# branch), same as every other world-state toggle here, so the hint
-	# now reads the same "key: state" shape as Q's own sonar hint above it.
-	line += "  ·  N: Encounters (%s)" % ("On" if encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during

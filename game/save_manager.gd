@@ -20,38 +20,6 @@ static func slot_path(slot: int) -> String:
 static func slot_exists(slot: int) -> bool:
 	return FileAccess.file_exists(slot_path(slot))
 
-# A SEPARATE file from the main slot save, on purpose - world-object
-# consumption (broken rocks, etc. - see World.consumed_world_ids) used to
-# ride inside the same blob as party stats/position, written only on an
-# explicit _write_save() (a real save-point visit, or New Game's initial
-# write). That let a player break a rock, quit without saving again, and
-# cold-load back into a pristine rock - the consumption was real in that
-# session but never reached disk. This ledger is written immediately the
-# instant something's consumed (see World._on_world_object_consumed()),
-# independent of the save cadence, so a same-session "Restart from Save
-# Point" and a cold relaunch always agree on what's already gone.
-static func consumed_path(slot: int) -> String:
-	return SAVE_DIR + "slot_%d_consumed.json" % slot
-
-static func write_consumed(slot: int, ids: Array) -> void:
-	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
-	var f := FileAccess.open(consumed_path(slot), FileAccess.WRITE)
-	if f == null:
-		return
-	f.store_string(JSON.stringify(ids))
-	f.close()
-
-static func read_consumed(slot: int) -> Array:
-	if not FileAccess.file_exists(consumed_path(slot)):
-		return []
-	var f := FileAccess.open(consumed_path(slot), FileAccess.READ)
-	if f == null:
-		return []
-	var text := f.get_as_text()
-	f.close()
-	var parsed: Variant = JSON.parse_string(text)
-	return parsed if parsed is Array else []
-
 # make_dir_recursive_absolute() is a no-op (returns OK) if the directory
 # already exists, so this is safe to call before every write rather than
 # needing a one-time setup step anywhere.

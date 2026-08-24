@@ -17,12 +17,19 @@ extends Resource
 @export var accuracy: int = 5
 @export var evasion: int = 5
 
+# A temporary shield: absorbs damage before HP does, doesn't come back on
+# its own once spent (see fill() and gain_xp() below - a level-up is the
+# only thing that recharges it, same as HP).
+@export var barrier_max: int = 0
+var barrier: int
+
 # Spent on ability use (Diver.use_ability()), on the sonar passive while
 # it's active, and on casting an equipped spell in battle (battle.gd's
-# _resolve_party_move()) - float rather than int like hp so a continuous
-# drain (sonar) and passive regen (Diver._process) don't get rounded to
-# zero every frame. Same fill()-on-level-up/refill story as hp: nothing
-# but a level-up tops it off instantly, everything else is gradual regen.
+# _resolve_party_move()) - float rather than int like hp/barrier so a
+# continuous drain (sonar) and passive regen (Diver._process) don't get
+# rounded to zero every frame. Same fill()-on-level-up/refill story as
+# barrier: nothing but a level-up tops it off instantly, everything else is
+# gradual regen.
 @export var oxygen_max: float = 100.0
 var oxygen: float
 
@@ -69,12 +76,15 @@ var hp: int
 
 func _init() -> void:
 	hp = hp_max
+	barrier = barrier_max
 	oxygen = oxygen_max
 
-# Call after setting hp_max/etc from a base-stat table, so current HP
-# starts full rather than at whatever the Resource default was.
+# Call after setting hp_max/barrier_max/etc from a base-stat table, so
+# current HP and barrier start full rather than at whatever the Resource
+# default was.
 func fill() -> void:
 	hp = hp_max
+	barrier = barrier_max
 	oxygen = oxygen_max
 
 # Adds XP and applies every level-up it crosses (a big win can jump more
