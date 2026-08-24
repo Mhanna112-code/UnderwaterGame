@@ -34,7 +34,7 @@ run "swim: do they move, and animate while moving"    "$GODOT" --headless --path
 run "balance: do careless and greedy policies land in band" "$GODOT" --headless --path . --script verify/balance.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
-run "maze: do the rotated hallway endpoints co-align" "$GODOT" --headless --path . --script verify/maze.gd
+run "maze: do both walls rotate 90 degrees and meet their named targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
 run "battle: does the fight screen build"             "$GODOT" --headless --path . --script tools/test_battle.gd

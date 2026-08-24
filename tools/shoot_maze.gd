@@ -1,0 +1,60 @@
+# Captures the hallway before and after its programmatic rotation from the
+# same top-down camera. This is the visual counterpart to verify/maze.gd's
+# transform invariants.
+# Usage: godot --path . --script tools/shoot_maze.gd -- /tmp/maze-before.png /tmp/maze-after.png [/tmp/maze-frames]
+extends SceneTree
+
+var before_path := "/tmp/maze-before.png"
+var after_path := "/tmp/maze-after.png"
+var frame_dir := ""
+
+func _initialize() -> void:
+	var args := OS.get_cmdline_user_args()
+	if args.size() > 0:
+		before_path = String(args[0])
+	if args.size() > 1:
+		after_path = String(args[1])
+	if args.size() > 2:
+		frame_dir = String(args[2])
+	call_deferred("_run")
+
+func _capture(path: String) -> void:
+	await process_frame
+	await process_frame
+	root.get_texture().get_image().save_png(path)
+	print("shot       %s" % path)
+
+func _color(wall: CSGBox3D, color: Color) -> void:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	wall.material = material
+
+func _run() -> void:
+	var maze := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
+	root.add_child(maze)
+	await process_frame
+	# The gameplay physics loop continuously restores the normal third-person
+	# camera. Freeze it so this diagnostic retains its fixed overhead view.
+	maze.set_physics_process(false)
+	var camera := maze.get_node("Camera3D") as Camera3D
+	_color(maze.get_node("CurrentWall1"), Color(1.0, 0.25, 0.25))
+	_color(maze.get_node("CSGBox3D"), Color(1.0, 0.75, 0.15))
+	_color(maze.get_node("CurrentWall2"), Color(0.2, 0.85, 1.0))
+	_color(maze.get_node("CurrentWall3"), Color(0.3, 1.0, 0.35))
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 42.0
+	camera.look_at_from_position(Vector3(5.0, 45.0, 0.0), Vector3(5.0, 0.0, 0.0), Vector3.FORWARD)
+	await _capture(before_path)
+	maze._rotate_hallway_1_2()
+	if frame_dir.is_empty():
+		await create_timer(1.4).timeout
+	else:
+		DirAccess.make_dir_recursive_absolute(frame_dir)
+		for frame in range(43):
+			await create_timer(1.0 / 30.0).timeout
+			root.get_texture().get_image().save_png(
+				frame_dir.path_join("frame_%03d.png" % frame)
+			)
+	await _capture(after_path)
+	quit()
