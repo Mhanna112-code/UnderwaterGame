@@ -112,6 +112,26 @@ var inventory_menu: InventoryMenu
 var title_screen: TitleScreen
 var game_over_screen: GameOverScreen
 
+# The confirm-then-choose-a-diver prompt shown before a special (key-item
+# guarded) encounter - see _offer_special_encounter() below.
+var special_encounter_prompt: SpecialEncounterPrompt
+
+# Set right before a special encounter's prompt opens, read by
+# _on_special_encounter_diver_chosen()/_on_battle_finished()'s special-
+# case "lost"/"won" handling - which item this encounter is guarding, and
+# (once a diver's actually picked) who went in and at what HP/oxygen, so
+# a loss can restore them to exactly that (both stats, not just HP -
+# oxygen spent mid-fight, e.g. on Blast Rocks, used to stay spent even
+# though HP already got restored, a real gap in "you don't really lose
+# here") rather than leaving them battered or drained, or routing
+# through the normal game-over flow. A win goes the other way entirely -
+# see _on_battle_finished()'s "won" branch - full HP/oxygen as a real
+# reward on top of the treasure and bonus XP, not just "same as before."
+var _special_encounter_item := ""
+var _special_encounter_diver: Diver
+var _special_encounter_pre_hp := 0
+var _special_encounter_pre_oxygen := 0.0
+
 # Set right before a guardian fight starts (see _on_item_guardian_triggered
 # ()), read once in _on_battle_finished() and cleared immediately after -
 # "" means an ordinary random encounter, nothing to hand out on a win.
@@ -143,13 +163,13 @@ func _serialize_state() -> Dictionary:
 			"stats": {
 				"hp_max": s.hp_max, "strength": s.strength, "defense": s.defense,
 				"agility": s.agility, "accuracy": s.accuracy, "evasion": s.evasion,
-				"barrier_max": s.barrier_max, "oxygen_max": s.oxygen_max,
+				"oxygen_max": s.oxygen_max,
 				"level": s.level, "xp": s.xp, "xp_to_next": s.xp_to_next,
 				"spell_points": s.spell_points,
 				"grow_hp": s.grow_hp, "grow_strength": s.grow_strength,
 				"grow_defense": s.grow_defense, "grow_agility": s.grow_agility,
 				"grow_accuracy": s.grow_accuracy, "grow_evasion": s.grow_evasion,
-				"hp": s.hp, "barrier": s.barrier, "oxygen": s.oxygen,
+				"hp": s.hp, "oxygen": s.oxygen,
 			},
 		})
 	return {
@@ -191,7 +211,6 @@ func _load_save() -> void:
 		s.agility = int(sd.get("agility", s.agility))
 		s.accuracy = int(sd.get("accuracy", s.accuracy))
 		s.evasion = int(sd.get("evasion", s.evasion))
-		s.barrier_max = int(sd.get("barrier_max", s.barrier_max))
 		s.oxygen_max = float(sd.get("oxygen_max", s.oxygen_max))
 		s.level = int(sd.get("level", s.level))
 		s.xp = int(sd.get("xp", s.xp))
@@ -204,7 +223,6 @@ func _load_save() -> void:
 		s.grow_accuracy = int(sd.get("grow_accuracy", s.grow_accuracy))
 		s.grow_evasion = int(sd.get("grow_evasion", s.grow_evasion))
 		s.hp = int(sd.get("hp", s.hp_max))
-		s.barrier = int(sd.get("barrier", s.barrier_max))
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
 	# .assign(), not a plain `=` - key_items/revealed_key_items/
@@ -293,6 +311,29 @@ var _puzzle_solved := false
 # MiniMap can type its reference and read this like any other property).
 var _wall_segments: Array = []
 var minimap: MiniMap
+
+# Party-wide switch, not per-diver - every Diver still independently
+# tracks its own distance_since_encounter/rolls its own encounter_chance
+# (see diver.gd's distance-based check) regardless of this flag, since
+# that bookkeeping has no observable effect on its own. This is checked
+# in exactly one place - _on_encounter_triggered() below - which just
+# ignores the signal entirely while it's off, same as it already ignores
+# a signal from a diver that isn't the one currently being steered.
+var encounters_enabled := true
+
+# MODIFIED: was a clickable bottom-left Button - replaced with a plain
+# keybind (N, see _unhandled_input()) instead of a mouse target, same
+# input style as every other world-state toggle here (Q for sonar, P for
+# the save menu) rather than being the one thing on screen you'd have to
+# reach for the mouse to use.
+func _on_toggle_encounters_pressed() -> void:
+	encounters_enabled = not encounters_enabled
+	_announce("Random encounters are now %s." % ("on" if encounters_enabled else "off"))
+	# MODIFIED (added): _update_hud()'s own top-left line now mentions this
+	# button's current On/Off state (see its own comment) - without this it
+	# would just sit stale until something else happened to call
+	# _update_hud() next (TAB, sonar toggle, etc).
+	_update_hud()
 
 # The camera's one alternate mode: instead of chasing the active diver,
 # hold on `_camera_focus_target` (used both by TargetSelector while
@@ -389,6 +430,11 @@ func _ready() -> void:
 	game_over_screen.title_chosen.connect(_on_game_over_title)
 	$HUD.add_child(game_over_screen)
 
+	special_encounter_prompt = SpecialEncounterPrompt.new()
+	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
+	special_encounter_prompt.cancelled.connect(_on_special_encounter_cancelled)
+	$HUD.add_child(special_encounter_prompt)
+
 	# The world/party/HUD are all fully built at this point, same as ever -
 	# this just freezes everything (get_tree().paused, see _show_title_
 	# screen()) and shows the title on top until a slot's chosen, rather
@@ -452,6 +498,37 @@ func _build_site() -> void:
 	_build_breakable_rocks()
 	_build_highway()
 	_build_item_guardians()
+	_build_boundary_walls()
+
+# Invisible collision only, no mesh - nothing to render, this is purely a
+# safety net so a diver swimming (or rising - SPACE has no ceiling of its
+# own) straight out past the scattered rocks doesn't just keep going
+# forever into open water. Four StaticBody3D slabs just outside the
+# floor's own footprint (_build_site()'s 120x120 PlaneMesh, centered on the
+# origin - BOUND is that plane's half-extent), tall enough (WALL_HEIGHT)
+# that rising over the top isn't a way around them either. Not added to
+# _wall_segments - that array is what MiniMap draws, and this is a
+# perimeter safety net, not a gameplay wall meant to show up there.
+func _build_boundary_walls() -> void:
+	const BOUND := 60.0
+	const WALL_HEIGHT := 80.0
+	const WALL_Y := 30.0
+	const THICKNESS := 4.0
+	const SPAN := BOUND * 2.0 + THICKNESS * 2.0
+	_build_invisible_wall(Vector3(0.0, WALL_Y, BOUND + THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
+	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
+	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+
+func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.position = center
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	body.add_child(shape)
+	add_child(body)
 
 # A couple of small CrackedWalls scattered in the open dive site, before
 # the tunnel entrance - unlike the entrance blockade (a full-width gate),
@@ -540,6 +617,14 @@ func _add_to_inventory(item_id: String) -> void:
 func use_inventory_item(item_id: String) -> void:
 	var count: int = int(inventory.get(item_id, 0))
 	if count <= 0 or divers.is_empty():
+		return
+	# Checked before would_help()/grant() ever run, and before the count
+	# gets touched - a battle-only item (see items.gd's own header
+	# comment) clicked from this pause menu should say why it refused,
+	# not silently do nothing or get consumed for no effect.
+	if bool(Items.ITEMS.get(item_id, {}).get("battle_only", false)):
+		var battle_only_display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
+		_announce("%s can't be used here." % battle_only_display)
 		return
 	var diver: Diver = divers[active]
 	if not Items.would_help(item_id, diver.stats):
@@ -955,6 +1040,9 @@ func _unhandled_input(e: InputEvent) -> void:
 			_toggle_save_menu()
 		elif k == KEY_Q:
 			_toggle_sonar()
+		elif k == KEY_N:
+			_on_toggle_encounters_pressed()
+			_update_hud()   # top-left line's own "Encounters: On/Off" needs a refresh, same as toggling sonar does
 
 # E's actual behavior depends on the active diver's ability: shockwave has
 # nothing to aim, fires immediately. Grapple enters first-person aim mode.
@@ -1034,16 +1122,15 @@ func _diver_on_save_point(d: Diver) -> bool:
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
 #
-# HP/barrier/oxygen restore for the WHOLE party, not just whoever's
-# physically standing on the point - battle damage (and oxygen spend) is
-# shared across all three divers, so a rest stop patching up only the one
-# you happened to be steering would leave the other two stuck damaged/
+# HP/oxygen restore for the WHOLE party, not just whoever's physically
+# standing on the point - battle damage (and oxygen spend) is shared
+# across all three divers, so a rest stop patching up only the one you
+# happened to be steering would leave the other two stuck damaged/
 # drained with no other way to recover.
 func _on_save_requested(_d: Diver) -> void:
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
-		s.barrier = s.barrier_max
 		s.oxygen = s.oxygen_max
 	_update_hp_bar()
 	_update_oxygen_bar()
@@ -1117,6 +1204,7 @@ func _physics_process(dt: float) -> void:
 		# to where your own diver actually is would be confusing controls.
 		if i == active and not target_selector.selecting:
 			d.swim(_player_dir(), _player_rise(), dt)
+			_announce("%s" % d.position)
 		else:
 			# Zero input, not skipped entirely - swim() still drains
 			# velocity to a stop and keeps bob/bubble animation ticking,
@@ -1299,17 +1387,63 @@ func _update_banner(dt: float) -> void:
 # a Diver rolled an encounter (see diver.gd's distance-based check). Only the
 # diver you're actually steering gets to start one - the two drifting NPCs
 # roll independently but their triggers are ignored here.
+#
+# MODIFIED: this used to build a throwaway ItemGuardian.new()/World.new()
+# just to read a const and shadow this very script's own key_items - both
+# unnecessary (ItemGuardian.SPOTS is a class-level const, and key_items is
+# already directly readable here, this function lives inside World
+# itself) - and called _start_battle() unconditionally after the loop
+# regardless of whether a radius match already started one, which could
+# stack two battles at once. Fixed, and now offers the special-encounter
+# prompt (see _offer_special_encounter()) instead of forcing straight
+# into a fight - a guarded key item is a real choice, not an ambush.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active]:
+	if battling or d != divers[active] or not encounters_enabled:
 		return
-	var i = ItemGuardian.new()
-	var item_found := false
-	for item in i.SPOTS:
-		if d.position.distance_to(item.at) <= item.radius:
-			_start_battle(item.item)
-			item_found = true
-	if !item_found:
-		_start_battle()
+	for entry in ItemGuardian.SPOTS:
+		var item_id := String(entry.item)
+		if key_items.has(item_id):
+			continue
+		if d.position.distance_to(entry.at as Vector3) <= float(entry.radius):
+			_offer_special_encounter(item_id)
+			return
+	_start_battle()
+
+# Pauses and shows the confirm-then-choose screen (see special_encounter_
+# prompt.gd) instead of starting a battle outright - same get_tree().paused
+# gate TitleScreen/GameOverScreen already use, so nothing else in the
+# world keeps running underneath while the player decides.
+func _offer_special_encounter(item_id: String) -> void:
+	_special_encounter_item = item_id
+	get_tree().paused = true
+	special_encounter_prompt.open()
+
+# Solo battle - party_source is just the one chosen diver, not the whole
+# party (see _start_battle()'s new custom_party param) - "you'll need a
+# diver's special ability" only means something if it's actually just
+# them in there. Snapshots pre-fight HP so a loss can restore exactly
+# that (see _on_battle_finished()'s special-case "lost" handling) rather
+# than the normal game-over flow, which is the whole "dying here won't
+# really cost you" promise the prompt itself made.
+func _on_special_encounter_diver_chosen(model_name: String) -> void:
+	special_encounter_prompt.close()
+	get_tree().paused = false
+	var chosen: Diver = null
+	for d in divers:
+		if (d as Diver).model_name == model_name:
+			chosen = d as Diver
+			break
+	if chosen == null:
+		return
+	_special_encounter_diver = chosen
+	_special_encounter_pre_hp = chosen.stats.hp
+	_special_encounter_pre_oxygen = chosen.stats.oxygen
+	_start_battle(_special_encounter_item, [chosen], true)
+
+func _on_special_encounter_cancelled() -> void:
+	special_encounter_prompt.close()
+	get_tree().paused = false
+	_special_encounter_item = ""
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 # Both get freed the instant this fires, win or lose the fight that
@@ -1334,7 +1468,13 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "") -> void:
+# custom_party/special together back the special-encounter flow (see
+# _on_special_encounter_diver_chosen()) - custom_party lets a solo diver
+# fight alone instead of the whole roster, special flags the battle so
+# _on_battle_finished()'s "lost" branch restores that diver instead of
+# routing through the normal game-over screen. Both default to "not a
+# special encounter" so every ordinary call site is unaffected.
+func _start_battle(reward_item: String = "", custom_party: Array = [], special: bool = false) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
@@ -1342,17 +1482,31 @@ func _start_battle(reward_item: String = "") -> void:
 	mouse_look = false
 	_announce("Something grunts out of the murk!")
 	battle = Battle.new()
-	battle.party_source = divers
+	battle.party_source = custom_party if not custom_party.is_empty() else divers
+	battle.special_encounter = special
 	battle.world = self
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
 func _on_battle_finished(result: String) -> void:
+	# Read before queue_free() - battle's about to stop existing, this is
+	# the last moment its own state is reachable.
+	var was_special := battle.special_encounter
 	battle.queue_free()
 	battle = null
 	battling = false
 	match result:
 		"won":
+			if was_special and _special_encounter_diver != null:
+				# A win is a real reward, not just "no worse off than
+				# before you started" - full HP/oxygen on top of whatever
+				# treasure/bonus XP the fight already pays out (see
+				# Battle._win()'s special_encounter XP multiplier), same
+				# spirit as topping off at a save point.
+				_special_encounter_diver.stats.hp = _special_encounter_diver.stats.hp_max
+				_special_encounter_diver.stats.oxygen = _special_encounter_diver.stats.oxygen_max
+				_update_hp_bar()
+				_update_oxygen_bar()
 			if _pending_reward_item != "":
 				_grant_reward_item(_pending_reward_item)
 			else:
@@ -1360,15 +1514,32 @@ func _on_battle_finished(result: String) -> void:
 		"fled":
 			_announce("You put some distance between you.")
 		"lost":
-			# All three divers down - Battle._lose() fires this the instant
-			# _living(party) is empty. Used to auto-restore the checkpoint
-			# instantly and silently; now hands the player an actual choice
-			# instead (see _show_game_over()) - restart from the current
-			# slot's last save, or bail out to the title screen entirely.
-			_show_game_over()
+			if was_special and _special_encounter_diver != null:
+				# The prompt's whole promise: falling in a special
+				# encounter doesn't cost you the run, just the attempt -
+				# restore exactly the HP AND oxygen they went in with
+				# (not full, not 0/empty) and hand control straight back,
+				# no game-over screen, no checkpoint rewind. Oxygen used
+				# to be left wherever the fight (e.g. a spent Blast Rocks
+				# cast) drained it to - only HP was ever restored, which
+				# broke the "no real cost to trying" promise for oxygen.
+				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
+				_special_encounter_diver.stats.oxygen = _special_encounter_pre_oxygen
+				_update_hp_bar()
+				_update_oxygen_bar()
+				_announce("The current sweeps you back out, unharmed but empty-handed.")
+			else:
+				# All three divers down - Battle._lose() fires this the
+				# instant _living(party) is empty. Used to auto-restore
+				# the checkpoint instantly and silently; now hands the
+				# player an actual choice instead (see _show_game_over())
+				# - restart from the current slot's last save, or bail
+				# out to the title screen entirely.
+				_show_game_over()
 		_:
 			_announce("You regroup and catch your breath.")
 	_pending_reward_item = ""
+	_special_encounter_diver = null
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own
@@ -1423,6 +1594,11 @@ func _update_hud() -> void:
 	# ability_id.
 	if d.passive_id == "sonar":
 		line += "  ·  Q: Sonar (%s)" % ("On" if d.sonar_active else "Off")
+	# MODIFIED: was "(button, bottom-left)" - the toggle itself moved from a
+	# clickable Button to a plain N keybind (see _unhandled_input()'s KEY_N
+	# branch), same as every other world-state toggle here, so the hint
+	# now reads the same "key: state" shape as Q's own sonar hint above it.
+	line += "  ·  N: Encounters (%s)" % ("On" if encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during

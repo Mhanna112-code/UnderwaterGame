@@ -59,28 +59,28 @@ var SONAR_INTERVAL := 0.2
 # slow/sturdy. grow_* is how much each stat ticks up per level (see
 # combatant_stats.gd) - different per diver so leveling reinforces the
 # spread instead of flattening it out.
-# evasion/accuracy/barrier_max are identity traits, not leveled (no grow_*
-# for them) - Prototype_1 is nimble (high evasion, high accuracy) rather
-# than shielded, Prototype_V is the reverse. Keeps the three spreads
-# distinct even after several level-ups, instead of every stat converging.
+# evasion/accuracy are identity traits, not leveled (no grow_* for them) -
+# Prototype_1 is nimble (high evasion, high accuracy), Prototype_V is the
+# reverse (high raw defense instead). Keeps the three spreads distinct
+# even after several level-ups, instead of every stat converging.
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 34, "strength": 5, "defense": 3, "agility": 5,
-		"evasion": 5, "accuracy": 6, "barrier_max": 5,
+		"evasion": 5, "accuracy": 6,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 26, "strength": 8, "defense": 1, "agility": 8,
-		"evasion": 8, "accuracy": 8, "barrier_max": 0,
+		"evasion": 8, "accuracy": 8,
 		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 42, "strength": 3, "defense": 6, "agility": 3,
-		"evasion": 2, "accuracy": 4, "barrier_max": 10,
+		"evasion": 2, "accuracy": 4,
 		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
@@ -297,7 +297,6 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
-	stats.barrier_max = int(base.barrier_max)
 	stats.grow_hp = int(base.grow_hp)
 	stats.grow_strength = int(base.grow_strength)
 	stats.grow_defense = int(base.grow_defense)
@@ -412,6 +411,23 @@ func set_suction_locked(v: bool) -> void:
 
 func is_suction_locked() -> bool:
 	return _suction_locked
+
+# Set/cleared by whatever hazard the diver is currently standing in (see
+# water_current.gd) - a steady world-space nudge blended into swim()'s own
+# velocity target rather than something that overrides player input the
+# way whirlpool.gd's suction lock does. Swimming with a current is faster,
+# swimming against it is slower (or, for a strong enough current, actually
+# loses ground), but control is never taken away outright.
+var external_push := Vector3.ZERO
+
+# Set/cleared alongside external_push (see water_current.gd's _on_entered()/
+# _on_exited()) - the current's own flow axis, as a unit vector. While
+# non-zero, swim() strips out whatever part of the player's OWN steering
+# input runs perpendicular to it (see swim()'s own comment on this), so a
+# current strong enough to stop you swimming upstream doesn't leave you
+# free to just strafe out the side instead - external_push alone only
+# ever fixed the "can't reverse along the flow" half of that.
+var current_axis := Vector3.ZERO
 
 # Which abilities need a deliberate aim step (first-person raycast, click
 # to fire) vs firing the instant E is pressed. Shockwave is omnidirectional,
@@ -806,16 +822,37 @@ func swim(dir: Vector3, rise: float, dt: float) -> void:
 	if _is_grappling or _suction_locked:
 		return
 
-	var want := dir * speed
+	var steer := dir
+	# MODIFIED (added): a current strong enough that external_push already
+	# beats your own top speed head-on was still no obstacle at all
+	# sideways - nothing stopped the player from just strafing straight
+	# out through where a wall would normally be, since this only ever
+	# constrained the along-flow direction. Projects the player's own
+	# horizontal steering onto current_axis first (discarding whatever
+	# part of it runs across the flow, not along it) before external_push
+	# is even added below - inside a current you can still fight your way
+	# upstream or ride it downstream, you just can't cut sideways out of
+	# it anymore.
+	if current_axis != Vector3.ZERO:
+		steer = current_axis * dir.dot(current_axis)
+
+	var want := steer * speed
 
 	want.y = rise * speed * 0.7
+
+	# MODIFIED (added): folded in after the player's own input, not
+	# instead of it - a current is a steady extra pull on top of whatever
+	# you're already trying to do, not a separate override. Zero when
+	# nothing's pushing (see external_push's own comment), so this is a
+	# no-op outside any current.
+	want += external_push
 
 
 	# ========================================================
 	# ACCELERATION / DRAG
 	# ========================================================
 
-	if dir == Vector3.ZERO and is_zero_approx(rise):
+	if want == Vector3.ZERO:
 
 		velocity = velocity.lerp(
 			Vector3.ZERO,

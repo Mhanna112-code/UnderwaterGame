@@ -19,6 +19,7 @@ signal triggered(item_id: String)
 const SPOTS := [
 	{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
 	{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
+	{"item": "attack_up", "at": Vector3(-32.0, 2.0, 37.0), "radius": 10},
 ]
 
 func _ready() -> void:

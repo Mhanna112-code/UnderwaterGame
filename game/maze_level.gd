@@ -1,0 +1,395 @@
+class_name MazeLevel
+extends Node3D
+
+var markers: Array[Marker3D] = []
+
+var corridors: Array[Area3D] = [$WindCorridor1,$WindCorridor2,$WindCorridor3,$WindCorridor4,$WindCorridor5,$WindCorridor6,$WindCorridor7,$WindCorridor8]
+
+
+func _ready() -> void:
+	for child in get_children():
+		if child is Marker3D:
+			markers.append(child)
+	_setup_currents()
+	_setup_whirlpool()
+	_spawn_test_diver()
+	_build_rotate_prompt()
+
+# A persistent on-screen hint for _rotate_left_currents_left()/_right()
+# below - kept as its own label rather than reusing $HUD/Controls, since
+# that one already gets overwritten by the whirlpool's warning/damage
+# messages (_on_whirlpool_warned()/_on_diver_sucked_in()) and this
+# instruction should stay visible regardless of whatever's happening
+# there.
+func _build_rotate_prompt() -> void:
+	var label := Label.new()
+	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: rotate the CurrentWall1/2 hallway 90 degrees"
+	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	label.offset_left = 16.0
+	label.offset_top = -64.0
+	label.offset_right = 560.0
+	label.offset_bottom = -16.0
+	label.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+	$HUD.add_child(label)
+
+# MOVES THE ACTUAL WALL GEOMETRY - not a current's push zone, the solid
+# collision the diver bumps into. CSGBox3D rebuilds its own collision
+# automatically whenever its transform changes, so animating
+# position/rotation every frame is enough on its own; nothing extra
+# needs to be kept in sync.
+#
+# Swings wall_a/wall_b around `pivot` like a door on a hinge, not a
+# straight-line slide to a new spot - each wall's OFFSET from the pivot
+# gets rotated by an increasing angle every frame (0 -> yaw_degrees over
+# duration seconds), so the pair traces a real arc. Using the far end of
+# the hallway itself as the pivot (see _hallway_far_end() below) is what
+# makes this read as "extends the hallway" rather than "spins it in
+# place" - the new segment picks up exactly where the old one's exit
+# already was, since that point never moves during the swing at all.
+func swing_hallway(wall_a: CSGBox3D, wall_b: CSGBox3D, pivot: Vector3, yaw_degrees: float = 90.0, duration: float = 1.2) -> void:
+	var offset_a: Vector3 = wall_a.position - pivot
+	var offset_b: Vector3 = wall_b.position - pivot
+	var start_yaw_a := wall_a.rotation.y
+	var start_yaw_b := wall_b.rotation.y
+	var target_yaw := deg_to_rad(yaw_degrees)
+
+	var tw := create_tween()
+	tw.tween_method(
+		func(t: float) -> void:
+			var spin := Basis(Vector3.UP, target_yaw * t)
+			wall_a.position = pivot + spin * offset_a
+			wall_a.rotation.y = start_yaw_a + target_yaw * t
+			wall_b.position = pivot + spin * offset_b
+			wall_b.rotation.y = start_yaw_b + target_yaw * t,
+		0.0, 1.0, duration
+	)
+
+# The far end of wall_a's own hallway, in world space - the corridor's
+# own center line (the midpoint between wall_a/wall_b) pushed out to
+# wall_a's forward edge along its own local X (a CSGBox3D's size.x is
+# its length axis, same convention every other wall in this level
+# already uses). Read directly off wall_a's CURRENT transform/size each
+# time this is called, not cached anywhere, so it stays correct
+# regardless of whatever position/rotation the hallway happens to
+# already be in when this fires.
+func _hallway_far_end(wall_a: CSGBox3D, wall_b: CSGBox3D) -> Vector3:
+	var mid: Vector3 = (wall_a.position + wall_b.position) * 0.5
+	var forward: Vector3 = wall_a.global_transform.basis.x.normalized()
+	return mid + forward * (wall_a.size.x * 0.5)
+
+func _rotate_hallway_1_2() -> void:
+	var wall_a: CSGBox3D = $CurrentWall1
+	var wall_b: CSGBox3D = $CurrentWall2
+	# MODIFIED: yaw_degrees was the default +90.0 - a positive Y rotation
+	# in Godot sweeps counterclockwise when viewed top-down (screen_x =
+	# world_x, screen_y = world_z, same mapping this project's own
+	# minimap already uses, no sign flip). Negated to swing clockwise
+	# instead, per request.
+	swing_hallway(wall_a, wall_b, _hallway_far_end(wall_a, wall_b), -90.0)
+	$HUD/Controls.text = "Hallway swinging..."
+
+# Each WaterCurrent is a plain controller object, not something attached
+# to the Area3D itself (see water_current.gd) - built and wired up here
+# instead, so both which Area3D it watches and which way it blows are
+# set from this file, in one place, rather than living on the node in
+# the editor.
+#
+# Direction was picked per corridor by finding each one's own long axis
+# in WORLD space (which way a current should flow along, not across) -
+# not always the same as its CollisionShape3D's local X/Z, since several
+# of these (WindCorridor5/6/7/8/3) have that shape rotated ~90 degrees
+# relative to their own Area3D parent. First pass, not verified in-game -
+# if any of these turn out to blow into a wall instead of down the
+# corridor, flip it to the opposite Direction (POSITIVE_X <-> NEGATIVE_X,
+# POSITIVE_Z <-> NEGATIVE_Z) rather than changing the axis.
+#
+# MODIFIED: was setting up SIX currents (1/2/3/6/7/8), not the two clean
+# pairs the rotate functions above/below actually assume - the left
+# group's window only ever has TWO currents (starting at {1,2}, not
+# {1,2,3} all at once), and the right group's only ever has two as well
+# (starting at {4,6}, not {6,7,8} with 4 missing entirely). With the old
+# setup, _rotate_left_currents_left()'s and _rotate_right_currents_
+# right()'s own boundary checks would have immediately (and wrongly)
+# reported both groups as already maxed out, since WindCorridor3/7/8 all
+# had currents sitting there uncounted by the pair logic. Trimmed to
+# exactly the two starting pairs.
+func _setup_currents() -> void:
+	_add_current($WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
+	_add_current($WindCorridor2, WaterCurrent.Direction.POSITIVE_Z)
+	_add_current($WindCorridor4, WaterCurrent.Direction.POSITIVE_X)
+	_add_current($WindCorridor6, WaterCurrent.Direction.NEGATIVE_Z)
+	
+# MODIFIED: both of these were calling rotate_corridors_right()/_left()
+# as if they were methods ON an Area3D (e.g. left_areas[0].
+# rotate_corridors_right(...)) - those are defined below on MazeLevel
+# itself, not on Area3D, so this would have errored the instant either
+# ran. Called as plain functions now. rotate_corridors_right()/_left()
+# also no longer take a `dir` argument (see their own updated comment) -
+# they read each current's existing direction off itself now, so this
+# doesn't have to track/pass it by hand.
+#
+# Shifts the currents down the chain: WindCorridor2's current moves to
+# WindCorridor3 first, THEN WindCorridor1's current moves into the
+# now-empty WindCorridor2 - order matters, 2->3 has to happen first or
+# WindCorridor2 would still have its OLD current sitting there when
+# WindCorridor1's tries to move in.
+# "Left"/"right" here name which direction the WHOLE two-current window
+# slides along the 1-2-3 chain, not which way any one current's own flow
+# spins - the window only ever sits at {1,2} or {2,3} (two adjacent
+# corridors at a time), so there are exactly two positions and two
+# directions between them.
+#
+# MODIFIED: was moving currents toward HIGHER-numbered corridors in BOTH
+# functions (only the inner rotate_corridors_left()/_right() call - which
+# only affects a moved current's own new flow direction, not which
+# corridor it moves to - differed) - so "rotate right" and "rotate left"
+# were doing the identical corridor shift, just spinning the moved
+# currents differently. Fixed to actually move toward LOWER-numbered
+# corridors here: WindCorridor2's current retreats to WindCorridor1
+# first, then WindCorridor3's current moves into the now-empty
+# WindCorridor2 - same "move into the vacant slot closest to it first"
+# ordering _rotate_left_currents_right() already uses, just mirrored.
+func _rotate_left_currents_right() -> void:
+	if _currents_by_corridor.has($WindCorridor2) and _currents_by_corridor.has($WindCorridor3):
+		$HUD/Controls.text = "Currents are already as far right as they can go."
+		return
+	rotate_corridors_right($WindCorridor2, $WindCorridor3)
+	rotate_corridors_right($WindCorridor1, $WindCorridor2)
+	$HUD/Controls.text = "Currents rotated right."
+
+func _rotate_left_currents_left() -> void:
+	if _currents_by_corridor.has($WindCorridor1) and _currents_by_corridor.has($WindCorridor2):
+		$HUD/Controls.text = "Currents are already as far left as they can go."
+		return
+	rotate_corridors_left($WindCorridor2, $WindCorridor1)
+	rotate_corridors_left($WindCorridor3, $WindCorridor2)
+	$HUD/Controls.text = "Currents rotated left."
+
+# The "right areas" pair - same two-current-window idea as the left group
+# above, but over WindCorridor4-8 with a gap of 2 between the pair
+# instead of 1, so it has three positions instead of two:
+# {4,6} <-> {5,7} <-> {6,8}. Every one of these four transitions moves
+# each current to a corridor the OTHER current isn't currently at (no
+# shared corridor between an old pair and the adjacent new pair anywhere
+# in this chain), so unlike the left group's {1,2}<->{2,3} shift, move
+# order never risks a collision here - both rotate_corridors_*() calls
+# in each block below are safe in either order.
+func _rotate_right_currents_left() -> void:
+	if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
+		$HUD/Controls.text = "Currents are already as far left as they can go."
+		return
+	if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
+		rotate_corridors_left($WindCorridor6, $WindCorridor5)
+		rotate_corridors_left($WindCorridor8, $WindCorridor7)
+		$HUD/Controls.text = "Currents rotated left."
+		return
+	if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
+		rotate_corridors_left($WindCorridor5, $WindCorridor4)
+		rotate_corridors_left($WindCorridor7, $WindCorridor6)
+		$HUD/Controls.text = "Currents rotated left."
+		return
+	push_warning("_rotate_right_currents_left: right-group currents aren't at a recognized position")
+
+func _rotate_right_currents_right() -> void:
+	if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
+		$HUD/Controls.text = "Currents are already as far right as they can go."
+		return
+	if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
+		rotate_corridors_right($WindCorridor4, $WindCorridor5)
+		rotate_corridors_right($WindCorridor6, $WindCorridor7)
+		$HUD/Controls.text = "Currents rotated right."
+		return
+	if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
+		rotate_corridors_right($WindCorridor5, $WindCorridor6)
+		rotate_corridors_right($WindCorridor7, $WindCorridor8)
+		$HUD/Controls.text = "Currents rotated right."
+		return
+	push_warning("_rotate_right_currents_right: right-group currents aren't at a recognized position")
+
+# Every corridor gets its own permanent WaterCurrent (unlike
+# rotate_currents.gd's RotateCurrents, which moves ONE current between
+# corridors, leaving whichever one it just left with nothing) - tracked
+# here by Area3D so a specific corridor's current can be looked back up
+# and reconfigured later via change_corridor_direction(), without
+# touching any of the others.
+var _currents_by_corridor: Dictionary = {}
+
+func _add_current(target_area: Area3D, dir: WaterCurrent.Direction) -> void:
+	var current := WaterCurrent.new()
+	add_child(current)
+	# show_debug_visual = false - a real current shouldn't render as a
+	# visible glowing box, that was only ever a development aid to see the
+	# push zone while getting the sizing/direction right.
+	current.setup(target_area, WaterCurrent.direction_to_vector(dir), 3.0, false)
+	_currents_by_corridor[target_area] = current
+
+# Moves the WaterCurrent that's currently at origArea over to newArea,
+# rotating its own flow direction 90 degrees in the process - looked up
+# by origArea, not by name or index, and re-filed under newArea in
+# _currents_by_corridor once it's moved (otherwise a later lookup by
+# origArea would still find "a current" there even though it's actually
+# watching newArea now, and newArea would never be findable at all).
+#
+# MODIFIED: no longer takes a `dir` argument - WaterCurrent.
+# vector_to_direction() reads the current's own existing orientation
+# back into a Direction, so the caller doesn't have to separately track
+# "which way is this corridor's current facing right now" itself.
+#
+# Calling setup() again (even on a different area) is safe -
+# WaterCurrent.setup() tears itself down first (see its own header
+# comment), disconnecting from origArea and rebuilding its bubble
+# stream/debug visual fresh at newArea. Every other corridor's own
+# current is untouched.
+func rotate_corridors_right(origArea: Area3D, newArea: Area3D) -> void:
+	_rotate_corridor(origArea, newArea, true)
+
+func rotate_corridors_left(origArea: Area3D, newArea: Area3D) -> void:
+	_rotate_corridor(origArea, newArea, false)
+
+func _rotate_corridor(origArea: Area3D, newArea: Area3D, turn_right: bool) -> void:
+	var current: WaterCurrent = _currents_by_corridor.get(origArea, null)
+	if current == null:
+		push_warning("rotate_corridors: no current is set up at %s" % origArea.name)
+		return
+	var current_dir := WaterCurrent.vector_to_direction(current.orientation)
+	var new_dir := _rotate_right(current_dir) if turn_right else _rotate_left(current_dir)
+	current.setup(newArea, WaterCurrent.direction_to_vector(new_dir), current.strength, false)
+	_currents_by_corridor.erase(origArea)
+	_currents_by_corridor[newArea] = current
+	
+static func _rotate_right(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
+	match dir:
+		WaterCurrent.Direction.NEGATIVE_Z:
+			return WaterCurrent.Direction.NEGATIVE_X
+		WaterCurrent.Direction.NEGATIVE_X:
+			return WaterCurrent.Direction.POSITIVE_Z
+		WaterCurrent.Direction.POSITIVE_Z:
+			return WaterCurrent.Direction.POSITIVE_X
+		WaterCurrent.Direction.POSITIVE_X:
+			return WaterCurrent.Direction.NEGATIVE_Z
+	return dir
+
+# The exact reverse of _rotate_right() above - same four directions, same
+# cycle, walked the other way around: NEGATIVE_Z -> POSITIVE_X ->
+# POSITIVE_Z -> NEGATIVE_X -> back to NEGATIVE_Z.
+static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
+	match dir:
+		WaterCurrent.Direction.NEGATIVE_Z:
+			return WaterCurrent.Direction.POSITIVE_X
+		WaterCurrent.Direction.POSITIVE_X:
+			return WaterCurrent.Direction.POSITIVE_Z
+		WaterCurrent.Direction.POSITIVE_Z:
+			return WaterCurrent.Direction.NEGATIVE_X
+		WaterCurrent.Direction.NEGATIVE_X:
+			return WaterCurrent.Direction.NEGATIVE_Z
+	return dir
+
+
+# Same class world.gd's own highway gap uses (see whirlpool.gd) - a
+# warned approach, then a suction pull no swimming can fight once caught,
+# docking HP and sweeping the diver back to reset_to. Defaults to
+# DiverEntry's own position for reset_to since that's already a known-safe
+# spot in this level - point it somewhere more specific once there's a
+# real "just before the whirlpool" approach point worth resetting to
+# instead.
+func _setup_whirlpool() -> void:
+	var whirlpool := Whirlpool.new()
+	whirlpool.position = Vector3(35.99, -4.12, 71.67)
+	whirlpool.reset_to = $DiverEntry.position
+	whirlpool.warned.connect(_on_whirlpool_warned)
+	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
+	add_child(whirlpool)
+
+func _on_whirlpool_warned() -> void:
+	$HUD/Controls.text = "Danger - a whirlpool lies just ahead!"
+
+func _on_diver_sucked_in(_d: Diver, amount: int) -> void:
+	$HUD/Controls.text = "You were sucked into the whirlpool! (-%d HP)" % amount
+
+# ============================================================
+# A standalone swimmable diver for testing this level in isolation -
+# this scene has no World node (that's what normally builds/drives one -
+# see world.gd's own CAST loop and _physics_process()), so a minimal
+# version of the same controls lives here instead: WASD relative to
+# camera look, Space/Shift to rise/sink, click-drag to look around. Not
+# meant to replace playing through world.gd for real - just enough to
+# walk into WindCorridor1 and feel what it does.
+# ============================================================
+
+# Prototype_V(1922) ("Marine Man") specifically - the only diver with no
+# "passive" entry in Diver.BASE_STATS (see diver.gd), so nothing it does
+# during normal swimming ever reaches for the `world` reference (sonar's
+# passive drain, key-item reveals) that this standalone scene has no real
+# World node to provide. Its shockwave ability doesn't need one either.
+const TEST_DIVER_MODEL := "Prototype_V(1922)"
+
+var _diver: Diver
+var _yaw := 0.0
+var _pitch := -0.16
+var _cam_dist := 6.5
+var _mouse_look := false
+
+func _spawn_test_diver() -> void:
+	_diver = Diver.new()
+	_diver.model_name = TEST_DIVER_MODEL
+	# A short swim before WindCorridor1 (its box sits around x=4.9, z=4.4),
+	# approaching along -Z toward it - close enough to reach quickly, far
+	# enough to actually feel the current take hold before arriving.
+	_diver.position = $DiverEntry.position
+	add_child(_diver)
+
+func _player_dir() -> Vector3:
+	var f := Vector2.ZERO
+	if Input.is_key_pressed(KEY_W):
+		f.y -= 1.0
+	if Input.is_key_pressed(KEY_S):
+		f.y += 1.0
+	if Input.is_key_pressed(KEY_A):
+		f.x -= 1.0
+	if Input.is_key_pressed(KEY_D):
+		f.x += 1.0
+	if f == Vector2.ZERO:
+		return Vector3.ZERO
+	f = f.normalized()
+	var fwd := Vector3(sin(_yaw), 0, cos(_yaw))
+	var right := Vector3(-cos(_yaw), 0, sin(_yaw))
+	return (right * f.x - fwd * f.y).normalized()
+
+func _player_rise() -> float:
+	var r := 0.0
+	if Input.is_key_pressed(KEY_SPACE):
+		r += 1.0
+	if Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_CTRL):
+		r -= 1.0
+	return r
+
+func _physics_process(dt: float) -> void:
+	if _diver == null:
+		return
+	_diver.swim(_player_dir(), _player_rise(), dt)
+	_move_camera(dt)
+
+func _move_camera(dt: float) -> void:
+	var cam: Camera3D = $Camera3D
+	var dir := Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
+	var focus: Vector3 = _diver.global_position + Vector3(0, _diver.height * 0.35, 0)
+	var want: Vector3 = focus - dir * _cam_dist
+	want.y = maxf(want.y, 0.6)
+	cam.global_position = cam.global_position.lerp(want, clampf(dt * 8.0, 0.0, 1.0))
+	cam.look_at(focus, Vector3.UP)
+
+func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		_mouse_look = true
+	elif e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		_mouse_look = false
+	elif e is InputEventMouseMotion and _mouse_look:
+		var mm := e as InputEventMouseMotion
+		_yaw -= mm.relative.x * 0.004
+		_pitch = clampf(_pitch - mm.relative.y * 0.003, -1.1, 0.7)
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_L:
+		_rotate_left_currents_left()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_H:
+		_rotate_hallway_1_2()

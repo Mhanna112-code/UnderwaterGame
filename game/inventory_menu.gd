@@ -45,6 +45,11 @@ func _ready() -> void:
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 50.0
+	# MODIFIED: was briefly pushed to 170.0 to clear world.gd's top-left
+	# move/ability list ($HUD/Controls) - reverted back to 50.0 now that
+	# open()/close() below hide that label outright instead, so the menu
+	# stays in its original spot and there's nothing left underneath it to
+	# clear.
 	root.offset_top = 50.0
 	root.offset_right = -50.0
 	root.offset_bottom = -50.0
@@ -82,10 +87,19 @@ func _ready() -> void:
 
 func open() -> void:
 	visible = true
+	# MODIFIED (added): the top-left move/ability list (world.gd's
+	# _update_hud(), written to world.hud) sat right where this menu's own
+	# title renders - hiding it while the menu's up (and restoring it on
+	# close, below) instead of pushing the menu itself down, so it stays
+	# where it's always been and there's just nothing left to collide with.
+	if world != null:
+		world.hud.visible = false
 	_switch_to("items")
 
 func close() -> void:
 	visible = false
+	if world != null:
+		world.hud.visible = true
 
 func _switch_to(mode: String) -> void:
 	_mode = mode

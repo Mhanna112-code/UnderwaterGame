@@ -3,7 +3,7 @@
 # nothing here needs a .new() either.
 #
 # Two kinds of item live in ITEMS, told apart by "kind":
-#   - Consumables ("heal"/"oxygen"/"spell_point"/"barrier") apply straight
+#   - Consumables ("heal"/"oxygen"/"spell_point"/"buff") apply straight
 #     to a Diver's stats the instant they're picked up - see grant(). These
 #     are what ItemOrb hands out (see cracked_wall.gd's break handler in
 #     world.gd - a shockwaved rock pops one, chosen from RANDOM_DROP_TABLE).
@@ -13,6 +13,14 @@
 #     into World.key_items instead. grant() refuses these on purpose (see
 #     below); world.gd's item-guardian handler adds them to key_items
 #     directly, since that's party-wide state, not a single diver's.
+#
+# "battle_only": true (attack_up, below) marks an item as refused outside
+# a fight - checked by World.use_inventory_item() before would_help() or
+# grant() ever run, so using it from the Escape-key pause menu answers
+# "this can't be used here" instead of quietly applying (or quietly doing
+# nothing). battle.gd's own item menu never checks this flag at all - it
+# doesn't need to, everything reachable from it is already mid-battle by
+# definition.
 class_name Items
 extends RefCounted
 
@@ -29,9 +37,10 @@ const ITEMS := {
 		"display": "Spell Shard", "kind": "spell_point", "amount": 1,
 		"description": "Grants 1 spell point.",
 	},
-	"barrier_tonic": {
-		"display": "Barrier Tonic", "kind": "barrier", "amount": 0,
-		"description": "Refills your barrier completely.",
+	"attack_up": {
+		"display": "Attack Up", "kind": "buff", "stat": "strength", "amount": 5,
+		"battle_only": true,
+		"description": "Raises a character's power by 5 for the rest of the battle. Battle only.",
 	},
 	"current_pearl": {
 		"display": "Current Pearl", "kind": "key",
@@ -53,7 +62,6 @@ const RANDOM_DROP_TABLE := [
 	"potion", "potion", "potion", "potion",
 	"oxygen_cell", "oxygen_cell",
 	"spell_shard",
-	"barrier_tonic",
 ]
 
 static func random_drop() -> String:
@@ -86,9 +94,7 @@ static func would_help(item_id: String, s: CombatantStats) -> bool:
 			return s.hp < s.hp_max
 		"oxygen":
 			return s.oxygen < s.oxygen_max
-		"barrier":
-			return s.barrier < s.barrier_max
-		"spell_point":
+		"spell_point", "buff":
 			return true
 		_:
 			return false
@@ -123,8 +129,20 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 		"spell_point":
 			s.spell_points += int(def.amount)
 			return "Found a %s! +%d spell point" % [display, int(def.amount)]
-		"barrier":
-			s.barrier = s.barrier_max
-			return "Found a %s! Barrier fully restored." % display
+		"buff":
+			# Generic, not hardcoded to strength - matches battle.gd's own
+			# _apply_buff() shape (a stat name plus an amount) in case a
+			# future item buffs a different stat. Permanent for the rest
+			# of the battle, same as the spell-based buffs (see
+			# spell_tree.gd's defense-branch entries) - nothing here ever
+			# clears it, a fight ending is what makes it moot.
+			match String(def.get("stat", "")):
+				"strength":
+					s.strength += int(def.amount)
+				"defense":
+					s.defense += int(def.amount)
+				"evasion":
+					s.evasion += int(def.amount)
+			return "Used %s! +%d %s for the rest of the battle." % [display, int(def.amount), String(def.get("stat", ""))]
 		_:
 			return ""
