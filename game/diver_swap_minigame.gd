@@ -10,7 +10,7 @@
 # CombatantStats/damage - that's battle.gd's job once it has the result,
 # same ability-agnostic split cracked_wall.gd/grapple_anchor.gd use
 # elsewhere in this project.
-class_name DiverSwapMinigame
+class_name RockDodgeMinigame
 extends Control
 
 signal finished(hits: int, total: int)
