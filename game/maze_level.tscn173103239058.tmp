@@ -75,9 +75,6 @@ size = Vector3(21.1873, 4.05762, 1)
 transform = Transform3D(-0.0101751, 0, -0.999948, 0, 1, 0, 0.999948, 0, -0.0101751, 27.3174, 1.52881, 5.13193)
 size = Vector3(29.9418, 4.05762, 1)
 
-[node name="Marker3D" type="Marker3D" parent="."]
-transform = Transform3D(-0.0254267, 0, -0.999677, 0, 1, 0, 0.999677, 0, -0.0254267, 0.817164, 1.44003, 8.66572)
-
 [node name="CurrentWall1" type="CSGBox3D" parent="." groups=["CurrentWall"]]
 transform = Transform3D(-0.0254267, 0, -0.999677, 0, 1, 0, 0.999677, 0, -0.0254267, 0.817164, 1.44003, 8.66572)
 use_collision = true

@@ -64,28 +64,55 @@ func swing_hallway(wall_a: CSGBox3D, wall_b: CSGBox3D, pivot: Vector3, yaw_degre
 		0.0, 1.0, duration
 	)
 
-# The far end of wall_a's own hallway, in world space - the corridor's
-# own center line (the midpoint between wall_a/wall_b) pushed out to
-# wall_a's forward edge along its own local X (a CSGBox3D's size.x is
-# its length axis, same convention every other wall in this level
-# already uses). Read directly off wall_a's CURRENT transform/size each
-# time this is called, not cached anywhere, so it stays correct
-# regardless of whatever position/rotation the hallway happens to
-# already be in when this fires.
-func _hallway_far_end(wall_a: CSGBox3D, wall_b: CSGBox3D) -> Vector3:
-	var mid: Vector3 = (wall_a.position + wall_b.position) * 0.5
-	var forward: Vector3 = wall_a.global_transform.basis.x.normalized()
-	return mid + forward * (wall_a.size.x * 0.5)
+# MODIFIED: was the midpoint between wall_a AND wall_b, pushed out by
+# HALF the gap between them - that's a point roughly between the two
+# walls, not a real endpoint of either one. What's actually wanted is
+# wall_a's own endpoint: computed purely from wall_a's own position,
+# length (size.x, its length axis) and facing (global_transform.basis.x)
+# - doesn't reference wall_b at all, so it's the same physical point
+# regardless of where wall_b currently is.
+func _wall_endpoint(wall: CSGBox3D) -> Vector3:
+	var forward: Vector3 = wall.global_transform.basis.x.normalized()
+	var endpoint: Vector3 = wall.position - forward * (wall.size.x * 0.5)
+	_show_endpoint_marker(endpoint)
+	return endpoint
 
+# A small glowing sphere at wherever _wall_endpoint() last computed -
+# purely a debug aid to actually SEE where the pivot lands, since "is
+# this the right end" is impossible to judge from numbers alone. Reuses
+# the same node across calls (built once, just repositioned after) so
+# repeated H presses don't leave a trail of markers behind.
+var _endpoint_marker: MeshInstance3D = null
+
+func _show_endpoint_marker(at: Vector3) -> void:
+	if _endpoint_marker == null:
+		_endpoint_marker = MeshInstance3D.new()
+		var sphere := SphereMesh.new()
+		sphere.radius = 0.5
+		sphere.height = 1.0
+		_endpoint_marker.mesh = sphere
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.15, 0.85)
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.15, 0.85)
+		mat.emission_energy_multiplier = 2.0
+		_endpoint_marker.material_override = mat
+		add_child(_endpoint_marker)
+	_endpoint_marker.global_position = at
+
+# MODIFIED: was wall_a spinning around its own CENTER while wall_b swung
+# around wall_a's position - that only keeps wall_a's own center fixed,
+# not any actual endpoint (a wall spinning around its own middle still
+# moves every point on it other than that middle). What's actually
+# wanted is both walls swinging around the SAME fixed point - a real
+# endpoint of wall_a (see _wall_endpoint() above) - which is exactly
+# what swing_hallway() already does for an arbitrary external pivot, so
+# this just calls that instead of needing its own separate tween.
 func _rotate_hallway_1_2() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_b: CSGBox3D = $CurrentWall2
-	# MODIFIED: yaw_degrees was the default +90.0 - a positive Y rotation
-	# in Godot sweeps counterclockwise when viewed top-down (screen_x =
-	# world_x, screen_y = world_z, same mapping this project's own
-	# minimap already uses, no sign flip). Negated to swing clockwise
-	# instead, per request.
-	swing_hallway(wall_a, wall_b, _hallway_far_end(wall_a, wall_b), -90.0)
+	swing_hallway(wall_a, wall_b, _wall_endpoint(wall_a), 90.0)
 	$HUD/Controls.text = "Hallway swinging..."
 
 # Each WaterCurrent is a plain controller object, not something attached
