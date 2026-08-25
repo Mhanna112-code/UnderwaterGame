@@ -78,15 +78,43 @@ func _refresh() -> void:
 func _refresh_main() -> void:
 	var new_btn := Button.new()
 	new_btn.text = "New Game"
-	new_btn.custom_minimum_size = Vector2(360, 44)
-	new_btn.pressed.connect(_open_slots.bind("new"))
+	new_btn.custom_minimum_size = Vector2(360, 58)
+	new_btn.add_theme_font_size_override("font_size", 21)
+	new_btn.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
+	new_btn.pressed.connect(_on_new_game_pressed)
 	_list.add_child(new_btn)
+	new_btn.grab_focus()
 
+	# A first-time player has exactly one meaningful action. Do not present a
+	# dead Load Game path (followed by three disabled slots) until a save
+	# actually exists.
+	if not _has_any_save():
+		return
 	var load_btn := Button.new()
 	load_btn.text = "Load Game"
-	load_btn.custom_minimum_size = Vector2(360, 44)
+	load_btn.custom_minimum_size = Vector2(360, 40)
+	load_btn.add_theme_font_size_override("font_size", 16)
+	load_btn.modulate = Color(0.78, 0.82, 0.85)
 	load_btn.pressed.connect(_open_slots.bind("load"))
 	_list.add_child(load_btn)
+
+func _on_new_game_pressed() -> void:
+	# With no prior run there is nothing useful to distinguish three empty
+	# slots. One click starts in slot 0; once saves exist, the slot picker is
+	# retained so players can choose an empty slot or intentionally overwrite.
+	if not _has_any_save():
+		new_game_chosen.emit(0)
+		return
+	_open_slots("new")
+
+func _has_any_save() -> bool:
+	for slot in range(SaveManager.SLOT_COUNT):
+		# A corrupt/empty file is treated as an empty slot everywhere else in
+		# this screen, so it must not resurrect a Load Game action with no
+		# enabled destination.
+		if not SaveManager.read_slot(slot).is_empty():
+			return true
+	return false
 
 func _open_slots(action: String) -> void:
 	_pending_action = action
