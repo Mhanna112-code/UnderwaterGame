@@ -33,6 +33,7 @@ run "animations: does every rig change state correctly" "$GODOT" --headless --pa
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
 run "balance: do careless and greedy policies land in band" "$GODOT" --headless --path . --script verify/balance.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
+run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
 run "battle: does the fight screen build"             "$GODOT" --headless --path . --script tools/test_battle.gd

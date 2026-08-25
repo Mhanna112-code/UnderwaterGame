@@ -26,7 +26,12 @@ var _list: VBoxContainer
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# PRESET_FULL_RECT anchors alone preserve this Control's initial zero-size
+	# offsets. That leaves the CenterContainer with a (0, 0) parent rectangle,
+	# collapsing the title and both actions into the upper-left corner. Reset
+	# anchors and offsets together so this runtime-built overlay owns the full
+	# viewport at every supported resolution.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.02, 0.05, 0.08, 0.96)
