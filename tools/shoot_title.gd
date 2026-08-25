@@ -14,7 +14,7 @@ func _initialize() -> void:
 		out_png = String(args[0])
 	if args.size() > 1:
 		mode = String(args[1])
-	if mode == "fresh":
+	if mode == "fresh" or mode == "fresh-start":
 		_backup_slots()
 		_remove_slots()
 	world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
@@ -22,17 +22,29 @@ func _initialize() -> void:
 
 func _process(_delta: float) -> bool:
 	frames += 1
-	if frames == 2 and mode == "new-slots":
+	if frames == 2 and mode == "fresh-start":
+		var buttons := _find_buttons(world.title_screen)
+		if not buttons.is_empty():
+			(buttons[0] as Button).pressed.emit()
+	elif frames == 2 and mode == "new-slots":
 		world.title_screen._open_slots("new")
 	elif frames == 2 and mode == "load-slots":
 		world.title_screen._open_slots("load")
 	if frames < 6:
 		return false
 	root.get_texture().get_image().save_png(out_png)
-	if mode == "fresh":
+	if mode == "fresh" or mode == "fresh-start":
 		_restore_slots()
 	print("title shot  %s" % out_png)
 	return true
+
+func _find_buttons(node: Node) -> Array[Button]:
+	var found: Array[Button] = []
+	for child in node.get_children():
+		if child is Button:
+			found.append(child as Button)
+		found.append_array(_find_buttons(child))
+	return found
 
 func _backup_slots() -> void:
 	for slot in range(SaveManager.SLOT_COUNT):
