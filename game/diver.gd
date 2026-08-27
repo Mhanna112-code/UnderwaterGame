@@ -408,21 +408,21 @@ const SHOCKWAVE_COOLDOWN := 2.5
 const GRAPPLE_COOLDOWN := 1.2
 const SWAP_COOLDOWN := 2.0
 
-# Swap costs less than the other two - it's a reposition, not a combat move
-# (see the cooldown comment above for the same distinction). Keyed by
-# ability_id rather than three separate consts so _ability_oxygen_cost()
-# stays a one-line lookup no matter how many abilities this ever grows to.
-const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0, "swap": 15.0}
+# Shockwave, Grapple, and Swap are environmental traversal verbs, not combat
+# moves. They deliberately do not read or spend oxygen: the progression
+# puzzle requires repeated experimentation with all three, and sharing the
+# combat resource could strand a correct attempt at zero oxygen. Combat
+# moves, world spells, and sonar keep their own oxygen costs.
 
 # No passive regen at all - a save point (world.gd's _on_save_requested())
-# is the only way oxygen comes back, so every ability use and every tick
-# of sonar is spending down a tank that stays spent until you actually go
-# find one. Lower than the old always-on-passive drain used to need, since
-# there's no regen fighting it anymore - this is the whole cost, not a net
-# rate against something clawing it back. Still expressed as a per-second
-# rate for balance purposes (tune this the same way you always would), but
-# charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather than
-# smoothly every physics frame - see _physics_process()'s _sonar_drain_timer.
+# is the only way oxygen comes back for the systems that spend it (combat,
+# spells, and sonar). Lower than the old always-on-passive drain used to
+# need, since there's no regen fighting it anymore - this is the whole cost,
+# not a net rate against something clawing it back. Still expressed as a
+# per-second rate for balance purposes (tune this the same way you always
+# would), but charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather
+# than smoothly every physics frame - see _physics_process()'s
+# _sonar_drain_timer.
 const SONAR_OXYGEN_DRAIN_PER_SEC := 3.0
 
 # How often the sonar drain actually gets charged - a few seconds, not
@@ -461,16 +461,13 @@ func _process(dt: float) -> void:
 			# on the very next physics frame, so it costs nothing there.
 			play_motion(_hold if _hold != "" else "idle")
 
-func _ability_oxygen_cost() -> float:
-	return float(ABILITY_OXYGEN_COST.get(ability_id, 0.0))
-
 # Read-only check world.gd can make before deciding whether to enter aim
 # mode or fire immediately - mirrors use_ability()'s own guard exactly, so
 # there's one place that knows what "ready to use" means instead of
 # world.gd guessing at Diver's private cooldown/grapple-in-progress state.
 func can_use_ability() -> bool:
 	return (ability_id != "" and not ability_locked and _ability_cooldown <= 0.0
-		and not _is_grappling and stats.oxygen >= _ability_oxygen_cost())
+		and not _is_grappling)
 
 # Called by whatever is meant to unlock a locked ability - right now just
 # grapple_anchor.gd's on_grappled_to(), for the one anchor whose
@@ -518,7 +515,6 @@ func ability_needs_aim() -> bool:
 func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> void:
 	if not can_use_ability():
 		return
-	stats.oxygen -= _ability_oxygen_cost()
 	match ability_id:
 		"shockwave":
 			_shockwave()
@@ -665,6 +661,15 @@ func _grapple(aim_dir: Vector3) -> void:
 	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
+	# Match World._update_aim_marker(): the preview excludes the firing
+	# diver, so execution must too. Otherwise the green preview can point at
+	# an anchor while the real ray immediately collides with its own capsule.
+	query.exclude = [get_rid()]
+	# Divers live on layer 2 precisely so they do not block one another.
+	# Grapple targets are environment bodies on layer 1; limiting the ray to
+	# that layer prevents an ally already across the gap from intercepting
+	# the repeated Grapple needed to bring the whole party over.
+	query.collision_mask = 1
 	var result := space.intersect_ray(query)
 
 	# Beam end is wherever the ray actually stopped - the max range if it
