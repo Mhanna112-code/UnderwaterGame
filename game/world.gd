@@ -794,9 +794,10 @@ func _build_highway() -> void:
 
 	# A second anchor right before the gap, in addition to the one on the
 	# far side - a staging point for Diver Boy on the approach, not itself
-	# a way across.
+	# a way across. It is offset to the side so it does not sit directly in
+	# front of and intercept every ray intended for the crossing anchor.
 	var near_anchor := GrappleAnchor.new()
-	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z)
+	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z - 2.5)
 	add_child(near_anchor)
 
 	# 3. The anchor that unlocks Mermaid's swap - reaching it is the
@@ -1037,8 +1038,9 @@ func _diver_on_save_point(d: Diver) -> bool:
 # "worked" since there's nothing real to fail yet (see save_point_menu.gd).
 #
 # Also the only way oxygen ever comes back now that there's no passive
-# regen - a save point is a real destination to swim for once you've spent
-# it down on abilities/sonar/spells, not just a spell-loadout menu. And now
+# regen - a save point is a real destination to swim for once combat,
+# sonar, or spells spend it down, not just a spell-loadout menu. Environmental
+# traversal abilities are deliberately free (see Diver.can_use_ability()). And now
 # a real save-file write (_write_save()) to whichever slot this run is
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
@@ -1278,6 +1280,7 @@ func _update_aim_marker() -> void:
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [d.get_rid()]
+	query.collision_mask = 1
 	var result := space.intersect_ray(query)
 
 	var point: Vector3 = to if result.is_empty() else (result.position as Vector3)
@@ -1433,7 +1436,7 @@ func _update_hud() -> void:
 	var line := "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
 		_display_name(d.model_name), d.height]
 	if d.ability_id != "":
-		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+		line += "  ·  E: %s (0 O2)" % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the E: hint above already follows for
