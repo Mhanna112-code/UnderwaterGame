@@ -51,7 +51,7 @@ func _process(_d: float) -> bool:
 		# the one landmark in the dive site worth swimming to and the
 		# hardest thing to check without opening the editor.
 		if mode == "guardian":
-			var spot: Vector3 = ItemGuardian.SPOTS[0].at as Vector3
+			var spot: Vector3 = ItemGuardian.spots()[0].at as Vector3
 			# Stand off along the line back to the party's start, so the
 			# shot is the view a player gets on the approach, and face the
 			# guardian. world.gd's forward is -(sin(yaw), 0, cos(yaw)),

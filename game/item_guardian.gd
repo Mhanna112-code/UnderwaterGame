@@ -16,34 +16,20 @@ signal triggered(item_id: String)
 
 @export var item_id := ""
 
-# Where the two guarded items are. One list, read by the guardian spawner
-# (world.gd), by sonar (diver.gd) and by the minimap (mini_map.gd), so the
-# three can never disagree about where a thing is.
+# Where the two guarded items are: on the plinth at the middle of a combat
+# site. One list, in content/sites.gd, read by the site builder, by this, by
+# sonar (diver.gd) and by the minimap (mini_map.gd), so none of them can
+# disagree about where a thing is.
 #
-# These positions are not chosen by eye. The previous pair sat inside the
-# level geometry that got built around them later: a shape query at the
-# current_pearl spot came back with three environment overlaps, so the
-# guardian was inside a rock and the only way to reach it was to clip
-# through one.
-#
-# These were picked by sweeping the map for positions that pass two tests,
-# and taking the pair furthest from each other: no environment overlap
-# inside a 2.4 m sphere, and an unobstructed straight line from where the
-# party starts. The second test is there because the first pair I picked
-# passed the overlap test and sat behind a wall, which is clear water you
-# cannot get to. A straight line is stricter than "a route exists", and
-# that is the point: it can be verified without a navmesh.
-#
-# verify/encounters.gd re-runs both checks, so building a wall across one
-# fails the build rather than quietly stranding it.
-#
-# The old "radius" field on these went with the code that read it. It used
-# to make any random encounter within 10 m hand you the item, which gave
-# away the thing the guardian is guarding to a player who never found it.
-const SPOTS := [
-	{"item": "current_pearl", "at": Vector3(9.0, 3.0, 30.0)},
-	{"item": "reef_plate", "at": Vector3(-9.0, 3.0, -30.0)},
-]
+# This used to be a hand-written pair of coordinates here, and they sat
+# inside the level geometry that got built around them later: a shape query
+# at the first one came back with three environment overlaps, so the guardian
+# was inside a rock. Sites are checked for a site-sized clearing and a clear
+# approach before they are allowed on the map (see content/sites.gd and
+# verify/sites.gd), and putting the guarded item where the site is means it
+# inherits that check instead of needing its own.
+static func spots() -> Array:
+	return Sites.guarded()
 
 func _ready() -> void:
 	collision_mask = 2

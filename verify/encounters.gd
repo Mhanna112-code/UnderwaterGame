@@ -42,11 +42,11 @@ func _process(_d: float) -> bool:
 		# Ordinary encounters first: open water, and then standing right on
 		# a guarded spot, which must still be an ordinary encounter.
 		cases.append({"at": Vector3(0.0, 2.0, 0.0), "what": "open water", "reward": "", "kind": "encounter"})
-		for s in ItemGuardian.SPOTS:
+		for s in ItemGuardian.spots():
 			cases.append({"at": s.at as Vector3, "what": "the %s spot" % String(s.item),
 				"reward": "", "kind": "encounter"})
 		# Then walking into each guardian, which must not be ordinary.
-		for s in ItemGuardian.SPOTS:
+		for s in ItemGuardian.spots():
 			cases.append({"at": s.at as Vector3, "what": "the %s guardian" % String(s.item),
 				"reward": String(s.item), "kind": "guardian"})
 		return false
@@ -69,9 +69,9 @@ func _check_spawned() -> void:
 		elif c is Goblin:
 			decoys += 1
 	print("built: %d guardian(s) %s, %d decoy(s)" % [guardians.size(), guardians, decoys])
-	if guardians.size() != ItemGuardian.SPOTS.size():
+	if guardians.size() != ItemGuardian.spots().size():
 		findings.append("NOTHING TO SWIM TO: %d guardians in the water, expected %d" % [
-			guardians.size(), ItemGuardian.SPOTS.size()])
+			guardians.size(), ItemGuardian.spots().size()])
 	if decoys < guardians.size():
 		findings.append("UNGUARDED: %d guardians but only %d visible enemies beside them" % [
 			guardians.size(), decoys])
@@ -83,7 +83,7 @@ func _check_spawned() -> void:
 func _check_spots_are_reachable() -> void:
 	var space := (world.get_viewport() as Viewport).world_3d.direct_space_state
 	var start := Vector3(0.0, 2.0, 0.0)
-	for entry in ItemGuardian.SPOTS:
+	for entry in ItemGuardian.spots():
 		var spot: Vector3 = entry.at as Vector3
 		var q := PhysicsShapeQueryParameters3D.new()
 		var sph := SphereShape3D.new()

@@ -606,7 +606,7 @@ func _physics_process(delta: float) -> void:
 # MODIFIED again: reveal used to be unconditional - one ping, anywhere on
 # the whole map, revealed every remaining key item regardless of distance.
 # Now gated on entry.radius (the same guaranteed-encounter radius
-# ItemGuardian.SPOTS already carries per zone) - sonar has to actually be
+# ItemGuardian.spots() already carries per zone) - sonar has to actually be
 # on AND the diver has to be within that zone's own radius before it
 # reveals, so the minimap marker means "you're close, and pinged," not
 # "sonar has ever been used once anywhere."
@@ -619,7 +619,7 @@ func _physics_process(delta: float) -> void:
 # on every sonar ping, see SONAR_INTERVAL) leaked the work of building
 # them for nothing. Fixed by using the `world` reference world.gd now
 # assigns after add_child() (see the new `var world: World` above)
-# instead of a fresh instance, and reading ItemGuardian.SPOTS directly off
+# instead of a fresh instance, and reading ItemGuardian.spots() directly off
 # the class (it's a const - no instance needed to read it, same reason
 # battle.gd's BASE_MOVES gets read as Battle.BASE_MOVES elsewhere).
 # Also fixed: `world.key_items.has(item)` was checking the whole SPOTS
@@ -630,7 +630,7 @@ func update_sonar() -> void:
 	if world == null:
 		return
 	var s_items := []
-	for item in ItemGuardian.SPOTS:
+	for item in ItemGuardian.spots():
 		if world.key_items.has(String(item.item)):
 			continue
 		s_items.append(item)

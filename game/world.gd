@@ -61,9 +61,20 @@ var _showing_save_prompt := false
 # to save_point_menu.learn_ui in _ready() (see SpellTree.can_learn()'s
 # key_items param) rather than copied, so appending here is automatically
 # visible there without any extra sync step.
+# The dive site as places joined by routes, from content/sites.gd. Built by
+# _build_dive_sites(); site_nodes is keyed by site id, routes carries the
+# Beacon chains so _light_route() can recolour them.
+var site_nodes: Dictionary = {}
+var routes: Array = []
+
+const SiteScript := preload("res://game/site.gd")
+const BeaconScript := preload("res://game/beacon.gd")
+# Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
+const PLINTH_TOP := 0.7
+
 var key_items: Array[String] = []
 
-# Which ItemGuardian.SPOTS item ids sonar has ever pinged (see
+# Which ItemGuardian.spots() item ids sonar has ever pinged (see
 # Diver.update_sonar()) - MiniMap draws a marker for anything in here
 # that isn't also in key_items yet (still unclaimed). Party-wide like
 # key_items, not per-diver, and never cleared except implicitly by an id
@@ -490,7 +501,7 @@ func _build_site() -> void:
 
 	_build_breakable_rocks()
 	_build_highway()
-	_build_item_guardians()
+	_build_dive_sites()
 
 # A couple of small CrackedWalls scattered in the open dive site, before
 # the tunnel entrance - unlike the entrance blockade (a full-width gate),
@@ -681,7 +692,7 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # around until something attacks you.
 #
 # Every other piece of this already existed and was already wired to
-# ItemGuardian.SPOTS: sonar reveals a spot once you get within the minimap's
+# ItemGuardian.spots(): sonar reveals a spot once you get within the minimap's
 # view radius (diver.gd's update_sonar), the minimap then draws a pulsing
 # marker for it or an arrow toward it (mini_map.gd), winning the fight grants
 # the item (_grant_reward_item), and the guardian itself is a finished class.
@@ -689,24 +700,100 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # were here, wrapped in a triple-quoted string, which GDScript parses as a
 # string literal and Godot never warns about, so the function ran and built
 # nothing. See #45.
+# Places to swim to, and a lit route between them.
+#
+# The dive site used to be open water with rocks in it: encounters happened
+# wherever you were, so the terrain did no work and there was nothing on the
+# map to aim at. This is the answer from the first combat PR, ported: a
+# handful of built places joined by trails of lit beacons.
+#
+# A site is a bowl. A low berm ring you physically cross, broken columns
+# round the rim, and a plinth at the middle. The enclosure is the point:
+# it narrows the volume, which is the only thing that makes a fight inside
+# it mean anything in three dimensions, where anything in open water can be
+# swum around.
+#
+# Navigation is diegetic. The fog limits sight to roughly 25 m, so rather
+# than fighting that with a compass or an arrow on the HUD, the route
+# between two places is a line of lamps spaced inside visible range. You can
+# always see the next one or two, and following them IS the navigation.
+# Amber and breathing means the way onward, dim green means a road already
+# walked. That is the whole legend and it needs no words.
+func _build_dive_sites() -> void:
+	for d in Sites.ALL:
+		var site: Site = SiteScript.new()
+		add_child(site)
+		site.build(d)
+		site_nodes[String(d.id)] = site
+
+	for r in Sites.routes():
+		var made: Array = []
+		var order := 0
+		for at in r.beacons:
+			var b: Beacon = BeaconScript.new()
+			add_child(b)
+			b.build(at as Vector3, order)
+			made.append(b)
+			order += 1
+		routes.append({"from": String(r.from), "to": String(r.to), "beacons": made})
+
+	_build_item_guardians()
+	_light_route()
+
+# The guarded item stands on the plinth at the middle of its site, which is
+# what the plinth is for: the thing you came for presented rather than
+# dropped on the seabed.
+#
+# These six lines were on this branch all along, wrapped in a triple-quoted
+# string. GDScript parses that as a string literal, so the function ran and
+# built nothing and Godot never said a word, for weeks. See #45.
 func _build_item_guardians() -> void:
-	for entry in ItemGuardian.SPOTS:
+	for entry in ItemGuardian.spots():
+		if key_items.has(String(entry.item)):
+			continue
 		var guardian := ItemGuardian.new()
 		guardian.item_id = String(entry.item)
-		guardian.position = entry.at as Vector3
+		guardian.position = (entry.at as Vector3)
+		# clear of the plinth top rather than inside it
+		guardian.position.y = PLINTH_TOP + 0.9
 		add_child(guardian)
 
-		# Decorative only - a real Goblin standing just beside the guardian
-		# spot so "an enemy is here" is visible before you are close enough
-		# to trigger the fight, not just an invisible volume (offset
-		# sideways so it doesn't clip through the spiky guardian mesh). No
-		# collision (see goblin.gd's own header - display only), so it can't
-		# block movement or be mistaken for the trigger itself.
+		# Decorative only - a real Goblin standing beside the plinth so
+		# "something is guarding this" is visible from the rim, not just an
+		# invisible volume at the middle. No collision (see goblin.gd), so
+		# it cannot block movement or be mistaken for the trigger.
 		var decoy := Goblin.new()
-		decoy.position = (entry.at as Vector3) + Vector3(1.1, 0.0, 0.0)
+		decoy.position = (entry.at as Vector3) + Vector3(1.8, 0.0, 0.6)
+		decoy.position.y = 0.0
 		add_child(decoy)
 
 		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
+
+# The route to the next place with something still on it is the lit one.
+# Everything already claimed goes green, everything past it stays dim, so at
+# any moment exactly one line of lights is telling you where to go.
+func _light_route() -> void:
+	var target := ""
+	for d in Sites.ALL:
+		if String(d.get("item", "")) != "" and not key_items.has(String(d.item)):
+			target = String(d.id)
+			break
+	for r in routes:
+		var st: int = Beacon.State.IDLE
+		if String(r.to) == target:
+			st = Beacon.State.ONWARD
+		elif _site_done(String(r.to)):
+			st = Beacon.State.DONE
+		for b in r.beacons:
+			(b as Beacon).set_state(st)
+	for id in site_nodes.keys():
+		(site_nodes[id] as Site).set_cleared(_site_done(String(id)))
+
+func _site_done(site_id: String) -> bool:
+	var d: Dictionary = Sites.by_id(site_id)
+	if d.is_empty() or String(d.get("item", "")) == "":
+		return true
+	return key_items.has(String(d.item))
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1412,6 +1499,11 @@ func _grant_reward_item(item_id: String) -> void:
 			key_items.append(item_id)
 		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 		_announce("Victory - you claim the key item %s!" % display)
+		# That site is done, so its lamp goes green and the trail moves on
+		# to whatever is still out there. This is the only feedback the map
+		# gives about progress, and it is the reason the beacons are a
+		# state rather than decoration.
+		_light_route()
 	else:
 		_add_to_inventory(item_id)
 
