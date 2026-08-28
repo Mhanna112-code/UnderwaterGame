@@ -160,6 +160,10 @@ var _pending_item := ""
 # _turn_cursor can be built as a child of the same 3D world the party/enemy
 # actors live in, not the CanvasLayer's 2D UI tree.
 var _stage_vp: SubViewport
+# The stage stops at the top edge of the HUD rather than running the full
+# height of the screen behind it. See _fit_panel_height().
+var _stage_container: SubViewportContainer
+var _stage_cam: Camera3D
 
 # Same green downward cone world.gd's own active-diver cursor uses (see
 # World._active_cursor) - marks whichever DIVER's turn it currently is on
@@ -255,10 +259,21 @@ func _build_party() -> void:
 # Goblins the encounter rolled - these actors are display-only, the real
 # stats live in party[]/enemies[], not on these nodes.
 func _build_stage() -> void:
+	# Full width, and from the top of the screen down to wherever the HUD
+	# starts. It used to be the whole screen with the HUD painted over it,
+	# and since Godot's default PanelContainer background is 60% black
+	# rather than opaque, that did not hide the fight so much as smear it:
+	# the lower half of every combatant showed through a grey sheet. The
+	# camera aimed there too, so at 1280x720 all five combatants sat below
+	# the HUD's top edge while the top half of the screen was empty water.
+	# _fit_panel_height() keeps the bottom edge on the panel, and the
+	# resized signal reframes the camera into whatever is left.
 	var container := SubViewportContainer.new()
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.stretch = true
 	add_child(container)
+	_stage_container = container
+	container.resized.connect(_frame_stage_camera)
 
 	var vp := SubViewport.new()
 	vp.size = Vector2i(960, 540)
@@ -285,16 +300,12 @@ func _build_stage() -> void:
 	vp.add_child(light)
 
 	var cam := Camera3D.new()
-	# Glass_Goat authored the attacks for a 2D presentation, so the arm travel
-	# and body recoil read better from a three-quarter angle than from directly
-	# behind the party. This camera belongs only to the isolated battle viewport:
-	# the overworld chase camera remains driven by mouse/arrow yaw and pitch.
-	cam.position = Vector3(3.5, 1.8, 4.5)
 	cam.fov = 70.0
 	vp.add_child(cam)
-	# look_at() needs the node in the tree first - it operates on global
-	# transform, which doesn't exist until add_child runs.
-	cam.look_at(Vector3(0.0, 1.1, -1.5), Vector3.UP)
+	_stage_cam = cam
+	# Positioned by _frame_stage_camera() once the actors exist, not here.
+	# The hand-placed position this replaces was tuned against a full height
+	# stage and put every combatant behind the HUD once the HUD grew.
 
 	# Party visuals, spread left-to-right so 1-3 divers don't overlap.
 	# Diver.rotation.y == 0 is the model's own rest-facing direction (-Z, see
@@ -303,7 +314,7 @@ func _build_stage() -> void:
 	for i in range(pn):
 		var actor := Diver.new()
 		actor.model_name = String(party[i].model_name)
-		actor.position = Vector3(_spread(i, pn, 1.3) - 0.4, 0.0, 1.0)
+		actor.position = Vector3(_spread(i, pn, 2.1) - 0.4, 0.0, 1.0 - _spread(i, pn, 0.7))
 		vp.add_child(actor)
 		party[i]["actor"] = actor
 
@@ -320,7 +331,7 @@ func _build_stage() -> void:
 	var count := randi_range(MIN_ENEMIES, MAX_ENEMIES)
 	for i in range(count):
 		var g := Goblin.new()
-		g.position = Vector3(_spread(i, count, 1.1) + 0.6, 0.0, -2.2)
+		g.position = Vector3(_spread(i, count, 1.7) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
 		g.rotation.y = PI
 		vp.add_child(g)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
@@ -329,6 +340,88 @@ func _build_stage() -> void:
 			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
 			"actor": g,
 		})
+
+	_frame_stage_camera()
+
+# Glass_Goat authored the attacks for a 2D presentation, so the arm travel
+# and body recoil read from a three-quarter angle and disappear into the
+# silhouette from straight on. That angle is the one thing here that is a
+# taste call, so it is a constant; everything else is measured.
+#
+# The camera used to be a hand-placed position and look-at target, tuned
+# once against a full height stage. Both of the numbers it depended on then
+# moved: the HUD is content-sized and grew every time a row was added to it,
+# and the enemy count is random, so the group being framed is a different
+# size every fight. This backs the camera off far enough to fit whatever is
+# actually on the stage into whatever height the HUD has left.
+const STAGE_CAMERA_DIR := Vector3(3.0, 2.2, 5.5)
+# Breathing room around the group, and a floor on the distance so a lone
+# grunt does not end up with the camera inside its head.
+const STAGE_FRAMING_MARGIN := 1.08
+const STAGE_MIN_DISTANCE := 3.5
+
+func _frame_stage_camera() -> void:
+	if _stage_cam == null or _stage_container == null:
+		return
+
+	# Corners rather than centres: a combatant is framed when its head and
+	# its feet are both on screen, and the sideways allowance keeps an
+	# outstretched staff or a wind-up from poking out of frame.
+	var pts: Array = []
+	for e in (party + enemies):
+		if not e.has("actor") or not is_instance_valid(e.actor):
+			continue
+		var a := e.actor as Node3D
+		var h := 1.9
+		if a is Diver:
+			h = (a as Diver).height
+		elif a is Goblin:
+			h = (a as Goblin).height
+		for dx in [-0.7, 0.7]:
+			pts.append(a.global_position + Vector3(dx, 0.0, 0.0))
+			pts.append(a.global_position + Vector3(dx, h, 0.0))
+	if pts.is_empty():
+		return
+
+	var centre := Vector3.ZERO
+	for p in pts:
+		centre += p as Vector3
+	centre /= float(pts.size())
+
+	var dir: Vector3 = STAGE_CAMERA_DIR.normalized()
+	# Two axes across the view, so the group can be measured in the plane
+	# the camera actually sees rather than in world X and Y.
+	var right: Vector3 = dir.cross(Vector3.UP).normalized()
+	var up: Vector3 = right.cross(dir).normalized()
+
+	# fov is the vertical angle (Camera3D defaults to KEEP_HEIGHT), so a
+	# wide short stage is limited by its height and a narrow tall one by its
+	# width.
+	var box: Vector2 = _stage_container.size
+	var aspect: float = maxf(0.2, box.x / maxf(1.0, box.y))
+	var tan_v: float = maxf(0.01, tan(deg_to_rad(_stage_cam.fov) * 0.5))
+	var tan_h: float = maxf(0.01, tan_v * aspect)
+
+	# Solved per point rather than off the group's overall size, because the
+	# party stands three metres nearer the camera than the grunts do and
+	# perspective makes them correspondingly bigger. Measuring the group as
+	# a flat box put the party's feet through the floor of the frame while
+	# the grunts had room to spare.
+	#
+	# For a camera at centre + dir*d, a point p sits at depth d - w where
+	# w is how far p is toward the camera, and is in frame when its sideways
+	# and vertical offsets fit inside the frustum at that depth. Rearranged,
+	# that is the distance below, and the group needs the largest of them.
+	var dist := STAGE_MIN_DISTANCE
+	for p in pts:
+		var v: Vector3 = (p as Vector3) - centre
+		var w: float = v.dot(dir)
+		var need_w: float = absf(v.dot(right)) * STAGE_FRAMING_MARGIN / tan_h
+		var need_h: float = absf(v.dot(up)) * STAGE_FRAMING_MARGIN / tan_v
+		dist = maxf(dist, maxf(need_w, need_h) + w)
+
+	_stage_cam.global_position = centre + dir * dist
+	_stage_cam.look_at(centre, Vector3.UP)
 
 # Built once, hidden until the first party turn (_start_party_turn() shows
 # and positions it; _do_enemy_turn() hides it) - same downward-cone shape
@@ -405,6 +498,22 @@ func _spread(i: int, n: int, step: float) -> float:
 func _build_ui() -> void:
 	_bottom_panel = PanelContainer.new()
 	_bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+
+	# Opaque, and deliberately so. This used to run on Godot's default
+	# PanelContainer theme, which is 60% black, and that was fine only for
+	# as long as the stage was full height behind it: what it actually did
+	# was leave the bottom half of every combatant showing through a grey
+	# sheet. Now the stage stops above this panel, so anything translucent
+	# here would show the paused overworld through it instead. The colour
+	# matches the stage's own background so the two read as one screen, and
+	# the top border is what tells you where the fight ends and the numbers
+	# begin.
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.05, 0.13, 0.17)
+	bg.border_width_top = 2
+	bg.border_color = Color(0.18, 0.34, 0.4)
+	_bottom_panel.add_theme_stylebox_override("panel", bg)
+
 	add_child(_bottom_panel)
 
 	var margin := MarginContainer.new()
@@ -510,6 +619,13 @@ func _build_ui() -> void:
 func _fit_panel_height() -> void:
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
+	# Hand the rest of the screen to the stage. Both are anchored to the
+	# bottom edge, so the panel's own top offset is exactly where the stage
+	# has to stop. This is what makes the HUD's height self-correcting: a
+	# row added to it now shrinks the fight instead of covering it, which is
+	# visible immediately rather than three PRs later.
+	if _stage_container != null:
+		_stage_container.offset_bottom = _bottom_panel.offset_top
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.

@@ -37,6 +37,17 @@ run "balance: do careless and greedy policies land in band" "$GODOT" --headless 
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
+# The only gate here that must NOT be headless. It measures where combatants
+# land on screen, and a headless run gets a 64x64 window, which makes every
+# screen-space number it produces meaningless. Skipped rather than failed
+# where no display is available, so CI does not report a false problem.
+if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
+else
+	echo
+	echo "=== stage framing: skipped, needs a display ==="
+fi
+
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
 run "battle: does the fight screen build"             "$GODOT" --headless --path . --script tools/test_battle.gd
 
