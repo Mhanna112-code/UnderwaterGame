@@ -16,20 +16,50 @@ signal triggered(item_id: String)
 
 @export var item_id := ""
 
+# Where the two guarded items are. One list, read by the guardian spawner
+# (world.gd), by sonar (diver.gd) and by the minimap (mini_map.gd), so the
+# three can never disagree about where a thing is.
+#
+# These positions are not chosen by eye. The previous pair sat inside the
+# level geometry that got built around them later: a shape query at the
+# current_pearl spot came back with three environment overlaps, so the
+# guardian was inside a rock and the only way to reach it was to clip
+# through one.
+#
+# These were picked by sweeping the map for positions that pass two tests,
+# and taking the pair furthest from each other: no environment overlap
+# inside a 2.4 m sphere, and an unobstructed straight line from where the
+# party starts. The second test is there because the first pair I picked
+# passed the overlap test and sat behind a wall, which is clear water you
+# cannot get to. A straight line is stricter than "a route exists", and
+# that is the point: it can be verified without a navmesh.
+#
+# verify/encounters.gd re-runs both checks, so building a wall across one
+# fails the build rather than quietly stranding it.
+#
+# The old "radius" field on these went with the code that read it. It used
+# to make any random encounter within 10 m hand you the item, which gave
+# away the thing the guardian is guarding to a player who never found it.
 const SPOTS := [
-	{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
-	{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
+	{"item": "current_pearl", "at": Vector3(9.0, 3.0, 30.0)},
+	{"item": "reef_plate", "at": Vector3(-9.0, 3.0, -30.0)},
 ]
 
 func _ready() -> void:
 	collision_mask = 2
 
-	# A spiked dark urchin cluster - deliberately not another ring (that
-	# shape already means "grapple anchor" or "lock plate" in this game),
-	# so a guarded item reads as its own kind of thing at a glance.
+	# A spiked urchin cluster - deliberately not another ring (that shape
+	# already means "grapple anchor" or "lock plate" in this game), so a
+	# guarded item reads as its own kind of thing at a glance.
+	#
+	# Sized to be seen rather than to be accurate. This is the one place in
+	# the dive site worth swimming to, and at the original 0.5 m radius with
+	# the core hidden it was a handful of dark red slivers about fifteen
+	# pixels across from seven metres out, in fog, which is not a landmark,
+	# it is a thing you find by walking into it.
 	var core := SphereMesh.new()
-	core.radius = 0.5
-	core.height = 1.0
+	core.radius = 0.9
+	core.height = 1.8
 	var core_mesh := MeshInstance3D.new()
 	core_mesh.mesh = core
 	var mat := StandardMaterial3D.new()
@@ -39,21 +69,31 @@ func _ready() -> void:
 	mat.emission_energy_multiplier = 1.2
 	mat.roughness = 0.6
 	core_mesh.material_override = mat
-	core_mesh.visible = false
 	add_child(core_mesh)
+
+	# It also has to be visible in the murk, not just large. The dive site
+	# runs fog at 0.035 density and everything else down here is the same
+	# blue-grey, so the light is what makes this findable from a distance
+	# and what makes "swim toward the red glow" a thing a player can do
+	# without being told.
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.3, 0.25)
+	glow.light_energy = 3.2
+	glow.omni_range = 12.0
+	add_child(glow)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(item_id.hash())    # same spikes every run for this guardian, not reshuffled each launch
-	for i in range(9):
+	for i in range(13):
 		var spike := CylinderMesh.new()
 		spike.top_radius = 0.0
-		spike.bottom_radius = 0.09
-		spike.height = 0.55
+		spike.bottom_radius = 0.16
+		spike.height = 1.0
 		var spike_mesh := MeshInstance3D.new()
 		spike_mesh.mesh = spike
 		spike_mesh.material_override = mat
 		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.4, 1), rng.randf_range(-1, 1)).normalized()
-		spike_mesh.position = dir * 0.45
+		spike_mesh.position = dir * 0.8
 		# look_at() needs to be inside the tree first (it reads global
 		# transform) - add_child() before positioning it, not after.
 		add_child(spike_mesh)
@@ -62,7 +102,7 @@ func _ready() -> void:
 
 	var shape := CollisionShape3D.new()
 	var col := SphereShape3D.new()
-	col.radius = 1.4
+	col.radius = 1.9
 	shape.shape = col
 	add_child(shape)
 

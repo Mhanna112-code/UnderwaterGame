@@ -677,29 +677,36 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # Stance) - see items.gd's ITEMS entries for both. Placed well clear of the
 # scattered rocks/CAST start positions/highway, out in the open dive site
 # where _build_site()'s rock scatter already reaches (dist up to 48).
+# The one place in the dive site worth swimming *to*, as opposed to swimming
+# around until something attacks you.
+#
+# Every other piece of this already existed and was already wired to
+# ItemGuardian.SPOTS: sonar reveals a spot once you get within the minimap's
+# view radius (diver.gd's update_sonar), the minimap then draws a pulsing
+# marker for it or an arrow toward it (mini_map.gd), winning the fight grants
+# the item (_grant_reward_item), and the guardian itself is a finished class.
+# The only thing missing was the six lines that put one in the water. They
+# were here, wrapped in a triple-quoted string, which GDScript parses as a
+# string literal and Godot never warns about, so the function ran and built
+# nothing. See #45.
 func _build_item_guardians() -> void:
-	const SPOTS := [
-		{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
-		{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
-	]
-	"""for entry in SPOTS:
+	for entry in ItemGuardian.SPOTS:
 		var guardian := ItemGuardian.new()
 		guardian.item_id = String(entry.item)
 		guardian.position = entry.at as Vector3
 		add_child(guardian)
 
-		# Decorative only - a real Goblin instance standing just beside the
-		# guardian spot so "an enemy is here" is visible before you ever get
-		# close enough to trigger the fight, not just an invisible volume
-		# (offset sideways so it doesn't visually clip through the spiky
-		# guardian mesh). No collision (see goblin.gd's own header - display
-		# only), so it can't block movement or be mistaken for the trigger
-		# itself.
+		# Decorative only - a real Goblin standing just beside the guardian
+		# spot so "an enemy is here" is visible before you are close enough
+		# to trigger the fight, not just an invisible volume (offset
+		# sideways so it doesn't clip through the spiky guardian mesh). No
+		# collision (see goblin.gd's own header - display only), so it can't
+		# block movement or be mistaken for the trigger itself.
 		var decoy := Goblin.new()
 		decoy.position = (entry.at as Vector3) + Vector3(1.1, 0.0, 0.0)
 		add_child(decoy)
 
-		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))"""
+		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1320,28 +1327,18 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active]:
 		return
-	# Standing on a key item's spot turns the next random encounter into
-	# that item's guardian fight. Everywhere else it is an ordinary one.
+	# An ordinary encounter, and only an ordinary one.
 	#
-	# Two bugs lived in these five lines. The spot dictionaries are keyed
-	# "item", not "item_id", so this threw, and a throw inside a signal
-	# handler takes the rest of the handler with it: an encounter rolled
-	# anywhere within 10 m of either spot started nothing at all. No fight,
-	# no message, and check_for_encounter() had already reset the counter,
-	# so the only symptom was a stretch of map that never attacked you. And
-	# had it not thrown, the unconditional _start_battle() underneath would
-	# have stacked a second battle screen on the same encounter.
+	# This used to also hand you a key item for winning a random encounter
+	# that happened to roll while you were standing inside an unmarked ten
+	# metre circle, which was the half of the guardian feature that was
+	# still switched on while the guardians themselves were not. With them
+	# built again the circle is worse than redundant: it gives away the
+	# thing the guardian is guarding, to a player who never found it.
 	#
-	# ItemGuardian.new() went with them. SPOTS is a const on the class, so
-	# reading it never needed an instance, and that instance was an Area3D
-	# that was never added to the tree and never freed. One leak per
-	# encounter for the whole session.
-	var reward := ""
-	for spot in ItemGuardian.SPOTS:
-		if d.position.distance_to(spot.at as Vector3) <= float(spot.radius):
-			reward = String(spot.item)
-			break
-	_start_battle(reward)
+	# Swim into the guardian and you get the fight for the item. That is the
+	# whole point of it being somewhere.
+	_start_battle()
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 # Both get freed the instant this fires, win or lose the fight that

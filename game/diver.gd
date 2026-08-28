@@ -638,13 +638,14 @@ func update_sonar() -> void:
 		var item_id := String(entry.item)
 		if world.revealed_key_items.has(item_id):
 			continue
-		# MODIFIED: gated on entry.radius originally (the guaranteed-
-		# encounter radius, a separate concept). Changed to
-		# world.minimap.view_radius - "revealed" should mean "you actually
-		# saw it as a dot on the minimap at some point," so the reveal
-		# distance and the dot/arrow display distance (see mini_map.gd's
-		# _draw_key_item_markers()) need to be the exact same radius, not
-		# two different numbers that happen to both be called "radius."
+		# Gated on the minimap's own view radius: "revealed" should mean
+		# "you actually saw it as a dot on the minimap at some point", so
+		# the reveal distance and the dot/arrow display distance (see
+		# mini_map.gd's _draw_key_item_markers()) have to be the same
+		# number rather than two that happen to share a name. The spots
+		# used to carry a "radius" of their own for this; it is gone, along
+		# with the guaranteed-encounter rule that was the only thing that
+		# ever read it.
 		if position.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
 
