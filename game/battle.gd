@@ -118,18 +118,37 @@ const LOG_READ_DELAY := 1.6
 # like it connects.
 const IMPACT_FRACTION := 0.55
 
+# How long the step in and the walk back take, and how far short of the
+# target an attacker stops. SWING_REACH is roughly the length of the longest
+# swing in the cast: Marine Man's hammer travels about that far.
+const SWING_STEP_TIME := 0.18
+const SWING_REACH := 1.8
+
 # Overhead health bars.
 const OVERHEAD_BAR_WIDTH := 104
 # How far above a combatant's own head the bar floats, in metres.
-const OVERHEAD_LIFT := 0.45
+const OVERHEAD_LIFT := 0.12
 # World space set aside above each combatant for their own bar, so the
 # camera frames the bar and not just the body. Roughly the bar's height at
 # the distance these fights are fought at.
-const OVERHEAD_HEADROOM := 0.75
-# Bars are nudged upward in steps until they stop overlapping. Small enough
-# that a nudge is not obvious, large enough to clear a bar in a few passes.
+const OVERHEAD_HEADROOM := 0.55
+# Bars are searched outward from their own head in steps until they stop
+# overlapping. Small enough that a nudge is not obvious, large enough to
+# clear a bar in a few passes.
 const OVERHEAD_NUDGE := 4.0
 const OVERHEAD_MAX_NUDGES := 40
+# What a pixel of travel is worth against a square pixel of overlap.
+#
+# Staying near the combatant matters more than not touching a neighbour.
+# Marc, on the first build of this: "health bars need to be positioned
+# basically right on top of or ever so slightly above, currently the divers
+# health bars are way too far above them to the point you cant tell they are
+# their health bars." A search that only avoided overlap did exactly that,
+# because with six combatants there is usually somewhere clear if you go far
+# enough, and far enough is too far. At this weight a bar will travel about
+# sixty pixels to escape a near-total overlap and barely move for a slight
+# one, which is the trade the quote asks for.
+const OVERHEAD_DRIFT_COST := 40.0
 
 var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
 var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
@@ -236,6 +255,16 @@ func _ready() -> void:
 func _process(_dt: float) -> void:
 	_layout_overhead_bars()
 
+# The top and bottom of a combatant in world space. Diver and Goblin put
+# their models at different heights relative to their own origin, so this
+# asks them (head_offset/foot_offset) instead of adding `height` and being
+# right about half the cast.
+func _top_of(a: Node3D) -> Vector3:
+	return a.global_position + Vector3(0.0, float(a.call("head_offset")), 0.0)
+
+func _bottom_of(a: Node3D) -> Vector3:
+	return a.global_position + Vector3(0.0, float(a.call("foot_offset")), 0.0)
+
 func _layout_overhead_bars() -> void:
 	if _overhead_layer == null or _stage_cam == null or _stage_container == null:
 		return
@@ -265,8 +294,7 @@ func _layout_overhead_bars() -> void:
 		if actor == null or not is_instance_valid(actor):
 			box.visible = false
 			continue
-		var head: Vector3 = actor.global_position + Vector3(
-			0.0, float(actor.get("height")) + OVERHEAD_LIFT, 0.0)
+		var head: Vector3 = _top_of(actor) + Vector3(0.0, OVERHEAD_LIFT, 0.0)
 		# Behind the camera projects to a nonsense point in front of it.
 		if _stage_cam.is_position_behind(head):
 			box.visible = false
@@ -301,7 +329,7 @@ func _layout_overhead_bars() -> void:
 		# layout and not the frame.
 		var base_y := pos.y
 		var best_y := base_y
-		var best_overlap := INF
+		var best_cost := INF
 		for step in range(OVERHEAD_MAX_NUDGES):
 			# 0, -4, +4, -8, +8, ... upward first, since a bar below a
 			# combatant reads worse than one above.
@@ -313,15 +341,14 @@ func _layout_overhead_bars() -> void:
 			for placed_rect in placed:
 				var r := rect.intersection(placed_rect as Rect2)
 				overlap += r.size.x * r.size.y
-			if overlap < best_overlap:
-				best_overlap = overlap
+			# Overlap and distance priced against each other, rather than
+			# distance being free until overlap hits zero.
+			var cost: float = overlap + absf(try_y - base_y) * OVERHEAD_DRIFT_COST
+			if cost < best_cost:
+				best_cost = cost
 				best_y = try_y
 			if overlap <= 0.0:
 				break
-		# Keep the least-bad spot rather than wherever the search happened
-		# to stop. Six combatants can genuinely have nowhere clear to put a
-		# sixth bar, and a bar overlapping a little beats one parked at the
-		# end of the search range for no reason.
 		pos.y = best_y
 
 		pos.y = clampf(pos.y, top_limit, maxf(top_limit, floor_y - size.y))
@@ -436,6 +463,10 @@ func _build_stage() -> void:
 		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, 0.0, 1.0 - _spread(i, pn, 0.7))
 		vp.add_child(actor)
 		party[i]["actor"] = actor
+		# Where this one stands when it is not swinging. Attacks step in
+		# toward whoever they are aimed at and come back here afterwards.
+		party[i]["home_pos"] = actor.position
+		party[i]["home_rot"] = actor.rotation.y
 
 	_build_turn_cursor()
 
@@ -458,6 +489,8 @@ func _build_stage() -> void:
 			"kind": "enemy", "stats": st,
 			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
 			"actor": g,
+			"home_pos": g.position,
+			"home_rot": g.rotation.y,
 		})
 
 	_frame_stage_camera()
@@ -491,19 +524,15 @@ func _frame_stage_camera() -> void:
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
 		var a := e.actor as Node3D
-		var h := 1.9
-		if a is Diver:
-			h = (a as Diver).height
-		elif a is Goblin:
-			h = (a as Goblin).height
+		var low: Vector3 = _bottom_of(a)
+		# Not the top of the model: the top of the model plus the health
+		# bar riding above it. Framing the bodies alone put every head hard
+		# against the top edge and left the bars themselves off screen,
+		# which is not a framing problem you can see by looking at models.
+		var high: Vector3 = _top_of(a) + Vector3(0.0, OVERHEAD_LIFT + OVERHEAD_HEADROOM, 0.0)
 		for dx in [-0.7, 0.7]:
-			pts.append(a.global_position + Vector3(dx, 0.0, 0.0))
-			# Not the top of the model: the top of the model plus the
-			# health bar riding above it. Framing the bodies alone put
-			# every head hard against the top edge and left the bars
-			# themselves off screen entirely, which is not a framing
-			# problem you can see until you look at where the bars went.
-			pts.append(a.global_position + Vector3(dx, h + OVERHEAD_LIFT + OVERHEAD_HEADROOM, 0.0))
+			pts.append(low + Vector3(dx, 0.0, 0.0))
+			pts.append(high + Vector3(dx, 0.0, 0.0))
 	if pts.is_empty():
 		return
 
@@ -1054,7 +1083,7 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color) -> void:
 	label.outline_size = 10
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.position = actor.position + Vector3(0.0, float(actor.get("height")) + 0.35, 0.0)
+	label.position = _top_of(actor) - actor.global_position + actor.position + Vector3(0.0, 0.35, 0.0)
 	_stage_vp.add_child(label)
 	var tween := label.create_tween()
 	tween.set_parallel(true)
@@ -1697,14 +1726,67 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 # supposed to land, leaving the rest of the clip to play out underneath the
 # damage log. A move with no actor (a headless run, see verify/battle.gd)
 # resolves instantly, so the gates are not paying for animation time.
-func _swing(entry: Dictionary, mv: Dictionary) -> void:
+# Step in, face them, swing, step back.
+#
+# Every attack used to play on the spot, facing whichever way the actor was
+# built facing. Glass_Goat animated these for a 2D presentation, so a swing
+# travels along the character's own forward axis and nowhere else: Marine
+# Man's hammer reaches most of a body length forward and it was reaching
+# into open water, because the grunt it was aimed at was off to one side.
+# The animation was never going to aim itself. This aims the character.
+func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
 		return
 	var d := entry.actor as Diver
+	await _step_toward(entry, target)
 	var length: float = d.play_clip(Cast.ability(String(entry.model_name), String(mv.get("name", ""))))
 	if length <= 0.0:
+		_send_home(entry, 0.0)
 		return
 	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
+	# The rest of the clip plays while the caller gets on with the damage
+	# log, and the walk back starts when it finishes.
+	_send_home(entry, length * (1.0 - IMPACT_FRACTION))
+
+# Turn to face the target and close to within reach of it. Reach is a
+# distance short of the target rather than the target itself, because these
+# attacks have length: standing on top of somebody puts the swing through
+# them and out the other side.
+func _step_toward(entry: Dictionary, target: Dictionary) -> void:
+	var a: Node3D = entry.get("actor")
+	if a == null or not is_instance_valid(a):
+		return
+	if not target.has("actor") or not is_instance_valid(target.actor) or target.actor == a:
+		return
+	var home: Vector3 = entry.get("home_pos", a.position)
+	var to: Vector3 = (target.actor as Node3D).position - home
+	to.y = 0.0
+	if to.length() < 0.05:
+		return
+	# rotation.y == 0 faces -Z for both Diver and Goblin models here, which
+	# is why this is atan2 of the negated direction rather than of it.
+	a.rotation.y = atan2(-to.x, -to.z)
+	var stand: Vector3 = (target.actor as Node3D).position - to.normalized() * SWING_REACH
+	stand.y = home.y
+	var step := a.create_tween()
+	step.tween_property(a, "position", stand, SWING_STEP_TIME)
+	await step.finished
+
+# Back to the spot on the line where this one belongs. Always to the stored
+# home rather than to wherever it happened to start, so an interrupted
+# swing cannot leave somebody drifting a metre further out every turn.
+func _send_home(entry: Dictionary, delay: float) -> void:
+	var a: Node3D = entry.get("actor")
+	if a == null or not is_instance_valid(a):
+		return
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+		a = entry.get("actor")
+		if a == null or not is_instance_valid(a):
+			return
+	var back := a.create_tween()
+	back.tween_property(a, "position", entry.get("home_pos", a.position), SWING_STEP_TIME)
+	back.parallel().tween_property(a, "rotation:y", float(entry.get("home_rot", a.rotation.y)), SWING_STEP_TIME)
 
 # The recoil on whoever just got hit. Only for a hit that actually landed
 # damage: a heal targets an ally, and flinching at being healed is worse
@@ -1730,7 +1812,7 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	_set_all_buttons(false)
 
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
-	await _swing(_acting, mv)
+	await _swing(_acting, mv, target)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
 	_react(target, r)
 	_show_combat_feedback(target, r)
@@ -1766,7 +1848,9 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	_busy = true
 	_set_all_buttons(false)
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
-	await _swing(_acting, mv)
+	# A move that hits everything still steps toward the first of them,
+	# so the swing is aimed into the group rather than past it.
+	await _swing(_acting, mv, targets[0] as Dictionary)
 	var summaries: Array[String] = []
 	var first := true
 	var changed_agility := false
@@ -1843,7 +1927,16 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	# damage itself already does.
 	var lined_up: bool = float(target_stats.hp) <= float(target_stats.hp_max) * float(ENEMY_HEAVY_MOVE.heavy_max)
 	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
+	# The grunts get the same treatment as the party. They have no attack
+	# clip of their own, only Idle and Walking, so the lunge IS the attack
+	# animation: without it a grunt's turn was a line of text and a number
+	# moving, with nothing on the stage indicating who did it or to whom.
+	(actor.actor as Goblin).play("walk")
+	await _step_toward(actor, target)
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
+	_send_home(actor, 0.0)
+	if is_instance_valid(actor.actor):
+		(actor.actor as Goblin).play("idle")
 	_refresh_bar(target)
 	_react(target, r)
 	_show_combat_feedback(target, r)

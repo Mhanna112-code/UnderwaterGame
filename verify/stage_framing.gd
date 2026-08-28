@@ -29,8 +29,12 @@ const FIGHTS := 8
 # once it has run. Measuring before that measures a zero-height stage.
 const SETTLE_FRAMES := 20
 # How far a bar may end up above the head it belongs to. Some gap is the
-# point; enough of one and you can no longer tell whose bar it is.
-const MAX_BAR_DRIFT := 90.0
+# point; enough of one and you can no longer tell whose bar it is, which is
+# what Marc reported on the first build of this layout. Tightened from 90px
+# to 45 after that, and the placement had to change to meet it.
+const MAX_BAR_DRIFT := 45.0
+# How much of a bar another bar may cover before it stops being readable.
+const MAX_BAR_COVERED := 0.25
 
 var world: Node3D
 var frames := 0
@@ -107,13 +111,12 @@ func _check(b: Battle) -> void:
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
 		var a := e.actor as Node3D
-		var h := 1.9
-		if a is Diver:
-			h = (a as Diver).height
-		elif a is Goblin:
-			h = (a as Goblin).height
-		var head: Vector2 = b._stage_cam.unproject_position(a.global_position + Vector3(0, h, 0)) * sc + stage.position
-		var foot: Vector2 = b._stage_cam.unproject_position(a.global_position) * sc + stage.position
+		# Ask, do not assume: Diver and Goblin place their models
+		# differently relative to their own origin. Adding `height` here is
+		# what let the divers' bars float half a body above them while the
+		# gate reported everything fine.
+		var head: Vector2 = b._stage_cam.unproject_position(b._top_of(a)) * sc + stage.position
+		var foot: Vector2 = b._stage_cam.unproject_position(b._bottom_of(a)) * sc + stage.position
 		if head.y < top or foot.y > bottom or head.x < 0.0 or head.x > stage.size.x:
 			findings.append("OUT OF FRAME: %s, head at (%.0f, %.0f) and feet at (%.0f, %.0f), stage runs y=%.0f to %.0f" % [
 				String(e.display_name), head.x, head.y, foot.x, foot.y, top, bottom])
@@ -132,22 +135,25 @@ func _check(b: Battle) -> void:
 		if r.position.y < top - 0.5 or r.end.y > bottom + 0.5 or r.position.x < -0.5 or r.end.x > screen.x + 0.5:
 			findings.append("BAR OFF SCREEN: %s's bar at %s size %s, stage runs y=%.0f to %.0f" % [
 				String(e.display_name), r.position, r.size, top, bottom])
+		# Touching is allowed, burying is not. Keeping bars near the
+		# combatants they name (see MAX_BAR_DRIFT and battle.gd's
+		# OVERHEAD_DRIFT_COST) means accepting that six of them in a
+		# cluster will sometimes clip corners. What must not happen is one
+		# bar covering enough of another that you cannot read it.
 		for other in boxes:
-			if r.intersects((other[1] as Rect2)):
-				findings.append("BARS OVERLAP: %s and %s" % [String(e.display_name), String(other[0])])
+			var hit := r.intersection(other[1] as Rect2)
+			var covered: float = (hit.size.x * hit.size.y) / maxf(1.0, minf(
+				r.size.x * r.size.y, (other[1] as Rect2).size.x * (other[1] as Rect2).size.y))
+			if covered > MAX_BAR_COVERED:
+				findings.append("BAR BURIED: %s and %s overlap by %.0f%%, over the %.0f%% budget" % [
+					String(e.display_name), String(other[0]), covered * 100.0, MAX_BAR_COVERED * 100.0])
 		boxes.append([String(e.display_name), r])
 
 		# How far the bar had to travel from where its owner's head is.
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
-		var a2 := e.actor as Node3D
-		var h2 := 1.9
-		if a2 is Diver:
-			h2 = (a2 as Diver).height
-		elif a2 is Goblin:
-			h2 = (a2 as Goblin).height
 		var head2: Vector2 = b._stage_cam.unproject_position(
-			a2.global_position + Vector3(0, h2, 0)) * sc + stage.position
+			b._top_of(e.actor as Node3D)) * sc + stage.position
 		var drift: float = head2.y - r.end.y
 		if drift > MAX_BAR_DRIFT:
 			findings.append("BAR ADRIFT: %s's bar sits %.0fpx above their head, over the %.0fpx budget" % [

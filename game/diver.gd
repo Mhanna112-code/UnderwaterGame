@@ -807,6 +807,23 @@ func set_model_visible(v: bool) -> void:
 		model.visible = v
 
 
+# How far above and below this diver's own origin the model actually
+# reaches.
+#
+# Worth stating rather than assuming, because the two things that stand on
+# the battle stage disagree about it: _ready() centres a Diver's model on
+# its origin (see the src.position.y line, which subtracts half the height)
+# while goblin.gd stands its model's FEET on the origin. Anything putting a
+# marker over a combatant's head has to ask rather than add `height`, and
+# nothing did: the health bars floated half a body above the divers and sat
+# correctly on the grunts, which is exactly how it was reported.
+func head_offset() -> float:
+	return height * 0.5
+
+func foot_offset() -> float:
+	return -height * 0.5
+
+
 # ============================================================
 # PLAYING CLIPS
 # ============================================================
