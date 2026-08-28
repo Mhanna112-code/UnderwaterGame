@@ -69,8 +69,8 @@ var SONAR_INTERVAL := 0.2
 # distinct even after several level-ups, instead of every stat converging.
 const BASE_STATS := {
 	"Staff_Diver": {
-		"hp": 34, "strength": 5, "defense": 3, "agility": 5,
-		"evasion": 5, "accuracy": 6, "barrier_max": 5,
+		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
+		"evasion": 3, "accuracy": 3, "barrier_max": 0,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"

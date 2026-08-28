@@ -95,10 +95,12 @@ func _fight(seed_value: int, policy: String) -> Dictionary:
 				continue
 			if _living(party).is_empty() or _living(enemies).is_empty():
 				break
+			(actor.stats as CombatantStats).begin_turn()
 			if String(actor.kind) == "party":
 				_party_turn(actor, party, enemies, policy, rng)
 			else:
 				_enemy_turn(actor, party, policy, rng)
+			(actor.stats as CombatantStats).end_turn()
 
 	var hp_lost := 0
 	for actor in party:
@@ -137,14 +139,24 @@ func _party_turn(actor: Dictionary, party: Array, enemies: Array, policy: String
 		move = damaging[0] if rng.randf() < 0.7 else damaging[rng.randi_range(0, damaging.size() - 1)]
 
 	(actor.stats as CombatantStats).oxygen -= float(move.get("oxygen_cost", 0.0))
-	_apply_move(actor.stats as CombatantStats, target.stats as CombatantStats, move, rng)
+	if String(move.get("target", "one_enemy")) == "all_enemies":
+		var first := true
+		for enemy in live_enemies:
+			_apply_move(actor.stats as CombatantStats, enemy.stats as CombatantStats, move, rng, first)
+			first = false
+	else:
+		_apply_move(actor.stats as CombatantStats, target.stats as CombatantStats, move, rng)
 
 func _best_move(attacker: CombatantStats, defender: CombatantStats, moves: Array) -> Dictionary:
 	var best := {}
 	var best_score := -1.0
 	for move in moves:
 		var score := -0.5
-		if String(move.get("debuff", "")) == "defense" and defender.defense > 0:
+		if move.has("formula"):
+			var raw := CombatRules.formula_value(attacker, move.get("formula", {}))
+			var targets := 2.0 if String(move.get("target", "")) == "all_enemies" else 1.0
+			score = float(raw) * targets + float((move.get("effects", []) as Array).size()) * 1.5
+		elif String(move.get("debuff", "")) == "defense" and defender.defense > 0:
 			score = 3.0 + float(defender.defense)
 		elif int(move.get("power", 0)) > 0 and attacker.accuracy + int(move.get("acc_mod", 0)) > defender.evasion:
 			score = float(move.power) + float(attacker.strength) - float(defender.defense)
@@ -155,8 +167,12 @@ func _best_move(attacker: CombatantStats, defender: CombatantStats, moves: Array
 			best = move
 	return best
 
-func _apply_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, rng: RandomNumberGenerator) -> void:
-	if attacker.accuracy + int(move.get("acc_mod", 0)) <= defender.evasion:
+func _apply_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, rng: RandomNumberGenerator, apply_self_effects: bool = true) -> void:
+	if move.has("formula"):
+		CombatRules.resolve(attacker, defender, move, apply_self_effects)
+		return
+	if attacker.effective_accuracy() + int(move.get("acc_mod", 0)) <= defender.evasion_current:
+		defender.spend_evasion(attacker.effective_accuracy() + int(move.get("acc_mod", 0)))
 		return
 	var debuff := String(move.get("debuff", ""))
 	if debuff == "defense":

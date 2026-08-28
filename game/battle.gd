@@ -53,37 +53,20 @@ const DISPLAY_NAMES := {
 # on top of whichever spells that specific party member has equipped (see
 # _moves_for()) - and now differ per diver instead of being one shared
 # list, so the base kit itself carries some identity too, not just the
-# spell tree layered on top of it. `power` feeds the damage half of
-# _resolve_attack() below; `acc_mod` is added to the attacker's accuracy
-# for that swing only, before it's compared to the defender's evasion.
+# spell tree layered on top of it. Glassgoat V2 moves use a `formula`
+# Dictionary evaluated by CombatRules; legacy moves still use `power` and
+# `acc_mod` until their own authored kits are ported.
 #
 # Prototype_1(1910) keeps Weaken/Slow as its base kit rather than damage
 # moves - its whole identity is debuff support (see spell_tree.gd's header
 # comment), so even the free moves everyone always has lean into that
 # instead of being generic damage like the other two divers get.
 #
-# Every diver's first move is its free basic attack - no `oxygen_cost` key
-# at all, the fallback that still works even at 0 oxygen, same role
-# Diver.gd's abilities and every equipped spell (see _moves_for()) can't
-# fill once the tank's empty. Everything else costs oxygen same as a spell
-# would (_populate_move_menu() reads oxygen_cost with a 0.0 default, so the
-# free move simply never shows a cost or blocks on one).
-#
-# `inventory: true` (Mermaid's Heal, below) marks a move as also usable
-# outside battle, from the Escape-key pause menu's "Party Spells" tab (see
-# inventory_menu.gd/World._inventory_spells_for()/World.use_party_spell()).
-# Only "heal"/"revive" effect moves make sense to tag this way - there's no
-# opponent to swing "damage"/"debuff" at while just swimming around, and
-# World.use_party_spell() only knows how to resolve those two effects.
-# Same tag exists on spell_tree.gd entries, for spells learned later that
-# should carry the same out-of-battle use.
+# A missing `oxygen_cost` means a move is free. Glassgoat's current Scuba
+# table specifies no oxygen costs, so all five are available while the two
+# unported legacy kits retain their existing free basic/costly specials split.
 const BASE_MOVES := {
-	"Staff_Diver": [
-		{"name": "Heal", "power": 0, "effect": "heal", "amount": 5, "inventory": true, "oxygen_cost": 6.0, "hint": "Restores an ally's HP", "text": "You recover some health"},
-		{"name": "Swift Jab", "power": 1, "acc_mod": 6, "hint": "Fast, reliable", "text": "You jab it in a burst of speed"},
-		{"name": "Riptide Kick", "power": 7, "acc_mod": 2, "hint": "Balanced", "text": "You kick it on a current", "oxygen_cost": 10.0},
-		{"name": "Crashing Wave", "power": 12, "acc_mod": -2, "hint": "Heavy, riskier", "text": "You crash into it like a wave", "oxygen_cost": 16.0},
-	],
+	"Staff_Diver": CombatMoves.SCUBA,
 	"Prototype_1(1910)": [
 		{"name": "Precise Tap", "power": 1, "acc_mod": 9, "hint": "Nearly unmissable, light", "text": "You land a precise tap"},
 		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers its defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
@@ -447,6 +430,7 @@ func _build_ui() -> void:
 		entry["hp_bar"] = b[0]
 		entry["hp_label"] = b[1]
 		entry["barrier_bar"] = b[2]
+		entry["status_label"] = b[3]
 
 	var enemy_row := HBoxContainer.new()
 	enemy_row.add_theme_constant_override("separation", 24)
@@ -456,6 +440,7 @@ func _build_ui() -> void:
 		entry["hp_bar"] = b[0]
 		entry["hp_label"] = b[1]
 		entry["barrier_bar"] = b[2]
+		entry["status_label"] = b[3]
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
@@ -685,7 +670,11 @@ func _add_bar(parent: Control, label_text: String) -> Array:
 
 	var hp_label := Label.new()
 	wrap.add_child(hp_label)
-	return [bar, hp_label, barrier_bar]
+	var status_label := Label.new()
+	status_label.add_theme_font_size_override("font_size", 12)
+	status_label.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
+	wrap.add_child(status_label)
+	return [bar, hp_label, barrier_bar, status_label]
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -703,6 +692,13 @@ func _refresh_bar(entry: Dictionary) -> void:
 	if String(entry.kind) == "party":
 		txt += "   Lv %d" % s.level
 	(entry.hp_label as Label).text = txt
+	var status_text := s.status_summary()
+	if String(entry.kind) == "party":
+		status_text = "EVA %d/%d%s" % [
+			s.evasion_current, s.effective_evasion(),
+			"   " + status_text if status_text != "" else "",
+		]
+	(entry.status_label as Label).text = status_text
 	_refresh_barrier_bar(entry.barrier_bar, s)
 
 # Hidden entirely for a combatant with no barrier at all, rather than
@@ -717,6 +713,66 @@ func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
 func _log(text: String) -> void:
 	log_label.text = text
 
+# A combat result belongs on the combatant it happened to, not only in the
+# fast-moving sentence at the bottom of the screen. Label3D keeps the proof
+# next to the model inside Battle's isolated viewport.
+func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	var text := ""
+	var color := Color(1.0, 0.45, 0.35)
+	var result_kind := String(result.get("debuff", ""))
+	if result_kind == "heal" or result_kind == "revive":
+		text = "+%d HP" % int(result.get("changed", 0))
+		color = Color(0.35, 1.0, 0.5)
+	elif result_kind == "barrier":
+		text = "+%d BARRIER" % int(result.get("changed", 0))
+		color = Color(0.7, 0.85, 1.0)
+	elif result_kind != "":
+		text = "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))]
+		color = Color(1.0, 0.82, 0.3)
+	elif not bool(result.get("hit", false)) or bool(result.get("dodged", false)):
+		text = "DODGE"
+		color = Color(0.35, 0.9, 1.0)
+	elif int(result.get("damage", 0)) > 0:
+		text = "-%d" % int(result.damage)
+	elif int(result.get("absorbed", 0)) > 0 or (result.get("effects", []) as Array).is_empty():
+		text = "ABSORBED"
+		color = Color(0.8, 0.85, 0.9)
+	var effects := result.get("effects", []) as Array
+	if not effects.is_empty():
+		text += ("\n" if text != "" else "") + "\n".join(effects)
+		color = Color(1.0, 0.82, 0.3) if int(result.get("damage", 0)) == 0 else color
+	if text == "":
+		return
+	_show_floating_text(entry, text, color)
+
+func _show_floating_text(entry: Dictionary, text: String, color: Color) -> void:
+	var actor := entry.actor as Node3D
+	var label := Label3D.new()
+	label.text = text
+	label.modulate = color
+	label.font_size = 42
+	label.outline_size = 10
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.position = actor.position + Vector3(0.0, float(actor.get("height")) + 0.35, 0.0)
+	_stage_vp.add_child(label)
+	var tween := label.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y + 0.65, 1.1)
+	tween.tween_property(label, "modulate:a", 0.0, 1.1)
+	tween.set_parallel(false)
+	tween.tween_callback(label.queue_free)
+
+func _finish_actor_turn(entry: Dictionary) -> void:
+	var tick := (entry.stats as CombatantStats).end_turn()
+	var bleed_damage := int(tick.get("bleed_damage", 0))
+	if bleed_damage > 0:
+		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2))
+		_log("%s  •  %s bleeds for %d." % [log_label.text, String(entry.display_name), bleed_damage])
+	_refresh_bar(entry)
+
 func _living(list: Array) -> Array:
 	return list.filter(func(e: Dictionary) -> bool: return (e.stats as CombatantStats).hp > 0)
 
@@ -725,7 +781,7 @@ func _living(list: Array) -> Array:
 # can shuffle relative to each other; nothing here depends on tie order
 # staying fixed.
 func _by_agility(a: Dictionary, b: Dictionary) -> bool:
-	return (a.stats as CombatantStats).agility > (b.stats as CombatantStats).agility
+	return (a.stats as CombatantStats).effective_agility() > (b.stats as CombatantStats).effective_agility()
 
 # Called whenever the queue empties (a full round has acted) - gathers
 # every still-living combatant fresh and sorts by their CURRENT agility,
@@ -865,6 +921,8 @@ func _advance_turn() -> void:
 		_start_party_turn(_acting)
 
 func _start_party_turn(actor: Dictionary) -> void:
+	(actor.stats as CombatantStats).begin_turn()
+	_refresh_bar(actor)
 	_busy = false
 	move_menu.visible = false
 	item_menu.visible = false
@@ -1014,6 +1072,7 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 		world.inventory.erase(item_id)
 	_refresh_bar(target)
 	_log(msg if msg != "" else "%s - nothing happened." % display)
+	_finish_actor_turn(_acting)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
@@ -1062,9 +1121,25 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		call_deferred("_fit_panel_height")
 		return
 	_pending_move = mv
-	_populate_target_menu(targets)
+	if String(mv.get("target", "one_enemy")) == "all_enemies":
+		_populate_all_target_menu(targets)
+	else:
+		_populate_target_menu(targets)
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
+
+func _populate_all_target_menu(targets: Array) -> void:
+	for b in target_buttons:
+		(b as Button).queue_free()
+	target_buttons.clear()
+	var names: Array[String] = []
+	for target in targets:
+		names.append(String(target.display_name))
+	var button := _menu_button("All enemies", ", ".join(names))
+	button.pressed.connect(_on_all_targets_chosen.bind(targets))
+	target_menu.add_child(button)
+	target_buttons.append(button)
+	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
 
 func _populate_target_menu(targets: Array) -> void:
 	for b in target_buttons:
@@ -1072,7 +1147,10 @@ func _populate_target_menu(targets: Array) -> void:
 	target_buttons.clear()
 	for t in targets:
 		var s := t.stats as CombatantStats
-		var b := _menu_button(String(t.display_name), "%d / %d HP" % [s.hp, s.hp_max])
+		var b := _menu_button(String(t.display_name), "HP %d/%d  DEF %d  EVA %d/%d  ACC %d" % [
+			s.hp, s.hp_max, s.effective_defense(), s.evasion_current,
+			s.effective_evasion(), s.effective_accuracy(),
+		])
 		b.pressed.connect(_on_target_chosen.bind(t))
 		target_menu.add_child(b)
 		target_buttons.append(b)
@@ -1094,6 +1172,12 @@ func _on_target_chosen(target: Dictionary) -> void:
 		_resolve_item(item_id, target)
 		return
 	_resolve_party_move(_pending_move, target)
+
+func _on_all_targets_chosen(targets: Array) -> void:
+	target_menu.visible = false
+	var move := _pending_move
+	_pending_move = {}
+	_resolve_party_move_all(move, targets)
 
 # No cost has actually been spent yet at this point - _on_move_chosen()/
 # _on_item_chosen() only check whether the move's affordable/the item
@@ -1134,9 +1218,12 @@ func _show_moves_or_items_from_target_menu() -> void:
 #     _apply_barrier() below), so once it's spent it stays spent until the
 #     next level-up or barrier spell.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
-	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
-	if effective_accuracy <= defender.evasion:
-		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false}
+	if move.has("formula"):
+		return CombatRules.resolve(attacker, defender, move)
+	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
+	if effective_accuracy <= defender.evasion_current:
+		var spent := defender.spend_evasion(effective_accuracy)
+		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": spent, "effects": []}
 
 	var debuff: String = String(move.get("debuff", ""))
 	if debuff != "":
@@ -1169,16 +1256,17 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 # mutation and mitigation here prevents a test-only copy of the combat math
 # drifting away from what players receive.
 static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, variance: float, heavy_fraction: float = 0.0, dodged: bool = false) -> Dictionary:
-	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
-	if effective_accuracy <= defender.evasion:
-		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false}
+	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
+	if effective_accuracy <= defender.evasion_current:
+		var spent := defender.spend_evasion(effective_accuracy)
+		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": spent, "effects": []}
 
 	var raw: float
 	if String(move.get("effect", "")) == "heavy":
 		raw = float(defender.hp_max) * heavy_fraction
 	else:
 		raw = (float(move.power) + float(attacker.strength)) * variance
-	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+	var incoming: int = maxi(0, int(round(raw)) - defender.effective_defense())
 	if dodged:
 		incoming = 0
 
@@ -1188,7 +1276,7 @@ static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats
 		defender.barrier -= absorbed
 	var to_hp: int = incoming - absorbed
 	defender.hp = maxi(0, defender.hp - to_hp)
-	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged}
+	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged, "evasion_spent": 0, "effects": []}
 
 # Dispatches on the move's "effect" key before falling through to the
 # normal attack/debuff resolution above. "barrier" (defense-branch spells)
@@ -1303,6 +1391,9 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 		_log("%s for %d (%d soaked by barrier)." % [text, int(r.damage), int(r.absorbed)])
 	else:
 		_log("%s for %d." % [text, int(r.damage)])
+	var effects := r.get("effects", []) as Array
+	if not effects.is_empty():
+		_log("%s  •  %s" % [log_label.text, ", ".join(effects)])
 
 # Swing first, resolve at the moment of impact. Returns once the hit is
 # supposed to land, leaving the rest of the clip to play out underneath the
@@ -1344,7 +1435,9 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	await _swing(_acting, mv)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
 	_react(target, r)
-	if r.hit and String(r.debuff) == "agility":
+	_show_combat_feedback(target, r)
+	var applied_effects := r.get("effects", []) as Array
+	if r.hit and (String(r.debuff) == "agility" or applied_effects.any(func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))):
 		_resort_pending()
 	_refresh_bar(target)
 	_refresh_bar(_acting)
@@ -1362,9 +1455,47 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 		(target.actor as Goblin).play_death_fade()
 	elif r.hit and String(r.debuff) == "" and target.has("actor") and target.actor is Goblin:
 		(target.actor as Goblin).play("walk")
+	_finish_actor_turn(_acting)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not target_died and target.has("actor") and is_instance_valid(target.actor) and target.actor is Goblin:
 		(target.actor as Goblin).play("idle")
+	_advance_turn()
+
+func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
+	if targets.is_empty():
+		_advance_turn()
+		return
+	_busy = true
+	_set_all_buttons(false)
+	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
+	await _swing(_acting, mv)
+	var summaries: Array[String] = []
+	var first := true
+	var changed_agility := false
+	for target in targets:
+		if (target.stats as CombatantStats).hp <= 0:
+			continue
+		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
+		first = false
+		changed_agility = changed_agility or (result.get("effects", []) as Array).any(
+			func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))
+		_react(target, result)
+		_show_combat_feedback(target, result)
+		_refresh_bar(target)
+		if not result.hit:
+			summaries.append("%s dodges" % String(target.display_name))
+		elif int(result.damage) > 0:
+			summaries.append("%s -%d" % [String(target.display_name), int(result.damage)])
+		else:
+			summaries.append("%s affected" % String(target.display_name))
+		if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Goblin:
+			(target.actor as Goblin).play_death_fade()
+	if changed_agility:
+		_resort_pending()
+	_log("%s: %s." % [String(mv.get("name", "Move")), "; ".join(summaries)])
+	_refresh_bar(_acting)
+	_finish_actor_turn(_acting)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
 # Weighted random rather than always-lowest-HP - a party member missing
@@ -1392,6 +1523,8 @@ func _pick_enemy_target(alive_party: Array) -> Dictionary:
 	return alive_party[alive_party.size() - 1]
 
 func _do_enemy_turn(actor: Dictionary) -> void:
+	(actor.stats as CombatantStats).begin_turn()
+	_refresh_bar(actor)
 	_set_all_buttons(false)
 	main_menu.visible = false
 	move_menu.visible = false
@@ -1415,6 +1548,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
 	_refresh_bar(target)
 	_react(target, r)
+	_show_combat_feedback(target, r)
 	var verb := ("%s winds up and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s claws at %s" % [String(actor.display_name), String(target.display_name)])
 	if bool(r.get("dodged", false)):
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
@@ -1428,6 +1562,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		_log("%s for %d." % [verb, int(r.damage)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
+	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
@@ -1490,6 +1625,7 @@ func _on_run() -> void:
 		var attacker: Dictionary = living_enemies[randi_range(0, living_enemies.size() - 1)]
 		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, ENEMY_MOVE)
 		_refresh_bar(_acting)
+		_show_combat_feedback(_acting, r)
 		if bool(r.get("dodged", false)):
 			_log("%s lunges - you time it perfectly and dodge clear!" % String(attacker.display_name))
 		elif not r.hit:
@@ -1501,6 +1637,7 @@ func _on_run() -> void:
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
 			(_acting.actor as Diver).play_death_fade()
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_finish_actor_turn(_acting)
 	_advance_turn()
 
 func _set_all_buttons(enabled: bool) -> void:

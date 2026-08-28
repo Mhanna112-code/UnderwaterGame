@@ -100,11 +100,12 @@ const MOTIONS := {
 # plays, so a spell added tomorrow animates on the day it is added instead of
 # standing still until somebody remembers this file.
 const ABILITY_CLIPS := {
-	# Staff_Diver, five swings available, four used.
-	"Swift Jab": "Scuba_(Attack)Stab1",
-	"Riptide Kick": "Scuba_(Attack)Axe_Kick1",
-	"Crashing Wave": "Scuba_(Attack)Eletric1",
-	"Heal": "Scuba_(Attack)Flash1",
+	# Staff_Diver / Scuba: Group_StatsV2's authored kit.
+	"Electric Touch": "Scuba_(Attack)Eletric1",
+	"Scuba Stabbing": "Scuba_(Attack)Stab1",
+	"Flash Blast": "Scuba_(Attack)Flash1",
+	"Multiple Knee Combo": "Scuba_(Attack)Double_Knee1",
+	"Axe Kick": "Scuba_(Attack)Axe_Kick1",
 	# Prototype_1(1910)
 	"Precise Tap": "Proto1_(Attack)Palm_Strike",
 	"Weaken": "Proto1_(Attack)DualPalm",

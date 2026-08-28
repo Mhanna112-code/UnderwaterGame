@@ -31,6 +31,8 @@ run() {
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
 run "animations: does every rig change state correctly" "$GODOT" --headless --path . --script verify/animations.gd
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
+run "Glassgoat combat: do the authored V2 rules hold" "$GODOT" --headless --path . --script verify/glassgoat_combat.gd
+run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "balance: do careless and greedy policies land in band" "$GODOT" --headless --path . --script verify/balance.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd

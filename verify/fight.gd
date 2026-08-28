@@ -53,6 +53,11 @@ var backing := ""
 
 
 func _initialize() -> void:
+	# This is an interaction/animation gate, not the balance simulation (that
+	# is verify/balance.gd across 120 fixed seeds). Fix the RNG so this gate
+	# always exercises the same fight instead of occasionally rolling three
+	# enemies that down a party member before their animation can run.
+	seed(1)
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
 	root.add_child(world)
 	started_ms = Time.get_ticks_msec()
