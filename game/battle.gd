@@ -1507,6 +1507,9 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	if special_encounter and String(target.get("ability_id", "")) == "shockwave":
 		await _do_rock_dodge_encounter(actor, target, target_stats)
 		return
+	elif special_encounter and String(target.get("ability_id", "")) == "sonar":
+		await _do_swap_minigame(actor, target, target_stats)
+		return
 
 	# "Lined up" means the target's already low enough that a heavy swing's
 	# own damage range (see ENEMY_HEAVY_MOVE's heavy_max, a fraction of
@@ -1576,6 +1579,8 @@ func _restore_default_camera() -> void:
 # don't really lose here" promise is handled entirely on World's side
 # (see _on_battle_finished()'s special_encounter branch), not by this
 # function pretending 0 HP can't happen.
+var total_taken := 0
+
 func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stats: CombatantStats) -> void:
 	_log("%s hurls a barrage of rocks at %s!" % [String(actor.display_name), String(target.display_name)])
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -1600,7 +1605,6 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stat
 	# by _pick_enemy_target() before this function was even called) is
 	# what this should have been reading all along.
 	minigame.target_actor = target.actor
-	var total_taken := 0
 	minigame.rock_landed.connect(func() -> void:
 		# MODIFIED: no longer scaled by _enemy_power_mult() - an unbroken
 		# rock now always hits for the same base amount every round, round
@@ -1659,6 +1663,75 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stat
 	_special_round += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
+	
+func _do_swap_minigame(actor: Dictionary, target: Dictionary, target_stats: CombatantStats) -> void:
+	_log("%s sends portraits your way!" % [String(actor.display_name), String(target.display_name)])
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+
+	var minigame := DiverSwapMinigame.new()
+	add_child(minigame)
+	minigame.stage_root = _stage_vp
+
+	minigame.target_actor = target.actor
+	minigame.rock_landed.connect(func() -> void:
+		# MODIFIED: no longer scaled by _enemy_power_mult() - an unbroken
+		# rock now always hits for the same base amount every round, round
+		# after round. The escalation moved to the real follow-up swing
+		# right after the barrage instead (below) - see its own comment for
+		# why.
+		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.85, 1.15)
+		var incoming: int = maxi(0, int(round(raw)) - target_stats.defense)
+		target_stats.hp = maxi(0, target_stats.hp - incoming)
+		total_taken += incoming
+		_refresh_bar(target)
+		_show_damage_popup(incoming)
+	)
+	# MODIFIED: minigame.run() was never called - _spawn_loop() only ever
+	# starts from inside run(), so without this the minigame just sat on
+	# its title/hint text forever and `await minigame.finished` below
+	# would hang the whole battle indefinitely. Same fix applied to
+	# _do_blast_rocks_attack()'s BlastRocksMinigame below.
+	minigame.run()
+	var result: Array = await minigame.finished
+	minigame.queue_free()
+	_restore_default_camera()
+	var hits := int(result[0])
+	var total := int(result[1])
+
+	if total_taken <= 0:
+		_log("%s shatters every rock - not a scratch! (%d/%d)" % [String(target.display_name), hits, total])
+	else:
+		_log("%s couldn't break them all - takes %d total. (%d/%d)" % [String(target.display_name), total_taken, hits, total])
+	if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
+		(target.actor as Diver).play_death_fade()
+
+	# MODIFIED (added): the real follow-up - once the barrage itself is
+	# done, the goblin closes in with one genuine swing (same accuracy/
+	# evasion-checked _resolve_attack() a normal turn uses), its power
+	# scaled by _enemy_power_mult(). This is where round-over-round
+	# escalation lives now, not on the rocks themselves (see rock_landed
+	# above) - a barrage should stay a learnable, evadable pattern no
+	# matter how long the fight drags on; only this closing swing is
+	# supposed to get scarier the longer it goes.
+	if target_stats.hp > 0:
+		var mult := _enemy_power_mult()
+		var move_dict: Dictionary = ENEMY_MOVE.duplicate()
+		move_dict.power = float(move_dict.get("power", 0)) * mult
+		var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
+		_refresh_bar(target)
+		if bool(r.get("dodged", false)):
+			_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
+		elif not r.hit:
+			_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
+		else:
+			_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
+		if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
+			(target.actor as Diver).play_death_fade()
+
+	_special_round += 1
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_advance_turn()
+
 
 # A floating "-N" that rises and fades, spawned fresh per hit rather than
 # reused - each one is a one-shot throwaway, same VFX-node-per-event
