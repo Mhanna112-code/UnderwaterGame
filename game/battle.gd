@@ -118,6 +118,19 @@ const LOG_READ_DELAY := 1.6
 # like it connects.
 const IMPACT_FRACTION := 0.55
 
+# Overhead health bars.
+const OVERHEAD_BAR_WIDTH := 104
+# How far above a combatant's own head the bar floats, in metres.
+const OVERHEAD_LIFT := 0.45
+# World space set aside above each combatant for their own bar, so the
+# camera frames the bar and not just the body. Roughly the bar's height at
+# the distance these fights are fought at.
+const OVERHEAD_HEADROOM := 0.75
+# Bars are nudged upward in steps until they stop overlapping. Small enough
+# that a nudge is not obvious, large enough to clear a bar in a few passes.
+const OVERHEAD_NUDGE := 4.0
+const OVERHEAD_MAX_NUDGES := 40
+
 var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
 var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
 
@@ -164,6 +177,12 @@ var _stage_vp: SubViewport
 # height of the screen behind it. See _fit_panel_height().
 var _stage_container: SubViewportContainer
 var _stage_cam: Camera3D
+# Every combatant's health bar rides above their own head instead of sitting
+# in a list at the bottom of the screen. Marc's call, and the reason the
+# bottom strip is a strip now.
+var _overhead_layer: Control
+# The turn order, moved out of the bottom panel to the very top.
+var _queue_bar: PanelContainer
 
 # Same green downward cone world.gd's own active-diver cursor uses (see
 # World._active_cursor) - marks whichever DIVER's turn it currently is on
@@ -210,6 +229,106 @@ func _ready() -> void:
 	_rebuild_queue()
 	_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
 	_advance_turn()
+
+# Bars are projected every frame rather than parented to anything: the stage
+# camera reframes whenever the HUD changes height (see _frame_stage_camera),
+# and combatants move during their own attack animations.
+func _process(_dt: float) -> void:
+	_layout_overhead_bars()
+
+func _layout_overhead_bars() -> void:
+	if _overhead_layer == null or _stage_cam == null or _stage_container == null:
+		return
+
+	# Viewport pixels to screen pixels: the SubViewportContainer stretches,
+	# so a position from unproject_position() is in stage-viewport space and
+	# has to be scaled before it means anything on screen.
+	var vpz := Vector2(_stage_vp.size)
+	var scale_to_screen := Vector2(
+		_stage_container.size.x / maxf(1.0, vpz.x),
+		_stage_container.size.y / maxf(1.0, vpz.y))
+	# Bars are kept inside the stage band, in screen coordinates: never up
+	# behind the turn bar, never down over the buttons.
+	var top_limit: float = _stage_container.position.y + 2.0
+	var floor_y: float = _stage_container.position.y + _stage_container.size.y
+
+	# Nearest the camera first. When two bars collide the further one gets
+	# moved, which keeps the bar belonging to whoever is in front of you
+	# where you expect it, and it is exactly the overlap Marc predicted the
+	# moment this layout was proposed.
+	var wanted: Array = []
+	for entry in (party + enemies):
+		var box: Control = entry.get("overhead")
+		if box == null or not is_instance_valid(box):
+			continue
+		var actor: Node3D = entry.get("actor")
+		if actor == null or not is_instance_valid(actor):
+			box.visible = false
+			continue
+		var head: Vector3 = actor.global_position + Vector3(
+			0.0, float(actor.get("height")) + OVERHEAD_LIFT, 0.0)
+		# Behind the camera projects to a nonsense point in front of it.
+		if _stage_cam.is_position_behind(head):
+			box.visible = false
+			continue
+		# unproject_position() answers in stage-viewport space, and the stage
+		# does not start at the top of the screen any more: it sits between
+		# the turn bar and the bottom strip. Its own offset has to come back
+		# in or every bar lands one turn bar too high.
+		var at: Vector2 = _stage_cam.unproject_position(head) * scale_to_screen + _stage_container.position
+		wanted.append({
+			"box": box,
+			"at": at,
+			"depth": _stage_cam.global_position.distance_to(actor.global_position),
+		})
+	wanted.sort_custom(func(a, b): return float(a.depth) < float(b.depth))
+
+	var placed: Array = []
+	for w in wanted:
+		var box := w.box as Control
+		box.visible = true
+		var size: Vector2 = box.get_combined_minimum_size()
+		box.size = size
+		# Centred on the head, sitting above it.
+		var pos := Vector2((w.at as Vector2).x - size.x * 0.5, (w.at as Vector2).y - size.y)
+
+		# Search outward from where the bar wants to be, alternating up and
+		# down, and take the first clear spot. Pushing only upward was the
+		# obvious version and it walked bars most of the way up the screen
+		# away from the combatant they name, which defeats the point of
+		# putting them overhead at all. A fixed number of steps rather than
+		# a while loop, so a pathological pile-up costs a slightly wrong
+		# layout and not the frame.
+		var base_y := pos.y
+		var best_y := base_y
+		var best_overlap := INF
+		for step in range(OVERHEAD_MAX_NUDGES):
+			# 0, -4, +4, -8, +8, ... upward first, since a bar below a
+			# combatant reads worse than one above.
+			var rung: int = (step + 1) / 2
+			var offset: float = float(rung) * OVERHEAD_NUDGE * (-1.0 if step % 2 == 1 else 1.0)
+			var try_y: float = base_y + (0.0 if step == 0 else offset)
+			var rect := Rect2(Vector2(pos.x, try_y), size)
+			var overlap := 0.0
+			for placed_rect in placed:
+				var r := rect.intersection(placed_rect as Rect2)
+				overlap += r.size.x * r.size.y
+			if overlap < best_overlap:
+				best_overlap = overlap
+				best_y = try_y
+			if overlap <= 0.0:
+				break
+		# Keep the least-bad spot rather than wherever the search happened
+		# to stop. Six combatants can genuinely have nowhere clear to put a
+		# sixth bar, and a bar overlapping a little beats one parked at the
+		# end of the search range for no reason.
+		pos.y = best_y
+
+		pos.y = clampf(pos.y, top_limit, maxf(top_limit, floor_y - size.y))
+		pos.x = clampf(pos.x, 2.0, maxf(2.0, _overhead_layer.size.x - size.x - 2.0))
+
+		box.position = pos
+		placed.append(Rect2(pos, size))
 
 func _display(model_name: String) -> String:
 	return String(DISPLAY_NAMES.get(model_name, model_name))
@@ -314,7 +433,7 @@ func _build_stage() -> void:
 	for i in range(pn):
 		var actor := Diver.new()
 		actor.model_name = String(party[i].model_name)
-		actor.position = Vector3(_spread(i, pn, 2.1) - 0.4, 0.0, 1.0 - _spread(i, pn, 0.7))
+		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, 0.0, 1.0 - _spread(i, pn, 0.7))
 		vp.add_child(actor)
 		party[i]["actor"] = actor
 
@@ -331,7 +450,7 @@ func _build_stage() -> void:
 	var count := randi_range(MIN_ENEMIES, MAX_ENEMIES)
 	for i in range(count):
 		var g := Goblin.new()
-		g.position = Vector3(_spread(i, count, 1.7) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
+		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
 		g.rotation.y = PI
 		vp.add_child(g)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
@@ -379,7 +498,12 @@ func _frame_stage_camera() -> void:
 			h = (a as Goblin).height
 		for dx in [-0.7, 0.7]:
 			pts.append(a.global_position + Vector3(dx, 0.0, 0.0))
-			pts.append(a.global_position + Vector3(dx, h, 0.0))
+			# Not the top of the model: the top of the model plus the
+			# health bar riding above it. Framing the bodies alone put
+			# every head hard against the top edge and left the bars
+			# themselves off screen entirely, which is not a framing
+			# problem you can see until you look at where the bars went.
+			pts.append(a.global_position + Vector3(dx, h + OVERHEAD_LIFT + OVERHEAD_HEADROOM, 0.0))
 	if pts.is_empty():
 		return
 
@@ -496,6 +620,15 @@ func _spread(i: int, n: int, step: float) -> float:
 	return (float(i) - float(n - 1) * 0.5) * step
 
 func _build_ui() -> void:
+	# Health bars live over the combatants they belong to. Added before the
+	# bottom panel so the panel still wins where they meet: a bar for someone
+	# standing near the bottom of the stage gets clipped by the strip rather
+	# than floating on top of the buttons.
+	_overhead_layer = Control.new()
+	_overhead_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overhead_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_overhead_layer)
+
 	_bottom_panel = PanelContainer.new()
 	_bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 
@@ -527,29 +660,40 @@ func _build_ui() -> void:
 	col.add_theme_constant_override("separation", 8)
 	margin.add_child(col)
 
+	# Turn order across the very top, in its own bar rather than as the first
+	# row of the bottom panel. It is the one piece of state that is about the
+	# fight as a whole rather than about any one combatant, so it is the one
+	# piece that has nowhere on the stage to live.
+	_queue_bar = PanelContainer.new()
+	_queue_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	var qbg := StyleBoxFlat.new()
+	# Opaque, for the same reason the bottom strip is: the stage stops below
+	# this bar, so anything translucent here shows the paused overworld's own
+	# HUD through it, and the controls line bleeding through the turn order
+	# reads as a rendering fault.
+	qbg.bg_color = Color(0.05, 0.13, 0.17)
+	qbg.border_width_bottom = 2
+	qbg.border_color = Color(0.18, 0.34, 0.4)
+	_queue_bar.add_theme_stylebox_override("panel", qbg)
+	add_child(_queue_bar)
+
+	var qmargin := MarginContainer.new()
+	qmargin.add_theme_constant_override("margin_left", 16)
+	qmargin.add_theme_constant_override("margin_right", 16)
+	qmargin.add_theme_constant_override("margin_top", 6)
+	qmargin.add_theme_constant_override("margin_bottom", 6)
+	_queue_bar.add_child(qmargin)
+
 	queue_row = HBoxContainer.new()
 	queue_row.add_theme_constant_override("separation", 10)
-	col.add_child(queue_row)
+	qmargin.add_child(queue_row)
 
-	var party_row := HBoxContainer.new()
-	party_row.add_theme_constant_override("separation", 24)
-	col.add_child(party_row)
+	# Health, barrier and status now hang over each combatant's own head.
+	# See _build_overhead_bar() and _layout_overhead_bars().
 	for entry in party:
-		var b := _add_bar(party_row, String(entry.display_name))
-		entry["hp_bar"] = b[0]
-		entry["hp_label"] = b[1]
-		entry["barrier_bar"] = b[2]
-		entry["status_label"] = b[3]
-
-	var enemy_row := HBoxContainer.new()
-	enemy_row.add_theme_constant_override("separation", 24)
-	col.add_child(enemy_row)
+		_build_overhead_bar(entry)
 	for entry in enemies:
-		var b := _add_bar(enemy_row, String(entry.display_name))
-		entry["hp_bar"] = b[0]
-		entry["hp_label"] = b[1]
-		entry["barrier_bar"] = b[2]
-		entry["status_label"] = b[3]
+		_build_overhead_bar(entry)
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
@@ -626,6 +770,11 @@ func _fit_panel_height() -> void:
 	# visible immediately rather than three PRs later.
 	if _stage_container != null:
 		_stage_container.offset_bottom = _bottom_panel.offset_top
+		# And below the turn bar at the top, for the same reason: anything
+		# rendered under an opaque bar is rendered where nobody can see it.
+		# The stage is now strictly the band between the two.
+		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
+	_layout_overhead_bars()
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -751,46 +900,78 @@ func _unhandled_input(event: InputEvent) -> void:
 		_qte_active = false
 
 
-func _add_bar(parent: Control, label_text: String) -> Array:
-	var wrap := VBoxContainer.new()
-	parent.add_child(wrap)
-	var l := Label.new()
-	l.text = label_text
-	wrap.add_child(l)
+# One combatant's health, barrier and status, floating over their head.
+#
+# A Control laid out in screen space rather than a Label3D in the stage,
+# because these have to stay legible: a Label3D shrinks with distance, and
+# the grunts stand three metres further back than the party. The projection
+# happens every frame in _layout_overhead_bars().
+func _build_overhead_bar(entry: Dictionary) -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overhead_layer.add_child(box)
 
-	# HP bar and its barrier bar sit side by side, not stacked - "next to
-	# health," not overlapping it, so a full shield never hides how much HP
-	# is actually left underneath.
+	var name_label := Label.new()
+	name_label.text = String(entry.display_name)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	name_label.add_theme_constant_override("outline_size", 5)
+	box.add_child(name_label)
+
+	# HP and barrier side by side, not stacked, so a full shield never hides
+	# how much HP is actually left underneath.
 	var bar_row := HBoxContainer.new()
-	bar_row.add_theme_constant_override("separation", 6)
-	wrap.add_child(bar_row)
+	bar_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	bar_row.add_theme_constant_override("separation", 3)
+	box.add_child(bar_row)
 
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(160, 18)
+	bar.custom_minimum_size = Vector2(OVERHEAD_BAR_WIDTH, 10)
 	bar.show_percentage = false
 	var hp_fill := StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.78, 0.15, 0.15)
 	bar.add_theme_stylebox_override("fill", hp_fill)
+	var hp_track := StyleBoxFlat.new()
+	hp_track.bg_color = Color(0.03, 0.06, 0.08, 0.85)
+	hp_track.border_width_left = 1
+	hp_track.border_width_right = 1
+	hp_track.border_width_top = 1
+	hp_track.border_width_bottom = 1
+	hp_track.border_color = Color(0, 0, 0, 0.8)
+	bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(bar)
 
-	# Gray fill via a StyleBox override on just the "fill" slot, not
-	# modulate - modulate would also tint the empty track, not only the
-	# part that reads as "this much barrier is left."
 	var barrier_bar := ProgressBar.new()
-	barrier_bar.custom_minimum_size = Vector2(40, 18)
+	barrier_bar.custom_minimum_size = Vector2(26, 10)
 	barrier_bar.show_percentage = false
 	var barrier_fill := StyleBoxFlat.new()
 	barrier_fill.bg_color = Color(0.62, 0.64, 0.68)
 	barrier_bar.add_theme_stylebox_override("fill", barrier_fill)
+	barrier_bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(barrier_bar)
 
 	var hp_label := Label.new()
-	wrap.add_child(hp_label)
+	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_label.add_theme_font_size_override("font_size", 12)
+	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	hp_label.add_theme_constant_override("outline_size", 5)
+	box.add_child(hp_label)
+
 	var status_label := Label.new()
-	status_label.add_theme_font_size_override("font_size", 12)
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_label.add_theme_font_size_override("font_size", 11)
 	status_label.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
-	wrap.add_child(status_label)
-	return [bar, hp_label, barrier_bar, status_label]
+	status_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	status_label.add_theme_constant_override("outline_size", 5)
+	box.add_child(status_label)
+
+	entry["hp_bar"] = bar
+	entry["hp_label"] = hp_label
+	entry["barrier_bar"] = barrier_bar
+	entry["status_label"] = status_label
+	entry["overhead"] = box
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -815,6 +996,7 @@ func _refresh_bar(entry: Dictionary) -> void:
 			"   " + status_text if status_text != "" else "",
 		]
 	(entry.status_label as Label).text = status_text
+	(entry.status_label as Label).visible = status_text != ""
 	_refresh_barrier_bar(entry.barrier_bar, s)
 
 # Hidden entirely for a combatant with no barrier at all, rather than

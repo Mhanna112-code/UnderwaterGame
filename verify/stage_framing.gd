@@ -28,6 +28,9 @@ const FIGHTS := 8
 # _fit_panel_height() is deferred, and the stage only takes its final height
 # once it has run. Measuring before that measures a zero-height stage.
 const SETTLE_FRAMES := 20
+# How far a bar may end up above the head it belongs to. Some gap is the
+# point; enough of one and you can no longer tell whose bar it is.
+const MAX_BAR_DRIFT := 90.0
 
 var world: Node3D
 var frames := 0
@@ -75,11 +78,17 @@ func _check(b: Battle) -> void:
 	print("fight %d: %d party vs %d enemies, stage %.0fpx of %.0f, HUD %.0fpx" % [
 		runs, b.party.size(), b.enemies.size(), stage.size.y, screen.y, panel.size.y])
 
-	# The stage has to stop where the HUD starts. If it runs underneath, the
-	# fight is being drawn somewhere nobody can see it.
-	if absf(stage.size.y - panel.global_position.y) > 1.0:
-		findings.append("STAGE UNDER THE HUD: stage is %.0fpx tall, the HUD starts at y=%.0f" % [
-			stage.size.y, panel.global_position.y])
+	# The stage is the band between the two bars. If it runs under either,
+	# the fight is being drawn somewhere nobody can see it. Checked on the
+	# stage's bottom edge in screen coordinates rather than on its height,
+	# because it no longer starts at the top of the screen.
+	if absf(stage.position.y + stage.size.y - panel.global_position.y) > 1.0:
+		findings.append("STAGE UNDER THE BOTTOM STRIP: stage ends at y=%.0f, the strip starts at y=%.0f" % [
+			stage.position.y + stage.size.y, panel.global_position.y])
+	var queue_bottom: float = b._queue_bar.position.y + b._queue_bar.size.y
+	if stage.position.y + 0.5 < queue_bottom:
+		findings.append("STAGE UNDER THE TURN BAR: stage starts at y=%.0f, the turn bar ends at y=%.0f" % [
+			stage.position.y, queue_bottom])
 
 	# And the HUD has to be opaque, or the stage shows through it.
 	var sb := panel.get_theme_stylebox("panel")
@@ -87,9 +96,12 @@ func _check(b: Battle) -> void:
 	if alpha < 0.99:
 		findings.append("SEE THROUGH HUD: the panel background is %.2f alpha, the fight shows through it" % alpha)
 
-	# Viewport pixels to screen pixels: the SubViewportContainer stretches.
+	# Viewport pixels to screen pixels: the SubViewportContainer stretches,
+	# and the stage no longer starts at the top of the screen.
 	var vpz := Vector2(b._stage_vp.size)
 	var sc := Vector2(stage.size.x / maxf(1.0, vpz.x), stage.size.y / maxf(1.0, vpz.y))
+	var top: float = stage.position.y
+	var bottom: float = stage.position.y + stage.size.y
 
 	for e in (b.party + b.enemies):
 		if not e.has("actor") or not is_instance_valid(e.actor):
@@ -100,11 +112,46 @@ func _check(b: Battle) -> void:
 			h = (a as Diver).height
 		elif a is Goblin:
 			h = (a as Goblin).height
-		var head: Vector2 = b._stage_cam.unproject_position(a.global_position + Vector3(0, h, 0)) * sc
-		var foot: Vector2 = b._stage_cam.unproject_position(a.global_position) * sc
-		if head.y < 0.0 or foot.y > stage.size.y or head.x < 0.0 or head.x > stage.size.x:
-			findings.append("OUT OF FRAME: %s, head at (%.0f, %.0f) and feet at (%.0f, %.0f) in a %.0fx%.0f stage" % [
-				String(e.display_name), head.x, head.y, foot.x, foot.y, stage.size.x, stage.size.y])
+		var head: Vector2 = b._stage_cam.unproject_position(a.global_position + Vector3(0, h, 0)) * sc + stage.position
+		var foot: Vector2 = b._stage_cam.unproject_position(a.global_position) * sc + stage.position
+		if head.y < top or foot.y > bottom or head.x < 0.0 or head.x > stage.size.x:
+			findings.append("OUT OF FRAME: %s, head at (%.0f, %.0f) and feet at (%.0f, %.0f), stage runs y=%.0f to %.0f" % [
+				String(e.display_name), head.x, head.y, foot.x, foot.y, top, bottom])
+
+	# The bars belong to the combatants, so they have to be on screen, and
+	# they have to stay near the combatant they name. Marc predicted the
+	# overlap the moment this layout was proposed; the nudging that stops
+	# bars stacking is also what can walk one halfway up the screen away
+	# from its owner, so both are measured.
+	var boxes: Array = []
+	for e in (b.party + b.enemies):
+		var box: Control = e.get("overhead")
+		if box == null or not is_instance_valid(box) or not box.visible:
+			continue
+		var r := Rect2(box.position, box.size)
+		if r.position.y < top - 0.5 or r.end.y > bottom + 0.5 or r.position.x < -0.5 or r.end.x > screen.x + 0.5:
+			findings.append("BAR OFF SCREEN: %s's bar at %s size %s, stage runs y=%.0f to %.0f" % [
+				String(e.display_name), r.position, r.size, top, bottom])
+		for other in boxes:
+			if r.intersects((other[1] as Rect2)):
+				findings.append("BARS OVERLAP: %s and %s" % [String(e.display_name), String(other[0])])
+		boxes.append([String(e.display_name), r])
+
+		# How far the bar had to travel from where its owner's head is.
+		if not e.has("actor") or not is_instance_valid(e.actor):
+			continue
+		var a2 := e.actor as Node3D
+		var h2 := 1.9
+		if a2 is Diver:
+			h2 = (a2 as Diver).height
+		elif a2 is Goblin:
+			h2 = (a2 as Goblin).height
+		var head2: Vector2 = b._stage_cam.unproject_position(
+			a2.global_position + Vector3(0, h2, 0)) * sc + stage.position
+		var drift: float = head2.y - r.end.y
+		if drift > MAX_BAR_DRIFT:
+			findings.append("BAR ADRIFT: %s's bar sits %.0fpx above their head, over the %.0fpx budget" % [
+				String(e.display_name), drift, MAX_BAR_DRIFT])
 
 func _report() -> bool:
 	for f in findings:
