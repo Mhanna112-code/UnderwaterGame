@@ -42,14 +42,14 @@ const ALL := [
 		# what you are swimming into
 		"id": "shallows", "kind": "combat",
 		"at": Vector3(-24.0, 2.6, -12.0), "radius": 9.5,
-		"item": "current_pearl",
+		"item": "current_pearl", "look": "urchin",
 		"links": ["trench"],
 	},
 	{
 		# further out and darker
 		"id": "trench", "kind": "combat",
 		"at": Vector3(12.0, 2.6, -42.0), "radius": 10.0,
-		"item": "reef_plate",
+		"item": "reef_plate", "look": "salvage",
 		"links": [],
 	},
 ]
@@ -66,11 +66,18 @@ static func start() -> Dictionary:
 # Which item is guarded here, for the combat sites. One list, so the site,
 # the guardian standing on its plinth, sonar and the minimap cannot disagree
 # about where a thing is. See ItemGuardian.spots().
+# "look" is what is actually standing on the plinth. Two sites with the
+# same thing on them is two of the same fetch quest wearing one coat of
+# paint, which is exactly how it read in the build: verify/sites.gd fails
+# if any two guarded sites share a look.
 static func guarded() -> Array:
 	var out: Array = []
 	for s in ALL:
 		if String(s.get("item", "")) != "":
-			out.append({"item": String(s.item), "at": s.at as Vector3, "site": String(s.id)})
+			out.append({
+				"item": String(s.item), "at": s.at as Vector3,
+				"site": String(s.id), "look": String(s.get("look", "urchin")),
+			})
 	return out
 
 # Every beacon on the map: one chain per link, laid between the two sites and

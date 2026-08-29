@@ -49,6 +49,17 @@ func _check_graph() -> void:
 				findings.append("SITES OVERLAP: '%s' and '%s' are %.1f m apart and need %.1f" % [
 					String(a.id), String(b.id), gap, need])
 
+	# Two guarded sites showing the same object is one fetch quest done
+	# twice. Reported as "we just have 2 of the same in the build", and it
+	# is not something a screenshot of either one on its own would show.
+	var looks: Dictionary = {}
+	for g in Sites.guarded():
+		var look := String(g.look)
+		if looks.has(look):
+			findings.append("SAME AGAIN: '%s' and '%s' both present a '%s', so the two places look like the same errand" % [
+				String(looks[look]), String(g.site), look])
+		looks[look] = String(g.site)
+
 	for r in Sites.routes():
 		var bs: Array = r.beacons
 		if bs.size() < 2:

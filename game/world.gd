@@ -753,9 +753,11 @@ func _build_item_guardians() -> void:
 			continue
 		var guardian := ItemGuardian.new()
 		guardian.item_id = String(entry.item)
+		guardian.look = String(entry.get("look", "urchin"))
 		guardian.position = (entry.at as Vector3)
-		# clear of the plinth top rather than inside it
-		guardian.position.y = PLINTH_TOP + 0.9
+		# clear of the plinth top rather than inside it, by however much
+		# this particular thing needs to balance on it
+		guardian.position.y = PLINTH_TOP + float(ItemGuardian.LIFT.get(guardian.look, 0.9))
 		add_child(guardian)
 
 		# Decorative only - a real Goblin standing beside the plinth so

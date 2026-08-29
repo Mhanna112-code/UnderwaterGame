@@ -14,7 +14,7 @@
 #   face    close in front of the active diver
 #   side    close beside the active diver
 #   battle  start an encounter and shoot the fight screen
-#   guardian  look at the first item guardian, the one landmark to swim to
+#   guardian  walk up to a guarded site; the rise argument picks which
 #
 # rise is optional too: 1 climbs while swimming, -1 dives.
 extends SceneTree
@@ -51,7 +51,10 @@ func _process(_d: float) -> bool:
 		# the one landmark in the dive site worth swimming to and the
 		# hardest thing to check without opening the editor.
 		if mode == "guardian":
-			var spot: Vector3 = ItemGuardian.spots()[0].at as Vector3
+			# The fourth argument picks which guarded site to walk up to,
+			# since they no longer present the same thing.
+			var which: int = clampi(int(rise), 0, ItemGuardian.spots().size() - 1)
+			var spot: Vector3 = ItemGuardian.spots()[which].at as Vector3
 			# Stand off along the line back to the party's start, so the
 			# shot is the view a player gets on the approach, and face the
 			# guardian. world.gd's forward is -(sin(yaw), 0, cos(yaw)),
