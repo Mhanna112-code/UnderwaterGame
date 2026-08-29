@@ -134,8 +134,8 @@ var distance_since_encounter: float = 0.0
 
 # The game will check for an encounter after a random amount
 # of distance between these two values.
-@export var min_encounter_distance: float = 20.0
-@export var max_encounter_distance: float = 40.0
+@export var min_encounter_distance: float = 18.0
+@export var max_encounter_distance: float = 36.0
 
 # Chance of actually triggering an encounter when the distance
 # threshold is reached.
@@ -143,7 +143,17 @@ var distance_since_encounter: float = 0.0
 # 0.25 = 25%
 # 0.50 = 50%
 # 1.00 = 100%
-@export_range(0.0, 1.0) var encounter_chance: float = 0.25
+# Marc, after a session on the build: "may need to turn up the encounter
+# rate just a tad, sometimes im having to do a lot of swimming for little
+# return."
+#
+# A tad, measured rather than eyeballed. A check happens every
+# min..max_encounter_distance metres and passes with this probability, so
+# the mean swim between fights is mean_distance / chance. It was 30 / 0.25,
+# which is 120 m. It is now 27 / 0.32, which is 84 m: 30% more often, not
+# double. verify/encounters.gd prints the number so the next change to it
+# is an argument about a figure rather than about a feeling.
+@export_range(0.0, 1.0) var encounter_chance: float = 0.32
 
 # The randomly selected distance at which the next encounter
 # check will happen.

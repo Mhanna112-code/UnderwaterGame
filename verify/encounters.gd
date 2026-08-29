@@ -37,6 +37,7 @@ func _process(_d: float) -> bool:
 		world.title_screen.new_game_chosen.emit(1)
 		return false
 	if frames == 2:
+		_report_encounter_rate()
 		_check_spawned()
 		_check_spots_are_reachable()
 		# Ordinary encounters first: open water, and then standing right on
@@ -60,6 +61,21 @@ func _process(_d: float) -> bool:
 	return false
 
 # The bug that started all of this: the spawner ran and built nothing.
+# How far you swim between fights, as a number.
+#
+# Marc: "may need to turn up the encounter rate just a tad, sometimes im
+# having to do a lot of swimming for little return." A check happens every
+# min..max_encounter_distance metres and passes with encounter_chance, so
+# the mean swim between fights is the mean of that range divided by the
+# chance. Printed rather than asserted: the right value is a judgement, and
+# what was missing was not a rule but a figure to argue about.
+func _report_encounter_rate() -> void:
+	var d: Diver = world.divers[world.active]
+	var mean_check: float = (d.min_encounter_distance + d.max_encounter_distance) * 0.5
+	var between: float = mean_check / maxf(0.01, d.encounter_chance)
+	print("encounter rate: a check every %.0f m on average, %.0f%% of them bite, so a fight every %.0f m" % [
+		mean_check, d.encounter_chance * 100.0, between])
+
 func _check_spawned() -> void:
 	var guardians: Array = []
 	var decoys := 0

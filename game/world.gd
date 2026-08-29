@@ -65,6 +65,8 @@ var _showing_save_prompt := false
 # _build_dive_sites(); site_nodes is keyed by site id, routes carries the
 # Beacon chains so _light_route() can recolour them.
 var site_nodes: Dictionary = {}
+# Sites the party has swum into. Drives the beacons; see _light_route().
+var visited_sites: Array[String] = []
 var routes: Array = []
 
 const SiteScript := preload("res://game/site.gd")
@@ -771,31 +773,43 @@ func _build_item_guardians() -> void:
 
 		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
 
-# The route to the next place with something still on it is the lit one.
-# Everything already claimed goes green, everything past it stays dim, so at
-# any moment exactly one line of lights is telling you where to go.
+# The beacons mark routes. They do not mark loot.
+#
+# Marc's ruling, on the build where they did: "no i dont want the items
+# shown, thats the whole point of consuming oxygen to use the sonar ability
+# and having to find items yourself in the map."
+#
+# He is right and it was the version I built. The lit trail ran to whichever
+# site still had an unclaimed key item, so amber meant "the thing is down
+# here" and following it made sonar pointless: why spend oxygen on a search
+# the map is already doing for you.
+#
+# What is left is what a trail of old dive markers would honestly be. Every
+# route is lit dim, which says a way exists without saying what is at the
+# end of it, and a route goes green once you have actually been to the place
+# it leads to, which is a record of where you have already looked rather
+# than a hint about where you have not. Nothing is ever amber for an item.
+# Where the items are is sonar's job, and sonar costs oxygen.
 func _light_route() -> void:
-	var target := ""
-	for d in Sites.ALL:
-		if String(d.get("item", "")) != "" and not key_items.has(String(d.item)):
-			target = String(d.id)
-			break
 	for r in routes:
-		var st: int = Beacon.State.IDLE
-		if String(r.to) == target:
-			st = Beacon.State.ONWARD
-		elif _site_done(String(r.to)):
-			st = Beacon.State.DONE
+		var st: int = Beacon.State.DONE if visited_sites.has(String(r.to)) else Beacon.State.IDLE
 		for b in r.beacons:
 			(b as Beacon).set_state(st)
 	for id in site_nodes.keys():
-		(site_nodes[id] as Site).set_cleared(_site_done(String(id)))
+		(site_nodes[id] as Site).set_cleared(visited_sites.has(String(id)))
 
-func _site_done(site_id: String) -> bool:
-	var d: Dictionary = Sites.by_id(site_id)
-	if d.is_empty() or String(d.get("item", "")) == "":
-		return true
-	return key_items.has(String(d.item))
+# Somewhere the party has actually swum to, which is the only thing the
+# beacons are allowed to know.
+func _note_site_visits() -> void:
+	var p: Vector3 = divers[active].global_position
+	for d in Sites.ALL:
+		var id := String(d.id)
+		if visited_sites.has(id):
+			continue
+		var at: Vector3 = d.at as Vector3
+		if Vector2(p.x - at.x, p.z - at.z).length() <= float(d.radius):
+			visited_sites.append(id)
+			_light_route()
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1251,6 +1265,7 @@ func _physics_process(dt: float) -> void:
 	_update_active_cursor()
 	_update_banner(dt)
 	_update_save_point_prompt()
+	_note_site_visits()
 	_check_gap_puzzle()
 
 func _player_dir() -> Vector3:
@@ -1501,11 +1516,6 @@ func _grant_reward_item(item_id: String) -> void:
 			key_items.append(item_id)
 		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 		_announce("Victory - you claim the key item %s!" % display)
-		# That site is done, so its lamp goes green and the trail moves on
-		# to whatever is still out there. This is the only feedback the map
-		# gives about progress, and it is the reason the beacons are a
-		# state rather than decoration.
-		_light_route()
 	else:
 		_add_to_inventory(item_id)
 

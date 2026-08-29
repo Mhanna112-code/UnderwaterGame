@@ -18,6 +18,10 @@ extends SceneTree
 # How close counts as arrived at a beacon, and how long the walk may take.
 const REACHED := 3.2
 const MAX_FRAMES := 6000
+# How far a diver has to start from anything a site plants in the ground.
+# Wide enough to clear the models, which are up to 2.7 m tall and about a
+# metre across at the shoulders.
+const SPAWN_CLEARANCE := 2.5
 
 var world: Node3D
 var findings: Array = []
@@ -112,6 +116,50 @@ func _clear(space: PhysicsDirectSpaceState3D, at: Vector3) -> bool:
 	q.collision_mask = 1
 	return space.intersect_shape(q, 1).is_empty()
 
+# Does anybody start the game inside the scenery?
+#
+# Glass_Goat opened the build and reported "this time I started impaled".
+# The anchor site puts a 34 m chain to the surface through its own middle
+# and the party spawns at that middle, so the first thing the first diver
+# did was appear skewered on it. Nothing in the code was wrong; two correct
+# coordinates were simply the same coordinate, which is the sort of thing
+# that only shows up by looking, and now by this.
+# Nothing on the map may single out a place because there is loot in it.
+#
+# Marc: "no i dont want the items shown, thats the whole point of consuming
+# oxygen to use the sonar ability and having to find items yourself in the
+# map." The build he said that about lit an amber trail straight to the
+# unclaimed key item, which made sonar pointless. Beacons may say a route
+# exists and may remember where you have been; they may not say what is at
+# the end of one.
+func _check_no_loot_signposts() -> void:
+	for r in world.routes:
+		var to_site: Dictionary = Sites.by_id(String(r.to))
+		var has_unclaimed: bool = String(to_site.get("item", "")) != "" \
+			and not world.key_items.has(String(to_site.item))
+		var visited: bool = world.visited_sites.has(String(r.to))
+		for b in r.beacons:
+			var st: int = (b as Beacon).state
+			if st == Beacon.State.ONWARD:
+				findings.append("SIGNPOSTED LOOT: the route to '%s' is lit as the way onward" % String(r.to))
+				break
+			if st == Beacon.State.DONE and not visited:
+				findings.append("SIGNPOSTED LOOT: the route to '%s' reads as walked and nobody has been there" % String(r.to))
+				break
+		if has_unclaimed and visited:
+			continue
+
+func _check_spawns() -> void:
+	for c in World.CAST:
+		var at: Vector3 = c.at as Vector3
+		for id in world.site_nodes.keys():
+			var site: Site = world.site_nodes[id]
+			for f in site.furniture_points():
+				var gap: float = Vector2(at.x - (f as Vector3).x, at.z - (f as Vector3).z).length()
+				if gap < SPAWN_CLEARANCE:
+					findings.append("SPAWNED INSIDE THE SCENERY: %s starts %.1f m from '%s' furniture, needs %.1f" % [
+						String(c.model), gap, String(id), SPAWN_CLEARANCE])
+
 # ---- follow the lights ---------------------------------------------------
 
 func _process(_dt: float) -> bool:
@@ -124,17 +172,27 @@ func _process(_dt: float) -> bool:
 
 	if trail.is_empty():
 		_check_clearings()
+		_check_spawns()
+		_check_no_loot_signposts()
+		# The route out of the anchor, whatever colour it is.
+		#
+		# This used to look for the amber ONWARD chain, which is gone:
+		# beacons no longer point at unclaimed items, on Marc's ruling, so
+		# nothing is ever amber. The claim being tested is unchanged and is
+		# the one that matters either way, that a player who can see only
+		# these markers ends up somewhere rather than lost in open water.
+		var anchor_id := String(Sites.start().id)
 		for r in world.routes:
+			if String(r.from) != anchor_id:
+				continue
 			for b in r.beacons:
-				if (b as Beacon).state == Beacon.State.ONWARD:
-					trail.append(b)
-			if not trail.is_empty():
-				target_site = String(r.to)
-				break
+				trail.append(b)
+			target_site = String(r.to)
+			break
 		if trail.is_empty():
-			findings.append("NO WAY ON: nothing on the map is lit as the route onward")
+			findings.append("NO WAY ON: no route leaves the anchor, so there is nothing to follow")
 			return _report()
-		print("trail      %d lit beacon(s), leading to '%s'" % [trail.size(), target_site])
+		print("trail      %d beacon(s) out of '%s', leading to '%s'" % [trail.size(), anchor_id, target_site])
 		world.scripted = true
 
 	var goal: Vector3 = Sites.by_id(target_site).at as Vector3
