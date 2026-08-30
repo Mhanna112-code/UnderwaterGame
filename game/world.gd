@@ -115,6 +115,7 @@ var inventory_menu: InventoryMenu
 # _show_title_screen()/_show_game_over() below.
 var title_screen: TitleScreen
 var game_over_screen: GameOverScreen
+var title_layer: CanvasLayer
 
 # The confirm-then-choose-a-diver prompt shown before a special (key-item
 # guarded) encounter - see _offer_special_encounter() below.
@@ -281,6 +282,10 @@ func _load_save() -> void:
 # input. Mirrors the pause Battle already puts the world into during a
 # fight, just triggered by a menu screen instead of battle.gd.
 func _show_title_screen() -> void:
+	# The title owns the entire cold-launch surface. Keeping it on a separate
+	# layer lets the world HUD disappear as one unit instead of maintaining a
+	# growing list of labels/bars/minimap nodes to hide individually.
+	$HUD.visible = false
 	get_tree().paused = true
 	title_screen.open()
 
@@ -293,12 +298,14 @@ func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
 	_write_save()
 	title_screen.close()
+	$HUD.visible = true
 	get_tree().paused = false
 
 func _on_title_load_game(slot: int) -> void:
 	_current_slot = slot
 	_load_save()
 	title_screen.close()
+	$HUD.visible = true
 	get_tree().paused = false
 
 func _show_game_over() -> void:
@@ -416,10 +423,17 @@ func _ready() -> void:
 		target_selector.register_character(d)
 	_update_hud()
 
+	# Do not parent the title to HUD: _show_title_screen() deliberately hides
+	# that whole layer so its controls cannot bunch underneath the title on the
+	# first frame. This layer remains visible and interactive while paused.
+	title_layer = CanvasLayer.new()
+	title_layer.name = "TitleLayer"
+	title_layer.layer = 20
+	add_child(title_layer)
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
-	$HUD.add_child(title_screen)
+	title_layer.add_child(title_screen)
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
@@ -439,6 +453,7 @@ func _ready() -> void:
 		_restart_slot = -1
 		_load_save()
 		title_screen.close()
+		$HUD.visible = true
 		get_tree().paused = false
 		_announce("You wake back at your last save.")
 	else:
