@@ -131,16 +131,12 @@ var distance_since_encounter: float = 0.0
 
 # The game will check for an encounter after a random amount
 # of distance between these two values.
-@export var min_encounter_distance: float = 20.0
-@export var max_encounter_distance: float = 40.0
+@export var min_encounter_distance: float = 8.0
+@export var max_encounter_distance: float = 16.0
 
 # Chance of actually triggering an encounter when the distance
 # threshold is reached.
-#
-# 0.25 = 25%
-# 0.50 = 50%
-# 1.00 = 100%
-@export_range(0.0, 1.0) var encounter_chance: float = 0.25
+@export_range(0.0, 1.0) var encounter_chance: float = 0.5
 
 # The randomly selected distance at which the next encounter
 # check will happen.

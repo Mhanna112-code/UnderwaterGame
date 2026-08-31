@@ -14,6 +14,28 @@ class_name DiverSwapMinigame
 extends Control
 
 signal finished(hits: int, total: int)
+# Fired once a round's 3 lanes have all resolved - _spawn_loop() awaits this
+# instead of a fixed timer so round N+1 can never start before round N is
+# genuinely done (see _spawn_loop()'s own comment for why the old fixed
+# timer let rounds overlap and contaminate each other's state).
+signal round_finished
+
+# Every Node3D this instance has ever added under stage_root (portrait
+# sprites, reference sprites, the cursor) - stage_root is a SubViewport that
+# outlives any one DiverSwapMinigame instance, so nothing parented to it
+# gets cleaned up just because this Control does. Individual pieces mostly
+# free themselves as they resolve (see _on_portrait_arrived(),
+# _clear_reference_sprites()), but that's proven easy to miss a case of
+# (the cursor was left behind entirely until this was added) - this is a
+# final safety-net sweep in _maybe_finish() that frees whatever, if
+# anything, is still around regardless of which specific cleanup path was
+# supposed to catch it.
+var _spawned_stage_nodes: Array[Node3D] = []
+func _cleanup_stage_nodes() -> void:
+	for n in _spawned_stage_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	_spawned_stage_nodes.clear()
 
 # MODIFIED: was 1.15 - battle.gd widened the gap between the diver and the
 # enemy for special encounters (more room for both rock minigames to read
@@ -42,7 +64,7 @@ func _ready() -> void:
 	add_child(bg)
 
 	_title_label = Label.new()
-	_title_label.text = "DODGE THE ROCKS"
+	_title_label.text = "SWAP TO SAFETY"
 	_title_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_title_label.offset_top = 40.0
 	_title_label.offset_left = -160.0
@@ -58,7 +80,7 @@ func _ready() -> void:
 	# of the screen. Same repositioning applied to blast_rocks_minigame.gd
 	# for a consistent prompt placement between both minigames.
 	var hint := Label.new()
-	hint.text = "Press E to shockwave each rock before it lands"
+	hint.text = "Left/Right to aim, left click to swap into that spot"
 	hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	hint.offset_top = 90.0
 	hint.offset_left = -220.0
@@ -90,16 +112,36 @@ func run() -> void:
 	_progress_label.visible = true
 	_update_progress()
 	_spawn_loop()
+	_maybe_finish()
 
 func _update_progress() -> void:
-	#_progress_label.text = "%d / %d" % [_hits, ROCK_COUNT]
-	pass
+	# MODIFIED: was PORTRAIT_COUNT * 2 (6) - stale from before
+	# _safe_player_permutation() existed. Only one lane per round (the
+	# blank one) can ever actually match now, so PORTRAIT_COUNT (3, one
+	# per round) is the real achievable max for _hits, not 6 or the 9
+	# total individual resolutions _maybe_finish() waits for.
+	_progress_label.text = "%d / %d" % [_hits, PORTRAIT_COUNT]
 
-var PORTRAIT_COUNT = 4
+var PORTRAIT_COUNT = 3
+# MODIFIED: was `await get_tree().create_timer(_current_travel_time).timeout`
+# - a FIXED duration equal to how long each round's own portraits take to
+# fly, so round N+1 could start at nearly the same instant round N's
+# portraits were still resolving. When that happened, round N+1's
+# _select_correct_portraits() (_clear_reference_sprites() + rebuild) could
+# run before round N's last arrival fired, so that late arrival read round
+# N+1's brand-new references, bumped round N+1's _round_resolved before any
+# of ITS OWN lanes had resolved, and could clear round N+1's references
+# early - exactly the kind of cross-round contamination that would make a
+# later round (see round_finished below) look unresponsive to input even
+# though the code "should" be fine. Awaiting round_finished instead makes
+# round N+1 wait for round N's _round_resolved to genuinely reach 3 first,
+# so rounds can never overlap.
 func _spawn_loop() -> void:
 	while _spawned < PORTRAIT_COUNT:
-		_select_correct_portraits()
+		_start_spawn_minigame()
 		_spawned += 1
+		if _spawned < PORTRAIT_COUNT:
+			await round_finished
 
 # MODIFIED: removed the old 2D Panel-based _spawn_rock() that used to sit
 # here commented out in a """...""" string - fully superseded by the 3D
@@ -136,9 +178,30 @@ const PORTRAIT_PATHS := [
 	"res://portraits/portrait_08_wink.png",
 ]
 
+# Second, separate 8-portrait pool (the "Cyclops" helmet set) - kept as its
+# own array rather than merged into PORTRAIT_PATHS so select_random_
+# portraits() can pick a pool first and draw both of a round's portraits
+# from just that one, never mixing an image from each set in the same
+# round.
+const CYCLOPS_PORTRAIT_PATHS := [
+	"res://portraits/helmet_pool/cyclops_01_calm.png",
+	"res://portraits/helmet_pool/cyclops_02_wavy.png",
+	"res://portraits/helmet_pool/cyclops_03_content.png",
+	"res://portraits/helmet_pool/cyclops_04_grin.png",
+	"res://portraits/helmet_pool/cyclops_05_angry.png",
+	"res://portraits/helmet_pool/cyclops_06_surprised.png",
+	"res://portraits/helmet_pool/cyclops_07_pout.png",
+	"res://portraits/helmet_pool/cyclops_08_mystery.png",
+]
+
 func select_random_portraits() -> Array:
-	PORTRAIT_PATHS.shuffle()
-	var portraits: Array = [PORTRAIT_PATHS[0], PORTRAIT_PATHS[1]]
+	# MODIFIED (added): picks one of the two 8-portrait pools first, then
+	# draws both portraits from that same pool - duplicated before
+	# shuffling so this never mutates the shared const array in place, and
+	# so the other pool's own array is never touched by picking this one.
+	var pool: Array = (PORTRAIT_PATHS if randi() % 2 == 0 else CYCLOPS_PORTRAIT_PATHS).duplicate()
+	pool.shuffle()
+	var portraits: Array = [pool[0], pool[1]]
 	return portraits
 	
 var _active_cursor: MeshInstance3D
@@ -162,6 +225,7 @@ func _build_active_cursor() -> void:
 	# MeshInstance3D parented to a Control instead of that viewport's own
 	# 3D tree never renders anywhere.
 	stage_root.add_child(_active_cursor)
+	_spawned_stage_nodes.append(_active_cursor)
 
 # Repositions the cursor to hover over whichever of the three player slots
 # (_slot_positions[_selected_slot_index]) is currently selected. Lift only
@@ -173,9 +237,7 @@ func _build_active_cursor() -> void:
 func _update_active_cursor() -> void:
 	if _active_cursor == null or _slot_positions.is_empty():
 		return
-	var lift := 2.5
-	if _selected_slot_index == _diver_slot_index:
-		lift = (target_actor as Diver).height + 0.6
+	var lift = (target_actor as Diver).height + 0.6
 	_active_cursor.visible = true
 	_active_cursor.global_position = _slot_positions[_selected_slot_index] + Vector3.UP * lift
 
@@ -194,34 +256,80 @@ func _select_slot(delta: int) -> void:
 # Left/Right from the very start of the round moves relative to wherever
 # she actually is.
 func _start_spawn_minigame() -> void:
+	# MODIFIED (added): _select_correct_portraits() used to derive the
+	# whole grid's center/orientation from target_actor's CURRENT position
+	# every round - but by round 2 that's wherever round 1 left her (the
+	# blank slot, or a manual swap), so the grid re-centered on an
+	# already-offset spot each round, compounding further every round
+	# after. Captured once here, before she's ever moved, so every round
+	# in this encounter uses the same fixed anchor.
+	if not _has_player_anchor:
+		_player_anchor_position = target_actor.global_position
+		_player_anchor_forward = -target_actor.global_transform.basis.z.normalized()
+		_player_anchor_right = target_actor.global_transform.basis.x.normalized()
+		_has_player_anchor = true
+	_round_resolved = 0
 	_select_correct_portraits()
 	target_actor.global_position = _blank_slot_position
 	if _active_cursor == null:
 		_build_active_cursor()
 	_selected_slot_index = _diver_slot_index
 	_update_active_cursor()
-	
-func _swap(target: Texture2D) -> void:
-	if target == null or not is_instance_valid(target) or not target.can_be_selected:
-		return
-		
-	var my_pos: Vector3 = target_actor.lobal_position
-	var their_pos: Vector3 = target.global_position
-	
-	target_actor.velocity = Vector3.ZERO
-	target.velocity = Vector3.ZERO
-	target_actor.global_position = their_pos
-	target.global_position = my_pos
 
-var portraitSpeed = 10.0
+# Confirms the cursor's current selection (Left/Right, see _select_slot())
+# with an actual SWAP - the "swap" this minigame is themed around (see
+# diver.gd's Staff_Diver ability id). The diver moves into the target slot
+# AND whichever reference portrait was sitting there (_reference_sprites)
+# moves back into the slot she just vacated, so the two genuinely trade
+# places instead of her just teleporting on top of it. Landing on the
+# round's real blank slot is what makes her safe from the incoming
+# portraits; moving anywhere else just relocates her into a slot one is
+# still inbound for.
+func _confirm_swap() -> void:
+	# TEMP DEBUG: same purpose as _unhandled_input()'s print - remove once
+	# diagnosed. If this never prints, the click isn't reaching this
+	# function at all (an input-routing problem elsewhere). If it prints
+	# "no-op", the click IS arriving but the guard condition is blocking it
+	# - and the printed values say exactly why.
+	print("[swap-debug] _confirm_swap() called: slot_positions.is_empty()=%s selected=%s diver=%s" % [_slot_positions.is_empty(), _selected_slot_index, _diver_slot_index])
+	if _slot_positions.is_empty() or _selected_slot_index == _diver_slot_index:
+		print("[swap-debug] _confirm_swap() no-op'd out")
+		return
+	var previous_diver_slot := _diver_slot_index
+	var target_slot := _selected_slot_index
+	var portrait_at_target: Sprite3D = _reference_sprites[target_slot]
+
+	target_actor.global_position = _slot_positions[target_slot]
+	if portrait_at_target != null and is_instance_valid(portrait_at_target):
+		portrait_at_target.global_position = _slot_positions[previous_diver_slot]
+	_reference_sprites[previous_diver_slot] = portrait_at_target
+	_reference_sprites[target_slot] = null
+
+	_diver_slot_index = target_slot
+	_update_active_cursor()
+
+# Units per second a portrait travels - was declared but never actually
+# used anywhere, which is why tuning it never had any effect. Speed was
+# implicitly fixed instead by PORTRAIT_TRAVEL_TIME (a flat duration): every
+# portrait crossed whatever distance that round happened to need in the
+# same 1.4s, so widening the enemy/player gap for is_swap_encounter (see
+# battle.gd's _build_stage()) made portraits visibly speed up without this
+# file changing at all - same distance-in-fixed-time trap the comment atop
+# this file already calls out for blast_rocks_minigame.gd's flight time.
+# _current_travel_time (below) now derives the actual duration from this
+# speed and this round's real distance instead.
+var portraitSpeed = 3.0
+# This round's travel duration, computed in _select_correct_portraits()
+# from the actual enemy-to-player distance and portraitSpeed above - used
+# for both the tween itself and _spawn_loop()'s round-to-round pacing, so
+# both stay correct no matter how the encounter's spacing changes.
+var _current_travel_time := 1.4
 
 const SLOT_NAMES := ["left", "middle", "right"]
 # Sprite3D's own default - kept as an explicit const so the half-width
 # math below uses the exact same number the sprite is actually built with,
 # instead of relying on the default staying 0.01 forever.
 const PORTRAIT_PIXEL_SIZE := 0.01
-const PORTRAIT_TRAVEL_TIME := 1.4
-const PORTRAIT_HIT_RADIUS := 1.0
 
 signal portrait_hit(slot_name: String)
 
@@ -246,6 +354,35 @@ var _blank_slot_position: Vector3
 # _select_slot() on Left/Right.
 var _selected_slot_index := 1
 
+# The diver's fixed rest position/orientation for this encounter - captured
+# once in _start_spawn_minigame() before she's ever moved, so every round's
+# grid is centered on the same spot instead of drifting round to round.
+var _player_anchor_position: Vector3
+var _player_anchor_forward: Vector3
+var _player_anchor_right: Vector3
+var _has_player_anchor := false
+
+# The static reference portrait currently resting in each player-side slot
+# (see _select_correct_portraits()), indexed the same way _slot_positions
+# is (0/1/2 = left/middle/right) rather than just appended in order - null
+# for the diver's own slot, so _confirm_swap() can look up "what's sitting
+# in the slot I'm swapping into" and move it into the slot she's leaving.
+# Freed once this round's 3 incoming portraits all resolve (_round_resolved,
+# below), instead of lingering on screen until the next round starts.
+var _reference_sprites: Array[Sprite3D] = [null, null, null]
+func _clear_reference_sprites() -> void:
+	for i in range(_reference_sprites.size()):
+		var s := _reference_sprites[i]
+		if s != null and is_instance_valid(s):
+			s.queue_free()
+		_reference_sprites[i] = null
+
+# How many of THIS round's 3 incoming portraits have resolved so far -
+# reset every round in _start_spawn_minigame(), unlike _resolved (which
+# tracks the total across all PORTRAIT_COUNT rounds for _maybe_finish()).
+# Once all 3 are in, the reference sprites have done their job and clear.
+var _round_resolved := 0
+
 var left_image
 var center_image
 var right_image
@@ -263,6 +400,7 @@ func _make_portrait_sprite(texture: Texture2D, at_position: Vector3) -> Sprite3D
 	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	sprite.global_position = at_position
 	stage_root.add_child(sprite)
+	_spawned_stage_nodes.append(sprite)
 	return sprite
 
 func _select_correct_portraits() -> void:
@@ -285,8 +423,8 @@ func _select_correct_portraits() -> void:
 	var half_width: float = left_image.get_size().x * PORTRAIT_PIXEL_SIZE / 2.0
 	var spacing: float = half_width + gap  # extra breathing room beyond the sprite's own half-width
 
-	var forward = -target_actor.global_transform.basis.z.normalized()
-	var right = target_actor.global_transform.basis.x.normalized()
+	var forward = _player_anchor_forward
+	var right = _player_anchor_right
 
 	var player_distance: float = target_actor.height + gap
 	var enemy_distance: float = enemy_actor.height + gap
@@ -298,7 +436,8 @@ func _select_correct_portraits() -> void:
 		"right": enemy_portrait_middle_position + right * spacing,
 	}
 
-	var player_portrait_middle_position: Vector3 = target_actor.global_position + forward * player_distance
+	var player_portrait_middle_position: Vector3 = _player_anchor_position + forward * player_distance
+	_current_travel_time = enemy_portrait_middle_position.distance_to(player_portrait_middle_position) / portraitSpeed
 	var player_positions := {
 		"left": player_portrait_middle_position - right * spacing,
 		"middle": player_portrait_middle_position,
@@ -311,56 +450,50 @@ func _select_correct_portraits() -> void:
 	var enemy_layout: Array = [left_image, right_image, null]
 	enemy_layout.shuffle()
 
-	# Player's layout: both portraits must land somewhere other than their
-	# own enemy-side slot (the blank is free to go anywhere - nothing to
-	# dodge/catch there). With only 3 slots there are exactly 3 index
-	# permutations of [0,1,2] that ever satisfy that - the two full
-	# rotations (which have no fixed point at all, so they're always safe
-	# regardless of where the blank is) plus swapping the two portrait
-	# slots while leaving the blank's own slot untouched (see
-	# _valid_player_permutations()). Picking directly from that precomputed
-	# list is one randi_range() and three array reads - no shuffle-and-
-	# reject loop needed.
-	var player_layout: Array = enemy_layout
+	var player_layout: Array = enemy_layout.duplicate()
 	var player_0 = randi_range(1, 2)
 	var player_1
 	if player_0 == 1:
-		var remaining_positions: Array = [0, 2]
-		remaining_positions.shuffle()
-		player_1 = remaining_positions[0]
+		player_1 = 2
 	else:
-
 		player_1 = 0
 	var secured_positions : Array = [player_0, player_1]
 	if 0 not in secured_positions:
 		secured_positions.append(0)
 	elif 1 not in secured_positions:
 		secured_positions.append(1)
-	else:
-		secured_positions.append(2)
 
 
 	player_layout[0] = enemy_layout[secured_positions[0]]
 	player_layout[1] = enemy_layout[secured_positions[1]]
 	player_layout[2] = enemy_layout[secured_positions[2]]
-	#var left_sprite := _make_portrait_sprite(player_layout[0], player_positions[target_slot])
-	#var middle_sprite := _make_portrait_sprite(player_layout[1], enemy_positions[target_slot])
-	#var right_sprite := _make_portrait_sprite(player_layout[2], enemy_positions[target_slot])
-
 
 	_slot_positions = [player_positions["left"], player_positions["middle"], player_positions["right"]]
 	_diver_slot_index = player_layout.find(null)
 	_blank_slot_position = _slot_positions[_diver_slot_index]
 
+	# Static "reference" sprites - sit at rest in the two player-side slots
+	# that actually hold a portrait this round (player_layout), so the
+	# player can see right away what's supposed to end up where instead of
+	# only finding out once the real incoming portrait finishes its flight.
+	# Only 2, not 3 - the one slot player_layout leaves blank is where the
+	# diver herself is standing (_blank_slot_position, above), so it
+	# doesn't need a placeholder. Cleared and rebuilt every round rather
+	# than left to pile up.
+	_clear_reference_sprites()
+	for i in range(3):
+		var reference_texture: Texture2D = player_layout[i]
+		if reference_texture == null:
+			continue
+		_reference_sprites[i] = _make_portrait_sprite(reference_texture, player_positions[SLOT_NAMES[i]])
+
 	for i in range(3):
 		var texture: Texture2D = enemy_layout[i]
-		if texture == null:
-			continue
 		var target_slot: String = SLOT_NAMES[i]
 		var sprite := _make_portrait_sprite(texture, enemy_positions[target_slot])
 		var tw := sprite.create_tween()
-		tw.tween_property(sprite, "global_position", player_positions[target_slot], PORTRAIT_TRAVEL_TIME)
-		tw.tween_callback(_on_portrait_arrived.bind(sprite, target_slot, player_layout[i]))
+		tw.tween_property(sprite, "global_position", player_positions[target_slot], _current_travel_time)
+		tw.tween_callback(_on_portrait_arrived.bind(sprite, target_slot))
 
 # The two 3-cycles of [0,1,2] have no fixed points at all, so a rotation
 # never leaves a portrait in its own slot no matter where the blank is -
@@ -378,17 +511,37 @@ func _valid_player_permutations(blank_index: int) -> Array:
 	swap_keep_blank[portrait_indices[1]] = portrait_indices[0]
 	return [ROTATE_FORWARD, ROTATE_BACKWARD, swap_keep_blank]
 
-# Fires once a single portrait's flight finishes. "Hit" is decided by
-# actual distance to the player right now (same idiom _try_shockwave()
-# already uses for rocks: target_actor.global_position, not the slot's
-# static computed position) rather than just "which slot was it aimed at" -
-# so this stays correct later if the player ends up able to move between
-# slots to dodge, instead of a hit being a foregone conclusion the instant
-# the round is set up.
-func _on_portrait_arrived(sprite: Sprite3D, target_slot: String, expected_texture: Texture2D) -> void:
-	var hit := expected_texture != null and sprite.texture == expected_texture
+# Fires once a single portrait's flight finishes. "Hit" (safe/green) means
+# the SAME portrait that launched from this lane on the enemy side
+# (enemy_layout, sprite.texture) matches whatever's CURRENTLY the correct
+# reference portrait for this same lane on the player side
+# (_reference_sprites[slot_index]) - or, for the lane the diver herself is
+# standing in (no reference sprite there), that nothing (null) arrived.
+# Reads _reference_sprites rather than the frozen player_layout snapshot
+# from round start specifically so a manual swap (_confirm_swap(), which
+# keeps _reference_sprites live-updated) actually changes what counts as
+# correct for the lane moved into - checking player_layout directly would
+# still grade against the ORIGINAL pre-swap arrangement.
+signal portrait_landed
+func _on_portrait_arrived(sprite: Sprite3D, target_slot: String) -> void:
+	var slot_index := SLOT_NAMES.find(target_slot)
+	var reference: Sprite3D = _reference_sprites[slot_index]
+	var expected_texture: Texture2D = reference.texture if reference != null and is_instance_valid(reference) else null
+	var hit := sprite.texture == expected_texture
 	if hit:
-		portrait_hit.emit(target_slot)
+		_hits += 1
+	else:
+		# MODIFIED: was `elif sprite.texture != null` - only counted a REAL
+		# arriving portrait mismatching a null reference as a misfire, not
+		# the reverse (nothing arriving where a reference expected a real
+		# portrait). Both directions are equally a mismatch now - up to 2
+		# lanes can misfire per round, either way round.
+		portrait_landed.emit()
+	_round_resolved += 1
+	if _round_resolved >= SLOT_NAMES.size():
+		_clear_reference_sprites()
+		round_finished.emit()
+	_update_progress()
 
 	# MODIFIED: was a bare sprite.queue_free() right after the hit check -
 	# freed the sprite before flash_object's own await get_tree().
@@ -398,6 +551,23 @@ func _on_portrait_arrived(sprite: Sprite3D, target_slot: String, expected_textur
 	await flash_object(sprite, Color.GREEN if hit else Color.RED, 0.15)
 	sprite.queue_free()
 
+	# MODIFIED: _resolved's increment (and the _maybe_finish() check) used
+	# to happen BEFORE this sprite's own flash/free above, so the 9th
+	# (truly last) arrival could call _maybe_finish(), which emits
+	# `finished`, which resumes battle.gd's `await minigame.finished`
+	# SYNCHRONOUSLY right here mid-call - battle.gd immediately calls
+	# minigame.queue_free() on this very Control, and resuming this
+	# sprite's own still-pending await get_tree().create_timer() above
+	# afterward (on a since-freed Object) errors out silently, so its
+	# flash/queue_free() never ran and it was orphaned on screen. Since
+	# several of a round's sprites can finish their tween in the same
+	# frame, this could strand more than one - matching "last round of
+	# portraits stays on screen." Counting a sprite as resolved only AFTER
+	# it has fully flashed and freed itself means whichever call is the
+	# one to finally reach 9 is guaranteed to be the last one to finish,
+	# by which point every other sprite has already completed too.
+	_resolved += 1
+	_maybe_finish()
 
 # MODIFIED: was object: Node2D - sprite here is a Sprite3D (Node3D side of
 # the tree, not Node2D), so this would have been a static type error the
@@ -417,44 +587,35 @@ func flash_object(object: Sprite3D, flash_color: Color, duration: float) -> void
 # the same fraction of the flight breakable as before the gap widened.
 const SHOCKWAVE_RADIUS := 3.0
 
-# MODIFIED: was left-click (InputEventMouseButton) - switched to E, same
-# trigger key blast_rocks_minigame.gd now uses too, so both minigames
-# share one consistent input instead of one being mouse-driven and the
-# other keyboard-driven.
+# Left/Right (keyboard) move the cursor; left click confirms it
+# immediately - unlike blast_rocks_minigame.gd/rock_dodge_minigame.gd
+# (single E press does the whole action), this one already needs the
+# keyboard to aim, so confirming with a click keeps the two steps on
+# separate inputs instead of overloading E for both.
 func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventKey) or not (event as InputEventKey).pressed or (event as InputEventKey).echo:
-		return
-	var keycode := (event as InputEventKey).keycode
-	if keycode == KEY_E:
-		_try_shockwave()
-	elif keycode == KEY_LEFT:
-		_select_slot(-1)
-	elif keycode == KEY_RIGHT:
-		_select_slot(1)
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
+		var keycode := (event as InputEventKey).keycode
+		if keycode == KEY_LEFT:
+			_select_slot(-1)
+		elif keycode == KEY_RIGHT:
+			_select_slot(1)
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		# TEMP DEBUG: pin down whether the click is even reaching this
+		# script on the 2nd+ encounter, vs. reaching it but no-oping inside
+		# _confirm_swap() - remove once diagnosed.
+		print("[swap-debug] left click reached _unhandled_input, calling _confirm_swap()")
+		_confirm_swap()
 
 # MODIFIED: picks whichever live rock is actually closest and within
 # range, not just "the" active one - with several rocks in flight at once
 # there's no single rock to check against anymore, so this scans all of
 # them. Still a no-op (not a miss) if nothing's in range, same "free
 # presses don't get punished" rule as before.
-func _try_shockwave() -> void:
-	if _live_rocks.is_empty():
-		return
-	(target_actor as Diver)._shockwave_vfx()
-	var best: MeshInstance3D = null
-	var best_dist := SHOCKWAVE_RADIUS
-	for r in _live_rocks:
-		var d := target_actor.global_position.distance_to(r.global_position)
-		if d <= best_dist:
-			best = r
-			best_dist = d
-	if best != null:
-		_break_rock(best)
 
 # A quick scale-up-and-free "shattered" flash rather than an instant
 # queue_free() - a hit needs to visibly register as a hit, same reason
 # cracked_wall.gd's break isn't silent either.
-func _break_rock(rock: MeshInstance3D) -> void:
+"""func _break_rock(rock: MeshInstance3D) -> void:
 	_live_rocks.erase(rock)
 	var tw: Tween = _rock_tweens.get(rock, null)
 	if tw != null and tw.is_valid():
@@ -476,7 +637,7 @@ func _break_rock(rock: MeshInstance3D) -> void:
 	var flash := rock.create_tween()
 	flash.tween_property(rock, "scale", Vector3.ONE * 1.8, 0.12)
 	flash.tween_callback(rock.queue_free)
-	_maybe_finish()
+	_maybe_finish()"""
 
 # MODIFIED: rock is a MeshInstance3D now, not the old 2D Panel this was
 # originally written for - MeshInstance3D has no `modulate` property
@@ -488,7 +649,7 @@ func _break_rock(rock: MeshInstance3D) -> void:
 # finished, but _break_rock() may have already pulled it out if it got
 # shockwaved in the meantime, which now correctly only affects this one
 # rock instead of whichever rock happened to be "the" active one.
-func _on_rock_landed(rock: MeshInstance3D) -> void:
+"""func _on_rock_landed(rock: MeshInstance3D) -> void:
 	if not _live_rocks.has(rock):
 		return
 	_live_rocks.erase(rock)
@@ -509,8 +670,44 @@ func _on_rock_landed(rock: MeshInstance3D) -> void:
 	var tw := rock.create_tween()
 	tw.tween_property(mat, "emission_energy_multiplier", 3.0, 0.15)
 	tw.tween_callback(rock.queue_free)
-	_maybe_finish()
+	_maybe_finish()"""
 
 func _maybe_finish() -> void:
-	if _spawned >= ROCK_COUNT and _resolved >= ROCK_COUNT:
-		finished.emit(_hits, ROCK_COUNT)
+	# MODIFIED: was `_resolved >= PORTRAIT_COUNT` (3) - _resolved counts
+	# every individual lane arrival across ALL rounds (3 rounds x 3 lanes =
+	# up to 9), not rounds. Since round 1's 3 lanes typically finish
+	# resolving by around the time round 3 even SPAWNS (_spawn_loop() paces
+	# rounds _current_travel_time apart, about the same as one lane's own
+	# flight time), _resolved could already be >= 3 the instant _spawned
+	# hit 3 - `finished` fired, and battle.gd's minigame.queue_free() tore
+	# down the camera/overlay, while round 2 and round 3's sprites (parented
+	# to stage_root, not to this Control, so queue_free() never touched
+	# them) were still mid-flight. That's why portraits kept being visible
+	# after the view had already switched back to the normal battle framing.
+	var total_portraits:int = PORTRAIT_COUNT * SLOT_NAMES.size()
+	if _spawned >= PORTRAIT_COUNT and _resolved >= total_portraits:
+		# MODIFIED (added): was leaving target_actor wherever the last round
+		# (or the player's last manual swap) put her - same "swim back to
+		# exactly where this started" fix blast_rocks_minigame.gd already
+		# applies for the same reason (see its own _maybe_finish()).
+		# Without this, she'd stay stranded off to one side after the
+		# minigame ends, so the NEXT special-encounter turn's camera
+		# (_look_at_swap_angle(), computed from her current position) would
+		# frame around that drifted spot instead of her real battle stance
+		# - exactly why the camera angle looked different the second time
+		# the enemy used this attack.
+		if is_instance_valid(target_actor):
+			var back := target_actor.create_tween()
+			back.tween_property(target_actor, "global_position", _player_anchor_position, _current_travel_time * 0.5)
+		# MODIFIED (was individually freeing just _active_cursor here): that
+		# fixed the cursor specifically, but it was still one more instance
+		# of the same class of bug (stage_root outlives this Control, so
+		# nothing parented to it gets cleaned up just because this Control
+		# does) - _cleanup_stage_nodes() is the general version, sweeping
+		# every sprite/cursor this instance ever created under stage_root
+		# regardless of whether its own individual cleanup path (self-free
+		# on arrival, per-round reference clearing) already got it. Anything
+		# already freed is skipped via is_instance_valid(), so this is a
+		# safety net, not a duplicate free.
+		_cleanup_stage_nodes()
+		finished.emit(_hits, total_portraits)

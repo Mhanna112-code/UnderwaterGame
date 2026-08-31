@@ -17,8 +17,8 @@ signal triggered(item_id: String)
 @export var item_id := ""
 
 const SPOTS := [
-	{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
-	{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
+	{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 25},
+	{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 25},
 ]
 
 func _ready() -> void:

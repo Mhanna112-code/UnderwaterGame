@@ -391,8 +391,20 @@ func _build_stage() -> void:
 	# of that to read clearly. Pulled both actors back further apart only
 	# for special encounters; a normal multi-enemy fight never runs either
 	# minigame, so its own spacing is untouched.
-	var diver_z := 2.2 if special_encounter else 1.0
-	var enemy_z := -4.6 if special_encounter else -2.2
+	# MODIFIED (added): the swap minigame's two 3-lane portrait spreads
+	# (see diver_swap_minigame.gd's _select_correct_portraits() spacing
+	# math) need even more room than the rock-dodge encounter's single
+	# lateral barrage - widened further, but only for whichever special
+	# encounter actually has the sonar/swap diver as its one party member,
+	# so the rock-dodge encounter's own already-tuned spacing is untouched.
+	var is_swap_encounter := false
+	if special_encounter:
+		for p in party:
+			if String(p.get("ability_id", "")) == "swap":
+				is_swap_encounter = true
+				break
+	var diver_z := 3.4 if is_swap_encounter else (2.2 if special_encounter else 1.0)
+	var enemy_z := -6.0 if is_swap_encounter else (-4.6 if special_encounter else -2.2)
 
 	var pn := party.size()
 	for i in range(pn):
@@ -1507,7 +1519,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	if special_encounter and String(target.get("ability_id", "")) == "shockwave":
 		await _do_rock_dodge_encounter(actor, target, target_stats)
 		return
-	elif special_encounter and String(target.get("ability_id", "")) == "sonar":
+	elif special_encounter and String(target.get("ability_id", "")) == "swap":
 		await _do_swap_minigame(actor, target, target_stats)
 		return
 
@@ -1563,8 +1575,24 @@ func _look_at_dodge_angle(target_pos: Vector3) -> void:
 	_stage_camera.position = target_pos + Vector3(3.0, 3.5, 2.0)
 	_stage_camera.look_at(target_pos, Vector3.UP)
 
+# Only used during the portrait-swap minigame (see _do_swap_minigame()) -
+# _look_at_dodge_angle() above is too tight for this one: that framing only
+# has to cover one point (the target diver) from a few units away, but this
+# minigame spreads two full 3-lane portrait rows (see diver_swap_minigame.gd's
+# _select_correct_portraits() spacing math) across the entire enemy-to-player
+# gap, which special_encounter's own widened is_swap_encounter spacing (see
+# _build_stage()) makes even bigger. Looks at the midpoint between the two
+# actors instead of just the target, pulled back and up further, with a
+# wider FOV, so both actors and both portrait spreads stay in frame.
+func _look_at_swap_angle(target_pos: Vector3, enemy_pos: Vector3) -> void:
+	var mid := (target_pos + enemy_pos) / 2.0
+	_stage_camera.position = mid + Vector3(0.0, 7.0, 7.0)
+	_stage_camera.fov = 85.0
+	_stage_camera.look_at(mid, Vector3.UP)
+
 func _restore_default_camera() -> void:
 	_stage_camera.position = DEFAULT_CAM_POS
+	_stage_camera.fov = 70.0
 	_stage_camera.look_at(DEFAULT_CAM_LOOK, Vector3.UP)
 
 # Each rock that lands unbroken deals its own real hit, live, the instant
@@ -1667,20 +1695,35 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stat
 func _do_swap_minigame(actor: Dictionary, target: Dictionary, target_stats: CombatantStats) -> void:
 	_log("%s sends portraits your way!" % [String(actor.display_name), String(target.display_name)])
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_look_at_swap_angle(target.actor.global_position, actor.actor.global_position)
 
 	var minigame := DiverSwapMinigame.new()
 	add_child(minigame)
 	minigame.stage_root = _stage_vp
 
 	minigame.target_actor = target.actor
-	minigame.rock_landed.connect(func() -> void:
+	minigame.enemy_actor = actor.actor
+	minigame.portrait_landed.connect(func() -> void:
 		# MODIFIED: no longer scaled by _enemy_power_mult() - an unbroken
 		# rock now always hits for the same base amount every round, round
 		# after round. The escalation moved to the real follow-up swing
 		# right after the barrage instead (below) - see its own comment for
 		# why.
+		# MODIFIED (added): result cut to a quarter relative to the
+		# rock-dodge encounter's identical formula - that barrage allows up
+		# to ROCK_COUNT (8) misses, while this one allows at most 2 per
+		# round (see diver_swap_minigame.gd's _on_portrait_arrived()), so
+		# full price per miss would make a single misfire cost as much as a
+		# whole failed rock barrage's worth of individual hits. Was tried
+		# as `ENEMY_MOVE.power * 0.5` first, but strength - boosted further
+		# by Goblin.make_stats()'s own 1.08x-1.35x difficulty edge over the
+		# party's average - was always the bigger term in this formula, so
+		# halving only power barely moved the result. Scaling the whole
+		# post-defense result instead actually cuts it proportionally
+		# regardless of how power/strength/defense interact.
 		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.85, 1.15)
-		var incoming: int = maxi(0, int(round(raw)) - target_stats.defense)
+		var full_incoming: int = maxi(0, int(round(raw)) - target_stats.defense)
+		var incoming: int = int(round(float(full_incoming) * 0.25))
 		target_stats.hp = maxi(0, target_stats.hp - incoming)
 		total_taken += incoming
 		_refresh_bar(target)
@@ -1699,9 +1742,9 @@ func _do_swap_minigame(actor: Dictionary, target: Dictionary, target_stats: Comb
 	var total := int(result[1])
 
 	if total_taken <= 0:
-		_log("%s shatters every rock - not a scratch! (%d/%d)" % [String(target.display_name), hits, total])
+		_log("%s swapped all portraits correctly - not a scratch! (%d/%d)" % [String(target.display_name), hits, total])
 	else:
-		_log("%s couldn't break them all - takes %d total. (%d/%d)" % [String(target.display_name), total_taken, hits, total])
+		_log("%s couldn't swap all portraits to their correct positions - takes %d total. (%d/%d)" % [String(target.display_name), total_taken, hits, total])
 	if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
 
