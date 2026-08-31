@@ -63,25 +63,25 @@ var SONAR_INTERVAL := 0.2
 # slow/sturdy. grow_* is how much each stat ticks up per level (see
 # combatant_stats.gd) - different per diver so leveling reinforces the
 # spread instead of flattening it out.
-# evasion/accuracy/barrier_max are identity traits, not leveled.
+# evasion/accuracy are identity traits, not leveled.
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 34, "strength": 5, "defense": 3, "agility": 5,
-		"evasion": 5, "accuracy": 6, "barrier_max": 5,
+		"evasion": 5, "accuracy": 6,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 26, "strength": 8, "defense": 1, "agility": 8,
-		"evasion": 8, "accuracy": 8, "barrier_max": 0,
+		"evasion": 8, "accuracy": 8,
 		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 42, "strength": 3, "defense": 6, "agility": 3,
-		"evasion": 2, "accuracy": 4, "barrier_max": 10,
+		"evasion": 2, "accuracy": 4,
 		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
@@ -298,7 +298,14 @@ func _ready() -> void:
 	# Move the model so its feet sit on the body's floor. Applied to the
 	# whole imported tree rather than to the mesh, because moving the mesh
 	# alone would slide it out from under the skeleton driving it.
-	src.position.y -= box.position.y + height * 0.5
+	# MODIFIED: was `box.position.y + height * 0.5` - that extra `+ height *
+	# 0.5` term meant the model only ever moved up by about half of what
+	# was actually needed to bring its lowest point to y=0 (box.position.y
+	# is already the mesh's own bottom offset from its origin - no further
+	# adjustment needed once that's canceled out), leaving every diver
+	# sunk roughly HALF their own height into the floor instead of
+	# standing on it.
+	src.position.y -= box.position.y
 
 
 	# ========================================================
@@ -361,7 +368,6 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
-	stats.barrier_max = int(base.barrier_max)
 	stats.grow_hp = int(base.grow_hp)
 	stats.grow_strength = int(base.grow_strength)
 	stats.grow_defense = int(base.grow_defense)

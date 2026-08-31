@@ -193,7 +193,6 @@ func _party() -> Array:
 		stats.agility = int(base.agility)
 		stats.evasion = int(base.evasion)
 		stats.accuracy = int(base.accuracy)
-		stats.barrier_max = int(base.barrier_max)
 		stats.fill()
 		out.append({"kind": "party", "model": String(model_name), "stats": stats})
 	return out
@@ -207,7 +206,6 @@ func _average(party: Array) -> CombatantStats:
 	avg.agility = int(round(party.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).agility, 0) / n))
 	avg.evasion = int(round(party.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).evasion, 0) / n))
 	avg.accuracy = int(round(party.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).accuracy, 0) / n))
-	avg.barrier_max = int(round(party.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).barrier_max, 0) / n))
 	avg.fill()
 	return avg
 
@@ -219,7 +217,6 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator) -> Dictionary
 	stats.agility = maxi(Goblin.FLOOR_STATS.agility, int(round(float(reference.agility) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.evasion = maxi(Goblin.FLOOR_STATS.evasion, int(round(float(reference.evasion) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.accuracy = maxi(Goblin.FLOOR_STATS.accuracy, int(round(float(reference.accuracy) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.barrier_max = maxi(0, int(round(float(reference.barrier_max) * 0.5 * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.fill()
 	return {"kind": "enemy", "stats": stats}
 

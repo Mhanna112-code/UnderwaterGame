@@ -174,8 +174,8 @@ const LOG_READ_DELAY := 1.6
 # like it connects.
 const IMPACT_FRACTION := 0.55
 
-var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
-var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
+var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label}]
+var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label}]
 
 var _queue: Array = []     # combatants (same dict refs as party/enemies) still waiting to act this round
 var _acting: Dictionary = {}
@@ -289,7 +289,6 @@ func _default_player_stats() -> CombatantStats:
 	s.agility = int(base.agility)
 	s.evasion = int(base.evasion)
 	s.accuracy = int(base.accuracy)
-	s.barrier_max = int(base.barrier_max)
 	s.grow_hp = int(base.grow_hp)
 	s.grow_strength = int(base.grow_strength)
 	s.grow_defense = int(base.grow_defense)
@@ -489,7 +488,6 @@ func _party_average_stats() -> CombatantStats:
 	var sum_agi := 0
 	var sum_eva := 0
 	var sum_acc := 0
-	var sum_bar := 0
 	for entry in pool:
 		var s := entry.stats as CombatantStats
 		sum_hp += s.hp_max
@@ -498,14 +496,12 @@ func _party_average_stats() -> CombatantStats:
 		sum_agi += s.agility
 		sum_eva += s.evasion
 		sum_acc += s.accuracy
-		sum_bar += s.barrier_max
 	avg.hp_max = int(round(float(sum_hp) / n))
 	avg.strength = int(round(float(sum_str) / n))
 	avg.defense = int(round(float(sum_def) / n))
 	avg.agility = int(round(float(sum_agi) / n))
 	avg.evasion = int(round(float(sum_eva) / n))
 	avg.accuracy = int(round(float(sum_acc) / n))
-	avg.barrier_max = int(round(float(sum_bar) / n))
 	return avg
 
 # Evenly spaces `n` actors around x=0, `step` apart - shared by the party
@@ -541,7 +537,6 @@ func _build_ui() -> void:
 		var b := _add_bar(party_row, String(entry.display_name))
 		entry["hp_bar"] = b[0]
 		entry["hp_label"] = b[1]
-		entry["barrier_bar"] = b[2]
 
 	var enemy_row := HBoxContainer.new()
 	enemy_row.add_theme_constant_override("separation", 24)
@@ -550,7 +545,6 @@ func _build_ui() -> void:
 		var b := _add_bar(enemy_row, String(entry.display_name))
 		entry["hp_bar"] = b[0]
 		entry["hp_label"] = b[1]
-		entry["barrier_bar"] = b[2]
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
@@ -764,17 +758,9 @@ func _add_bar(parent: Control, label_text: String) -> Array:
 	bar.add_theme_stylebox_override("fill", hp_fill)
 	bar_row.add_child(bar)
 
-	var barrier_bar := ProgressBar.new()
-	barrier_bar.custom_minimum_size = Vector2(40, 18)
-	barrier_bar.show_percentage = false
-	var barrier_fill := StyleBoxFlat.new()
-	barrier_fill.bg_color = Color(0.62, 0.64, 0.68)
-	barrier_bar.add_theme_stylebox_override("fill", barrier_fill)
-	bar_row.add_child(barrier_bar)
-
 	var hp_label := Label.new()
 	wrap.add_child(hp_label)
-	return [bar, hp_label, barrier_bar]
+	return [bar, hp_label]
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -792,14 +778,6 @@ func _refresh_bar(entry: Dictionary) -> void:
 	if String(entry.kind) == "party":
 		txt += "   Lv %d" % s.level
 	(entry.hp_label as Label).text = txt
-	_refresh_barrier_bar(entry.barrier_bar, s)
-
-func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
-	bar.visible = stats.barrier_max > 0
-	if not bar.visible:
-		return
-	bar.max_value = stats.barrier_max
-	bar.value = stats.barrier
 
 func _log(text: String) -> void:
 	log_label.text = text
@@ -1091,8 +1069,8 @@ func _on_item_chosen(item_id: String) -> void:
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Always succeeds, no accuracy roll - same as _apply_heal()/_apply_barrier(),
-# nothing about using an item on an ally is something they could evade.
+# Always succeeds, no accuracy roll - same as _apply_heal(), nothing about
+# using an item on an ally is something they could evade.
 # Mirrors _resolve_party_move()'s tail exactly (log, refresh bars, advance
 # turn) so an item-use turn reads identically to a move turn.
 func _resolve_item(item_id: String, target: Dictionary) -> void:
@@ -1121,10 +1099,7 @@ func _show_main() -> void:
 	main_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Barrier moves target the caster - a single-entry target list rather than an
-# immediate resolve, same as everything else below, so choosing a buff
-# spell still lands on a screen with Back rather than committing the
-# instant it's picked. Heal targets a living ally (a downed one has
+# Heal targets a living ally (a downed one has
 # nothing a heal can do for it - see _apply_revive() for that); revive
 # targets a downed one specifically. Everything else still targets an
 # enemy. Always shows the target picker, even for a single candidate
@@ -1143,7 +1118,7 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	var effect := String(mv.get("effect", ""))
 	# Blast Rocks always targets the encounter's one enemy directly - no
 	# target picker, straight to its own minigame sequence (same "no real
-	# choice to make" reasoning barrier/buff moves already skip a picker
+	# choice to make" reasoning heal/revive moves already skip a picker
 	# for, just routed to a dedicated function instead of _resolve_party_
 	# move() since nothing about this resolves like a normal move).
 	if effect == "blast_rocks":
@@ -1153,8 +1128,6 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		return
 	var targets: Array
 	match effect:
-		"barrier":
-			targets = [_acting]
 		"heal":
 			targets = _living(party)
 		"revive":
@@ -1234,11 +1207,10 @@ func _show_moves_or_items_from_target_menu() -> void:
 #     left in the whole resolve - whether you hit is deterministic, how
 #     hard is not).
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
-#  4. Barrier absorbs damage before HP.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion:
-		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false}
+		return {"hit": false, "damage": 0, "debuff": "", "changed": 0, "dodged": false}
 
 	var debuff: String = String(move.get("debuff", ""))
 	if debuff != "":
@@ -1269,7 +1241,7 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, variance: float, heavy_fraction: float = 0.0, dodged: bool = false) -> Dictionary:
 	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion:
-		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false}
+		return {"hit": false, "damage": 0, "debuff": "", "changed": 0, "dodged": false}
 
 	var raw: float
 	if String(move.get("effect", "")) == "heavy":
@@ -1280,39 +1252,23 @@ static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats
 	if dodged:
 		incoming = 0
 
-	var absorbed := 0
-	if defender.barrier > 0 and incoming > 0:
-		absorbed = mini(defender.barrier, incoming)
-		defender.barrier -= absorbed
-	var to_hp: int = incoming - absorbed
-	defender.hp = maxi(0, defender.hp - to_hp)
-	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged}
+	defender.hp = maxi(0, defender.hp - incoming)
+	return {"hit": true, "damage": incoming, "debuff": "", "changed": 0, "dodged": dodged}
 
 # Dispatches on the move's "effect" key before falling through to the
-# normal attack/debuff resolution above. "barrier" targets the caster instead of the
-# defender and always succeeds, no accuracy check - raising your own
-# stats isn't something the target could "evade." "heal"/"revive"
-# (support-branch spells, see spell_tree.gd) target an ally instead of an
-# enemy - `defender` here is really just "whoever _on_move_chosen()'s
-# target picker resolved to," which for these two effects is a living or
-# downed ally respectively, not literally a defender - and same as buff,
-# always succeed: nothing about mending a wound is something the ally
-# being healed could fail to receive.
+# normal attack/debuff resolution above. "heal"/"revive" (support-branch
+# spells, see spell_tree.gd) target an ally instead of an enemy - `defender`
+# here is really just "whoever _on_move_chosen()'s target picker resolved
+# to," which for these two effects is a living or downed ally respectively,
+# not literally a defender - and always succeed: nothing about mending a
+# wound is something the ally being healed could fail to receive.
 func _resolve_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	var effect := String(move.get("effect", ""))
-	if effect == "barrier":
-		return _apply_barrier(attacker, int(move.get("amount", 0)))
 	if effect == "heal":
 		return _apply_heal(defender, int(move.get("amount", 0)))
 	if effect == "revive":
 		return _apply_revive(defender, int(move.get("amount", 0)))
 	return await _resolve_attack(attacker, defender, move)
-
-func _apply_barrier(caster: CombatantStats, amount: int) -> Dictionary:
-	var before := caster.barrier
-	caster.barrier = mini(caster.barrier_max, caster.barrier + amount)
-	var changed := caster.barrier - before
-	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "barrier", "changed": changed}
 
 # Restores flat `amount` HP, capped at hp_max - only ever called with a
 # living ally as the target (see _on_move_chosen()'s "heal" target pool),
@@ -1322,7 +1278,7 @@ func _apply_heal(target: CombatantStats, amount: int) -> Dictionary:
 	var before := target.hp
 	target.hp = mini(target.hp_max, target.hp + amount)
 	var changed := target.hp - before
-	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "heal", "changed": changed}
+	return {"hit": true, "damage": 0, "debuff": "heal", "changed": changed}
 
 # Only ever called on a downed ally (see _on_move_chosen()'s "revive"
 # target pool, which only ever lists party members at 0 HP) - amount is
@@ -1332,7 +1288,7 @@ func _apply_heal(target: CombatantStats, amount: int) -> Dictionary:
 # reviver's hp_max could actually hold.
 func _apply_revive(target: CombatantStats, amount: int) -> Dictionary:
 	target.hp = mini(target.hp_max, amount)
-	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "revive", "changed": target.hp}
+	return {"hit": true, "damage": 0, "debuff": "revive", "changed": target.hp}
 
 # Directly mutates the target's CombatantStats. Safe for enemies (rebuilt
 # fresh every battle, so nothing to reset after); safe for party members
@@ -1367,18 +1323,12 @@ func _apply_debuff(defender: CombatantStats, debuff: String, amount: int) -> Dic
 			var before := defender.evasion
 			defender.evasion = maxi(0, defender.evasion - amount)
 			changed = before - defender.evasion
-	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": debuff, "changed": changed}
+	return {"hit": true, "damage": 0, "debuff": debuff, "changed": changed}
 
 func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r: Dictionary) -> void:
 	var text: String = String(mv.get("text", "You use %s" % String(mv.name)))
 	if not r.hit:
 		_log("%s - %s evades!" % [text, String(target.display_name)])
-		return
-	if String(r.debuff) == "barrier":
-		if int(r.changed) > 0:
-			_log("%s - %s's barrier rises by %d." % [text, String(actor.display_name), int(r.changed)])
-		else:
-			_log("%s - %s's barrier is already full." % [text, String(actor.display_name)])
 		return
 	if String(r.debuff) == "heal":
 		if int(r.changed) > 0:
@@ -1395,12 +1345,7 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 		else:
 			_log("%s - %s has nothing left to lose there." % [text, String(target.display_name)])
 		return
-	if int(r.damage) == 0 and int(r.absorbed) > 0:
-		_log("%s - %s's barrier soaks it completely!" % [text, String(target.display_name)])
-	elif int(r.absorbed) > 0:
-		_log("%s for %d (%d soaked by barrier)." % [text, int(r.damage), int(r.absorbed)])
-	else:
-		_log("%s for %d." % [text, int(r.damage)])
+	_log("%s for %d." % [text, int(r.damage)])
 
 # Swing first, resolve at the moment of impact. Returns once the hit is
 # supposed to land, leaving the rest of the clip to play out underneath the

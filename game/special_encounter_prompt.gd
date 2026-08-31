@@ -15,14 +15,19 @@ extends Control
 signal diver_chosen(model_name: String)
 signal cancelled
 
-# Flavor-only, not read anywhere else - a one-line reminder of what each
-# diver's ability actually does, for the carousel. Diver.ability_id
-# already exists for the real gameplay hook; this is just the plain-
-# English version a player picking blind would want to see.
+# Flavor-only, not read anywhere else - a short tutorial for the carousel,
+# read right before committing to a diver. MODIFIED: was a one-line
+# reminder of what the ability does out in the WORLD ("Swap places with a
+# teammate") - not actually useful here, since this screen is about which
+# diver survives the SPECIAL ENCOUNTER's own minigame, a completely
+# different mechanic per diver (see rock_dodge_minigame.gd/
+# blast_rocks_minigame.gd/diver_swap_minigame.gd). Rewritten to explain
+# that minigame specifically, so a player picking blind knows what they're
+# about to be asked to do.
 const ABILITY_BLURBS := {
-	"swap": "Swap places with a teammate",
-	"grapple": "Pull yourself toward a fixed point",
-	"shockwave": "Break rock formations, pulse nearby foes",
+	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
+	"grapple": "In the encounter: swim (WASD) into each telegraphed spot and press E to blast that rock back at the enemy before it fades.",
+	"shockwave": "In the encounter: rocks fly in one after another - press E to shockwave each one before it lands.",
 }
 
 const ROSTER := ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]
@@ -40,11 +45,17 @@ var _ability_label: Label
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# set_anchors_preset() alone leaves offsets at their default zero, which
+	# for a runtime-built Control parented directly under a CanvasLayer (no
+	# parent Control to inherit a size from) collapses the whole rect to
+	# (0, 0) - everything nested inside then renders pinned to the top-left
+	# corner instead of filling the screen. Same bug title_screen.gd hit;
+	# set_anchors_and_offsets_preset() is the fix there too.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.02, 0.05, 0.08, 0.96)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	_confirm_panel = _build_confirm_panel()
@@ -66,11 +77,20 @@ func close() -> void:
 
 func _build_confirm_panel() -> Control:
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# MODIFIED (added): CenterContainer centers based on its child's own
+	# minimum size, but a child without an explicit shrink size flag can
+	# still end up laid out against the top-left corner instead of centered
+	# - this popup was doing exactly that in practice. Forcing shrink-center
+	# on both axes here is the standard fix.
+	center.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	center.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	var col := VBoxContainer.new()
 	col.custom_minimum_size = Vector2(420, 0)
 	col.add_theme_constant_override("separation", 14)
+	col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	center.add_child(col)
 
 	var title := Label.new()
@@ -110,7 +130,7 @@ func _on_enter_pressed() -> void:
 
 func _build_select_panel() -> Control:
 	var col := VBoxContainer.new()
-	col.set_anchors_preset(Control.PRESET_FULL_RECT)
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_theme_constant_override("separation", 10)
 
@@ -178,6 +198,11 @@ func _build_select_panel() -> Control:
 	_ability_label = Label.new()
 	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ability_label.add_theme_color_override("font_color", Color(0.6, 0.85, 0.7))
+	# MODIFIED (added): ABILITY_BLURBS grew from a short one-liner into an
+	# actual tutorial sentence - without autowrap this would just run off
+	# the edges of the screen instead of wrapping under the diver preview.
+	_ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_ability_label.custom_minimum_size = Vector2(360, 0)
 	col.add_child(_ability_label)
 
 	var button_row := HBoxContainer.new()

@@ -80,7 +80,7 @@ func _ready() -> void:
 	# of the screen. Same repositioning applied to blast_rocks_minigame.gd
 	# for a consistent prompt placement between both minigames.
 	var hint := Label.new()
-	hint.text = "Left/Right to aim, left click to swap into that spot"
+	hint.text = "Left/Right to aim, E to swap into that spot"
 	hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	hint.offset_top = 90.0
 	hint.offset_left = -220.0
@@ -286,14 +286,7 @@ func _start_spawn_minigame() -> void:
 # portraits; moving anywhere else just relocates her into a slot one is
 # still inbound for.
 func _confirm_swap() -> void:
-	# TEMP DEBUG: same purpose as _unhandled_input()'s print - remove once
-	# diagnosed. If this never prints, the click isn't reaching this
-	# function at all (an input-routing problem elsewhere). If it prints
-	# "no-op", the click IS arriving but the guard condition is blocking it
-	# - and the printed values say exactly why.
-	print("[swap-debug] _confirm_swap() called: slot_positions.is_empty()=%s selected=%s diver=%s" % [_slot_positions.is_empty(), _selected_slot_index, _diver_slot_index])
 	if _slot_positions.is_empty() or _selected_slot_index == _diver_slot_index:
-		print("[swap-debug] _confirm_swap() no-op'd out")
 		return
 	var previous_diver_slot := _diver_slot_index
 	var target_slot := _selected_slot_index
@@ -593,17 +586,19 @@ const SHOCKWAVE_RADIUS := 3.0
 # keyboard to aim, so confirming with a click keeps the two steps on
 # separate inputs instead of overloading E for both.
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
-		var keycode := (event as InputEventKey).keycode
-		if keycode == KEY_LEFT:
-			_select_slot(-1)
-		elif keycode == KEY_RIGHT:
-			_select_slot(1)
-	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		# TEMP DEBUG: pin down whether the click is even reaching this
-		# script on the 2nd+ encounter, vs. reaching it but no-oping inside
-		# _confirm_swap() - remove once diagnosed.
-		print("[swap-debug] left click reached _unhandled_input, calling _confirm_swap()")
+	# MODIFIED: was left-click (InputEventMouseButton), then briefly Enter -
+	# settled on E to match the same confirm key rock_dodge_minigame.gd/
+	# blast_rocks_minigame.gd already use for their own encounters, so all
+	# three special-encounter minigames share one consistent "E confirms"
+	# convention instead of each picking its own input.
+	if not (event is InputEventKey) or not (event as InputEventKey).pressed or (event as InputEventKey).echo:
+		return
+	var keycode := (event as InputEventKey).keycode
+	if keycode == KEY_LEFT:
+		_select_slot(-1)
+	elif keycode == KEY_RIGHT:
+		_select_slot(1)
+	elif keycode == KEY_E:
 		_confirm_swap()
 
 # MODIFIED: picks whichever live rock is actually closest and within

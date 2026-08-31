@@ -3,8 +3,8 @@
 # nothing here needs a .new() either.
 #
 # Two kinds of item live in ITEMS, told apart by "kind":
-#   - Consumables ("heal"/"oxygen"/"spell_point"/"barrier") apply straight
-#     to a Diver's stats the instant they're picked up - see grant(). These
+#   - Consumables ("heal"/"oxygen"/"spell_point") apply straight to a
+#     Diver's stats the instant they're picked up - see grant(). These
 #     are what ItemOrb hands out (see cracked_wall.gd's break handler in
 #     world.gd - a shockwaved rock pops one, chosen from RANDOM_DROP_TABLE).
 #   - Key items ("key") are the current_pearl/reef_plate spell_tree.gd
@@ -29,17 +29,19 @@ const ITEMS := {
 		"display": "Spell Shard", "kind": "spell_point", "amount": 1,
 		"description": "Grants 1 spell point.",
 	},
-	"barrier_tonic": {
-		"display": "Barrier Tonic", "kind": "barrier", "amount": 0,
-		"description": "Refills your barrier completely.",
-	},
 	"current_pearl": {
 		"display": "Current Pearl", "kind": "key",
 		"description": "A key item. Unlocks Staff_Diver's Tidal Burst.",
 	},
+	# MODIFIED: description used to say "Unlocks Prototype_V(1922)'s Bulwark
+	# Stance" - that spell was removed along with the barrier stat/effect it
+	# depended on, so this key item is currently collectible but unlocks
+	# nothing. Left as a key item rather than deleted since ItemGuardian.
+	# SPOTS still gates a real encounter behind it - needs a new spell (or
+	# some other use) to point at, not addressed here.
 	"reef_plate": {
 		"display": "Reef Plate", "kind": "key",
-		"description": "A key item. Unlocks Prototype_V(1922)'s Bulwark Stance.",
+		"description": "A key item.",
 	},
 }
 
@@ -53,7 +55,6 @@ const RANDOM_DROP_TABLE := [
 	"potion", "potion", "potion", "potion",
 	"oxygen_cell", "oxygen_cell",
 	"spell_shard",
-	"barrier_tonic",
 ]
 
 static func random_drop() -> String:
@@ -86,8 +87,6 @@ static func would_help(item_id: String, s: CombatantStats) -> bool:
 			return s.hp < s.hp_max
 		"oxygen":
 			return s.oxygen < s.oxygen_max
-		"barrier":
-			return s.barrier < s.barrier_max
 		"spell_point":
 			return true
 		_:
@@ -123,8 +122,5 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 		"spell_point":
 			s.spell_points += int(def.amount)
 			return "Found a %s! +%d spell point" % [display, int(def.amount)]
-		"barrier":
-			s.barrier = s.barrier_max
-			return "Found a %s! Barrier fully restored." % display
 		_:
 			return ""

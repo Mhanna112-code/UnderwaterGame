@@ -117,6 +117,13 @@ var title_screen: TitleScreen
 var game_over_screen: GameOverScreen
 var title_layer: CanvasLayer
 
+# The opening story crawl - shown once, right after New Game is actually
+# chosen (see _on_title_new_game()), never on Load Game or a "Return to
+# Title" replay of the title screen itself. Lives on title_layer same as
+# title_screen - same paused-but-interactive shape, just shown for a beat
+# in between "New Game" and the world actually unpausing.
+var intro_crawl: IntroCrawl
+
 # The confirm-then-choose-a-diver prompt shown before a special (key-item
 # guarded) encounter - see _offer_special_encounter() below.
 var special_encounter_prompt: SpecialEncounterPrompt
@@ -175,13 +182,13 @@ func _serialize_state() -> Dictionary:
 			"stats": {
 				"hp_max": s.hp_max, "strength": s.strength, "defense": s.defense,
 				"agility": s.agility, "accuracy": s.accuracy, "evasion": s.evasion,
-				"barrier_max": s.barrier_max, "oxygen_max": s.oxygen_max,
+				"oxygen_max": s.oxygen_max,
 				"level": s.level, "xp": s.xp, "xp_to_next": s.xp_to_next,
 				"spell_points": s.spell_points,
 				"grow_hp": s.grow_hp, "grow_strength": s.grow_strength,
 				"grow_defense": s.grow_defense, "grow_agility": s.grow_agility,
 				"grow_accuracy": s.grow_accuracy, "grow_evasion": s.grow_evasion,
-				"hp": s.hp, "barrier": s.barrier, "oxygen": s.oxygen,
+				"hp": s.hp, "oxygen": s.oxygen,
 			},
 		})
 	return {
@@ -224,7 +231,6 @@ func _load_save() -> void:
 		s.agility = int(sd.get("agility", s.agility))
 		s.accuracy = int(sd.get("accuracy", s.accuracy))
 		s.evasion = int(sd.get("evasion", s.evasion))
-		s.barrier_max = int(sd.get("barrier_max", s.barrier_max))
 		s.oxygen_max = float(sd.get("oxygen_max", s.oxygen_max))
 		s.level = int(sd.get("level", s.level))
 		s.xp = int(sd.get("xp", s.xp))
@@ -237,7 +243,6 @@ func _load_save() -> void:
 		s.grow_accuracy = int(sd.get("grow_accuracy", s.grow_accuracy))
 		s.grow_evasion = int(sd.get("grow_evasion", s.grow_evasion))
 		s.hp = int(sd.get("hp", s.hp_max))
-		s.barrier = int(sd.get("barrier", s.barrier_max))
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
 	pending_world_drops = (data.get("pending_world_drops", {}) as Dictionary).duplicate(true)
@@ -298,6 +303,15 @@ func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
 	_write_save()
 	title_screen.close()
+	# MODIFIED (added): the opening story crawl plays here, between closing
+	# the title screen and actually unpausing the world - a brand new game
+	# specifically, never Load Game (a returning save has already seen it)
+	# and never a "Return to Title" replay of the title screen itself
+	# (that's _show_title_screen(), a different path). get_tree() stays
+	# paused underneath the whole time, same as the title screen it's
+	# replacing on screen.
+	intro_crawl.open()
+	await intro_crawl.finished
 	$HUD.visible = true
 	get_tree().paused = false
 
@@ -434,6 +448,9 @@ func _ready() -> void:
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
 	title_layer.add_child(title_screen)
+
+	intro_crawl = IntroCrawl.new()
+	title_layer.add_child(intro_crawl)
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
@@ -1122,7 +1139,7 @@ func _diver_on_save_point(d: Diver) -> bool:
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
 #
-# HP/barrier/oxygen restore for the WHOLE party, not just whoever's physically
+# HP/oxygen restore for the WHOLE party, not just whoever's physically
 # standing on the point - battle damage (and oxygen spend) is shared
 # across all three divers, so a rest stop patching up only the one you
 # happened to be steering would leave the other two stuck damaged/
@@ -1131,7 +1148,6 @@ func _on_save_requested(_d: Diver) -> void:
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
-		s.barrier = s.barrier_max
 		s.oxygen = s.oxygen_max
 	_update_hp_bar()
 	_update_oxygen_bar()
