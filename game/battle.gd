@@ -290,8 +290,22 @@ func _layout_overhead_bars() -> void:
 		var box: Control = entry.get("overhead")
 		if box == null or not is_instance_valid(box):
 			continue
-		var actor: Node3D = entry.get("actor")
-		if actor == null or not is_instance_valid(actor):
+		# A killing blow starts the grunt's fade before its actor is freed.
+		# Remove its health UI immediately; it must not hover over a death
+		# animation or survive the model it described.
+		var stats_value: Variant = entry.get("stats")
+		if stats_value is CombatantStats and (stats_value as CombatantStats).hp <= 0:
+			box.visible = false
+			continue
+		# Keep this value untyped until after validity is checked. Assigning a
+		# previously freed Object directly to Node3D throws before a following
+		# is_instance_valid() guard ever gets a chance to run.
+		var actor_value: Variant = entry.get("actor")
+		if not is_instance_valid(actor_value):
+			box.visible = false
+			continue
+		var actor := actor_value as Node3D
+		if actor == null:
 			box.visible = false
 			continue
 		var head: Vector3 = _top_of(actor) + Vector3(0.0, OVERHEAD_LIFT, 0.0)

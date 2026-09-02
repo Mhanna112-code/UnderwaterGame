@@ -75,6 +75,11 @@ func _report_encounter_rate() -> void:
 	var between: float = mean_check / maxf(0.01, d.encounter_chance)
 	print("encounter rate: a check every %.0f m on average, %.0f%% of them bite, so a fight every %.0f m" % [
 		mean_check, d.encounter_chance * 100.0, between])
+	if not is_equal_approx(d.min_encounter_distance, 8.0) \
+		or not is_equal_approx(d.max_encounter_distance, 16.0) \
+		or not is_equal_approx(d.encounter_chance, 0.5):
+		findings.append("ENCOUNTER TUNING IGNORED: Marc's tested 8-16 m / 50%% values were replaced with %.0f-%.0f m / %.0f%%" % [
+			d.min_encounter_distance, d.max_encounter_distance, d.encounter_chance * 100.0])
 
 func _check_spawned() -> void:
 	var guardians: Array = []

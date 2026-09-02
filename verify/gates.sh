@@ -21,7 +21,17 @@ run() {
 	echo
 	echo "=== $1 ==="
 	shift
-	if "$@"; then
+	local gate_log
+	gate_log="$(mktemp "${TMPDIR:-/tmp}/underwater-gate.XXXXXX")"
+	"$@" 2>&1 | tee "$gate_log"
+	local command_status=${PIPESTATUS[0]}
+	local script_error=0
+	if grep -q "SCRIPT ERROR:" "$gate_log"; then
+		echo "GATE ERROR: Godot reported a script error even though the command may have exited successfully"
+		script_error=1
+	fi
+	rm -f "$gate_log"
+	if [ "$command_status" -eq 0 ] && [ "$script_error" -eq 0 ]; then
 		return 0
 	fi
 	fails=$((fails + 1))
@@ -33,8 +43,9 @@ run "animations: does every rig change state correctly" "$GODOT" --headless --pa
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
 run "Glassgoat combat: do the authored V2 rules hold" "$GODOT" --headless --path . --script verify/glassgoat_combat.gd
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
+run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd
 run "balance: do careless and greedy policies land in band" "$GODOT" --headless --path . --script verify/balance.gd
-run "sites: is the map navigable by following the lights" "$GODOT" --headless --path . --script verify/sites.gd
+run "sites: are item locations unmarked and physically reachable" "$GODOT" --headless --path . --script verify/sites.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd

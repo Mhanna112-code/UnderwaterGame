@@ -61,16 +61,11 @@ var _showing_save_prompt := false
 # to save_point_menu.learn_ui in _ready() (see SpellTree.can_learn()'s
 # key_items param) rather than copied, so appending here is automatically
 # visible there without any extra sync step.
-# The dive site as places joined by routes, from content/sites.gd. Built by
-# _build_dive_sites(); site_nodes is keyed by site id, routes carries the
-# Beacon chains so _light_route() can recolour them.
+# The dive site as physical places from content/sites.gd. Built by
+# _build_dive_sites(); site_nodes is keyed by site id.
 var site_nodes: Dictionary = {}
-# Sites the party has swum into. Drives the beacons; see _light_route().
-var visited_sites: Array[String] = []
-var routes: Array = []
 
 const SiteScript := preload("res://game/site.gd")
-const BeaconScript := preload("res://game/beacon.gd")
 # Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
 const PLINTH_TOP := 0.7
 
@@ -702,7 +697,7 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # were here, wrapped in a triple-quoted string, which GDScript parses as a
 # string literal and Godot never warns about, so the function ran and built
 # nothing. See #45.
-# Places to swim to, and a lit route between them.
+# Places to discover while exploring or using Mermaid's sonar.
 #
 # The dive site used to be open water with rocks in it: encounters happened
 # wherever you were, so the terrain did no work and there was nothing on the
@@ -715,12 +710,9 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # it mean anything in three dimensions, where anything in open water can be
 # swum around.
 #
-# Navigation is diegetic. The fog limits sight to roughly 25 m, so rather
-# than fighting that with a compass or an arrow on the HUD, the route
-# between two places is a line of lamps spaced inside visible range. You can
-# always see the next one or two, and following them IS the navigation.
-# Amber and breathing means the way onward, dim green means a road already
-# walked. That is the whole legend and it needs no words.
+# There are deliberately no route or site lamps. Marc's final review was to
+# remove every marker that guides players to items because discovery is the
+# purpose of Mermaid's oxygen-consuming sonar and of exploring the map.
 func _build_dive_sites() -> void:
 	for d in Sites.ALL:
 		var site: Site = SiteScript.new()
@@ -728,19 +720,7 @@ func _build_dive_sites() -> void:
 		site.build(d)
 		site_nodes[String(d.id)] = site
 
-	for r in Sites.routes():
-		var made: Array = []
-		var order := 0
-		for at in r.beacons:
-			var b: Beacon = BeaconScript.new()
-			add_child(b)
-			b.build(at as Vector3, order)
-			made.append(b)
-			order += 1
-		routes.append({"from": String(r.from), "to": String(r.to), "beacons": made})
-
 	_build_item_guardians()
-	_light_route()
 
 # The guarded item stands on the plinth at the middle of its site, which is
 # what the plinth is for: the thing you came for presented rather than
@@ -772,44 +752,6 @@ func _build_item_guardians() -> void:
 		add_child(decoy)
 
 		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
-
-# The beacons mark routes. They do not mark loot.
-#
-# Marc's ruling, on the build where they did: "no i dont want the items
-# shown, thats the whole point of consuming oxygen to use the sonar ability
-# and having to find items yourself in the map."
-#
-# He is right and it was the version I built. The lit trail ran to whichever
-# site still had an unclaimed key item, so amber meant "the thing is down
-# here" and following it made sonar pointless: why spend oxygen on a search
-# the map is already doing for you.
-#
-# What is left is what a trail of old dive markers would honestly be. Every
-# route is lit dim, which says a way exists without saying what is at the
-# end of it, and a route goes green once you have actually been to the place
-# it leads to, which is a record of where you have already looked rather
-# than a hint about where you have not. Nothing is ever amber for an item.
-# Where the items are is sonar's job, and sonar costs oxygen.
-func _light_route() -> void:
-	for r in routes:
-		var st: int = Beacon.State.DONE if visited_sites.has(String(r.to)) else Beacon.State.IDLE
-		for b in r.beacons:
-			(b as Beacon).set_state(st)
-	for id in site_nodes.keys():
-		(site_nodes[id] as Site).set_cleared(visited_sites.has(String(id)))
-
-# Somewhere the party has actually swum to, which is the only thing the
-# beacons are allowed to know.
-func _note_site_visits() -> void:
-	var p: Vector3 = divers[active].global_position
-	for d in Sites.ALL:
-		var id := String(d.id)
-		if visited_sites.has(id):
-			continue
-		var at: Vector3 = d.at as Vector3
-		if Vector2(p.x - at.x, p.z - at.z).length() <= float(d.radius):
-			visited_sites.append(id)
-			_light_route()
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1265,7 +1207,6 @@ func _physics_process(dt: float) -> void:
 	_update_active_cursor()
 	_update_banner(dt)
 	_update_save_point_prompt()
-	_note_site_visits()
 	_check_gap_puzzle()
 
 func _player_dir() -> Vector3:
