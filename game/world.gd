@@ -130,6 +130,11 @@ var title_layer: CanvasLayer
 # "" means an ordinary random encounter, nothing to hand out on a win.
 var _pending_reward_item := ""
 
+# True only during the isolated ?boss=1 review route. It never writes a
+# save and returns to the title after the result, so repeatedly testing
+# Tethys cannot damage a real playthrough.
+var _boss_playtest_active := false
+
 # Which save slot this run is playing into - set the instant the title
 # screen resolves (New Game picks one and writes an initial save into it;
 # Load Game picks one and reads from it), -1 only while the title screen
@@ -296,6 +301,22 @@ func _on_title_load_game(slot: int) -> void:
 	$HUD.visible = true
 	get_tree().paused = false
 
+func _on_title_boss_playtest() -> void:
+	_current_slot = -1
+	_boss_playtest_active = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	call_deferred("_start_battle", "", true)
+
+func _boss_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--boss-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("boss=1")
+	return false
+
 func _show_game_over() -> void:
 	get_tree().paused = true
 	game_over_screen.open()
@@ -421,7 +442,10 @@ func _ready() -> void:
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_layer.add_child(title_screen)
+	if _boss_playtest_requested():
+		title_screen.enable_boss_playtest()
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
@@ -1408,16 +1432,17 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "") -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Something grunts out of the murk!")
+	_announce("Tethys rises from the deep!" if boss_encounter else "Something grunts out of the murk!")
 	battle = Battle.new()
 	battle.party_source = divers
 	battle.world = self
+	battle.boss_encounter = boss_encounter
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
@@ -1425,6 +1450,18 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
+	if _boss_playtest_active:
+		_boss_playtest_active = false
+		_pending_reward_item = ""
+		match result:
+			"won":
+				_announce("Tethys boss test complete.")
+			"fled":
+				_announce("Tethys boss test ended early.")
+			_:
+				_announce("Tethys overwhelmed the party. Try the test again.")
+		call_deferred("_show_title_screen")
+		return
 	match result:
 		"won":
 			if _pending_reward_item != "":

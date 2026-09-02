@@ -120,6 +120,9 @@ func end_turn() -> Dictionary:
 	var bleed_damage := status_level("bleed")
 	if bleed_damage > 0:
 		hp = maxi(0, hp - bleed_damage)
+	var poison_damage := status_level("poison")
+	if poison_damage > 0:
+		hp = maxi(0, hp - poison_damage)
 	var expired: Array[String] = []
 	for status in statuses.keys():
 		var entry := statuses[status] as Dictionary
@@ -133,7 +136,11 @@ func end_turn() -> Dictionary:
 			entry.turns = turns
 	for status in expired:
 		statuses.erase(status)
-	return {"bleed_damage": bleed_damage, "expired": expired}
+	return {
+		"bleed_damage": bleed_damage,
+		"poison_damage": poison_damage,
+		"expired": expired,
+	}
 
 func spend_evasion(amount: int) -> int:
 	var spent := mini(evasion_current, maxi(0, amount))

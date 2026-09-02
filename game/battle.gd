@@ -34,6 +34,14 @@ var party_source: Array = []
 # world at all.
 var world: World
 
+# Set by World for the dedicated Glassgoat validation route. Ordinary
+# random and guardian encounters still build Goblin grunts; this builds one
+# TethysBoss with its authored animation and move cycle.
+var boss_encounter := false
+# Verification can hold the automatic entrance/turn dispatcher while it
+# exercises each boss move directly. Shipped encounters leave this true.
+var boss_intro_enabled := true
+
 # Fallback identity only for the no-party_source case (tools/test_battle.gd
 # instantiating a bare Battle) - mirrors whatever Diver would have built.
 var diver_model_name := "Staff_Diver"
@@ -246,7 +254,21 @@ func _ready() -> void:
 	_build_quick_time_ui()
 	_refresh_all_bars()
 	_rebuild_queue()
-	_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
+	if boss_encounter:
+		_log("Tethys rises from the deep.")
+		if boss_intro_enabled:
+			_begin_boss_encounter()
+	else:
+		_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
+		_advance_turn()
+
+func _begin_boss_encounter() -> void:
+	_busy = true
+	_set_all_buttons(false)
+	if not enemies.is_empty() and enemies[0].actor is TethysBoss:
+		await (enemies[0].actor as TethysBoss).play_swim_intro()
+	_log("Tethys settles over the battlefield.")
+	await get_tree().create_timer(0.45).timeout
 	_advance_turn()
 
 # Bars are projected every frame rather than parented to anything: the stage
@@ -492,7 +514,27 @@ func _build_stage() -> void:
 	# away instead of into shot.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
-	var count := randi_range(MIN_ENEMIES, MAX_ENEMIES)
+	var count := 1 if boss_encounter else randi_range(MIN_ENEMIES, MAX_ENEMIES)
+	if boss_encounter:
+		var boss := TethysBoss.new()
+		# Keep the boss close to the party's depth plane. At the grunt row's
+		# -2.7 z position, perspective made a four-metre creature read smaller
+		# on screen than the divers despite its measured native scale.
+		boss.position = Vector3(0.6, 0.0, -0.8)
+		boss.rotation.y = PI
+		vp.add_child(boss)
+		var boss_stats := boss.make_stats(ref_stats, lvl)
+		enemies.append({
+			"kind": "enemy", "stats": boss_stats,
+			"display_name": TethysBoss.DISPLAY_NAME,
+			"actor": boss,
+			"home_pos": boss.position,
+			"home_rot": boss.rotation.y,
+			"xp_reward": boss.xp_reward,
+			"boss": true,
+		})
+		_frame_stage_camera()
+		return
 	for i in range(count):
 		var g := Goblin.new()
 		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
@@ -505,6 +547,7 @@ func _build_stage() -> void:
 			"actor": g,
 			"home_pos": g.position,
 			"home_rot": g.rotation.y,
+			"xp_reward": g.xp_reward,
 		})
 
 	_frame_stage_camera()
@@ -544,7 +587,11 @@ func _frame_stage_camera() -> void:
 		# against the top edge and left the bars themselves off screen,
 		# which is not a framing problem you can see by looking at models.
 		var high: Vector3 = _top_of(a) + Vector3(0.0, OVERHEAD_LIFT + OVERHEAD_HEADROOM, 0.0)
-		for dx in [-0.7, 0.7]:
+		var measured_radius := 0.7
+		var radius_value: Variant = a.get("radius")
+		if radius_value != null:
+			measured_radius = maxf(measured_radius, float(radius_value))
+		for dx in [-measured_radius, measured_radius]:
 			pts.append(low + Vector3(dx, 0.0, 0.0))
 			pts.append(high + Vector3(dx, 0.0, 0.0))
 	if pts.is_empty():
@@ -1112,7 +1159,16 @@ func _finish_actor_turn(entry: Dictionary) -> void:
 	if bleed_damage > 0:
 		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2))
 		_log("%s  •  %s bleeds for %d." % [log_label.text, String(entry.display_name), bleed_damage])
+	var poison_damage := int(tick.get("poison_damage", 0))
+	if poison_damage > 0:
+		_show_floating_text(entry, "POISON -%d" % poison_damage, Color(0.55, 0.9, 0.28))
+		_log("%s  •  %s takes %d poison damage." % [log_label.text, String(entry.display_name), poison_damage])
 	_refresh_bar(entry)
+	if (entry.stats as CombatantStats).hp <= 0 and entry.has("actor") and is_instance_valid(entry.actor):
+		if entry.actor is Diver:
+			(entry.actor as Diver).play_death_fade()
+		elif String(entry.kind) == "enemy":
+			_play_enemy_death(entry)
 
 func _living(list: Array) -> Array:
 	return list.filter(func(e: Dictionary) -> bool: return (e.stats as CombatantStats).hp > 0)
@@ -1607,7 +1663,8 @@ static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats
 		raw = float(defender.hp_max) * heavy_fraction
 	else:
 		raw = (float(move.power) + float(attacker.strength)) * variance
-	var incoming: int = maxi(0, int(round(raw)) - defender.effective_defense())
+	var defense := 0 if bool(move.get("ignore_defense", false)) else defender.effective_defense()
+	var incoming: int = maxi(0, int(round(raw)) - defense)
 	if dodged:
 		incoming = 0
 
@@ -1780,7 +1837,11 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 	# rotation.y == 0 faces -Z for both Diver and Goblin models here, which
 	# is why this is atan2 of the negated direction rather than of it.
 	a.rotation.y = atan2(-to.x, -to.z)
-	var stand: Vector3 = (target.actor as Node3D).position - to.normalized() * SWING_REACH
+	var target_radius := 0.0
+	var radius_value: Variant = (target.actor as Node3D).get("radius")
+	if radius_value != null:
+		target_radius = float(radius_value)
+	var stand: Vector3 = (target.actor as Node3D).position - to.normalized() * (SWING_REACH + target_radius)
 	stand.y = home.y
 	var step := a.create_tween()
 	step.tween_property(a, "position", stand, SWING_STEP_TIME)
@@ -1808,7 +1869,7 @@ func _send_home(entry: Dictionary, delay: float) -> void:
 func _react(entry: Dictionary, r: Dictionary) -> void:
 	if not bool(r.get("hit", false)) or int(r.get("damage", 0)) <= 0:
 		return
-	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
 	if (entry.stats as CombatantStats).hp <= 0:
 		return   # going down has its own animation, see play_death_fade()
@@ -1816,7 +1877,34 @@ func _react(entry: Dictionary, r: Dictionary) -> void:
 	# what this one can take, so the big recoil means something rather than
 	# being the one that always plays.
 	var heavy: bool = float(r.damage) >= float((entry.stats as CombatantStats).hp_max) * 0.2
-	(entry.actor as Diver).play_hit_reaction(heavy)
+	if entry.actor is Diver:
+		(entry.actor as Diver).play_hit_reaction(heavy)
+	elif entry.actor is TethysBoss:
+		(entry.actor as TethysBoss).play_hit_reaction(heavy)
+
+func _play_enemy_death(entry: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	if entry.actor is Goblin:
+		(entry.actor as Goblin).play_death_fade()
+	elif entry.actor is TethysBoss:
+		(entry.actor as TethysBoss).play_death()
+
+func _play_enemy_hit(entry: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	# Tethys already received its authored weak/strong reaction in _react().
+	# Goblin has no hit clip, so walking remains its lightweight recoil.
+	if entry.actor is Goblin:
+		(entry.actor as Goblin).play("walk")
+
+func _restore_enemy_idle(entry: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	if entry.actor is Goblin:
+		(entry.actor as Goblin).play("idle")
+	elif entry.actor is TethysBoss:
+		(entry.actor as TethysBoss).play("idle")
 
 func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	if target.is_empty():
@@ -1845,14 +1933,14 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# about that instead of assuming LOG_READ_DELAY and the fade duration
 	# never overlap.
 	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
-	if target_died and target.has("actor") and target.actor is Goblin:
-		(target.actor as Goblin).play_death_fade()
-	elif r.hit and String(r.debuff) == "" and target.has("actor") and target.actor is Goblin:
-		(target.actor as Goblin).play("walk")
+	if target_died:
+		_play_enemy_death(target)
+	elif r.hit and String(r.debuff) == "":
+		_play_enemy_hit(target)
 	_finish_actor_turn(_acting)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	if not target_died and target.has("actor") and is_instance_valid(target.actor) and target.actor is Goblin:
-		(target.actor as Goblin).play("idle")
+	if not target_died:
+		_restore_enemy_idle(target)
 	_advance_turn()
 
 func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
@@ -1884,8 +1972,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 			summaries.append("%s -%d" % [String(target.display_name), int(result.damage)])
 		else:
 			summaries.append("%s affected" % String(target.display_name))
-		if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Goblin:
-			(target.actor as Goblin).play_death_fade()
+		if (target.stats as CombatantStats).hp <= 0:
+			_play_enemy_death(target)
 	if changed_agility:
 		_resort_pending()
 	_log("%s: %s." % [String(mv.get("name", "Move")), "; ".join(summaries)])
@@ -1918,6 +2006,61 @@ func _pick_enemy_target(alive_party: Array) -> Dictionary:
 			return alive_party[i]
 	return alive_party[alive_party.size() - 1]
 
+func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
+	var boss := actor.actor as TethysBoss
+	var move := boss.next_move()
+	var primary: Dictionary = _pick_enemy_target(alive_party)
+	var targets: Array = alive_party if String(move.get("target", "single")) == "all" else [primary]
+
+	# Tethys remains planted like the massive encounter it is; unlike a
+	# grunt, its tail, tongue and breath are the reach. It still turns toward
+	# the party before playing the authored clip.
+	var to: Vector3 = (primary.actor as Node3D).position - boss.position
+	to.y = 0.0
+	if to.length() > 0.05:
+		boss.rotation.y = atan2(-to.x, -to.z)
+	var length := boss.play_attack(move)
+	if length > 0.0:
+		await get_tree().create_timer(length * IMPACT_FRACTION).timeout
+
+	var summaries: Array[String] = []
+	for target_value in targets:
+		var target := target_value as Dictionary
+		var hit_summaries: Array[String] = []
+		for hit_index in range(int(move.get("hits", 1))):
+			if (target.stats as CombatantStats).hp <= 0:
+				break
+			var result: Dictionary = await _resolve_attack(actor.stats, target.stats, move)
+			if result.hit and int(move.get("poison", 0)) > 0:
+				(target.stats as CombatantStats).add_status(
+					"poison", int(move.poison), int(move.get("poison_turns", 3)))
+				var effects := result.get("effects", []) as Array
+				effects.append("Poison %d·%d" % [int(move.poison), int(move.get("poison_turns", 3))])
+				result["effects"] = effects
+			_react(target, result)
+			_show_combat_feedback(target, result)
+			_refresh_bar(target)
+			if not result.hit:
+				hit_summaries.append("evades")
+			elif bool(result.get("dodged", false)):
+				hit_summaries.append("QTE dodge")
+			elif int(result.damage) > 0:
+				hit_summaries.append("-%d" % int(result.damage))
+			elif int(result.absorbed) > 0:
+				hit_summaries.append("barrier")
+			else:
+				hit_summaries.append("affected")
+		if (target.stats as CombatantStats).hp <= 0 and target.actor is Diver:
+			(target.actor as Diver).play_death_fade()
+		summaries.append("%s %s" % [String(target.display_name), "/".join(hit_summaries)])
+
+	_log("Tethys uses %s: %s." % [String(move.name), "; ".join(summaries)])
+	_finish_actor_turn(actor)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	if is_instance_valid(boss):
+		boss.play("idle")
+	_advance_turn()
+
 func _do_enemy_turn(actor: Dictionary) -> void:
 	(actor.stats as CombatantStats).begin_turn()
 	_refresh_bar(actor)
@@ -1931,6 +2074,9 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	var alive_party := _living(party)
 	if alive_party.is_empty():
 		_advance_turn()
+		return
+	if actor.actor is TethysBoss:
+		await _do_boss_turn(actor, alive_party)
 		return
 	var target: Dictionary = _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
@@ -1977,7 +2123,7 @@ func _win() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
-	_log("The enemies back off, beaten.")
+	_log("Tethys sinks back into the dark, beaten." if boss_encounter else "The enemies back off, beaten.")
 	# Whoever is still standing celebrates. The clip loops, so it holds for
 	# as long as the XP lines take to read.
 	for entry in _living(party):
@@ -1986,8 +2132,7 @@ func _win() -> void:
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	var total_xp := 0
 	for e in enemies:
-		if e.has("actor") and is_instance_valid(e.actor) and e.actor is Goblin:
-			total_xp += int((e.actor as Goblin).xp_reward)
+		total_xp += int(e.get("xp_reward", 0))
 	# Every party member gets the full amount, not a split share - there's
 	# no shared party XP pool concept in this game, and splitting it would
 	# just make leveling slower for the same fights without adding a
