@@ -1467,6 +1467,9 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	elif special_encounter and String(target.get("ability_id", "")) == "swap":
 		await _do_swap_minigame(actor, target, target_stats)
 		return
+	elif special_encounter and String(target.get("ability_id", "")) == "grapple":
+		await _do_grapple_intercept_encounter(actor, target, target_stats)
+		return
 
 	# "Lined up" means the target's already low enough that a heavy swing's
 	# own damage range (see ENEMY_HEAVY_MOVE's heavy_max, a fraction of
@@ -1539,6 +1542,47 @@ func _restore_default_camera() -> void:
 	_stage_camera.position = DEFAULT_CAM_POS
 	_stage_camera.fov = 70.0
 	_stage_camera.look_at(DEFAULT_CAM_LOOK, Vector3.UP)
+
+func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, target_stats: CombatantStats) -> void:
+	_log("%s launches a swarm at %s! Grapple them before impact!" % [String(actor.display_name), String(target.display_name)])
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+
+	var minigame := GrappleInterceptMinigame.new()
+	minigame.stage_root = _stage_vp
+	minigame.stage_camera = _stage_camera
+	minigame.target_actor = target.actor
+	minigame.source_position = actor.actor.global_position + Vector3.UP * (actor.actor as Goblin).height
+	add_child(minigame)
+	var total_taken := 0
+	minigame.object_hit.connect(func() -> void:
+		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.65, 0.9)
+		var incoming := maxi(1, int(round(raw)) - target_stats.defense)
+		target_stats.hp = maxi(0, target_stats.hp - incoming)
+		total_taken += incoming
+		_refresh_bar(target)
+		_show_damage_popup(incoming)
+	)
+	minigame.wrong_object_hit.connect(func() -> void:
+		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * 0.75
+		var incoming := maxi(1, int(round(raw)) - target_stats.defense)
+		target_stats.hp = maxi(0, target_stats.hp - incoming)
+		total_taken += incoming
+		_refresh_bar(target)
+		_show_damage_popup(incoming)
+		_log("Wrong target! The decoy lashes back for %d." % incoming)
+	)
+	minigame.run()
+	var result: Array = await minigame.finished
+	minigame.queue_free()
+	_restore_default_camera()
+	var hits := int(result[0])
+	var total := int(result[1])
+	_log("%s intercepts %d/%d targets%s" % [String(target.display_name), hits, total, " without damage!" if total_taken == 0 else " and takes %d damage." % total_taken])
+	if target_stats.hp <= 0 and target.actor is Diver:
+		(target.actor as Diver).play_death_fade()
+	_special_round += 1
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_advance_turn()
 
 # Each rock that lands unbroken deals its own real hit, live, the instant
 # it lands (via RockDodgeMinigame's rock_landed signal) - not one lump
