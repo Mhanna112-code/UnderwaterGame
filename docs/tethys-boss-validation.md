@@ -2,6 +2,10 @@
 
 This PR build contains Glassgoat's `Mermaid_Freak.fbx` as **Tethys, the final boss**. It does not replace Goblin grunts; Glassgoat said their eventual replacements will be fish enemies.
 
+The complete meeting contract, including the accepted validation-only boundary
+and the owner-delivered follow-ups, is recorded in
+[glassgoat-meeting-agreement-audit.md](glassgoat-meeting-agreement-audit.md).
+
 Open the deployed build with `?boss=1` and choose **Play Tethys Boss Test**. The ordinary URL still exercises PR #54's normal world, guardian and random-grunt encounters.
 
 Browser-captured evidence from the exported build:

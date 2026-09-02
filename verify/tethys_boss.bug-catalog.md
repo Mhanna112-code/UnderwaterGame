@@ -5,7 +5,7 @@
 
 ## What this file does
 
-`TethysBoss` adapts Glassgoat's non-humanoid Mermaid Freak FBX into a native-scale final-boss actor. It maps imported takes to gameplay names, drives swim/attack/reaction/death playback, binds the actor into PR #54's production combat turns, and supplies a provisional material while the original red material is re-rendered.
+`TethysBoss` adapts Glassgoat's non-humanoid Mermaid Freak FBX into a native-scale final-boss actor. It maps imported takes to gameplay names, drives swim/attack/reaction/death playback, binds the actor into PR #54's production combat turns, and supplies an engine-side saturated-red validation material because the current Godot import exposes no usable surface material. Glassgoat later confirmed that the saturated red is intentional and that the asset is ready; no re-render is requested.
 
 ## Public interface
 
@@ -24,7 +24,9 @@
 ## Load-bearing comments
 
 - Mermaid Freak is the final boss, not the grunt replacement.
-- The FBX material is incomplete; red is a validation treatment.
+- Godot exposes no usable FBX surface material; the engine-side red is a
+  validation treatment preserving Glassgoat's confirmed saturated-red intent,
+  not a request to reauthor the ready asset.
 - Glassgoat needs proof that a non-humanoid rig works before producing more enemies.
 - Swim must use Start and End rather than jumping directly between Idle and Loop.
 - Every delivered attack must be reachable in the review build.
@@ -49,7 +51,7 @@
 ## Existing tests before this catalog
 
 - Asserted thirteen gameplay mappings existed and the two loops looped.
-- Asserted native scale and provisional red material.
+- Asserted native scale and the engine-side saturated-red validation material.
 - Ran all six attacks through the production enemy-turn path and recorded `animation_started` names.
 - Verified encounter isolation, combat effects and browser entry.
 - Did **not** prove that any imported take changed a skeleton pose or that the rendered mesh was bound to that skeleton.
@@ -147,7 +149,10 @@
 ## Skipped
 
 - Exact artistic quality of every pose — subjective and better judged by Glassgoat in the live build.
-- Final red materials/textures — blocked on Glassgoat's re-render and explicitly provisional.
+- Final authored material import/presentation — not required for the animation
+  acceptance build. If the asset is later re-exported with a usable Godot
+  material, replace the engine-side fallback and re-run the visual gate; no
+  current Glassgoat re-render is requested.
 - Final boss name, scale, balance, arena, rewards and story trigger — awaiting design confirmation.
 - Camera/Light/Plane helper-track deformation — deliberately not character gameplay.
 - Base Pose movement — a reference pose may correctly be static.
@@ -163,5 +168,6 @@ Adversarial follow-up probed three initially omitted classes: duplicate action c
 
 ## Notes
 
-- Update this catalog when Glassgoat sends the corrected material export.
+- Update this catalog if a later asset export exposes an authored Godot
+  material and replaces the validation fallback.
 - The claim we need is not “17 names exist.” It is “thirteen character gameplay motions deform the non-humanoid skinned model, and production combat calls every attack.”
