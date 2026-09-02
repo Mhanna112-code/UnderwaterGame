@@ -1,13 +1,19 @@
-# Are the authored encounter sites reachable without leaking their item
-# locations through navigation markers?
+# Is the map navigable, and does the neutral trail actually lead anywhere?
 #
-# Checks that sites do not overlap, each sits in a clear reachable space,
-# nobody spawns in their furniture, and neither route beacons nor site lamps
-# are built. Mermaid's sonar is the sole deliberate item-finding aid.
+# The static half checks the graph: every site is reachable, no two overlap,
+# markers stay inside the fog sight budget, and sites have clear approaches.
+# The moving half drives a diver that knows only the marker positions and
+# fails unless following one trail delivers it to a real site.
+#
+# This verifies the experimental guidance works; it does not decide whether
+# guidance beats PR #54's sonar-only version in a human A/B playtest.
 #
 # Usage: godot --headless --path . --script verify/sites.gd
 extends SceneTree
 
+# How close counts as arrived at a beacon, and how long the walk may take.
+const REACHED := 3.2
+const MAX_FRAMES := 6000
 # How far a diver has to start from anything a site plants in the ground.
 # Wide enough to clear the models, which are up to 2.7 m tall and about a
 # metre across at the shoulders.
@@ -16,6 +22,9 @@ const SPAWN_CLEARANCE := 2.5
 var world: Node3D
 var findings: Array = []
 var frames := 0
+var trail: Array = []
+var leg := 0
+var target_site := ""
 
 func _initialize() -> void:
 	_check_graph()
@@ -25,6 +34,11 @@ func _initialize() -> void:
 # ---- the graph, before anything moves ------------------------------------
 
 func _check_graph() -> void:
+	var reach: Array = Sites.reachable()
+	for d in Sites.ALL:
+		if not (String(d.id) in reach):
+			findings.append("STRANDED: '%s' is on the map and no route reaches it" % String(d.id))
+
 	for i in range(Sites.ALL.size()):
 		for j in range(i + 1, Sites.ALL.size()):
 			var a: Dictionary = Sites.ALL[i]
@@ -45,6 +59,26 @@ func _check_graph() -> void:
 			findings.append("SAME AGAIN: '%s' and '%s' both present a '%s', so the two places look like the same errand" % [
 				String(looks[look]), String(g.site), look])
 		looks[look] = String(g.site)
+
+	for r in Sites.routes():
+		var bs: Array = r.beacons
+		if bs.size() < 2:
+			findings.append("NO TRAIL: the route %s to %s has %d beacon(s)" % [
+				String(r.from), String(r.to), bs.size()])
+			continue
+		for k in range(bs.size() - 1):
+			var step: float = (bs[k] as Vector3).distance_to(bs[k + 1] as Vector3)
+			if step > Sites.SIGHT_BUDGET:
+				findings.append("GAP IN THE TRAIL: %s to %s has a %.1f m step, past the %.1f m you can see" % [
+					String(r.from), String(r.to), step, Sites.SIGHT_BUDGET])
+		var from_site: Dictionary = Sites.by_id(String(r.from))
+		var to_site: Dictionary = Sites.by_id(String(r.to))
+		var head: float = (bs[0] as Vector3).distance_to(from_site.at as Vector3)
+		var tail: float = (bs[bs.size() - 1] as Vector3).distance_to(to_site.at as Vector3)
+		if head > float(from_site.radius) + Sites.SIGHT_BUDGET:
+			findings.append("TRAIL STARTS NOWHERE: %s to %s begins %.1f m out" % [String(r.from), String(r.to), head])
+		if tail > float(to_site.radius) + Sites.SIGHT_BUDGET:
+			findings.append("TRAIL ENDS NOWHERE: %s to %s stops %.1f m short" % [String(r.from), String(r.to), tail])
 
 # Coordinates that read fine in the source and sit inside a rock. Both of
 # this map's previous guarded-item positions did exactly that, so the map is
@@ -86,27 +120,20 @@ func _clear(space: PhysicsDirectSpaceState3D, at: Vector3) -> bool:
 # did was appear skewered on it. Nothing in the code was wrong; two correct
 # coordinates were simply the same coordinate, which is the sort of thing
 # that only shows up by looking, and now by this.
-# Nothing on the map may single out a place because there is loot in it.
-# Marc's follow-up was explicit: remove any and all markers guiding players
-# to items, not merely recolour them. That means no route Beacon nodes and
-# no standalone Site lamps. The guardian/item's own model remains content,
-# while sonar remains the intentional locating system.
+# Nothing in the marker state may single out a route because it has loot.
+# ONWARD is the item-signposting state; this experiment deliberately uses
+# only IDLE for unvisited routes and DONE for places actually visited.
 func _check_no_loot_signposts() -> void:
-	var route_markers := _count_beacons(world)
-	var site_markers := 0
-	for id in world.site_nodes.keys():
-		for child in (world.site_nodes[id] as Site).get_children():
-			if child is OmniLight3D:
-				site_markers += 1
-	if route_markers > 0 or site_markers > 0:
-		findings.append("ITEM GUIDANCE REMAINS: found %d route beacon(s) and %d site lamp(s); Marc asked for all item-guiding markers removed" % [
-			route_markers, site_markers])
-
-func _count_beacons(node: Node) -> int:
-	var total := 1 if node is Beacon else 0
-	for child in node.get_children():
-		total += _count_beacons(child)
-	return total
+	for r in world.routes:
+		var visited: bool = world.visited_sites.has(String(r.to))
+		for b in r.beacons:
+			var st: int = (b as Beacon).state
+			if st == Beacon.State.ONWARD:
+				findings.append("SIGNPOSTED LOOT: the route to '%s' is lit as the way onward" % String(r.to))
+				break
+			if st == Beacon.State.DONE and not visited:
+				findings.append("FALSE VISIT: the route to '%s' reads as walked and nobody has been there" % String(r.to))
+				break
 
 func _check_spawns() -> void:
 	for c in World.CAST:
@@ -119,7 +146,7 @@ func _check_spawns() -> void:
 					findings.append("SPAWNED INSIDE THE SCENERY: %s starts %.1f m from '%s' furniture, needs %.1f" % [
 						String(c.model), gap, String(id), SPAWN_CLEARANCE])
 
-# ---- build the real world and inspect it --------------------------------
+# ---- follow the neutral trail -------------------------------------------
 
 func _process(_dt: float) -> bool:
 	frames += 1
@@ -129,10 +156,58 @@ func _process(_dt: float) -> bool:
 	if frames < 4:
 		return false
 
-	_check_clearings()
-	_check_spawns()
-	_check_no_loot_signposts()
-	return _report()
+	if trail.is_empty():
+		_check_clearings()
+		_check_spawns()
+		_check_no_loot_signposts()
+		# Combat has its own gate. A random fight here would pause World before
+		# this test can decide whether the route itself delivers the swimmer.
+		for diver in world.divers:
+			(diver as Diver).encounter_chance = 0.0
+		# Select the first route out of the anchor. The swimmer is given only
+		# the marker sequence, never the destination coordinate.
+		var anchor_id := String(Sites.start().id)
+		for r in world.routes:
+			if String(r.from) != anchor_id:
+				continue
+			for b in r.beacons:
+				trail.append(b)
+			target_site = String(r.to)
+			break
+		if trail.is_empty():
+			findings.append("NO WAY ON: no route leaves the anchor, so there is nothing to follow")
+			return _report()
+		print("trail      %d neutral marker(s) out of '%s', leading to '%s'" % [trail.size(), anchor_id, target_site])
+		world.scripted = true
+
+	var goal: Vector3 = Sites.by_id(target_site).at as Vector3
+	var me: Vector3 = (world.divers[world.active] as Node3D).global_position
+	if Vector2(me.x - goal.x, me.z - goal.z).length() <= float(Sites.by_id(target_site).radius):
+		print("arrived    followed the neutral trail for %d frames and swam into '%s'" % [frames, target_site])
+		return _report()
+
+	if leg < trail.size():
+		var next: Vector3 = (trail[leg] as Node3D).global_position
+		var to := next - me
+		to.y = 0.0
+		if to.length() < REACHED:
+			leg += 1
+			return false
+		world.scripted_dir = to.normalized()
+		world.scripted_rise = clampf((2.0 - me.y) * 0.5, -1.0, 1.0)
+	else:
+		var last: Vector3 = (trail[trail.size() - 1] as Node3D).global_position
+		var prev: Vector3 = (trail[maxi(0, trail.size() - 2)] as Node3D).global_position
+		var onward := last - prev
+		onward.y = 0.0
+		if onward.length() > 0.01:
+			world.scripted_dir = onward.normalized()
+
+	if frames > MAX_FRAMES:
+		findings.append("LOST: followed every marker for %d frames and never reached '%s', stopped %.1f m short" % [
+			frames, target_site, Vector2(me.x - goal.x, me.z - goal.z).length()])
+		return _report()
+	return false
 
 func _report() -> bool:
 	for f in findings:
