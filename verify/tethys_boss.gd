@@ -22,12 +22,96 @@ func _run() -> void:
 	for key in required:
 		_expect(boss.has_clip(String(key)), "MISSING CLIP: %s" % key)
 
+	# Tethys: classify the import as thirteen character motions plus four
+	# explicitly excluded base/helper takes — guards against overclaiming all
+	# seventeen raw AnimationPlayer entries as usable character animation.
+	var gameplay_clips: Array[String] = []
+	for key in required:
+		if boss.has_clip(String(key)):
+			gameplay_clips.append(boss.clip_name(String(key)))
+	var imported_clips: Array = boss.anim.get_animation_list()
+	var excluded_clips: Array = imported_clips.filter(
+		func(clip: StringName) -> bool: return not gameplay_clips.has(String(clip)))
+	var expected_excluded := [
+		"Aquaticus_rig|Base_pose", "Aquaticus_rig|CameraAction",
+		"Aquaticus_rig|LightAction", "Aquaticus_rig|Plane_032Action",
+	]
+	_expect(imported_clips.size() == 17,
+		"RAW TAKE INVENTORY: expected the delivered 17 takes, imported %d" % imported_clips.size())
+	_expect(excluded_clips.size() == expected_excluded.size(),
+		"TAKE CLASSIFICATION: expected four base/helper takes, observed %s" % str(excluded_clips))
+	for clip in expected_excluded:
+		_expect(excluded_clips.has(clip),
+			"HELPER MISCLASSIFIED: expected '%s' outside the thirteen gameplay motions" % clip)
+
+	# Tethys: every gameplay take changes at least one skeleton bone — guards
+	# against a non-humanoid import producing valid names and a rigid model.
+	var skeleton := _find_skeleton(boss)
+	var skeleton_bone_count := skeleton.get_bone_count() if skeleton != null else 0
+	_expect(skeleton != null, "NO DRIVEN SKELETON: the non-humanoid rig has nothing for its clips to deform")
+	if skeleton != null:
+		var pose_signatures: Dictionary = {}
+		for key in required:
+			if not boss.has_clip(String(key)):
+				continue
+			var movement: Dictionary = await _measure_clip_deformation(boss, skeleton, String(key))
+			_expect(bool(movement.changed),
+				"STATIC NON-HUMANOID CLIP: %s started but moved none of %d bones (max delta %.6f)" % [
+					key, skeleton.get_bone_count(), float(movement.max_delta)])
+			pose_signatures[String(key)] = movement.pose
+		# Tethys: no two named motions may resolve to the same sampled pose —
+		# guards against an FBX export/action assignment error duplicating one
+		# take under several plausible names.
+		for left_index in range(required.size()):
+			var left := String(required[left_index])
+			if not pose_signatures.has(left):
+				continue
+			for right_index in range(left_index + 1, required.size()):
+				var right := String(required[right_index])
+				if not pose_signatures.has(right):
+					continue
+				var pose_delta := _max_pose_delta(pose_signatures[left], pose_signatures[right])
+				_expect(pose_delta > 0.001,
+					"DUPLICATE NON-HUMANOID MOTION: %s and %s have the same sampled bone pose" % [left, right])
+
+	# Tethys: every rendered mesh is skinned to the driven skeleton — guards
+	# against animated bones existing beside a rigid visible model.
+	var skinned_meshes := 0
+	for mesh_value in _meshes(boss):
+		var mesh := mesh_value as MeshInstance3D
+		if mesh.skin == null:
+			continue
+		skinned_meshes += 1
+		var resolved := mesh.get_node_or_null(mesh.skeleton)
+		_expect(resolved == skeleton,
+			"DETACHED SKIN: %s resolves '%s' to %s instead of the driven skeleton" % [
+				mesh.name, mesh.skeleton, resolved])
+	_expect(skinned_meshes > 0, "RIGID VISIBLE MODEL: no rendered mesh carries a Skin resource")
+
 	if boss.has_clip("idle"):
 		var idle := boss.anim.get_animation(boss.clip_name("idle"))
 		_expect(idle != null and idle.loop_mode == Animation.LOOP_LINEAR, "IDLE DOES NOT LOOP")
 	if boss.has_clip("swim_loop"):
 		var swim := boss.anim.get_animation(boss.clip_name("swim_loop"))
 		_expect(swim != null and swim.loop_mode == Animation.LOOP_LINEAR, "SWIM LOOP DOES NOT LOOP")
+
+	# Tethys: encounter entrance starts Swim Start, Loop, End, then Idle —
+	# guards against the direct idle/loop transition Glassgoat reported.
+	var intro_sequence: Array[String] = []
+	boss.anim.animation_started.connect(
+		func(name: StringName) -> void: intro_sequence.append(String(name)))
+	await boss.play_swim_intro()
+	var expected_intro := [
+		boss.clip_name("swim_start"), boss.clip_name("swim_loop"),
+		boss.clip_name("swim_end"), boss.clip_name("idle"),
+	]
+	_expect(intro_sequence.size() >= expected_intro.size(),
+		"SWIM INTRO INCOMPLETE: expected four clips, observed %s" % str(intro_sequence))
+	if intro_sequence.size() >= expected_intro.size():
+		for i in range(expected_intro.size()):
+			_expect(intro_sequence[i] == expected_intro[i],
+				"SWIM INTRO ORDER: step %d expected '%s', observed '%s'" % [
+					i + 1, expected_intro[i], intro_sequence[i]])
 
 	var move_by_id: Dictionary = {}
 	for move_value in TethysBoss.MOVES:
@@ -111,7 +195,7 @@ func _run() -> void:
 	boss.queue_free()
 	await process_frame
 	if findings.is_empty():
-		print("TETHYS BOSS: clean — native scale, red validation material, 13 required clips, six moves, isolated encounter")
+		print("TETHYS BOSS: clean — 13 distinct character motions deform a %d-bone skinned rig; six attacks production-called; four base/helper takes excluded" % skeleton_bone_count)
 		quit(0)
 		return
 	for finding in findings:
@@ -142,3 +226,48 @@ func _party_hps(entries: Array) -> Array[int]:
 	for entry in entries:
 		out.append((entry.stats as CombatantStats).hp)
 	return out
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+	if node is Skeleton3D:
+		return node
+	for child in node.get_children():
+		var found := _find_skeleton(child)
+		if found != null:
+			return found
+	return null
+
+func _measure_clip_deformation(boss: TethysBoss, skeleton: Skeleton3D, key: String) -> Dictionary:
+	var clip := boss.clip_name(key)
+	var animation := boss.anim.get_animation(clip)
+	if animation == null or animation.length <= 0.0:
+		return {"changed": false, "max_delta": 0.0, "pose": []}
+	boss.anim.play(clip)
+	boss.anim.seek(0.0, true)
+	await process_frame
+	var baseline := _bone_snapshot(skeleton)
+	var max_delta := 0.0
+	var signature: Array = []
+	for fraction in [0.2, 0.4, 0.6, 0.8]:
+		boss.anim.seek(animation.length * fraction, true)
+		await process_frame
+		var current := _bone_snapshot(skeleton)
+		max_delta = maxf(max_delta, _max_pose_delta(baseline, current))
+		if is_equal_approx(float(fraction), 0.6):
+			signature = current
+	return {"changed": max_delta > 0.001, "max_delta": max_delta, "pose": signature}
+
+func _max_pose_delta(left: Array, right: Array) -> float:
+	var max_delta := 0.0
+	for bone in range(mini(left.size(), right.size())):
+		var start := left[bone] as Transform3D
+		var sample := right[bone] as Transform3D
+		var delta := start.origin.distance_to(sample.origin)
+		delta += start.basis.get_rotation_quaternion().angle_to(sample.basis.get_rotation_quaternion())
+		max_delta = maxf(max_delta, delta)
+	return max_delta
+
+func _bone_snapshot(skeleton: Skeleton3D) -> Array:
+	var poses: Array = []
+	for bone in range(skeleton.get_bone_count()):
+		poses.append(skeleton.get_bone_global_pose(bone))
+	return poses

@@ -8,6 +8,16 @@ Browser-captured evidence from the exported build:
 
 - [query-only title action](evidence/tethys-boss-title.png)
 - [native-scale Tethys battle](evidence/tethys-boss-battle.png)
+- [labelled non-humanoid animation reel](evidence/tethys-nonhumanoid-animation.gif) — the production battle camera plays the swim phases, all six attacks, both hit reactions and death.
+
+## What “the 17 animations work” means
+
+Godot imports all **17 raw takes**, but they are not 17 character motions:
+
+- **13 character motions**: Idle; Swim Start/Loop/End; Poison Breath; Spinning Death; Double Scratch; Tail Slam; Tail Sweep; Strong Hit; Weak Hit; Death; Tongue Slayer.
+- **4 deliberately excluded base/helper takes**: Base Pose, CameraAction, LightAction and Plane_032Action.
+
+The verification gate samples the imported rig itself. Every one of the 13 character motions measurably changes the pose of the **311-bone Skeleton3D**, every sampled pose is distinct from the other motions, and the visible mesh carries a Skin bound to that same skeleton. The six attacks are additionally observed starting from `Battle._do_boss_turn()`, so the evidence covers production combat dispatch rather than a detached animation viewer.
 
 ## Implemented for the validation build
 
