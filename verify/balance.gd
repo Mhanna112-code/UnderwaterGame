@@ -163,8 +163,8 @@ func _route(seed_value: int, policy: String) -> Dictionary:
 		# only the tiny per-frame overshoot at a fired check is discarded.
 		next_check -= remaining
 
-		# The visible guardian is a guaranteed Battle, and production Battle
-		# currently rolls the same legal pack range for it as open water.
+		# The visible guardian is a guaranteed one-enemy Battle. One actor on
+		# the plinth cannot silently turn into an unrelated random pack.
 		var guardian_count := Battle.max_enemies_for_level((party[0].stats as CombatantStats).level, true)
 		var guardian_result := _fight_party(party, guardian_count, policy, rng, true)
 		guardian_fights += 1
