@@ -147,9 +147,11 @@ func _run(spot: Dictionary) -> void:
 func _check_result() -> void:
 	var spot: Dictionary = cases[at] as Dictionary
 	var battles := 0
+	var built_battle: Battle = null
 	for c in world.get_children():
 		if c is Battle:
 			battles += 1
+			built_battle = c as Battle
 	var got := String(world._pending_reward_item)
 	print("%-28s %d battle(s), reward %s" % [
 		String(spot.what), battles, got if got != "" else "none"])
@@ -160,6 +162,13 @@ func _check_result() -> void:
 	if got != expect_reward:
 		findings.append("WRONG REWARD: %s is worth '%s', expected '%s'" % [
 			String(spot.what), got, expect_reward])
+	if built_battle != null:
+		var enemy_count := built_battle.enemies.size()
+		if String(spot.kind) == "guardian" and enemy_count != 1:
+			findings.append("GUARDIAN PACK: one visible guardian became %d combat enemies" % enemy_count)
+		elif String(spot.kind) == "encounter" and enemy_count > Battle.max_enemies_for_level(1):
+			findings.append("OPENING PACK: level 1 rolled %d enemies, max is %d" % [
+				enemy_count, Battle.max_enemies_for_level(1)])
 
 func _report() -> bool:
 	for f in findings:

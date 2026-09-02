@@ -36,6 +36,17 @@ const ALL := {
 	},
 }
 
+# Player-facing identity lives beside the rig identity so exploration and
+# combat cannot drift into separate nickname tables. Glassgoat confirmed
+# Maxilani and Musashi in the meeting. The Proto5 pilot's proper name was not
+# decided, so `Mech Pilot` is deliberately a role label rather than invented
+# canon; changing it later is one data edit with no save/model migration.
+const DISPLAY_NAMES := {
+	"Staff_Diver": "Maxilani",
+	"Prototype_1(1910)": "Musashi",
+	"Prototype_V(1922)": "Mech Pilot",
+}
+
 # Motion names the game asks for, resolved per family.
 #
 # Returned WITHOUT the rig prefix. Each delivery names its armature node
@@ -145,6 +156,9 @@ static func file(model_name: String) -> String:
 
 static func carries(model_name: String) -> Array:
 	return entry(model_name).carries as Array
+
+static func display_name(model_name: String) -> String:
+	return String(DISPLAY_NAMES.get(model_name, model_name))
 
 static func motion(model_name: String, name: String) -> String:
 	var m: Dictionary = MOTIONS.get(family(model_name), {}) as Dictionary

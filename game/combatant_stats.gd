@@ -100,6 +100,20 @@ func fill() -> void:
 	statuses.clear()
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
 
+# A short post-victory regroup. Without a camp/healer between the two artifact
+# sites, even a won encounter could leave a diver at 0 HP and turn the next
+# legal pack into a foregone conclusion. This restores only a fraction, so
+# damage still matters across the route; a level-up remains the only full
+# refill. Called by Battle after XP and mirrored by the campaign balance gate.
+func recover_after_victory(fraction: float = 0.30) -> void:
+	var amount := clampf(fraction, 0.0, 1.0)
+	hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
+	barrier = mini(barrier_max, barrier + int(ceil(float(barrier_max) * amount)))
+	oxygen = minf(oxygen_max, oxygen + oxygen_max * amount)
+	statuses.clear()
+	temporary_modifiers = {"accuracy": 0, "evasion": 0}
+	evasion_current = effective_evasion()
+
 func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 

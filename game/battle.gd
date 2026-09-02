@@ -38,6 +38,10 @@ var world: World
 # random and guardian encounters still build Goblin grunts; this builds one
 # TethysBoss with its authored animation and move cycle.
 var boss_encounter := false
+# Artifact sites visibly place one guardian beside one item. Keep that
+# encounter one-on-one with the party instead of secretly replacing the one
+# approached actor with a random three-grunt pack.
+var guardian_encounter := false
 # Verification can hold the automatic entrance/turn dispatcher while it
 # exercises each boss move directly. Shipped encounters leave this true.
 var boss_intro_enabled := true
@@ -50,11 +54,17 @@ const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
 
-const DISPLAY_NAMES := {
-	"Staff_Diver": "Mermaid",
-	"Prototype_1(1910)": "Diver Boy",
-	"Prototype_V(1922)": "Marine Man",
-}
+# A fresh party can face one or two grunts. Three-grunt packs enter the roll
+# only after the party has earned its first level; this removes the observed
+# level-1 automatic-loss pack without deleting the harder formation.
+static func max_enemies_for_level(player_level: int, is_guardian: bool = false) -> int:
+	if is_guardian:
+		return 1
+	return 2 if player_level <= 1 else MAX_ENEMIES
+
+# Compatibility alias for verification and any tools that enumerate the
+# roster here. Cast is the single identity source used by Battle and World.
+const DISPLAY_NAMES := Cast.DISPLAY_NAMES
 
 # Attack is a category, not a single action: pressing it opens a move list
 # instead of swinging right away. These base moves are always available -
@@ -394,7 +404,7 @@ func _layout_overhead_bars() -> void:
 		placed.append(Rect2(pos, size))
 
 func _display(model_name: String) -> String:
-	return String(DISPLAY_NAMES.get(model_name, model_name))
+	return Cast.display_name(model_name)
 
 # Stand-in used only when nothing hands this Battle a party before it
 # enters the tree - mirrors whatever Diver would have built for
@@ -514,7 +524,7 @@ func _build_stage() -> void:
 	# away instead of into shot.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
-	var count := 1 if boss_encounter else randi_range(MIN_ENEMIES, MAX_ENEMIES)
+	var count := 1 if boss_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -2148,6 +2158,11 @@ func _win() -> void:
 		for lv in levels:
 			_log("%s reached level %d!" % [String(entry.display_name), int(lv)])
 			await get_tree().create_timer(LOG_READ_DELAY).timeout
+	# The map has repeated random battles plus two guardians and no guaranteed
+	# healer between them. A partial regroup prevents one victory from leaving
+	# the next encounter mathematically decided while preserving attrition.
+	for entry in party:
+		(entry.stats as CombatantStats).recover_after_victory()
 	finished.emit("won")
 
 func _lose() -> void:

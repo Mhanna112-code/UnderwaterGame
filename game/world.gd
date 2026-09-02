@@ -318,6 +318,11 @@ func _boss_playtest_requested() -> bool:
 	return false
 
 func _show_game_over() -> void:
+	# Defeat owns the whole screen just like cold launch. The controls, active
+	# diver label, bars, minimap and any announcement describe a playable world
+	# and become misleading noise once that world has been paused.
+	$HUD.visible = false
+	title_screen.close()
 	get_tree().paused = true
 	game_over_screen.open()
 
@@ -450,7 +455,9 @@ func _ready() -> void:
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
 	game_over_screen.title_chosen.connect(_on_game_over_title)
-	$HUD.add_child(game_over_screen)
+	# This cannot live under HUD: _show_game_over() deliberately hides HUD as
+	# one unit. Keep both exclusive, paused menu surfaces on the overlay layer.
+	title_layer.add_child(game_over_screen)
 
 	# A game-over restart must rebuild the scene before applying its save so
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
@@ -1443,6 +1450,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false) -> vo
 	battle.party_source = divers
 	battle.world = self
 	battle.boss_encounter = boss_encounter
+	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
@@ -1501,16 +1509,10 @@ func _announce(text: String) -> void:
 	banner.text = text
 	_banner_timer = 4.0
 
-# Display-only nicknames, not used anywhere gameplay reads model_name -
-# purely so the HUD reads "Marine Man" instead of "Prototype_V(1922)".
-const DISPLAY_NAMES := {
-	"Staff_Diver": "Mermaid",
-	"Prototype_1(1910)": "Diver Boy",
-	"Prototype_V(1922)": "Marine Man",
-}
-
 func _display_name(model_name: String) -> String:
-	return String(DISPLAY_NAMES.get(model_name, model_name))
+	# Display identity is centralized with each rig in Cast; model_name remains
+	# the stable gameplay/save identifier.
+	return Cast.display_name(model_name)
 
 func _update_hud() -> void:
 	if target_selector.selecting:
