@@ -7,7 +7,7 @@ Open the deployed build with `?boss=1` and choose **Play Tethys Boss Test**. The
 Browser-captured evidence from the exported build:
 
 - [query-only title action](evidence/tethys-boss-title.png)
-- [native-scale Tethys battle](evidence/tethys-boss-battle.png)
+- [native-scale, front-facing Tethys battle](evidence/tethys-boss-battle.png)
 - [labelled non-humanoid animation reel](evidence/tethys-nonhumanoid-animation.gif) — the production battle camera plays the swim phases, all six attacks, both hit reactions and death.
 
 ## What “the 17 animations work” means
@@ -22,7 +22,8 @@ The verification gate samples the imported rig itself. Every one of the 13 chara
 ## Implemented for the validation build
 
 - native imported scale and dedicated boss framing;
-- provisional red materials because the delivered FBX contains no usable red material or texture;
+- an engine-side saturated-red material because Godot exposes no usable surface material from the FBX; Glassgoat confirmed that the saturated red is intentional and the creature was designed for a very dark arena;
+- model-specific +Z facing at encounter start and before every boss attack, rather than applying the humanoid/Goblin -Z convention and showing the boss's back;
 - Swim Start → Swim Loop → Swim End → Idle entrance sequence;
 - Double Scratch as two hits, pressuring the evasion pool;
 - Tail Sweep as party-wide armour-piercing damage;
@@ -31,12 +32,11 @@ The verification gate samples the imported rig itself. Every one of the 13 chara
 - authored weak/strong hit reactions and death animation;
 - deterministic six-move cycle so a reviewer can see every attack.
 
-## Still requires Glassgoat's final art/design handoff
+## Still requires final encounter design
 
-- a GLB with embedded red materials/textures, or the FBX plus its texture folder;
 - confirmation that **Tethys** is the final display name;
 - authoritative in-world scale beside the divers;
 - final numbers and precise rules for the six attacks;
-- the final-boss story trigger, arena, rewards and ending progression.
+- the dark broken-lab arena, lighting, close-up entrance, story trigger, rewards and ending progression.
 
-The red material and unspecified move roles are deliberately labelled provisional. The build proves that the rig, clips, combat integration and web path work without claiming unfinished art or balance is final.
+The standalone title button remains an explicitly accepted animation-review route, not the final story entrance. The build proves that the rig, clips, facing, combat integration and web path work without claiming the eventual arena, lighting or balance is final.

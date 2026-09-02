@@ -1,9 +1,10 @@
 # Glassgoat's Mermaid Freak is Tethys, the final boss. It is deliberately a
 # separate combatant from Goblin: the meeting clarified that normal grunts
 # will eventually be replaced by fish, while this four-armed creature is the
-# massive authored boss. The imported FBX currently carries no usable colour
-# or texture data, so _apply_validation_materials() supplies a clearly
-# provisional red treatment for the playable review build.
+# massive authored boss. Godot does not expose usable surface materials from
+# this FBX import, so _apply_validation_materials() preserves the saturated-red
+# intent Glassgoat confirmed for the playable review build. That engine-side
+# fallback is not a request for Glassgoat to reauthor the ready asset.
 class_name TethysBoss
 extends Node3D
 
@@ -106,6 +107,14 @@ func head_offset() -> float:
 
 func foot_offset() -> float:
 	return 0.0
+
+# Mermaid_Freak was authored with its visible front along local +Z. Godot's
+# default Node3D look_at convention points -Z, so use_model_front must remain
+# true whenever combat turns this actor toward somebody.
+func face_toward(world_target: Vector3) -> void:
+	var level_target := Vector3(world_target.x, global_position.y, world_target.z)
+	if global_position.distance_squared_to(level_target) > 0.0025:
+		look_at(level_target, Vector3.UP, true)
 
 func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = BASE_XP + maxi(0, player_level - 1) * 12
@@ -212,9 +221,9 @@ func _apply_validation_materials(root: Node) -> void:
 		var mesh := mesh_value as MeshInstance3D
 		for surface in range(mesh.mesh.get_surface_count()):
 			var material := StandardMaterial3D.new()
-			# Two related reds retain some separation between the body and face
-			# surfaces while making the missing-art problem impossible to mistake
-			# for Glassgoat's intended finished material.
+			# Two related reds retain separation between the body and face surfaces
+			# while preserving the saturated-red intent confirmed by Glassgoat. The
+			# eventual dark boss arena supplies the intended presentation context.
 			material.albedo_color = Color("9f2435") if surface_index % 2 == 0 else Color("c24a50")
 			material.roughness = 0.72
 			material.metallic = 0.05

@@ -159,12 +159,20 @@ func _run() -> void:
 		_expect(String(battle.enemies[0].display_name) == "Tethys", "BOSS ENCOUNTER: canonical display name is missing")
 	_expect(battle.enemies.all(func(entry: Dictionary) -> bool: return not (entry.actor is Goblin)),
 		"BOSS ENCOUNTER: Mermaid Freak incorrectly replaced/added a grunt")
+	var battle_boss := battle.enemies[0].actor as TethysBoss
+	var party_centre := _party_centre(battle.party)
+	var toward_party := (party_centre - battle_boss.global_position).normalized()
+	# Tethys: her imported face points along local +Z, unlike the humanoid
+	# actors. At encounter start her visible front must face the party.
+	_expect(battle_boss.basis.z.normalized().dot(toward_party) > 0.95,
+		"BOSS FACING: Tethys starts with her back to the party (front %s, party %s, dot %.3f)" % [
+			battle_boss.basis.z.normalized(), toward_party,
+			battle_boss.basis.z.normalized().dot(toward_party)])
 
 	# Exercise the production enemy-turn path for all six moves. Inflate HP
 	# only inside this gate so the party survives long enough to observe the
 	# complete deterministic animation cycle.
 	var started_clips: Array[String] = []
-	var battle_boss := battle.enemies[0].actor as TethysBoss
 	battle_boss.anim.animation_started.connect(func(name: StringName) -> void: started_clips.append(String(name)))
 	(battle.enemies[0].stats as CombatantStats).accuracy = 99
 	for entry in battle.party:
@@ -175,6 +183,9 @@ func _run() -> void:
 		stats.evasion_current = 0
 	var hp_before_double := _party_hp(battle.party)
 	await battle._do_boss_turn(battle.enemies[0], battle.party)
+	_expect(_best_party_facing_dot(battle_boss, battle.party) > 0.95,
+		"BOSS ATTACK FACING: production turn points Tethys away from every party member (best dot %.3f)" %
+			_best_party_facing_dot(battle_boss, battle.party))
 	_expect(hp_before_double - _party_hp(battle.party) > 0, "DOUBLE SCRATCH TURN: production path dealt no damage")
 	var hp_before_sweep: Array[int] = _party_hps(battle.party)
 	await battle._do_boss_turn(battle.enemies[0], battle.party)
@@ -226,6 +237,19 @@ func _party_hps(entries: Array) -> Array[int]:
 	for entry in entries:
 		out.append((entry.stats as CombatantStats).hp)
 	return out
+
+func _party_centre(entries: Array) -> Vector3:
+	var centre := Vector3.ZERO
+	for entry in entries:
+		centre += (entry.actor as Node3D).global_position
+	return centre / maxf(1.0, float(entries.size()))
+
+func _best_party_facing_dot(actor: Node3D, entries: Array) -> float:
+	var best := -1.0
+	for entry in entries:
+		var toward := ((entry.actor as Node3D).global_position - actor.global_position).normalized()
+		best = maxf(best, actor.basis.z.normalized().dot(toward))
+	return best
 
 func _find_skeleton(node: Node) -> Skeleton3D:
 	if node is Skeleton3D:

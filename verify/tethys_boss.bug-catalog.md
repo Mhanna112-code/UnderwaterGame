@@ -17,6 +17,7 @@
 | `play_hit_reaction(heavy)` | combat method | Selects weak or strong damage reaction |
 | `play_death()` | combat method | Plays death, then fades/frees the actor |
 | `play_swim_intro()` | encounter method | Plays Start → Loop → End → Idle before the fight |
+| `face_toward(world_target)` | orientation method | Points Mermaid Freak's authored local +Z front toward a combat target |
 | `has_clip(key)` / `clip_name(key)` | inspection contract | Reports the imported take mapped to a gameplay key |
 | `?boss=1` | browser route | Exposes a one-click playable Tethys fight |
 
@@ -64,6 +65,7 @@
 | 5 | The headline “17 animations work” counts Camera/Light/Plane helper actions as character motion. | Medium — the team overclaims support and misses unusable character clips. | The raw FBX exposes all takes through one AnimationPlayer list regardless of gameplay relevance. | contract classification | characterized |
 | 6 | The deployed playtest serves a stale PCK even though source tests pass. | High — Glassgoat evaluates yesterday's boss and gives invalid feedback. | Source, exported artifact and Vercel deployment are separate boundaries. | artifact differential + browser E2E | characterized |
 | 7 | Several plausible take names resolve to duplicate bone motion because the FBX exported the same action more than once. | High — the rig technically moves while authored attacks remain absent. | Name existence and within-clip deformation both pass when two names carry identical animation content. | pairwise differential invariant | characterized |
+| 8 | The battle applies the humanoid/Goblin -Z facing convention to Mermaid Freak's +Z front, so Tethys presents her back at spawn and during attacks. | High — the first playable boss review visibly looks broken despite valid animation. | The original spawn used a guessed `PI` rotation and the attack formula explicitly assumed all models faced -Z; no gate measured orientation. | directional integration invariant | caught and characterized |
 
 ## Test plan
 
@@ -132,6 +134,16 @@
   - Could this fail under a behavior-preserving refactor? Two intentionally identical authored poses would require an explicit contract exception; none of the delivered actions are intended duplicates.
   - Input generator: every unordered pair of the bounded thirteen-key character set (78 comparisons).
 
+### Bug #8 — model-specific forward axis reversed
+
+- **Test type:** Directional integration invariant in the real `Battle` encounter.
+- **Description string:** `Tethys: visible +Z front faces the party at spawn and after a production boss turn — guards against 180-degree model-axis regressions`
+- **What it catches:** A correct animation playing on a boss whose back points toward every party member, either initially or after combat chooses a target.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; it calculates the dot product from Tethys's authored visible-front axis to the real party positions and requires near alignment.
+  - Could this fail under a behavior-preserving refactor? Only if the source asset is deliberately re-exported with a different front axis; that changes the asset contract and should update `face_toward()` and this assertion together.
+  - Tracer bullets: the original spawn failed first; after that was corrected, the production boss turn independently failed with a best party-facing dot of exactly -1.000.
+
 ## Skipped
 
 - Exact artistic quality of every pose — subjective and better judged by Glassgoat in the live build.
@@ -142,8 +154,8 @@
 
 ## Post-write evaluation
 
-- **Bugs caught:** No production failures. The delivered rig passed all seven failure-mode gates.
-- **Bugs characterized:** #1–#7. Thirteen character clips each deform the 311-bone skinned rig, all 78 unordered clip pairs have distinct sampled poses, the swim sequence is exact, all six attacks start through production combat, and the deployed artifact/browser route are separately checked.
+- **Bugs caught:** #8 was a production failure: Tethys faced exactly 180 degrees away during attacks even though every animation/skin gate passed.
+- **Bugs characterized:** #1–#8. Thirteen character clips each deform the 311-bone skinned rig, all 78 unordered clip pairs have distinct sampled poses, the swim sequence is exact, all six attacks start through production combat, opening and attack-facing directions are asserted, and the deployed artifact/browser route are separately checked.
 - **Bugs discovered during writing:** The stronger test initially overclaimed four unprefixed helper names, then inspection established Godot's real `Aquaticus_rig|…` namespace. Two test-harness defects were also exposed and fixed: eager Array string formatting and reading the skeleton after its owner was freed. Neither defect was in production gameplay.
 - **Tests removed:** none
 

@@ -521,8 +521,14 @@ func _build_stage() -> void:
 		# -2.7 z position, perspective made a four-metre creature read smaller
 		# on screen than the divers despite its measured native scale.
 		boss.position = Vector3(0.6, 0.0, -0.8)
-		boss.rotation.y = PI
 		vp.add_child(boss)
+		# Mermaid_Freak's authored front is local +Z (the humanoid/Goblin
+		# actors use -Z), so point that axis at the party's actual centre.
+		var party_centre := Vector3.ZERO
+		for party_entry in party:
+			party_centre += (party_entry.actor as Node3D).global_position
+		party_centre /= maxf(1.0, float(party.size()))
+		boss.face_toward(party_centre)
 		var boss_stats := boss.make_stats(ref_stats, lvl)
 		enemies.append({
 			"kind": "enemy", "stats": boss_stats,
@@ -2018,7 +2024,7 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 	var to: Vector3 = (primary.actor as Node3D).position - boss.position
 	to.y = 0.0
 	if to.length() > 0.05:
-		boss.rotation.y = atan2(-to.x, -to.z)
+		boss.face_toward((primary.actor as Node3D).global_position)
 	var length := boss.play_attack(move)
 	if length > 0.0:
 		await get_tree().create_timer(length * IMPACT_FRACTION).timeout
