@@ -667,6 +667,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	tw.tween_callback(rock.queue_free)
 	_maybe_finish()"""
 
+# Guards _finish_now() against emitting `finished` twice - it's reachable
+# from two places (the natural PORTRAIT_COUNT/total_portraits completion
+# below, and battle.gd's request_abort() when the player's HP hits 0
+# mid-encounter), and a second emission would resume battle.gd's already-
+# resumed `await minigame.finished` a second time.
+var _did_finish := false
+
 func _maybe_finish() -> void:
 	# MODIFIED: was `_resolved >= PORTRAIT_COUNT` (3) - _resolved counts
 	# every individual lane arrival across ALL rounds (3 rounds x 3 lanes =
@@ -679,30 +686,44 @@ func _maybe_finish() -> void:
 	# to stage_root, not to this Control, so queue_free() never touched
 	# them) were still mid-flight. That's why portraits kept being visible
 	# after the view had already switched back to the normal battle framing.
-	var total_portraits:int = PORTRAIT_COUNT * SLOT_NAMES.size()
+	var total_portraits: int = PORTRAIT_COUNT * SLOT_NAMES.size()
 	if _spawned >= PORTRAIT_COUNT and _resolved >= total_portraits:
-		# MODIFIED (added): was leaving target_actor wherever the last round
-		# (or the player's last manual swap) put her - same "swim back to
-		# exactly where this started" fix blast_rocks_minigame.gd already
-		# applies for the same reason (see its own _maybe_finish()).
-		# Without this, she'd stay stranded off to one side after the
-		# minigame ends, so the NEXT special-encounter turn's camera
-		# (_look_at_swap_angle(), computed from her current position) would
-		# frame around that drifted spot instead of her real battle stance
-		# - exactly why the camera angle looked different the second time
-		# the enemy used this attack.
-		if is_instance_valid(target_actor):
-			var back := target_actor.create_tween()
-			back.tween_property(target_actor, "global_position", _player_anchor_position, _current_travel_time * 0.5)
-		# MODIFIED (was individually freeing just _active_cursor here): that
-		# fixed the cursor specifically, but it was still one more instance
-		# of the same class of bug (stage_root outlives this Control, so
-		# nothing parented to it gets cleaned up just because this Control
-		# does) - _cleanup_stage_nodes() is the general version, sweeping
-		# every sprite/cursor this instance ever created under stage_root
-		# regardless of whether its own individual cleanup path (self-free
-		# on arrival, per-round reference clearing) already got it. Anything
-		# already freed is skipped via is_instance_valid(), so this is a
-		# safety net, not a duplicate free.
-		_cleanup_stage_nodes()
-		finished.emit(_hits, total_portraits)
+		_finish_now(total_portraits)
+
+# Called by battle.gd the instant the player's HP hits 0 mid-encounter -
+# ends the swap minigame right away with whatever tally it has so far,
+# instead of continuing to fly more portraits at a diver who's already
+# down. _finish_now()'s own _did_finish guard makes this safe even if the
+# natural completion above was also about to fire on its own.
+func request_abort() -> void:
+	_finish_now(PORTRAIT_COUNT * SLOT_NAMES.size())
+
+func _finish_now(total_portraits: int) -> void:
+	if _did_finish:
+		return
+	_did_finish = true
+	# MODIFIED (added): was leaving target_actor wherever the last round
+	# (or the player's last manual swap) put her - same "swim back to
+	# exactly where this started" fix blast_rocks_minigame.gd already
+	# applies for the same reason (see its own _maybe_finish()).
+	# Without this, she'd stay stranded off to one side after the
+	# minigame ends, so the NEXT special-encounter turn's camera
+	# (_look_at_swap_angle(), computed from her current position) would
+	# frame around that drifted spot instead of her real battle stance
+	# - exactly why the camera angle looked different the second time
+	# the enemy used this attack.
+	if is_instance_valid(target_actor):
+		var back := target_actor.create_tween()
+		back.tween_property(target_actor, "global_position", _player_anchor_position, _current_travel_time * 0.5)
+	# MODIFIED (was individually freeing just _active_cursor here): that
+	# fixed the cursor specifically, but it was still one more instance
+	# of the same class of bug (stage_root outlives this Control, so
+	# nothing parented to it gets cleaned up just because this Control
+	# does) - _cleanup_stage_nodes() is the general version, sweeping
+	# every sprite/cursor this instance ever created under stage_root
+	# regardless of whether its own individual cleanup path (self-free
+	# on arrival, per-round reference clearing) already got it. Anything
+	# already freed is skipped via is_instance_valid(), so this is a
+	# safety net, not a duplicate free.
+	_cleanup_stage_nodes()
+	finished.emit(_hits, total_portraits)

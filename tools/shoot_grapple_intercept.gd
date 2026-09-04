@@ -56,13 +56,9 @@ func _run() -> void:
 	await process_frame
 	var frame := 0
 	var next_shot := Time.get_ticks_msec() + 900
-	var demonstrated_decoy := false
 	while result.is_empty() and frame < 260:
 		if Time.get_ticks_msec() >= next_shot:
-			if not demonstrated_decoy and minigame.auto_hit_decoy():
-				demonstrated_decoy = true
-				next_shot = Time.get_ticks_msec() + 650
-			elif minigame.auto_intercept_closest():
+			if minigame.auto_intercept_closest():
 				next_shot = Time.get_ticks_msec() + 430
 		await create_timer(1.0 / 20.0).timeout
 		root.get_texture().get_image().save_png(frame_dir.path_join("frame_%03d.png" % frame))
@@ -74,4 +70,7 @@ func _run() -> void:
 		root.get_texture().get_image().save_png(frame_dir.path_join("frame_%03d.png" % frame))
 		frame += 1
 	print("GRAPPLE GIF: %s across %d frames" % [str(result), frame])
-	quit(0 if result == [8, 8] else 1)
+	# MODIFIED: was hardcoded [8, 8] - stale since TARGET_COUNT dropped to
+	# 5 (see grapple_intercept_minigame.gd's own header).
+	var expected := GrappleInterceptMinigame.TARGET_COUNT
+	quit(0 if result == [expected, expected] else 1)

@@ -797,21 +797,40 @@ func _swap_flash(at: Vector3) -> void:
 	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.4)
 	tw.tween_callback(vfx.queue_free)
 
-# Called by gap_pit.gd when this diver blunders into an unresolved gap.
-# Flickers the model a few times - the model swap trick, not a shader
-# effect, since nothing about these models supports a flash material
-# (unrigged, no vertex colors to hijack) and this needed to work with
-# whatever's already on them.
-func flash_damage() -> void:
+# Called by whirlpool.gd when this diver gets caught, and by battle.gd for
+# every damage instance in combat (see Battle._react()/its rock_landed/
+# portrait_landed closures). Flickers the model a few times - the model
+# swap trick, not a shader effect, since nothing about these models
+# supports a flash material (unrigged, no vertex colors to hijack) and
+# this needed to work with whatever's already on them.
+#
+# `times`/`heavy` both default to whirlpool.gd's own original one-off call
+# (4 flickers, the normal "hurt" clip) - battle.gd passes fewer flickers
+# for in-combat hits (1 normal, 2 heavy) so a barrage of quick hits
+# doesn't pile up into a longer flicker than the hit that caused it
+# deserves, and passes `heavy` through so this plays the SAME reaction
+# clip _react() would otherwise have called separately - bundling it here
+# instead of leaving battle.gd to call both means there's exactly one
+# place that decides "did a hit reaction already play for this," not two
+# call sites that could double up.
+# MODIFIED: phase was 0.08 - fine for whirlpool.gd's own 4-cycle strobe
+# (reads clearly just from having several cycles), but battle.gd's
+# in-combat calls mostly pass times=1, and a single 0.08/0.08 blip (0.16s
+# total) was easy to miss entirely in the middle of everything else a hit
+# already has going on (popup, log line, bars refreshing). 0.12 keeps it
+# reading as a snap rather than a fade while actually being visible.
+const FLASH_PHASE_TIME := 0.12
+
+func flash_damage(times: int = 4, heavy: bool = false) -> void:
 	if model == null:
 		return
 	# The flicker stays because it reads at any distance and through the
 	# fog. The rigged deliveries added a real recoil on top of it.
-	play_hit_reaction(false)
+	play_hit_reaction(heavy)
 	var tw := create_tween()
-	for i in range(4):
-		tw.tween_property(model, "visible", false, 0.08)
-		tw.tween_property(model, "visible", true, 0.08)
+	for i in range(times):
+		tw.tween_property(model, "visible", false, FLASH_PHASE_TIME)
+		tw.tween_property(model, "visible", true, FLASH_PHASE_TIME)
 
 # Called by whirlpool.gd to make a diver vanish while caught (pulled to
 # the center, gone, then reappears at the reset point) - a plain

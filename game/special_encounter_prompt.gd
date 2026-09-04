@@ -21,13 +21,12 @@ signal cancelled
 # teammate") - not actually useful here, since this screen is about which
 # diver survives the SPECIAL ENCOUNTER's own minigame, a completely
 # different mechanic per diver (see rock_dodge_minigame.gd/
-# blast_rocks_minigame.gd/diver_swap_minigame.gd). Rewritten to explain
-# that minigame specifically, so a player picking blind knows what they're
-# about to be asked to do.
+# diver_swap_minigame.gd). Rewritten to explain that minigame specifically,
+# so a player picking blind knows what they're about to be asked to do.
 const ABILITY_BLURBS := {
 	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
 	"grapple": "In the encounter: swim (WASD) into each telegraphed spot and press E to blast that rock back at the enemy before it fades.",
-	"shockwave": "In the encounter: rocks fly in one after another - press E to shockwave each one before it lands.",
+	"shockwave": "In the encounter: three lanes come in at once - one rock, two solid walls. Hold Left/Right to lean into that lane (let go to snap back to middle) and line up with the rock, then E to shockwave it before it lands. Standing in a wall's lane gets you hit.",
 }
 
 const ROSTER := ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]

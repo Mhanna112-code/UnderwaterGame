@@ -7,17 +7,31 @@ extends Control
 
 signal finished(hits: int, total: int)
 signal object_hit
-signal wrong_object_hit
 
-const TARGET_COUNT := 8
+# MODIFIED: was 8, spawned one at a time via a staggered loop - now 5 of
+# the 8 grid squares (_grid_spawn_positions()) launch in the same burst
+# (see _spawn_loop()), one rock per chosen square, so TARGET_COUNT
+# matches how many rocks actually spawn rather than needing several
+# waves to use it up.
+const TARGET_COUNT := 5
 const TITLE_HOLD := 0.8
-const MIN_SPAWN_GAP := 0.60
-const MAX_SPAWN_GAP := 1.0
 const FLIGHT_TIME := 3.2
 const HIT_ANGLE := deg_to_rad(7.0)
 const LOOK_SENSITIVITY := 0.0035
 const MAX_YAW := 0.75
 const MAX_PITCH := 0.48
+
+# Big rocks that take a few hits rather than one - see _spawn_target()/
+# _hit_weak_spot(). BIG_ROCK_RADIUS is also read by _spawn_weak_spot() to
+# place the weak spot ON the rock's surface, so the two stay in sync if
+# this is ever retuned.
+const BIG_ROCK_RADIUS := 0.9
+const WEAK_SPOT_RADIUS := 0.16
+# MODIFIED: was randi_range(MIN_HITS_TO_DESTROY, MAX_HITS_TO_DESTROY) * an
+# HP pool reduced by DAMAGE_PER_HIT each hit (2-3 hits' worth, randomized
+# per rock) - simplified to a flat hit counter, exactly 2 weak-spot hits
+# destroys any rock, no randomization or HP abstraction needed for that.
+const HITS_TO_DESTROY := 2
 
 var stage_root: SubViewport
 var stage_camera: Camera3D
@@ -26,12 +40,33 @@ var source_position := Vector3.ZERO
 
 var _targets: Array[MeshInstance3D] = []
 var _target_tweens: Dictionary = {}
-var _decoys: Array[MeshInstance3D] = []
-var _decoy_tweens: Dictionary = {}
+
+# Each rock's weak-spot hit count so far, keyed by the same rock
+# MeshInstance3D _targets already tracks. Starts at 0 in _spawn_target(),
+# incremented by _hit_weak_spot() - destroyed once it reaches
+# HITS_TO_DESTROY.
+var _rock_hits: Dictionary = {}   # rock -> int
+
+# ONE weak spot exists across the whole group of live rocks at a time -
+# not one per rock. _assign_next_weak_spot() picks a random rock out of
+# whatever's still in _targets (already-destroyed/landed rocks can't be
+# picked, since they're gone from that array by the time this runs) and
+# gives IT the marker, so the thing to aim at hops unpredictably between
+# rocks - hit rock 1, the next spot might land back on rock 1 again, or
+# jump to rock 5, then rock 4, same rock never guaranteed to repeat or
+# rotate in order.
+var _active_weak_spot: MeshInstance3D = null
+var _active_weak_spot_rock: MeshInstance3D = null
+
+# Guards _finish_now() against emitting `finished` twice - it's reachable
+# from both _maybe_finish() (the natural TARGET_COUNT completion) and
+# request_abort() (battle.gd, the instant the player's HP hits 0
+# mid-encounter).
+var _did_finish := false
+
 var _spawned := 0
 var _resolved := 0
 var _hits := 0
-var _penalties := 0
 var _yaw := 0.0
 var _pitch := 0.0
 var _base_forward := Vector3.FORWARD
@@ -66,7 +101,7 @@ func _ready() -> void:
 	add_child(title)
 
 	var hint := Label.new()
-	hint.text = "Grapple ORANGE threats • Avoid BLUE decoys (they damage you)"
+	hint.text = "Grapple the glowing weak spot before the rocks reach you"
 	hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	hint.offset_top = 78.0
 	hint.offset_left = -330.0
@@ -150,136 +185,245 @@ func _update_camera() -> void:
 	forward = forward.rotated(right, _pitch).normalized()
 	stage_camera.look_at(stage_camera.global_position + forward * 10.0, Vector3.UP)
 
+# Spawns exactly 5 rocks across 5 DIFFERENT squares out of the 8 total
+# candidates (_grid_spawn_positions()) - shuffled once, then the first 5
+# are used, guaranteeing no square is picked twice. All 5 launch in the
+# same pass (no delay between them) rather than trickling in, then
+# _assign_next_weak_spot() hands the first weak spot to one random rock
+# out of that group.
 func _spawn_loop() -> void:
-	while _spawned < TARGET_COUNT:
-		await get_tree().create_timer(randf_range(MIN_SPAWN_GAP, MAX_SPAWN_GAP)).timeout
-		if not is_instance_valid(self):
-			return
-		_spawn_target()
-		if _spawned % 2 == 0:
-			_spawn_decoy()
+	var positions := _grid_spawn_positions()
+	positions.shuffle()
+	for spawn_pos in positions.slice(0, TARGET_COUNT):
+		_spawn_target(spawn_pos)
 		_spawned += 1
+	_assign_next_weak_spot()
 
-func _spawn_target() -> void:
-	var eye := stage_camera.global_position
-	var forward := _base_forward
-	var right := forward.cross(Vector3.UP).normalized()
-	var spawn := eye + forward * randf_range(9.0, 12.0) + right * randf_range(-4.0, 4.0) + Vector3.UP * randf_range(-2.2, 2.8)
+# MODIFIED: radius was 0.3 (one-hit) - bumped to BIG_ROCK_RADIUS now that
+# a rock takes several hits to actually break (see _hit_weak_spot()).
+func _spawn_rock(at: Vector3) -> MeshInstance3D:
+	var rock := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = BIG_ROCK_RADIUS
+	rock.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.42, 0.22, 0.14)   # same brown as cracked_wall.gd's disguised rocks
+	rock.material_override = mat
+	stage_root.add_child(rock)
+	rock.global_position = at
+	return rock
 
-	var target := MeshInstance3D.new()
+# A small glowing marker parented to whichever rock currently holds it -
+# being a CHILD is what makes it track that rock's own flight tween for
+# free, without this script needing to re-position it every frame by
+# hand. Placed at a random point on the rock's own surface (a random unit
+# vector scaled by BIG_ROCK_RADIUS).
+func _random_point_on_sphere(radius: float) -> Vector3:
+	var dir := Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
+	if dir.length() < 0.001:
+		dir = Vector3.UP
+	return dir.normalized() * radius
+
+func _spawn_weak_spot(rock: MeshInstance3D) -> MeshInstance3D:
+	var spot := MeshInstance3D.new()
 	var mesh := SphereMesh.new()
-	mesh.radius = 0.42
-	mesh.height = 0.84
-	target.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.9, 0.28, 0.12)
-	material.emission_enabled = true
-	material.emission = Color(0.65, 0.08, 0.02)
-	material.emission_energy_multiplier = 1.5
-	target.material_override = material
-	stage_root.add_child(target)
-	target.global_position = spawn
-	_targets.append(target)
+	mesh.radius = WEAK_SPOT_RADIUS
+	mesh.height = WEAK_SPOT_RADIUS * 2.0
+	spot.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.9, 0.2)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.85, 0.1)
+	mat.emission_energy_multiplier = 2.0
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	spot.material_override = mat
+	rock.add_child(spot)
+	spot.position = _random_point_on_sphere(BIG_ROCK_RADIUS)
+	return spot
 
-	var tween := target.create_tween()
-	_target_tweens[target] = tween
-	tween.tween_property(target, "global_position", eye, FLIGHT_TIME)
-	tween.finished.connect(func() -> void: _land(target))
+# Picks ONE random rock out of whatever's still alive in _targets and
+# gives it a fresh weak spot at a new random surface point - called once
+# after the initial burst (_spawn_loop()) and again after every single
+# hit (_hit_weak_spot(), win or lose), and also from _land() if the rock
+# that just reached the player was the one holding the spot. Freeing the
+# OLD spot here handles the "rock survived, moving to a new point"
+# case; if the previous holder was just destroyed/freed instead, its
+# child spot is already gone with it and is_instance_valid() below simply
+# skips the redundant free.
+func _assign_next_weak_spot() -> void:
+	if _active_weak_spot != null and is_instance_valid(_active_weak_spot):
+		_active_weak_spot.queue_free()
+	_active_weak_spot = null
+	_active_weak_spot_rock = null
+	if _targets.is_empty():
+		return
+	var rock: MeshInstance3D = _targets.pick_random()
+	_active_weak_spot_rock = rock
+	_active_weak_spot = _spawn_weak_spot(rock)
 
-func _spawn_decoy() -> void:
+# Eight fixed candidate squares positioned right in front of the enemy
+# (source_position) - four at one spacing and four at double that
+# spacing, along the up/down/left/right axes. _spawn_loop() only ever
+# uses 5 of these 8 per encounter (shuffled, first 5 taken), so which
+# five squares actually get a rock varies run to run even though the
+# candidate set itself is fixed. `right` reuses _base_forward the same
+# way _spawn_target()'s own flight math does, so this grid is oriented
+# consistently with everything else this minigame spawns.
+const GRID_SPACING := 1.6
+
+func _grid_spawn_positions() -> Array[Vector3]:
+	var right := _base_forward.cross(Vector3.UP).normalized()
+	return [
+		source_position + Vector3.UP * GRID_SPACING,
+		source_position - Vector3.UP * GRID_SPACING,
+		source_position + right * GRID_SPACING,
+		source_position - right * GRID_SPACING,
+		source_position + Vector3.UP * GRID_SPACING * 2.0,
+		source_position - Vector3.UP * GRID_SPACING * 2.0,
+		source_position + right * GRID_SPACING * 2.0,
+		source_position - right * GRID_SPACING * 2.0,
+	]
+
+func _spawn_target(spawn: Vector3) -> void:
 	var eye := stage_camera.global_position
-	var forward := _base_forward
-	var right := forward.cross(Vector3.UP).normalized()
-	var side := -1.0 if randf() < 0.5 else 1.0
-	var start := eye + forward * randf_range(6.5, 9.5) + right * side * 4.5 + Vector3.UP * randf_range(-1.8, 2.2)
-	var finish := start - right * side * randf_range(5.0, 7.0)
+	var rock := _spawn_rock(spawn)
+	_targets.append(rock)
+	_rock_hits[rock] = 0
 
-	var decoy := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.75, 0.75, 0.75)
-	decoy.mesh = mesh
-	decoy.rotation = Vector3(randf(), randf(), randf())
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.15, 0.55, 1.0)
-	material.emission_enabled = true
-	material.emission = Color(0.04, 0.25, 0.9)
-	material.emission_energy_multiplier = 1.4
-	decoy.material_override = material
-	stage_root.add_child(decoy)
-	decoy.global_position = start
-	_decoys.append(decoy)
-	var tween := decoy.create_tween()
-	_decoy_tweens[decoy] = tween
-	tween.tween_property(decoy, "global_position", finish, 3.2)
-	tween.parallel().tween_property(decoy, "rotation", decoy.rotation + Vector3(2.0, 3.0, 2.5), 3.2)
-	tween.finished.connect(func() -> void: _clear_decoy(decoy))
+	var tween := rock.create_tween()
+	_target_tweens[rock] = tween
+	tween.tween_property(rock, "global_position", eye, FLIGHT_TIME)
+	tween.finished.connect(func() -> void: _land(rock))
 
+# MODIFIED: used to check every live rock's OWN weak spot (one per rock)
+# for the closest one to the aim, plus every decoy - now there's only
+# ever ONE active weak spot total (_active_weak_spot), shared across the
+# whole group, and decoys are gone entirely, so this just checks that
+# single point.
 func _shoot() -> void:
-	if _targets.is_empty() and _decoys.is_empty():
+	if _active_weak_spot == null or not is_instance_valid(_active_weak_spot):
 		return
 	var aim := -stage_camera.global_transform.basis.z.normalized()
-	var best: MeshInstance3D = null
-	var best_angle := HIT_ANGLE
-	for candidate in _targets + _decoys:
-		var to_target: Vector3 = (candidate.global_position - stage_camera.global_position).normalized()
-		var angle := aim.angle_to(to_target)
-		if angle <= best_angle:
-			best = candidate
-			best_angle = angle
-	if best != null:
-		if _decoys.has(best):
-			_hit_decoy(best)
-		else:
-			_destroy_target(best)
+	var angle := aim.angle_to((_active_weak_spot.global_position - stage_camera.global_position).normalized())
+	if angle <= HIT_ANGLE:
+		_hit_weak_spot(_active_weak_spot_rock)
+func _grapple(aim_dir: Vector3) -> void:
+	var dir: Vector3 = aim_dir.normalized() if aim_dir.length() > 0.01 else -target_actor.basis.z
+	var space := get_world_3d().direct_space_state
+	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
+	var to: Vector3 = from + dir * GRAPPLE_RANGE
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	var result := space.intersect_ray(query)
 
-func _hit_decoy(decoy: MeshInstance3D) -> void:
-	_decoys.erase(decoy)
-	var flight: Tween = _decoy_tweens.get(decoy, null)
-	if flight != null and flight.is_valid():
-		flight.kill()
-	_decoy_tweens.erase(decoy)
-	_penalties += 1
-	_grapple_beam(stage_camera.global_position, decoy.global_position)
-	wrong_object_hit.emit()
-	_show_wrong_hit()
-	var flash := decoy.create_tween()
-	flash.tween_property(decoy, "scale", Vector3.ONE * 1.6, 0.08)
-	flash.tween_property(decoy, "scale", Vector3.ZERO, 0.12)
-	flash.tween_callback(decoy.queue_free)
-	_update_progress()
+	# Beam end is wherever the ray actually stopped - the max range if it
+	# hit nothing at all, or whatever it struck (anchor or not).
+	var beam_end: Vector3 = to if result.is_empty() else (result.position as Vector3)
+	_grapple_beam_vfx(from, beam_end)
 
-func _show_wrong_hit() -> void:
-	var warning := Label.new()
-	warning.text = "WRONG OBJECT — DAMAGE!"
-	warning.set_anchors_preset(Control.PRESET_CENTER)
-	warning.offset_left = -220.0
-	warning.offset_top = 55.0
-	warning.offset_right = 220.0
-	warning.offset_bottom = 105.0
-	warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	warning.add_theme_font_size_override("font_size", 28)
-	warning.add_theme_color_override("font_color", Color(1.0, 0.22, 0.18))
-	add_child(warning)
-	var fade := warning.create_tween()
-	fade.tween_interval(0.35)
-	fade.tween_property(warning, "modulate:a", 0.0, 0.45)
-	fade.tween_callback(warning.queue_free)
+	if result.is_empty() or not (result.collider as Node).is_in_group("grapple_anchor"):
+		return
 
-func _clear_decoy(decoy: MeshInstance3D) -> void:
-	_decoys.erase(decoy)
-	_decoy_tweens.erase(decoy)
-	if is_instance_valid(decoy):
-		decoy.queue_free()
+	_ability_cooldown = GRAPPLE_COOLDOWN
+	_is_grappling = true
+	var target: Vector3 = (result.collider as Node3D).global_position
 
+	# The anchor gets a chance to react to being reached, independent of
+	# the pull itself - grapple_anchor.gd's on_grappled_to() is what
+	# unlocks Staff_Diver's signal ability for the gap sequence. Diver
+	# doesn't know or care what the anchor does with this; it just offers.
+	if (result.collider as Node).has_method("on_grappled_to"):
+		(result.collider as Node).call("on_grappled_to")
+
+	velocity = Vector3.ZERO
+	var tw := create_tween()
+	# Stop a short step short of the anchor's own center, not on top of it.
+	var stop_at: Vector3 = target - dir * 1.0
+	tw.tween_property(self, "global_position", stop_at, GRAPPLE_PULL_DURATION)
+	tw.tween_callback(func() -> void: _is_grappling = false)
+
+# Throwaway visual: a thin beam from where the diver fired to wherever the
+# shot actually ended (hit or not), fading out over the pull's own
+# duration regardless of whether a pull happens. Fixed in place once
+# spawned (doesn't track the diver mid-pull) - "you fired a line" reads
+# fine without the beam continuously updating.
+func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
+	var dist := from.distance_to(to)
+	if dist < 0.01:
+		return
+	var beam := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.height = dist
+	cyl.top_radius = 0.05
+	cyl.bottom_radius = 0.05
+	beam.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.95, 0.85, 0.3, 0.9)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	beam.material_override = mat
+
+	get_parent().add_child(beam)
+	beam.global_position = (from + to) * 0.5
+	beam.look_at(to, Vector3.UP)
+	beam.rotate_object_local(Vector3.RIGHT, PI / 2.0)   # CylinderMesh's long axis is local Y, look_at faces -Z
+
+	var tw := create_tween()
+	tw.tween_property(mat, "albedo_color:a", 0.0, GRAPPLE_PULL_DURATION)
+	tw.tween_callback(beam.queue_free)
+
+
+# One hit on the CURRENT weak spot - always +1 toward that rock's
+# HITS_TO_DESTROY count, flashed red so a hit reads as a hit regardless
+# of whether it's lethal this time. Not lethal until the count actually
+# reaches HITS_TO_DESTROY - short of that the rock stays alive and
+# flying. Either way, a hit always moves the weak spot on to a new random
+# rock (_assign_next_weak_spot()) - that "always advance, whether or not
+# this one died" is what makes which rock is live next feel unpredictable
+# instead of a fixed rotation.
+func _hit_weak_spot(rock: MeshInstance3D) -> void:
+	var hits: int = int(_rock_hits.get(rock, 0)) + 1
+	_rock_hits[rock] = hits
+	if _active_weak_spot != null and is_instance_valid(_active_weak_spot):
+		_grapple_beam(stage_camera.global_position, _active_weak_spot.global_position)
+	_flash_rock_red(rock)
+	if hits >= HITS_TO_DESTROY:
+		_destroy_target(rock)
+	_assign_next_weak_spot()
+
+# A quick red emission pulse on the rock's OWN material - this is the
+# "you hit it" confirmation regardless of whether that hit was lethal;
+# _destroy_target()'s own shatter (scale to zero) plays right alongside
+# this for a lethal hit rather than replacing it.
+func _flash_rock_red(rock: MeshInstance3D) -> void:
+	var mat := rock.material_override as StandardMaterial3D
+	if mat == null:
+		return
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.15, 0.1)
+	var tw := rock.create_tween()
+	tw.tween_property(mat, "emission_energy_multiplier", 3.0, 0.08)
+	tw.tween_property(mat, "emission_energy_multiplier", 0.0, 0.12)
+
+# MODIFIED: used to draw its own _grapple_beam() at the rock's own
+# center - now that every hit (lethal or not) already draws one at the
+# actual weak spot via _hit_weak_spot(), a second beam here for the
+# killing hit specifically would just overlap the first. Cleans up
+# _rock_hits - freeing `target` below frees its weak-spot CHILD node
+# automatically if it still had one, but the hit-count dictionary entry
+# would otherwise dangle. Does NOT touch _active_weak_spot/
+# _active_weak_spot_rock itself - the caller (_hit_weak_spot(), or
+# verification_resolve_closest()) is responsible for calling
+# _assign_next_weak_spot() afterward, since only it knows whether `target`
+# was even the rock currently holding the spot.
 func _destroy_target(target: MeshInstance3D) -> void:
 	_targets.erase(target)
 	var flight: Tween = _target_tweens.get(target, null)
 	if flight != null and flight.is_valid():
 		flight.kill()
 	_target_tweens.erase(target)
+	_rock_hits.erase(target)
 	_hits += 1
 	_resolved += 1
-	_grapple_beam(stage_camera.global_position, target.global_position)
 	var flash := target.create_tween()
 	flash.tween_property(target, "scale", Vector3.ONE * 1.8, 0.10)
 	flash.tween_property(target, "scale", Vector3.ZERO, 0.10)
@@ -292,9 +436,16 @@ func _land(target: MeshInstance3D) -> void:
 		return
 	_targets.erase(target)
 	_target_tweens.erase(target)
+	_rock_hits.erase(target)
 	_resolved += 1
 	object_hit.emit()
 	target.queue_free()
+	# An unshot rock reaching the player can still have been the one
+	# holding the active weak spot - if so, hand it to a new rock the same
+	# way a hit would, rather than leaving the spot pointing at a node
+	# that's about to be freed.
+	if _active_weak_spot_rock == target:
+		_assign_next_weak_spot()
 	_update_progress()
 	_maybe_finish()
 
@@ -320,37 +471,46 @@ func _grapple_beam(from: Vector3, to: Vector3) -> void:
 
 func _update_progress() -> void:
 	if _progress != null:
-		_progress.text = "%d / %d intercepted   Wrong objects: %d" % [_hits, TARGET_COUNT, _penalties]
+		_progress.text = "%d / %d intercepted" % [_hits, TARGET_COUNT]
 
 func _maybe_finish() -> void:
 	if _resolved < TARGET_COUNT:
 		return
+	_finish_now()
+
+# Called by battle.gd the instant the player's HP hits 0 mid-encounter -
+# ends the intercept run right away with whatever tally it has so far,
+# instead of continuing to launch more targets at a diver who's already
+# down. _finish_now()'s own _did_finish guard makes this safe even if the
+# natural TARGET_COUNT completion above was also about to fire on its own.
+func request_abort() -> void:
+	_finish_now()
+
+func _finish_now() -> void:
+	if _did_finish:
+		return
+	_did_finish = true
 	Input.mouse_mode = _old_mouse_mode
 	if target_actor != null and is_instance_valid(target_actor):
 		target_actor.visible = _target_was_visible
-	for decoy in _decoys:
-		if is_instance_valid(decoy):
-			decoy.queue_free()
-	_decoys.clear()
 	finished.emit(_hits, TARGET_COUNT)
 
-# Verification hook: aim directly at the closest target and fire through
-# the exact same hit-selection path used by mouse input.
+# Verification hook: aim directly at the active weak spot and fire
+# through the exact same hit-selection path used by mouse input.
+#
+# MODIFIED: used to find the geometrically closest of several PER-ROCK
+# weak spots - now there's only ever one active spot total, shared across
+# the group, so this just aims at it directly instead of searching
+# _targets.
+#
+# NOTE: one call now only lands ONE hit (+1 toward one rock's
+# HITS_TO_DESTROY count), not a full destroy - any verification script
+# that assumed "one auto_intercept_closest() call = one rock gone" will
+# need to call this multiple times (or check _rock_hits) to still pass.
 func auto_intercept_closest() -> bool:
-	if _targets.is_empty() or stage_camera == null:
+	if _active_weak_spot == null or not is_instance_valid(_active_weak_spot) or stage_camera == null:
 		return false
-	var closest := _targets[0]
-	for target in _targets:
-		if stage_camera.global_position.distance_to(target.global_position) < stage_camera.global_position.distance_to(closest.global_position):
-			closest = target
-	stage_camera.look_at(closest.global_position, Vector3.UP)
-	_shoot()
-	return true
-
-func auto_hit_decoy() -> bool:
-	if _decoys.is_empty() or stage_camera == null:
-		return false
-	stage_camera.look_at(_decoys[0].global_position, Vector3.UP)
+	stage_camera.look_at(_active_weak_spot.global_position, Vector3.UP)
 	_shoot()
 	return true
 
@@ -363,5 +523,8 @@ func verification_resolve_closest() -> bool:
 	for target in _targets:
 		if stage_camera.global_position.distance_to(target.global_position) < stage_camera.global_position.distance_to(closest.global_position):
 			closest = target
+	var was_active := _active_weak_spot_rock == closest
 	_destroy_target(closest)
+	if was_active:
+		_assign_next_weak_spot()
 	return true

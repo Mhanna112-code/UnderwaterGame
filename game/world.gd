@@ -133,7 +133,7 @@ var special_encounter_prompt: SpecialEncounterPrompt
 # case "lost"/"won" handling - which item this encounter is guarding, and
 # (once a diver's actually picked) who went in and at what HP/oxygen, so
 # a loss can restore them to exactly that (both stats, not just HP -
-# oxygen spent mid-fight, e.g. on Blast Rocks, used to stay spent even
+# oxygen spent mid-fight on a move used to stay spent even
 # though HP already got restored, a real gap in "you don't really lose
 # here") rather than leaving them battered or drained, or routing
 # through the normal game-over flow. A win goes the other way entirely -
@@ -396,6 +396,21 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	$HUD.add_child(banner)
 
+	# Do not parent the title to HUD: _show_title_screen() deliberately hides
+	# that whole layer so its controls cannot bunch underneath the title on the
+	# first frame. This layer remains visible and interactive while paused.
+	title_layer = CanvasLayer.new()
+	title_layer.name = "TitleLayer"
+	title_layer.layer = 20
+	add_child(title_layer)
+	title_screen = TitleScreen.new()
+	title_screen.new_game_chosen.connect(_on_title_new_game)
+	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_layer.add_child(title_screen)
+
+	intro_crawl = IntroCrawl.new()
+	title_layer.add_child(intro_crawl)
+
 	minimap = MiniMap.new()
 	minimap.world = self
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -436,22 +451,7 @@ func _ready() -> void:
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
 	_update_hud()
-
-	# Do not parent the title to HUD: _show_title_screen() deliberately hides
-	# that whole layer so its controls cannot bunch underneath the title on the
-	# first frame. This layer remains visible and interactive while paused.
-	title_layer = CanvasLayer.new()
-	title_layer.name = "TitleLayer"
-	title_layer.layer = 20
-	add_child(title_layer)
-	title_screen = TitleScreen.new()
-	title_screen.new_game_chosen.connect(_on_title_new_game)
-	title_screen.load_game_chosen.connect(_on_title_load_game)
-	title_layer.add_child(title_screen)
-
-	intro_crawl = IntroCrawl.new()
-	title_layer.add_child(intro_crawl)
-
+	
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
 	game_over_screen.title_chosen.connect(_on_game_over_title)
@@ -1530,9 +1530,9 @@ func _on_battle_finished(result: String) -> void:
 				# restore exactly the HP AND oxygen they went in with
 				# (not full, not 0/empty) and hand control straight back,
 				# no game-over screen, no checkpoint rewind. Oxygen used
-				# to be left wherever the fight (e.g. a spent Blast Rocks
-				# cast) drained it to - only HP was ever restored, which
-				# broke the "no real cost to trying" promise for oxygen.
+				# to be left wherever the fight drained it to - only HP
+				# was ever restored, which broke the "no real cost to
+				# trying" promise for oxygen.
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
 				_special_encounter_diver.stats.oxygen = _special_encounter_pre_oxygen
 				_update_hp_bar()

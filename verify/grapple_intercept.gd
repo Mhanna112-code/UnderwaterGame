@@ -2,7 +2,6 @@ extends SceneTree
 
 var finished_result: Array = []
 var impacts := 0
-var wrong_hits := 0
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -24,21 +23,20 @@ func _run() -> void:
 	minigame.target_actor = diver
 	minigame.source_position = Vector3(0.0, 1.5, -8.0)
 	minigame.object_hit.connect(func() -> void: impacts += 1)
-	minigame.wrong_object_hit.connect(func() -> void: wrong_hits += 1)
 	minigame.finished.connect(func(hits: int, total: int) -> void: finished_result = [hits, total])
 	root.add_child(minigame)
 	minigame.run()
 
 	var deadline := Time.get_ticks_msec() + 15000
-	var tested_decoy := false
 	while finished_result.is_empty() and Time.get_ticks_msec() < deadline:
-		if not tested_decoy and minigame.auto_hit_decoy():
-			tested_decoy = true
 		minigame.auto_intercept_closest()
 		await process_frame
 
-	var clean := finished_result == [GrappleInterceptMinigame.TARGET_COUNT, GrappleInterceptMinigame.TARGET_COUNT] and impacts == 0 and wrong_hits == 1
-	print("GRAPPLE INTERCEPT: %s, impacts %d, deliberate decoy penalties %d" % [str(finished_result), impacts, wrong_hits])
+	# MODIFIED: was also asserting wrong_hits == 1, driven by deliberately
+	# shooting a decoy (auto_hit_decoy(), now removed along with decoys
+	# entirely - see grapple_intercept_minigame.gd).
+	var clean := finished_result == [GrappleInterceptMinigame.TARGET_COUNT, GrappleInterceptMinigame.TARGET_COUNT] and impacts == 0
+	print("GRAPPLE INTERCEPT: %s, impacts %d" % [str(finished_result), impacts])
 	if not clean:
 		push_error("GRAPPLE INTERCEPT: automated aim did not intercept every target")
 		quit(1)

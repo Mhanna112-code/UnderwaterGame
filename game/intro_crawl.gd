@@ -12,7 +12,7 @@ extends Control
 
 signal finished
 
-const SCROLL_DURATION := 26.0
+const SCROLL_DURATION := 30.0
 const TEXT_WIDTH := 560.0
 
 const STORY_TEXT := "Three strangers, one dive site.\n\nA drifter who grew up more at home in open water than on land. A boy who ran out of reasons to stay on the surface. A soldier with nothing left topside worth defending.\n\nNone of them chose each other. Each of them had already lost everything a normal life was supposed to give - and each had heard the same rumor: that somewhere in the drowned dark below, there was treasure enough to buy it all back.\n\nThe ocean does not care what brought you to it. It only asks what you're willing to lose to leave with something.\n\nThey went down anyway."
@@ -94,6 +94,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	var is_skip_key: bool = event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).keycode == KEY_E
 	var is_click: bool = event is InputEventMouseButton and (event as InputEventMouseButton).pressed
 	if is_skip_key or is_click:
+		# MODIFIED (added): this E press (or click) was consumed right here
+		# to skip the intro - without marking it handled, the SAME event
+		# kept propagating to every other _unhandled_input() in the tree,
+		# including world.gd's, which fires _start_ability() unconditionally
+		# on E. That's why skipping the intro with E also fired Mermaid's
+		# swap ability the instant the world loaded underneath it.
+		get_viewport().set_input_as_handled()
 		_finish()
 
 func _finish() -> void:

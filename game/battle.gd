@@ -54,9 +54,8 @@ var _special_round := 0
 
 # +15% enemy power per round already survived - applied to the enemy's
 # own attack power (see _do_enemy_turn()'s move_dict scaling) AND to
-# each rock landed in the dodge minigame (_do_rock_dodge_encounter()'s
-# rock_landed handler). Not applied to the player's own Blast Rocks
-# damage output - see _do_blast_rocks_attack()'s own comment on why.
+# each rock/wall landed in the dodge minigame (_do_rock_dodge_encounter()'s
+# rock_landed handler).
 func _enemy_power_mult() -> float:
 	return 1.0 + 0.15 * float(_special_round)
 
@@ -119,19 +118,6 @@ const BASE_MOVES := {
 		{"name": "Guard Bash", "power": 6, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
 		{"name": "Heavy Kick", "power": 10, "acc_mod": 0, "hint": "Balanced, heavier", "text": "You drive a heavy kick home", "oxygen_cost": 10.0},
 		{"name": "Crushing Haymaker", "power": 15, "acc_mod": -3, "hint": "Very heavy, slow", "text": "You wind up and crush it", "oxygen_cost": 16.0},
-		# Only ever shown/usable in a special encounter (see _moves_for()'s
-		# filter) - the offensive counterpart to rock_dodge_minigame.gd's
-		# defensive one, played on Marine Man's OWN turn instead of the
-		# enemy's. "effect": "blast_rocks" is special-cased in
-		# _on_move_chosen()/_resolve_party_move() rather than going through
-		# the normal damage/target-picker path - see
-		# _do_blast_rocks_attack(). Costs real oxygen and can whiff per rock
-		# (see blast_rocks_minigame.gd), same risk/reward as choosing to
-		# keep gambling on it turn after turn while the encounter's own
-		# round-based escalation (_enemy_power_mult()) keeps ramping up.
-		{"name": "Blast Rocks", "power": 0, "effect": "blast_rocks", "oxygen_cost": 14.0,
-			"special_encounter_only": true,
-			"hint": "Time shockwaves on a grid - risky, no target needed", "text": "You call up a barrage of rocks"},
 	],
 }
 
@@ -956,17 +942,9 @@ func _show_turn_cursor_on(actor: Dictionary) -> void:
 # defs double as move defs directly. Falls back to Staff_Diver's kit for
 # the standalone-Battle stand-in case (tools/test_battle.gd), same fallback
 # Diver.BASE_STATS.get() already uses elsewhere.
-# "special_encounter_only" (Blast Rocks, see BASE_MOVES above) is
-# filtered out here rather than just left in the list and disabled -
-# there's no ordinary-battle version of "gamble oxygen on a rock-timing
-# minigame that could win the whole fight," so showing it greyed out in
-# a normal fight would just be confusing dead UI, not a real choice
-# waiting on some condition to unlock.
 func _moves_for(entry: Dictionary) -> Array:
 	var base: Array = BASE_MOVES.get(String(entry.model_name), BASE_MOVES["Staff_Diver"])
 	var out: Array = base.duplicate()
-	if not special_encounter:
-		out = out.filter(func(mv: Dictionary) -> bool: return not bool(mv.get("special_encounter_only", false)))
 	for spell_id in entry.get("equipped_spells", []):
 		var def: Dictionary = SpellTree.find_def(String(entry.model_name), spell_id)
 		if def.is_empty():
@@ -1116,16 +1094,6 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		return
 	move_menu.visible = false
 	var effect := String(mv.get("effect", ""))
-	# Blast Rocks always targets the encounter's one enemy directly - no
-	# target picker, straight to its own minigame sequence (same "no real
-	# choice to make" reasoning heal/revive moves already skip a picker
-	# for, just routed to a dedicated function instead of _resolve_party_
-	# move() since nothing about this resolves like a normal move).
-	if effect == "blast_rocks":
-		var oxygen_cost := float(mv.get("oxygen_cost", 0.0))
-		(_acting.stats as CombatantStats).oxygen -= oxygen_cost
-		await _do_blast_rocks_attack(_acting)
-		return
 	var targets: Array
 	match effect:
 		"heal":
@@ -1366,15 +1334,28 @@ func _swing(entry: Dictionary, mv: Dictionary) -> void:
 func _react(entry: Dictionary, r: Dictionary) -> void:
 	if not bool(r.get("hit", false)) or int(r.get("damage", 0)) <= 0:
 		return
-	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
 	if (entry.stats as CombatantStats).hp <= 0:
 		return   # going down has its own animation, see play_death_fade()
-	# Two reactions ship per character. "Heavy" is a hit worth a fifth of
-	# what this one can take, so the big recoil means something rather than
-	# being the one that always plays.
-	var heavy: bool = float(r.damage) >= float((entry.stats as CombatantStats).hp_max) * 0.2
-	(entry.actor as Diver).play_hit_reaction(heavy)
+	# MODIFIED (added): used to bail out here for anything that wasn't a
+	# Diver, which meant a Goblin taking a hit got no visual feedback at
+	# all - flash_damage() is a method both Diver and Goblin implement
+	# (see either script's own version), so this now plays for either
+	# actor type instead of Diver only.
+	#
+	# MODIFIED: "heavy" used to mean >=20% of hp_max - a fixed bar that
+	# stayed just as hard to clear whether the target was fresh or already
+	# worn down. Now it's >5% of what they had REMAINING going into this
+	# hit specifically, so the same hit reads as heavier the closer someone
+	# already is to going down. `entry.stats.hp` is already POST-hit here
+	# (apply_damage_roll() subtracts before returning `r`), so hp +
+	# r.damage reconstructs what they had before this hit landed - the
+	# hp<=0 early return above guarantees that's never a division against
+	# a dead target.
+	var hp_before_hit: int = (entry.stats as CombatantStats).hp + int(r.damage)
+	var heavy: bool = float(r.damage) > float(hp_before_hit) * 0.05
+	entry.actor.flash_damage(2 if heavy else 1, heavy)
 
 func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	if target.is_empty():
@@ -1510,15 +1491,14 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	_advance_turn()
 
 # Only used during the dodge minigame (see _do_rock_dodge_encounter()) -
-# normal attacks/Blast Rocks never call this, so the camera stays exactly
-# where _build_stage() put it the rest of the time. Positioned up and to
-# the diver's own right, angled down at them via look_at() - "over their
-# shoulder from above" rather than the default straight-on framing, so
-# rocks arriving from either side (blast_rocks_minigame.gd's rocks fly in
-# from ±6 units laterally) are visible approaching instead of arriving
-# from off-screen. Offsets are a first pass - worth eyeballing in an
-# actual dodge sequence and adjusting if the incoming rocks read as too
-# tight/wide in frame.
+# normal attacks never call this, so the camera stays exactly where
+# _build_stage() put it the rest of the time. Positioned up and to the
+# diver's own right, angled down at them via look_at() - "over their
+# shoulder from above" rather than the default straight-on framing, so the
+# three lanes (rock_dodge_minigame.gd's left/middle/right) are all visible
+# approaching at once instead of the outer ones arriving from off-screen.
+# Offsets are a first pass - worth eyeballing in an actual dodge sequence
+# and adjusting if the incoming lanes read as too tight/wide in frame.
 func _look_at_dodge_angle(target_pos: Vector3) -> void:
 	_stage_camera.position = target_pos + Vector3(3.0, 3.5, 2.0)
 	_stage_camera.look_at(target_pos, Vector3.UP)
@@ -1561,15 +1541,15 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, targ
 		total_taken += incoming
 		_refresh_bar(target)
 		_show_damage_popup(incoming)
-	)
-	minigame.wrong_object_hit.connect(func() -> void:
-		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * 0.75
-		var incoming := maxi(1, int(round(raw)) - target_stats.defense)
-		target_stats.hp = maxi(0, target_stats.hp - incoming)
-		total_taken += incoming
-		_refresh_bar(target)
-		_show_damage_popup(incoming)
-		_log("Wrong target! The decoy lashes back for %d." % incoming)
+		target.actor.flash_damage(1)
+		# MODIFIED (added): a hit that brings the diver to 0 HP mid-encounter
+		# used to leave them stuck playing out the rest of the minigame -
+		# request_abort() ends it right here instead, with whatever tally it
+		# has so far, so the normal death-fade/battle-screen flow right after
+		# `await minigame.finished` resumes immediately rather than only once
+		# every remaining target had also been thrown.
+		if target_stats.hp <= 0:
+			minigame.request_abort()
 	)
 	minigame.run()
 	var result: Array = await minigame.finished
@@ -1634,12 +1614,20 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stat
 		total_taken += incoming
 		_refresh_bar(target)
 		_show_damage_popup(incoming)
+		target.actor.flash_damage(1)
+		# MODIFIED (added): a rock that brings the diver to 0 HP mid-barrage
+		# used to leave them stuck dodging the rest of it - request_abort()
+		# ends the barrage right here instead, so the normal death-fade/
+		# battle-screen flow right after `await minigame.finished` resumes
+		# immediately rather than only once every remaining wave had played.
+		if target_stats.hp <= 0:
+			minigame.request_abort()
 	)
 	# MODIFIED: minigame.run() was never called - _spawn_loop() only ever
 	# starts from inside run(), so without this the minigame just sat on
 	# its title/hint text forever and `await minigame.finished` below
 	# would hang the whole battle indefinitely. Same fix applied to
-	# _do_blast_rocks_attack()'s BlastRocksMinigame below.
+	# _do_swap_minigame()'s DiverSwapMinigame below.
 	minigame.run()
 	var result: Array = await minigame.finished
 	minigame.queue_free()
@@ -1674,6 +1662,7 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stat
 			_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
 		else:
 			_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
+			target.actor.flash_damage(1)
 		if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
 			(target.actor as Diver).play_death_fade()
 
@@ -1717,12 +1706,21 @@ func _do_swap_minigame(actor: Dictionary, target: Dictionary, target_stats: Comb
 		total_taken += incoming
 		_refresh_bar(target)
 		_show_damage_popup(incoming)
+		target.actor.flash_damage(1)
+		# MODIFIED (added): a portrait that brings the diver to 0 HP
+		# mid-round used to leave them stuck playing out the rest of the
+		# minigame - request_abort() ends it right here instead, so the
+		# normal death-fade/battle-screen flow right after `await minigame.
+		# finished` resumes immediately rather than only once every
+		# remaining round had played.
+		if target_stats.hp <= 0:
+			minigame.request_abort()
 	)
 	# MODIFIED: minigame.run() was never called - _spawn_loop() only ever
 	# starts from inside run(), so without this the minigame just sat on
 	# its title/hint text forever and `await minigame.finished` below
 	# would hang the whole battle indefinitely. Same fix applied to
-	# _do_blast_rocks_attack()'s BlastRocksMinigame below.
+	# _do_rock_dodge_encounter()'s RockDodgeMinigame above.
 	minigame.run()
 	var result: Array = await minigame.finished
 	minigame.queue_free()
@@ -1757,6 +1755,7 @@ func _do_swap_minigame(actor: Dictionary, target: Dictionary, target_stats: Comb
 			_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
 		else:
 			_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
+			target.actor.flash_damage(1)
 		if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
 			(target.actor as Diver).play_death_fade()
 
@@ -1785,74 +1784,16 @@ func _show_damage_popup(amount: int) -> void:
 	tw.parallel().tween_property(popup, "modulate:a", 0.0, 0.8)
 	tw.tween_callback(popup.queue_free)
 
-# The offensive counterpart to _do_rock_dodge_encounter() - Marine Man's
-# own move (see BASE_MOVES' "Blast Rocks" entry), not the enemy's turn.
-# Each successfully blasted rock (blast_rocks_minigame.gd's rock_blasted
-# signal) deals its own hit to the enemy live, with its own damage popup,
-# same per-event shape the dodge minigame's damage already uses - not a
-# lump sum computed after the fact. Player damage output does NOT scale
-# with _enemy_power_mult() - that ramp is specifically the enemy hitting
-# harder over time, not the player hitting softer; the escalation's whole
-# point is pressure to finish the fight, not a debuff on this move itself.
-func _do_blast_rocks_attack(actor: Dictionary) -> void:
-	_busy = true
-	_set_all_buttons(false)
-	_log("%s calls up a barrage of rocks!" % String(actor.display_name))
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
-
-	var living_enemies := _living(enemies)
-	var enemy: Dictionary = living_enemies[0] if not living_enemies.is_empty() else {}
-	var enemy_stats: CombatantStats = enemy.stats as CombatantStats if not enemy.is_empty() else null
-
-	# MODIFIED (added): nothing to blast toward - skip the minigame
-	# entirely rather than running it with no enemy_actor to fly rocks at.
-	# Previously this fell through into building/running the minigame
-	# regardless, which would have hit the exact same missing-actor crash
-	# fixed below the instant a rock tried to land.
-	if enemy_stats == null:
-		_log("%s calls up a barrage, but there's nothing left to hit." % String(actor.display_name))
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
-		_advance_turn()
-		return
-
-	var minigame := BlastRocksMinigame.new()
-	add_child(minigame)
-	# MODIFIED (added): these three were never set - stage_root/diver_actor/
-	# enemy_actor all stayed null, so the very first rock in
-	# blast_rocks_minigame.gd's _run_one_rock() crashed reading
-	# diver_actor.global_position (a method call on null). That crash
-	# killed the coroutine outright, `finished` never got emitted, and
-	# `await minigame.finished` below hung forever - the whole battle
-	# looked frozen, and since no rock ever even spawned, it also looked
-	# like pressing E to shockwave just did nothing.
-	minigame.stage_root = _stage_vp
-	minigame.diver_actor = actor.actor
-	minigame.enemy_actor = enemy.actor
-	var total_dealt := 0
-	minigame.rock_blasted.connect(func() -> void:
-		var raw: float = (10.0 + float((actor.stats as CombatantStats).strength)) * randf_range(0.85, 1.15)
-		var incoming: int = maxi(0, int(round(raw)) - enemy_stats.defense)
-		enemy_stats.hp = maxi(0, enemy_stats.hp - incoming)
-		total_dealt += incoming
-		_refresh_bar(enemy)
-		_show_damage_popup(incoming)
-	)
-	minigame.run()
-	var result: Array = await minigame.finished
-	minigame.queue_free()
-	var hits := int(result[0])
-	var total := int(result[1])
-
-	if total_dealt <= 0:
-		_log("%s couldn't land a single blast. (%d/%d)" % [String(actor.display_name), hits, total])
-	else:
-		_log("%s slams %s for %d total! (%d/%d)" % [String(actor.display_name), String(enemy.display_name), total_dealt, hits, total])
-	if enemy_stats != null and enemy_stats.hp <= 0 and enemy.has("actor") and enemy.actor is Goblin:
-		(enemy.actor as Goblin).play_death_fade()
-	_special_round += 1
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	_advance_turn()
-
+# One shared damage flash for any actor - Diver or Goblin, whichever just
+# took a hit - called from every place damage actually lands (see _react()
+# and the rock_landed/portrait_landed closures below, plus both special
+# encounters' own follow-up swings). A red, expanding-and-fading overlay
+# sphere centered on the actor, same throwaway-VFX-child-node trick
+# diver.gd's own _shockwave_vfx() uses - added as a plain sibling on the
+# actor rather than touching that actor's own model materials, which is
+# exactly what makes this safe to call on EITHER actor type without this
+# script needing to know anything about how either one's model/materials
+# are actually built.
 func _win() -> void:
 	_set_all_buttons(false)
 	main_menu.visible = false

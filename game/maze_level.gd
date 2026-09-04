@@ -13,12 +13,17 @@ func _ready() -> void:
 	for child in get_children():
 		if child is Marker3D:
 			markers.append(child)
+	_setup_walls()
 	_setup_currents()
 	_setup_whirlpool()
 	_spawn_test_diver()
 	_build_rotate_prompt()
-	_build_wall_floors()
+	_build_floor()
 	_build_perimeter_walls()
+	_build_ceiling()
+
+func _setup_walls():
+	_set_wall_position($CSGBox3D, $CurrentWall1, true, true)
 
 # A persistent on-screen hint for _rotate_left_currents_left()/_right()
 # below - kept as its own label rather than reusing $HUD/Controls, since
@@ -28,7 +33,7 @@ func _ready() -> void:
 # there.
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
-	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: swing the CurrentWall1/2 hallway open - also rotates WindCorridor1's current clear and moves a current into WindCorridor3 (between CSGBox3D6/7); press again to reverse it all"
+	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: swing the CurrentWall1/2 hallway open - also moves WindCorridor1's current into WindCorridor2, and WindCorridor2's into WindCorridor3 (between CSGBox3D6/7, pushing north); press again to reverse it all"
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -154,15 +159,30 @@ func _show_endpoint_marker(at: Vector3) -> void:
 #
 # MODIFIED: swinging the walls alone opened a physical gap but left it
 # blocked anyway - WindCorridor1's own current still ran straight across
-# the new path (see _rotate_wind_corridor_1_current()'s own comment), and
-# nothing closed off the alternate route through WindCorridor3 the way the
-# design doc's own worked example calls for (a rotation should trade one
-# path for another, never just open one for free). Both now move together
-# with the walls, on the same press, using the same open/close toggle:
-# opening rotates WindCorridor1's current out of the new path's way AND
-# slides WindCorridor2's current into WindCorridor3 (the gap between
-# CSGBox3D6/CSGBox3D7) to gate that corridor shut; closing reverses both
-# exactly, alongside swinging the walls back.
+# the new path (strength 7 against a 5.0 swim speed - see
+# water_current.gd's _on_entered()), so a diver got bounced even with
+# nothing solid left in the way. Now the current moves out of WindCorridor1
+# entirely on the same press: WindCorridor2's current vacates to
+# WindCorridor3 first (the gap between CSGBox3D6/CSGBox3D7, gating that
+# route shut - the design doc's own worked example calls for a rotation to
+# trade one path for another, never just open one for free), then
+# WindCorridor1's current moves into the now-empty WindCorridor2. Closing
+# reverses both moves in the opposite order, alongside swinging the walls
+# back.
+#
+# Each corridor gets its own dedicated move function below
+# (_rotate_wind_corridor_1_current()/_rotate_wind_corridor_2_current())
+# rather than sharing one - WindCorridor2's move needs an explicit
+# destination direction (it has to actually block WindCorridor3, not just
+# land on whatever a blind 90-degree turn from its old heading happens to
+# produce), while WindCorridor1's move is a plain rotate-and-relocate. Both
+# go through _currents_by_corridor either way (via rotate_corridors_right()/
+# rotate_corridors_left() for corridor 1, and direct WaterCurrent.setup()
+# bookkeeping for corridor 2) rather than rotate_currents.gd's now-unused
+# RotateCurrents.change_corridor(), which manages its own private current
+# outside that dictionary - every "has($WindCorridorN)" guard elsewhere in
+# this file reads that dictionary, so a current change_corridor() moved
+# would go untracked there.
 var _hallway_1_2_swung := false
 var _hallway_1_2_home_pos_a: Vector3
 var _hallway_1_2_home_yaw_a: float
@@ -176,8 +196,7 @@ func _rotate_hallway_1_2() -> void:
 		_tween_wall_to(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
 		_tween_wall_to(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
 		_rotate_wind_corridor_1_current(false)
-		if _currents_by_corridor.has($WindCorridor3):
-			rotate_corridors_left($WindCorridor3, $WindCorridor2)
+		_rotate_wind_corridor_2_current(false)
 		_hallway_1_2_swung = false
 		$HUD/Controls.text = "Hallway swinging back..."
 		return
@@ -188,12 +207,94 @@ func _rotate_hallway_1_2() -> void:
 	_show_endpoint_marker(_wall_endpoint($CSGBox3D, true))
 	_rotate_wall_flush(wall_a, $CSGBox3D)
 	_rotate_wall_flush(wall_b, $CurrentWall3)
+	_rotate_wind_corridor_2_current(true)
 	_rotate_wind_corridor_1_current(true)
-	if _currents_by_corridor.has($WindCorridor2):
-		rotate_corridors_right($WindCorridor2, $WindCorridor3)
 	_hallway_1_2_swung = true
 	$HUD/Controls.text = "Hallway swinging..."
 
+# WindCorridor1's own current - moves into WindCorridor2 on open (`open` =
+# true), back to WindCorridor1 on close, rotating 90 degrees in the same
+# move each way via the generic rotate_corridors_right()/rotate_corridors_
+# left() above. Must run AFTER _rotate_wind_corridor_2_current(true) on
+# open (WindCorridor2 has to be vacated before this current can move into
+# it) and BEFORE it on close (this current has to vacate WindCorridor2
+# before the other one can move back into it) - see the call order in
+# _rotate_hallway_1_2() above.
+func _rotate_wind_corridor_1_current(open: bool) -> void:
+	if open:
+		if _currents_by_corridor.has($WindCorridor1):
+			rotate_corridors_right($WindCorridor1, $WindCorridor2)
+	else:
+		if _currents_by_corridor.has($WindCorridor2):
+			rotate_corridors_left($WindCorridor2, $WindCorridor1)
+
+# WindCorridor2's own current - moves into WindCorridor3 (the gap between
+# CSGBox3D6/CSGBox3D7) on open, gating that route shut, back to
+# WindCorridor2 on close. Direction is set explicitly rather than derived
+# by rotating 90 degrees from whatever WindCorridor2 happened to be blowing
+# (unlike WindCorridor1's move above) - blocking WindCorridor3 means
+# pushing north/"up" specifically, not just whichever direction a blind
+# 90-degree turn happens to land on. Closing restores WindCorridor2's
+# original POSITIVE_Z - the same direction _setup_currents() gives it at
+# the start, so this always returns to exactly where it began rather than
+# drifting after repeated open/close cycles.
+func _rotate_wind_corridor_2_current(open: bool) -> void:
+	if open:
+		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
+		if current == null:
+			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
+			return
+		current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
+		_currents_by_corridor.erase($WindCorridor2)
+		_currents_by_corridor[$WindCorridor3] = current
+	else:
+		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor3, null)
+		if current == null:
+			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor3")
+			return
+		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
+		_currents_by_corridor.erase($WindCorridor3)
+		_currents_by_corridor[$WindCorridor2] = current
+		
+# MODIFIED: wall_b's new position was built off wall_a.global_position (its
+# CENTER) - wall_a_end was computed right above but then never actually
+# used, so wall_b landed offset from wall_a's middle, not its end. The
+# offset itself was also sized wrong twice over: wall_a.size.y and
+# wall_b.size.y are both HEIGHT (~4), not length - size.x is a wall's
+# length axis everywhere else in this file (_wall_endpoint() above) - and
+# it multiplied by `forward`, wall_a's own axis, when the offset from the
+# touching corner out to wall_b's center needs to run along wall_b's OWN
+# axis instead, since wall_b sits perpendicular to wall_a (already true
+# from how it's placed in the scene - this function only repositions it,
+# it never rotates it).
+#
+# Reuses _wall_endpoint() above rather than re-deriving wall_a's own
+# forward/endpoint by hand - same formula, just solved backwards: instead
+# of walking FROM a wall's center TO one of its ends, this walks from the
+# known touching point BACK to where wall_b's center must sit so that
+# wall_b's own end (left_end picks which one) lands exactly on it.
+#
+# MODIFIED: wall_b's center used to land exactly ON wall_a_end - fine along
+# wall_b's own length (that's the axis the left_end offset already solves
+# for), but wall_a_end is a point on wall_a's THICKNESS too, not just its
+# length. Since wall_b sits rotated 90 degrees from wall_a, wall_b's own
+# thickness axis (size.z) ends up parallel to wall_a's length axis - so
+# centering wall_b directly on that point left half of wall_b's thickness
+# sitting on the far side of it (correctly clear of wall_a), and the other
+# half sitting on the near side, buried back inside wall_a's own body
+# instead of starting flush at its face. `clearance` pushes wall_b's center
+# half a thickness further out along wall_a's own forward axis (the same
+# direction its end already faces away from its body, via `positive_end`'s
+# sign) so wall_b's near face lands exactly on wall_a's face instead of
+# straddling it.
+func _set_wall_position(wall_a: CSGBox3D, wall_b: CSGBox3D, positive_end: bool = false, left_end: bool = false) -> void:
+	var wall_a_forward: Vector3 = wall_a.global_transform.basis.x.normalized()
+	var wall_a_end := _wall_endpoint(wall_a, positive_end)
+	var wall_b_forward: Vector3 = wall_b.global_transform.basis.x.normalized()
+	var clearance: Vector3 = wall_a_forward * wall_b.size.z * 0.5 * (1.0 if positive_end else -1.0)
+	wall_b.global_position = wall_a_end + clearance + wall_b_forward * wall_b.size.x * 0.5 * (1.0 if left_end else -1.0)
+	
+	
 # Each WaterCurrent is a plain controller object, not something attached
 # to the Area3D itself (see water_current.gd) - built and wired up here
 # instead, so both which Area3D it watches and which way it blows are
@@ -221,8 +322,8 @@ func _rotate_hallway_1_2() -> void:
 # exactly the two starting pairs.
 func _setup_currents() -> void:
 	_add_current($WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
-	_add_current($WindCorridor2, WaterCurrent.Direction.POSITIVE_Z)
-	_add_current($WindCorridor4, WaterCurrent.Direction.POSITIVE_X)
+	_add_current($WindCorridor2, WaterCurrent.Direction.NEGATIVE_X)
+	_add_current($WindCorridor4, WaterCurrent.Direction.POSITIVE_Z)
 	_add_current($WindCorridor6, WaterCurrent.Direction.NEGATIVE_Z)
 	
 # MODIFIED: both of these were calling rotate_corridors_right()/_left()
@@ -392,37 +493,6 @@ static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
 			return WaterCurrent.Direction.NEGATIVE_Z
 	return dir
 
-# Rotates WindCorridor1's own current 90 degrees in place (it stays at
-# WindCorridor1, only its flow direction changes) - called from
-# _rotate_hallway_1_2() below, on the SAME press that swings CurrentWall1/
-# CurrentWall2 open. Swinging the walls alone used to leave WindCorridor1's
-# original current (NEGATIVE_Z, strength 7 - well above the diver's own 5.0
-# swim speed) sitting directly across the newly-opened straight path: its
-# box overlaps the corridor the walls just cleared, so a diver swimming
-# straight through got bounced by the misaligned current (see
-# water_current.gd's _on_entered()) even though nothing solid was in the
-# way anymore - "the hall opens but there's still a block in that
-# direction." Rotating the current to run WITH the new heading instead of
-# across it is what actually clears it.
-#
-# `open`: true turns it clockwise as seen from above (matching the
-# minimap's top-down frame, north/-Z -> east/+X -> south/+Z -> west/-X),
-# false is the exact reverse. Reuses _rotate_left()/_rotate_right() above
-# for the direction math rather than duplicating their match statements -
-# despite the names, it's _rotate_left() that walks the compass clockwise
-# and _rotate_right() that walks it counterclockwise, since those names
-# describe which way a current's WINDOW slides along the corridor chain,
-# not a compass direction.
-func _rotate_wind_corridor_1_current(open: bool) -> void:
-	var current: WaterCurrent = _currents_by_corridor.get($WindCorridor1, null)
-	if current == null:
-		push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor1")
-		return
-	var current_dir := WaterCurrent.vector_to_direction(current.orientation)
-	var new_dir := _rotate_left(current_dir) if open else _rotate_right(current_dir)
-	current.setup($WindCorridor1, WaterCurrent.direction_to_vector(new_dir), current.strength, false)
-
-
 # Same class world.gd's own highway gap uses (see whirlpool.gd) - a
 # warned approach, then a suction pull no swimming can fight once caught,
 # docking HP and sweeping the diver back to reset_to. Defaults to
@@ -448,29 +518,52 @@ func _on_diver_sucked_in(_d: Diver, amount: int) -> void:
 # maze_level.tscn) only covers the wall's own box - nothing stops a diver
 # from just sinking below a wall's bottom edge and swimming under it, since
 # SPACE/SHIFT have no floor of their own here the way world.gd's open dive
-# site does (_build_site()). One invisible StaticBody3D per wall, matching
-# that wall's own footprint and rotation and hanging straight down from it,
-# closes that off - deliberately per-wall rather than one single floor
-# plane for the whole level, since several corridors (WindCorridor6-9, the
-# whirlpool) sit well below the walls' own height and a single flat floor
-# at wall level would wall off those legitimately deeper spaces instead of
-# just closing the gap under a wall.
-const _WALL_FLOOR_DEPTH := 30.0
+# site does (_build_site()). One flat invisible slab, positioned right
+# under the walls and spanning the whole level - same shape as
+# _build_ceiling() below, just at the opposite end: the X/Z footprint
+# reuses _collect_bounds_points()/_PERIMETER_MARGIN so it covers the same
+# full extent, and the height is pinned to the lowest wall bottom in the
+# scene (mirroring how _build_perimeter_walls() already uses that same
+# minimum for its own vertical placement) rather than any one wall by name.
+#
+# Sits below the whirlpool's own position (game/whirlpool.gd's
+# _setup_whirlpool() places it at y=-4.12, lower than every wall's bottom
+# edge) - the whirlpool's suction sets the diver's position directly rather
+# than moving through normal collision response, so it still pulls them
+# down past this floor, but a diver just swimming down on their own now
+# stops here instead of reaching that depth by hand.
+const _FLOOR_CLEARANCE := 1.0
+const _FLOOR_THICKNESS := 2.0
 
-func _build_wall_floors() -> void:
+func _build_floor() -> void:
+	var wall_min_y := INF
 	for child in get_children():
-		if not (child is CSGBox3D):
-			continue
-		var box := child as CSGBox3D
-		var body := StaticBody3D.new()
-		body.transform = box.transform
-		body.position -= Vector3(0.0, box.size.y * 0.5 + _WALL_FLOOR_DEPTH * 0.5, 0.0)
-		var shape := CollisionShape3D.new()
-		var floor_box := BoxShape3D.new()
-		floor_box.size = Vector3(box.size.x, _WALL_FLOOR_DEPTH, box.size.z)
-		shape.shape = floor_box
-		body.add_child(shape)
-		add_child(body)
+		if child is CSGBox3D:
+			var box := child as CSGBox3D
+			wall_min_y = minf(wall_min_y, box.position.y - box.size.y * 0.5)
+	if wall_min_y == INF:
+		return
+
+	var points := _collect_bounds_points()
+	if points.is_empty():
+		return
+	var min_pt: Vector3 = points[0]
+	var max_pt: Vector3 = points[0]
+	for p in points:
+		min_pt = min_pt.min(p)
+		max_pt = max_pt.max(p)
+	var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+	var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+	var span_x := padded_max.x - padded_min.x
+	var span_z := padded_max.z - padded_min.z
+	var center_x := (padded_min.x + padded_max.x) * 0.5
+	var center_z := (padded_min.z + padded_max.z) * 0.5
+
+	var floor_y := wall_min_y - _FLOOR_CLEARANCE - _FLOOR_THICKNESS * 0.5
+
+	_build_invisible_wall(
+		Vector3(center_x, floor_y, center_z),
+		Vector3(span_x, _FLOOR_THICKNESS, span_z))
 
 # A perimeter around the whole level, same idea as world.gd's own
 # _build_boundary_walls() for the open dive site - invisible collision
@@ -550,6 +643,49 @@ func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	shape.shape = box
 	body.add_child(shape)
 	add_child(body)
+
+# Invisible ceiling capping the whole level - one flat slab spanning the
+# same X/Z footprint _build_perimeter_walls() above already computes
+# (_collect_bounds_points()/_PERIMETER_MARGIN, reused rather than
+# recomputed), positioned just above CurrentWall1's own top edge
+# specifically - not the tallest wall anywhere in the scene. Several walls
+# (CSGBox3D24-28) run much taller than CurrentWall1, at y=6.5 with a
+# 14-unit height; a ceiling pinned to those would trap a diver rising
+# through that part of the level instead of just closing off rising up and
+# over the corridor CurrentWall1 itself gates, which is the one this was
+# actually asked to cap.
+#
+# Read once here in _ready(), before _rotate_hallway_1_2() can ever run -
+# CurrentWall1's height at that moment is its pristine placed position, not
+# wherever a later swing has left it (the swing only changes its X/Z
+# position and yaw, never its own height, so this stays correct regardless,
+# but reading it this early is what guarantees that rather than assuming it).
+const _CEILING_CLEARANCE := 1.0
+const _CEILING_THICKNESS := 2.0
+
+func _build_ceiling() -> void:
+	var points := _collect_bounds_points()
+	if points.is_empty():
+		return
+	var min_pt: Vector3 = points[0]
+	var max_pt: Vector3 = points[0]
+	for p in points:
+		min_pt = min_pt.min(p)
+		max_pt = max_pt.max(p)
+
+	var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+	var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+	var span_x := padded_max.x - padded_min.x
+	var span_z := padded_max.z - padded_min.z
+	var center_x := (padded_min.x + padded_max.x) * 0.5
+	var center_z := (padded_min.z + padded_max.z) * 0.5
+
+	var wall_a := $CurrentWall1 as CSGBox3D
+	var ceiling_y := wall_a.position.y + wall_a.size.y * 0.5 + _CEILING_CLEARANCE + _CEILING_THICKNESS * 0.5
+
+	_build_invisible_wall(
+		Vector3(center_x, ceiling_y, center_z),
+		Vector3(span_x, _CEILING_THICKNESS, span_z))
 
 # ============================================================
 # A standalone swimmable diver for testing this level in isolation -

@@ -102,6 +102,27 @@ func play(substr: String) -> void:
 	if want != "" and anim.current_animation != want:
 		anim.play(want)
 
+# Called by battle.gd for every damage instance in combat that lands on
+# this grunt (see Battle._react()) - same flicker trick diver.gd's own
+# flash_damage() uses and for the same reason: nothing about this FBX's
+# materials supports a cheap real flash effect, and a visibility toggle
+# reads clearly at any distance regardless. `heavy` is accepted (unused)
+# purely so battle.gd can call this the same way for either actor type -
+# grunts have no hit-reaction animation to bundle a heavier one into the
+# way diver.gd's version does, just the flicker.
+func flash_damage(times: int = 4, _heavy: bool = false) -> void:
+	var flicker_model := get_node_or_null("Model")
+	if flicker_model == null:
+		return
+	var tw := create_tween()
+	# Same FLASH_PHASE_TIME tuning as diver.gd's own flash_damage() - see
+	# its comment. Kept as a literal here rather than a shared constant
+	# since these two scripts don't otherwise share any base class to hang
+	# one off of.
+	for i in range(times):
+		tw.tween_property(flicker_model, "visible", false, 0.12)
+		tw.tween_property(flicker_model, "visible", true, 0.12)
+
 # Called by battle.gd the instant a hit actually brings this grunt to 0 HP.
 # Fades every mesh surface to transparent while the whole model sinks and
 # shrinks slightly - reads as "dying and disappearing," not just "the model

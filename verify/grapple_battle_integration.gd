@@ -1,7 +1,6 @@
 extends SceneTree
 
 var result: Array = []
-var wrong_hits := 0
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -26,18 +25,14 @@ func _run() -> void:
 
 	var minigame: GrappleInterceptMinigame = null
 	var deadline := Time.get_ticks_msec() + 16000
-	var demonstrated_decoy := false
 	while Time.get_ticks_msec() < deadline:
 		if minigame == null or not is_instance_valid(minigame):
 			for child in battle.get_children():
 				if child is GrappleInterceptMinigame:
 					minigame = child as GrappleInterceptMinigame
 					minigame.finished.connect(func(hits: int, total: int) -> void: result = [hits, total])
-					minigame.wrong_object_hit.connect(func() -> void: wrong_hits += 1)
 					break
 		if minigame != null and is_instance_valid(minigame):
-			if not demonstrated_decoy and minigame.auto_hit_decoy():
-				demonstrated_decoy = true
 			minigame.verification_resolve_closest()
 		elif not result.is_empty():
 			break
@@ -49,9 +44,20 @@ func _run() -> void:
 	var hp_after := (party_entry.stats as CombatantStats).hp
 	var actor_visible := (party_entry.actor as Diver).visible
 	var camera_restored := battle._stage_camera.position.distance_to(default_camera_position) < 0.01
-	var clean := result == [8, 8] and wrong_hits == 1 and hp_after < hp_before and actor_visible and camera_restored
-	print("GRAPPLE BATTLE: result %s, wrong %d, HP %d -> %d, camera %s, actor visible %s" % [
-		str(result), wrong_hits, hp_before, hp_after, str(camera_restored), str(actor_visible)
+	# MODIFIED: was hardcoded [8, 8] - stale since TARGET_COUNT dropped to
+	# 5 (see grapple_intercept_minigame.gd's own header). Read the real
+	# constant instead of re-hardcoding a number that can drift again.
+	var expected := GrappleInterceptMinigame.TARGET_COUNT
+	# MODIFIED: was also asserting wrong_hits == 1 and hp_after < hp_before,
+	# both driven by deliberately shooting a decoy (auto_hit_decoy(), now
+	# removed along with decoys entirely - see grapple_intercept_minigame.gd).
+	# verification_resolve_closest() destroys every rock directly before it
+	# can ever land, so nothing in this test path damages the diver anymore -
+	# hp_after <= hp_before (never healing) is what's actually still
+	# guaranteed, not a strict decrease.
+	var clean := result == [expected, expected] and hp_after <= hp_before and actor_visible and camera_restored
+	print("GRAPPLE BATTLE: result %s, HP %d -> %d, camera %s, actor visible %s" % [
+		str(result), hp_before, hp_after, str(camera_restored), str(actor_visible)
 	])
 	if not clean:
 		push_error("GRAPPLE BATTLE: integration contract failed")
