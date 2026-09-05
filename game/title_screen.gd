@@ -17,11 +17,15 @@ extends Control
 
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
+signal boss_playtest_chosen
+signal special_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
 
 var _list: VBoxContainer
+var _boss_playtest_available := false
+var _special_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -67,6 +71,23 @@ func open() -> void:
 func close() -> void:
 	visible = false
 
+# Kept out of the ordinary title flow. World enables this only for the
+# dedicated ?boss=1 review URL (or the matching command-line test flag), so
+# PR #54's normal New/Load presentation remains exactly the one already
+# reviewed while Glassgoat gets a one-click route to his boss.
+func enable_boss_playtest() -> void:
+	_boss_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
+# Like the boss route above, this is opt-in review plumbing rather than part
+# of the ordinary New/Load flow. It lets a reviewer reach the guardian chooser
+# and all three ability minigames without first navigating the full map.
+func enable_special_playtest() -> void:
+	_special_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
@@ -84,6 +105,26 @@ func _refresh_main() -> void:
 	new_btn.pressed.connect(_on_new_game_pressed)
 	_list.add_child(new_btn)
 	new_btn.grab_focus()
+
+	if _boss_playtest_available:
+		var boss_btn := Button.new()
+		boss_btn.text = "Play Tethys Boss Test"
+		boss_btn.tooltip_text = "Glassgoat animation and combat validation"
+		boss_btn.custom_minimum_size = Vector2(360, 46)
+		boss_btn.add_theme_font_size_override("font_size", 17)
+		boss_btn.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
+		boss_btn.pressed.connect(boss_playtest_chosen.emit)
+		_list.add_child(boss_btn)
+
+	if _special_playtest_available:
+		var special_btn := Button.new()
+		special_btn.text = "Play Special Encounter Test"
+		special_btn.tooltip_text = "Choose a diver and test their ability minigame"
+		special_btn.custom_minimum_size = Vector2(360, 46)
+		special_btn.add_theme_font_size_override("font_size", 17)
+		special_btn.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
+		special_btn.pressed.connect(special_playtest_chosen.emit)
+		_list.add_child(special_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save

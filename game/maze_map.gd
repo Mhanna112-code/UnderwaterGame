@@ -106,7 +106,7 @@ func _box_corners_2d(shape_node: CollisionShape3D, box: BoxShape3D, center: Vect
 		out.append(Vector2(world_pos.x, world_pos.z) - Vector2(center.x, center.z))
 	return out
 
-# One pulsing red marker per key-item zone (ItemGuardian.SPOTS) sonar has
+# One pulsing red marker per key-item zone (ItemGuardian.spots()) sonar has
 # ever revealed (World.revealed_key_items) that hasn't been claimed yet
 # (World.key_items) - a dot at its real position if that's within
 # view_radius of the map center, otherwise a small arrow pinned to the
@@ -141,7 +141,7 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 		return
 	var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 1000.0 * MARKER_PULSE_SPEED)
 	var marker_color := Color(0.95, 0.15, 0.15, pulse)
-	for entry in ItemGuardian.SPOTS:
+	for entry in ItemGuardian.spots():
 		var item_id := String(entry.item)
 		if world.key_items.has(item_id) or not world.revealed_key_items.has(item_id):
 			continue

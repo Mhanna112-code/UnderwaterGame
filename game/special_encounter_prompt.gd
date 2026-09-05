@@ -1,5 +1,5 @@
-# Shown by World when a diver swims within radius of an unclaimed key
-# item (see world.gd's _on_encounter_triggered()/_offer_special_encounter())
+# Shown by World when a diver enters a visible artifact guardian
+# (see world.gd's _on_item_guardian_triggered()/_offer_special_encounter())
 # - two screens, only one visible at a time:
 #   confirm: explains the stakes (special ability needed, a timed
 #     challenge, real treasure, no permadeath) with Enter/Not Now.
@@ -25,7 +25,7 @@ signal cancelled
 # so a player picking blind knows what they're about to be asked to do.
 const ABILITY_BLURBS := {
 	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
-	"grapple": "In the encounter: swim (WASD) into each telegraphed spot and press E to blast that rock back at the enemy before it fades.",
+	"grapple": "In the encounter: click to capture the mouse, aim at the glowing yellow weak spot, and left-click to grapple it. Each incoming rock needs two weak-spot hits before impact.",
 	"shockwave": "In the encounter: three lanes come in at once - one rock, two solid walls. Hold Left/Right to lean into that lane (let go to snap back to middle) and line up with the rock, then E to shockwave it before it lands. Standing in a wall's lane gets you hit.",
 }
 
@@ -165,6 +165,10 @@ func _build_select_panel() -> Control:
 	_preview_vp.size = Vector2i(280, 260)
 	_preview_vp.transparent_bg = true
 	_preview_vp.disable_3d = false
+	# Keep the carousel's review model isolated from the live overworld. A
+	# SubViewport shares its parent's World3D by default, which made nearby
+	# divers, guardians and scenery appear stacked inside this preview.
+	_preview_vp.own_world_3d = true
 	preview_container.add_child(_preview_vp)
 
 	var cam := Camera3D.new()

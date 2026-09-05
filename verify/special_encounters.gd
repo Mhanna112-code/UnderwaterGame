@@ -10,8 +10,15 @@ func _check(ok: bool, message: String) -> void:
 		findings.append(message)
 
 func _enter_special(world: World, diver: Diver, item_id: String) -> Battle:
-	diver.position = ItemGuardian.SPOTS.filter(func(s: Dictionary) -> bool: return String(s.item) == item_id)[0].at
-	diver.encounter_triggered.emit()
+	var guardian: ItemGuardian = null
+	for child in world.get_children():
+		if child is ItemGuardian and (child as ItemGuardian).item_id == item_id:
+			guardian = child as ItemGuardian
+			break
+	_check(guardian != null, "guarded site was not built")
+	if guardian == null:
+		return null
+	guardian.triggered.emit(item_id)
 	_check(world.special_encounter_prompt.visible, "chooser did not open")
 	world.special_encounter_prompt.diver_chosen.emit(diver.model_name)
 	await process_frame
@@ -49,6 +56,21 @@ func _run() -> void:
 	_check(diver.stats.hp == diver.stats.hp_max, "win did not fill HP")
 	_check(is_equal_approx(diver.stats.oxygen, diver.stats.oxygen_max), "win did not fill oxygen")
 	_check(world.key_items.has("current_pearl"), "win did not grant the guarded item")
+
+	# The web-only review route must exercise the real chooser/dispatcher but
+	# return to the title without granting an item or damaging a save-backed run.
+	world._on_title_special_playtest()
+	_check(world.special_encounter_prompt.visible, "special playtest route did not open the chooser")
+	var playtest_diver := world.divers[1] as Diver
+	var playtest_hp := playtest_diver.stats.hp
+	world.special_encounter_prompt.diver_chosen.emit(playtest_diver.model_name)
+	await process_frame
+	_check(world.battle != null and world.battle.special_encounter, "special playtest route did not start a special battle")
+	world.battle.finished.emit("lost")
+	await process_frame
+	await process_frame
+	_check(world.title_screen.visible, "special playtest route did not return to title")
+	_check(playtest_diver.stats.hp == playtest_hp, "special playtest route did not restore entry HP")
 
 	for finding in findings:
 		print("FINDING  " + finding)

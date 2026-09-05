@@ -11,7 +11,11 @@ signal title_chosen
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Like TitleScreen, this is created directly under a CanvasLayer. Anchors
+	# alone preserve the runtime Control's initial zero-sized offsets; reset
+	# both so CenterContainer receives the real viewport instead of bunching
+	# the defeat message and buttons into the upper-left corner.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.05, 0.02, 0.02, 0.94)

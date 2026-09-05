@@ -61,9 +61,17 @@ var _showing_save_prompt := false
 # to save_point_menu.learn_ui in _ready() (see SpellTree.can_learn()'s
 # key_items param) rather than copied, so appending here is automatically
 # visible there without any extra sync step.
+# The dive site as physical places from content/sites.gd. Built by
+# _build_dive_sites(); site_nodes is keyed by site id.
+var site_nodes: Dictionary = {}
+
+const SiteScript := preload("res://game/site.gd")
+# Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
+const PLINTH_TOP := 0.7
+
 var key_items: Array[String] = []
 
-# Which ItemGuardian.SPOTS item ids sonar has ever pinged (see
+# Which ItemGuardian.spots() item ids sonar has ever pinged (see
 # Diver.update_sonar()) - MiniMap draws a marker for anything in here
 # that isn't also in key_items yet (still unclaimed). Party-wide like
 # key_items, not per-diver, and never cleared except implicitly by an id
@@ -117,37 +125,30 @@ var title_screen: TitleScreen
 var game_over_screen: GameOverScreen
 var title_layer: CanvasLayer
 
-# The opening story crawl - shown once, right after New Game is actually
-# chosen (see _on_title_new_game()), never on Load Game or a "Return to
-# Title" replay of the title screen itself. Lives on title_layer same as
-# title_screen - same paused-but-interactive shape, just shown for a beat
-# in between "New Game" and the world actually unpausing.
-var intro_crawl: IntroCrawl
-
-# The confirm-then-choose-a-diver prompt shown before a special (key-item
-# guarded) encounter - see _offer_special_encounter() below.
+# Guardian encounters are opt-in and let the player choose which diver's
+# ability minigame to face. The guardian nodes stay in the world until a
+# win, so declining or losing cannot silently delete the site's content.
 var special_encounter_prompt: SpecialEncounterPrompt
-
-# Set right before a special encounter's prompt opens, read by
-# _on_special_encounter_diver_chosen()/_on_battle_finished()'s special-
-# case "lost"/"won" handling - which item this encounter is guarding, and
-# (once a diver's actually picked) who went in and at what HP/oxygen, so
-# a loss can restore them to exactly that (both stats, not just HP -
-# oxygen spent mid-fight on a move used to stay spent even
-# though HP already got restored, a real gap in "you don't really lose
-# here") rather than leaving them battered or drained, or routing
-# through the normal game-over flow. A win goes the other way entirely -
-# see _on_battle_finished()'s "won" branch - full HP/oxygen as a real
-# reward on top of the treasure and bonus XP, not just "same as before."
 var _special_encounter_item := ""
 var _special_encounter_diver: Diver
 var _special_encounter_pre_hp := 0
 var _special_encounter_pre_oxygen := 0.0
+var _special_guardian: ItemGuardian
+var _special_guardian_decoy: Goblin
 
 # Set right before a guardian fight starts (see _on_item_guardian_triggered
 # ()), read once in _on_battle_finished() and cleared immediately after -
 # "" means an ordinary random encounter, nothing to hand out on a win.
 var _pending_reward_item := ""
+
+# True only during the isolated ?boss=1 review route. It never writes a
+# save and returns to the title after the result, so repeatedly testing
+# Tethys cannot damage a real playthrough.
+var _boss_playtest_active := false
+
+# Isolated ?special=1 review route. It opens the real guardian chooser and
+# battle/minigame dispatcher but never grants an item or alters a save.
+var _special_playtest_active := false
 
 # Which save slot this run is playing into - set the instant the title
 # screen resolves (New Game picks one and writes an initial save into it;
@@ -182,13 +183,13 @@ func _serialize_state() -> Dictionary:
 			"stats": {
 				"hp_max": s.hp_max, "strength": s.strength, "defense": s.defense,
 				"agility": s.agility, "accuracy": s.accuracy, "evasion": s.evasion,
-				"oxygen_max": s.oxygen_max,
+				"barrier_max": s.barrier_max, "oxygen_max": s.oxygen_max,
 				"level": s.level, "xp": s.xp, "xp_to_next": s.xp_to_next,
 				"spell_points": s.spell_points,
 				"grow_hp": s.grow_hp, "grow_strength": s.grow_strength,
 				"grow_defense": s.grow_defense, "grow_agility": s.grow_agility,
 				"grow_accuracy": s.grow_accuracy, "grow_evasion": s.grow_evasion,
-				"hp": s.hp, "oxygen": s.oxygen,
+				"hp": s.hp, "barrier": s.barrier, "oxygen": s.oxygen,
 			},
 		})
 	return {
@@ -231,6 +232,7 @@ func _load_save() -> void:
 		s.agility = int(sd.get("agility", s.agility))
 		s.accuracy = int(sd.get("accuracy", s.accuracy))
 		s.evasion = int(sd.get("evasion", s.evasion))
+		s.barrier_max = int(sd.get("barrier_max", s.barrier_max))
 		s.oxygen_max = float(sd.get("oxygen_max", s.oxygen_max))
 		s.level = int(sd.get("level", s.level))
 		s.xp = int(sd.get("xp", s.xp))
@@ -243,6 +245,7 @@ func _load_save() -> void:
 		s.grow_accuracy = int(sd.get("grow_accuracy", s.grow_accuracy))
 		s.grow_evasion = int(sd.get("grow_evasion", s.grow_evasion))
 		s.hp = int(sd.get("hp", s.hp_max))
+		s.barrier = int(sd.get("barrier", s.barrier_max))
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
 	pending_world_drops = (data.get("pending_world_drops", {}) as Dictionary).duplicate(true)
@@ -303,15 +306,6 @@ func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
 	_write_save()
 	title_screen.close()
-	# MODIFIED (added): the opening story crawl plays here, between closing
-	# the title screen and actually unpausing the world - a brand new game
-	# specifically, never Load Game (a returning save has already seen it)
-	# and never a "Return to Title" replay of the title screen itself
-	# (that's _show_title_screen(), a different path). get_tree() stays
-	# paused underneath the whole time, same as the title screen it's
-	# replacing on screen.
-	intro_crawl.open()
-	await intro_crawl.finished
 	$HUD.visible = true
 	get_tree().paused = false
 
@@ -322,7 +316,48 @@ func _on_title_load_game(slot: int) -> void:
 	$HUD.visible = true
 	get_tree().paused = false
 
+func _on_title_boss_playtest() -> void:
+	_current_slot = -1
+	_boss_playtest_active = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	call_deferred("_start_battle", "", true)
+
+func _on_title_special_playtest() -> void:
+	_current_slot = -1
+	_special_playtest_active = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	# The review route deliberately has no live guardian reference: finishing
+	# it must not remove world content or award the Current Pearl.
+	_special_guardian = null
+	_special_guardian_decoy = null
+	_offer_special_encounter("current_pearl")
+
+func _boss_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--boss-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("boss=1")
+	return false
+
+func _special_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--special-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("special=1")
+	return false
+
 func _show_game_over() -> void:
+	# Defeat owns the whole screen just like cold launch. The controls, active
+	# diver label, bars, minimap and any announcement describe a playable world
+	# and become misleading noise once that world has been paused.
+	$HUD.visible = false
+	title_screen.close()
 	get_tree().paused = true
 	game_over_screen.open()
 
@@ -396,21 +431,6 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	$HUD.add_child(banner)
 
-	# Do not parent the title to HUD: _show_title_screen() deliberately hides
-	# that whole layer so its controls cannot bunch underneath the title on the
-	# first frame. This layer remains visible and interactive while paused.
-	title_layer = CanvasLayer.new()
-	title_layer.name = "TitleLayer"
-	title_layer.layer = 20
-	add_child(title_layer)
-	title_screen = TitleScreen.new()
-	title_screen.new_game_chosen.connect(_on_title_new_game)
-	title_screen.load_game_chosen.connect(_on_title_load_game)
-	title_layer.add_child(title_screen)
-
-	intro_crawl = IntroCrawl.new()
-	title_layer.add_child(intro_crawl)
-
 	minimap = MiniMap.new()
 	minimap.world = self
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -451,16 +471,36 @@ func _ready() -> void:
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
 	_update_hud()
-	
-	game_over_screen = GameOverScreen.new()
-	game_over_screen.restart_chosen.connect(_on_game_over_restart)
-	game_over_screen.title_chosen.connect(_on_game_over_title)
-	$HUD.add_child(game_over_screen)
+
+	# Do not parent the title to HUD: _show_title_screen() deliberately hides
+	# that whole layer so its controls cannot bunch underneath the title on the
+	# first frame. This layer remains visible and interactive while paused.
+	title_layer = CanvasLayer.new()
+	title_layer.name = "TitleLayer"
+	title_layer.layer = 20
+	add_child(title_layer)
+	title_screen = TitleScreen.new()
+	title_screen.new_game_chosen.connect(_on_title_new_game)
+	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
+	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
+	title_layer.add_child(title_screen)
+	if _boss_playtest_requested():
+		title_screen.enable_boss_playtest()
+	if _special_playtest_requested():
+		title_screen.enable_special_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
 	special_encounter_prompt.cancelled.connect(_on_special_encounter_cancelled)
-	$HUD.add_child(special_encounter_prompt)
+	title_layer.add_child(special_encounter_prompt)
+
+	game_over_screen = GameOverScreen.new()
+	game_over_screen.restart_chosen.connect(_on_game_over_restart)
+	game_over_screen.title_chosen.connect(_on_game_over_title)
+	# This cannot live under HUD: _show_game_over() deliberately hides HUD as
+	# one unit. Keep both exclusive, paused menu surfaces on the overlay layer.
+	title_layer.add_child(game_over_screen)
 
 	# A game-over restart must rebuild the scene before applying its save so
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
@@ -532,18 +572,11 @@ func _build_site() -> void:
 
 	_build_breakable_rocks()
 	_build_highway()
-	_build_item_guardians()
+	_build_dive_sites()
 	_build_boundary_walls()
 
-# Invisible collision only, no mesh - nothing to render, this is purely a
-# safety net so a diver swimming (or rising - SPACE has no ceiling of its
-# own) straight out past the scattered rocks doesn't just keep going
-# forever into open water. Four StaticBody3D slabs just outside the
-# floor's own footprint (_build_site()'s 120x120 PlaneMesh, centered on the
-# origin - BOUND is that plane's half-extent), tall enough (WALL_HEIGHT)
-# that rising over the top isn't a way around them either. Not added to
-# _wall_segments - that array is what MiniMap draws, and this is a
-# perimeter safety net, not a gameplay wall meant to show up there.
+# Keep the playable space inside the visible 120-by-120 seafloor. These are
+# collision-only safety rails and intentionally do not appear on the minimap.
 func _build_boundary_walls() -> void:
 	const BOUND := 60.0
 	const WALL_HEIGHT := 80.0
@@ -663,14 +696,6 @@ func use_inventory_item(item_id: String) -> void:
 	var count: int = int(inventory.get(item_id, 0))
 	if count <= 0 or divers.is_empty():
 		return
-	# Checked before would_help()/grant() ever run, and before the count
-	# gets touched - a battle-only item (see items.gd's own header
-	# comment) clicked from this pause menu should say why it refused,
-	# not silently do nothing or get consumed for no effect.
-	if bool(Items.ITEMS.get(item_id, {}).get("battle_only", false)):
-		var battle_only_display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
-		_announce("%s can't be used here." % battle_only_display)
-		return
 	var diver: Diver = divers[active]
 	if not Items.would_help(item_id, diver.stats):
 		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
@@ -758,29 +783,73 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # Stance) - see items.gd's ITEMS entries for both. Placed well clear of the
 # scattered rocks/CAST start positions/highway, out in the open dive site
 # where _build_site()'s rock scatter already reaches (dist up to 48).
+# The one place in the dive site worth swimming *to*, as opposed to swimming
+# around until something attacks you.
+#
+# Every other piece of this already existed and was already wired to
+# ItemGuardian.spots(): sonar reveals a spot once you get within the minimap's
+# view radius (diver.gd's update_sonar), the minimap then draws a pulsing
+# marker for it or an arrow toward it (mini_map.gd), winning the fight grants
+# the item (_grant_reward_item), and the guardian itself is a finished class.
+# The only thing missing was the six lines that put one in the water. They
+# were here, wrapped in a triple-quoted string, which GDScript parses as a
+# string literal and Godot never warns about, so the function ran and built
+# nothing. See #45.
+# Places to discover while exploring or using Mermaid's sonar.
+#
+# The dive site used to be open water with rocks in it: encounters happened
+# wherever you were, so the terrain did no work and there was nothing on the
+# map to aim at. This is the answer from the first combat PR, ported: a
+# handful of built places joined by trails of lit beacons.
+#
+# A site is a bowl. A low berm ring you physically cross, broken columns
+# round the rim, and a plinth at the middle. The enclosure is the point:
+# it narrows the volume, which is the only thing that makes a fight inside
+# it mean anything in three dimensions, where anything in open water can be
+# swum around.
+#
+# There are deliberately no route or site lamps. Marc's final review was to
+# remove every marker that guides players to items because discovery is the
+# purpose of Mermaid's oxygen-consuming sonar and of exploring the map.
+func _build_dive_sites() -> void:
+	for d in Sites.ALL:
+		var site: Site = SiteScript.new()
+		add_child(site)
+		site.build(d)
+		site_nodes[String(d.id)] = site
+
+	_build_item_guardians()
+
+# The guarded item stands on the plinth at the middle of its site, which is
+# what the plinth is for: the thing you came for presented rather than
+# dropped on the seabed.
+#
+# These six lines were on this branch all along, wrapped in a triple-quoted
+# string. GDScript parses that as a string literal, so the function ran and
+# built nothing and Godot never said a word, for weeks. See #45.
 func _build_item_guardians() -> void:
-	const SPOTS := [
-		{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
-		{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
-	]
-	"""for entry in SPOTS:
+	for entry in ItemGuardian.spots():
+		if key_items.has(String(entry.item)):
+			continue
 		var guardian := ItemGuardian.new()
 		guardian.item_id = String(entry.item)
-		guardian.position = entry.at as Vector3
+		guardian.look = String(entry.get("look", "urchin"))
+		guardian.position = (entry.at as Vector3)
+		# clear of the plinth top rather than inside it, by however much
+		# this particular thing needs to balance on it
+		guardian.position.y = PLINTH_TOP + float(ItemGuardian.LIFT.get(guardian.look, 0.9))
 		add_child(guardian)
 
-		# Decorative only - a real Goblin instance standing just beside the
-		# guardian spot so "an enemy is here" is visible before you ever get
-		# close enough to trigger the fight, not just an invisible volume
-		# (offset sideways so it doesn't visually clip through the spiky
-		# guardian mesh). No collision (see goblin.gd's own header - display
-		# only), so it can't block movement or be mistaken for the trigger
-		# itself.
+		# Decorative only - a real Goblin standing beside the plinth so
+		# "something is guarding this" is visible from the rim, not just an
+		# invisible volume at the middle. No collision (see goblin.gd), so
+		# it cannot block movement or be mistaken for the trigger.
 		var decoy := Goblin.new()
-		decoy.position = (entry.at as Vector3) + Vector3(1.1, 0.0, 0.0)
+		decoy.position = (entry.at as Vector3) + Vector3(1.8, 0.0, 0.6)
+		decoy.position.y = 0.0
 		add_child(decoy)
 
-		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))"""
+		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1139,15 +1208,16 @@ func _diver_on_save_point(d: Diver) -> bool:
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
 #
-# HP/oxygen restore for the WHOLE party, not just whoever's physically
-# standing on the point - battle damage (and oxygen spend) is shared
-# across all three divers, so a rest stop patching up only the one you
-# happened to be steering would leave the other two stuck damaged/
+# HP/barrier/oxygen restore for the WHOLE party, not just whoever's
+# physically standing on the point - battle damage (and oxygen spend) is
+# shared across all three divers, so a rest stop patching up only the one
+# you happened to be steering would leave the other two stuck damaged/
 # drained with no other way to recover.
 func _on_save_requested(_d: Diver) -> void:
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
+		s.barrier = s.barrier_max
 		s.oxygen = s.oxygen_max
 	_update_hp_bar()
 	_update_oxygen_bar()
@@ -1397,74 +1467,62 @@ func _update_banner(dt: float) -> void:
 # a Diver rolled an encounter (see diver.gd's distance-based check). Only the
 # diver you're actually steering gets to start one - the two drifting NPCs
 # roll independently but their triggers are ignored here.
-#
-# MODIFIED: this used to build a throwaway ItemGuardian.new()/World.new()
-# just to read a const and shadow this very script's own key_items - both
-# unnecessary (ItemGuardian.SPOTS is a class-level const, and key_items is
-# already directly readable here, this function lives inside World
-# itself) - and called _start_battle() unconditionally after the loop
-# regardless of whether a radius match already started one, which could
-# stack two battles at once. Fixed, and now offers the special-encounter
-# prompt (see _offer_special_encounter()) instead of forcing straight
-# into a fight - a guarded key item is a real choice, not an ambush.
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active]:
 		return
-	for entry in ItemGuardian.SPOTS:
-		var item_id := String(entry.item)
-		if key_items.has(item_id):
-			continue
-		if d.position.distance_to(entry.at as Vector3) <= float(entry.radius):
-			_offer_special_encounter(item_id)
-			return
+	# An ordinary encounter, and only an ordinary one.
+	#
+	# This used to also hand you a key item for winning a random encounter
+	# that happened to roll while you were standing inside an unmarked ten
+	# metre circle, which was the half of the guardian feature that was
+	# still switched on while the guardians themselves were not. With them
+	# built again the circle is worse than redundant: it gives away the
+	# thing the guardian is guarding, to a player who never found it.
+	#
+	# Swim into the guardian and you get the fight for the item. That is the
+	# whole point of it being somewhere.
 	_start_battle()
 
-# Pauses and shows the confirm-then-choose screen (see special_encounter_
-# prompt.gd) instead of starting a battle outright - same get_tree().paused
-# gate TitleScreen/GameOverScreen already use, so nothing else in the
-# world keeps running underneath while the player decides.
+# guardian/decoy are bound at connect time (see _build_item_guardians()).
+# Both remain in the world if the player declines or loses. They are removed
+# only after a win, so the guarded reward remains available for another try.
+func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin) -> void:
+	if battling:
+		return
+	_special_guardian = guardian
+	_special_guardian_decoy = decoy
+	_offer_special_encounter(item_id)
+
 func _offer_special_encounter(item_id: String) -> void:
 	_special_encounter_item = item_id
 	get_tree().paused = true
 	special_encounter_prompt.open()
 
-# Solo battle - party_source is just the one chosen diver, not the whole
-# party (see _start_battle()'s new custom_party param) - "you'll need a
-# diver's special ability" only means something if it's actually just
-# them in there. Snapshots pre-fight HP so a loss can restore exactly
-# that (see _on_battle_finished()'s special-case "lost" handling) rather
-# than the normal game-over flow, which is the whole "dying here won't
-# really cost you" promise the prompt itself made.
 func _on_special_encounter_diver_chosen(model_name: String) -> void:
 	special_encounter_prompt.close()
 	get_tree().paused = false
 	var chosen: Diver = null
-	for d in divers:
-		if (d as Diver).model_name == model_name:
-			chosen = d as Diver
+	for diver in divers:
+		if (diver as Diver).model_name == model_name:
+			chosen = diver as Diver
 			break
 	if chosen == null:
+		_on_special_encounter_cancelled()
 		return
 	_special_encounter_diver = chosen
 	_special_encounter_pre_hp = chosen.stats.hp
 	_special_encounter_pre_oxygen = chosen.stats.oxygen
-	_start_battle(_special_encounter_item, [chosen], true)
+	_start_battle(_special_encounter_item, false, [chosen], true)
 
 func _on_special_encounter_cancelled() -> void:
 	special_encounter_prompt.close()
 	get_tree().paused = false
 	_special_encounter_item = ""
-
-# guardian/decoy are bound at connect time (see _build_item_guardians()).
-# Both get freed the instant this fires, win or lose the fight that
-# follows - a guardian is a one-time gate on its item, not a repeatable
-# encounter spot, so there's nothing left here to trigger again either way.
-func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin) -> void:
-	if battling:
-		return
-	guardian.call_deferred("queue_free")
-	decoy.call_deferred("queue_free")
-	_start_battle(item_id)
+	_special_guardian = null
+	_special_guardian_decoy = null
+	if _special_playtest_active:
+		_special_playtest_active = false
+		call_deferred("_show_title_screen")
 
 # `d` (bound at connect time) is whoever's swapped_with just fired - only
 # react if it's the diver currently being steered, same guard shape as
@@ -1478,41 +1536,55 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-# custom_party/special together back the special-encounter flow (see
-# _on_special_encounter_diver_chosen()) - custom_party lets a solo diver
-# fight alone instead of the whole roster, special flags the battle so
-# _on_battle_finished()'s "lost" branch restores that diver instead of
-# routing through the normal game-over screen. Both default to "not a
-# special encounter" so every ordinary call site is unaffected.
-func _start_battle(reward_item: String = "", custom_party: Array = [], special: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, custom_party: Array = [], special: bool = false) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Something grunts out of the murk!")
+	_announce("Tethys rises from the deep!" if boss_encounter else "Something grunts out of the murk!")
 	battle = Battle.new()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
-	battle.special_encounter = special
 	battle.world = self
+	battle.boss_encounter = boss_encounter
+	battle.special_encounter = special
+	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
 func _on_battle_finished(result: String) -> void:
-	# Read before queue_free() - battle's about to stop existing, this is
-	# the last moment its own state is reachable.
 	var was_special := battle.special_encounter
 	battle.queue_free()
 	battle = null
 	battling = false
+	if _boss_playtest_active:
+		_boss_playtest_active = false
+		_pending_reward_item = ""
+		match result:
+			"won":
+				_announce("Tethys boss test complete.")
+			"fled":
+				_announce("Tethys boss test ended early.")
+			_:
+				_announce("Tethys overwhelmed the party. Try the test again.")
+		call_deferred("_show_title_screen")
+		return
+	if _special_playtest_active:
+		_special_playtest_active = false
+		_pending_reward_item = ""
+		if _special_encounter_diver != null:
+			_special_encounter_diver.stats.hp = _special_encounter_pre_hp
+			_special_encounter_diver.stats.oxygen = _special_encounter_pre_oxygen
+		_special_encounter_item = ""
+		_special_encounter_diver = null
+		_special_guardian = null
+		_special_guardian_decoy = null
+		_announce("Special encounter test complete.")
+		call_deferred("_show_title_screen")
+		return
 	match result:
 		"won":
 			if was_special and _special_encounter_diver != null:
-				# A win is a real reward, not just "no worse off than
-				# before you started" - full HP/oxygen on top of whatever
-				# treasure/bonus XP the fight already pays out (see
-				# Battle._win()'s special_encounter XP multiplier), same
-				# spirit as topping off at a save point.
 				_special_encounter_diver.stats.hp = _special_encounter_diver.stats.hp_max
 				_special_encounter_diver.stats.oxygen = _special_encounter_diver.stats.oxygen_max
 				_update_hp_bar()
@@ -1525,31 +1597,25 @@ func _on_battle_finished(result: String) -> void:
 			_announce("You put some distance between you.")
 		"lost":
 			if was_special and _special_encounter_diver != null:
-				# The prompt's whole promise: falling in a special
-				# encounter doesn't cost you the run, just the attempt -
-				# restore exactly the HP AND oxygen they went in with
-				# (not full, not 0/empty) and hand control straight back,
-				# no game-over screen, no checkpoint rewind. Oxygen used
-				# to be left wherever the fight drained it to - only HP
-				# was ever restored, which broke the "no real cost to
-				# trying" promise for oxygen.
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
 				_special_encounter_diver.stats.oxygen = _special_encounter_pre_oxygen
 				_update_hp_bar()
 				_update_oxygen_bar()
 				_announce("The current sweeps you back out, unharmed but empty-handed.")
 			else:
-				# All three divers down - Battle._lose() fires this the
-				# instant _living(party) is empty. Used to auto-restore
-				# the checkpoint instantly and silently; now hands the
-				# player an actual choice instead (see _show_game_over())
-				# - restart from the current slot's last save, or bail
-				# out to the title screen entirely.
 				_show_game_over()
 		_:
 			_announce("You regroup and catch your breath.")
 	_pending_reward_item = ""
+	if was_special and result == "won":
+		if is_instance_valid(_special_guardian):
+			_special_guardian.queue_free()
+		if is_instance_valid(_special_guardian_decoy):
+			_special_guardian_decoy.queue_free()
+	_special_encounter_item = ""
 	_special_encounter_diver = null
+	_special_guardian = null
+	_special_guardian_decoy = null
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own
@@ -1571,16 +1637,10 @@ func _announce(text: String) -> void:
 	banner.text = text
 	_banner_timer = 4.0
 
-# Display-only nicknames, not used anywhere gameplay reads model_name -
-# purely so the HUD reads "Marine Man" instead of "Prototype_V(1922)".
-const DISPLAY_NAMES := {
-	"Staff_Diver": "Mermaid",
-	"Prototype_1(1910)": "Diver Boy",
-	"Prototype_V(1922)": "Marine Man",
-}
-
 func _display_name(model_name: String) -> String:
-	return String(DISPLAY_NAMES.get(model_name, model_name))
+	# Display identity is centralized with each rig in Cast; model_name remains
+	# the stable gameplay/save identifier.
+	return Cast.display_name(model_name)
 
 func _update_hud() -> void:
 	if target_selector.selecting:

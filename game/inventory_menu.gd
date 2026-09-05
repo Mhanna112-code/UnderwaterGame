@@ -108,6 +108,14 @@ func refresh() -> void:
 			_refresh_spells_target()
 
 func _refresh_items() -> void:
+	_hint.text = "Using an item applies it to whoever you're currently steering."
+	if world == null or world.inventory.is_empty():
+		var empty := Label.new()
+		empty.text = "No items yet - shockwave a rock or claim a guardian's reward."
+		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		_list.add_child(empty)
+		return
+
 	for item_id in world.inventory.keys():
 		var count: int = int(world.inventory[item_id])
 		if count <= 0:

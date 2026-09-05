@@ -21,7 +21,7 @@ const TARGET_HEIGHT := 1.6
 # sane rather than a grunt with 0 evasion/accuracy/agility).
 const FLOOR_STATS := {
 	"hp": 12, "strength": 3, "defense": 1, "agility": 3,
-	"evasion": 2, "accuracy": 3,
+	"evasion": 2, "accuracy": 3, "barrier_max": 0,
 }
 
 # XP a win pays out, before level scaling (see make_stats). Read by
@@ -75,6 +75,20 @@ const MAX_EDGE := 1.35
 # average across every living party member before calling this). Enemies
 # don't persist between battles, so unlike Diver.stats this isn't built
 # once and kept - battle.gd calls this each time it stands a grunt up.
+# barrier_max is halved before the edge is applied - matching the party's
+# barrier outright would make every grunt as shielded as a Prototype_V
+# (1922) that's been stacking barrier spells, which reads as a
+# tank-specialist trait borrowed wholesale rather than "a grunt that
+# happens to be roughly your size, just a bit tougher."
+# This one stands its model's feet on its own origin (see _ready()'s
+# model.position.y line), which is the opposite of what diver.gd does. Both
+# conventions are fine; assuming either one is not. See Diver.head_offset().
+func head_offset() -> float:
+	return height
+
+func foot_offset() -> float:
+	return 0.0
+
 func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
 
@@ -85,6 +99,7 @@ func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	s.agility = maxi(1, int(round(maxf(float(FLOOR_STATS.agility), float(ref.agility)) * _edge())))
 	s.evasion = maxi(0, int(round(maxf(float(FLOOR_STATS.evasion), float(ref.evasion)) * _edge())))
 	s.accuracy = maxi(0, int(round(maxf(float(FLOOR_STATS.accuracy), float(ref.accuracy)) * _edge())))
+	s.barrier_max = maxi(0, int(round(float(ref.barrier_max) * 0.5 * _edge())))
 	s.fill()
 	return s
 
@@ -101,27 +116,6 @@ func play(substr: String) -> void:
 		want = anim.get_animation_list()[0]
 	if want != "" and anim.current_animation != want:
 		anim.play(want)
-
-# Called by battle.gd for every damage instance in combat that lands on
-# this grunt (see Battle._react()) - same flicker trick diver.gd's own
-# flash_damage() uses and for the same reason: nothing about this FBX's
-# materials supports a cheap real flash effect, and a visibility toggle
-# reads clearly at any distance regardless. `heavy` is accepted (unused)
-# purely so battle.gd can call this the same way for either actor type -
-# grunts have no hit-reaction animation to bundle a heavier one into the
-# way diver.gd's version does, just the flicker.
-func flash_damage(times: int = 4, _heavy: bool = false) -> void:
-	var flicker_model := get_node_or_null("Model")
-	if flicker_model == null:
-		return
-	var tw := create_tween()
-	# Same FLASH_PHASE_TIME tuning as diver.gd's own flash_damage() - see
-	# its comment. Kept as a literal here rather than a shared constant
-	# since these two scripts don't otherwise share any base class to hang
-	# one off of.
-	for i in range(times):
-		tw.tween_property(flicker_model, "visible", false, 0.12)
-		tw.tween_property(flicker_model, "visible", true, 0.12)
 
 # Called by battle.gd the instant a hit actually brings this grunt to 0 HP.
 # Fades every mesh surface to transparent while the whole model sinks and

@@ -160,12 +160,6 @@ func _ready() -> void:
 # instant the screen appears would read as starting mid-warning.
 const TITLE_HOLD := 1.1
 
-#DAMAGE FLASH
-func flash_damage():
-	$Sprite3D.modulate = Color.WHITE
-	await get_tree().create_timer(0.1).timeout
-	$Sprite3D.modulate = Color.WHITE
-	
 func run() -> void:
 	if target_actor != null:
 		_player_base_pos = target_actor.global_position

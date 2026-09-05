@@ -6,9 +6,9 @@
 # Combatants live as plain Dictionaries (not a class) in two arrays -
 # `party` and `enemies` - each entry shaped
 # {kind, stats, model_name, display_name, equipped_spells, actor, hp_bar,
-# hp_label}. A Dictionary rather than a real class because nothing here
-# needs identity beyond "the fields", and it's the same lightweight shape
-# BASE_MOVES entries already use in this file.
+# hp_label, barrier_bar}. A Dictionary rather than a real class because
+# nothing here needs identity beyond "the fields", and it's the same
+# lightweight shape BASE_MOVES entries already use in this file.
 #
 # Turn order is a live queue (`_queue`), not a fixed two-actor ping-pong:
 # every living combatant is sorted by current agility at the start of each
@@ -34,28 +34,22 @@ var party_source: Array = []
 # world at all.
 var world: World
 
-# Set by world.gd before add_child() for a key-item-guarded special
-# encounter (see World._on_special_encounter_diver_chosen()) - this file
-# doesn't change behavior based on it at all, "lost" still just emits
-# normally. It's read back by World._on_battle_finished() (before this
-# Battle gets queue_free()'d) to decide whether a loss means the normal
-# game-over screen or "restore this diver's pre-fight HP and hand control
-# back" instead - that whole decision lives on World's side, not here.
+# Set by World for the dedicated Glassgoat validation route. Ordinary
+# random and guardian encounters still build Goblin grunts; this builds one
+# TethysBoss with its authored animation and move cycle.
+var boss_encounter := false
+# Key-item guardian battles are solo ability challenges. World sets this
+# independently of boss_encounter so the Tethys route remains unchanged.
 var special_encounter := false
-
-# How many of the enemy's own turns have already happened this special
-# encounter - incremented once per enemy turn regardless of what the
-# player chose that round (see _do_enemy_turn()'s normal-attack path and
-# _do_rock_dodge_encounter()'s own tail), so dragging the fight out is
-# what gets riskier, not any one specific move. Read by
-# _enemy_power_mult() below; meaningless (never incremented) outside a
-# special encounter.
 var _special_round := 0
+# Artifact sites visibly place one guardian beside one item. Keep that
+# encounter one-on-one with the party instead of secretly replacing the one
+# approached actor with a random three-grunt pack.
+var guardian_encounter := false
+# Verification can hold the automatic entrance/turn dispatcher while it
+# exercises each boss move directly. Shipped encounters leave this true.
+var boss_intro_enabled := true
 
-# +15% enemy power per round already survived - applied to the enemy's
-# own attack power (see _do_enemy_turn()'s move_dict scaling) AND to
-# each rock/wall landed in the dodge minigame (_do_rock_dodge_encounter()'s
-# rock_landed handler).
 func _enemy_power_mult() -> float:
 	return 1.0 + 0.15 * float(_special_round)
 
@@ -67,48 +61,37 @@ const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
 
-const DISPLAY_NAMES := {
-	"Staff_Diver": "Mermaid",
-	"Prototype_1(1910)": "Diver Boy",
-	"Prototype_V(1922)": "Marine Man",
-}
+# A fresh party can face one or two grunts. Three-grunt packs enter the roll
+# only after the party has earned its first level; this removes the observed
+# level-1 automatic-loss pack without deleting the harder formation.
+static func max_enemies_for_level(player_level: int, is_guardian: bool = false) -> int:
+	if is_guardian:
+		return 1
+	return 2 if player_level <= 1 else MAX_ENEMIES
+
+# Compatibility alias for verification and any tools that enumerate the
+# roster here. Cast is the single identity source used by Battle and World.
+const DISPLAY_NAMES := Cast.DISPLAY_NAMES
 
 # Attack is a category, not a single action: pressing it opens a move list
 # instead of swinging right away. These base moves are always available -
 # on top of whichever spells that specific party member has equipped (see
 # _moves_for()) - and now differ per diver instead of being one shared
 # list, so the base kit itself carries some identity too, not just the
-# spell tree layered on top of it. `power` feeds the damage half of
-# _resolve_attack() below; `acc_mod` is added to the attacker's accuracy
-# for that swing only, before it's compared to the defender's evasion.
+# spell tree layered on top of it. Glassgoat V2 moves use a `formula`
+# Dictionary evaluated by CombatRules; legacy moves still use `power` and
+# `acc_mod` until their own authored kits are ported.
 #
 # Prototype_1(1910) keeps Weaken/Slow as its base kit rather than damage
 # moves - its whole identity is debuff support (see spell_tree.gd's header
 # comment), so even the free moves everyone always has lean into that
 # instead of being generic damage like the other two divers get.
 #
-# Every diver's first move is its free basic attack - no `oxygen_cost` key
-# at all, the fallback that still works even at 0 oxygen, same role
-# Diver.gd's abilities and every equipped spell (see _moves_for()) can't
-# fill once the tank's empty. Everything else costs oxygen same as a spell
-# would (_populate_move_menu() reads oxygen_cost with a 0.0 default, so the
-# free move simply never shows a cost or blocks on one).
-#
-# `inventory: true` (Mermaid's Heal, below) marks a move as also usable
-# outside battle, from the Escape-key pause menu's "Party Spells" tab (see
-# inventory_menu.gd/World._inventory_spells_for()/World.use_party_spell()).
-# Only "heal"/"revive" effect moves make sense to tag this way - there's no
-# opponent to swing "damage"/"debuff" at while just swimming around, and
-# World.use_party_spell() only knows how to resolve those two effects.
-# Same tag exists on spell_tree.gd entries, for spells learned later that
-# should carry the same out-of-battle use.
+# A missing `oxygen_cost` means a move is free. Glassgoat's current Scuba
+# table specifies no oxygen costs, so all five are available while the two
+# unported legacy kits retain their existing free basic/costly specials split.
 const BASE_MOVES := {
-	"Staff_Diver": [
-		{"name": "Heal", "power": 0, "effect": "heal", "amount": 5, "inventory": true, "oxygen_cost": 6.0, "hint": "Restores an ally's HP", "text": "You recover some health"},
-		{"name": "Swift Jab", "power": 1, "acc_mod": 6, "hint": "Fast, reliable", "text": "You jab it in a burst of speed"},
-		{"name": "Riptide Kick", "power": 7, "acc_mod": 2, "hint": "Balanced", "text": "You kick it on a current", "oxygen_cost": 10.0},
-		{"name": "Crashing Wave", "power": 12, "acc_mod": -2, "hint": "Heavy, riskier", "text": "You crash into it like a wave", "oxygen_cost": 16.0},
-	],
+	"Staff_Diver": CombatMoves.SCUBA,
 	"Prototype_1(1910)": [
 		{"name": "Precise Tap", "power": 1, "acc_mod": 9, "hint": "Nearly unmissable, light", "text": "You land a precise tap"},
 		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers its defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
@@ -160,8 +143,40 @@ const LOG_READ_DELAY := 1.6
 # like it connects.
 const IMPACT_FRACTION := 0.55
 
-var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label}]
-var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label}]
+# How long the step in and the walk back take, and how far short of the
+# target an attacker stops. SWING_REACH is roughly the length of the longest
+# swing in the cast: Marine Man's hammer travels about that far.
+const SWING_STEP_TIME := 0.18
+const SWING_REACH := 1.8
+
+# Overhead health bars.
+const OVERHEAD_BAR_WIDTH := 104
+# How far above a combatant's own head the bar floats, in metres.
+const OVERHEAD_LIFT := 0.12
+# World space set aside above each combatant for their own bar, so the
+# camera frames the bar and not just the body. Roughly the bar's height at
+# the distance these fights are fought at.
+const OVERHEAD_HEADROOM := 0.55
+# Bars are searched outward from their own head in steps until they stop
+# overlapping. Small enough that a nudge is not obvious, large enough to
+# clear a bar in a few passes.
+const OVERHEAD_NUDGE := 4.0
+const OVERHEAD_MAX_NUDGES := 40
+# What a pixel of travel is worth against a square pixel of overlap.
+#
+# Staying near the combatant matters more than not touching a neighbour.
+# Marc, on the first build of this: "health bars need to be positioned
+# basically right on top of or ever so slightly above, currently the divers
+# health bars are way too far above them to the point you cant tell they are
+# their health bars." A search that only avoided overlap did exactly that,
+# because with six combatants there is usually somewhere clear if you go far
+# enough, and far enough is too far. At this weight a bar will travel about
+# sixty pixels to escape a near-total overlap and barely move for a slight
+# one, which is the trade the quote asks for.
+const OVERHEAD_DRIFT_COST := 40.0
+
+var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
+var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
 
 var _queue: Array = []     # combatants (same dict refs as party/enemies) still waiting to act this round
 var _acting: Dictionary = {}
@@ -202,16 +217,16 @@ var _pending_item := ""
 # _turn_cursor can be built as a child of the same 3D world the party/enemy
 # actors live in, not the CanvasLayer's 2D UI tree.
 var _stage_vp: SubViewport
-
-# The battle stage's one camera - stored so it can be moved for the dodge
-# minigame's over-the-shoulder-from-above angle (see _look_at_dodge_angle()
-# below) and returned to its normal position afterward
-# (_restore_default_camera()). DEFAULT_CAM_POS/DEFAULT_CAM_LOOK are what
-# _build_stage() builds it with in the first place - the single source of
-# truth both the initial setup and the restore read from.
-var _stage_camera: Camera3D
-const DEFAULT_CAM_POS := Vector3(3.5, 1.8, 4.5)
-const DEFAULT_CAM_LOOK := Vector3(0.0, 1.1, -1.5)
+# The stage stops at the top edge of the HUD rather than running the full
+# height of the screen behind it. See _fit_panel_height().
+var _stage_container: SubViewportContainer
+var _stage_cam: Camera3D
+# Every combatant's health bar rides above their own head instead of sitting
+# in a list at the bottom of the screen. Marc's call, and the reason the
+# bottom strip is a strip now.
+var _overhead_layer: Control
+# The turn order, moved out of the bottom panel to the very top.
+var _queue_bar: PanelContainer
 
 # Same green downward cone world.gd's own active-diver cursor uses (see
 # World._active_cursor) - marks whichever DIVER's turn it currently is on
@@ -256,11 +271,147 @@ func _ready() -> void:
 	_build_quick_time_ui()
 	_refresh_all_bars()
 	_rebuild_queue()
-	_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
+	if boss_encounter:
+		_log("Tethys rises from the deep.")
+		if boss_intro_enabled:
+			_begin_boss_encounter()
+	else:
+		_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
+		_advance_turn()
+
+func _begin_boss_encounter() -> void:
+	_busy = true
+	_set_all_buttons(false)
+	if not enemies.is_empty() and enemies[0].actor is TethysBoss:
+		await (enemies[0].actor as TethysBoss).play_swim_intro()
+	_log("Tethys settles over the battlefield.")
+	await get_tree().create_timer(0.45).timeout
 	_advance_turn()
 
+# Bars are projected every frame rather than parented to anything: the stage
+# camera reframes whenever the HUD changes height (see _frame_stage_camera),
+# and combatants move during their own attack animations.
+func _process(_dt: float) -> void:
+	_layout_overhead_bars()
+
+# The top and bottom of a combatant in world space. Diver and Goblin put
+# their models at different heights relative to their own origin, so this
+# asks them (head_offset/foot_offset) instead of adding `height` and being
+# right about half the cast.
+func _top_of(a: Node3D) -> Vector3:
+	return a.global_position + Vector3(0.0, float(a.call("head_offset")), 0.0)
+
+func _bottom_of(a: Node3D) -> Vector3:
+	return a.global_position + Vector3(0.0, float(a.call("foot_offset")), 0.0)
+
+func _layout_overhead_bars() -> void:
+	if _overhead_layer == null or _stage_cam == null or _stage_container == null:
+		return
+
+	# Viewport pixels to screen pixels: the SubViewportContainer stretches,
+	# so a position from unproject_position() is in stage-viewport space and
+	# has to be scaled before it means anything on screen.
+	var vpz := Vector2(_stage_vp.size)
+	var scale_to_screen := Vector2(
+		_stage_container.size.x / maxf(1.0, vpz.x),
+		_stage_container.size.y / maxf(1.0, vpz.y))
+	# Bars are kept inside the stage band, in screen coordinates: never up
+	# behind the turn bar, never down over the buttons.
+	var top_limit: float = _stage_container.position.y + 2.0
+	var floor_y: float = _stage_container.position.y + _stage_container.size.y
+
+	# Nearest the camera first. When two bars collide the further one gets
+	# moved, which keeps the bar belonging to whoever is in front of you
+	# where you expect it, and it is exactly the overlap Marc predicted the
+	# moment this layout was proposed.
+	var wanted: Array = []
+	for entry in (party + enemies):
+		var box: Control = entry.get("overhead")
+		if box == null or not is_instance_valid(box):
+			continue
+		# A killing blow starts the grunt's fade before its actor is freed.
+		# Remove its health UI immediately; it must not hover over a death
+		# animation or survive the model it described.
+		var stats_value: Variant = entry.get("stats")
+		if stats_value is CombatantStats and (stats_value as CombatantStats).hp <= 0:
+			box.visible = false
+			continue
+		# Keep this value untyped until after validity is checked. Assigning a
+		# previously freed Object directly to Node3D throws before a following
+		# is_instance_valid() guard ever gets a chance to run.
+		var actor_value: Variant = entry.get("actor")
+		if not is_instance_valid(actor_value):
+			box.visible = false
+			continue
+		var actor := actor_value as Node3D
+		if actor == null:
+			box.visible = false
+			continue
+		var head: Vector3 = _top_of(actor) + Vector3(0.0, OVERHEAD_LIFT, 0.0)
+		# Behind the camera projects to a nonsense point in front of it.
+		if _stage_cam.is_position_behind(head):
+			box.visible = false
+			continue
+		# unproject_position() answers in stage-viewport space, and the stage
+		# does not start at the top of the screen any more: it sits between
+		# the turn bar and the bottom strip. Its own offset has to come back
+		# in or every bar lands one turn bar too high.
+		var at: Vector2 = _stage_cam.unproject_position(head) * scale_to_screen + _stage_container.position
+		wanted.append({
+			"box": box,
+			"at": at,
+			"depth": _stage_cam.global_position.distance_to(actor.global_position),
+		})
+	wanted.sort_custom(func(a, b): return float(a.depth) < float(b.depth))
+
+	var placed: Array = []
+	for w in wanted:
+		var box := w.box as Control
+		box.visible = true
+		var size: Vector2 = box.get_combined_minimum_size()
+		box.size = size
+		# Centred on the head, sitting above it.
+		var pos := Vector2((w.at as Vector2).x - size.x * 0.5, (w.at as Vector2).y - size.y)
+
+		# Search outward from where the bar wants to be, alternating up and
+		# down, and take the first clear spot. Pushing only upward was the
+		# obvious version and it walked bars most of the way up the screen
+		# away from the combatant they name, which defeats the point of
+		# putting them overhead at all. A fixed number of steps rather than
+		# a while loop, so a pathological pile-up costs a slightly wrong
+		# layout and not the frame.
+		var base_y := pos.y
+		var best_y := base_y
+		var best_cost := INF
+		for step in range(OVERHEAD_MAX_NUDGES):
+			# 0, -4, +4, -8, +8, ... upward first, since a bar below a
+			# combatant reads worse than one above.
+			var rung: int = (step + 1) / 2
+			var offset: float = float(rung) * OVERHEAD_NUDGE * (-1.0 if step % 2 == 1 else 1.0)
+			var try_y: float = base_y + (0.0 if step == 0 else offset)
+			var rect := Rect2(Vector2(pos.x, try_y), size)
+			var overlap := 0.0
+			for placed_rect in placed:
+				var r := rect.intersection(placed_rect as Rect2)
+				overlap += r.size.x * r.size.y
+			# Overlap and distance priced against each other, rather than
+			# distance being free until overlap hits zero.
+			var cost: float = overlap + absf(try_y - base_y) * OVERHEAD_DRIFT_COST
+			if cost < best_cost:
+				best_cost = cost
+				best_y = try_y
+			if overlap <= 0.0:
+				break
+		pos.y = best_y
+
+		pos.y = clampf(pos.y, top_limit, maxf(top_limit, floor_y - size.y))
+		pos.x = clampf(pos.x, 2.0, maxf(2.0, _overhead_layer.size.x - size.x - 2.0))
+
+		box.position = pos
+		placed.append(Rect2(pos, size))
+
 func _display(model_name: String) -> String:
-	return String(DISPLAY_NAMES.get(model_name, model_name))
+	return Cast.display_name(model_name)
 
 # Stand-in used only when nothing hands this Battle a party before it
 # enters the tree - mirrors whatever Diver would have built for
@@ -275,6 +426,7 @@ func _default_player_stats() -> CombatantStats:
 	s.agility = int(base.agility)
 	s.evasion = int(base.evasion)
 	s.accuracy = int(base.accuracy)
+	s.barrier_max = int(base.barrier_max)
 	s.grow_hp = int(base.grow_hp)
 	s.grow_strength = int(base.grow_strength)
 	s.grow_defense = int(base.grow_defense)
@@ -290,6 +442,7 @@ func _build_party() -> void:
 			"kind": "party", "stats": _default_player_stats(),
 			"model_name": diver_model_name, "display_name": _display(diver_model_name),
 			"equipped_spells": [],
+			"ability_id": String(Diver.BASE_STATS.get(diver_model_name, {}).get("ability", "")),
 		})
 		return
 	for d in party_source:
@@ -306,10 +459,21 @@ func _build_party() -> void:
 # Goblins the encounter rolled - these actors are display-only, the real
 # stats live in party[]/enemies[], not on these nodes.
 func _build_stage() -> void:
+	# Full width, and from the top of the screen down to wherever the HUD
+	# starts. It used to be the whole screen with the HUD painted over it,
+	# and since Godot's default PanelContainer background is 60% black
+	# rather than opaque, that did not hide the fight so much as smear it:
+	# the lower half of every combatant showed through a grey sheet. The
+	# camera aimed there too, so at 1280x720 all five combatants sat below
+	# the HUD's top edge while the top half of the screen was empty water.
+	# _fit_panel_height() keeps the bottom edge on the panel, and the
+	# resized signal reframes the camera into whatever is left.
 	var container := SubViewportContainer.new()
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.stretch = true
 	add_child(container)
+	_stage_container = container
+	container.resized.connect(_frame_stage_camera)
 
 	var vp := SubViewport.new()
 	vp.size = Vector2i(960, 540)
@@ -335,71 +499,33 @@ func _build_stage() -> void:
 	light.light_color = Color(0.75, 0.9, 1.0)
 	vp.add_child(light)
 
-	# MODIFIED: promoted from a local `cam` variable to the _stage_camera
-	# field below - nothing outside _build_stage() could reach it before,
-	# so there was no way to move it for the dodge minigame (see
-	# _look_at_dodge_angle()/_restore_default_camera()) and move it back
-	# afterward. DEFAULT_CAM_POS/DEFAULT_CAM_LOOK are what it's built with
-	# here AND what _restore_default_camera() returns it to - one source
-	# of truth for "where the camera normally sits" instead of the same
-	# two Vector3 literals living in two places that could drift apart.
-	_stage_camera = Camera3D.new()
-	_stage_camera.position = DEFAULT_CAM_POS
-	_stage_camera.fov = 70.0
-	vp.add_child(_stage_camera)
-	# look_at() needs the node in the tree first - it operates on global
-	# transform, which doesn't exist until add_child runs.
-	_stage_camera.look_at(DEFAULT_CAM_LOOK, Vector3.UP)
+	var cam := Camera3D.new()
+	cam.fov = 70.0
+	vp.add_child(cam)
+	_stage_cam = cam
+	# Positioned by _frame_stage_camera() once the actors exist, not here.
+	# The hand-placed position this replaces was tuned against a full height
+	# stage and put every combatant behind the HUD once the HUD grew.
 
 	# Party visuals, spread left-to-right so 1-3 divers don't overlap.
 	# Diver.rotation.y == 0 is the model's own rest-facing direction (-Z, see
 	# diver.gd), so leaving it untouched here is what puts its back to camera.
-	#
-	# MODIFIED: used to build a puppet unconditionally for every party
-	# entry, even one already at 0 HP going into this battle (e.g. downed
-	# in a previous fight, never healed at a save point since). That
-	# looked wrong - a fresh Diver.new() has no memory of being downed,
-	# so it rendered as a completely normal, standing, undamaged puppet,
-	# even though _living()-based filtering elsewhere already correctly
-	# keeps them out of the turn queue and off enemy targeting. Now
-	# skipped entirely for anyone already at 0 HP - same end state
-	# play_death_fade() leaves a diver in once it finishes (invisible,
-	# queue_free()'d), just arrived at directly instead of animating a
-	# death that already happened before this fight even started. Every
-	# .actor read elsewhere in this file already guards with .has("actor")
-	# first, so a party entry with no actor at all is a safe, already-
-	# supported shape, not a new edge case.
-	# MODIFIED (added): special encounters play out both rock minigames
-	# right in this same space - rocks flying in laterally, a grid in front
-	# of the diver, a full second flight from that grid out to the enemy -
-	# and the normal 3.2-unit gap (1.0 - -2.2) left barely any room for any
-	# of that to read clearly. Pulled both actors back further apart only
-	# for special encounters; a normal multi-enemy fight never runs either
-	# minigame, so its own spacing is untouched.
-	# MODIFIED (added): the swap minigame's two 3-lane portrait spreads
-	# (see diver_swap_minigame.gd's _select_correct_portraits() spacing
-	# math) need even more room than the rock-dodge encounter's single
-	# lateral barrage - widened further, but only for whichever special
-	# encounter actually has the sonar/swap diver as its one party member,
-	# so the rock-dodge encounter's own already-tuned spacing is untouched.
-	var is_swap_encounter := false
-	if special_encounter:
-		for p in party:
-			if String(p.get("ability_id", "")) == "swap":
-				is_swap_encounter = true
-				break
+	var is_swap_encounter := special_encounter and not party.is_empty() and String(party[0].get("ability_id", "")) == "swap"
 	var diver_z := 3.4 if is_swap_encounter else (2.2 if special_encounter else 1.0)
 	var enemy_z := -6.0 if is_swap_encounter else (-4.6 if special_encounter else -2.2)
-
 	var pn := party.size()
 	for i in range(pn):
 		if (party[i].stats as CombatantStats).hp <= 0:
 			continue
 		var actor := Diver.new()
 		actor.model_name = String(party[i].model_name)
-		actor.position = Vector3(_spread(i, pn, 1.3) - 0.4, 0.0, diver_z)
+		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, 0.0, diver_z - _spread(i, pn, 0.7))
 		vp.add_child(actor)
 		party[i]["actor"] = actor
+		# Where this one stands when it is not swinging. Attacks step in
+		# toward whoever they are aimed at and come back here afterwards.
+		party[i]["home_pos"] = actor.position
+		party[i]["home_rot"] = actor.rotation.y
 
 	_build_turn_cursor()
 
@@ -411,13 +537,36 @@ func _build_stage() -> void:
 	# away instead of into shot.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
-	# A special encounter is always a solo diver against exactly one grunt -
-	# it's built around one character's ability minigame (see _do_enemy_
-	# turn()'s special_encounter branch), not a real multi-enemy fight.
-	var count := 1 if special_encounter else randi_range(MIN_ENEMIES, MAX_ENEMIES)
+	var count := 1 if boss_encounter or special_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	if boss_encounter:
+		var boss := TethysBoss.new()
+		# Keep the boss close to the party's depth plane. At the grunt row's
+		# -2.7 z position, perspective made a four-metre creature read smaller
+		# on screen than the divers despite its measured native scale.
+		boss.position = Vector3(0.6, 0.0, -0.8)
+		vp.add_child(boss)
+		# Mermaid_Freak's authored front is local +Z (the humanoid/Goblin
+		# actors use -Z), so point that axis at the party's actual centre.
+		var party_centre := Vector3.ZERO
+		for party_entry in party:
+			party_centre += (party_entry.actor as Node3D).global_position
+		party_centre /= maxf(1.0, float(party.size()))
+		boss.face_toward(party_centre)
+		var boss_stats := boss.make_stats(ref_stats, lvl)
+		enemies.append({
+			"kind": "enemy", "stats": boss_stats,
+			"display_name": TethysBoss.DISPLAY_NAME,
+			"actor": boss,
+			"home_pos": boss.position,
+			"home_rot": boss.rotation.y,
+			"xp_reward": boss.xp_reward,
+			"boss": true,
+		})
+		_frame_stage_camera()
+		return
 	for i in range(count):
 		var g := Goblin.new()
-		g.position = Vector3(_spread(i, count, 1.1) + 0.6, 0.0, enemy_z)
+		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, enemy_z - _spread(i, count, 0.5))
 		g.rotation.y = PI
 		vp.add_child(g)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
@@ -425,7 +574,97 @@ func _build_stage() -> void:
 			"kind": "enemy", "stats": st,
 			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
 			"actor": g,
+			"home_pos": g.position,
+			"home_rot": g.rotation.y,
+			"xp_reward": g.xp_reward,
 		})
+
+	_frame_stage_camera()
+
+# Glass_Goat authored the attacks for a 2D presentation, so the arm travel
+# and body recoil read from a three-quarter angle and disappear into the
+# silhouette from straight on. That angle is the one thing here that is a
+# taste call, so it is a constant; everything else is measured.
+#
+# The camera used to be a hand-placed position and look-at target, tuned
+# once against a full height stage. Both of the numbers it depended on then
+# moved: the HUD is content-sized and grew every time a row was added to it,
+# and the enemy count is random, so the group being framed is a different
+# size every fight. This backs the camera off far enough to fit whatever is
+# actually on the stage into whatever height the HUD has left.
+const STAGE_CAMERA_DIR := Vector3(3.0, 2.2, 5.5)
+# Breathing room around the group, and a floor on the distance so a lone
+# grunt does not end up with the camera inside its head.
+const STAGE_FRAMING_MARGIN := 1.08
+const STAGE_MIN_DISTANCE := 3.5
+
+func _frame_stage_camera() -> void:
+	if _stage_cam == null or _stage_container == null:
+		return
+
+	# Corners rather than centres: a combatant is framed when its head and
+	# its feet are both on screen, and the sideways allowance keeps an
+	# outstretched staff or a wind-up from poking out of frame.
+	var pts: Array = []
+	for e in (party + enemies):
+		if not e.has("actor") or not is_instance_valid(e.actor):
+			continue
+		var a := e.actor as Node3D
+		var low: Vector3 = _bottom_of(a)
+		# Not the top of the model: the top of the model plus the health
+		# bar riding above it. Framing the bodies alone put every head hard
+		# against the top edge and left the bars themselves off screen,
+		# which is not a framing problem you can see by looking at models.
+		var high: Vector3 = _top_of(a) + Vector3(0.0, OVERHEAD_LIFT + OVERHEAD_HEADROOM, 0.0)
+		var measured_radius := 0.7
+		var radius_value: Variant = a.get("radius")
+		if radius_value != null:
+			measured_radius = maxf(measured_radius, float(radius_value))
+		for dx in [-measured_radius, measured_radius]:
+			pts.append(low + Vector3(dx, 0.0, 0.0))
+			pts.append(high + Vector3(dx, 0.0, 0.0))
+	if pts.is_empty():
+		return
+
+	var centre := Vector3.ZERO
+	for p in pts:
+		centre += p as Vector3
+	centre /= float(pts.size())
+
+	var dir: Vector3 = STAGE_CAMERA_DIR.normalized()
+	# Two axes across the view, so the group can be measured in the plane
+	# the camera actually sees rather than in world X and Y.
+	var right: Vector3 = dir.cross(Vector3.UP).normalized()
+	var up: Vector3 = right.cross(dir).normalized()
+
+	# fov is the vertical angle (Camera3D defaults to KEEP_HEIGHT), so a
+	# wide short stage is limited by its height and a narrow tall one by its
+	# width.
+	var box: Vector2 = _stage_container.size
+	var aspect: float = maxf(0.2, box.x / maxf(1.0, box.y))
+	var tan_v: float = maxf(0.01, tan(deg_to_rad(_stage_cam.fov) * 0.5))
+	var tan_h: float = maxf(0.01, tan_v * aspect)
+
+	# Solved per point rather than off the group's overall size, because the
+	# party stands three metres nearer the camera than the grunts do and
+	# perspective makes them correspondingly bigger. Measuring the group as
+	# a flat box put the party's feet through the floor of the frame while
+	# the grunts had room to spare.
+	#
+	# For a camera at centre + dir*d, a point p sits at depth d - w where
+	# w is how far p is toward the camera, and is in frame when its sideways
+	# and vertical offsets fit inside the frustum at that depth. Rearranged,
+	# that is the distance below, and the group needs the largest of them.
+	var dist := STAGE_MIN_DISTANCE
+	for p in pts:
+		var v: Vector3 = (p as Vector3) - centre
+		var w: float = v.dot(dir)
+		var need_w: float = absf(v.dot(right)) * STAGE_FRAMING_MARGIN / tan_h
+		var need_h: float = absf(v.dot(up)) * STAGE_FRAMING_MARGIN / tan_v
+		dist = maxf(dist, maxf(need_w, need_h) + w)
+
+	_stage_cam.global_position = centre + dir * dist
+	_stage_cam.look_at(centre, Vector3.UP)
 
 # Built once, hidden until the first party turn (_start_party_turn() shows
 # and positions it; _do_enemy_turn() hides it) - same downward-cone shape
@@ -474,6 +713,7 @@ func _party_average_stats() -> CombatantStats:
 	var sum_agi := 0
 	var sum_eva := 0
 	var sum_acc := 0
+	var sum_bar := 0
 	for entry in pool:
 		var s := entry.stats as CombatantStats
 		sum_hp += s.hp_max
@@ -482,12 +722,14 @@ func _party_average_stats() -> CombatantStats:
 		sum_agi += s.agility
 		sum_eva += s.evasion
 		sum_acc += s.accuracy
+		sum_bar += s.barrier_max
 	avg.hp_max = int(round(float(sum_hp) / n))
 	avg.strength = int(round(float(sum_str) / n))
 	avg.defense = int(round(float(sum_def) / n))
 	avg.agility = int(round(float(sum_agi) / n))
 	avg.evasion = int(round(float(sum_eva) / n))
 	avg.accuracy = int(round(float(sum_acc) / n))
+	avg.barrier_max = int(round(float(sum_bar) / n))
 	return avg
 
 # Evenly spaces `n` actors around x=0, `step` apart - shared by the party
@@ -497,8 +739,33 @@ func _spread(i: int, n: int, step: float) -> float:
 	return (float(i) - float(n - 1) * 0.5) * step
 
 func _build_ui() -> void:
+	# Health bars live over the combatants they belong to. Added before the
+	# bottom panel so the panel still wins where they meet: a bar for someone
+	# standing near the bottom of the stage gets clipped by the strip rather
+	# than floating on top of the buttons.
+	_overhead_layer = Control.new()
+	_overhead_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overhead_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_overhead_layer)
+
 	_bottom_panel = PanelContainer.new()
 	_bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+
+	# Opaque, and deliberately so. This used to run on Godot's default
+	# PanelContainer theme, which is 60% black, and that was fine only for
+	# as long as the stage was full height behind it: what it actually did
+	# was leave the bottom half of every combatant showing through a grey
+	# sheet. Now the stage stops above this panel, so anything translucent
+	# here would show the paused overworld through it instead. The colour
+	# matches the stage's own background so the two read as one screen, and
+	# the top border is what tells you where the fight ends and the numbers
+	# begin.
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.05, 0.13, 0.17)
+	bg.border_width_top = 2
+	bg.border_color = Color(0.18, 0.34, 0.4)
+	_bottom_panel.add_theme_stylebox_override("panel", bg)
+
 	add_child(_bottom_panel)
 
 	var margin := MarginContainer.new()
@@ -512,25 +779,40 @@ func _build_ui() -> void:
 	col.add_theme_constant_override("separation", 8)
 	margin.add_child(col)
 
+	# Turn order across the very top, in its own bar rather than as the first
+	# row of the bottom panel. It is the one piece of state that is about the
+	# fight as a whole rather than about any one combatant, so it is the one
+	# piece that has nowhere on the stage to live.
+	_queue_bar = PanelContainer.new()
+	_queue_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	var qbg := StyleBoxFlat.new()
+	# Opaque, for the same reason the bottom strip is: the stage stops below
+	# this bar, so anything translucent here shows the paused overworld's own
+	# HUD through it, and the controls line bleeding through the turn order
+	# reads as a rendering fault.
+	qbg.bg_color = Color(0.05, 0.13, 0.17)
+	qbg.border_width_bottom = 2
+	qbg.border_color = Color(0.18, 0.34, 0.4)
+	_queue_bar.add_theme_stylebox_override("panel", qbg)
+	add_child(_queue_bar)
+
+	var qmargin := MarginContainer.new()
+	qmargin.add_theme_constant_override("margin_left", 16)
+	qmargin.add_theme_constant_override("margin_right", 16)
+	qmargin.add_theme_constant_override("margin_top", 6)
+	qmargin.add_theme_constant_override("margin_bottom", 6)
+	_queue_bar.add_child(qmargin)
+
 	queue_row = HBoxContainer.new()
 	queue_row.add_theme_constant_override("separation", 10)
-	col.add_child(queue_row)
+	qmargin.add_child(queue_row)
 
-	var party_row := HBoxContainer.new()
-	party_row.add_theme_constant_override("separation", 24)
-	col.add_child(party_row)
+	# Health, barrier and status now hang over each combatant's own head.
+	# See _build_overhead_bar() and _layout_overhead_bars().
 	for entry in party:
-		var b := _add_bar(party_row, String(entry.display_name))
-		entry["hp_bar"] = b[0]
-		entry["hp_label"] = b[1]
-
-	var enemy_row := HBoxContainer.new()
-	enemy_row.add_theme_constant_override("separation", 24)
-	col.add_child(enemy_row)
+		_build_overhead_bar(entry)
 	for entry in enemies:
-		var b := _add_bar(enemy_row, String(entry.display_name))
-		entry["hp_bar"] = b[0]
-		entry["hp_label"] = b[1]
+		_build_overhead_bar(entry)
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
@@ -600,6 +882,18 @@ func _build_ui() -> void:
 func _fit_panel_height() -> void:
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
+	# Hand the rest of the screen to the stage. Both are anchored to the
+	# bottom edge, so the panel's own top offset is exactly where the stage
+	# has to stop. This is what makes the HUD's height self-correcting: a
+	# row added to it now shrinks the fight instead of covering it, which is
+	# visible immediately rather than three PRs later.
+	if _stage_container != null:
+		_stage_container.offset_bottom = _bottom_panel.offset_top
+		# And below the turn bar at the top, for the same reason: anything
+		# rendered under an opaque bar is rendered where nobody can see it.
+		# The stage is now strictly the band between the two.
+		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
+	_layout_overhead_bars()
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -725,28 +1019,78 @@ func _unhandled_input(event: InputEvent) -> void:
 		_qte_active = false
 
 
-func _add_bar(parent: Control, label_text: String) -> Array:
-	var wrap := VBoxContainer.new()
-	parent.add_child(wrap)
-	var l := Label.new()
-	l.text = label_text
-	wrap.add_child(l)
+# One combatant's health, barrier and status, floating over their head.
+#
+# A Control laid out in screen space rather than a Label3D in the stage,
+# because these have to stay legible: a Label3D shrinks with distance, and
+# the grunts stand three metres further back than the party. The projection
+# happens every frame in _layout_overhead_bars().
+func _build_overhead_bar(entry: Dictionary) -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overhead_layer.add_child(box)
 
+	var name_label := Label.new()
+	name_label.text = String(entry.display_name)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	name_label.add_theme_constant_override("outline_size", 5)
+	box.add_child(name_label)
+
+	# HP and barrier side by side, not stacked, so a full shield never hides
+	# how much HP is actually left underneath.
 	var bar_row := HBoxContainer.new()
-	bar_row.add_theme_constant_override("separation", 6)
-	wrap.add_child(bar_row)
+	bar_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	bar_row.add_theme_constant_override("separation", 3)
+	box.add_child(bar_row)
 
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(160, 18)
+	bar.custom_minimum_size = Vector2(OVERHEAD_BAR_WIDTH, 10)
 	bar.show_percentage = false
 	var hp_fill := StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.78, 0.15, 0.15)
 	bar.add_theme_stylebox_override("fill", hp_fill)
+	var hp_track := StyleBoxFlat.new()
+	hp_track.bg_color = Color(0.03, 0.06, 0.08, 0.85)
+	hp_track.border_width_left = 1
+	hp_track.border_width_right = 1
+	hp_track.border_width_top = 1
+	hp_track.border_width_bottom = 1
+	hp_track.border_color = Color(0, 0, 0, 0.8)
+	bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(bar)
 
+	var barrier_bar := ProgressBar.new()
+	barrier_bar.custom_minimum_size = Vector2(26, 10)
+	barrier_bar.show_percentage = false
+	var barrier_fill := StyleBoxFlat.new()
+	barrier_fill.bg_color = Color(0.62, 0.64, 0.68)
+	barrier_bar.add_theme_stylebox_override("fill", barrier_fill)
+	barrier_bar.add_theme_stylebox_override("background", hp_track)
+	bar_row.add_child(barrier_bar)
+
 	var hp_label := Label.new()
-	wrap.add_child(hp_label)
-	return [bar, hp_label]
+	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_label.add_theme_font_size_override("font_size", 12)
+	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	hp_label.add_theme_constant_override("outline_size", 5)
+	box.add_child(hp_label)
+
+	var status_label := Label.new()
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_label.add_theme_font_size_override("font_size", 11)
+	status_label.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
+	status_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	status_label.add_theme_constant_override("outline_size", 5)
+	box.add_child(status_label)
+
+	entry["hp_bar"] = bar
+	entry["hp_label"] = hp_label
+	entry["barrier_bar"] = barrier_bar
+	entry["status_label"] = status_label
+	entry["overhead"] = box
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -764,9 +1108,96 @@ func _refresh_bar(entry: Dictionary) -> void:
 	if String(entry.kind) == "party":
 		txt += "   Lv %d" % s.level
 	(entry.hp_label as Label).text = txt
+	var status_text := s.status_summary()
+	if String(entry.kind) == "party":
+		status_text = "EVA %d/%d%s" % [
+			s.evasion_current, s.effective_evasion(),
+			"   " + status_text if status_text != "" else "",
+		]
+	(entry.status_label as Label).text = status_text
+	(entry.status_label as Label).visible = status_text != ""
+	_refresh_barrier_bar(entry.barrier_bar, s)
+
+# Hidden entirely for a combatant with no barrier at all, rather than
+# showing a permanently-empty gray sliver next to their HP.
+func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
+	bar.visible = stats.barrier_max > 0
+	if not bar.visible:
+		return
+	bar.max_value = stats.barrier_max
+	bar.value = stats.barrier
 
 func _log(text: String) -> void:
 	log_label.text = text
+
+# A combat result belongs on the combatant it happened to, not only in the
+# fast-moving sentence at the bottom of the screen. Label3D keeps the proof
+# next to the model inside Battle's isolated viewport.
+func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	var text := ""
+	var color := Color(1.0, 0.45, 0.35)
+	var result_kind := String(result.get("debuff", ""))
+	if result_kind == "heal" or result_kind == "revive":
+		text = "+%d HP" % int(result.get("changed", 0))
+		color = Color(0.35, 1.0, 0.5)
+	elif result_kind == "barrier":
+		text = "+%d BARRIER" % int(result.get("changed", 0))
+		color = Color(0.7, 0.85, 1.0)
+	elif result_kind != "":
+		text = "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))]
+		color = Color(1.0, 0.82, 0.3)
+	elif not bool(result.get("hit", false)) or bool(result.get("dodged", false)):
+		text = "DODGE"
+		color = Color(0.35, 0.9, 1.0)
+	elif int(result.get("damage", 0)) > 0:
+		text = "-%d" % int(result.damage)
+	elif int(result.get("absorbed", 0)) > 0 or (result.get("effects", []) as Array).is_empty():
+		text = "ABSORBED"
+		color = Color(0.8, 0.85, 0.9)
+	var effects := result.get("effects", []) as Array
+	if not effects.is_empty():
+		text += ("\n" if text != "" else "") + "\n".join(effects)
+		color = Color(1.0, 0.82, 0.3) if int(result.get("damage", 0)) == 0 else color
+	if text == "":
+		return
+	_show_floating_text(entry, text, color)
+
+func _show_floating_text(entry: Dictionary, text: String, color: Color) -> void:
+	var actor := entry.actor as Node3D
+	var label := Label3D.new()
+	label.text = text
+	label.modulate = color
+	label.font_size = 42
+	label.outline_size = 10
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.position = _top_of(actor) - actor.global_position + actor.position + Vector3(0.0, 0.35, 0.0)
+	_stage_vp.add_child(label)
+	var tween := label.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y + 0.65, 1.1)
+	tween.tween_property(label, "modulate:a", 0.0, 1.1)
+	tween.set_parallel(false)
+	tween.tween_callback(label.queue_free)
+
+func _finish_actor_turn(entry: Dictionary) -> void:
+	var tick := (entry.stats as CombatantStats).end_turn()
+	var bleed_damage := int(tick.get("bleed_damage", 0))
+	if bleed_damage > 0:
+		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2))
+		_log("%s  •  %s bleeds for %d." % [log_label.text, String(entry.display_name), bleed_damage])
+	var poison_damage := int(tick.get("poison_damage", 0))
+	if poison_damage > 0:
+		_show_floating_text(entry, "POISON -%d" % poison_damage, Color(0.55, 0.9, 0.28))
+		_log("%s  •  %s takes %d poison damage." % [log_label.text, String(entry.display_name), poison_damage])
+	_refresh_bar(entry)
+	if (entry.stats as CombatantStats).hp <= 0 and entry.has("actor") and is_instance_valid(entry.actor):
+		if entry.actor is Diver:
+			(entry.actor as Diver).play_death_fade()
+		elif String(entry.kind) == "enemy":
+			_play_enemy_death(entry)
 
 func _living(list: Array) -> Array:
 	return list.filter(func(e: Dictionary) -> bool: return (e.stats as CombatantStats).hp > 0)
@@ -776,7 +1207,7 @@ func _living(list: Array) -> Array:
 # can shuffle relative to each other; nothing here depends on tie order
 # staying fixed.
 func _by_agility(a: Dictionary, b: Dictionary) -> bool:
-	return (a.stats as CombatantStats).agility > (b.stats as CombatantStats).agility
+	return (a.stats as CombatantStats).effective_agility() > (b.stats as CombatantStats).effective_agility()
 
 # Called whenever the queue empties (a full round has acted) - gathers
 # every still-living combatant fresh and sorts by their CURRENT agility,
@@ -916,6 +1347,8 @@ func _advance_turn() -> void:
 		_start_party_turn(_acting)
 
 func _start_party_turn(actor: Dictionary) -> void:
+	(actor.stats as CombatantStats).begin_turn()
+	_refresh_bar(actor)
 	_busy = false
 	move_menu.visible = false
 	item_menu.visible = false
@@ -1024,9 +1457,9 @@ func _populate_item_menu() -> void:
 	# place unless it's explicitly moved back to the end each time.
 	item_menu.move_child(item_back_btn, item_menu.get_child_count() - 1)
 
-# heal/oxygen items only ever make sense on a living party member (a
-# downed diver has no oxygen tank to top off either) - _living(party)
-# same as a heal move's own target pool. Filtered further
+# heal/oxygen/barrier items only ever make sense on a living party member
+# (a downed diver has no oxygen tank to top off or shield to raise either)
+# - _living(party) same as a heal move's own target pool. Filtered further
 # by Items.would_help() per candidate, not by who's acting - an item
 # isn't cast BY someone the way a move is, it's just applied TO someone,
 # so there's no "does the acting diver have enough X" check the way
@@ -1047,8 +1480,8 @@ func _on_item_chosen(item_id: String) -> void:
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Always succeeds, no accuracy roll - same as _apply_heal(), nothing about
-# using an item on an ally is something they could evade.
+# Always succeeds, no accuracy roll - same as _apply_heal()/_apply_barrier(),
+# nothing about using an item on an ally is something they could evade.
 # Mirrors _resolve_party_move()'s tail exactly (log, refresh bars, advance
 # turn) so an item-use turn reads identically to a move turn.
 func _resolve_item(item_id: String, target: Dictionary) -> void:
@@ -1065,6 +1498,7 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 		world.inventory.erase(item_id)
 	_refresh_bar(target)
 	_log(msg if msg != "" else "%s - nothing happened." % display)
+	_finish_actor_turn(_acting)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
@@ -1077,14 +1511,17 @@ func _show_main() -> void:
 	main_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Heal targets a living ally (a downed one has
+# Barrier moves target the caster - a single-entry target list rather than
+# an immediate resolve, same as everything else below, so choosing a
+# barrier spell still lands on a screen with Back rather than committing
+# the instant it's picked. Heal targets a living ally (a downed one has
 # nothing a heal can do for it - see _apply_revive() for that); revive
 # targets a downed one specifically. Everything else still targets an
 # enemy. Always shows the target picker, even for a single candidate
 # (e.g. the common one-enemy fight) - that single extra button is what
 # gives the player a Back to bail out on a move they picked by mistake
-# (see target_back_btn/_show_moves_or_items_from_target_menu()); previously
-# a lone target skipped straight to resolution with no way back at all. An
+# (see target_back_btn/_show_moves_from_target_menu()); previously a
+# lone target skipped straight to resolution with no way back at all. An
 # empty pool (e.g. Revive with nobody actually down) just reopens the
 # move menu instead of silently eating the button press.
 func _on_move_chosen(mv: Dictionary) -> void:
@@ -1096,6 +1533,8 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	var effect := String(mv.get("effect", ""))
 	var targets: Array
 	match effect:
+		"barrier":
+			targets = [_acting]
 		"heal":
 			targets = _living(party)
 		"revive":
@@ -1108,9 +1547,25 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		call_deferred("_fit_panel_height")
 		return
 	_pending_move = mv
-	_populate_target_menu(targets)
+	if String(mv.get("target", "one_enemy")) == "all_enemies":
+		_populate_all_target_menu(targets)
+	else:
+		_populate_target_menu(targets)
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
+
+func _populate_all_target_menu(targets: Array) -> void:
+	for b in target_buttons:
+		(b as Button).queue_free()
+	target_buttons.clear()
+	var names: Array[String] = []
+	for target in targets:
+		names.append(String(target.display_name))
+	var button := _menu_button("All enemies", ", ".join(names))
+	button.pressed.connect(_on_all_targets_chosen.bind(targets))
+	target_menu.add_child(button)
+	target_buttons.append(button)
+	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
 
 func _populate_target_menu(targets: Array) -> void:
 	for b in target_buttons:
@@ -1118,7 +1573,10 @@ func _populate_target_menu(targets: Array) -> void:
 	target_buttons.clear()
 	for t in targets:
 		var s := t.stats as CombatantStats
-		var b := _menu_button(String(t.display_name), "%d / %d HP" % [s.hp, s.hp_max])
+		var b := _menu_button(String(t.display_name), "HP %d/%d  DEF %d  EVA %d/%d  ACC %d" % [
+			s.hp, s.hp_max, s.effective_defense(), s.evasion_current,
+			s.effective_evasion(), s.effective_accuracy(),
+		])
 		b.pressed.connect(_on_target_chosen.bind(t))
 		target_menu.add_child(b)
 		target_buttons.append(b)
@@ -1140,6 +1598,12 @@ func _on_target_chosen(target: Dictionary) -> void:
 		_resolve_item(item_id, target)
 		return
 	_resolve_party_move(_pending_move, target)
+
+func _on_all_targets_chosen(targets: Array) -> void:
+	target_menu.visible = false
+	var move := _pending_move
+	_pending_move = {}
+	_resolve_party_move_all(move, targets)
 
 # No cost has actually been spent yet at this point - _on_move_chosen()/
 # _on_item_chosen() only check whether the move's affordable/the item
@@ -1175,10 +1639,17 @@ func _show_moves_or_items_from_target_menu() -> void:
 #     left in the whole resolve - whether you hit is deterministic, how
 #     hard is not).
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
+#  4. Barrier - a temporary shield that eats damage before HP does. Doesn't
+#     refill on its own (see CombatantStats.fill()/gain_xp() and, now,
+#     _apply_barrier() below), so once it's spent it stays spent until the
+#     next level-up or barrier spell.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
-	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
-	if effective_accuracy <= defender.evasion:
-		return {"hit": false, "damage": 0, "debuff": "", "changed": 0, "dodged": false}
+	if move.has("formula"):
+		return CombatRules.resolve(attacker, defender, move)
+	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
+	if effective_accuracy <= defender.evasion_current:
+		var spent := defender.spend_evasion(effective_accuracy)
+		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": spent, "effects": []}
 
 	var debuff: String = String(move.get("debuff", ""))
 	if debuff != "":
@@ -1195,10 +1666,14 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
 	# triggers a QTE - a player's own attacks never set quick_time_bool, so
 	# this is a no-op for anything the player swings themselves. A
-	# successful dodge zeroes incoming outright.
+	# successful dodge zeroes incoming outright rather than just skipping
+	# barrier absorption below - the reward for timing it right is not
+	# needing the barrier to save you at all, not just saving the barrier
+	# for later.
 	var player_dodge := false
 	if bool(move.get("quick_time_bool", false)):
 		player_dodge = await _quick_time_event()
+
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
 
 # The deterministic half of _resolve_attack(), shared with verify/balance.gd.
@@ -1207,36 +1682,54 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 # mutation and mitigation here prevents a test-only copy of the combat math
 # drifting away from what players receive.
 static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, variance: float, heavy_fraction: float = 0.0, dodged: bool = false) -> Dictionary:
-	var effective_accuracy: int = attacker.accuracy + int(move.get("acc_mod", 0))
-	if effective_accuracy <= defender.evasion:
-		return {"hit": false, "damage": 0, "debuff": "", "changed": 0, "dodged": false}
+	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
+	if effective_accuracy <= defender.evasion_current:
+		var spent := defender.spend_evasion(effective_accuracy)
+		return {"hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": spent, "effects": []}
 
 	var raw: float
 	if String(move.get("effect", "")) == "heavy":
 		raw = float(defender.hp_max) * heavy_fraction
 	else:
 		raw = (float(move.power) + float(attacker.strength)) * variance
-	var incoming: int = maxi(0, int(round(raw)) - defender.defense)
+	var defense := 0 if bool(move.get("ignore_defense", false)) else defender.effective_defense()
+	var incoming: int = maxi(0, int(round(raw)) - defense)
 	if dodged:
 		incoming = 0
 
-	defender.hp = maxi(0, defender.hp - incoming)
-	return {"hit": true, "damage": incoming, "debuff": "", "changed": 0, "dodged": dodged}
+	var absorbed := 0
+	if defender.barrier > 0 and incoming > 0:
+		absorbed = mini(defender.barrier, incoming)
+		defender.barrier -= absorbed
+	var to_hp: int = incoming - absorbed
+	defender.hp = maxi(0, defender.hp - to_hp)
+	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged, "evasion_spent": 0, "effects": []}
 
 # Dispatches on the move's "effect" key before falling through to the
-# normal attack/debuff resolution above. "heal"/"revive" (support-branch
-# spells, see spell_tree.gd) target an ally instead of an enemy - `defender`
-# here is really just "whoever _on_move_chosen()'s target picker resolved
-# to," which for these two effects is a living or downed ally respectively,
-# not literally a defender - and always succeed: nothing about mending a
+# normal attack/debuff resolution above. "barrier" (defense-branch spells)
+# targets the caster instead of the defender and always succeeds, no
+# accuracy check - raising your own shield isn't something the target
+# could "evade." "heal"/"revive" (support-branch spells, see spell_tree.gd)
+# target an ally instead of an enemy - `defender` here is really just
+# "whoever _on_move_chosen()'s target picker resolved to," which for these
+# two effects is a living or downed ally respectively, not literally a
+# defender - and same as barrier, always succeed: nothing about mending a
 # wound is something the ally being healed could fail to receive.
 func _resolve_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	var effect := String(move.get("effect", ""))
+	if effect == "barrier":
+		return _apply_barrier(attacker, int(move.get("amount", 0)))
 	if effect == "heal":
 		return _apply_heal(defender, int(move.get("amount", 0)))
 	if effect == "revive":
 		return _apply_revive(defender, int(move.get("amount", 0)))
 	return await _resolve_attack(attacker, defender, move)
+
+func _apply_barrier(caster: CombatantStats, amount: int) -> Dictionary:
+	var before := caster.barrier
+	caster.barrier = mini(caster.barrier_max, caster.barrier + amount)
+	var changed := caster.barrier - before
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "barrier", "changed": changed}
 
 # Restores flat `amount` HP, capped at hp_max - only ever called with a
 # living ally as the target (see _on_move_chosen()'s "heal" target pool),
@@ -1246,7 +1739,7 @@ func _apply_heal(target: CombatantStats, amount: int) -> Dictionary:
 	var before := target.hp
 	target.hp = mini(target.hp_max, target.hp + amount)
 	var changed := target.hp - before
-	return {"hit": true, "damage": 0, "debuff": "heal", "changed": changed}
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "heal", "changed": changed}
 
 # Only ever called on a downed ally (see _on_move_chosen()'s "revive"
 # target pool, which only ever lists party members at 0 HP) - amount is
@@ -1256,7 +1749,7 @@ func _apply_heal(target: CombatantStats, amount: int) -> Dictionary:
 # reviver's hp_max could actually hold.
 func _apply_revive(target: CombatantStats, amount: int) -> Dictionary:
 	target.hp = mini(target.hp_max, amount)
-	return {"hit": true, "damage": 0, "debuff": "revive", "changed": target.hp}
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "revive", "changed": target.hp}
 
 # Directly mutates the target's CombatantStats. Safe for enemies (rebuilt
 # fresh every battle, so nothing to reset after); safe for party members
@@ -1291,12 +1784,18 @@ func _apply_debuff(defender: CombatantStats, debuff: String, amount: int) -> Dic
 			var before := defender.evasion
 			defender.evasion = maxi(0, defender.evasion - amount)
 			changed = before - defender.evasion
-	return {"hit": true, "damage": 0, "debuff": debuff, "changed": changed}
+	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": debuff, "changed": changed}
 
 func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r: Dictionary) -> void:
 	var text: String = String(mv.get("text", "You use %s" % String(mv.name)))
 	if not r.hit:
 		_log("%s - %s evades!" % [text, String(target.display_name)])
+		return
+	if String(r.debuff) == "barrier":
+		if int(r.changed) > 0:
+			_log("%s - %s's barrier rises by %d." % [text, String(actor.display_name), int(r.changed)])
+		else:
+			_log("%s - %s's barrier is already full." % [text, String(actor.display_name)])
 		return
 	if String(r.debuff) == "heal":
 		if int(r.changed) > 0:
@@ -1313,20 +1812,85 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 		else:
 			_log("%s - %s has nothing left to lose there." % [text, String(target.display_name)])
 		return
-	_log("%s for %d." % [text, int(r.damage)])
+	if int(r.damage) == 0 and int(r.absorbed) > 0:
+		_log("%s - %s's barrier soaks it completely!" % [text, String(target.display_name)])
+	elif int(r.absorbed) > 0:
+		_log("%s for %d (%d soaked by barrier)." % [text, int(r.damage), int(r.absorbed)])
+	else:
+		_log("%s for %d." % [text, int(r.damage)])
+	var effects := r.get("effects", []) as Array
+	if not effects.is_empty():
+		_log("%s  •  %s" % [log_label.text, ", ".join(effects)])
 
 # Swing first, resolve at the moment of impact. Returns once the hit is
 # supposed to land, leaving the rest of the clip to play out underneath the
 # damage log. A move with no actor (a headless run, see verify/battle.gd)
 # resolves instantly, so the gates are not paying for animation time.
-func _swing(entry: Dictionary, mv: Dictionary) -> void:
+# Step in, face them, swing, step back.
+#
+# Every attack used to play on the spot, facing whichever way the actor was
+# built facing. Glass_Goat animated these for a 2D presentation, so a swing
+# travels along the character's own forward axis and nowhere else: Marine
+# Man's hammer reaches most of a body length forward and it was reaching
+# into open water, because the grunt it was aimed at was off to one side.
+# The animation was never going to aim itself. This aims the character.
+func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
 		return
 	var d := entry.actor as Diver
+	await _step_toward(entry, target)
 	var length: float = d.play_clip(Cast.ability(String(entry.model_name), String(mv.get("name", ""))))
 	if length <= 0.0:
+		_send_home(entry, 0.0)
 		return
 	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
+	# The rest of the clip plays while the caller gets on with the damage
+	# log, and the walk back starts when it finishes.
+	_send_home(entry, length * (1.0 - IMPACT_FRACTION))
+
+# Turn to face the target and close to within reach of it. Reach is a
+# distance short of the target rather than the target itself, because these
+# attacks have length: standing on top of somebody puts the swing through
+# them and out the other side.
+func _step_toward(entry: Dictionary, target: Dictionary) -> void:
+	var a: Node3D = entry.get("actor")
+	if a == null or not is_instance_valid(a):
+		return
+	if not target.has("actor") or not is_instance_valid(target.actor) or target.actor == a:
+		return
+	var home: Vector3 = entry.get("home_pos", a.position)
+	var to: Vector3 = (target.actor as Node3D).position - home
+	to.y = 0.0
+	if to.length() < 0.05:
+		return
+	# rotation.y == 0 faces -Z for both Diver and Goblin models here, which
+	# is why this is atan2 of the negated direction rather than of it.
+	a.rotation.y = atan2(-to.x, -to.z)
+	var target_radius := 0.0
+	var radius_value: Variant = (target.actor as Node3D).get("radius")
+	if radius_value != null:
+		target_radius = float(radius_value)
+	var stand: Vector3 = (target.actor as Node3D).position - to.normalized() * (SWING_REACH + target_radius)
+	stand.y = home.y
+	var step := a.create_tween()
+	step.tween_property(a, "position", stand, SWING_STEP_TIME)
+	await step.finished
+
+# Back to the spot on the line where this one belongs. Always to the stored
+# home rather than to wherever it happened to start, so an interrupted
+# swing cannot leave somebody drifting a metre further out every turn.
+func _send_home(entry: Dictionary, delay: float) -> void:
+	var a: Node3D = entry.get("actor")
+	if a == null or not is_instance_valid(a):
+		return
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+		a = entry.get("actor")
+		if a == null or not is_instance_valid(a):
+			return
+	var back := a.create_tween()
+	back.tween_property(a, "position", entry.get("home_pos", a.position), SWING_STEP_TIME)
+	back.parallel().tween_property(a, "rotation:y", float(entry.get("home_rot", a.rotation.y)), SWING_STEP_TIME)
 
 # The recoil on whoever just got hit. Only for a hit that actually landed
 # damage: a heal targets an ally, and flinching at being healed is worse
@@ -1338,24 +1902,38 @@ func _react(entry: Dictionary, r: Dictionary) -> void:
 		return
 	if (entry.stats as CombatantStats).hp <= 0:
 		return   # going down has its own animation, see play_death_fade()
-	# MODIFIED (added): used to bail out here for anything that wasn't a
-	# Diver, which meant a Goblin taking a hit got no visual feedback at
-	# all - flash_damage() is a method both Diver and Goblin implement
-	# (see either script's own version), so this now plays for either
-	# actor type instead of Diver only.
-	#
-	# MODIFIED: "heavy" used to mean >=20% of hp_max - a fixed bar that
-	# stayed just as hard to clear whether the target was fresh or already
-	# worn down. Now it's >5% of what they had REMAINING going into this
-	# hit specifically, so the same hit reads as heavier the closer someone
-	# already is to going down. `entry.stats.hp` is already POST-hit here
-	# (apply_damage_roll() subtracts before returning `r`), so hp +
-	# r.damage reconstructs what they had before this hit landed - the
-	# hp<=0 early return above guarantees that's never a division against
-	# a dead target.
-	var hp_before_hit: int = (entry.stats as CombatantStats).hp + int(r.damage)
-	var heavy: bool = float(r.damage) > float(hp_before_hit) * 0.05
-	entry.actor.flash_damage(2 if heavy else 1, heavy)
+	# Two reactions ship per character. "Heavy" is a hit worth a fifth of
+	# what this one can take, so the big recoil means something rather than
+	# being the one that always plays.
+	var heavy: bool = float(r.damage) >= float((entry.stats as CombatantStats).hp_max) * 0.2
+	if entry.actor is Diver:
+		(entry.actor as Diver).play_hit_reaction(heavy)
+	elif entry.actor is TethysBoss:
+		(entry.actor as TethysBoss).play_hit_reaction(heavy)
+
+func _play_enemy_death(entry: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	if entry.actor is Goblin:
+		(entry.actor as Goblin).play_death_fade()
+	elif entry.actor is TethysBoss:
+		(entry.actor as TethysBoss).play_death()
+
+func _play_enemy_hit(entry: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	# Tethys already received its authored weak/strong reaction in _react().
+	# Goblin has no hit clip, so walking remains its lightweight recoil.
+	if entry.actor is Goblin:
+		(entry.actor as Goblin).play("walk")
+
+func _restore_enemy_idle(entry: Dictionary) -> void:
+	if not entry.has("actor") or not is_instance_valid(entry.actor):
+		return
+	if entry.actor is Goblin:
+		(entry.actor as Goblin).play("idle")
+	elif entry.actor is TethysBoss:
+		(entry.actor as TethysBoss).play("idle")
 
 func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	if target.is_empty():
@@ -1365,10 +1943,12 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	_set_all_buttons(false)
 
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
-	await _swing(_acting, mv)
+	await _swing(_acting, mv, target)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
 	_react(target, r)
-	if r.hit and String(r.debuff) == "agility":
+	_show_combat_feedback(target, r)
+	var applied_effects := r.get("effects", []) as Array
+	if r.hit and (String(r.debuff) == "agility" or applied_effects.any(func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))):
 		_resort_pending()
 	_refresh_bar(target)
 	_refresh_bar(_acting)
@@ -1382,13 +1962,53 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# about that instead of assuming LOG_READ_DELAY and the fade duration
 	# never overlap.
 	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
-	if target_died and target.has("actor") and target.actor is Goblin:
-		(target.actor as Goblin).play_death_fade()
-	elif r.hit and String(r.debuff) == "" and target.has("actor") and target.actor is Goblin:
-		(target.actor as Goblin).play("walk")
+	if target_died:
+		_play_enemy_death(target)
+	elif r.hit and String(r.debuff) == "":
+		_play_enemy_hit(target)
+	_finish_actor_turn(_acting)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	if not target_died and target.has("actor") and is_instance_valid(target.actor) and target.actor is Goblin:
-		(target.actor as Goblin).play("idle")
+	if not target_died:
+		_restore_enemy_idle(target)
+	_advance_turn()
+
+func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
+	if targets.is_empty():
+		_advance_turn()
+		return
+	_busy = true
+	_set_all_buttons(false)
+	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
+	# A move that hits everything still steps toward the first of them,
+	# so the swing is aimed into the group rather than past it.
+	await _swing(_acting, mv, targets[0] as Dictionary)
+	var summaries: Array[String] = []
+	var first := true
+	var changed_agility := false
+	for target in targets:
+		if (target.stats as CombatantStats).hp <= 0:
+			continue
+		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
+		first = false
+		changed_agility = changed_agility or (result.get("effects", []) as Array).any(
+			func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))
+		_react(target, result)
+		_show_combat_feedback(target, result)
+		_refresh_bar(target)
+		if not result.hit:
+			summaries.append("%s dodges" % String(target.display_name))
+		elif int(result.damage) > 0:
+			summaries.append("%s -%d" % [String(target.display_name), int(result.damage)])
+		else:
+			summaries.append("%s affected" % String(target.display_name))
+		if (target.stats as CombatantStats).hp <= 0:
+			_play_enemy_death(target)
+	if changed_agility:
+		_resort_pending()
+	_log("%s: %s." % [String(mv.get("name", "Move")), "; ".join(summaries)])
+	_refresh_bar(_acting)
+	_finish_actor_turn(_acting)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
 # Weighted random rather than always-lowest-HP - a party member missing
@@ -1415,7 +2035,64 @@ func _pick_enemy_target(alive_party: Array) -> Dictionary:
 			return alive_party[i]
 	return alive_party[alive_party.size() - 1]
 
+func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
+	var boss := actor.actor as TethysBoss
+	var move := boss.next_move()
+	var primary: Dictionary = _pick_enemy_target(alive_party)
+	var targets: Array = alive_party if String(move.get("target", "single")) == "all" else [primary]
+
+	# Tethys remains planted like the massive encounter it is; unlike a
+	# grunt, its tail, tongue and breath are the reach. It still turns toward
+	# the party before playing the authored clip.
+	var to: Vector3 = (primary.actor as Node3D).position - boss.position
+	to.y = 0.0
+	if to.length() > 0.05:
+		boss.face_toward((primary.actor as Node3D).global_position)
+	var length := boss.play_attack(move)
+	if length > 0.0:
+		await get_tree().create_timer(length * IMPACT_FRACTION).timeout
+
+	var summaries: Array[String] = []
+	for target_value in targets:
+		var target := target_value as Dictionary
+		var hit_summaries: Array[String] = []
+		for hit_index in range(int(move.get("hits", 1))):
+			if (target.stats as CombatantStats).hp <= 0:
+				break
+			var result: Dictionary = await _resolve_attack(actor.stats, target.stats, move)
+			if result.hit and int(move.get("poison", 0)) > 0:
+				(target.stats as CombatantStats).add_status(
+					"poison", int(move.poison), int(move.get("poison_turns", 3)))
+				var effects := result.get("effects", []) as Array
+				effects.append("Poison %d·%d" % [int(move.poison), int(move.get("poison_turns", 3))])
+				result["effects"] = effects
+			_react(target, result)
+			_show_combat_feedback(target, result)
+			_refresh_bar(target)
+			if not result.hit:
+				hit_summaries.append("evades")
+			elif bool(result.get("dodged", false)):
+				hit_summaries.append("QTE dodge")
+			elif int(result.damage) > 0:
+				hit_summaries.append("-%d" % int(result.damage))
+			elif int(result.absorbed) > 0:
+				hit_summaries.append("barrier")
+			else:
+				hit_summaries.append("affected")
+		if (target.stats as CombatantStats).hp <= 0 and target.actor is Diver:
+			(target.actor as Diver).play_death_fade()
+		summaries.append("%s %s" % [String(target.display_name), "/".join(hit_summaries)])
+
+	_log("Tethys uses %s: %s." % [String(move.name), "; ".join(summaries)])
+	_finish_actor_turn(actor)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	if is_instance_valid(boss):
+		boss.play("idle")
+	_advance_turn()
+
 func _do_enemy_turn(actor: Dictionary) -> void:
+	(actor.stats as CombatantStats).begin_turn()
+	_refresh_bar(actor)
 	_set_all_buttons(false)
 	main_menu.visible = false
 	move_menu.visible = false
@@ -1427,31 +2104,22 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	if alive_party.is_empty():
 		_advance_turn()
 		return
+	if actor.actor is TethysBoss:
+		await _do_boss_turn(actor, alive_party)
+		return
 	var target: Dictionary = _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
-
-	# Marine Man's special-encounter minigame takes over the enemy's whole
-	# attack turn instead of a normal claw/heavy swing - see
-	# rock_dodge_minigame.gd. Only reachable in a special (solo) encounter
-	# (see World._on_special_encounter_diver_chosen()) where the one diver
-	# actually in the fight has the shockwave ability - ability_id now
-	# rides along on each party dict entry (see _build_stage()'s
-	# party_source loop) specifically so this check can read it without
-	# needing the real Diver node.
-	# MODIFIED: was missing this return - without it, execution fell
-	# through into the normal attack code right below after the minigame
-	# already resolved (and already called _advance_turn() itself),
-	# double-damaging the target and double-advancing the turn queue.
-	if special_encounter and String(target.get("ability_id", "")) == "shockwave":
-		await _do_rock_dodge_encounter(actor, target, target_stats)
-		return
-	elif special_encounter and String(target.get("ability_id", "")) == "swap":
-		await _do_swap_minigame(actor, target, target_stats)
-		return
-	elif special_encounter and String(target.get("ability_id", "")) == "grapple":
-		await _do_grapple_intercept_encounter(actor, target, target_stats)
-		return
-
+	if special_encounter:
+		match String(target.get("ability_id", "")):
+			"shockwave":
+				await _do_rock_dodge_encounter(actor, target, target_stats)
+				return
+			"swap":
+				await _do_swap_minigame(actor, target, target_stats)
+				return
+			"grapple":
+				await _do_grapple_intercept_encounter(actor, target, target_stats)
+				return
 	# "Lined up" means the target's already low enough that a heavy swing's
 	# own damage range (see ENEMY_HEAVY_MOVE's heavy_max, a fraction of
 	# their OWN max HP) could plausibly be a kill - not a fixed HP number,
@@ -1459,348 +2127,177 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	# damage itself already does.
 	var lined_up: bool = float(target_stats.hp) <= float(target_stats.hp_max) * float(ENEMY_HEAVY_MOVE.heavy_max)
 	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
-	# Escalation: a fresh copy of the base move with power (and, for a
-	# heavy swing, its hp-fraction range) scaled up by how many rounds
-	# this special encounter has already run - see _enemy_power_mult().
-	# A plain multiplier can't just scale r.damage after the fact (HP's
-	# already been subtracted inside _resolve_attack() by then), so this
-	# scales the INPUT instead and lets the normal formula do the rest.
-	var base_move: Dictionary = ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE
-	var move_dict: Dictionary = base_move.duplicate()
-	if special_encounter:
-		var mult := _enemy_power_mult()
-		move_dict.power = float(move_dict.get("power", 0)) * mult
-		if move_dict.has("heavy_min"):
-			move_dict.heavy_min = float(move_dict.heavy_min) * mult
-			move_dict.heavy_max = float(move_dict.heavy_max) * mult
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, move_dict)
+	# The grunts get the same treatment as the party. They have no attack
+	# clip of their own, only Idle and Walking, so the lunge IS the attack
+	# animation: without it a grunt's turn was a line of text and a number
+	# moving, with nothing on the stage indicating who did it or to whom.
+	(actor.actor as Goblin).play("walk")
+	await _step_toward(actor, target)
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
+	_send_home(actor, 0.0)
+	if is_instance_valid(actor.actor):
+		(actor.actor as Goblin).play("idle")
 	_refresh_bar(target)
 	_react(target, r)
+	_show_combat_feedback(target, r)
 	var verb := ("%s winds up and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s claws at %s" % [String(actor.display_name), String(target.display_name)])
 	if bool(r.get("dodged", false)):
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
 	elif not r.hit:
 		_log("%s, but %s evades!" % [verb, String(target.display_name)])
+	elif int(r.damage) == 0 and int(r.absorbed) > 0:
+		_log("%s - barrier soaks it completely!" % verb)
+	elif int(r.absorbed) > 0:
+		_log("%s for %d (%d soaked by barrier)." % [verb, int(r.damage), int(r.absorbed)])
 	else:
 		_log("%s for %d." % [verb, int(r.damage)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
-	if special_encounter:
-		_special_round += 1
+	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
-# Only used during the dodge minigame (see _do_rock_dodge_encounter()) -
-# normal attacks never call this, so the camera stays exactly where
-# _build_stage() put it the rest of the time. Positioned up and to the
-# diver's own right, angled down at them via look_at() - "over their
-# shoulder from above" rather than the default straight-on framing, so the
-# three lanes (rock_dodge_minigame.gd's left/middle/right) are all visible
-# approaching at once instead of the outer ones arriving from off-screen.
-# Offsets are a first pass - worth eyeballing in an actual dodge sequence
-# and adjusting if the incoming lanes read as too tight/wide in frame.
 func _look_at_dodge_angle(target_pos: Vector3) -> void:
-	_stage_camera.position = target_pos + Vector3(3.0, 3.5, 2.0)
-	_stage_camera.look_at(target_pos, Vector3.UP)
+	_stage_cam.global_position = target_pos + Vector3(3.0, 3.5, 2.0)
+	_stage_cam.look_at(target_pos, Vector3.UP)
 
-# Only used during the portrait-swap minigame (see _do_swap_minigame()) -
-# _look_at_dodge_angle() above is too tight for this one: that framing only
-# has to cover one point (the target diver) from a few units away, but this
-# minigame spreads two full 3-lane portrait rows (see diver_swap_minigame.gd's
-# _select_correct_portraits() spacing math) across the entire enemy-to-player
-# gap, which special_encounter's own widened is_swap_encounter spacing (see
-# _build_stage()) makes even bigger. Looks at the midpoint between the two
-# actors instead of just the target, pulled back and up further, with a
-# wider FOV, so both actors and both portrait spreads stay in frame.
 func _look_at_swap_angle(target_pos: Vector3, enemy_pos: Vector3) -> void:
-	var mid := (target_pos + enemy_pos) / 2.0
-	_stage_camera.position = mid + Vector3(0.0, 7.0, 7.0)
-	_stage_camera.fov = 85.0
-	_stage_camera.look_at(mid, Vector3.UP)
+	var midpoint := (target_pos + enemy_pos) * 0.5
+	_stage_cam.global_position = midpoint + Vector3(0.0, 7.0, 7.0)
+	_stage_cam.fov = 85.0
+	_stage_cam.look_at(midpoint, Vector3.UP)
 
-func _restore_default_camera() -> void:
-	_stage_camera.position = DEFAULT_CAM_POS
-	_stage_camera.fov = 70.0
-	_stage_camera.look_at(DEFAULT_CAM_LOOK, Vector3.UP)
+func _restore_stage_camera() -> void:
+	_stage_cam.fov = 70.0
+	_frame_stage_camera()
 
-func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, target_stats: CombatantStats) -> void:
-	_log("%s launches a swarm at %s! Grapple them before impact!" % [String(actor.display_name), String(target.display_name)])
+# Minigame impacts are guaranteed hits: the skill test already decided
+# whether they landed. Barrier and defense still use the merged combat
+# system, so these encounters cannot bypass PR #54's mitigation rules.
+func _apply_special_impact(attacker: CombatantStats, target: Dictionary, scale: float = 1.0) -> Dictionary:
+	var defender := target.stats as CombatantStats
+	var raw := (float(ENEMY_MOVE.power) + float(attacker.strength)) * randf_range(0.85, 1.15)
+	var incoming := maxi(0, int(round(raw * scale)) - defender.effective_defense())
+	var absorbed := mini(defender.barrier, incoming)
+	defender.barrier -= absorbed
+	var hp_damage := incoming - absorbed
+	defender.hp = maxi(0, defender.hp - hp_damage)
+	var result := {
+		"hit": true, "damage": hp_damage, "absorbed": absorbed,
+		"debuff": "", "changed": 0, "dodged": false, "effects": [],
+	}
+	_refresh_bar(target)
+	_react(target, result)
+	_show_combat_feedback(target, result)
+	return result
+
+func _finish_special_enemy_turn(actor: Dictionary, target: Dictionary) -> void:
+	var target_stats := target.stats as CombatantStats
+	if target_stats.hp > 0:
+		var move := ENEMY_MOVE.duplicate()
+		move.power = float(move.power) * _enemy_power_mult()
+		(actor.actor as Goblin).play("walk")
+		await _step_toward(actor, target)
+		var result: Dictionary = await _resolve_attack(actor.stats, target_stats, move)
+		_send_home(actor, 0.0)
+		if is_instance_valid(actor.actor):
+			(actor.actor as Goblin).play("idle")
+		_refresh_bar(target)
+		_react(target, result)
+		_show_combat_feedback(target, result)
+		if not bool(result.get("hit", false)):
+			_log("%s follows up, but %s evades." % [String(actor.display_name), String(target.display_name)])
+		elif int(result.get("damage", 0)) == 0 and int(result.get("absorbed", 0)) > 0:
+			_log("%s follows up, but the barrier absorbs it." % String(actor.display_name))
+		else:
+			_log("%s follows up for %d." % [String(actor.display_name), int(result.get("damage", 0))])
+	if target_stats.hp <= 0 and target.has("actor") and is_instance_valid(target.actor):
+		(target.actor as Diver).play_death_fade()
+	_special_round += 1
+	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_advance_turn()
 
+func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _target_stats: CombatantStats) -> void:
+	_log("%s launches a rock swarm. Grapple the weak spots!" % String(actor.display_name))
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = _stage_vp
-	minigame.stage_camera = _stage_camera
+	minigame.stage_camera = _stage_cam
 	minigame.target_actor = target.actor
-	minigame.source_position = actor.actor.global_position + Vector3.UP * (actor.actor as Goblin).height
+	minigame.source_position = (actor.actor as Node3D).global_position + Vector3.UP * (actor.actor as Goblin).height
 	add_child(minigame)
 	var total_taken := 0
 	minigame.object_hit.connect(func() -> void:
-		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.65, 0.9)
-		var incoming := maxi(1, int(round(raw)) - target_stats.defense)
-		target_stats.hp = maxi(0, target_stats.hp - incoming)
-		total_taken += incoming
-		_refresh_bar(target)
-		_show_damage_popup(incoming)
-		target.actor.flash_damage(1)
-		# MODIFIED (added): a hit that brings the diver to 0 HP mid-encounter
-		# used to leave them stuck playing out the rest of the minigame -
-		# request_abort() ends it right here instead, with whatever tally it
-		# has so far, so the normal death-fade/battle-screen flow right after
-		# `await minigame.finished` resumes immediately rather than only once
-		# every remaining target had also been thrown.
-		if target_stats.hp <= 0:
+		var result := _apply_special_impact(actor.stats, target)
+		total_taken += int(result.damage)
+		if (target.stats as CombatantStats).hp <= 0:
 			minigame.request_abort()
 	)
 	minigame.run()
-	var result: Array = await minigame.finished
+	var score: Array = await minigame.finished
 	minigame.queue_free()
-	_restore_default_camera()
-	var hits := int(result[0])
-	var total := int(result[1])
-	_log("%s intercepts %d/%d targets%s" % [String(target.display_name), hits, total, " without damage!" if total_taken == 0 else " and takes %d damage." % total_taken])
-	if target_stats.hp <= 0 and target.actor is Diver:
-		(target.actor as Diver).play_death_fade()
-	_special_round += 1
+	(target.actor as Node3D).visible = true
+	_restore_stage_camera()
+	_log("%s intercepts %d/%d rocks%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
+	await get_tree().create_timer(0.45).timeout
+	await _finish_special_enemy_turn(actor, target)
+
+func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, _target_stats: CombatantStats) -> void:
+	_log("%s hurls rocks and walls at %s!" % [String(actor.display_name), String(target.display_name)])
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	_advance_turn()
-
-# Each rock that lands unbroken deals its own real hit, live, the instant
-# it lands (via RockDodgeMinigame's rock_landed signal) - not one lump
-# sum computed after the fact. Same power/strength/variance math as a
-# normal ENEMY_MOVE swing (see _resolve_attack()), so one missed rock
-# hurts about as much as one normal claw would - across a whole barrage
-# that adds up fast, which is the actual incentive to play the minigame
-# well rather than a graded curve papering over misses. If this drops the
-# diver to 0 HP mid-barrage, _advance_turn()'s normal _lose() path still
-# fires exactly like any other loss once the barrage ends - the "you
-# don't really lose here" promise is handled entirely on World's side
-# (see _on_battle_finished()'s special_encounter branch), not by this
-# function pretending 0 HP can't happen.
-var total_taken := 0
-
-func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stats: CombatantStats) -> void:
-	_log("%s hurls a barrage of rocks at %s!" % [String(actor.display_name), String(target.display_name)])
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
-
-	_look_at_dodge_angle(target.actor.global_position)
-
+	_look_at_dodge_angle((target.actor as Node3D).global_position)
 	var minigame := RockDodgeMinigame.new()
-	minigame.thrower_position = actor.actor.global_position + Vector3.UP * (actor.actor as Goblin).height
-	add_child(minigame)
+	minigame.thrower_position = (actor.actor as Node3D).global_position + Vector3.UP * (actor.actor as Goblin).height
 	minigame.stage_root = _stage_vp
-	# MODIFIED: was `_acting.actor`. This function runs from _do_enemy_
-	# turn(), where _acting IS the enemy taking their turn (same
-	# Dictionary as the `actor` param above) - so this was pointing
-	# target_actor at the GOBLIN, not the diver being attacked. Two
-	# separate symptoms traced back to this one line: rocks visually
-	# flew toward the enemy's own position instead of the player's (both
-	# thrower_position and target_actor ended up near the same spot), and
-	# `(target_actor as Diver)._shockwave_vfx()` in rock_dodge_minigame.gd
-	# crashed with a nil error - casting a Goblin `as Diver` fails
-	# silently to null in GDScript, and calling a method on that null
-	# result is exactly a "nil" error. `target` (the actual diver, picked
-	# by _pick_enemy_target() before this function was even called) is
-	# what this should have been reading all along.
 	minigame.target_actor = target.actor
+	add_child(minigame)
+	var total_taken := 0
 	minigame.rock_landed.connect(func() -> void:
-		# MODIFIED: no longer scaled by _enemy_power_mult() - an unbroken
-		# rock now always hits for the same base amount every round, round
-		# after round. The escalation moved to the real follow-up swing
-		# right after the barrage instead (below) - see its own comment for
-		# why.
-		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.85, 1.15)
-		var incoming: int = maxi(0, int(round(raw)) - target_stats.defense)
-		target_stats.hp = maxi(0, target_stats.hp - incoming)
-		total_taken += incoming
-		_refresh_bar(target)
-		_show_damage_popup(incoming)
-		target.actor.flash_damage(1)
-		# MODIFIED (added): a rock that brings the diver to 0 HP mid-barrage
-		# used to leave them stuck dodging the rest of it - request_abort()
-		# ends the barrage right here instead, so the normal death-fade/
-		# battle-screen flow right after `await minigame.finished` resumes
-		# immediately rather than only once every remaining wave had played.
-		if target_stats.hp <= 0:
+		var result := _apply_special_impact(actor.stats, target)
+		total_taken += int(result.damage)
+		if (target.stats as CombatantStats).hp <= 0:
 			minigame.request_abort()
 	)
-	# MODIFIED: minigame.run() was never called - _spawn_loop() only ever
-	# starts from inside run(), so without this the minigame just sat on
-	# its title/hint text forever and `await minigame.finished` below
-	# would hang the whole battle indefinitely. Same fix applied to
-	# _do_swap_minigame()'s DiverSwapMinigame below.
 	minigame.run()
-	var result: Array = await minigame.finished
+	var score: Array = await minigame.finished
 	minigame.queue_free()
-	_restore_default_camera()
-	var hits := int(result[0])
-	var total := int(result[1])
+	_restore_stage_camera()
+	_log("%s breaks %d/%d threats%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
+	await get_tree().create_timer(0.45).timeout
+	await _finish_special_enemy_turn(actor, target)
 
-	if total_taken <= 0:
-		_log("%s shatters every rock - not a scratch! (%d/%d)" % [String(target.display_name), hits, total])
-	else:
-		_log("%s couldn't break them all - takes %d total. (%d/%d)" % [String(target.display_name), total_taken, hits, total])
-	if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
-		(target.actor as Diver).play_death_fade()
-
-	# MODIFIED (added): the real follow-up - once the barrage itself is
-	# done, the goblin closes in with one genuine swing (same accuracy/
-	# evasion-checked _resolve_attack() a normal turn uses), its power
-	# scaled by _enemy_power_mult(). This is where round-over-round
-	# escalation lives now, not on the rocks themselves (see rock_landed
-	# above) - a barrage should stay a learnable, evadable pattern no
-	# matter how long the fight drags on; only this closing swing is
-	# supposed to get scarier the longer it goes.
-	if target_stats.hp > 0:
-		var mult := _enemy_power_mult()
-		var move_dict: Dictionary = ENEMY_MOVE.duplicate()
-		move_dict.power = float(move_dict.get("power", 0)) * mult
-		var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
-		_refresh_bar(target)
-		if bool(r.get("dodged", false)):
-			_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
-		elif not r.hit:
-			_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
-		else:
-			_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
-			target.actor.flash_damage(1)
-		if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
-			(target.actor as Diver).play_death_fade()
-
-	_special_round += 1
+func _do_swap_minigame(actor: Dictionary, target: Dictionary, _target_stats: CombatantStats) -> void:
+	_log("%s scrambles the diver portraits!" % String(actor.display_name))
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	_advance_turn()
-	
-func _do_swap_minigame(actor: Dictionary, target: Dictionary, target_stats: CombatantStats) -> void:
-	_log("%s sends portraits your way!" % [String(actor.display_name), String(target.display_name)])
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	_look_at_swap_angle(target.actor.global_position, actor.actor.global_position)
-
+	_look_at_swap_angle((target.actor as Node3D).global_position, (actor.actor as Node3D).global_position)
 	var minigame := DiverSwapMinigame.new()
-	add_child(minigame)
 	minigame.stage_root = _stage_vp
-
 	minigame.target_actor = target.actor
 	minigame.enemy_actor = actor.actor
+	add_child(minigame)
+	var total_taken := 0
 	minigame.portrait_landed.connect(func() -> void:
-		# MODIFIED: no longer scaled by _enemy_power_mult() - an unbroken
-		# rock now always hits for the same base amount every round, round
-		# after round. The escalation moved to the real follow-up swing
-		# right after the barrage instead (below) - see its own comment for
-		# why.
-		# MODIFIED (added): result cut to a quarter relative to the
-		# rock-dodge encounter's identical formula - that barrage allows up
-		# to ROCK_COUNT (8) misses, while this one allows at most 2 per
-		# round (see diver_swap_minigame.gd's _on_portrait_arrived()), so
-		# full price per miss would make a single misfire cost as much as a
-		# whole failed rock barrage's worth of individual hits. Was tried
-		# as `ENEMY_MOVE.power * 0.5` first, but strength - boosted further
-		# by Goblin.make_stats()'s own 1.08x-1.35x difficulty edge over the
-		# party's average - was always the bigger term in this formula, so
-		# halving only power barely moved the result. Scaling the whole
-		# post-defense result instead actually cuts it proportionally
-		# regardless of how power/strength/defense interact.
-		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.85, 1.15)
-		var full_incoming: int = maxi(0, int(round(raw)) - target_stats.defense)
-		var incoming: int = int(round(float(full_incoming) * 0.25))
-		target_stats.hp = maxi(0, target_stats.hp - incoming)
-		total_taken += incoming
-		_refresh_bar(target)
-		_show_damage_popup(incoming)
-		target.actor.flash_damage(1)
-		# MODIFIED (added): a portrait that brings the diver to 0 HP
-		# mid-round used to leave them stuck playing out the rest of the
-		# minigame - request_abort() ends it right here instead, so the
-		# normal death-fade/battle-screen flow right after `await minigame.
-		# finished` resumes immediately rather than only once every
-		# remaining round had played.
-		if target_stats.hp <= 0:
+		var result := _apply_special_impact(actor.stats, target, 0.25)
+		total_taken += int(result.damage)
+		if (target.stats as CombatantStats).hp <= 0:
 			minigame.request_abort()
 	)
-	# MODIFIED: minigame.run() was never called - _spawn_loop() only ever
-	# starts from inside run(), so without this the minigame just sat on
-	# its title/hint text forever and `await minigame.finished` below
-	# would hang the whole battle indefinitely. Same fix applied to
-	# _do_rock_dodge_encounter()'s RockDodgeMinigame above.
 	minigame.run()
-	var result: Array = await minigame.finished
+	var score: Array = await minigame.finished
 	minigame.queue_free()
-	_restore_default_camera()
-	var hits := int(result[0])
-	var total := int(result[1])
+	_restore_stage_camera()
+	_log("%s matches %d/%d portraits%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
+	await get_tree().create_timer(0.45).timeout
+	await _finish_special_enemy_turn(actor, target)
 
-	if total_taken <= 0:
-		_log("%s swapped all portraits correctly - not a scratch! (%d/%d)" % [String(target.display_name), hits, total])
-	else:
-		_log("%s couldn't swap all portraits to their correct positions - takes %d total. (%d/%d)" % [String(target.display_name), total_taken, hits, total])
-	if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
-		(target.actor as Diver).play_death_fade()
-
-	# MODIFIED (added): the real follow-up - once the barrage itself is
-	# done, the goblin closes in with one genuine swing (same accuracy/
-	# evasion-checked _resolve_attack() a normal turn uses), its power
-	# scaled by _enemy_power_mult(). This is where round-over-round
-	# escalation lives now, not on the rocks themselves (see rock_landed
-	# above) - a barrage should stay a learnable, evadable pattern no
-	# matter how long the fight drags on; only this closing swing is
-	# supposed to get scarier the longer it goes.
-	if target_stats.hp > 0:
-		var mult := _enemy_power_mult()
-		var move_dict: Dictionary = ENEMY_MOVE.duplicate()
-		move_dict.power = float(move_dict.get("power", 0)) * mult
-		var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
-		_refresh_bar(target)
-		if bool(r.get("dodged", false)):
-			_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
-		elif not r.hit:
-			_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
-		else:
-			_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
-			target.actor.flash_damage(1)
-		if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
-			(target.actor as Diver).play_death_fade()
-
-	_special_round += 1
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	_advance_turn()
-
-
-# A floating "-N" that rises and fades, spawned fresh per hit rather than
-# reused - each one is a one-shot throwaway, same VFX-node-per-event
-# pattern diver.gd's _shockwave_vfx() already uses. Centered near the top
-# of this CanvasLayer, not tied to the enemy's actual 3D position on the
-# stage - the minigame overlay already covers the whole screen, and a
-# fixed "damage lands here" spot is simpler and reads just as clearly as
-# tracking a 3D-to-2D projection would.
-func _show_damage_popup(amount: int) -> void:
-	var popup := Label.new()
-	popup.text = "-%d" % amount
-	popup.add_theme_font_size_override("font_size", 26)
-	popup.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
-	popup.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	popup.position = Vector2(-20, 90 + randf_range(-10.0, 10.0))
-	add_child(popup)
-	var tw := create_tween()
-	tw.tween_property(popup, "position:y", popup.position.y - 40.0, 0.8)
-	tw.parallel().tween_property(popup, "modulate:a", 0.0, 0.8)
-	tw.tween_callback(popup.queue_free)
-
-# One shared damage flash for any actor - Diver or Goblin, whichever just
-# took a hit - called from every place damage actually lands (see _react()
-# and the rock_landed/portrait_landed closures below, plus both special
-# encounters' own follow-up swings). A red, expanding-and-fading overlay
-# sphere centered on the actor, same throwaway-VFX-child-node trick
-# diver.gd's own _shockwave_vfx() uses - added as a plain sibling on the
-# actor rather than touching that actor's own model materials, which is
-# exactly what makes this safe to call on EITHER actor type without this
-# script needing to know anything about how either one's model/materials
-# are actually built.
 func _win() -> void:
 	_set_all_buttons(false)
 	main_menu.visible = false
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
-	_log("The enemies back off, beaten.")
+	_log("Tethys sinks back into the dark, beaten." if boss_encounter else "The enemies back off, beaten.")
 	# Whoever is still standing celebrates. The clip loops, so it holds for
 	# as long as the XP lines take to read.
 	for entry in _living(party):
@@ -1809,34 +2306,23 @@ func _win() -> void:
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	var total_xp := 0
 	for e in enemies:
-		if e.has("actor") and is_instance_valid(e.actor) and e.actor is Goblin:
-			total_xp += int((e.actor as Goblin).xp_reward)
-	# A special encounter is a real, deliberate risk (see world.gd's
-	# confirm-then-choose prompt) against a single grunt rather than the
-	# usual 1-3 - the XP a normal fight would pay out for that alone
-	# undersells it, so it's worth meaningfully more for taking the
-	# gauntlet at all, on top of whatever treasure it's guarding.
-	const SPECIAL_ENCOUNTER_XP_MULT := 1.5
+		total_xp += int(e.get("xp_reward", 0))
 	if special_encounter:
-		total_xp = int(round(float(total_xp) * SPECIAL_ENCOUNTER_XP_MULT))
+		total_xp = int(round(float(total_xp) * 1.5))
 	# Every party member gets the full amount, not a split share - there's
 	# no shared party XP pool concept in this game, and splitting it would
 	# just make leveling slower for the same fights without adding a
-	# meaningful choice anywhere. One shared line (not one per member,
-	# since they all get the identical total) - XP gain used to be
-	# entirely silent unless it happened to cross a level, so a win that
-	# only made progress toward the next level gave no feedback at all.
-	_log("The party gains %d XP." % total_xp)
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	# meaningful choice anywhere.
 	for entry in party:
 		var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
 		for lv in levels:
-			# +1 spell point per level is CombatantStats.gain_xp()'s own
-			# rule (see combatant_stats.gd) - stated explicitly here since
-			# the level-up line used to be the only feedback a level-up
-			# gave at all, with the spell point itself going unmentioned.
-			_log("%s reached level %d! (+1 spell point)" % [String(entry.display_name), int(lv)])
+			_log("%s reached level %d!" % [String(entry.display_name), int(lv)])
 			await get_tree().create_timer(LOG_READ_DELAY).timeout
+	# The map has repeated random battles plus two guardians and no guaranteed
+	# healer between them. A partial regroup prevents one victory from leaving
+	# the next encounter mathematically decided while preserving attrition.
+	for entry in party:
+		(entry.stats as CombatantStats).recover_after_victory()
 	finished.emit("won")
 
 func _lose() -> void:
@@ -1870,15 +2356,19 @@ func _on_run() -> void:
 		var attacker: Dictionary = living_enemies[randi_range(0, living_enemies.size() - 1)]
 		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, ENEMY_MOVE)
 		_refresh_bar(_acting)
+		_show_combat_feedback(_acting, r)
 		if bool(r.get("dodged", false)):
 			_log("%s lunges - you time it perfectly and dodge clear!" % String(attacker.display_name))
 		elif not r.hit:
 			_log("%s lunges, but you evade clear." % String(attacker.display_name))
+		elif int(r.damage) == 0 and int(r.absorbed) > 0:
+			_log("%s - your barrier soaks it completely!" % String(attacker.display_name))
 		else:
 			_log("%s claws you for %d as you struggle free." % [String(attacker.display_name), int(r.damage)])
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
 			(_acting.actor as Diver).play_death_fade()
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_finish_actor_turn(_acting)
 	_advance_turn()
 
 func _set_all_buttons(enabled: bool) -> void:

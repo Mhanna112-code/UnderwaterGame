@@ -63,25 +63,28 @@ var SONAR_INTERVAL := 0.2
 # slow/sturdy. grow_* is how much each stat ticks up per level (see
 # combatant_stats.gd) - different per diver so leveling reinforces the
 # spread instead of flattening it out.
-# evasion/accuracy are identity traits, not leveled.
+# evasion/accuracy/barrier_max are identity traits, not leveled (no grow_*
+# for them) - Prototype_1 is nimble (high evasion, high accuracy) rather
+# than shielded, Prototype_V is the reverse. Keeps the three spreads
+# distinct even after several level-ups, instead of every stat converging.
 const BASE_STATS := {
 	"Staff_Diver": {
-		"hp": 34, "strength": 5, "defense": 3, "agility": 5,
-		"evasion": 5, "accuracy": 6,
+		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
+		"evasion": 3, "accuracy": 3, "barrier_max": 0,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 26, "strength": 8, "defense": 1, "agility": 8,
-		"evasion": 8, "accuracy": 8,
+		"evasion": 8, "accuracy": 8, "barrier_max": 0,
 		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 42, "strength": 3, "defense": 6, "agility": 3,
-		"evasion": 2, "accuracy": 4,
+		"evasion": 2, "accuracy": 4, "barrier_max": 10,
 		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
@@ -136,6 +139,13 @@ var distance_since_encounter: float = 0.0
 
 # Chance of actually triggering an encounter when the distance
 # threshold is reached.
+#
+# 0.25 = 25%
+# 0.50 = 50%
+# 1.00 = 100%
+# Marc tested and pushed 8-16 m / 50% in PR #50, then explicitly asked this
+# combat PR to adopt those settings. That averages one fight per 24 m. Keep
+# verify/encounters.gd tied to all three inputs so later tuning is deliberate.
 @export_range(0.0, 1.0) var encounter_chance: float = 0.5
 
 # The randomly selected distance at which the next encounter
@@ -298,14 +308,7 @@ func _ready() -> void:
 	# Move the model so its feet sit on the body's floor. Applied to the
 	# whole imported tree rather than to the mesh, because moving the mesh
 	# alone would slide it out from under the skeleton driving it.
-	# MODIFIED: was `box.position.y + height * 0.5` - that extra `+ height *
-	# 0.5` term meant the model only ever moved up by about half of what
-	# was actually needed to bring its lowest point to y=0 (box.position.y
-	# is already the mesh's own bottom offset from its origin - no further
-	# adjustment needed once that's canceled out), leaving every diver
-	# sunk roughly HALF their own height into the floor instead of
-	# standing on it.
-	src.position.y -= box.position.y
+	src.position.y -= box.position.y + height * 0.5
 
 
 	# ========================================================
@@ -368,6 +371,7 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
+	stats.barrier_max = int(base.barrier_max)
 	stats.grow_hp = int(base.grow_hp)
 	stats.grow_strength = int(base.grow_strength)
 	stats.grow_defense = int(base.grow_defense)
@@ -498,21 +502,10 @@ func set_suction_locked(v: bool) -> void:
 func is_suction_locked() -> bool:
 	return _suction_locked
 
-# Set/cleared by whatever hazard the diver is currently standing in (see
-# water_current.gd) - a steady world-space nudge blended into swim()'s own
-# velocity target rather than something that overrides player input the
-# way whirlpool.gd's suction lock does. Swimming with a current is faster,
-# swimming against it is slower (or, for a strong enough current, actually
-# loses ground), but control is never taken away outright.
+# WaterCurrent writes these while this diver overlaps its Area3D. The
+# push is blended with steering; current_axis removes sideways escape from
+# a corridor whose flow is meant to be an actual traversal constraint.
 var external_push := Vector3.ZERO
-
-# Set/cleared alongside external_push (see water_current.gd's _on_entered()/
-# _on_exited()) - the current's own flow axis, as a unit vector. While
-# non-zero, swim() strips out whatever part of the player's OWN steering
-# input runs perpendicular to it (see swim()'s own comment on this), so a
-# current strong enough to stop you swimming upstream doesn't leave you
-# free to just strafe out the side instead - external_push alone only
-# ever fixed the "can't reverse along the flow" half of that.
 var current_axis := Vector3.ZERO
 
 # Which abilities need a deliberate aim step (first-person raycast, click
@@ -622,7 +615,7 @@ func _physics_process(delta: float) -> void:
 # MODIFIED again: reveal used to be unconditional - one ping, anywhere on
 # the whole map, revealed every remaining key item regardless of distance.
 # Now gated on entry.radius (the same guaranteed-encounter radius
-# ItemGuardian.SPOTS already carries per zone) - sonar has to actually be
+# ItemGuardian.spots() already carries per zone) - sonar has to actually be
 # on AND the diver has to be within that zone's own radius before it
 # reveals, so the minimap marker means "you're close, and pinged," not
 # "sonar has ever been used once anywhere."
@@ -635,7 +628,7 @@ func _physics_process(delta: float) -> void:
 # on every sonar ping, see SONAR_INTERVAL) leaked the work of building
 # them for nothing. Fixed by using the `world` reference world.gd now
 # assigns after add_child() (see the new `var world: World` above)
-# instead of a fresh instance, and reading ItemGuardian.SPOTS directly off
+# instead of a fresh instance, and reading ItemGuardian.spots() directly off
 # the class (it's a const - no instance needed to read it, same reason
 # battle.gd's BASE_MOVES gets read as Battle.BASE_MOVES elsewhere).
 # Also fixed: `world.key_items.has(item)` was checking the whole SPOTS
@@ -646,7 +639,7 @@ func update_sonar() -> void:
 	if world == null:
 		return
 	var s_items := []
-	for item in ItemGuardian.SPOTS:
+	for item in ItemGuardian.spots():
 		if world.key_items.has(String(item.item)):
 			continue
 		s_items.append(item)
@@ -654,13 +647,14 @@ func update_sonar() -> void:
 		var item_id := String(entry.item)
 		if world.revealed_key_items.has(item_id):
 			continue
-		# MODIFIED: gated on entry.radius originally (the guaranteed-
-		# encounter radius, a separate concept). Changed to
-		# world.minimap.view_radius - "revealed" should mean "you actually
-		# saw it as a dot on the minimap at some point," so the reveal
-		# distance and the dot/arrow display distance (see mini_map.gd's
-		# _draw_key_item_markers()) need to be the exact same radius, not
-		# two different numbers that happen to both be called "radius."
+		# Gated on the minimap's own view radius: "revealed" should mean
+		# "you actually saw it as a dot on the minimap at some point", so
+		# the reveal distance and the dot/arrow display distance (see
+		# mini_map.gd's _draw_key_item_markers()) have to be the same
+		# number rather than two that happen to share a name. The spots
+		# used to carry a "radius" of their own for this; it is gone, along
+		# with the guaranteed-encounter rule that was the only thing that
+		# ever read it.
 		if position.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
 
@@ -797,40 +791,21 @@ func _swap_flash(at: Vector3) -> void:
 	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.4)
 	tw.tween_callback(vfx.queue_free)
 
-# Called by whirlpool.gd when this diver gets caught, and by battle.gd for
-# every damage instance in combat (see Battle._react()/its rock_landed/
-# portrait_landed closures). Flickers the model a few times - the model
-# swap trick, not a shader effect, since nothing about these models
-# supports a flash material (unrigged, no vertex colors to hijack) and
-# this needed to work with whatever's already on them.
-#
-# `times`/`heavy` both default to whirlpool.gd's own original one-off call
-# (4 flickers, the normal "hurt" clip) - battle.gd passes fewer flickers
-# for in-combat hits (1 normal, 2 heavy) so a barrage of quick hits
-# doesn't pile up into a longer flicker than the hit that caused it
-# deserves, and passes `heavy` through so this plays the SAME reaction
-# clip _react() would otherwise have called separately - bundling it here
-# instead of leaving battle.gd to call both means there's exactly one
-# place that decides "did a hit reaction already play for this," not two
-# call sites that could double up.
-# MODIFIED: phase was 0.08 - fine for whirlpool.gd's own 4-cycle strobe
-# (reads clearly just from having several cycles), but battle.gd's
-# in-combat calls mostly pass times=1, and a single 0.08/0.08 blip (0.16s
-# total) was easy to miss entirely in the middle of everything else a hit
-# already has going on (popup, log line, bars refreshing). 0.12 keeps it
-# reading as a snap rather than a fade while actually being visible.
-const FLASH_PHASE_TIME := 0.12
-
-func flash_damage(times: int = 4, heavy: bool = false) -> void:
+# Called by gap_pit.gd when this diver blunders into an unresolved gap.
+# Flickers the model a few times - the model swap trick, not a shader
+# effect, since nothing about these models supports a flash material
+# (unrigged, no vertex colors to hijack) and this needed to work with
+# whatever's already on them.
+func flash_damage() -> void:
 	if model == null:
 		return
 	# The flicker stays because it reads at any distance and through the
 	# fog. The rigged deliveries added a real recoil on top of it.
-	play_hit_reaction(heavy)
+	play_hit_reaction(false)
 	var tw := create_tween()
-	for i in range(times):
-		tw.tween_property(model, "visible", false, FLASH_PHASE_TIME)
-		tw.tween_property(model, "visible", true, FLASH_PHASE_TIME)
+	for i in range(4):
+		tw.tween_property(model, "visible", false, 0.08)
+		tw.tween_property(model, "visible", true, 0.08)
 
 # Called by whirlpool.gd to make a diver vanish while caught (pulled to
 # the center, gone, then reappears at the reset point) - a plain
@@ -839,6 +814,23 @@ func flash_damage(times: int = 4, heavy: bool = false) -> void:
 func set_model_visible(v: bool) -> void:
 	if model != null:
 		model.visible = v
+
+
+# How far above and below this diver's own origin the model actually
+# reaches.
+#
+# Worth stating rather than assuming, because the two things that stand on
+# the battle stage disagree about it: _ready() centres a Diver's model on
+# its origin (see the src.position.y line, which subtracts half the height)
+# while goblin.gd stands its model's FEET on the origin. Anything putting a
+# marker over a combatant's head has to ask rather than add `height`, and
+# nothing did: the health bars floated half a body above the divers and sat
+# correctly on the grunts, which is exactly how it was reported.
+func head_offset() -> float:
+	return height * 0.5
+
+func foot_offset() -> float:
+	return -height * 0.5
 
 
 # ============================================================
@@ -1068,28 +1060,11 @@ func swim(dir: Vector3, rise: float, dt: float) -> void:
 		return
 
 	var steer := dir
-	# MODIFIED (added): a current strong enough that external_push already
-	# beats your own top speed head-on was still no obstacle at all
-	# sideways - nothing stopped the player from just strafing straight
-	# out through where a wall would normally be, since this only ever
-	# constrained the along-flow direction. Projects the player's own
-	# horizontal steering onto current_axis first (discarding whatever
-	# part of it runs across the flow, not along it) before external_push
-	# is even added below - inside a current you can still fight your way
-	# upstream or ride it downstream, you just can't cut sideways out of
-	# it anymore.
 	if current_axis != Vector3.ZERO:
 		steer = current_axis * dir.dot(current_axis)
-
 	var want := steer * speed
 
 	want.y = rise * speed * 0.7
-
-	# MODIFIED (added): folded in after the player's own input, not
-	# instead of it - a current is a steady extra pull on top of whatever
-	# you're already trying to do, not a separate override. Zero when
-	# nothing's pushing (see external_push's own comment), so this is a
-	# no-op outside any current.
 	want += external_push
 
 
