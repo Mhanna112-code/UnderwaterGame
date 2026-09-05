@@ -1564,8 +1564,29 @@ func _grant_reward_item(item_id: String) -> void:
 			key_items.append(item_id)
 		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 		_announce("Victory - you claim the key item %s!" % display)
-	else:
-		_add_to_inventory(item_id)
+		return
+	# MODIFIED (added): a "pool" spot (see ItemGuardian.SPOTS - e.g.
+	# stat_boost_1) resolves to one random real item from its own pool
+	# right here, at reward time, rather than guarding one fixed item.
+	# `item_id` coming in is the SPOT's own stable id, not a real
+	# Items.ITEMS key - it's never itself grantable, so it has to be
+	# special-cased before falling through to the plain _add_to_inventory()
+	# below (which would otherwise silently no-op on an unknown id).
+	# Marking the SPOT id claimed via key_items - the exact same array real
+	# key items use - is what makes mini_map.gd's/diver.gd's existing
+	# "already claimed, stop drawing/revealing this dot" checks apply to
+	# pool spots too, with no changes needed on their end: they already
+	# just check key_items.has() generically, they don't care whether the
+	# id inside it happens to be a "real" key item.
+	for spot in ItemGuardian.SPOTS:
+		if String(spot.get("item", "")) == item_id and spot.has("pool"):
+			if not key_items.has(item_id):
+				key_items.append(item_id)
+			var pool: Array = spot.pool
+			var granted := String(pool[randi() % pool.size()])
+			_add_to_inventory(granted)
+			return
+	_add_to_inventory(item_id)
 
 func _announce(text: String) -> void:
 	banner.text = text

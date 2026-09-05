@@ -16,9 +16,24 @@ signal triggered(item_id: String)
 
 @export var item_id := ""
 
+# A "pool" entry is a different shape from the two key-item spots above -
+# `item` is still this spot's own stable id (used for the same red-dot
+# reveal/claimed tracking as any other spot, and as the ItemGuardian's own
+# item_id export), but it's NOT a real Items.ITEMS key on its own; nothing
+# ever grants "stat_boost_1" itself. world.gd's _grant_reward_item()
+# checks for a "pool" field specifically and, when present, picks one
+# random id from it to actually grant instead, at the moment the fight is
+# won - see its own comment for why this keeps mini_map.gd/diver.gd's
+# existing key_items-based dot logic working unchanged for pool spots too.
+#
+# MODIFIED: position is a first-pass placeholder (a third corner,
+# mirroring how the two key-item spots already sit in opposite corners) -
+# not verified against the actual dive site's playable geometry in-editor,
+# worth checking/adjusting there.
 const SPOTS := [
 	{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 25},
 	{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 25},
+	{"item": "stat_boost_1", "at": Vector3(-16.0, 1.2, 12.0), "radius": 25, "pool": ["attack_up", "defense_up"]},
 ]
 
 func _ready() -> void:

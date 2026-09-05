@@ -62,7 +62,7 @@ const LANE_SPACING := 2.4
 # enough for a wall/unbroken rock to actually hit you" - one number for
 # both keeps the rule simple to read off the screen: if you're close
 # enough to break it, you're also close enough to be hit by it.
-const HIT_RADIUS := 1.5
+const HIT_RADIUS := 1.8
 
 var thrower_position: Vector3
 var stage_root: SubViewport

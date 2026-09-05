@@ -21,11 +21,16 @@ const LOOK_SENSITIVITY := 0.0035
 const MAX_YAW := 0.75
 const MAX_PITCH := 0.48
 
+# How far _grapple()'s raycast reaches - generous relative to how close
+# rocks/the camera actually get to each other in this stage (a handful of
+# GRID_SPACING units), so a correctly-aimed shot never falls short.
+const GRAPPLE_RANGE := 40.0
+
 # Big rocks that take a few hits rather than one - see _spawn_target()/
 # _hit_weak_spot(). BIG_ROCK_RADIUS is also read by _spawn_weak_spot() to
 # place the weak spot ON the rock's surface, so the two stay in sync if
 # this is ever retuned.
-const BIG_ROCK_RADIUS := 0.9
+const BIG_ROCK_RADIUS := 1.5
 const WEAK_SPOT_RADIUS := 0.16
 # MODIFIED: was randi_range(MIN_HITS_TO_DESTROY, MAX_HITS_TO_DESTROY) * an
 # HP pool reduced by DAMAGE_PER_HIT each hit (2-3 hits' worth, randomized
@@ -55,7 +60,10 @@ var _rock_hits: Dictionary = {}   # rock -> int
 # rocks - hit rock 1, the next spot might land back on rock 1 again, or
 # jump to rock 5, then rock 4, same rock never guaranteed to repeat or
 # rotate in order.
-var _active_weak_spot: MeshInstance3D = null
+# MODIFIED: was MeshInstance3D - _spawn_weak_spot() returns an Area3D now
+# (a real collidable node the beam's raycast can hit, with a Sprite3D and
+# CollisionShape3D as its own children), not a bare mesh.
+var _active_weak_spot: Area3D = null
 var _active_weak_spot_rock: MeshInstance3D = null
 
 # Guards _finish_now() against emitting `finished` twice - it's reachable
@@ -177,7 +185,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pitch = clampf(_pitch - motion.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
 		_update_camera()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		_shoot()
+		_grapple()
 
 func _update_camera() -> void:
 	var forward := _base_forward.rotated(Vector3.UP, _yaw)
@@ -224,23 +232,48 @@ func _random_point_on_sphere(radius: float) -> Vector3:
 		dir = Vector3.UP
 	return dir.normalized() * radius
 
-func _spawn_weak_spot(rock: MeshInstance3D) -> MeshInstance3D:
-	var spot := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = WEAK_SPOT_RADIUS
-	mesh.height = WEAK_SPOT_RADIUS * 2.0
-	spot.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.9, 0.2)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.85, 0.1)
-	mat.emission_energy_multiplier = 2.0
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	spot.material_override = mat
+# MODIFIED: was res://assets/target.png, which doesn't exist anywhere in
+# the project - the real file is at res://icons/target.png (already
+# imported, see its own .import file). Also parents `spot` to `rock` now
+# (never actually added anywhere before - an Area3D that isn't in the
+# tree neither renders its Sprite3D nor gets seen by any physics query,
+# no matter how correctly its shape is sized), and positions it at a
+# random point on the rock's own surface instead of dead center, the same
+# way the old sphere-mesh weak spot did.
+const WEAK_SPOT_TEXTURE: Texture2D = preload("res://icons/target.png")
+
+# MODIFIED (added): sprite.pixel_size was never set, so Sprite3D used its
+# own default (0.01 world units/pixel) - target.png is 512x512, so that
+# rendered as a 5.12-unit sprite regardless of anything in this scene,
+# dwarfing a rock that's only BIG_ROCK_RADIUS*2 units across. Set
+# explicitly here so the sprite's actual on-screen size is
+# WEAK_SPOT_RADIUS*2 (its intended diameter) no matter what resolution
+# the source texture happens to be - the collision shape below already
+# derives from texture_size * pixel_size, so fixing pixel_size here
+# automatically fixes the hitbox size too, no separate change needed there.
+func _spawn_weak_spot(rock: MeshInstance3D) -> Area3D:
+	var spot := Area3D.new()
+	var sprite := Sprite3D.new()
+	sprite.texture = WEAK_SPOT_TEXTURE
+	var texture_size := WEAK_SPOT_TEXTURE.get_size()
+	sprite.pixel_size = (WEAK_SPOT_RADIUS * 2.0) / texture_size.x
+	spot.add_child(sprite)
+
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(
+		texture_size.x * sprite.pixel_size,
+		texture_size.y * sprite.pixel_size,
+		0.1
+	)
+	collision.shape = shape
+	spot.add_child(collision)
+
 	rock.add_child(spot)
 	spot.position = _random_point_on_sphere(BIG_ROCK_RADIUS)
-	return spot
 
+	return spot
+	
 # Picks ONE random rock out of whatever's still alive in _targets and
 # gives it a fresh weak spot at a new random surface point - called once
 # after the initial burst (_spawn_loop()) and again after every single
@@ -260,6 +293,31 @@ func _assign_next_weak_spot() -> void:
 	var rock: MeshInstance3D = _targets.pick_random()
 	_active_weak_spot_rock = rock
 	_active_weak_spot = _spawn_weak_spot(rock)
+	_start_weak_spot_timeout(_active_weak_spot)
+
+# No penalty for missing the window - per the user's own call, nothing
+# should cost the player here except a rock actually landing on them
+# (object_hit, handled entirely by _land()/battle.gd). This just moves
+# the spot on to a new random rock after WEAK_SPOT_TIMEOUT seconds if
+# nobody's hit it yet, same as a hit or a landed rock would, just without
+# either of those side effects.
+#
+# `spot` is captured by value at the moment this starts, not read fresh
+# off _active_weak_spot later - by the time this timer fires, a hit or a
+# landed rock may have ALREADY reassigned _active_weak_spot to something
+# else entirely (or to null, if every rock's gone). Comparing the current
+# _active_weak_spot against this specific captured `spot` is what tells
+# this timeout "is the thing I was timing still even the active one," so
+# a stale timer can't stomp on a reassignment that already happened for a
+# real reason.
+const WEAK_SPOT_TIMEOUT := 2.0
+
+func _start_weak_spot_timeout(spot: Area3D) -> void:
+	await get_tree().create_timer(WEAK_SPOT_TIMEOUT).timeout
+	if not is_instance_valid(self):
+		return
+	if _active_weak_spot == spot:
+		_assign_next_weak_spot()
 
 # Eight fixed candidate squares positioned right in front of the enemy
 # (source_position) - four at one spacing and four at double that
@@ -295,96 +353,48 @@ func _spawn_target(spawn: Vector3) -> void:
 	tween.tween_property(rock, "global_position", eye, FLIGHT_TIME)
 	tween.finished.connect(func() -> void: _land(rock))
 
-# MODIFIED: used to check every live rock's OWN weak spot (one per rock)
-# for the closest one to the aim, plus every decoy - now there's only
-# ever ONE active weak spot total (_active_weak_spot), shared across the
-# whole group, and decoys are gone entirely, so this just checks that
-# single point.
-func _shoot() -> void:
-	if _active_weak_spot == null or not is_instance_valid(_active_weak_spot):
-		return
-	var aim := -stage_camera.global_transform.basis.z.normalized()
-	var angle := aim.angle_to((_active_weak_spot.global_position - stage_camera.global_position).normalized())
-	if angle <= HIT_ANGLE:
-		_hit_weak_spot(_active_weak_spot_rock)
-func _grapple(aim_dir: Vector3) -> void:
-	var dir: Vector3 = aim_dir.normalized() if aim_dir.length() > 0.01 else -target_actor.basis.z
-	var space := get_world_3d().direct_space_state
-	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
+# MODIFIED: this used to try to get 3D-space methods (get_world_3d(),
+# global_position, basis) off `self` - but this class extends Control,
+# not Node3D, and GDScript has no multiple inheritance (a script is
+# always exactly one base class; Control and Node3D are unrelated
+# siblings under Node, not something you can combine). There's no version
+# of this class that has its own 3D transform - the fix is to get 3D-space
+# access through a real Node3D this script already holds a reference to
+# instead: stage_camera, which already lives in the same 3D world as the
+# rocks and already anchors every other aim calculation in this file (see
+# _shoot()'s old angle check, _update_camera()).
+#
+# Replaces the old angle-cone check entirely - a real physics raycast
+# against the weak spot's own CollisionShape3D (sized to match its
+# Sprite3D in _spawn_weak_spot()) IS the "did this land within the target
+# icon's area" check; no separate distance/angle math needed once the
+# shape is sized correctly; whether the ray reached that shape is the
+# whole answer.
+func _grapple() -> void:
+	var from: Vector3 = stage_camera.global_position
+	var dir: Vector3 = -stage_camera.global_transform.basis.z.normalized()
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
+	# Area3D (what the weak spot is - see _spawn_weak_spot()) isn't checked
+	# by a ray query unless this is explicitly turned on - it defaults to
+	# false, only PhysicsBody3D is checked by default.
+	query.collide_with_areas = true
+	var space := stage_camera.get_world_3d().direct_space_state
 	var result := space.intersect_ray(query)
 
 	# Beam end is wherever the ray actually stopped - the max range if it
-	# hit nothing at all, or whatever it struck (anchor or not).
+	# hit nothing at all, or whatever it struck.
 	var beam_end: Vector3 = to if result.is_empty() else (result.position as Vector3)
-	_grapple_beam_vfx(from, beam_end)
+	_grapple_beam(from, beam_end)
 
-	if result.is_empty() or not (result.collider as Node).is_in_group("grapple_anchor"):
+	if result.is_empty():
 		return
+	if result.collider == _active_weak_spot and is_instance_valid(_active_weak_spot):
+		_hit_weak_spot(_active_weak_spot_rock)
 
-	_ability_cooldown = GRAPPLE_COOLDOWN
-	_is_grappling = true
-	var target: Vector3 = (result.collider as Node3D).global_position
-
-	# The anchor gets a chance to react to being reached, independent of
-	# the pull itself - grapple_anchor.gd's on_grappled_to() is what
-	# unlocks Staff_Diver's signal ability for the gap sequence. Diver
-	# doesn't know or care what the anchor does with this; it just offers.
-	if (result.collider as Node).has_method("on_grappled_to"):
-		(result.collider as Node).call("on_grappled_to")
-
-	velocity = Vector3.ZERO
-	var tw := create_tween()
-	# Stop a short step short of the anchor's own center, not on top of it.
-	var stop_at: Vector3 = target - dir * 1.0
-	tw.tween_property(self, "global_position", stop_at, GRAPPLE_PULL_DURATION)
-	tw.tween_callback(func() -> void: _is_grappling = false)
-
-# Throwaway visual: a thin beam from where the diver fired to wherever the
-# shot actually ended (hit or not), fading out over the pull's own
-# duration regardless of whether a pull happens. Fixed in place once
-# spawned (doesn't track the diver mid-pull) - "you fired a line" reads
-# fine without the beam continuously updating.
-func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
-	var dist := from.distance_to(to)
-	if dist < 0.01:
-		return
-	var beam := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.height = dist
-	cyl.top_radius = 0.05
-	cyl.bottom_radius = 0.05
-	beam.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.95, 0.85, 0.3, 0.9)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	beam.material_override = mat
-
-	get_parent().add_child(beam)
-	beam.global_position = (from + to) * 0.5
-	beam.look_at(to, Vector3.UP)
-	beam.rotate_object_local(Vector3.RIGHT, PI / 2.0)   # CylinderMesh's long axis is local Y, look_at faces -Z
-
-	var tw := create_tween()
-	tw.tween_property(mat, "albedo_color:a", 0.0, GRAPPLE_PULL_DURATION)
-	tw.tween_callback(beam.queue_free)
-
-
-# One hit on the CURRENT weak spot - always +1 toward that rock's
-# HITS_TO_DESTROY count, flashed red so a hit reads as a hit regardless
-# of whether it's lethal this time. Not lethal until the count actually
-# reaches HITS_TO_DESTROY - short of that the rock stays alive and
-# flying. Either way, a hit always moves the weak spot on to a new random
-# rock (_assign_next_weak_spot()) - that "always advance, whether or not
-# this one died" is what makes which rock is live next feel unpredictable
-# instead of a fixed rotation.
 func _hit_weak_spot(rock: MeshInstance3D) -> void:
 	var hits: int = int(_rock_hits.get(rock, 0)) + 1
 	_rock_hits[rock] = hits
-	if _active_weak_spot != null and is_instance_valid(_active_weak_spot):
-		_grapple_beam(stage_camera.global_position, _active_weak_spot.global_position)
 	_flash_rock_red(rock)
 	if hits >= HITS_TO_DESTROY:
 		_destroy_target(rock)
@@ -511,7 +521,7 @@ func auto_intercept_closest() -> bool:
 	if _active_weak_spot == null or not is_instance_valid(_active_weak_spot) or stage_camera == null:
 		return false
 	stage_camera.look_at(_active_weak_spot.global_position, Vector3.UP)
-	_shoot()
+	_grapple()
 	return true
 
 # Battle-lifecycle verification uses direct resolution so its assertions

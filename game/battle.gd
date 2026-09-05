@@ -121,19 +121,36 @@ const BASE_MOVES := {
 	],
 }
 
-const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": false}
+# MODIFIED: quick_time_bool was false - the QTE used to only ever be
+# reachable through ENEMY_HEAVY_MOVE, so a normal swing could never
+# trigger it at all. Both enemy moves are QTE-eligible now; whether one
+# actually fires is an independent roll at the point of use (see
+# ENEMY_QTE_CHANCE/_resolve_attack()), decoupled entirely from which move
+# got chosen.
+const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": true}
 
 # A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
 # branch for how heavy_min/heavy_max actually turn into damage (a fraction
 # of the DEFENDER's max HP, not power/strength like ENEMY_MOVE). Lower
 # acc_mod than the normal swing - a hit this dangerous should be a little
-# more telegraphed/missable, not just as reliable as a Jab. Definitely
-# QTE-gated: this is exactly the swing the dodge system exists for.
+# more telegraphed/missable, not just as reliable as a Jab.
 const ENEMY_HEAVY_MOVE := {
 	"power": 0, "acc_mod": -1, "quick_time_bool": true,
 	"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
 }
+# MODIFIED: was briefly dropped to 0.25 when this was still the QTE's own
+# frequency knob (heavy swing and QTE used to be 1:1) - now that the QTE
+# is its own independent roll (ENEMY_QTE_CHANCE) on either move, this
+# constant goes back to just meaning "how often is this a heavy swing,"
+# its original 0.3, with no more hidden coupling to QTE frequency.
 const ENEMY_HEAVY_CHANCE := 0.3
+
+# How often ANY enemy attack (normal or heavy - both are quick_time_bool
+# true now) actually triggers the QTE, checked independently of which
+# move was chosen - see _resolve_attack()'s own use of this. Player moves
+# never carry quick_time_bool at all, so this only ever applies to the
+# enemy's own turn regardless.
+const ENEMY_QTE_CHANCE := 0.25
 
 # Raised in place of ENEMY_HEAVY_CHANCE when the chosen target is already
 # low enough that a heavy swing's own damage range could plausibly finish
@@ -236,8 +253,13 @@ var qte_root: HBoxContainer
 var qte_track: Control
 var qte_zone: ColorRect
 var qte_indicator: ColorRect
-const QTE_TRACK_WIDTH := 150.0
-const QTE_TRACK_HEIGHT := 14.0
+# MODIFIED: both scaled up 25% (150->187.5, 14->17.5) to make the whole
+# popup physically bigger on screen - zone_width_frac/zone_start_frac in
+# _quick_time_event() stay exactly as they were (fractions of this track,
+# not absolute pixels), so the hit zone's actual on-screen size grows
+# right along with the track automatically, no separate change needed.
+const QTE_TRACK_WIDTH := 187.5
+const QTE_TRACK_HEIGHT := 17.5
 
 # Set for the duration of one _quick_time_event() call - _unhandled_input()
 # only ever looks at these while _qte_active is true, so a stray X press
@@ -415,6 +437,24 @@ func _build_stage() -> void:
 	# it's built around one character's ability minigame (see _do_enemy_
 	# turn()'s special_encounter branch), not a real multi-enemy fight.
 	var count := 1 if special_encounter else randi_range(MIN_ENEMIES, MAX_ENEMIES)
+	# MODIFIED (added): make_stats() below scales the grunt to be a
+	# credible threat against `ref_stats` regardless of context - in a
+	# normal fight that reference is a full party's average, worn down by
+	# three attackers' combined output. `party` is just the one chosen
+	# diver in a special encounter (see _start_battle()'s custom_party),
+	# so `ref_stats` here is really just that solo diver's own stats - the
+	# grunt came out exactly as tough as a normal-fight grunt, but with
+	# only one diver's own moveset chipping away at it instead of three,
+	# which is why a special encounter dragged on far longer than intended
+	# and read as "barely doing any damage." Halving hp_max/defense
+	# specifically (not the grunt's own offense - strength/agility/
+	# accuracy/evasion are untouched, this isn't about it hitting softer)
+	# brings a solo fight's pace back in line with a normal one. _edge()'s
+	# own 1.08x-1.35x difficulty bump in make_stats() still applies on top
+	# of this, same as any other fight.
+	if special_encounter:
+		ref_stats.hp_max = maxi(1, int(round(float(ref_stats.hp_max) * 0.5)))
+		ref_stats.defense = int(round(float(ref_stats.defense) * 0.5))
 	for i in range(count):
 		var g := Goblin.new()
 		g.position = Vector3(_spread(i, count, 1.1) + 0.6, 0.0, enemy_z)
@@ -620,11 +660,15 @@ func _build_quick_time_ui() -> void:
 	qte_root.visible = false
 	add_child(qte_root)
 
+	# MODIFIED: panel/glyph both scaled up 25% (34->42.5, 17->21.25 radius,
+	# font 18->23) to match QTE_TRACK_WIDTH/HEIGHT's own 25% increase -
+	# the button and the track are meant to read as one popup, not a
+	# bigger track next to an unchanged button.
 	var button_panel := Panel.new()
-	button_panel.custom_minimum_size = Vector2(34, 34)
+	button_panel.custom_minimum_size = Vector2(42.5, 42.5)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.85, 0.75, 0.2)
-	style.set_corner_radius_all(17)
+	style.set_corner_radius_all(21)
 	button_panel.add_theme_stylebox_override("panel", style)
 	qte_root.add_child(button_panel)
 
@@ -633,7 +677,7 @@ func _build_quick_time_ui() -> void:
 	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
 	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	glyph.add_theme_font_size_override("font_size", 18)
+	glyph.add_theme_font_size_override("font_size", 23)
 	glyph.add_theme_color_override("font_color", Color(0.12, 0.09, 0.02))
 	button_panel.add_child(glyph)
 
@@ -650,12 +694,12 @@ func _build_quick_time_ui() -> void:
 	# moves and resizes per attack) - these are just placeholders until then.
 	qte_zone = ColorRect.new()
 	qte_zone.color = Color(0.85, 0.2, 0.2)
-	qte_zone.size = Vector2(24, QTE_TRACK_HEIGHT)
+	qte_zone.size = Vector2(30, QTE_TRACK_HEIGHT)
 	qte_track.add_child(qte_zone)
 
 	qte_indicator = ColorRect.new()
 	qte_indicator.color = Color(0.95, 0.95, 0.9)
-	qte_indicator.size = Vector2(3, QTE_TRACK_HEIGHT)
+	qte_indicator.size = Vector2(3.75, QTE_TRACK_HEIGHT)
 	qte_track.add_child(qte_indicator)
 
 # Races a keypress against the sweep reaching the end of the track - both
@@ -1058,7 +1102,20 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	_busy = true
 	_set_all_buttons(false)
 	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
+	var kind := String(Items.ITEMS.get(item_id, {}).get("kind", ""))
+	var amount := int(Items.ITEMS.get(item_id, {}).get("amount", 0))
 	var msg := Items.grant(item_id, target.stats as CombatantStats)
+	# MODIFIED (added): attack_up/defense_up are battle_only and only
+	# supposed to last THIS fight - Items.grant() above already applied the
+	# raw stat increase (same as any other consumable), so this just
+	# remembers what to subtract back off before the battle actually ends
+	# (see _revert_temp_buffs(), called from all three finished.emit()
+	# sites). Recorded by field name rather than by item_id specifically,
+	# so a future third "for this fight" stat item needs no changes here -
+	# just another kind -> field mapping.
+	var temp_field: String = {"attack_up": "strength", "defense_up": "defense"}.get(kind, "")
+	if temp_field != "":
+		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount})
 	var count: int = int(world.inventory.get(item_id, 0))
 	world.inventory[item_id] = count - 1
 	if world.inventory[item_id] <= 0:
@@ -1067,6 +1124,30 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	_log(msg if msg != "" else "%s - nothing happened." % display)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
+
+# Every attack_up/defense_up applied so far this battle, as {stats, field,
+# amount} - see _resolve_item() above for how entries get added, and
+# _revert_temp_buffs() for how they come back off. A plain Array rather
+# than keying by `stats` directly, since the same diver could use more
+# than one of these across a single fight and each application needs its
+# own amount subtracted back off independently.
+var _temp_buffs: Array[Dictionary] = []
+
+# Called from every one of this battle's three end points (_win(), _lose(),
+# the flee handler) right before finished.emit() - a temporary buff is
+# scoped to THIS fight specifically, so it needs to come back off no
+# matter how the fight actually ends, not just on a win. Reads `field`
+# dynamically via CombatantStats.set()/get() rather than a match on
+# "strength"/"defense" by name, so adding a third temp-buffable field
+# later needs no changes here.
+func _revert_temp_buffs() -> void:
+	for entry in _temp_buffs:
+		var s := entry.stats as CombatantStats
+		if s == null:
+			continue
+		var field := String(entry.field)
+		s.set(field, int(s.get(field)) - int(entry.amount))
+	_temp_buffs.clear()
 
 func _show_main() -> void:
 	if _busy:
@@ -1192,12 +1273,16 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if String(move.get("effect", "")) == "heavy":
 		heavy_fraction = randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
 
-	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
-	# triggers a QTE - a player's own attacks never set quick_time_bool, so
-	# this is a no-op for anything the player swings themselves. A
-	# successful dodge zeroes incoming outright.
+	# MODIFIED: used to fire the QTE unconditionally whenever quick_time_bool
+	# was set (which used to only ever be ENEMY_HEAVY_MOVE, making the QTE
+	# 1:1 with the heavy swing specifically). Both enemy moves are eligible
+	# now, and this is what actually decides whether one fires THIS time -
+	# an independent ENEMY_QTE_CHANCE roll, same on either move. Player
+	# moves never set quick_time_bool at all, so this is still a no-op for
+	# anything the player swings themselves regardless. A successful dodge
+	# zeroes incoming outright.
 	var player_dodge := false
-	if bool(move.get("quick_time_bool", false)):
+	if bool(move.get("quick_time_bool", false)) and randf() < ENEMY_QTE_CHANCE:
 		player_dodge = await _quick_time_event()
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
 
@@ -1535,8 +1620,17 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, targ
 	add_child(minigame)
 	var total_taken := 0
 	minigame.object_hit.connect(func() -> void:
-		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.65, 0.9)
-		var incoming := maxi(1, int(round(raw)) - target_stats.defense)
+		# MODIFIED: was randf_range(0.65, 0.9) with a maxi(1, ...) floor - a
+		# noticeably softer, differently-shaped formula than rock_dodge's own
+		# (0.85-1.15, floor 0), despite this encounter offering far FEWER
+		# total rocks to land (TARGET_COUNT = 5) than rock_dodge's wave count
+		# (25). A grapple rock is a big, individually meaningful hit like a
+		# rock_dodge rock, not a fine-grained swap-minigame slot, so it
+		# mirrors rock_dodge's exact formula now instead of its own weaker
+		# one - same variance range, same maxi(0, ...) floor (a high enough
+		# defense CAN fully negate a hit here too, same as rock_dodge).
+		var raw: float = (float(ENEMY_MOVE.power) + float(actor.stats.strength)) * randf_range(0.85, 1.15)
+		var incoming := maxi(0, int(round(raw)) - target_stats.defense)
 		target_stats.hp = maxi(0, target_stats.hp - incoming)
 		total_taken += incoming
 		_refresh_bar(target)
@@ -1560,6 +1654,32 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, targ
 	_log("%s intercepts %d/%d targets%s" % [String(target.display_name), hits, total, " without damage!" if total_taken == 0 else " and takes %d damage." % total_taken])
 	if target_stats.hp <= 0 and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
+
+	# MODIFIED (added): was the only one of the three special encounters
+	# with no closing swing at all - straight to _advance_turn() the
+	# instant the minigame ended, win or lose. Now matches
+	# _do_rock_dodge_encounter()/_do_swap_minigame()'s exact same shape,
+	# including the guaranteed dodge on a flawless run (hits >= total -
+	# every rock intercepted, none reaching the diver at all).
+	if target_stats.hp > 0:
+		if hits >= total:
+			_log("%s's flawless run leaves %s no opening to follow up!" % [String(target.display_name), String(actor.display_name)])
+		else:
+			var mult := _enemy_power_mult()
+			var move_dict: Dictionary = ENEMY_MOVE.duplicate()
+			move_dict.power = float(move_dict.get("power", 0)) * mult
+			var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
+			_refresh_bar(target)
+			if bool(r.get("dodged", false)):
+				_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
+			elif not r.hit:
+				_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
+			else:
+				_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
+				target.actor.flash_damage(1)
+			if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
+				(target.actor as Diver).play_death_fade()
+
 	_special_round += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
@@ -1651,20 +1771,30 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, target_stat
 	# matter how long the fight drags on; only this closing swing is
 	# supposed to get scarier the longer it goes.
 	if target_stats.hp > 0:
-		var mult := _enemy_power_mult()
-		var move_dict: Dictionary = ENEMY_MOVE.duplicate()
-		move_dict.power = float(move_dict.get("power", 0)) * mult
-		var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
-		_refresh_bar(target)
-		if bool(r.get("dodged", false)):
-			_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
-		elif not r.hit:
-			_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
+		# MODIFIED (added): a flawless round (hits >= total - every rock
+		# shockwaved, every portrait swapped correctly) now guarantees
+		# dodging this closing swing entirely, rather than it staying a
+		# pure _resolve_attack() accuracy/evasion roll totally unrelated to
+		# how the minigame itself went. Clearing the whole thing perfectly
+		# earning a guaranteed dodge is a real reward for playing it well,
+		# not just "still whatever the dice say."
+		if hits >= total:
+			_log("%s's flawless run leaves %s no opening to follow up!" % [String(target.display_name), String(actor.display_name)])
 		else:
-			_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
-			target.actor.flash_damage(1)
-		if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
-			(target.actor as Diver).play_death_fade()
+			var mult := _enemy_power_mult()
+			var move_dict: Dictionary = ENEMY_MOVE.duplicate()
+			move_dict.power = float(move_dict.get("power", 0)) * mult
+			var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
+			_refresh_bar(target)
+			if bool(r.get("dodged", false)):
+				_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
+			elif not r.hit:
+				_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
+			else:
+				_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
+				target.actor.flash_damage(1)
+			if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
+				(target.actor as Diver).play_death_fade()
 
 	_special_round += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -1744,20 +1874,30 @@ func _do_swap_minigame(actor: Dictionary, target: Dictionary, target_stats: Comb
 	# matter how long the fight drags on; only this closing swing is
 	# supposed to get scarier the longer it goes.
 	if target_stats.hp > 0:
-		var mult := _enemy_power_mult()
-		var move_dict: Dictionary = ENEMY_MOVE.duplicate()
-		move_dict.power = float(move_dict.get("power", 0)) * mult
-		var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
-		_refresh_bar(target)
-		if bool(r.get("dodged", false)):
-			_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
-		elif not r.hit:
-			_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
+		# MODIFIED (added): a flawless round (hits >= total - every rock
+		# shockwaved, every portrait swapped correctly) now guarantees
+		# dodging this closing swing entirely, rather than it staying a
+		# pure _resolve_attack() accuracy/evasion roll totally unrelated to
+		# how the minigame itself went. Clearing the whole thing perfectly
+		# earning a guaranteed dodge is a real reward for playing it well,
+		# not just "still whatever the dice say."
+		if hits >= total:
+			_log("%s's flawless run leaves %s no opening to follow up!" % [String(target.display_name), String(actor.display_name)])
 		else:
-			_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
-			target.actor.flash_damage(1)
-		if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
-			(target.actor as Diver).play_death_fade()
+			var mult := _enemy_power_mult()
+			var move_dict: Dictionary = ENEMY_MOVE.duplicate()
+			move_dict.power = float(move_dict.get("power", 0)) * mult
+			var r: Dictionary = await _resolve_attack(actor.stats, target_stats, move_dict)
+			_refresh_bar(target)
+			if bool(r.get("dodged", false)):
+				_log("%s follows up, but %s times it perfectly and dodges clear!" % [String(actor.display_name), String(target.display_name)])
+			elif not r.hit:
+				_log("%s follows up, but %s evades!" % [String(actor.display_name), String(target.display_name)])
+			else:
+				_log("%s follows up for %d." % [String(actor.display_name), int(r.damage)])
+				target.actor.flash_damage(1)
+			if target_stats.hp <= 0 and target.has("actor") and target.actor is Diver:
+				(target.actor as Diver).play_death_fade()
 
 	_special_round += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -1837,6 +1977,7 @@ func _win() -> void:
 			# gave at all, with the spell point itself going unmentioned.
 			_log("%s reached level %d! (+1 spell point)" % [String(entry.display_name), int(lv)])
 			await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_revert_temp_buffs()
 	finished.emit("won")
 
 func _lose() -> void:
@@ -1847,6 +1988,7 @@ func _lose() -> void:
 	target_menu.visible = false
 	_log("The party is battered and pulls back.")
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_revert_temp_buffs()
 	finished.emit("lost")
 
 func _on_run() -> void:
@@ -1859,6 +2001,7 @@ func _on_run() -> void:
 	if randf() <= RUN_CHANCE:
 		_log("The party breaks off and swims for it.")
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		_revert_temp_buffs()
 		finished.emit("fled")
 		return
 

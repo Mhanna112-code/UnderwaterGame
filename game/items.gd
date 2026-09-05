@@ -43,6 +43,24 @@ const ITEMS := {
 		"display": "Reef Plate", "kind": "key",
 		"description": "A key item.",
 	},
+	# battle_only, same as the old Blast Rocks move used to be flagged -
+	# these raise strength/defense only for the fight they're used in.
+	# grant() still just adds `amount` straight onto the stat like every
+	# other consumable here; what makes it TEMPORARY is entirely on
+	# battle.gd's side (_resolve_item() records the amount it just applied,
+	# _revert_temp_buffs() subtracts it back off before the battle actually
+	# ends) - Items itself has no notion of "for one fight," it only ever
+	# grants or doesn't.
+	"attack_up": {
+		"display": "Attack Tonic", "kind": "attack_up", "amount": 4,
+		"description": "Raises strength for the rest of this fight.",
+		"battle_only": true,
+	},
+	"defense_up": {
+		"display": "Defense Shell", "kind": "defense_up", "amount": 3,
+		"description": "Raises defense for the rest of this fight.",
+		"battle_only": true,
+	},
 }
 
 # What a shockwaved rock can pop out - potions weighted heaviest by literal
@@ -87,7 +105,7 @@ static func would_help(item_id: String, s: CombatantStats) -> bool:
 			return s.hp < s.hp_max
 		"oxygen":
 			return s.oxygen < s.oxygen_max
-		"spell_point":
+		"spell_point", "attack_up", "defense_up":
 			return true
 		_:
 			return false
@@ -122,5 +140,11 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 		"spell_point":
 			s.spell_points += int(def.amount)
 			return "Found a %s! +%d spell point" % [display, int(def.amount)]
+		"attack_up":
+			s.strength += int(def.amount)
+			return "%s! Strength up by %d for this fight." % [display, int(def.amount)]
+		"defense_up":
+			s.defense += int(def.amount)
+			return "%s! Defense up by %d for this fight." % [display, int(def.amount)]
 		_:
 			return ""
