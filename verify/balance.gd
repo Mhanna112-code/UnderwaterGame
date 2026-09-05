@@ -265,8 +265,13 @@ func _party_turn(actor: Dictionary, party: Array, enemies: Array, policy: String
 		move = _best_move(actor.stats as CombatantStats, target.stats as CombatantStats, affordable)
 	else:
 		# A novice usually presses the first damaging button, but sometimes
-		# experiments with another affordable attack.
-		var damaging := affordable.filter(func(mv: Dictionary) -> bool: return int(mv.get("power", 0)) > 0)
+		# experiments with another affordable attack. Formula-backed V2 moves
+		# have no legacy `power` field; omitting them made the casual simulator
+		# skip every Scuba turn and only went unnoticed while the other two
+		# divers still carried their inflated prototype stats.
+		var attacker_stats := actor.stats as CombatantStats
+		var damaging := affordable.filter(func(mv: Dictionary) -> bool:
+			return CombatRules.formula_value(attacker_stats, mv.get("formula", {})) > 0 if mv.has("formula") else int(mv.get("power", 0)) > 0)
 		if damaging.is_empty():
 			return
 		move = damaging[0] if rng.randf() < 0.7 else damaging[rng.randi_range(0, damaging.size() - 1)]

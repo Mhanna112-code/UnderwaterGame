@@ -16,6 +16,8 @@ casual-to-skilled strategy curve.
 | BAL-5 | Both policies are assigned automatic QTE failure, so “skilled” measures move greed only. | High: it does not model the skill expression the player actually has. | Certain | Give named policies fixed, declared heavy-dodge success rates while keeping all other seeded inputs comparable. | Fixed: casual 30%, skilled 80%, declared in code/report. |
 | BAL-6 | A successful route can still depend on an implausible lucky encounter count. | High: headline success conceals why runs pass. | Medium | Report route successes, random fights, guardian fights, grunts defeated, end level, and remaining HP by policy. | Fixed; final successful runs average 4.1/4.6 battles and 5.3/6.5 grunts. |
 | BAL-7 | Test enemy scaling can drift from production's living-party reference. | High: dead members in the average make later enemies unlike the shipped game. | Medium | Build each pack from the average of living party members and production Goblin edge/floor constants. | Fixed. |
+| BAL-8 | The casual policy treats formula-backed Scuba moves as non-damaging because they have no legacy `power` field. | High: the simulator silently skips the authored accuracy specialist's turns and reports the wrong strategy curve. | Observed after normalizing the roster. | Select damaging moves through the production formula evaluator when a formula is present. | Fixed; RED exposed skipped Scuba turns, GREEN exercises her formula moves. |
+| BAL-9 | The ordinary enemy's nine flat power was balanced against legacy 26/42-HP teammates and routinely one-shots the authored 10/10/10 roster. | Critical: a casual player cannot survive the required chain of encounters even though every player stat is correct. | Observed: unchanged tuning produced 9.2%/30.0% route completion. | Run the fixed-seed isolated and persistent-route gates against the exact authored roster before accepting enemy tuning. | Fixed on the same small-number scale: ordinary power 3 and HP floor 15. |
 
 ## Invariants fixed before tuning
 
@@ -43,10 +45,13 @@ casual-to-skilled strategy curve.
 
 ## Post-write evaluation
 
-RED on prior production tuning: casual route 1.7%, skilled route 20.0%, and
-casual 0/38 against three grunts. After the level-1 pack/guardian correction,
-the route was still RED at 19.2%/56.2%, isolating cumulative attrition. GREEN
-after adding partial victory recovery. A later fidelity correction carried
-partial segment distance and applied real growth fields. Final GREEN is casual
-50.4%, skilled 84.6%, a 34.2-point gap; full `verify/gates.sh` and both local
-and deployed browser gates are clean.
+PR #54's original RED was casual route 1.7%, skilled route 20.0%, and casual
+0/38 against three grunts; its historical mixed-roster GREEN was 50.4%/84.6%.
+Normalizing all three players to Glassgoat's authored 10 HP reopened the gate at
+9.2%/30.0% and exposed that the casual policy skipped every formula-backed
+Scuba attack. Fixing simulator fidelity alone raised isolated casual wins to
+39.2% but left route completion at 11.2%/30.0%. Retuning ordinary enemies on
+the same small-number scale produced final GREEN: 85.0%/98.3% isolated wins,
+53.3%/93.3% route completion, and a 40-point skill gap. Successful casual and
+skilled routes average 5.0 and 6.6 defeated grunts respectively, so success does
+not depend on avoiding combat.

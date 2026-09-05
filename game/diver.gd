@@ -57,16 +57,15 @@ var SONAR_INTERVAL := 0.2
 # COMBAT STATS
 # ============================================================
 
-# One spread per playable model, chosen to give TAB an actual reason to
-# matter in a fight rather than just changing which mesh is on screen:
-# Staff_Diver even, Prototype_1 fast/precise/fragile, Prototype_V
-# slow/sturdy. grow_* is how much each stat ticks up per level (see
-# combatant_stats.gd) - different per diver so leveling reinforces the
-# spread instead of flattening it out.
-# evasion/accuracy/barrier_max are identity traits, not leveled (no grow_*
-# for them) - Prototype_1 is nimble (high evasion, high accuracy) rather
-# than shielded, Prototype_V is the reverse. Keeps the three spreads
-# distinct even after several level-ups, instead of every stat converging.
+# Glassgoat's September V2 baseline deliberately gives every diver 10 HP
+# and differentiates them through role stats: Scuba is the mobile accurate
+# specialist, Cyclops is the even spread, and Bucky is the slow armored
+# hitter. The earlier mixed 10/26/42 scale made Scuba strictly worse than
+# the two characters whose V2 blocks had not yet been ported.
+#
+# grow_* remains this game's level progression layer. It starts from the
+# authored level-one contract below instead of silently replacing that
+# contract with the older prototype numbers.
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
@@ -76,15 +75,15 @@ const BASE_STATS := {
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
-		"hp": 26, "strength": 8, "defense": 1, "agility": 8,
-		"evasion": 8, "accuracy": 8, "barrier_max": 0,
+		"hp": 10, "strength": 2, "defense": 2, "agility": 2,
+		"evasion": 2, "accuracy": 2, "barrier_max": 0,
 		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
-		"hp": 42, "strength": 3, "defense": 6, "agility": 3,
-		"evasion": 2, "accuracy": 4, "barrier_max": 10,
+		"hp": 10, "strength": 4, "defense": 4, "agility": 1,
+		"evasion": 0, "accuracy": 1, "barrier_max": 0,
 		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",

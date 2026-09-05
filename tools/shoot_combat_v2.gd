@@ -44,6 +44,10 @@ func _stage_evidence() -> void:
 	if mode == "moves":
 		battle._show_moves()
 		return
+	if mode == "formulas":
+		battle._show_moves()
+		battle._toggle_move_details()
+		return
 	if mode == "target":
 		battle._show_moves()
 		battle._on_move_chosen(CombatMoves.SCUBA[0])
