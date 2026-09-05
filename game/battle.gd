@@ -493,6 +493,17 @@ func _build_stage() -> void:
 	var container := SubViewportContainer.new()
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.stretch = true
+	# MODIFIED (added): a Control's default mouse_filter is STOP, and this
+	# container covers the entire battle screen (PRESET_FULL_RECT) - every
+	# mouse motion/click landing anywhere on it was being consumed right
+	# here before it could ever reach _unhandled_input(), which is exactly
+	# how GrappleInterceptMinigame's own mouse-look/left-click-to-grapple
+	# input (added as a sibling Control on this same CanvasLayer, see
+	# _do_grapple_intercept_encounter()) receives look and fire at all.
+	# IGNORE lets those events pass straight through; nothing embedded in
+	# the 3D stage viewport itself needs real mouse input (targeting is
+	# keyboard-driven, see world.gd's target_selector).
+	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(container)
 	_stage_container = container
 	container.resized.connect(_frame_stage_camera)

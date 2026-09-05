@@ -78,6 +78,13 @@ var key_items: Array[String] = []
 # leaving this "revealed but unclaimed" state once it's actually claimed.
 var revealed_key_items: Array[String] = []
 
+# Every guardian _build_item_guardians() placed, as {item, guardian, decoy} -
+# read each frame by _update_item_guardian_visibility() so a guardian (and
+# its decorative decoy) only actually renders once sonar has revealed its
+# item id into revealed_key_items above. Before that, discovery is sonar's
+# job alone - swimming past one blind should show nothing to look at.
+var _item_guardians: Array[Dictionary] = []
+
 # Every persistable world object (breakable rocks, the entrance blockade -
 # see _build_breakable_rocks()/_build_highway()) that's already been
 # consumed this run, by a stable id string ("rock_0", "entrance_blockade",
@@ -831,6 +838,15 @@ func _build_item_guardians() -> void:
 	for entry in ItemGuardian.spots():
 		if key_items.has(String(entry.item)):
 			continue
+		# MODIFIED (added): the site's own berm/columns/plinth (see site.gd)
+		# are pure decoration - no CollisionShape3D anywhere in that class -
+		# so hiding them costs nothing physically. Every combat site on the
+		# map today happens to be a guarded one, which made the ring itself
+		# just as much a "there's treasure here" marker as the guardian
+		# standing on it. Folded into the same guardian/decoy visibility
+		# below (see _update_item_guardian_visibility()) so all three
+		# reveal together the instant sonar actually finds this spot.
+		var site_node: Node3D = site_nodes.get(String(entry.get("site", "")))
 		var guardian := ItemGuardian.new()
 		guardian.item_id = String(entry.item)
 		guardian.look = String(entry.get("look", "urchin"))
@@ -850,6 +866,18 @@ func _build_item_guardians() -> void:
 		add_child(decoy)
 
 		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
+
+		# MODIFIED (added): sonar alone reveals a guardian now - both start
+		# hidden and _update_item_guardian_visibility() (called from
+		# _physics_process()) brings them into view the instant this item's
+		# id lands in revealed_key_items, never before. The Area3D trigger
+		# itself stays live either way (visible has no effect on physics),
+		# so blindly swimming into an unrevealed one still starts the fight.
+		guardian.visible = revealed_key_items.has(String(entry.item))
+		decoy.visible = guardian.visible
+		if site_node != null:
+			site_node.visible = guardian.visible
+		_item_guardians.append({"item": String(entry.item), "guardian": guardian, "decoy": decoy, "site": site_node})
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1306,6 +1334,24 @@ func _physics_process(dt: float) -> void:
 	_update_banner(dt)
 	_update_save_point_prompt()
 	_check_gap_puzzle()
+	_update_item_guardian_visibility()
+
+# Keeps every still-live guardian's (and its decoy's) visibility in sync
+# with revealed_key_items - a plain re-check each frame rather than an
+# event fired from Diver.update_sonar(), since there are only ever a
+# couple of these and a claimed guardian is freed (see _on_battle_finished)
+# rather than ever needing to go back to hidden.
+func _update_item_guardian_visibility() -> void:
+	for entry in _item_guardians:
+		if not is_instance_valid(entry.guardian):
+			continue
+		var revealed := revealed_key_items.has(String(entry.item))
+		entry.guardian.visible = revealed
+		if is_instance_valid(entry.decoy):
+			entry.decoy.visible = revealed
+		var site_node: Node3D = entry.get("site")
+		if site_node != null and is_instance_valid(site_node):
+			site_node.visible = revealed
 
 func _player_dir() -> Vector3:
 	if scripted:

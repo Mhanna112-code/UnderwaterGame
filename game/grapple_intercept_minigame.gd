@@ -15,7 +15,10 @@ signal object_hit
 # waves to use it up.
 const TARGET_COUNT := 5
 const TITLE_HOLD := 0.8
-const FLIGHT_TIME := 3.2
+# MODIFIED: was 3.2 - still felt like the rocks crossed the whole
+# distance too fast to comfortably aim and grapple twice. Doubled (halving
+# actual travel speed) rather than touching the distance itself.
+const FLIGHT_TIME := 6.4
 const HIT_ANGLE := deg_to_rad(7.0)
 const LOOK_SENSITIVITY := 0.0035
 const MAX_YAW := 0.75
@@ -30,7 +33,9 @@ const GRAPPLE_RANGE := 40.0
 # _hit_weak_spot(). BIG_ROCK_RADIUS is also read by _spawn_weak_spot() to
 # place the weak spot ON the rock's surface, so the two stay in sync if
 # this is ever retuned.
-const BIG_ROCK_RADIUS := 1.5
+# MODIFIED: was 1.5 - still read as way too large relative to the stage/
+# weak-spot icon. Halved again.
+const BIG_ROCK_RADIUS := 0.75
 const WEAK_SPOT_RADIUS := 0.16
 # MODIFIED: was randi_range(MIN_HITS_TO_DESTROY, MAX_HITS_TO_DESTROY) * an
 # HP pool reduced by DAMAGE_PER_HIT each hit (2-3 hits' worth, randomized
@@ -257,7 +262,22 @@ func _spawn_weak_spot(rock: MeshInstance3D) -> Area3D:
 	sprite.texture = WEAK_SPOT_TEXTURE
 	var texture_size := WEAK_SPOT_TEXTURE.get_size()
 	sprite.pixel_size = (WEAK_SPOT_RADIUS * 2.0) / texture_size.x
+	# MODIFIED (added): the spot sits ON the rock's own surface (see the
+	# random-point-on-sphere placement below), which means the rock's own
+	# opaque mesh is exactly as likely to be BETWEEN the camera and the
+	# spot as not - normal depth testing then just hides it behind the
+	# rock from half the angles it can land on. no_depth_test makes it
+	# draw regardless of what's in front of it (a real see-through-the-rock
+	# marker, not a bigger icon that's still only visible from the front),
+	# and unshaded plus a bright, pulsing modulate is what actually reads
+	# as "aim here" at a glance instead of blending into the rock's own
+	# brown. render_priority keeps it drawing above other unshaded/
+	# no-depth-test overlays too (the grapple beam), not just the rock.
+	sprite.no_depth_test = true
+	sprite.shaded = false
+	sprite.render_priority = 1
 	spot.add_child(sprite)
+	_pulse_weak_spot(sprite)
 
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
@@ -273,6 +293,12 @@ func _spawn_weak_spot(rock: MeshInstance3D) -> Area3D:
 	spot.position = _random_point_on_sphere(BIG_ROCK_RADIUS)
 
 	return spot
+
+func _pulse_weak_spot(sprite: Sprite3D) -> void:
+	var tw := sprite.create_tween()
+	tw.set_loops()
+	tw.tween_property(sprite, "modulate", Color(1.0, 0.65, 0.15), 0.35)
+	tw.tween_property(sprite, "modulate", Color(1.0, 1.0, 1.0), 0.35)
 	
 # Picks ONE random rock out of whatever's still alive in _targets and
 # gives it a fresh weak spot at a new random surface point - called once
