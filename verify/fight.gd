@@ -30,6 +30,12 @@ const MAX_WALL_SECONDS := 600.0
 # stuck. Generous, because battle.gd deliberately holds the screen for
 # LOG_READ_DELAY after every action and again for each level-up line.
 const MAX_IDLE_SECONDS := 30.0
+# How far from its target an attacker may be when the swing is playing, and
+# how far off the line to it they may be facing. The step in stops
+# SWING_REACH short of the target, so this is that plus room for the models'
+# own width and the tween still settling.
+const MAX_SWING_GAP := 3.6
+const MAX_SWING_ANGLE := 35.0
 
 var world: Node3D
 var findings: Array = []
@@ -40,6 +46,8 @@ var result := ""
 var presses := 0
 var turns := 0
 var swings_seen: Dictionary = {}
+var aim_findings: Dictionary = {}
+var aim_samples := 0
 var reactions_seen: Dictionary = {}
 var party_names: Array = []
 var display_names: Array = []
@@ -53,6 +61,11 @@ var backing := ""
 
 
 func _initialize() -> void:
+	# This is an interaction/animation gate, not the balance simulation (that
+	# is verify/balance.gd across 120 fixed seeds). Fix the RNG so this gate
+	# always exercises the same fight instead of occasionally rolling three
+	# enemies that down a party member before their animation can run.
+	seed(1)
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
 	root.add_child(world)
 	started_ms = Time.get_ticks_msec()
@@ -118,8 +131,51 @@ func _watch(battle: Battle) -> void:
 		var who := String(e.model_name)
 		if playing.contains("(Attack)"):
 			_note(swings_seen, who, playing)
+			_check_aim(battle, e, who)
 		elif playing.contains("(Damaged"):
 			_note(reactions_seen, who, playing)
+
+# Is the swing pointed at anybody?
+#
+# Glass_Goat animated this cast for a 2D presentation, so an attack travels
+# along the character's own forward axis and nowhere else. Every attack used
+# to play on the spot facing whichever way the actor was built facing, which
+# meant Marine Man's hammer reaching most of a body length into open water
+# while the grunt it was aimed at stood off to one side. Reported as "the
+# animations arent aimed at or hit the enemy".
+#
+# Measured against the nearest living enemy, because the attacker has
+# already stepped toward whoever it picked by the time the clip is playing,
+# so the nearest one IS the target.
+func _check_aim(battle: Battle, entry: Dictionary, who: String) -> void:
+	var a := entry.actor as Node3D
+	var nearest: Node3D = null
+	var best := INF
+	for foe in battle.enemies:
+		if not foe.has("actor") or not is_instance_valid(foe.actor):
+			continue
+		if (foe.stats as CombatantStats).hp <= 0:
+			continue
+		var gap: float = a.global_position.distance_to((foe.actor as Node3D).global_position)
+		if gap < best:
+			best = gap
+			nearest = foe.actor as Node3D
+	if nearest == null:
+		return
+
+	aim_samples += 1
+	if best > MAX_SWING_GAP:
+		_note(aim_findings, who, "swung from %.1f m away, further than the %.1f m a swing reaches" % [best, MAX_SWING_GAP])
+		return
+	var to: Vector3 = nearest.global_position - a.global_position
+	to.y = 0.0
+	if to.length() < 0.05:
+		return
+	# rotation.y == 0 faces -Z for these models.
+	var facing := Vector3(-sin(a.rotation.y), 0.0, -cos(a.rotation.y))
+	var off: float = rad_to_deg(facing.angle_to(to.normalized()))
+	if off > MAX_SWING_ANGLE:
+		_note(aim_findings, who, "swung %.0f deg away from the enemy they were aimed at" % off)
 
 func _note(into: Dictionary, who: String, clip: String) -> void:
 	if not into.has(who):
@@ -215,6 +271,13 @@ func _report() -> bool:
 
 	print("backed out of the move menu: %s, out of the target picker: %s" % [
 		"yes" if backed_out_of_moves else "NO", "yes" if backed_out_of_targets else "NO"])
+	print("aim: %d swing samples checked" % aim_samples)
+	if aim_samples == 0:
+		findings.append("NEVER CHECKED AIM: no swing was ever caught mid animation")
+	for who in aim_findings.keys():
+		for note in (aim_findings[who] as Dictionary).keys():
+			findings.append("SWING MISSES: %s %s" % [who, note])
+
 	if not backed_out_of_moves:
 		findings.append("NO WAY BACK: the move menu's Back button was never usable")
 	if not backed_out_of_targets:

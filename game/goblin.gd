@@ -80,6 +80,15 @@ const MAX_EDGE := 1.35
 # (1922) that's been stacking barrier spells, which reads as a
 # tank-specialist trait borrowed wholesale rather than "a grunt that
 # happens to be roughly your size, just a bit tougher."
+# This one stands its model's feet on its own origin (see _ready()'s
+# model.position.y line), which is the opposite of what diver.gd does. Both
+# conventions are fine; assuming either one is not. See Diver.head_offset().
+func head_offset() -> float:
+	return height
+
+func foot_offset() -> float:
+	return 0.0
+
 func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
 

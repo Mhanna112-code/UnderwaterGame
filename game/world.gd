@@ -61,9 +61,17 @@ var _showing_save_prompt := false
 # to save_point_menu.learn_ui in _ready() (see SpellTree.can_learn()'s
 # key_items param) rather than copied, so appending here is automatically
 # visible there without any extra sync step.
+# The dive site as physical places from content/sites.gd. Built by
+# _build_dive_sites(); site_nodes is keyed by site id.
+var site_nodes: Dictionary = {}
+
+const SiteScript := preload("res://game/site.gd")
+# Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
+const PLINTH_TOP := 0.7
+
 var key_items: Array[String] = []
 
-# Which ItemGuardian.SPOTS item ids sonar has ever pinged (see
+# Which ItemGuardian.spots() item ids sonar has ever pinged (see
 # Diver.update_sonar()) - MiniMap draws a marker for anything in here
 # that isn't also in key_items yet (still unclaimed). Party-wide like
 # key_items, not per-diver, and never cleared except implicitly by an id
@@ -121,6 +129,11 @@ var title_layer: CanvasLayer
 # ()), read once in _on_battle_finished() and cleared immediately after -
 # "" means an ordinary random encounter, nothing to hand out on a win.
 var _pending_reward_item := ""
+
+# True only during the isolated ?boss=1 review route. It never writes a
+# save and returns to the title after the result, so repeatedly testing
+# Tethys cannot damage a real playthrough.
+var _boss_playtest_active := false
 
 # Which save slot this run is playing into - set the instant the title
 # screen resolves (New Game picks one and writes an initial save into it;
@@ -288,7 +301,28 @@ func _on_title_load_game(slot: int) -> void:
 	$HUD.visible = true
 	get_tree().paused = false
 
+func _on_title_boss_playtest() -> void:
+	_current_slot = -1
+	_boss_playtest_active = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	call_deferred("_start_battle", "", true)
+
+func _boss_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--boss-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("boss=1")
+	return false
+
 func _show_game_over() -> void:
+	# Defeat owns the whole screen just like cold launch. The controls, active
+	# diver label, bars, minimap and any announcement describe a playable world
+	# and become misleading noise once that world has been paused.
+	$HUD.visible = false
+	title_screen.close()
 	get_tree().paused = true
 	game_over_screen.open()
 
@@ -413,12 +447,17 @@ func _ready() -> void:
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_layer.add_child(title_screen)
+	if _boss_playtest_requested():
+		title_screen.enable_boss_playtest()
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
 	game_over_screen.title_chosen.connect(_on_game_over_title)
-	$HUD.add_child(game_over_screen)
+	# This cannot live under HUD: _show_game_over() deliberately hides HUD as
+	# one unit. Keep both exclusive, paused menu surfaces on the overlay layer.
+	title_layer.add_child(game_over_screen)
 
 	# A game-over restart must rebuild the scene before applying its save so
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
@@ -490,7 +529,7 @@ func _build_site() -> void:
 
 	_build_breakable_rocks()
 	_build_highway()
-	_build_item_guardians()
+	_build_dive_sites()
 
 # A couple of small CrackedWalls scattered in the open dive site, before
 # the tunnel entrance - unlike the entrance blockade (a full-width gate),
@@ -677,29 +716,73 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # Stance) - see items.gd's ITEMS entries for both. Placed well clear of the
 # scattered rocks/CAST start positions/highway, out in the open dive site
 # where _build_site()'s rock scatter already reaches (dist up to 48).
+# The one place in the dive site worth swimming *to*, as opposed to swimming
+# around until something attacks you.
+#
+# Every other piece of this already existed and was already wired to
+# ItemGuardian.spots(): sonar reveals a spot once you get within the minimap's
+# view radius (diver.gd's update_sonar), the minimap then draws a pulsing
+# marker for it or an arrow toward it (mini_map.gd), winning the fight grants
+# the item (_grant_reward_item), and the guardian itself is a finished class.
+# The only thing missing was the six lines that put one in the water. They
+# were here, wrapped in a triple-quoted string, which GDScript parses as a
+# string literal and Godot never warns about, so the function ran and built
+# nothing. See #45.
+# Places to discover while exploring or using Mermaid's sonar.
+#
+# The dive site used to be open water with rocks in it: encounters happened
+# wherever you were, so the terrain did no work and there was nothing on the
+# map to aim at. This is the answer from the first combat PR, ported: a
+# handful of built places joined by trails of lit beacons.
+#
+# A site is a bowl. A low berm ring you physically cross, broken columns
+# round the rim, and a plinth at the middle. The enclosure is the point:
+# it narrows the volume, which is the only thing that makes a fight inside
+# it mean anything in three dimensions, where anything in open water can be
+# swum around.
+#
+# There are deliberately no route or site lamps. Marc's final review was to
+# remove every marker that guides players to items because discovery is the
+# purpose of Mermaid's oxygen-consuming sonar and of exploring the map.
+func _build_dive_sites() -> void:
+	for d in Sites.ALL:
+		var site: Site = SiteScript.new()
+		add_child(site)
+		site.build(d)
+		site_nodes[String(d.id)] = site
+
+	_build_item_guardians()
+
+# The guarded item stands on the plinth at the middle of its site, which is
+# what the plinth is for: the thing you came for presented rather than
+# dropped on the seabed.
+#
+# These six lines were on this branch all along, wrapped in a triple-quoted
+# string. GDScript parses that as a string literal, so the function ran and
+# built nothing and Godot never said a word, for weeks. See #45.
 func _build_item_guardians() -> void:
-	const SPOTS := [
-		{"item": "current_pearl", "at": Vector3(16.0, 1.2, 12.0), "radius": 10},
-		{"item": "reef_plate", "at": Vector3(-16.0, 1.2, -12.0), "radius": 10},
-	]
-	"""for entry in SPOTS:
+	for entry in ItemGuardian.spots():
+		if key_items.has(String(entry.item)):
+			continue
 		var guardian := ItemGuardian.new()
 		guardian.item_id = String(entry.item)
-		guardian.position = entry.at as Vector3
+		guardian.look = String(entry.get("look", "urchin"))
+		guardian.position = (entry.at as Vector3)
+		# clear of the plinth top rather than inside it, by however much
+		# this particular thing needs to balance on it
+		guardian.position.y = PLINTH_TOP + float(ItemGuardian.LIFT.get(guardian.look, 0.9))
 		add_child(guardian)
 
-		# Decorative only - a real Goblin instance standing just beside the
-		# guardian spot so "an enemy is here" is visible before you ever get
-		# close enough to trigger the fight, not just an invisible volume
-		# (offset sideways so it doesn't visually clip through the spiky
-		# guardian mesh). No collision (see goblin.gd's own header - display
-		# only), so it can't block movement or be mistaken for the trigger
-		# itself.
+		# Decorative only - a real Goblin standing beside the plinth so
+		# "something is guarding this" is visible from the rim, not just an
+		# invisible volume at the middle. No collision (see goblin.gd), so
+		# it cannot block movement or be mistaken for the trigger.
 		var decoy := Goblin.new()
-		decoy.position = (entry.at as Vector3) + Vector3(1.1, 0.0, 0.0)
+		decoy.position = (entry.at as Vector3) + Vector3(1.8, 0.0, 0.6)
+		decoy.position.y = 0.0
 		add_child(decoy)
 
-		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))"""
+		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1320,28 +1403,18 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active]:
 		return
-	# Standing on a key item's spot turns the next random encounter into
-	# that item's guardian fight. Everywhere else it is an ordinary one.
+	# An ordinary encounter, and only an ordinary one.
 	#
-	# Two bugs lived in these five lines. The spot dictionaries are keyed
-	# "item", not "item_id", so this threw, and a throw inside a signal
-	# handler takes the rest of the handler with it: an encounter rolled
-	# anywhere within 10 m of either spot started nothing at all. No fight,
-	# no message, and check_for_encounter() had already reset the counter,
-	# so the only symptom was a stretch of map that never attacked you. And
-	# had it not thrown, the unconditional _start_battle() underneath would
-	# have stacked a second battle screen on the same encounter.
+	# This used to also hand you a key item for winning a random encounter
+	# that happened to roll while you were standing inside an unmarked ten
+	# metre circle, which was the half of the guardian feature that was
+	# still switched on while the guardians themselves were not. With them
+	# built again the circle is worse than redundant: it gives away the
+	# thing the guardian is guarding, to a player who never found it.
 	#
-	# ItemGuardian.new() went with them. SPOTS is a const on the class, so
-	# reading it never needed an instance, and that instance was an Area3D
-	# that was never added to the tree and never freed. One leak per
-	# encounter for the whole session.
-	var reward := ""
-	for spot in ItemGuardian.SPOTS:
-		if d.position.distance_to(spot.at as Vector3) <= float(spot.radius):
-			reward = String(spot.item)
-			break
-	_start_battle(reward)
+	# Swim into the guardian and you get the fight for the item. That is the
+	# whole point of it being somewhere.
+	_start_battle()
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 # Both get freed the instant this fires, win or lose the fight that
@@ -1366,16 +1439,18 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "") -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Something grunts out of the murk!")
+	_announce("Tethys rises from the deep!" if boss_encounter else "Something grunts out of the murk!")
 	battle = Battle.new()
 	battle.party_source = divers
 	battle.world = self
+	battle.boss_encounter = boss_encounter
+	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
@@ -1383,6 +1458,18 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
+	if _boss_playtest_active:
+		_boss_playtest_active = false
+		_pending_reward_item = ""
+		match result:
+			"won":
+				_announce("Tethys boss test complete.")
+			"fled":
+				_announce("Tethys boss test ended early.")
+			_:
+				_announce("Tethys overwhelmed the party. Try the test again.")
+		call_deferred("_show_title_screen")
+		return
 	match result:
 		"won":
 			if _pending_reward_item != "":
@@ -1422,16 +1509,10 @@ func _announce(text: String) -> void:
 	banner.text = text
 	_banner_timer = 4.0
 
-# Display-only nicknames, not used anywhere gameplay reads model_name -
-# purely so the HUD reads "Marine Man" instead of "Prototype_V(1922)".
-const DISPLAY_NAMES := {
-	"Staff_Diver": "Mermaid",
-	"Prototype_1(1910)": "Diver Boy",
-	"Prototype_V(1922)": "Marine Man",
-}
-
 func _display_name(model_name: String) -> String:
-	return String(DISPLAY_NAMES.get(model_name, model_name))
+	# Display identity is centralized with each rig in Cast; model_name remains
+	# the stable gameplay/save identifier.
+	return Cast.display_name(model_name)
 
 func _update_hud() -> void:
 	if target_selector.selecting:

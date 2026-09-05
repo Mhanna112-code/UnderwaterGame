@@ -14,6 +14,7 @@
 #   face    close in front of the active diver
 #   side    close beside the active diver
 #   battle  start an encounter and shoot the fight screen
+#   guardian  walk up to a guarded site; the rise argument picks which
 #
 # rise is optional too: 1 climbs while swimming, -1 dives.
 extends SceneTree
@@ -46,6 +47,24 @@ func _process(_d: float) -> bool:
 		world.title_screen.new_game_chosen.emit(1)
 		return false
 	if frames == 2:
+		# Stand off from the first item guardian and look at it, which is
+		# the one landmark in the dive site worth swimming to and the
+		# hardest thing to check without opening the editor.
+		if mode == "guardian":
+			# The fourth argument picks which guarded site to walk up to,
+			# since they no longer present the same thing.
+			var which: int = clampi(int(rise), 0, ItemGuardian.spots().size() - 1)
+			var spot: Vector3 = ItemGuardian.spots()[which].at as Vector3
+			# Stand off along the line back to the party's start, so the
+			# shot is the view a player gets on the approach, and face the
+			# guardian. world.gd's forward is -(sin(yaw), 0, cos(yaw)),
+			# so the yaw that looks along d is atan2(-d.x, -d.z).
+			var back: Vector3 = Vector3(spot.x, 0.0, spot.z).normalized()
+			world.divers[world.active].position = spot - back * 9.0 + Vector3(0.0, 0.4, 0.0)
+			world.yaw = atan2(-back.x, -back.z)
+			world.scripted = true
+			world.scripted_dir = Vector3.ZERO
+			return false
 		if mode == "battle":
 			world._start_battle()
 			return false
@@ -56,7 +75,7 @@ func _process(_d: float) -> bool:
 	if frames < settle:
 		return false
 
-	if mode != "follow" and mode != "battle":
+	if mode != "follow" and mode != "battle" and mode != "guardian":
 		_park_camera()
 		# one more frame so the camera move lands before the shot
 		if frames == settle:

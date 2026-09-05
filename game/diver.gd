@@ -69,8 +69,8 @@ var SONAR_INTERVAL := 0.2
 # distinct even after several level-ups, instead of every stat converging.
 const BASE_STATS := {
 	"Staff_Diver": {
-		"hp": 34, "strength": 5, "defense": 3, "agility": 5,
-		"evasion": 5, "accuracy": 6, "barrier_max": 5,
+		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
+		"evasion": 3, "accuracy": 3, "barrier_max": 0,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
@@ -134,8 +134,8 @@ var distance_since_encounter: float = 0.0
 
 # The game will check for an encounter after a random amount
 # of distance between these two values.
-@export var min_encounter_distance: float = 20.0
-@export var max_encounter_distance: float = 40.0
+@export var min_encounter_distance: float = 8.0
+@export var max_encounter_distance: float = 16.0
 
 # Chance of actually triggering an encounter when the distance
 # threshold is reached.
@@ -143,7 +143,10 @@ var distance_since_encounter: float = 0.0
 # 0.25 = 25%
 # 0.50 = 50%
 # 1.00 = 100%
-@export_range(0.0, 1.0) var encounter_chance: float = 0.25
+# Marc tested and pushed 8-16 m / 50% in PR #50, then explicitly asked this
+# combat PR to adopt those settings. That averages one fight per 24 m. Keep
+# verify/encounters.gd tied to all three inputs so later tuning is deliberate.
+@export_range(0.0, 1.0) var encounter_chance: float = 0.5
 
 # The randomly selected distance at which the next encounter
 # check will happen.
@@ -606,7 +609,7 @@ func _physics_process(delta: float) -> void:
 # MODIFIED again: reveal used to be unconditional - one ping, anywhere on
 # the whole map, revealed every remaining key item regardless of distance.
 # Now gated on entry.radius (the same guaranteed-encounter radius
-# ItemGuardian.SPOTS already carries per zone) - sonar has to actually be
+# ItemGuardian.spots() already carries per zone) - sonar has to actually be
 # on AND the diver has to be within that zone's own radius before it
 # reveals, so the minimap marker means "you're close, and pinged," not
 # "sonar has ever been used once anywhere."
@@ -619,7 +622,7 @@ func _physics_process(delta: float) -> void:
 # on every sonar ping, see SONAR_INTERVAL) leaked the work of building
 # them for nothing. Fixed by using the `world` reference world.gd now
 # assigns after add_child() (see the new `var world: World` above)
-# instead of a fresh instance, and reading ItemGuardian.SPOTS directly off
+# instead of a fresh instance, and reading ItemGuardian.spots() directly off
 # the class (it's a const - no instance needed to read it, same reason
 # battle.gd's BASE_MOVES gets read as Battle.BASE_MOVES elsewhere).
 # Also fixed: `world.key_items.has(item)` was checking the whole SPOTS
@@ -630,7 +633,7 @@ func update_sonar() -> void:
 	if world == null:
 		return
 	var s_items := []
-	for item in ItemGuardian.SPOTS:
+	for item in ItemGuardian.spots():
 		if world.key_items.has(String(item.item)):
 			continue
 		s_items.append(item)
@@ -638,13 +641,14 @@ func update_sonar() -> void:
 		var item_id := String(entry.item)
 		if world.revealed_key_items.has(item_id):
 			continue
-		# MODIFIED: gated on entry.radius originally (the guaranteed-
-		# encounter radius, a separate concept). Changed to
-		# world.minimap.view_radius - "revealed" should mean "you actually
-		# saw it as a dot on the minimap at some point," so the reveal
-		# distance and the dot/arrow display distance (see mini_map.gd's
-		# _draw_key_item_markers()) need to be the exact same radius, not
-		# two different numbers that happen to both be called "radius."
+		# Gated on the minimap's own view radius: "revealed" should mean
+		# "you actually saw it as a dot on the minimap at some point", so
+		# the reveal distance and the dot/arrow display distance (see
+		# mini_map.gd's _draw_key_item_markers()) have to be the same
+		# number rather than two that happen to share a name. The spots
+		# used to carry a "radius" of their own for this; it is gone, along
+		# with the guaranteed-encounter rule that was the only thing that
+		# ever read it.
 		if position.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
 
@@ -804,6 +808,23 @@ func flash_damage() -> void:
 func set_model_visible(v: bool) -> void:
 	if model != null:
 		model.visible = v
+
+
+# How far above and below this diver's own origin the model actually
+# reaches.
+#
+# Worth stating rather than assuming, because the two things that stand on
+# the battle stage disagree about it: _ready() centres a Diver's model on
+# its origin (see the src.position.y line, which subtracts half the height)
+# while goblin.gd stands its model's FEET on the origin. Anything putting a
+# marker over a combatant's head has to ask rather than add `height`, and
+# nothing did: the health bars floated half a body above the divers and sat
+# correctly on the grunts, which is exactly how it was reported.
+func head_offset() -> float:
+	return height * 0.5
+
+func foot_offset() -> float:
+	return -height * 0.5
 
 
 # ============================================================

@@ -17,11 +17,13 @@ extends Control
 
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
+signal boss_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
 
 var _list: VBoxContainer
+var _boss_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -67,6 +69,15 @@ func open() -> void:
 func close() -> void:
 	visible = false
 
+# Kept out of the ordinary title flow. World enables this only for the
+# dedicated ?boss=1 review URL (or the matching command-line test flag), so
+# PR #54's normal New/Load presentation remains exactly the one already
+# reviewed while Glassgoat gets a one-click route to his boss.
+func enable_boss_playtest() -> void:
+	_boss_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
@@ -84,6 +95,16 @@ func _refresh_main() -> void:
 	new_btn.pressed.connect(_on_new_game_pressed)
 	_list.add_child(new_btn)
 	new_btn.grab_focus()
+
+	if _boss_playtest_available:
+		var boss_btn := Button.new()
+		boss_btn.text = "Play Tethys Boss Test"
+		boss_btn.tooltip_text = "Glassgoat animation and combat validation"
+		boss_btn.custom_minimum_size = Vector2(360, 46)
+		boss_btn.add_theme_font_size_override("font_size", 17)
+		boss_btn.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
+		boss_btn.pressed.connect(boss_playtest_chosen.emit)
+		_list.add_child(boss_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save

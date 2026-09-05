@@ -21,7 +21,17 @@ run() {
 	echo
 	echo "=== $1 ==="
 	shift
-	if "$@"; then
+	local gate_log
+	gate_log="$(mktemp "${TMPDIR:-/tmp}/underwater-gate.XXXXXX")"
+	"$@" 2>&1 | tee "$gate_log"
+	local command_status=${PIPESTATUS[0]}
+	local script_error=0
+	if grep -q "SCRIPT ERROR:" "$gate_log"; then
+		echo "GATE ERROR: Godot reported a script error even though the command may have exited successfully"
+		script_error=1
+	fi
+	rm -f "$gate_log"
+	if [ "$command_status" -eq 0 ] && [ "$script_error" -eq 0 ]; then
 		return 0
 	fi
 	fails=$((fails + 1))
@@ -31,10 +41,27 @@ run() {
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
 run "animations: does every rig change state correctly" "$GODOT" --headless --path . --script verify/animations.gd
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
-run "balance: do careless and greedy policies land in band" "$GODOT" --headless --path . --script verify/balance.gd
+run "Glassgoat combat: do the authored V2 rules hold" "$GODOT" --headless --path . --script verify/glassgoat_combat.gd
+run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
+run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
+run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd
+run "balance: do casual and skilled policies clear the artifact route" "$GODOT" --headless --path . --script verify/balance.gd
+run "sites: are item locations unmarked and physically reachable" "$GODOT" --headless --path . --script verify/sites.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
+run "merge readiness: is defeat exclusive and identity consistent" "$GODOT" --headless --path . --script verify/pr54_merge_readiness.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
+# The only gate here that must NOT be headless. It measures where combatants
+# land on screen, and a headless run gets a 64x64 window, which makes every
+# screen-space number it produces meaningless. Skipped rather than failed
+# where no display is available, so CI does not report a false problem.
+if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
+else
+	echo
+	echo "=== stage framing: skipped, needs a display ==="
+fi
+
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
 run "battle: does the fight screen build"             "$GODOT" --headless --path . --script tools/test_battle.gd
 
@@ -53,6 +80,7 @@ elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	skips=$((skips + 1))
 else
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs docs /tmp/gate-chromium.png
+	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs docs /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 fi
 
 echo
