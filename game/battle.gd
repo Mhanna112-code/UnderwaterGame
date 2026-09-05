@@ -97,7 +97,11 @@ const BASE_MOVES := {
 	],
 }
 
-const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": false}
+# The party's authored V2 health scale is 10, not the former 10/26/42 mix.
+# Nine flat power plus a grunt's Strength routinely one-shot that roster;
+# three flat power keeps the ordinary claw on the same small-number scale as
+# the player moves while defense and the occasional heavy still matter.
+const ENEMY_MOVE := {"power": 3, "acc_mod": 1, "quick_time_bool": false}
 
 # A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
 # branch for how heavy_min/heavy_max actually turn into damage (a fraction
@@ -118,6 +122,14 @@ const ENEMY_HEAVY_CHANCE := 0.3
 # lined up does, without making the heavy swing itself hit any harder or
 # any more reliably than it already did.
 const ENEMY_HEAVY_FINISH_CHANCE := 0.65
+
+# Glassgoat's combat-reading palette. Separate labels are required when one
+# action produces more than one category; a Label3D only has one modulate
+# color, so concatenating damage and Bleed made the requested distinction
+# impossible.
+const FEEDBACK_DAMAGE_COLOR := Color(1.0, 0.32, 0.27)
+const FEEDBACK_EFFECT_COLOR := Color(0.3, 0.72, 1.0)
+const FEEDBACK_NEGATIVE_COLOR := Color(0.76, 0.38, 1.0)
 
 # How long a move's result stays on screen (log_label text) before whatever
 # happens next - the next turn's own _log() call, or a win/lose/flee banner
@@ -193,11 +205,14 @@ var attack_btn: Button
 var run_btn: Button
 var items_btn: Button
 var back_btn: Button
+var move_details_btn: Button
 var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
 var item_buttons: Array = []
+var _show_move_formulas := false
+var _move_menu_actor: Dictionary = {}
 
 # Set alongside _pending_move for a move, this for an item - exactly one
 # of the two is ever non-empty at a time. _on_target_chosen() (target_menu's
@@ -824,6 +839,9 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
+	move_details_btn = _menu_button("Show formulas", "Optional calculation details")
+	move_details_btn.pressed.connect(_toggle_move_details)
+	move_menu.add_child(move_details_btn)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
@@ -1123,35 +1141,28 @@ func _log(text: String) -> void:
 func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
-	var text := ""
-	var color := Color(1.0, 0.45, 0.35)
+	var messages: Array[Dictionary] = []
 	var result_kind := String(result.get("debuff", ""))
 	if result_kind == "heal" or result_kind == "revive":
-		text = "+%d HP" % int(result.get("changed", 0))
-		color = Color(0.35, 1.0, 0.5)
+		messages.append({"text": "+%d HP" % int(result.get("changed", 0)), "color": FEEDBACK_EFFECT_COLOR})
 	elif result_kind == "barrier":
-		text = "+%d BARRIER" % int(result.get("changed", 0))
-		color = Color(0.7, 0.85, 1.0)
+		messages.append({"text": "+%d BARRIER" % int(result.get("changed", 0)), "color": FEEDBACK_EFFECT_COLOR})
 	elif result_kind != "":
-		text = "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))]
-		color = Color(1.0, 0.82, 0.3)
+		messages.append({"text": "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))], "color": FEEDBACK_NEGATIVE_COLOR})
 	elif not bool(result.get("hit", false)) or bool(result.get("dodged", false)):
-		text = "DODGE"
-		color = Color(0.35, 0.9, 1.0)
+		messages.append({"text": "DODGE", "color": FEEDBACK_EFFECT_COLOR})
 	elif int(result.get("damage", 0)) > 0:
-		text = "-%d" % int(result.damage)
+		messages.append({"text": "-%d" % int(result.damage), "color": FEEDBACK_DAMAGE_COLOR})
 	elif int(result.get("absorbed", 0)) > 0 or (result.get("effects", []) as Array).is_empty():
-		text = "ABSORBED"
-		color = Color(0.8, 0.85, 0.9)
+		messages.append({"text": "ABSORBED", "color": FEEDBACK_EFFECT_COLOR})
 	var effects := result.get("effects", []) as Array
-	if not effects.is_empty():
-		text += ("\n" if text != "" else "") + "\n".join(effects)
-		color = Color(1.0, 0.82, 0.3) if int(result.get("damage", 0)) == 0 else color
-	if text == "":
-		return
-	_show_floating_text(entry, text, color)
+	for effect in effects:
+		messages.append({"text": String(effect), "color": FEEDBACK_NEGATIVE_COLOR})
+	for index in range(messages.size()):
+		var message := messages[index] as Dictionary
+		_show_floating_text(entry, String(message.text), message.color as Color, index)
 
-func _show_floating_text(entry: Dictionary, text: String, color: Color) -> void:
+func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_index: int = 0) -> void:
 	var actor := entry.actor as Node3D
 	var label := Label3D.new()
 	label.text = text
@@ -1160,7 +1171,7 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color) -> void:
 	label.outline_size = 10
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.position = _top_of(actor) - actor.global_position + actor.position + Vector3(0.0, 0.35, 0.0)
+	label.position = _top_of(actor) - actor.global_position + actor.position + Vector3(0.0, 0.35 + float(stack_index) * 0.32, 0.0)
 	_stage_vp.add_child(label)
 	var tween := label.create_tween()
 	tween.set_parallel(true)
@@ -1391,13 +1402,14 @@ func _show_moves() -> void:
 	call_deferred("_fit_panel_height")
 
 func _populate_move_menu(actor: Dictionary) -> void:
+	_move_menu_actor = actor
 	for b in move_buttons:
 		(b as Button).queue_free()
 	move_buttons.clear()
 	var available: float = (actor.stats as CombatantStats).oxygen
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
-		var hint: String = String(mv.hint)
+		var hint: String = String(mv.hint) if _show_move_formulas else CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
 		if ox_cost > 0.0:
 			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
@@ -1405,10 +1417,18 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
-	# Keep Back last - it's a persistent child of move_menu, not rebuilt
-	# here, so re-adding fresh move buttons pushes it out of place unless
-	# it's explicitly moved back to the end each time.
+	# The two persistent controls are not rebuilt with the move buttons.
+	# Keep them after the choices, in details-then-back order.
+	move_details_btn.text = "Show results\nResolved for %s" % String(actor.display_name) if _show_move_formulas else "Show formulas\nOptional calculation details"
+	move_menu.move_child(move_details_btn, move_menu.get_child_count() - 1)
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
+
+func _toggle_move_details() -> void:
+	if _move_menu_actor.is_empty():
+		return
+	_show_move_formulas = not _show_move_formulas
+	_populate_move_menu(_move_menu_actor)
+	call_deferred("_fit_panel_height")
 
 func _show_items() -> void:
 	if _busy:

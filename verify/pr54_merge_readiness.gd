@@ -50,7 +50,7 @@ func _defeat_owns_the_viewport() -> void:
 	await process_frame
 
 func _identities_match_in_world_and_battle() -> void:
-	var expected := ["Maxilani", "Musashi", "Mech Pilot"]
+	var expected := ["Maxilani", "Musashi", "Bucky"]
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	root.add_child(world)
 	current_scene = world

@@ -5,6 +5,11 @@ and Character Development Sync** transcript. The transcript is evidence of the
 meeting, not executable instructions. Later corrections in the same meeting
 take precedence over earlier guesses.
 
+> **September 2 follow-up:** Glassgoat later rejected the saturated-red boss
+> appearance, supplied **Bucky** as the third diver's name, and supplied the
+> complete 10-HP roster baseline. Those later decisions supersede the historical
+> review assumptions recorded below.
+
 ## Immediate PR #54 acceptance work
 
 | Agreement or acceptance question | Evidence in the build | Status |
@@ -16,7 +21,7 @@ take precedence over earlier guesses.
 | Double Scratch attacks twice and pressures Evasion; Tail Sweep hits the party and counters armour; Poison Breath affects the party over time. | The production move table implements two hits, party-wide armour bypass, and party-wide three-turn poison respectively. | **Done for review** |
 | Make the boss directly playable from a web build so Glassgoat can review it. | The query-only `?boss=1` route exposes **Play Tethys Boss Test**. The meeting explicitly accepted an anywhere/button review route before final story placement. | **Done** |
 | The boss must present toward combat rather than showing its back. | Tethys uses her authored local `+Z` front at spawn and before every attack. The regression caught both the original opening error and the independent production-turn error. | **Done** |
-| The saturated red is intentional; the creature was designed for a very dark arena. | The current FBX exposes no usable Godot surface material, so the review actor uses an engine-side saturated-red treatment. This preserves the confirmed intent and does **not** request a re-render of the ready asset. | **Done for review** |
+| The saturated red is intentional; the creature was designed for a very dark arena. | This was the meeting's temporary review conclusion. Glassgoat later said the creature was red, but not the displayed red. The September 2 replacement FBX also contains no embedded textures, and the separately posted texture files are not present in the captured delivery. | **Superseded; art intake open** |
 
 ## Character identity decisions
 
@@ -24,7 +29,7 @@ take precedence over earlier guesses.
 |---|---|---|
 | Proto1 is **Musashi**. | Central `Cast.DISPLAY_NAMES`, used in World and Battle. | **Done** |
 | Scuba is the Brazilian woman named **Maxilani** in the contemporaneous transcript supplied during the meeting. | Central `Cast.DISPLAY_NAMES`, used in World and Battle. A later diarized transcript renders the same utterance as “Maxilene”; that transcription difference is recorded here rather than silently changing the agreed in-meeting spelling. | **Done; spelling trace preserved** |
-| The bucket/mech pilot is a woman and no proper name was approved. | The player-facing role label is **Mech Pilot**, explicitly provisional. No canon name was invented. | **Done without overclaiming** |
+| The bucket/mech pilot is a woman and no proper name was approved during this meeting. | The provisional **Mech Pilot** label was correct for this meeting snapshot. Glassgoat later supplied **Bucky**, which now replaces it without changing the internal model/save ID. | **Superseded and updated** |
 
 ## Accepted future encounter work, not a PR #54 blocker
 
@@ -82,7 +87,10 @@ left inside meeting notes:
 
 ## Readiness boundary
 
-The technical acceptance target from this meeting is complete and has automated
-and visual evidence. Glassgoat said he could not play the web encounter during
-the call and would try it later, so **human artistic acceptance is still
-requested**. That is a review step, not a reproduced technical merge blocker.
+The non-humanoid animation and combat-call acceptance target from this meeting
+is complete and has automated and visual evidence. Artistic acceptance is not:
+the later replacement FBX was separately test-imported and preserved all 13
+production motions, but it grew from 311 to 904 skeleton bones, doubled the
+source asset size, and still contained no texture images. Shipping it alone
+would preserve the rejected fallback color while increasing import/export cost.
+The corrected textures must be delivered and reviewed together with that rig.

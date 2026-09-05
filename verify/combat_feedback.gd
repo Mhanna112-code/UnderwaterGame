@@ -46,7 +46,8 @@ func _process(_delta: float) -> bool:
 		if child is Label3D:
 			feedback.append((child as Label3D).text)
 	_expect("DODGE" in feedback, "DODGE FEEDBACK MISSING: a miss must be visible over its target")
-	_expect("-3\nBleed 2" in feedback, "DAMAGE/STATUS FEEDBACK MISSING: damage and applied status must be visible together")
+	_expect("-3" in feedback and "Bleed 2" in feedback,
+		"DAMAGE/STATUS FEEDBACK MISSING: damage and applied status must be separately colorable over the target")
 	_expect("ABSORBED" in feedback, "ABSORBED FEEDBACK MISSING: a zero-damage hit must not look like a dodge")
 
 	for failure in failures:

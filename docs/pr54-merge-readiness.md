@@ -1,5 +1,10 @@
 # PR 54 final merge-readiness audit
 
+> Historical PR #54 snapshot. Glassgoat's September 2 follow-up superseded the
+> provisional `Mech Pilot` label and mixed 10/26/42-HP roster. The follow-up
+> branch uses **Bucky**, the complete authored 10/10/10-HP baseline, and reruns
+> campaign balance; the older figures below explain PR #54, not current tuning.
+
 This audit was triggered by a manual loss that left the world HUD, control
 instructions, and encounter banner visible underneath the defeat buttons, and
 by a player being unable to clear even one encounter.
@@ -11,13 +16,12 @@ by a player being unable to clear even one encounter.
   unit while gameplay is paused.
 - The defeat root resets both anchors and offsets, preventing its content from
   collapsing into the upper-left corner.
-- Character identity is centralized in `Cast` and used by both World and
-  Battle: **Maxilani**, **Musashi**, and **Mech Pilot**.
-- Maxilani and Musashi are Glassgoat-confirmed proper names. `Mech Pilot` is an
-  explicit provisional role label because no proper name was decided for the
-  Proto5 pilot; the internal model/save IDs are unchanged.
+- Character identity remains centralized in `Cast` and used by both World and
+  Battle: **Maxilani**, **Musashi**, and now **Bucky**.
+- The internal model/save IDs are unchanged; only the third player-facing label
+  was updated when Glassgoat supplied her name.
 
-## Combat campaign correction
+## Historical PR #54 combat campaign correction
 
 The old balance headline reset a fresh party for every seed. It reported a
 healthy aggregate while its own breakdown contained **0/38 casual wins against
@@ -50,6 +54,11 @@ average 5.3–6.5 grunts, so success does not depend on avoiding combat.
 These are transparent strategy models, not a claim that 30% and 80% are
 measured human reaction-time distributions. Marc should still perform the
 manual feel pass in the linked build.
+
+With the later authored roster and follow-up ordinary-enemy tuning, the same
+fixed-seed gate now reports 85.0%/98.3% isolated encounter wins and
+53.3%/93.3% farthest-artifact completion for casual/skilled policies. Those
+current values replace the historical headline above.
 
 ## Automated coverage
 

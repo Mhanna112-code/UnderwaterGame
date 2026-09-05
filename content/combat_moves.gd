@@ -50,3 +50,36 @@ const SCUBA := [
 static func for_model(model_name: String) -> Array:
 	return SCUBA if model_name == "Staff_Diver" else []
 
+# The move table keeps formulas because the rules need them, but Glassgoat's
+# player-facing contract is result-first: resolve those symbols against the
+# acting character before putting them on an ordinary choice button. Target
+# defense is not known until the next screen, so "Damage" here is the move's
+# authored output before the selected target mitigates it.
+static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
+	if not move.has("formula"):
+		return String(move.get("hint", ""))
+	var parts: Array[String] = []
+	var damage := CombatRules.formula_value(stats, move.get("formula", {}))
+	if damage > 0:
+		parts.append("%d Damage%s" % [damage, " to all" if String(move.get("target", "")) == "all_enemies" else ""])
+	for effect_value in move.get("effects", []):
+		var effect := effect_value as Dictionary
+		match String(effect.get("kind", "")):
+			"reduce_evasion":
+				parts.append("EVA -%d" % CombatRules.formula_value(stats, effect.get("amount", {})))
+			"status":
+				var level := CombatRules.formula_value(stats, effect.get("level", {}))
+				var duration := CombatRules.formula_value(stats, effect.get("duration", {}))
+				var label := "%d %s" % [level, String(effect.get("status", "Effect")).capitalize()]
+				if duration > 0:
+					label += " for %d turns" % duration
+				parts.append(label)
+			"self_temporary":
+				var costs: Array[String] = []
+				for stat in ["accuracy", "evasion"]:
+					var amount := int(effect.get(stat, 0))
+					if amount != 0:
+						costs.append("%s %s%d" % [stat.left(3).to_upper(), "+" if amount > 0 else "", amount])
+				if not costs.is_empty():
+					parts.append("%s until next turn" % " / ".join(costs))
+	return " • ".join(parts)
