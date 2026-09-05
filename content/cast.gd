@@ -36,6 +36,17 @@ const ALL := {
 	},
 }
 
+# Player-facing identity lives beside the rig identity so exploration and
+# combat cannot drift into separate nickname tables. Glassgoat confirmed
+# Maxilani and Musashi in the meeting. The Proto5 pilot's proper name was not
+# decided, so `Mech Pilot` is deliberately a role label rather than invented
+# canon; changing it later is one data edit with no save/model migration.
+const DISPLAY_NAMES := {
+	"Staff_Diver": "Maxilani",
+	"Prototype_1(1910)": "Musashi",
+	"Prototype_V(1922)": "Mech Pilot",
+}
+
 # Motion names the game asks for, resolved per family.
 #
 # Returned WITHOUT the rig prefix. Each delivery names its armature node
@@ -100,11 +111,12 @@ const MOTIONS := {
 # plays, so a spell added tomorrow animates on the day it is added instead of
 # standing still until somebody remembers this file.
 const ABILITY_CLIPS := {
-	# Staff_Diver, five swings available, four used.
-	"Swift Jab": "Scuba_(Attack)Stab1",
-	"Riptide Kick": "Scuba_(Attack)Axe_Kick1",
-	"Crashing Wave": "Scuba_(Attack)Eletric1",
-	"Heal": "Scuba_(Attack)Flash1",
+	# Staff_Diver / Scuba: Group_StatsV2's authored kit.
+	"Electric Touch": "Scuba_(Attack)Eletric1",
+	"Scuba Stabbing": "Scuba_(Attack)Stab1",
+	"Flash Blast": "Scuba_(Attack)Flash1",
+	"Multiple Knee Combo": "Scuba_(Attack)Double_Knee1",
+	"Axe Kick": "Scuba_(Attack)Axe_Kick1",
 	# Prototype_1(1910)
 	"Precise Tap": "Proto1_(Attack)Palm_Strike",
 	"Weaken": "Proto1_(Attack)DualPalm",
@@ -144,6 +156,9 @@ static func file(model_name: String) -> String:
 
 static func carries(model_name: String) -> Array:
 	return entry(model_name).carries as Array
+
+static func display_name(model_name: String) -> String:
+	return String(DISPLAY_NAMES.get(model_name, model_name))
 
 static func motion(model_name: String, name: String) -> String:
 	var m: Dictionary = MOTIONS.get(family(model_name), {}) as Dictionary

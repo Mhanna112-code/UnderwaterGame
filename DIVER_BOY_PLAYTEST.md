@@ -2,25 +2,28 @@
 
 This branch contains the playable Diver Boy special-encounter prototype.
 
-## Manual web build
+## Integrated PR #50 web build
 
-https://underwatergame-diver-boy-playtest.vercel.app
+https://underwatergame-pr50-main-integrated.vercel.app/?special=1
 
-The build is hosted in a separate Vercel project so it does not replace or
-modify the existing UnderwaterGame deployments.
+The build is hosted in a separate Vercel project, so it does not replace or
+modify an existing UnderwaterGame deployment. The query-only review action
+opens the real guardian warning and diver chooser without requiring a trip
+across the map.
 
 ## How to test
 
-1. Open the link and click **CLICK TO START PLAYTEST**.
-2. Move the mouse to aim the grapple reticle.
-3. Left-click the orange threats before they reach Diver Boy.
-4. Avoid the blue decoys. Grappling one damages the player.
-5. Refresh the page to restart the encounter.
+1. Open the link and click **Play Special Encounter Test**.
+2. Click **Enter**, select **Diver Boy**, and click **Send Them In**.
+3. When Grapple Intercept begins, click once to capture the pointer.
+4. Move the mouse to aim at each yellow weak spot and left-click twice.
+5. Avoid the blue decoys. Grappling one damages the player.
+6. Refresh the page to restart the encounter.
 
 ## Expected behavior
 
-- The encounter starts directly in battle as Diver Boy.
-- Eight orange threats must be intercepted.
+- The review route opens the same chooser and special battle used by guardians.
+- Five orange threats must be intercepted.
 - Orange threats that reach the player deal damage.
 - Blue decoys must be left alone; hitting one deals damage.
 - The mouse is captured only after the explicit start click in web builds.
@@ -33,5 +36,5 @@ Run:
 godot --headless --path . --script verify/grapple_intercept.gd
 ```
 
-The verification expects all eight threats to be intercepted, no threat
+The verification expects all five threats to be intercepted, no threat
 impacts, and one deliberate decoy penalty.

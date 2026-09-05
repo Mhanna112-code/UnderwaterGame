@@ -392,6 +392,14 @@ func _grapple() -> void:
 	if result.collider == _active_weak_spot and is_instance_valid(_active_weak_spot):
 		_hit_weak_spot(_active_weak_spot_rock)
 
+# One hit on the CURRENT weak spot - always +1 toward that rock's
+# HITS_TO_DESTROY count, flashed red so a hit reads as a hit regardless
+# of whether it's lethal this time. Not lethal until the count actually
+# reaches HITS_TO_DESTROY - short of that the rock stays alive and
+# flying. Either way, a hit always moves the weak spot on to a new random
+# rock (_assign_next_weak_spot()) - that "always advance, whether or not
+# this one died" is what makes which rock is live next feel unpredictable
+# instead of a fixed rotation.
 func _hit_weak_spot(rock: MeshInstance3D) -> void:
 	var hits: int = int(_rock_hits.get(rock, 0)) + 1
 	_rock_hits[rock] = hits
