@@ -251,9 +251,11 @@ func _refresh_carousel() -> void:
 	_preview_vp.add_child(_preview_diver)
 	_preview_diver.rotation.y = PI   # faces the camera - the opposite of battle's party puppets on purpose
 
-	var display_names := {
-		"Staff_Diver": "Mermaid", "Prototype_1(1910)": "Diver Boy", "Prototype_V(1922)": "Marine Man",
-	}
-	_name_label.text = String(display_names.get(model_name, model_name))
+	# MODIFIED: was its own local {model_name: display_name} dict, duplicating
+	# (and drifting from - it still said "Mermaid"/"Diver Boy"/"Marine Man"
+	# after Cast.DISPLAY_NAMES moved to Maxilani/Musashi/Mech Pilot) the one
+	# real source of truth. Cast.display_name() is what battle.gd's own
+	# _display() already defers to - one name, one meaning, everywhere.
+	_name_label.text = Cast.display_name(model_name)
 	var ability_id := String(Diver.BASE_STATS.get(model_name, {}).get("ability", ""))
 	_ability_label.text = String(ABILITY_BLURBS.get(ability_id, ""))

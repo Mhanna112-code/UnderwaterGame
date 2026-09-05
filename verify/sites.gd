@@ -3,7 +3,7 @@
 #
 # Checks that sites do not overlap, each sits in a clear reachable space,
 # nobody spawns in their furniture, and neither route beacons nor site lamps
-# are built. Mermaid's sonar is the sole deliberate item-finding aid.
+# are built. Maxilani's sonar is the sole deliberate item-finding aid.
 #
 # Usage: godot --headless --path . --script verify/sites.gd
 extends SceneTree

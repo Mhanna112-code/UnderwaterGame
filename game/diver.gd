@@ -104,7 +104,7 @@ var ability_id := ""
 # A locked ability exists (ability_id is set) but can't be used yet - the
 # mechanism is still here (unlock_ability(), called by grapple_anchor.gd's
 # on_grappled_to()) for any diver a future BASE_STATS entry gates this way,
-# but nothing currently sets ability_locked true - Mermaid's swap used to
+# but nothing currently sets ability_locked true - Maxilani's swap used to
 # gate on reaching a grapple anchor, but now starts available like every
 # other diver's ability.
 var ability_locked := false

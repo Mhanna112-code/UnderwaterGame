@@ -1,4 +1,4 @@
-# Diver Boy's special-encounter defense: the enemy launches targets from
+# Musashi's special-encounter defense: the enemy launches targets from
 # random points in front of the diver, mouse-look aims a first-person camera,
 # and left-click fires a grapple line. Unshot targets damage the diver when
 # they arrive; the battle owns the actual damage calculation via object_hit.

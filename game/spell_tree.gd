@@ -5,14 +5,14 @@
 # One tree PER DIVER (keyed by Diver.model_name), not one shared tree - see
 # SPELL_TREES below. Each diver's tree is shaped to read as their role
 # through which branch is deep vs. shallow, not just through numbers:
-#   Staff_Diver (Mermaid): offense is the deep branch, defense is a single
+#   Staff_Diver (Maxilani): offense is the deep branch, defense is a single
 #     weak node - a fast glass cannon with almost nothing to fall back on.
 #     support is a single node too, upgrading the free "Heal" base move she
 #     starts every game with (see battle.gd's BASE_MOVES) rather than
 #     giving her a real sustain branch to lean on.
-#   Prototype_1(1910) (Diver Boy): debuff is the deep branch, with four
+#   Prototype_1(1910) (Musashi): debuff is the deep branch, with four
 #     different status effects to chain - utility, not raw power.
-#   Prototype_V(1922) (Marine Man): defense is the deep branch, all barrier
+#   Prototype_V(1922) (Mech Pilot): defense is the deep branch, all barrier
 #     spells that scale up to a real wall - tank/support, reliable rather
 #     than flashy (barrier spells never miss, unlike everything else).
 #

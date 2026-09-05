@@ -741,7 +741,7 @@ func _party_spell_label(spell: Dictionary) -> String:
 # Same oxygen economy as casting it in battle - a spell that costs 16
 # oxygen there shouldn't become a free, infinite-use heal just because
 # there's no battle running right now (oxygen_cost defaults to 0.0 same as
-# battle.gd, so Mermaid's free base Heal really does stay free here too).
+# battle.gd, so Maxilani's free base Heal really does stay free here too).
 # Called by the menu before it lets a spell be picked at all - see
 # inventory_menu.gd's caster-picker, which disables anyone who can't
 # currently afford it, same as battle.gd's move menu already does.
@@ -802,7 +802,7 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # were here, wrapped in a triple-quoted string, which GDScript parses as a
 # string literal and Godot never warns about, so the function ran and built
 # nothing. See #45.
-# Places to discover while exploring or using Mermaid's sonar.
+# Places to discover while exploring or using Maxilani's sonar.
 #
 # The dive site used to be open water with rocks in it: encounters happened
 # wherever you were, so the terrain did no work and there was nothing on the
@@ -817,7 +817,7 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 #
 # There are deliberately no route or site lamps. Marc's final review was to
 # remove every marker that guides players to items because discovery is the
-# purpose of Mermaid's oxygen-consuming sonar and of exploring the map.
+# purpose of Maxilani's oxygen-consuming sonar and of exploring the map.
 func _build_dive_sites() -> void:
 	for d in Sites.ALL:
 		var site: Site = SiteScript.new()
@@ -884,7 +884,7 @@ func _build_item_guardians() -> void:
 #   0. A save point sits before the entrance blockade, in the open dive
 #      site - a rest/prep stop before the gate, not a reward for clearing
 #      it (see save_point.gd).
-#   1. Rubble blocks the entrance - only Marine Man's shockwave clears it
+#   1. Rubble blocks the entrance - only Mech Pilot's shockwave clears it
 #      (an invisible collision extension well above the visible rocks
 #      rules out just swimming over the top - see cracked_wall.gd).
 #   2. A whirlpool over a real gap in the floor. Getting close warns you;
@@ -894,7 +894,7 @@ func _build_item_guardians() -> void:
 #      Every plain swim through it gets caught, every single time. A
 #      second GrappleAnchor sits right before it as a staging point; the
 #      real crossing anchor is on the far side.
-#   3. Reaching that far anchor used to unlock Mermaid's swap ability (see
+#   3. Reaching that far anchor used to unlock Maxilani's swap ability (see
 #      grapple_anchor.gd's on_grappled_to()) - swap now starts available
 #      from the beginning like every other diver's ability (see diver.gd's
 #      BASE_STATS), so this anchor's unlock call is a no-op today. Grapple
@@ -939,7 +939,7 @@ func _build_highway() -> void:
 
 	# 1. The entrance blockade - one solid rock formation spanning the full
 	# lane width and wall height, no gaps to swim around or over. Only
-	# Marine Man's shockwave clears it.
+	# Mech Pilot's shockwave clears it.
 	var entrance_rocks := CrackedWall.new()
 	entrance_rocks.span = Vector3(2.0, WALL_HEIGHT, LANE_HALF_WIDTH * 2.0)
 	# Invisible collision extends far above the visible rocks - divers rise
@@ -986,13 +986,13 @@ func _build_highway() -> void:
 	add_child(whirlpool)
 
 	# A second anchor right before the gap, in addition to the one on the
-	# far side - a staging point for Diver Boy on the approach, not itself
+	# far side - a staging point for Musashi on the approach, not itself
 	# a way across.
 	var near_anchor := GrappleAnchor.new()
 	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z)
 	add_child(near_anchor)
 
-	# 3. The anchor that unlocks Mermaid's swap - reaching it is the
+	# 3. The anchor that unlocks Maxilani's swap - reaching it is the
 	# "you made it across" beat, but it doesn't disarm anything. The
 	# whirlpool stays armed forever; grapple and swap are the permanent
 	# way across, not a one-time gate.

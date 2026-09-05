@@ -1,7 +1,7 @@
-# Marine Man's special-encounter minigame (see battle.gd's _do_enemy_turn()
+# Mech Pilot's special-encounter minigame (see battle.gd's _do_enemy_turn()
 # special_encounter branch) - now the ONLY special-encounter minigame tied
 # to the shockwave ability (blast_rocks_minigame.gd, the offensive
-# counterpart played on Marine Man's own turn, was retired - this is the
+# counterpart played on Mech Pilot's own turn, was retired - this is the
 # sole minigame shockwave plays now, always on the enemy's turn).
 #
 # Three lanes - left/middle/right - run in a straight line from the enemy

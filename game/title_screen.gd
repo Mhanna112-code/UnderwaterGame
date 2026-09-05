@@ -198,7 +198,7 @@ func _refresh_slots() -> void:
 
 # A one-line readout of a save's party, just enough to tell slots apart at
 # a glance - the diver order matches World.CAST, so index 0 is always
-# Mermaid regardless of who's "active" in the save.
+# Maxilani regardless of who's "active" in the save.
 func _summarize(data: Dictionary) -> String:
 	var divers_data: Array = data.get("divers", [])
 	if divers_data.is_empty():

@@ -124,7 +124,7 @@ func _box_corners_2d(shape_node: CollisionShape3D, box: BoxShape3D, center: Vect
 # back whatever's already been revealed with no re-ping needed.
 const MARKER_PULSE_SPEED := 3.0
 
-# Sonar lives on whichever Diver has passive_id == "sonar" (Mermaid), not
+# Sonar lives on whichever Diver has passive_id == "sonar" (Maxilani), not
 # necessarily divers[active] - sonar_active persists on her own instance
 # even after TAB-switching to someone else, since _physics_process() runs
 # on every diver node independently regardless of which one's currently

@@ -697,7 +697,7 @@ func _build_ceiling() -> void:
 # walk into WindCorridor1 and feel what it does.
 # ============================================================
 
-# Prototype_V(1922) ("Marine Man") specifically - the only diver with no
+# Prototype_V(1922) ("Mech Pilot") specifically - the only diver with no
 # "passive" entry in Diver.BASE_STATS (see diver.gd), so nothing it does
 # during normal swimming ever reaches for the `world` reference (sonar's
 # passive drain, key-item reveals) that this standalone scene has no real

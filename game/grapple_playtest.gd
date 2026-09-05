@@ -1,5 +1,5 @@
 # Dedicated manual-playtest entry point. It starts the same real Battle and
-# ability-id dispatch used by the game, but forces Diver Boy's enemy turn first
+# ability-id dispatch used by the game, but forces Musashi's enemy turn first
 # so a browser tester reaches Grapple Intercept immediately.
 extends Node
 

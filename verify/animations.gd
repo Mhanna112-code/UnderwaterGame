@@ -1,8 +1,8 @@
 # Exercise every diver's state changes, not merely confirm that the named
-# clips exist. The movement gate drives Mermaid through a real swim; this
+# clips exist. The movement gate drives Maxilani through a real swim; this
 # isolates all three delivered rigs and proves each one can enter/hold/leave
 # swimming and play both damage reactions. It also checks the carried staff is
-# visible on Mermaid's intact rig, which is the structural half of issue #26.
+# visible on Maxilani's intact rig, which is the structural half of issue #26.
 #
 # Usage: godot --headless --path . --script verify/animations.gd
 extends SceneTree
@@ -85,7 +85,7 @@ func _expect(label: String, stem: String) -> void:
 func _check_staff() -> void:
 	var staff := _find_mesh(diver, "Staff_Lantern")
 	if staff == null:
-		findings.append("STAFF MISSING: Mermaid's rig has no Staff_Lantern mesh")
+		findings.append("STAFF MISSING: Maxilani's rig has no Staff_Lantern mesh")
 		return
 	if not staff.visible:
 		findings.append("STAFF HIDDEN: Staff_Lantern exists but is not visible")

@@ -98,7 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# to skip the intro - without marking it handled, the SAME event
 		# kept propagating to every other _unhandled_input() in the tree,
 		# including world.gd's, which fires _start_ability() unconditionally
-		# on E. That's why skipping the intro with E also fired Mermaid's
+		# on E. That's why skipping the intro with E also fired Maxilani's
 		# swap ability the instant the world loaded underneath it.
 		get_viewport().set_input_as_handled()
 		_finish()

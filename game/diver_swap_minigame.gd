@@ -1,4 +1,4 @@
-# Marine Man's special-encounter minigame (see battle.gd's _do_enemy_turn()
+# Mech Pilot's special-encounter minigame (see battle.gd's _do_enemy_turn()
 # special_encounter branch) - a burst of rocks fly in at irregular
 # intervals (not a fixed beat - real rhythm-game feel means the player is
 # reacting, not just memorizing a metronome) and get left-clicked out of

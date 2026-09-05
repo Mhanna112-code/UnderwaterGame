@@ -1,4 +1,4 @@
-# Records Diver Boy's first-person grapple-intercept minigame using its
+# Records Musashi's first-person grapple-intercept minigame using its
 # verification aim helper so the proof is deterministic.
 # Usage: godot --path . --script tools/shoot_grapple_intercept.gd -- /tmp/grapple-frames
 extends SceneTree

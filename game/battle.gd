@@ -162,7 +162,7 @@ const IMPACT_FRACTION := 0.55
 
 # How long the step in and the walk back take, and how far short of the
 # target an attacker stops. SWING_REACH is roughly the length of the longest
-# swing in the cast: Marine Man's hammer travels about that far.
+# swing in the cast: Mech Pilot's hammer travels about that far.
 const SWING_STEP_TIME := 0.18
 const SWING_REACH := 1.8
 
@@ -805,6 +805,22 @@ func _build_ui() -> void:
 
 	_bottom_panel = PanelContainer.new()
 	_bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	# MODIFIED (added): same STOP-by-default bug as _stage_container above -
+	# this panel spans the full width of the bottom of the screen and was
+	# never given its own mouse_filter, so its background (and the log/
+	# margin area around whichever menu is actually visible) swallowed any
+	# click or motion landing there. During a special-encounter minigame
+	# main_menu/move_menu/item_menu/target_menu are all hidden (see
+	# _do_enemy_turn()) but this panel itself stays up to hold the log/
+	# overhead bars, so aiming a weak spot low on screen (see
+	# GrappleInterceptMinigame's grid, which spawns rocks above AND below
+	# center) drifted the virtual cursor into this strip and silently ate
+	# the look/click from there on - "works near the middle, stops
+	# entirely once you aim down." IGNORE here doesn't disable the actual
+	# buttons inside it (they keep their own default STOP filter and still
+	# receive clicks normally whenever they're visible) - it only stops the
+	# panel's own empty background from intercepting anything.
+	_bottom_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# Opaque, and deliberately so. This used to run on Godot's default
 	# PanelContainer theme, which is 60% black, and that was fine only for
@@ -840,6 +856,11 @@ func _build_ui() -> void:
 	# piece that has nowhere on the stage to live.
 	_queue_bar = PanelContainer.new()
 	_queue_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	# MODIFIED (added): same reasoning as _bottom_panel's own mouse_filter
+	# fix just above - this strip spans the full width of the TOP of the
+	# screen and holds no interactive controls at all (just the turn-order
+	# row), so there's no children relying on it staying STOP.
+	_queue_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var qbg := StyleBoxFlat.new()
 	# Opaque, for the same reason the bottom strip is: the stage stops below
 	# this bar, so anything translucent here shows the paused overworld's own
