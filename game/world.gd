@@ -191,13 +191,13 @@ func _serialize_state() -> Dictionary:
 			"stats": {
 				"hp_max": s.hp_max, "strength": s.strength, "defense": s.defense,
 				"agility": s.agility, "accuracy": s.accuracy, "evasion": s.evasion,
-				"barrier_max": s.barrier_max, "oxygen_max": s.oxygen_max,
+				"oxygen_max": s.oxygen_max,
 				"level": s.level, "xp": s.xp, "xp_to_next": s.xp_to_next,
 				"spell_points": s.spell_points,
 				"grow_hp": s.grow_hp, "grow_strength": s.grow_strength,
 				"grow_defense": s.grow_defense, "grow_agility": s.grow_agility,
 				"grow_accuracy": s.grow_accuracy, "grow_evasion": s.grow_evasion,
-				"hp": s.hp, "barrier": s.barrier, "oxygen": s.oxygen,
+				"hp": s.hp, "oxygen": s.oxygen,
 			},
 		})
 	return {
@@ -240,7 +240,6 @@ func _load_save() -> void:
 		s.agility = int(sd.get("agility", s.agility))
 		s.accuracy = int(sd.get("accuracy", s.accuracy))
 		s.evasion = int(sd.get("evasion", s.evasion))
-		s.barrier_max = int(sd.get("barrier_max", s.barrier_max))
 		s.oxygen_max = float(sd.get("oxygen_max", s.oxygen_max))
 		s.level = int(sd.get("level", s.level))
 		s.xp = int(sd.get("xp", s.xp))
@@ -253,7 +252,6 @@ func _load_save() -> void:
 		s.grow_accuracy = int(sd.get("grow_accuracy", s.grow_accuracy))
 		s.grow_evasion = int(sd.get("grow_evasion", s.grow_evasion))
 		s.hp = int(sd.get("hp", s.hp_max))
-		s.barrier = int(sd.get("barrier", s.barrier_max))
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
 	pending_world_drops = (data.get("pending_world_drops", {}) as Dictionary).duplicate(true)
@@ -395,35 +393,37 @@ var _puzzle_goal: Waypoint
 var _puzzle_solved := false
 
 # [a, b, body] entries, one per wall built by _build_wall() - a and b are
-# the Vector3 endpoints (as before), body is the StaticBody3D that wall
-# actually is, added so mini_map.gd can look up whether THIS specific
-# wall has been revealed yet (see _revealed_walls below) rather than
-# drawing every wall in the level unconditionally. Read directly by
-# game/mini_map.gd (world.gd has a class_name now, so MiniMap can type
-# its reference and read this like any other property).
-var _wall_segments: Array = []
+# Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
+# revealed: bool} - one entry per WALL_REVEAL_SEGMENT_LENGTH-ish slice of
+# a wall (see _slice_wall_into_pieces(), called once per wall from
+# _build_wall()). World's own walls are static - nothing here ever moves
+# once built - so slicing once at build time is enough; there's no need
+# to recompute a piece's endpoints every frame the way maze_mini_map.gd's
+# live-swinging test-scene walls require. Read directly by
+# mini_map.gd's _draw_lines_at_overlapping_areas() (world.gd has a
+# class_name now, so MiniMap can type its reference and read this like
+# any other property).
+var _wall_pieces: Array[Dictionary] = []
 var minimap: MiniMap
 
-# Fog-of-war for the main minimap: a wall only ever gets added here once
-# the diver's sphere-cast (_update_wall_visibility()) actually finds it
-# nearby - permanent once seen, same "seen doesn't un-happen when you
-# swim away" rule World.revealed_key_items already uses for guardians.
-# Keyed by the wall's own StaticBody3D (see _wall_segments' 3rd element),
-# not by index, so mini_map.gd can check it with a plain .has() off
-# whatever body a segment names.
-var _revealed_walls: Dictionary = {}
+# How finely each wall is sliced for reveal purposes - matches
+# maze_mini_map.gd's own REVEAL_SEGMENT_LENGTH, so a long corridor wall
+# lights up gradually as you swim its length instead of all at once.
+const WALL_REVEAL_SEGMENT_LENGTH := 2.0
 
-# How far the sphere-cast in _update_wall_visibility() reaches - matches
-# content/sites.gd's own SIGHT_BUDGET (14.0), the same real in-game sight
-# distance sonar/site-to-site navigation is already tuned around, rather
-# than inventing a separate number just for this.
-const WALL_SIGHT_RADIUS := 14.0
-# The sphere-cast is a real physics query over every wall in the level,
-# not free - once a second (not every physics frame) is plenty often for
-# a slow-swimming diver to keep the reveal feeling responsive without
-# paying that cost 60 times a second for no benefit.
-const WALL_SIGHT_INTERVAL := 1.0
-var _wall_sight_elapsed := 0.0
+# MODIFIED: was a one-shot PhysicsShapeQueryParameters3D/intersect_shape()
+# sphere-cast, re-issued from scratch once a second - replaced with a
+# persistent Area3D that follows the active diver (see
+# _build_wall_sight_area()/_update_wall_visibility()), checked every
+# physics tick via get_overlapping_bodies() instead. That's cheap even at
+# full physics rate: it just reads the physics server's already-computed
+# overlap list for this one Area3D, not a fresh broad-phase query over
+# every wall in the level the way intersect_shape() was. It's only the
+# COARSE first pass now, though - which walls are even worth checking
+# closely this tick - see _update_wall_visibility()'s own per-piece
+# distance check for what actually decides which exact stretch of a
+# wall counts as "found."
+var _wall_sight_area: Area3D
 
 # The camera's one alternate mode: instead of chasing the active diver,
 # hold on `_camera_focus_target` (used both by TargetSelector while
@@ -487,6 +487,7 @@ func _ready() -> void:
 	minimap.offset_bottom = 166.0
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(minimap)
+	_build_wall_sight_area()
 
 	save_point_menu = SavePointMenu.new()
 	save_point_menu.save_requested.connect(_on_save_requested)
@@ -1100,10 +1101,10 @@ func _check_gap_puzzle() -> void:
 func _build_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
 	body.position = center
-	# Tag so _update_wall_visibility()'s sphere-cast can tell an actual
-	# wall apart from anything else the query happens to sweep up (the
-	# diver's own body, CrackedWall rocks, LockPlates, whatever else sits
-	# on a physics layer the query can see).
+	# Tag so _update_wall_visibility()'s detection area can tell an actual
+	# wall apart from anything else it might overlap (the diver's own
+	# body, CrackedWall rocks, LockPlates, whatever else sits on a
+	# physics layer it can see).
 	body.add_to_group("Wall")
 
 	var mesh_inst := MeshInstance3D.new()
@@ -1128,9 +1129,24 @@ func _build_wall(center: Vector3, size: Vector3) -> void:
 	# wall's length. Every wall built here is axis-aligned, so this is
 	# just picking x vs z, not reading the body's real rotation.
 	if size.x >= size.z:
-		_wall_segments.append([center - Vector3(size.x * 0.5, 0.0, 0.0), center + Vector3(size.x * 0.5, 0.0, 0.0), body])
+		_slice_wall_into_pieces(center - Vector3(size.x * 0.5, 0.0, 0.0), center + Vector3(size.x * 0.5, 0.0, 0.0), body)
 	else:
-		_wall_segments.append([center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5), body])
+		_slice_wall_into_pieces(center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5), body)
+
+# Cuts one wall's full [a, b] span into WALL_REVEAL_SEGMENT_LENGTH-ish
+# pieces, each its own independent reveal entry - see _wall_pieces' own
+# comment for why a long wall should light up gradually rather than all
+# at once the moment any part of it is found.
+func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void:
+	var length: float = a.distance_to(b)
+	var count: int = maxi(1, int(ceil(length / WALL_REVEAL_SEGMENT_LENGTH)))
+	for i in range(count):
+		_wall_pieces.append({
+			"a": a.lerp(b, float(i) / float(count)),
+			"b": a.lerp(b, float(i + 1) / float(count)),
+			"body": body,
+			"revealed": false,
+		})
 
 func _unhandled_input(e: InputEvent) -> void:
 	if battling:
@@ -1287,16 +1303,15 @@ func _diver_on_save_point(d: Diver) -> bool:
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
 #
-# HP/barrier/oxygen restore for the WHOLE party, not just whoever's
-# physically standing on the point - battle damage (and oxygen spend) is
-# shared across all three divers, so a rest stop patching up only the one
-# you happened to be steering would leave the other two stuck damaged/
+# HP/oxygen restore for the WHOLE party, not just whoever's physically
+# standing on the point - battle damage (and oxygen spend) is shared
+# across all three divers, so a rest stop patching up only the one you
+# happened to be steering would leave the other two stuck damaged/
 # drained with no other way to recover.
 func _on_save_requested(_d: Diver) -> void:
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
-		s.barrier = s.barrier_max
 		s.oxygen = s.oxygen_max
 	_update_hp_bar()
 	_update_oxygen_bar()
@@ -1386,38 +1401,83 @@ func _physics_process(dt: float) -> void:
 	_update_save_point_prompt()
 	_check_gap_puzzle()
 	_update_item_guardian_visibility()
-	_update_wall_visibility(dt)
+	_update_wall_visibility()
 
-# Sphere-casts out from the active diver once every WALL_SIGHT_INTERVAL
-# seconds (not every physics frame - see its own comment) and reveals
-# whatever walls that sphere actually finds, for mini_map.gd's fog-of-war
-# (_revealed_walls). intersect_shape() is a single broad-phase query
-# against every physics body in range - cheaper and simpler than casting
-# a ray at each wall individually, since we don't need to know exactly
-# where the sphere touches a wall, only WHICH walls it's touching at all.
-func _update_wall_visibility(dt: float) -> void:
-	_wall_sight_elapsed += dt
-	if _wall_sight_elapsed < WALL_SIGHT_INTERVAL or divers.is_empty():
+# A real Area3D, radius matched to minimap.view_radius - "revealed" and
+# "currently fits on the minimap's own zoom circle" are the same distance
+# by construction now, rather than two independently-tuned numbers (the
+# old WALL_SIGHT_RADIUS was a separate constant that happened to be
+# smaller than view_radius).
+#
+# MODIFIED: monitorable used to be explicitly set false (nothing else
+# needs to detect THIS area itself, only monitoring - detecting the walls
+# - seemed relevant) - empirically, in this Godot version, monitorable
+# false also silently breaks get_overlapping_bodies() entirely, not just
+# area-vs-area detection the way the docs describe. Confirmed directly: a
+# body sitting well inside the sphere's radius stopped showing up in
+# get_overlapping_bodies() the instant monitorable was set false, and
+# came back the instant it wasn't. Left at its default (true) now - real,
+# observed behavior wins over documented semantics here.
+func _build_wall_sight_area() -> void:
+	_wall_sight_area = Area3D.new()
+	_wall_sight_area.monitoring = true
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = minimap.view_radius
+	shape.shape = sphere
+	_wall_sight_area.add_child(shape)
+	add_child(_wall_sight_area)
+
+# Follows the active diver every physics tick and reveals whichever
+# WALL PIECES (not whole walls) are actually within range, for
+# mini_map.gd's fog-of-war (_wall_pieces' own "revealed" field).
+#
+# Two passes: get_overlapping_bodies() is the coarse first pass - a
+# cheap read of the physics server's already-computed overlap list for
+# this one persistent Area3D, telling us which WHOLE walls are even
+# worth checking closely this tick, without having to measure distance
+# to every single piece in the entire level every frame. Then, for only
+# the pieces belonging to those nearby bodies, a precise point-to-segment
+# distance check (same idea as maze_mini_map.gd's own
+# _point_to_segment_dist(), just in 3D world space here rather than the
+# minimap's local 2D) decides exactly which stretch of that wall counts
+# as "found" - a piece right next to the diver and a piece at the far
+# end of the same long wall don't necessarily reveal together.
+func _update_wall_visibility() -> void:
+	if divers.is_empty():
 		return
-	_wall_sight_elapsed = 0.0
+	var diver_pos: Vector3 = (divers[active] as Diver).global_position
+	_wall_sight_area.global_position = diver_pos
 
-	var diver: Diver = divers[active]
-	var shape := SphereShape3D.new()
-	shape.radius = WALL_SIGHT_RADIUS
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = shape
-	query.transform = Transform3D(Basis.IDENTITY, diver.global_position)
-	query.collide_with_bodies = true
-	query.collide_with_areas = false
-
-	var space := get_world_3d().direct_space_state
-	# Second arg caps how many results come back - the level has nowhere
-	# near this many walls within one sphere at once, this is just a
-	# generous ceiling so a dense cluster can't silently get truncated.
-	for hit in space.intersect_shape(query, 64):
-		var body: Object = hit.collider
+	var nearby_bodies: Dictionary = {}
+	for body in _wall_sight_area.get_overlapping_bodies():
 		if body is StaticBody3D and (body as StaticBody3D).is_in_group("Wall"):
-			_revealed_walls[body] = true
+			nearby_bodies[body] = true
+	if nearby_bodies.is_empty():
+		return
+
+	var view_radius: float = minimap.view_radius
+	for piece in _wall_pieces:
+		if bool(piece.revealed) or not nearby_bodies.has(piece.body):
+			continue
+		if _dist_to_wall_piece(diver_pos, piece.a, piece.b) <= view_radius:
+			piece.revealed = true
+
+# Closest distance from `p` to any point ON the segment a->b (not just its
+# endpoints), measured in the horizontal XZ plane only - same standard
+# point-to-segment formula maze_mini_map.gd's own _point_to_segment_dist()
+# uses on its local 2D points, just fed 3D world positions flattened to
+# XZ here instead.
+static func _dist_to_wall_piece(p: Vector3, a: Vector3, b: Vector3) -> float:
+	var p2 := Vector2(p.x, p.z)
+	var a2 := Vector2(a.x, a.z)
+	var b2 := Vector2(b.x, b.z)
+	var ab := b2 - a2
+	var len_sq := ab.length_squared()
+	if len_sq < 0.000001:
+		return p2.distance_to(a2)
+	var t := clampf((p2 - a2).dot(ab) / len_sq, 0.0, 1.0)
+	return p2.distance_to(a2 + ab * t)
 
 # Keeps every still-live guardian's (and its decoy's) visibility in sync
 # with revealed_key_items - a plain re-check each frame rather than an

@@ -3,8 +3,8 @@
 # nothing here needs a .new() either.
 #
 # Two kinds of item live in ITEMS, told apart by "kind":
-#   - Consumables ("heal"/"oxygen"/"spell_point"/"barrier") apply straight
-#     to a Diver's stats the instant they're picked up - see grant(). These
+#   - Consumables ("heal"/"oxygen"/"spell_point") apply straight to a
+#     Diver's stats the instant they're picked up - see grant(). These
 #     are what ItemOrb hands out (see cracked_wall.gd's break handler in
 #     world.gd - a shockwaved rock pops one, chosen from RANDOM_DROP_TABLE).
 #   - Key items ("key") are the current_pearl/reef_plate spell_tree.gd
@@ -28,10 +28,6 @@ const ITEMS := {
 	"spell_shard": {
 		"display": "Spell Shard", "kind": "spell_point", "amount": 1,
 		"description": "Grants 1 spell point.",
-	},
-	"barrier_tonic": {
-		"display": "Barrier Tonic", "kind": "barrier", "amount": 0,
-		"description": "Refills your barrier completely.",
 	},
 	"current_pearl": {
 		"display": "Current Pearl", "kind": "key",
@@ -71,7 +67,6 @@ const RANDOM_DROP_TABLE := [
 	"potion", "potion", "potion", "potion",
 	"oxygen_cell", "oxygen_cell",
 	"spell_shard",
-	"barrier_tonic",
 ]
 
 static func random_drop() -> String:
@@ -104,8 +99,6 @@ static func would_help(item_id: String, s: CombatantStats) -> bool:
 			return s.hp < s.hp_max
 		"oxygen":
 			return s.oxygen < s.oxygen_max
-		"barrier":
-			return s.barrier < s.barrier_max
 		"spell_point", "attack_up", "defense_up":
 			return true
 		_:
@@ -147,8 +140,5 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 		"defense_up":
 			s.defense += int(def.amount)
 			return "%s! Defense up by %d for this fight." % [display, int(def.amount)]
-		"barrier":
-			s.barrier = s.barrier_max
-			return "Found a %s! Barrier fully restored." % display
 		_:
 			return ""

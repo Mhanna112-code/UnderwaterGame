@@ -5,16 +5,20 @@
 # One tree PER DIVER (keyed by Diver.model_name), not one shared tree - see
 # SPELL_TREES below. Each diver's tree is shaped to read as their role
 # through which branch is deep vs. shallow, not just through numbers:
-#   Staff_Diver (Maxilani): offense is the deep branch, defense is a single
-#     weak node - a fast glass cannon with almost nothing to fall back on.
-#     support is a single node too, upgrading the free "Heal" base move she
-#     starts every game with (see battle.gd's BASE_MOVES) rather than
-#     giving her a real sustain branch to lean on.
+#   Staff_Diver (Maxilani): offense is the deep branch - a fast glass
+#     cannon with nothing to fall back on defensively at all (no defense
+#     branch). support is a single node, upgrading the free "Heal" base
+#     move she starts every game with (see battle.gd's BASE_MOVES) rather
+#     than giving her a real sustain branch to lean on.
 #   Prototype_1(1910) (Musashi): debuff is the deep branch, with four
 #     different status effects to chain - utility, not raw power.
-#   Prototype_V(1922) (Mech Pilot): defense is the deep branch, all barrier
-#     spells that scale up to a real wall - tank/support, reliable rather
-#     than flashy (barrier spells never miss, unlike everything else).
+#   Prototype_V(1922) (Mech Pilot): offense/debuff/support only now - her
+#     old "defense" branch was entirely barrier spells (a shield stat that
+#     no longer exists, see combatant_stats.gd), so it's gone rather than
+#     left with nothing in it. Worth a real design pass, not assumed here:
+#     her whole "tank" identity was that branch; she has no replacement
+#     mechanic yet, and reef_plate (see items.gd) no longer unlocks
+#     anything now that bulwark_stance is gone with it.
 #
 # Each branch is a small DAG, not a straight line: a spell's
 # "requires_spells" can point at any earlier node in its branch, so one
@@ -27,9 +31,7 @@
 # Every spell doubles as a battle.gd move definition - "power"/"acc_mod"
 # work exactly like BASE_MOVES entries there. "effect" picks how the move
 # resolves: "damage" (default, omitted) hits the target normally, "debuff"
-# (paired with a "debuff"/"amount" key) lowers one of the target's stats,
-# "barrier" targets the caster instead and adds "amount" to their own
-# barrier, capped at barrier_max, always succeeding (no accuracy check) -
+# (paired with a "debuff"/"amount" key) lowers one of the target's stats -
 # see battle.gd's _resolve_move().
 #
 # "oxygen_cost" is what casting the spell actually costs in battle (read by
@@ -83,15 +85,6 @@ const SPELL_TREES := {
 				"requires_spells": [], "requires_items": [],
 				"debuff": "agility", "amount": 3, "acc_mod": 3, "oxygen_cost": 8.0,
 				"hint": "Lowers agility", "text": "A snare of current wraps the target",
-			},
-		},
-		"defense": {
-			"brief_ward": {
-				"display": "Brief Ward", "cost": 2,
-				"description": "A thin veil of current - a small, temporary shield. The only defensive trick a glass cannon keeps around.",
-				"requires_spells": [], "requires_items": [],
-				"effect": "barrier", "amount": 4, "oxygen_cost": 16.0,
-				"hint": "A thin shield", "text": "A thin veil of current wraps you",
 			},
 		},
 		# A single improvement over her free base "Heal" move (see
@@ -149,40 +142,8 @@ const SPELL_TREES := {
 				"hint": "Nearly unmissable", "text": "You land a precise jab",
 			},
 		},
-		"defense": {
-			"evasive_ward": {
-				"display": "Evasive Ward", "cost": 2,
-				"description": "Weaves a moderate shield from open water.",
-				"requires_spells": [], "requires_items": [],
-				"effect": "barrier", "amount": 5, "oxygen_cost": 16.0,
-				"hint": "A moderate shield", "text": "You weave an evasive ward",
-			},
-		},
 	},
 	"Prototype_V(1922)": {
-		"defense": {
-			"barrier_pulse": {
-				"display": "Barrier Pulse", "cost": 1,
-				"description": "A pulse of pressure raises a shield. Never misses.",
-				"requires_spells": [], "requires_items": [],
-				"effect": "barrier", "amount": 5, "oxygen_cost": 8.0,
-				"hint": "Raises a shield", "text": "A pulse of pressure raises your shield",
-			},
-			"iron_shell": {
-				"display": "Iron Shell", "cost": 2,
-				"description": "Hardens your shield further, building on Barrier Pulse.",
-				"requires_spells": ["barrier_pulse"], "requires_items": [],
-				"effect": "barrier", "amount": 9, "oxygen_cost": 16.0,
-				"hint": "A heavier shield", "text": "Your shell hardens further",
-			},
-			"bulwark_stance": {
-				"display": "Bulwark Stance", "cost": 3,
-				"description": "A near-total shield - the tank's capstone. Needs a reef plate to learn.",
-				"requires_spells": ["iron_shell"], "requires_items": ["reef_plate"],
-				"effect": "barrier", "amount": 14, "oxygen_cost": 24.0,
-				"hint": "A near-total shield", "text": "You brace into an unbreakable bulwark",
-			},
-		},
 		"offense": {
 			"heavy_slam": {
 				"display": "Heavy Slam", "cost": 1,
@@ -201,13 +162,12 @@ const SPELL_TREES := {
 				"hint": "Cracks the target's defense", "text": "You batter through the target's guard",
 			},
 		},
-		# Nobody else has this branch - Prototype_V(1922) is this game's one
-		# tank/support diver (see this file's header comment), and healing/
-		# reviving an ally is the clearest possible expression of "support"
-		# a spell can be. "effect": "heal"/"revive" here are read by
-		# battle.gd's _resolve_move() exactly like "barrier" already is -
-		# always succeeds, no accuracy check, targets an ally instead of an
-		# enemy (see _on_move_chosen()'s target-pool branch for each).
+		# Nobody else has this branch - healing/reviving an ally is the
+		# clearest possible expression of "support" a spell can be.
+		# "effect": "heal"/"revive" here are read by battle.gd's
+		# _resolve_move() the same way as "debuff" - always succeeds, no
+		# accuracy check, targets an ally instead of an enemy (see
+		# _on_move_chosen()'s target-pool branch for each).
 		"support": {
 			"mending_current": {
 				"display": "Mending Current", "cost": 1,

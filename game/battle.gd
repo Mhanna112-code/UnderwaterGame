@@ -6,7 +6,7 @@
 # Combatants live as plain Dictionaries (not a class) in two arrays -
 # `party` and `enemies` - each entry shaped
 # {kind, stats, model_name, display_name, equipped_spells, actor, hp_bar,
-# hp_label, barrier_bar}. A Dictionary rather than a real class because
+# hp_label}. A Dictionary rather than a real class because
 # nothing here needs identity beyond "the fields", and it's the same
 # lightweight shape BASE_MOVES entries already use in this file.
 #
@@ -192,8 +192,8 @@ const OVERHEAD_MAX_NUDGES := 40
 # one, which is the trade the quote asks for.
 const OVERHEAD_DRIFT_COST := 40.0
 
-var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
-var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
+var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label}]
+var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label}]
 
 var _queue: Array = []     # combatants (same dict refs as party/enemies) still waiting to act this round
 var _acting: Dictionary = {}
@@ -448,7 +448,6 @@ func _default_player_stats() -> CombatantStats:
 	s.agility = int(base.agility)
 	s.evasion = int(base.evasion)
 	s.accuracy = int(base.accuracy)
-	s.barrier_max = int(base.barrier_max)
 	s.grow_hp = int(base.grow_hp)
 	s.grow_strength = int(base.grow_strength)
 	s.grow_defense = int(base.grow_defense)
@@ -768,7 +767,6 @@ func _party_average_stats() -> CombatantStats:
 	var sum_agi := 0
 	var sum_eva := 0
 	var sum_acc := 0
-	var sum_bar := 0
 	for entry in pool:
 		var s := entry.stats as CombatantStats
 		sum_hp += s.hp_max
@@ -777,14 +775,12 @@ func _party_average_stats() -> CombatantStats:
 		sum_agi += s.agility
 		sum_eva += s.evasion
 		sum_acc += s.accuracy
-		sum_bar += s.barrier_max
 	avg.hp_max = int(round(float(sum_hp) / n))
 	avg.strength = int(round(float(sum_str) / n))
 	avg.defense = int(round(float(sum_def) / n))
 	avg.agility = int(round(float(sum_agi) / n))
 	avg.evasion = int(round(float(sum_eva) / n))
 	avg.accuracy = int(round(float(sum_acc) / n))
-	avg.barrier_max = int(round(float(sum_bar) / n))
 	return avg
 
 # Evenly spaces `n` actors around x=0, `step` apart - shared by the party
@@ -896,7 +892,7 @@ func _build_ui() -> void:
 	queue_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	qmargin.add_child(queue_row)
 
-	# Health, barrier and status now hang over each combatant's own head.
+	# Health and status now hang over each combatant's own head.
 	# See _build_overhead_bar() and _layout_overhead_bars().
 	for entry in party:
 		_build_overhead_bar(entry)
@@ -1113,7 +1109,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_qte_active = false
 
 
-# One combatant's health, barrier and status, floating over their head.
+# One combatant's health and status, floating over their head.
 #
 # A Control laid out in screen space rather than a Label3D in the stage,
 # because these have to stay legible: a Label3D shrinks with distance, and
@@ -1123,7 +1119,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # affects that ONE node - it does not cascade to children, which each
 # default to STOP independently. Setting it on `box` alone (as the single
 # line below already did) left every child inside it - name_label,
-# bar_row, the HP/barrier ProgressBars, hp_label, status_label - still
+# bar_row, the HP ProgressBar, hp_label, status_label - still
 # individually eating clicks/motion in their own little rects. Since
 # these hang directly over each combatant (including the enemy launching
 # a special encounter, usually front and center), that's exactly where a
@@ -1151,8 +1147,6 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	name_label.add_theme_constant_override("outline_size", 5)
 	box.add_child(name_label)
 
-	# HP and barrier side by side, not stacked, so a full shield never hides
-	# how much HP is actually left underneath.
 	var bar_row := HBoxContainer.new()
 	bar_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar_row.add_theme_constant_override("separation", 3)
@@ -1174,15 +1168,6 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(bar)
 
-	var barrier_bar := ProgressBar.new()
-	barrier_bar.custom_minimum_size = Vector2(26, 10)
-	barrier_bar.show_percentage = false
-	var barrier_fill := StyleBoxFlat.new()
-	barrier_fill.bg_color = Color(0.62, 0.64, 0.68)
-	barrier_bar.add_theme_stylebox_override("fill", barrier_fill)
-	barrier_bar.add_theme_stylebox_override("background", hp_track)
-	bar_row.add_child(barrier_bar)
-
 	var hp_label := Label.new()
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_label.add_theme_font_size_override("font_size", 12)
@@ -1200,7 +1185,6 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 
 	entry["hp_bar"] = bar
 	entry["hp_label"] = hp_label
-	entry["barrier_bar"] = barrier_bar
 	entry["status_label"] = status_label
 	entry["overhead"] = box
 	_ignore_mouse_recursive(box)
@@ -1229,16 +1213,6 @@ func _refresh_bar(entry: Dictionary) -> void:
 		]
 	(entry.status_label as Label).text = status_text
 	(entry.status_label as Label).visible = status_text != ""
-	_refresh_barrier_bar(entry.barrier_bar, s)
-
-# Hidden entirely for a combatant with no barrier at all, rather than
-# showing a permanently-empty gray sliver next to their HP.
-func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
-	bar.visible = stats.barrier_max > 0
-	if not bar.visible:
-		return
-	bar.max_value = stats.barrier_max
-	bar.value = stats.barrier
 
 func _log(text: String) -> void:
 	log_label.text = text
@@ -1255,9 +1229,6 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 	if result_kind == "heal" or result_kind == "revive":
 		text = "+%d HP" % int(result.get("changed", 0))
 		color = Color(0.35, 1.0, 0.5)
-	elif result_kind == "barrier":
-		text = "+%d BARRIER" % int(result.get("changed", 0))
-		color = Color(0.7, 0.85, 1.0)
 	elif result_kind != "":
 		text = "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))]
 		color = Color(1.0, 0.82, 0.3)
@@ -1266,7 +1237,12 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 		color = Color(0.35, 0.9, 1.0)
 	elif int(result.get("damage", 0)) > 0:
 		text = "-%d" % int(result.damage)
-	elif int(result.get("absorbed", 0)) > 0 or (result.get("effects", []) as Array).is_empty():
+	elif (result.get("effects", []) as Array).is_empty():
+		# Only reachable now via defense flooring a hit at 0 - see
+		# _resolve_attack()'s own resolution-order comment. Text kept as
+		# "ABSORBED" (verify/combat_feedback.gd asserts on it) even though
+		# there's no more barrier to absorb anything - it still reads fine
+		# for "defense soaked this hit down to nothing."
 		text = "ABSORBED"
 		color = Color(0.8, 0.85, 0.9)
 	var effects := result.get("effects", []) as Array
@@ -1575,9 +1551,9 @@ func _populate_item_menu() -> void:
 	# place unless it's explicitly moved back to the end each time.
 	item_menu.move_child(item_back_btn, item_menu.get_child_count() - 1)
 
-# heal/oxygen/barrier items only ever make sense on a living party member
-# (a downed diver has no oxygen tank to top off or shield to raise either)
-# - _living(party) same as a heal move's own target pool. Filtered further
+# heal/oxygen items only ever make sense on a living party member (a
+# downed diver has no oxygen tank to top off) - _living(party) same as a
+# heal move's own target pool. Filtered further
 # by Items.would_help() per candidate, not by who's acting - an item
 # isn't cast BY someone the way a move is, it's just applied TO someone,
 # so there's no "does the acting diver have enough X" check the way
@@ -1598,8 +1574,8 @@ func _on_item_chosen(item_id: String) -> void:
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Always succeeds, no accuracy roll - same as _apply_heal()/_apply_barrier(),
-# nothing about using an item on an ally is something they could evade.
+# Always succeeds, no accuracy roll - same as _apply_heal(), nothing about
+# using an item on an ally is something they could evade.
 # Mirrors _resolve_party_move()'s tail exactly (log, refresh bars, advance
 # turn) so an item-use turn reads identically to a move turn.
 func _resolve_item(item_id: String, target: Dictionary) -> void:
@@ -1666,11 +1642,11 @@ func _show_main() -> void:
 	main_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Barrier moves target the caster - a single-entry target list rather than
-# an immediate resolve, same as everything else below, so choosing a
-# barrier spell still lands on a screen with Back rather than committing
-# the instant it's picked. Heal targets a living ally (a downed one has
-# nothing a heal can do for it - see _apply_revive() for that); revive
+# Every effect still gets a target list rather than an immediate resolve,
+# so choosing a move always lands on a screen with Back rather than
+# committing the instant it's picked. Heal targets a living ally (a
+# downed one has nothing a heal can do for it - see _apply_revive() for
+# that); revive
 # targets a downed one specifically. Everything else still targets an
 # enemy. Always shows the target picker, even for a single candidate
 # (e.g. the common one-enemy fight) - that single extra button is what
@@ -1688,8 +1664,6 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	var effect := String(mv.get("effect", ""))
 	var targets: Array
 	match effect:
-		"barrier":
-			targets = [_acting]
 		"heal":
 			targets = _living(party)
 		"revive":
@@ -1794,10 +1768,6 @@ func _show_moves_or_items_from_target_menu() -> void:
 #     left in the whole resolve - whether you hit is deterministic, how
 #     hard is not).
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
-#  4. Barrier - a temporary shield that eats damage before HP does. Doesn't
-#     refill on its own (see CombatantStats.fill()/gain_xp() and, now,
-#     _apply_barrier() below), so once it's spent it stays spent until the
-#     next level-up or barrier spell.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	if move.has("formula"):
 		return CombatRules.resolve(attacker, defender, move)
@@ -1825,9 +1795,7 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	# an independent ENEMY_QTE_CHANCE roll, same on either move. Player
 	# moves never set quick_time_bool at all, so this is still a no-op for
 	# anything the player swings themselves regardless. A successful dodge
-	# zeroes incoming outright rather than just skipping barrier absorption
-	# below - the reward for timing it right is not needing the barrier to
-	# save you at all, not just saving the barrier for later.
+	# zeroes incoming outright rather than reducing it.
 	var player_dodge := false
 	if bool(move.get("quick_time_bool", false)) and randf() < ENEMY_QTE_CHANCE:
 		player_dodge = await _quick_time_event()
@@ -1855,39 +1823,24 @@ static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats
 	if dodged:
 		incoming = 0
 
-	var absorbed := 0
-	if defender.barrier > 0 and incoming > 0:
-		absorbed = mini(defender.barrier, incoming)
-		defender.barrier -= absorbed
-	var to_hp: int = incoming - absorbed
-	defender.hp = maxi(0, defender.hp - to_hp)
-	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged, "evasion_spent": 0, "effects": []}
+	defender.hp = maxi(0, defender.hp - incoming)
+	return {"hit": true, "damage": incoming, "absorbed": 0, "debuff": "", "changed": 0, "dodged": dodged, "evasion_spent": 0, "effects": []}
 
 # Dispatches on the move's "effect" key before falling through to the
-# normal attack/debuff resolution above. "barrier" (defense-branch spells)
-# targets the caster instead of the defender and always succeeds, no
-# accuracy check - raising your own shield isn't something the target
-# could "evade." "heal"/"revive" (support-branch spells, see spell_tree.gd)
-# target an ally instead of an enemy - `defender` here is really just
-# "whoever _on_move_chosen()'s target picker resolved to," which for these
-# two effects is a living or downed ally respectively, not literally a
-# defender - and same as barrier, always succeed: nothing about mending a
-# wound is something the ally being healed could fail to receive.
+# normal attack/debuff resolution above. "heal"/"revive" (support-branch
+# spells, see spell_tree.gd) target an ally instead of an enemy -
+# `defender` here is really just "whoever _on_move_chosen()'s target
+# picker resolved to," which for these two effects is a living or downed
+# ally respectively, not literally a defender - and both always succeed:
+# nothing about mending a wound is something the ally being healed could
+# fail to receive.
 func _resolve_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	var effect := String(move.get("effect", ""))
-	if effect == "barrier":
-		return _apply_barrier(attacker, int(move.get("amount", 0)))
 	if effect == "heal":
 		return _apply_heal(defender, int(move.get("amount", 0)))
 	if effect == "revive":
 		return _apply_revive(defender, int(move.get("amount", 0)))
 	return await _resolve_attack(attacker, defender, move)
-
-func _apply_barrier(caster: CombatantStats, amount: int) -> Dictionary:
-	var before := caster.barrier
-	caster.barrier = mini(caster.barrier_max, caster.barrier + amount)
-	var changed := caster.barrier - before
-	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "barrier", "changed": changed}
 
 # Restores flat `amount` HP, capped at hp_max - only ever called with a
 # living ally as the target (see _on_move_chosen()'s "heal" target pool),
@@ -1949,12 +1902,6 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 	if not r.hit:
 		_log("%s - %s evades!" % [text, String(target.display_name)])
 		return
-	if String(r.debuff) == "barrier":
-		if int(r.changed) > 0:
-			_log("%s - %s's barrier rises by %d." % [text, String(actor.display_name), int(r.changed)])
-		else:
-			_log("%s - %s's barrier is already full." % [text, String(actor.display_name)])
-		return
 	if String(r.debuff) == "heal":
 		if int(r.changed) > 0:
 			_log("%s - %s recovers %d HP." % [text, String(target.display_name), int(r.changed)])
@@ -1970,12 +1917,7 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 		else:
 			_log("%s - %s has nothing left to lose there." % [text, String(target.display_name)])
 		return
-	if int(r.damage) == 0 and int(r.absorbed) > 0:
-		_log("%s - %s's barrier soaks it completely!" % [text, String(target.display_name)])
-	elif int(r.absorbed) > 0:
-		_log("%s for %d (%d soaked by barrier)." % [text, int(r.damage), int(r.absorbed)])
-	else:
-		_log("%s for %d." % [text, int(r.damage)])
+	_log("%s for %d." % [text, int(r.damage)])
 	var effects := r.get("effects", []) as Array
 	if not effects.is_empty():
 		_log("%s  •  %s" % [log_label.text, ", ".join(effects)])
@@ -2233,8 +2175,6 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 				hit_summaries.append("QTE dodge")
 			elif int(result.damage) > 0:
 				hit_summaries.append("-%d" % int(result.damage))
-			elif int(result.absorbed) > 0:
-				hit_summaries.append("barrier")
 			else:
 				hit_summaries.append("affected")
 		if (target.stats as CombatantStats).hp <= 0 and target.actor is Diver:
@@ -2303,10 +2243,6 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
 	elif not r.hit:
 		_log("%s, but %s evades!" % [verb, String(target.display_name)])
-	elif int(r.damage) == 0 and int(r.absorbed) > 0:
-		_log("%s - barrier soaks it completely!" % verb)
-	elif int(r.absorbed) > 0:
-		_log("%s for %d (%d soaked by barrier)." % [verb, int(r.damage), int(r.absorbed)])
 	else:
 		_log("%s for %d." % [verb, int(r.damage)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
@@ -2330,18 +2266,15 @@ func _restore_stage_camera() -> void:
 	_frame_stage_camera()
 
 # Minigame impacts are guaranteed hits: the skill test already decided
-# whether they landed. Barrier and defense still use the merged combat
-# system, so these encounters cannot bypass PR #54's mitigation rules.
+# whether they landed. Defense still uses the merged combat system, so
+# these encounters cannot bypass PR #54's mitigation rules.
 func _apply_special_impact(attacker: CombatantStats, target: Dictionary, scale: float = 1.0) -> Dictionary:
 	var defender := target.stats as CombatantStats
 	var raw := (float(ENEMY_MOVE.power) + float(attacker.strength)) * randf_range(0.85, 1.15)
 	var incoming := maxi(0, int(round(raw * scale)) - defender.effective_defense())
-	var absorbed := mini(defender.barrier, incoming)
-	defender.barrier -= absorbed
-	var hp_damage := incoming - absorbed
-	defender.hp = maxi(0, defender.hp - hp_damage)
+	defender.hp = maxi(0, defender.hp - incoming)
 	var result := {
-		"hit": true, "damage": hp_damage, "absorbed": absorbed,
+		"hit": true, "damage": incoming, "absorbed": 0,
 		"debuff": "", "changed": 0, "dodged": false, "effects": [],
 	}
 	_refresh_bar(target)
@@ -2375,8 +2308,6 @@ func _finish_special_enemy_turn(actor: Dictionary, target: Dictionary, flawless:
 			_show_combat_feedback(target, result)
 			if not bool(result.get("hit", false)):
 				_log("%s follows up, but %s evades." % [String(actor.display_name), String(target.display_name)])
-			elif int(result.get("damage", 0)) == 0 and int(result.get("absorbed", 0)) > 0:
-				_log("%s follows up, but the barrier absorbs it." % String(actor.display_name))
 			else:
 				_log("%s follows up for %d." % [String(actor.display_name), int(result.get("damage", 0))])
 	if target_stats.hp <= 0 and target.has("actor") and is_instance_valid(target.actor):
@@ -2546,8 +2477,6 @@ func _on_run() -> void:
 			_log("%s lunges - you time it perfectly and dodge clear!" % String(attacker.display_name))
 		elif not r.hit:
 			_log("%s lunges, but you evade clear." % String(attacker.display_name))
-		elif int(r.damage) == 0 and int(r.absorbed) > 0:
-			_log("%s - your barrier soaks it completely!" % String(attacker.display_name))
 		else:
 			_log("%s claws you for %d as you struggle free." % [String(attacker.display_name), int(r.damage)])
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:

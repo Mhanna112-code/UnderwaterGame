@@ -727,6 +727,12 @@ var _vortex_safe_is_yellow := true
 # and vel2d takes over completely instead.
 var _vortex_spheres: Array[Dictionary] = []
 
+# "instance_id_a_instance_id_b" (lower id first) -> bool, whether that
+# specific pair was touching as of the last _update_vortex() check - see
+# 2b's own comment in _update_vortex() for why this rising-edge tracking
+# exists (a real observed double-bounce bug without it).
+var _vortex_touching: Dictionary = {}
+
 # MODIFIED (added): the disc used to sit at one fixed point 30m dead
 # ahead - now it launches from near the enemy and travels to near the
 # player over VORTEX_TRAVEL_TIME. `start`/`end` are both measured along
@@ -895,7 +901,18 @@ func _spawn_vortex_sphere(is_yellow: bool) -> void:
 func _vortex_world_pos(p2: Vector2) -> Vector3:
     return _vortex_center + _vortex_right * p2.x + _vortex_up * p2.y
 
-func _process(delta: float) -> void:
+# MODIFIED: was _process() - get_overlapping_areas() (see _update_vortex())
+# only reflects newly-updated overlap state once per PHYSICS tick, not
+# once per rendered frame. Checking it from _process() meant that
+# whenever the render rate outpaced the physics tick rate, several
+# consecutive _process() calls could all see the exact same stale
+# "still touching" answer (physics hadn't recomputed anything between
+# them) and each one independently fired _apply_vortex_bounce() again -
+# a real, observed double (or triple) bounce for what should have been
+# one collision event. _physics_process() runs exactly once per physics
+# tick, the same cadence the physics server itself updates on, so this
+# check now only ever runs once per real update.
+func _physics_process(delta: float) -> void:
     if _vortex_active:
         _update_vortex(delta)
 
@@ -987,13 +1004,21 @@ func _update_vortex(delta: float) -> void:
     # would (see _apply_vortex_bounce()'s physics-mode branch for the
     # velocity side of this).
     #
-    # `bounced` stops a sphere from being bounced twice in the same frame
-    # if it's simultaneously touching more than one other sphere -
-    # double-reversing would cancel out and leave it moving as if nothing
-    # happened. Positional separation still applies to every overlapping
-    # pair regardless, so nothing ever renders stuck inside something else.
-    var bounced: Array[bool] = []
-    bounced.resize(_vortex_spheres.size())
+    # MODIFIED (added): _vortex_touching gates the actual bounce to the
+    # RISING EDGE of contact (wasn't touching last check, is touching
+    # now) - a real, observed bug otherwise: get_overlapping_areas()'s
+    # underlying state only updates once per physics tick, and can keep
+    # reporting "still touching" for several consecutive ticks after a
+    # bounce already separated the pair (whether from a genuine one-tick
+    # lag or the physics engine's own small collision margin around each
+    # shape), and a plain "if touching, bounce" check would re-fire every
+    # one of those ticks - each firing negates velocity again, so an even
+    # number of extra re-fires cancels straight back to the ORIGINAL
+    # pre-bounce direction, which read as the pair bouncing over and over
+    # in place instead of separating cleanly. Tracking "was this exact
+    # pair already touching as of the last check" and only bouncing when
+    # that flips from false to true makes one real contact fire exactly
+    # once, no matter how many extra ticks the overlap state lags behind.
     for i in range(_vortex_spheres.size()):
         var a: Dictionary = _vortex_spheres[i]
         if not bool(a.using_physics):
@@ -1008,20 +1033,26 @@ func _update_vortex(delta: float) -> void:
             var b_node := b.node as Area3D
             if not is_instance_valid(b_node):
                 continue
-            if not (b_node in a_node.get_overlapping_areas()):
+            var key: String = _vortex_pair_key(a_node, b_node)
+            var now_touching: bool = b_node in a_node.get_overlapping_areas()
+            var was_touching: bool = bool(_vortex_touching.get(key, false))
+            _vortex_touching[key] = now_touching
+            if not now_touching:
                 continue
             var diff: Vector2 = a.pos2d - b.pos2d
             var dist: float = diff.length()
             var normal: Vector2 = diff / dist if dist > 0.001 else Vector2.RIGHT
+            # Separation runs every tick the pair is still touching (cheap,
+            # and keeps nudging them apart even across a laggy multi-tick
+            # overlap report) - only the bounce itself is gated to the
+            # rising edge below.
             var overlap: float = maxf(VORTEX_SPHERE_RADIUS * 2.0 - dist, 0.0)
             a.pos2d = a.pos2d + normal * (overlap * 0.5)
             b.pos2d = b.pos2d - normal * (overlap * 0.5)
-            if not bounced[i]:
-                _apply_vortex_bounce(a)
-                bounced[i] = true
-            if not bounced[j]:
-                _apply_vortex_bounce(b)
-                bounced[j] = true
+            if was_touching:
+                continue
+            _apply_vortex_bounce(a)
+            _apply_vortex_bounce(b)
 
     # 3) Wall collision: only meaningful once a sphere is in physics mode
     # (a phase-1 sphere is still converging toward center along its arc,
@@ -1193,6 +1224,15 @@ func _clear_vortex() -> void:
         if is_instance_valid(node):
             node.queue_free()
     _vortex_spheres.clear()
+    _vortex_touching.clear()
+
+# A stable, order-independent key for one pair of sphere nodes - sorted
+# by instance id so (a, b) and (b, a) always produce the identical string,
+# regardless of which one _update_vortex()'s loop happens to visit first.
+func _vortex_pair_key(a: Area3D, b: Area3D) -> String:
+    var id_a := a.get_instance_id()
+    var id_b := b.get_instance_id()
+    return "%d_%d" % [mini(id_a, id_b), maxi(id_a, id_b)]
 
 # Battle-lifecycle verification uses direct resolution so its assertions
 # isolate HP/camera/visibility wiring from the separate aim-selection test.

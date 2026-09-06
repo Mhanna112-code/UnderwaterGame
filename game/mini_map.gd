@@ -5,13 +5,15 @@
 # nothing needs to be created/destroyed as walls come in and out of range.
 #
 # Holds a reference to world.gd itself rather than copies of its data -
-# divers/_wall_segments live there and change over time (new walls could
+# divers/_wall_pieces live there and change over time (new walls could
 # be built later, divers move every frame); reading them live means this
 # never needs to be told to refresh, it just always reflects however the
-# world actually looks right now. Same idea for _revealed_walls (fog of
-# war): World's own sphere-cast (_update_wall_visibility()) is what
-# reveals a wall, this just reads whether that's happened yet before
-# drawing each one - see the loop below.
+# world actually looks right now. Each _wall_pieces entry carries its own
+# "revealed" flag (fog of war): World's own detection area
+# (_update_wall_visibility(), sized to this exact view_radius - see
+# _build_wall_sight_area()) is what actually reveals a piece, this just
+# reads whether that's happened yet before drawing it - see
+# _draw_lines_at_overlapping_areas().
 class_name MiniMap
 extends Control
 
@@ -40,32 +42,7 @@ func _draw() -> void:
 	draw_circle(mid, r, Color(0.03, 0.06, 0.08, 0.88))
 	draw_arc(mid, r - 1.5, 0.0, TAU, 48, Color(0.5, 0.72, 0.8, 0.55), 1.5)
 
-	# Walls: clipped to the circle itself, not just culled by whole segment -
-	# a segment with one endpoint inside view_radius and one well outside it
-	# used to draw straight through the rim into the square panel's corner
-	# space (clip_contents only clips to the panel's rectangle, not the
-	# circle drawn inside it). _clip_to_circle solves for where the segment
-	# actually crosses the view_radius boundary and only the portion inside
-	# gets drawn.
-	for seg in world._wall_segments:
-		# Fog of war: a wall only draws once World's own sphere-cast
-		# (_update_wall_visibility()) has actually found the diver near it
-		# at some point - see World._revealed_walls. Permanent once seen,
-		# same rule the maze test scene's own minimap fog already uses.
-		if not world._revealed_walls.has(seg[2]):
-			continue
-		var a: Vector3 = seg[0]
-		var b: Vector3 = seg[1]
-		var rel_a: Vector2 = Vector2(a.x, a.z) - Vector2(center.x, center.z)
-		var rel_b: Vector2 = Vector2(b.x, b.z) - Vector2(center.x, center.z)
-		var clipped: Array = _clip_to_circle(rel_a, rel_b, view_radius)
-		if clipped.is_empty():
-			continue
-		draw_line(
-			mid + (clipped[0] as Vector2) * px_per_unit,
-			mid + (clipped[1] as Vector2) * px_per_unit,
-			Color(0.6, 0.64, 0.68, 0.9), 2.0
-		)
+	_draw_lines_at_overlapping_areas(center, px_per_unit, mid)
 
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
@@ -84,6 +61,34 @@ func _draw() -> void:
 			draw_circle(p, 4.0, Color(0.85, 0.8, 0.3))
 
 	_draw_key_item_markers(center, r, px_per_unit, mid)
+
+# Draws only the wall PIECES World's own detection area has actually
+# found (see World._wall_pieces/_update_wall_visibility()) - not whole
+# walls, so a long corridor lights up gradually as you swim its length
+# rather than all at once the moment any part of it is found. Each
+# revealed piece is still clipped to the circle itself, not just culled
+# by whole segment - a piece with one endpoint inside view_radius and one
+# well outside it would otherwise draw straight through the rim into the
+# square panel's corner space (clip_contents only clips to the panel's
+# rectangle, not the circle drawn inside it). _clip_to_circle solves for
+# where the piece actually crosses the view_radius boundary and only the
+# portion inside gets drawn.
+func _draw_lines_at_overlapping_areas(center: Vector3, px_per_unit: float, mid: Vector2) -> void:
+	for piece in world._wall_pieces:
+		if not bool(piece.revealed):
+			continue
+		var a: Vector3 = piece.a
+		var b: Vector3 = piece.b
+		var rel_a: Vector2 = Vector2(a.x, a.z) - Vector2(center.x, center.z)
+		var rel_b: Vector2 = Vector2(b.x, b.z) - Vector2(center.x, center.z)
+		var clipped: Array = _clip_to_circle(rel_a, rel_b, view_radius)
+		if clipped.is_empty():
+			continue
+		draw_line(
+			mid + (clipped[0] as Vector2) * px_per_unit,
+			mid + (clipped[1] as Vector2) * px_per_unit,
+			Color(0.6, 0.64, 0.68, 0.9), 2.0
+		)
 
 # One pulsing red marker per key-item zone (ItemGuardian.spots()) sonar has
 # ever revealed (World.revealed_key_items) that hasn't been claimed yet
