@@ -48,6 +48,36 @@ func _run() -> void:
 		_expect(angler.available_moves().any(func(m: Dictionary) -> bool: return String(m.id) == "bite"),
 			"ENEMY MOVES: caller mutation changed the catalogue — guards against one turn disabling future attacks")
 
+	# `play_move()` alone is insufficient: Battle can immediately replace the
+	# selected action with idle. Start an actual ordinary-enemy turn, sample
+	# after the walk-in has completed, and require the authored attack to still
+	# be visibly playing at its impact point.
+	var battle := Battle.new()
+	root.add_child(battle)
+	await process_frame
+	await process_frame
+	if battle.enemies.is_empty() or battle.party.is_empty():
+		_expect(false, "ENEMY MOVES: Battle did not build a production enemy turn — guards against a playback test that never exercises combat")
+	else:
+		for party_value in battle.party:
+			var party_entry := party_value as Dictionary
+			var stats := party_entry.stats as CombatantStats
+			stats.hp_max = 500
+			stats.hp = 500
+			stats.evasion = 0
+			stats.evasion_current = 0
+		var enemy_entry := battle.enemies[0] as Dictionary
+		(enemy_entry.stats as CombatantStats).accuracy = 99
+		battle.call_deferred("_do_enemy_turn", enemy_entry)
+		await process_frame
+		await create_timer(0.32).timeout
+		var actor := enemy_entry.actor as Goblin
+		var current := String(actor.anim.current_animation).to_lower() if actor != null and actor.anim != null else ""
+		_expect("attack)bite" in current,
+			"ENEMY MOVES: production Angler turn returned to idle before its impact frame — guards against invisible attack animations (playing '%s')" % current)
+	battle.queue_free()
+	await process_frame
+
 	angler.queue_free()
 	await process_frame
 	if findings.is_empty():

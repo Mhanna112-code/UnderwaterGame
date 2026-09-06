@@ -42,6 +42,10 @@ var boss_encounter := false
 # encounter one-on-one with the party instead of secretly replacing the one
 # approached actor with a random three-grunt pack.
 var guardian_encounter := false
+# The map sends the visible guardian's identity along with its reward. Random
+# encounters remain Angler-only; this only applies to the one-enemy artifact
+# battle, so asset variety cannot change encounter frequency or pack size.
+var guardian_enemy_id := "angler"
 # Verification can hold the automatic entrance/turn dispatcher while it
 # exercises each boss move directly. Shipped encounters leave this true.
 var boss_intro_enabled := true
@@ -527,7 +531,7 @@ func _build_stage() -> void:
 		_frame_stage_camera()
 		return
 	for i in range(count):
-		var g := Goblin.new()
+		var g: Goblin = _guardian_actor() if guardian_encounter else Goblin.new()
 		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
 		vp.add_child(g)
 		var party_centre := Vector3.ZERO
@@ -538,7 +542,7 @@ func _build_stage() -> void:
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
 		enemies.append({
 			"kind": "enemy", "stats": st,
-			"display_name": "Angler" if count == 1 else "Angler %d" % (i + 1),
+			"display_name": g.display_name() if count == 1 else "%s %d" % [g.display_name(), i + 1],
 			"actor": g,
 			"home_pos": g.position,
 			"home_rot": g.rotation.y,
@@ -546,6 +550,11 @@ func _build_stage() -> void:
 		})
 
 	_frame_stage_camera()
+
+func _guardian_actor() -> Goblin:
+	if guardian_enemy_id == "swordfish_duelist":
+		return SwordDuelist.new()
+	return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
 # and body recoil read from a three-quarter angle and disappear into the
@@ -2086,14 +2095,16 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
 		_advance_turn()
 		return
-	# The selected data record owns its animation and mechanics. New clips only
-	# need a catalogue row; the production turn never branches on a move name.
-	enemy_actor.play_move(move)
 	await _step_toward(actor, target)
+	# The selected data record owns its animation and mechanics. Step into
+	# range first, then keep the authored clip on screen through its impact
+	# frame. Previously play_move() ran before the walk and idle was restored
+	# about 0.18 seconds later, making a valid Bite look like no attack at all.
+	var attack_length := enemy_actor.play_move(move)
+	if attack_length > 0.0:
+		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, move.combat as Dictionary)
-	_send_home(actor, 0.0)
-	if is_instance_valid(actor.actor):
-		(actor.actor as Goblin).play("idle")
+	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
 	_refresh_bar(target)
 	_react(target, r)
 	_show_combat_feedback(target, r)
@@ -2112,6 +2123,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		(target.actor as Diver).play_death_fade()
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_restore_enemy_idle(actor)
 	_advance_turn()
 
 func _win() -> void:

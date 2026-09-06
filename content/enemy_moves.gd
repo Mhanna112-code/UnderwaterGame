@@ -44,3 +44,35 @@ const ANGLER := [
 
 static func angler_catalogue() -> Array:
 	return ANGLER.duplicate(true)
+
+# The second guardian keeps the proven ordinary-enemy damage/accuracy math.
+# Great Slash carries the former normal Bite slot; Stabbing carries the former
+# low-HP heavy slot. The delivered spinning drill is visible but disabled until
+# the team chooses whether it is a single-target drill or a multi-target move.
+const SWORDFISH_DUELIST := [
+	{
+		"id": "great_slash", "name": "Great Slash", "clip": "attack)greatslash",
+		"enabled": true, "target": "single", "roll_order": 1, "weight": 70.0,
+		"finisher_weight": 35.0, "verb": "slashes at",
+		"combat": {"power": 9, "acc_mod": 1, "quick_time_bool": false},
+	},
+	{
+		"id": "stabbing", "name": "Stabbing Lunge", "clip": "attack)stabbing",
+		"enabled": true, "target": "single", "roll_order": 0, "weight": 30.0,
+		"finisher_weight": 65.0, "verb": "lunges at",
+		"finisher_below_hp": 0.5,
+		"combat": {
+			"power": 0, "acc_mod": -1, "quick_time_bool": true,
+			"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
+		},
+	},
+	{
+		"id": "spinning_drill", "name": "Spinning Drill", "clip": "attack)spinning_drill",
+		"enabled": false, "target": "single", "roll_order": 2, "weight": 0.0,
+		"finisher_weight": 0.0, "verb": "spins toward",
+		"combat": {"power": 9, "acc_mod": 1, "quick_time_bool": false},
+	},
+]
+
+static func swordfish_duelist_catalogue() -> Array:
+	return SWORDFISH_DUELIST.duplicate(true)

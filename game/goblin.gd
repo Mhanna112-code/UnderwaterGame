@@ -45,7 +45,7 @@ var _hurt_anim := ""
 var _death_anim := ""
 
 func _ready() -> void:
-	var model: Node3D = SRC.instantiate()
+	var model: Node3D = model_source().instantiate()
 	model.name = "Model"
 	add_child(model)
 
@@ -65,13 +65,30 @@ func _ready() -> void:
 				_idle_anim = a
 			elif "swimming" in lower and "mid" in lower:
 				_swim_anim = a
-			elif "attack" in lower and "bite" in lower:
-				_attack_anim = a
 			elif "damaged" in lower:
 				_hurt_anim = a
 			elif "death" in lower:
 				_death_anim = a
+	_attack_anim = _resolve_clip(primary_attack_clip())
 	play("idle")
+
+# The existing Goblin class is the stable enemy actor contract used by battle,
+# guardian triggers, progression and balance. Subclasses swap only asset-facing
+# facts; all of those systems can keep treating the actor as a Goblin.
+func model_source() -> PackedScene:
+	return SRC
+
+func enemy_catalogue() -> Array:
+	return EnemyMoves.angler_catalogue()
+
+func enemy_id() -> String:
+	return "angler"
+
+func display_name() -> String:
+	return "Angler"
+
+func primary_attack_clip() -> String:
+	return "attack)bite"
 
 # Always at least a little stronger than ref on every stat, never weaker
 # and never exactly equal - a fight should never quietly be easier than the
@@ -145,7 +162,7 @@ func play(substr: String) -> void:
 # without mutating the next encounter's artist-facing catalogue.
 func available_moves() -> Array:
 	var available: Array = []
-	for move_value in EnemyMoves.angler_catalogue():
+	for move_value in enemy_catalogue():
 		var move := move_value as Dictionary
 		if bool(move.get("enabled", false)):
 			available.append(move)

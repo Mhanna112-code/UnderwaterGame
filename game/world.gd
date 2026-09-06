@@ -134,6 +134,11 @@ var _pending_reward_item := ""
 # save and returns to the title after the result, so repeatedly testing
 # Tethys cannot damage a real playthrough.
 var _boss_playtest_active := false
+# The separate query-only artifact route never writes a save or grants its
+# item. It is a review tool for the second guardian asset, not a shortcut in
+# a normal run.
+var _guardian_playtest_active := false
+var _guardian_playtest_site := ""
 
 # Which save slot this run is playing into - set the instant the title
 # screen resolves (New Game picks one and writes an initial save into it;
@@ -309,6 +314,17 @@ func _on_title_boss_playtest() -> void:
 	get_tree().paused = false
 	call_deferred("_start_battle", "", true)
 
+func _on_title_guardian_playtest() -> void:
+	var site := Sites.by_id(_guardian_playtest_site)
+	if site.is_empty() or String(site.get("item", "")).is_empty():
+		return
+	_current_slot = -1
+	_guardian_playtest_active = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	call_deferred("_start_battle", String(site.item), false, String(site.get("enemy", "angler")))
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -316,6 +332,19 @@ func _boss_playtest_requested() -> bool:
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("boss=1")
 	return false
+
+func _guardian_playtest_requested() -> String:
+	if OS.get_cmdline_user_args().has("--guardian-playtest-shallows"):
+		return "shallows"
+	if OS.get_cmdline_user_args().has("--guardian-playtest-trench"):
+		return "trench"
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		if String(search).contains("guardian=shallows"):
+			return "shallows"
+		if String(search).contains("guardian=trench"):
+			return "trench"
+	return ""
 
 func _show_game_over() -> void:
 	# Defeat owns the whole screen just like cold launch. The controls, active
@@ -448,9 +477,14 @@ func _ready() -> void:
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
+	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
+	_guardian_playtest_site = _guardian_playtest_requested()
+	if not _guardian_playtest_site.is_empty():
+		var playtest_site := Sites.by_id(_guardian_playtest_site)
+		title_screen.enable_guardian_playtest("Play %s Guardian Test" % String(playtest_site.get("item", "Artifact")).capitalize())
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
@@ -773,16 +807,23 @@ func _build_item_guardians() -> void:
 		guardian.position.y = PLINTH_TOP + float(ItemGuardian.LIFT.get(guardian.look, 0.9))
 		add_child(guardian)
 
-		# Decorative only - a real Goblin standing beside the plinth so
+		# Decorative only - the same real enemy model that will enter the
+		# guardian battle, standing beside the plinth so
 		# "something is guarding this" is visible from the rim, not just an
 		# invisible volume at the middle. No collision (see goblin.gd), so
 		# it cannot block movement or be mistaken for the trigger.
-		var decoy := Goblin.new()
+		var enemy_id := String(entry.get("enemy", "angler"))
+		var decoy := _guardian_actor(enemy_id)
 		decoy.position = (entry.at as Vector3) + Vector3(1.8, 0.0, 0.6)
 		decoy.position.y = 0.0
 		add_child(decoy)
 
-		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
+		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy, enemy_id))
+
+func _guardian_actor(enemy_id: String) -> Goblin:
+	if enemy_id == "swordfish_duelist":
+		return SwordDuelist.new()
+	return Goblin.new()
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1420,12 +1461,12 @@ func _on_encounter_triggered(d: Diver) -> void:
 # Both get freed the instant this fires, win or lose the fight that
 # follows - a guardian is a one-time gate on its item, not a repeatable
 # encounter spot, so there's nothing left here to trigger again either way.
-func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin) -> void:
+func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin, enemy_id: String) -> void:
 	if battling:
 		return
 	guardian.call_deferred("queue_free")
 	decoy.call_deferred("queue_free")
-	_start_battle(item_id)
+	_start_battle(item_id, false, enemy_id)
 
 # `d` (bound at connect time) is whoever's swapped_with just fired - only
 # react if it's the diver currently being steered, same guard shape as
@@ -1439,7 +1480,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler") -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
@@ -1451,6 +1492,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false) -> vo
 	battle.world = self
 	battle.boss_encounter = boss_encounter
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
+	battle.guardian_enemy_id = guardian_enemy_id
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
@@ -1458,16 +1500,18 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
-	if _boss_playtest_active:
+	if _boss_playtest_active or _guardian_playtest_active:
+		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false
+		_guardian_playtest_active = false
 		_pending_reward_item = ""
 		match result:
 			"won":
-				_announce("Tethys boss test complete.")
+				_announce("%s test complete." % test_kind)
 			"fled":
-				_announce("Tethys boss test ended early.")
+				_announce("%s test ended early." % test_kind)
 			_:
-				_announce("Tethys overwhelmed the party. Try the test again.")
+				_announce("%s overwhelmed the party. Try the test again." % test_kind)
 		call_deferred("_show_title_screen")
 		return
 	match result:

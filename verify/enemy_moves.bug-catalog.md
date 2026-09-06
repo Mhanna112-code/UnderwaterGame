@@ -30,6 +30,7 @@ It protects the agreed asset workflow: an artist may deliver many named Angler a
 | 3 | Disabled/provisional art enters random combat selection. | High — unfinished or unbalanced work ships accidentally. | A common selector filters a mixed enabled/disabled catalogue. | decision table | open |
 | 4 | A turn mutates its selected move and disables or corrupts the source catalogue. | Medium — later fights have non-deterministic move availability. | Dictionaries are reference types in GDScript. | captured contract | open |
 | 5 | Converting chance branches to weighted rows changes seeded balance outcomes despite equivalent percentages. | High — a refactor silently invalidates the campaign balance gate. | Weighted selection order determines which random interval each move receives. | differential/captured | fixed |
+| 6 | Battle starts an authored enemy clip but restores idle before the attack's impact frame, making attacks appear absent to a playtester. | High — Glassgoat cannot validate the delivered non-humanoid attacks in actual combat. | `play_move()` was called before walk-in and damage resolution immediately restored idle. | captured integration | fixed |
 
 ## Test plan
 
@@ -68,6 +69,13 @@ It protects the agreed asset workflow: an artist may deliver many named Angler a
 - **What it catches:** the same weights assigned to different random intervals after branch-to-data conversion.
 - **Self-critique:** aggregate percentages alone could hide it, but the existing seeded route gate is the observable acceptance boundary and fails when that trajectory slips below its established floor.
 
+### Bug #6 — invisible production attack
+
+- **Test type:** captured integration.
+- **Description string:** `"ENEMY MOVES: production Angler turn returned to idle before its impact frame — guards against invisible attack animations"`
+- **What it catches:** the player-visible turn flow overwriting Bite before its intended hit timing, even though a direct actor clip test passes.
+- **Self-critique:** it observes a real `Battle` enemy turn after the known walk-in duration; changing internals without preserving visible playback still fails, as it should.
+
 ## Skipped
 
 - Exact random percentages — weights are design data, and an exact RNG sample would be flaky; selection validity is covered by the production fight gate.
@@ -76,6 +84,6 @@ It protects the agreed asset workflow: an artist may deliver many named Angler a
 
 ## Post-write evaluation
 
-- **Bugs caught:** #1 — the first run could not compile because `EnemyMoves` and the reusable actor APIs did not exist. #5 — the initial weighted selector assigned the right percentages to reversed deterministic intervals and pushed the casual route to 49.6%; explicit content roll order restored its accepted 50.4% route result.
-- **Bugs characterized:** #2, #3, #4 — every delivered record resolves to an imported clip, only enabled records are selected, and callers cannot mutate the source catalogue.
-- **Bugs discovered during writing:** Equivalent weighted probabilities are not enough for a seeded balance gate; move order is part of the reproducible content contract.
+- **Bugs caught:** #1 — the first run could not compile because `EnemyMoves` and the reusable actor APIs did not exist. #5 — the initial weighted selector assigned the right percentages to reversed deterministic intervals and pushed the casual route to 49.6%; explicit content roll order restored its accepted 50.4% route result. #6 — the first production-turn sample found the Angler already back in `Idle` at 0.32 seconds, confirming the playtest report.
+- **Bugs characterized:** #2, #3, #4 — every delivered record resolves to an imported clip, only enabled records are selected, and callers cannot mutate the source catalogue. #6 now passes: the production turn holds Bite through its impact frame.
+- **Bugs discovered during writing:** Equivalent weighted probabilities are not enough for a seeded balance gate; move order is part of the reproducible content contract. Starting a clip through the actor API does not demonstrate visible combat playback; timing belongs to the Battle integration contract.

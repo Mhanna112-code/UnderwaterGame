@@ -18,12 +18,15 @@ extends Control
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
 signal boss_playtest_chosen
+signal guardian_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
 
 var _list: VBoxContainer
 var _boss_playtest_available := false
+var _guardian_playtest_available := false
+var _guardian_playtest_label := "Play Guardian Test"
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -78,6 +81,15 @@ func enable_boss_playtest() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
+# Like the boss route, this is query-only review infrastructure. It keeps the
+# normal first-player title surface untouched while letting Glassgoat inspect
+# the far artifact guardian without navigating through saves and encounters.
+func enable_guardian_playtest(label: String) -> void:
+	_guardian_playtest_available = true
+	_guardian_playtest_label = label
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
@@ -105,6 +117,16 @@ func _refresh_main() -> void:
 		boss_btn.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
 		boss_btn.pressed.connect(boss_playtest_chosen.emit)
 		_list.add_child(boss_btn)
+
+	if _guardian_playtest_available:
+		var guardian_btn := Button.new()
+		guardian_btn.text = _guardian_playtest_label
+		guardian_btn.tooltip_text = "Swordfish Duelist model, animation, and guardian battle validation"
+		guardian_btn.custom_minimum_size = Vector2(360, 46)
+		guardian_btn.add_theme_font_size_override("font_size", 17)
+		guardian_btn.add_theme_color_override("font_color", Color(0.68, 0.88, 1.0))
+		guardian_btn.pressed.connect(guardian_playtest_chosen.emit)
+		_list.add_child(guardian_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save
