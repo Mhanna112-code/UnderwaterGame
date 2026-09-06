@@ -43,6 +43,10 @@ func _run() -> void:
 		var current := String(angler.anim.current_animation).to_lower() if angler.anim != null else ""
 		_expect(String(required[key]).to_lower() in current,
 			"ANGLER GRUNT: %s resolved '%s', not an authored %s clip — guards against a wrong/fallback animation" % [key, current, required[key]])
+		if skeleton != null:
+			var motion := await _measure_clip_deformation(angler, skeleton)
+			_expect(bool(motion.changed),
+				"ANGLER GRUNT: %s clip moved no bones (max delta %.6f) — guards against a rigid non-humanoid animation" % [key, float(motion.max_delta)])
 
 	# The retired Goblin used a guessed PI rotation. Angler's authored face is
 	# local +Z, so battle must orient that axis toward the party rather than
@@ -118,3 +122,35 @@ func _has_textured_surface(node: Node) -> bool:
 		if _has_textured_surface(child):
 			return true
 	return false
+
+func _measure_clip_deformation(angler: Goblin, skeleton: Skeleton3D) -> Dictionary:
+	if angler.anim == null:
+		return {"changed": false, "max_delta": 0.0}
+	var animation := angler.anim.get_animation(angler.anim.current_animation)
+	if animation == null or animation.length <= 0.0:
+		return {"changed": false, "max_delta": 0.0}
+	angler.anim.seek(0.0, true)
+	await process_frame
+	var baseline := _bone_snapshot(skeleton)
+	var max_delta := 0.0
+	for fraction in [0.2, 0.4, 0.6, 0.8]:
+		angler.anim.seek(animation.length * fraction, true)
+		await process_frame
+		max_delta = maxf(max_delta, _max_pose_delta(baseline, _bone_snapshot(skeleton)))
+	return {"changed": max_delta > 0.001, "max_delta": max_delta}
+
+func _bone_snapshot(skeleton: Skeleton3D) -> Array:
+	var poses: Array = []
+	for bone in range(skeleton.get_bone_count()):
+		poses.append(skeleton.get_bone_global_pose(bone))
+	return poses
+
+func _max_pose_delta(left: Array, right: Array) -> float:
+	var max_delta := 0.0
+	for bone in range(mini(left.size(), right.size())):
+		var start := left[bone] as Transform3D
+		var sample := right[bone] as Transform3D
+		var delta := start.origin.distance_to(sample.origin)
+		delta += start.basis.get_rotation_quaternion().angle_to(sample.basis.get_rotation_quaternion())
+		max_delta = maxf(max_delta, delta)
+	return max_delta

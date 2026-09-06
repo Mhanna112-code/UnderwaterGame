@@ -30,6 +30,7 @@
 | 3 | Battle asks for an action key that falls back to idle, so the authored non-humanoid attack/hurt/death motions never play. | High — the validation Glassgoat requested is not actually exercised in combat. | The old asset supplied only idle/walk; Angler uses different take names. | decision-table contract | open |
 | 4 | Native asset units produce a giant, tiny, or near-zero combat actor. | Medium — combat framing and target readability fail. | Its raw FBX dimensions differ substantially from the Goblin asset. | invariant | open |
 | 5 | Angler inherits the old Goblin's guessed rotation and presents its back to the party. | High — every ordinary fight visibly starts wrong. | `battle.gd` hard-coded `PI` for the retired asset without a model-specific axis check. | directional integration invariant | fixed |
+| 6 | An animation has a plausible take name but drives no bone of the visible non-humanoid Angler. | High — Glassgoat cannot safely make more enemy rigs from a false acceptance. | FBX imports can retain named takes while losing animation/skin links. | invariant | open |
 
 ## Test plan
 
@@ -68,15 +69,21 @@
 - **What it catches:** a stage spawn or production enemy turn whose authored local front points away from the party.
 - **Self-critique:** It cannot pass for a back-facing model because it measures the actual actor basis against the actual party centre/target. A compatible refactor may change spawn or aiming code but will retain the same direction.
 
+### Bug #6 — rigid named take
+
+- **Test type:** invariant
+- **Description string:** `"ANGLER GRUNT: <key> clip moved no bones — guards against a rigid non-humanoid animation"`
+- **What it catches:** an asset import that exposes a named clip while the driven skeleton pose never changes.
+- **Self-critique:** It samples every production motion at four interior times against its own rest pose, so a stable but rigid take fails. It reads the skeleton/animation public Godot runtime contract, not importer internals.
+
 ## Skipped
 
-- Exact bone poses for every clip — deferred to a dedicated animation-deformation test if Glassgoat reports an action is visually static; the five production action mappings give much higher signal for this small ordinary enemy.
 - Enemy combat formulas and encounter rates — deliberately unchanged in this asset-only PR and covered by balance/encounter gates.
 - World roaming animation — ordinary enemies are combat-stage actors/decoys today; no world enemy movement contract exists to preserve.
 
 ## Post-write evaluation
 
 - **Bugs caught:** #3 — before the mapping repair, `swim`, `attack`, `hurt`, and `death` all selected idle because the legacy adapter only supported idle/walk. #5 — the initial battle spawn had a front dot of `-0.954`, confirming the old `PI` rotation showed the Angler's back.
-- **Bugs characterized:** #1, #2, #4 — the delivered file imports as the textured, 19-bone, stage-sized Angler.
+- **Bugs characterized:** #1, #2, #4, #6 — the delivered file imports as the textured, 19-bone, stage-sized Angler and every production motion visibly deforms its rig.
 - **Bugs discovered during writing:** The original texture references look external in the FBX strings, but Godot receives embedded texture data; a filesystem `.fbm` directory is not required.
 - **Tests removed:** none.
