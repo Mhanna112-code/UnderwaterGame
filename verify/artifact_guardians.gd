@@ -30,11 +30,13 @@ func _run() -> void:
 	var skeleton := _find_skeleton(duelist)
 	_expect(skeleton != null and skeleton.get_bone_count() >= 19,
 		"ARTIFACT GUARDIANS: Duelist has a live non-humanoid rig — guards against a static/wrong import")
-	# Glassgoat explicitly approved this as an intentionally untextured white
-	# prototype. It still must import a renderable material; a missing material
-	# would be an asset-import failure, while a missing texture is not.
+	# Glassgoat supplied a later Swordfish export with its diffuse artwork
+	# embedded. A material-only import leaves the real trench guardian flat
+	# white, so renderability alone is not enough now.
 	_expect(_has_renderable_surface(duelist),
 		"ARTIFACT GUARDIANS: Duelist has no renderable material — guards against importing an invisible/wrong asset")
+	_expect(_has_albedo_texture(duelist),
+		"ARTIFACT GUARDIANS: Duelist has an imported albedo texture — guards against a flat-white Swordfish at the trench artifact")
 	var move := duelist.available_moves()[0] as Dictionary if not duelist.available_moves().is_empty() else {}
 	var length := duelist.play_move(move)
 	await process_frame
@@ -105,6 +107,18 @@ func _has_renderable_surface(node: Node) -> bool:
 				return true
 	for child in node.get_children():
 		if _has_renderable_surface(child):
+			return true
+	return false
+
+func _has_albedo_texture(node: Node) -> bool:
+	if node is MeshInstance3D:
+		var mesh := node as MeshInstance3D
+		for surface in range(mesh.mesh.get_surface_count()):
+			var material := mesh.get_active_material(surface)
+			if material is BaseMaterial3D and (material as BaseMaterial3D).albedo_texture != null:
+				return true
+	for child in node.get_children():
+		if _has_albedo_texture(child):
 			return true
 	return false
 

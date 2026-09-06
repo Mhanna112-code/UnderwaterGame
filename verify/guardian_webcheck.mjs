@@ -20,7 +20,9 @@ const server = http.createServer((req, res) => {
     'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' });
   fs.createReadStream(p).pipe(res);
 });
-if (!live) await new Promise(r => server.listen(8767, r));
+// Do not collide with a developer's own local game server. This check only
+// needs a private static server, so the OS can assign an unused port.
+if (!live) await new Promise(r => server.listen(0, r));
 
 const browser = await chromium.launch({ args: [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
@@ -30,7 +32,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errors = [];
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', e => errors.push(String(e)));
-const base = live ? dir : 'http://localhost:8767/';
+const base = live ? dir : `http://localhost:${server.address().port}/`;
 const url = base + (base.includes('?') ? '&guardian=trench' : '?guardian=trench');
 await page.goto(url, { waitUntil: 'load' });
 await page.waitForTimeout(25000);
