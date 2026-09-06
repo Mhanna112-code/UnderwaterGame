@@ -141,6 +141,60 @@ func play(substr: String) -> void:
 	if want != "" and anim.current_animation != want:
 		anim.play(want)
 
+# A fresh deep copy makes it safe for Battle/UI code to attach per-turn data
+# without mutating the next encounter's artist-facing catalogue.
+func available_moves() -> Array:
+	var available: Array = []
+	for move_value in EnemyMoves.angler_catalogue():
+		var move := move_value as Dictionary
+		if bool(move.get("enabled", false)):
+			available.append(move)
+	return available
+
+func has_clip_fragment(fragment: String) -> bool:
+	return _resolve_clip(fragment) != ""
+
+func play_move(move: Dictionary) -> float:
+	if anim == null or not bool(move.get("enabled", false)):
+		return 0.0
+	var clip := _resolve_clip(String(move.get("clip", "")))
+	if clip == "":
+		return 0.0
+	anim.play(clip)
+	var animation := anim.get_animation(clip)
+	return animation.length if animation != null else 0.0
+
+# Select by authored data, not a conditional tied to a particular animation.
+# `finisher_below_hp` is optional; any enabled move with it makes the target
+# low-health state use every move's finisher_weight instead of normal weight.
+func choose_move(target: CombatantStats) -> Dictionary:
+	var moves := available_moves()
+	if moves.is_empty():
+		return {}
+	# Keep a deliberate roll order in content data. This preserves deterministic
+	# balance seeds while allowing the catalogue to stay human-readable.
+	moves.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left.get("roll_order", 0)) < int(right.get("roll_order", 0)))
+	var finisher := false
+	for move_value in moves:
+		var move := move_value as Dictionary
+		var threshold := float(move.get("finisher_below_hp", 0.0))
+		if threshold > 0.0 and float(target.hp) <= float(target.hp_max) * threshold:
+			finisher = true
+			break
+	var total := 0.0
+	for move_value in moves:
+		var move := move_value as Dictionary
+		total += maxf(0.0, float(move.get("finisher_weight", 0.0) if finisher else move.get("weight", 0.0)))
+	if total <= 0.0:
+		return {}
+	var roll := randf() * total
+	for move_value in moves:
+		var move := move_value as Dictionary
+		roll -= maxf(0.0, float(move.get("finisher_weight", 0.0) if finisher else move.get("weight", 0.0)))
+		if roll <= 0.0:
+			return move.duplicate(true)
+	return (moves.back() as Dictionary).duplicate(true)
+
 func face_toward(world_target: Vector3) -> void:
 	var to := world_target - global_position
 	to.y = 0.0
@@ -149,6 +203,16 @@ func face_toward(world_target: Vector3) -> void:
 	# For a local +Z front, yaw 0 faces world +Z. This is intentionally the
 	# opposite sign from the divers'/-Z helper in Battle._step_toward().
 	rotation.y = atan2(to.x, to.z)
+
+func _resolve_clip(fragment: String) -> String:
+	if anim == null or fragment.strip_edges().is_empty():
+		return ""
+	var wanted := fragment.to_lower().replace(" ", "")
+	for clip_value in anim.get_animation_list():
+		var clip := String(clip_value)
+		if clip.to_lower().replace(" ", "").contains(wanted):
+			return clip
+	return ""
 
 # Called by battle.gd the instant a hit actually brings this grunt to 0 HP.
 # Fades every mesh surface to transparent while the whole model sinks and

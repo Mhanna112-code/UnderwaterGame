@@ -97,28 +97,6 @@ const BASE_MOVES := {
 	],
 }
 
-const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": false}
-
-# A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
-# branch for how heavy_min/heavy_max actually turn into damage (a fraction
-# of the DEFENDER's max HP, not power/strength like ENEMY_MOVE). Lower
-# acc_mod than the normal swing - a hit this dangerous should be a little
-# more telegraphed/missable, not just as reliable as a Jab. Definitely
-# QTE-gated: this is exactly the swing the dodge system exists for.
-const ENEMY_HEAVY_MOVE := {
-	"power": 0, "acc_mod": -1, "quick_time_bool": true,
-	"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
-}
-const ENEMY_HEAVY_CHANCE := 0.3
-
-# Raised in place of ENEMY_HEAVY_CHANCE when the chosen target is already
-# low enough that a heavy swing's own damage range could plausibly finish
-# them (see _do_enemy_turn()) - an enemy that's just rolling dice every
-# turn doesn't read as smart; one that goes for the kill when it's actually
-# lined up does, without making the heavy swing itself hit any harder or
-# any more reliably than it already did.
-const ENEMY_HEAVY_FINISH_CHANCE := 0.65
-
 # How long a move's result stays on screen (log_label text) before whatever
 # happens next - the next turn's own _log() call, or a win/lose/flee banner
 # - overwrites it. log_label only ever shows one line at a time, no
@@ -1651,7 +1629,7 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if String(move.get("effect", "")) == "heavy":
 		heavy_fraction = randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
 
-	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
+	# Only a move explicitly tagged for it ever
 	# triggers a QTE - a player's own attacks never set quick_time_bool, so
 	# this is a no-op for anything the player swings themselves. A
 	# successful dodge zeroes incoming outright rather than just skipping
@@ -2100,25 +2078,26 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		return
 	var target: Dictionary = _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
-	# "Lined up" means the target's already low enough that a heavy swing's
-	# own damage range (see ENEMY_HEAVY_MOVE's heavy_max, a fraction of
-	# their OWN max HP) could plausibly be a kill - not a fixed HP number,
-	# so this scales correctly across levels the same way the heavy swing's
-	# damage itself already does.
-	var lined_up: bool = float(target_stats.hp) <= float(target_stats.hp_max) * float(ENEMY_HEAVY_MOVE.heavy_max)
-	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
-	# The Angler has an authored Bite take. Play it before the production lunge
-	# so an enemy turn reads as an attack rather than just a number changing.
-	(actor.actor as Goblin).play("attack")
+	var enemy_actor := actor.actor as Goblin
+	var move := enemy_actor.choose_move(target_stats)
+	if move.is_empty():
+		_log("%s has no enabled attack." % String(actor.display_name))
+		_finish_actor_turn(actor)
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		_advance_turn()
+		return
+	# The selected data record owns its animation and mechanics. New clips only
+	# need a catalogue row; the production turn never branches on a move name.
+	enemy_actor.play_move(move)
 	await _step_toward(actor, target)
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, move.combat as Dictionary)
 	_send_home(actor, 0.0)
 	if is_instance_valid(actor.actor):
 		(actor.actor as Goblin).play("idle")
 	_refresh_bar(target)
 	_react(target, r)
 	_show_combat_feedback(target, r)
-	var verb := ("%s surges and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s bites at %s" % [String(actor.display_name), String(target.display_name)])
+	var verb := "%s %s %s" % [String(actor.display_name), String(move.get("verb", "attacks")), String(target.display_name)]
 	if bool(r.get("dodged", false)):
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
 	elif not r.hit:
@@ -2196,7 +2175,9 @@ func _on_run() -> void:
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not living_enemies.is_empty():
 		var attacker: Dictionary = living_enemies[randi_range(0, living_enemies.size() - 1)]
-		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, ENEMY_MOVE)
+		var angler := attacker.actor as Goblin
+		var move := angler.choose_move(_acting.stats as CombatantStats) if angler != null else {}
+		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, move.get("combat", {}) as Dictionary)
 		_refresh_bar(_acting)
 		_show_combat_feedback(_acting, r)
 		if bool(r.get("dodged", false)):
@@ -2206,7 +2187,7 @@ func _on_run() -> void:
 		elif int(r.damage) == 0 and int(r.absorbed) > 0:
 			_log("%s - your barrier soaks it completely!" % String(attacker.display_name))
 		else:
-			_log("%s claws you for %d as you struggle free." % [String(attacker.display_name), int(r.damage)])
+			_log("%s %s you for %d as you struggle free." % [String(attacker.display_name), String(move.get("verb", "attacks")), int(r.damage)])
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
 			(_acting.actor as Diver).play_death_fade()
 		await get_tree().create_timer(LOG_READ_DELAY).timeout

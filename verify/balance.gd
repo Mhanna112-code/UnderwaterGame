@@ -322,14 +322,29 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 		return
 	var target := _pick_enemy_target(living_party, rng)
 	var target_stats := target.stats as CombatantStats
-	var lined_up := float(target_stats.hp) <= float(target_stats.hp_max) * float(Battle.ENEMY_HEAVY_MOVE.heavy_max)
-	var heavy := rng.randf() < (Battle.ENEMY_HEAVY_FINISH_CHANCE if lined_up else Battle.ENEMY_HEAVY_CHANCE)
-	var move: Dictionary = Battle.ENEMY_HEAVY_MOVE if heavy else Battle.ENEMY_MOVE
+	var move := _pick_angler_move(target_stats, rng)
+	var combat := move.combat as Dictionary
+	var heavy := String(combat.get("effect", "")) == "heavy"
 	var variance := rng.randf_range(0.85, 1.15)
-	var fraction := rng.randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5))) if heavy else 0.0
+	var fraction := rng.randf_range(float(combat.get("heavy_min", 0.25)), float(combat.get("heavy_max", 0.5))) if heavy else 0.0
 	var dodge_rate := SKILLED_QTE_DODGE if policy == "skilled" else CASUAL_QTE_DODGE
 	var player_dodge := heavy and rng.randf() < dodge_rate
-	Battle.apply_damage_roll(actor.stats as CombatantStats, target_stats, move, variance, fraction, player_dodge)
+	Battle.apply_damage_roll(actor.stats as CombatantStats, target_stats, combat, variance, fraction, player_dodge)
+
+func _pick_angler_move(target: CombatantStats, rng: RandomNumberGenerator) -> Dictionary:
+	var moves: Array = EnemyMoves.angler_catalogue().filter(func(move: Dictionary) -> bool: return bool(move.enabled))
+	moves.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left.get("roll_order", 0)) < int(right.get("roll_order", 0)))
+	var finisher := moves.any(func(move: Dictionary) -> bool:
+		return float(move.get("finisher_below_hp", 0.0)) > 0.0 and float(target.hp) <= float(target.hp_max) * float(move.finisher_below_hp))
+	var total := 0.0
+	for move in moves:
+		total += maxf(0.0, float(move.get("finisher_weight", 0.0) if finisher else move.get("weight", 0.0)))
+	var roll := rng.randf() * total
+	for move in moves:
+		roll -= maxf(0.0, float(move.get("finisher_weight", 0.0) if finisher else move.get("weight", 0.0)))
+		if roll <= 0.0:
+			return (move as Dictionary).duplicate(true)
+	return (moves.back() as Dictionary).duplicate(true)
 
 # Mirrors Battle._pick_enemy_target(): hurt characters attract pressure, but
 # every living diver keeps a nonzero chance of being chosen.
