@@ -3,6 +3,15 @@ extends Node3D
 
 var markers: Array[Marker3D] = []
 
+# Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
+# frame rather than baked into fixed [start, end] segments the way
+# World._build_wall() does for _wall_segments - CurrentWall1/CurrentWall2
+# actually swing open (see swing_hallway()), so a one-time bake would go
+# stale the moment that happens. Keeping the node references and
+# recomputing each box's own centerline from its CURRENT global_transform
+# every draw call is what keeps the radar honest through that swing.
+var wall_boxes: Array[CSGBox3D] = []
+
 @onready var corridors: Array[Area3D] = [
 	$WindCorridor1, $WindCorridor2, $WindCorridor3, $WindCorridor4,
 	$WindCorridor5, $WindCorridor6, $WindCorridor7, $WindCorridor8,
@@ -13,17 +22,55 @@ func _ready() -> void:
 	for child in get_children():
 		if child is Marker3D:
 			markers.append(child)
+		elif child is CSGBox3D:
+			wall_boxes.append(child)
 	_setup_walls()
 	_setup_currents()
 	_setup_whirlpool()
 	_spawn_test_diver()
+	_build_levers()
 	_build_rotate_prompt()
 	_build_floor()
 	_build_perimeter_walls()
 	_build_ceiling()
+	_build_minimap()
 
 func _setup_walls():
 	_set_wall_position($CSGBox3D, $CurrentWall1, true, true)
+
+# Two levers placed together near the requested spot (8.8, 1.5, -34), a
+# short reach apart so both are reachable from one spot without the
+# trigger volumes overlapping (see lever.gd's own COL radius of 1.1).
+# Neither is wired to anything yet - lever.gd is deliberately
+# ability-agnostic (see its own header comment), so what pulling either
+# one should actually do (a gate, a current, the CurrentWall1/2 swing
+# that's on a raw H keypress today) is a follow-up decision, not guessed
+# at here.
+func _build_levers() -> void:
+	var lever_a := Lever.new()
+	lever_a.name = "Lever1"
+	lever_a.position = Vector3(8.8, 1.5, -34.0)
+	add_child(lever_a)
+
+	var lever_b := Lever.new()
+	lever_b.name = "Lever2"
+	lever_b.position = Vector3(10.3, 1.5, -34.0)
+	add_child(lever_b)
+
+# Same top-right corner placement as World's own real minimap (see
+# world.gd's _ready()) - MazeMiniMap only needs this level itself
+# (wall_boxes + the test diver), so there's no extra wiring beyond handing
+# it `self`.
+func _build_minimap() -> void:
+	var minimap := MazeMiniMap.new()
+	minimap.maze_level = self
+	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	minimap.offset_left = -166.0
+	minimap.offset_top = 10.0
+	minimap.offset_right = -10.0
+	minimap.offset_bottom = 166.0
+	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(minimap)
 
 # A persistent on-screen hint for _rotate_left_currents_left()/_right()
 # below - kept as its own label rather than reusing $HUD/Controls, since

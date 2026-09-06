@@ -61,6 +61,60 @@ func _ready() -> void:
 	skip_hint.add_theme_color_override("font_color", Color(0.45, 0.5, 0.55))
 	add_child(skip_hint)
 
+"""
+func _build_tutorial_panel() -> Control:
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 10)
+
+	var heading := Label.new()
+	heading.text = "Choose who goes"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
+	col.add_child(heading)
+
+	# Left arrow / 3D preview / right arrow, side by side - the preview
+	# itself is a small SubViewport with its own camera and one live Diver
+	# instance, same recipe battle.gd's own stage uses (SubViewportContainer
+	# + SubViewport + Camera3D + Diver.new()), just facing the camera
+	# instead of facing away (battle's party puppets show their backs to
+	# the camera on purpose - a showcase screen wants the opposite).
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	row.add_theme_constant_override("separation", 20)
+	col.add_child(row)
+
+	var preview_container := SubViewportContainer.new()
+	preview_container.custom_minimum_size = Vector2(280, 260)
+	preview_container.stretch = true
+	row.add_child(preview_container)
+
+	var cam := Camera3D.new()
+	cam.fov = 55.0
+
+	_name_label = Label.new()
+	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name_label.add_theme_font_size_override("font_size", 20)
+	_name_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
+	col.add_child(_name_label)
+
+
+	var button_row := HBoxContainer.new()
+	button_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button_row.add_theme_constant_override("separation", 12)
+	col.add_child(button_row)
+
+	var confirm_btn := Button.new()
+	confirm_btn.text = "Send Them In"
+	confirm_btn.custom_minimum_size = Vector2(180, 40)
+	confirm_btn.pressed.connect(func() -> void: diver_chosen.emit(String(ROSTER[_carousel_index])))
+	button_row.add_child(confirm_btn)
+
+	return col
+"""
+
+
 func open() -> void:
 	visible = true
 	_done = false

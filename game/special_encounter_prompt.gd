@@ -15,20 +15,10 @@ extends Control
 signal diver_chosen(model_name: String)
 signal cancelled
 
-# Flavor-only, not read anywhere else - a short tutorial for the carousel,
-# read right before committing to a diver. MODIFIED: was a one-line
-# reminder of what the ability does out in the WORLD ("Swap places with a
-# teammate") - not actually useful here, since this screen is about which
-# diver survives the SPECIAL ENCOUNTER's own minigame, a completely
-# different mechanic per diver (see rock_dodge_minigame.gd/
-# diver_swap_minigame.gd). Rewritten to explain that minigame specifically,
-# so a player picking blind knows what they're about to be asked to do.
-const ABILITY_BLURBS := {
-	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
-	"grapple": "In the encounter: click to capture the mouse, aim at the glowing yellow weak spot, and left-click to grapple it. Each incoming rock needs two weak-spot hits before impact.",
-	"shockwave": "In the encounter: three lanes come in at once - one rock, two solid walls. Hold Left/Right to lean into that lane (let go to snap back to middle) and line up with the rock, then E to shockwave it before it lands. Standing in a wall's lane gets you hit.",
-}
-
+# MODIFIED: the blurb text and the demo-media paths both moved to
+# content/tutorial_content.gd (ABILITY_BLURBS/ABILITY_MEDIA) so the
+# general tutorial book and this carousel can't drift apart from each
+# other by each keeping their own copy.
 const ROSTER := ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]
 
 var _mode := "confirm"
@@ -40,6 +30,7 @@ var _preview_vp: SubViewport
 var _preview_diver: Diver
 var _name_label: Label
 var _ability_label: Label
+var _media_frame: PanelContainer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -186,6 +177,21 @@ func _build_select_panel() -> Control:
 	light.rotation_degrees = Vector3(-40, -30, 0)
 	_preview_vp.add_child(light)
 
+	# MODIFIED (added): a demo clip/image slot right beside the 3D preview -
+	# "next to the portrait" rather than a separate screen the player has
+	# to leave the carousel to see. Rebuilt per diver in _refresh_media()
+	# the same way _preview_diver is rebuilt per diver in
+	# _refresh_carousel(), since which ability (and so which clip) is
+	# showing changes with _carousel_index.
+	_media_frame = PanelContainer.new()
+	_media_frame.custom_minimum_size = Vector2(220, 260)
+	var media_bg := StyleBoxFlat.new()
+	media_bg.bg_color = Color(0.03, 0.08, 0.11)
+	media_bg.set_border_width_all(1)
+	media_bg.border_color = Color(0.25, 0.42, 0.48)
+	_media_frame.add_theme_stylebox_override("panel", media_bg)
+	row.add_child(_media_frame)
+
 	var right_btn := Button.new()
 	right_btn.text = ">"
 	right_btn.custom_minimum_size = Vector2(50, 220)
@@ -258,4 +264,41 @@ func _refresh_carousel() -> void:
 	# _display() already defers to - one name, one meaning, everywhere.
 	_name_label.text = Cast.display_name(model_name)
 	var ability_id := String(Diver.BASE_STATS.get(model_name, {}).get("ability", ""))
-	_ability_label.text = String(ABILITY_BLURBS.get(ability_id, ""))
+	_ability_label.text = String(TutorialContent.ABILITY_BLURBS.get(ability_id, ""))
+	_refresh_media(ability_id)
+
+# Swaps in whatever demo clip/image exists for `ability_id` - a still image
+# loads straight into a TextureRect; a .ogv loads into a VideoStreamPlayer
+# and loops by replaying on `finished` rather than relying on any built-in
+# loop flag. Neither file exists yet for any ability (see
+# TutorialContent.ABILITY_MEDIA's own comment), so today this always falls
+# through to the placeholder - that fallback is the point, not a bug: it
+# reserves the spot so dropping in a real clip later needs no code changes.
+func _refresh_media(ability_id: String) -> void:
+	for child in _media_frame.get_children():
+		child.queue_free()
+	var path := String(TutorialContent.ABILITY_MEDIA.get(ability_id, ""))
+	if path != "" and ResourceLoader.exists(path):
+		if path.get_extension() == "ogv":
+			var player := VideoStreamPlayer.new()
+			player.stream = load(path)
+			player.autoplay = true
+			player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			player.finished.connect(player.play)
+			_media_frame.add_child(player)
+			return
+		var tex := load(path) as Texture2D
+		if tex != null:
+			var rect := TextureRect.new()
+			rect.texture = tex
+			rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			_media_frame.add_child(rect)
+			return
+	var placeholder := Label.new()
+	placeholder.text = "Tutorial clip\ncoming soon"
+	placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	placeholder.add_theme_color_override("font_color", Color(0.35, 0.5, 0.55))
+	_media_frame.add_child(placeholder)

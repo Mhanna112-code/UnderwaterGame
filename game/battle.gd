@@ -844,10 +844,21 @@ func _build_ui() -> void:
 	margin.add_theme_constant_override("margin_right", 16)
 	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_bottom", 16)
+	# MODIFIED (added): _bottom_panel's own IGNORE (above) only ever applies
+	# to _bottom_panel itself - margin and col are separate nodes that each
+	# still defaulted to STOP independently, which is what was actually
+	# still blocking the panel's content area regardless of the outer
+	# panel's own filter. NOT recursive into col's own children though -
+	# main_menu/move_menu/item_menu/target_menu live inside col and their
+	# real Buttons need to stay STOP for normal turns to keep working; they
+	# also happen to be hidden (visible=false) during a special-encounter
+	# minigame specifically, so this is safe either way.
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bottom_panel.add_child(margin)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(col)
 
 	# Turn order across the very top, in its own bar rather than as the first
@@ -877,10 +888,12 @@ func _build_ui() -> void:
 	qmargin.add_theme_constant_override("margin_right", 16)
 	qmargin.add_theme_constant_override("margin_top", 6)
 	qmargin.add_theme_constant_override("margin_bottom", 6)
+	qmargin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_queue_bar.add_child(qmargin)
 
 	queue_row = HBoxContainer.new()
 	queue_row.add_theme_constant_override("separation", 10)
+	queue_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	qmargin.add_child(queue_row)
 
 	# Health, barrier and status now hang over each combatant's own head.
@@ -892,6 +905,7 @@ func _build_ui() -> void:
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
+	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
 	main_menu = HFlowContainer.new()
@@ -1105,6 +1119,24 @@ func _unhandled_input(event: InputEvent) -> void:
 # because these have to stay legible: a Label3D shrinks with distance, and
 # the grunts stand three metres further back than the party. The projection
 # happens every frame in _layout_overhead_bars().
+# MODIFIED (added): mouse_filter = IGNORE on a container only ever
+# affects that ONE node - it does not cascade to children, which each
+# default to STOP independently. Setting it on `box` alone (as the single
+# line below already did) left every child inside it - name_label,
+# bar_row, the HP/barrier ProgressBars, hp_label, status_label - still
+# individually eating clicks/motion in their own little rects. Since
+# these hang directly over each combatant (including the enemy launching
+# a special encounter, usually front and center), that's exactly where a
+# player would be aiming - the same STOP-by-default bug already found and
+# fixed on _stage_container/_bottom_panel/_queue_bar/$HUD's own elements,
+# just one level deeper (a container's non-button CHILDREN, not the
+# container itself) and easy to miss for exactly that reason.
+static func _ignore_mouse_recursive(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_ignore_mouse_recursive(child)
+
 func _build_overhead_bar(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 1)
@@ -1171,6 +1203,7 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	entry["barrier_bar"] = barrier_bar
 	entry["status_label"] = status_label
 	entry["overhead"] = box
+	_ignore_mouse_recursive(box)
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -1325,6 +1358,11 @@ func _refresh_queue_row() -> void:
 	queue_row.add_child(header)
 	for i in range(_queue.size()):
 		queue_row.add_child(_build_queue_chip(_queue[i], i))
+	# MODIFIED (added): rebuilt fresh every turn, so a one-time IGNORE at
+	# setup can't reach chips that don't exist yet - nothing in the turn
+	# queue is ever meant to be clickable, so sweeping the whole row after
+	# every rebuild is safe (see _ignore_mouse_recursive()'s own comment).
+	_ignore_mouse_recursive(queue_row)
 
 # The single spotlight card for whoever's turn it is right now - gold
 # border regardless of party/enemy side, so "this is happening" reads as
@@ -2355,6 +2393,7 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _tar
 	minigame.stage_root = _stage_vp
 	minigame.stage_camera = _stage_cam
 	minigame.target_actor = target.actor
+	minigame.enemy_actor = actor.actor
 	minigame.source_position = (actor.actor as Node3D).global_position + Vector3.UP * (actor.actor as Goblin).height
 	add_child(minigame)
 	var total_taken := 0

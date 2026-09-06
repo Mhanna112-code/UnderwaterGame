@@ -136,6 +136,7 @@ var title_layer: CanvasLayer
 # ability minigame to face. The guardian nodes stay in the world until a
 # win, so declining or losing cannot silently delete the site's content.
 var special_encounter_prompt: SpecialEncounterPrompt
+var tutorial_book: TutorialBook
 var _special_encounter_item := ""
 var _special_encounter_diver: Diver
 var _special_encounter_pre_hp := 0
@@ -315,6 +316,10 @@ func _on_title_new_game(slot: int) -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
+	# One-time walkthrough for a genuinely new save - combat math, stats,
+	# special encounters, the works (see content/tutorial_content.gd).
+	# F1 reopens the same book any time afterward (_unhandled_input below).
+	tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
 func _on_title_load_game(slot: int) -> void:
 	_current_slot = slot
@@ -389,11 +394,36 @@ var _doors: Array = []
 var _puzzle_goal: Waypoint
 var _puzzle_solved := false
 
-# [a, b] Vector3 endpoint pairs, one per wall built by _build_wall() -
-# read directly by game/mini_map.gd (world.gd has a class_name now, so
-# MiniMap can type its reference and read this like any other property).
+# [a, b, body] entries, one per wall built by _build_wall() - a and b are
+# the Vector3 endpoints (as before), body is the StaticBody3D that wall
+# actually is, added so mini_map.gd can look up whether THIS specific
+# wall has been revealed yet (see _revealed_walls below) rather than
+# drawing every wall in the level unconditionally. Read directly by
+# game/mini_map.gd (world.gd has a class_name now, so MiniMap can type
+# its reference and read this like any other property).
 var _wall_segments: Array = []
 var minimap: MiniMap
+
+# Fog-of-war for the main minimap: a wall only ever gets added here once
+# the diver's sphere-cast (_update_wall_visibility()) actually finds it
+# nearby - permanent once seen, same "seen doesn't un-happen when you
+# swim away" rule World.revealed_key_items already uses for guardians.
+# Keyed by the wall's own StaticBody3D (see _wall_segments' 3rd element),
+# not by index, so mini_map.gd can check it with a plain .has() off
+# whatever body a segment names.
+var _revealed_walls: Dictionary = {}
+
+# How far the sphere-cast in _update_wall_visibility() reaches - matches
+# content/sites.gd's own SIGHT_BUDGET (14.0), the same real in-game sight
+# distance sonar/site-to-site navigation is already tuned around, rather
+# than inventing a separate number just for this.
+const WALL_SIGHT_RADIUS := 14.0
+# The sphere-cast is a real physics query over every wall in the level,
+# not free - once a second (not every physics frame) is plenty often for
+# a slow-swimming diver to keep the reveal feeling responsive without
+# paying that cost 60 times a second for no benefit.
+const WALL_SIGHT_INTERVAL := 1.0
+var _wall_sight_elapsed := 0.0
 
 # The camera's one alternate mode: instead of chasing the active diver,
 # hold on `_camera_focus_target` (used both by TargetSelector while
@@ -428,6 +458,15 @@ var _active_cursor: MeshInstance3D
 func _ready() -> void:
 	cam = $Camera3D
 	hud = $HUD/Controls
+	# MODIFIED (added): none of $HUD's own children ever set mouse_filter,
+	# so this hint label - like the banner/minimap/HP/oxygen bars below -
+	# defaulted to STOP. $HUD stays visible for the entire duration of a
+	# battle (nothing hides it when one starts), so any special-encounter
+	# minigame's own full-screen _unhandled_input (mouse-look, click-to-
+	# grapple) was getting eaten by whichever of these plain HUD elements
+	# happened to sit under the cursor - none of them are meant to be
+	# clickable in the first place.
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner = Label.new()
 	banner.name = "Banner"
 	banner.offset_left = 16.0
@@ -436,6 +475,7 @@ func _ready() -> void:
 	banner.offset_bottom = 130.0
 	banner.add_theme_font_size_override("font_size", 20)
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
 
 	minimap = MiniMap.new()
@@ -445,6 +485,7 @@ func _ready() -> void:
 	minimap.offset_top = 10.0
 	minimap.offset_right = -10.0
 	minimap.offset_bottom = 166.0
+	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(minimap)
 
 	save_point_menu = SavePointMenu.new()
@@ -501,6 +542,9 @@ func _ready() -> void:
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
 	special_encounter_prompt.cancelled.connect(_on_special_encounter_cancelled)
 	title_layer.add_child(special_encounter_prompt)
+
+	tutorial_book = TutorialBook.new()
+	title_layer.add_child(tutorial_book)
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
@@ -1056,6 +1100,11 @@ func _check_gap_puzzle() -> void:
 func _build_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
 	body.position = center
+	# Tag so _update_wall_visibility()'s sphere-cast can tell an actual
+	# wall apart from anything else the query happens to sweep up (the
+	# diver's own body, CrackedWall rocks, LockPlates, whatever else sits
+	# on a physics layer the query can see).
+	body.add_to_group("Wall")
 
 	var mesh_inst := MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -1079,9 +1128,9 @@ func _build_wall(center: Vector3, size: Vector3) -> void:
 	# wall's length. Every wall built here is axis-aligned, so this is
 	# just picking x vs z, not reading the body's real rotation.
 	if size.x >= size.z:
-		_wall_segments.append([center - Vector3(size.x * 0.5, 0.0, 0.0), center + Vector3(size.x * 0.5, 0.0, 0.0)])
+		_wall_segments.append([center - Vector3(size.x * 0.5, 0.0, 0.0), center + Vector3(size.x * 0.5, 0.0, 0.0), body])
 	else:
-		_wall_segments.append([center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5)])
+		_wall_segments.append([center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5), body])
 
 func _unhandled_input(e: InputEvent) -> void:
 	if battling:
@@ -1157,6 +1206,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			_toggle_save_menu()
 		elif k == KEY_Q:
 			_toggle_sonar()
+		elif k == KEY_F1:
+			tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
 # E's actual behavior depends on the active diver's ability: shockwave has
 # nothing to aim, fires immediately. Grapple enters first-person aim mode.
@@ -1335,6 +1386,38 @@ func _physics_process(dt: float) -> void:
 	_update_save_point_prompt()
 	_check_gap_puzzle()
 	_update_item_guardian_visibility()
+	_update_wall_visibility(dt)
+
+# Sphere-casts out from the active diver once every WALL_SIGHT_INTERVAL
+# seconds (not every physics frame - see its own comment) and reveals
+# whatever walls that sphere actually finds, for mini_map.gd's fog-of-war
+# (_revealed_walls). intersect_shape() is a single broad-phase query
+# against every physics body in range - cheaper and simpler than casting
+# a ray at each wall individually, since we don't need to know exactly
+# where the sphere touches a wall, only WHICH walls it's touching at all.
+func _update_wall_visibility(dt: float) -> void:
+	_wall_sight_elapsed += dt
+	if _wall_sight_elapsed < WALL_SIGHT_INTERVAL or divers.is_empty():
+		return
+	_wall_sight_elapsed = 0.0
+
+	var diver: Diver = divers[active]
+	var shape := SphereShape3D.new()
+	shape.radius = WALL_SIGHT_RADIUS
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = shape
+	query.transform = Transform3D(Basis.IDENTITY, diver.global_position)
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+
+	var space := get_world_3d().direct_space_state
+	# Second arg caps how many results come back - the level has nowhere
+	# near this many walls within one sphere at once, this is just a
+	# generous ceiling so a dense cluster can't silently get truncated.
+	for hit in space.intersect_shape(query, 64):
+		var body: Object = hit.collider
+		if body is StaticBody3D and (body as StaticBody3D).is_in_group("Wall"):
+			_revealed_walls[body] = true
 
 # Keeps every still-live guardian's (and its decoy's) visibility in sync
 # with revealed_key_items - a plain re-check each frame rather than an
@@ -1727,12 +1810,22 @@ func _build_hp_bar() -> void:
 	wrap.offset_top = -56.0
 	wrap.offset_bottom = -10.0
 	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	# MODIFIED (added): this spans the full WIDTH of the screen (BOTTOM_WIDE)
+	# and defaulted to STOP - a special-encounter minigame's own aim-down
+	# input landed right in this strip and got eaten here instead of
+	# reaching it. Purely informational, nothing here is ever clicked.
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(wrap)
 
 	hp_bar = ProgressBar.new()
 	hp_bar.custom_minimum_size = Vector2(220, 20)
 	hp_bar.show_percentage = false
 	hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# MODIFIED (added): wrap's own IGNORE (above) only applies to wrap
+	# itself - hp_bar/hp_bar_label are separate nodes that each still
+	# defaulted to STOP independently, which is what was actually still
+	# blocking this strip regardless of the outer wrap's own filter.
+	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_bar_mat = StyleBoxFlat.new()
 	_hp_bar_mat.bg_color = Color(0.78, 0.15, 0.15)
 	hp_bar.add_theme_stylebox_override("fill", _hp_bar_mat)
@@ -1740,6 +1833,7 @@ func _build_hp_bar() -> void:
 
 	hp_bar_label = Label.new()
 	hp_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(hp_bar_label)
 
 func _update_hp_bar() -> void:
@@ -1763,12 +1857,18 @@ func _build_oxygen_bar() -> void:
 	wrap.offset_top = -82.0
 	wrap.offset_bottom = -58.0
 	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	# MODIFIED (added): same full-width STOP-by-default bug as the HP bar's
+	# own wrap just above.
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(wrap)
 
 	oxygen_bar = ProgressBar.new()
 	oxygen_bar.custom_minimum_size = Vector2(220, 14)
 	oxygen_bar.show_percentage = false
 	oxygen_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# MODIFIED (added): same reasoning as the HP bar's own fix just above -
+	# wrap's IGNORE doesn't cascade to its children.
+	oxygen_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mat := StyleBoxFlat.new()
 	mat.bg_color = Color(0.25, 0.65, 0.85)
 	oxygen_bar.add_theme_stylebox_override("fill", mat)
@@ -1776,6 +1876,7 @@ func _build_oxygen_bar() -> void:
 
 	oxygen_bar_label = Label.new()
 	oxygen_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	oxygen_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	oxygen_bar_label.add_theme_font_size_override("font_size", 13)
 	wrap.add_child(oxygen_bar_label)
 

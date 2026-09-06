@@ -8,7 +8,10 @@
 # divers/_wall_segments live there and change over time (new walls could
 # be built later, divers move every frame); reading them live means this
 # never needs to be told to refresh, it just always reflects however the
-# world actually looks right now.
+# world actually looks right now. Same idea for _revealed_walls (fog of
+# war): World's own sphere-cast (_update_wall_visibility()) is what
+# reveals a wall, this just reads whether that's happened yet before
+# drawing each one - see the loop below.
 class_name MiniMap
 extends Control
 
@@ -45,6 +48,12 @@ func _draw() -> void:
 	# actually crosses the view_radius boundary and only the portion inside
 	# gets drawn.
 	for seg in world._wall_segments:
+		# Fog of war: a wall only draws once World's own sphere-cast
+		# (_update_wall_visibility()) has actually found the diver near it
+		# at some point - see World._revealed_walls. Permanent once seen,
+		# same rule the maze test scene's own minimap fog already uses.
+		if not world._revealed_walls.has(seg[2]):
+			continue
 		var a: Vector3 = seg[0]
 		var b: Vector3 = seg[1]
 		var rel_a: Vector2 = Vector2(a.x, a.z) - Vector2(center.x, center.z)
