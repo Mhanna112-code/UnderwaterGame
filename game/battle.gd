@@ -269,7 +269,7 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
+		_log("Enemies block the way!" if enemies.size() > 1 else "An angler fish blocks the way!")
 		_advance_turn()
 
 func _begin_boss_encounter() -> void:
@@ -518,10 +518,7 @@ func _build_stage() -> void:
 
 	# Enemies: a random count, each with stats rolled close to the party's
 	# own current average (see _party_average_stats()/goblin.gd's
-	# make_stats()) rather than an independent level curve. The grunt's own
-	# rest facing was never checked against the camera (no editor open to
-	# look): 180 is a guess. Flip to 0 here if it turns out to be facing
-	# away instead of into shot.
+	# make_stats()) rather than an independent level curve.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
 	var count := 1 if boss_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
@@ -554,12 +551,16 @@ func _build_stage() -> void:
 	for i in range(count):
 		var g := Goblin.new()
 		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
-		g.rotation.y = PI
 		vp.add_child(g)
+		var party_centre := Vector3.ZERO
+		for party_entry in party:
+			party_centre += (party_entry.actor as Node3D).global_position
+		party_centre /= maxf(1.0, float(party.size()))
+		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
 		enemies.append({
 			"kind": "enemy", "stats": st,
-			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
+			"display_name": "Angler" if count == 1 else "Angler %d" % (i + 1),
 			"actor": g,
 			"home_pos": g.position,
 			"home_rot": g.rotation.y,
@@ -1850,9 +1851,12 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 	to.y = 0.0
 	if to.length() < 0.05:
 		return
-	# rotation.y == 0 faces -Z for both Diver and Goblin models here, which
-	# is why this is atan2 of the negated direction rather than of it.
-	a.rotation.y = atan2(-to.x, -to.z)
+	# Divers use their local -Z front; Angler uses its local +Z front. The
+	# actor owns this distinction so an asset swap cannot invert an attack.
+	if a is Goblin:
+		(a as Goblin).face_toward((target.actor as Node3D).global_position)
+	else:
+		a.rotation.y = atan2(-to.x, -to.z)
 	var target_radius := 0.0
 	var radius_value: Variant = (target.actor as Node3D).get("radius")
 	if radius_value != null:
@@ -1910,9 +1914,9 @@ func _play_enemy_hit(entry: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
 	# Tethys already received its authored weak/strong reaction in _react().
-	# Goblin has no hit clip, so walking remains its lightweight recoil.
+	# The Angler's own damaged clip replaces the retired Goblin walk recoil.
 	if entry.actor is Goblin:
-		(entry.actor as Goblin).play("walk")
+		(entry.actor as Goblin).play("hurt")
 
 func _restore_enemy_idle(entry: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
@@ -2103,11 +2107,9 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	# damage itself already does.
 	var lined_up: bool = float(target_stats.hp) <= float(target_stats.hp_max) * float(ENEMY_HEAVY_MOVE.heavy_max)
 	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
-	# The grunts get the same treatment as the party. They have no attack
-	# clip of their own, only Idle and Walking, so the lunge IS the attack
-	# animation: without it a grunt's turn was a line of text and a number
-	# moving, with nothing on the stage indicating who did it or to whom.
-	(actor.actor as Goblin).play("walk")
+	# The Angler has an authored Bite take. Play it before the production lunge
+	# so an enemy turn reads as an attack rather than just a number changing.
+	(actor.actor as Goblin).play("attack")
 	await _step_toward(actor, target)
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
 	_send_home(actor, 0.0)
@@ -2116,7 +2118,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	_refresh_bar(target)
 	_react(target, r)
 	_show_combat_feedback(target, r)
-	var verb := ("%s winds up and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s claws at %s" % [String(actor.display_name), String(target.display_name)])
+	var verb := ("%s surges and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s bites at %s" % [String(actor.display_name), String(target.display_name)])
 	if bool(r.get("dodged", false)):
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
 	elif not r.hit:

@@ -1445,7 +1445,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false) -> vo
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Tethys rises from the deep!" if boss_encounter else "Something grunts out of the murk!")
+	_announce("Tethys rises from the deep!" if boss_encounter else "An angler fish emerges from the murk!")
 	battle = Battle.new()
 	battle.party_source = divers
 	battle.world = self

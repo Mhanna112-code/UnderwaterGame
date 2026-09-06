@@ -1,14 +1,18 @@
-# The grunt's model, sized and floor-aligned once here so nothing else has to
-# care that this FBX's own units were never hand-measured (no editor was open
-# to run tools/measure_fbx.gd against it, so it's rescaled to a target height
-# and dropped onto the seabed from whatever box it actually measures at
-# runtime, instead of a guessed constant). Display only: no collision, no
-# movement. Used by game/battle.gd to put the enemy on the battle stage.
+# The ordinary enemy's model, sized and floor-aligned once here so nothing else
+# has to care about its FBX units. Its gameplay class deliberately remains
+# Goblin: combat, balance and saved-game code already depend on that stable
+# actor contract. The visible model is Glassgoat's Angler Fish. Display only:
+# no collision or world movement. Used by game/battle.gd on the battle stage.
 class_name Goblin
 extends Node3D
 
-const SRC := preload("res://characters/GoblinGrunt.fbx")
+const SRC := preload("res://characters/Angler_Fish.fbx")
 const TARGET_HEIGHT := 1.6
+
+# Unlike the retired Goblin and the divers, this rig's visible face is its
+# local +Z axis. Battle uses face_toward() instead of assuming all actors have
+# the same forward axis.
+const COMBAT_FRONT_AXIS := Vector3.FORWARD
 
 # No grow_* here, and no independent base spread either anymore - a grunt's
 # stats are derived straight from the party's own current stats in
@@ -34,8 +38,11 @@ var xp_reward: int = BASE_XP
 var anim: AnimationPlayer
 var height := 1.6
 var radius := 0.4
-var _walk_anim := ""
 var _idle_anim := ""
+var _swim_anim := ""
+var _attack_anim := ""
+var _hurt_anim := ""
+var _death_anim := ""
 
 func _ready() -> void:
 	var model: Node3D = SRC.instantiate()
@@ -54,10 +61,16 @@ func _ready() -> void:
 	if anim != null:
 		for a in anim.get_animation_list():
 			var lower := String(a).to_lower()
-			if "walk" in lower:
-				_walk_anim = a
-			elif "idle" in lower:
+			if "idle" in lower:
 				_idle_anim = a
+			elif "swimming" in lower and "mid" in lower:
+				_swim_anim = a
+			elif "attack" in lower and "bite" in lower:
+				_attack_anim = a
+			elif "damaged" in lower:
+				_hurt_anim = a
+			elif "death" in lower:
+				_death_anim = a
 	play("idle")
 
 # Always at least a little stronger than ref on every stat, never weaker
@@ -106,16 +119,36 @@ func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 func _edge() -> float:
 	return randf_range(MIN_EDGE, MAX_EDGE)
 
-# substr: "idle" or "walk", matched loosely against the FBX's own take names
-# ("rig|Idle", "rig|Walking", ...) so exact capitalisation doesn't matter.
+# Keys are semantic rather than raw FBX paths. Glassgoat's non-humanoid rig
+# names its moves differently from the retired Goblin: swim loop, Bite,
+# Damaged, and Death. Keeping that translation here lets battle.gd ask for
+# the same readable actions regardless of importer naming.
 func play(substr: String) -> void:
 	if anim == null:
 		return
-	var want := _walk_anim if substr == "walk" else _idle_anim
+	var want := _idle_anim
+	match substr:
+		"swim", "walk":
+			want = _swim_anim
+		"attack":
+			want = _attack_anim
+		"hurt":
+			want = _hurt_anim
+		"death":
+			want = _death_anim
 	if want == "" and not anim.get_animation_list().is_empty():
 		want = anim.get_animation_list()[0]
 	if want != "" and anim.current_animation != want:
 		anim.play(want)
+
+func face_toward(world_target: Vector3) -> void:
+	var to := world_target - global_position
+	to.y = 0.0
+	if to.length() < 0.05:
+		return
+	# For a local +Z front, yaw 0 faces world +Z. This is intentionally the
+	# opposite sign from the divers'/-Z helper in Battle._step_toward().
+	rotation.y = atan2(to.x, to.z)
 
 # Called by battle.gd the instant a hit actually brings this grunt to 0 HP.
 # Fades every mesh surface to transparent while the whole model sinks and
@@ -130,7 +163,7 @@ func play(substr: String) -> void:
 # mutating one in place could fade every other living grunt on the stage
 # along with this one.
 func play_death_fade() -> void:
-	play("idle")
+	play("death")
 	var tw := create_tween()
 	tw.set_parallel(true)
 	for m in _meshes(self):

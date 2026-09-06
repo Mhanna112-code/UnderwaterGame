@@ -1,6 +1,6 @@
-# Does instantiating a Goblin (loads characters/GoblinGrunt.fbx) crash on
-# its own, isolated from the rest of the game? verify/swim.gd never triggers
-# a battle, so it never exercises this path.
+# Does instantiating the stable Goblin gameplay actor (which now loads
+# characters/Angler_Fish.fbx) crash on its own, isolated from the rest of the
+# game? verify/swim.gd never triggers a battle, so it never exercises this path.
 #
 # Usage: godot --headless --path . --script tools/test_goblin.gd
 extends SceneTree
