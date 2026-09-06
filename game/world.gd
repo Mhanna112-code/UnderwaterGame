@@ -392,17 +392,20 @@ var _doors: Array = []
 var _puzzle_goal: Waypoint
 var _puzzle_solved := false
 
-# [a, b, body] entries, one per wall built by _build_wall() - a and b are
 # Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
-# revealed: bool} - one entry per WALL_REVEAL_SEGMENT_LENGTH-ish slice of
-# a wall (see _slice_wall_into_pieces(), called once per wall from
-# _build_wall()). World's own walls are static - nothing here ever moves
-# once built - so slicing once at build time is enough; there's no need
-# to recompute a piece's endpoints every frame the way maze_mini_map.gd's
-# live-swinging test-scene walls require. Read directly by
-# mini_map.gd's _draw_lines_at_overlapping_areas() (world.gd has a
-# class_name now, so MiniMap can type its reference and read this like
-# any other property).
+# revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
+# WALL_REVEAL_SEGMENT_LENGTH-ish slice of a wall (see
+# _slice_wall_into_pieces(), called once per wall from _build_wall()).
+# `a`/`b` are the piece's own full, fixed span; `line_a`/`line_b` are the
+# actual overlap geometry frozen in at the moment this piece was first
+# found (see _update_wall_visibility()/_piece_area_overlap()) - only
+# meaningful once `revealed` is true, unset (Vector3.ZERO) before that.
+# World's own walls are static - nothing here ever moves once built - so
+# slicing once at build time is enough; there's no need to recompute a
+# piece's endpoints every frame the way maze_mini_map.gd's live-swinging
+# test-scene walls require. Read directly by mini_map.gd's
+# _draw_lines_at_overlapping_areas() (world.gd has a class_name now, so
+# MiniMap can type its reference and read this like any other property).
 var _wall_pieces: Array[Dictionary] = []
 var minimap: MiniMap
 
@@ -1146,6 +1149,8 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 			"b": a.lerp(b, float(i + 1) / float(count)),
 			"body": body,
 			"revealed": false,
+			"line_a": Vector3.ZERO,
+			"line_b": Vector3.ZERO,
 		})
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -1429,20 +1434,32 @@ func _build_wall_sight_area() -> void:
 	add_child(_wall_sight_area)
 
 # Follows the active diver every physics tick and reveals whichever
-# WALL PIECES (not whole walls) are actually within range, for
-# mini_map.gd's fog-of-war (_wall_pieces' own "revealed" field).
+# WALL PIECES (not whole walls) actually overlap the detection area, for
+# mini_map.gd's fog-of-war (_wall_pieces' own "revealed"/"line_a"/
+# "line_b" fields).
 #
 # Two passes: get_overlapping_bodies() is the coarse first pass - a
 # cheap read of the physics server's already-computed overlap list for
 # this one persistent Area3D, telling us which WHOLE walls are even
-# worth checking closely this tick, without having to measure distance
-# to every single piece in the entire level every frame. Then, for only
-# the pieces belonging to those nearby bodies, a precise point-to-segment
-# distance check (same idea as maze_mini_map.gd's own
-# _point_to_segment_dist(), just in 3D world space here rather than the
-# minimap's local 2D) decides exactly which stretch of that wall counts
-# as "found" - a piece right next to the diver and a piece at the far
-# end of the same long wall don't necessarily reveal together.
+# worth checking closely this tick, without having to test every single
+# piece in the entire level every frame. Then, for only the pieces
+# belonging to those nearby bodies, _piece_area_overlap() computes the
+# actual overlapping RANGE (as two Vector3 endpoints, not just a yes/no)
+# between that piece's own bounds and the detection area's bounds - a
+# piece right next to the diver and a piece at the far end of the same
+# long wall don't necessarily reveal together, and a piece only grazed at
+# its very edge reveals only that grazed sliver, not its whole span.
+#
+# The overlap is computed once, the instant a piece is first found, and
+# frozen into line_a/line_b from then on (piece.revealed gates this to a
+# one-time write) - it does NOT keep recomputing every frame off the
+# diver's current position. Redrawing from a live, continuously-
+# recomputed overlap would make a previously-revealed stretch shrink or
+# vanish the moment the diver moved away again, breaking the "seen
+# doesn't un-happen" rule every other reveal system in this project
+# already follows (World.revealed_key_items, maze_mini_map.gd's own fog).
+# Freezing the vectors at first contact keeps that guarantee while still
+# drawing the exact overlap geometry, not just the piece's full span.
 func _update_wall_visibility() -> void:
 	if divers.is_empty():
 		return
@@ -1457,27 +1474,44 @@ func _update_wall_visibility() -> void:
 		return
 
 	var view_radius: float = minimap.view_radius
+	var area_min := Vector2(diver_pos.x - view_radius, diver_pos.z - view_radius)
+	var area_max := Vector2(diver_pos.x + view_radius, diver_pos.z + view_radius)
 	for piece in _wall_pieces:
 		if bool(piece.revealed) or not nearby_bodies.has(piece.body):
 			continue
-		if _dist_to_wall_piece(diver_pos, piece.a, piece.b) <= view_radius:
-			piece.revealed = true
+		var overlap := _piece_area_overlap(piece.a, piece.b, area_min, area_max)
+		if overlap.is_empty():
+			continue
+		piece.revealed = true
+		piece.line_a = overlap[0]
+		piece.line_b = overlap[1]
 
-# Closest distance from `p` to any point ON the segment a->b (not just its
-# endpoints), measured in the horizontal XZ plane only - same standard
-# point-to-segment formula maze_mini_map.gd's own _point_to_segment_dist()
-# uses on its local 2D points, just fed 3D world positions flattened to
-# XZ here instead.
-static func _dist_to_wall_piece(p: Vector3, a: Vector3, b: Vector3) -> float:
-	var p2 := Vector2(p.x, p.z)
-	var a2 := Vector2(a.x, a.z)
-	var b2 := Vector2(b.x, b.z)
-	var ab := b2 - a2
-	var len_sq := ab.length_squared()
-	if len_sq < 0.000001:
-		return p2.distance_to(a2)
-	var t := clampf((p2 - a2).dot(ab) / len_sq, 0.0, 1.0)
-	return p2.distance_to(a2 + ab * t)
+# The overlapping RANGE between one wall piece's own bounding box and the
+# detection area's bounding box, both measured as [min, max] Vector2
+# bounds in the horizontal XZ plane - the difference between each box's
+# own max and min gives the overlap on each axis (overlap_min/
+# overlap_max below). Returns [] if that range is empty (min > max on
+# either axis) - no overlap at all - otherwise [Vector3, Vector3]: the
+# two actual world-space endpoints of the overlapping stretch, reusing
+# piece a's own Y (walls don't vary in height along their own length).
+#
+# Since a piece is a LINE, not a filled box, one of the two axes always
+# collapses to the piece's own fixed coordinate on that axis (e.g. a
+# piece running along X has piece_min.y == piece_max.y == its one fixed
+# Z value), so the returned points differ only along whichever axis the
+# piece actually runs on - exactly the clipped sub-segment, not a
+# degenerate box corner.
+static func _piece_area_overlap(a: Vector3, b: Vector3, area_min: Vector2, area_max: Vector2) -> Array:
+	var piece_min := Vector2(minf(a.x, b.x), minf(a.z, b.z))
+	var piece_max := Vector2(maxf(a.x, b.x), maxf(a.z, b.z))
+	var overlap_min := Vector2(maxf(piece_min.x, area_min.x), maxf(piece_min.y, area_min.y))
+	var overlap_max := Vector2(minf(piece_max.x, area_max.x), minf(piece_max.y, area_max.y))
+	if overlap_min.x > overlap_max.x or overlap_min.y > overlap_max.y:
+		return []
+	return [
+		Vector3(overlap_min.x, a.y, overlap_min.y),
+		Vector3(overlap_max.x, a.y, overlap_max.y),
+	]
 
 # Keeps every still-live guardian's (and its decoy's) visibility in sync
 # with revealed_key_items - a plain re-check each frame rather than an
