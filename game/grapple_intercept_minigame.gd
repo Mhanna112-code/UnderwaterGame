@@ -987,13 +987,10 @@ func _update_vortex(delta: float) -> void:
     # would (see _apply_vortex_bounce()'s physics-mode branch for the
     # velocity side of this).
     #
-    # `bounced` stops a sphere from being bounced twice in the same frame
-    # if it's simultaneously touching more than one other sphere -
-    # double-reversing would cancel out and leave it moving as if nothing
-    # happened. Positional separation still applies to every overlapping
-    # pair regardless, so nothing ever renders stuck inside something else.
-    var bounced: Array[bool] = []
-    bounced.resize(_vortex_spheres.size())
+    # Each unordered pair is considered exactly once (i + 1). The contact
+    # resolver corrects penetration but only impulses an approaching pair;
+    # Area3D can still report the just-separated pair next frame, and a
+    # blind second reversal there is the double-bounce this guards against.
     for i in range(_vortex_spheres.size()):
         var a: Dictionary = _vortex_spheres[i]
         if not bool(a.using_physics):
@@ -1010,18 +1007,12 @@ func _update_vortex(delta: float) -> void:
                 continue
             if not (b_node in a_node.get_overlapping_areas()):
                 continue
-            var diff: Vector2 = a.pos2d - b.pos2d
-            var dist: float = diff.length()
-            var normal: Vector2 = diff / dist if dist > 0.001 else Vector2.RIGHT
-            var overlap: float = maxf(VORTEX_SPHERE_RADIUS * 2.0 - dist, 0.0)
-            a.pos2d = a.pos2d + normal * (overlap * 0.5)
-            b.pos2d = b.pos2d - normal * (overlap * 0.5)
-            if not bounced[i]:
-                _apply_vortex_bounce(a)
-                bounced[i] = true
-            if not bounced[j]:
-                _apply_vortex_bounce(b)
-                bounced[j] = true
+            var contact := VortexCollision.resolve_sphere_contact(
+                a.pos2d, a.vel2d, b.pos2d, b.vel2d, VORTEX_SPHERE_RADIUS)
+            a.pos2d = contact.first_position as Vector2
+            a.vel2d = contact.first_velocity as Vector2
+            b.pos2d = contact.second_position as Vector2
+            b.vel2d = contact.second_velocity as Vector2
 
     # 3) Wall collision: only meaningful once a sphere is in physics mode
     # (a phase-1 sphere is still converging toward center along its arc,
