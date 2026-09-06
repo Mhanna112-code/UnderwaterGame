@@ -140,7 +140,7 @@ func _watch(battle: Battle) -> void:
 # Glass_Goat animated this cast for a 2D presentation, so an attack travels
 # along the character's own forward axis and nowhere else. Every attack used
 # to play on the spot facing whichever way the actor was built facing, which
-# meant Marine Man's hammer reaching most of a body length into open water
+# meant Mech Pilot's hammer reaching most of a body length into open water
 # while the grunt it was aimed at stood off to one side. Reported as "the
 # animations arent aimed at or hit the enemy".
 #

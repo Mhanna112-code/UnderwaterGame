@@ -143,6 +143,12 @@ func _run(spot: Dictionary) -> void:
 		for c in world.get_children():
 			if c is ItemGuardian and (c as ItemGuardian).item_id == expect_reward:
 				(c as Area3D).body_entered.emit(d)
+				break
+		# Guardian entry now deliberately opens Marc's chooser. Drive the
+		# public selection signal so this gate verifies the full path from
+		# physical Area3D to one-enemy, correctly rewarded battle.
+		if world.special_encounter_prompt.visible:
+			world.special_encounter_prompt.diver_chosen.emit(d.model_name)
 
 func _check_result() -> void:
 	var spot: Dictionary = cases[at] as Dictionary

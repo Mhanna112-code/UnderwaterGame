@@ -129,7 +129,6 @@ func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	s.agility = maxi(4, ref.agility)
 	s.evasion = maxi(2, int(round(float(ref.evasion) * 0.75)))
 	s.accuracy = maxi(6, int(round(float(ref.accuracy) * 1.1)))
-	s.barrier_max = 0
 	s.fill()
 	return s
 

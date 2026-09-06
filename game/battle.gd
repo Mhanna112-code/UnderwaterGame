@@ -6,7 +6,7 @@
 # Combatants live as plain Dictionaries (not a class) in two arrays -
 # `party` and `enemies` - each entry shaped
 # {kind, stats, model_name, display_name, equipped_spells, actor, hp_bar,
-# hp_label, barrier_bar}. A Dictionary rather than a real class because
+# hp_label}. A Dictionary rather than a real class because
 # nothing here needs identity beyond "the fields", and it's the same
 # lightweight shape BASE_MOVES entries already use in this file.
 #
@@ -38,6 +38,10 @@ var world: World
 # random and guardian encounters still build Goblin grunts; this builds one
 # TethysBoss with its authored animation and move cycle.
 var boss_encounter := false
+# Key-item guardian battles are solo ability challenges. World sets this
+# independently of boss_encounter so the Tethys route remains unchanged.
+var special_encounter := false
+var _special_round := 0
 # Artifact sites visibly place one guardian beside one item. Keep that
 # encounter one-on-one with the party instead of secretly replacing the one
 # approached actor with a random three-grunt pack.
@@ -45,6 +49,9 @@ var guardian_encounter := false
 # Verification can hold the automatic entrance/turn dispatcher while it
 # exercises each boss move directly. Shipped encounters leave this true.
 var boss_intro_enabled := true
+
+func _enemy_power_mult() -> float:
+	return 1.0 + 0.15 * float(_special_round)
 
 # Fallback identity only for the no-party_source case (tools/test_battle.gd
 # instantiating a bare Battle) - mirrors whatever Diver would have built.
@@ -97,19 +104,36 @@ const BASE_MOVES := {
 	],
 }
 
-const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": false}
+# MODIFIED: quick_time_bool was false - the QTE used to only ever be
+# reachable through ENEMY_HEAVY_MOVE, so a normal swing could never
+# trigger it at all. Both enemy moves are QTE-eligible now; whether one
+# actually fires is an independent roll at the point of use (see
+# ENEMY_QTE_CHANCE/_resolve_attack()), decoupled entirely from which move
+# got chosen.
+const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": true}
 
 # A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
 # branch for how heavy_min/heavy_max actually turn into damage (a fraction
 # of the DEFENDER's max HP, not power/strength like ENEMY_MOVE). Lower
 # acc_mod than the normal swing - a hit this dangerous should be a little
-# more telegraphed/missable, not just as reliable as a Jab. Definitely
-# QTE-gated: this is exactly the swing the dodge system exists for.
+# more telegraphed/missable, not just as reliable as a Jab.
 const ENEMY_HEAVY_MOVE := {
 	"power": 0, "acc_mod": -1, "quick_time_bool": true,
 	"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
 }
+# MODIFIED: was briefly dropped to 0.25 when this was still the QTE's own
+# frequency knob (heavy swing and QTE used to be 1:1) - now that the QTE
+# is its own independent roll (ENEMY_QTE_CHANCE) on either move, this
+# constant goes back to just meaning "how often is this a heavy swing,"
+# its original 0.3, with no more hidden coupling to QTE frequency.
 const ENEMY_HEAVY_CHANCE := 0.3
+
+# How often ANY enemy attack (normal or heavy - both are quick_time_bool
+# true now) actually triggers the QTE, checked independently of which
+# move was chosen - see _resolve_attack()'s own use of this. Player moves
+# never carry quick_time_bool at all, so this only ever applies to the
+# enemy's own turn regardless.
+const ENEMY_QTE_CHANCE := 0.25
 
 # Raised in place of ENEMY_HEAVY_CHANCE when the chosen target is already
 # low enough that a heavy swing's own damage range could plausibly finish
@@ -138,7 +162,7 @@ const IMPACT_FRACTION := 0.55
 
 # How long the step in and the walk back take, and how far short of the
 # target an attacker stops. SWING_REACH is roughly the length of the longest
-# swing in the cast: Marine Man's hammer travels about that far.
+# swing in the cast: Mech Pilot's hammer travels about that far.
 const SWING_STEP_TIME := 0.18
 const SWING_REACH := 1.8
 
@@ -168,8 +192,8 @@ const OVERHEAD_MAX_NUDGES := 40
 # one, which is the trade the quote asks for.
 const OVERHEAD_DRIFT_COST := 40.0
 
-var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label, barrier_bar}]
-var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label, barrier_bar}]
+var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label}]
+var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label}]
 
 var _queue: Array = []     # combatants (same dict refs as party/enemies) still waiting to act this round
 var _acting: Dictionary = {}
@@ -244,8 +268,13 @@ var qte_root: HBoxContainer
 var qte_track: Control
 var qte_zone: ColorRect
 var qte_indicator: ColorRect
-const QTE_TRACK_WIDTH := 150.0
-const QTE_TRACK_HEIGHT := 14.0
+# MODIFIED: both scaled up 25% (150->187.5, 14->17.5) to make the whole
+# popup physically bigger on screen - zone_width_frac/zone_start_frac in
+# _quick_time_event() stay exactly as they were (fractions of this track,
+# not absolute pixels), so the hit zone's actual on-screen size grows
+# right along with the track automatically, no separate change needed.
+const QTE_TRACK_WIDTH := 187.5
+const QTE_TRACK_HEIGHT := 17.5
 
 # Set for the duration of one _quick_time_event() call - _unhandled_input()
 # only ever looks at these while _qte_active is true, so a stray X press
@@ -419,7 +448,6 @@ func _default_player_stats() -> CombatantStats:
 	s.agility = int(base.agility)
 	s.evasion = int(base.evasion)
 	s.accuracy = int(base.accuracy)
-	s.barrier_max = int(base.barrier_max)
 	s.grow_hp = int(base.grow_hp)
 	s.grow_strength = int(base.grow_strength)
 	s.grow_defense = int(base.grow_defense)
@@ -435,6 +463,7 @@ func _build_party() -> void:
 			"kind": "party", "stats": _default_player_stats(),
 			"model_name": diver_model_name, "display_name": _display(diver_model_name),
 			"equipped_spells": [],
+			"ability_id": String(Diver.BASE_STATS.get(diver_model_name, {}).get("ability", "")),
 		})
 		return
 	for d in party_source:
@@ -442,7 +471,7 @@ func _build_party() -> void:
 		party.append({
 			"kind": "party", "stats": dv.stats,
 			"model_name": dv.model_name, "display_name": _display(dv.model_name),
-			"equipped_spells": dv.equipped_spells,
+			"equipped_spells": dv.equipped_spells, "ability_id": dv.ability_id,
 		})
 
 # A SubViewport with its own camera, light and fog: isolated from the dive
@@ -463,6 +492,17 @@ func _build_stage() -> void:
 	var container := SubViewportContainer.new()
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.stretch = true
+	# MODIFIED (added): a Control's default mouse_filter is STOP, and this
+	# container covers the entire battle screen (PRESET_FULL_RECT) - every
+	# mouse motion/click landing anywhere on it was being consumed right
+	# here before it could ever reach _unhandled_input(), which is exactly
+	# how GrappleInterceptMinigame's own mouse-look/left-click-to-grapple
+	# input (added as a sibling Control on this same CanvasLayer, see
+	# _do_grapple_intercept_encounter()) receives look and fire at all.
+	# IGNORE lets those events pass straight through; nothing embedded in
+	# the 3D stage viewport itself needs real mouse input (targeting is
+	# keyboard-driven, see world.gd's target_selector).
+	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(container)
 	_stage_container = container
 	container.resized.connect(_frame_stage_camera)
@@ -502,11 +542,16 @@ func _build_stage() -> void:
 	# Party visuals, spread left-to-right so 1-3 divers don't overlap.
 	# Diver.rotation.y == 0 is the model's own rest-facing direction (-Z, see
 	# diver.gd), so leaving it untouched here is what puts its back to camera.
+	var is_swap_encounter := special_encounter and not party.is_empty() and String(party[0].get("ability_id", "")) == "swap"
+	var diver_z := 3.4 if is_swap_encounter else (2.2 if special_encounter else 1.0)
+	var enemy_z := -6.0 if is_swap_encounter else (-4.6 if special_encounter else -2.2)
 	var pn := party.size()
 	for i in range(pn):
+		if (party[i].stats as CombatantStats).hp <= 0:
+			continue
 		var actor := Diver.new()
 		actor.model_name = String(party[i].model_name)
-		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, 0.0, 1.0 - _spread(i, pn, 0.7))
+		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, 0.0, diver_z - _spread(i, pn, 0.7))
 		vp.add_child(actor)
 		party[i]["actor"] = actor
 		# Where this one stands when it is not swinging. Attacks step in
@@ -524,7 +569,29 @@ func _build_stage() -> void:
 	# away instead of into shot.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
-	var count := 1 if boss_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	# MODIFIED (added): make_stats() below scales the grunt to be a
+	# credible threat against `ref_stats` regardless of context - in a
+	# normal fight that reference is a full party's average, worn down by
+	# three attackers' combined output. `party` is just the one chosen
+	# diver in a special encounter (see _start_battle()'s custom_party),
+	# so `ref_stats` here is really just that solo diver's own stats - the
+	# grunt came out exactly as tough as a normal-fight grunt, but with
+	# only one diver's own moveset chipping away at it instead of three,
+	# which is why a special encounter dragged on far longer than intended
+	# and read as "barely doing any damage." Halving hp_max/defense
+	# specifically (not the grunt's own offense - strength/agility/
+	# accuracy/evasion are untouched, this isn't about it hitting softer)
+	# brings a solo fight's pace back in line with a normal one. _edge()'s
+	# own 1.08x-1.35x difficulty bump in make_stats() still applies on top
+	# of this, same as any other fight. Skipped for a boss - Tethys is built
+	# from its own scaling entirely (see TethysBoss.make_stats() below).
+	if special_encounter and not boss_encounter:
+		ref_stats.hp_max = maxi(1, int(round(float(ref_stats.hp_max) * 0.5)))
+		ref_stats.defense = int(round(float(ref_stats.defense) * 0.5))
+	# A special encounter is always a solo diver against exactly one grunt -
+	# it's built around one character's ability minigame (see _do_enemy_
+	# turn()'s special_encounter branch), not a real multi-enemy fight.
+	var count := 1 if boss_encounter or special_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -553,7 +620,7 @@ func _build_stage() -> void:
 		return
 	for i in range(count):
 		var g := Goblin.new()
-		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
+		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, enemy_z - _spread(i, count, 0.5))
 		g.rotation.y = PI
 		vp.add_child(g)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
@@ -700,7 +767,6 @@ func _party_average_stats() -> CombatantStats:
 	var sum_agi := 0
 	var sum_eva := 0
 	var sum_acc := 0
-	var sum_bar := 0
 	for entry in pool:
 		var s := entry.stats as CombatantStats
 		sum_hp += s.hp_max
@@ -709,14 +775,12 @@ func _party_average_stats() -> CombatantStats:
 		sum_agi += s.agility
 		sum_eva += s.evasion
 		sum_acc += s.accuracy
-		sum_bar += s.barrier_max
 	avg.hp_max = int(round(float(sum_hp) / n))
 	avg.strength = int(round(float(sum_str) / n))
 	avg.defense = int(round(float(sum_def) / n))
 	avg.agility = int(round(float(sum_agi) / n))
 	avg.evasion = int(round(float(sum_eva) / n))
 	avg.accuracy = int(round(float(sum_acc) / n))
-	avg.barrier_max = int(round(float(sum_bar) / n))
 	return avg
 
 # Evenly spaces `n` actors around x=0, `step` apart - shared by the party
@@ -737,6 +801,22 @@ func _build_ui() -> void:
 
 	_bottom_panel = PanelContainer.new()
 	_bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	# MODIFIED (added): same STOP-by-default bug as _stage_container above -
+	# this panel spans the full width of the bottom of the screen and was
+	# never given its own mouse_filter, so its background (and the log/
+	# margin area around whichever menu is actually visible) swallowed any
+	# click or motion landing there. During a special-encounter minigame
+	# main_menu/move_menu/item_menu/target_menu are all hidden (see
+	# _do_enemy_turn()) but this panel itself stays up to hold the log/
+	# overhead bars, so aiming a weak spot low on screen (see
+	# GrappleInterceptMinigame's grid, which spawns rocks above AND below
+	# center) drifted the virtual cursor into this strip and silently ate
+	# the look/click from there on - "works near the middle, stops
+	# entirely once you aim down." IGNORE here doesn't disable the actual
+	# buttons inside it (they keep their own default STOP filter and still
+	# receive clicks normally whenever they're visible) - it only stops the
+	# panel's own empty background from intercepting anything.
+	_bottom_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# Opaque, and deliberately so. This used to run on Godot's default
 	# PanelContainer theme, which is 60% black, and that was fine only for
@@ -760,10 +840,21 @@ func _build_ui() -> void:
 	margin.add_theme_constant_override("margin_right", 16)
 	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_bottom", 16)
+	# MODIFIED (added): _bottom_panel's own IGNORE (above) only ever applies
+	# to _bottom_panel itself - margin and col are separate nodes that each
+	# still defaulted to STOP independently, which is what was actually
+	# still blocking the panel's content area regardless of the outer
+	# panel's own filter. NOT recursive into col's own children though -
+	# main_menu/move_menu/item_menu/target_menu live inside col and their
+	# real Buttons need to stay STOP for normal turns to keep working; they
+	# also happen to be hidden (visible=false) during a special-encounter
+	# minigame specifically, so this is safe either way.
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bottom_panel.add_child(margin)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(col)
 
 	# Turn order across the very top, in its own bar rather than as the first
@@ -772,6 +863,11 @@ func _build_ui() -> void:
 	# piece that has nowhere on the stage to live.
 	_queue_bar = PanelContainer.new()
 	_queue_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	# MODIFIED (added): same reasoning as _bottom_panel's own mouse_filter
+	# fix just above - this strip spans the full width of the TOP of the
+	# screen and holds no interactive controls at all (just the turn-order
+	# row), so there's no children relying on it staying STOP.
+	_queue_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var qbg := StyleBoxFlat.new()
 	# Opaque, for the same reason the bottom strip is: the stage stops below
 	# this bar, so anything translucent here shows the paused overworld's own
@@ -788,13 +884,15 @@ func _build_ui() -> void:
 	qmargin.add_theme_constant_override("margin_right", 16)
 	qmargin.add_theme_constant_override("margin_top", 6)
 	qmargin.add_theme_constant_override("margin_bottom", 6)
+	qmargin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_queue_bar.add_child(qmargin)
 
 	queue_row = HBoxContainer.new()
 	queue_row.add_theme_constant_override("separation", 10)
+	queue_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	qmargin.add_child(queue_row)
 
-	# Health, barrier and status now hang over each combatant's own head.
+	# Health and status now hang over each combatant's own head.
 	# See _build_overhead_bar() and _layout_overhead_bars().
 	for entry in party:
 		_build_overhead_bar(entry)
@@ -803,6 +901,7 @@ func _build_ui() -> void:
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
+	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
 	main_menu = HFlowContainer.new()
@@ -901,11 +1000,15 @@ func _build_quick_time_ui() -> void:
 	qte_root.visible = false
 	add_child(qte_root)
 
+	# MODIFIED: panel/glyph both scaled up 25% (34->42.5, 17->21.25 radius,
+	# font 18->23) to match QTE_TRACK_WIDTH/HEIGHT's own 25% increase -
+	# the button and the track are meant to read as one popup, not a
+	# bigger track next to an unchanged button.
 	var button_panel := Panel.new()
-	button_panel.custom_minimum_size = Vector2(34, 34)
+	button_panel.custom_minimum_size = Vector2(42.5, 42.5)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.85, 0.75, 0.2)
-	style.set_corner_radius_all(17)
+	style.set_corner_radius_all(21)
 	button_panel.add_theme_stylebox_override("panel", style)
 	qte_root.add_child(button_panel)
 
@@ -914,7 +1017,7 @@ func _build_quick_time_ui() -> void:
 	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
 	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	glyph.add_theme_font_size_override("font_size", 18)
+	glyph.add_theme_font_size_override("font_size", 23)
 	glyph.add_theme_color_override("font_color", Color(0.12, 0.09, 0.02))
 	button_panel.add_child(glyph)
 
@@ -931,12 +1034,12 @@ func _build_quick_time_ui() -> void:
 	# moves and resizes per attack) - these are just placeholders until then.
 	qte_zone = ColorRect.new()
 	qte_zone.color = Color(0.85, 0.2, 0.2)
-	qte_zone.size = Vector2(24, QTE_TRACK_HEIGHT)
+	qte_zone.size = Vector2(30, QTE_TRACK_HEIGHT)
 	qte_track.add_child(qte_zone)
 
 	qte_indicator = ColorRect.new()
 	qte_indicator.color = Color(0.95, 0.95, 0.9)
-	qte_indicator.size = Vector2(3, QTE_TRACK_HEIGHT)
+	qte_indicator.size = Vector2(3.75, QTE_TRACK_HEIGHT)
 	qte_track.add_child(qte_indicator)
 
 # Races a keypress against the sweep reaching the end of the track - both
@@ -1006,12 +1109,30 @@ func _unhandled_input(event: InputEvent) -> void:
 		_qte_active = false
 
 
-# One combatant's health, barrier and status, floating over their head.
+# One combatant's health and status, floating over their head.
 #
 # A Control laid out in screen space rather than a Label3D in the stage,
 # because these have to stay legible: a Label3D shrinks with distance, and
 # the grunts stand three metres further back than the party. The projection
 # happens every frame in _layout_overhead_bars().
+# MODIFIED (added): mouse_filter = IGNORE on a container only ever
+# affects that ONE node - it does not cascade to children, which each
+# default to STOP independently. Setting it on `box` alone (as the single
+# line below already did) left every child inside it - name_label,
+# bar_row, the HP ProgressBar, hp_label, status_label - still
+# individually eating clicks/motion in their own little rects. Since
+# these hang directly over each combatant (including the enemy launching
+# a special encounter, usually front and center), that's exactly where a
+# player would be aiming - the same STOP-by-default bug already found and
+# fixed on _stage_container/_bottom_panel/_queue_bar/$HUD's own elements,
+# just one level deeper (a container's non-button CHILDREN, not the
+# container itself) and easy to miss for exactly that reason.
+static func _ignore_mouse_recursive(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_ignore_mouse_recursive(child)
+
 func _build_overhead_bar(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 1)
@@ -1026,8 +1147,6 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	name_label.add_theme_constant_override("outline_size", 5)
 	box.add_child(name_label)
 
-	# HP and barrier side by side, not stacked, so a full shield never hides
-	# how much HP is actually left underneath.
 	var bar_row := HBoxContainer.new()
 	bar_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar_row.add_theme_constant_override("separation", 3)
@@ -1049,15 +1168,6 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(bar)
 
-	var barrier_bar := ProgressBar.new()
-	barrier_bar.custom_minimum_size = Vector2(26, 10)
-	barrier_bar.show_percentage = false
-	var barrier_fill := StyleBoxFlat.new()
-	barrier_fill.bg_color = Color(0.62, 0.64, 0.68)
-	barrier_bar.add_theme_stylebox_override("fill", barrier_fill)
-	barrier_bar.add_theme_stylebox_override("background", hp_track)
-	bar_row.add_child(barrier_bar)
-
 	var hp_label := Label.new()
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_label.add_theme_font_size_override("font_size", 12)
@@ -1075,9 +1185,9 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 
 	entry["hp_bar"] = bar
 	entry["hp_label"] = hp_label
-	entry["barrier_bar"] = barrier_bar
 	entry["status_label"] = status_label
 	entry["overhead"] = box
+	_ignore_mouse_recursive(box)
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -1103,16 +1213,6 @@ func _refresh_bar(entry: Dictionary) -> void:
 		]
 	(entry.status_label as Label).text = status_text
 	(entry.status_label as Label).visible = status_text != ""
-	_refresh_barrier_bar(entry.barrier_bar, s)
-
-# Hidden entirely for a combatant with no barrier at all, rather than
-# showing a permanently-empty gray sliver next to their HP.
-func _refresh_barrier_bar(bar: ProgressBar, stats: CombatantStats) -> void:
-	bar.visible = stats.barrier_max > 0
-	if not bar.visible:
-		return
-	bar.max_value = stats.barrier_max
-	bar.value = stats.barrier
 
 func _log(text: String) -> void:
 	log_label.text = text
@@ -1129,9 +1229,6 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 	if result_kind == "heal" or result_kind == "revive":
 		text = "+%d HP" % int(result.get("changed", 0))
 		color = Color(0.35, 1.0, 0.5)
-	elif result_kind == "barrier":
-		text = "+%d BARRIER" % int(result.get("changed", 0))
-		color = Color(0.7, 0.85, 1.0)
 	elif result_kind != "":
 		text = "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))]
 		color = Color(1.0, 0.82, 0.3)
@@ -1140,7 +1237,12 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 		color = Color(0.35, 0.9, 1.0)
 	elif int(result.get("damage", 0)) > 0:
 		text = "-%d" % int(result.damage)
-	elif int(result.get("absorbed", 0)) > 0 or (result.get("effects", []) as Array).is_empty():
+	elif (result.get("effects", []) as Array).is_empty():
+		# Only reachable now via defense flooring a hit at 0 - see
+		# _resolve_attack()'s own resolution-order comment. Text kept as
+		# "ABSORBED" (verify/combat_feedback.gd asserts on it) even though
+		# there's no more barrier to absorb anything - it still reads fine
+		# for "defense soaked this hit down to nothing."
 		text = "ABSORBED"
 		color = Color(0.8, 0.85, 0.9)
 	var effects := result.get("effects", []) as Array
@@ -1232,6 +1334,11 @@ func _refresh_queue_row() -> void:
 	queue_row.add_child(header)
 	for i in range(_queue.size()):
 		queue_row.add_child(_build_queue_chip(_queue[i], i))
+	# MODIFIED (added): rebuilt fresh every turn, so a one-time IGNORE at
+	# setup can't reach chips that don't exist yet - nothing in the turn
+	# queue is ever meant to be clickable, so sweeping the whole row after
+	# every rebuild is safe (see _ignore_mouse_recursive()'s own comment).
+	_ignore_mouse_recursive(queue_row)
 
 # The single spotlight card for whoever's turn it is right now - gold
 # border regardless of party/enemy side, so "this is happening" reads as
@@ -1444,9 +1551,9 @@ func _populate_item_menu() -> void:
 	# place unless it's explicitly moved back to the end each time.
 	item_menu.move_child(item_back_btn, item_menu.get_child_count() - 1)
 
-# heal/oxygen/barrier items only ever make sense on a living party member
-# (a downed diver has no oxygen tank to top off or shield to raise either)
-# - _living(party) same as a heal move's own target pool. Filtered further
+# heal/oxygen items only ever make sense on a living party member (a
+# downed diver has no oxygen tank to top off) - _living(party) same as a
+# heal move's own target pool. Filtered further
 # by Items.would_help() per candidate, not by who's acting - an item
 # isn't cast BY someone the way a move is, it's just applied TO someone,
 # so there's no "does the acting diver have enough X" check the way
@@ -1467,8 +1574,8 @@ func _on_item_chosen(item_id: String) -> void:
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Always succeeds, no accuracy roll - same as _apply_heal()/_apply_barrier(),
-# nothing about using an item on an ally is something they could evade.
+# Always succeeds, no accuracy roll - same as _apply_heal(), nothing about
+# using an item on an ally is something they could evade.
 # Mirrors _resolve_party_move()'s tail exactly (log, refresh bars, advance
 # turn) so an item-use turn reads identically to a move turn.
 func _resolve_item(item_id: String, target: Dictionary) -> void:
@@ -1478,7 +1585,20 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	_busy = true
 	_set_all_buttons(false)
 	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
+	var kind := String(Items.ITEMS.get(item_id, {}).get("kind", ""))
+	var amount := int(Items.ITEMS.get(item_id, {}).get("amount", 0))
 	var msg := Items.grant(item_id, target.stats as CombatantStats)
+	# MODIFIED (added): attack_up/defense_up are battle_only and only
+	# supposed to last THIS fight - Items.grant() above already applied the
+	# raw stat increase (same as any other consumable), so this just
+	# remembers what to subtract back off before the battle actually ends
+	# (see _revert_temp_buffs(), called from all three finished.emit()
+	# sites). Recorded by field name rather than by item_id specifically,
+	# so a future third "for this fight" stat item needs no changes here -
+	# just another kind -> field mapping.
+	var temp_field: String = {"attack_up": "strength", "defense_up": "defense"}.get(kind, "")
+	if temp_field != "":
+		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount})
 	var count: int = int(world.inventory.get(item_id, 0))
 	world.inventory[item_id] = count - 1
 	if world.inventory[item_id] <= 0:
@@ -1489,6 +1609,30 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
+# Every attack_up/defense_up applied so far this battle, as {stats, field,
+# amount} - see _resolve_item() above for how entries get added, and
+# _revert_temp_buffs() for how they come back off. A plain Array rather
+# than keying by `stats` directly, since the same diver could use more
+# than one of these across a single fight and each application needs its
+# own amount subtracted back off independently.
+var _temp_buffs: Array[Dictionary] = []
+
+# Called from every one of this battle's three end points (_win(), _lose(),
+# the flee handler) right before finished.emit() - a temporary buff is
+# scoped to THIS fight specifically, so it needs to come back off no
+# matter how the fight actually ends, not just on a win. Reads `field`
+# dynamically via CombatantStats.set()/get() rather than a match on
+# "strength"/"defense" by name, so adding a third temp-buffable field
+# later needs no changes here.
+func _revert_temp_buffs() -> void:
+	for entry in _temp_buffs:
+		var s := entry.stats as CombatantStats
+		if s == null:
+			continue
+		var field := String(entry.field)
+		s.set(field, int(s.get(field)) - int(entry.amount))
+	_temp_buffs.clear()
+
 func _show_main() -> void:
 	if _busy:
 		return
@@ -1498,11 +1642,11 @@ func _show_main() -> void:
 	main_menu.visible = true
 	call_deferred("_fit_panel_height")
 
-# Barrier moves target the caster - a single-entry target list rather than
-# an immediate resolve, same as everything else below, so choosing a
-# barrier spell still lands on a screen with Back rather than committing
-# the instant it's picked. Heal targets a living ally (a downed one has
-# nothing a heal can do for it - see _apply_revive() for that); revive
+# Every effect still gets a target list rather than an immediate resolve,
+# so choosing a move always lands on a screen with Back rather than
+# committing the instant it's picked. Heal targets a living ally (a
+# downed one has nothing a heal can do for it - see _apply_revive() for
+# that); revive
 # targets a downed one specifically. Everything else still targets an
 # enemy. Always shows the target picker, even for a single candidate
 # (e.g. the common one-enemy fight) - that single extra button is what
@@ -1520,8 +1664,6 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	var effect := String(mv.get("effect", ""))
 	var targets: Array
 	match effect:
-		"barrier":
-			targets = [_acting]
 		"heal":
 			targets = _living(party)
 		"revive":
@@ -1626,10 +1768,6 @@ func _show_moves_or_items_from_target_menu() -> void:
 #     left in the whole resolve - whether you hit is deterministic, how
 #     hard is not).
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
-#  4. Barrier - a temporary shield that eats damage before HP does. Doesn't
-#     refill on its own (see CombatantStats.fill()/gain_xp() and, now,
-#     _apply_barrier() below), so once it's spent it stays spent until the
-#     next level-up or barrier spell.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	if move.has("formula"):
 		return CombatRules.resolve(attacker, defender, move)
@@ -1650,15 +1788,16 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if String(move.get("effect", "")) == "heavy":
 		heavy_fraction = randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
 
-	# Only a move explicitly tagged for it (ENEMY_MOVE, currently) ever
-	# triggers a QTE - a player's own attacks never set quick_time_bool, so
-	# this is a no-op for anything the player swings themselves. A
-	# successful dodge zeroes incoming outright rather than just skipping
-	# barrier absorption below - the reward for timing it right is not
-	# needing the barrier to save you at all, not just saving the barrier
-	# for later.
+	# MODIFIED: used to fire the QTE unconditionally whenever quick_time_bool
+	# was set (which used to only ever be ENEMY_HEAVY_MOVE, making the QTE
+	# 1:1 with the heavy swing specifically). Both enemy moves are eligible
+	# now, and this is what actually decides whether one fires THIS time -
+	# an independent ENEMY_QTE_CHANCE roll, same on either move. Player
+	# moves never set quick_time_bool at all, so this is still a no-op for
+	# anything the player swings themselves regardless. A successful dodge
+	# zeroes incoming outright rather than reducing it.
 	var player_dodge := false
-	if bool(move.get("quick_time_bool", false)):
+	if bool(move.get("quick_time_bool", false)) and randf() < ENEMY_QTE_CHANCE:
 		player_dodge = await _quick_time_event()
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
@@ -1684,39 +1823,24 @@ static func apply_damage_roll(attacker: CombatantStats, defender: CombatantStats
 	if dodged:
 		incoming = 0
 
-	var absorbed := 0
-	if defender.barrier > 0 and incoming > 0:
-		absorbed = mini(defender.barrier, incoming)
-		defender.barrier -= absorbed
-	var to_hp: int = incoming - absorbed
-	defender.hp = maxi(0, defender.hp - to_hp)
-	return {"hit": true, "damage": to_hp, "absorbed": absorbed, "debuff": "", "changed": 0, "dodged": dodged, "evasion_spent": 0, "effects": []}
+	defender.hp = maxi(0, defender.hp - incoming)
+	return {"hit": true, "damage": incoming, "absorbed": 0, "debuff": "", "changed": 0, "dodged": dodged, "evasion_spent": 0, "effects": []}
 
 # Dispatches on the move's "effect" key before falling through to the
-# normal attack/debuff resolution above. "barrier" (defense-branch spells)
-# targets the caster instead of the defender and always succeeds, no
-# accuracy check - raising your own shield isn't something the target
-# could "evade." "heal"/"revive" (support-branch spells, see spell_tree.gd)
-# target an ally instead of an enemy - `defender` here is really just
-# "whoever _on_move_chosen()'s target picker resolved to," which for these
-# two effects is a living or downed ally respectively, not literally a
-# defender - and same as barrier, always succeed: nothing about mending a
-# wound is something the ally being healed could fail to receive.
+# normal attack/debuff resolution above. "heal"/"revive" (support-branch
+# spells, see spell_tree.gd) target an ally instead of an enemy -
+# `defender` here is really just "whoever _on_move_chosen()'s target
+# picker resolved to," which for these two effects is a living or downed
+# ally respectively, not literally a defender - and both always succeed:
+# nothing about mending a wound is something the ally being healed could
+# fail to receive.
 func _resolve_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	var effect := String(move.get("effect", ""))
-	if effect == "barrier":
-		return _apply_barrier(attacker, int(move.get("amount", 0)))
 	if effect == "heal":
 		return _apply_heal(defender, int(move.get("amount", 0)))
 	if effect == "revive":
 		return _apply_revive(defender, int(move.get("amount", 0)))
 	return await _resolve_attack(attacker, defender, move)
-
-func _apply_barrier(caster: CombatantStats, amount: int) -> Dictionary:
-	var before := caster.barrier
-	caster.barrier = mini(caster.barrier_max, caster.barrier + amount)
-	var changed := caster.barrier - before
-	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "barrier", "changed": changed}
 
 # Restores flat `amount` HP, capped at hp_max - only ever called with a
 # living ally as the target (see _on_move_chosen()'s "heal" target pool),
@@ -1778,12 +1902,6 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 	if not r.hit:
 		_log("%s - %s evades!" % [text, String(target.display_name)])
 		return
-	if String(r.debuff) == "barrier":
-		if int(r.changed) > 0:
-			_log("%s - %s's barrier rises by %d." % [text, String(actor.display_name), int(r.changed)])
-		else:
-			_log("%s - %s's barrier is already full." % [text, String(actor.display_name)])
-		return
 	if String(r.debuff) == "heal":
 		if int(r.changed) > 0:
 			_log("%s - %s recovers %d HP." % [text, String(target.display_name), int(r.changed)])
@@ -1799,12 +1917,7 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 		else:
 			_log("%s - %s has nothing left to lose there." % [text, String(target.display_name)])
 		return
-	if int(r.damage) == 0 and int(r.absorbed) > 0:
-		_log("%s - %s's barrier soaks it completely!" % [text, String(target.display_name)])
-	elif int(r.absorbed) > 0:
-		_log("%s for %d (%d soaked by barrier)." % [text, int(r.damage), int(r.absorbed)])
-	else:
-		_log("%s for %d." % [text, int(r.damage)])
+	_log("%s for %d." % [text, int(r.damage)])
 	var effects := r.get("effects", []) as Array
 	if not effects.is_empty():
 		_log("%s  •  %s" % [log_label.text, ", ".join(effects)])
@@ -2062,8 +2175,6 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 				hit_summaries.append("QTE dodge")
 			elif int(result.damage) > 0:
 				hit_summaries.append("-%d" % int(result.damage))
-			elif int(result.absorbed) > 0:
-				hit_summaries.append("barrier")
 			else:
 				hit_summaries.append("affected")
 		if (target.stats as CombatantStats).hp <= 0 and target.actor is Diver:
@@ -2096,6 +2207,17 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		return
 	var target: Dictionary = _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
+	if special_encounter:
+		match String(target.get("ability_id", "")):
+			"shockwave":
+				await _do_rock_dodge_encounter(actor, target, target_stats)
+				return
+			"swap":
+				await _do_swap_minigame(actor, target, target_stats)
+				return
+			"grapple":
+				await _do_grapple_intercept_encounter(actor, target, target_stats)
+				return
 	# "Lined up" means the target's already low enough that a heavy swing's
 	# own damage range (see ENEMY_HEAVY_MOVE's heavy_max, a fraction of
 	# their OWN max HP) could plausibly be a kill - not a fixed HP number,
@@ -2121,10 +2243,6 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
 	elif not r.hit:
 		_log("%s, but %s evades!" % [verb, String(target.display_name)])
-	elif int(r.damage) == 0 and int(r.absorbed) > 0:
-		_log("%s - barrier soaks it completely!" % verb)
-	elif int(r.absorbed) > 0:
-		_log("%s for %d (%d soaked by barrier)." % [verb, int(r.damage), int(r.absorbed)])
 	else:
 		_log("%s for %d." % [verb, int(r.damage)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
@@ -2132,6 +2250,159 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
+
+func _look_at_dodge_angle(target_pos: Vector3) -> void:
+	_stage_cam.global_position = target_pos + Vector3(3.0, 3.5, 2.0)
+	_stage_cam.look_at(target_pos, Vector3.UP)
+
+func _look_at_swap_angle(target_pos: Vector3, enemy_pos: Vector3) -> void:
+	var midpoint := (target_pos + enemy_pos) * 0.5
+	_stage_cam.global_position = midpoint + Vector3(0.0, 7.0, 7.0)
+	_stage_cam.fov = 85.0
+	_stage_cam.look_at(midpoint, Vector3.UP)
+
+func _restore_stage_camera() -> void:
+	_stage_cam.fov = 70.0
+	_frame_stage_camera()
+
+# Minigame impacts are guaranteed hits: the skill test already decided
+# whether they landed. Defense still uses the merged combat system, so
+# these encounters cannot bypass PR #54's mitigation rules.
+func _apply_special_impact(attacker: CombatantStats, target: Dictionary, scale: float = 1.0) -> Dictionary:
+	var defender := target.stats as CombatantStats
+	var raw := (float(ENEMY_MOVE.power) + float(attacker.strength)) * randf_range(0.85, 1.15)
+	var incoming := maxi(0, int(round(raw * scale)) - defender.effective_defense())
+	defender.hp = maxi(0, defender.hp - incoming)
+	var result := {
+		"hit": true, "damage": incoming, "absorbed": 0,
+		"debuff": "", "changed": 0, "dodged": false, "effects": [],
+	}
+	_refresh_bar(target)
+	_react(target, result)
+	_show_combat_feedback(target, result)
+	return result
+
+# MODIFIED (added): `flawless` - a perfect run through whichever minigame
+# just played (every rock/wall/portrait handled, none reaching the diver)
+# now guarantees dodging this closing swing entirely, rather than it
+# staying a pure _resolve_attack() accuracy/evasion roll totally unrelated
+# to how the minigame itself went. Skips the attack roll AND the walk-up/
+# send-home animation beat that goes with it - there's no swing to close
+# the distance for if it's not going to happen at all.
+func _finish_special_enemy_turn(actor: Dictionary, target: Dictionary, flawless: bool = false) -> void:
+	var target_stats := target.stats as CombatantStats
+	if target_stats.hp > 0:
+		if flawless:
+			_log("%s's flawless run leaves %s no opening to follow up!" % [String(target.display_name), String(actor.display_name)])
+		else:
+			var move := ENEMY_MOVE.duplicate()
+			move.power = float(move.power) * _enemy_power_mult()
+			(actor.actor as Goblin).play("walk")
+			await _step_toward(actor, target)
+			var result: Dictionary = await _resolve_attack(actor.stats, target_stats, move)
+			_send_home(actor, 0.0)
+			if is_instance_valid(actor.actor):
+				(actor.actor as Goblin).play("idle")
+			_refresh_bar(target)
+			_react(target, result)
+			_show_combat_feedback(target, result)
+			if not bool(result.get("hit", false)):
+				_log("%s follows up, but %s evades." % [String(actor.display_name), String(target.display_name)])
+			else:
+				_log("%s follows up for %d." % [String(actor.display_name), int(result.get("damage", 0))])
+	if target_stats.hp <= 0 and target.has("actor") and is_instance_valid(target.actor):
+		(target.actor as Diver).play_death_fade()
+	_special_round += 1
+	_finish_actor_turn(actor)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_advance_turn()
+
+func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _target_stats: CombatantStats) -> void:
+	_log("%s launches a rock swarm. Grapple the weak spots!" % String(actor.display_name))
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	var minigame := GrappleInterceptMinigame.new()
+	minigame.stage_root = _stage_vp
+	minigame.stage_camera = _stage_cam
+	minigame.target_actor = target.actor
+	minigame.enemy_actor = actor.actor
+	minigame.source_position = (actor.actor as Node3D).global_position + Vector3.UP * (actor.actor as Goblin).height
+	add_child(minigame)
+	var total_taken := 0
+	minigame.object_hit.connect(func() -> void:
+		var result := _apply_special_impact(actor.stats, target)
+		total_taken += int(result.damage)
+		if (target.stats as CombatantStats).hp <= 0:
+			minigame.request_abort()
+	)
+	minigame.run()
+	var score: Array = await minigame.finished
+	minigame.queue_free()
+	(target.actor as Node3D).visible = true
+	_restore_stage_camera()
+	_log("%s intercepts %d/%d rocks%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
+	await get_tree().create_timer(0.45).timeout
+	# MODIFIED (added): passes along whether this was a flawless run (every
+	# rock intercepted, none reaching the diver) so a perfect clear
+	# guarantees dodging the follow-up entirely instead of that staying an
+	# unrelated dice roll - see _finish_special_enemy_turn()'s own comment.
+	await _finish_special_enemy_turn(actor, target, int(score[0]) >= int(score[1]))
+
+func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, _target_stats: CombatantStats) -> void:
+	_log("%s hurls rocks and walls at %s!" % [String(actor.display_name), String(target.display_name)])
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_look_at_dodge_angle((target.actor as Node3D).global_position)
+	var minigame := RockDodgeMinigame.new()
+	minigame.thrower_position = (actor.actor as Node3D).global_position + Vector3.UP * (actor.actor as Goblin).height
+	minigame.stage_root = _stage_vp
+	minigame.target_actor = target.actor
+	add_child(minigame)
+	var total_taken := 0
+	minigame.rock_landed.connect(func() -> void:
+		var result := _apply_special_impact(actor.stats, target)
+		total_taken += int(result.damage)
+		if (target.stats as CombatantStats).hp <= 0:
+			minigame.request_abort()
+	)
+	minigame.run()
+	var score: Array = await minigame.finished
+	minigame.queue_free()
+	_restore_stage_camera()
+	_log("%s breaks %d/%d threats%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
+	await get_tree().create_timer(0.45).timeout
+	# MODIFIED (added): passes along whether this was a flawless run (every
+	# rock shockwaved, none reaching the diver) so a perfect clear guarantees
+	# dodging the follow-up entirely instead of that staying an unrelated
+	# dice roll - see _finish_special_enemy_turn()'s own comment.
+	await _finish_special_enemy_turn(actor, target, int(score[0]) >= int(score[1]))
+
+func _do_swap_minigame(actor: Dictionary, target: Dictionary, _target_stats: CombatantStats) -> void:
+	_log("%s scrambles the diver portraits!" % String(actor.display_name))
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_look_at_swap_angle((target.actor as Node3D).global_position, (actor.actor as Node3D).global_position)
+	var minigame := DiverSwapMinigame.new()
+	minigame.stage_root = _stage_vp
+	minigame.target_actor = target.actor
+	minigame.enemy_actor = actor.actor
+	add_child(minigame)
+	var total_taken := 0
+	minigame.portrait_landed.connect(func() -> void:
+		var result := _apply_special_impact(actor.stats, target, 0.25)
+		total_taken += int(result.damage)
+		if (target.stats as CombatantStats).hp <= 0:
+			minigame.request_abort()
+	)
+	minigame.run()
+	var score: Array = await minigame.finished
+	minigame.queue_free()
+	_restore_stage_camera()
+	_log("%s matches %d/%d portraits%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
+	await get_tree().create_timer(0.45).timeout
+	# MODIFIED (added): passes along whether this was a flawless run (every
+	# portrait matched correctly, none reaching the diver) so a perfect
+	# clear guarantees dodging the follow-up entirely instead of that
+	# staying an unrelated dice roll - see _finish_special_enemy_turn()'s
+	# own comment.
+	await _finish_special_enemy_turn(actor, target, int(score[0]) >= int(score[1]))
 
 func _win() -> void:
 	_set_all_buttons(false)
@@ -2149,6 +2420,8 @@ func _win() -> void:
 	var total_xp := 0
 	for e in enemies:
 		total_xp += int(e.get("xp_reward", 0))
+	if special_encounter:
+		total_xp = int(round(float(total_xp) * 1.5))
 	# Every party member gets the full amount, not a split share - there's
 	# no shared party XP pool concept in this game, and splitting it would
 	# just make leveling slower for the same fights without adding a
@@ -2158,6 +2431,7 @@ func _win() -> void:
 		for lv in levels:
 			_log("%s reached level %d!" % [String(entry.display_name), int(lv)])
 			await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_revert_temp_buffs()
 	# The map has repeated random battles plus two guardians and no guaranteed
 	# healer between them. A partial regroup prevents one victory from leaving
 	# the next encounter mathematically decided while preserving attrition.
@@ -2173,6 +2447,7 @@ func _lose() -> void:
 	target_menu.visible = false
 	_log("The party is battered and pulls back.")
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_revert_temp_buffs()
 	finished.emit("lost")
 
 func _on_run() -> void:
@@ -2185,6 +2460,7 @@ func _on_run() -> void:
 	if randf() <= RUN_CHANCE:
 		_log("The party breaks off and swims for it.")
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		_revert_temp_buffs()
 		finished.emit("fled")
 		return
 
@@ -2201,8 +2477,6 @@ func _on_run() -> void:
 			_log("%s lunges - you time it perfectly and dodge clear!" % String(attacker.display_name))
 		elif not r.hit:
 			_log("%s lunges, but you evade clear." % String(attacker.display_name))
-		elif int(r.damage) == 0 and int(r.absorbed) > 0:
-			_log("%s - your barrier soaks it completely!" % String(attacker.display_name))
 		else:
 			_log("%s claws you for %d as you struggle free." % [String(attacker.display_name), int(r.damage)])
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
