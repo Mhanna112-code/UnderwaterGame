@@ -32,6 +32,8 @@ const GRAPPLE_RANGE := 40.0
 # this is ever retuned.
 const BIG_ROCK_RADIUS := 1.5
 const WEAK_SPOT_RADIUS := 0.16
+const ROCK_RESTITUTION := 1.0
+const ROCK_CONTACT_EPSILON := 0.001
 # MODIFIED: was randi_range(MIN_HITS_TO_DESTROY, MAX_HITS_TO_DESTROY) * an
 # HP pool reduced by DAMAGE_PER_HIT each hit (2-3 hits' worth, randomized
 # per rock) - simplified to a flat hit counter, exactly 2 weak-spot hits
@@ -44,7 +46,13 @@ var target_actor: Node3D
 var source_position := Vector3.ZERO
 
 var _targets: Array[MeshInstance3D] = []
-var _target_tweens: Dictionary = {}
+# Rock transforms must have one owner. Tweening them toward the camera and
+# also trying to push them apart means the Tween writes the old trajectory
+# back on the next frame, which is exactly how one contact turns into a
+# visible double bounce. The manual velocity/time maps below own motion from
+# launch to landing, while collision resolution only changes velocity.
+var _target_velocities: Dictionary = {}
+var _target_time_left: Dictionary = {}
 
 # Each rock's weak-spot hit count so far, keyed by the same rock
 # MeshInstance3D _targets already tracks. Starts at 0 in _spawn_target(),
@@ -327,7 +335,10 @@ func _start_weak_spot_timeout(spot: Area3D) -> void:
 # candidate set itself is fixed. `right` reuses _base_forward the same
 # way _spawn_target()'s own flight math does, so this grid is oriented
 # consistently with everything else this minigame spawns.
-const GRID_SPACING := 1.6
+# A 1.5 m radius means a visible diameter of 3 m. The old 1.6 m spacing put
+# every neighbouring launch sphere inside the next one before the player had
+# control. Keep a small gap even before collision handling starts.
+const GRID_SPACING := BIG_ROCK_RADIUS * 2.2
 
 func _grid_spawn_positions() -> Array[Vector3]:
 	var right := _base_forward.cross(Vector3.UP).normalized()
@@ -347,11 +358,74 @@ func _spawn_target(spawn: Vector3) -> void:
 	var rock := _spawn_rock(spawn)
 	_targets.append(rock)
 	_rock_hits[rock] = 0
+	_target_velocities[rock] = (eye - spawn) / FLIGHT_TIME
+	_target_time_left[rock] = FLIGHT_TIME
 
-	var tween := rock.create_tween()
-	_target_tweens[rock] = tween
-	tween.tween_property(rock, "global_position", eye, FLIGHT_TIME)
-	tween.finished.connect(func() -> void: _land(rock))
+func _process(delta: float) -> void:
+	if _targets.is_empty():
+		return
+	# Move every live rock first, then resolve each unordered pair exactly
+	# once. A separate "bounce" callback per rock would process A/B and B/A
+	# as two impacts; i + 1 prevents that duplicate impulse.
+	for target in _targets:
+		if is_instance_valid(target):
+			var velocity: Vector3 = _target_velocities.get(target, Vector3.ZERO)
+			target.global_position += velocity * delta
+			_target_time_left[target] = float(_target_time_left.get(target, FLIGHT_TIME)) - delta
+	_resolve_target_collisions()
+	var landed: Array[MeshInstance3D] = []
+	for target in _targets:
+		if float(_target_time_left.get(target, 0.0)) <= 0.0:
+			landed.append(target)
+	for target in landed:
+		_land(target)
+
+# Returns corrected positions and velocities for two equal-mass spheres.
+# `impulse` is false for a pair already separating, which is the essential
+# guard against the reported second bounce on the following frame.
+static func resolve_sphere_contact(
+		first_position: Vector3, first_velocity: Vector3,
+		second_position: Vector3, second_velocity: Vector3,
+		radius: float) -> Dictionary:
+	var separation := second_position - first_position
+	var distance := separation.length()
+	var minimum_distance := radius * 2.0
+	if distance >= minimum_distance:
+		return {"first_position": first_position, "first_velocity": first_velocity,
+			"second_position": second_position, "second_velocity": second_velocity, "impulse": false}
+	var normal := separation / distance if distance > ROCK_CONTACT_EPSILON else (first_velocity - second_velocity).normalized()
+	if normal.length_squared() < ROCK_CONTACT_EPSILON:
+		normal = Vector3.RIGHT
+	# Correct overlap before considering velocity, so an approaching pair is
+	# visibly separate immediately and a separating pair cannot stay embedded.
+	var correction := normal * ((minimum_distance - distance + ROCK_CONTACT_EPSILON) * 0.5)
+	var corrected_first := first_position - correction
+	var corrected_second := second_position + correction
+	var closing_speed := (first_velocity - second_velocity).dot(normal)
+	if closing_speed <= 0.0:
+		return {"first_position": corrected_first, "first_velocity": first_velocity,
+			"second_position": corrected_second, "second_velocity": second_velocity, "impulse": false}
+	var impulse := normal * (closing_speed * (1.0 + ROCK_RESTITUTION) * 0.5)
+	return {"first_position": corrected_first, "first_velocity": first_velocity - impulse,
+		"second_position": corrected_second, "second_velocity": second_velocity + impulse, "impulse": true}
+
+func _resolve_target_collisions() -> void:
+	for first_index in range(_targets.size()):
+		var first := _targets[first_index]
+		if not is_instance_valid(first):
+			continue
+		for second_index in range(first_index + 1, _targets.size()):
+			var second := _targets[second_index]
+			if not is_instance_valid(second):
+				continue
+			var contact := resolve_sphere_contact(
+				first.global_position, _target_velocities.get(first, Vector3.ZERO),
+				second.global_position, _target_velocities.get(second, Vector3.ZERO),
+				BIG_ROCK_RADIUS)
+			first.global_position = contact.first_position as Vector3
+			second.global_position = contact.second_position as Vector3
+			_target_velocities[first] = contact.first_velocity as Vector3
+			_target_velocities[second] = contact.second_velocity as Vector3
 
 # MODIFIED: this used to try to get 3D-space methods (get_world_3d(),
 # global_position, basis) off `self` - but this class extends Control,
@@ -427,10 +501,8 @@ func _flash_rock_red(rock: MeshInstance3D) -> void:
 # was even the rock currently holding the spot.
 func _destroy_target(target: MeshInstance3D) -> void:
 	_targets.erase(target)
-	var flight: Tween = _target_tweens.get(target, null)
-	if flight != null and flight.is_valid():
-		flight.kill()
-	_target_tweens.erase(target)
+	_target_velocities.erase(target)
+	_target_time_left.erase(target)
 	_rock_hits.erase(target)
 	_hits += 1
 	_resolved += 1
@@ -445,7 +517,8 @@ func _land(target: MeshInstance3D) -> void:
 	if not _targets.has(target):
 		return
 	_targets.erase(target)
-	_target_tweens.erase(target)
+	_target_velocities.erase(target)
+	_target_time_left.erase(target)
 	_rock_hits.erase(target)
 	_resolved += 1
 	object_hit.emit()
