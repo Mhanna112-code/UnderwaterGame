@@ -63,6 +63,10 @@ else
 fi
 
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
+run "angler grunt: is Glassgoat's replacement textured and animation-mapped" "$GODOT" --headless --path . --script verify/angler_grunt.gd
+run "enemy moves: are Angler attacks reusable data and playable clips" "$GODOT" --headless --path . --script verify/enemy_moves.gd
+run "artifact guardians: do both models persist from map to one-enemy battle" "$GODOT" --headless --path . --script verify/artifact_guardians.gd
+run "ordinary roster: do random encounters use both delivered enemies" "$GODOT" --headless --path . --script verify/ordinary_roster.gd
 run "battle: does the fight screen build"             "$GODOT" --headless --path . --script tools/test_battle.gd
 
 # The browser gate needs an exported build in docs/ and node with playwright.
@@ -81,6 +85,7 @@ elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 else
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs docs /tmp/gate-chromium.png
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs docs /tmp/gate-tethys.png /tmp/gate-tethys-title.png
+	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs docs /tmp/gate-guardian.png
 fi
 
 echo
