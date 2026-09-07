@@ -1,9 +1,8 @@
 # A fixed spot in the dive site that guards a specific item - swim into it
 # and world.gd drops you into a battle; win it and the item's yours. Same
-# Area3D-on-layer-2 trigger shape as lock_plate.gd/item_orb.gd, but this one
-# only ever fires once - world.gd frees both this and its decorative
-# Goblin the moment `triggered` fires, so walking through the same empty
-# water again does nothing.
+# Area3D-on-layer-2 trigger shape as lock_plate.gd/item_orb.gd. World keeps
+# this and its decorative Goblin alive when the player declines or loses
+# the special encounter, and frees both only after the guarded item is won.
 #
 # Doesn't know what a Battle is, doesn't touch the item itself - just says
 # "something guarded is here" and hands back which item_id, the same

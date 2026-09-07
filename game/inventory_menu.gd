@@ -2,7 +2,7 @@
 # Items.ITEMS defines as a consumable) applies straight to whoever you're
 # currently steering, same as before. "Party Spells" is any known move/
 # spell tagged "inventory": true (see battle.gd's BASE_MOVES/spell_tree.gd's
-# own header comments) - Mermaid's free base Heal, plus any learned "heal"/
+# own header comments) - Maxilani's free base Heal, plus any learned "heal"/
 # "revive" spell, castable by ANY party member on ANY party member, not
 # just whoever's currently active. Items don't apply themselves the instant
 # they're picked up anymore - an orb/guardian reward just adds to

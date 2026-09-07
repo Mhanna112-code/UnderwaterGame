@@ -18,6 +18,7 @@ extends Control
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
 signal boss_playtest_chosen
+signal special_playtest_chosen
 signal guardian_playtest_chosen
 
 var _mode := "main"
@@ -25,6 +26,7 @@ var _pending_action := "new"   # "new" | "load"
 
 var _list: VBoxContainer
 var _boss_playtest_available := false
+var _special_playtest_available := false
 var _guardian_playtest_available := false
 var _guardian_playtest_label := "Play Guardian Test"
 
@@ -81,6 +83,14 @@ func enable_boss_playtest() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
+# Like the boss route above, this is opt-in review plumbing rather than part
+# of the ordinary New/Load flow. It lets a reviewer reach the guardian chooser
+# and all three ability minigames without first navigating the full map.
+func enable_special_playtest() -> void:
+	_special_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 # Like the boss route, this is query-only review infrastructure. It keeps the
 # normal first-player title surface untouched while letting Glassgoat inspect
 # the far artifact guardian without navigating through saves and encounters.
@@ -117,6 +127,16 @@ func _refresh_main() -> void:
 		boss_btn.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
 		boss_btn.pressed.connect(boss_playtest_chosen.emit)
 		_list.add_child(boss_btn)
+
+	if _special_playtest_available:
+		var special_btn := Button.new()
+		special_btn.text = "Play Special Encounter Test"
+		special_btn.tooltip_text = "Choose a diver and test their ability minigame"
+		special_btn.custom_minimum_size = Vector2(360, 46)
+		special_btn.add_theme_font_size_override("font_size", 17)
+		special_btn.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
+		special_btn.pressed.connect(special_playtest_chosen.emit)
+		_list.add_child(special_btn)
 
 	if _guardian_playtest_available:
 		var guardian_btn := Button.new()
@@ -200,7 +220,7 @@ func _refresh_slots() -> void:
 
 # A one-line readout of a save's party, just enough to tell slots apart at
 # a glance - the diver order matches World.CAST, so index 0 is always
-# Mermaid regardless of who's "active" in the save.
+# Maxilani regardless of who's "active" in the save.
 func _summarize(data: Dictionary) -> String:
 	var divers_data: Array = data.get("divers", [])
 	if divers_data.is_empty():

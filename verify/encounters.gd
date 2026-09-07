@@ -37,6 +37,11 @@ func _process(_d: float) -> bool:
 		world.title_screen.new_game_chosen.emit(1)
 		return false
 	if frames == 2:
+		# This test covers the open-exploration encounter contract. New games
+		# now begin with a deterministic onboarding route, so explicitly move
+		# to its completed/free-explore state before asking an ordinary random
+		# trigger to create a battle.
+		world._clear_onboarding()
 		_report_encounter_rate()
 		_check_spawned()
 		_check_spots_are_reachable()
@@ -160,6 +165,12 @@ func _run(spot: Dictionary) -> void:
 		for c in world.get_children():
 			if c is ItemGuardian and (c as ItemGuardian).item_id == expect_reward:
 				(c as Area3D).body_entered.emit(d)
+				break
+		# Guardian entry now deliberately opens Marc's chooser. Drive the
+		# public selection signal so this gate verifies the full path from
+		# physical Area3D to one-enemy, correctly rewarded battle.
+		if world.special_encounter_prompt.visible:
+			world.special_encounter_prompt.diver_chosen.emit(d.model_name)
 
 func _check_result() -> void:
 	var spot: Dictionary = cases[at] as Dictionary
