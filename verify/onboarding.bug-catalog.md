@@ -1,22 +1,32 @@
-# Opening-route bug catalog
+# First-run tutorial player-path bug catalog
 
-The stacked tutorial must exercise the existing PR #50 gate rather than build a
-second, disconnected level.  The tests below protect player-path contracts.
+The stacked prototype is not considered complete because a state flag flips.
+These cases map to the player-facing proof required for the opening route.
 
-| ID | Fault / player-visible symptom | Cheapest meaningful test | Status |
+| ID | Fault / player-visible symptom | Meaningful regression check | Status |
 |---|---|---|---|
-| OB-01 | New Game leaves the world paused behind a modal tutorial, so a player cannot begin swimming. | Instantiate `World`, select New Game, assert HUD is visible and the tree is unpaused. | covered by `verify/onboarding.gd` |
-| OB-02 | A random fight fires while the player is being directed to the locked route, interrupting ability learning before the maze. | Invoke the active diver's encounter handler while onboarding is active; assert no `Battle` is created. | covered by `verify/onboarding.gd` |
-| OB-03 | The first objective is absent or points to an item/guardian rather than the entrance blockade. | Start onboarding; assert a visible route marker exists at the entrance blockade and no item guardian visibility changes. | covered by `verify/onboarding.gd` |
-| OB-04 | Breaking the entrance rubble does not advance the objective, leaving the player without the Grapple instruction. | Emit the entrance wall's `broken` signal; assert step becomes `grapple` and marker moves to the far anchor. | covered by `verify/onboarding.gd` |
-| OB-05 | A completed grapple crossing does not advance the route to the coordinated door puzzle. | Complete the registered far-anchor callback; assert step becomes `swap` and marker moves to the three-plate gate. | covered by `verify/onboarding.gd` |
-| OB-06 | Opening the three-plate gate still leaves random fights suppressed, so the maze never reaches the core combat loop. | Occupy all plates, run puzzle check, assert doors open, onboarding completes, and one active-diver encounter creates a battle. | covered by `verify/onboarding.gd` |
-| OB-07 | Load Game replays the first-run route and traps an existing save behind the tutorial gate. | Load a valid slot; assert onboarding is not activated. | covered by `verify/onboarding.gd` |
+| OB-01 | New Game leaves the world paused behind a tutorial modal. | Select New Game and assert a live HUD/unpaused tree. | `verify/onboarding.gd` |
+| OB-02 | The opening begins without a visible physical cue, so the player has only prose to follow. | Assert the Shockwave cue object exists at the real rubble. | `verify/onboarding.gd` |
+| OB-03 | The wrong diver/ability can satisfy the first obstacle. | Send actual Tab/E input and require Mech Pilot's real Shockwave to break the actual wall. | `verify/onboarding.gd` |
+| OB-04 | An ordinary or guardian fight interrupts ability learning. | Invoke both trigger paths while onboarding and assert neither creates/pauses for combat. | `verify/onboarding.gd` |
+| OB-05 | Hitting the near grapple ring, or merely hitting the far one before travel ends, advances the route. | Drive aimed E/click at near then far anchors; require the completed far pull before Swap. | `verify/onboarding.gd` |
+| OB-06 | A casual Swap experiment at spawn skips to the final puzzle. | Drive Maxilani's actual E/Enter selector at nearby divers; retain Swap state. | `verify/onboarding.gd` |
+| OB-07 | A correct across-whirlpool Swap fails to transition or has no non-text formation aid. | Drive E/Enter with Maxilani swapping into the far side; require door step, visual cue, and three halos. | `verify/onboarding.gd` |
+| OB-08 | The door opens only because a test writes plate occupants, hiding a collision/input defect. | Place real CharacterBody3Ds on real Area3D plates and wait for physics to open all doors. | `verify/onboarding.gd` |
+| OB-09 | “Maze open” is text only; the standalone MazeLevel is never reachable from World. | Require an embedded `MazeLevel` when the door opens. | `verify/onboarding.gd` |
+| OB-10 | First combat depends on a random encounter roll or appears before the lesson ends. | Require a visible Angler/trigger after the door; suppress random handlers; swim the active diver into the trigger. | `verify/onboarding.gd` |
+| OB-11 | Exiting mid-route loses the current objective and strands a player at the gate. | Serialize current onboarding step and rebuild its cue/step on restore. | `verify/onboarding.gd` |
 
-## Invariants
+## Visual language being checked by review
 
-- The route uses only the existing entrance rubble, whirlpool/grapple anchors,
-  plates, and doors produced by `World._build_highway()`.
-- Route markers teach traversal only; artifact sites remain sonar-discovered,
-  matching the accepted no-item-beacon feedback.
-- `#50` is not changed. This branch is the integration/repair layer.
+- **Cyan pulse** on rubble matches Mech Pilot's active marker: Shockwave.
+- **Gold hoop** at the far anchor matches Musashi's marker: Grapple.
+- **Purple linked rings** and target cursor match Maxilani: Swap.
+- At the finale, permanent diver halos and plate colours use those same three
+  colours; occupancy turns a plate green.
+- A **red reticle** plus a visible Angler identifies the first deliberate
+  combat beat after the door, rather than looking like an artifact marker.
+
+The regression can establish that these assets exist and participate in the
+real action path. Screenshot and interactive review still decide whether the
+visual hierarchy is understandable at game scale.

@@ -1,6 +1,13 @@
 class_name MazeLevel
 extends Node3D
 
+# The scene still opens by itself for maze work, but World can now embed the
+# same real maze after the opening gate.  In that mode World owns the party,
+# camera and HUD; this level contributes its authored CSG geometry, currents,
+# floor and boundary only.  A second test diver/camera would make the handoff
+# look connected while actually giving the player two conflicting controllers.
+@export var embedded_in_world := false
+
 var markers: Array[Marker3D] = []
 
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
@@ -27,12 +34,16 @@ func _ready() -> void:
 	_setup_walls()
 	_setup_currents()
 	_setup_whirlpool()
-	_spawn_test_diver()
 	_build_levers()
-	_build_rotate_prompt()
 	_build_floor()
 	_build_perimeter_walls()
 	_build_ceiling()
+	if embedded_in_world:
+		$HUD.visible = false
+		$Camera3D.current = false
+		return
+	_spawn_test_diver()
+	_build_rotate_prompt()
 	_build_minimap()
 
 func _setup_walls():
@@ -556,10 +567,12 @@ func _setup_whirlpool() -> void:
 	add_child(whirlpool)
 
 func _on_whirlpool_warned() -> void:
-	$HUD/Controls.text = "Danger - a whirlpool lies just ahead!"
+	if not embedded_in_world:
+		$HUD/Controls.text = "Danger - a whirlpool lies just ahead!"
 
 func _on_diver_sucked_in(_d: Diver, amount: int) -> void:
-	$HUD/Controls.text = "You were sucked into the whirlpool! (-%d HP)" % amount
+	if not embedded_in_world:
+		$HUD/Controls.text = "You were sucked into the whirlpool! (-%d HP)" % amount
 
 # CSGBox3D's collision (now that every wall has use_collision = true, see
 # maze_level.tscn) only covers the wall's own box - nothing stops a diver
@@ -807,6 +820,8 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(focus, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	if embedded_in_world:
+		return
 	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		_mouse_look = true

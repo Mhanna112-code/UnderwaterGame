@@ -33,6 +33,16 @@ var selecting := false
 
 var cursor: MeshInstance3D
 var _cursor_mat: StandardMaterial3D
+var cursor_color := Color(0.35, 0.95, 0.4)
+
+# World uses this during the opening Swap lesson.  Matching the selected
+# ally's cursor to the purple exchange cue makes the effect legible before a
+# player has read the target-selector instructions.
+func set_cursor_color(next_color: Color) -> void:
+	cursor_color = next_color
+	if _cursor_mat != null:
+		_cursor_mat.albedo_color = cursor_color
+		_cursor_mat.emission = cursor_color
 
 var _targets: Array[Node3D] = []
 var _selected_index := 0
@@ -149,8 +159,8 @@ func _show_cursor() -> void:
 	_cursor_mat = StandardMaterial3D.new()
 	_cursor_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_cursor_mat.emission_enabled = true
-	_cursor_mat.albedo_color = Color(0.35, 0.95, 0.4)
-	_cursor_mat.emission = Color(0.35, 0.95, 0.4)
+	_cursor_mat.albedo_color = cursor_color
+	_cursor_mat.emission = cursor_color
 	cursor.material_override = _cursor_mat
 	cursor.rotation_degrees.x = 180.0   # cone points down at the target
 	add_child(cursor)

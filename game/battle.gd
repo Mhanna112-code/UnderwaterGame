@@ -1977,7 +1977,10 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 	# an error during that typed conversion before `is_instance_valid()` gets a
 	# chance to reject it.
 	var actor_value: Variant = entry.get("actor")
-	if not (actor_value is Node3D) or not is_instance_valid(actor_value):
+	# A Variant holding a queued-freed Object throws if its type is inspected
+	# first.  Validity must be checked before `is` for the same reason the
+	# overhead-bar layout does: death fades can finish during a turn coroutine.
+	if not is_instance_valid(actor_value) or not (actor_value is Node3D):
 		return
 	var a := actor_value as Node3D
 	if not target.has("actor") or not is_instance_valid(target.actor) or target.actor == a:
@@ -2008,13 +2011,13 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 # swing cannot leave somebody drifting a metre further out every turn.
 func _send_home(entry: Dictionary, delay: float) -> void:
 	var actor_value: Variant = entry.get("actor")
-	if not (actor_value is Node3D) or not is_instance_valid(actor_value):
+	if not is_instance_valid(actor_value) or not (actor_value is Node3D):
 		return
 	var a := actor_value as Node3D
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
 		actor_value = entry.get("actor")
-		if not (actor_value is Node3D) or not is_instance_valid(actor_value):
+		if not is_instance_valid(actor_value) or not (actor_value is Node3D):
 			return
 		a = actor_value as Node3D
 	var back := a.create_tween()

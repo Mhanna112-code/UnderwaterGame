@@ -11,7 +11,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Your three abilities",
-		"body": "Bucky's Shockwave breaks cracked barriers. Diver Boy's Grapple pulls to anchors. Marine Man's Swap trades places with an ally. The opening route lets you practice each one before the maze.",
+		"body": "Mech Pilot's Shockwave breaks cracked barriers. Musashi's Grapple pulls to anchors. Maxilani's Swap trades places with an ally. The opening route lets you practice each one before the maze.",
 	},
 	{
 		"title": "Finding your way",

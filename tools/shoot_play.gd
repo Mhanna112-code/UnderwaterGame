@@ -15,6 +15,11 @@
 #   side    close beside the active diver
 #   battle  start an encounter and shoot the fight screen
 #   guardian  walk up to a guarded site; the rise argument picks which
+#   onboarding / onboarding-mech  frame the first colour-match lesson
+#   onboarding-door / onboarding-combat  frame review overviews of the
+#     formation and first fight beats (the normal player camera is used for
+#     onboarding/onboarding-mech; these two are deliberately pulled back so
+#     reviewers can inspect every matching cue at once).
 #
 # rise is optional too: 1 climbs while swimming, -1 dives.
 extends SceneTree
@@ -47,10 +52,42 @@ func _process(_d: float) -> bool:
 		world.title_screen.new_game_chosen.emit(1)
 		return false
 	if frames == 2:
-		if mode == "onboarding":
+		if mode == "onboarding" or mode == "onboarding-mech":
 			# The real first objective: stand before the blocked passage and
 			# frame its route marker with the same chase camera a player uses.
+			if mode == "onboarding-mech":
+				world.active = 2
+				world._update_hud()
 			world.divers[world.active].position = Vector3(6.0, 2.0, 10.0)
+			world.yaw = PI * 0.5
+			world.pitch = -0.08
+			world.scripted = true
+			world.scripted_dir = Vector3.ZERO
+			return false
+		if mode == "onboarding-door":
+			# Stage an unoccupied final formation. The review camera below shows
+			# all three colour matches at once rather than hiding two behind the
+			# active diver as the normal chase view correctly does in play.
+			world.onboarding_step = World.OnboardingStep.SWAP
+			world._on_onboarding_swap_completed()
+			world.active = 0
+			world.divers[0].position = Vector3(37.2, 2.0, 7.5)
+			world.divers[1].position = Vector3(37.2, 2.0, 10.0)
+			world.divers[2].position = Vector3(37.2, 2.0, 12.5)
+			world._update_hud()
+			world.yaw = PI * 0.5
+			world.pitch = -0.08
+			world.scripted = true
+			world.scripted_dir = Vector3.ZERO
+			return false
+		if mode == "onboarding-combat":
+			# The visible Angler/reticle immediately after the opened gate.
+			for door in world._doors:
+				(door as Door).open()
+			world._finish_onboarding()
+			world.active = 0
+			world.divers[0].position = Vector3(43.0, 2.0, 10.0)
+			world._update_hud()
 			world.yaw = PI * 0.5
 			world.pitch = -0.08
 			world.scripted = true
@@ -84,12 +121,13 @@ func _process(_d: float) -> bool:
 	if frames < settle:
 		return false
 
-	if mode != "follow" and mode != "battle" and mode != "guardian" and mode != "onboarding":
+	if mode != "follow" and mode != "battle" and mode != "guardian" and mode != "onboarding" and mode != "onboarding-mech" and mode != "onboarding-door" and mode != "onboarding-combat":
 		_park_camera()
 		# one more frame so the camera move lands before the shot
 		if frames == settle:
 			return false
 
+	_set_evidence_camera()
 	root.get_texture().get_image().save_png(out_png)
 	print("shot       %s" % out_png)
 	if mode == "battle":
@@ -103,6 +141,20 @@ func _process(_d: float) -> bool:
 		d.model_name, d.global_position,
 		d.anim.current_animation if d.anim != null else "NOTHING"])
 	return true
+
+func _set_evidence_camera() -> void:
+	if mode != "onboarding-door" and mode != "onboarding-combat":
+		return
+	# This only affects review screenshots, not the playable camera.  It is a
+	# wide, fixed inspection angle so a reviewer can see the three-lane puzzle
+	# or both the enemy and its red telegraph in one image.
+	var cam: Camera3D = world.get_node("Camera3D")
+	if mode == "onboarding-door":
+		cam.global_position = Vector3(32.0, 5.3, 17.5)
+		cam.look_at(Vector3(39.0, 2.3, 10.0), Vector3.UP)
+	else:
+		cam.global_position = Vector3(42.5, 4.7, 15.0)
+		cam.look_at(Vector3(50.5, 2.0, 10.0), Vector3.UP)
 
 func _park_camera() -> void:
 	var d: Diver = world.divers[world.active]

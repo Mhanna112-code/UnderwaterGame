@@ -7,6 +7,10 @@ extends Area3D
 
 var occupant: Diver = null
 var _mat: StandardMaterial3D
+# Empty plates normally share the same amber.  The opening route may give
+# them diver-matched colours instead, so the final gate reads as a visible
+# three-person formation rather than a sentence asking the player to guess.
+var tutorial_color := Color(0.85, 0.75, 0.2)
 
 func _ready() -> void:
 	# Divers sit on collision layer 2 (see diver.gd - they don't collide
@@ -50,8 +54,13 @@ func _on_body_exited(body: Node3D) -> void:
 func is_occupied() -> bool:
 	return occupant != null
 
+func set_tutorial_color(next_color: Color) -> void:
+	tutorial_color = next_color
+	if _mat != null:
+		_refresh_color()
+
 func _refresh_color() -> void:
-	var c: Color = Color(0.35, 0.95, 0.5) if is_occupied() else Color(0.85, 0.75, 0.2)
+	var c: Color = Color(0.35, 0.95, 0.5) if is_occupied() else tutorial_color
 	_mat.albedo_color = c
 	_mat.emission = c
 	_mat.emission_energy_multiplier = 1.5 if is_occupied() else 0.9

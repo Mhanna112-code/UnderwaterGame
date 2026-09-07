@@ -30,6 +30,11 @@ func _run() -> void:
 	await process_frame
 	world.title_screen.new_game_chosen.emit(1)
 	await process_frame
+	# Guardian rewards are an exploration/combat loop, deliberately unavailable
+	# during the first-run traversal lesson.  This fixture tests that later
+	# loop, so move it to the same post-onboarding state a player reaches after
+	# the gate rather than expecting a guardian chooser to interrupt Shockwave.
+	world._clear_onboarding()
 
 	var diver := world.divers[0] as Diver
 	var entry_hp := diver.stats.hp - 3

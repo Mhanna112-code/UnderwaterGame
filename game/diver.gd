@@ -28,6 +28,12 @@ signal encounter_triggered
 # the swap itself has already fully happened by the time this fires.
 signal swapped_with(target: Diver)
 
+# A grapple target is hit before the pull tween begins, but a route gate must
+# not pretend the player crossed a hazard until the diver actually arrives on
+# the other side.  World listens for this completion signal rather than the
+# raycast's immediate anchor-hit callback.
+signal grapple_arrived(target: Node3D)
+
 
 
 
@@ -700,7 +706,10 @@ func _grapple(aim_dir: Vector3) -> void:
 	# Stop a short step short of the anchor's own center, not on top of it.
 	var stop_at: Vector3 = target - dir * 1.0
 	tw.tween_property(self, "global_position", stop_at, GRAPPLE_PULL_DURATION)
-	tw.tween_callback(func() -> void: _is_grappling = false)
+	tw.tween_callback(func() -> void:
+		_is_grappling = false
+		grapple_arrived.emit(result.collider as Node3D)
+	)
 
 # Throwaway visual: a thin beam from where the diver fired to wherever the
 # shot actually ended (hit or not), fading out over the pull's own

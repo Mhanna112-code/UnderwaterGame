@@ -208,6 +208,13 @@ func _serialize_state() -> Dictionary:
 		})
 	return {
 		"active": active,
+		"onboarding": {
+			"active": onboarding_active,
+			"step": int(onboarding_step),
+			"puzzle_solved": _puzzle_solved,
+			"first_combat_pending": first_combat_pending,
+			"first_combat_seen": first_combat_seen,
+		},
 		"inventory": inventory.duplicate(),
 		"pending_world_drops": pending_world_drops.duplicate(true),
 		"key_items": key_items.duplicate(),
@@ -294,6 +301,61 @@ func _load_save() -> void:
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
+	_restore_onboarding(data.get("onboarding", {}) as Dictionary)
+
+# A first-time run may be saved or exited in the middle of the route.  The
+# objective is state, not flavour text: restoring the party without restoring
+# its current lesson leaves a player in front of a gate with no explanation.
+func _restore_onboarding(saved: Dictionary) -> void:
+	var saved_step := int(saved.get("step", int(OnboardingStep.OFF)))
+	if saved_step == int(OnboardingStep.COMPLETE):
+		onboarding_active = false
+		onboarding_step = OnboardingStep.COMPLETE
+		_puzzle_solved = true
+		for door in _doors:
+			(door as Door).open()
+		if _puzzle_goal != null:
+			# The former gate waypoint would otherwise remain directly in front
+			# of the intentionally placed first Angler and make the next action
+			# look like another anonymous green destination.
+			_puzzle_goal.visible = false
+		_spawn_maze()
+		first_combat_seen = bool(saved.get("first_combat_seen", false))
+		if bool(saved.get("first_combat_pending", false)) and not first_combat_seen:
+			_activate_first_combat()
+		elif onboarding_label != null:
+			onboarding_label.text = "MAZE OPEN — exploration and encounters are live."
+		return
+	if not bool(saved.get("active", false)):
+		_clear_onboarding()
+		return
+	var raw_step := clampi(int(saved.get("step", int(OnboardingStep.SHOCKWAVE))), int(OnboardingStep.SHOCKWAVE), int(OnboardingStep.DOOR))
+	onboarding_active = true
+	onboarding_step = raw_step
+	_puzzle_solved = bool(saved.get("puzzle_solved", false))
+	_set_onboarding_halos(true)
+	match onboarding_step:
+		OnboardingStep.SHOCKWAVE:
+			_set_onboarding_objective(
+				"Reach the blocked passage. TAB to %s and press E to use Shockwave." % Cast.display_name("Prototype_V(1922)"),
+				_entrance_blockade.global_position if _entrance_blockade != null else Vector3(16.0, 3.0, 10.0),
+				TutorialCue.Kind.SHOCKWAVE)
+		OnboardingStep.GRAPPLE:
+			_set_onboarding_objective(
+				"Cross the whirlpool. TAB to %s, aim at the gold ring, then click to Grapple." % Cast.display_name("Prototype_1(1910)"),
+				_far_grapple_anchor.global_position if _far_grapple_anchor != null else Vector3(32.0, 3.0, 10.0),
+				TutorialCue.Kind.GRAPPLE)
+		OnboardingStep.SWAP:
+			_set_onboarding_objective(
+				"Use TAB to select %s. Press E, choose an ally with Left/Right, then Enter to Swap." % Cast.display_name("Staff_Diver"),
+				_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
+				TutorialCue.Kind.SWAP)
+		OnboardingStep.DOOR:
+			_set_onboarding_objective(
+				"Final gate: match all three diver halos to the glowing plates to open the maze.",
+				_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
+				TutorialCue.Kind.DOOR)
+			_set_onboarding_halos(true)
 
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
@@ -316,7 +378,6 @@ func _show_title_screen() -> void:
 # real file instead of an in-memory snapshot.
 func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
-	_write_save()
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
@@ -328,8 +389,9 @@ func _on_title_load_game(slot: int) -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
-	# Existing saves start playable immediately; onboarding is first-run only.
-	_clear_onboarding()
+	# _load_save restores an incomplete first-run route (or leaves an older
+	# existing save immediately playable) rather than silently dropping its
+	# objective after a quit/reload.
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -430,8 +492,19 @@ var onboarding_step: OnboardingStep = OnboardingStep.OFF
 var onboarding_active := false
 var onboarding_label: Label
 var _onboarding_marker: Waypoint
+var _onboarding_cue: TutorialCue
+var _onboarding_halos: Array[MeshInstance3D] = []
 var _entrance_blockade: CrackedWall
 var _far_grapple_anchor: GrappleAnchor
+
+# The authored maze used to be a standalone scene, so the old three-plate
+# finale could only promise a maze in text.  World now embeds that scene at
+# the corridor exit and keeps its own party/camera/HUD authoritative.
+var _maze_instance: MazeLevel
+var _first_combat_trigger: Area3D
+var _first_combat_actor: Goblin
+var first_combat_pending := false
+var first_combat_seen := false
 
 # Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
 # revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
@@ -498,6 +571,7 @@ var scripted_rise := 0.0
 # (there's no "above your own head" view to show it in), and battling (the
 # dive site isn't even what's on screen).
 var _active_cursor: MeshInstance3D
+var _active_cursor_mat: StandardMaterial3D
 
 func _ready() -> void:
 	cam = $Camera3D
@@ -574,6 +648,7 @@ func _ready() -> void:
 		divers.append(d)
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
+		d.grapple_arrived.connect(_on_diver_grapple_arrived.bind(d))
 		target_selector.register_character(d)
 	_update_hud()
 
@@ -698,7 +773,10 @@ func _build_boundary_walls() -> void:
 	const SPAN := BOUND * 2.0 + THICKNESS * 2.0
 	_build_invisible_wall(Vector3(0.0, WALL_Y, BOUND + THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
 	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+	# The eastern rail used to seal the level completely at x=62.  The real
+	# maze is now embedded through the highway's east exit, and it owns its
+	# own perimeter once entered, so keeping this slab would make an "open"
+	# door lead into another invisible wall.
 	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
@@ -1115,14 +1193,19 @@ func _build_highway() -> void:
 	anchor.unlocks_diver_ability_for = "Staff_Diver"
 	add_child(anchor)
 	_far_grapple_anchor = anchor
-	anchor.grappled_to.connect(_on_onboarding_grapple_completed)
 
 	# 5. Three lit plates - the actual finale. All three occupied at once
 	# (checked in _physics_process via _check_gap_puzzle) reveals the goal.
 	var plate_x := lerpf(GAP_END_X, END_X, 0.6)
-	for z_off in [-2.5, 0.0, 2.5]:
+	# The plate colours match the ability-coloured halos over the divers during
+	# this finale.  It is a visual formation puzzle, not three anonymous rings
+	# accompanied by a sentence telling the player what the solution is.
+	var plate_models := ["Prototype_V(1922)", "Prototype_1(1910)", "Staff_Diver"]
+	for i in range(3):
+		var z_off := float([-2.5, 0.0, 2.5][i])
 		var plate := LockPlate.new()
 		plate.position = Vector3(plate_x, 2.0, LANE_Z + z_off)
+		plate.set_tutorial_color(TutorialCue.color_for_ability(_ability_for_model(String(plate_models[i]))))
 		add_child(plate)
 		_lock_plates.append(plate)
 
@@ -1139,6 +1222,82 @@ func _build_highway() -> void:
 	_puzzle_goal.position = Vector3(END_X + 2.0, 2.0, LANE_Z)
 	_puzzle_goal.visible = false
 	add_child(_puzzle_goal)
+
+	_build_first_combat_gate(Vector3(END_X + 5.5, 2.0, LANE_Z))
+
+func _ability_for_model(model_name: String) -> String:
+	for d in divers:
+		if d is Diver and (d as Diver).model_name == model_name:
+			return (d as Diver).ability_id
+	return ""
+
+# The first hostile after the opening gate is deliberate, visible and local.
+# A random distance roll is fine once the player is in the maze, but it is
+# bad tutorial pacing: first combat must happen after the player has learned
+# the traversal kit, not whenever an encounter probability happens to bite.
+func _build_first_combat_gate(at: Vector3) -> void:
+	_first_combat_actor = Goblin.new()
+	_first_combat_actor.name = "FirstCombatAngler"
+	_first_combat_actor.position = at
+	_first_combat_actor.visible = false
+	add_child(_first_combat_actor)
+
+	_first_combat_trigger = Area3D.new()
+	_first_combat_trigger.name = "FirstCombatTrigger"
+	_first_combat_trigger.position = at
+	_first_combat_trigger.collision_mask = 2
+	_first_combat_trigger.monitoring = false
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 2.4
+	shape.shape = sphere
+	_first_combat_trigger.add_child(shape)
+	_first_combat_trigger.body_entered.connect(_on_first_combat_triggered)
+	add_child(_first_combat_trigger)
+
+func _on_first_combat_triggered(body: Node3D) -> void:
+	if not first_combat_pending or battling or not (body is Diver):
+		return
+	first_combat_pending = false
+	first_combat_seen = true
+	if _first_combat_trigger != null:
+		# body_entered is a physics-server callback; changing an Area's
+		# monitoring state inside it is prohibited by Godot, so defer the
+		# teardown one frame instead of logging an error during first combat.
+		_first_combat_trigger.set_deferred("monitoring", false)
+	if is_instance_valid(_first_combat_actor):
+		_first_combat_actor.queue_free()
+	_clear_onboarding_cue()
+	_announce("The Angler attacks — your first combat begins!")
+	_write_save()
+	_start_battle()
+
+# MazeLevel used to only run as a separate test scene.  Embed that actual
+# geometry after the lock plates instead of claiming a maze has opened while
+# leaving the player in the starter corridor.  Its authored DiverEntry is
+# aligned with the newly-opened east exit; World keeps the party, HUD and
+# camera, while MazeLevel supplies the current maze's walls/hazards.
+func _spawn_maze() -> void:
+	if is_instance_valid(_maze_instance):
+		return
+	var maze := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
+	maze.name = "EmbeddedMaze"
+	maze.embedded_in_world = true
+	# MazeLevel's DiverEntry is (-13.391, 0, -4.76271).  Put that point just
+	# past the highway doors at (47, 2, 10), so swimming through the opening
+	# reaches authored maze collision instead of a disconnected test scene.
+	maze.position = Vector3(60.391, 2.0, 14.76271)
+	add_child(maze)
+	_maze_instance = maze
+
+func _activate_first_combat() -> void:
+	first_combat_pending = true
+	first_combat_seen = false
+	if is_instance_valid(_first_combat_actor):
+		_first_combat_actor.visible = true
+	if _first_combat_trigger != null:
+		_first_combat_trigger.monitoring = true
+	_set_onboarding_cue(TutorialCue.Kind.COMBAT, _first_combat_trigger.global_position)
 
 func _on_whirlpool_warned() -> void:
 	_announce("Danger - a whirlpool lies just ahead!")
@@ -1172,10 +1331,16 @@ func _check_gap_puzzle() -> void:
 func _start_onboarding() -> void:
 	onboarding_active = true
 	onboarding_step = OnboardingStep.SHOCKWAVE
+	# All three party members keep their ability-coloured halos during the
+	# route. Cycling TAB is therefore a colour match against the obstacle, not
+	# a memory test based solely on the one-line instruction.
+	_set_onboarding_halos(true)
 	_set_onboarding_objective(
 		"Reach the blocked passage. TAB to %s and press E to use Shockwave." % Cast.display_name("Prototype_V(1922)"),
-		_entrance_blockade.global_position if _entrance_blockade != null else Vector3(16.0, 3.0, 10.0)
+		_entrance_blockade.global_position if _entrance_blockade != null else Vector3(16.0, 3.0, 10.0),
+		TutorialCue.Kind.SHOCKWAVE
 	)
+	_write_save()
 
 func _on_onboarding_shockwave_completed() -> void:
 	if not onboarding_active or onboarding_step != OnboardingStep.SHOCKWAVE:
@@ -1183,57 +1348,150 @@ func _on_onboarding_shockwave_completed() -> void:
 	onboarding_step = OnboardingStep.GRAPPLE
 	_set_onboarding_objective(
 		"Cross the whirlpool. TAB to %s, aim at the gold ring, then click to Grapple." % Cast.display_name("Prototype_1(1910)"),
-		_far_grapple_anchor.global_position if _far_grapple_anchor != null else Vector3(32.0, 3.0, 10.0)
+		_far_grapple_anchor.global_position if _far_grapple_anchor != null else Vector3(32.0, 3.0, 10.0),
+		TutorialCue.Kind.GRAPPLE
 	)
+	_write_save()
 
-func _on_onboarding_grapple_completed() -> void:
+func _on_diver_grapple_arrived(target: Node3D, d: Diver) -> void:
 	if not onboarding_active or onboarding_step != OnboardingStep.GRAPPLE:
+		return
+	# The near staging ring and far crossing ring share an asset, so checking
+	# only "a grapple happened" would let a player satisfy the objective while
+	# still on the dangerous side.  This is the actual target after the pull.
+	if target != _far_grapple_anchor or d.model_name != "Prototype_1(1910)" or d.global_position.x < 30.0:
 		return
 	onboarding_step = OnboardingStep.SWAP
 	_set_onboarding_objective(
 		"Use TAB to select %s. Press E, choose an ally with Left/Right, then Enter to Swap." % Cast.display_name("Staff_Diver"),
-		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0)
+		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
+		TutorialCue.Kind.SWAP
 	)
+	_write_save()
 
 func _on_onboarding_swap_completed() -> void:
 	if not onboarding_active or onboarding_step != OnboardingStep.SWAP:
 		return
 	onboarding_step = OnboardingStep.DOOR
 	_set_onboarding_objective(
-		"Final gate: place all three divers on the glowing plates to open the maze.",
-		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0)
+		"Final gate: match all three diver halos to the glowing plates to open the maze.",
+		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
+		TutorialCue.Kind.DOOR
 	)
+	_set_onboarding_halos(true)
+	_write_save()
 
 func _finish_onboarding() -> void:
 	if not onboarding_active:
 		return
 	onboarding_active = false
 	onboarding_step = OnboardingStep.COMPLETE
-	if _onboarding_marker != null:
-		_onboarding_marker.queue_free()
-		_onboarding_marker = null
+	_clear_onboarding_marker()
+	_clear_onboarding_halos()
+	if _puzzle_goal != null:
+		# The plate objective is complete; retire its giant green goal ring
+		# before showing the red combat cue beyond the opening.
+		_puzzle_goal.visible = false
+	for plate_value in _lock_plates:
+		var plate := plate_value as LockPlate
+		# The formation has served its purpose.  Leave no bright green
+		# "finished" rings beside the exit to compete with the red enemy
+		# telegraph that is now the only next action.
+		plate.visible = false
+		plate.monitoring = false
+	_spawn_maze()
+	_activate_first_combat()
 	if onboarding_label != null:
-		onboarding_label.text = "MAZE OPEN — exploration and encounters are live."
-	_announce("The maze is open. Explore carefully — enemies are ahead.")
+		onboarding_label.text = "MAZE OPEN — the red Angler ahead is your first combat."
+	_announce("The maze is open. A hostile Angler guards the first turn.")
+	_write_save()
 
 func _clear_onboarding() -> void:
 	onboarding_active = false
 	onboarding_step = OnboardingStep.OFF
-	if _onboarding_marker != null:
-		_onboarding_marker.queue_free()
-		_onboarding_marker = null
+	_clear_onboarding_marker()
+	_clear_onboarding_cue()
+	_clear_onboarding_halos()
+	first_combat_pending = false
+	if _first_combat_trigger != null:
+		_first_combat_trigger.monitoring = false
+	if is_instance_valid(_first_combat_actor):
+		_first_combat_actor.visible = false
 	if onboarding_label != null:
 		onboarding_label.text = ""
 
-func _set_onboarding_objective(message: String, target: Vector3) -> void:
+func _set_onboarding_objective(message: String, target: Vector3, cue_kind: TutorialCue.Kind) -> void:
 	if onboarding_label != null:
 		onboarding_label.text = "OBJECTIVE: " + message
 	if _onboarding_marker == null:
 		_onboarding_marker = Waypoint.new()
-		_onboarding_marker.is_goal = true
+		# The lesson-specific cue already marks the interaction.  Keep this
+		# as a modest direction stem: Waypoint's giant green destination ring
+		# obscures the coloured plate formation and, after the door opens, the
+		# first red enemy cue.
+		_onboarding_marker.is_goal = false
 		add_child(_onboarding_marker)
 	_onboarding_marker.global_position = target + Vector3.UP * 1.8
 	_onboarding_marker.visible = true
+	_set_onboarding_cue(cue_kind, target)
+
+func _set_onboarding_cue(kind: TutorialCue.Kind, at: Vector3) -> void:
+	_clear_onboarding_cue()
+	_onboarding_cue = TutorialCue.new()
+	_onboarding_cue.name = "OnboardingCue"
+	_onboarding_cue.configure(kind)
+	add_child(_onboarding_cue)
+	# A freshly constructed Node3D has no global transform until it belongs to
+	# the scene tree.  Set its world position after add_child so every cue lands
+	# at the objective without emitting a Godot transform error.
+	# Shockwave's cue sits on the approach face of the blockade rather than in
+	# its centre: otherwise the opaque wall hides the pulse from precisely the
+	# player who needs to match their cyan marker to it.
+	var visible_at := at + Vector3(-1.15, 0.0, 0.0) if kind == TutorialCue.Kind.SHOCKWAVE else at
+	_onboarding_cue.global_position = visible_at
+
+func _clear_onboarding_marker() -> void:
+	if _onboarding_marker != null:
+		# queue_free is deferred.  Hide first so a completed objective can
+		# never occupy even one rendered frame of the next lesson/encounter.
+		_onboarding_marker.visible = false
+		_onboarding_marker.queue_free()
+		_onboarding_marker = null
+
+func _clear_onboarding_cue() -> void:
+	if _onboarding_cue != null and is_instance_valid(_onboarding_cue):
+		_onboarding_cue.queue_free()
+	_onboarding_cue = null
+
+func _set_onboarding_halos(show: bool) -> void:
+	_clear_onboarding_halos()
+	if not show:
+		return
+	for d_value in divers:
+		var d := d_value as Diver
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.34
+		ring.outer_radius = 0.47
+		var halo := MeshInstance3D.new()
+		halo.name = "OnboardingAbilityHalo"
+		halo.mesh = ring
+		halo.rotation_degrees.x = 90.0
+		halo.position = Vector3(0.0, d.height + 0.45, 0.0)
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		mat.albedo_color = TutorialCue.color_for_ability(d.ability_id)
+		mat.emission = mat.albedo_color
+		mat.emission_energy_multiplier = 2.0
+		halo.material_override = mat
+		d.add_child(halo)
+		_onboarding_halos.append(halo)
+
+func _clear_onboarding_halos() -> void:
+	for halo in _onboarding_halos:
+		if is_instance_valid(halo):
+			halo.queue_free()
+	_onboarding_halos.clear()
 
 # One plain wall segment: a StaticBody3D box, solid (divers collide with
 # it via CharacterBody3D's own move_and_slide, same as the floor), centered
@@ -1378,6 +1636,7 @@ func _start_ability() -> void:
 	if not d.can_use_ability():
 		return
 	if d.ability_id == "swap":
+		target_selector.set_cursor_color(TutorialCue.color_for_ability(d.ability_id))
 		target_selector.start_selection(d)
 		_update_hud()
 	elif d.ability_needs_aim():
@@ -1828,7 +2087,10 @@ func _update_banner(dt: float) -> void:
 # diver you're actually steering gets to start one - the two drifting NPCs
 # roll independently but their triggers are ignored here.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or onboarding_active or d != divers[active]:
+	# Neither an ordinary roll nor a distant guardian should steal the first
+	# deliberate post-door fight.  Random exploration begins only after the
+	# player has physically reached that visible Angler.
+	if battling or onboarding_active or first_combat_pending or d != divers[active]:
 		return
 	# An ordinary encounter, and only an ordinary one.
 	#
@@ -1849,7 +2111,7 @@ func _on_encounter_triggered(d: Diver) -> void:
 # Both remain in the world if the player declines or loses. They are removed
 # only after a win, so the guarded reward remains available for another try.
 func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin, enemy_id: String) -> void:
-	if battling:
+	if battling or onboarding_active or first_combat_pending:
 		return
 	_special_guardian = guardian
 	_special_guardian_decoy = decoy
@@ -1896,7 +2158,13 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 	if d != divers[active]:
 		return
 	focus_camera_on(target, 1.1)
-	_on_onboarding_swap_completed()
+	# A Swap at spawn is a harmless experiment, not a successful crossing.
+	# Only advance the lesson when Maxilani has traded into the far side and
+	# the ally she exchanged with has genuinely been left behind the whirlpool.
+	if onboarding_active and onboarding_step == OnboardingStep.SWAP \
+		and d.model_name == "Staff_Diver" and d.global_position.x >= 30.0 \
+		and target.global_position.x < 30.0:
+		_on_onboarding_swap_completed()
 
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
@@ -2137,12 +2405,12 @@ func _build_active_cursor() -> void:
 	cone.height = 0.4
 	_active_cursor = MeshInstance3D.new()
 	_active_cursor.mesh = cone
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.emission_enabled = true
-	mat.albedo_color = Color(0.35, 0.95, 0.4)
-	mat.emission = Color(0.35, 0.95, 0.4)
-	_active_cursor.material_override = mat
+	_active_cursor_mat = StandardMaterial3D.new()
+	_active_cursor_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_active_cursor_mat.emission_enabled = true
+	_active_cursor_mat.albedo_color = Color(0.35, 0.95, 0.4)
+	_active_cursor_mat.emission = Color(0.35, 0.95, 0.4)
+	_active_cursor.material_override = _active_cursor_mat
 	_active_cursor.rotation_degrees.x = 180.0   # cone points down at the diver's head
 	add_child(_active_cursor)
 
@@ -2159,6 +2427,12 @@ func _update_active_cursor() -> void:
 	var d: Diver = divers[active]
 	_active_cursor.visible = true
 	_active_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.5)
+	# During the route the marker itself teaches the diver/obstacle pairing:
+	# cycle TAB until this colour matches the physical cue.  Outside it, keep
+	# the familiar neutral green active-player marker.
+	var c := TutorialCue.color_for_ability(d.ability_id) if onboarding_active else Color(0.35, 0.95, 0.4)
+	_active_cursor_mat.albedo_color = c
+	_active_cursor_mat.emission = c
 
 # Called on top of the normal value drop (which already reads as "the bar
 # is noticeably lower now") for a brief extra flash, so a hit lands even
