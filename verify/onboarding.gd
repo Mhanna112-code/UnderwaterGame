@@ -106,18 +106,24 @@ func _run() -> void:
 	# The state written by a mid-route save must rebuild the same lesson on
 	# restore, rather than turning Load Game into a silent escape from it.
 	var saved_onboarding: Dictionary = world._serialize_state().get("onboarding", {}) as Dictionary
+	var musashi := _diver(world, "Prototype_1(1910)")
+	# Simulate a save made by the old build after several charged misses. The
+	# restored tutorial must recover this exact legacy failure state rather than
+	# make the player abandon the run.
+	musashi.stats.oxygen = 0.0
 	world._clear_onboarding()
 	world._restore_onboarding(saved_onboarding)
 	if not world.onboarding_active or world.onboarding_step != World.OnboardingStep.GRAPPLE:
 		findings.append("OB-06: serialized mid-route state did not resume Grapple")
 	_expect_cue(world, TutorialCue.Kind.GRAPPLE, "OB-06")
+	if not is_equal_approx(musashi.stats.oxygen, musashi.stats.oxygen_max):
+		findings.append("OB-06: legacy empty-oxygen tutorial save did not recover")
 
 	# The near anchor is deliberately not enough. It must leave the route at
 	# Grapple even though the real ray/pull succeeds, then a far-anchor pull has
 	# to finish before Swap becomes available.
 	_press(world, KEY_TAB)
 	_press(world, KEY_TAB)
-	var musashi := _diver(world, "Prototype_1(1910)")
 	musashi.global_position = Vector3(21.0, 2.0, 10.0)
 	# A player naturally tests the line before finding the anchor. Those misses
 	# are feedback, not completed abilities: they must neither spend oxygen nor

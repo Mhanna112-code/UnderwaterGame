@@ -338,6 +338,11 @@ func _restore_onboarding(saved: Dictionary) -> void:
 	var raw_step := clampi(int(saved.get("step", int(OnboardingStep.SHOCKWAVE))), int(OnboardingStep.SHOCKWAVE), int(OnboardingStep.DOOR))
 	onboarding_active = true
 	onboarding_step = raw_step
+	# Older builds charged every Grapple attempt, including a shot at empty
+	# water. A save created in that state must not reload into an unwinnable
+	# lesson. Tutorial abilities teach traversal; they are not meant to become
+	# a resource gate before the player reaches the first real encounter.
+	_refill_onboarding_oxygen()
 	_puzzle_solved = bool(saved.get("puzzle_solved", false))
 	_set_onboarding_halos(raw_step != OnboardingStep.DOOR)
 	_set_onboarding_ui(true)
@@ -1320,6 +1325,7 @@ func _check_gap_puzzle() -> void:
 func _start_onboarding() -> void:
 	onboarding_active = true
 	onboarding_step = OnboardingStep.SHOCKWAVE
+	_refill_onboarding_oxygen()
 	# During the lesson, the teaching card contains the controls relevant to
 	# the current decision. The verbose free-swim HUD returns after the gate.
 	_set_onboarding_ui(true)
@@ -1329,6 +1335,12 @@ func _start_onboarding() -> void:
 	_set_onboarding_halos(true)
 	_show_onboarding_step()
 	_write_save()
+
+func _refill_onboarding_oxygen() -> void:
+	for value in divers:
+		var d := value as Diver
+		d.stats.oxygen = d.stats.oxygen_max
+	_update_oxygen_bar()
 
 func _on_onboarding_shockwave_completed() -> void:
 	if not onboarding_active or onboarding_step != OnboardingStep.SHOCKWAVE:
