@@ -140,6 +140,7 @@ func _run() -> void:
 		findings.append("OB-07: repeated Grapple misses drained oxygen and can softlock the tutorial")
 	if not musashi.can_use_ability():
 		findings.append("OB-07: repeated Grapple misses left the required ability unavailable")
+	var oxygen_before_crossing := musashi.stats.oxygen
 	world.yaw = PI * 0.5
 	world.pitch = 0.0
 	_press(world, KEY_E)
@@ -147,6 +148,8 @@ func _run() -> void:
 	await _await_seconds(Diver.GRAPPLE_PULL_DURATION + 0.12)
 	if world.onboarding_step != World.OnboardingStep.GRAPPLE:
 		findings.append("OB-07: near-anchor grapple falsely completed the crossing")
+	if not is_equal_approx(musashi.stats.oxygen, oxygen_before_crossing):
+		findings.append("OB-07: successful tutorial Grapple spent hidden oxygen")
 	await _await_seconds(Diver.GRAPPLE_COOLDOWN + 0.08)
 	musashi.global_position = Vector3(29.0, 2.0, 10.0)
 	_press(world, KEY_E)
@@ -155,6 +158,8 @@ func _run() -> void:
 	if world.onboarding_step != World.OnboardingStep.SWAP:
 		findings.append("OB-08: far-anchor pull did not unlock the real Swap lesson")
 	_expect_cue(world, TutorialCue.Kind.SWAP, "OB-08")
+	if not is_equal_approx(musashi.stats.oxygen, oxygen_before_crossing):
+		findings.append("OB-08: tutorial traversal spent oxygen the player was never taught")
 
 	# A Swap near spawn may be a valid player experiment but cannot skip the
 	# route. The actual selector (E/Enter) must put Maxilani across the gap.

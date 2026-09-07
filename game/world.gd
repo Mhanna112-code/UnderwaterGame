@@ -1666,6 +1666,11 @@ func _start_ability() -> void:
 		return
 	var d: Diver = divers[active]
 	if not d.can_use_ability():
+		# In the normal world an unavailable ability needs an explanation. A
+		# silent E press looks exactly like a broken control, particularly after
+		# the player learned that same key in onboarding.
+		if d.stats.oxygen < d.ability_oxygen_cost():
+			_announce("Not enough O2 for %s. Restore it at a save point." % d.ability_id.capitalize())
 		return
 	if d.ability_id == "swap":
 		target_selector.set_cursor_color(TutorialCue.color_for_ability(d.ability_id))

@@ -472,13 +472,23 @@ func _process(dt: float) -> void:
 func _ability_oxygen_cost() -> float:
 	return float(ABILITY_OXYGEN_COST.get(ability_id, 0.0))
 
+func ability_oxygen_cost() -> float:
+	return _ability_oxygen_cost()
+
+# The opening route is a controls-and-traversal lesson. Its card deliberately
+# replaces the normal status HUD, so charging an unintroduced hidden resource
+# there turns a teaching prompt into a silent failure state. O2 returns as a
+# normal-world constraint after the door/first-combat handoff.
+func tutorial_resources_are_free() -> bool:
+	return world != null and is_instance_valid(world) and world.onboarding_active
+
 # Read-only check world.gd can make before deciding whether to enter aim
 # mode or fire immediately - mirrors use_ability()'s own guard exactly, so
 # there's one place that knows what "ready to use" means instead of
 # world.gd guessing at Diver's private cooldown/grapple-in-progress state.
 func can_use_ability() -> bool:
 	return (ability_id != "" and not ability_locked and _ability_cooldown <= 0.0
-		and not _is_grappling and stats.oxygen >= _ability_oxygen_cost())
+		and not _is_grappling and (tutorial_resources_are_free() or stats.oxygen >= _ability_oxygen_cost()))
 
 # Called by whatever is meant to unlock a locked ability - right now just
 # grapple_anchor.gd's on_grappled_to(), for the one anchor whose
@@ -541,7 +551,7 @@ func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> bool
 			completed = _grapple(aim_dir)
 		"swap":
 			completed = _swap(target as Diver)
-	if completed:
+	if completed and not tutorial_resources_are_free():
 		# Aiming at empty water (or cancelling a selector without a valid
 		# ally) is an experiment, not a completed ability. Charge only after
 		# the action has actually begun so failed Grapple attempts cannot
@@ -584,7 +594,7 @@ func _shockwave_vfx() -> void:
 func toggle_sonar() -> bool:
 	if passive_id != "sonar":
 		return false
-	sonar_active = not sonar_active and stats.oxygen > 0.0
+	sonar_active = not sonar_active and (tutorial_resources_are_free() or stats.oxygen > 0.0)
 	if sonar_active:
 		# Starts the drain clock fresh on every fresh toggle-on, so turning
 		# sonar on always buys a full SONAR_DRAIN_INTERVAL of free use
@@ -599,17 +609,18 @@ func _physics_process(delta: float) -> void:
 		_sonar_drain_timer -= delta
 		if _sonar_drain_timer <= 0.0:
 			_sonar_drain_timer = SONAR_DRAIN_INTERVAL
-			# Flat per-tick cost, not SONAR_OXYGEN_DRAIN_PER_SEC * INTERVAL -
-			# that multiplication used to preserve the old smooth-drain
-			# rate exactly (3.0/sec average), but 3 charged every 3 seconds
-			# (a 1.0/sec effective rate, 3x cheaper) is the actual wanted
-			# cost. SONAR_OXYGEN_DRAIN_PER_SEC's name is now a bit stale -
-			# it's really "oxygen per tick" - but kept as-is rather than
-			# renaming, since a rename with no behavior change isn't worth
-			# the diff on its own.
-			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC)
-			if stats.oxygen <= 0.0:
-				sonar_active = false
+			if not tutorial_resources_are_free():
+				# Flat per-tick cost, not SONAR_OXYGEN_DRAIN_PER_SEC * INTERVAL -
+				# that multiplication used to preserve the old smooth-drain
+				# rate exactly (3.0/sec average), but 3 charged every 3 seconds
+				# (a 1.0/sec effective rate, 3x cheaper) is the actual wanted
+				# cost. SONAR_OXYGEN_DRAIN_PER_SEC's name is now a bit stale -
+				# it's really "oxygen per tick" - but kept as-is rather than
+				# renaming, since a rename with no behavior change isn't worth
+				# the diff on its own.
+				stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC)
+				if stats.oxygen <= 0.0:
+					sonar_active = false
 		sonar_timer -= delta
 		if sonar_timer <= 0.0:
 			sonar_timer = SONAR_INTERVAL
