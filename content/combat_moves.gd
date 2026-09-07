@@ -49,4 +49,3 @@ const SCUBA := [
 
 static func for_model(model_name: String) -> Array:
 	return SCUBA if model_name == "Staff_Diver" else []
-

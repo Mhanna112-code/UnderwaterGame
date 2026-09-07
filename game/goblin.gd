@@ -25,7 +25,7 @@ const COMBAT_FRONT_AXIS := Vector3.FORWARD
 # sane rather than a grunt with 0 evasion/accuracy/agility).
 const FLOOR_STATS := {
 	"hp": 12, "strength": 3, "defense": 1, "agility": 3,
-	"evasion": 2, "accuracy": 3, "barrier_max": 0,
+	"evasion": 2, "accuracy": 3,
 }
 
 # XP a win pays out, before level scaling (see make_stats). Read by
@@ -105,11 +105,6 @@ const MAX_EDGE := 1.35
 # average across every living party member before calling this). Enemies
 # don't persist between battles, so unlike Diver.stats this isn't built
 # once and kept - battle.gd calls this each time it stands a grunt up.
-# barrier_max is halved before the edge is applied - matching the party's
-# barrier outright would make every grunt as shielded as a Prototype_V
-# (1922) that's been stacking barrier spells, which reads as a
-# tank-specialist trait borrowed wholesale rather than "a grunt that
-# happens to be roughly your size, just a bit tougher."
 # This one stands its model's feet on its own origin (see _ready()'s
 # model.position.y line), which is the opposite of what diver.gd does. Both
 # conventions are fine; assuming either one is not. See Diver.head_offset().
@@ -129,7 +124,6 @@ func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	s.agility = maxi(1, int(round(maxf(float(FLOOR_STATS.agility), float(ref.agility)) * _edge())))
 	s.evasion = maxi(0, int(round(maxf(float(FLOOR_STATS.evasion), float(ref.evasion)) * _edge())))
 	s.accuracy = maxi(0, int(round(maxf(float(FLOOR_STATS.accuracy), float(ref.accuracy)) * _edge())))
-	s.barrier_max = maxi(0, int(round(float(ref.barrier_max) * 0.5 * _edge())))
 	s.fill()
 	return s
 

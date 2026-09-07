@@ -28,6 +28,12 @@ signal encounter_triggered
 # the swap itself has already fully happened by the time this fires.
 signal swapped_with(target: Diver)
 
+# A grapple target is hit before the pull tween begins, but a route gate must
+# not pretend the player crossed a hazard until the diver actually arrives on
+# the other side.  World listens for this completion signal rather than the
+# raycast's immediate anchor-hit callback.
+signal grapple_arrived(target: Node3D)
+
 
 
 
@@ -63,28 +69,28 @@ var SONAR_INTERVAL := 0.2
 # slow/sturdy. grow_* is how much each stat ticks up per level (see
 # combatant_stats.gd) - different per diver so leveling reinforces the
 # spread instead of flattening it out.
-# evasion/accuracy/barrier_max are identity traits, not leveled (no grow_*
-# for them) - Prototype_1 is nimble (high evasion, high accuracy) rather
-# than shielded, Prototype_V is the reverse. Keeps the three spreads
-# distinct even after several level-ups, instead of every stat converging.
+# evasion/accuracy are identity traits, not leveled (no grow_* for them) -
+# Prototype_1 is nimble (high evasion, high accuracy), Prototype_V is the
+# reverse (tanky via defense instead). Keeps the three spreads distinct
+# even after several level-ups, instead of every stat converging.
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
-		"evasion": 3, "accuracy": 3, "barrier_max": 0,
+		"evasion": 3, "accuracy": 3,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 26, "strength": 8, "defense": 1, "agility": 8,
-		"evasion": 8, "accuracy": 8, "barrier_max": 0,
+		"evasion": 8, "accuracy": 8,
 		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 42, "strength": 3, "defense": 6, "agility": 3,
-		"evasion": 2, "accuracy": 4, "barrier_max": 10,
+		"evasion": 2, "accuracy": 4,
 		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
@@ -104,7 +110,7 @@ var ability_id := ""
 # A locked ability exists (ability_id is set) but can't be used yet - the
 # mechanism is still here (unlock_ability(), called by grapple_anchor.gd's
 # on_grappled_to()) for any diver a future BASE_STATS entry gates this way,
-# but nothing currently sets ability_locked true - Mermaid's swap used to
+# but nothing currently sets ability_locked true - Maxilani's swap used to
 # gate on reaching a grapple anchor, but now starts available like every
 # other diver's ability.
 var ability_locked := false
@@ -371,7 +377,6 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
-	stats.barrier_max = int(base.barrier_max)
 	stats.grow_hp = int(base.grow_hp)
 	stats.grow_strength = int(base.grow_strength)
 	stats.grow_defense = int(base.grow_defense)
@@ -418,7 +423,7 @@ const SWAP_COOLDOWN := 2.0
 const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0, "swap": 15.0}
 
 # No passive regen at all - a save point (world.gd's _on_save_requested())
-# is the only way oxygen comes back, so every ability use and every tick
+# is the only way oxygen comes back, so every completed ability and every tick
 # of sonar is spending down a tank that stays spent until you actually go
 # find one. Lower than the old always-on-passive drain used to need, since
 # there's no regen fighting it anymore - this is the whole cost, not a net
@@ -467,13 +472,23 @@ func _process(dt: float) -> void:
 func _ability_oxygen_cost() -> float:
 	return float(ABILITY_OXYGEN_COST.get(ability_id, 0.0))
 
+func ability_oxygen_cost() -> float:
+	return _ability_oxygen_cost()
+
+# The opening route is a controls-and-traversal lesson. Its card deliberately
+# replaces the normal status HUD, so charging an unintroduced hidden resource
+# there turns a teaching prompt into a silent failure state. O2 returns as a
+# normal-world constraint after the door/first-combat handoff.
+func tutorial_resources_are_free() -> bool:
+	return world != null and is_instance_valid(world) and world.onboarding_active
+
 # Read-only check world.gd can make before deciding whether to enter aim
 # mode or fire immediately - mirrors use_ability()'s own guard exactly, so
 # there's one place that knows what "ready to use" means instead of
 # world.gd guessing at Diver's private cooldown/grapple-in-progress state.
 func can_use_ability() -> bool:
 	return (ability_id != "" and not ability_locked and _ability_cooldown <= 0.0
-		and not _is_grappling and stats.oxygen >= _ability_oxygen_cost())
+		and not _is_grappling and (tutorial_resources_are_free() or stats.oxygen >= _ability_oxygen_cost()))
 
 # Called by whatever is meant to unlock a locked ability - right now just
 # grapple_anchor.gd's on_grappled_to(), for the one anchor whose
@@ -502,6 +517,12 @@ func set_suction_locked(v: bool) -> void:
 func is_suction_locked() -> bool:
 	return _suction_locked
 
+# WaterCurrent writes these while this diver overlaps its Area3D. The
+# push is blended with steering; current_axis removes sideways escape from
+# a corridor whose flow is meant to be an actual traversal constraint.
+var external_push := Vector3.ZERO
+var current_axis := Vector3.ZERO
+
 # Which abilities need a deliberate aim step (first-person raycast, click
 # to fire) vs firing the instant E is pressed. Shockwave is omnidirectional,
 # nothing to aim. Swap used to be raycast-aimed too, but now goes through
@@ -518,17 +539,25 @@ func ability_needs_aim() -> bool:
 # target: explicit target for abilities that don't aim at all but still
 # need to know who (swap) - comes from TargetSelector.confirmed, not a
 # raycast.
-func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> void:
+func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> bool:
 	if not can_use_ability():
-		return
-	stats.oxygen -= _ability_oxygen_cost()
+		return false
+	var completed := false
 	match ability_id:
 		"shockwave":
 			_shockwave()
+			completed = true
 		"grapple":
-			_grapple(aim_dir)
+			completed = _grapple(aim_dir)
 		"swap":
-			_swap(target as Diver)
+			completed = _swap(target as Diver)
+	if completed and not tutorial_resources_are_free():
+		# Aiming at empty water (or cancelling a selector without a valid
+		# ally) is an experiment, not a completed ability. Charge only after
+		# the action has actually begun so failed Grapple attempts cannot
+		# strand the player without the oxygen needed for the real anchor.
+		stats.oxygen = maxf(0.0, stats.oxygen - _ability_oxygen_cost())
+	return completed
 
 
 func _shockwave() -> void:
@@ -565,7 +594,7 @@ func _shockwave_vfx() -> void:
 func toggle_sonar() -> bool:
 	if passive_id != "sonar":
 		return false
-	sonar_active = not sonar_active and stats.oxygen > 0.0
+	sonar_active = not sonar_active and (tutorial_resources_are_free() or stats.oxygen > 0.0)
 	if sonar_active:
 		# Starts the drain clock fresh on every fresh toggle-on, so turning
 		# sonar on always buys a full SONAR_DRAIN_INTERVAL of free use
@@ -580,17 +609,18 @@ func _physics_process(delta: float) -> void:
 		_sonar_drain_timer -= delta
 		if _sonar_drain_timer <= 0.0:
 			_sonar_drain_timer = SONAR_DRAIN_INTERVAL
-			# Flat per-tick cost, not SONAR_OXYGEN_DRAIN_PER_SEC * INTERVAL -
-			# that multiplication used to preserve the old smooth-drain
-			# rate exactly (3.0/sec average), but 3 charged every 3 seconds
-			# (a 1.0/sec effective rate, 3x cheaper) is the actual wanted
-			# cost. SONAR_OXYGEN_DRAIN_PER_SEC's name is now a bit stale -
-			# it's really "oxygen per tick" - but kept as-is rather than
-			# renaming, since a rename with no behavior change isn't worth
-			# the diff on its own.
-			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC)
-			if stats.oxygen <= 0.0:
-				sonar_active = false
+			if not tutorial_resources_are_free():
+				# Flat per-tick cost, not SONAR_OXYGEN_DRAIN_PER_SEC * INTERVAL -
+				# that multiplication used to preserve the old smooth-drain
+				# rate exactly (3.0/sec average), but 3 charged every 3 seconds
+				# (a 1.0/sec effective rate, 3x cheaper) is the actual wanted
+				# cost. SONAR_OXYGEN_DRAIN_PER_SEC's name is now a bit stale -
+				# it's really "oxygen per tick" - but kept as-is rather than
+				# renaming, since a rename with no behavior change isn't worth
+				# the diff on its own.
+				stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC)
+				if stats.oxygen <= 0.0:
+					sonar_active = false
 		sonar_timer -= delta
 		if sonar_timer <= 0.0:
 			sonar_timer = SONAR_INTERVAL
@@ -663,7 +693,7 @@ func update_sonar() -> void:
 # seeing nothing happen reads as broken, not "you missed." Only a
 # confirmed hit on something in the "grapple_anchor" group spends the
 # cooldown or starts the pull; a clean miss can be retried immediately.
-func _grapple(aim_dir: Vector3) -> void:
+func _grapple(aim_dir: Vector3) -> bool:
 	var dir: Vector3 = aim_dir.normalized() if aim_dir.length() > 0.01 else -global_transform.basis.z
 	var space := get_world_3d().direct_space_state
 	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
@@ -677,7 +707,7 @@ func _grapple(aim_dir: Vector3) -> void:
 	_grapple_beam_vfx(from, beam_end)
 
 	if result.is_empty() or not (result.collider as Node).is_in_group("grapple_anchor"):
-		return
+		return false
 
 	_ability_cooldown = GRAPPLE_COOLDOWN
 	_is_grappling = true
@@ -695,7 +725,11 @@ func _grapple(aim_dir: Vector3) -> void:
 	# Stop a short step short of the anchor's own center, not on top of it.
 	var stop_at: Vector3 = target - dir * 1.0
 	tw.tween_property(self, "global_position", stop_at, GRAPPLE_PULL_DURATION)
-	tw.tween_callback(func() -> void: _is_grappling = false)
+	tw.tween_callback(func() -> void:
+		_is_grappling = false
+		grapple_arrived.emit(result.collider as Node3D)
+	)
+	return true
 
 # Throwaway visual: a thin beam from where the diver fired to wherever the
 # shot actually ended (hit or not), fading out over the pull's own
@@ -742,9 +776,9 @@ func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
 # nothing to do with trading places with an ally, so it's now triggered by
 # reaching the far grapple anchor instead (see grapple_anchor.gd's
 # raises_bridge).
-func _swap(target: Diver) -> void:
+func _swap(target: Diver) -> bool:
 	if target == null or not is_instance_valid(target) or not target.can_be_selected:
-		return
+		return false
 
 	_ability_cooldown = SWAP_COOLDOWN
 
@@ -758,6 +792,7 @@ func _swap(target: Diver) -> void:
 	target.global_position = my_pos
 
 	swapped_with.emit(target)
+	return true
 
 # Throwaway visual: a matching flash at both the old and new spot, so the
 # swap reads as "these two places traded occupants" rather than just one
@@ -1053,16 +1088,20 @@ func swim(dir: Vector3, rise: float, dt: float) -> void:
 	if _is_grappling or _suction_locked:
 		return
 
-	var want := dir * speed
+	var steer := dir
+	if current_axis != Vector3.ZERO:
+		steer = current_axis * dir.dot(current_axis)
+	var want := steer * speed
 
 	want.y = rise * speed * 0.7
+	want += external_push
 
 
 	# ========================================================
 	# ACCELERATION / DRAG
 	# ========================================================
 
-	if dir == Vector3.ZERO and is_zero_approx(rise):
+	if want == Vector3.ZERO:
 
 		velocity = velocity.lerp(
 			Vector3.ZERO,
