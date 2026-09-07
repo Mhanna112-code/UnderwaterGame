@@ -42,9 +42,9 @@ var boss_encounter := false
 # encounter one-on-one with the party instead of secretly replacing the one
 # approached actor with a random three-grunt pack.
 var guardian_encounter := false
-# The map sends the visible guardian's identity along with its reward. Random
-# encounters remain Angler-only; this only applies to the one-enemy artifact
-# battle, so asset variety cannot change encounter frequency or pack size.
+# The map sends the visible guardian's identity along with its reward. Ordinary
+# packs roll their own Angler/Swordfish roster independently; this only pins
+# the one visible artifact defender, so exploration never randomizes a reward.
 var guardian_enemy_id := "angler"
 # Verification can hold the automatic entrance/turn dispatcher while it
 # exercises each boss move directly. Shipped encounters leave this true.
@@ -251,8 +251,13 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log("Enemies block the way!" if enemies.size() > 1 else "An angler fish blocks the way!")
+		_log(encounter_intro(enemies))
 		_advance_turn()
+
+static func encounter_intro(entries: Array) -> String:
+	if entries.size() != 1:
+		return "Enemies block the way!"
+	return "%s blocks the way!" % String((entries[0] as Dictionary).get("display_name", "Enemy"))
 
 func _begin_boss_encounter() -> void:
 	_busy = true
@@ -531,7 +536,7 @@ func _build_stage() -> void:
 		_frame_stage_camera()
 		return
 	for i in range(count):
-		var g: Goblin = _guardian_actor() if guardian_encounter else Goblin.new()
+		var g: Goblin = _guardian_actor() if guardian_encounter else _ordinary_actor()
 		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
 		vp.add_child(g)
 		var party_centre := Vector3.ZERO
@@ -552,7 +557,13 @@ func _build_stage() -> void:
 	_frame_stage_camera()
 
 func _guardian_actor() -> Goblin:
-	if guardian_enemy_id == "swordfish_duelist":
+	return _actor_for_enemy_id(guardian_enemy_id)
+
+func _ordinary_actor() -> Goblin:
+	return _actor_for_enemy_id(EnemyRoster.random_id())
+
+func _actor_for_enemy_id(enemy_id: String) -> Goblin:
+	if enemy_id == "swordfish_duelist":
 		return SwordDuelist.new()
 	return Goblin.new()
 

@@ -19,7 +19,7 @@ const MAX_ROUNDS := 40
 # player must sometimes win and sometimes lose; the skilled policy must improve
 # on it; and a skilled win still has to cost time and HP.
 const CASUAL_MIN := 20.0
-# Level 1 now excludes the documented automatic-loss three-grunt wall, so the
+# Level 1 now excludes the documented automatic-loss three-enemy wall, so the
 # isolated legal-pack distribution is intentionally friendlier; still require
 # at least a 5% novice failure tail rather than an automatic win.
 const CASUAL_MAX := 95.0
@@ -64,7 +64,7 @@ func _init() -> void:
 	for count in casual.by_count:
 		var cell := casual.by_count[count] as Array
 		if int(cell[1]) > 0 and int(cell[0]) == 0:
-			findings.append("CASUAL PACK WALL: 0/%d wins against %d grunts" % [int(cell[1]), int(count)])
+			findings.append("CASUAL PACK WALL: 0/%d wins against %d enemies" % [int(cell[1]), int(count)])
 
 	if float(casual_route.rate) < CASUAL_ROUTE_MIN:
 		findings.append("CASUAL ROUTE BLOCKED: %.1f%% reach trench, expected at least %.0f%%" % [casual_route.rate, CASUAL_ROUTE_MIN])
@@ -134,6 +134,8 @@ func _run_route_policy(policy: String) -> Dictionary:
 func _route(seed_value: int, policy: String) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 100000 + seed_value
+	var roster_rng := RandomNumberGenerator.new()
+	roster_rng.seed = 900000 + seed_value
 	var party := _party()
 	var at: Vector3 = Sites.start().at as Vector3
 	var next_check := rng.randf_range(8.0, 16.0)
@@ -153,7 +155,7 @@ func _route(seed_value: int, policy: String) -> Dictionary:
 			if rng.randf() <= 0.5:
 				var level := (party[0].stats as CombatantStats).level
 				var count := rng.randi_range(Battle.MIN_ENEMIES, Battle.max_enemies_for_level(level))
-				var random_result := _fight_party(party, count, policy, rng, true)
+				var random_result := _fight_party(party, count, policy, rng, true, [], roster_rng)
 				random_fights += 1
 				battles += 1
 				grunts += count
@@ -166,7 +168,7 @@ func _route(seed_value: int, policy: String) -> Dictionary:
 		# The visible guardian is a guaranteed one-enemy Battle. One actor on
 		# the plinth cannot silently turn into an unrelated random pack.
 		var guardian_count := Battle.max_enemies_for_level((party[0].stats as CombatantStats).level, true)
-		var guardian_result := _fight_party(party, guardian_count, policy, rng, true)
+		var guardian_result := _fight_party(party, guardian_count, policy, rng, true, [String(site.enemy)], roster_rng)
 		guardian_fights += 1
 		battles += 1
 		grunts += guardian_count
@@ -193,15 +195,21 @@ func _route_result(success: bool, party: Array, random_fights: int, guardian_fig
 func _fight(seed_value: int, policy: String) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
+	var roster_rng := RandomNumberGenerator.new()
+	roster_rng.seed = 800000 + seed_value
 	var party := _party()
 	var enemy_count := rng.randi_range(Battle.MIN_ENEMIES, Battle.max_enemies_for_level(1))
-	return _fight_party(party, enemy_count, policy, rng, false)
+	return _fight_party(party, enemy_count, policy, rng, false, [], roster_rng)
 
-func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNumberGenerator, award_xp: bool) -> Dictionary:
+func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNumberGenerator, award_xp: bool, enemy_ids: Array = [], roster_rng: RandomNumberGenerator = null) -> Dictionary:
+	if roster_rng == null:
+		roster_rng = RandomNumberGenerator.new()
+		roster_rng.randomize()
 	var enemies: Array = []
 	var reference := _average(party)
-	for _i in range(enemy_count):
-		enemies.append(_enemy(reference, rng))
+	for i in range(enemy_count):
+		var enemy_id := String(enemy_ids[i]) if i < enemy_ids.size() else EnemyRoster.id_for_roll(roster_rng.randf())
+		enemies.append(_enemy(reference, rng, enemy_id))
 
 	var rounds := 0
 	while not _living(party).is_empty() and not _living(enemies).is_empty() and rounds < MAX_ROUNDS:
@@ -322,7 +330,7 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 		return
 	var target := _pick_enemy_target(living_party, rng)
 	var target_stats := target.stats as CombatantStats
-	var move := _pick_angler_move(target_stats, rng)
+	var move := _pick_enemy_move(String(actor.get("enemy_id", "angler")), target_stats, rng)
 	var combat := move.combat as Dictionary
 	var heavy := String(combat.get("effect", "")) == "heavy"
 	var variance := rng.randf_range(0.85, 1.15)
@@ -331,8 +339,9 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 	var player_dodge := heavy and rng.randf() < dodge_rate
 	Battle.apply_damage_roll(actor.stats as CombatantStats, target_stats, combat, variance, fraction, player_dodge)
 
-func _pick_angler_move(target: CombatantStats, rng: RandomNumberGenerator) -> Dictionary:
-	var moves: Array = EnemyMoves.angler_catalogue().filter(func(move: Dictionary) -> bool: return bool(move.enabled))
+func _pick_enemy_move(enemy_id: String, target: CombatantStats, rng: RandomNumberGenerator) -> Dictionary:
+	var catalogue := EnemyMoves.swordfish_duelist_catalogue() if enemy_id == "swordfish_duelist" else EnemyMoves.angler_catalogue()
+	var moves: Array = catalogue.filter(func(move: Dictionary) -> bool: return bool(move.enabled))
 	moves.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left.get("roll_order", 0)) < int(right.get("roll_order", 0)))
 	var finisher := moves.any(func(move: Dictionary) -> bool:
 		return float(move.get("finisher_below_hp", 0.0)) > 0.0 and float(target.hp) <= float(target.hp_max) * float(move.finisher_below_hp))
@@ -402,7 +411,7 @@ func _average(party: Array) -> CombatantStats:
 	avg.fill()
 	return avg
 
-func _enemy(reference: CombatantStats, rng: RandomNumberGenerator) -> Dictionary:
+func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: String) -> Dictionary:
 	var stats := CombatantStats.new()
 	stats.hp_max = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.strength = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
@@ -412,7 +421,7 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator) -> Dictionary
 	stats.accuracy = maxi(0, int(round(maxf(float(Goblin.FLOOR_STATS.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.barrier_max = maxi(0, int(round(float(reference.barrier_max) * 0.5 * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.fill()
-	return {"kind": "enemy", "stats": stats}
+	return {"kind": "enemy", "enemy_id": enemy_id, "stats": stats}
 
 func _living(side: Array) -> Array:
 	return side.filter(func(actor: Dictionary) -> bool: return (actor.stats as CombatantStats).hp > 0)
@@ -421,10 +430,10 @@ func _print_result(label: String, result: Dictionary) -> void:
 	var parts: Array = []
 	for count in [1, 2, 3]:
 		var cell := result.by_count[count] as Array
-		parts.append("%d grunt %d/%d" % [count, int(cell[0]), int(cell[1])])
+		parts.append("%d enemy %d/%d" % [count, int(cell[0]), int(cell[1])])
 	print("%-7s %5.1f%% wins, %4.1f rounds, %4.1f HP lost  (%s)" % [label, result.rate, result.turns, result.hp, ", ".join(parts)])
 
 func _print_route(label: String, result: Dictionary) -> void:
-	print("%-7s route %5.1f%% reach trench | %.1f random + %.1f guardian fights/run | %.1f grunts/run | successes: %.1f battles, %.1f HP, level %.1f" % [
+	print("%-7s route %5.1f%% reach trench | %.1f random + %.1f guardian fights/run | %.1f enemies/run | successes: %.1f battles, %.1f HP, level %.1f" % [
 		label, result.rate, result.random_fights, result.guardian_fights,
 		result.grunts, result.battles, result.hp, result.level])

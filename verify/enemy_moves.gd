@@ -73,8 +73,15 @@ func _run() -> void:
 		await create_timer(0.32).timeout
 		var actor := enemy_entry.actor as Goblin
 		var current := String(actor.anim.current_animation).to_lower() if actor != null and actor.anim != null else ""
-		_expect("attack)bite" in current,
-			"ENEMY MOVES: production Angler turn returned to idle before its impact frame — guards against invisible attack animations (playing '%s')" % current)
+		var playing_selected_clip := false
+		if actor != null:
+			for move_value in actor.available_moves():
+				var move := move_value as Dictionary
+				if String(move.get("clip", "")).to_lower() in current:
+					playing_selected_clip = true
+					break
+		_expect(playing_selected_clip,
+			"ENEMY MOVES: production %s turn returned to idle before its impact frame — guards against invisible attack animations (playing '%s')" % [actor.display_name() if actor != null else "enemy", current])
 	battle.queue_free()
 	await process_frame
 

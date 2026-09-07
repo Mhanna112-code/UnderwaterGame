@@ -21,7 +21,7 @@ var active := 0
 
 # random encounters: each Diver tracks its own distance swum and fires
 # encounter_triggered when it rolls one (see diver.gd). This just reacts -
-# drops into a turn-based fight against a goblin grunt, Pokemon-style, and
+# drops into a turn-based fight against an ordinary enemy pack, Pokemon-style, and
 # freezes the dive while game/battle.gd runs it.
 var banner: Label
 var _banner_timer := 0.0
