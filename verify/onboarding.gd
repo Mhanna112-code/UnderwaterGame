@@ -54,6 +54,11 @@ func _run() -> void:
 	if not world.onboarding_active or world.onboarding_step != World.OnboardingStep.SHOCKWAVE:
 		findings.append("OB-02: New Game did not begin at Shockwave")
 	_expect_cue(world, TutorialCue.Kind.SHOCKWAVE, "OB-03")
+	# The maze and the deliberate first fight are post-door content.  Their
+	# existence here would make the tutorial only cosmetic: a player could
+	# reach the later loop before demonstrating the three taught abilities.
+	if world._maze_instance != null or world.first_combat_pending or world.first_combat_seen:
+		findings.append("OB-03: maze or first combat was available before the opening gate")
 	world._on_encounter_triggered(world.divers[world.active] as Diver)
 	if world.battle != null:
 		findings.append("OB-04: ordinary encounter interrupted Shockwave lesson")
@@ -156,6 +161,9 @@ func _run() -> void:
 			break
 	if not world.first_combat_pending or world._first_combat_trigger == null or not world._first_combat_actor.visible:
 		findings.append("OB-13: no visible guaranteed first encounter was armed after the door")
+	var post_door_state: Dictionary = world._serialize_state().get("onboarding", {}) as Dictionary
+	if not bool(post_door_state.get("first_combat_pending", false)) or bool(post_door_state.get("first_combat_seen", true)):
+		findings.append("OB-13: save state did not record that the first combat became available")
 	world._on_encounter_triggered(world.divers[world.active] as Diver)
 	if world.battle != null:
 		findings.append("OB-13: random encounter ran before the deliberate first combat")

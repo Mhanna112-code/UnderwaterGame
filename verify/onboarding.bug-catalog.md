@@ -13,8 +13,8 @@ These cases map to the player-facing proof required for the opening route.
 | OB-06 | A casual Swap experiment at spawn skips to the final puzzle. | Drive Maxilani's actual E/Enter selector at nearby divers; retain Swap state. | `verify/onboarding.gd` |
 | OB-07 | A correct across-whirlpool Swap fails to transition or has no non-text formation aid. | Drive E/Enter with Maxilani swapping into the far side; require door step, visual cue, and three halos. | `verify/onboarding.gd` |
 | OB-08 | The door opens only because a test writes plate occupants, hiding a collision/input defect. | Place real CharacterBody3Ds on real Area3D plates and wait for physics to open all doors. | `verify/onboarding.gd` |
-| OB-09 | “Maze open” is text only; the standalone MazeLevel is never reachable from World. | Require an embedded `MazeLevel` when the door opens. | `verify/onboarding.gd` |
-| OB-10 | First combat depends on a random encounter roll or appears before the lesson ends. | Require a visible Angler/trigger after the door; suppress random handlers; swim the active diver into the trigger. | `verify/onboarding.gd` |
+| OB-09 | The maze is present before the lock puzzle, or “maze open” is text only after it. | Require no maze before the first lesson and an embedded `MazeLevel` only when the door opens. | `verify/onboarding.gd` |
+| OB-10 | First combat depends on a random encounter roll, appears before the lesson ends, or is not recoverably recorded when armed. | Require no early fight, then a visible Angler/trigger and persisted `first_combat_pending` after the door; suppress random handlers; swim the active diver into the trigger. | `verify/onboarding.gd` |
 | OB-11 | Exiting mid-route loses the current objective and strands a player at the gate. | Serialize current onboarding step and rebuild its cue/step on restore. | `verify/onboarding.gd` |
 
 ## Visual language being checked by review
