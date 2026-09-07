@@ -96,6 +96,27 @@ func _pulse(mesh: Node3D, min_scale: float, max_scale: float, duration: float) -
 	tw.tween_property(mesh, "scale", Vector3.ONE * max_scale, duration)
 	tw.tween_property(mesh, "scale", Vector3.ONE * min_scale, duration)
 
+# The HUD card explains the current task; this small world label anchors the
+# same decision to the actual obstacle. It is deliberately text + colour +
+# shape, so colour is a shortcut rather than the only way to understand it.
+func _instruction(title: String, action: String, local_position: Vector3) -> void:
+	var label := Label3D.new()
+	label.name = "Instruction"
+	label.text = title + "\n" + action
+	label.position = local_position
+	label.font_size = 32
+	label.outline_size = 4
+	label.pixel_size = 0.007
+	label.modulate = cue_color
+	label.outline_modulate = Color(0.01, 0.03, 0.04, 0.96)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	# Fixed-size labels became billboard-sized signs at close range and obscured
+	# the obstacle they were supposed to annotate. Scale them in the world so
+	# the HUD card remains the primary instruction and this is an anchor.
+	label.fixed_size = false
+	add_child(label)
+
 func _build_shockwave() -> void:
 	# Three expanding vertical wavefronts point at the rock wall rather than
 	# looking like another generic destination marker.
@@ -115,6 +136,7 @@ func _build_shockwave() -> void:
 		core.position = Vector3(0.0, float(y), 0.0)
 		add_child(core)
 		_pulse(core, 0.75, 1.5, 0.55)
+	_instruction("1 · MECH PILOT", "E · SHOCKWAVE", Vector3(0.0, 3.35, 0.0))
 
 func _build_grapple() -> void:
 	# A tall hoop above the target is visible from the staging side of the
@@ -123,6 +145,7 @@ func _build_grapple() -> void:
 	_pulse(hoop, 0.9, 1.15, 0.7)
 	var beacon := _ring(0.38, Vector3(0.0, 3.1, 0.0))
 	_pulse(beacon, 0.8, 1.25, 0.65)
+	_instruction("2 · MUSASHI", "CLICK · GRAPPLE", Vector3(0.0, 4.0, 0.0))
 
 func _build_swap() -> void:
 	# Two linked rings communicate "exchange two positions" before any text is
@@ -141,44 +164,23 @@ func _build_swap() -> void:
 	bridge.position = Vector3(0.0, 1.3, 0.0)
 	bridge.rotation_degrees.z = 90.0
 	add_child(bridge)
+	_instruction("3 · MAXILANI", "E · SWAP", Vector3(0.0, 3.0, 0.0))
 
 func _build_door() -> void:
-	# Three tall coloured beacons sit directly above the three lock plates.
-	# Ground rings alone get hidden by the party/camera, and a horizontal crown
-	# looked like an arbitrary destination.  These form the same cyan/gold/
-	# purple pattern as the party halos and remain legible while approaching
-	# down the corridor.
-	var colors := [SHOCKWAVE_COLOR, GRAPPLE_COLOR, SWAP_COLOR]
-	var lanes := [-2.5, 0.0, 2.5]
-	for i in range(colors.size()):
-		var color: Color = colors[i]
-		var z := float(lanes[i])
-		var pillar := MeshInstance3D.new()
-		var beam := CylinderMesh.new()
-		beam.top_radius = 0.09
-		beam.bottom_radius = 0.09
-		beam.height = 3.4
-		pillar.mesh = beam
-		pillar.material_override = _material_for(color, 0.82)
-		pillar.position = Vector3(0.0, 2.35, z)
-		add_child(pillar)
-		var crown := MeshInstance3D.new()
-		var orb := SphereMesh.new()
-		orb.radius = 0.3
-		orb.height = 0.6
-		crown.mesh = orb
-		crown.material_override = _material_for(color)
-		crown.position = Vector3(0.0, 4.15, z)
-		add_child(crown)
-		_pulse(crown, 0.78, 1.3, 0.62 + float(i) * 0.1)
+	# The individual plates carry their own named labels. Keeping this central
+	# cue compact avoids the previous forest of bright beams hiding the party.
+	_instruction("FINAL GATE", "MATCH THE NAMED PLATES", Vector3(0.0, 4.1, 0.0))
 
 func _build_combat() -> void:
 	# Red target reticle: combat is intentionally the first thing beyond the
 	# door, and should read as danger rather than another treasure waypoint.
-	var outer := _ring(1.1, Vector3(0.0, 1.8, 0.0), true)
-	var inner := _ring(0.48, Vector3(0.0, 1.8, 0.0), true)
+	# Float the telegraph above the fish: at body height the diver and the
+	# Angler obscured one another, making the supposed first danger read tiny.
+	var outer := _ring(1.65, Vector3(0.0, 3.25, 0.0), true)
+	var inner := _ring(0.72, Vector3(0.0, 3.25, 0.0), true)
 	_pulse(outer, 0.9, 1.14, 0.55)
-	_pulse(inner, 1.12, 0.86, 0.55)
+	_pulse(inner, 1.0, 1.25, 0.45)
+	_instruction("FIRST COMBAT", "RED ANGLER", Vector3(0.0, 5.0, 0.0))
 	# Reticles can be edge-on from the chase camera.  The red pulse at their
 	# centre makes the intended first combat readable at a glance.
 	var core := MeshInstance3D.new()
@@ -187,6 +189,6 @@ func _build_combat() -> void:
 	sphere.height = 0.56
 	core.mesh = sphere
 	core.material_override = _material()
-	core.position = Vector3(0.0, 1.8, 0.0)
+	core.position = Vector3(0.0, 3.25, 0.0)
 	add_child(core)
 	_pulse(core, 0.8, 1.4, 0.45)

@@ -321,10 +321,16 @@ func _restore_onboarding(saved: Dictionary) -> void:
 			_puzzle_goal.visible = false
 		_spawn_maze()
 		first_combat_seen = bool(saved.get("first_combat_seen", false))
-		if bool(saved.get("first_combat_pending", false)) and not first_combat_seen:
-			_activate_first_combat()
-		elif onboarding_label != null:
-			onboarding_label.text = "MAZE OPEN — exploration and encounters are live."
+		if not first_combat_seen:
+			_set_onboarding_ui(true)
+			if onboarding_panel != null:
+				onboarding_panel.show_handoff()
+			if bool(saved.get("first_combat_pending", false)):
+				_activate_first_combat()
+		else:
+			_set_onboarding_ui(false)
+			if onboarding_panel != null:
+				onboarding_panel.visible = false
 		return
 	if not bool(saved.get("active", false)):
 		_clear_onboarding()
@@ -334,28 +340,10 @@ func _restore_onboarding(saved: Dictionary) -> void:
 	onboarding_step = raw_step
 	_puzzle_solved = bool(saved.get("puzzle_solved", false))
 	_set_onboarding_halos(true)
-	match onboarding_step:
-		OnboardingStep.SHOCKWAVE:
-			_set_onboarding_objective(
-				"Reach the blocked passage. TAB to %s and press E to use Shockwave." % Cast.display_name("Prototype_V(1922)"),
-				_entrance_blockade.global_position if _entrance_blockade != null else Vector3(16.0, 3.0, 10.0),
-				TutorialCue.Kind.SHOCKWAVE)
-		OnboardingStep.GRAPPLE:
-			_set_onboarding_objective(
-				"Cross the whirlpool. TAB to %s, aim at the gold ring, then click to Grapple." % Cast.display_name("Prototype_1(1910)"),
-				_far_grapple_anchor.global_position if _far_grapple_anchor != null else Vector3(32.0, 3.0, 10.0),
-				TutorialCue.Kind.GRAPPLE)
-		OnboardingStep.SWAP:
-			_set_onboarding_objective(
-				"Use TAB to select %s. Press E, choose an ally with Left/Right, then Enter to Swap." % Cast.display_name("Staff_Diver"),
-				_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
-				TutorialCue.Kind.SWAP)
-		OnboardingStep.DOOR:
-			_set_onboarding_objective(
-				"Final gate: match all three diver halos to the glowing plates to open the maze.",
-				_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
-				TutorialCue.Kind.DOOR)
-			_set_onboarding_halos(true)
+	_set_onboarding_ui(true)
+	_show_onboarding_step()
+	if onboarding_step == OnboardingStep.DOOR:
+		_set_onboarding_halos(true)
 
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
@@ -490,7 +478,7 @@ var _puzzle_solved := false
 enum OnboardingStep { OFF, SHOCKWAVE, GRAPPLE, SWAP, DOOR, COMPLETE }
 var onboarding_step: OnboardingStep = OnboardingStep.OFF
 var onboarding_active := false
-var onboarding_label: Label
+var onboarding_panel: OnboardingPanel
 var _onboarding_marker: Waypoint
 var _onboarding_cue: TutorialCue
 var _onboarding_halos: Array[MeshInstance3D] = []
@@ -596,17 +584,12 @@ func _ready() -> void:
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
 
-	onboarding_label = Label.new()
-	onboarding_label.name = "OnboardingObjective"
-	onboarding_label.offset_left = 16.0
-	onboarding_label.offset_top = 112.0
-	onboarding_label.offset_right = 1040.0
-	onboarding_label.offset_bottom = 168.0
-	onboarding_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	onboarding_label.add_theme_font_size_override("font_size", 18)
-	onboarding_label.add_theme_color_override("font_color", Color(0.6, 0.92, 0.72))
-	onboarding_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(onboarding_label)
+	# The first-run card owns instructional copy. Keeping it separate from the
+	# ordinary controls line makes its width follow the viewport instead of
+	# clipping at a fixed desktop pixel coordinate on narrow screens.
+	onboarding_panel = OnboardingPanel.new()
+	onboarding_panel.name = "OnboardingPanel"
+	$HUD.add_child(onboarding_panel)
 
 	minimap = MiniMap.new()
 	minimap.world = self
@@ -1201,11 +1184,13 @@ func _build_highway() -> void:
 	# this finale.  It is a visual formation puzzle, not three anonymous rings
 	# accompanied by a sentence telling the player what the solution is.
 	var plate_models := ["Prototype_V(1922)", "Prototype_1(1910)", "Staff_Diver"]
+	var plate_labels := ["MECH PILOT\nSHOCKWAVE", "MUSASHI\nGRAPPLE", "MAXILANI\nSWAP"]
 	for i in range(3):
 		var z_off := float([-2.5, 0.0, 2.5][i])
 		var plate := LockPlate.new()
 		plate.position = Vector3(plate_x, 2.0, LANE_Z + z_off)
 		plate.set_tutorial_color(TutorialCue.color_for_ability(_ability_for_model(String(plate_models[i]))))
+		plate.set_tutorial_identity(String(plate_labels[i]))
 		add_child(plate)
 		_lock_plates.append(plate)
 
@@ -1268,7 +1253,11 @@ func _on_first_combat_triggered(body: Node3D) -> void:
 	if is_instance_valid(_first_combat_actor):
 		_first_combat_actor.queue_free()
 	_clear_onboarding_cue()
-	_announce("The Angler attacks — your first combat begins!")
+	if onboarding_panel != null:
+		onboarding_panel.visible = false
+	_set_onboarding_ui(false)
+	# The battle screen carries its own start framing. Do not stack a second
+	# world banner over it after the single post-door handoff card.
 	_write_save()
 	_start_battle()
 
@@ -1313,17 +1302,17 @@ func _on_diver_sucked_in(d: Diver, amount: int) -> void:
 func _check_gap_puzzle() -> void:
 	if _puzzle_solved or _lock_plates.size() < 3 or _puzzle_goal == null:
 		return
+	if onboarding_active and onboarding_step == OnboardingStep.DOOR and onboarding_panel != null:
+		onboarding_panel.set_door_progress(_occupied_lock_plates())
 	for p in _lock_plates:
 		if not (p as LockPlate).is_occupied():
 			return
 	_puzzle_solved = true
 	for d in _doors:
 		(d as Door).open()
-	var cutscene := Cutscene.new()
-	add_child(cutscene)
-	cutscene.play_scroll_text("Welcome to the Deep Sea")
-	_puzzle_goal.visible = true
-	_announce("All three in place - the way ahead opens!")
+	# The panel now owns this transition. A cutscene plus a banner plus an
+	# objective all said the same thing, which made the first combat easy to
+	# miss and pre-empted Glassgoat's separately owned final intro text.
 	_finish_onboarding()
 
 # Mark only the prescribed first-run route. Artifact sites deliberately stay
@@ -1331,26 +1320,21 @@ func _check_gap_puzzle() -> void:
 func _start_onboarding() -> void:
 	onboarding_active = true
 	onboarding_step = OnboardingStep.SHOCKWAVE
+	# During the lesson, the teaching card contains the controls relevant to
+	# the current decision. The verbose free-swim HUD returns after the gate.
+	_set_onboarding_ui(true)
 	# All three party members keep their ability-coloured halos during the
 	# route. Cycling TAB is therefore a colour match against the obstacle, not
 	# a memory test based solely on the one-line instruction.
 	_set_onboarding_halos(true)
-	_set_onboarding_objective(
-		"Reach the blocked passage. TAB to %s and press E to use Shockwave." % Cast.display_name("Prototype_V(1922)"),
-		_entrance_blockade.global_position if _entrance_blockade != null else Vector3(16.0, 3.0, 10.0),
-		TutorialCue.Kind.SHOCKWAVE
-	)
+	_show_onboarding_step()
 	_write_save()
 
 func _on_onboarding_shockwave_completed() -> void:
 	if not onboarding_active or onboarding_step != OnboardingStep.SHOCKWAVE:
 		return
 	onboarding_step = OnboardingStep.GRAPPLE
-	_set_onboarding_objective(
-		"Cross the whirlpool. TAB to %s, aim at the gold ring, then click to Grapple." % Cast.display_name("Prototype_1(1910)"),
-		_far_grapple_anchor.global_position if _far_grapple_anchor != null else Vector3(32.0, 3.0, 10.0),
-		TutorialCue.Kind.GRAPPLE
-	)
+	_show_onboarding_step()
 	_write_save()
 
 func _on_diver_grapple_arrived(target: Node3D, d: Diver) -> void:
@@ -1362,22 +1346,14 @@ func _on_diver_grapple_arrived(target: Node3D, d: Diver) -> void:
 	if target != _far_grapple_anchor or d.model_name != "Prototype_1(1910)" or d.global_position.x < 30.0:
 		return
 	onboarding_step = OnboardingStep.SWAP
-	_set_onboarding_objective(
-		"Use TAB to select %s. Press E, choose an ally with Left/Right, then Enter to Swap." % Cast.display_name("Staff_Diver"),
-		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
-		TutorialCue.Kind.SWAP
-	)
+	_show_onboarding_step()
 	_write_save()
 
 func _on_onboarding_swap_completed() -> void:
 	if not onboarding_active or onboarding_step != OnboardingStep.SWAP:
 		return
 	onboarding_step = OnboardingStep.DOOR
-	_set_onboarding_objective(
-		"Final gate: match all three diver halos to the glowing plates to open the maze.",
-		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0),
-		TutorialCue.Kind.DOOR
-	)
+	_show_onboarding_step()
 	_set_onboarding_halos(true)
 	_write_save()
 
@@ -1401,9 +1377,9 @@ func _finish_onboarding() -> void:
 		plate.monitoring = false
 	_spawn_maze()
 	_activate_first_combat()
-	if onboarding_label != null:
-		onboarding_label.text = "MAZE OPEN — the red Angler ahead is your first combat."
-	_announce("The maze is open. A hostile Angler guards the first turn.")
+	_set_onboarding_ui(true)
+	if onboarding_panel != null:
+		onboarding_panel.show_handoff()
 	_write_save()
 
 func _clear_onboarding() -> void:
@@ -1417,12 +1393,34 @@ func _clear_onboarding() -> void:
 		_first_combat_trigger.monitoring = false
 	if is_instance_valid(_first_combat_actor):
 		_first_combat_actor.visible = false
-	if onboarding_label != null:
-		onboarding_label.text = ""
+	_set_onboarding_ui(false)
+	if onboarding_panel != null:
+		onboarding_panel.visible = false
 
-func _set_onboarding_objective(message: String, target: Vector3, cue_kind: TutorialCue.Kind) -> void:
-	if onboarding_label != null:
-		onboarding_label.text = "OBJECTIVE: " + message
+func _show_onboarding_step() -> void:
+	var target := Vector3.ZERO
+	var cue_kind := TutorialCue.Kind.SHOCKWAVE
+	match onboarding_step:
+		OnboardingStep.SHOCKWAVE:
+			if onboarding_panel != null:
+				onboarding_panel.show_step(1, "CLEAR THE RUBBLE", "SELECT MECH PILOT  →  PRESS E: SHOCKWAVE", "WASD swims. Press TAB until the active line says Mech Pilot; use the cyan beacon at the blocked passage.")
+			target = _entrance_blockade.global_position if _entrance_blockade != null else Vector3(16.0, 3.0, 10.0)
+			cue_kind = TutorialCue.Kind.SHOCKWAVE
+		OnboardingStep.GRAPPLE:
+			if onboarding_panel != null:
+				onboarding_panel.show_step(2, "CROSS THE WHIRLPOOL", "SELECT MUSASHI  →  AIM GOLD RING  →  CLICK: GRAPPLE", "Do not swim through the whirlpool. The gold hoop marks the far anchor.")
+			target = _far_grapple_anchor.global_position if _far_grapple_anchor != null else Vector3(32.0, 3.0, 10.0)
+			cue_kind = TutorialCue.Kind.GRAPPLE
+		OnboardingStep.SWAP:
+			if onboarding_panel != null:
+				onboarding_panel.show_step(3, "BRING THE TEAM ACROSS", "SELECT MAXILANI  →  E  →  LEFT/RIGHT  →  ENTER: SWAP", "The purple linked rings mark the swap point. Choose an ally on the far side.")
+			target = _lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0)
+			cue_kind = TutorialCue.Kind.SWAP
+		OnboardingStep.DOOR:
+			if onboarding_panel != null:
+				onboarding_panel.show_door("FORM THE TEAM", "MATCH EACH DIVER TO THEIR NAMED COLOURED PLATE", "Cyan Mech Pilot · gold Musashi · purple Maxilani. Park all three divers to open the maze.", _occupied_lock_plates())
+			target = _lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0)
+			cue_kind = TutorialCue.Kind.DOOR
 	if _onboarding_marker == null:
 		_onboarding_marker = Waypoint.new()
 		# The lesson-specific cue already marks the interaction.  Keep this
@@ -1434,6 +1432,25 @@ func _set_onboarding_objective(message: String, target: Vector3, cue_kind: Tutor
 	_onboarding_marker.global_position = target + Vector3.UP * 1.8
 	_onboarding_marker.visible = true
 	_set_onboarding_cue(cue_kind, target)
+
+func _set_onboarding_ui(lesson_active: bool) -> void:
+	# One teaching card at a time: minimap, status bars, and the exhaustive
+	# controls reference hide while the player is deciding what to do next.
+	# This prevents the tutorial from becoming a second layer piled onto HUD.
+	hud.visible = not lesson_active
+	if minimap != null:
+		minimap.visible = not lesson_active
+	if hp_wrap != null:
+		hp_wrap.visible = not lesson_active
+	if oxygen_wrap != null:
+		oxygen_wrap.visible = not lesson_active
+
+func _occupied_lock_plates() -> int:
+	var occupied := 0
+	for plate_value in _lock_plates:
+		if (plate_value as LockPlate).is_occupied():
+			occupied += 1
+	return occupied
 
 func _set_onboarding_cue(kind: TutorialCue.Kind, at: Vector3) -> void:
 	_clear_onboarding_cue()
@@ -2291,6 +2308,8 @@ func _update_hud() -> void:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
 		return
 	var d: Diver = divers[active]
+	if onboarding_panel != null and onboarding_panel.visible:
+		onboarding_panel.set_active_diver(_display_name(d.model_name), String(d.ability_id))
 	var line := "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
 		_display_name(d.model_name), d.height]
 	if d.ability_id != "":
@@ -2310,20 +2329,21 @@ func _update_hud() -> void:
 # same way in both places.
 var hp_bar: ProgressBar
 var hp_bar_label: Label
+var hp_wrap: VBoxContainer
 var _hp_bar_mat: StyleBoxFlat
 
 func _build_hp_bar() -> void:
-	var wrap := VBoxContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	wrap.offset_top = -56.0
-	wrap.offset_bottom = -10.0
-	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	hp_wrap = VBoxContainer.new()
+	hp_wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	hp_wrap.offset_top = -56.0
+	hp_wrap.offset_bottom = -10.0
+	hp_wrap.alignment = BoxContainer.ALIGNMENT_CENTER
 	# MODIFIED (added): this spans the full WIDTH of the screen (BOTTOM_WIDE)
 	# and defaulted to STOP - a special-encounter minigame's own aim-down
 	# input landed right in this strip and got eaten here instead of
 	# reaching it. Purely informational, nothing here is ever clicked.
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(wrap)
+	hp_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(hp_wrap)
 
 	hp_bar = ProgressBar.new()
 	hp_bar.custom_minimum_size = Vector2(220, 20)
@@ -2337,12 +2357,12 @@ func _build_hp_bar() -> void:
 	_hp_bar_mat = StyleBoxFlat.new()
 	_hp_bar_mat.bg_color = Color(0.78, 0.15, 0.15)
 	hp_bar.add_theme_stylebox_override("fill", _hp_bar_mat)
-	wrap.add_child(hp_bar)
+	hp_wrap.add_child(hp_bar)
 
 	hp_bar_label = Label.new()
 	hp_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(hp_bar_label)
+	hp_wrap.add_child(hp_bar_label)
 
 func _update_hp_bar() -> void:
 	var d: Diver = divers[active]
@@ -2358,17 +2378,18 @@ func _update_hp_bar() -> void:
 # moves this bar back up is a save point (_on_save_requested()).
 var oxygen_bar: ProgressBar
 var oxygen_bar_label: Label
+var oxygen_wrap: VBoxContainer
 
 func _build_oxygen_bar() -> void:
-	var wrap := VBoxContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	wrap.offset_top = -82.0
-	wrap.offset_bottom = -58.0
-	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	oxygen_wrap = VBoxContainer.new()
+	oxygen_wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	oxygen_wrap.offset_top = -82.0
+	oxygen_wrap.offset_bottom = -58.0
+	oxygen_wrap.alignment = BoxContainer.ALIGNMENT_CENTER
 	# MODIFIED (added): same full-width STOP-by-default bug as the HP bar's
 	# own wrap just above.
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(wrap)
+	oxygen_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(oxygen_wrap)
 
 	oxygen_bar = ProgressBar.new()
 	oxygen_bar.custom_minimum_size = Vector2(220, 14)
@@ -2380,13 +2401,13 @@ func _build_oxygen_bar() -> void:
 	var mat := StyleBoxFlat.new()
 	mat.bg_color = Color(0.25, 0.65, 0.85)
 	oxygen_bar.add_theme_stylebox_override("fill", mat)
-	wrap.add_child(oxygen_bar)
+	oxygen_wrap.add_child(oxygen_bar)
 
 	oxygen_bar_label = Label.new()
 	oxygen_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	oxygen_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	oxygen_bar_label.add_theme_font_size_override("font_size", 13)
-	wrap.add_child(oxygen_bar_label)
+	oxygen_wrap.add_child(oxygen_bar_label)
 
 func _update_oxygen_bar() -> void:
 	var d: Diver = divers[active]
@@ -2421,7 +2442,7 @@ func _build_active_cursor() -> void:
 # header comment for why each of those isn't a "hover over your own head"
 # moment.
 func _update_active_cursor() -> void:
-	if battling or aiming or target_selector.selecting or divers.is_empty():
+	if battling or aiming or target_selector.selecting or first_combat_pending or divers.is_empty():
 		_active_cursor.visible = false
 		return
 	var d: Diver = divers[active]

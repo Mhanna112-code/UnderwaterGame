@@ -53,7 +53,28 @@ func _run() -> void:
 		findings.append("OB-01: New Game does not leave the world immediately playable")
 	if not world.onboarding_active or world.onboarding_step != World.OnboardingStep.SHOCKWAVE:
 		findings.append("OB-02: New Game did not begin at Shockwave")
+	# The lesson must replace—not merely add to—the fixed-width free-swim HUD.
+	# This makes the mobile layout contract testable without relying on a human
+	# noticing a clipped controls line in a screenshot.
+	var panel := world.onboarding_panel
+	if panel == null or not panel.visible:
+		findings.append("UX-01: New Game has no visible onboarding card")
+	elif not is_equal_approx(panel.anchor_right, 1.0) or panel.offset_right >= 0.0:
+		findings.append("UX-01: onboarding card is not viewport-responsive")
+	else:
+		var action := panel.get_node_or_null("Card/Rows/Action") as Label
+		var hint := panel.get_node_or_null("Card/Rows/Hint") as Label
+		if action == null or not action.text.contains("MECH PILOT") or not action.text.contains("SHOCKWAVE"):
+			findings.append("UX-01: first card does not name the diver and ability")
+		if hint == null or not hint.text.contains("TAB"):
+			findings.append("UX-01: first card does not teach how to select the diver")
+	if world.hud.visible:
+		findings.append("UX-01: verbose free-swim controls compete with the first lesson")
+	if world.minimap.visible or world.hp_wrap.visible or world.oxygen_wrap.visible:
+		findings.append("UX-01: minimap or status bars compete with the first lesson")
 	_expect_cue(world, TutorialCue.Kind.SHOCKWAVE, "OB-03")
+	if world._onboarding_cue == null or world._onboarding_cue.get_node_or_null("Instruction") == null:
+		findings.append("UX-01: obstacle has no world-space action label")
 	# The maze and the deliberate first fight are post-door content.  Their
 	# existence here would make the tutorial only cosmetic: a player could
 	# reach the later loop before demonstrating the three taught abilities.
@@ -137,6 +158,14 @@ func _run() -> void:
 	_expect_cue(world, TutorialCue.Kind.DOOR, "OB-10")
 	if world._onboarding_halos.size() != world.divers.size():
 		findings.append("OB-10: plate finale has no diver-matched visual halos")
+	var progress := world.onboarding_panel.get_node_or_null("Card/Rows/Progress") as Label
+	if progress == null or not progress.text.contains("0 / 3"):
+		findings.append("UX-02: plate finale does not start with an explicit 0/3 progress state")
+	for plate_value in world._lock_plates:
+		var identity := (plate_value as LockPlate).get_node_or_null("Identity") as Label3D
+		if identity == null or identity.text.strip_edges().is_empty():
+			findings.append("UX-02: a lock plate has no named identity label")
+			break
 
 	# Put the actual CharacterBody3Ds on the actual Area3D plates. Physics,
 	# not a test-written occupant field, must open every door and instantiate
@@ -161,6 +190,15 @@ func _run() -> void:
 			break
 	if not world.first_combat_pending or world._first_combat_trigger == null or not world._first_combat_actor.visible:
 		findings.append("OB-13: no visible guaranteed first encounter was armed after the door")
+	var handoff := world.onboarding_panel.get_node_or_null("Card/Rows/Action") as Label
+	if handoff == null or handoff.text != "RED ANGLER AHEAD":
+		findings.append("UX-03: maze handoff is not a single clear Angler prompt")
+	if not world.banner.text.strip_edges().is_empty():
+		findings.append("UX-03: a second world banner duplicates the maze handoff")
+	if world._onboarding_cue == null or world._onboarding_cue.kind != TutorialCue.Kind.COMBAT or world._onboarding_cue.get_node_or_null("Instruction") == null:
+		findings.append("UX-03: first combat lacks its labelled red world cue")
+	if world._active_cursor.visible:
+		findings.append("UX-03: active-diver cursor competes with the first combat cue")
 	var post_door_state: Dictionary = world._serialize_state().get("onboarding", {}) as Dictionary
 	if not bool(post_door_state.get("first_combat_pending", false)) or bool(post_door_state.get("first_combat_seen", true)):
 		findings.append("OB-13: save state did not record that the first combat became available")

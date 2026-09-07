@@ -11,6 +11,8 @@ var _mat: StandardMaterial3D
 # them diver-matched colours instead, so the final gate reads as a visible
 # three-person formation rather than a sentence asking the player to guess.
 var tutorial_color := Color(0.85, 0.75, 0.2)
+var tutorial_identity := ""
+var _identity_label: Label3D
 
 func _ready() -> void:
 	# Divers sit on collision layer 2 (see diver.gd - they don't collide
@@ -32,6 +34,16 @@ func _ready() -> void:
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh.material_override = _mat
 	add_child(mesh)
+	_identity_label = Label3D.new()
+	_identity_label.name = "Identity"
+	_identity_label.position = Vector3(0.0, 1.6, 0.0)
+	_identity_label.font_size = 32
+	_identity_label.outline_size = 4
+	_identity_label.pixel_size = 0.007
+	_identity_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_identity_label.fixed_size = false
+	_identity_label.no_depth_test = true
+	add_child(_identity_label)
 	_refresh_color()
 
 	var shape := CollisionShape3D.new()
@@ -59,8 +71,17 @@ func set_tutorial_color(next_color: Color) -> void:
 	if _mat != null:
 		_refresh_color()
 
+func set_tutorial_identity(next_identity: String) -> void:
+	tutorial_identity = next_identity
+	if _identity_label != null:
+		_refresh_color()
+
 func _refresh_color() -> void:
 	var c: Color = Color(0.35, 0.95, 0.5) if is_occupied() else tutorial_color
 	_mat.albedo_color = c
 	_mat.emission = c
 	_mat.emission_energy_multiplier = 1.5 if is_occupied() else 0.9
+	if _identity_label != null:
+		_identity_label.text = tutorial_identity + ("\nREADY" if is_occupied() else "")
+		_identity_label.modulate = c
+		_identity_label.outline_modulate = Color(0.01, 0.03, 0.04, 0.96)
