@@ -21,7 +21,7 @@ var active := 0
 
 # random encounters: each Diver tracks its own distance swum and fires
 # encounter_triggered when it rolls one (see diver.gd). This just reacts -
-# drops into a turn-based fight against a goblin grunt, Pokemon-style, and
+# drops into a turn-based fight against an ordinary enemy pack, Pokemon-style, and
 # freezes the dive while game/battle.gd runs it.
 var banner: Label
 var _banner_timer := 0.0
@@ -143,6 +143,7 @@ var _special_encounter_pre_hp := 0
 var _special_encounter_pre_oxygen := 0.0
 var _special_guardian: ItemGuardian
 var _special_guardian_decoy: Goblin
+var _special_guardian_enemy_id := "angler"
 
 # Set right before a guardian fight starts (see _on_item_guardian_triggered
 # ()), read once in _on_battle_finished() and cleared immediately after -
@@ -153,6 +154,11 @@ var _pending_reward_item := ""
 # save and returns to the title after the result, so repeatedly testing
 # Tethys cannot damage a real playthrough.
 var _boss_playtest_active := false
+# The separate query-only artifact route never writes a save or grants its
+# item. It is a review tool for the second guardian asset, not a shortcut in
+# a normal run.
+var _guardian_playtest_active := false
+var _guardian_playtest_site := ""
 
 # Isolated ?special=1 review route. It opens the real guardian chooser and
 # battle/minigame dispatcher but never grants an item or alters a save.
@@ -314,10 +320,7 @@ func _on_title_new_game(slot: int) -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
-	# One-time walkthrough for a genuinely new save - combat math, stats,
-	# special encounters, the works (see content/tutorial_content.gd).
-	# F1 reopens the same book any time afterward (_unhandled_input below).
-	tutorial_book.open(TutorialContent.GENERAL_PAGES)
+	_start_onboarding()
 
 func _on_title_load_game(slot: int) -> void:
 	_current_slot = slot
@@ -325,6 +328,8 @@ func _on_title_load_game(slot: int) -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
+	# Existing saves start playable immediately; onboarding is first-run only.
+	_clear_onboarding()
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -344,7 +349,19 @@ func _on_title_special_playtest() -> void:
 	# it must not remove world content or award the Current Pearl.
 	_special_guardian = null
 	_special_guardian_decoy = null
+	_special_guardian_enemy_id = "angler"
 	_offer_special_encounter("current_pearl")
+
+func _on_title_guardian_playtest() -> void:
+	var site := Sites.by_id(_guardian_playtest_site)
+	if site.is_empty() or String(site.get("item", "")).is_empty():
+		return
+	_current_slot = -1
+	_guardian_playtest_active = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	call_deferred("_start_battle", String(site.item), false, [], false, String(site.get("enemy", "angler")))
 
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
@@ -361,6 +378,19 @@ func _special_playtest_requested() -> bool:
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
 	return false
+
+func _guardian_playtest_requested() -> String:
+	if OS.get_cmdline_user_args().has("--guardian-playtest-shallows"):
+		return "shallows"
+	if OS.get_cmdline_user_args().has("--guardian-playtest-trench"):
+		return "trench"
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		if String(search).contains("guardian=shallows"):
+			return "shallows"
+		if String(search).contains("guardian=trench"):
+			return "trench"
+	return ""
 
 func _show_game_over() -> void:
 	# Defeat owns the whole screen just like cold launch. The controls, active
@@ -391,6 +421,17 @@ var _lock_plates: Array = []
 var _doors: Array = []
 var _puzzle_goal: Waypoint
 var _puzzle_solved := false
+
+# The opening tutorial is a thin state layer over the physical highway, not
+# a separate level. Its explicit states make the intended player path
+# testable and suppress random fights until the maze door is actually open.
+enum OnboardingStep { OFF, SHOCKWAVE, GRAPPLE, SWAP, DOOR, COMPLETE }
+var onboarding_step: OnboardingStep = OnboardingStep.OFF
+var onboarding_active := false
+var onboarding_label: Label
+var _onboarding_marker: Waypoint
+var _entrance_blockade: CrackedWall
+var _far_grapple_anchor: GrappleAnchor
 
 # Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
 # revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
@@ -481,6 +522,18 @@ func _ready() -> void:
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
 
+	onboarding_label = Label.new()
+	onboarding_label.name = "OnboardingObjective"
+	onboarding_label.offset_left = 16.0
+	onboarding_label.offset_top = 112.0
+	onboarding_label.offset_right = 1040.0
+	onboarding_label.offset_bottom = 168.0
+	onboarding_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	onboarding_label.add_theme_font_size_override("font_size", 18)
+	onboarding_label.add_theme_color_override("font_color", Color(0.6, 0.92, 0.72))
+	onboarding_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(onboarding_label)
+
 	minimap = MiniMap.new()
 	minimap.world = self
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -536,11 +589,16 @@ func _ready() -> void:
 	title_screen.load_game_chosen.connect(_on_title_load_game)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
+	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
 	if _special_playtest_requested():
 		title_screen.enable_special_playtest()
+	_guardian_playtest_site = _guardian_playtest_requested()
+	if not _guardian_playtest_site.is_empty():
+		var playtest_site := Sites.by_id(_guardian_playtest_site)
+		title_screen.enable_guardian_playtest("Play %s Guardian Test" % String(playtest_site.get("item", "Artifact")).capitalize())
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -904,17 +962,18 @@ func _build_item_guardians() -> void:
 		guardian.position.y = PLINTH_TOP + float(ItemGuardian.LIFT.get(guardian.look, 0.9))
 		add_child(guardian)
 
-		# Decorative only - a real Goblin standing beside the plinth so
+		# Decorative only - the same real enemy model that will enter the
+		# guardian battle, standing beside the plinth so
 		# "something is guarding this" is visible from the rim, not just an
 		# invisible volume at the middle. No collision (see goblin.gd), so
 		# it cannot block movement or be mistaken for the trigger.
-		var decoy := Goblin.new()
+		var enemy_id := String(entry.get("enemy", "angler"))
+		var decoy := _guardian_actor(enemy_id)
 		decoy.position = (entry.at as Vector3) + Vector3(1.8, 0.0, 0.6)
 		decoy.position.y = 0.0
 		add_child(decoy)
 
-		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy))
-
+		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy, enemy_id))
 		# MODIFIED (added): sonar alone reveals a guardian now - both start
 		# hidden and _update_item_guardian_visibility() (called from
 		# _physics_process()) brings them into view the instant this item's
@@ -926,6 +985,11 @@ func _build_item_guardians() -> void:
 		if site_node != null:
 			site_node.visible = guardian.visible
 		_item_guardians.append({"item": String(entry.item), "guardian": guardian, "decoy": decoy, "site": site_node})
+
+func _guardian_actor(enemy_id: String) -> Goblin:
+	if enemy_id == "swordfish_duelist":
+		return SwordDuelist.new()
+	return Goblin.new()
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1003,7 +1067,9 @@ func _build_highway() -> void:
 	entrance_rocks.collision_width = 60.0
 	entrance_rocks.position = Vector3(START_X + 1.0, WALL_HEIGHT * 0.5, LANE_Z)
 	add_child(entrance_rocks)
+	_entrance_blockade = entrance_rocks
 	entrance_rocks.broken.connect(_on_world_object_consumed.bind("entrance_blockade"))
+	entrance_rocks.broken.connect(_on_onboarding_shockwave_completed)
 	_cracked_walls["entrance_blockade"] = entrance_rocks
 
 	# 2. The gap itself: a dark visual patch plus the whirlpool hazard.
@@ -1048,6 +1114,8 @@ func _build_highway() -> void:
 	anchor.position = Vector3(GAP_END_X + 2.0, 2.0, LANE_Z)
 	anchor.unlocks_diver_ability_for = "Staff_Diver"
 	add_child(anchor)
+	_far_grapple_anchor = anchor
+	anchor.grappled_to.connect(_on_onboarding_grapple_completed)
 
 	# 5. Three lit plates - the actual finale. All three occupied at once
 	# (checked in _physics_process via _check_gap_puzzle) reveals the goal.
@@ -1097,6 +1165,75 @@ func _check_gap_puzzle() -> void:
 	cutscene.play_scroll_text("Welcome to the Deep Sea")
 	_puzzle_goal.visible = true
 	_announce("All three in place - the way ahead opens!")
+	_finish_onboarding()
+
+# Mark only the prescribed first-run route. Artifact sites deliberately stay
+# unmarked: sonar remains the sole discovery aid for rewards.
+func _start_onboarding() -> void:
+	onboarding_active = true
+	onboarding_step = OnboardingStep.SHOCKWAVE
+	_set_onboarding_objective(
+		"Reach the blocked passage. TAB to %s and press E to use Shockwave." % Cast.display_name("Prototype_V(1922)"),
+		_entrance_blockade.global_position if _entrance_blockade != null else Vector3(16.0, 3.0, 10.0)
+	)
+
+func _on_onboarding_shockwave_completed() -> void:
+	if not onboarding_active or onboarding_step != OnboardingStep.SHOCKWAVE:
+		return
+	onboarding_step = OnboardingStep.GRAPPLE
+	_set_onboarding_objective(
+		"Cross the whirlpool. TAB to %s, aim at the gold ring, then click to Grapple." % Cast.display_name("Prototype_1(1910)"),
+		_far_grapple_anchor.global_position if _far_grapple_anchor != null else Vector3(32.0, 3.0, 10.0)
+	)
+
+func _on_onboarding_grapple_completed() -> void:
+	if not onboarding_active or onboarding_step != OnboardingStep.GRAPPLE:
+		return
+	onboarding_step = OnboardingStep.SWAP
+	_set_onboarding_objective(
+		"Use TAB to select %s. Press E, choose an ally with Left/Right, then Enter to Swap." % Cast.display_name("Staff_Diver"),
+		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0)
+	)
+
+func _on_onboarding_swap_completed() -> void:
+	if not onboarding_active or onboarding_step != OnboardingStep.SWAP:
+		return
+	onboarding_step = OnboardingStep.DOOR
+	_set_onboarding_objective(
+		"Final gate: place all three divers on the glowing plates to open the maze.",
+		_lock_plates[1].global_position if _lock_plates.size() > 1 else Vector3(39.0, 3.0, 10.0)
+	)
+
+func _finish_onboarding() -> void:
+	if not onboarding_active:
+		return
+	onboarding_active = false
+	onboarding_step = OnboardingStep.COMPLETE
+	if _onboarding_marker != null:
+		_onboarding_marker.queue_free()
+		_onboarding_marker = null
+	if onboarding_label != null:
+		onboarding_label.text = "MAZE OPEN — exploration and encounters are live."
+	_announce("The maze is open. Explore carefully — enemies are ahead.")
+
+func _clear_onboarding() -> void:
+	onboarding_active = false
+	onboarding_step = OnboardingStep.OFF
+	if _onboarding_marker != null:
+		_onboarding_marker.queue_free()
+		_onboarding_marker = null
+	if onboarding_label != null:
+		onboarding_label.text = ""
+
+func _set_onboarding_objective(message: String, target: Vector3) -> void:
+	if onboarding_label != null:
+		onboarding_label.text = "OBJECTIVE: " + message
+	if _onboarding_marker == null:
+		_onboarding_marker = Waypoint.new()
+		_onboarding_marker.is_goal = true
+		add_child(_onboarding_marker)
+	_onboarding_marker.global_position = target + Vector3.UP * 1.8
+	_onboarding_marker.visible = true
 
 # One plain wall segment: a StaticBody3D box, solid (divers collide with
 # it via CharacterBody3D's own move_and_slide, same as the floor), centered
@@ -1691,7 +1828,7 @@ func _update_banner(dt: float) -> void:
 # diver you're actually steering gets to start one - the two drifting NPCs
 # roll independently but their triggers are ignored here.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active]:
+	if battling or onboarding_active or d != divers[active]:
 		return
 	# An ordinary encounter, and only an ordinary one.
 	#
@@ -1706,14 +1843,17 @@ func _on_encounter_triggered(d: Diver) -> void:
 	# whole point of it being somewhere.
 	_start_battle()
 
-# guardian/decoy are bound at connect time (see _build_item_guardians()).
+# guardian, decoy and enemy id are bound at connect time (see
+# _build_item_guardians()). Both remain until a special encounter is won so a
+# loss/cancel does not consume a guarded reward.
 # Both remain in the world if the player declines or loses. They are removed
 # only after a win, so the guarded reward remains available for another try.
-func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin) -> void:
+func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin, enemy_id: String) -> void:
 	if battling:
 		return
 	_special_guardian = guardian
 	_special_guardian_decoy = decoy
+	_special_guardian_enemy_id = enemy_id
 	_offer_special_encounter(item_id)
 
 func _offer_special_encounter(item_id: String) -> void:
@@ -1735,7 +1875,7 @@ func _on_special_encounter_diver_chosen(model_name: String) -> void:
 	_special_encounter_diver = chosen
 	_special_encounter_pre_hp = chosen.stats.hp
 	_special_encounter_pre_oxygen = chosen.stats.oxygen
-	_start_battle(_special_encounter_item, false, [chosen], true)
+	_start_battle(_special_encounter_item, false, [chosen], true, _special_guardian_enemy_id)
 
 func _on_special_encounter_cancelled() -> void:
 	special_encounter_prompt.close()
@@ -1743,6 +1883,7 @@ func _on_special_encounter_cancelled() -> void:
 	_special_encounter_item = ""
 	_special_guardian = null
 	_special_guardian_decoy = null
+	_special_guardian_enemy_id = "angler"
 	if _special_playtest_active:
 		_special_playtest_active = false
 		call_deferred("_show_title_screen")
@@ -1755,23 +1896,25 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 	if d != divers[active]:
 		return
 	focus_camera_on(target, 1.1)
+	_on_onboarding_swap_completed()
 
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, custom_party: Array = [], special: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, custom_party: Array = [], special: bool = false, guardian_enemy_id: String = "angler") -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Tethys rises from the deep!" if boss_encounter else "Something grunts out of the murk!")
+	_announce("Tethys rises from the deep!" if boss_encounter else "An angler fish emerges from the murk!")
 	battle = Battle.new()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
 	battle.boss_encounter = boss_encounter
 	battle.special_encounter = special
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
+	battle.guardian_enemy_id = guardian_enemy_id
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
@@ -1780,16 +1923,18 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
-	if _boss_playtest_active:
+	if _boss_playtest_active or _guardian_playtest_active:
+		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false
+		_guardian_playtest_active = false
 		_pending_reward_item = ""
 		match result:
 			"won":
-				_announce("Tethys boss test complete.")
+				_announce("%s test complete." % test_kind)
 			"fled":
-				_announce("Tethys boss test ended early.")
+				_announce("%s test ended early." % test_kind)
 			_:
-				_announce("Tethys overwhelmed the party. Try the test again.")
+				_announce("%s overwhelmed the party. Try the test again." % test_kind)
 		call_deferred("_show_title_screen")
 		return
 	if _special_playtest_active:
@@ -1839,6 +1984,7 @@ func _on_battle_finished(result: String) -> void:
 	_special_encounter_diver = null
 	_special_guardian = null
 	_special_guardian_decoy = null
+	_special_guardian_enemy_id = "angler"
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own

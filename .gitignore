@@ -14,3 +14,9 @@ package.json
 
 # macOS
 .DS_Store
+.vercel
+
+# Screenshot evidence is not a game resource. Godot may generate sidecar
+# imports while scanning it for an export; keep those local and reproducible.
+docs/evidence/*.png.import
+verification/*.png.import

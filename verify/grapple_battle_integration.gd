@@ -45,10 +45,10 @@ func _run() -> void:
 	var hp_after := (party_entry.stats as CombatantStats).hp
 	var actor_visible := (party_entry.actor as Diver).visible
 	var camera_restored := battle._stage_cam.global_position.distance_to(default_camera_position) < 0.05 and is_equal_approx(battle._stage_cam.fov, default_camera_fov)
-	# MODIFIED: was hardcoded [8, 8] - stale since TARGET_COUNT dropped to
-	# 5 (see grapple_intercept_minigame.gd's own header). Read the real
-	# constant instead of re-hardcoding a number that can drift again.
-	var expected := GrappleInterceptMinigame.TARGET_COUNT
+	# Every Vortex wave needs TARGET_COUNT safe hits and the encounter runs
+	# TOTAL_VORTEX_WAVES of them. Read both live constants so this contract
+	# cannot silently retain the pre-vortex one-wave total.
+	var expected := GrappleInterceptMinigame.TARGET_COUNT * GrappleInterceptMinigame.TOTAL_VORTEX_WAVES
 	# MODIFIED: was also asserting wrong_hits == 1 and hp_after < hp_before,
 	# both driven by deliberately shooting a decoy (auto_hit_decoy(), now
 	# removed along with decoys entirely - see grapple_intercept_minigame.gd).

@@ -37,6 +37,11 @@ func _process(_d: float) -> bool:
 		world.title_screen.new_game_chosen.emit(1)
 		return false
 	if frames == 2:
+		# This test covers the open-exploration encounter contract. New games
+		# now begin with a deterministic onboarding route, so explicitly move
+		# to its completed/free-explore state before asking an ordinary random
+		# trigger to create a battle.
+		world._clear_onboarding()
 		_report_encounter_rate()
 		_check_spawned()
 		_check_spots_are_reachable()
@@ -49,7 +54,7 @@ func _process(_d: float) -> bool:
 		# Then walking into each guardian, which must not be ordinary.
 		for s in ItemGuardian.spots():
 			cases.append({"at": s.at as Vector3, "what": "the %s guardian" % String(s.item),
-				"reward": String(s.item), "kind": "guardian"})
+				"reward": String(s.item), "enemy": String(s.get("enemy", "angler")), "kind": "guardian"})
 		return false
 
 	if at >= 0:
@@ -83,19 +88,36 @@ func _report_encounter_rate() -> void:
 
 func _check_spawned() -> void:
 	var guardians: Array = []
-	var decoys := 0
+	var decoys: Array = []
 	for c in world.get_children():
 		if c is ItemGuardian:
 			guardians.append(String((c as ItemGuardian).item_id))
 		elif c is Goblin:
-			decoys += 1
-	print("built: %d guardian(s) %s, %d decoy(s)" % [guardians.size(), guardians, decoys])
+			decoys.append(c as Goblin)
+	print("built: %d guardian(s) %s, %d decoy(s)" % [guardians.size(), guardians, decoys.size()])
 	if guardians.size() != ItemGuardian.spots().size():
 		findings.append("NOTHING TO SWIM TO: %d guardians in the water, expected %d" % [
 			guardians.size(), ItemGuardian.spots().size()])
-	if decoys < guardians.size():
+	if decoys.size() < guardians.size():
 		findings.append("UNGUARDED: %d guardians but only %d visible enemies beside them" % [
-			guardians.size(), decoys])
+			guardians.size(), decoys.size()])
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		var closest: Goblin
+		var closest_distance := INF
+		for decoy_value in decoys:
+			var decoy := decoy_value as Goblin
+			var distance := decoy.global_position.distance_to(entry.at as Vector3)
+			if distance < closest_distance:
+				closest = decoy
+				closest_distance = distance
+		var expected_enemy := String(entry.get("enemy", "angler"))
+		# Guardians sit 3.22 m off their artifacts so the player can approach the
+		# pickup without spawning inside the enemy.  Four metres is close enough
+		# to prove this is the site guardian, not a detached review-only actor.
+		if closest == null or closest_distance > 4.0 or closest.enemy_id() != expected_enemy:
+			findings.append("REAL WORLD GUARDIAN: %s decoy is %s at its reachable artifact site — guards against a Swordfish that only exists in a review URL (got %s at %.2f m)" % [
+				String(entry.item), expected_enemy, closest.enemy_id() if closest != null else "none", closest_distance])
 
 # A spot in clear water you cannot reach is not a destination. The first
 # pair of coordinates sat inside rocks; the second pair I picked sat behind
@@ -175,6 +197,12 @@ func _check_result() -> void:
 		elif String(spot.kind) == "encounter" and enemy_count > Battle.max_enemies_for_level(1):
 			findings.append("OPENING PACK: level 1 rolled %d enemies, max is %d" % [
 				enemy_count, Battle.max_enemies_for_level(1)])
+		if String(spot.kind) == "guardian" and enemy_count == 1:
+			var actor := (built_battle.enemies[0] as Dictionary).actor as Goblin
+			var expected_enemy := String(spot.get("enemy", "angler"))
+			if actor == null or actor.enemy_id() != expected_enemy:
+				findings.append("REAL WORLD GUARDIAN: %s trigger builds %s battle — guards against map/battle identity drift (got %s)" % [
+					String(spot.reward), expected_enemy, actor.enemy_id() if actor != null else "none"])
 
 func _report() -> bool:
 	for f in findings:

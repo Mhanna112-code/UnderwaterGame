@@ -23,7 +23,9 @@ const server = http.createServer((req, res) => {
   });
   fs.createReadStream(p).pipe(res);
 });
-if (!live) await new Promise(r => server.listen(8767, r));
+// Use an OS-assigned port: 8767 is commonly occupied by a developer's live
+// local playtest, and this isolated static server has no reason to collide.
+if (!live) await new Promise(r => server.listen(0, r));
 
 const browser = await chromium.launch({ args: [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
@@ -34,7 +36,7 @@ const errors = [];
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', e => errors.push(String(e)));
 
-const base = live ? dir : 'http://localhost:8767/';
+const base = live ? dir : `http://localhost:${server.address().port}/`;
 const url = base + (base.includes('?') ? '&special=1' : '?special=1');
 await page.goto(url, { waitUntil: 'load' });
 await page.waitForTimeout(25000);

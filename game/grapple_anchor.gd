@@ -6,6 +6,9 @@
 class_name GrappleAnchor
 extends StaticBody3D
 
+# Fired only after a grapple ray has actually landed on this anchor.
+signal grappled_to
+
 # Optional: a diver model_name whose locked ability this anchor unlocks the
 # moment something successfully grapples to it. "" means it's just a plain
 # traversal target with no side effect - only the gap sequence's anchor
@@ -48,6 +51,7 @@ func _ready() -> void:
 # reference, since this anchor is built long before it knows which Diver
 # instances will exist alongside it in the scene.
 func on_grappled_to() -> void:
+	grappled_to.emit()
 	if unlocks_diver_ability_for == "":
 		return
 	for sibling in get_parent().get_children():

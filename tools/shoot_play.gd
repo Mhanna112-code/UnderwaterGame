@@ -47,6 +47,15 @@ func _process(_d: float) -> bool:
 		world.title_screen.new_game_chosen.emit(1)
 		return false
 	if frames == 2:
+		if mode == "onboarding":
+			# The real first objective: stand before the blocked passage and
+			# frame its route marker with the same chase camera a player uses.
+			world.divers[world.active].position = Vector3(6.0, 2.0, 10.0)
+			world.yaw = PI * 0.5
+			world.pitch = -0.08
+			world.scripted = true
+			world.scripted_dir = Vector3.ZERO
+			return false
 		# Stand off from the first item guardian and look at it, which is
 		# the one landmark in the dive site worth swimming to and the
 		# hardest thing to check without opening the editor.
@@ -75,7 +84,7 @@ func _process(_d: float) -> bool:
 	if frames < settle:
 		return false
 
-	if mode != "follow" and mode != "battle" and mode != "guardian":
+	if mode != "follow" and mode != "battle" and mode != "guardian" and mode != "onboarding":
 		_park_camera()
 		# one more frame so the camera move lands before the shot
 		if frames == settle:

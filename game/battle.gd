@@ -46,6 +46,10 @@ var _special_round := 0
 # encounter one-on-one with the party instead of secretly replacing the one
 # approached actor with a random three-grunt pack.
 var guardian_encounter := false
+# The map sends the visible guardian's identity along with its reward. Ordinary
+# packs roll their own Angler/Swordfish roster independently; this only pins
+# the one visible artifact defender, so exploration never randomizes a reward.
+var guardian_enemy_id := "angler"
 # Verification can hold the automatic entrance/turn dispatcher while it
 # exercises each boss move directly. Shipped encounters leave this true.
 var boss_intro_enabled := true
@@ -142,7 +146,6 @@ const ENEMY_QTE_CHANCE := 0.25
 # lined up does, without making the heavy swing itself hit any harder or
 # any more reliably than it already did.
 const ENEMY_HEAVY_FINISH_CHANCE := 0.65
-
 # How long a move's result stays on screen (log_label text) before whatever
 # happens next - the next turn's own _log() call, or a win/lose/flee banner
 # - overwrites it. log_label only ever shows one line at a time, no
@@ -298,8 +301,13 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
+		_log(encounter_intro(enemies))
 		_advance_turn()
+
+static func encounter_intro(entries: Array) -> String:
+	if entries.size() != 1:
+		return "Enemies block the way!"
+	return "%s blocks the way!" % String((entries[0] as Dictionary).get("display_name", "Enemy"))
 
 func _begin_boss_encounter() -> void:
 	_busy = true
@@ -563,10 +571,7 @@ func _build_stage() -> void:
 
 	# Enemies: a random count, each with stats rolled close to the party's
 	# own current average (see _party_average_stats()/goblin.gd's
-	# make_stats()) rather than an independent level curve. The grunt's own
-	# rest facing was never checked against the camera (no editor open to
-	# look): 180 is a guess. Flip to 0 here if it turns out to be facing
-	# away instead of into shot.
+	# make_stats()) rather than an independent level curve.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
 	# MODIFIED (added): make_stats() below scales the grunt to be a
@@ -619,14 +624,18 @@ func _build_stage() -> void:
 		_frame_stage_camera()
 		return
 	for i in range(count):
-		var g := Goblin.new()
+		var g: Goblin = _guardian_actor() if guardian_encounter else _ordinary_actor()
 		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, enemy_z - _spread(i, count, 0.5))
-		g.rotation.y = PI
 		vp.add_child(g)
+		var party_centre := Vector3.ZERO
+		for party_entry in party:
+			party_centre += (party_entry.actor as Node3D).global_position
+		party_centre /= maxf(1.0, float(party.size()))
+		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
 		enemies.append({
 			"kind": "enemy", "stats": st,
-			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
+			"display_name": g.display_name() if count == 1 else "%s %d" % [g.display_name(), i + 1],
 			"actor": g,
 			"home_pos": g.position,
 			"home_rot": g.rotation.y,
@@ -634,6 +643,17 @@ func _build_stage() -> void:
 		})
 
 	_frame_stage_camera()
+
+func _guardian_actor() -> Goblin:
+	return _actor_for_enemy_id(guardian_enemy_id)
+
+func _ordinary_actor() -> Goblin:
+	return _actor_for_enemy_id(EnemyRoster.random_id())
+
+func _actor_for_enemy_id(enemy_id: String) -> Goblin:
+	if enemy_id == "swordfish_duelist":
+		return SwordDuelist.new()
+	return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
 # and body recoil read from a three-quarter angle and disappear into the
@@ -1788,14 +1808,13 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if String(move.get("effect", "")) == "heavy":
 		heavy_fraction = randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
 
-	# MODIFIED: used to fire the QTE unconditionally whenever quick_time_bool
-	# was set (which used to only ever be ENEMY_HEAVY_MOVE, making the QTE
-	# 1:1 with the heavy swing specifically). Both enemy moves are eligible
-	# now, and this is what actually decides whether one fires THIS time -
-	# an independent ENEMY_QTE_CHANCE roll, same on either move. Player
-	# moves never set quick_time_bool at all, so this is still a no-op for
-	# anything the player swings themselves regardless. A successful dodge
-	# zeroes incoming outright rather than reducing it.
+	# Only a move explicitly tagged for it ever
+	# triggers a QTE - a player's own attacks never set quick_time_bool, so
+	# this is a no-op for anything the player swings themselves. A
+	# successful dodge zeroes incoming outright rather than just skipping
+	# barrier absorption below - the reward for timing it right is not
+	# needing the barrier to save you at all, not just saving the barrier
+	# for later.
 	var player_dodge := false
 	if bool(move.get("quick_time_bool", false)) and randf() < ENEMY_QTE_CHANCE:
 		player_dodge = await _quick_time_event()
@@ -1953,9 +1972,14 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 # attacks have length: standing on top of somebody puts the swing through
 # them and out the other side.
 func _step_toward(entry: Dictionary, target: Dictionary) -> void:
-	var a: Node3D = entry.get("actor")
-	if a == null or not is_instance_valid(a):
+	# Do not assign directly into a typed Node3D: a combatant dictionary can
+	# retain a freed actor while death fade/turn coroutines finish. Godot emits
+	# an error during that typed conversion before `is_instance_valid()` gets a
+	# chance to reject it.
+	var actor_value: Variant = entry.get("actor")
+	if not (actor_value is Node3D) or not is_instance_valid(actor_value):
 		return
+	var a := actor_value as Node3D
 	if not target.has("actor") or not is_instance_valid(target.actor) or target.actor == a:
 		return
 	var home: Vector3 = entry.get("home_pos", a.position)
@@ -1963,9 +1987,12 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 	to.y = 0.0
 	if to.length() < 0.05:
 		return
-	# rotation.y == 0 faces -Z for both Diver and Goblin models here, which
-	# is why this is atan2 of the negated direction rather than of it.
-	a.rotation.y = atan2(-to.x, -to.z)
+	# Divers use their local -Z front; Angler uses its local +Z front. The
+	# actor owns this distinction so an asset swap cannot invert an attack.
+	if a is Goblin:
+		(a as Goblin).face_toward((target.actor as Node3D).global_position)
+	else:
+		a.rotation.y = atan2(-to.x, -to.z)
 	var target_radius := 0.0
 	var radius_value: Variant = (target.actor as Node3D).get("radius")
 	if radius_value != null:
@@ -1980,14 +2007,16 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 # home rather than to wherever it happened to start, so an interrupted
 # swing cannot leave somebody drifting a metre further out every turn.
 func _send_home(entry: Dictionary, delay: float) -> void:
-	var a: Node3D = entry.get("actor")
-	if a == null or not is_instance_valid(a):
+	var actor_value: Variant = entry.get("actor")
+	if not (actor_value is Node3D) or not is_instance_valid(actor_value):
 		return
+	var a := actor_value as Node3D
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
-		a = entry.get("actor")
-		if a == null or not is_instance_valid(a):
+		actor_value = entry.get("actor")
+		if not (actor_value is Node3D) or not is_instance_valid(actor_value):
 			return
+		a = actor_value as Node3D
 	var back := a.create_tween()
 	back.tween_property(a, "position", entry.get("home_pos", a.position), SWING_STEP_TIME)
 	back.parallel().tween_property(a, "rotation:y", float(entry.get("home_rot", a.rotation.y)), SWING_STEP_TIME)
@@ -2023,9 +2052,9 @@ func _play_enemy_hit(entry: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
 	# Tethys already received its authored weak/strong reaction in _react().
-	# Goblin has no hit clip, so walking remains its lightweight recoil.
+	# The Angler's own damaged clip replaces the retired Goblin walk recoil.
 	if entry.actor is Goblin:
-		(entry.actor as Goblin).play("walk")
+		(entry.actor as Goblin).play("hurt")
 
 func _restore_enemy_idle(entry: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
@@ -2218,27 +2247,28 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 			"grapple":
 				await _do_grapple_intercept_encounter(actor, target, target_stats)
 				return
-	# "Lined up" means the target's already low enough that a heavy swing's
-	# own damage range (see ENEMY_HEAVY_MOVE's heavy_max, a fraction of
-	# their OWN max HP) could plausibly be a kill - not a fixed HP number,
-	# so this scales correctly across levels the same way the heavy swing's
-	# damage itself already does.
-	var lined_up: bool = float(target_stats.hp) <= float(target_stats.hp_max) * float(ENEMY_HEAVY_MOVE.heavy_max)
-	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
-	# The grunts get the same treatment as the party. They have no attack
-	# clip of their own, only Idle and Walking, so the lunge IS the attack
-	# animation: without it a grunt's turn was a line of text and a number
-	# moving, with nothing on the stage indicating who did it or to whom.
-	(actor.actor as Goblin).play("walk")
+	var enemy_actor := actor.actor as Goblin
+	var move := enemy_actor.choose_move(target_stats)
+	if move.is_empty():
+		_log("%s has no enabled attack." % String(actor.display_name))
+		_finish_actor_turn(actor)
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		_advance_turn()
+		return
 	await _step_toward(actor, target)
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
-	_send_home(actor, 0.0)
-	if is_instance_valid(actor.actor):
-		(actor.actor as Goblin).play("idle")
+	# The selected data record owns its animation and mechanics. Step into
+	# range first, then keep the authored clip on screen through its impact
+	# frame. Previously play_move() ran before the walk and idle was restored
+	# about 0.18 seconds later, making a valid Bite look like no attack at all.
+	var attack_length := enemy_actor.play_move(move)
+	if attack_length > 0.0:
+		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, move.combat as Dictionary)
+	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
 	_refresh_bar(target)
 	_react(target, r)
 	_show_combat_feedback(target, r)
-	var verb := ("%s winds up and slams into %s" % [String(actor.display_name), String(target.display_name)]) if heavy else ("%s claws at %s" % [String(actor.display_name), String(target.display_name)])
+	var verb := "%s %s %s" % [String(actor.display_name), String(move.get("verb", "attacks")), String(target.display_name)]
 	if bool(r.get("dodged", false)):
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
 	elif not r.hit:
@@ -2249,6 +2279,7 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 		(target.actor as Diver).play_death_fade()
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_restore_enemy_idle(actor)
 	_advance_turn()
 
 func _look_at_dodge_angle(target_pos: Vector3) -> void:
@@ -2470,7 +2501,9 @@ func _on_run() -> void:
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not living_enemies.is_empty():
 		var attacker: Dictionary = living_enemies[randi_range(0, living_enemies.size() - 1)]
-		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, ENEMY_MOVE)
+		var angler := attacker.actor as Goblin
+		var move := angler.choose_move(_acting.stats as CombatantStats) if angler != null else {}
+		var r: Dictionary = await _resolve_attack(attacker.stats, _acting.stats, move.get("combat", {}) as Dictionary)
 		_refresh_bar(_acting)
 		_show_combat_feedback(_acting, r)
 		if bool(r.get("dodged", false)):
@@ -2478,7 +2511,7 @@ func _on_run() -> void:
 		elif not r.hit:
 			_log("%s lunges, but you evade clear." % String(attacker.display_name))
 		else:
-			_log("%s claws you for %d as you struggle free." % [String(attacker.display_name), int(r.damage)])
+			_log("%s %s you for %d as you struggle free." % [String(attacker.display_name), String(move.get("verb", "attacks")), int(r.damage)])
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
 			(_acting.actor as Diver).play_death_fade()
 		await get_tree().create_timer(LOG_READ_DELAY).timeout

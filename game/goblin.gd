@@ -1,14 +1,18 @@
-# The grunt's model, sized and floor-aligned once here so nothing else has to
-# care that this FBX's own units were never hand-measured (no editor was open
-# to run tools/measure_fbx.gd against it, so it's rescaled to a target height
-# and dropped onto the seabed from whatever box it actually measures at
-# runtime, instead of a guessed constant). Display only: no collision, no
-# movement. Used by game/battle.gd to put the enemy on the battle stage.
+# The ordinary enemy's model, sized and floor-aligned once here so nothing else
+# has to care about its FBX units. Its gameplay class deliberately remains
+# Goblin: combat, balance and saved-game code already depend on that stable
+# actor contract. The visible model is Glassgoat's Angler Fish. Display only:
+# no collision or world movement. Used by game/battle.gd on the battle stage.
 class_name Goblin
 extends Node3D
 
-const SRC := preload("res://characters/GoblinGrunt.fbx")
+const SRC := preload("res://characters/Angler_Fish.fbx")
 const TARGET_HEIGHT := 1.6
+
+# Unlike the retired Goblin and the divers, this rig's visible face is its
+# local +Z axis. Battle uses face_toward() instead of assuming all actors have
+# the same forward axis.
+const COMBAT_FRONT_AXIS := Vector3.FORWARD
 
 # No grow_* here, and no independent base spread either anymore - a grunt's
 # stats are derived straight from the party's own current stats in
@@ -34,11 +38,14 @@ var xp_reward: int = BASE_XP
 var anim: AnimationPlayer
 var height := 1.6
 var radius := 0.4
-var _walk_anim := ""
 var _idle_anim := ""
+var _swim_anim := ""
+var _attack_anim := ""
+var _hurt_anim := ""
+var _death_anim := ""
 
 func _ready() -> void:
-	var model: Node3D = SRC.instantiate()
+	var model: Node3D = model_source().instantiate()
 	model.name = "Model"
 	add_child(model)
 
@@ -54,11 +61,34 @@ func _ready() -> void:
 	if anim != null:
 		for a in anim.get_animation_list():
 			var lower := String(a).to_lower()
-			if "walk" in lower:
-				_walk_anim = a
-			elif "idle" in lower:
+			if "idle" in lower:
 				_idle_anim = a
+			elif "swimming" in lower and "mid" in lower:
+				_swim_anim = a
+			elif "damaged" in lower:
+				_hurt_anim = a
+			elif "death" in lower:
+				_death_anim = a
+	_attack_anim = _resolve_clip(primary_attack_clip())
 	play("idle")
+
+# The existing Goblin class is the stable enemy actor contract used by battle,
+# guardian triggers, progression and balance. Subclasses swap only asset-facing
+# facts; all of those systems can keep treating the actor as a Goblin.
+func model_source() -> PackedScene:
+	return SRC
+
+func enemy_catalogue() -> Array:
+	return EnemyMoves.angler_catalogue()
+
+func enemy_id() -> String:
+	return "angler"
+
+func display_name() -> String:
+	return "Angler"
+
+func primary_attack_clip() -> String:
+	return "attack)bite"
 
 # Always at least a little stronger than ref on every stat, never weaker
 # and never exactly equal - a fight should never quietly be easier than the
@@ -100,16 +130,100 @@ func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 func _edge() -> float:
 	return randf_range(MIN_EDGE, MAX_EDGE)
 
-# substr: "idle" or "walk", matched loosely against the FBX's own take names
-# ("rig|Idle", "rig|Walking", ...) so exact capitalisation doesn't matter.
+# Keys are semantic rather than raw FBX paths. Glassgoat's non-humanoid rig
+# names its moves differently from the retired Goblin: swim loop, Bite,
+# Damaged, and Death. Keeping that translation here lets battle.gd ask for
+# the same readable actions regardless of importer naming.
 func play(substr: String) -> void:
 	if anim == null:
 		return
-	var want := _walk_anim if substr == "walk" else _idle_anim
+	var want := _idle_anim
+	match substr:
+		"swim", "walk":
+			want = _swim_anim
+		"attack":
+			want = _attack_anim
+		"hurt":
+			want = _hurt_anim
+		"death":
+			want = _death_anim
 	if want == "" and not anim.get_animation_list().is_empty():
 		want = anim.get_animation_list()[0]
 	if want != "" and anim.current_animation != want:
 		anim.play(want)
+
+# A fresh deep copy makes it safe for Battle/UI code to attach per-turn data
+# without mutating the next encounter's artist-facing catalogue.
+func available_moves() -> Array:
+	var available: Array = []
+	for move_value in enemy_catalogue():
+		var move := move_value as Dictionary
+		if bool(move.get("enabled", false)):
+			available.append(move)
+	return available
+
+func has_clip_fragment(fragment: String) -> bool:
+	return _resolve_clip(fragment) != ""
+
+func play_move(move: Dictionary) -> float:
+	if anim == null or not bool(move.get("enabled", false)):
+		return 0.0
+	var clip := _resolve_clip(String(move.get("clip", "")))
+	if clip == "":
+		return 0.0
+	anim.play(clip)
+	var animation := anim.get_animation(clip)
+	return animation.length if animation != null else 0.0
+
+# Select by authored data, not a conditional tied to a particular animation.
+# `finisher_below_hp` is optional; any enabled move with it makes the target
+# low-health state use every move's finisher_weight instead of normal weight.
+func choose_move(target: CombatantStats) -> Dictionary:
+	var moves := available_moves()
+	if moves.is_empty():
+		return {}
+	# Keep a deliberate roll order in content data. This preserves deterministic
+	# balance seeds while allowing the catalogue to stay human-readable.
+	moves.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left.get("roll_order", 0)) < int(right.get("roll_order", 0)))
+	var finisher := false
+	for move_value in moves:
+		var move := move_value as Dictionary
+		var threshold := float(move.get("finisher_below_hp", 0.0))
+		if threshold > 0.0 and float(target.hp) <= float(target.hp_max) * threshold:
+			finisher = true
+			break
+	var total := 0.0
+	for move_value in moves:
+		var move := move_value as Dictionary
+		total += maxf(0.0, float(move.get("finisher_weight", 0.0) if finisher else move.get("weight", 0.0)))
+	if total <= 0.0:
+		return {}
+	var roll := randf() * total
+	for move_value in moves:
+		var move := move_value as Dictionary
+		roll -= maxf(0.0, float(move.get("finisher_weight", 0.0) if finisher else move.get("weight", 0.0)))
+		if roll <= 0.0:
+			return move.duplicate(true)
+	return (moves.back() as Dictionary).duplicate(true)
+
+func face_toward(world_target: Vector3) -> void:
+	var to := world_target - global_position
+	to.y = 0.0
+	if to.length() < 0.05:
+		return
+	# For a local +Z front, yaw 0 faces world +Z. This is intentionally the
+	# opposite sign from the divers'/-Z helper in Battle._step_toward().
+	rotation.y = atan2(to.x, to.z)
+
+func _resolve_clip(fragment: String) -> String:
+	if anim == null or fragment.strip_edges().is_empty():
+		return ""
+	var wanted := fragment.to_lower().replace(" ", "")
+	for clip_value in anim.get_animation_list():
+		var clip := String(clip_value)
+		if clip.to_lower().replace(" ", "").contains(wanted):
+			return clip
+	return ""
 
 # Called by battle.gd the instant a hit actually brings this grunt to 0 HP.
 # Fades every mesh surface to transparent while the whole model sinks and
@@ -124,7 +238,7 @@ func play(substr: String) -> void:
 # mutating one in place could fade every other living grunt on the stage
 # along with this one.
 func play_death_fade() -> void:
-	play("idle")
+	play("death")
 	var tw := create_tween()
 	tw.set_parallel(true)
 	for m in _meshes(self):
