@@ -167,22 +167,24 @@ func _build_swap() -> void:
 	_instruction("3 · MAXILANI", "E · SWAP", Vector3(0.0, 3.0, 0.0))
 
 func _build_door() -> void:
-	# The individual plates carry their own named labels. Keeping this central
-	# cue compact avoids the previous forest of bright beams hiding the party.
-	_instruction("FINAL GATE", "MATCH THE NAMED PLATES", Vector3(0.0, 4.1, 0.0))
+	# The plates themselves carry the names and their card reports 0/3. A
+	# fourth central label was merely a second voice competing with the answer.
+	pass
 
 func _build_combat() -> void:
 	# Red target reticle: combat is intentionally the first thing beyond the
 	# door, and should read as danger rather than another treasure waypoint.
 	# Float the telegraph above the fish: at body height the diver and the
 	# Angler obscured one another, making the supposed first danger read tiny.
-	var outer := _ring(1.65, Vector3(0.0, 3.25, 0.0), true)
-	var inner := _ring(0.72, Vector3(0.0, 3.25, 0.0), true)
+	# A horizontal target halo is legible from the chase camera; the old
+	# upright rings collapsed into a mysterious red bar.
+	var outer := _ring(1.15, Vector3(0.0, 3.25, 0.0), false, 0.8)
+	outer.name = "CombatReticle"
+	var inner := _ring(0.52, Vector3(0.0, 3.25, 0.0), false, 0.95)
 	_pulse(outer, 0.9, 1.14, 0.55)
 	_pulse(inner, 1.0, 1.25, 0.45)
-	_instruction("FIRST COMBAT", "RED ANGLER", Vector3(0.0, 5.0, 0.0))
-	# Reticles can be edge-on from the chase camera.  The red pulse at their
-	# centre makes the intended first combat readable at a glance.
+	# The card gives the enemy's name; this red halo is only a visual locator,
+	# not another floating block of duplicate tutorial prose.
 	var core := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.28

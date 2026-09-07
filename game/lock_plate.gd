@@ -23,12 +23,15 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 
+	# A floor pad reads as "stand here". The previous upright, character-sized
+	# torus was visually louder than the named label and made the finale look
+	# like three unrelated portal rings.
 	var ring := TorusMesh.new()
-	ring.inner_radius = 0.9
-	ring.outer_radius = 1.2
+	ring.inner_radius = 0.58
+	ring.outer_radius = 0.78
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = ring
-	mesh.rotation_degrees.x = 90.0
+	mesh.position.y = -1.05
 	_mat = StandardMaterial3D.new()
 	_mat.emission_enabled = true
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

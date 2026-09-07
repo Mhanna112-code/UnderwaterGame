@@ -339,11 +339,11 @@ func _restore_onboarding(saved: Dictionary) -> void:
 	onboarding_active = true
 	onboarding_step = raw_step
 	_puzzle_solved = bool(saved.get("puzzle_solved", false))
-	_set_onboarding_halos(true)
+	_set_onboarding_halos(raw_step != OnboardingStep.DOOR)
 	_set_onboarding_ui(true)
 	_show_onboarding_step()
 	if onboarding_step == OnboardingStep.DOOR:
-		_set_onboarding_halos(true)
+		_set_onboarding_halos(false)
 
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
@@ -1354,7 +1354,9 @@ func _on_onboarding_swap_completed() -> void:
 		return
 	onboarding_step = OnboardingStep.DOOR
 	_show_onboarding_step()
-	_set_onboarding_halos(true)
+	# Named, colour-matched plates and the 0/3 card now explain this gate.
+	# Retiring the three huge party halos here keeps the puzzle readable.
+	_set_onboarding_halos(false)
 	_write_save()
 
 func _finish_onboarding() -> void:
@@ -1430,7 +1432,8 @@ func _show_onboarding_step() -> void:
 		_onboarding_marker.is_goal = false
 		add_child(_onboarding_marker)
 	_onboarding_marker.global_position = target + Vector3.UP * 1.8
-	_onboarding_marker.visible = true
+	# The named pads themselves are a better door cue than a fourth arrow.
+	_onboarding_marker.visible = onboarding_step != OnboardingStep.DOOR
 	_set_onboarding_cue(cue_kind, target)
 
 func _set_onboarding_ui(lesson_active: bool) -> void:

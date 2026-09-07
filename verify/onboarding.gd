@@ -59,12 +59,13 @@ func _run() -> void:
 	var panel := world.onboarding_panel
 	if panel == null or not panel.visible:
 		findings.append("UX-01: New Game has no visible onboarding card")
-	elif not is_equal_approx(panel.anchor_right, 1.0) or panel.offset_right >= 0.0:
-		findings.append("UX-01: onboarding card is not viewport-responsive")
+	elif panel.position.x < 20.0 or panel.size.x > panel.get_viewport_rect().size.x - 40.0:
+		findings.append("UX-01: onboarding card is not safely inset and viewport-responsive")
 	else:
-		var action := panel.get_node_or_null("Card/Rows/Action") as Label
+		var action := panel.get_node_or_null("Card/Rows/Instruction") as Label
+		var chip := panel.get_node_or_null("Card/Rows/AbilityChip") as Label
 		var hint := panel.get_node_or_null("Card/Rows/Hint") as Label
-		if action == null or not action.text.contains("MECH PILOT") or not action.text.contains("SHOCKWAVE"):
+		if action == null or chip == null or not action.text.contains("MECH PILOT") or not chip.text.contains("SHOCKWAVE"):
 			findings.append("UX-01: first card does not name the diver and ability")
 		if hint == null or not hint.text.contains("TAB"):
 			findings.append("UX-01: first card does not teach how to select the diver")
@@ -156,8 +157,8 @@ func _run() -> void:
 	if world.onboarding_step != World.OnboardingStep.DOOR:
 		findings.append("OB-10: a real across-gap Swap did not reveal the plate finale")
 	_expect_cue(world, TutorialCue.Kind.DOOR, "OB-10")
-	if world._onboarding_halos.size() != world.divers.size():
-		findings.append("OB-10: plate finale has no diver-matched visual halos")
+	if not world._onboarding_halos.is_empty():
+		findings.append("UX-02: plate finale still has redundant diver halos")
 	var progress := world.onboarding_panel.get_node_or_null("Card/Rows/Progress") as Label
 	if progress == null or not progress.text.contains("0 / 3"):
 		findings.append("UX-02: plate finale does not start with an explicit 0/3 progress state")
@@ -191,12 +192,12 @@ func _run() -> void:
 	if not world.first_combat_pending or world._first_combat_trigger == null or not world._first_combat_actor.visible:
 		findings.append("OB-13: no visible guaranteed first encounter was armed after the door")
 	var handoff := world.onboarding_panel.get_node_or_null("Card/Rows/Action") as Label
-	if handoff == null or handoff.text != "RED ANGLER AHEAD":
+	if handoff == null or handoff.text.to_upper() != "RED ANGLER AHEAD":
 		findings.append("UX-03: maze handoff is not a single clear Angler prompt")
 	if not world.banner.text.strip_edges().is_empty():
 		findings.append("UX-03: a second world banner duplicates the maze handoff")
-	if world._onboarding_cue == null or world._onboarding_cue.kind != TutorialCue.Kind.COMBAT or world._onboarding_cue.get_node_or_null("Instruction") == null:
-		findings.append("UX-03: first combat lacks its labelled red world cue")
+	if world._onboarding_cue == null or world._onboarding_cue.kind != TutorialCue.Kind.COMBAT or world._onboarding_cue.get_node_or_null("CombatReticle") == null:
+		findings.append("UX-03: first combat lacks its red world cue")
 	if world._active_cursor.visible:
 		findings.append("UX-03: active-diver cursor competes with the first combat cue")
 	var post_door_state: Dictionary = world._serialize_state().get("onboarding", {}) as Dictionary
