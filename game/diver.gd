@@ -423,7 +423,7 @@ const SWAP_COOLDOWN := 2.0
 const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0, "swap": 15.0}
 
 # No passive regen at all - a save point (world.gd's _on_save_requested())
-# is the only way oxygen comes back, so every ability use and every tick
+# is the only way oxygen comes back, so every completed ability and every tick
 # of sonar is spending down a tank that stays spent until you actually go
 # find one. Lower than the old always-on-passive drain used to need, since
 # there's no regen fighting it anymore - this is the whole cost, not a net
@@ -529,17 +529,25 @@ func ability_needs_aim() -> bool:
 # target: explicit target for abilities that don't aim at all but still
 # need to know who (swap) - comes from TargetSelector.confirmed, not a
 # raycast.
-func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> void:
+func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> bool:
 	if not can_use_ability():
-		return
-	stats.oxygen -= _ability_oxygen_cost()
+		return false
+	var completed := false
 	match ability_id:
 		"shockwave":
 			_shockwave()
+			completed = true
 		"grapple":
-			_grapple(aim_dir)
+			completed = _grapple(aim_dir)
 		"swap":
-			_swap(target as Diver)
+			completed = _swap(target as Diver)
+	if completed:
+		# Aiming at empty water (or cancelling a selector without a valid
+		# ally) is an experiment, not a completed ability. Charge only after
+		# the action has actually begun so failed Grapple attempts cannot
+		# strand the player without the oxygen needed for the real anchor.
+		stats.oxygen = maxf(0.0, stats.oxygen - _ability_oxygen_cost())
+	return completed
 
 
 func _shockwave() -> void:
@@ -674,7 +682,7 @@ func update_sonar() -> void:
 # seeing nothing happen reads as broken, not "you missed." Only a
 # confirmed hit on something in the "grapple_anchor" group spends the
 # cooldown or starts the pull; a clean miss can be retried immediately.
-func _grapple(aim_dir: Vector3) -> void:
+func _grapple(aim_dir: Vector3) -> bool:
 	var dir: Vector3 = aim_dir.normalized() if aim_dir.length() > 0.01 else -global_transform.basis.z
 	var space := get_world_3d().direct_space_state
 	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
@@ -688,7 +696,7 @@ func _grapple(aim_dir: Vector3) -> void:
 	_grapple_beam_vfx(from, beam_end)
 
 	if result.is_empty() or not (result.collider as Node).is_in_group("grapple_anchor"):
-		return
+		return false
 
 	_ability_cooldown = GRAPPLE_COOLDOWN
 	_is_grappling = true
@@ -710,6 +718,7 @@ func _grapple(aim_dir: Vector3) -> void:
 		_is_grappling = false
 		grapple_arrived.emit(result.collider as Node3D)
 	)
+	return true
 
 # Throwaway visual: a thin beam from where the diver fired to wherever the
 # shot actually ended (hit or not), fading out over the pull's own
@@ -756,9 +765,9 @@ func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
 # nothing to do with trading places with an ally, so it's now triggered by
 # reaching the far grapple anchor instead (see grapple_anchor.gd's
 # raises_bridge).
-func _swap(target: Diver) -> void:
+func _swap(target: Diver) -> bool:
 	if target == null or not is_instance_valid(target) or not target.can_be_selected:
-		return
+		return false
 
 	_ability_cooldown = SWAP_COOLDOWN
 
@@ -772,6 +781,7 @@ func _swap(target: Diver) -> void:
 	target.global_position = my_pos
 
 	swapped_with.emit(target)
+	return true
 
 # Throwaway visual: a matching flash at both the old and new spot, so the
 # swap reads as "these two places traded occupants" rather than just one

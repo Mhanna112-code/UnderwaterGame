@@ -119,6 +119,21 @@ func _run() -> void:
 	_press(world, KEY_TAB)
 	var musashi := _diver(world, "Prototype_1(1910)")
 	musashi.global_position = Vector3(21.0, 2.0, 10.0)
+	# A player naturally tests the line before finding the anchor. Those misses
+	# are feedback, not completed abilities: they must neither spend oxygen nor
+	# put Grapple on cooldown, otherwise five exploratory shots exhaust Musashi
+	# and make the mandatory final crossing impossible.
+	var oxygen_before_misses := musashi.stats.oxygen
+	for attempt in range(6):
+		# Deliberately aim out into open water, but not straight up: the latter
+		# is a degenerate orientation for the temporary beam mesh.
+		if musashi.use_ability(Vector3(0.25, 0.2, -1.0)):
+			findings.append("OB-07: vertical Grapple miss %d unexpectedly completed" % (attempt + 1))
+		await physics_frame
+	if not is_equal_approx(musashi.stats.oxygen, oxygen_before_misses):
+		findings.append("OB-07: repeated Grapple misses drained oxygen and can softlock the tutorial")
+	if not musashi.can_use_ability():
+		findings.append("OB-07: repeated Grapple misses left the required ability unavailable")
 	world.yaw = PI * 0.5
 	world.pitch = 0.0
 	_press(world, KEY_E)
