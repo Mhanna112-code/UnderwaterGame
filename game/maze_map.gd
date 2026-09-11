@@ -201,9 +201,6 @@ func _update_revealed() -> void:
 		var seg := _box_segment(box)
 		_draw_objects_within_radius()
 		
-func _draw_objects_within_radius() -> void:
-	for i in range(2):
-		diver.
 		
 # One pulsing red marker per key-item zone (ItemGuardian.spots()) sonar has
 # ever revealed (World.revealed_key_items) that hasn't been claimed yet

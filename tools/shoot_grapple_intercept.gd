@@ -42,11 +42,18 @@ func _run() -> void:
 	var diver := Diver.new()
 	diver.model_name = "Prototype_1(1910)"
 	viewport.add_child(diver)
+	# MODIFIED (added): the grapple target is enemy_actor himself now, not
+	# a group of thrown rocks - required for run() to do anything at all
+	# (see its own guard).
+	var enemy := Goblin.new()
+	viewport.add_child(enemy)
+	enemy.global_position = Vector3(0.0, 1.4, -9.0)
 
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = viewport
 	minigame.stage_camera = camera
 	minigame.target_actor = diver
+	minigame.enemy_actor = enemy
 	minigame.source_position = Vector3(0.0, 1.4, -9.0)
 	minigame.finished.connect(func(hits: int, total: int) -> void: result = [hits, total])
 	root.add_child(minigame)

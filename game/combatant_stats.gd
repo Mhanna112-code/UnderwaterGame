@@ -190,23 +190,52 @@ func status_summary() -> String:
 	return "  ".join(parts)
 
 # Adds XP and applies every level-up it crosses (a big win can jump more
-# than one level at once). Returns the list of levels reached, empty if
-# none - battle.gd uses that to decide whether to log anything.
+# than one level at once). Returns one Dictionary per level reached -
+# {"level": int, "grown": {"HP"/"STR"/"DEF"/"AGI"/"ACC"/"EVA": int}} - empty
+# if none. battle.gd uses "level" to decide whether/what to log, and
+# "grown" to build the level-up stat table (_build_levelup_block()).
 func gain_xp(amount: int) -> Array:
 	xp += amount
 	var levels_gained: Array = []
 	while xp >= xp_to_next:
 		xp -= xp_to_next
 		level += 1
-		hp_max += grow_hp
-		strength += grow_strength
-		defense += grow_defense
-		agility += grow_agility
-		accuracy += grow_accuracy
-		evasion += grow_evasion
+		var hp_up := _rolled_growth(grow_hp)
+		var str_up := _rolled_growth(grow_strength)
+		var def_up := _rolled_growth(grow_defense)
+		var agi_up := _rolled_growth(grow_agility)
+		var acc_up := _rolled_growth(grow_accuracy)
+		var eva_up := _rolled_growth(grow_evasion)
+		hp_max += hp_up
+		strength += str_up
+		defense += def_up
+		agility += agi_up
+		accuracy += acc_up
+		evasion += eva_up
 		xp_to_next = int(round(XP_BASE * pow(float(level), XP_CURVE)))
 		spell_points += 1
-		levels_gained.append(level)
+		levels_gained.append({
+			"level": level,
+			"grown": {
+				"HP": hp_up, "STR": str_up, "DEF": def_up,
+				"AGI": agi_up, "ACC": acc_up, "EVA": eva_up,
+			},
+		})
 	if not levels_gained.is_empty():
 		fill()      # a level-up is the game's only heal/recharge right now
 	return levels_gained
+
+# Turns a diver's flat per-level growth (diver.gd's BASE_STATS) into a ±1
+# roll around that same center, so leveling has real level-to-level
+# surprise instead of the exact same numbers every time, without touching
+# which diver tends to grow faster in what - see BASE_STATS' own header
+# comment for why those per-diver spreads exist in the first place. A base
+# of 0 (Musashi's grow_defense, Mech Pilot's grow_agility - deliberately
+# flat identity stats) stays fixed at exactly 0 rather than getting a roll,
+# so "Musashi never gets tankier"/"Mech Pilot never gets more agile" stays
+# true no matter how many times you level, instead of drifting toward the
+# other divers' spreads over a long campaign.
+func _rolled_growth(base: int) -> int:
+	if base <= 0:
+		return 0
+	return maxi(0, base + randi_range(-1, 1))

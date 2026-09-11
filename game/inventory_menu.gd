@@ -1,4 +1,4 @@
-# The Escape-key pause menu - two tabs. "Items" (potions and anything else
+# The Escape-key pause menu - three tabs. "Items" (potions and anything else
 # Items.ITEMS defines as a consumable) applies straight to whoever you're
 # currently steering, same as before. "Party Spells" is any known move/
 # spell tagged "inventory": true (see battle.gd's BASE_MOVES/spell_tree.gd's
@@ -9,6 +9,11 @@
 # World.inventory now (see world.gd's _on_item_orb_collected()/
 # _grant_reward_item()), and World.use_inventory_item()/use_party_spell()
 # (called from here) are the only places those effects actually resolve.
+# "Combat Help" is pure reference, no buttons that do anything - status
+# condition writeups (see content/tutorial_content.gd's STATUS_CONDITIONS)
+# for whoever wants the full Blindness/Stun numbers again outside of a
+# fight, since the tutorial battle only ever mentions this tab exists
+# rather than reprinting the whole thing itself.
 #
 # Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
 # SpellEquipUI/SavePointMenu - nothing here is scene-file based, on purpose,
@@ -32,6 +37,7 @@ var _hint: Label
 var _list: VBoxContainer
 var _items_tab: Button
 var _spells_tab: Button
+var _help_tab: Button
 
 func _ready() -> void:
 	visible = false
@@ -70,6 +76,11 @@ func _ready() -> void:
 	_spells_tab.toggle_mode = true
 	_spells_tab.pressed.connect(_switch_to.bind("spells_root"))
 	tabs.add_child(_spells_tab)
+	_help_tab = Button.new()
+	_help_tab.text = "Combat Help"
+	_help_tab.toggle_mode = true
+	_help_tab.pressed.connect(_switch_to.bind("help"))
+	tabs.add_child(_help_tab)
 
 	_hint = Label.new()
 	_hint.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
@@ -93,7 +104,8 @@ func _switch_to(mode: String) -> void:
 		_pending_spell = {}
 		_pending_caster = null
 	_items_tab.button_pressed = mode == "items"
-	_spells_tab.button_pressed = mode != "items"
+	_spells_tab.button_pressed = mode in ["spells_root", "spells_target"]
+	_help_tab.button_pressed = mode == "help"
 	refresh()
 
 func refresh() -> void:
@@ -106,6 +118,8 @@ func refresh() -> void:
 			_refresh_spells_root()
 		"spells_target":
 			_refresh_spells_target()
+		"help":
+			_refresh_help()
 
 func _refresh_items() -> void:
 	_hint.text = "Using an item applies it to whoever you're currently steering."
@@ -213,3 +227,21 @@ func _on_target_chosen(target: Diver) -> void:
 	world.use_party_spell(_pending_spell, _pending_caster, target)
 	_mode = "spells_root"
 	refresh()
+
+# Plain reference text, no buttons - one title/body Label pair per
+# TutorialContent.STATUS_CONDITIONS entry, so a new status only ever needs
+# adding there, not here too.
+func _refresh_help() -> void:
+	_hint.text = "Status conditions"
+	for entry in TutorialContent.STATUS_CONDITIONS:
+		var title := Label.new()
+		title.text = String(entry.get("title", ""))
+		title.add_theme_font_size_override("font_size", 18)
+		title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+		_list.add_child(title)
+		var body := Label.new()
+		body.text = String(entry.get("body", ""))
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD
+		body.custom_minimum_size = Vector2(360, 0)
+		body.add_theme_color_override("font_color", Color(0.8, 0.88, 0.9))
+		_list.add_child(body)

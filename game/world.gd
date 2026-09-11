@@ -18,6 +18,22 @@ const CAST := [
 
 var divers: Array = []
 var active := 0
+var _intro_arrow: MeshInstance3D
+
+# Gates TAB/random-encounters and holds the camera on the light beam from
+# the moment the world loads until the active diver actually reaches it -
+# see intro_arrow(), _show_intro_text(), render_light_beam(), and
+# _update_intro_sequence() below.
+var _intro_active := false
+const INTRO_ARRIVAL_DIST := 2.5
+var _first_encounter_started := false
+var _transitioning_to_encounter := false
+# Set once the choreographed tutorial fight (see battle.gd's
+# tutorial_encounter) actually finishes - _on_battle_finished() flips this.
+# Gates the save point (_toggle_save_menu()/_update_save_point_prompt())
+# until then, same reasoning as gating TAB/random encounters: nothing about
+# the tutorial should be skippable by ducking into a menu mid-walk-over.
+var _first_encounter_done := false
 
 # random encounters: each Diver tracks its own distance swum and fires
 # encounter_triggered when it rolls one (see diver.gd). This just reacts -
@@ -137,6 +153,11 @@ var title_layer: CanvasLayer
 # win, so declining or losing cannot silently delete the site's content.
 var special_encounter_prompt: SpecialEncounterPrompt
 var tutorial_book: TutorialBook
+# Shown once on a genuinely new save (_on_title_new_game()) instead of the
+# tutorial book auto-opening there - see IntroCrawl's own header comment.
+# The tutorial book itself is untouched: F1 (this file's own
+# _unhandled_input()) still reopens it any time, same as before.
+var intro_crawl: IntroCrawl
 var _special_encounter_item := ""
 var _special_encounter_diver: Diver
 var _special_encounter_pre_hp := 0
@@ -312,12 +333,20 @@ func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
 	_write_save()
 	title_screen.close()
+	# The opening story crawl plays here, between closing the title screen
+	# and actually unpausing the world - a brand new game specifically,
+	# never Load Game (a returning save has already seen it) and never a
+	# "Return to Title" replay of the title screen itself (that's
+	# _show_title_screen(), a different path). get_tree() stays paused
+	# underneath the whole time, same as the title screen it's replacing
+	# on screen, and HUD stays hidden until it's actually done. No
+	# tutorial-book auto-open alongside it any more - F1 still reopens
+	# that same book any time afterward (_unhandled_input below), just not
+	# forced on a brand new game the way the crawl is.
+	intro_crawl.open()
+	await intro_crawl.finished
 	$HUD.visible = true
 	get_tree().paused = false
-	# One-time walkthrough for a genuinely new save - combat math, stats,
-	# special encounters, the works (see content/tutorial_content.gd).
-	# F1 reopens the same book any time afterward (_unhandled_input below).
-	tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
 func _on_title_load_game(slot: int) -> void:
 	_current_slot = slot
@@ -439,6 +468,13 @@ var _wall_sight_area: Area3D
 enum CameraMode { PLAYER, FOCUS }
 var camera_mode := CameraMode.PLAYER
 var _camera_focus_target: Node3D = null
+
+# Keeps the normal chase camera's position (still tracking the active diver)
+# but points it at this instead of the diver, while set - used for the
+# intro sequence's light beam so the player stays framed the whole walk
+# over instead of the camera cutting away to hover near the beam. See
+# _move_camera()'s own use of this.
+var _camera_look_override: Node3D = null
 var _camera_focus_timer := 0.0
 
 # test seam: verify/swim.gd steers the player without a keyboard. Nothing in
@@ -472,10 +508,18 @@ func _ready() -> void:
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner = Label.new()
 	banner.name = "Banner"
-	banner.offset_left = 16.0
-	banner.offset_top = 80.0
-	banner.offset_right = 900.0
-	banner.offset_bottom = 130.0
+	# Bottom-center, hugging the bottom edge of its own box so the text sits
+	# right underneath the diver (who's roughly screen-center while playing)
+	# and just above the HP/oxygen bars (_build_hp_bar/_build_oxygen_bar
+	# occupy the last 82px at the very bottom - see below).
+	banner.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	banner.offset_left = -320.0
+	banner.offset_right = 320.0
+	banner.offset_top = -170.0
+	banner.offset_bottom = -90.0
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	banner.add_theme_font_size_override("font_size", 20)
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -522,6 +566,11 @@ func _ready() -> void:
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
+	render_light_beam()
+	intro_arrow()
+	_show_intro_text()
+	_intro_active = true
+	_camera_look_override = light_beam
 	_update_hud()
 
 	# Do not parent the title to HUD: _show_title_screen() deliberately hides
@@ -549,6 +598,9 @@ func _ready() -> void:
 
 	tutorial_book = TutorialBook.new()
 	title_layer.add_child(tutorial_book)
+
+	intro_crawl = IntroCrawl.new()
+	title_layer.add_child(intro_crawl)
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
@@ -1218,7 +1270,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var k := (e as InputEventKey).keycode
 		if k == KEY_TAB:
-			if not aiming and not target_selector.selecting:
+			if not aiming and not target_selector.selecting and not _intro_active:
 				active = (active + 1) % divers.size()
 				_update_hud()
 		elif k == KEY_E:
@@ -1238,7 +1290,7 @@ func _start_ability() -> void:
 	if aiming or target_selector.selecting:
 		return
 	var d: Diver = divers[active]
-	if not d.can_use_ability():
+	if not d.can_use_ability() or _intro_active:
 		return
 	if d.ability_id == "swap":
 		target_selector.start_selection(d)
@@ -1257,7 +1309,19 @@ func _start_ability() -> void:
 # does anything for whichever diver actually has the sonar passive; a
 # stray Q on anyone else is a silent no-op just like it would be on a
 # diver with no ability at all.
+#
+# Silent no-op (same shape as _start_ability()'s own _intro_active check)
+# until the choreographed first fight is actually done - _first_encounter_
+# done covers the intro walk AND the fight itself (battling already blocks
+# _unhandled_input() outright, but the brief transition tween between the
+# two - _transitioning_to_encounter - has neither flag set), so this one
+# check covers the whole span "before the tutorial" actually means,
+# without a separate carve-out for that gap. No "not yet" message either -
+# the goal is a clean first walk with nothing else competing for
+# attention, not a wall of "can't do that yet" banners.
 func _toggle_sonar() -> void:
+	if not _first_encounter_done:
+		return
 	var d: Diver = divers[active]
 	if d.passive_id != "sonar":
 		return
@@ -1280,6 +1344,9 @@ func _toggle_save_menu() -> void:
 		save_point_menu.close()
 		return
 	if aiming or target_selector.selecting:
+		return
+	if not _first_encounter_done:
+		_announce("Finish your first encounter before saving.")
 		return
 	# Pressing P off a save point used to just silently do nothing - which
 	# reads identically to "the menu is broken" from the player's side.
@@ -1336,7 +1403,7 @@ func _update_save_point_prompt() -> void:
 			banner.text = ""
 			_showing_save_prompt = false
 		return
-	var on_point := _diver_on_save_point(divers[active])
+	var on_point := _diver_on_save_point(divers[active]) and _first_encounter_done
 	if on_point and not _showing_save_prompt:
 		banner.text = "Save/Update Spells - Press P"
 		_banner_timer = 0.0
@@ -1388,7 +1455,11 @@ func _physics_process(dt: float) -> void:
 		# Movement pauses for the active diver while picking a swap target
 		# too - the camera's busy showing an ally, swimming around blind
 		# to where your own diver actually is would be confusing controls.
-		if i == active and not target_selector.selecting:
+		# Also pauses for the brief _start_first_encounter() tween onto the
+		# light beam's center - swim()'s own move_and_slide() running the
+		# same frame as a Tween driving global_position directly would fight
+		# it for the diver's actual position.
+		if i == active and not target_selector.selecting and not _transitioning_to_encounter:
 			d.swim(_player_dir(), _player_rise(), dt)
 		else:
 			# Zero input, not skipped entirely - swim() still drains
@@ -1407,6 +1478,60 @@ func _physics_process(dt: float) -> void:
 	_check_gap_puzzle()
 	_update_item_guardian_visibility()
 	_update_wall_visibility()
+	_update_intro_sequence()
+
+# Runs every physics frame from world load until the active diver reaches
+# the light beam: keeps the arrow aimed at it (the diver keeps moving, so a
+# one-time look_at from intro_arrow() would go stale immediately) and hands
+# off to _start_first_encounter() the moment they arrive. _intro_active
+# itself stays true straight through that handoff (see _start_first_
+# encounter()'s own comment) - TAB/random encounters/camera don't return to
+# normal until the tutorial battle is actually about to start.
+# Plain look_at(target, Vector3.UP) warns and produces a degenerate
+# rotation whenever the arrow ends up directly above/below the target - and
+# it does, right at game start: Maxilani's CAST position is (0, 2.0, 0),
+# directly over the beam's own (0, *, 0) center. Falls back to a level
+# vector as the up hint for just that one degenerate case; normal look_at
+# resumes the instant the diver steps off that exact vertical line.
+func _point_arrow_at(target_pos: Vector3) -> void:
+	if not is_instance_valid(_intro_arrow):
+		return
+	var to_target := target_pos - _intro_arrow.global_position
+	var up := Vector3.UP
+	if absf(to_target.normalized().dot(Vector3.UP)) > 0.999:
+		up = Vector3.FORWARD
+	_intro_arrow.look_at(target_pos, up)
+
+func _update_intro_sequence() -> void:
+	if not _intro_active or _first_encounter_started:
+		return
+	if not is_instance_valid(light_beam) or not is_instance_valid(_intro_arrow):
+		_intro_active = false
+		return
+	_point_arrow_at(light_beam.global_position)
+	var d: Diver = divers[active]
+	if d.global_position.distance_to(light_beam.global_position) <= INTRO_ARRIVAL_DIST:
+		_intro_arrow.visible = false
+		_start_first_encounter(d)
+
+func _start_first_encounter(d: Diver) -> void:
+	if _first_encounter_started:
+		return
+	_first_encounter_started = true
+	_transitioning_to_encounter = true
+	var target_pos := Vector3(light_beam.global_position.x, d.global_position.y, light_beam.global_position.z)
+	var tw := create_tween()
+	tw.tween_property(d, "global_position", target_pos, 0.5)
+	await tw.finished
+	_transitioning_to_encounter = false
+	_intro_active = false
+	_camera_look_override = null
+	# All three divers now, not just the one that walked up - the tutorial
+	# script itself demonstrates one scripted move each from all three (see
+	# battle.gd's _TUTORIAL_SCRIPT), CAST's own order (Staff_Diver,
+	# Prototype_1(1910), Prototype_V(1922)) is what makes divers[0]/[1]/[2]
+	# resolve to Maxilani/Musashi/Mech Pilot there.
+	_start_battle("", false, divers, false, true)
 
 # A real Area3D, radius matched to minimap.view_radius - "revealed" and
 # "currently fits on the minimap's own zoom circle" are the same distance
@@ -1432,6 +1557,7 @@ func _build_wall_sight_area() -> void:
 	shape.shape = sphere
 	_wall_sight_area.add_child(shape)
 	add_child(_wall_sight_area)
+
 
 # Follows the active diver every physics tick and reveals whichever
 # WALL PIECES (not whole walls) actually overlap the detection area, for
@@ -1546,12 +1672,25 @@ func _player_dir() -> Vector3:
 		return Vector3.ZERO
 	f = f.normalized()
 	# swim where the camera is looking, not where the world's axes point.
-	# fwd matches the camera's actual look direction (see _move_camera's
-	# `dir`); right is fwd rotated -90 around Y so it points to screen-right
-	# regardless of which way the diver model currently happens to be
-	# facing. W/A/S/D always map to camera-forward/left/back/right.
+	# fwd matches the camera's actual look direction; right is fwd rotated
+	# -90 around Y so it points to screen-right regardless of which way the
+	# diver model currently happens to be facing. W/A/S/D always map to
+	# camera-forward/left/back/right.
 	var fwd := Vector3(sin(yaw), 0, cos(yaw))
-	var right := Vector3(-cos(yaw), 0, sin(yaw))
+	# MODIFIED: while _camera_look_override is set (the intro's light beam -
+	# see _move_camera()'s own `orbit_dir`), the camera actually LOOKS at
+	# that override, not wherever yaw points - fwd used to stay yaw-based
+	# regardless, so W/A/S/D kept mapping to a direction the screen wasn't
+	# actually showing as forward, which read as the controls having gone
+	# inverted/scrambled for the length of the walk to the beam. Matching
+	# _move_camera()'s own orbit_dir here (diver-to-beam, not yaw) keeps
+	# "forward" meaning the same thing on screen as it does to the keys.
+	if is_instance_valid(_camera_look_override) and active >= 0 and active < divers.size():
+		var to_target: Vector3 = _camera_look_override.global_position - divers[active].global_position
+		to_target.y = 0.0
+		if to_target.length_squared() > 0.0001:
+			fwd = to_target.normalized()
+	var right := Vector3(-fwd.z, 0, fwd.x)
 	return (right * f.x - fwd * f.y).normalized()
 
 func _player_rise() -> float:
@@ -1587,16 +1726,32 @@ func _move_camera(dt: float) -> void:
 		return
 
 	var focus: Vector3 = d.global_position + Vector3(0, d.height * 0.35, 0)
-	var want: Vector3 = focus - dir * cam_dist
+	# MODIFIED: `dir` used to stay _aim_dir() (the diver's own movement/
+	# facing direction) even while _camera_look_override was set, so the
+	# camera sat wherever the diver's OWN heading put it and only swiveled
+	# to look at the beam afterward - correct look_at, but positioned with
+	# no regard for where the beam actually was, so the diver routinely
+	# ended up off to one side of frame (or out of it) instead of staying
+	# centered between the camera and the thing it's looking at. Orbiting
+	# around the diver-to-beam direction instead keeps the camera on the
+	# opposite side of the diver FROM the beam, so the shot reads as
+	# "looking past the diver at the beam" the whole walk over, the same
+	# framing intent _start_first_encounter()'s own header comment already
+	# describes.
+	var orbit_dir := dir
+	if is_instance_valid(_camera_look_override):
+		var to_target: Vector3 = _camera_look_override.global_position - focus
+		to_target.y = 0.0
+		if to_target.length_squared() > 0.0001:
+			orbit_dir = to_target.normalized()
+	var want: Vector3 = focus - orbit_dir * cam_dist
 	want.y = maxf(want.y, 0.6)      # never bury the camera in the seabed
 	cam.global_position = cam.global_position.lerp(want, clampf(dt * 8.0, 0.0, 1.0))
-	cam.look_at(focus, Vector3.UP)
+	var look_at_point := focus
+	if is_instance_valid(_camera_look_override):
+		look_at_point = _camera_look_override.global_position
+	cam.look_at(look_at_point, Vector3.UP)
 
-# Shared chase-style framing centered on `target` instead of the active
-# diver - the one camera behavior behind both CameraMode.FOCUS uses
-# (TargetSelector picking a swap candidate, and the post-swap confirmation
-# hold in _on_diver_swapped), so both look and feel identical rather than
-# being two independent implementations of "look at someone else."
 func _camera_pan_toward(target: Node3D, dir: Vector3, dt: float) -> void:
 	var lift := 0.35
 	if target is Diver:
@@ -1620,6 +1775,141 @@ func return_camera_to_player() -> void:
 	camera_mode = CameraMode.PLAYER
 	_camera_focus_target = null
 	_camera_focus_timer = 0.0
+
+# A vertical shaft of light (e.g. sunlight through the water). The
+# shimmer/pulse/height-fade all vary per-pixel along the beam's length, which
+# only the GPU can do - so that math lives in the shader's fragment(), driven
+# by the shader's own TIME (free-running, no GDScript upkeep) and v_y (the
+# vertex's normalized height, computed once per vertex and handed to
+# fragment() via a varying). GDScript's job is just: build the mesh, write
+# the shader, wire up the material, and add one node to the tree.
+var light_beam: MeshInstance3D
+
+func render_light_beam() -> void:
+	if light_beam != null:
+		return
+
+	var shimmer_speed := 1.5
+	var pulse_speed := 1.5
+	var brightness := 1.5
+	# MODIFIED: 6.0 -> 12.0, radii doubled below too - too small/thin to
+	# read as a landmark from across the dive site, the whole reason the
+	# intro walks the player toward it in the first place.
+	var beam_height := 12.0
+
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
+
+uniform vec4 beam_color : source_color = vec4(0.3, 0.6, 0.9, 0.3);
+uniform float shimmer_speed = 1.5;
+uniform float pulse_speed = 1.5;
+uniform float brightness = 1.5;
+uniform float beam_height = 6.0;
+
+varying float v_y;
+
+void vertex() {
+	// CylinderMesh is centered on local Y, spanning -height/2..height/2 -
+	// remap that to 0 (base) .. 1 (tip) so fragment() has a clean 0-1 height.
+	v_y = (VERTEX.y + beam_height * 0.5) / beam_height;
+}
+
+void fragment() {
+	float wave_1 = sin(v_y + 16.0 - TIME * shimmer_speed);
+	float wave_2 = sin(v_y + 31.0 - TIME * shimmer_speed);
+	float wave_3 = sin(v_y + 48.0 - TIME * shimmer_speed);
+	float shimmer = (wave_1 * 0.5 + wave_2 * 0.3 + wave_3 * 0.2) * 0.25;
+
+	float pulse = 0.8 + sin(TIME * pulse_speed) * 0.2;
+	float vertical_fade = 1.0 - v_y; // brightest at the base, dims toward the tip
+	float glow = vertical_fade * (0.65 + shimmer) * pulse;
+
+	ALBEDO = beam_color.rgb;
+	ALPHA = beam_color.a * glow;
+	EMISSION = beam_color.rgb * glow * brightness;
+}
+"""
+
+	var mesh := CylinderMesh.new()
+	mesh.height = beam_height
+	mesh.top_radius = 0.8
+	mesh.bottom_radius = 1.2
+
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("shimmer_speed", shimmer_speed)
+	material.set_shader_parameter("pulse_speed", pulse_speed)
+	material.set_shader_parameter("brightness", brightness)
+	material.set_shader_parameter("beam_height", beam_height)
+
+	light_beam = MeshInstance3D.new()
+	light_beam.mesh = mesh
+	light_beam.material_override = material
+	# World center, base resting on the seafloor (y=0 - see _build_site()),
+	# rising straight up: CylinderMesh is centered on its own local origin,
+	# so lifting it by half its height puts the base exactly at y=0.
+	light_beam.position = Vector3(0, beam_height * 0.5, 0)
+	var d: Diver = divers[active]
+	light_beam.global_position.x = d.global_position.x + 10
+	add_child(light_beam)
+
+# A one-shot marker that points at the light beam (render_light_beam()) from
+# just in front of the active diver. Parented to the diver at a small local
+# offset (forward along her own -Z, per diver.gd's rest-facing convention -
+# see the battle stage's own "backs to camera" comment for the same fact
+# used the other way - plus a little lift toward head height) rather than
+# anywhere in world space, so it moves and turns with her as she swims
+# without any extra tracking code of its own.
+# MODIFIED: this local offset used to be (10, height + 0.6, 0) - that 10
+# was meant for render_light_beam()'s OWN world-space nudge a few lines up
+# and never belonged here at all. Parented to the diver with a full 10
+# units of local X, it swung in a wide circle around her head every time
+# she turned, instead of sitting still in front of her.
+# Its own ROTATION is a separate matter from this position: _point_arrow_
+# at() re-aims it at the beam's global position every frame regardless of
+# the diver's current facing (look_at() computes whatever local rotation
+# achieves that global aim, parent rotation and all), so turning to swim
+# sideways moves the arrow's spot (still in front of her) without ever
+# throwing off which way it's pointing. No billboard here - unlike a
+# label, this mesh's whole job is to visibly point in a real 3D direction,
+# which billboarding would just override with "face the camera."
+func intro_arrow() -> void:
+	if _intro_arrow != null or light_beam == null:
+		return
+	var d: Diver = divers[active]
+
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Tip along local -Z (the axis look_at() aims at a target) with the base
+	# behind it, so orienting this mesh via look_at makes the tip visibly
+	# point at whatever it's aimed at.
+	st.add_vertex(Vector3(0, 0, -1))
+	st.add_vertex(Vector3(-0.5, 0, 0.6))
+	st.add_vertex(Vector3(0.5, 0, 0.6))
+
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color.LIGHT_BLUE
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	st.set_material(material)
+
+	_intro_arrow = MeshInstance3D.new()
+	_intro_arrow.mesh = st.commit()
+	_intro_arrow.scale = Vector3.ONE * 0.6
+	_intro_arrow.position = Vector3(0, d.height * 0.6, -1.0)
+	d.add_child(_intro_arrow)
+	_point_arrow_at(light_beam.global_position)
+
+
+# Pairs with intro_arrow() - called at the same moment (world _ready()) so
+# the hint text and the waypoint arrow appear together. Goes through the
+# shared banner (bottom-center, see _ready()) rather than its own label,
+# same as every other on-screen message.
+func _show_intro_text() -> void:
+	_intro_announce("Swim over to the light beam.")
+
 
 # Where the camera is actually looking, from yaw/pitch (mouse-look or
 # arrow keys) - matches _player_dir()'s horizontal forward when pitch is 0.
@@ -1691,7 +1981,7 @@ func _update_banner(dt: float) -> void:
 # diver you're actually steering gets to start one - the two drifting NPCs
 # roll independently but their triggers are ignored here.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active]:
+	if battling or d != divers[active] or _intro_active:
 		return
 	# An ordinary encounter, and only an ordinary one.
 	#
@@ -1759,27 +2049,32 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, custom_party: Array = [], special: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, custom_party: Array = [], special: bool = false, tutorial: bool = false) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Tethys rises from the deep!" if boss_encounter else "Something grunts out of the murk!")
+	_announce("Tethys rises from the deep!" if boss_encounter else ("Your first encounter - let's see what you've got." if tutorial else "Something grunts out of the murk!"))
 	battle = Battle.new()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
 	battle.boss_encounter = boss_encounter
 	battle.special_encounter = special
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
+	battle.tutorial_encounter = tutorial
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
+
 func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
+	var was_tutorial := battle.tutorial_encounter
 	battle.queue_free()
 	battle = null
 	battling = false
+	if was_tutorial:
+		_first_encounter_done = true
 	if _boss_playtest_active:
 		_boss_playtest_active = false
 		_pending_reward_item = ""
@@ -1815,9 +2110,9 @@ func _on_battle_finished(result: String) -> void:
 			if _pending_reward_item != "":
 				_grant_reward_item(_pending_reward_item)
 			else:
-				_announce("The grunt backs off into the dark.")
+				_announce("The enemy backs off into the dark.")
 		"fled":
-			_announce("You put some distance between you.")
+			_announce("You successfully ran away.")
 		"lost":
 			if was_special and _special_encounter_diver != null:
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
@@ -1859,6 +2154,10 @@ func _grant_reward_item(item_id: String) -> void:
 func _announce(text: String) -> void:
 	banner.text = text
 	_banner_timer = 4.0
+	
+func _intro_announce(text: String) -> void:
+	banner.text = text
+
 
 func _display_name(model_name: String) -> String:
 	# Display identity is centralized with each rig in Cast; model_name remains
@@ -1898,11 +2197,18 @@ var hp_bar: ProgressBar
 var hp_bar_label: Label
 var _hp_bar_mat: StyleBoxFlat
 
+# Shared by hp_bar_label and oxygen_bar_label - hp_bar_label had no
+# override at all (whatever the default theme font size happens to be)
+# while oxygen_bar_label was hardcoded to 13, so the two never actually
+# matched. One constant for both now.
+const WORLD_HUD_LABEL_FONT_SIZE := 14
+
 func _build_hp_bar() -> void:
 	var wrap := VBoxContainer.new()
 	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	wrap.offset_top = -56.0
 	wrap.offset_bottom = -10.0
+	wrap.add_theme_constant_override("separation", 4)
 	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
 	# MODIFIED (added): this spans the full WIDTH of the screen (BOTTOM_WIDE)
 	# and defaulted to STOP - a special-encounter minigame's own aim-down
@@ -1928,6 +2234,7 @@ func _build_hp_bar() -> void:
 	hp_bar_label = Label.new()
 	hp_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hp_bar_label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
 	wrap.add_child(hp_bar_label)
 
 func _update_hp_bar() -> void:
@@ -1948,8 +2255,15 @@ var oxygen_bar_label: Label
 func _build_oxygen_bar() -> void:
 	var wrap := VBoxContainer.new()
 	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	wrap.offset_top = -82.0
-	wrap.offset_bottom = -58.0
+	# MODIFIED: this band (offset_top to offset_bottom) used to be only 24px
+	# tall (-82 to -58), with just 2px of clearance above the HP bar's own
+	# band starting at -56 - nowhere near enough to fit a 14px bar plus a
+	# label on top of it, so the label routinely overflowed straight down
+	# onto the HP bar below. Now 40px tall with an 8px real gap above the
+	# HP bar's own top edge (-56).
+	wrap.offset_top = -104.0
+	wrap.offset_bottom = -64.0
+	wrap.add_theme_constant_override("separation", 4)
 	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
 	# MODIFIED (added): same full-width STOP-by-default bug as the HP bar's
 	# own wrap just above.
@@ -1971,7 +2285,7 @@ func _build_oxygen_bar() -> void:
 	oxygen_bar_label = Label.new()
 	oxygen_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	oxygen_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	oxygen_bar_label.add_theme_font_size_override("font_size", 13)
+	oxygen_bar_label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
 	wrap.add_child(oxygen_bar_label)
 
 func _update_oxygen_bar() -> void:

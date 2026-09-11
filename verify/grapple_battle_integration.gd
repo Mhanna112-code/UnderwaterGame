@@ -48,7 +48,11 @@ func _run() -> void:
 	# MODIFIED: was hardcoded [8, 8] - stale since TARGET_COUNT dropped to
 	# 5 (see grapple_intercept_minigame.gd's own header). Read the real
 	# constant instead of re-hardcoding a number that can drift again.
-	var expected := GrappleInterceptMinigame.TARGET_COUNT
+	#
+	# MODIFIED: TARGET_COUNT is now just ONE vortex wave's worth (2) - the
+	# real total across the whole encounter (finished.emit()'s own second
+	# argument) is TARGET_COUNT * TOTAL_VORTEX_WAVES.
+	var expected := GrappleInterceptMinigame.TARGET_COUNT * GrappleInterceptMinigame.TOTAL_VORTEX_WAVES
 	# MODIFIED: was also asserting wrong_hits == 1 and hp_after < hp_before,
 	# both driven by deliberately shooting a decoy (auto_hit_decoy(), now
 	# removed along with decoys entirely - see grapple_intercept_minigame.gd).

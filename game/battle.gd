@@ -46,6 +46,76 @@ var _special_round := 0
 # encounter one-on-one with the party instead of secretly replacing the one
 # approached actor with a random three-grunt pack.
 var guardian_encounter := false
+
+# The choreographed first fight (see World's light-beam intro sequence,
+# _start_first_encounter()). All three divers (always starting with Maxilani -
+# she's diver index 0 and TAB is disabled until she reaches the beam, see
+# World._intro_active) against one goblin, weakened across the board (HP
+# padded up, strength/accuracy cut down, heavy swings disabled entirely -
+# see _build_stage()/_do_enemy_turn()) so it can't accidentally kill anyone
+# before the lesson is even over. Walks the player through one scripted
+# move each from Maxilani, Musashi, then Mech Pilot in turn (flashing
+# button, everything else disabled - see _apply_tutorial_move_gate()), and
+# spends the goblin's own one scripted turn guaranteeing a Quick Time Event
+# actually shows up at least once (see _tutorial_prep_enemy_turn()) rather
+# than leaving that entirely to ENEMY_QTE_CHANCE. Real _resolve_attack()
+# math throughout; the fight is handed over for real once the script is
+# done (_advance_turn()'s "Defeat the enemy!" prompt) - a genuine win or
+# loss, not a guaranteed outcome.
+var tutorial_encounter := false
+# Ordered stage script for the choreographed first fight - each entry names
+# which `party` index acts next and which of their own base moves
+# _apply_tutorial_move_gate() forces, so a stage is a (diver, move) pair,
+# not just a diver. NOT a 1:1 stage-index==party-index mapping: stages 3
+# and 4 revisit Musashi (Weaken) and Maxilani (Flash Blast) for a second
+# lesson each off their own kits, after Mech Pilot's stage 2 turn - see
+# _tutorial_party_index_for_step().
+const _TUTORIAL_SCRIPT: Array[Dictionary] = [
+	{"party_index": 0, "move": "Electric Touch"},   # Maxilani
+	{"party_index": 1, "move": "Precise Tap"},       # Musashi
+	{"party_index": 2, "move": "Crushing Haymaker"}, # Mech Pilot
+	{"party_index": 1, "move": "Weaken"},            # Musashi again
+	{"party_index": 0, "move": "Flash Blast"},       # Maxilani again
+]
+# Index into _TUTORIAL_SCRIPT of whichever scripted stage is next. Only
+# advances (see _resolve_party_move()/_resolve_party_move_all()) when
+# whoever just acted is actually _TUTORIAL_SCRIPT[_tutorial_step]'s own
+# diver (see _is_tutorial_scripted_turn()), so the enemy going first, or a
+# diver whose stage already passed acting again later, doesn't skip a
+# stage in the script early. _start_party_turn()/_show_moves() only apply
+# the move-gate/flashing at all when the current actor matches that same
+# diver; anyone else's turn during the tutorial plays out completely
+# normally.
+var _tutorial_step := 0
+var _tutorial_enemy_turns := 0
+# Flips true the one time _advance_turn() shows the "Defeat the enemy!"
+# prompt (see its own header comment) - guards that prompt against firing
+# again on every later _advance_turn() call once the script itself is done.
+var _tutorial_finale_shown := false
+# Set by _tutorial_prep_enemy_turn() right before its one scripted enemy
+# turn, consumed (and reset) by _resolve_attack()'s own QTE roll - forces
+# that specific swing into a Quick Time Event regardless of the normal
+# ENEMY_QTE_CHANCE roll, so every player sees the mechanic demonstrated at
+# least once instead of it being left entirely to chance.
+var _tutorial_force_next_qte := false
+var _tutorial_flash_tween: Tween
+var _tutorial_caption: RichTextLabel
+# Built unconditionally (see _build_ui()) - shows the per-diver level-up
+# stat table _win() builds via _build_levelup_block(), any fight, not just
+# the tutorial one.
+var _levelup_caption: RichTextLabel
+# Lazily built the first time _highlight_turn_order() runs - a red-bordered
+# Panel sized to overlay _queue_bar, toggled on/off rather than rebuilt.
+var _turn_order_highlight: Panel
+# _explain_other_stats() boxes party[0]'s and enemies[0]'s whole status
+# card (name/HP/oxygen/EVA together) via _set_row_highlight() on
+# entry.card - see _build_overhead_bar(). Now that status cards sit in a
+# fixed side column instead of floating over each combatant in the 3D
+# stage, this is just a border toggle like every other highlight, not a
+# per-frame repositioned overlay.
+# How many "coming up" chips _refresh_queue_row() will ever draw, on top of
+# the acting combatant's own separate "NOW" chip.
+const MAX_QUEUE_SLOTS := 8
 # Verification can hold the automatic entrance/turn dispatcher while it
 # exercises each boss move directly. Shipped encounters leave this true.
 var boss_intro_enabled := true
@@ -94,8 +164,8 @@ const BASE_MOVES := {
 	"Staff_Diver": CombatMoves.SCUBA,
 	"Prototype_1(1910)": [
 		{"name": "Precise Tap", "power": 1, "acc_mod": 9, "hint": "Nearly unmissable, light", "text": "You land a precise tap"},
-		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers its defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
-		{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers its agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
+		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers a target's defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
+		{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers a target's agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
 	],
 	"Prototype_V(1922)": [
 		{"name": "Guard Bash", "power": 6, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
@@ -104,6 +174,36 @@ const BASE_MOVES := {
 	],
 }
 
+# var, not const: _ready() fills this in at runtime every time a Battle
+# instance loads (see the loop just below _ready()'s declaration) - a const
+# Dictionary in GDScript can't have its contents reassigned via subscript
+# either, only a plain var can be mutated like this.
+var stat_effects:= {}
+
+# Maps a stats-panel row's display label to the key stat_effects stores it
+# under (see _ready()'s stat_effects-building loop above). Only the four
+# rows create_stats_panel() actually draws - a status effect like "bleed"/
+# "blindness" can still land in stat_effects["enemy"] (see the "status"
+# match branch above) but has no row to preview into, so it's silently
+# skipped by _apply_stat_delta() rather than needing a fifth row here.
+const STAT_ROW_KEYS := {"STR": "strength", "DEF": "defense", "ACC": "accuracy", "EVA": "evasion"}
+
+# Built once in _build_ui() - see create_stats_panel(). Player panel is
+# always visible and always shows whoever's turn it is (_start_party_turn()
+# refreshes it); enemy panel only appears while hovering a specific enemy
+# in target_menu (see _show_stat_preview()/_clear_stat_preview()).
+var _player_stats_ui: Dictionary = {}
+var _enemy_stats_ui: Dictionary = {}
+# Set by _on_move_chosen() once a move's picked - the move's name on the
+# left, its raw power right-aligned on the right (same "spell cost" layout
+# as _add_power_badge() on the move button itself), sitting right above the
+# two stat panels for as long as target_menu is up. _selected_move_panel
+# wraps the row so _explain_damage() can box just the power number the
+# same way _set_row_highlight() boxes a stat row. Cleared back to main
+# menu/next turn - see _show_main()/_start_party_turn().
+var _selected_move_panel: PanelContainer
+var _selected_move_name: Label
+var _selected_move_power: Label
 # MODIFIED: quick_time_bool was false - the QTE used to only ever be
 # reachable through ENEMY_HEAVY_MOVE, so a normal swing could never
 # trigger it at all. Both enemy moves are QTE-eligible now; whether one
@@ -111,6 +211,27 @@ const BASE_MOVES := {
 # ENEMY_QTE_CHANCE/_resolve_attack()), decoupled entirely from which move
 # got chosen.
 const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": true}
+
+# A much gentler stand-in for ENEMY_MOVE, used only for the choreographed
+# first fight (see _do_enemy_turn()) - full power (9) plus a real grunt's
+# strength was one-shotting Maxilani (hp_max 10, defense 0) in playtesting,
+# well before she's had any chance to level up even once. Still a real
+# hit with real quick_time_bool (so the forced QTE below has something to
+# attach to), just not a lethal one.
+const TUTORIAL_ENEMY_MOVE := {"power": 1, "acc_mod": 1, "quick_time_bool": true}
+
+# Pinned onto the goblin's evasion_current right before Mech Pilot's
+# Crushing Haymaker (stage 2) and Maxilani's Flash Blast (stage 4) resolve -
+# see _explain_crushing_haymaker()/_explain_flash_blast(). Sits strictly
+# between the two moves' own effective accuracy (Mech Pilot's base 4,
+# minus Crushing Haymaker's own -3 acc_mod, is 1; Maxilani's base 3, Flash
+# Blast carries no acc_mod at all) so the Haymaker's own accuracy cost is
+# what makes IT miss while Flash Blast - identical target, same moment in
+# the fight, no acc_mod of its own - still lands. Both divers' accuracy is
+# fixed data (diver.gd's BASE_STATS), never randomized the way an enemy's
+# own stats are, so this is reliable regardless of which goblin variant
+# rolled for this fight.
+const TUTORIAL_HAYMAKER_DODGE_EVASION := 2
 
 # A grunt's occasional big swing - see _resolve_attack()'s "heavy" effect
 # branch for how heavy_min/heavy_max actually turn into damage (a fraction
@@ -170,27 +291,15 @@ const SWING_REACH := 1.8
 const OVERHEAD_BAR_WIDTH := 104
 # How far above a combatant's own head the bar floats, in metres.
 const OVERHEAD_LIFT := 0.12
+# Shared by hp_label and oxygen_label (_build_overhead_bar()) - one number
+# instead of two independently-picked ones (12 and 11) so "HP" and "O2"
+# read as the same size at a glance instead of one looking like a demoted
+# afterthought next to the other.
+const OVERHEAD_VALUE_FONT_SIZE := 12
 # World space set aside above each combatant for their own bar, so the
 # camera frames the bar and not just the body. Roughly the bar's height at
 # the distance these fights are fought at.
 const OVERHEAD_HEADROOM := 0.55
-# Bars are searched outward from their own head in steps until they stop
-# overlapping. Small enough that a nudge is not obvious, large enough to
-# clear a bar in a few passes.
-const OVERHEAD_NUDGE := 4.0
-const OVERHEAD_MAX_NUDGES := 40
-# What a pixel of travel is worth against a square pixel of overlap.
-#
-# Staying near the combatant matters more than not touching a neighbour.
-# Marc, on the first build of this: "health bars need to be positioned
-# basically right on top of or ever so slightly above, currently the divers
-# health bars are way too far above them to the point you cant tell they are
-# their health bars." A search that only avoided overlap did exactly that,
-# because with six combatants there is usually somewhere clear if you go far
-# enough, and far enough is too far. At this weight a bar will travel about
-# sixty pixels to escape a near-total overlap and barely move for a slight
-# one, which is the trade the quote asks for.
-const OVERHEAD_DRIFT_COST := 40.0
 
 var party: Array = []      # [{kind:"party", stats, model_name, display_name, equipped_spells, actor, hp_bar, hp_label}]
 var enemies: Array = []    # [{kind:"enemy", stats, display_name, actor, hp_bar, hp_label}]
@@ -238,10 +347,13 @@ var _stage_vp: SubViewport
 # height of the screen behind it. See _fit_panel_height().
 var _stage_container: SubViewportContainer
 var _stage_cam: Camera3D
-# Every combatant's health bar rides above their own head instead of sitting
-# in a list at the bottom of the screen. Marc's call, and the reason the
-# bottom strip is a strip now.
-var _overhead_layer: Control
+# Fixed 2D status stacks, not labels floating over each combatant in the
+# 3D stage - the party's own cards stack down the left edge, the enemies'
+# down the right (see _build_overhead_bar()). Static means no per-frame
+# 3D->screen projection or anti-overlap juggling is needed at all, unlike
+# the old head-tracking version this replaced.
+var _party_status_column: VBoxContainer
+var _enemy_status_column: VBoxContainer
 # The turn order, moved out of the bottom panel to the very top.
 var _queue_bar: PanelContainer
 
@@ -285,7 +397,93 @@ const QTE_TRACK_HEIGHT := 17.5
 var _qte_active := false
 var _qte_success := false
 
+# Set for the duration of one _tutorial_show_step() call - _unhandled_input()
+# flips this off the instant Enter/Numpad Enter is pressed, which is what
+# lets the awaiting `while _tutorial_awaiting_enter` loop in that function
+# return.
+var _tutorial_awaiting_enter := false
+
 func _ready() -> void:
+	for diver in BASE_MOVES:
+		for attack in BASE_MOVES[diver]:
+			var attack_name: String = attack["name"]
+
+			if not stat_effects.has(attack_name):
+				stat_effects[attack_name] = {
+					"player": {},
+					"enemy": {}
+				}
+
+			# -------------------------
+			# Player's stat changes
+			# -------------------------
+			if "power" in attack:
+				stat_effects[attack_name]["player"]["power"] = attack["power"]
+
+			if "acc_mod" in attack:
+				stat_effects[attack_name]["player"]["accuracy"] = attack["acc_mod"]
+
+			# -------------------------
+			# Enemy stat changes
+			# -------------------------
+			if "debuff" in attack:
+				# Negated - _apply_debuff() actually subtracts `amount` from
+				# the stat (a "debuff" lowers it), so the stored delta has to
+				# be negative too, or _apply_stat_delta() would preview the
+				# target's stat rising (green) instead of the drop (red) the
+				# move actually causes.
+				stat_effects[attack_name]["enemy"][attack["debuff"]] = -int(attack["amount"])
+
+			# -------------------------
+			# CombatMoves effects
+			# -------------------------
+			if "effects" in attack:
+				for effect in attack["effects"]:
+					var kind: String = effect.get("kind", "")
+
+					match kind:
+
+						"reduce_evasion":
+							if "amount" in effect:
+								if "accuracy" in effect["amount"]:
+									# Negated - this is a reduction (see the
+									# "reduce_" in the effect's own name), so
+									# the preview reads as a decrease (red,
+									# "-1"), not a stat increase.
+									stat_effects[attack_name]["enemy"]["evasion"] = \
+										-int(effect["amount"]["accuracy"])
+
+						"status":
+							if "status" in effect:
+								var status_name: String = String(effect["status"])
+								if "level" in effect:
+									if "flat" in effect["level"]:
+										var lvl: int = int(effect["level"]["flat"])
+										stat_effects[attack_name]["enemy"][status_name] = lvl
+										# Blindness has no row of its own in the
+										# stats panel (see STAT_ROW_KEYS - only
+										# STR/DEF/ACC/EVA), so without this its
+										# preview would silently show nothing at
+										# all despite actually lowering Agility,
+										# Accuracy, AND Defense (see combatant_
+										# stats.gd's effective_accuracy()/
+										# effective_defense()). Negated same as
+										# every other reduction above - mirror
+										# onto the two of those three stats that
+										# DO have a row.
+										if status_name == "blindness":
+											stat_effects[attack_name]["enemy"]["accuracy"] = -lvl
+											stat_effects[attack_name]["enemy"]["defense"] = -lvl
+
+						"self_temporary":
+							if "accuracy" in effect:
+								stat_effects[attack_name]["player"]["accuracy"] = \
+									effect["accuracy"]
+
+							if "evasion" in effect:
+								stat_effects[attack_name]["player"]["evasion"] = \
+									effect["evasion"]
+
 	layer = 10
 	_build_party()
 	_build_stage()
@@ -301,6 +499,231 @@ func _ready() -> void:
 		_log("Enemies block the way!" if enemies.size() > 1 else "A goblin grunt blocks the way!")
 		_advance_turn()
 
+# Builds one stats box (used for both the player panel and the enemy
+# preview panel - see _build_ui()) and hands back every Label a caller
+# might need to update later, since the locals here disappear the moment
+# this function returns. `values` holds each stat's base-number Label;
+# `deltas` holds the "+X"/"-Y" Label next to it, hidden until
+# _apply_stat_delta() has something to show (see _show_stat_preview()/
+# _clear_stat_preview()).
+func create_stats_panel(title: String) -> Dictionary:
+	var panel := PanelContainer.new()
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+
+	var rows := VBoxContainer.new()
+	margin.add_child(rows)
+
+	var title_label := Label.new()
+	title_label.text = title
+	rows.add_child(title_label)
+
+	var values := {}
+	var deltas := {}
+	var stat_rows := {}
+	for stat in ["STR", "DEF", "ACC", "EVA"]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+
+		var name_label := Label.new()
+		name_label.text = stat
+		name_label.custom_minimum_size.x = 40
+
+		var value_label := Label.new()
+		value_label.text = "0"
+		value_label.add_theme_color_override("font_color", Color.WHITE)
+
+		var delta_label := Label.new()
+		delta_label.text = ""
+		delta_label.visible = false
+
+		row.add_child(name_label)
+		row.add_child(value_label)
+		row.add_child(delta_label)
+
+		# Wraps `row` so a highlight (see _set_row_highlight()) can be drawn
+		# as this PanelContainer's own background/border - always exactly
+		# the right size and position by construction, since it's part of
+		# the row's own layout pass rather than a separately-positioned
+		# overlay Panel that has to be manually kept in sync (and can go
+		# stale - see _highlight_box()'s own header comment on the queue
+		# bar's simpler, non-nested case where that approach is still fine).
+		var row_panel := PanelContainer.new()
+		row_panel.add_theme_stylebox_override("panel", _row_stylebox(false))
+		row_panel.add_child(row)
+		rows.add_child(row_panel)
+
+		values[stat] = value_label
+		deltas[stat] = delta_label
+		stat_rows[stat] = row_panel
+
+	return {"panel": panel, "title": title_label, "values": values, "deltas": deltas, "rows": stat_rows}
+
+# Transparent fill either way - `on` just adds/removes a bordered outline
+# in `color` (red by default - _reposition_hp_highlight() passes purple
+# instead, to read as visually distinct from the stat-row highlights).
+# Kept as a plain StyleBoxFlat factory (not a cached resource swapped in/
+# out) since a fresh override is cheap and this only ever runs on an
+# explicit highlight toggle, never per-frame.
+func _row_stylebox(on: bool, color: Color = Color(1, 0, 0)) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)
+	if on:
+		style.border_color = color
+		style.set_border_width_all(3)
+	return style
+
+# `row_panel` is one of create_stats_panel()'s returned `rows` entries (a
+# PanelContainer wrapping that stat's name/value/delta row) - see
+# _explain_dodging()/_explain_damage() for actual use.
+func _set_row_highlight(row_panel: PanelContainer, on: bool, color: Color = Color(1, 0, 0)) -> void:
+	row_panel.add_theme_stylebox_override("panel", _row_stylebox(on, color))
+
+const STAT_COLOR_UP := Color(0.4, 0.9, 0.4)
+const STAT_COLOR_DOWN := Color(0.9, 0.35, 0.35)
+const STAT_COLOR_NEUTRAL := Color.WHITE
+
+# The one place that knows which CombatantStats field/method backs each
+# displayed row - shared by _set_stats_panel_base() (plain current value)
+# and _apply_stat_delta() (current value, then value+delta once a preview
+# lands), so the two can never disagree about what a row's base number is.
+func _stat_value(s: CombatantStats, stat: String) -> int:
+	match stat:
+		"STR": return s.strength
+		"DEF": return s.effective_defense()
+		"ACC": return s.effective_accuracy()
+		"EVA": return s.evasion_current
+	return 0
+
+# The move's own power, before any defense is subtracted - an "ability
+# cost"-style number that only depends on the attacker, not on who's being
+# hit. Formula-based moves (Glassgoat V2) go through CombatRules.
+# formula_value() - the same static helper CombatRules.resolve() itself
+# calls, so this can never read differently than a real hit's own raw
+# damage; legacy power-based moves use apply_damage_roll()'s "power +
+# strength", without its ±15% variance multiplier. Shown on the move
+# button and the selected-move label (see _populate_move_menu()/
+# _on_move_chosen()) - _preview_damage() below is the further, target-
+# specific number _explain_damage() builds on top of this one.
+func _preview_raw_power(mv: Dictionary, attacker: CombatantStats) -> int:
+	# heal/revive have neither "formula" nor "power" - they're not an
+	# attack missing one, they're a third category that does no damage
+	# math at all. Falling through to the legacy branch below would read
+	# "power + strength" as 0 + attacker.strength, showing the attacker's
+	# raw Strength stat as if it were the move's power - meaningless for a
+	# move that doesn't attack, and the actual reason this got noticed:
+	# a heal button was badging the caster's Strength number.
+	var effect := String(mv.get("effect", ""))
+	if effect == "heal" or effect == "revive":
+		return 0
+	if mv.has("formula"):
+		return int(round(CombatRules.formula_value(attacker, mv.get("formula", {}))))
+	return int(round(float(mv.get("power", 0)) + float(attacker.strength)))
+
+# Deterministic preview of what a move would actually deal against a
+# specific defender right now - _preview_raw_power() above, minus that
+# defender's Defense, using the exact same floor rule combat_rules.gd's
+# resolve() applies (0 if Defense outstrips raw power by more than 5,
+# otherwise never less than 1) so this can never describe the mechanic
+# differently than a real hit would.
+func _preview_damage(mv: Dictionary, attacker: CombatantStats, defender: CombatantStats) -> int:
+	var raw := _preview_raw_power(mv, attacker)
+	if raw <= 0:
+		return 0
+	var defense := defender.effective_defense()
+	if defense - raw > 5:
+		return 0
+	return maxi(1, raw - defense)
+
+# Base numbers only, no delta annotations - the "nothing hovered" state
+# (main menu, items menu, just opened the move menu). Also resets each
+# value's color to neutral white - without this, a value colored by a
+# previous preview (see _apply_stat_delta()) would stay green/red forever
+# once nothing's hovered.
+func _set_stats_panel_base(ui: Dictionary, s: CombatantStats) -> void:
+	for stat in ["STR", "DEF", "ACC", "EVA"]:
+		(ui.values[stat] as Label).text = str(_stat_value(s, stat))
+		(ui.values[stat] as Label).add_theme_color_override("font_color", STAT_COLOR_NEUTRAL)
+	for stat in (ui.deltas as Dictionary):
+		(ui.deltas[stat] as Label).visible = false
+
+func _refresh_player_stats_panel() -> void:
+	if _player_stats_ui.is_empty() or not _acting.has("stats"):
+		return
+	_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
+
+# The stat's own number becomes what it would actually BE after this move
+# (current value + delta), not just the current value recolored - green if
+# that's a raise, red if it's a drop - with the delta itself alongside it
+# in parentheses, e.g. "4 (-1)". Reads amounts straight out of
+# stat_effects[move.name] (see _ready()'s own header comment on how that
+# gets built) rather than re-deriving them, so the preview can never drift
+# from whatever a move's actual data says it does.
+func _apply_stat_delta(ui: Dictionary, s: CombatantStats, deltas: Dictionary) -> void:
+	for stat in STAT_ROW_KEYS:
+		var key: String = STAT_ROW_KEYS[stat]
+		var value_label := ui.values[stat] as Label
+		var delta_label := ui.deltas[stat] as Label
+		var base := _stat_value(s, stat)
+		if not deltas.has(key) or int(deltas[key]) == 0:
+			value_label.text = str(base)
+			value_label.add_theme_color_override("font_color", STAT_COLOR_NEUTRAL)
+			delta_label.visible = false
+			continue
+		var amount := int(deltas[key])
+		# Every real stat floors at 0 (effective_accuracy()/_apply_debuff()/
+		# etc. all maxi(0, ...) their result) - the big number previews that
+		# same floor rather than showing a negative total that could never
+		# actually happen, but the delta alongside it stays the full,
+		# unclamped amount so a -3 against a base of 1 still reads as -3,
+		# not a misleadingly small -1.
+		value_label.text = str(maxi(0, base + amount))
+		value_label.add_theme_color_override("font_color", STAT_COLOR_UP if amount > 0 else STAT_COLOR_DOWN)
+		delta_label.text = "(+%d)" % amount if amount > 0 else "(%d)" % amount
+		delta_label.add_theme_color_override("font_color", STAT_COLOR_NEUTRAL)
+		delta_label.visible = true
+
+# Called on mouse_entered for a target button (see _populate_target_menu()/
+# _populate_all_target_menu()) - shows what THIS move would do to THIS
+# enemy: the enemy panel appears with their current stats, and both panels
+# get the move's deltas overlaid via stat_effects. Only ever wired for
+# enemy-targeting moves - a heal/revive's target picker lists allies, and
+# previewing "enemy" deltas against an ally would just be wrong.
+func _show_stat_preview(move: Dictionary, enemy: Dictionary) -> void:
+	if not enemy.has("stats"):
+		return
+	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	_apply_stat_delta(_player_stats_ui, _acting.stats as CombatantStats, effects.get("player", {}) as Dictionary)
+	_set_stats_panel_base(_enemy_stats_ui, enemy.stats as CombatantStats)
+	(_enemy_stats_ui.title as Label).text = String(enemy.get("display_name", "Enemy"))
+	_apply_stat_delta(_enemy_stats_ui, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
+	(_enemy_stats_ui.panel as Control).visible = true
+
+# Called on mouse_exited, and from every path that leaves target_menu
+# (choosing a target, backing out) so a stale preview never survives past
+# the hover that produced it. Ignored while _stat_preview_frozen -
+# _explain_dodging() sets that once the player's hovered once, so idly
+# drifting the mouse off the (disabled but still hover-tracked) enemy
+# button while reading the caption can't yank the panel/highlights away
+# mid-explanation.
+var _stat_preview_frozen := false
+
+func _clear_stat_preview() -> void:
+	if _enemy_stats_ui.is_empty() or _stat_preview_frozen:
+		return
+	(_enemy_stats_ui.panel as Control).visible = false
+	# Full reset, not just hiding the delta labels - _apply_stat_delta() now
+	# overwrites the value text itself with the post-move total, so without
+	# this the player panel would keep showing that total (and its green/red
+	# tint) after the hover that produced it ends.
+	if _acting.has("stats"):
+		_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
+
 func _begin_boss_encounter() -> void:
 	_busy = true
 	_set_all_buttons(false)
@@ -309,12 +732,6 @@ func _begin_boss_encounter() -> void:
 	_log("Tethys settles over the battlefield.")
 	await get_tree().create_timer(0.45).timeout
 	_advance_turn()
-
-# Bars are projected every frame rather than parented to anything: the stage
-# camera reframes whenever the HUD changes height (see _frame_stage_camera),
-# and combatants move during their own attack animations.
-func _process(_dt: float) -> void:
-	_layout_overhead_bars()
 
 # The top and bottom of a combatant in world space. Diver and Goblin put
 # their models at different heights relative to their own origin, so this
@@ -326,111 +743,38 @@ func _top_of(a: Node3D) -> Vector3:
 func _bottom_of(a: Node3D) -> Vector3:
 	return a.global_position + Vector3(0.0, float(a.call("foot_offset")), 0.0)
 
-func _layout_overhead_bars() -> void:
-	if _overhead_layer == null or _stage_cam == null or _stage_container == null:
-		return
-
-	# Viewport pixels to screen pixels: the SubViewportContainer stretches,
-	# so a position from unproject_position() is in stage-viewport space and
-	# has to be scaled before it means anything on screen.
-	var vpz := Vector2(_stage_vp.size)
+# Same technique the overhead HP/status bars used before they moved into a
+# fixed side column (see _build_overhead_bar()'s own header comment, and
+# the git history it points to) - unproject_position() answers in the
+# STAGE VIEWPORT's own pixel space, which then has to be scaled up to
+# _stage_container's actual on-screen size and offset by that container's
+# own position, since the stage doesn't start at this CanvasLayer's
+# top-left corner. Falls back to the stage's own center when there's no
+# camera/container to project through, or the point is behind the camera
+# (unproject_position() answers nonsense for a point behind it) - a rough
+# fallback spot beats a crash or an uninitialized (0, 0).
+func _project_to_screen(point: Vector3) -> Vector2:
+	if _stage_cam == null or _stage_container == null or _stage_vp == null or _stage_cam.is_position_behind(point):
+		if _stage_container != null:
+			return _stage_container.position + _stage_container.size * 0.5
+		return get_viewport().get_visible_rect().size * 0.5
 	var scale_to_screen := Vector2(
-		_stage_container.size.x / maxf(1.0, vpz.x),
-		_stage_container.size.y / maxf(1.0, vpz.y))
-	# Bars are kept inside the stage band, in screen coordinates: never up
-	# behind the turn bar, never down over the buttons.
-	var top_limit: float = _stage_container.position.y + 2.0
-	var floor_y: float = _stage_container.position.y + _stage_container.size.y
+		_stage_container.size.x / maxf(1.0, float(_stage_vp.size.x)),
+		_stage_container.size.y / maxf(1.0, float(_stage_vp.size.y)),
+	)
+	return _stage_cam.unproject_position(point) * scale_to_screen + _stage_container.position
 
-	# Nearest the camera first. When two bars collide the further one gets
-	# moved, which keeps the bar belonging to whoever is in front of you
-	# where you expect it, and it is exactly the overlap Marc predicted the
-	# moment this layout was proposed.
-	var wanted: Array = []
+# Battle keeps combatants as plain Dictionaries (see this file's own header
+# comment), so a bare CombatantStats (all _resolve_attack() has - see its
+# own signature) can't point back to the Node3D actor that owns it without
+# a search. Used only for the QTE's own screen position (_quick_time_event()
+# via _resolve_attack()) - nothing performance-sensitive enough for this
+# linear scan (party.size() + enemies.size() is always tiny) to matter.
+func _actor_for_stats(s: CombatantStats) -> Node3D:
 	for entry in (party + enemies):
-		var box: Control = entry.get("overhead")
-		if box == null or not is_instance_valid(box):
-			continue
-		# A killing blow starts the grunt's fade before its actor is freed.
-		# Remove its health UI immediately; it must not hover over a death
-		# animation or survive the model it described.
-		var stats_value: Variant = entry.get("stats")
-		if stats_value is CombatantStats and (stats_value as CombatantStats).hp <= 0:
-			box.visible = false
-			continue
-		# Keep this value untyped until after validity is checked. Assigning a
-		# previously freed Object directly to Node3D throws before a following
-		# is_instance_valid() guard ever gets a chance to run.
-		var actor_value: Variant = entry.get("actor")
-		if not is_instance_valid(actor_value):
-			box.visible = false
-			continue
-		var actor := actor_value as Node3D
-		if actor == null:
-			box.visible = false
-			continue
-		var head: Vector3 = _top_of(actor) + Vector3(0.0, OVERHEAD_LIFT, 0.0)
-		# Behind the camera projects to a nonsense point in front of it.
-		if _stage_cam.is_position_behind(head):
-			box.visible = false
-			continue
-		# unproject_position() answers in stage-viewport space, and the stage
-		# does not start at the top of the screen any more: it sits between
-		# the turn bar and the bottom strip. Its own offset has to come back
-		# in or every bar lands one turn bar too high.
-		var at: Vector2 = _stage_cam.unproject_position(head) * scale_to_screen + _stage_container.position
-		wanted.append({
-			"box": box,
-			"at": at,
-			"depth": _stage_cam.global_position.distance_to(actor.global_position),
-		})
-	wanted.sort_custom(func(a, b): return float(a.depth) < float(b.depth))
-
-	var placed: Array = []
-	for w in wanted:
-		var box := w.box as Control
-		box.visible = true
-		var size: Vector2 = box.get_combined_minimum_size()
-		box.size = size
-		# Centred on the head, sitting above it.
-		var pos := Vector2((w.at as Vector2).x - size.x * 0.5, (w.at as Vector2).y - size.y)
-
-		# Search outward from where the bar wants to be, alternating up and
-		# down, and take the first clear spot. Pushing only upward was the
-		# obvious version and it walked bars most of the way up the screen
-		# away from the combatant they name, which defeats the point of
-		# putting them overhead at all. A fixed number of steps rather than
-		# a while loop, so a pathological pile-up costs a slightly wrong
-		# layout and not the frame.
-		var base_y := pos.y
-		var best_y := base_y
-		var best_cost := INF
-		for step in range(OVERHEAD_MAX_NUDGES):
-			# 0, -4, +4, -8, +8, ... upward first, since a bar below a
-			# combatant reads worse than one above.
-			var rung: int = (step + 1) / 2
-			var offset: float = float(rung) * OVERHEAD_NUDGE * (-1.0 if step % 2 == 1 else 1.0)
-			var try_y: float = base_y + (0.0 if step == 0 else offset)
-			var rect := Rect2(Vector2(pos.x, try_y), size)
-			var overlap := 0.0
-			for placed_rect in placed:
-				var r := rect.intersection(placed_rect as Rect2)
-				overlap += r.size.x * r.size.y
-			# Overlap and distance priced against each other, rather than
-			# distance being free until overlap hits zero.
-			var cost: float = overlap + absf(try_y - base_y) * OVERHEAD_DRIFT_COST
-			if cost < best_cost:
-				best_cost = cost
-				best_y = try_y
-			if overlap <= 0.0:
-				break
-		pos.y = best_y
-
-		pos.y = clampf(pos.y, top_limit, maxf(top_limit, floor_y - size.y))
-		pos.x = clampf(pos.x, 2.0, maxf(2.0, _overhead_layer.size.x - size.x - 2.0))
-
-		box.position = pos
-		placed.append(Rect2(pos, size))
+		if entry.get("stats") == s and entry.has("actor") and is_instance_valid(entry.actor):
+			return entry.actor as Node3D
+	return null
 
 func _display(model_name: String) -> String:
 	return Cast.display_name(model_name)
@@ -585,13 +929,15 @@ func _build_stage() -> void:
 	# own 1.08x-1.35x difficulty bump in make_stats() still applies on top
 	# of this, same as any other fight. Skipped for a boss - Tethys is built
 	# from its own scaling entirely (see TethysBoss.make_stats() below).
-	if special_encounter and not boss_encounter:
+	if (special_encounter or tutorial_encounter) and not boss_encounter:
 		ref_stats.hp_max = maxi(1, int(round(float(ref_stats.hp_max) * 0.5)))
 		ref_stats.defense = int(round(float(ref_stats.defense) * 0.5))
 	# A special encounter is always a solo diver against exactly one grunt -
 	# it's built around one character's ability minigame (see _do_enemy_
-	# turn()'s special_encounter branch), not a real multi-enemy fight.
-	var count := 1 if boss_encounter or special_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	# turn()'s special_encounter branch), not a real multi-enemy fight. The
+	# tutorial fight is solo for the same reason: one diver, one grunt, no
+	# random pack size to complicate a first-ever fight.
+	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -624,6 +970,21 @@ func _build_stage() -> void:
 		g.rotation.y = PI
 		vp.add_child(g)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		if tutorial_encounter:
+			# Five-plus real turns (every scripted move, then however many
+			# more real ones it actually takes to win or lose once
+			# _advance_turn()'s "Defeat the enemy!" prompt hands the fight
+			# over for real) would otherwise stand a real chance of killing
+			# this grunt before the lesson's even over - pad its own HP out
+			# so it survives long enough. Its offense gets cut too (see
+			# TUTORIAL_ENEMY_MOVE/_do_enemy_turn()'s tutorial-only no-heavy-
+			# swing rule) - a full-strength grunt one-shotting Maxilani (hp_max
+			# 10) on her very first fight, before any level-up, was an actual
+			# observed playtest death, not a hypothetical one.
+			st.hp_max *= 3
+			st.hp = st.hp_max
+			st.strength = maxi(1, int(round(float(st.strength) * 0.5)))
+			st.accuracy = maxi(1, int(round(float(st.accuracy) * 0.7)))
 		enemies.append({
 			"kind": "enemy", "stats": st,
 			"display_name": "Grunt" if count == 1 else "Grunt %d" % (i + 1),
@@ -790,14 +1151,28 @@ func _spread(i: int, n: int, step: float) -> float:
 	return (float(i) - float(n - 1) * 0.5) * step
 
 func _build_ui() -> void:
-	# Health bars live over the combatants they belong to. Added before the
-	# bottom panel so the panel still wins where they meet: a bar for someone
-	# standing near the bottom of the stage gets clipped by the strip rather
-	# than floating on top of the buttons.
-	_overhead_layer = Control.new()
-	_overhead_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overhead_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_overhead_layer)
+	# Party's status cards stack down the left edge, enemies' down the
+	# right - added before the bottom panel/queue bar just so those still
+	# win in z-order if a stack ever ran long enough to reach them.
+	_party_status_column = VBoxContainer.new()
+	_party_status_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_party_status_column.offset_left = 12.0
+	_party_status_column.offset_top = 70.0
+	_party_status_column.offset_right = 12.0 + OVERHEAD_BAR_WIDTH + 30.0
+	_party_status_column.offset_bottom = 70.0 + 320.0
+	_party_status_column.add_theme_constant_override("separation", 8)
+	_party_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_party_status_column)
+
+	_enemy_status_column = VBoxContainer.new()
+	_enemy_status_column.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_enemy_status_column.offset_left = -(OVERHEAD_BAR_WIDTH + 30.0 + 12.0)
+	_enemy_status_column.offset_top = 70.0
+	_enemy_status_column.offset_right = -12.0
+	_enemy_status_column.offset_bottom = 70.0 + 320.0
+	_enemy_status_column.add_theme_constant_override("separation", 8)
+	_enemy_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_enemy_status_column)
 
 	_bottom_panel = PanelContainer.new()
 	_bottom_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
@@ -904,6 +1279,46 @@ func _build_ui() -> void:
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
+	# A second, wrapping line above the normal one-line log - the log's
+	# combat messages ("You strike for 12.") are too short-lived and terse
+	# to also carry a move's attack-vs-utility explanation or the stat
+	# reasoning behind a scripted hit/miss (see _apply_tutorial_move_gate()/
+	# _tutorial_prep_enemy_turn()), so tutorial fights get their own caption
+	# instead of fighting the log for space.
+	if tutorial_encounter:
+		# RichTextLabel, not Label - _tutorial_show_step() below relies on
+		# BBCode ([color=yellow]highlighted[/color], the dim "press Enter"
+		# hint) actually rendering instead of showing as literal text.
+		_tutorial_caption = RichTextLabel.new()
+		_tutorial_caption.bbcode_enabled = true
+		_tutorial_caption.fit_content = true
+		_tutorial_caption.scroll_active = false
+		_tutorial_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# Plain white base text, same as a classic FF-style dialogue box -
+		# [color=yellow]emphasized[/color] words (see _apply_tutorial_move_
+		# gate()) need a neutral background to actually stand out against;
+		# a yellow base made those words nearly invisible.
+		_tutorial_caption.add_theme_color_override("default_color", Color.WHITE)
+		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(_tutorial_caption)
+
+	# Unconditional, unlike _tutorial_caption above - a level-up can happen
+	# after ANY win, not just the tutorial fight. RichTextLabel for the same
+	# reason: _build_levelup_block()'s green "(+N)" per grown stat needs
+	# BBCode to actually render as color instead of literal text. Starts
+	# hidden rather than just empty-text - an empty RichTextLabel can still
+	# claim a line's worth of height, which would otherwise nudge every
+	# other fight's HUD by a few pixels for a table that never shows.
+	_levelup_caption = RichTextLabel.new()
+	_levelup_caption.visible = false
+	_levelup_caption.bbcode_enabled = true
+	_levelup_caption.fit_content = true
+	_levelup_caption.scroll_active = false
+	_levelup_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_levelup_caption.add_theme_color_override("default_color", Color.WHITE)
+	_levelup_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(_levelup_caption)
+
 	main_menu = HFlowContainer.new()
 	main_menu.add_theme_constant_override("h_separation", 12)
 	main_menu.add_theme_constant_override("v_separation", 8)
@@ -917,6 +1332,49 @@ func _build_ui() -> void:
 	items_btn = _menu_button("Items", "")
 	items_btn.pressed.connect(_show_items)
 	main_menu.add_child(items_btn)
+	
+	_selected_move_panel = PanelContainer.new()
+	_selected_move_panel.add_theme_stylebox_override("panel", _row_stylebox(false))
+	col.add_child(_selected_move_panel)
+	var selected_move_row := HBoxContainer.new()
+	# Small, fixed gap rather than the theme default - deliberately not
+	# giving _selected_move_name a SIZE_EXPAND_FILL flag, since that would
+	# stretch it to fill the whole row and shove _selected_move_power all
+	# the way to the panel's far edge instead of sitting right next to the
+	# name it belongs to.
+	selected_move_row.add_theme_constant_override("separation", 6)
+	_selected_move_panel.add_child(selected_move_row)
+	_selected_move_name = Label.new()
+	_selected_move_name.text = ""
+	_selected_move_name.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
+	selected_move_row.add_child(_selected_move_name)
+	_selected_move_power = Label.new()
+	_selected_move_power.text = ""
+	_selected_move_power.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
+	_selected_move_power.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	selected_move_row.add_child(_selected_move_power)
+
+	var stats_row := HBoxContainer.new()
+	stats_row.add_theme_constant_override("separation", 12)
+	col.add_child(stats_row)
+	_player_stats_ui = create_stats_panel("You")
+	stats_row.add_child(_player_stats_ui.panel as Control)
+	_enemy_stats_ui = create_stats_panel("Enemy")
+	(_enemy_stats_ui.panel as Control).visible = false
+	stats_row.add_child(_enemy_stats_ui.panel as Control)
+	# Real numbers from the moment this panel exists, not the "0" every row
+	# starts at inside create_stats_panel() - _refresh_player_stats_panel()
+	# doesn't run until _start_party_turn(), which can be several real,
+	# rendered frames away (enemy-goes-first plus the tutorial's own
+	# _first_fight_prompt()/_tutorial_prep_enemy_turn() prompts in between),
+	# so without this the panel would sit at all-zeros and visibly snap to
+	# the truth once the player's turn finally comes up. party[0] rather
+	# than _acting - _acting isn't set yet this early in _ready() - but
+	# every fight always has at least one living party member by definition,
+	# and the tutorial fight only ever has the one anyway.
+	if not party.is_empty():
+		_set_stats_panel_base(_player_stats_ui, party[0].stats as CombatantStats)
+
 
 	move_menu = HFlowContainer.new()
 	move_menu.add_theme_constant_override("h_separation", 12)
@@ -979,14 +1437,14 @@ func _fit_panel_height() -> void:
 		# rendered under an opaque bar is rendered where nobody can see it.
 		# The stage is now strictly the band between the two.
 		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
-	_layout_overhead_bars()
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
 func _menu_button(title: String, hint: String) -> Button:
 	var b := Button.new()
 	b.text = title if hint == "" else "%s\n%s" % [title, hint]
-	b.custom_minimum_size = Vector2(150, 46)
+	b.custom_minimum_size = Vector2(210, 52)
+	b.clip_text = true
 	return b
 
 # X-glyph panel (what to press) beside a track (when to press it), laid out
@@ -995,7 +1453,12 @@ func _menu_button(title: String, hint: String) -> Button:
 # starts - see _quick_time_event().
 func _build_quick_time_ui() -> void:
 	qte_root = HBoxContainer.new()
-	qte_root.set_anchors_preset(Control.PRESET_CENTER)
+	# TOP_LEFT, not CENTER - _quick_time_event() now positions this itself
+	# every time, over whichever combatant is actually dodging (see
+	# _project_to_screen()), so its anchor just needs to leave `position`
+	# meaning "top-left corner, in this CanvasLayer's own pixel space"
+	# rather than fighting a center-anchor's own offset math.
+	qte_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	qte_root.add_theme_constant_override("separation", 14)
 	qte_root.visible = false
 	add_child(qte_root)
@@ -1050,7 +1513,7 @@ func _build_quick_time_ui() -> void:
 # tw.finished (below) is the timeout side, for a press that never came at
 # all. The while loop just waits for whichever one flips _qte_active off,
 # once per frame via `await get_tree().process_frame`.
-func _quick_time_event() -> bool:
+func _quick_time_event(target_actor: Node3D = null) -> bool:
 	var duration := 1.6
 	var zone_width_frac := randf_range(0.06, 0.12)
 	# Margin on both ends so the zone never touches the very start (an
@@ -1061,6 +1524,16 @@ func _quick_time_event() -> bool:
 	qte_zone.position.x = zone_start_frac * QTE_TRACK_WIDTH
 	qte_zone.size.x = zone_width_frac * QTE_TRACK_WIDTH
 	qte_indicator.position.x = 0.0
+
+	# Over the head of whoever's actually dodging, not a fixed screen spot -
+	# `target_actor` is null only for a standalone/headless Battle (see
+	# tools/test_battle.gd), where there's no stage to project onto anyway,
+	# so the fallback (wherever qte_root's anchor/position last left it) is
+	# never actually seen by a player.
+	if target_actor != null and is_instance_valid(target_actor):
+		var above: Vector3 = _top_of(target_actor) + Vector3(0.0, OVERHEAD_LIFT + OVERHEAD_HEADROOM, 0.0)
+		var at := _project_to_screen(above)
+		qte_root.position = at - qte_root.size * 0.5
 
 	qte_root.visible = true
 	_qte_active = true
@@ -1090,15 +1563,56 @@ func _on_qte_timeout() -> void:
 		_qte_success = false
 		_qte_active = false
 
-# Only ever looked at while _qte_active is true (see _quick_time_event()) -
-# a stray X press between fights, or one arriving the same frame the sweep
-# already timed out, does nothing. The hit check compares the indicator's
-# actual current position (wherever the tween has it as of the last
-# processed frame - Godot handles input before advancing tweens within a
-# frame, so this is accurate to well under a frame's worth of time, far
-# tighter than human reaction time) against the zone ColorRect's own
-# position/size - the same rect drawn on screen, not a parallel copy of it.
+# Shows one tutorial caption and blocks until the player actually presses
+# Enter - every scripted-fight caption reaching this is pure narration
+# (turn order, why a stat just flashed red/green, the damage math, HP/
+# oxygen) explaining something already sitting still on screen, so nothing
+# is lost by making the player confirm they've read it before it clears.
+# The moments that instead block on a real action the player has to take
+# (hover over the enemy, click the flashing move/enemy) wait on that real
+# signal directly rather than routing through here - see _explain_dodging()/
+# _explain_precise_tap()'s mouse_entered await and _explain_click_to_attack()'s
+# pressed await.
+#
+# `on_layout_ready`, if given, runs after the new (possibly taller/shorter)
+# caption text has actually resized _bottom_panel via _fit_panel_height(),
+# not before - _explain_dodging() uses this to position the ACC/EVA
+# highlight boxes. Positioning them before this text swap would box
+# wherever the stat rows sat under the OLD caption's height; the new
+# caption changing panel height shifts everything in _bottom_panel (the
+# stat rows included, since anchoring is bottom-up) to a different spot
+# immediately after, leaving the boxes stranded at the stale position.
+func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -> void:
+	_tutorial_caption.text = "%s\n[color=#7a8a94]Press Enter to continue[/color]" % text
+	call_deferred("_fit_panel_height")
+	await get_tree().process_frame
+	if on_layout_ready.is_valid():
+		on_layout_ready.call()
+	_tutorial_awaiting_enter = true
+	while _tutorial_awaiting_enter:
+		await get_tree().process_frame
+
+# Two independent gates share this one entry point, each guarded by its own
+# flag so a press meant for one can't be misread as resolving the other:
+# Enter/Numpad Enter dismisses a narration caption while _tutorial_awaiting_
+# enter is true (see _tutorial_show_step()), X resolves a QTE while
+# _qte_active is true (see below). Neither is ever true at the same moment
+# in practice (a QTE never runs while a caption's up), but checking each
+# flag independently rather than an if/elif on one shared state keeps that
+# an implementation detail instead of a hard requirement.
 func _unhandled_input(event: InputEvent) -> void:
+	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_ENTER, KEY_KP_ENTER]:
+		get_viewport().set_input_as_handled()
+		_tutorial_awaiting_enter = false
+		return
+	# Only ever looked at while _qte_active is true (see _quick_time_event()) -
+	# a stray X press between fights, or one arriving the same frame the sweep
+	# already timed out, does nothing. The hit check compares the indicator's
+	# actual current position (wherever the tween has it as of the last
+	# processed frame - Godot handles input before advancing tweens within a
+	# frame, so this is accurate to well under a frame's worth of time, far
+	# tighter than human reaction time) against the zone ColorRect's own
+	# position/size - the same rect drawn on screen, not a parallel copy of it.
 	if not _qte_active:
 		return
 	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_X:
@@ -1134,10 +1648,30 @@ static func _ignore_mouse_recursive(node: Node) -> void:
 		_ignore_mouse_recursive(child)
 
 func _build_overhead_bar(entry: Dictionary) -> void:
+	# Wrapped in its own PanelContainer (transparent by default, same
+	# _row_stylebox() pattern the stat rows use) so _explain_other_stats()
+	# can box a whole card with _set_row_highlight() instead of needing a
+	# separately-positioned overlay - see _party_status_column's own header
+	# comment on why that's no longer necessary now the cards don't move.
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _row_stylebox(false))
+	if String(entry.kind) == "party":
+		_party_status_column.add_child(card)
+	else:
+		_enemy_status_column.add_child(card)
+
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 1)
+	# MODIFIED: 1 -> 4. Every label here also carries a 5px text outline
+	# (outline_size, below), which bleeds a few pixels past the glyph's own
+	# bounds - at separation 1 that outline (Oxygen's label especially)
+	# visually ran right into the HP bar sitting one row above it. 4px
+	# clears that outline with room to spare; three stacked cards (this
+	# column's max - see CAST's own three-diver roster) still fit well
+	# inside _party_status_column's/_enemy_status_column's fixed 320px
+	# budget at this spacing.
+	box.add_theme_constant_override("separation", 4)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overhead_layer.add_child(box)
+	card.add_child(box)
 
 	var name_label := Label.new()
 	name_label.text = String(entry.display_name)
@@ -1168,12 +1702,76 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(bar)
 
+	# Hidden until _win()'s post-victory regroup actually restores something -
+	# _show_heal_overlay() positions/sizes this to span exactly the gap
+	# between whatever HP a diver had before that restore and whatever they
+	# have after, in green, rather than the bar just silently jumping to a
+	# new number. Manual position/size (not anchors) since that gap is a
+	# fraction of OVERHEAD_BAR_WIDTH computed fresh each time, not a fixed
+	# rect - a plain child Control's default top-left anchor treats those
+	# as exact pixel coordinates, which is exactly what's wanted here.
+	var hp_heal_overlay := ColorRect.new()
+	hp_heal_overlay.color = Color(0.35, 0.95, 0.4, 0.9)
+	hp_heal_overlay.size.y = 10
+	hp_heal_overlay.visible = false
+	hp_heal_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(hp_heal_overlay)
+
 	var hp_label := Label.new()
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_label.add_theme_font_size_override("font_size", 12)
+	hp_label.add_theme_font_size_override("font_size", OVERHEAD_VALUE_FONT_SIZE)
 	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	hp_label.add_theme_constant_override("outline_size", 5)
 	box.add_child(hp_label)
+
+	# Oxygen only ever matters for the party's own divers (only their
+	# abilities/sonar spend it - see diver.gd's oxygen spend, world.gd's
+	# _build_oxygen_bar() header comment) - a grunt has the stat on its
+	# CombatantStats like anyone else, but no move of its own ever reads
+	# it, so giving it a bar here would just be clutter with nothing to show.
+	var oxygen_bar: ProgressBar
+	var oxygen_label: Label
+	var oxygen_heal_overlay: ColorRect
+	if String(entry.kind) == "party":
+		var o2_row := HBoxContainer.new()
+		o2_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		o2_row.add_theme_constant_override("separation", 3)
+		box.add_child(o2_row)
+
+		oxygen_bar = ProgressBar.new()
+		oxygen_bar.custom_minimum_size = Vector2(OVERHEAD_BAR_WIDTH, 8)
+		oxygen_bar.show_percentage = false
+		var o2_fill := StyleBoxFlat.new()
+		# Same blue used for the overworld oxygen bar (world.gd's
+		# _build_oxygen_bar()) - one color means "oxygen" everywhere.
+		o2_fill.bg_color = Color(0.25, 0.65, 0.85)
+		oxygen_bar.add_theme_stylebox_override("fill", o2_fill)
+		var o2_track := StyleBoxFlat.new()
+		o2_track.bg_color = Color(0.03, 0.06, 0.08, 0.85)
+		o2_track.border_width_left = 1
+		o2_track.border_width_right = 1
+		o2_track.border_width_top = 1
+		o2_track.border_width_bottom = 1
+		o2_track.border_color = Color(0, 0, 0, 0.8)
+		oxygen_bar.add_theme_stylebox_override("background", o2_track)
+		o2_row.add_child(oxygen_bar)
+
+		# Same idea as hp_heal_overlay above, just for the Oxygen bar - see
+		# _show_heal_overlay().
+		oxygen_heal_overlay = ColorRect.new()
+		oxygen_heal_overlay.color = Color(0.35, 0.95, 0.4, 0.9)
+		oxygen_heal_overlay.size.y = 8
+		oxygen_heal_overlay.visible = false
+		oxygen_heal_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		oxygen_bar.add_child(oxygen_heal_overlay)
+
+		oxygen_label = Label.new()
+		oxygen_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		oxygen_label.add_theme_font_size_override("font_size", OVERHEAD_VALUE_FONT_SIZE)
+		oxygen_label.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
+		oxygen_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+		oxygen_label.add_theme_constant_override("outline_size", 5)
+		box.add_child(oxygen_label)
 
 	var status_label := Label.new()
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1183,11 +1781,18 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	status_label.add_theme_constant_override("outline_size", 5)
 	box.add_child(status_label)
 
+	entry["name_label"] = name_label
 	entry["hp_bar"] = bar
 	entry["hp_label"] = hp_label
+	entry["hp_heal_overlay"] = hp_heal_overlay
+	if oxygen_bar != null:
+		entry["oxygen_bar"] = oxygen_bar
+		entry["oxygen_label"] = oxygen_label
+		entry["oxygen_heal_overlay"] = oxygen_heal_overlay
 	entry["status_label"] = status_label
 	entry["overhead"] = box
-	_ignore_mouse_recursive(box)
+	entry["card"] = card
+	_ignore_mouse_recursive(card)
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -1205,6 +1810,10 @@ func _refresh_bar(entry: Dictionary) -> void:
 	if String(entry.kind) == "party":
 		txt += "   Lv %d" % s.level
 	(entry.hp_label as Label).text = txt
+	if entry.has("oxygen_bar"):
+		(entry.oxygen_bar as ProgressBar).max_value = s.oxygen_max
+		(entry.oxygen_bar as ProgressBar).value = s.oxygen
+		(entry.oxygen_label as Label).text = "%d / %d O2" % [int(s.oxygen), int(s.oxygen_max)]
 	var status_text := s.status_summary()
 	if String(entry.kind) == "party":
 		status_text = "EVA %d/%d%s" % [
@@ -1213,6 +1822,29 @@ func _refresh_bar(entry: Dictionary) -> void:
 		]
 	(entry.status_label as Label).text = status_text
 	(entry.status_label as Label).visible = status_text != ""
+	# A killing blow starts the actor's own death/fade animation on the
+	# stage - its status card shouldn't outlive that, or survive as a
+	# lingering "0/X" card in the side column. Replaces the same check
+	# _layout_overhead_bars() used to make every frame; a card only ever
+	# needs re-hiding right when the HP that changed it gets refreshed.
+	if entry.has("card"):
+		(entry.card as Control).visible = s.hp > 0
+
+# Positions/sizes one heal overlay (hp_heal_overlay or oxygen_heal_overlay,
+# both built in _build_overhead_bar()) to span exactly the [before, after]
+# gap on its bar, as a fraction of OVERHEAD_BAR_WIDTH - a visible "this much
+# came back" rather than the bar just silently jumping to a new number on
+# the next _refresh_bar(). Hides the overlay instead of drawing a
+# zero-width one when nothing actually grew (dead weight nobody restored,
+# or already at max), same "no delta shown" rule _apply_stat_delta() uses
+# for the in-fight stats panel.
+func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_value: float) -> void:
+	if max_value <= 0.0 or after <= before:
+		overlay.visible = false
+		return
+	overlay.position.x = (before / max_value) * OVERHEAD_BAR_WIDTH
+	overlay.size.x = ((after - before) / max_value) * OVERHEAD_BAR_WIDTH
+	overlay.visible = true
 
 func _log(text: String) -> void:
 	log_label.text = text
@@ -1332,7 +1964,11 @@ func _refresh_queue_row() -> void:
 	header.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	header.add_theme_font_size_override("font_size", 13)
 	queue_row.add_child(header)
-	for i in range(_queue.size()):
+	# Capped rather than one chip per living combatant - _queue is bounded
+	# low today (3 divers + up to MAX_ENEMIES grunts), but the row itself
+	# shouldn't silently need a redesign the moment a fight ever gets
+	# bigger than that.
+	for i in range(mini(_queue.size(), MAX_QUEUE_SLOTS)):
 		queue_row.add_child(_build_queue_chip(_queue[i], i))
 	# MODIFIED (added): rebuilt fresh every turn, so a one-time IGNORE at
 	# setup can't reach chips that don't exist yet - nothing in the turn
@@ -1422,6 +2058,30 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
+	# Both every scripted stage AND the enemy's own one scripted turn
+	# (_tutorial_prep_enemy_turn(), capped via _tutorial_enemy_turns) have to
+	# have happened before the script is done - _tutorial_step alone
+	# reaching _TUTORIAL_SCRIPT.size() only means every stage's diver has
+	# acted; the enemy's own QTE-teaching turn still needs to happen first,
+	# via completely normal turn order (see the forced-actor block below,
+	# which only overrides selection during the scripted stages themselves).
+	# _tutorial_finale_shown guards this firing more than once - unlike the
+	# old _end_tutorial(), this does NOT force a win. It shows the "go
+	# finish it yourself" prompt exactly once, then falls straight into the
+	# normal win/lose checks right below, which is what actually decides how
+	# this fight ends from here - a real win, or a real loss (see _lose()'s
+	# own tutorial-only message for that second case).
+	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
+		_tutorial_finale_shown = true
+		_set_all_buttons(false)
+		await _tutorial_show_step("Defeat the enemy!")
+		# One-shot: clears itself once read, unlike every earlier caption in
+		# this script - those get overwritten by whatever explanation comes
+		# next, but nothing ever touches _tutorial_caption again after this,
+		# so without this it would sit on screen, stale, for the rest of
+		# the real fight that follows.
+		_tutorial_caption.text = ""
+		call_deferred("_fit_panel_height")
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -1430,15 +2090,157 @@ func _advance_turn() -> void:
 		return
 	if _queue.is_empty():
 		_rebuild_queue()
+	# Forces each stage's own diver to go next, back to back, regardless of
+	# real agility - without this, whichever combatant actually has the
+	# highest agility could go first/between them, and the tutorial's
+	# scripted turns would just silently wait for that diver's own natural
+	# turn to come up instead of opening the fight. Removed from wherever
+	# it sits in `_queue` (not necessarily the front) rather than popped
+	# normally, so nobody else's place in this round's real order is
+	# disturbed - everyone else just waits their actual turn once the
+	# scripted portion (_tutorial_step < _TUTORIAL_SCRIPT.size()) ends.
+	var forced_index := _tutorial_party_index_for_step(_tutorial_step) if tutorial_encounter else -1
+	if forced_index >= 0:
+		var forced: Dictionary = party[forced_index]
+		if _living(party).has(forced) and _queue.has(forced):
+			_queue.erase(forced)
+			_acting = forced
+			_refresh_queue_row()
+			_start_party_turn(_acting)
+			return
 	_acting = _queue.pop_front()
 	_refresh_queue_row()
 	if (_acting.stats as CombatantStats).hp <= 0:
 		_advance_turn()   # downed since the queue was built - skip them
 		return
 	if String(_acting.kind) == "enemy":
-		_do_enemy_turn(_acting)
+		var forced_target := {}
+		if tutorial_encounter:
+			# _do_enemy_turn() below is what normally locks everything down
+			# for the enemy's turn, but that doesn't run until after these
+			# two prompts finish - without disabling here first, whatever
+			# was left enabled from the player's own turn (main menu, move
+			# menu, ...) would still be clickable underneath the caption.
+			_set_all_buttons(false)
+			main_menu.visible = false
+			move_menu.visible = false
+			item_menu.visible = false
+			target_menu.visible = false
+			if _tutorial_step == 0:
+				await _first_fight_prompt()
+			forced_target = await _tutorial_prep_enemy_turn()
+		_do_enemy_turn(_acting, forced_target)
 	else:
 		_start_party_turn(_acting)
+
+# Used to script the goblin's first two swings (guaranteed miss, then
+# guaranteed hit) to teach Accuracy vs. Evasion from the enemy's side - cut
+# per feedback that it re-taught the same lesson Maxilani/Musashi/Mech
+# Pilot's own three scripted attacks had already covered, just mirrored.
+# What this does now instead: the enemy's normal swing is already QTE-
+# eligible (see ENEMY_MOVE's quick_time_bool), but whether one actually
+# shows up during any given fight is normally just the independent
+# ENEMY_QTE_CHANCE roll in _resolve_attack() - it could never come up at
+# all. This is the one enemy turn the tutorial still touches, and it
+# spends that touch guaranteeing a QTE happens here, with a caption
+# explaining the mechanic first (_tutorial_force_next_qte, consumed by
+# _resolve_attack()'s own QTE roll) - so every player has actually seen a
+# dodge-it-yourself window once before it's left to chance for the rest of
+# the game. Turn 2 onward resolves completely for real, no scripting at all.
+# Returns whoever it picked as the target, or {} once the one scripted
+# turn has already happened - _advance_turn() passes that straight into
+# _do_enemy_turn() as forced_target so the real attack lands on the exact
+# combatant this caption was about, rather than letting _do_enemy_turn()
+# re-roll _pick_enemy_target() and possibly land on someone else.
+func _tutorial_prep_enemy_turn() -> Dictionary:
+	_tutorial_enemy_turns += 1
+	if _tutorial_enemy_turns > 1:
+		return {}
+	var alive_party := _living(party)
+	if alive_party.is_empty():
+		return {}
+	var target: Dictionary = _pick_enemy_target(alive_party)
+	# _resolve_attack() only ever rolls for a QTE once the swing has already
+	# beaten Evasion (a real miss returns before reaching that roll at all -
+	# see its own header comment) - without this, _tutorial_force_next_qte
+	# below could easily do nothing at all, on whatever fight happens to
+	# roll the target's Evasion high enough to dodge outright. Zeroing it
+	# guarantees this one swing actually reaches the QTE roll; nothing
+	# narrates a specific number here (unlike the old miss/hit scripting),
+	# so there's no claim on screen this could contradict.
+	var defender := target.stats as CombatantStats
+	defender.evasion_current = 0
+	_tutorial_force_next_qte = true
+	# RichTextLabel's own [img] tag only takes an actual texture resource,
+	# not a live Control - can't embed qte_root's real bar inline in
+	# _tutorial_caption's text that way. Instead this temporarily moves the
+	# real qte_root (normally positioned over whoever's actually dodging -
+	# see _quick_time_event()/_project_to_screen()) into the caption's own
+	# column, right between the two halves of the text, so what the player
+	# sees IS the real bar (never a separate image that could drift out of
+	# sync with it), just sitting inline for a moment instead of floating
+	# over the stage. Restored back to its normal parent/anchor before
+	# returning, so the real QTE (moments later, once the actual attack
+	# resolves) positions itself the normal way again.
+	var col := _tutorial_caption.get_parent()
+	var qte_normal_parent := qte_root.get_parent()
+	qte_normal_parent.remove_child(qte_root)
+	col.add_child(qte_root)
+	col.move_child(qte_root, _tutorial_caption.get_index() + 1)
+	qte_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	qte_root.position = Vector2.ZERO
+	qte_root.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	qte_root.visible = true
+	qte_zone.position.x = 0.4 * QTE_TRACK_WIDTH
+	qte_zone.size.x = 0.15 * QTE_TRACK_WIDTH
+	qte_indicator.position.x = 0.0
+	_tutorial_caption.text = "Sometimes during an enemy's attack, a Quick Time Event shows up:"
+	# _levelup_caption reused here purely as "whatever RichTextLabel already
+	# sits right after _tutorial_caption in this column" - never in use
+	# during an actual fight (only _win() ever touches it), so borrowing it
+	# for the second half of this one caption doesn't collide with its own
+	# job. _tutorial_show_step()'s own Enter-wait, just spread across two
+	# labels with the QTE preview sandwiched between them instead of one.
+	_levelup_caption.text = "The white bar sweeps across the track, and pressing X the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[color=#7a8a94]Press Enter to continue[/color]"
+	_levelup_caption.visible = true
+	call_deferred("_fit_panel_height")
+	await get_tree().process_frame
+	_tutorial_awaiting_enter = true
+	while _tutorial_awaiting_enter:
+		await get_tree().process_frame
+	_levelup_caption.visible = false
+	_levelup_caption.text = ""
+	qte_root.visible = false
+	col.remove_child(qte_root)
+	qte_normal_parent.add_child(qte_root)
+	qte_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	call_deferred("_fit_panel_height")
+	return target
+
+# The `party` index _TUTORIAL_SCRIPT names for stage `step`, or -1 once
+# `step` runs past the end of the script (every stage done) or the entry
+# names an index the current party doesn't have. Centralizing this lookup
+# is what let stage 3 revisit Musashi (party index 1) without every call
+# site re-deriving "which diver is this stage about" its own way.
+func _tutorial_party_index_for_step(step: int) -> int:
+	if step < 0 or step >= _TUTORIAL_SCRIPT.size():
+		return -1
+	var idx := int(_TUTORIAL_SCRIPT[step].get("party_index", -1))
+	return idx if idx < party.size() else -1
+
+# True only on the exact turn _TUTORIAL_SCRIPT's current stage is meant to
+# be force-walked through its one scripted move - see _TUTORIAL_SCRIPT's
+# own header comment. False once the script's fully done, and false for
+# any diver whose OWN stage isn't the current one (including a diver
+# acting again after their stage already passed), so
+# _start_party_turn()/_show_moves()/_on_move_chosen() know when to apply
+# the move-gate/explanation chain versus just letting a turn play out
+# normally.
+func _is_tutorial_scripted_turn(actor: Dictionary) -> bool:
+	if not tutorial_encounter:
+		return false
+	var idx := _tutorial_party_index_for_step(_tutorial_step)
+	return idx >= 0 and actor == party[idx]
 
 func _start_party_turn(actor: Dictionary) -> void:
 	(actor.stats as CombatantStats).begin_turn()
@@ -1448,10 +2250,21 @@ func _start_party_turn(actor: Dictionary) -> void:
 	item_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
+	_selected_move_name.text = ""
+	_selected_move_power.text = ""
 	call_deferred("_fit_panel_height")
+	_refresh_player_stats_panel()
+	_clear_stat_preview()
 	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
+	# Skip straight past Attack/Items/Run ONLY on the scripted diver's own
+	# turn - the tutorial's whole point there is choosing between moves,
+	# not re-discovering the top-level menu. Mech Pilot (never scripted)
+	# and either scripted diver's own LATER turns (once _tutorial_step has
+	# already moved past them) get a completely normal main menu instead.
+	if _is_tutorial_scripted_turn(actor):
+		_show_moves()
 
 # Only ever called with a party entry (see _advance_turn()'s kind check) -
 # actor.actor is always the Diver battle-stage instance built in
@@ -1496,6 +2309,148 @@ func _show_moves() -> void:
 	_populate_move_menu(_acting)
 	move_menu.visible = true
 	call_deferred("_fit_panel_height")
+	# Only the currently-scripted diver's own turn gets the intro prompts/
+	# move gate - any diver clicking "Attack" on some later, un-scripted
+	# turn of their own (their scripted stage already behind them) just
+	# gets a normal move menu with nothing forced or flashing.
+	if _is_tutorial_scripted_turn(_acting):
+		# Turn order/combat-basics gets explained once, on the very first
+		# move menu of the fight - awaited so both fully finish (including
+		# the player's Enter press each time) before the move gate below
+		# ever touches the caption. Every move button (plus Back) is locked
+		# for the whole intro, not just once _apply_tutorial_move_gate()
+		# gets to it - _populate_move_menu() only disables a button for
+		# being unaffordable, so without this the player could click a move
+		# straight through these two prompts.
+		if _tutorial_step == 0:
+			for b in move_buttons:
+				(b as Button).disabled = true
+			back_btn.disabled = true
+			await _first_fight_prompt()
+			await _explain_turn_order()
+		_apply_tutorial_move_gate()
+		
+# Guarded on _first_fight_prompt_shown, not just the _tutorial_step == 0
+# check both call sites already do - _advance_turn() also awaits this
+# ahead of the goblin's own turn (for the case where the enemy happens to
+# act before the player ever gets a move menu open), so both paths can
+# reach here on the very first round. Without its own guard, an enemy-
+# goes-first round would show this, then _show_moves() would show it
+# again the moment the player's own first turn opened right after.
+var _first_fight_prompt_shown := false
+
+func _first_fight_prompt() -> void:
+	if _first_fight_prompt_shown:
+		return
+	_first_fight_prompt_shown = true
+	await _tutorial_show_step("While exploring the deep, random encounters like this one with deep sea enemies can occur at any time")
+
+# One-shot: circles the turn-order bar in red, folds Combat Basics in with
+# the turn-order explanation (one combined caption instead of two the
+# player would have to click through separately), and waits for Enter
+# before turning the highlight back off - see _tutorial_show_step().
+func _explain_turn_order() -> void:
+	_turn_order_highlight = _highlight_box(_turn_order_highlight, _queue_bar)
+	var combat_basics := TutorialContent.page_body("Combat Basics")
+	var turn_order_line := "Turn order is shown from first at left to last at right in the turn order bar at the top."
+	var agility_line := "Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it."
+	await _tutorial_show_step("%s %s %s" % [combat_basics, turn_order_line, agility_line])
+	_turn_order_highlight.visible = false
+
+# Generic red-bordered box: lazily creates `highlight` (a Panel with a
+# transparent fill, border only) the first time it's used, then repositions
+# it to exactly overlay `target` every call rather than only once at
+# creation, in case target's own size/position ever changes. Shared by
+# _explain_turn_order() (boxes _queue_bar) and _explain_dodging() (boxes
+# the ACC/EVA stat rows) rather than three near-identical Panel-building
+# blocks.
+func _highlight_box(highlight: Panel, target: Control) -> Panel:
+	if highlight == null:
+		highlight = Panel.new()
+		highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color(0, 0, 0, 0)
+		box.border_color = Color(1, 0, 0)
+		box.border_width_left = 4
+		box.border_width_right = 4
+		box.border_width_top = 4
+		box.border_width_bottom = 4
+		highlight.add_theme_stylebox_override("panel", box)
+		add_child(highlight)
+	highlight.global_position = target.global_position
+	highlight.size = target.size
+	highlight.visible = true
+	return highlight
+
+func _explain_stats() -> void:
+	_tutorial_caption.text = "."
+
+
+func _apply_tutorial_move_gate() -> void:
+	if _tutorial_flash_tween != null and _tutorial_flash_tween.is_valid():
+		_tutorial_flash_tween.kill()
+	for i in range(move_buttons.size()):
+		var b := move_buttons[i] as Button
+		b.modulate = Color.WHITE
+		b.disabled = true
+	back_btn.disabled = true
+	if move_buttons.is_empty():
+		return
+	var moves := _moves_for(_acting)
+	var forced_name := String(
+		(_TUTORIAL_SCRIPT[_tutorial_step] as Dictionary).get("move", "")
+	) if _tutorial_step < _TUTORIAL_SCRIPT.size() else ""
+	var move_index := 0
+	for i in range(moves.size()):
+		if String((moves[i] as Dictionary).name) == forced_name:
+			move_index = i
+			break
+	var mv: Dictionary = moves[move_index]
+	var note := String(TutorialContent.FIRST_BATTLE_MOVE_NOTES.get(String(mv.name), ""))
+	var btn := move_buttons[move_index] as Button
+	_tutorial_flash_tween = create_tween()
+	_tutorial_flash_tween.set_loops()
+	_tutorial_flash_tween.tween_property(btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	_tutorial_flash_tween.tween_property(btn, "modulate", Color.WHITE, 0.4)
+	_tutorial_caption.text = "Choose the [color=yellow]highlighted[/color] attack move against the enemy."
+	call_deferred("_fit_panel_height")
+	btn.disabled = false
+
+# Overlays `power` in the top-right corner of `btn`, on the same row as
+# the move's name (the button's own text is two lines - name, then hint -
+# so top-right lands beside the name specifically, not the hint below it),
+# like a spell's mana cost sitting beside its name in other games. A
+# separate Label layered on top via anchors rather than folded into the
+# button's own text, so it reads as its own fixed number regardless of how
+# long the name/hint text runs. mouse_filter IGNORE keeps it from stealing
+# the click meant for the button underneath it.
+func _add_power_badge(btn: Button, power: int) -> void:
+	# A small opaque plate behind the number, not just the number floating
+	# over the button's own text - on a long move name the text can run
+	# right up under the corner, and a bare number there was getting lost
+	# in/blended with the letters behind it.
+	var plate := PanelContainer.new()
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var plate_style := StyleBoxFlat.new()
+	plate_style.bg_color = Color(0.05, 0.08, 0.1, 0.85)
+	plate_style.set_corner_radius_all(4)
+	plate_style.set_content_margin_all(2)
+	plate.add_theme_stylebox_override("panel", plate_style)
+	plate.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	plate.offset_left = -40
+	plate.offset_top = 3
+	plate.offset_right = -4
+	plate.offset_bottom = 21
+	btn.add_child(plate)
+
+	var badge := Label.new()
+	badge.text = str(power)
+	badge.add_theme_font_size_override("font_size", 16)
+	badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(badge)
 
 func _populate_move_menu(actor: Dictionary) -> void:
 	for b in move_buttons:
@@ -1508,6 +2463,9 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		if ox_cost > 0.0:
 			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
+		var raw_power := _preview_raw_power(mv, actor.stats as CombatantStats)
+		if raw_power > 0:
+			_add_power_badge(b, raw_power)
 		b.disabled = available < ox_cost
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
@@ -1640,6 +2598,8 @@ func _show_main() -> void:
 	item_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
+	_selected_move_name.text = ""
+	_selected_move_power.text = ""
 	call_deferred("_fit_panel_height")
 
 # Every effect still gets a target list rather than an immediate resolve,
@@ -1676,12 +2636,388 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		call_deferred("_fit_panel_height")
 		return
 	_pending_move = mv
+	# Name on the left, raw power right-aligned on the right - see
+	# _selected_move_panel's own declaration. Cleared again in
+	# _show_main()/_start_party_turn(). Heal/revive have no "power" concept,
+	# so the amount goes in the name slot instead and the power slot stays
+	# blank rather than showing a misleading 0.
+	_selected_move_name.text = String(mv.name)
+	if effect == "heal" or effect == "revive":
+		_selected_move_name.text = "%s - restores %d HP" % [String(mv.name), int(mv.get("amount", 0))]
+		_selected_move_power.text = ""
+	else:
+		_selected_move_power.text = str(_preview_raw_power(mv, _acting.stats as CombatantStats))
 	if String(mv.get("target", "one_enemy")) == "all_enemies":
 		_populate_all_target_menu(targets)
 	else:
 		_populate_target_menu(targets)
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
+	# Only on the scripted diver's own forced move (never heal/revive,
+	# whose targets are allies rather than the enemy these explanations are
+	# actually about) - stage 0 (Maxilani/Electric Touch) gets the full
+	# dodging/evasion/damage walkthrough, stage 1 (Musashi/Precise Tap)
+	# gets the shorter accuracy-boost one, stage 2 (Mech Pilot/Crushing
+	# Haymaker) gets the accuracy-cost one, stage 3 (Musashi again/Weaken)
+	# gets the no-damage-just-a-stat one, stage 4 (Maxilani again/Flash
+	# Blast) gets the status-condition one. Any scripted diver picking a
+	# move on some later un-scripted turn never reaches here at all.
+	if _is_tutorial_scripted_turn(_acting) and effect not in ["heal", "revive"] and not targets.is_empty():
+		if _tutorial_step == 0:
+			await _explain_dodging(targets[0] as Dictionary)
+		elif _tutorial_step == 1:
+			await _explain_precise_tap(targets[0] as Dictionary)
+		elif _tutorial_step == 2:
+			await _explain_crushing_haymaker(targets[0] as Dictionary)
+		elif _tutorial_step == 3:
+			await _explain_weaken(targets[0] as Dictionary)
+		elif _tutorial_step == 4:
+			await _explain_flash_blast(targets[0] as Dictionary)
+
+# Two beats, not one: first "hover over the enemy" (with the enemy button
+# itself flashing and nothing clickable - disabled buttons still fire
+# mouse_entered/exited in Godot, so hovering works fine while locked), THEN
+# - only once that hover actually happens - the stat comparison and boxed
+# ACC/EVA rows, held up with _tutorial_show_step()'s usual Enter-wait
+# before anything becomes clickable again. Splitting it this way means the
+# player has to actually go looking at the enemy before the payoff shows,
+# rather than having it dumped on them the instant the target menu opens.
+func _explain_dodging(enemy: Dictionary) -> void:
+	for b in target_buttons:
+		(b as Button).disabled = true
+	target_back_btn.disabled = true
+
+	# Tutorial fight is strictly 1v1, so target_buttons[0] is always the
+	# one enemy button - same assumption _tutorial_prep_enemy_turn() and
+	# render_light_beam()'s solo goblin already make.
+	var enemy_btn := target_buttons[0] as Button
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+
+	_tutorial_caption.text = "Hover over the enemy you want to attack to see the stat comparison."
+	call_deferred("_fit_panel_height")
+
+	# Waits on an actual hover, not Enter - _populate_target_menu() already
+	# wired this same button's mouse_entered to _show_stat_preview(), so by
+	# the time this fires the enemy panel/deltas are already showing.
+	# `await` directly on the signal rather than a locally-captured flag in
+	# a polling loop - GDScript lambdas capture local variables BY VALUE,
+	# so a `func(): hovered = true` closure only ever mutates its own private
+	# copy, never the outer scope's - a `while not hovered:` loop built that
+	# way spins forever no matter how many times the button's hovered.
+	await enemy_btn.mouse_entered
+
+	flash.kill()
+	enemy_btn.modulate = Color.WHITE
+	# From here on a stray mouse_exited (reading the caption pulls the
+	# mouse off this small button) must not yank the panel away mid-explanation.
+	_stat_preview_frozen = true
+
+	await _tutorial_show_step(
+		TutorialContent.page_body("Dodging: Accuracy vs. Evasion"),
+		func() -> void:
+			_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, true)
+			_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, true)
+	)
+	_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, false)
+	_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, false)
+	# Then the evasion-reduction callout, then Damage: Attack vs. Defense -
+	# same preview still up throughout; target buttons/Back stay disabled
+	# the whole way through, right until _explain_click_to_attack() at the
+	# very end finally re-enables them.
+	await _explain_evasion_reduction(enemy)
+	await _explain_damage(enemy)
+	await _explain_click_to_attack(enemy)
+
+# Calls out specifically why the enemy's EVA number is already showing red
+# with a white delta (from _show_stat_preview(), still up since
+# _explain_dodging() started it) - Electric Touch's own reduce_evasion
+# effect - rather than leaving the player to notice it unexplained amid
+# everything else on screen.
+func _explain_evasion_reduction(enemy: Dictionary) -> void:
+	var move_name := String(_pending_move.name)
+	var enemy_name := String(enemy.get("display_name", "the enemy"))
+	var delta := int((stat_effects.get(move_name, {}) as Dictionary).get("enemy", {}).get("evasion", 0))
+	var delta_text := ("+%d" % delta) if delta > 0 else str(delta)
+	await _tutorial_show_step(
+		"%s will lower %s's Evasion - that's why its EVA number is shown in [color=%s]red[/color], with the white (%s) next to it showing exactly how much. A stat shown in [color=%s]red[/color] means its total went down; a stat shown in [color=%s]green[/color] means its total went up." % [
+			move_name, enemy_name, STAT_COLOR_DOWN.to_html(false), delta_text,
+			STAT_COLOR_DOWN.to_html(false), STAT_COLOR_UP.to_html(false),
+		],
+		func() -> void:
+			_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, true)
+	)
+	_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, false)
+
+# A staged reveal, not one flat caption: first the move's own raw power
+# (already sitting right-aligned above the stat panels - see
+# _selected_move_power/_add_power_badge()) gets boxed on its own while the
+# text names it, THEN - after a beat, not another Enter press - STR/DEF
+# also light up as the text extends into the full "power vs. defense"
+# comparison, finishing on the actual computed total (_preview_damage() -
+# the same deterministic, no-variance baseline shown on the move button
+# itself). Reuses the same stat preview _explain_dodging() already started
+# (both moves' worth of stat_effects deltas came from one
+# _show_stat_preview() call), so this only ever adds highlights/text to
+# what's already showing, never rebuilds it. One Enter-gate at the very
+# end, once the whole explanation is on screen.
+func _explain_damage(enemy: Dictionary) -> void:
+	var attacker := _acting.stats as CombatantStats
+	var defender := enemy.stats as CombatantStats
+	var raw := _preview_raw_power(_pending_move, attacker)
+	var total := _preview_damage(_pending_move, attacker, defender)
+	var move_name := String(_pending_move.name)
+	var attacker_name := String(_acting.display_name)
+	var enemy_name := String(enemy.get("display_name", "the enemy"))
+
+	_set_row_highlight(_selected_move_panel, true)
+	call_deferred("_fit_panel_height")
+	await get_tree().create_timer(1.4).timeout
+
+	_set_row_highlight(_player_stats_ui.rows.STR as PanelContainer, true)
+	_set_row_highlight(_enemy_stats_ui.rows.DEF as PanelContainer, true)
+	await _tutorial_show_step(
+		"Since %s's base power is %d, and these are %s's Strength vs %s's Defense (1-1 = 0), this attack will deal %d damage." % [
+			move_name, raw, attacker_name, enemy_name, total,
+		]
+	)
+	_set_row_highlight(_selected_move_panel, false)
+	_set_row_highlight(_player_stats_ui.rows.STR as PanelContainer, false)
+	_set_row_highlight(_enemy_stats_ui.rows.DEF as PanelContainer, false)
+
+# Explanation's over - now tell the player what to actually do with it.
+# Re-flashes the enemy button (target buttons are still disabled from
+# _explain_dodging()) and waits for the real click rather than another
+# Enter press, since clicking IS the action being asked for. That real
+# click already resolves the move through the normal _on_target_chosen()
+# wiring on its own; this just cleans up the flash/preview state once it
+# happens; awaiting the button's own `pressed` signal lets both run
+# concurrently without one blocking the other. `label_override`, if given,
+# names the button instead of the enemy - _explain_flash_blast() needs
+# this since _populate_all_target_menu() builds a single "All enemies"
+# button rather than one button per enemy, so "Click the highlighted
+# Grunt" would name something that isn't actually on the button.
+func _explain_click_to_attack(enemy: Dictionary, label_override: String = "") -> void:
+	var enemy_btn := target_buttons[0] as Button
+	var label := label_override if label_override != "" else String(enemy.get("display_name", "the enemy"))
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+	_tutorial_caption.text = "Click the highlighted %s to attack." % label
+	call_deferred("_fit_panel_height")
+	# Only the flashing button itself - target_back_btn (and, in the
+	# all_enemies case, any OTHER target_buttons entry) stay disabled, so
+	# the only thing clickable during this prompt is the one thing it's
+	# actually asking for.
+	enemy_btn.disabled = false
+	await enemy_btn.pressed
+	flash.kill()
+	_stat_preview_frozen = false
+	_clear_stat_preview()
+
+# Musashi's own scripted turn (_tutorial_step == 1) - same hover-then-
+# explain shape as _explain_dodging(), but Precise Tap's payoff is
+# different: its acc_mod (see BASE_MOVES) is already read by _ready()'s
+# stat_effects loop as a player-side accuracy delta, so _show_stat_preview()
+# (already fired by the hover, same as any other move) is already showing
+# Musashi's ACC row green with a "(+9)" - this just boxes that row and
+# explains what it actually means. acc_mod only affects THIS one attack's
+# hit-chance roll, never Musashi's persistent Accuracy stat, but since a
+# turn here IS one single move, "for this one turn" and "for this one
+# attack" describe the exact same duration - there's no inaccuracy in
+# saying it the simpler way.
+func _explain_precise_tap(enemy: Dictionary) -> void:
+	for b in target_buttons:
+		(b as Button).disabled = true
+	target_back_btn.disabled = true
+
+	var enemy_btn := target_buttons[0] as Button
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+
+	_tutorial_caption.text = "Hover over the enemy you want to attack to see the stat comparison."
+	call_deferred("_fit_panel_height")
+	await enemy_btn.mouse_entered
+
+	flash.kill()
+	enemy_btn.modulate = Color.WHITE
+	_stat_preview_frozen = true
+
+	await _tutorial_show_step(
+		"Precise Tap temporarily boosts %s's Accuracy stat for this one turn, making the attack much harder to dodge - that's why its ACC number is shown in [color=%s]green[/color], with the white (+X) next to it showing the increase." % [
+			String(_acting.display_name), STAT_COLOR_UP.to_html(false),
+		],
+		func() -> void:
+			_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, true)
+	)
+	_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, false)
+	await _explain_click_to_attack(enemy)
+
+# Mech Pilot's own scripted turn (_tutorial_step == 2) - same hover-then-
+# explain shape as _explain_dodging()/_explain_precise_tap(), but Crushing
+# Haymaker's payoff runs the opposite direction from Precise Tap's: its
+# acc_mod (see BASE_MOVES) is a negative player-side accuracy delta, so
+# _show_stat_preview() (already fired by the hover) is already showing the
+# Mech Pilot's own ACC row red with a "(-3)" - this just boxes that row and
+# explains why a move can cost its own user accuracy, then calls out the
+# counter-play: pairing a heavy, less-accurate swing like this one with
+# something that lowers the TARGET's Evasion first (Electric Touch, which
+# _explain_evasion_reduction() already covered as a lasting-for-the-fight
+# reduction, not a one-turn dip) buys back the accuracy this move gives up.
+func _explain_crushing_haymaker(enemy: Dictionary) -> void:
+	for b in target_buttons:
+		(b as Button).disabled = true
+	target_back_btn.disabled = true
+	# See TUTORIAL_HAYMAKER_DODGE_EVASION's own comment - pinned here,
+	# before the player can even click, so the swing they're about to
+	# throw is guaranteed to whiff on its own accuracy penalty.
+	(enemy.stats as CombatantStats).evasion_current = TUTORIAL_HAYMAKER_DODGE_EVASION
+
+	var enemy_btn := target_buttons[0] as Button
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+
+	_tutorial_caption.text = "Hover over the enemy you want to attack to see the stat comparison."
+	call_deferred("_fit_panel_height")
+	await enemy_btn.mouse_entered
+
+	flash.kill()
+	enemy_btn.modulate = Color.WHITE
+	_stat_preview_frozen = true
+
+	await _tutorial_show_step(
+		"Crushing Haymaker trades away some of %s's own Accuracy for a much bigger hit - that's why its ACC number is shown in [color=%s]red[/color], with the white (-3) next to it showing the cost. Some attacks are simply too heavy to throw with your usual precision. Pair a swing like this with something that weakens the target first: Electric Touch, for one, lowers an enemy's Evasion for the rest of the fight, so a harder-to-land hit like this one still connects." % [
+			String(_acting.display_name), STAT_COLOR_DOWN.to_html(false),
+		],
+		func() -> void:
+			_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, true)
+	)
+	_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, false)
+	await _explain_click_to_attack(enemy)
+
+# Musashi's SECOND scripted turn (_tutorial_step == 3) - same hover-then-
+# explain shape as the other three, but Weaken's payoff isn't about a
+# number changing on Musashi's own side at all: its power is 0, so it
+# deals no damage whatsoever, only applying "defense" to the target's own
+# stats (see BASE_MOVES' "Prototype_1(1910)" entry and _apply_debuff()).
+# That's why this one boxes the ENEMY's DEF row instead of one of
+# Musashi's - the whole point is a move that does nothing but move a
+# stat.
+func _explain_weaken(enemy: Dictionary) -> void:
+	for b in target_buttons:
+		(b as Button).disabled = true
+	target_back_btn.disabled = true
+
+	var enemy_btn := target_buttons[0] as Button
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+
+	_tutorial_caption.text = "Hover over the enemy you want to attack to see the stat comparison."
+	call_deferred("_fit_panel_height")
+	await enemy_btn.mouse_entered
+
+	flash.kill()
+	enemy_btn.modulate = Color.WHITE
+	_stat_preview_frozen = true
+
+	var enemy_name := String(enemy.get("display_name", "the enemy"))
+	await _tutorial_show_step(
+		"Weaken deals no damage at all - its power is 0, so there's nothing to subtract from %s's HP. What it does instead is lower their Defense, which is why its DEF number is shown in [color=%s]red[/color], with the white (-2) next to it. Some moves only ever affect an enemy's stats like this, with no damage of their own, but they're worth using to weaken enemies for greater party hits." % [
+			enemy_name, STAT_COLOR_DOWN.to_html(false),
+		],
+		func() -> void:
+			_set_row_highlight(_enemy_stats_ui.rows.DEF as PanelContainer, true)
+	)
+	_set_row_highlight(_enemy_stats_ui.rows.DEF as PanelContainer, false)
+	await _explain_click_to_attack(enemy)
+
+# Maxilani's SECOND scripted turn (_tutorial_step == 4) - Flash Blast is
+# "all_enemies" (see BASE_MOVES' "Staff_Diver" entry, which is CombatMoves.
+# SCUBA), so _on_move_chosen() built target_menu via _populate_all_target_
+# menu() instead of _populate_target_menu(): target_buttons has exactly
+# one "All enemies" button rather than one per enemy (there's only the one
+# goblin here anyway, so the practical difference is just the button's
+# label). Its hover still fires _show_stat_preview() the same way, and
+# _ready()'s stat_effects loop mirrors Blindness's level onto the enemy's
+# ACC and DEF rows specifically (see that loop's own comment on why -
+# Blindness has no row of its own), so both light up red here same as any
+# other reduction. First non-single-target move the script demonstrates,
+# and the first status condition rather than a stat directly attached to
+# one side of the fight - worth pointing at Combat Help for the rest of
+# what status conditions exist rather than listing them all in one caption.
+func _explain_flash_blast(enemy: Dictionary) -> void:
+	for b in target_buttons:
+		(b as Button).disabled = true
+	target_back_btn.disabled = true
+	# Same pin as _explain_crushing_haymaker(), same value - low enough
+	# that Flash Blast's plain accuracy (no acc_mod of its own, unlike
+	# Crushing Haymaker) still beats it and lands for real. See
+	# TUTORIAL_HAYMAKER_DODGE_EVASION's own comment for the actual numbers.
+	(enemy.stats as CombatantStats).evasion_current = TUTORIAL_HAYMAKER_DODGE_EVASION
+
+	var enemy_btn := target_buttons[0] as Button
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+
+	_tutorial_caption.text = "Hover over the highlighted button to see what Flash Blast does."
+	call_deferred("_fit_panel_height")
+	await enemy_btn.mouse_entered
+
+	flash.kill()
+	enemy_btn.modulate = Color.WHITE
+	_stat_preview_frozen = true
+
+	await _tutorial_show_step(
+		"Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, at level 2. That's why the enemy's ACC and DEF numbers are both shown in [color=%s]red[/color] here: every level of Blindness lowers a target's Agility, Accuracy, AND Defense by that same number, for as many turns as %s's own Accuracy. Blindness is only one of several status conditions moves can inflict - full details on all of them, including ones not shown in this fight, are always available from the Combat Help tab of the Esc menu out in the world." % [
+			STAT_COLOR_DOWN.to_html(false), String(_acting.display_name),
+		],
+		func() -> void:
+			_set_row_highlight(_enemy_stats_ui.rows.ACC as PanelContainer, true)
+			_set_row_highlight(_enemy_stats_ui.rows.DEF as PanelContainer, true)
+	)
+	_set_row_highlight(_enemy_stats_ui.rows.ACC as PanelContainer, false)
+	_set_row_highlight(_enemy_stats_ui.rows.DEF as PanelContainer, false)
+	await _explain_click_to_attack(enemy, "All enemies")
+
+# Fires once, right after the player's first move actually resolves (see
+# _resolve_party_move()/_resolve_party_move_all()) - unlike the move
+# gate/dodging/damage steps, this isn't gating an action (the move already
+# happened), so nothing needs disabling here. Boxes party[0]'s and
+# enemies[0]'s whole status card (name/HP/oxygen/EVA together, not just
+# HP) via _set_row_highlight() - now that status cards sit fixed in the
+# side columns instead of floating over each combatant, this is a plain
+# border toggle, not a per-frame repositioned overlay.
+func _explain_other_stats() -> void:
+	var player_card: PanelContainer = (party[0].card as PanelContainer) if not party.is_empty() else null
+	var enemy_card: PanelContainer = (enemies[0].card as PanelContainer) if not enemies.is_empty() else null
+	# The purple-box callout is added here, in code, rather than baked into
+	# TutorialContent's shared page body - that same "Every Other Stat"
+	# text is also what the F1 general tutorial book shows outside of any
+	# fight, where "the status panels on either side" wouldn't mean anything.
+	var text := "HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. %s" % TutorialContent.page_body("Every Other Stat")
+	await _tutorial_show_step(
+		text,
+		func() -> void:
+			if player_card != null:
+				_set_row_highlight(player_card, true, Color(0.65, 0.3, 0.9))
+			if enemy_card != null:
+				_set_row_highlight(enemy_card, true, Color(0.65, 0.3, 0.9))
+	)
+	if player_card != null:
+		_set_row_highlight(player_card, false)
+	if enemy_card != null:
+		_set_row_highlight(enemy_card, false)
 
 func _populate_all_target_menu(targets: Array) -> void:
 	for b in target_buttons:
@@ -1692,6 +3028,13 @@ func _populate_all_target_menu(targets: Array) -> void:
 		names.append(String(target.display_name))
 	var button := _menu_button("All enemies", ", ".join(names))
 	button.pressed.connect(_on_all_targets_chosen.bind(targets))
+	# "All enemies" only ever targets enemies (nothing heals/revives the
+	# whole party at once), so previewing against the first of them is
+	# always safe here - unlike _populate_target_menu(), which is shared
+	# with heal/revive's ally-targeting case.
+	if not targets.is_empty():
+		button.mouse_entered.connect(_show_stat_preview.bind(_pending_move, targets[0]))
+		button.mouse_exited.connect(_clear_stat_preview)
 	target_menu.add_child(button)
 	target_buttons.append(button)
 	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
@@ -1700,6 +3043,10 @@ func _populate_target_menu(targets: Array) -> void:
 	for b in target_buttons:
 		(b as Button).queue_free()
 	target_buttons.clear()
+	# Shared with heal/revive, whose targets are allies, not enemies - only
+	# wire the hover preview for an actual attack/debuff against an enemy;
+	# previewing "enemy" stat_effects on an ally would be meaningless.
+	var previewable: bool = String(_pending_move.get("effect", "")) not in ["heal", "revive"]
 	for t in targets:
 		var s := t.stats as CombatantStats
 		var b := _menu_button(String(t.display_name), "HP %d/%d  DEF %d  EVA %d/%d  ACC %d" % [
@@ -1707,6 +3054,9 @@ func _populate_target_menu(targets: Array) -> void:
 			s.effective_evasion(), s.effective_accuracy(),
 		])
 		b.pressed.connect(_on_target_chosen.bind(t))
+		if previewable:
+			b.mouse_entered.connect(_show_stat_preview.bind(_pending_move, t))
+			b.mouse_exited.connect(_clear_stat_preview)
 		target_menu.add_child(b)
 		target_buttons.append(b)
 	# Keep Back last - same reason move_menu's own back_btn gets
@@ -1721,6 +3071,7 @@ func _populate_target_menu(targets: Array) -> void:
 # the next turn's target picker.
 func _on_target_chosen(target: Dictionary) -> void:
 	target_menu.visible = false
+	_clear_stat_preview()
 	if _pending_item != "":
 		var item_id := _pending_item
 		_pending_item = ""
@@ -1730,6 +3081,7 @@ func _on_target_chosen(target: Dictionary) -> void:
 
 func _on_all_targets_chosen(targets: Array) -> void:
 	target_menu.visible = false
+	_clear_stat_preview()
 	var move := _pending_move
 	_pending_move = {}
 	_resolve_party_move_all(move, targets)
@@ -1748,6 +3100,7 @@ func _show_moves_or_items_from_target_menu() -> void:
 	if _busy:
 		return
 	target_menu.visible = false
+	_clear_stat_preview()
 	if _pending_item != "":
 		_pending_item = ""
 		item_menu.visible = true
@@ -1796,9 +3149,17 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	# moves never set quick_time_bool at all, so this is still a no-op for
 	# anything the player swings themselves regardless. A successful dodge
 	# zeroes incoming outright rather than reducing it.
+	#
+	# _tutorial_force_next_qte overrides that roll for the choreographed
+	# first fight's one scripted enemy turn (see _tutorial_prep_enemy_
+	# turn()) - consumed (reset false) here unconditionally the instant
+	# this runs, whether or not it actually ends up mattering this call, so
+	# it can never leak into some later, real attack.
+	var force_qte := _tutorial_force_next_qte
+	_tutorial_force_next_qte = false
 	var player_dodge := false
-	if bool(move.get("quick_time_bool", false)) and randf() < ENEMY_QTE_CHANCE:
-		player_dodge = await _quick_time_event()
+	if bool(move.get("quick_time_bool", false)) and (force_qte or randf() < ENEMY_QTE_CHANCE):
+		player_dodge = await _quick_time_event(_actor_for_stats(defender))
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
 
@@ -2067,6 +3428,16 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	elif r.hit and String(r.debuff) == "":
 		_play_enemy_hit(target)
 	_finish_actor_turn(_acting)
+	# Guarded on _is_tutorial_scripted_turn(), not just tutorial_encounter -
+	# any diver whose scripted stage has already passed (e.g. Maxilani
+	# resolving a second, un-scripted move later in the fight) can still act
+	# completely normally while _tutorial_step has moved on to a later
+	# diver; without this check that move would wrongly count as the
+	# scripted one and skip a diver's turn in the script entirely.
+	if _is_tutorial_scripted_turn(_acting):
+		if _tutorial_step == 0:
+			await _explain_other_stats()
+		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not target_died:
 		_restore_enemy_idle(target)
@@ -2108,6 +3479,13 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	_log("%s: %s." % [String(mv.get("name", "Move")), "; ".join(summaries)])
 	_refresh_bar(_acting)
 	_finish_actor_turn(_acting)
+	# Same guard as _resolve_party_move()'s own copy of this - see its
+	# comment for why _is_tutorial_scripted_turn() matters here and
+	# tutorial_encounter alone doesn't.
+	if _is_tutorial_scripted_turn(_acting):
+		if _tutorial_step == 0:
+			await _explain_other_stats()
+		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
 
@@ -2188,7 +3566,7 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 		boss.play("idle")
 	_advance_turn()
 
-func _do_enemy_turn(actor: Dictionary) -> void:
+func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	(actor.stats as CombatantStats).begin_turn()
 	_refresh_bar(actor)
 	_set_all_buttons(false)
@@ -2205,7 +3583,11 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	if actor.actor is TethysBoss:
 		await _do_boss_turn(actor, alive_party)
 		return
-	var target: Dictionary = _pick_enemy_target(alive_party)
+	# forced_target comes from _tutorial_prep_enemy_turn() picking (and
+	# narrating) the target ahead of time - calling _pick_enemy_target()
+	# again here would re-roll its randf() and could land on someone else
+	# entirely, no longer matching what was just explained.
+	var target: Dictionary = forced_target if not forced_target.is_empty() else _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
 	if special_encounter:
 		match String(target.get("ability_id", "")):
@@ -2224,14 +3606,20 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	# so this scales correctly across levels the same way the heavy swing's
 	# damage itself already does.
 	var lined_up: bool = float(target_stats.hp) <= float(target_stats.hp_max) * float(ENEMY_HEAVY_MOVE.heavy_max)
-	var heavy := randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
+	# Never a heavy swing during the tutorial - a hit that can take a
+	# quarter to half of the TARGET's own max HP in one go has no place in
+	# the fight that's teaching someone the game for the first time.
+	var heavy := false if tutorial_encounter else randf() < (ENEMY_HEAVY_FINISH_CHANCE if lined_up else ENEMY_HEAVY_CHANCE)
 	# The grunts get the same treatment as the party. They have no attack
 	# clip of their own, only Idle and Walking, so the lunge IS the attack
 	# animation: without it a grunt's turn was a line of text and a number
 	# moving, with nothing on the stage indicating who did it or to whom.
 	(actor.actor as Goblin).play("walk")
 	await _step_toward(actor, target)
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE)
+	var enemy_move := ENEMY_HEAVY_MOVE if heavy else ENEMY_MOVE
+	if tutorial_encounter:
+		enemy_move = TUTORIAL_ENEMY_MOVE
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, enemy_move)
 	_send_home(actor, 0.0)
 	if is_instance_valid(actor.actor):
 		(actor.actor as Goblin).play("idle")
@@ -2404,12 +3792,54 @@ func _do_swap_minigame(actor: Dictionary, target: Dictionary, _target_stats: Com
 	# own comment.
 	await _finish_special_enemy_turn(actor, target, int(score[0]) >= int(score[1]))
 
+# One diver's block for _win()'s level-up table: name + level reached,
+# then every stat gain_xp() can grow, each as "KEY total" with a green
+# "(+N)" appended only when it actually grew this time (skipped entirely
+# at +0, same "no delta shown" rule _apply_stat_delta() already uses for
+# the in-fight stats panel). `levels` is however many levels one gain_xp()
+# call crossed at once - their per-stat "grown" deltas are summed here so
+# a big XP dump reads as one combined jump, not a level-up block repeated
+# once per level crossed.
+func _build_levelup_block(entry: Dictionary, levels: Array) -> String:
+	var s := entry.stats as CombatantStats
+	var keys: Array[String] = ["HP", "STR", "DEF", "AGI", "ACC", "EVA"]
+	var totals := {"HP": 0, "STR": 0, "DEF": 0, "AGI": 0, "ACC": 0, "EVA": 0}
+	for lv in levels:
+		var grown: Dictionary = (lv as Dictionary).get("grown", {}) as Dictionary
+		for key in keys:
+			totals[key] = int(totals[key]) + int(grown.get(key, 0))
+	var current := {
+		"HP": s.hp_max, "STR": s.strength, "DEF": s.defense,
+		"AGI": s.agility, "ACC": s.accuracy, "EVA": s.evasion,
+	}
+	var up := STAT_COLOR_UP.to_html(false)
+	var parts: Array[String] = []
+	for key in keys:
+		var delta := int(totals[key])
+		var piece := "%s %d" % [key, int(current[key])]
+		if delta > 0:
+			piece += " [color=%s](+%d)[/color]" % [up, delta]
+		parts.append(piece)
+	var last_level := int((levels[levels.size() - 1] as Dictionary).get("level", s.level))
+	return "[b]%s[/b] - Lv.%d\n%s" % [String(entry.display_name), last_level, "   ".join(parts)]
+
 func _win() -> void:
 	_set_all_buttons(false)
 	main_menu.visible = false
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	# Leftover from whoever's move resolved right before this - the name/
+	# power row above the stats panels, and the panels themselves (the
+	# player one sits visible all fight; the enemy one only when a hover
+	# preview was still up) - neither menu-hide above touches these, so
+	# without this the last diver's chosen attack and stats would keep
+	# showing underneath the win sequence instead of just the stat-boost
+	# table and (in the tutorial) the explanation of what winning did.
+	_set_row_highlight(_selected_move_panel, false)
+	_selected_move_panel.visible = false
+	(_player_stats_ui.panel as Control).visible = false
+	(_enemy_stats_ui.panel as Control).visible = false
 	_log("Tethys sinks back into the dark, beaten." if boss_encounter else "The enemies back off, beaten.")
 	# Whoever is still standing celebrates. The clip loops, so it holds for
 	# as long as the XP lines take to read.
@@ -2422,21 +3852,100 @@ func _win() -> void:
 		total_xp += int(e.get("xp_reward", 0))
 	if special_encounter:
 		total_xp = int(round(float(total_xp) * 1.5))
+	# One padded grunt's own xp_reward (BASE_XP=10) is well under the 30 XP
+	# a fresh level 1 needs - without this floor, the choreographed first
+	# fight's own level-up stat table (_build_levelup_block() below) would
+	# never actually have anything to show, since gain_xp() would never
+	# cross the threshold at all.
+	if tutorial_encounter:
+		total_xp = maxi(total_xp, 30)
 	# Every party member gets the full amount, not a split share - there's
 	# no shared party XP pool concept in this game, and splitting it would
 	# just make leveling slower for the same fights without adding a
 	# meaningful choice anywhere.
+	var levelup_blocks: Array[String] = []
 	for entry in party:
 		var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
 		for lv in levels:
-			_log("%s reached level %d!" % [String(entry.display_name), int(lv)])
+			_log("%s reached level %d!" % [String(entry.display_name), int((lv as Dictionary).level)])
 			await get_tree().create_timer(LOG_READ_DELAY).timeout
-	_revert_temp_buffs()
+		if not levels.is_empty():
+			levelup_blocks.append(_build_levelup_block(entry, levels))
+	# One combined stat table for every diver who leveled up this win, not
+	# a separate popup per diver - green (+N) per stat next to whichever
+	# ones actually grew this time (see _rolled_growth() in combatant_
+	# stats.gd for why that's not always the same number twice), same
+	# green used for a rising stat everywhere else in this file
+	# (STAT_COLOR_UP/_apply_stat_delta()). Outside the tutorial fight this
+	# just flashes on its own timer; inside it, it stays up through the
+	# "what winning does" explanation right below instead of vanishing
+	# before the player gets to read both together, and only clears once
+	# that caption's own Enter press does.
+	if not levelup_blocks.is_empty():
+		_levelup_caption.text = "\n\n".join(levelup_blocks)
+		_levelup_caption.visible = true
+		call_deferred("_fit_panel_height")
 	# The map has repeated random battles plus two guardians and no guaranteed
 	# healer between them. A partial regroup prevents one victory from leaving
 	# the next encounter mathematically decided while preserving attrition.
+	# Shown as a green fill over each diver's own HP/Oxygen bar (any win, not
+	# just the tutorial's), from wherever it sat before this restore up to
+	# wherever it lands after - see _show_heal_overlay() - rather than the
+	# bars just silently jumping to new numbers.
+	if tutorial_encounter:
+		for entry in party:
+			if entry.has("card"):
+				_set_row_highlight(entry.card as PanelContainer, true, Color(0.65, 0.3, 0.9))
 	for entry in party:
-		(entry.stats as CombatantStats).recover_after_victory()
+		var s := entry.stats as CombatantStats
+		var before_hp := float(s.hp)
+		var before_o2 := s.oxygen
+		s.recover_after_victory()
+		if entry.has("hp_heal_overlay"):
+			_show_heal_overlay(entry.hp_heal_overlay as ColorRect, before_hp, float(s.hp), float(s.hp_max))
+		if entry.has("oxygen_heal_overlay"):
+			_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
+	_refresh_all_bars()
+	# One extra beat only for the choreographed first fight - explains the
+	# XP/level-up lines (and, if any happened, the stat table above, and the
+	# HP/Oxygen refill just shown above that in purple/green) rather than
+	# leaving the player to infer what they meant. Numbers match gain_xp()
+	# (combatant_stats.gd) exactly: every stat it grows, the full HP/Oxygen
+	# refill (fill(), its only heal outside a save point), and the one
+	# Spell Point per level. Deliberately brief on Spell Points/spell trees -
+	# a fuller walkthrough of that is planned as its own separate tutorial
+	# later. Also calls out that a downed diver isn't excluded from any of
+	# this - the XP loop above runs over `party`, not _living(party), and
+	# recover_after_victory() (below) always adds at least 1 HP regardless
+	# of what a diver's hp was, so someone who went down mid-fight still
+	# levels up and comes back partially healed rather than staying at 0.
+	if tutorial_encounter:
+		await _tutorial_show_step("Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else and comes back with some HP instead of staying at 0. Gain enough XP and a diver levels up. Leveling up brings a batch of perks: growth across HP, Strength, Defense, Agility, Accuracy, and Evasion (shown in the stat tables below), a full HP/Oxygen refill (green on the bars, outlined in purple at the top), and one Spell Point, which unlocks new spells in that diver's own spell tree. More on Spell Points and spell trees later.")
+		for entry in party:
+			if entry.has("card"):
+				_set_row_highlight(entry.card as PanelContainer, false)
+			if entry.has("hp_heal_overlay"):
+				(entry.hp_heal_overlay as ColorRect).visible = false
+			if entry.has("oxygen_heal_overlay"):
+				(entry.oxygen_heal_overlay as ColorRect).visible = false
+		if not levelup_blocks.is_empty():
+			_levelup_caption.visible = false
+			call_deferred("_fit_panel_height")
+	else:
+		# No accompanying caption outside the tutorial - just a timed flash
+		# instead of an Enter-gate, same reasoning _apply_stat_delta()-style
+		# previews elsewhere in this file use a timer when nothing has to
+		# stay synchronized with an explanation.
+		await get_tree().create_timer(LOG_READ_DELAY * 1.5).timeout
+		for entry in party:
+			if entry.has("hp_heal_overlay"):
+				(entry.hp_heal_overlay as ColorRect).visible = false
+			if entry.has("oxygen_heal_overlay"):
+				(entry.oxygen_heal_overlay as ColorRect).visible = false
+		if not levelup_blocks.is_empty():
+			_levelup_caption.visible = false
+			call_deferred("_fit_panel_height")
+	_revert_temp_buffs()
 	finished.emit("won")
 
 func _lose() -> void:
@@ -2445,8 +3954,18 @@ func _lose() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
-	_log("The party is battered and pulls back.")
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	# The choreographed first fight can genuinely be lost now that
+	# _advance_turn() no longer force-wins it after the "Defeat the enemy!"
+	# prompt - spell out what a loss actually means (world.gd's
+	# _on_battle_finished()'s "lost" branch calls _show_game_over(), whose
+	# Restart button reloads the current save slot - see game_over_screen.gd)
+	# instead of the normal terse retreat line, since a first-time player has
+	# no prior loss to have already learned that from.
+	if tutorial_encounter:
+		await _tutorial_show_step("The enemy defeated your whole party, so the fight ends here. Normally, that means restarting from your last save point.")
+	else:
+		_log("The party is battered and pulls back.")
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_revert_temp_buffs()
 	finished.emit("lost")
 
