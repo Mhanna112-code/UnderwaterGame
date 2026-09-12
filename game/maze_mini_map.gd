@@ -126,16 +126,20 @@ var _hall_discovery_count := 0
 var selectedHall: Array[CSGBox3D] = []
 var selectedHallName := ""
 
-# Blink clock for selectedHall's highlight in _draw()/_on_main_map_draw().
-# There are no persistent line Nodes to toggle .visible on - every wall is
-# redrawn from scratch each frame via draw_line()/draw_multiline(), so
-# "blinking" just means the draw functions skip selectedHallName's own
-# lines for one redraw whenever this is false. _process() already calls
-# queue_redraw() every frame regardless of this, so flipping it here is
-# picked up on the very next redraw with no extra signal needed. Started
-# once in _ready() - a single looping clock works for whichever hall is
-# selected at any given moment, it doesn't need restarting when selection
-# changes.
+# Blink clock for selectedHall's highlight on the SMALL RADAR's _draw()
+# only - the main map's own blink is separate (see _restart_main_map_blink()
+# down by _main_map_hall_lines), since it tweens real Line2D nodes
+# directly instead. The radar has no persistent line Nodes to tween: every
+# wall there is redrawn from scratch each frame via draw_line()/
+# draw_multiline(), so "blinking" just means _draw() skips
+# selectedHallName's own lines for one redraw whenever this is false.
+# _process() already calls queue_redraw() every frame regardless of this,
+# so flipping it here is picked up on the very next redraw with no extra
+# signal needed. Started once in _ready() - a single looping clock works
+# for whichever hall is selected at any given moment, it doesn't need
+# restarting when selection changes (unlike the main map's tween, which
+# targets specific nodes and so DOES need restarting - see
+# _restart_main_map_blink()).
 var _hall_blink_on := true
 
 func _start_hall_blink() -> void:
@@ -146,7 +150,7 @@ func _start_hall_blink() -> void:
 	tween.tween_callback(func(): _hall_blink_on = false)
 	tween.tween_interval(0.5)
 
-# Same shape as _main_map_hall_points further down, just for the small
+# Same shape as _main_map_hall_lines further down, just for the small
 # radar - not consumed by anything yet (nothing currently supports
 # clicking this 150x150 view to select a hall), but built the same way in
 # _draw() below so that's a small addition later rather than a redesign.
@@ -181,8 +185,11 @@ func _update_revealed() -> void:
 		_hall_walls[hall_name] = walls
 		for wall in walls:
 			_wall_to_hall[wall] = hall_name
-		if selectedHall.is_empty():
-			_select_rotatable_hall(hall_name)
+		# Every newly found hall becomes the selection, not just the first
+		# one - discovering a new hall is the player's cue that this is the
+		# one to look at right now. _select_next_hall()/_select_previous_hall()
+		# below are what let them move off it again afterward.
+		_select_rotatable_hall(hall_name)
 
 # Points selectedHall at `hall_name`'s own wall pair. Called the moment a
 # new hall is first discovered (see _update_revealed()) so there's always
@@ -196,6 +203,27 @@ func _select_rotatable_hall(hall_name: String) -> void:
 	selectedHall = _hall_walls[hall_name]
 	selectedHallName = hall_name
 	_restart_main_map_blink()
+
+# Moves the selection to the next/previous discovered hall, wrapping
+# around at either end - _hall_walls' own key order is discovery order
+# (GDScript Dictionaries preserve insertion order), so this is really just
+# "the hall found right after/before the current one," matching how the
+# player thinks about cycling through what they've found so far. Halls
+# not yet discovered aren't in _hall_walls at all, so they're never a
+# valid cycle target. A no-op with nothing discovered yet.
+func _select_next_hall() -> void:
+	_cycle_selected_hall(1)
+
+func _select_previous_hall() -> void:
+	_cycle_selected_hall(-1)
+
+func _cycle_selected_hall(direction: int) -> void:
+	var names := _hall_walls.keys()
+	if names.is_empty():
+		return
+	var idx := names.find(selectedHallName)
+	idx = wrapi((0 if idx == -1 else idx) + direction, 0, names.size())
+	_select_rotatable_hall(names[idx])
 
 func _draw() -> void:
 	if maze_level == null or maze_level._diver == null or not is_instance_valid(maze_level._diver):
@@ -330,6 +358,49 @@ var _main_map_hall_lines: Dictionary = {}
 # single Line2D for the same reason as _main_map_hall_lines above.
 var _main_map_lone_lines: Dictionary = {}
 var _main_map_diver_pos := Vector2.ZERO
+# Draws the diver arrow + border above every wall Line2D - see its own
+# z_index comment in _build_main_map().
+var _main_map_overlay: Control
+
+# The blink tween currently animating whichever hall is selectedHallName's
+# own Line2D nodes on the main map - re-created (not reused) every time
+# selection changes, since a Tween created with create_tween() is tied to
+# whatever it was told to animate at creation time; there's no "retarget"
+# operation, so switching halls means killing the old one and building a
+# fresh one against the new hall's nodes instead.
+var _main_map_blink_tween: Tween
+
+# Restarts the main map's hall-highlight blink to target whichever hall is
+# currently selectedHallName. Called both when selection actually changes
+# (_select_rotatable_hall()) and the first time the selected hall's own
+# Line2D nodes get created (_update_main_map_hall_line() - selection can
+# happen before the main map has ever been opened, in which case there's
+# nothing to tween yet until it is).
+func _restart_main_map_blink() -> void:
+	if _main_map_blink_tween != null and _main_map_blink_tween.is_valid():
+		_main_map_blink_tween.kill()
+	# Reset every hall back to fully visible first - otherwise a hall that
+	# was mid-blink (invisible) when selection moved on to a different hall
+	# would be left stuck invisible forever, with nothing left animating it
+	# back.
+	for lines in _main_map_hall_lines.values():
+		for line in (lines as Array[Line2D]):
+			line.visible = true
+	if not _main_map_hall_lines.has(selectedHallName):
+		return
+	var lines: Array[Line2D] = _main_map_hall_lines[selectedHallName]
+	_main_map_blink_tween = create_tween()
+	_main_map_blink_tween.set_loops()
+	_main_map_blink_tween.tween_interval(0.5)
+	_main_map_blink_tween.tween_callback(func():
+		for line in lines:
+			line.visible = false
+	)
+	_main_map_blink_tween.tween_interval(0.5)
+	_main_map_blink_tween.tween_callback(func():
+		for line in lines:
+			line.visible = true
+	)
 
 # Common setup for every Line2D this main map creates (hall or standalone)
 # - added as a child of main_map so it renders in the same panel-space
@@ -383,11 +454,34 @@ func _build_main_map() -> void:
 	# gets the full 500x500 instead.
 	get_parent().add_child(main_map)
 
+	# A CanvasItem's own draw calls always render before its children's, so
+	# now that walls are real Line2D children of main_map (instead of also
+	# being drawn inline in _on_main_map_draw()), the diver arrow + border
+	# can no longer just be drawn at the end of that same function - that
+	# would put them BEHIND the wall lines, not on top. z_index = 1 pins
+	# this overlay above every wall Line2D regardless of when each one gets
+	# created (they all default to z_index 0, same as main_map itself).
+	_main_map_overlay = Control.new()
+	_main_map_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_main_map_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_main_map_overlay.z_index = 1
+	_main_map_overlay.draw.connect(_on_main_map_overlay_draw)
+	main_map.add_child(_main_map_overlay)
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_M:
+	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
+		return
+	var keycode: Key = (event as InputEventKey).keycode
+	if keycode == KEY_M:
 		main_map.visible = not main_map.visible
 		if main_map.visible:
 			main_map.queue_redraw()
+		get_viewport().set_input_as_handled()
+	elif keycode == KEY_RIGHT:
+		_select_next_hall()
+		get_viewport().set_input_as_handled()
+	elif keycode == KEY_LEFT:
+		_select_previous_hall()
 		get_viewport().set_input_as_handled()
 
 # Absolute panel-space projection - MAIN_MAP_MARGIN + (world offset from
@@ -427,6 +521,7 @@ func _refresh_main_map() -> void:
 	if maze_level._diver != null and is_instance_valid(maze_level._diver):
 		_main_map_diver_pos = _project_to_main_map(maze_level._diver.global_position)
 	main_map.queue_redraw()
+	_main_map_overlay.queue_redraw()
 
 # One persistent Line2D per standalone wall - created the first time this
 # particular box is seen, just repositioned on every call after that.
@@ -487,11 +582,21 @@ func _on_main_map_draw() -> void:
 	main_map.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.03, 0.06, 0.08, 0.92))
 	# Walls themselves are no longer drawn here - _main_map_hall_lines and
 	# _main_map_lone_lines are real Line2D children of main_map now (see
-	# _make_main_map_line()), so Godot renders them on its own between this
-	# background rect and the diver arrow below without this function
-	# touching them at all. Blinking the selected hall is handled by
+	# _make_main_map_line()), so Godot renders them on its own, right after
+	# this background (a CanvasItem's own draw calls happen before its
+	# children's). Blinking the selected hall is handled by
 	# _restart_main_map_blink() tweening those nodes' .visible directly,
-	# not by skipping a draw call here.
+	# not by skipping a draw call here. The diver arrow and border used to
+	# draw here too, right after the walls - moved to _main_map_overlay
+	# (see _on_main_map_overlay_draw()) since they need to render ABOVE
+	# the wall Line2D children now, which this function's own draw calls
+	# can't do (a parent always draws before its children, regardless of
+	# call order within its own _draw).
+
+# Same idea as _on_main_map_draw() above, but for _main_map_overlay - see
+# its z_index comment in _build_main_map() for why the diver arrow and
+# border live in a separate node now instead of drawing here directly.
+func _on_main_map_overlay_draw() -> void:
 	var fwd := Vector2(0, -1)
 	if maze_level != null and maze_level._diver != null and is_instance_valid(maze_level._diver):
 		var f: Vector3 = -maze_level._diver.global_transform.basis.z
@@ -506,11 +611,11 @@ func _on_main_map_draw() -> void:
 	var tip := p + fwd * 9.0
 	var back_l := p - fwd * 5.0 + side * 5.5
 	var back_r := p - fwd * 5.0 - side * 5.5
-	main_map.draw_polygon(
+	_main_map_overlay.draw_polygon(
 		PackedVector2Array([tip, back_l, back_r]),
 		PackedColorArray([Color(0.35, 0.95, 0.55)])
 	)
 	# Blue border, drawn last so it sits on top of the walls/arrow rather
 	# than under them - filled=false makes this an outline, not a filled
 	# rect over the whole panel.
-	main_map.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.3, 0.55, 0.95), false, 3.0)
+	_main_map_overlay.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.3, 0.55, 0.95), false, 3.0)

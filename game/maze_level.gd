@@ -34,9 +34,96 @@ func _ready() -> void:
 	_build_perimeter_walls()
 	_build_ceiling()
 	_build_minimap()
+	_build_item_rocks()
+
+# Reward rocks scattered through the maze - the same disguised-as-scenery
+# CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
+# position list, just placed at whichever Marker3D nodes are tagged
+# "ItemRock" in THIS scene instead - adding another one is tagging another
+# marker with that group, not editing code.
+func _build_item_rocks() -> void:
+	for node in get_tree().get_nodes_in_group("ItemRock"):
+		var marker := node as Node3D
+		if marker == null:
+			continue
+		var rock := CrackedWall.new()
+		rock.span = Vector3(1.1, 1.1, 1.1)
+		rock.disguised_as_scenery_rock = true
+		rock.position = marker.global_position
+		rock.broken.connect(_on_item_rock_broken.bind(marker.name, marker.global_position))
+		add_child(rock)
+
+# Single-model .glb (unlike divers.glb, which stacks several models at the
+# origin and needs its own extraction step in lineup.gd - this one's just
+# the orb, load-and-instantiate is enough) - res://art/characters/ matches
+# where divers.glb already lives. Two other identical copies of this file
+# also sit at res://golden_energy_orb.glb and res://game/golden_energy_orb.glb;
+# worth deleting once this is confirmed as the one being used.
+const GOLDEN_ENERGY_ORB_SCENE := preload("res://art/characters/golden_energy_orb.glb")
+var goldenOrbs: Array = []
+# `marker_name`/`spot` are the broken ItemRock's own name and position,
+# bound at connect time in _build_item_rocks() - a real drop table would
+# vary by which one broke (see world.gd's own Items/ItemOrb pipeline for
+# what that looks like for real; this standalone test scene has none of
+# that, so every ItemRock just drops the same orb for now).
+func _on_item_rock_broken(marker_name: String, spot: Vector3) -> void:
+	var orb := GOLDEN_ENERGY_ORB_SCENE.instantiate()
+	orb.position = spot
+	goldenOrbs.append(orb)
+	add_child(orb)
 
 func _setup_walls():
 	_set_wall_position($CSGBox3D, $CurrentWall1, true, true)
+	_place_csgbox6_at_hallway_target()
+
+# CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
+# ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
+# H-key hallway swing (_rotate_hallway_1_2()) were triggered right now,
+# using the same flush-perpendicular math (_wall_flush_target()/
+# _flush_position()) that swing itself uses to actually place CurrentWall1
+# there. CurrentWall1 never has to actually swing for this to be correct -
+# this just precomputes that same hypothetical destination up front and
+# leaves CSGBox3D6 sitting there permanently, whether or not H is ever
+# pressed.
+func _place_csgbox6_at_hallway_target() -> void:
+	var wall_a: CSGBox3D = $CurrentWall1
+	var wall_6: CSGBox3D = $CSGBox3D6
+	var wall_7: CSGBox3D = $CSGBox3D7
+
+	# CSGBox3D7's offset from CSGBox3D6, expressed in CSGBox3D6's OWN
+	# original local frame - captured before CSGBox3D6 moves, so re-applying
+	# it through CSGBox3D6's NEW transform below carries CSGBox3D7 along
+	# unchanged relative to CSGBox3D6 (same width apart, still parallel),
+	# rather than hand-deriving a specific offset/rotation that would stop
+	# matching if either wall's size ever changed.
+	var wall_6_original_transform := wall_6.global_transform
+	var wall_7_local_offset: Vector3 = wall_6_original_transform.affine_inverse() * wall_7.global_position
+
+	# CSGBox3D6's own rotation, set BEFORE _set_wall_position() below reads
+	# it - that function computes wall_b's "walk out to its own center"
+	# step using wall_b's CURRENT rotation.y, so this has to already be the
+	# final value or that step would use the wrong (stale) facing. One
+	# more 90-degree turn off CurrentWall1's own hypothetical H-rotated yaw
+	# - the same relationship CurrentWall1 has to CSGBox3D.
+	var wall1_h_yaw: float = wall_a.rotation.y + PI * 0.5
+	wall_6.rotation.y = wall1_h_yaw + PI * 0.5
+
+	# Flush wall_6 to CSGBox3D exactly the way CurrentWall1 itself is
+	# (_set_wall_position($CSGBox3D, $CurrentWall1, true, true) above) -
+	# this puts wall_6 at the SAME spot CurrentWall1 occupies. Pushing it
+	# CurrentWall1's own full length further in world +X then carries it
+	# past CurrentWall1's whole span, landing beyond CurrentWall1's far
+	# end instead of on top of it.
+	var wall_orig = $CSGBox3D
+	_set_wall_position(wall_orig, wall_6, false, false)
+	wall_6.global_position.x += 2 * wall_a.size.x - wall_orig.size.x
+
+	# CSGBox3D7 follows the exact same transformation CSGBox3D6 just
+	# underwent - same rotation, same relative offset - so it arrives the
+	# same width apart from and parallel to CSGBox3D6's new spot, instead
+	# of being left behind at the old one.
+	wall_7.rotation.y = wall_6.rotation.y
+	wall_7.global_position = wall_6.global_transform * wall_7_local_offset
 
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
@@ -133,11 +220,13 @@ func _wall_endpoint(wall: CSGBox3D, positive_end: bool = false) -> Vector3:
 	var forward: Vector3 = wall.global_transform.basis.x.normalized()
 	return wall.global_position + forward * wall.size.x * 0.5 * (1.0 if positive_end else -1.0)
 
-# Rotates one wall counterclockwise by exactly 90 degrees, then translates
-# it so it continues the named destination wall end-to-end. There are two
-# valid non-overlapping continuations (off either end of `target`); choose
-# the one requiring the least travel from the moving wall's current centre.
-func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tween:
+# Just the destination-picking math _rotate_wall_flush() below needs,
+# pulled out on its own so other code can find out where `wall` is ABOUT
+# to end up (position + yaw) without actually starting its tween yet -
+# see _rotate_hallway_1_2()'s CSGBox3D6 alignment, which needs wall_a's
+# (CurrentWall1's) post-swing state to align CSGBox3D6 against, not
+# wherever CurrentWall1 happens to be RIGHT NOW mid-animation.
+func _wall_flush_target(wall: CSGBox3D, target: CSGBox3D) -> Dictionary:
 	var target_axis := target.global_transform.basis.x.normalized()
 	var target_negative := _wall_endpoint(target)
 	var target_positive := _wall_endpoint(target, true)
@@ -146,15 +235,15 @@ func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tw
 	var off_positive := target_positive + target_axis * half_length
 	var destination := off_negative if wall.global_position.distance_squared_to(off_negative) < wall.global_position.distance_squared_to(off_positive) else off_positive
 	destination.y = target.global_position.y
+	return {"position": destination, "yaw": wall.rotation.y + PI * 0.5}
 
-	var start_position := wall.global_position
-	var start_yaw := wall.rotation.y
-	var end_yaw := start_yaw + PI * 0.5
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(wall, "global_position", destination, duration)
-	tw.tween_property(wall, "rotation:y", end_yaw, duration)
-	return tw
+# Rotates one wall counterclockwise by exactly 90 degrees, then translates
+# it so it continues the named destination wall end-to-end. There are two
+# valid non-overlapping continuations (off either end of `target`); choose
+# the one requiring the least travel from the moving wall's current centre.
+func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tween:
+	var t := _wall_flush_target(wall, target)
+	return _tween_wall_to(wall, t.position, t.yaw, duration)
 
 # Shared by _rotate_wall_flush() above (implicitly, via the same tweened
 # properties) and _rotate_hallway_1_2()'s return trip below - just animates
@@ -168,25 +257,6 @@ func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1
 	tw.tween_property(wall, "global_position", position, duration)
 	tw.tween_property(wall, "rotation:y", yaw, duration)
 	return tw
-
-var _endpoint_marker: MeshInstance3D = null
-
-func _show_endpoint_marker(at: Vector3) -> void:
-	if _endpoint_marker == null:
-		_endpoint_marker = MeshInstance3D.new()
-		var sphere := SphereMesh.new()
-		sphere.radius = 0.5
-		sphere.height = 1.0
-		_endpoint_marker.mesh = sphere
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(1.0, 0.15, 0.85)
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.emission_enabled = true
-		mat.emission = mat.albedo_color
-		mat.emission_energy_multiplier = 2.0
-		_endpoint_marker.material_override = mat
-		add_child(_endpoint_marker)
-	_endpoint_marker.global_position = at
 
 # MODIFIED: was wall_a spinning around its own CENTER while wall_b swung
 # around wall_a's position - that only keeps wall_a's own center fixed,
@@ -251,7 +321,6 @@ func _rotate_hallway_1_2() -> void:
 	_hallway_1_2_home_yaw_a = wall_a.rotation.y
 	_hallway_1_2_home_pos_b = wall_b.global_position
 	_hallway_1_2_home_yaw_b = wall_b.rotation.y
-	_show_endpoint_marker(_wall_endpoint($CSGBox3D, true))
 	_rotate_wall_flush(wall_a, $CSGBox3D)
 	_rotate_wall_flush(wall_b, $CurrentWall3)
 	_rotate_wind_corridor_2_current(true)
@@ -303,45 +372,41 @@ func _rotate_wind_corridor_2_current(open: bool) -> void:
 		_currents_by_corridor.erase($WindCorridor3)
 		_currents_by_corridor[$WindCorridor2] = current
 		
-# MODIFIED: wall_b's new position was built off wall_a.global_position (its
-# CENTER) - wall_a_end was computed right above but then never actually
-# used, so wall_b landed offset from wall_a's middle, not its end. The
-# offset itself was also sized wrong twice over: wall_a.size.y and
-# wall_b.size.y are both HEIGHT (~4), not length - size.x is a wall's
-# length axis everywhere else in this file (_wall_endpoint() above) - and
-# it multiplied by `forward`, wall_a's own axis, when the offset from the
-# touching corner out to wall_b's center needs to run along wall_b's OWN
-# axis instead, since wall_b sits perpendicular to wall_a (already true
-# from how it's placed in the scene - this function only repositions it,
-# it never rotates it).
-#
-# Reuses _wall_endpoint() above rather than re-deriving wall_a's own
-# forward/endpoint by hand - same formula, just solved backwards: instead
-# of walking FROM a wall's center TO one of its ends, this walks from the
-# known touching point BACK to where wall_b's center must sit so that
-# wall_b's own end (left_end picks which one) lands exactly on it.
-#
-# MODIFIED: wall_b's center used to land exactly ON wall_a_end - fine along
-# wall_b's own length (that's the axis the left_end offset already solves
-# for), but wall_a_end is a point on wall_a's THICKNESS too, not just its
-# length. Since wall_b sits rotated 90 degrees from wall_a, wall_b's own
-# thickness axis (size.z) ends up parallel to wall_a's length axis - so
-# centering wall_b directly on that point left half of wall_b's thickness
-# sitting on the far side of it (correctly clear of wall_a), and the other
-# half sitting on the near side, buried back inside wall_a's own body
-# instead of starting flush at its face. `clearance` pushes wall_b's center
-# half a thickness further out along wall_a's own forward axis (the same
-# direction its end already faces away from its body, via `positive_end`'s
-# sign) so wall_b's near face lands exactly on wall_a's face instead of
-# straddling it.
 func _set_wall_position(wall_a: CSGBox3D, wall_b: CSGBox3D, positive_end: bool = false, left_end: bool = false) -> void:
-	var wall_a_forward: Vector3 = wall_a.global_transform.basis.x.normalized()
-	var wall_a_end := _wall_endpoint(wall_a, positive_end)
-	var wall_b_forward: Vector3 = wall_b.global_transform.basis.x.normalized()
-	var clearance: Vector3 = wall_a_forward * wall_b.size.z * 0.5 * (1.0 if positive_end else -1.0)
-	wall_b.global_position = wall_a_end + clearance + wall_b_forward * wall_b.size.x * 0.5 * (1.0 if left_end else -1.0)
-	
-	
+	wall_b.global_position = _flush_position(
+		wall_a.global_position, wall_a.rotation.y, wall_a.size.x, wall_a.size.z,
+		wall_b.rotation.y, wall_b.size.x, wall_b.size.z,
+		positive_end, left_end
+	)
+
+# Same formula _set_wall_position() above uses, generalized to take both
+# walls' position/yaw as plain values instead of reading them live off
+# actual nodes - lets a result be computed against a wall's FUTURE state
+# (see _rotate_hallway_1_2()'s CSGBox3D6 alignment, which needs
+# CurrentWall1's post-swing position/yaw, not wherever it happens to be
+# mid-tween) without first mutating any node's real transform just to
+# read it back.
+func _flush_position(a_position: Vector3, a_yaw: float, a_size_x: float, a_size_z: float, b_yaw: float, b_size_x: float, b_size_z: float, positive_end: bool = false, left_end: bool = false) -> Vector3:
+	var a_basis := Basis(Vector3.UP, a_yaw)
+	var a_forward: Vector3 = a_basis.x.normalized()
+	var a_end: Vector3 = a_position + a_forward * a_size_x * 0.5 * (1.0 if positive_end else -1.0)
+	var b_forward: Vector3 = Basis(Vector3.UP, b_yaw).x.normalized()
+	var clearance: Vector3 = a_forward * b_size_z * 0.5 * (1.0 if positive_end else -1.0)
+	return a_end + clearance + b_forward * b_size_x * 0.5 * (1.0 if left_end else -1.0) - a_basis.z.normalized() * 0.5 * a_size_z
+
+func _flush_position_from_end(a_end: Vector3, a_forward: Vector3, a_size_z: float, b_yaw: float, b_size_x: float, b_size_z: float, left_end: bool = false) -> Vector3:
+	var b_forward: Vector3 = Basis(Vector3.UP, b_yaw).x.normalized()
+	# MODIFIED: was -a_forward, pushing wall_b BACK toward wall_a's own
+	# body from the end point instead of past its tip - a_forward already
+	# points FROM wall_a's body OUT to this end (that's how a_end got
+	# computed in the first place), so continuing further in that SAME
+	# direction is what clears wall_a's tip instead of cutting back across
+	# it partway along its length.
+	var clearance: Vector3 = a_forward * b_size_z * 0.5
+	var a_side: Vector3 = Vector3(-a_forward.z, 0.0, a_forward.x)
+	return a_end + clearance + b_forward * b_size_x * 0.5 * (1.0 if left_end else -1.0) - a_side * 0.5 * a_size_z
+
+
 # Each WaterCurrent is a plain controller object, not something attached
 # to the Area3D itself (see water_current.gd) - built and wired up here
 # instead, so both which Area3D it watches and which way it blows are
@@ -582,6 +647,11 @@ func _on_diver_sucked_in(_d: Diver, amount: int) -> void:
 const _FLOOR_CLEARANCE := 1.0
 const _FLOOR_THICKNESS := 2.0
 
+# Set once by _build_floor() below - the Y of the invisible floor's actual
+# top surface, not its center. Read by _physics_process() to know where
+# the golden orbs should stop falling.
+var _floor_top_y := 0.0
+
 func _build_floor() -> void:
 	var wall_min_y := INF
 	for child in get_children():
@@ -607,6 +677,11 @@ func _build_floor() -> void:
 	var center_z := (padded_min.z + padded_max.z) * 0.5
 
 	var floor_y := wall_min_y - _FLOOR_CLEARANCE - _FLOOR_THICKNESS * 0.5
+	# The floor slab is centered on floor_y and _FLOOR_THICKNESS deep, so
+	# its actual top SURFACE - what anything falling should stop at - is
+	# half a thickness above that center, not floor_y itself (see
+	# _physics_process()'s golden-orb fall).
+	_floor_top_y = floor_y + _FLOOR_THICKNESS * 0.5
 
 	_build_invisible_wall(
 		Vector3(center_x, floor_y, center_z),
@@ -791,9 +866,19 @@ func _player_rise() -> float:
 		r -= 1.0
 	return r
 
+# Slow underwater sink, not real gravity's 9.8 m/s^2 - this is a diver's
+# drowned-treasure orb drifting down through water, not something in
+# freefall through air. Scaled by dt (seconds/frame) rather than
+# subtracted as a flat amount per frame, so the fall rate stays the same
+# regardless of framerate.
+const GOLDEN_ORB_FALL_SPEED := 1.5
+
 func _physics_process(dt: float) -> void:
 	if _diver == null:
 		return
+	for orb in goldenOrbs:
+		if orb.position.y > _floor_top_y:
+			orb.position.y = maxf(orb.position.y - GOLDEN_ORB_FALL_SPEED * dt, _floor_top_y)
 	_diver.swim(_player_dir(), _player_rise(), dt)
 	_move_camera(dt)
 
