@@ -7,10 +7,21 @@
 # never moves again once built. This scene's CurrentWall1/CurrentWall2
 # actually swing open at runtime (see maze_level.gd's swing_hallway()), so
 # a one-time bake would silently go stale the moment that happens. Instead
-# this recomputes each piece's own endpoints from the box's CURRENT
+# this recomputes each wall's own endpoints from the box's CURRENT
 # global_transform every draw call - a few extra vector ops 60 times a
 # second, in exchange for the radar never lying about a wall that just
 # moved.
+#
+# MODIFIED (removed then reinstated): this used to slice every wall into
+# short pieces and reveal them individually as the diver got close (fog
+# of war), matching mini_map.gd's own per-piece reveal for the real game.
+# That per-piece slicing was dropped, but reveal itself is back - now
+# piggybacked on the hall-discovery system below instead of its own
+# separate mechanism: a wall doesn't draw AT ALL, on either this radar or
+# the big main map, until _update_revealed() has actually resolved it (the
+# diver got within view_radius of it at least once). Once resolved, it
+# stays drawn forever after - on the main map even once the diver walks
+# back away from it, since _wall_to_hall never forgets an entry.
 class_name MazeMiniMap
 extends Control
 
@@ -18,128 +29,173 @@ var maze_level: MazeLevel
 
 @export var view_radius := 22.0
 
-# How close the diver has to get to a piece of wall before THAT piece is
-# "seen" and stays drawn from then on - a fog-of-war reveal radius, NOT
-# the same thing as view_radius above. view_radius only controls how much
-# of the map that's ALREADY been revealed fits on the radar right now
-# (zoom); SIGHT_RADIUS controls whether a given piece gets revealed in
-# the first place, regardless of whether it's currently near enough to be
-# on screen. Roughly matches the ~25m real sight distance content/
-# sites.gd's own header mentions for dark water, scaled down for this
-# tighter test-scene radar.
-const SIGHT_RADIUS := 12.0
-
-# Each wall is sliced into pieces roughly this long (world units) for
-# reveal purposes, rather than being revealed or hidden as one unit - a
-# long corridor wall should light up gradually as you walk its length,
-# not all at once the moment you're near either end of it. Smaller means
-# smoother/more granular reveal at the cost of a few more line segments
-# drawn per wall; this is a reasonable middle ground for this scene's
-# wall lengths, not a value with a single correct answer.
-const REVEAL_SEGMENT_LENGTH := 2.0
-
-# Which pieces of which wall have been seen - Dictionary[CSGBox3D] ->
-# Array[bool], one entry per piece (see _plan_for()'s "count"). A piece
-# stays revealed forever once true, same "seen doesn't un-happen when you
-# swim away" rule World.revealed_key_items uses for guardians. Built
-# lazily per box the first time _pieces_for() sees it - see there.
-var _revealed: Dictionary = {}
-
 func _ready() -> void:
 	custom_minimum_size = Vector2(150, 150)
 	clip_contents = true
+	_build_main_map()
+	_start_hall_blink()
+
+# The world-space endpoints of `box`'s own centerline, right now - the
+# longer of its two horizontal dimensions is treated as its length (a
+# wall built wide-along-X vs. wide-along-Z), read fresh from box.global_
+# transform every call rather than cached, so a wall that swings open
+# (CurrentWall1/CurrentWall2) never draws stale.
+func _box_segment(box: CSGBox3D) -> Array:
+	var half: Vector3 = box.size * 0.5
+	var t := box.global_transform
+	if box.size.x >= box.size.z:
+		return [t * Vector3(-half.x, 0.0, 0.0), t * Vector3(half.x, 0.0, 0.0)]
+	return [t * Vector3(0.0, 0.0, -half.z), t * Vector3(0.0, 0.0, half.z)]
 
 func _process(_dt: float) -> void:
 	_update_revealed()
 	queue_redraw()
+	if main_map.visible:
+		_refresh_main_map()
 
-# Works out how a wall gets sliced into reveal pieces, purely from the
-# box's own LOCAL size (box.size never changes, only its transform does -
-# see _piece_segment()'s own comment) - so this is a cheap, pure
-# calculation safe to just recompute on demand rather than caching:
-#   axis_is_x: whether the wall's LENGTH runs along local X (true) or
-#     local Z (false) - same "longer local dimension wins" rule
-#     _box_segment() used to use for the whole wall.
-#   half_len: half the wall's total length along that axis.
-#   count: how many REVEAL_SEGMENT_LENGTH-ish pieces the wall is divided
-#     into (at least 1, so even a short wall still has something to
-#     reveal).
-func _plan_for(box: CSGBox3D) -> Dictionary:
-	var axis_is_x: bool = box.size.x >= box.size.z
-	var length: float = box.size.x if axis_is_x else box.size.z
-	var count: int = maxi(1, int(ceil(length / REVEAL_SEGMENT_LENGTH)))
-	return {"axis_is_x": axis_is_x, "half_len": length * 0.5, "count": count}
+# --- Hall discovery & rotation-selection ---
+#
+# A hall (the player-facing unit - "hall 1", "hall 2", ...) is really one
+# WindCorridor's open lane PLUS the two walls that enclose it. Which two
+# walls those are is pure geometry and never changes (see
+# _compute_corridor_wall_pairs()), but the NAME a hall gets is player-
+# facing and assigned progressively in _update_revealed(): a hall isn't
+# added to _hall_walls until the diver has actually swum within
+# view_radius of one of its two walls, and "WindCorridorN" numbers halls
+# in the order they were actually found this playthrough, not by the
+# corridor node's own child index. Discovery ALSO gates visibility now
+# (see the class comment up top) - a wall isn't drawn anywhere, on the
+# radar or the main map, until it's been resolved here at least once.
 
-# Lazily creates `box`'s revealed-pieces array (all false) the first time
-# it's asked for, sized to `count` - and just returns the existing array
-# on every call after that, since a wall's own piece COUNT never changes
-# (it only depends on box.size, which is fixed) even though the pieces'
-# own WORLD positions keep changing if the wall swings.
-func _pieces_for(box: CSGBox3D, count: int) -> Array:
-	if not _revealed.has(box):
-		var arr: Array = []
-		for i in range(count):
-			arr.append(false)
-		_revealed[box] = arr
-	return _revealed[box]
+#
+# This is a geometric heuristic, not read from authored data - if two
+# corridors sit close enough together that a wall between them ends up
+# assigned to the wrong one (or claimed by both), this nearest-two-walls
+# rule is what to retune, not the dictionary shape.
+var _corridor_wall_pairs: Dictionary = {}   # Area3D -> Array[CSGBox3D], size 2
+var _corridor_wall_pairs_computed := false
 
-# The world-space endpoints of piece `i` (0-indexed, out of `plan.count`
-# total) of `box`, right now. Same local-point-times-transform idea
-# _box_segment() used for a whole wall, just applied to a fraction of it:
-# lerp() walks from one end of the wall's local length to the other, and
-# piece i covers the i/count -> (i+1)/count slice of that range - so
-# piece 0 is the first REVEAL_SEGMENT_LENGTH-ish stretch, piece
-# count-1 is the last, and every local point in between still gets
-# multiplied through box.global_transform to land wherever the box
-# actually is/however it's actually rotated right now.
-func _piece_segment(box: CSGBox3D, plan: Dictionary, i: int) -> Array:
-	var t := box.global_transform
-	var half_len: float = plan.half_len
-	var count: int = plan.count
-	var start: float = lerpf(-half_len, half_len, float(i) / float(count))
-	var end: float = lerpf(-half_len, half_len, float(i + 1) / float(count))
-	if plan.axis_is_x:
-		return [t * Vector3(start, 0.0, 0.0), t * Vector3(end, 0.0, 0.0)]
-	return [t * Vector3(0.0, 0.0, start), t * Vector3(0.0, 0.0, end)]
+func _compute_corridor_wall_pairs() -> void:
+	if maze_level == null:
+		return
+	_corridor_wall_pairs.clear()
+	for corridor in maze_level.corridors:
+		if not is_instance_valid(corridor):
+			continue
+		var center: Vector3 = corridor.global_position
+		var center2 := Vector2(center.x, center.z)
+		var ranked: Array = []
+		for box in maze_level.wall_boxes:
+			if not is_instance_valid(box):
+				continue
+			var seg := _box_segment(box)
+			var a2 := Vector2(seg[0].x, seg[0].z)
+			var b2 := Vector2(seg[1].x, seg[1].z)
+			ranked.append({"box": box, "dist": _point_to_segment_dist(center2, a2, b2)})
+		ranked.sort_custom(func(a, b): return float(a.dist) < float(b.dist))
+		var walls: Array[CSGBox3D] = []
+		for i in range(mini(2, ranked.size())):
+			walls.append(ranked[i].box as CSGBox3D)
+		_corridor_wall_pairs[corridor] = walls
+	_corridor_wall_pairs_computed = true
 
-# Same reveal idea as before, just checked per PIECE instead of per whole
-# wall - a piece flips to revealed the moment the diver's within
-# SIGHT_RADIUS of that piece specifically, which is what lets one end of
-# a long wall stay fogged while the near end is already lit up.
+func _corridor_for_wall(box: CSGBox3D) -> Area3D:
+	for corridor in _corridor_wall_pairs:
+		if (_corridor_wall_pairs[corridor] as Array[CSGBox3D]).has(box):
+			return corridor
+	return null
+
+# Player-facing discovery. hall name -> Array[CSGBox3D] size 2, keys
+# assigned in the order the diver actually found each hall.
+var _hall_walls: Dictionary = {}
+# CSGBox3D -> hall name, once assigned. A wall that turned out to belong
+# to no corridor at all gets "" here instead - not a hall, but still
+# marked so its adjacency isn't rechecked every single frame forever.
+var _wall_to_hall: Dictionary = {}
+var _hall_discovery_count := 0
+
+# The hall currently up for rotation (its own two walls) - empty until the
+# first hall is ever found. Kept as the actual CSGBox3D pair rather than a
+# screen-space PackedVector2Array: the small radar and the main map
+# project the same hall into two completely different coordinate spaces,
+# and whichever one last redrew would silently stomp the other's cached
+# points if this held pixels instead of the underlying walls. Whatever
+# eventually highlights the selected hall on screen should project
+# selectedHall's own walls itself, on demand, in whichever space it's
+# drawing to.
+var selectedHall: Array[CSGBox3D] = []
+var selectedHallName := ""
+
+# Blink clock for selectedHall's highlight in _draw()/_on_main_map_draw().
+# There are no persistent line Nodes to toggle .visible on - every wall is
+# redrawn from scratch each frame via draw_line()/draw_multiline(), so
+# "blinking" just means the draw functions skip selectedHallName's own
+# lines for one redraw whenever this is false. _process() already calls
+# queue_redraw() every frame regardless of this, so flipping it here is
+# picked up on the very next redraw with no extra signal needed. Started
+# once in _ready() - a single looping clock works for whichever hall is
+# selected at any given moment, it doesn't need restarting when selection
+# changes.
+var _hall_blink_on := true
+
+func _start_hall_blink() -> void:
+	var tween := create_tween()
+	tween.set_loops()
+	tween.tween_callback(func(): _hall_blink_on = true)
+	tween.tween_interval(0.5)
+	tween.tween_callback(func(): _hall_blink_on = false)
+	tween.tween_interval(0.5)
+
+# Same shape as _main_map_hall_points further down, just for the small
+# radar - not consumed by anything yet (nothing currently supports
+# clicking this 150x150 view to select a hall), but built the same way in
+# _draw() below so that's a small addition later rather than a redesign.
+var _radar_hall_points: Dictionary = {}
+
+# Walks every not-yet-resolved wall and, once the diver has actually gotten
+# within view_radius of it, resolves it: no adjacent corridor -> marked ""
+# (drawn on its own, never grouped); an adjacent corridor -> both of that
+# corridor's walls are folded into a new _hall_walls entry together (even
+# if the diver has only physically reached one of the two so far) and
+# named by discovery order.
 func _update_revealed() -> void:
 	if maze_level == null or maze_level._diver == null or not is_instance_valid(maze_level._diver):
 		return
-	var pos: Vector3 = maze_level._diver.global_position
-	var pos2 := Vector2(pos.x, pos.z)
+	if not _corridor_wall_pairs_computed:
+		_compute_corridor_wall_pairs()
+	var diver_pos: Vector3 = maze_level._diver.global_position
 	for box in maze_level.wall_boxes:
-		if not is_instance_valid(box):
+		if not is_instance_valid(box) or _wall_to_hall.has(box):
 			continue
-		var plan := _plan_for(box)
-		var pieces := _pieces_for(box, plan.count)
-		for i in range(plan.count):
-			if pieces[i]:
-				continue
-			var seg := _piece_segment(box, plan, i)
-			var a2 := Vector2(seg[0].x, seg[0].z)
-			var b2 := Vector2(seg[1].x, seg[1].z)
-			if _point_to_segment_dist(pos2, a2, b2) <= SIGHT_RADIUS:
-				pieces[i] = true
+		var seg := _box_segment(box)
+		var wall_mid: Vector3 = (seg[0] + seg[1]) * 0.5
+		if wall_mid.distance_to(diver_pos) > view_radius:
+			continue
+		var corridor := _corridor_for_wall(box)
+		if corridor == null:
+			_wall_to_hall[box] = ""
+			continue
+		_hall_discovery_count += 1
+		var hall_name := "WindCorridor%d" % _hall_discovery_count
+		var walls: Array[CSGBox3D] = _corridor_wall_pairs[corridor]
+		_hall_walls[hall_name] = walls
+		for wall in walls:
+			_wall_to_hall[wall] = hall_name
+		if selectedHall.is_empty():
+			_select_rotatable_hall(hall_name)
 
-# Closest distance from `p` to any point ON the segment a->b, not to its
-# endpoints - project p onto the infinite line through a/b, clamp that
-# projection to the segment's own [0, 1] range (so it can't slide past
-# either end), then measure to wherever that clamped point landed. This is
-# the standard point-to-segment distance formula; the clamp is the whole
-# trick; without it this would just be "closest endpoint," which reads a
-# piece you're walking parallel to (but not near either end of) as far
-# away when you're actually right next to its middle.
-static func _point_to_segment_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
-	var ab := b - a
-	var len_sq := ab.length_squared()
-	if len_sq < 0.000001:
-		return p.distance_to(a)
-	var t := clampf((p - a).dot(ab) / len_sq, 0.0, 1.0)
-	return p.distance_to(a + ab * t)
+# Points selectedHall at `hall_name`'s own wall pair. Called the moment a
+# new hall is first discovered (see _update_revealed()) so there's always
+# something selected as soon as one exists, and reusable later by whatever
+# click handler lets the player pick a DIFFERENT already-found hall to
+# rotate instead (see _pick_hall_at() below for hit-testing a click
+# against a hall's drawn lines).
+func _select_rotatable_hall(hall_name: String) -> void:
+	if not _hall_walls.has(hall_name):
+		return
+	selectedHall = _hall_walls[hall_name]
+	selectedHallName = hall_name
+	_restart_main_map_blink()
 
 func _draw() -> void:
 	if maze_level == null or maze_level._diver == null or not is_instance_valid(maze_level._diver):
@@ -153,30 +209,37 @@ func _draw() -> void:
 	draw_circle(mid, r, Color(0.03, 0.06, 0.08, 0.88))
 	draw_arc(mid, r - 1.5, 0.0, TAU, 48, Color(0.5, 0.72, 0.8, 0.55), 1.5)
 
+	# Only walls _update_revealed() has actually resolved draw at all - an
+	# undiscovered wall shows up on neither this radar nor the main map.
+	# Of the resolved ones, anything folded into a hall is grouped under
+	# that hall's key (so a future click-to-select can test against one
+	# hall's lines at a time); anything resolved but standalone just draws
+	# as its own independent line.
+	var hall_points: Dictionary = {}
 	for box in maze_level.wall_boxes:
-		if not is_instance_valid(box):
+		if not is_instance_valid(box) or not _wall_to_hall.has(box):
 			continue
-		var plan := _plan_for(box)
-		var pieces := _pieces_for(box, plan.count)
-		for i in range(plan.count):
-			# Fog of war, per piece: an unrevealed piece draws nothing at
-			# all, regardless of whether it'd otherwise fall inside
-			# view_radius - "on the radar's current zoom circle" and
-			# "actually seen at some point" are two separate questions,
-			# and this is the one that gates drawing at all.
-			if not pieces[i]:
-				continue
-			var seg := _piece_segment(box, plan, i)
-			var rel_a: Vector2 = Vector2(seg[0].x, seg[0].z) - Vector2(center.x, center.z)
-			var rel_b: Vector2 = Vector2(seg[1].x, seg[1].z) - Vector2(center.x, center.z)
-			var clipped: Array = _clip_to_circle(rel_a, rel_b, view_radius)
-			if clipped.is_empty():
-				continue
-			draw_line(
-				mid + (clipped[0] as Vector2) * px_per_unit,
-				mid + (clipped[1] as Vector2) * px_per_unit,
-				Color(0.6, 0.64, 0.68, 0.9), 2.0
-			)
+		var seg := _box_segment(box)
+		var rel_a: Vector2 = Vector2(seg[0].x, seg[0].z) - Vector2(center.x, center.z)
+		var rel_b: Vector2 = Vector2(seg[1].x, seg[1].z) - Vector2(center.x, center.z)
+		var clipped: Array = _clip_to_circle(rel_a, rel_b, view_radius)
+		if clipped.is_empty():
+			continue
+		var p_a: Vector2 = (clipped[0] as Vector2) * px_per_unit + mid
+		var p_b: Vector2 = (clipped[1] as Vector2) * px_per_unit + mid
+		var hall_name: String = _wall_to_hall[box]
+		if hall_name == "":
+			draw_line(p_a, p_b, Color(0.6, 0.64, 0.68, 0.9), 2.0)
+			continue
+		if not hall_points.has(hall_name):
+			hall_points[hall_name] = PackedVector2Array()
+		(hall_points[hall_name] as PackedVector2Array).append(p_a)
+		(hall_points[hall_name] as PackedVector2Array).append(p_b)
+	_radar_hall_points = hall_points
+	for hall_name in hall_points:
+		if hall_name == selectedHallName and not _hall_blink_on:
+			continue
+		draw_multiline(hall_points[hall_name], Color(0.6, 0.64, 0.68, 0.9), 2.0)
 
 	var fwd: Vector3 = -maze_level._diver.global_transform.basis.z
 	_draw_arrow(mid, Vector2(fwd.x, fwd.z))
@@ -203,6 +266,20 @@ func _clip_to_circle(rel_a: Vector2, rel_b: Vector2, radius: float) -> Array:
 		return []
 	return [rel_a + d * lo, rel_a + d * hi]
 
+# Closest distance from `p` to any point ON the segment a->b, not to its
+# endpoints - project p onto the infinite line through a/b, clamp that
+# projection to the segment's own [0, 1] range (so it can't slide past
+# either end), then measure to wherever that clamped point landed. Used by
+# _compute_corridor_wall_pairs() (wall-to-corridor distance) and _pick_hall_at()
+# (hit-testing a click against a hall's drawn lines).
+static func _point_to_segment_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab := b - a
+	var len_sq := ab.length_squared()
+	if len_sq < 0.000001:
+		return p.distance_to(a)
+	var t := clampf((p - a).dot(ab) / len_sq, 0.0, 1.0)
+	return p.distance_to(a + ab * t)
+
 func _draw_arrow(p: Vector2, facing: Vector2) -> void:
 	if facing.length() < 0.01:
 		facing = Vector2(0, -1)
@@ -215,3 +292,225 @@ func _draw_arrow(p: Vector2, facing: Vector2) -> void:
 		PackedVector2Array([tip, back_l, back_r]),
 		PackedColorArray([Color(0.35, 0.95, 0.55)])
 	)
+
+# --- Big persistent overview map, opened/closed with M ---
+# The small radar above recenters on the diver every frame (see _draw()'s
+# own `center`) - fine for "what's near me right now," wrong for a
+# standing overview, since anything already drawn would slide around the
+# panel the instant the diver moves. This map uses a FIXED origin instead
+# (_main_map_origin, computed once from the maze's own real bounds and
+# never touched again), so a wall drawn here stays at the same pixel
+# forever.
+const MAIN_MAP_SIZE := 500.0
+# Empty space kept between the maze's own drawn extent and the panel's
+# edge, on every side - without this, a wall sitting exactly on the
+# maze's outer boundary would draw right at pixel 0, half-clipped by the
+# panel edge/border.
+const MAIN_MAP_MARGIN := 14.0
+var main_map: Control
+var _main_map_px_per_unit := 1.0
+var _main_map_origin := Vector2.ZERO
+var _main_map_bounds_computed := false
+# Keyed by hall name (String, e.g. "WindCorridor1") -> one real Line2D per
+# wall in that hall (size 2, same order as _hall_walls[hall_name]) - a
+# persistent child of main_map rather than a PackedVector2Array rebuilt
+# every frame, so blinking the selected hall (_restart_main_map_blink())
+# can just tween these nodes' own .visible directly. A separate Line2D per
+# wall rather than one 4-point Line2D for the whole hall: Line2D always
+# connects its points into ONE continuous polyline, so a single Line2D
+# covering both walls would draw a spurious diagonal connecting wall A's
+# far end to wall B's near end. Created lazily, the first time a hall is
+# actually discovered (see _update_main_map_hall_line()); .points get
+# refreshed every frame after that in _refresh_main_map(), same as before,
+# since a wall can still swing open after its hall was first found.
+var _main_map_hall_lines: Dictionary = {}
+# CSGBox3D -> its own persistent Line2D, for RESOLVED walls that turned
+# out to belong to no hall (see _wall_to_hall - undiscovered walls never
+# get an entry here at all). One per wall rather than combined into a
+# single Line2D for the same reason as _main_map_hall_lines above.
+var _main_map_lone_lines: Dictionary = {}
+var _main_map_diver_pos := Vector2.ZERO
+
+# Common setup for every Line2D this main map creates (hall or standalone)
+# - added as a child of main_map so it renders in the same panel-space
+# coordinates _project_to_main_map() already produces (main_map's own
+# transform is identity, so a Line2D child at the default position 0,0
+# treats its .points as directly being that panel space).
+func _make_main_map_line() -> Line2D:
+	var line := Line2D.new()
+	line.width = 2.0
+	line.default_color = Color(0.6, 0.64, 0.68, 0.9)
+	main_map.add_child(line)
+	return line
+
+# Scans maze_level's actual geometry once (not every frame - a maze's
+# real footprint doesn't change after it's built) for the min/max corner
+# of everything in it, then derives both the fixed origin (the min
+# corner - so the maze's own top-left lands at the panel's top-left) and
+# the scale (whichever axis needs to shrink MORE to fit its own span into
+# the panel, used for BOTH axes so the maze doesn't stretch out of
+# proportion).
+func _compute_main_map_bounds() -> void:
+	if maze_level == null:
+		return
+	var points: Array[Vector3] = maze_level._collect_bounds_points()
+	if points.is_empty():
+		return
+	var min_pt: Vector3 = points[0]
+	var max_pt: Vector3 = points[0]
+	for p in points:
+		min_pt = min_pt.min(p)
+		max_pt = max_pt.max(p)
+	_main_map_origin = Vector2(min_pt.x, min_pt.z)
+	var span_x: float = maxf(max_pt.x - min_pt.x, 1.0)
+	var span_z: float = maxf(max_pt.z - min_pt.z, 1.0)
+	var usable: float = MAIN_MAP_SIZE - MAIN_MAP_MARGIN * 2.0
+	_main_map_px_per_unit = minf(usable / span_x, usable / span_z)
+	_main_map_bounds_computed = true
+
+func _build_main_map() -> void:
+	main_map = Control.new()
+	main_map.custom_minimum_size = Vector2(MAIN_MAP_SIZE, MAIN_MAP_SIZE)
+	main_map.clip_contents = true
+	main_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Starts closed - M toggles it (see _unhandled_input()).
+	main_map.visible = false
+	main_map.draw.connect(_on_main_map_draw)
+	# NOT add_child(main_map) on `self` - this Control is only 150x150 AND
+	# has clip_contents = true, which clips every descendant's drawing to
+	# that 150x150 rect regardless of how big main_map itself claims to
+	# be. A sibling under the same parent this radar already lives under
+	# gets the full 500x500 instead.
+	get_parent().add_child(main_map)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_M:
+		main_map.visible = not main_map.visible
+		if main_map.visible:
+			main_map.queue_redraw()
+		get_viewport().set_input_as_handled()
+
+# Absolute panel-space projection - MAIN_MAP_MARGIN + (world offset from
+# the maze's own min corner) * scale, so the maze's top-left corner lands
+# near the panel's top-left corner (with just the margin's breathing
+# room), not centered on the panel the way the small radar centers on the
+# diver.
+func _project_to_main_map(pos: Vector3) -> Vector2:
+	return Vector2(MAIN_MAP_MARGIN, MAIN_MAP_MARGIN) + (Vector2(pos.x, pos.z) - _main_map_origin) * _main_map_px_per_unit
+
+# Keeps every resolved wall's Line2D up to date, projected through the
+# fixed origin instead of the small radar's diver-relative one - only
+# walls _update_revealed() has actually resolved are touched at all, an
+# undiscovered wall gets no Line2D yet (and so shows up nowhere on the
+# main map) until the diver has swum up to it on the radar first. Node
+# creation only happens once per wall (see _update_main_map_hall_line()/
+# _update_main_map_lone_line()), but .points get reassigned every frame
+# regardless, same live re-projection as before - a wall can still swing
+# open after its hall was first found, and a stale cached Line2D would
+# silently lie about where it is.
+func _refresh_main_map() -> void:
+	if not _main_map_bounds_computed:
+		_compute_main_map_bounds()
+		if not _main_map_bounds_computed:
+			return
+	for box in maze_level.wall_boxes:
+		if not is_instance_valid(box) or not _wall_to_hall.has(box):
+			continue
+		var seg := _box_segment(box)
+		var p_a := _project_to_main_map(seg[0])
+		var p_b := _project_to_main_map(seg[1])
+		var hall_name: String = _wall_to_hall[box]
+		if hall_name == "":
+			_update_main_map_lone_line(box, p_a, p_b)
+		else:
+			_update_main_map_hall_line(hall_name, box, p_a, p_b)
+	if maze_level._diver != null and is_instance_valid(maze_level._diver):
+		_main_map_diver_pos = _project_to_main_map(maze_level._diver.global_position)
+	main_map.queue_redraw()
+
+# One persistent Line2D per standalone wall - created the first time this
+# particular box is seen, just repositioned on every call after that.
+func _update_main_map_lone_line(box: CSGBox3D, p_a: Vector2, p_b: Vector2) -> void:
+	if not _main_map_lone_lines.has(box):
+		_main_map_lone_lines[box] = _make_main_map_line()
+	(_main_map_lone_lines[box] as Line2D).points = PackedVector2Array([p_a, p_b])
+
+# One persistent Line2D per wall in the hall (see _main_map_hall_lines'
+# own comment for why it's one-per-wall rather than one-per-hall) - the
+# pair is created together the first time ANY of the hall's walls is seen,
+# indexed to match _hall_walls[hall_name]'s own wall order so box always
+# lands on the same Line2D across calls. If this is the hall the player
+# currently has selected, kick the blink tween off now that there's
+# something real for it to animate (see _restart_main_map_blink()).
+func _update_main_map_hall_line(hall_name: String, box: CSGBox3D, p_a: Vector2, p_b: Vector2) -> void:
+	var is_new := not _main_map_hall_lines.has(hall_name)
+	if is_new:
+		var lines: Array[Line2D] = []
+		var walls: Array[CSGBox3D] = _hall_walls[hall_name]
+		for i in range(walls.size()):
+			lines.append(_make_main_map_line())
+		_main_map_hall_lines[hall_name] = lines
+	var walls: Array[CSGBox3D] = _hall_walls[hall_name]
+	var idx := walls.find(box)
+	if idx == -1:
+		return
+	var lines: Array[Line2D] = _main_map_hall_lines[hall_name]
+	lines[idx].points = PackedVector2Array([p_a, p_b])
+	if is_new and hall_name == selectedHallName:
+		_restart_main_map_blink()
+
+# The nearest HALL to a click at `p` on main_map (by name, e.g. "1"), or
+# "" if nothing is within `max_dist` pixels - tests against each hall's
+# own Line2D nodes (_main_map_hall_lines, both its walls together), so
+# clicking near either wall of a hall selects that whole hall as one unit
+# rather than one specific wall.
+func _pick_hall_at(p: Vector2, max_dist: float = 10.0) -> String:
+	var best := ""
+	var best_dist := max_dist
+	for hall_name in _main_map_hall_lines:
+		for line in (_main_map_hall_lines[hall_name] as Array[Line2D]):
+			var pts := line.points
+			if pts.size() < 2:
+				continue
+			var d := _point_to_segment_dist(p, pts[0], pts[1])
+			if d < best_dist:
+				best_dist = d
+				best = hall_name
+	return best
+
+# The actual drawing - only ever called BY Godot, in response to
+# queue_redraw() above, never called directly. main_map has no script of
+# its own to override _draw() on, so the `draw` signal (connected in
+# _build_main_map()) is what hooks a plain runtime Control into this
+# callback instead.
+func _on_main_map_draw() -> void:
+	main_map.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.03, 0.06, 0.08, 0.92))
+	# Walls themselves are no longer drawn here - _main_map_hall_lines and
+	# _main_map_lone_lines are real Line2D children of main_map now (see
+	# _make_main_map_line()), so Godot renders them on its own between this
+	# background rect and the diver arrow below without this function
+	# touching them at all. Blinking the selected hall is handled by
+	# _restart_main_map_blink() tweening those nodes' .visible directly,
+	# not by skipping a draw call here.
+	var fwd := Vector2(0, -1)
+	if maze_level != null and maze_level._diver != null and is_instance_valid(maze_level._diver):
+		var f: Vector3 = -maze_level._diver.global_transform.basis.z
+		fwd = Vector2(f.x, f.z)
+	if fwd.length() < 0.01:
+		fwd = Vector2(0, -1)
+	fwd = fwd.normalized()
+	var side := Vector2(-fwd.y, fwd.x)
+	# _main_map_diver_pos is already an absolute panel-space point (see
+	# _project_to_main_map()), not relative to panel center.
+	var p := _main_map_diver_pos
+	var tip := p + fwd * 9.0
+	var back_l := p - fwd * 5.0 + side * 5.5
+	var back_r := p - fwd * 5.0 - side * 5.5
+	main_map.draw_polygon(
+		PackedVector2Array([tip, back_l, back_r]),
+		PackedColorArray([Color(0.35, 0.95, 0.55)])
+	)
+	# Blue border, drawn last so it sits on top of the walls/arrow rather
+	# than under them - filled=false makes this an outline, not a filled
+	# rect over the whole panel.
+	main_map.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.3, 0.55, 0.95), false, 3.0)

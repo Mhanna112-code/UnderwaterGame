@@ -516,7 +516,7 @@ func _ready() -> void:
 	banner.offset_left = -320.0
 	banner.offset_right = 320.0
 	banner.offset_top = -170.0
-	banner.offset_bottom = -90.0
+	banner.offset_bottom = -130.0
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

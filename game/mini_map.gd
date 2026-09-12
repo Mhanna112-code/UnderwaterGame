@@ -66,19 +66,6 @@ func _draw() -> void:
 # found (see World._wall_pieces/_update_wall_visibility()) - not whole
 # walls, so a long corridor lights up gradually as you swim its length
 # rather than all at once the moment any part of it is found.
-#
-# MODIFIED: draws piece.line_a/line_b (the exact overlap between the
-# piece and World's detection area, frozen in at the moment this piece
-# was first found - see World._piece_area_overlap()) rather than the
-# piece's own full a/b span - a piece only grazed at its edge draws just
-# that grazed sliver, not its whole length. Still clipped to the circle
-# itself on top of that, not just culled by whole segment - a stored
-# line with one endpoint inside view_radius and one well outside it would
-# otherwise draw straight through the rim into the square panel's corner
-# space (clip_contents only clips to the panel's rectangle, not the
-# circle drawn inside it). _clip_to_circle solves for where the line
-# actually crosses the view_radius boundary and only the portion inside
-# gets drawn.
 func _draw_lines_at_overlapping_areas(center: Vector3, px_per_unit: float, mid: Vector2) -> void:
 	for piece in world._wall_pieces:
 		if not bool(piece.revealed):

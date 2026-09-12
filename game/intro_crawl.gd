@@ -25,9 +25,16 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# STOP, not IGNORE - a click anywhere on screen is a valid way to skip,
-	# same reasoning as the skip hint label below.
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	# MODIFIED: was STOP, on the theory that catching the click needed it -
+	# backwards. STOP consumes a mouse press as a GUI event right here and
+	# stops it from ever reaching _unhandled_input(), which is where the
+	# actual skip-on-click logic lives (this Control has no _gui_input() of
+	# its own to catch it at that layer instead) - so a click was silently
+	# swallowed and skipping only ever worked via E (keyboard events aren't
+	# affected by mouse_filter at all, which is why that half looked fine).
+	# IGNORE lets the press fall through to _unhandled_input() like any
+	# other unclaimed input.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var bg := ColorRect.new()
 	bg.color = Color.BLACK
@@ -48,10 +55,19 @@ func _ready() -> void:
 	_text_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_text_label.offset_left = -TEXT_WIDTH * 0.5
 	_text_label.offset_right = TEXT_WIDTH * 0.5
+	# MODIFIED (added): same STOP-by-default bug as the root Control just
+	# above, one level deeper - this Control's own IGNORE doesn't cascade
+	# to children, which each still default to STOP independently. This
+	# label spans a wide, tall band down the center of the screen for most
+	# of the scroll, exactly where a player would actually click to skip,
+	# so without this a click landing on the text itself would still get
+	# swallowed here even with the root already fixed.
+	_text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_text_label)
 
 	var skip_hint := Label.new()
 	skip_hint.text = "Press E or click to skip"
+	skip_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	skip_hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	skip_hint.offset_left = -220.0
 	skip_hint.offset_top = -32.0
