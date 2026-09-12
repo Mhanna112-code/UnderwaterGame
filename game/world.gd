@@ -498,6 +498,7 @@ var _first_combat_trigger: Area3D
 var _first_combat_actor: Goblin
 var first_combat_pending := false
 var first_combat_seen := false
+var _first_combat_in_progress := false
 
 # Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
 # revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
@@ -1249,7 +1250,7 @@ func _on_first_combat_triggered(body: Node3D) -> void:
 	if not first_combat_pending or battling or not (body is Diver):
 		return
 	first_combat_pending = false
-	first_combat_seen = true
+	_first_combat_in_progress = true
 	if _first_combat_trigger != null:
 		# body_entered is a physics-server callback; changing an Area's
 		# monitoring state inside it is prohibited by Godot, so defer the
@@ -1263,8 +1264,10 @@ func _on_first_combat_triggered(body: Node3D) -> void:
 	_set_onboarding_ui(false)
 	# The battle screen carries its own start framing. Do not stack a second
 	# world banner over it after the single post-door handoff card.
-	_write_save()
-	_start_battle()
+	# Keep the checkpoint from before the trigger until this real first battle
+	# is won. A loss must reload the visible first Angler rather than silently
+	# skip it because the player crossed its trigger once.
+	_start_battle("", false, [], false, "angler", true)
 
 # MazeLevel used to only run as a separate test scene.  Embed that actual
 # geometry after the lock plates instead of claiming a maze has opened while
@@ -2206,13 +2209,13 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, custom_party: Array = [], special: bool = false, guardian_enemy_id: String = "angler") -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, custom_party: Array = [], special: bool = false, guardian_enemy_id: String = "angler", tutorial: bool = false) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Tethys rises from the deep!" if boss_encounter else "An angler fish emerges from the murk!")
+	_announce("Tethys rises from the deep!" if boss_encounter else ("Your first Angler encounter. Learn by doing." if tutorial else "An angler fish emerges from the murk!"))
 	battle = Battle.new()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
@@ -2220,14 +2223,22 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, custo
 	battle.special_encounter = special
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
+	battle.tutorial_encounter = tutorial
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
 func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
+	var was_tutorial := battle.tutorial_encounter
 	battle.queue_free()
 	battle = null
 	battling = false
+	if was_tutorial:
+		_first_combat_in_progress = false
+		if result == "won":
+			first_combat_seen = true
+			first_combat_pending = false
+			_write_save()
 	if _boss_playtest_active or _guardian_playtest_active:
 		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false

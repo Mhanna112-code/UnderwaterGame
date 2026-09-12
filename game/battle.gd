@@ -50,6 +50,14 @@ var guardian_encounter := false
 # packs roll their own Angler/Swordfish roster independently; this only pins
 # the one visible artifact defender, so exploration never randomizes a reward.
 var guardian_enemy_id := "angler"
+# The first deliberate Angler fight after the world tutorial. This is an
+# assistive lesson, not a second locked tutorial: it points out one reliable
+# opener and guarantees that the player sees a dodge QTE, while all normal
+# combat choices remain available.
+var tutorial_encounter := false
+var _tutorial_move_seen := false
+var _tutorial_qte_seen := false
+var _tutorial_force_next_qte := false
 # Verification can hold the automatic entrance/turn dispatcher while it
 # exercises each boss move directly. Shipped encounters leave this true.
 var boss_intro_enabled := true
@@ -204,6 +212,7 @@ var _pending_move: Dictionary = {}
 var _busy := false
 
 var log_label: Label
+var tutorial_hint: Label
 var queue_row: HBoxContainer
 # HFlowContainer, not HBoxContainer - main_menu only ever has 2 buttons so
 # it never mattered, but move_menu can hold up to 3 base moves + 4 equipped
@@ -596,7 +605,7 @@ func _build_stage() -> void:
 	# A special encounter is always a solo diver against exactly one grunt -
 	# it's built around one character's ability minigame (see _do_enemy_
 	# turn()'s special_encounter branch), not a real multi-enemy fight.
-	var count := 1 if boss_encounter or special_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -633,9 +642,15 @@ func _build_stage() -> void:
 		party_centre /= maxf(1.0, float(party.size()))
 		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		if tutorial_encounter:
+			# A first encounter has to be safe enough to teach from. It is still
+			# a real fight, but this Angler cannot erase a new player's party
+			# before they have seen the move and dodge surfaces.
+			st.strength = maxi(1, int(round(float(st.strength) * 0.5)))
+			st.accuracy = maxi(6, int(round(float(st.accuracy) * 0.7)))
 		enemies.append({
 			"kind": "enemy", "stats": st,
-			"display_name": g.display_name() if count == 1 else "%s %d" % [g.display_name(), i + 1],
+			"display_name": "Tutorial %s" % g.display_name() if tutorial_encounter else (g.display_name() if count == 1 else "%s %d" % [g.display_name(), i + 1]),
 			"actor": g,
 			"home_pos": g.position,
 			"home_rot": g.rotation.y,
@@ -923,6 +938,16 @@ func _build_ui() -> void:
 	log_label.custom_minimum_size = Vector2(0, 36)
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
+
+	# A persistent, short card is less disruptive than modal explanation
+	# screens: the player can read one next action and still use the normal
+	# combat interface or experiment with another move.
+	tutorial_hint = Label.new()
+	tutorial_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tutorial_hint.add_theme_color_override("font_color", Color(0.66, 0.88, 0.95))
+	tutorial_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tutorial_hint.visible = false
+	col.add_child(tutorial_hint)
 
 	main_menu = HFlowContainer.new()
 	main_menu.add_theme_constant_override("h_separation", 12)
@@ -1472,6 +1497,27 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
+	if tutorial_encounter:
+		run_btn.disabled = true
+		_update_tutorial_hint(actor)
+
+func _update_tutorial_hint(actor: Dictionary = {}) -> void:
+	if tutorial_hint == null:
+		return
+	if not tutorial_encounter:
+		tutorial_hint.visible = false
+		return
+	tutorial_hint.visible = true
+	if not _tutorial_move_seen:
+		if String(actor.get("model_name", "")) == "Staff_Diver":
+			tutorial_hint.text = "COMBAT BASICS  •  Choose Attack, then Electric Touch, then the Angler. Electric Touch lowers its EVA by Maxilani's ACC so later hits land more reliably."
+		else:
+			tutorial_hint.text = "COMBAT BASICS  •  The queue at the top shows who acts next. Use Attack to choose a move; target buttons show HP, DEF, EVA and ACC."
+	elif not _tutorial_qte_seen:
+		tutorial_hint.text = "DODGE  •  The next Angler attack will show a white marker and red zone. Press X while the marker is inside the zone to dodge it."
+	else:
+		tutorial_hint.text = "YOU HAVE THE BASICS  •  Use the move whose trade-off fits the situation. Combat Help in the pause menu explains statuses."
+	call_deferred("_fit_panel_height")
 
 # Only ever called with a party entry (see _advance_turn()'s kind check) -
 # actor.actor is always the Diver battle-stage instance built in
@@ -1816,8 +1862,13 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	# needing the barrier to save you at all, not just saving the barrier
 	# for later.
 	var player_dodge := false
-	if bool(move.get("quick_time_bool", false)) and randf() < ENEMY_QTE_CHANCE:
+	var show_qte := bool(move.get("quick_time_bool", false)) and (_tutorial_force_next_qte or randf() < ENEMY_QTE_CHANCE)
+	if show_qte:
+		_tutorial_force_next_qte = false
 		player_dodge = await _quick_time_event()
+		if tutorial_encounter:
+			_tutorial_qte_seen = true
+			_update_tutorial_hint()
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
 
@@ -2085,6 +2136,9 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	_refresh_bar(target)
 	_refresh_bar(_acting)
 	_log_player_result(_acting, target, mv, r)
+	if tutorial_encounter and not _tutorial_move_seen and String(_acting.get("model_name", "")) == "Staff_Diver" and String(mv.get("name", "")) == "Electric Touch":
+		_tutorial_move_seen = true
+		_update_tutorial_hint()
 
 	# A killing blow gets the fade instead of the usual walk/idle reaction -
 	# a dying grunt shouldn't play a normal hit-react animation, the fade
@@ -2266,6 +2320,9 @@ func _do_enemy_turn(actor: Dictionary) -> void:
 	var attack_length := enemy_actor.play_move(move)
 	if attack_length > 0.0:
 		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
+	if tutorial_encounter and _tutorial_move_seen and not _tutorial_qte_seen:
+		_tutorial_force_next_qte = true
+		_update_tutorial_hint()
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, move.combat as Dictionary)
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
 	_refresh_bar(target)

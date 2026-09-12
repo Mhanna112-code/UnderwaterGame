@@ -244,9 +244,9 @@ func _run() -> void:
 		if world.battle != null:
 			break
 	world.scripted = false
-	if world.battle == null or not world.first_combat_seen:
+	if world.battle == null or not world.battle.tutorial_encounter or world.first_combat_seen:
 		var d := world.divers[world.active] as Diver
-		findings.append("OB-14: swimming beyond the opened door did not reach first combat (ended at %s, trigger %s, monitor=%s, overlaps=%s)" % [d.global_position, world._first_combat_trigger.global_position, world._first_combat_trigger.monitoring, world._first_combat_trigger.get_overlapping_bodies().size()])
+		findings.append("OB-14: swimming beyond the opened door did not reach the tutorial first combat (ended at %s, trigger %s, monitor=%s, overlaps=%s)" % [d.global_position, world._first_combat_trigger.global_position, world._first_combat_trigger.monitoring, world._first_combat_trigger.get_overlapping_bodies().size()])
 
 	for finding in findings:
 		print("FINDING  " + finding)
