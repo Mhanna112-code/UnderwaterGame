@@ -49,6 +49,7 @@ run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless -
 run "balance: do casual and skilled policies clear the artifact route" "$GODOT" --headless --path . --script verify/balance.gd
 run "sites: are item locations unmarked and physically reachable" "$GODOT" --headless --path . --script verify/sites.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
+run "intro beam: does entering its visible column start tutorial combat" "$GODOT" --headless --path . --script verify/intro_sequence.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
 run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd

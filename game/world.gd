@@ -25,6 +25,10 @@ var _intro_arrow: MeshInstance3D
 # see intro_arrow(), _show_intro_text(), render_light_beam(), and
 # _update_intro_sequence() below.
 var _intro_active := false
+# Horizontal radius of the rendered light column that counts as arrival.
+# The beam is 12 m tall and its node is centered at y=6, whereas divers
+# swim near y=2; arrival must be measured across the seafloor plane, not to
+# the mesh origin in 3D (see _update_intro_sequence()).
 const INTRO_ARRIVAL_DIST := 2.5
 var _first_encounter_started := false
 var _transitioning_to_encounter := false
@@ -1549,7 +1553,14 @@ func _update_intro_sequence() -> void:
 		return
 	_point_arrow_at(light_beam.global_position)
 	var d: Diver = divers[active]
-	if d.global_position.distance_to(light_beam.global_position) <= INTRO_ARRIVAL_DIST:
+	# The beam is a vertical cylinder.  Its node sits halfway up its 12 m
+	# height, so a full Vector3 distance would make the part a diver can
+	# visibly swim through (near y=2) more than 2.5 m away from its origin.
+	# Only x/z describe whether the diver entered the displayed column.
+	var horizontal_distance := Vector2(d.global_position.x, d.global_position.z).distance_to(
+		Vector2(light_beam.global_position.x, light_beam.global_position.z)
+	)
+	if horizontal_distance <= INTRO_ARRIVAL_DIST:
 		_intro_arrow.visible = false
 		_start_first_encounter(d)
 
