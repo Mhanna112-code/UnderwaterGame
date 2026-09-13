@@ -87,6 +87,16 @@ func _check_exclusive_fullscreen(world: World, context: String) -> void:
 	var viewport_size := root.get_visible_rect().size
 	if not world.title_screen.size.is_equal_approx(viewport_size):
 		findings.append("TITLE RECT (%s): %s vs %s" % [context, world.title_screen.size, viewport_size])
+	var cover := world.title_screen.get_node_or_null("CoverArt") as TextureRect
+	if cover == null or cover.texture == null:
+		findings.append("COVER ART MISSING (%s)" % context)
+	elif cover.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_COVERED:
+		findings.append("COVER ART DISTORTS (%s)" % context)
+	elif not cover.size.is_equal_approx(viewport_size):
+		findings.append("COVER ART RECT (%s): %s vs %s" % [context, cover.size, viewport_size])
+	var panel := world.title_screen.get_node_or_null("MenuCenter/MenuPanel") as PanelContainer
+	if panel == null:
+		findings.append("TITLE CONTRAST PANEL MISSING (%s)" % context)
 
 func _check_world_started(world: World, context: String) -> void:
 	if world.title_screen.visible:
