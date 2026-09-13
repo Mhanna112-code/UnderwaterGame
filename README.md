@@ -1,5 +1,9 @@
 # UnderwaterGame
 
+![UnderwaterGame cover art by Glass_Goat](docs/underwater-cover.png)
+
+_Cover art by Glass_Goat._
+
 An in-development Godot RPG about three divers exploring a hostile underwater
 world. The current build combines free-swimming exploration, turn-based party
 combat, character-specific abilities, guarded artifacts, progression and
@@ -153,6 +157,7 @@ godot --headless --path . --export-release Web docs/index.html
 | `content/sites.gd` | World sites, artifacts, fixed guardians and beacon graph |
 | `content/tutorial_content.gd` | General help, status explanations and tutorial move text |
 | `game/maze_level.tscn` | Standalone maze/current puzzle development scene |
+| `docs/underwater-cover.png` | Glass_Goat's original cover art, used by the title screen, README and social cards |
 | `docs/` | Committed HTML5/WebAssembly export |
 | `verify/` | Gameplay, balance, regression and browser checks |
 
