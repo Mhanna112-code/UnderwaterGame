@@ -26,6 +26,7 @@ func _enter_special(world: World, diver: Diver, item_id: String) -> Battle:
 
 func _run() -> void:
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	world.skip_intro_for_test = true
 	root.add_child(world)
 	await process_frame
 	world.title_screen.new_game_chosen.emit(1)

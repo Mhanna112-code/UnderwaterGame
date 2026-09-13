@@ -67,6 +67,7 @@ func _initialize() -> void:
 	# enemies that down a party member before their animation can run.
 	seed(1)
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
+	world.skip_intro_for_test = true
 	root.add_child(world)
 	started_ms = Time.get_ticks_msec()
 	last_press_ms = started_ms

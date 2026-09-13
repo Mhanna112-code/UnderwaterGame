@@ -20,6 +20,7 @@ var frames := 0
 func _initialize() -> void:
 	_check_graph()
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
+	world.skip_intro_for_test = true
 	root.add_child(world)
 
 # ---- the graph, before anything moves ------------------------------------

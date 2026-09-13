@@ -29,6 +29,7 @@ var expect_reward := ""
 
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
+	world.skip_intro_for_test = true
 	root.add_child(world)
 
 func _process(_d: float) -> bool:

@@ -21,6 +21,19 @@ func _run() -> void:
 	else:
 		(fresh_buttons[0] as Button).pressed.emit()
 		await process_frame
+		if not fresh.intro_crawl.visible:
+			findings.append("INTRO MISSING (one-click New Game)")
+		if fresh.get_node("HUD").visible:
+			findings.append("HUD LEAK (intro crawl)")
+		if not paused:
+			findings.append("WORLD UNPAUSED (intro crawl)")
+		# Skip through the same input contract a reviewer/player has, then
+		# prove the game becomes playable only after the crawl finishes.
+		var skip := InputEventKey.new()
+		skip.pressed = true
+		skip.keycode = KEY_E
+		fresh.intro_crawl._unhandled_input(skip)
+		await process_frame
 		_check_world_started(fresh, "one-click New Game")
 	fresh.queue_free()
 	await process_frame

@@ -34,6 +34,9 @@ var _transitioning_to_encounter := false
 # until then, same reasoning as gating TAB/random encounters: nothing about
 # the tutorial should be skippable by ducking into a menu mid-walk-over.
 var _first_encounter_done := false
+# Test seam only. Automated subsystem checks need to enter their focused
+# scenario immediately; an actual player always sees the opening crawl.
+var skip_intro_for_test := false
 
 # random encounters: each Diver tracks its own distance swum and fires
 # encounter_triggered when it rolls one (see diver.gd). This just reacts -
@@ -339,6 +342,12 @@ func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
 	_write_save()
 	title_screen.close()
+	# This is the draft narration under review. It intentionally plays before
+	# the HUD/world are enabled, so Glassgoat can approve or replace it from
+	# the normal New Game path without a title/HUD overlap.
+	if not skip_intro_for_test:
+		intro_crawl.open()
+		await intro_crawl.finished
 	$HUD.visible = true
 	get_tree().paused = false
 
