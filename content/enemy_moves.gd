@@ -8,7 +8,8 @@ extends RefCounted
 
 # `clip` is a case-insensitive fragment of the FBX animation take. The first
 # two entries preserve the old normal/heavy probabilities exactly: 70/30 in a
-# normal turn and 35/65 when a target is in heavy-finisher range. The two
+# normal turn and 35/65 when a target is in heavy-finisher range. Normal move
+# power uses the same 1-4 authored-stat scale as Glassgoat's 10-HP party; the two
 # additional delivered clips are deliberately visible to the catalogue but
 # disabled until Glassgoat/team select their intended mechanics.
 const ANGLER := [
@@ -16,7 +17,7 @@ const ANGLER := [
 		"id": "bite", "name": "Bite", "clip": "attack)bite",
 		"enabled": true, "target": "single", "roll_order": 1, "weight": 70.0,
 		"finisher_weight": 35.0, "verb": "bites at",
-		"combat": {"power": 9, "acc_mod": 1, "quick_time_bool": false},
+		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
 	},
 	{
 		"id": "heavy_bite", "name": "Ramming Bite", "clip": "attack)bite",
@@ -32,13 +33,13 @@ const ANGLER := [
 		"id": "headbutt", "name": "Headbutt", "clip": "attack)headbutt",
 		"enabled": false, "target": "single", "roll_order": 2, "weight": 0.0,
 		"finisher_weight": 0.0, "verb": "headbutts",
-		"combat": {"power": 9, "acc_mod": 1, "quick_time_bool": false},
+		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
 	},
 	{
 		"id": "shine", "name": "Lure Flash", "clip": "attack)shine",
 		"enabled": false, "target": "single", "roll_order": 3, "weight": 0.0,
 		"finisher_weight": 0.0, "verb": "flashes at",
-		"combat": {"power": 9, "acc_mod": 1, "quick_time_bool": false},
+		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
 	},
 ]
 
@@ -54,7 +55,7 @@ const SWORDFISH_DUELIST := [
 		"id": "great_slash", "name": "Great Slash", "clip": "attack)greatslash",
 		"enabled": true, "target": "single", "roll_order": 1, "weight": 70.0,
 		"finisher_weight": 35.0, "verb": "slashes at",
-		"combat": {"power": 9, "acc_mod": 1, "quick_time_bool": false},
+		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
 	},
 	{
 		"id": "stabbing", "name": "Stabbing Lunge", "clip": "attack)stabbing",
@@ -70,7 +71,7 @@ const SWORDFISH_DUELIST := [
 		"id": "spinning_drill", "name": "Spinning Drill", "clip": "attack)spinning_drill",
 		"enabled": false, "target": "single", "roll_order": 2, "weight": 0.0,
 		"finisher_weight": 0.0, "verb": "spins toward",
-		"combat": {"power": 9, "acc_mod": 1, "quick_time_bool": false},
+		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
 	},
 ]
 

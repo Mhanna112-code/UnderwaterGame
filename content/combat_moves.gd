@@ -10,7 +10,7 @@ const SCUBA := [
 		"target": "one_enemy", "effects": [
 			{"kind": "reduce_evasion", "amount": {"accuracy": 1}},
 		],
-		"hint": "Light damaging attack that strips the enemy's EVA by this moves ACC",
+		"hint": "1 STR damage; strips EVA by ACC",
 		"text": "Electric Touch shocks the target",
 	},
 	{
@@ -18,7 +18,7 @@ const SCUBA := [
 		"target": "one_enemy", "effects": [
 			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
 		],
-		"hint": "Light damaging attack that applies bleed",
+		"hint": "1 STR damage; applies 1 + STR Bleed",
 		"text": "Scuba Stabbing opens a wound",
 	},
 	{
@@ -34,7 +34,7 @@ const SCUBA := [
 		"target": "all_enemies", "effects": [
 			{"kind": "self_temporary", "accuracy": -1, "evasion": -1},
 		],
-		"hint": "Strikes all foes giving them -1 ACC/EVA until next turn",
+		"hint": "All foes; -1 ACC/EVA for 1 turn",
 		"text": "Multiple Knee Combo sweeps the enemy line",
 	},
 	{
@@ -42,10 +42,48 @@ const SCUBA := [
 		"target": "one_enemy", "effects": [
 			{"kind": "self_temporary", "evasion": -3},
 		],
-		"hint": "Attack reducing enemy's EVA by -3 until next turn",
+		"hint": "STR + ACC damage; -3 EVA for 1 turn",
 		"text": "Axe Kick crashes down",
 	},
 ]
 
 static func for_model(model_name: String) -> Array:
 	return SCUBA if model_name == "Staff_Diver" else []
+# The move table keeps formulas because the rules need them, but Glassgoat's
+# player-facing contract is result-first: resolve those symbols against the
+# acting character before putting them on an ordinary choice button. Target
+# defense is not known until the next screen, so "Damage" here is the move's
+# authored output before the selected target mitigates it.
+static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
+	if not move.has("formula"):
+		return String(move.get("hint", ""))
+	var parts: Array[String] = []
+	var damage := CombatRules.formula_value(stats, move.get("formula", {}))
+	if damage > 0:
+		parts.append("%d Damage%s" % [damage, " all" if String(move.get("target", "")) == "all_enemies" else ""])
+	for effect_value in move.get("effects", []):
+		var effect := effect_value as Dictionary
+		match String(effect.get("kind", "")):
+			"reduce_evasion":
+				parts.append("EVA -%d" % CombatRules.formula_value(stats, effect.get("amount", {})))
+			"status":
+				var level := CombatRules.formula_value(stats, effect.get("level", {}))
+				var duration := CombatRules.formula_value(stats, effect.get("duration", {}))
+				var label := "%d %s" % [level, String(effect.get("status", "Effect")).capitalize()]
+				if duration > 0:
+					label += " for %d turns" % duration
+				parts.append(label)
+			"self_temporary":
+				var costs: Array[String] = []
+				var accuracy := int(effect.get("accuracy", 0))
+				var evasion := int(effect.get("evasion", 0))
+				if accuracy != 0 and accuracy == evasion:
+					costs.append("ACC/EVA %s%d" % ["+" if accuracy > 0 else "", accuracy])
+				else:
+					for stat in ["accuracy", "evasion"]:
+						var amount := int(effect.get(stat, 0))
+						if amount != 0:
+							costs.append("%s %s%d" % [stat.left(3).to_upper(), "+" if amount > 0 else "", amount])
+				if not costs.is_empty():
+					parts.append("%s for 1 turn" % " / ".join(costs))
+	return " • ".join(parts)

@@ -36,11 +36,64 @@ const base = live ? dir : `http://localhost:${server.address().port}/`;
 const url = base + (base.includes('?') ? '&guardian=trench' : '?guardian=trench');
 await page.goto(url, { waitUntil: 'load' });
 await page.waitForTimeout(25000);
+console.log('guardian stage: export loaded');
 // In this query-only title, the guardian review action is the smaller button
 // immediately after New Game in the centred title column.
 await page.mouse.click(640, 405);
-await page.waitForTimeout(6500);
+// Swordfish wins initiative on this route. Its animation playback is much
+// slower under SwiftShader than in the visible browser, so leave a full
+// headless-safe window for that opening action to finish before clicking the
+// player's UI. Otherwise animation frames can change our canvas fingerprint
+// while all menu clicks were actually ignored.
+await page.waitForTimeout(25000);
+console.log('guardian stage: battle entered');
+// FORMULA-FREEZE-1: exercise the exact player-visible transition Glassgoat
+// reported. The lower combat panel is deliberately fingerprinted without the
+// animated 3D stage, so actor idles cannot masquerade as a responsive menu.
+const panelFingerprint = () => page.evaluate(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return { ok: false, why: 'no canvas element' };
+  const top = Math.floor(c.height * 0.475);
+  const g = document.createElement('canvas');
+  g.width = 320; g.height = 96;
+  const ctx = g.getContext('2d');
+  ctx.drawImage(c, 0, top, c.width, c.height - top, 0, 0, g.width, g.height);
+  const d = ctx.getImageData(0, 0, g.width, g.height).data;
+  let hash = 2166136261;
+  for (let i = 0; i < d.length; i += 4) {
+    hash ^= d[i]; hash = Math.imul(hash, 16777619);
+    hash ^= d[i + 1]; hash = Math.imul(hash, 16777619);
+    hash ^= d[i + 2]; hash = Math.imul(hash, 16777619);
+  }
+  return { ok: true, hash: hash >>> 0 };
+});
+
+await page.mouse.click(165, 550); // Attack -> move choices
+await page.mouse.move(1270, 710); // remove hover-state pixels from comparison
+// Container resizing is deferred by Godot. SwiftShader can need several
+// seconds to present the new two-row menu even after the click was accepted.
+await page.waitForTimeout(5000);
+const resultsPanel = await panelFingerprint();
+const resultsOut = out.replace(/(\.[^.]+)?$/, '.results$1');
+await page.screenshot({ path: resultsOut });
+console.log('guardian stage: results menu sampled');
+
+await page.mouse.click(478, 665); // Show formulas in the settled two-row menu
+await page.mouse.move(1270, 710);
+await page.waitForTimeout(5000);
+const formulaPanel = await panelFingerprint();
+const formulaOut = out.replace(/(\.[^.]+)?$/, '.formulas$1');
+await page.screenshot({ path: formulaOut });
+console.log('guardian stage: formula menu sampled');
+
+await page.mouse.click(478, 603); // Show results; formula text makes this menu shorter
+await page.mouse.move(1270, 710);
+await page.waitForTimeout(5000);
+const restoredPanel = await panelFingerprint();
+console.log('guardian stage: results menu restored');
+
 await page.screenshot({ path: out });
+console.log('guardian stage: result mode remained responsive after restoration');
 const pixels = await page.evaluate(() => {
   const c = document.querySelector('canvas');
   if (!c) return { ok: false, why: 'no canvas element' };
@@ -52,8 +105,12 @@ const pixels = await page.evaluate(() => {
   return { ok: true, colours: colours.size, size: [c.width, c.height] };
 });
 console.log('guardian canvas ' + JSON.stringify(pixels));
+console.log('formula toggle  ' + JSON.stringify({ resultsPanel, formulaPanel, restoredPanel }));
 if (errors.length) console.log('console     ' + errors.slice(0, 8).join(' | '));
 await browser.close();
 if (!live) server.close();
-if (!pixels.ok || errors.length || pixels.colours < 20) process.exit(1);
-console.log('GUARDIAN WEB: ?guardian=trench opens the Swordfish Duelist guardian test');
+const formulaResponsive = resultsPanel.ok && formulaPanel.ok && restoredPanel.ok
+  && resultsPanel.hash !== formulaPanel.hash
+  && formulaPanel.hash !== restoredPanel.hash;
+if (!pixels.ok || errors.length || pixels.colours < 20 || !formulaResponsive) process.exit(1);
+console.log('GUARDIAN WEB: route opens and formula details toggle reversibly without freezing');

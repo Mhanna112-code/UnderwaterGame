@@ -24,7 +24,7 @@ const COMBAT_FRONT_AXIS := Vector3.FORWARD
 # the time a Battle exists - but make_stats() has to return *something*
 # sane rather than a grunt with 0 evasion/accuracy/agility).
 const FLOOR_STATS := {
-	"hp": 12, "strength": 3, "defense": 1, "agility": 3,
+	"hp": 15, "strength": 3, "defense": 1, "agility": 3,
 	"evasion": 2, "accuracy": 3,
 }
 
