@@ -40,6 +40,10 @@ func _process(_d: float) -> bool:
 		_report_encounter_rate()
 		_check_spawned()
 		_check_spots_are_reachable()
+		# The first tutorial route intentionally suppresses random encounters.
+		# Complete that gate for this ordinary-encounter test rather than
+		# treating the documented onboarding contract as a regression.
+		world._intro_active = false
 		# Ordinary encounters first: open water, and then standing right on
 		# a guarded spot, which must still be an ordinary encounter.
 		cases.append({"at": Vector3(0.0, 2.0, 0.0), "what": "open water", "reward": "", "kind": "encounter"})
@@ -160,6 +164,12 @@ func _run(spot: Dictionary) -> void:
 		for c in world.get_children():
 			if c is ItemGuardian and (c as ItemGuardian).item_id == expect_reward:
 				(c as Area3D).body_entered.emit(d)
+				break
+		# Guardian entry now deliberately opens Marc's chooser. Drive the
+		# public selection signal so this gate verifies the full path from
+		# physical Area3D to one-enemy, correctly rewarded battle.
+		if world.special_encounter_prompt.visible:
+			world.special_encounter_prompt.diver_chosen.emit(d.model_name)
 
 func _check_result() -> void:
 	var spot: Dictionary = cases[at] as Dictionary
