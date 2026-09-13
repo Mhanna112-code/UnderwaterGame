@@ -2078,30 +2078,22 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
-	# Both every scripted stage AND the enemy's own one scripted turn
-	# (_tutorial_prep_enemy_turn(), capped via _tutorial_enemy_turns) have to
-	# have happened before the script is done - _tutorial_step alone
-	# reaching _TUTORIAL_SCRIPT.size() only means every stage's diver has
-	# acted; the enemy's own QTE-teaching turn still needs to happen first,
-	# via completely normal turn order (see the forced-actor block below,
-	# which only overrides selection during the scripted stages themselves).
-	# _tutorial_finale_shown guards this firing more than once - unlike the
-	# old _end_tutorial(), this does NOT force a win. It shows the "go
-	# finish it yourself" prompt exactly once, then falls straight into the
-	# normal win/lose checks right below, which is what actually decides how
-	# this fight ends from here - a real win, or a real loss (see _lose()'s
-	# own tutorial-only message for that second case).
+	# The lesson is complete only after every scripted move AND the enemy's
+	# QTE-teaching turn have happened.  It must end here: asking a new player
+	# to "Defeat the enemy!" after they have completed what the UI presents as
+	# the tutorial leaves them on the battle screen with no clear distinction
+	# between completing the lesson and starting an unrelated normal fight.
+	# The Angler retreats, then the normal `finished` handoff restores the
+	# world. `_tutorial_finale_shown` keeps this one-shot if an async turn
+	# callback resumes after the signal.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
 		_set_all_buttons(false)
-		await _tutorial_show_step("Defeat the enemy!")
-		# One-shot: clears itself once read, unlike every earlier caption in
-		# this script - those get overwritten by whatever explanation comes
-		# next, but nothing ever touches _tutorial_caption again after this,
-		# so without this it would sit on screen, stale, for the rest of
-		# the real fight that follows.
-		_tutorial_caption.text = ""
-		call_deferred("_fit_panel_height")
+		_log("Tutorial complete. The Angler retreats into the dark.")
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		_revert_temp_buffs()
+		finished.emit("won")
+		return
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -3640,7 +3632,24 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	var attack_length := enemy_actor.play_move(move)
 	if attack_length > 0.0:
 		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, move.combat as Dictionary)
+	var combat_move := move.combat as Dictionary
+	# _tutorial_force_next_qte alone only overrides _resolve_attack()'s
+	# RANDOM chance roll (force_qte or randf() < ENEMY_QTE_CHANCE) - it
+	# still requires the move's own quick_time_bool to be true, and most
+	# of a goblin's real moves aren't (see content/enemy_moves.gd - Bite,
+	# the heavily-weighted normal swing, is quick_time_bool: false; only
+	# the finisher carries true, and it isn't even eligible until the
+	# target's HP is already below its own threshold, which it never is
+	# yet on the tutorial's first enemy turn). Without this, the "guaranteed"
+	# QTE _tutorial_prep_enemy_turn() sets up silently never fires whenever
+	# choose_move()'s own weighted pick lands on anything but that
+	# unreachable finisher. Duplicated rather than mutated in place, so
+	# forcing it here doesn't permanently flip that move's own shared
+	# Dictionary for every other fight that reuses the same content entry.
+	if _tutorial_force_next_qte:
+		combat_move = combat_move.duplicate()
+		combat_move["quick_time_bool"] = true
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, combat_move)
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
 	_refresh_bar(target)
 	_react(target, r)
