@@ -18,12 +18,17 @@ extends Control
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
 signal boss_playtest_chosen
+signal guardian_playtest_chosen
+signal special_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
 
 var _list: VBoxContainer
 var _boss_playtest_available := false
+var _guardian_playtest_available := false
+var _guardian_playtest_label := "Play Guardian Test"
+var _special_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -78,6 +83,21 @@ func enable_boss_playtest() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
+# Like the boss route, this is query-only review infrastructure. It keeps the
+# normal first-player title surface untouched while letting Glassgoat inspect
+# the far artifact guardian without navigating through saves and encounters.
+func enable_guardian_playtest(label: String) -> void:
+	_guardian_playtest_available = true
+	_guardian_playtest_label = label
+
+# Like the boss route above, this is opt-in review plumbing rather than part
+# of the ordinary New/Load flow. It lets a reviewer reach the guardian chooser
+# and all three ability minigames without first navigating the full map.
+func enable_special_playtest() -> void:
+	_special_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
@@ -105,6 +125,26 @@ func _refresh_main() -> void:
 		boss_btn.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
 		boss_btn.pressed.connect(boss_playtest_chosen.emit)
 		_list.add_child(boss_btn)
+
+	if _guardian_playtest_available:
+		var guardian_btn := Button.new()
+		guardian_btn.text = _guardian_playtest_label
+		guardian_btn.tooltip_text = "Swordfish Duelist model, animation, and guardian battle validation"
+		guardian_btn.custom_minimum_size = Vector2(360, 46)
+		guardian_btn.add_theme_font_size_override("font_size", 17)
+		guardian_btn.add_theme_color_override("font_color", Color(0.68, 0.88, 1.0))
+		guardian_btn.pressed.connect(guardian_playtest_chosen.emit)
+		_list.add_child(guardian_btn)
+
+	if _special_playtest_available:
+		var special_btn := Button.new()
+		special_btn.text = "Play Special Encounter Test"
+		special_btn.tooltip_text = "Choose a diver and test their ability minigame"
+		special_btn.custom_minimum_size = Vector2(360, 46)
+		special_btn.add_theme_font_size_override("font_size", 17)
+		special_btn.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
+		special_btn.pressed.connect(special_playtest_chosen.emit)
+		_list.add_child(special_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save
@@ -178,7 +218,7 @@ func _refresh_slots() -> void:
 
 # A one-line readout of a save's party, just enough to tell slots apart at
 # a glance - the diver order matches World.CAST, so index 0 is always
-# Mermaid regardless of who's "active" in the save.
+# Maxilani regardless of who's "active" in the save.
 func _summarize(data: Dictionary) -> String:
 	var divers_data: Array = data.get("divers", [])
 	if divers_data.is_empty():

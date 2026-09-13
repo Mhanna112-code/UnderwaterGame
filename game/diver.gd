@@ -69,21 +69,21 @@ var SONAR_INTERVAL := 0.2
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
-		"evasion": 3, "accuracy": 3, "barrier_max": 0,
+		"evasion": 3, "accuracy": 3,
 		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 10, "strength": 2, "defense": 2, "agility": 2,
-		"evasion": 2, "accuracy": 2, "barrier_max": 0,
+		"evasion": 2, "accuracy": 2,
 		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 10, "strength": 4, "defense": 4, "agility": 1,
-		"evasion": 0, "accuracy": 1, "barrier_max": 0,
+		"evasion": 0, "accuracy": 1,
 		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
 		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
@@ -103,7 +103,7 @@ var ability_id := ""
 # A locked ability exists (ability_id is set) but can't be used yet - the
 # mechanism is still here (unlock_ability(), called by grapple_anchor.gd's
 # on_grappled_to()) for any diver a future BASE_STATS entry gates this way,
-# but nothing currently sets ability_locked true - Mermaid's swap used to
+# but nothing currently sets ability_locked true - Maxilani's swap used to
 # gate on reaching a grapple anchor, but now starts available like every
 # other diver's ability.
 var ability_locked := false
@@ -370,7 +370,6 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
-	stats.barrier_max = int(base.barrier_max)
 	stats.grow_hp = int(base.grow_hp)
 	stats.grow_strength = int(base.grow_strength)
 	stats.grow_defense = int(base.grow_defense)
@@ -500,6 +499,12 @@ func set_suction_locked(v: bool) -> void:
 
 func is_suction_locked() -> bool:
 	return _suction_locked
+
+# WaterCurrent writes these while this diver overlaps its Area3D. The
+# push is blended with steering; current_axis removes sideways escape from
+# a corridor whose flow is meant to be an actual traversal constraint.
+var external_push := Vector3.ZERO
+var current_axis := Vector3.ZERO
 
 # Which abilities need a deliberate aim step (first-person raycast, click
 # to fire) vs firing the instant E is pressed. Shockwave is omnidirectional,
@@ -1052,16 +1057,20 @@ func swim(dir: Vector3, rise: float, dt: float) -> void:
 	if _is_grappling or _suction_locked:
 		return
 
-	var want := dir * speed
+	var steer := dir
+	if current_axis != Vector3.ZERO:
+		steer = current_axis * dir.dot(current_axis)
+	var want := steer * speed
 
 	want.y = rise * speed * 0.7
+	want += external_push
 
 
 	# ========================================================
 	# ACCELERATION / DRAG
 	# ========================================================
 
-	if dir == Vector3.ZERO and is_zero_approx(rise):
+	if want == Vector3.ZERO:
 
 		velocity = velocity.lerp(
 			Vector3.ZERO,

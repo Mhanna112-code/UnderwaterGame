@@ -17,6 +17,9 @@ func _initialize() -> void:
 	if args.size() > 1:
 		mode = String(args[1])
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
+	# Evidence capture enters combat directly; the authored opening crawl is
+	# covered by its own visual gate and would otherwise cover these screenshots.
+	world.skip_intro_for_test = true
 	root.add_child(world)
 
 func _process(_delta: float) -> bool:
@@ -30,7 +33,10 @@ func _process(_delta: float) -> bool:
 	if frames == 4:
 		_stage_evidence()
 		return false
-	if frames < 8:
+	# Let every deferred container sort and _fit_panel_height() complete after
+	# populating/toggling the move menu. Capturing at frame 8 could preserve an
+	# intermediate HUD height and make a correct layout look cropped.
+	if frames < 20:
 		return false
 	root.get_texture().get_image().save_png(out_png)
 	print("V2 EVIDENCE  %s (%s)" % [out_png, mode])

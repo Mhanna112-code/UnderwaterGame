@@ -1,6 +1,8 @@
 # Godot's import cache: regenerated on first open, never committed
 .godot/
 *.import.bak
+# Editor recovery files created beside scenes after an interrupted save.
+*.tscn*.tmp
 
 # playwright, for the browser gates. Installed in the project so node can
 # resolve it from verify/*.mjs; kept out of the export by the Web preset's
@@ -12,3 +14,9 @@ package.json
 
 # macOS
 .DS_Store
+.vercel
+
+# Screenshot evidence is not a game resource. Godot may generate sidecar
+# imports while scanning it for an export; keep those local and reproducible.
+docs/evidence/*.png.import
+verification/*.png.import

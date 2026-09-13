@@ -46,6 +46,7 @@ var timeline: Array = []
 
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
+	world.skip_intro_for_test = true
 	root.add_child(world)
 	started_ms = Time.get_ticks_msec()
 

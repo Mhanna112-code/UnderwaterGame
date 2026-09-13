@@ -3,7 +3,7 @@
 #
 # Checks that sites do not overlap, each sits in a clear reachable space,
 # nobody spawns in their furniture, and neither route beacons nor site lamps
-# are built. Mermaid's sonar is the sole deliberate item-finding aid.
+# are built. Maxilani's sonar is the sole deliberate item-finding aid.
 #
 # Usage: godot --headless --path . --script verify/sites.gd
 extends SceneTree
@@ -20,6 +20,7 @@ var frames := 0
 func _initialize() -> void:
 	_check_graph()
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
+	world.skip_intro_for_test = true
 	root.add_child(world)
 
 # ---- the graph, before anything moves ------------------------------------

@@ -34,7 +34,7 @@ const SCUBA := [
 		"target": "all_enemies", "effects": [
 			{"kind": "self_temporary", "accuracy": -1, "evasion": -1},
 		],
-		"hint": "All foes; -1 ACC/EVA until next turn",
+		"hint": "All foes; -1 ACC/EVA for 1 turn",
 		"text": "Multiple Knee Combo sweeps the enemy line",
 	},
 	{
@@ -42,14 +42,13 @@ const SCUBA := [
 		"target": "one_enemy", "effects": [
 			{"kind": "self_temporary", "evasion": -3},
 		],
-		"hint": "STR + ACC damage; -3 EVA until next turn",
+		"hint": "STR + ACC damage; -3 EVA for 1 turn",
 		"text": "Axe Kick crashes down",
 	},
 ]
 
 static func for_model(model_name: String) -> Array:
 	return SCUBA if model_name == "Staff_Diver" else []
-
 # The move table keeps formulas because the rules need them, but Glassgoat's
 # player-facing contract is result-first: resolve those symbols against the
 # acting character before putting them on an ordinary choice button. Target
@@ -61,7 +60,7 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 	var parts: Array[String] = []
 	var damage := CombatRules.formula_value(stats, move.get("formula", {}))
 	if damage > 0:
-		parts.append("%d Damage%s" % [damage, " to all" if String(move.get("target", "")) == "all_enemies" else ""])
+		parts.append("%d Damage%s" % [damage, " all" if String(move.get("target", "")) == "all_enemies" else ""])
 	for effect_value in move.get("effects", []):
 		var effect := effect_value as Dictionary
 		match String(effect.get("kind", "")):
@@ -76,10 +75,15 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 				parts.append(label)
 			"self_temporary":
 				var costs: Array[String] = []
-				for stat in ["accuracy", "evasion"]:
-					var amount := int(effect.get(stat, 0))
-					if amount != 0:
-						costs.append("%s %s%d" % [stat.left(3).to_upper(), "+" if amount > 0 else "", amount])
+				var accuracy := int(effect.get("accuracy", 0))
+				var evasion := int(effect.get("evasion", 0))
+				if accuracy != 0 and accuracy == evasion:
+					costs.append("ACC/EVA %s%d" % ["+" if accuracy > 0 else "", accuracy])
+				else:
+					for stat in ["accuracy", "evasion"]:
+						var amount := int(effect.get(stat, 0))
+						if amount != 0:
+							costs.append("%s %s%d" % [stat.left(3).to_upper(), "+" if amount > 0 else "", amount])
 				if not costs.is_empty():
-					parts.append("%s until next turn" % " / ".join(costs))
+					parts.append("%s for 1 turn" % " / ".join(costs))
 	return " • ".join(parts)

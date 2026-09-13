@@ -57,11 +57,10 @@ and have nothing to do with this repo. "Remove Missing" clears them.
   back, the grunt facing you) with a menu underneath - Attack opens a move
   list (Jab / Kick / Haymaker), Run ends the fight on the spot. Win, flee, or
   get beaten off and control returns to the dive site.
-- `game/goblin.gd` handles `characters/GoblinGrunt.fbx`, the grunt's model.
-  Unlike the divers this FBX arrives rigged (an Idle and a Walking take), so
-  it gets a real animation instead of procedural posture. Its scale was never
-  hand-measured, so it's rescaled to a target height at runtime rather than
-  trusting the export's units.
+- `game/goblin.gd` preserves the stable ordinary-enemy actor contract while it
+  presents Glassgoat's `characters/Angler_Fish.fbx`. It maps the authored
+  idle, swim, Bite, Damaged, and Death takes and normalizes the model to a
+  1.6m target height from its runtime AABB rather than trusting export units.
 - `game/lineup.tscn` stands the whole cast in a row with their measured sizes,
   for looking at rather than playing.
 - `docs/` is the exported browser build.

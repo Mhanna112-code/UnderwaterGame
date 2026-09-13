@@ -42,14 +42,14 @@ const ALL := [
 		# what you are swimming into
 		"id": "shallows", "kind": "combat",
 		"at": Vector3(-24.0, 2.6, -12.0), "radius": 9.5,
-		"item": "current_pearl", "look": "urchin",
+		"item": "current_pearl", "look": "urchin", "enemy": "angler",
 		"links": ["trench"],
 	},
 	{
 		# further out and darker
 		"id": "trench", "kind": "combat",
 		"at": Vector3(12.0, 2.6, -42.0), "radius": 10.0,
-		"item": "reef_plate", "look": "salvage",
+		"item": "reef_plate", "look": "salvage", "enemy": "swordfish_duelist",
 		"links": [],
 	},
 ]
@@ -77,6 +77,7 @@ static func guarded() -> Array:
 			out.append({
 				"item": String(s.item), "at": s.at as Vector3,
 				"site": String(s.id), "look": String(s.get("look", "urchin")),
+				"enemy": String(s.get("enemy", "angler")),
 			})
 	return out
 
