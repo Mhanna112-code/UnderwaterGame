@@ -57,7 +57,7 @@ encounters until then.
 ## Post-write evaluation
 
 - **Bugs caught** (test failed against current code, fix required): beam arrival used the vertical center rather than the visible column.
-- **Bugs characterized** (test passes; behavior pinned): none yet.
+- **Bugs characterized** (test passes; behavior pinned): after the fix, entering the beam's visible column at diver depth creates exactly one tutorial battle.
 - **Bugs discovered during writing** not in the original catalog: none.
 - **Tests removed** (failed self-critique mid-write): none.
 
