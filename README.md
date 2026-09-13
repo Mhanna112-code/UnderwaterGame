@@ -1,209 +1,234 @@
 # UnderwaterGame
 
-Glass_Goat's diver models, in Godot, swimming.
+An in-development Godot RPG about three divers exploring a hostile underwater
+world. The current build combines free-swimming exploration, turn-based party
+combat, character-specific abilities, guarded artifacts, progression and
+environmental puzzles using Glass_Goat's rigged characters and enemy models.
 
-## Play it now
+## Play the current main build
 
-**https://underwatergame-ratateam.vercel.app**
+**https://underwatergame.vercel.app/**
 
-No install, no Godot, no account. Click the page once so it takes the mouse,
-then:
+The first load can take a while, particularly in Firefox. Click the game once
+after it appears to let the browser capture the mouse.
 
-| key | does |
+The stable URL above is intended to serve `main`. The repository contains the
+complete browser export in `docs/`, but the Vercel project is not yet connected
+to this GitHub repository for automatic deployments. Until that connection is
+enabled, verify the deployed build after a merge instead of assuming that the
+alias advanced with the branch.
+
+## Controls
+
+### Exploration
+
+| Input | Action |
 |---|---|
-| WASD | swim |
-| SPACE | rise |
-| SHIFT | sink |
-| mouse or arrow keys | look |
-| TAB | switch which diver you steer |
-| ESC | give the mouse back |
+| `W` `A` `S` `D` | Swim relative to the camera |
+| `Space` | Rise |
+| `Shift` or `Ctrl` | Sink |
+| Mouse or arrow keys | Look around |
+| `Tab` | Switch the active diver |
+| `E` | Use the active diver's ability or confirm a selected target |
+| Left click | Fire Musashi's grapple while aiming |
+| Right click or `Esc` | Cancel grapple aiming |
+| `Q` | Toggle Maxilani's sonar |
+| `P` | Open the save/spell menu while standing on a save point |
+| `F1` | Open the general tutorial book |
+| `Esc` | Open or close Inventory, Party Spells and Combat Help |
 
-The two divers you are not steering swim a slow circuit of their own.
+### Combat and tutorials
 
-First load takes 35 to 50 seconds and the progress bar sits full for most of
-it. That is the engine starting, not a hang. See "Why the first load is slow"
-below. Once it is up it runs fine.
+Combat is driven primarily by the on-screen buttons. `Enter` advances the
+scripted combat tutorial, and `X` answers an enemy quick-time dodge prompt.
+Individual special encounters display their controls before the challenge
+starts.
 
-## Open it in Godot
+## Current game flow
 
-Godot 4.7.1, no plugins, no build step.
+At a cold launch, a first-time player sees one primary **New Game** action. If
+a valid save exists, **Load Game** appears as a secondary action and opens the
+three-slot picker. A new run shows the temporary scrolling introduction; press
+`E` or click to skip it.
 
-1. Clone the repo, or use the copy you already have.
-2. Open Godot. In the Projects list press **Import**, not Create.
-3. Point it at the **`project.godot` file** inside the repo folder. Selecting
-   the folder alone is not enough on some builds; pick the file.
-4. Press Import & Edit.
-5. Press **F5** to play. `game/world.tscn` is the main scene.
+The opening world sequence points the player toward a light beam and starts a
+choreographed combat tutorial. It teaches turn order, Accuracy versus Evasion,
+damage and Defense, status effects, move trade-offs, quick-time dodging, XP and
+level growth before releasing the party into the wider map. Switching divers,
+using abilities and saving remain gated until that first encounter ends.
 
-Any "Missing Project" rows already in your list are old paths from other work
-and have nothing to do with this repo. "Remove Missing" clears them.
+After the tutorial:
 
-## What is here
+- Maxilani, Musashi and Bucky can be switched at any time with `Tab`.
+- Their exploration abilities are swap, grapple and shockwave respectively.
+- Sonar reveals hidden guarded locations and drains oxygen while active.
+- Lit beacon routes connect the anchor, shallows and trench combat sites.
+- The shallows artifact is guarded by an Angler; the trench artifact is
+  guarded by the Swordfish Duelist.
+- Ordinary encounters independently choose Anglers and Swordfish, so mixed
+  groups are possible.
+- The active diver checks for a random encounter after travelling 8–16 metres,
+  with a 50% trigger chance at each check—about one encounter per 24 metres on
+  average.
+- Save points restore the party, persist world/combat progression and provide
+  access to learning and equipping spells.
+- The corridor gate combines a breakable blockade, grapple crossing,
+  whirlpool hazard and a three-diver pressure-plate lock.
 
-- `art/source/Main_Team_Rigging_2.fbx` is the delivery, kept behind a
-  `.gdignore` so no editor has to import FBX to open this repo.
-- `art/characters/divers.glb` is what the game loads, converted from it by
-  `tools/fbx_to_glb.gd`. Same four meshes, same vertex counts, same nine
-  materials.
-- `game/diver.gd` handles everything the export has opinions about: the models
-  stack on one origin, carry a -90 degree X rotation with a scale of 100, and
-  face +Z where Godot's forward is -Z. Fixed once, there.
-- `game/diver.gd` also tracks how far each diver has swum and rolls a random
-  encounter (tall-grass style) every 20-40 meters, at a 25% chance per roll.
-- `game/world.gd` is the dive site and the camera. It listens for the diver
-  you're steering to roll an encounter, then freezes the dive and drops into
-  a turn-based fight, Pokemon-style.
-- `game/battle.gd` is that fight: a small isolated 3D stage (your diver's
-  back, the grunt facing you) with a menu underneath - Attack opens a move
-  list (Jab / Kick / Haymaker), Run ends the fight on the spot. Win, flee, or
-  get beaten off and control returns to the dive site.
-- `game/goblin.gd` preserves the stable ordinary-enemy actor contract while it
-  presents Glassgoat's `characters/Angler_Fish.fbx`. It maps the authored
-  idle, swim, Bite, Damaged, and Death takes and normalizes the model to a
-  1.6m target height from its runtime AABB rather than trusting export units.
-- `game/lineup.tscn` stands the whole cast in a row with their measured sizes,
-  for looking at rather than playing.
-- `docs/` is the exported browser build.
-- `verify/` and `tools/` are the checks. Every number in `docs/art-intake.md`
-  comes out of one of them.
+The Tethys boss and direct guardian/special-encounter routes remain explicit
+review surfaces rather than shortcuts in an ordinary new game. They can be
+opened from the web build with `?boss=1`, `?guardian=shallows`,
+`?guardian=trench` or `?special=1`.
 
-## The models are rigged now
+## Combat
 
-The first delivery, `Main_Team_Rigging_2`, carried no bones, no skin deformers
-and no blend shapes, so every bit of motion in this game used to be procedural
-and applied to the whole model: pitch into a glide, bob, bank, trail bubbles.
-`docs/art-intake.md` still has the evidence for that, and it is the reason the
-lantern was planted in the seabed rather than carried. No diver in that export
-had a hand to hold it with.
+Combat is a turn-based three-diver party system. Effective Agility determines
+round order; an attack lands only when its effective Accuracy exceeds the
+target's currently available Evasion. Defense mitigates successful hits.
+Evasion is spent by dodging and refills on that combatant's next turn.
 
-Glass_Goat's rigged deliveries replaced it. There are three of them,
-`Scuba_Rigged.fbx`, `Prototype1_Rigged.fbx` and `PrototypeV_Rigged.fbx`, and
-they work differently to how you might expect: all three characters share a
-single 132 bone rig, so **every file contains every character's animations and
-only one character's mesh**. That has two consequences the code has to respect.
+The battle UI includes:
 
-1. A clip has to be matched by character family, not by motion. Match on
-   "idle" alone and the scuba diver gets handed the brass suit's stance.
-2. The imported tree cannot be taken apart. The AnimationPlayer's track paths
-   are relative to that file's own root, so lifting one mesh out of it, which
-   is what the unrigged code did, leaves clips that resolve by name and then
-   animate nothing. `game/diver.gd` instantiates the whole file and hides the
-   two characters it is not.
+- an upcoming-turn queue;
+- names, HP, oxygen and level for every diver;
+- enemy names and overhead health bars;
+- target stat comparison;
+- result-first move summaries, with optional formula details;
+- items, running, equipped spells and status-effect feedback;
+- XP, level growth, spell points and post-fight recovery.
 
-`content/cast.gd` is the table of which file, which mesh and which clip belongs
-to whom. Every clip name in it was read out of the imported files rather than
-guessed, and `verify/clips.gd` fails the build if any of them stops resolving.
-Three of them were wrong on the first pass and only that gate found them:
-Proto5 has no win clip at all and celebrates with a thumbs up, its heavy hit
-reaction is called `Strong_Hit` where the other two say `Heavy_Hit`, and the
-scuba diver's win loop is `(Mid2)(Loop)` rather than `(Mid)(Loop)`.
+Maxilani currently has Glass_Goat's five-move V2 kit: Electric Touch, Scuba
+Stabbing, Flash Blast, Multiple Knee Combo and Axe Kick. The formulas live in
+`content/combat_moves.gd` and are resolved from the acting character's stats.
+Musashi and Bucky have their own base moves and expandable spell trees.
 
-Held motions ship as Start / Mid (Loop) / End. The loop is the one to play. A
-Start on its own plays once and drops back to a rest pose, which is what "the
-animation is broken" looked like the first time.
+Ordinary enemies use reusable, data-driven move definitions from
+`content/enemy_moves.gd`. The Angler and Swordfish actors share a stable enemy
+contract while retaining their own models, animation mappings and attacks.
+Tethys is a separate boss actor with six authored attack animations.
 
-The staff is skinned to the same rig as the diver holding it and swims with
-her, so it is part of the character rather than a prop parked nearby. Hiding it
-along with the other characters' meshes is what left it floating on its own
-beside her.
+## Special encounters
 
-What survived from the procedural code is the yaw turn and the pitch into a
-glide, because those follow the camera and the velocity rather than the
-animation, and the bubble trail.
+Artifact guardians ask the player to choose one diver for a short solo
+challenge based on that diver's exploration ability:
 
-## Why the first load is slow
+- **Maxilani / Swap:** match incoming portraits to the correct slots.
+- **Musashi / Grapple:** aim at weak points and intercept incoming threats.
+- **Bucky / Shockwave:** choose the rock lane while avoiding solid walls.
 
-Measured on a 2026 M1, not guessed, both builds served the same way in the
-same session by `verify/ffcheck.mjs`:
+A flawless defense prevents the guardian's follow-up strike. Losing a special
+encounter does not permanently reduce the selected diver's pre-encounter HP;
+winning grants the guarded key item or another defined reward.
 
-| build | pck | first drawn frame, Firefox |
-|---|---|---|
-| before the rigged models | 0.9 MB | 36.7s |
-| with the rigged models | 9.3 MB | 57.5s |
+## Open the project in Godot
 
-The download is not the problem. The wasm is 37.7 MB and arrives in under a
-second on this connection; the pck arrives in a tenth of one. The wait is
-almost entirely the scene compiling its shaders in the browser's
-compatibility renderer, and rigged characters cost more of them than one
-untextured mesh did. An empty scene in the same build draws at 15s, so about
-15s of any of these numbers is Godot's own web boot. There is no second-visit
-discount: the shader cache does not survive a reload here.
+The project currently uses **Godot 4.7.1** with no plugins or external build
+step.
 
-So the animations cost about 21 seconds of first load. That is a real price
-and it is written down rather than buried: three textured, rigged, animated
-characters instead of three untextured ones standing in bind pose is worth it,
-but 57 seconds of staring at a blank page is not something to be relaxed
-about. See #40.
+1. Clone the repository.
+2. In Godot's Project Manager, choose **Import**.
+3. Select this repository's `project.godot` file.
+4. Choose **Import & Edit**.
+5. Press **F5**. `game/world.tscn` is the main scene.
 
-The lever that would actually move it is material count, and it is an art
-call rather than a code one. Each material costs a shader compile in the
-browser, and fewer materials or merged surfaces would cut the wait roughly in
-proportion. Chromium is several times faster than Firefox on the same build,
-which is worth knowing before anyone concludes the game is broken.
+The committed browser build is produced with the `Web` preset:
 
-## Checks
+```sh
+godot --headless --path . --export-release Web docs/index.html
+```
 
-    ./verify/gates.sh                                     # all of the below, in order
+## Project map
 
-    godot --headless --path . --script verify/clips.gd    # does every clip the game asks for exist
-    godot --headless --path . --script verify/animations.gd # do all three rigs change state correctly
-    godot --headless --path . --script verify/swim.gd     # do they actually move, and animate while moving
-    godot --headless --path . --script verify/balance.gd  # seeded casual/greedy difficulty policies
-    godot --headless --path . --script verify/encounters.gd # does a fight start correctly from every area
-    godot --headless --path . --script verify/fight.gd    # play a whole fight and come back to the world
-    godot --headless --path . --script tools/test_goblin.gd  # does the grunt's model load and size correctly
-    godot --headless --path . --script tools/test_battle.gd  # does the fight screen build without erroring
-    node verify/webcheck.mjs docs out.png                 # does the build boot
-    node verify/webcheck.mjs <live-url> out.png           # does the live link boot
+| Path | Responsibility |
+|---|---|
+| `game/world.gd` | Title/new/load flow, exploration, camera, saving, sites, abilities and battle transitions |
+| `game/battle.gd` | Combat stage, menus, tutorial, enemy turns, QTEs, rewards and progression |
+| `game/diver.gd` | Diver actor, rig playback, movement, oxygen, sonar and encounter checks |
+| `game/combatant_stats.gd` | Persistent HP, oxygen, attributes, XP, levels and status state |
+| `game/combat_rules.gd` | Shared hit, formula and effect calculations |
+| `content/cast.gd` | Diver files, display names and animation mappings |
+| `content/combat_moves.gd` | Glass_Goat's formula-driven Maxilani moves |
+| `content/enemy_moves.gd` | Reusable Angler and Swordfish attacks |
+| `content/enemy_roster.gd` | Ordinary encounter actor selection |
+| `content/sites.gd` | World sites, artifacts, fixed guardians and beacon graph |
+| `content/tutorial_content.gd` | General help, status explanations and tutorial move text |
+| `game/maze_level.tscn` | Standalone maze/current puzzle development scene |
+| `docs/` | Committed HTML5/WebAssembly export |
+| `verify/` | Gameplay, balance, regression and browser checks |
 
-Each of these exits non-zero on a finding and prints what it found, so
-`./verify/gates.sh` is the one command to run before pushing. The browser
-check is explicitly reported as skipped when Playwright is unavailable;
-gameplay checks can still pass in that environment, but the aggregate result
-will not claim that every gate ran.
+## Models and animation contract
 
-`verify/clips.gd` asks each delivered file what animations it contains and
-fails on the first name `content/cast.gd` gets wrong. Roughly thirty clip
-names are hand-written in that table and a re-rig or a renamed export turns
-any one of them into a diver standing still in the middle of a fight.
+The three player deliveries—`Scuba_Rigged.fbx`, `Prototype1_Rigged.fbx` and
+`PrototypeV_Rigged.fbx`—share one 132-bone rig. Each file contains one visible
+character mesh but animation families for the complete cast. Consequently,
+clips must be selected by character family, and the imported scene tree must
+remain intact so its AnimationPlayer track paths still resolve.
 
-`verify/animations.gd` instantiates every delivered rig and drives it through
-idle → swim start → loop → end → idle plus both damage reactions. Mermaid's
-carried staff must be present, visible and skinned to the same skeleton.
+`content/cast.gd` is the source of truth for those mappings. Held swimming
+motions use the authored Start → Mid (Loop) → End sequence. Maxilani's staff is
+skinned to her rig and stays with the character instead of being instantiated
+as a separate world prop. Procedural yaw, pitch and bubbles remain layered on
+top because they follow camera direction and velocity rather than an authored
+clip.
 
-`verify/swim.gd` drives the real scene through swimming and coming to rest. It
-fails if a diver does not move, falls through the floor, loses the camera, or
-plays the wrong character's clip off the shared rig. It also requires the full
-idle → swim start → swim loop → swim end → idle sequence and feeds a real mouse
-motion event through Godot's input pipeline, so hard-coding the exploration
-camera instead of preserving mouse-look fails the gate.
+The original FBX delivery is retained under `art/source/` behind `.gdignore`.
+Runtime-ready character assets live under `art/characters/`; enemy deliveries
+and their textures live under `game/` and `characters/` according to their
+existing import paths. `docs/art-intake.md` records the asset investigation.
 
-`verify/balance.gd` runs 120 deterministic seeds through a careless policy
-and a greedy policy using the production roster, moves, enemy scaling and
-damage/mitigation function. It fails when careless play almost always wins or
-loses, when better choices do not improve the result, or when even winning
-fights cost too little time or HP to exert pressure.
+## Verification
 
-`verify/fight.gd` starts a real encounter from the overworld and plays it to
-the end by pressing the actual buttons, then checks the world came back. It
-fails if the fight never resolves, if the battle screen ever has nothing left
-to press, if any of the three never swings, or if somebody swings with another
-character's animation. A full fight is about 50 party turns' worth of button
-presses and takes a bit over a minute.
+On a fresh clone, let Godot import the project once so its global-class cache
+and imported model scenes exist:
 
-`tools/test_goblin.gd` and `tools/test_battle.gd` instantiate those two systems
-in isolation - useful for telling a bug in the game itself apart from an
-editor/Play problem, since they run the exact same scripts outside the editor.
+```sh
+godot --headless --editor --path . --import --quit
+```
 
-`verify/webcheck.mjs` loads the build in Chromium with software WebGL2 and
-fails if the canvas is a flat field of one colour. `verify/ffcheck.mjs` does
-the same in Firefox, which is worth running separately: it is several times
-slower to first frame than Chromium here, and a build that looks fine in one
-can stall in the other.
+Then run the complete gate suite from the repository root:
 
-## GitHub Pages
+```sh
+./verify/gates.sh
+```
 
-`docs/` is already a complete web build, so Pages can serve it with no
-workflow and no build step. It needs one switch that only a repo admin can
-flip: Settings, Pages, Source "Deploy from a branch", branch `main`, folder
-`/docs`. The Vercel link above works either way.
+It exercises, among other things:
+
+- rig clip resolution and full swim transitions;
+- camera-relative movement and preserved mouse look;
+- the water-current barrier;
+- Glass_Goat's combat formulas, roster and result-first UI;
+- Tethys and both ordinary enemy actors;
+- defeated-actor cleanup and battle-stage framing;
+- casual and skilled artifact-route balance simulations;
+- encounter spacing, site reachability and guardian persistence;
+- the opening light beam and combat tutorial;
+- all three special encounters and their battle hand-offs;
+- the maze rotation contract, title screen and full fight return path;
+- Chromium boot plus boss, guardian and special review routes.
+
+The aggregate suite exits non-zero when a functional check finds a regression
+or Godot reports a script error. Visual stage framing is skipped when no
+display exists. Browser gates are reported as skipped when Playwright or the
+committed web export is unavailable; the script does not describe skipped
+browser coverage as fully clean.
+
+Useful focused commands include:
+
+```sh
+godot --headless --path . --script verify/glassgoat_combat.gd
+godot --headless --path . --script verify/balance.gd
+godot --headless --path . --script verify/encounters.gd
+godot --headless --path . --script verify/intro_sequence.gd
+godot --headless --path . --script verify/special_encounters.gd
+godot --headless --path . --script verify/fight.gd
+node verify/webcheck.mjs docs /tmp/underwatergame-webcheck.png
+```
+
+The `*.bug-catalog.md` files beside several gates document the concrete bugs
+each regression is designed to catch.
+
+## GitHub Pages fallback
+
+Because `docs/` is a complete browser export, repository administrators can
+also serve it through GitHub Pages using branch `main` and folder `/docs`.
+That is independent of the Vercel deployment above.
