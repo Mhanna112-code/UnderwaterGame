@@ -10,7 +10,7 @@ const SCUBA := [
 		"target": "one_enemy", "effects": [
 			{"kind": "reduce_evasion", "amount": {"accuracy": 1}},
 		],
-		"hint": "1 STR damage; strips EVA by ACC",
+		"hint": "Light damaging attack that strips the enemy's EVA by this moves ACC",
 		"text": "Electric Touch shocks the target",
 	},
 	{
@@ -18,7 +18,7 @@ const SCUBA := [
 		"target": "one_enemy", "effects": [
 			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
 		],
-		"hint": "1 STR damage; applies 1 + STR Bleed",
+		"hint": "Light damaging attack that applies bleed",
 		"text": "Scuba Stabbing opens a wound",
 	},
 	{
@@ -34,7 +34,7 @@ const SCUBA := [
 		"target": "all_enemies", "effects": [
 			{"kind": "self_temporary", "accuracy": -1, "evasion": -1},
 		],
-		"hint": "All foes; -1 ACC/EVA until next turn",
+		"hint": "Strikes all foes giving them -1 ACC/EVA until next turn",
 		"text": "Multiple Knee Combo sweeps the enemy line",
 	},
 	{
@@ -42,11 +42,10 @@ const SCUBA := [
 		"target": "one_enemy", "effects": [
 			{"kind": "self_temporary", "evasion": -3},
 		],
-		"hint": "STR + ACC damage; -3 EVA until next turn",
+		"hint": "Attack reducing enemy's EVA by -3 until next turn",
 		"text": "Axe Kick crashes down",
 	},
 ]
 
 static func for_model(model_name: String) -> Array:
 	return SCUBA if model_name == "Staff_Diver" else []
-

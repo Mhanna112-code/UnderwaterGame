@@ -26,19 +26,12 @@ var evasion_current: int = 5
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
-# A temporary shield: absorbs damage before HP does, doesn't come back on
-# its own once spent (see fill() and gain_xp() below - a level-up is the
-# only thing that recharges it, same as HP).
-@export var barrier_max: int = 0
-var barrier: int
-
 # Spent on ability use (Diver.use_ability()), on the sonar passive while
 # it's active, and on casting an equipped spell in battle (battle.gd's
-# _resolve_party_move()) - float rather than int like hp/barrier so a
-# continuous drain (sonar) and passive regen (Diver._process) don't get
-# rounded to zero every frame. Same fill()-on-level-up/refill story as
-# barrier: nothing but a level-up tops it off instantly, everything else is
-# gradual regen.
+# _resolve_party_move()) - float rather than int like hp so a continuous
+# drain (sonar) and passive regen (Diver._process) don't get rounded to
+# zero every frame. Same fill()-on-level-up/refill story as hp: nothing
+# but a level-up tops it off instantly, everything else is gradual regen.
 @export var oxygen_max: float = 100.0
 var oxygen: float
 
@@ -85,16 +78,13 @@ var hp: int
 
 func _init() -> void:
 	hp = hp_max
-	barrier = barrier_max
 	oxygen = oxygen_max
 	evasion_current = evasion
 
-# Call after setting hp_max/barrier_max/etc from a base-stat table, so
-# current HP and barrier start full rather than at whatever the Resource
-# default was.
+# Call after setting hp_max/oxygen_max/etc from a base-stat table, so
+# current HP starts full rather than at whatever the Resource default was.
 func fill() -> void:
 	hp = hp_max
-	barrier = barrier_max
 	oxygen = oxygen_max
 	evasion_current = evasion
 	statuses.clear()
@@ -108,7 +98,6 @@ func fill() -> void:
 func recover_after_victory(fraction: float = 0.30) -> void:
 	var amount := clampf(fraction, 0.0, 1.0)
 	hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
-	barrier = mini(barrier_max, barrier + int(ceil(float(barrier_max) * amount)))
 	oxygen = minf(oxygen_max, oxygen + oxygen_max * amount)
 	statuses.clear()
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
@@ -201,23 +190,43 @@ func status_summary() -> String:
 	return "  ".join(parts)
 
 # Adds XP and applies every level-up it crosses (a big win can jump more
-# than one level at once). Returns the list of levels reached, empty if
-# none - battle.gd uses that to decide whether to log anything.
+# than one level at once). Returns one Dictionary per level reached -
+# {"level": int, "grown": {"HP"/"STR"/"DEF"/"AGI"/"ACC"/"EVA": int}} - empty
+# if none. battle.gd uses "level" to decide whether/what to log, and
+# "grown" to build the level-up stat table (_build_levelup_block()).
 func gain_xp(amount: int) -> Array:
 	xp += amount
 	var levels_gained: Array = []
 	while xp >= xp_to_next:
 		xp -= xp_to_next
 		level += 1
-		hp_max += grow_hp
-		strength += grow_strength
-		defense += grow_defense
-		agility += grow_agility
-		accuracy += grow_accuracy
-		evasion += grow_evasion
+		var hp_up := _rolled_growth(grow_hp)
+		var str_up := _rolled_growth(grow_strength)
+		var def_up := _rolled_growth(grow_defense)
+		var agi_up := _rolled_growth(grow_agility)
+		var acc_up := _rolled_growth(grow_accuracy)
+		var eva_up := _rolled_growth(grow_evasion)
+		hp_max += hp_up
+		strength += str_up
+		defense += def_up
+		agility += agi_up
+		accuracy += acc_up
+		evasion += eva_up
 		xp_to_next = int(round(XP_BASE * pow(float(level), XP_CURVE)))
 		spell_points += 1
-		levels_gained.append(level)
+		levels_gained.append({
+			"level": level,
+			"grown": {
+				"HP": hp_up, "STR": str_up, "DEF": def_up,
+				"AGI": agi_up, "ACC": acc_up, "EVA": eva_up,
+			},
+		})
 	if not levels_gained.is_empty():
 		fill()      # a level-up is the game's only heal/recharge right now
 	return levels_gained
+
+# Keep the stat growth table deterministic. The tutorial/UI can accurately
+# show what a level-up did, and the seeded route simulator remains a genuine
+# regression test instead of depending on the process-wide RNG.
+func _rolled_growth(base: int) -> int:
+	return maxi(0, base)

@@ -28,13 +28,6 @@ const FIGHTS := 8
 # _fit_panel_height() is deferred, and the stage only takes its final height
 # once it has run. Measuring before that measures a zero-height stage.
 const SETTLE_FRAMES := 20
-# How far a bar may end up above the head it belongs to. Some gap is the
-# point; enough of one and you can no longer tell whose bar it is, which is
-# what Marc reported on the first build of this layout. Tightened from 90px
-# to 45 after that, and the placement had to change to meet it.
-const MAX_BAR_DRIFT := 45.0
-# How much of a bar another bar may cover before it stops being readable.
-const MAX_BAR_COVERED := 0.25
 
 var world: Node3D
 var frames := 0
@@ -44,6 +37,7 @@ var findings: Array = []
 
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
+	world.skip_intro_for_test = true
 	root.add_child(world)
 
 func _process(_d: float) -> bool:
@@ -121,43 +115,12 @@ func _check(b: Battle) -> void:
 			findings.append("OUT OF FRAME: %s, head at (%.0f, %.0f) and feet at (%.0f, %.0f), stage runs y=%.0f to %.0f" % [
 				String(e.display_name), head.x, head.y, foot.x, foot.y, top, bottom])
 
-	# The bars belong to the combatants, so they have to be on screen, and
-	# they have to stay near the combatant they name. Marc predicted the
-	# overlap the moment this layout was proposed; the nudging that stops
-	# bars stacking is also what can walk one halfway up the screen away
-	# from its owner, so both are measured.
-	var boxes: Array = []
-	for e in (b.party + b.enemies):
-		var box: Control = e.get("overhead")
-		if box == null or not is_instance_valid(box) or not box.visible:
-			continue
-		var r := Rect2(box.position, box.size)
-		if r.position.y < top - 0.5 or r.end.y > bottom + 0.5 or r.position.x < -0.5 or r.end.x > screen.x + 0.5:
-			findings.append("BAR OFF SCREEN: %s's bar at %s size %s, stage runs y=%.0f to %.0f" % [
-				String(e.display_name), r.position, r.size, top, bottom])
-		# Touching is allowed, burying is not. Keeping bars near the
-		# combatants they name (see MAX_BAR_DRIFT and battle.gd's
-		# OVERHEAD_DRIFT_COST) means accepting that six of them in a
-		# cluster will sometimes clip corners. What must not happen is one
-		# bar covering enough of another that you cannot read it.
-		for other in boxes:
-			var hit := r.intersection(other[1] as Rect2)
-			var covered: float = (hit.size.x * hit.size.y) / maxf(1.0, minf(
-				r.size.x * r.size.y, (other[1] as Rect2).size.x * (other[1] as Rect2).size.y))
-			if covered > MAX_BAR_COVERED:
-				findings.append("BAR BURIED: %s and %s overlap by %.0f%%, over the %.0f%% budget" % [
-					String(e.display_name), String(other[0]), covered * 100.0, MAX_BAR_COVERED * 100.0])
-		boxes.append([String(e.display_name), r])
-
-		# How far the bar had to travel from where its owner's head is.
-		if not e.has("actor") or not is_instance_valid(e.actor):
-			continue
-		var head2: Vector2 = b._stage_cam.unproject_position(
-			b._top_of(e.actor as Node3D)) * sc + stage.position
-		var drift: float = head2.y - r.end.y
-		if drift > MAX_BAR_DRIFT:
-			findings.append("BAR ADRIFT: %s's bar sits %.0fpx above their head, over the %.0fpx budget" % [
-				String(e.display_name), drift, MAX_BAR_DRIFT])
+	# Status cards no longer float over each combatant in the 3D stage -
+	# they're fixed in _party_status_column/_enemy_status_column instead
+	# (see battle.gd), so there's nothing left to check here about a bar
+	# drifting from its owner's head or burying another bar; a VBoxContainer
+	# stack can't overlap itself or wander off screen the way a
+	# per-frame-projected label could.
 
 func _report() -> bool:
 	for f in findings:

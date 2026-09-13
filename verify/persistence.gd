@@ -15,6 +15,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_remove_test_save()
 	var world := await _fresh_world()
+	world.skip_intro_for_test = true
 	world._on_title_new_game(TEST_SLOT)
 
 	var rock := _rock_at(world, ROCK_ZERO_POSITION)
