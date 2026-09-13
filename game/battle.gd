@@ -3640,7 +3640,24 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	var attack_length := enemy_actor.play_move(move)
 	if attack_length > 0.0:
 		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, move.combat as Dictionary)
+	var combat_move := move.combat as Dictionary
+	# _tutorial_force_next_qte alone only overrides _resolve_attack()'s
+	# RANDOM chance roll (force_qte or randf() < ENEMY_QTE_CHANCE) - it
+	# still requires the move's own quick_time_bool to be true, and most
+	# of a goblin's real moves aren't (see content/enemy_moves.gd - Bite,
+	# the heavily-weighted normal swing, is quick_time_bool: false; only
+	# the finisher carries true, and it isn't even eligible until the
+	# target's HP is already below its own threshold, which it never is
+	# yet on the tutorial's first enemy turn). Without this, the "guaranteed"
+	# QTE _tutorial_prep_enemy_turn() sets up silently never fires whenever
+	# choose_move()'s own weighted pick lands on anything but that
+	# unreachable finisher. Duplicated rather than mutated in place, so
+	# forcing it here doesn't permanently flip that move's own shared
+	# Dictionary for every other fight that reuses the same content entry.
+	if _tutorial_force_next_qte:
+		combat_move = combat_move.duplicate()
+		combat_move["quick_time_bool"] = true
+	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, combat_move)
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
 	_refresh_bar(target)
 	_react(target, r)
