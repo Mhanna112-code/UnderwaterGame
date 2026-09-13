@@ -422,21 +422,6 @@ func _special_playtest_requested() -> bool:
 		return String(search).contains("special=1")
 	return false
 
-# Query-only review route for the moving maze geometry.  The standalone maze
-# scene already has its own diver, top-right map, and H-key hallway toggle;
-# entering it directly lets a reviewer inspect the CSGBox3D6/CurrentWall1
-# flush join without completing the title or onboarding flow first.
-func _maze_playtest_requested() -> bool:
-	if OS.get_cmdline_user_args().has("--maze-playtest"):
-		return true
-	if OS.has_feature("web"):
-		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
-		return String(search).contains("maze=1")
-	return false
-
-func _open_maze_playtest() -> void:
-	get_tree().change_scene_to_file("res://game/maze_level.tscn")
-
 func _show_game_over() -> void:
 	# Defeat owns the whole screen just like cold launch. The controls, active
 	# diver label, bars, minimap and any announcement describe a playable world
@@ -541,9 +526,6 @@ var scripted_rise := 0.0
 var _active_cursor: MeshInstance3D
 
 func _ready() -> void:
-	if _maze_playtest_requested():
-		call_deferred("_open_maze_playtest")
-		return
 	cam = $Camera3D
 	hud = $HUD/Controls
 	# MODIFIED (added): none of $HUD's own children ever set mouse_filter,

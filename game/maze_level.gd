@@ -11,7 +11,6 @@ var markers: Array[Marker3D] = []
 # recomputing each box's own centerline from its CURRENT global_transform
 # every draw call is what keeps the radar honest through that swing.
 var wall_boxes: Array[CSGBox3D] = []
-var _maze_review_mode := false
 
 @onready var corridors: Array[Area3D] = [
 	$WindCorridor1, $WindCorridor2, $WindCorridor3, $WindCorridor4,
@@ -36,22 +35,6 @@ func _ready() -> void:
 	_build_ceiling()
 	_build_minimap()
 	_build_item_rocks()
-	if _maze_review_requested():
-		_enable_overhead_review_camera()
-
-# `?maze=1` is exported as this command-line flag by the review build's Web
-# shell.  The normal maze remains third-person; this is intentionally only a
-# fast, stable human-review view of the hallway join.
-func _maze_review_requested() -> bool:
-	return OS.get_cmdline_user_args().has("--maze-playtest")
-
-func _enable_overhead_review_camera() -> void:
-	_maze_review_mode = true
-	var camera := $Camera3D as Camera3D
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 42.0
-	camera.look_at_from_position(Vector3(5.0, 45.0, 0.0), Vector3(5.0, 0.0, 0.0), Vector3.FORWARD)
-	$HUD/Controls.text = "Maze geometry review — CSGBox3D6 meets CurrentWall1 after H rotates the hallway. Press H to toggle."
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -906,9 +889,8 @@ func _physics_process(dt: float) -> void:
 	for orb in goldenOrbs:
 		if orb.position.y > _floor_top_y:
 			orb.position.y = maxf(orb.position.y - GOLDEN_ORB_FALL_SPEED * dt, _floor_top_y)
-	if not _maze_review_mode:
-		_diver.swim(_player_dir(), _player_rise(), dt)
-		_move_camera(dt)
+	_diver.swim(_player_dir(), _player_rise(), dt)
+	_move_camera(dt)
 
 func _move_camera(dt: float) -> void:
 	var cam: Camera3D = $Camera3D
