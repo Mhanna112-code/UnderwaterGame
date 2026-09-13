@@ -46,7 +46,7 @@ It does not claim the full document's three move kits are finished.
 - Damage, beneficial/neutral feedback, and negative effects render separately
   in red, blue, and purple respectively.
 - Campaign balance against the authored 10/10/10 roster, with fixed-seed route
-  completion of 53.3% casual and 93.3% skilled in the no-consumable model.
+  completion of 52.5% casual and 92.1% skilled in the no-consumable model.
 
 ## Deliberate interpretation
 

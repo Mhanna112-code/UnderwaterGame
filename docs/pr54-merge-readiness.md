@@ -56,8 +56,8 @@ measured human reaction-time distributions. Marc should still perform the
 manual feel pass in the linked build.
 
 With the later authored roster and follow-up ordinary-enemy tuning, the same
-fixed-seed gate now reports 85.0%/98.3% isolated encounter wins and
-53.3%/93.3% farthest-artifact completion for casual/skilled policies. Those
+fixed-seed gate now reports 76.7%/97.5% isolated encounter wins and
+52.5%/92.1% farthest-artifact completion for casual/skilled policies. Those
 current values replace the historical headline above.
 
 ## Automated coverage
