@@ -108,15 +108,25 @@ func _place_csgbox6_at_hallway_target() -> void:
 	var wall1_h_yaw: float = wall_a.rotation.y + PI * 0.5
 	wall_6.rotation.y = wall1_h_yaw + PI * 0.5
 
-	# Flush wall_6 to CSGBox3D exactly the way CurrentWall1 itself is
-	# (_set_wall_position($CSGBox3D, $CurrentWall1, true, true) above) -
-	# this puts wall_6 at the SAME spot CurrentWall1 occupies. Pushing it
-	# CurrentWall1's own full length further in world +X then carries it
-	# past CurrentWall1's whole span, landing beyond CurrentWall1's far
-	# end instead of on top of it.
+	# CSGBox3D6 attaches to CurrentWall1's FUTURE far end, not to CSGBox3D
+	# with a world-X correction.  The latter accidentally used a static
+	# reference frame: after CurrentWall1's 90-degree turn it stayed
+	# perpendicular, but its nearest edge stopped short of the wall's end.
+	# Compute the same destination CurrentWall1 will use on H, find that
+	# destination's positive/far endpoint, then place wall_6's near edge on
+	# that endpoint.  Everything is expressed in the rotated wall's local
+	# axes, so changing either length or initial maze orientation preserves
+	# the flush join.
 	var wall_orig = $CSGBox3D
-	_set_wall_position(wall_orig, wall_6, false, false)
-	wall_6.global_position.x += 2 * wall_a.size.x - wall_orig.size.x
+	var wall1_target := _wall_flush_target(wall_a, wall_orig)
+	var wall1_target_yaw := float(wall1_target.yaw)
+	var wall1_target_position := wall1_target.position as Vector3
+	var wall1_forward := Basis(Vector3.UP, wall1_target_yaw).x.normalized()
+	var wall1_far_end := wall1_target_position + wall1_forward * wall_a.size.x * 0.5
+	wall_6.global_position = _flush_position_from_end(
+		wall1_far_end, wall1_forward, wall_a.size.z,
+		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, false
+	)
 
 	# CSGBox3D7 follows the exact same transformation CSGBox3D6 just
 	# underwent - same rotation, same relative offset - so it arrives the
