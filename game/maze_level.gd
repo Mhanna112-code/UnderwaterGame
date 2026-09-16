@@ -192,33 +192,6 @@ func _build_rotate_prompt() -> void:
 # position/rotation every frame is enough on its own; nothing extra
 # needs to be kept in sync.
 #
-# Swings wall_a/wall_b around `pivot` like a door on a hinge, not a
-# straight-line slide to a new spot - each wall's OFFSET from the pivot
-# gets rotated by an increasing angle every frame (0 -> yaw_degrees over
-# duration seconds), so the pair traces a real arc. Using the far end of
-# the hallway itself as the pivot (see _hallway_far_end() below) is what
-# makes this read as "extends the hallway" rather than "spins it in
-# place" - the new segment picks up exactly where the old one's exit
-# already was, since that point never moves during the swing at all.
-func swing_hallway(wall_a: CSGBox3D, wall_b: CSGBox3D, pivot: Vector3, yaw_degrees: float = 90.0, duration: float = 1.2) -> Tween:
-	var offset_a: Vector3 = wall_a.position - pivot
-	var offset_b: Vector3 = wall_b.position - pivot
-	var start_yaw_a := wall_a.rotation.y
-	var start_yaw_b := wall_b.rotation.y
-	var target_yaw := deg_to_rad(yaw_degrees)
-
-	var tw := create_tween()
-	tw.tween_method(
-		func(t: float) -> void:
-			var spin := Basis(Vector3.UP, target_yaw * t)
-			wall_a.position = pivot + spin * offset_a
-			wall_a.rotation.y = start_yaw_a + target_yaw * t
-			wall_b.position = pivot + spin * offset_b
-			wall_b.rotation.y = start_yaw_b + target_yaw * t,
-		0.0, 1.0, duration
-	)
-	return tw
-
 # MODIFIED: was the midpoint between wall_a AND wall_b, pushed out by
 # HALF the gap between them - that's a point roughly between the two
 # walls, not a real endpoint of either one. What's actually wanted is
@@ -253,14 +226,50 @@ func _wall_flush_target(wall: CSGBox3D, target: CSGBox3D) -> Dictionary:
 # the one requiring the least travel from the moving wall's current centre.
 func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tween:
 	var t := _wall_flush_target(wall, target)
-	return _tween_wall_to(wall, t.position, t.yaw, duration)
+	return _tween_wall_to_transform_about_hinge(wall, t.position as Vector3, float(t.yaw), duration)
 
-# Shared by _rotate_wall_flush() above (implicitly, via the same tweened
-# properties) and _rotate_hallway_1_2()'s return trip below - just animates
-# a wall straight to an already-known position/yaw, no endpoint-matching
-# math needed since "go back to where you started" doesn't have to pick
-# between two candidate destinations the way swinging onto a new target
-# wall does.
+# The finished flush targets above are valid, but a parallel position/yaw
+# tween makes a wall cut diagonally through the next hallway while it moves.
+# For a non-zero turn there is exactly one hinge in the X/Z plane that takes
+# a wall's current center to its target center under a rigid yaw rotation.
+# Solve target = pivot + R(current - pivot), then animate around that pivot.
+# This works for any wall dimensions and any non-zero yaw change; the two
+# sides of a corridor naturally receive different hinges.
+func _wall_motion_hinge(start: Vector3, target: Vector3, yaw_delta: float) -> Vector3:
+	var c := cos(yaw_delta)
+	var s := sin(yaw_delta)
+	var rotated_start := Basis(Vector3.UP, yaw_delta) * start
+	var rhs := Vector2(target.x - rotated_start.x, target.z - rotated_start.z)
+	var determinant := (1.0 - c) * (1.0 - c) + s * s
+	if determinant < 0.00001:
+		return start
+	return Vector3(
+		((1.0 - c) * rhs.x + s * rhs.y) / determinant,
+		start.y,
+		(-s * rhs.x + (1.0 - c) * rhs.y) / determinant
+	)
+
+func _tween_wall_to_transform_about_hinge(wall: CSGBox3D, target_position: Vector3, target_yaw: float, duration := 1.2) -> Tween:
+	var start_position := wall.global_position
+	var start_yaw := wall.rotation.y
+	var yaw_delta := wrapf(target_yaw - start_yaw, -PI, PI)
+	if absf(yaw_delta) < 0.00001:
+		return _tween_wall_to(wall, target_position, target_yaw, duration)
+	var hinge := _wall_motion_hinge(start_position, target_position, yaw_delta)
+	var start_offset := start_position - hinge
+	var tw := create_tween()
+	tw.tween_method(
+		func(progress: float) -> void:
+			var next_position := hinge + Basis(Vector3.UP, yaw_delta * progress) * start_offset
+			next_position.y = lerpf(start_position.y, target_position.y, progress)
+			wall.global_position = target_position if is_equal_approx(progress, 1.0) else next_position
+			wall.rotation.y = target_yaw if is_equal_approx(progress, 1.0) else start_yaw + yaw_delta * progress,
+		0.0, 1.0, duration
+	)
+	return tw
+
+# Straight motion remains useful for a no-turn caller. Hallway motion never
+# reaches this fallback: opening and closing both rotate 90 degrees.
 func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1.2) -> Tween:
 	var tw := create_tween()
 	tw.set_parallel(true)
@@ -268,14 +277,11 @@ func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1
 	tw.tween_property(wall, "rotation:y", yaw, duration)
 	return tw
 
-# MODIFIED: was wall_a spinning around its own CENTER while wall_b swung
-# around wall_a's position - that only keeps wall_a's own center fixed,
-# not any actual endpoint (a wall spinning around its own middle still
-# moves every point on it other than that middle). What's actually
-# wanted is both walls swinging around the SAME fixed point - a real
-# endpoint of wall_a (see _wall_endpoint() above) - which is exactly
-# what swing_hallway() already does for an arbitrary external pivot, so
-# this just calls that instead of needing its own separate tween.
+# Each side reaches a different static anchor, so the hallway is not a
+# single rigid door with one shared hinge. `_rotate_wall_flush()` derives a
+# target for each wall; `_tween_wall_to_transform_about_hinge()` then derives
+# the corresponding hinge for each target and preserves it throughout the
+# animation.
 # MODIFIED: was a one-way swing every press - a second H just kept flushing
 # wall_a/wall_b onto CSGBox3D/CurrentWall3 again, which (since they'd
 # already arrived there) was a no-op tween rather than a way back. Toggled
@@ -320,8 +326,8 @@ func _rotate_hallway_1_2() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_b: CSGBox3D = $CurrentWall2
 	if _hallway_1_2_swung:
-		_tween_wall_to(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
-		_tween_wall_to(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
+		_tween_wall_to_transform_about_hinge(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
+		_tween_wall_to_transform_about_hinge(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
 		_rotate_wind_corridor_1_current(false)
 		_rotate_wind_corridor_2_current(false)
 		_hallway_1_2_swung = false
