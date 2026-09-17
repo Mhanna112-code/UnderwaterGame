@@ -88,16 +88,6 @@ func _setup_walls():
 func _place_csgbox6_at_hallway_target() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_6: CSGBox3D = $CSGBox3D6
-	var wall_7: CSGBox3D = $CSGBox3D7
-
-	# CSGBox3D7's offset from CSGBox3D6, expressed in CSGBox3D6's OWN
-	# original local frame - captured before CSGBox3D6 moves, so re-applying
-	# it through CSGBox3D6's NEW transform below carries CSGBox3D7 along
-	# unchanged relative to CSGBox3D6 (same width apart, still parallel),
-	# rather than hand-deriving a specific offset/rotation that would stop
-	# matching if either wall's size ever changed.
-	var wall_6_original_transform := wall_6.global_transform
-	var wall_7_local_offset: Vector3 = wall_6_original_transform.affine_inverse() * wall_7.global_position
 
 	# CSGBox3D6's own rotation, set BEFORE _set_wall_position() below reads
 	# it - that function computes wall_b's "walk out to its own center"
@@ -128,12 +118,12 @@ func _place_csgbox6_at_hallway_target() -> void:
 		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, false
 	)
 
-	# CSGBox3D7 follows the exact same transformation CSGBox3D6 just
-	# underwent - same rotation, same relative offset - so it arrives the
-	# same width apart from and parallel to CSGBox3D6's new spot, instead
-	# of being left behind at the old one.
-	wall_7.rotation.y = wall_6.rotation.y
-	wall_7.global_position = wall_6.global_transform * wall_7_local_offset
+	# CSGBox3D7 is the authored far boundary of the northbound passage, not
+	# another piece of the moving red-wall assembly. Carrying it along with
+	# CSGBox3D6 put it THROUGH CurrentWall1's opened position and sealed the
+	# mouth a player is looking at. Leave its authored transform untouched:
+	# CurrentWall1 joins CSGBox3D6 at the left edge, while CSGBox3D7 remains
+	# the opposite side of a real, swimmable corridor.
 
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
@@ -177,7 +167,7 @@ func _build_minimap() -> void:
 # there.
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
-	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: swing the CurrentWall1/2 hallway open - also moves WindCorridor1's current into WindCorridor2, and WindCorridor2's into WindCorridor3 (between CSGBox3D6/7, pushing north); press again to reverse it all"
+	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: swing the CurrentWall1/2 hallway open - the northbound current carries you through the CSGBox3D6/7 passage; press again to reverse it all"
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -296,9 +286,8 @@ func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1
 # water_current.gd's _on_entered()), so a diver got bounced even with
 # nothing solid left in the way. Now the current moves out of WindCorridor1
 # entirely on the same press: WindCorridor2's current vacates to
-# WindCorridor3 first (the gap between CSGBox3D6/CSGBox3D7, gating that
-# route shut - the design doc's own worked example calls for a rotation to
-# trade one path for another, never just open one for free), then
+# WindCorridor3 first (the gap between CSGBox3D6/CSGBox3D7, carrying the
+# player north through the newly visible passage), then
 # WindCorridor1's current moves into the now-empty WindCorridor2. Closing
 # reverses both moves in the opposite order, alongside swinging the walls
 # back.
@@ -344,39 +333,44 @@ func _rotate_hallway_1_2() -> void:
 	_hallway_1_2_swung = true
 	$HUD/Controls.text = "Hallway swinging..."
 
-# WindCorridor1's own current - moves into WindCorridor2 on open (`open` =
-# true), back to WindCorridor1 on close, rotating 90 degrees in the same
-# move each way via the generic rotate_corridors_right()/rotate_corridors_
-# left() above. Must run AFTER _rotate_wind_corridor_2_current(true) on
-# open (WindCorridor2 has to be vacated before this current can move into
-# it) and BEFORE it on close (this current has to vacate WindCorridor2
-# before the other one can move back into it) - see the call order in
-# _rotate_hallway_1_2() above.
+# WindCorridor1's current moves into WindCorridor2 on open and returns on
+# close. The H action exposes one northbound passage across BOTH areas, so
+# this controller has an explicit northward direction in WindCorridor2;
+# applying the generic 90-degree turn here made it NEGATIVE_X and shoved the
+# player sideways into CurrentWall1 before they could reach the opening.
+# Restore the authored NEGATIVE_Z direction on close rather than relying on
+# a second generic turn to happen to recover it.
 func _rotate_wind_corridor_1_current(open: bool) -> void:
 	if open:
-		if _currents_by_corridor.has($WindCorridor1):
-			rotate_corridors_right($WindCorridor1, $WindCorridor2)
+		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor1, null)
+		if current == null:
+			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor1")
+			return
+		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
+		_currents_by_corridor.erase($WindCorridor1)
+		_currents_by_corridor[$WindCorridor2] = current
 	else:
-		if _currents_by_corridor.has($WindCorridor2):
-			rotate_corridors_left($WindCorridor2, $WindCorridor1)
+		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
+		if current == null:
+			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
+			return
+		current.setup($WindCorridor1, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
+		_currents_by_corridor.erase($WindCorridor2)
+		_currents_by_corridor[$WindCorridor1] = current
 
-# WindCorridor2's own current - moves into WindCorridor3 (the gap between
-# CSGBox3D6/CSGBox3D7) on open, gating that route shut, back to
-# WindCorridor2 on close. Direction is set explicitly rather than derived
-# by rotating 90 degrees from whatever WindCorridor2 happened to be blowing
-# (unlike WindCorridor1's move above) - blocking WindCorridor3 means
-# pushing north/"up" specifically, not just whichever direction a blind
-# 90-degree turn happens to land on. Closing restores WindCorridor2's
-# original POSITIVE_Z - the same direction _setup_currents() gives it at
-# the start, so this always returns to exactly where it began rather than
-# drifting after repeated open/close cycles.
+# WindCorridor2's current moves into WindCorridor3 (the gap between
+# CSGBox3D6/CSGBox3D7) on open, then returns on close. Its open direction
+# is deliberately north/positive-Z: this H state calls the hallway open, so
+# the current must help a player traverse the visible opening rather than
+# overpower their swim input back into the wall. Closing restores the
+# original NEGATIVE_X direction set in _setup_currents().
 func _rotate_wind_corridor_2_current(open: bool) -> void:
 	if open:
 		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
 		if current == null:
 			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
 			return
-		current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
+		current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
 		_currents_by_corridor.erase($WindCorridor2)
 		_currents_by_corridor[$WindCorridor3] = current
 	else:
@@ -384,7 +378,7 @@ func _rotate_wind_corridor_2_current(open: bool) -> void:
 		if current == null:
 			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor3")
 			return
-		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
+		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_X), current.strength, false)
 		_currents_by_corridor.erase($WindCorridor3)
 		_currents_by_corridor[$WindCorridor2] = current
 		
