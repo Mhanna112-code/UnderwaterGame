@@ -15,6 +15,8 @@
 class_name TitleScreen
 extends Control
 
+const COVER_ART: Texture2D = preload("res://docs/underwater-cover.png")
+
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
 signal boss_playtest_chosen
@@ -40,25 +42,65 @@ func _ready() -> void:
 	# viewport at every supported resolution.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.96)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	# Glass_Goat's finished cover is the title surface itself, not a loading
+	# splash or a detached promotional image. KEEP_ASPECT_COVERED prevents
+	# stretching at non-16:9 resolutions; the art may crop at the edges but its
+	# proportions never change.
+	var cover := TextureRect.new()
+	cover.name = "CoverArt"
+	cover.texture = COVER_ART
+	cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(cover)
+
+	# Keep the illustration visible while giving the title and buttons a stable
+	# contrast floor across its darkest and brightest areas.
+	var shade := ColorRect.new()
+	shade.name = "ReadabilityShade"
+	shade.color = Color(0.01, 0.025, 0.055, 0.28)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(shade)
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.name = "MenuCenter"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.name = "MenuPanel"
+	panel.custom_minimum_size = Vector2(424, 0)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.015, 0.045, 0.075, 0.84)
+	panel_style.border_color = Color(0.35, 0.68, 0.8, 0.62)
+	panel_style.set_border_width_all(1)
+	panel_style.set_corner_radius_all(12)
+	panel.add_theme_stylebox_override("panel", panel_style)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_theme_constant_override("margin_bottom", 28)
+	panel.add_child(margin)
 
 	var col := VBoxContainer.new()
 	col.custom_minimum_size = Vector2(360, 0)
 	col.add_theme_constant_override("separation", 14)
-	center.add_child(col)
+	margin.add_child(col)
 
 	var title := Label.new()
+	title.name = "GameTitle"
 	title.text = "Underwater"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_font_size_override("font_size", 38)
 	title.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
+	title.add_theme_color_override("font_shadow_color", Color(0.0, 0.08, 0.14, 0.9))
+	title.add_theme_constant_override("shadow_offset_x", 2)
+	title.add_theme_constant_override("shadow_offset_y", 3)
 	col.add_child(title)
 
 	_list = VBoxContainer.new()
