@@ -28,6 +28,7 @@ This verification drives the real standalone maze player through the exact mouth
 | 2 | The relocated current overpowers northward swimming even when the geometric mouth is clear. | High — a visually open route is still mechanically impassable. | The H action reassigns a strength-7 current while a diver swims at speed 5. | Invariant with real player | fixed |
 | 3 | A future wall adjustment opens the route only by letting the player leak sideways through a boundary. | Medium — verification would falsely claim traversal. | A point/ray check cannot distinguish the corridor from a detour around it. | Negative-path invariant | characterized |
 | 4 | Opening the passage changes its current but closing it fails to restore the authored puzzle state. | Medium — a later attempt sees a different puzzle than the initial state. | The opening requires two controllers to swap Areas in a specific order. | Decision-table invariant | fixed |
+| 5 | H leaves a strength-7 current in WindCorridor2, so a player approaching the opened corridor from DiverEntry is forced north into CurrentWall1 before reaching the mouth. | High — the repaired gap exists but the real maze entry cannot use it. | The earlier test teleported the diver directly into the mouth and did not exercise the west-entry area. | Captured end-to-end traversal | fixed |
 
 ## Test plan
 
@@ -71,15 +72,25 @@ This verification drives the real standalone maze player through the exact mouth
   - Could this pass for wrong-but-stable output? No; it checks the observable current locations and directions after the documented toggle.
   - Could this fail under a behavior-preserving refactor? No; a refactor may change controllers but must restore the same world state.
 
+### Bug #5 — west-entry current blocks the repaired mouth
+
+- **Test type:** Captured end-to-end traversal.
+- **Description string:**
+  > `maze traversal: DiverEntry reaches the north exit after H — guards against a current-blocked approach`
+- **What it catches:** The real diver starts at the authored `DiverEntry`, opens H through the input handler, swims from the west into `WindCorridor2`, and then reaches the north exit between CSGBox3D6/7. It also asserts that H parks the Corridor1 current and leaves the remaining Corridor2 controller to carry the diver north from Corridor3.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; it does not write the diver's position, disable collision, or neutralize currents. A blockage before the mouth or in the mouth fails with the actual stopping position.
+  - Could this fail under a behavior-preserving refactor? No; it accepts any implementation that lets the normal entry route cross the opened passage and restores the initial current state on close.
+
 ## Skipped
 
-- Full Maze entry-to-final-reward path — the current scene has no authored completion target or documented required switch sequence; claiming a route without that contract would create a brittle, invented test.
+- Full Maze entry-to-final-reward path — the current scene has no authored completion target or documented required switch sequence; claiming a route beyond this repaired gate would create a brittle, invented test. The two placed levers are also intentionally unwired. This PR therefore proves the real entry-to-gate route, not a fictional level completion.
 - Camera framing — handled by visual review, not a navigation correctness check.
 - Exact CSG endpoint math — already covered by `verify/maze.gd`.
 
 ## Post-write evaluation
 
-- **Bugs caught:** Bug #1 failed on the existing PR head: the real diver stopped at z = −1.07 after H. Bug #2 was exposed during the repair probe: WindCorridor2 pushed the player west into that wall at strength 7.
+- **Bugs caught:** Bug #1 failed on the existing PR head: the real diver stopped at z = −1.07 after H. Bug #2 was exposed during the repair probe: WindCorridor2 pushed the player west into that wall at strength 7. Bug #5 then exposed a second access failure: after the direct-mouth test passed, the real DiverEntry route was stripped of westward steering by a strength-7 current in Corridor2 and stopped at `(18.81, -1.07)` before the mouth.
 - **Bugs characterized:** Bug #3 is guarded by recording the diver's whole x-range, not just its arrival point.
 - **Bugs discovered during writing:** The far-side CSGBox3D7 was moved with CSGBox3D6 and the H current was redirected against the path; both made the shown entrance unusable.
 - **Tests removed:** None.

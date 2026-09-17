@@ -333,30 +333,37 @@ func _rotate_hallway_1_2() -> void:
 	_hallway_1_2_swung = true
 	$HUD/Controls.text = "Hallway swinging..."
 
-# WindCorridor1's current moves into WindCorridor2 on open and returns on
-# close. The H action exposes one northbound passage across BOTH areas, so
-# this controller has an explicit northward direction in WindCorridor2;
-# applying the generic 90-degree turn here made it NEGATIVE_X and shoved the
-# player sideways into CurrentWall1 before they could reach the opening.
-# Restore the authored NEGATIVE_Z direction on close rather than relying on
-# a second generic turn to happen to recover it.
+# WindCorridor1's current is parked while H opens the hallway, then restored
+# on close.  The opened route enters WindCorridor2 from the west and only
+# becomes northbound once it reaches WindCorridor3.  Moving this current into
+# Corridor2 therefore turns the route's *entrance* into a one-way current:
+# the player is bounced or stripped of lateral steering before reaching the
+# northbound gap.  Corridor2's own current is the one that moves to
+# Corridor3 and carries the diver through the visible CSGBox3D6/7 passage;
+# the Corridor1 current must be inactive during that state.
+#
+# Parking preserves the same current object and restores the authored
+# NEGATIVE_Z flow on close, rather than creating a duplicate or relying on a
+# generic 90-degree turn to happen to recover the initial puzzle state.
+var _hallway_1_parked_current: WaterCurrent
+
 func _rotate_wind_corridor_1_current(open: bool) -> void:
 	if open:
 		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor1, null)
 		if current == null:
 			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor1")
 			return
-		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
+		current.teardown()
 		_currents_by_corridor.erase($WindCorridor1)
-		_currents_by_corridor[$WindCorridor2] = current
+		_hallway_1_parked_current = current
 	else:
-		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
+		var current := _hallway_1_parked_current
 		if current == null:
-			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
+			push_warning("_rotate_hallway_1_2: no parked current is available for WindCorridor1")
 			return
 		current.setup($WindCorridor1, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
-		_currents_by_corridor.erase($WindCorridor2)
 		_currents_by_corridor[$WindCorridor1] = current
+		_hallway_1_parked_current = null
 
 # WindCorridor2's current moves into WindCorridor3 (the gap between
 # CSGBox3D6/CSGBox3D7) on open, then returns on close. Its open direction
