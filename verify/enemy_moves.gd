@@ -33,10 +33,39 @@ func _run() -> void:
 			"ENEMY MOVES: %s lacks a declarative move field — guards against a new attack requiring Battle code" % String(move.get("id", "unnamed")))
 		_expect(angler.has_clip_fragment(String(move.get("clip", ""))),
 			"ENEMY MOVES: %s has no imported clip match — guards against selecting a move that the delivered rig cannot play" % String(move.get("id", "unnamed")))
+
+	# Glassgoat's Discord follow-up decision for the two previously-disabled
+	# clips: Headbutt stuns for a flat 2 turns, Bite's damage adds a 3-turn
+	# stacking Bleed, and Flash Blast is a party-wide timed Evasion debuff.
+	# Locked down here so a later catalogue edit can't silently drop the
+	# agreed effect.
+	var by_id := {}
+	for move_value in catalogue:
+		by_id[String((move_value as Dictionary).id)] = move_value as Dictionary
+	var bite := by_id.get("bite", {}) as Dictionary
+	var bite_bleeds_for_3_turns := (bite.get("combat", {}).get("effects", []) as Array).any(
+		func(e: Dictionary) -> bool: return String(e.get("status", "")) == "bleed" and int(e.get("duration", 0)) == 3)
+	_expect(bite.get("combat", {}).get("formula", {}) == {"strength": 1} and bite_bleeds_for_3_turns,
+		"ENEMY MOVES: Bite must deal Strength damage and apply a 3-turn Bleed — guards against losing Glassgoat's follow-up effect")
+	var headbutt := by_id.get("headbutt", {}) as Dictionary
+	var headbutt_effects := headbutt.get("combat", {}).get("effects", []) as Array
+	var headbutt_stuns_for_2_turns := headbutt_effects.any(
+		func(e: Dictionary) -> bool: return String(e.get("status", "")) == "stun" and int(e.get("duration", 0)) == 2)
+	_expect(bool(headbutt.get("enabled", false)) and headbutt.get("combat", {}).get("formula", {}) == {"strength": 1} and
+		headbutt_stuns_for_2_turns,
+		"ENEMY MOVES: Headbutt must be enabled, deal Strength damage, and stun for a flat 2 turns — guards against losing Glassgoat's follow-up effect")
+	var flash_blast := by_id.get("flash_blast", {}) as Dictionary
+	_expect(bool(flash_blast.get("enabled", false)) and String(flash_blast.get("target", "")) == "all" and
+		(flash_blast.get("combat", {}).get("effects", []) as Array).any(func(e: Dictionary) -> bool: return String(e.get("status", "")) == "evasion_down"),
+		"ENEMY MOVES: Flash Blast must be enabled, target every foe, and lower Evasion — guards against losing Glassgoat's follow-up effect")
+
 	for move_value in enabled:
 		var move := move_value as Dictionary
 		_expect(bool(move.enabled), "ENEMY MOVES: disabled %s leaked into selection — guards against unfinished art entering combat" % String(move.id))
-		_expect(String(move.target) == "single", "ENEMY MOVES: enabled %s has an unsupported target scope — guards against silently mis-resolving a move" % String(move.id))
+		# "all" became a supported ordinary-enemy target scope alongside
+		# "single" once Flash Blast (see content/enemy_moves.gd) needed one -
+		# Battle._do_enemy_turn() routes it to _do_enemy_all_foes_turn().
+		_expect(String(move.target) in ["single", "all"], "ENEMY MOVES: enabled %s has an unsupported target scope — guards against silently mis-resolving a move" % String(move.id))
 		var length := angler.play_move(move)
 		_expect(length > 0.0,
 			"ENEMY MOVES: enabled %s did not start — guards against data-driven selection resolving to idle" % String(move.id))

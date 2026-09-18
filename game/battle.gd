@@ -1040,6 +1040,8 @@ func _ordinary_actor() -> Goblin:
 func _actor_for_enemy_id(enemy_id: String) -> Goblin:
 	if enemy_id == "swordfish_duelist":
 		return SwordDuelist.new()
+	if enemy_id == "frilled_shark":
+		return FrilledShark.new()
 	return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
@@ -2140,6 +2142,18 @@ func _advance_turn() -> void:
 	_refresh_queue_row()
 	if (_acting.stats as CombatantStats).hp <= 0:
 		_advance_turn()   # downed since the queue was built - skip them
+		return
+	if (_acting.stats as CombatantStats).is_stunned():
+		# Headbutt's Stun (see content/enemy_moves.gd) skips the whole turn
+		# rather than just blocking the move menu, so it applies the same way
+		# to a stunned party member or a stunned enemy. consume_status_turn()
+		# ticks the clock here because this combatant never reaches its own
+		# end_turn() this round - see that function's own comment.
+		(_acting.stats as CombatantStats).consume_status_turn("stun")
+		_show_floating_text(_acting, "STUNNED", FEEDBACK_NEGATIVE_COLOR)
+		_log("%s is stunned and can't move!" % String(_acting.display_name))
+		_refresh_bar(_acting)
+		_advance_turn()
 		return
 	if String(_acting.kind) == "enemy":
 		var forced_target := {}
@@ -3446,6 +3460,11 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
 	await _swing(_acting, mv, target)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
+	# Feeds Goblin's Angler-specific low-HP targeting (see
+	# choose_move_and_target()/_highest_damage_target()) - a no-op against any
+	# other actor type, which has no such method to call.
+	if r.hit and int(r.get("damage", 0)) > 0 and target.actor is Goblin:
+		(target.actor as Goblin).record_damage_taken(_acting.actor, int(r.damage))
 	_react(target, r)
 	_show_combat_feedback(target, r)
 	var applied_effects := r.get("effects", []) as Array
@@ -3501,6 +3520,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 			continue
 		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
 		first = false
+		if result.hit and int(result.get("damage", 0)) > 0 and target.actor is Goblin:
+			(target.actor as Goblin).record_damage_taken(_acting.actor, int(result.damage))
 		changed_agility = changed_agility or (result.get("effects", []) as Array).any(
 			func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))
 		_react(target, result)
@@ -3627,7 +3648,8 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	# narrating) the target ahead of time - calling _pick_enemy_target()
 	# again here would re-roll its randf() and could land on someone else
 	# entirely, no longer matching what was just explained.
-	var target: Dictionary = forced_target if not forced_target.is_empty() else _pick_enemy_target(alive_party)
+	var forced := not forced_target.is_empty()
+	var target: Dictionary = forced_target if forced else _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
 	if special_encounter:
 		match String(target.get("ability_id", "")):
@@ -3642,12 +3664,22 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 				return
 
 	var enemy_actor := actor.actor as Goblin
-	var move := enemy_actor.choose_move(target_stats)
+	# Angler overrides this to pick move and target together (Headbutt's
+	# highest-damage-dealer, Bite's random pick); every other enemy's override
+	# just echoes the target already picked above and asks choose_move() on
+	# its own, same as before this existed.
+	var picked := enemy_actor.choose_move_and_target(actor.stats as CombatantStats, alive_party, target, forced)
+	var move: Dictionary = picked.get("move", {})
+	target = picked.get("target", target)
+	target_stats = target.stats as CombatantStats
 	if move.is_empty():
 		_log("%s has no enabled attack." % String(actor.display_name))
 		_finish_actor_turn(actor)
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
 		_advance_turn()
+		return
+	if String(move.get("target", "single")) == "all":
+		await _do_enemy_all_foes_turn(actor, enemy_actor, move, alive_party, target)
 		return
 	await _step_toward(actor, target)
 	# The selected data record owns its animation and mechanics. Step into
@@ -3675,6 +3707,11 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 		combat_move = combat_move.duplicate()
 		combat_move["quick_time_bool"] = true
 	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, combat_move)
+	# Feeds Goblin's Bite-streak-into-Flash-Blast state machine (see
+	# choose_move_and_target()) - a no-op for every move that isn't Bite, and
+	# for every enemy whose catalogue has no "bite" id at all.
+	if String(move.get("id", "")) == "bite":
+		enemy_actor.record_bite_result(bool(r.get("hit", false)))
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
 	_refresh_bar(target)
 	_react(target, r)
@@ -3688,6 +3725,41 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 		_log("%s for %d." % [verb, int(r.damage)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
+	_finish_actor_turn(actor)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_restore_enemy_idle(actor)
+	_advance_turn()
+
+# A grunt move that hits every living diver at once (Flash Blast is the first
+# - see content/enemy_moves.gd). Mirrors _do_boss_turn()'s own all-target loop
+# rather than adding a second combat-resolution path, but an ordinary grunt
+# still faces its weighted-picked primary target the way a single-target swing
+# does (_step_toward() would also close melee distance for it, which a burst
+# attack like Shine has no use for, so this skips straight to facing).
+func _do_enemy_all_foes_turn(actor: Dictionary, enemy_actor: Goblin, move: Dictionary, alive_party: Array, primary: Dictionary) -> void:
+	if primary.has("actor") and is_instance_valid(primary.actor):
+		enemy_actor.face_toward((primary.actor as Node3D).global_position)
+	var attack_length := enemy_actor.play_move(move)
+	if attack_length > 0.0:
+		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
+	var combat_move := move.combat as Dictionary
+	var summaries: Array[String] = []
+	for target_value in alive_party:
+		var target := target_value as Dictionary
+		if (target.stats as CombatantStats).hp <= 0:
+			continue
+		var r: Dictionary = await _resolve_attack(actor.stats, target.stats as CombatantStats, combat_move)
+		_refresh_bar(target)
+		_react(target, r)
+		_show_combat_feedback(target, r)
+		if not r.hit:
+			summaries.append("%s evades" % String(target.display_name))
+		else:
+			var effects := r.get("effects", []) as Array
+			summaries.append("%s %s" % [String(target.display_name), "; ".join(effects) if not effects.is_empty() else "affected"])
+		if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
+			(target.actor as Diver).play_death_fade()
+	_log("%s %s the party: %s." % [String(actor.display_name), String(move.get("verb", "attacks")), "; ".join(summaries)])
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_restore_enemy_idle(actor)
