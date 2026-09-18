@@ -208,13 +208,12 @@ var _enemy_stats_ui: Dictionary = {}
 var _selected_move_panel: PanelContainer
 var _selected_move_name: Label
 var _selected_move_power: Label
-# MODIFIED: quick_time_bool was false - the QTE used to only ever be
-# reachable through ENEMY_HEAVY_MOVE, so a normal swing could never
-# trigger it at all. Both enemy moves are QTE-eligible now; whether one
-# actually fires is an independent roll at the point of use (see
-# ENEMY_QTE_CHANCE/_resolve_attack()), decoupled entirely from which move
-# got chosen.
-const ENEMY_MOVE := {"power": 9, "acc_mod": 1, "quick_time_bool": true}
+# The party's authored V2 health scale is 10, not the former 10/26/42 mix.
+# Nine flat power plus a grunt's Strength routinely one-shot that roster;
+# three flat power keeps the ordinary claw on the same small-number scale as
+# the player moves while defense and the occasional heavy still matter.
+# It remains QTE-eligible because #66 decoupled QTE frequency from move type.
+const ENEMY_MOVE := {"power": 3, "acc_mod": 1, "quick_time_bool": true}
 
 # A much gentler stand-in for ENEMY_MOVE, used only for the choreographed
 # first fight (see _do_enemy_turn()) - full power (9) plus a real grunt's
@@ -267,6 +266,15 @@ const ENEMY_QTE_CHANCE := 0.25
 # lined up does, without making the heavy swing itself hit any harder or
 # any more reliably than it already did.
 const ENEMY_HEAVY_FINISH_CHANCE := 0.65
+
+# Glassgoat's combat-reading palette. Separate labels are required when one
+# action produces more than one category; a Label3D only has one modulate
+# color, so concatenating damage and Bleed made the requested distinction
+# impossible.
+const FEEDBACK_DAMAGE_COLOR := Color(1.0, 0.32, 0.27)
+const FEEDBACK_EFFECT_COLOR := Color(0.3, 0.72, 1.0)
+const FEEDBACK_NEGATIVE_COLOR := Color(0.76, 0.38, 1.0)
+
 # How long a move's result stays on screen (log_label text) before whatever
 # happens next - the next turn's own _log() call, or a win/lose/flee banner
 # - overwrites it. log_label only ever shows one line at a time, no
@@ -292,6 +300,7 @@ const SWING_REACH := 1.8
 
 # Overhead health bars.
 const OVERHEAD_BAR_WIDTH := 104
+const STATUS_COLUMN_WIDTH := 200
 # How far above a combatant's own head the bar floats, in metres.
 const OVERHEAD_LIFT := 0.12
 # Shared by hp_label and oxygen_label (_build_overhead_bar()) - one number
@@ -329,11 +338,14 @@ var attack_btn: Button
 var run_btn: Button
 var items_btn: Button
 var back_btn: Button
+var move_details_btn: Button
 var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
 var item_buttons: Array = []
+var _show_move_formulas := false
+var _move_menu_actor: Dictionary = {}
 
 # Set alongside _pending_move for a move, this for an item - exactly one
 # of the two is ever non-empty at a time. _on_target_chosen() (target_menu's
@@ -529,7 +541,18 @@ func create_stats_panel(title: String) -> Dictionary:
 
 	var title_label := Label.new()
 	title_label.text = title
+	title_label.add_theme_font_size_override("font_size", 14)
 	rows.add_child(title_label)
+
+	# Four stats in a compact 2x2 grid. Keeping the old one-column stack made
+	# the bottom HUD tall enough to crop Bucky's status card at 1280x720 once
+	# the move descriptions were added. The row panels remain individually
+	# addressable, so Marc's tutorial highlights still target the same stats.
+	var stat_grid := GridContainer.new()
+	stat_grid.columns = 2
+	stat_grid.add_theme_constant_override("h_separation", 14)
+	stat_grid.add_theme_constant_override("v_separation", 2)
+	rows.add_child(stat_grid)
 
 	var values := {}
 	var deltas := {}
@@ -540,15 +563,18 @@ func create_stats_panel(title: String) -> Dictionary:
 
 		var name_label := Label.new()
 		name_label.text = stat
-		name_label.custom_minimum_size.x = 40
+		name_label.custom_minimum_size.x = 34
+		name_label.add_theme_font_size_override("font_size", 13)
 
 		var value_label := Label.new()
 		value_label.text = "0"
+		value_label.add_theme_font_size_override("font_size", 13)
 		value_label.add_theme_color_override("font_color", Color.WHITE)
 
 		var delta_label := Label.new()
 		delta_label.text = ""
 		delta_label.visible = false
+		delta_label.add_theme_font_size_override("font_size", 13)
 
 		row.add_child(name_label)
 		row.add_child(value_label)
@@ -564,7 +590,7 @@ func create_stats_panel(title: String) -> Dictionary:
 		var row_panel := PanelContainer.new()
 		row_panel.add_theme_stylebox_override("panel", _row_stylebox(false))
 		row_panel.add_child(row)
-		rows.add_child(row_panel)
+		stat_grid.add_child(row_panel)
 
 		values[stat] = value_label
 		deltas[stat] = delta_label
@@ -1178,7 +1204,7 @@ func _build_ui() -> void:
 	_party_status_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_party_status_column.offset_left = 12.0
 	_party_status_column.offset_top = 70.0
-	_party_status_column.offset_right = 12.0 + OVERHEAD_BAR_WIDTH + 30.0
+	_party_status_column.offset_right = 12.0 + STATUS_COLUMN_WIDTH
 	_party_status_column.offset_bottom = 70.0 + 320.0
 	_party_status_column.add_theme_constant_override("separation", 8)
 	_party_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1186,7 +1212,7 @@ func _build_ui() -> void:
 
 	_enemy_status_column = VBoxContainer.new()
 	_enemy_status_column.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_enemy_status_column.offset_left = -(OVERHEAD_BAR_WIDTH + 30.0 + 12.0)
+	_enemy_status_column.offset_left = -(STATUS_COLUMN_WIDTH + 12.0)
 	_enemy_status_column.offset_top = 70.0
 	_enemy_status_column.offset_right = -12.0
 	_enemy_status_column.offset_bottom = 70.0 + 320.0
@@ -1401,6 +1427,9 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
+	move_details_btn = _menu_button("Show formulas", "Optional calculation details")
+	move_details_btn.pressed.connect(_toggle_move_details)
+	move_menu.add_child(move_details_btn)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
@@ -1463,7 +1492,10 @@ func _fit_panel_height() -> void:
 func _menu_button(title: String, hint: String) -> Button:
 	var b := Button.new()
 	b.text = title if hint == "" else "%s\n%s" % [title, hint]
-	b.custom_minimum_size = Vector2(210, 52)
+	# Four 300px choices plus their gaps fit in the 1248px-wide content area
+	# at the evidence/playtest resolution. The previous 210px width packed five
+	# across but visibly cut off both move names and result/formula summaries.
+	b.custom_minimum_size = Vector2(300, 52)
 	b.clip_text = true
 	return b
 
@@ -1681,14 +1713,9 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 		_enemy_status_column.add_child(card)
 
 	var box := VBoxContainer.new()
-	# MODIFIED: 1 -> 4. Every label here also carries a 5px text outline
-	# (outline_size, below), which bleeds a few pixels past the glyph's own
-	# bounds - at separation 1 that outline (Oxygen's label especially)
-	# visually ran right into the HP bar sitting one row above it. 4px
-	# clears that outline with room to spare; three stacked cards (this
-	# column's max - see CAST's own three-diver roster) still fit well
-	# inside _party_status_column's/_enemy_status_column's fixed 320px
-	# budget at this spacing.
+	# Labels now sit beside their corresponding bars, so each card stays
+	# compact enough for all three divers to remain above the dynamic HUD at
+	# 1280x720. Four pixels still clears the outlined text between rows.
 	box.add_theme_constant_override("separation", 4)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(box)
@@ -1742,7 +1769,7 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	hp_label.add_theme_font_size_override("font_size", OVERHEAD_VALUE_FONT_SIZE)
 	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	hp_label.add_theme_constant_override("outline_size", 5)
-	box.add_child(hp_label)
+	bar_row.add_child(hp_label)
 
 	# Oxygen only ever matters for the party's own divers (only their
 	# abilities/sonar spend it - see diver.gd's oxygen spend, world.gd's
@@ -1791,7 +1818,7 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 		oxygen_label.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
 		oxygen_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 		oxygen_label.add_theme_constant_override("outline_size", 5)
-		box.add_child(oxygen_label)
+		o2_row.add_child(oxygen_label)
 
 	var status_label := Label.new()
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1875,37 +1902,26 @@ func _log(text: String) -> void:
 func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
-	var text := ""
-	var color := Color(1.0, 0.45, 0.35)
+	var messages: Array[Dictionary] = []
 	var result_kind := String(result.get("debuff", ""))
 	if result_kind == "heal" or result_kind == "revive":
-		text = "+%d HP" % int(result.get("changed", 0))
-		color = Color(0.35, 1.0, 0.5)
+		messages.append({"text": "+%d HP" % int(result.get("changed", 0)), "color": FEEDBACK_EFFECT_COLOR})
 	elif result_kind != "":
-		text = "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))]
-		color = Color(1.0, 0.82, 0.3)
+		messages.append({"text": "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))], "color": FEEDBACK_NEGATIVE_COLOR})
 	elif not bool(result.get("hit", false)) or bool(result.get("dodged", false)):
-		text = "DODGE"
-		color = Color(0.35, 0.9, 1.0)
+		messages.append({"text": "DODGE", "color": FEEDBACK_EFFECT_COLOR})
 	elif int(result.get("damage", 0)) > 0:
-		text = "-%d" % int(result.damage)
+		messages.append({"text": "-%d" % int(result.damage), "color": FEEDBACK_DAMAGE_COLOR})
 	elif (result.get("effects", []) as Array).is_empty():
-		# Only reachable now via defense flooring a hit at 0 - see
-		# _resolve_attack()'s own resolution-order comment. Text kept as
-		# "ABSORBED" (verify/combat_feedback.gd asserts on it) even though
-		# there's no more barrier to absorb anything - it still reads fine
-		# for "defense soaked this hit down to nothing."
-		text = "ABSORBED"
-		color = Color(0.8, 0.85, 0.9)
+		messages.append({"text": "ABSORBED", "color": FEEDBACK_EFFECT_COLOR})
 	var effects := result.get("effects", []) as Array
-	if not effects.is_empty():
-		text += ("\n" if text != "" else "") + "\n".join(effects)
-		color = Color(1.0, 0.82, 0.3) if int(result.get("damage", 0)) == 0 else color
-	if text == "":
-		return
-	_show_floating_text(entry, text, color)
+	for effect in effects:
+		messages.append({"text": String(effect), "color": FEEDBACK_NEGATIVE_COLOR})
+	for index in range(messages.size()):
+		var message := messages[index] as Dictionary
+		_show_floating_text(entry, String(message.text), message.color as Color, index)
 
-func _show_floating_text(entry: Dictionary, text: String, color: Color) -> void:
+func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_index: int = 0) -> void:
 	var actor := entry.actor as Node3D
 	var label := Label3D.new()
 	label.text = text
@@ -1914,7 +1930,7 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color) -> void:
 	label.outline_size = 10
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.position = _top_of(actor) - actor.global_position + actor.position + Vector3(0.0, 0.35, 0.0)
+	label.position = _top_of(actor) - actor.global_position + actor.position + Vector3(0.0, 0.35 + float(stack_index) * 0.32, 0.0)
 	_stage_vp.add_child(label)
 	var tween := label.create_tween()
 	tween.set_parallel(true)
@@ -2078,30 +2094,22 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
-	# Both every scripted stage AND the enemy's own one scripted turn
-	# (_tutorial_prep_enemy_turn(), capped via _tutorial_enemy_turns) have to
-	# have happened before the script is done - _tutorial_step alone
-	# reaching _TUTORIAL_SCRIPT.size() only means every stage's diver has
-	# acted; the enemy's own QTE-teaching turn still needs to happen first,
-	# via completely normal turn order (see the forced-actor block below,
-	# which only overrides selection during the scripted stages themselves).
-	# _tutorial_finale_shown guards this firing more than once - unlike the
-	# old _end_tutorial(), this does NOT force a win. It shows the "go
-	# finish it yourself" prompt exactly once, then falls straight into the
-	# normal win/lose checks right below, which is what actually decides how
-	# this fight ends from here - a real win, or a real loss (see _lose()'s
-	# own tutorial-only message for that second case).
+	# The lesson is complete only after every scripted move AND the enemy's
+	# QTE-teaching turn have happened.  It must end here: asking a new player
+	# to "Defeat the enemy!" after they have completed what the UI presents as
+	# the tutorial leaves them on the battle screen with no clear distinction
+	# between completing the lesson and starting an unrelated normal fight.
+	# The Angler retreats, then the normal `finished` handoff restores the
+	# world. `_tutorial_finale_shown` keeps this one-shot if an async turn
+	# callback resumes after the signal.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
 		_set_all_buttons(false)
-		await _tutorial_show_step("Defeat the enemy!")
-		# One-shot: clears itself once read, unlike every earlier caption in
-		# this script - those get overwritten by whatever explanation comes
-		# next, but nothing ever touches _tutorial_caption again after this,
-		# so without this it would sit on screen, stale, for the rest of
-		# the real fight that follows.
-		_tutorial_caption.text = ""
-		call_deferred("_fit_panel_height")
+		_log("Tutorial complete. The Angler retreats into the dark.")
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		_revert_temp_buffs()
+		finished.emit("won")
+		return
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -2473,13 +2481,14 @@ func _add_power_badge(btn: Button, power: int) -> void:
 	plate.add_child(badge)
 
 func _populate_move_menu(actor: Dictionary) -> void:
+	_move_menu_actor = actor
 	for b in move_buttons:
 		(b as Button).queue_free()
 	move_buttons.clear()
 	var available: float = (actor.stats as CombatantStats).oxygen
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
-		var hint: String = String(mv.hint)
+		var hint: String = String(mv.hint) if _show_move_formulas else CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
 		if ox_cost > 0.0:
 			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
@@ -2490,10 +2499,18 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
-	# Keep Back last - it's a persistent child of move_menu, not rebuilt
-	# here, so re-adding fresh move buttons pushes it out of place unless
-	# it's explicitly moved back to the end each time.
+	# The two persistent controls are not rebuilt with the move buttons.
+	# Keep them after the choices, in details-then-back order.
+	move_details_btn.text = "Show results\nResolved for %s" % String(actor.display_name) if _show_move_formulas else "Show formulas\nOptional calculation details"
+	move_menu.move_child(move_details_btn, move_menu.get_child_count() - 1)
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
+
+func _toggle_move_details() -> void:
+	if _move_menu_actor.is_empty():
+		return
+	_show_move_formulas = not _show_move_formulas
+	_populate_move_menu(_move_menu_actor)
+	call_deferred("_fit_panel_height")
 
 func _show_items() -> void:
 	if _busy:

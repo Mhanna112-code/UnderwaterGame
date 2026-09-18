@@ -38,13 +38,12 @@ const ALL := {
 
 # Player-facing identity lives beside the rig identity so exploration and
 # combat cannot drift into separate nickname tables. Glassgoat confirmed
-# Maxilani and Musashi in the meeting. The Proto5 pilot's proper name was not
-# decided, so `Mech Pilot` is deliberately a role label rather than invented
-# canon; changing it later is one data edit with no save/model migration.
+# Maxilani and Musashi in the meeting, then supplied Bucky as the Proto5
+# pilot's name in the September combat follow-up.
 const DISPLAY_NAMES := {
 	"Staff_Diver": "Maxilani",
 	"Prototype_1(1910)": "Musashi",
-	"Prototype_V(1922)": "Mech Pilot",
+	"Prototype_V(1922)": "Bucky",
 }
 
 # Motion names the game asks for, resolved per family.
