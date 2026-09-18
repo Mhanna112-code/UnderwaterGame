@@ -57,23 +57,10 @@ func _test_result_first_move_menu() -> void:
 		_expect("4 Damage" in stabbing.text and "5 Bleed" in stabbing.text,
 			"HARDCODED MOVE PREVIEW: 4 STR still renders '%s'" % stabbing.text)
 
-	var details := _button_starting_with(battle.move_menu, "Show formulas")
-	_expect(details != null,
-		"FORMULA DETAILS MISSING: no on-demand control preserves authored calculations")
-	if details != null:
-		details.pressed.emit()
-		stabbing = _move_button(battle, "Scuba Stabbing")
-		_expect(stabbing != null and "STR" in stabbing.text,
-			"FORMULA DETAILS BROKEN: toggling details does not reveal the authored calculation")
-		# FORMULA-FREEZE-1: the control must be reversible. A one-way
-		# rebuild can look correct for one frame yet leave the active combat
-		# turn stranded in details mode.
-		details.pressed.emit()
-		stabbing = _move_button(battle, "Scuba Stabbing")
-		_expect(stabbing != null and "4 Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
-			"FORMULA DETAILS STUCK: toggling back does not restore the result-first choice")
-		_expect(details.text.begins_with("Show formulas"),
-			"FORMULA CONTROL STUCK: the details button does not return to Show formulas")
+	# The "Show formulas" on-demand control was removed - result-first is now
+	# the only move-menu display, with no way back to raw stat algebra.
+	_expect(_button_starting_with(battle.move_menu, "Show formulas") == null,
+		"FORMULA CONTROL STILL PRESENT: the retired details toggle is back in the move menu")
 	battle.queue_free()
 	await process_frame
 

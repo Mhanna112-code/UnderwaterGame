@@ -338,14 +338,11 @@ var attack_btn: Button
 var run_btn: Button
 var items_btn: Button
 var back_btn: Button
-var move_details_btn: Button
 var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
 var item_buttons: Array = []
-var _show_move_formulas := false
-var _move_menu_actor: Dictionary = {}
 
 # Set alongside _pending_move for a move, this for an item - exactly one
 # of the two is ever non-empty at a time. _on_target_chosen() (target_menu's
@@ -1427,9 +1424,6 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
-	move_details_btn = _menu_button("Show formulas", "Optional calculation details")
-	move_details_btn.pressed.connect(_toggle_move_details)
-	move_menu.add_child(move_details_btn)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
@@ -2099,13 +2093,17 @@ func _advance_turn() -> void:
 	# to "Defeat the enemy!" after they have completed what the UI presents as
 	# the tutorial leaves them on the battle screen with no clear distinction
 	# between completing the lesson and starting an unrelated normal fight.
-	# The Angler retreats, then the normal `finished` handoff restores the
+	# The enemy retreats, then the normal `finished` handoff restores the
 	# world. `_tutorial_finale_shown` keeps this one-shot if an async turn
-	# callback resumes after the signal.
+	# callback resumes after the signal. _build_stage() picks the tutorial's
+	# one enemy the same random way as any other fight (_ordinary_actor()),
+	# so this can't assume it's always the Angler - it names whichever enemy
+	# actually showed up.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
 		_set_all_buttons(false)
-		_log("Tutorial complete. The Angler retreats into the dark.")
+		var retreating_name := String(enemies[0].display_name) if not enemies.is_empty() else "The enemy"
+		_log("Tutorial complete. %s retreats into the dark." % retreating_name)
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
 		_revert_temp_buffs()
 		finished.emit("won")
@@ -2481,14 +2479,13 @@ func _add_power_badge(btn: Button, power: int) -> void:
 	plate.add_child(badge)
 
 func _populate_move_menu(actor: Dictionary) -> void:
-	_move_menu_actor = actor
 	for b in move_buttons:
 		(b as Button).queue_free()
 	move_buttons.clear()
 	var available: float = (actor.stats as CombatantStats).oxygen
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
-		var hint: String = String(mv.hint) if _show_move_formulas else CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
+		var hint: String = CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
 		if ox_cost > 0.0:
 			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
@@ -2499,18 +2496,8 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
-	# The two persistent controls are not rebuilt with the move buttons.
-	# Keep them after the choices, in details-then-back order.
-	move_details_btn.text = "Show results\nResolved for %s" % String(actor.display_name) if _show_move_formulas else "Show formulas\nOptional calculation details"
-	move_menu.move_child(move_details_btn, move_menu.get_child_count() - 1)
+	# Not rebuilt with the move buttons above - keep it after the choices.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
-
-func _toggle_move_details() -> void:
-	if _move_menu_actor.is_empty():
-		return
-	_show_move_formulas = not _show_move_formulas
-	_populate_move_menu(_move_menu_actor)
-	call_deferred("_fit_panel_height")
 
 func _show_items() -> void:
 	if _busy:
