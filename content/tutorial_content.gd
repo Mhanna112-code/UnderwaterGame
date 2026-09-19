@@ -99,7 +99,7 @@ const ABILITY_MEDIA := {
 const STATUS_CONDITIONS: Array[Dictionary] = [
 	{
 		"title": "Blindness",
-		"body": "Lowers an enemy's Agility, Accuracy, and Defense all by the same amount at once, for a few turns. Lower Accuracy means their own attacks miss more; lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three - a 4/3/2 enemy becomes 2/1/0 - lasting as many turns as the caster's own Accuracy.",
+		"body": "Lowers an enemy's Agility, Accuracy, and Defense all by the same amount at once, for a few turns. Lower Accuracy means their own attacks miss more; lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three - a 4/3/2 enemy becomes 2/1/0 - lasting as many turns as the caster's own Accuracy. Unlike Bleed, it does not stack: recasting it while already active does not add to the penalty, only refreshes the remaining turns if the new cast would last longer.",
 	},
 	{
 		"title": "Stun",

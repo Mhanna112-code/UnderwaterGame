@@ -31,8 +31,19 @@ const SCUBA := [
 		"name": "Flash Blast", "formula": {},
 		"target": "all_enemies", "effects": [
 			{"kind": "status", "status": "blindness", "level": {"flat": 2}, "duration": {"accuracy": 1}},
+			# Multiple Knee Combo (below) is the only other all-enemies move
+			# in this kit, and it already pays a self_temporary cost for
+			# hitting everyone at once - Flash Blast had none at all despite
+			# a stronger, longer-lasting payoff (three stats down for
+			# several turns, vs. two stats down for one), so recasting it
+			# right as it expired was a free, essentially risk-free loop.
+			# Matched to Multiple Knee Combo's own -1/-1 rather than set
+			# higher, since Flash Blast already costs its own turn and deals
+			# no damage - the point is a real tradeoff each cast, not making
+			# the move not worth using at all.
+			{"kind": "self_temporary", "accuracy": -1, "evasion": -1},
 		],
-		"hint": "All foes; Blindness 2 for ACC turns",
+		"hint": "All foes; Blindness 2 for ACC turns; -1 ACC/EVA for 1 turn",
 		"text": "Flash Blast blinds the enemy line",
 	},
 	{
@@ -84,6 +95,14 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 				var level := CombatRules.formula_value(stats, effect.get("level", {}))
 				parts.append("Status Effect: %d %s" % [level, String(effect.get("status", "Effect")).capitalize()])
 			"self_temporary":
+				# "for 1 turn" dropped from here - self_temporary is always
+				# exactly 1 turn by design, never variable, so it's constant
+				# filler on the button. Fine alone (Axe Kick/Multiple Knee
+				# Combo already fit either way), but combined with a
+				# "status" line on the same move (Flash Blast) the two
+				# together ran well past the button's width. The duration
+				# itself isn't lost - it's in the "Self Cost" hover tooltip
+				# (see TutorialContent.EFFECT_KIND_EXPLANATIONS).
 				var costs: Array[String] = []
 				var accuracy := int(effect.get("accuracy", 0))
 				var evasion := int(effect.get("evasion", 0))
@@ -95,7 +114,7 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 						if amount != 0:
 							costs.append("%s %s%d" % [stat.left(3).to_upper(), "+" if amount > 0 else "", amount])
 				if not costs.is_empty():
-					parts.append("%s for 1 turn" % " / ".join(costs))
+					parts.append(" / ".join(costs))
 	return " • ".join(parts)
 
 # Prototype_1/Prototype_V's legacy power/debuff kits never had a "Show

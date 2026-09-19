@@ -744,6 +744,46 @@ func _show_stat_preview(move: Dictionary, enemy: Dictionary) -> void:
 # mid-explanation.
 var _stat_preview_frozen := false
 
+# Extra panels _show_all_stat_preview() builds beyond the one enemy that
+# already fits in the shared _enemy_stats_ui slot - freed in
+# _clear_all_stat_preview() rather than reused/pooled, since a hover only
+# needs them for as long as it lasts and target counts vary fight to fight.
+var _extra_enemy_stats_uis: Array[Dictionary] = []
+
+# Only ever wired from _populate_all_target_menu()'s single "All enemies"
+# button - the enemy picker's per-target buttons hover _show_stat_preview()
+# instead, one panel is enough there since exactly one enemy is being
+# considered. An all-target move (Flash Blast, Multiple Knee Combo, ...)
+# actually hits every enemy at once, so showing only the first one's stats
+# (what this used to do, sharing the single _enemy_stats_ui slot the normal
+# single-target hover uses) hid what the move was about to do to everyone
+# else. Reuses that same shared slot for enemies[0], then builds one
+# throwaway extra panel per additional enemy in the same stats row.
+func _show_all_stat_preview(move: Dictionary, enemies: Array) -> void:
+	if enemies.is_empty():
+		return
+	_show_stat_preview(move, enemies[0] as Dictionary)
+	var container := (_enemy_stats_ui.panel as Control).get_parent()
+	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	for i in range(1, enemies.size()):
+		var enemy := enemies[i] as Dictionary
+		if not enemy.has("stats"):
+			continue
+		var extra := create_stats_panel(String(enemy.get("display_name", "Enemy")))
+		_set_stats_panel_base(extra, enemy.stats as CombatantStats)
+		_apply_stat_delta(extra, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
+		(extra.panel as Control).visible = true
+		container.add_child(extra.panel as Control)
+		_extra_enemy_stats_uis.append(extra)
+
+func _clear_all_stat_preview() -> void:
+	if _stat_preview_frozen:
+		return
+	for extra in _extra_enemy_stats_uis:
+		(extra.panel as Control).queue_free()
+	_extra_enemy_stats_uis.clear()
+	_clear_stat_preview()
+
 func _clear_stat_preview() -> void:
 	if _enemy_stats_ui.is_empty() or _stat_preview_frozen:
 		return
@@ -2498,16 +2538,17 @@ func _populate_move_menu(actor: Dictionary) -> void:
 	# Not rebuilt with the move buttons above - keep it after the choices.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
 
-# Ready-to-assign tooltip text for whichever effect a move's first
-# "effects" entry names, or "" for a move with nothing to explain - a plain
-# damage move (self-explanatory), a legacy power/debuff move (those apply
-# their debuff directly, never through CombatantStats.add_status(), so
-# there's no STATUS_CONDITIONS entry to point at either), or a
-# "self_temporary"/"reduce_evasion" move whose kind has no
-# EFFECT_KIND_EXPLANATIONS entry. "status" is checked first since it's the
-# only kind with a per-move-specific name (Bleed, Blindness, ...) rather
-# than one fixed explanation for every move sharing that kind.
+# Ready-to-assign tooltip text covering every explainable effect a move
+# carries, not just the first - Flash Blast carries both a "status" (its own
+# per-move name, Blindness) and a "self_temporary" cost, and a player
+# hovering it needs both explanations, not whichever happened to be listed
+# first in the move's own data. Returns "" for a move with nothing to
+# explain at all - a plain damage move (self-explanatory), a legacy power/
+# debuff move (those apply their debuff directly, never through
+# CombatantStats.add_status(), so there's no STATUS_CONDITIONS entry to
+# point at either), or an effect kind with no EFFECT_KIND_EXPLANATIONS entry.
 func _move_tooltip_text(mv: Dictionary) -> String:
+	var sections: Array[String] = []
 	for effect_value in mv.get("effects", []):
 		var effect := effect_value as Dictionary
 		var kind := String(effect.get("kind", ""))
@@ -2515,12 +2556,12 @@ func _move_tooltip_text(mv: Dictionary) -> String:
 			var status_name := String(effect.get("status", ""))
 			var body := TutorialContent.status_condition_body(status_name)
 			if body != "":
-				return "%s\n%s" % [status_name.capitalize(), body]
+				sections.append("%s\n%s" % [status_name.capitalize(), body])
 		else:
 			var explanation := TutorialContent.effect_kind_explanation(kind)
 			if not explanation.is_empty():
-				return "%s\n%s" % [String(explanation.get("title", "")), String(explanation.get("body", ""))]
-	return ""
+				sections.append("%s\n%s" % [String(explanation.get("title", "")), String(explanation.get("body", ""))])
+	return "\n\n".join(sections)
 
 func _show_items() -> void:
 	if _busy:
@@ -3076,12 +3117,14 @@ func _populate_all_target_menu(targets: Array) -> void:
 	var button := _menu_button("All enemies", ", ".join(names))
 	button.pressed.connect(_on_all_targets_chosen.bind(targets))
 	# "All enemies" only ever targets enemies (nothing heals/revives the
-	# whole party at once), so previewing against the first of them is
-	# always safe here - unlike _populate_target_menu(), which is shared
-	# with heal/revive's ally-targeting case.
+	# whole party at once), so previewing every one of them is always safe
+	# here - unlike _populate_target_menu(), which is shared with heal/
+	# revive's ally-targeting case. _show_all_stat_preview() builds one
+	# panel per enemy rather than only the first, since the move is about
+	# to hit all of them at once.
 	if not targets.is_empty():
-		button.mouse_entered.connect(_show_stat_preview.bind(_pending_move, targets[0]))
-		button.mouse_exited.connect(_clear_stat_preview)
+		button.mouse_entered.connect(_show_all_stat_preview.bind(_pending_move, targets))
+		button.mouse_exited.connect(_clear_all_stat_preview)
 	target_menu.add_child(button)
 	target_buttons.append(button)
 	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
