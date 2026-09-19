@@ -65,6 +65,7 @@ func _run() -> void:
 	var target_a := maze.get_node("CSGBox3D") as CSGBox3D
 	var target_b := maze.get_node("CurrentWall3") as CSGBox3D
 	var wall_6 := maze.get_node("CSGBox3D6") as CSGBox3D
+	var wall_7 := maze.get_node("CSGBox3D7") as CSGBox3D
 	var start_yaw_a := wall_a.rotation.y
 	var start_yaw_b := wall_b.rotation.y
 	var home_a := wall_a.global_position
@@ -103,8 +104,18 @@ func _run() -> void:
 	var inner_end_corners := wall_a_negative_corners if positive_end_is_outer else wall_a_positive_corners
 	var wall_6_outer_gap := _corner_gap(outer_end_corners, _wall_corners(wall_6))
 	var wall_6_inner_gap := _corner_gap(inner_end_corners, _wall_corners(wall_6))
+	# Marc's follow-up contract: these two static passage boundaries must
+	# begin on one cross-line. They may be separated laterally (that is the
+	# passage), but must not be staggered along their shared length axis.
+	# Measure the final collision geometry rather than either placement helper.
+	var wall_7_axis := wall_7.global_transform.basis.x.normalized()
+	var csg67_axis_alignment := absf(wall_6_axis.dot(wall_7_axis))
+	var csg67_center_delta := wall_7.global_position - wall_6.global_position
+	var csg67_longitudinal_stagger := absf(csg67_center_delta.dot(wall_6_axis))
+	var csg67_clear_lane_width := absf(csg67_center_delta.dot(wall_6.global_transform.basis.z.normalized())) - (wall_6.size.z + wall_7.size.z) * 0.5
 	print("turns %.2f / %.2f, endpoint gaps %.4f / %.4f, parallel %.5f / %.5f" % [turn_a, turn_b, gap_a, gap_b, parallel_a, parallel_b])
 	print("CSGBox3D6 physical gaps outer %.4f / CSGBox3D-side %.4f" % [wall_6_outer_gap, wall_6_inner_gap])
+	print("CSGBox3D6/7 axis %.5f, longitudinal stagger %.4f, clear lane %.4f" % [csg67_axis_alignment, csg67_longitudinal_stagger, csg67_clear_lane_width])
 	if absf(turn_a - 90.0) > 0.02 or absf(turn_b - 90.0) > 0.02:
 		findings.append("hallway walls did not rotate exactly 90 degrees")
 	if mid_turn_a < 5.0 * PI / 180.0 or mid_turn_a > 85.0 * PI / 180.0 or mid_turn_b < 5.0 * PI / 180.0 or mid_turn_b > 85.0 * PI / 180.0:
@@ -119,6 +130,8 @@ func _run() -> void:
 		findings.append("CurrentWall2 is not flush and parallel with CurrentWall3")
 	if wall_6_outer_gap > 0.02 or wall_6_inner_gap < wall_a.size.x * 0.5 or wall_6_perpendicular > 0.0001:
 		findings.append("CSGBox3D6 does not meet CurrentWall1's rotated outer join")
+	if csg67_axis_alignment < 0.9999 or csg67_longitudinal_stagger > 0.02 or csg67_clear_lane_width < maze._diver.radius * 2.0:
+		findings.append("CSGBox3D6/7 do not share an aligned, swimmable passage cross-line")
 	maze._rotate_hallway_1_2()
 	await create_timer(1.4).timeout
 	if wall_a.global_position.distance_to(home_a) > 0.02 or wall_b.global_position.distance_to(home_b) > 0.02 or absf(wrapf(wall_a.rotation.y - start_yaw_a, -PI, PI)) > 0.0001 or absf(wrapf(wall_b.rotation.y - start_yaw_b, -PI, PI)) > 0.0001:

@@ -34,6 +34,7 @@ finished geometry and the in-motion geometry that a player sees.
 | 2 | A future wall change loses the final CSGBox3D6/CurrentWall1 join while changing sizes or rotation. | High — it reopens a maze boundary or creates a visible gap. | The maze mixes static and future transforms. | Completed-state geometry invariant | characterized |
 | 3 | Open then close accumulates transform drift. | Medium — repeated puzzle use eventually misaligns walls/currents. | State is retained across two separate tweens. | Round-trip transform invariant | fixed |
 | 4 | A wall follows an arc but lands at a different final transform from the designed flush target. | High — an animation-only repair regresses the static layout. | Arc motion derives a pivot from start/target transforms. | Differential final-state invariant | fixed |
+| 5 | CSGBox3D6 is corrected to the future hallway endpoint while CSGBox3D7 retains its old longitudinal coordinate, producing a staggered corridor mouth. | High — the two passage boundaries do not begin on one cross-line, so the player sees a crooked opening and later map pieces cannot connect predictably. | `_place_csgbox6_at_hallway_target()` intentionally mutates only Box6. | Captured review bug + completed-state geometry invariant | fixed |
 
 ## Test plan
 
@@ -76,6 +77,21 @@ finished geometry and the in-motion geometry that a player sees.
 - **What it catches:** an arc with a wrong pivot/direction that looks smoother
   but lands away from the intended layout.
 
+### Bug #5 — staggered CSGBox3D6/7 passage mouth
+
+- **Test type:** captured review bug + completed-state geometry invariant.
+- **Description string:**
+  > `maze: CSGBox3D6/7 share an entrance cross-line while retaining a swimmable lane — guards against staggered boundary`
+- **What it catches:** a change that flushes Box6 to the rotating hallway
+  but leaves Box7 several metres forward or behind it. The test requires the
+  center-to-center vector to have no longitudinal component, preserves a lane
+  wider than the real diver, and checks that both walls remain parallel.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; a fixed but staggered
+    placement has a non-zero component along the wall axis and fails.
+  - Could this fail under a behavior-preserving refactor? No; it observes the
+    final physical walls, not a helper or a hard-coded coordinate.
+
 ## Skipped
 
 - Full diver collision traversal during the moving wall — deferred: the
@@ -94,4 +110,9 @@ finished geometry and the in-motion geometry that a player sees.
   in the captured build; its physical gap measures 0.0000 m.
 - **Bugs discovered during writing:** the earlier final-state-only test did
   not sample the motion shown in Marc's screenshot.
+- **Bugs caught after re-evaluation:** Bug #5. The new contract failed first
+  on the prior head with a `3.0121 m` longitudinal stagger. Projecting
+  Box7's authored offset onto Box6's side axis fixes the offset without
+  changing the `6.2005 m` clear lane; the real-diver traversal test remains
+  clean.
 - **Tests removed:** none.

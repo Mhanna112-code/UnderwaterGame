@@ -88,6 +88,7 @@ func _setup_walls():
 func _place_csgbox6_at_hallway_target() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_6: CSGBox3D = $CSGBox3D6
+	var wall_7: CSGBox3D = $CSGBox3D7
 
 	# CSGBox3D6's own rotation, set BEFORE _set_wall_position() below reads
 	# it - that function computes wall_b's "walk out to its own center"
@@ -118,12 +119,17 @@ func _place_csgbox6_at_hallway_target() -> void:
 		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, false
 	)
 
-	# CSGBox3D7 is the authored far boundary of the northbound passage, not
-	# another piece of the moving red-wall assembly. Carrying it along with
-	# CSGBox3D6 put it THROUGH CurrentWall1's opened position and sealed the
-	# mouth a player is looking at. Leave its authored transform untouched:
-	# CurrentWall1 joins CSGBox3D6 at the left edge, while CSGBox3D7 remains
-	# the opposite side of a real, swimmable corridor.
+	# CSGBox3D7 is the opposite *static* boundary of the northbound passage,
+	# not another part of CurrentWall1's moving assembly. It must begin on the
+	# same cross-line as CSGBox3D6, but remain laterally separated to form the
+	# passage. Project its pre-existing offset onto Box6's side axis: this
+	# preserves the authored lane width while discarding only the stale forward
+	# and vertical offsets left behind when Box6 was corrected above. Box7 never
+	# moves during H, so it cannot sweep into CurrentWall1's opened position.
+	var lane_side := wall_6.global_transform.basis.z.normalized()
+	var authored_offset := wall_7.global_position - wall_6.global_position
+	var preserved_lane_offset := lane_side * authored_offset.dot(lane_side)
+	wall_7.global_position = wall_6.global_position + preserved_lane_offset
 
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
