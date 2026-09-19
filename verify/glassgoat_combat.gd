@@ -19,6 +19,10 @@ func _init() -> void:
 	_test_flash_blast_applies_timed_blindness()
 	_test_temporary_penalty_clears_on_next_turn()
 	_test_all_target_self_cost_is_paid_once()
+	_test_evasion_down_status_lowers_evasion_and_expires()
+	_test_stun_status_blocks_a_whole_turn_and_expires()
+	_test_bleed_duration_does_not_reset_on_reapplication()
+	_test_tail_spin_strips_defense_by_the_wielders_own_defense()
 
 	for failure in failures:
 		push_error(failure)
@@ -138,3 +142,85 @@ func _test_all_target_self_cost_is_paid_once() -> void:
 	CombatRules.resolve(scuba, second, move, false)
 	_expect(scuba.effective_accuracy() == 2 and scuba.effective_evasion() == 2,
 		"ALL-TARGET COST MULTIPLIED: Multiple Knee Combo's -1 ACC/EVA applies once, not once per foe")
+
+# Angler's Flash Blast (content/enemy_moves.gd) is the first move to use this
+# status - a timed Evasion debuff shaped exactly like Blindness above, just
+# scoped to one stat, so it decays through the same generic end_turn() sweep
+# instead of needing its own expiry code.
+func _test_evasion_down_status_lowers_evasion_and_expires() -> void:
+	var angler := _stats(10, 1, 0, 1, 0, 3)
+	var target := _stats(10, 1, 0, 1, 2, 0)
+	var move := {
+		"name": "Flash Blast", "formula": {}, "effects": [
+			{"kind": "status", "status": "evasion_down", "level": {"accuracy": 1}, "duration": {"accuracy": 1}},
+		],
+	}
+	CombatRules.resolve(angler, target, move)
+	_expect(target.effective_evasion() == 0 and target.status_turns("evasion_down") == 3,
+		"EVASION DOWN STATUS WRONG: Flash Blast must lower Evasion by the Angler's 3 Accuracy for 3 turns")
+	for _tick in range(3):
+		target.end_turn()
+	_expect(target.status_level("evasion_down") == 0 and target.effective_evasion() == 2,
+		"EVASION DOWN DOES NOT EXPIRE: Evasion must return once its 3-turn duration ends")
+
+# Angler's Headbutt (content/enemy_moves.gd) is the first move to use Stun.
+# Applying it is exactly the existing generic "status" effect path; the actual
+# turn-skip is Battle._advance_turn()'s job (untested here, no scene tree),
+# but consume_status_turn() is what makes that skip's clock ever reach zero,
+# so its countdown contract is worth locking down on its own.
+func _test_stun_status_blocks_a_whole_turn_and_expires() -> void:
+	var angler := _stats(10, 2, 0, 1, 0, 3)
+	var target := _stats(10, 1, 0, 1, 2, 0)
+	var move := {
+		"name": "Headbutt", "formula": {"strength": 1}, "effects": [
+			{"kind": "status", "status": "stun", "level": {"flat": 1}, "duration": {"strength": 1}},
+		],
+	}
+	var result := CombatRules.resolve(angler, target, move)
+	_expect(result.damage == 2, "HEADBUTT FORMULA WRONG: it deals the Angler's Strength")
+	_expect(target.is_stunned() and target.status_turns("stun") == 2,
+		"HEADBUTT STUN MISSING: it must stun for the Angler's 2 Strength turns")
+	target.consume_status_turn("stun")
+	_expect(target.is_stunned() and target.status_turns("stun") == 1,
+		"STUN DOES NOT COUNT DOWN: skipping one stunned turn must only tick the clock by one")
+	target.consume_status_turn("stun")
+	_expect(not target.is_stunned(), "STUN NEVER EXPIRES: it must clear once its turns run out")
+
+# Bite (content/enemy_moves.gd) is the first move to give Bleed a real,
+# capped duration instead of the persistent-for-the-fight duration Scuba
+# Stabbing uses. add_status()'s existing "already bleeding" merge branch only
+# ever touched level, never turns, so a repeat Bite stacks the level onto the
+# existing clock rather than refreshing a fresh 3 turns on top of it - worth
+# locking down explicitly since "shouldn't reapplying it also reset the
+# timer?" is an easy, wrong assumption for a later change to make.
+func _test_bleed_duration_does_not_reset_on_reapplication() -> void:
+	var target := _stats(10, 1, 0, 1, 0, 0)
+	target.add_status("bleed", 2, 3)
+	target.end_turn()
+	_expect(target.status_level("bleed") == 2 and target.status_turns("bleed") == 2,
+		"BLEED TIMER WRONG: a 3-turn Bleed must have 2 turns left after one end_turn()")
+	target.add_status("bleed", 2, 3)
+	_expect(target.status_level("bleed") == 4 and target.status_turns("bleed") == 2,
+		"BLEED REAPPLICATION WRONG: a second landed Bite must stack onto the existing level without resetting its remaining 2-turn clock")
+	target.end_turn()
+	target.end_turn()
+	_expect(target.status_level("bleed") == 0,
+		"BLEED NEVER EXPIRES: it must still clear once its original clock reaches zero, even after a mid-flight level increase")
+
+# Frilled Shark's Tail Spin (content/enemy_moves.gd) is the first move to use
+# reduce_defense() - Electric Touch's reduce_evasion() counterpart, but for
+# Defense, and by the wielder's OWN Defense rather than anything the target
+# has. Runs after this same hit's own damage (CombatRules.resolve() computes
+# damage before walking the effects list), so this hit isn't softened by the
+# Defense it strips - only every attack after it is.
+func _test_tail_spin_strips_defense_by_the_wielders_own_defense() -> void:
+	var shark := _stats(10, 2, 3, 1, 0, 3)
+	var target := _stats(10, 1, 4, 1, 0, 0)
+	var move := {
+		"name": "Tail Spin", "formula": {"strength": 1}, "effects": [
+			{"kind": "reduce_defense", "amount": {"defense": 1}},
+		],
+	}
+	var result := CombatRules.resolve(shark, target, move)
+	_expect(result.damage == 1, "TAIL SPIN FORMULA WRONG: it deals the Frilled Shark's Strength (2), floored at 1 by its own 4 Defense")
+	_expect(target.defense == 1, "TAIL SPIN EFFECT MISSING: it must lower the target's Defense by the Frilled Shark's own 3 Defense")

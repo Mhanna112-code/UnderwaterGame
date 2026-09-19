@@ -107,7 +107,7 @@ func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 
 func effective_evasion() -> int:
-	return maxi(0, evasion + int(temporary_modifiers.evasion))
+	return maxi(0, evasion - status_level("evasion_down") + int(temporary_modifiers.evasion))
 
 func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
@@ -156,6 +156,14 @@ func reduce_evasion(amount: int) -> int:
 	evasion_current = mini(evasion_current, effective_evasion())
 	return before - evasion
 
+# Tail Spin's ("Frilled Shark" - content/enemy_moves.gd) counterpart to
+# reduce_evasion() above - a flat, lasts-the-rest-of-the-fight Defense drop,
+# not a timed status like Blindness's own Defense penalty.
+func reduce_defense(amount: int) -> int:
+	var before := defense
+	defense = maxi(0, defense - maxi(0, amount))
+	return before - defense
+
 func add_temporary_modifier(stat: String, amount: int) -> void:
 	if not temporary_modifiers.has(stat):
 		return
@@ -177,6 +185,24 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 
 func status_level(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("level", 0))
+
+func is_stunned() -> bool:
+	return status_level("stun") > 0
+
+# Ticks one status's own duration down by a single turn outside the normal
+# end_turn() sweep. Battle._advance_turn() calls this on "stun" when it skips
+# a stunned combatant's whole turn - that combatant never reaches its own
+# end_turn() this round (see Battle._finish_actor_turn(), only called for
+# whoever actually acted), so nothing else would ever count the skipped turn
+# down and the stun would never expire.
+func consume_status_turn(status: String) -> void:
+	if not statuses.has(status):
+		return
+	var turns := status_turns(status)
+	if turns <= 1:
+		statuses.erase(status)
+	else:
+		(statuses[status] as Dictionary).turns = turns - 1
 
 func status_turns(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("turns", 0))
