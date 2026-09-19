@@ -1484,7 +1484,11 @@ func _fit_panel_height() -> void:
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
 func _menu_button(title: String, hint: String) -> Button:
-	var b := Button.new()
+	# TooltipButton, not a plain Button - see its own header comment. Applied
+	# to every menu button uniformly rather than only the ones that happen to
+	# set tooltip_text, since Godot never shows a tooltip at all for a button
+	# whose tooltip_text is empty regardless of this override.
+	var b := TooltipButton.new()
 	b.text = title if hint == "" else "%s\n%s" % [title, hint]
 	# Four 300px choices plus their gaps fit in the 1248px-wide content area
 	# at the evidence/playtest resolution. The previous 210px width packed five
@@ -2088,26 +2092,18 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
-	# The lesson is complete only after every scripted move AND the enemy's
-	# QTE-teaching turn have happened.  It must end here: asking a new player
-	# to "Defeat the enemy!" after they have completed what the UI presents as
-	# the tutorial leaves them on the battle screen with no clear distinction
-	# between completing the lesson and starting an unrelated normal fight.
-	# The enemy retreats, then the normal `finished` handoff restores the
-	# world. `_tutorial_finale_shown` keeps this one-shot if an async turn
-	# callback resumes after the signal. _build_stage() picks the tutorial's
-	# one enemy the same random way as any other fight (_ordinary_actor()),
-	# so this can't assume it's always the Angler - it names whichever enemy
-	# actually showed up.
+	# The lesson's scripted portion is complete only after every scripted move
+	# AND the enemy's QTE-teaching turn have happened. That's the moment to
+	# hand the fight over for real: a "Defeat the enemy!" prompt explaining
+	# both ways this can go (regardless of which one actually happens - the
+	# outcome isn't known yet), then falls straight through to the normal
+	# living-enemies/living-party checks below instead of declaring a win on
+	# the spot. `_tutorial_finale_shown` keeps this one-shot if an async turn
+	# callback resumes after the signal.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
 		_set_all_buttons(false)
-		var retreating_name := String(enemies[0].display_name) if not enemies.is_empty() else "The enemy"
-		_log("Tutorial complete. %s retreats into the dark." % retreating_name)
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
-		_revert_temp_buffs()
-		finished.emit("won")
-		return
+		await _tutorial_show_step("Now defeat the enemy for real to finish the lesson! Winning awards XP, and enough of it levels your party up. Losing just sends the party back to the overworld to regroup, so there's no real risk in fighting this one out.")
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -2492,12 +2488,39 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		var raw_power := _preview_raw_power(mv, actor.stats as CombatantStats)
 		if raw_power > 0:
 			_add_power_badge(b, raw_power)
+		var tooltip := _move_tooltip_text(mv)
+		if tooltip != "":
+			b.tooltip_text = tooltip
 		b.disabled = available < ox_cost
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
 	# Not rebuilt with the move buttons above - keep it after the choices.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
+
+# Ready-to-assign tooltip text for whichever effect a move's first
+# "effects" entry names, or "" for a move with nothing to explain - a plain
+# damage move (self-explanatory), a legacy power/debuff move (those apply
+# their debuff directly, never through CombatantStats.add_status(), so
+# there's no STATUS_CONDITIONS entry to point at either), or a
+# "self_temporary"/"reduce_evasion" move whose kind has no
+# EFFECT_KIND_EXPLANATIONS entry. "status" is checked first since it's the
+# only kind with a per-move-specific name (Bleed, Blindness, ...) rather
+# than one fixed explanation for every move sharing that kind.
+func _move_tooltip_text(mv: Dictionary) -> String:
+	for effect_value in mv.get("effects", []):
+		var effect := effect_value as Dictionary
+		var kind := String(effect.get("kind", ""))
+		if kind == "status":
+			var status_name := String(effect.get("status", ""))
+			var body := TutorialContent.status_condition_body(status_name)
+			if body != "":
+				return "%s\n%s" % [status_name.capitalize(), body]
+		else:
+			var explanation := TutorialContent.effect_kind_explanation(kind)
+			if not explanation.is_empty():
+				return "%s\n%s" % [String(explanation.get("title", "")), String(explanation.get("body", ""))]
+	return ""
 
 func _show_items() -> void:
 	if _busy:
@@ -3003,7 +3026,7 @@ func _explain_flash_blast(enemy: Dictionary) -> void:
 	_stat_preview_frozen = true
 
 	await _tutorial_show_step(
-		"Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, at level 2. That's why the enemy's ACC and DEF numbers are both shown in [color=%s]red[/color] here: every level of Blindness lowers a target's Agility, Accuracy, AND Defense by that same number, for as many turns as %s's own Accuracy. Blindness is only one of several status conditions moves can inflict - full details on all of them, including ones not shown in this fight, are always available from the Combat Help tab of the Esc menu out in the world." % [
+		"Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, which lowers Agility, Accuracy, and Defense all by the same amount at once. That's why the enemy's ACC and DEF numbers are both shown in [color=%s]red[/color] here: lower Accuracy means their own attacks miss more, and lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three, for as many turns as %s's own Accuracy. Blindness is only one of several status conditions moves can inflict - hover over any attack marked \"Status Effect\" in the move menu to see exactly what it does, or find full details on all of them, including ones not shown in this fight, from the Combat Help tab of the Esc menu out in the world." % [
 			STAT_COLOR_DOWN.to_html(false), String(_acting.display_name),
 		],
 		func() -> void:
@@ -3444,14 +3467,15 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 
 	# A killing blow gets the fade instead of the usual walk/idle reaction -
 	# a dying grunt shouldn't play a normal hit-react animation, the fade
-	# itself is the reaction. play_death_fade() frees the actor once it
-	# finishes (goblin.gd), so nothing after this point may safely touch it
-	# again - is_instance_valid() below is what keeps the idle call honest
-	# about that instead of assuming LOG_READ_DELAY and the fade duration
-	# never overlap.
+	# itself is the reaction. _play_enemy_death()/_play_enemy_hit() only ever
+	# act on a Goblin/TethysBoss actor (silent no-ops against a Diver
+	# target), so a revive's own visual - the one case here that targets a
+	# Diver - gets its own branch below instead.
 	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
 	if target_died:
 		_play_enemy_death(target)
+	elif r.hit and String(r.debuff) == "revive" and target.has("actor") and target.actor is Diver:
+		(target.actor as Diver).play_revive()
 	elif r.hit and String(r.debuff) == "":
 		_play_enemy_hit(target)
 	_finish_actor_turn(_acting)
@@ -3565,11 +3589,12 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 			if (target.stats as CombatantStats).hp <= 0:
 				break
 			var result: Dictionary = await _resolve_attack(actor.stats, target.stats, move)
-			if result.hit and int(move.get("poison", 0)) > 0:
-				(target.stats as CombatantStats).add_status(
-					"poison", int(move.poison), int(move.get("poison_turns", 3)))
+			if result.hit and float(move.get("poison_fraction", 0.0)) > 0.0:
+				var target_stats := target.stats as CombatantStats
+				var poison_level := maxi(1, int(round(float(target_stats.hp_max) * float(move.poison_fraction))))
+				target_stats.add_status("poison", poison_level, int(move.get("poison_turns", 3)))
 				var effects := result.get("effects", []) as Array
-				effects.append("Poison %d·%d" % [int(move.poison), int(move.get("poison_turns", 3))])
+				effects.append("Poison %d·%d" % [poison_level, int(move.get("poison_turns", 3))])
 				result["effects"] = effects
 			_react(target, result)
 			_show_combat_feedback(target, result)
@@ -3997,13 +4022,16 @@ func _lose() -> void:
 	target_menu.visible = false
 	# The choreographed first fight can genuinely be lost now that
 	# _advance_turn() no longer force-wins it after the "Defeat the enemy!"
-	# prompt - spell out what a loss actually means (world.gd's
-	# _on_battle_finished()'s "lost" branch calls _show_game_over(), whose
-	# Restart button reloads the current save slot - see game_over_screen.gd)
-	# instead of the normal terse retreat line, since a first-time player has
-	# no prior loss to have already learned that from.
+	# prompt - spell out what a loss actually means. A normal battle's loss
+	# still goes through world.gd's real game-over flow (_on_battle_finished()
+	# calls _show_game_over(), whose Restart button reloads the current save
+	# slot - see game_over_screen.gd), but the tutorial's is deliberately
+	# softer: it's a brand-new player's first-ever fight, with no real save to
+	# fall back to yet, so world.gd's "lost" branch instead heals the party
+	# and returns them straight to the overworld (see its own was_tutorial
+	# check) rather than showing Game Over.
 	if tutorial_encounter:
-		await _tutorial_show_step("The enemy defeated your whole party, so the fight ends here. Normally, that means restarting from your last save point.")
+		await _tutorial_show_step("In this case, the party lost the fight, but you can continue to fight enemies in the overworld.")
 	else:
 		_log("The party is battered and pulls back.")
 		await get_tree().create_timer(LOG_READ_DELAY).timeout

@@ -41,6 +41,24 @@ var _first_encounter_done := false
 # Test seam only. Automated subsystem checks need to enter their focused
 # scenario immediately; an actual player always sees the opening crawl.
 var skip_intro_for_test := false
+# Developer convenience, same shape as skip_intro_for_test above but for the
+# scripted first fight itself, not just the narration crawl before it -
+# playtesting exploration, other encounters, or saves shouldn't require
+# walking to the light beam and fighting through the tutorial every single
+# session. Set from code (skip_intro_for_test's own use case) or by
+# launching with the --skip-tutorial arg / (on a web build) a ?skip_
+# tutorial=1 URL, same convention as _boss_playtest_requested() and its
+# siblings above - never a persisted save value, so there is no way for a
+# real player to end up with it on by accident.
+var skip_tutorial_for_test := false
+
+func _tutorial_skip_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--skip-tutorial"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("skip_tutorial=1")
+	return false
 
 # random encounters: each Diver tracks its own distance swum and fires
 # encounter_triggered when it rolls one (see diver.gd). This just reacts -
@@ -393,6 +411,25 @@ func _on_title_special_playtest() -> void:
 	_special_guardian_decoy = null
 	_offer_special_encounter("current_pearl")
 
+# Drops straight into ordinary free-roam (no battle, no tutorial - see
+# _ready()'s own use of _spell_playtest_requested() to also set
+# skip_tutorial_for_test) with every diver already holding max spell points
+# and every key item, so any spell in any tree is learnable the moment you
+# reach a save point - normally gated behind leveling up (spell_points only
+# come from CombatantStats.gain_xp()) and, for a couple of spells, a
+# guardian-fight key item. Never writes a save, same as every other
+# playtest route here.
+func _on_title_spell_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	for item_id in Items.ITEMS:
+		if Items.is_key_item(String(item_id)) and not key_items.has(item_id):
+			key_items.append(item_id)
+	for d in divers:
+		(d as Diver).stats.spell_points = 99
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -420,6 +457,14 @@ func _special_playtest_requested() -> bool:
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
+	return false
+
+func _spell_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--spell-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("spell_playtest=1")
 	return false
 
 func _show_game_over() -> void:
@@ -597,13 +642,30 @@ func _ready() -> void:
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
-	render_light_beam()
-	intro_arrow()
-	_show_intro_text()
-	_intro_active = true
-	# The beacon and arrow guide the opening route, but must not lock the
-	# player-facing camera to it. Mouse-look remains available while swimming.
-	_camera_look_override = null
+	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
+	# reach a save point immediately, same reason it also grants max spell
+	# points/every key item - fighting through the scripted first battle
+	# first would defeat the point of a fast spell-testing loop.
+	if _tutorial_skip_requested() or _spell_playtest_requested():
+		skip_tutorial_for_test = true
+	if skip_tutorial_for_test:
+		# Never spawn the beam/arrow at all, and mark the tutorial as already
+		# done up front - TAB/random encounters/the save point prompt all
+		# gate on _first_encounter_done, the same state a player has after
+		# actually finishing the real tutorial fight.
+		_first_encounter_started = true
+		_first_encounter_done = true
+	else:
+		render_light_beam()
+		intro_arrow()
+		_show_intro_text()
+		_intro_active = true
+		# Holds the camera on the light beam from the moment the world loads
+		# until the active diver actually reaches it - see this class's own
+		# header comment on _intro_active. Released the instant the diver
+		# arrives (_start_first_encounter()) so the tutorial battle that follows
+		# isn't fighting a locked camera.
+		_camera_look_override = light_beam
 	_update_hud()
 
 	# Do not parent the title to HUD: _show_title_screen() deliberately hides
@@ -619,6 +681,7 @@ func _ready() -> void:
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
+	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -628,6 +691,8 @@ func _ready() -> void:
 		title_screen.enable_guardian_playtest("Play %s Guardian Test" % String(playtest_site.get("item", "Artifact")).capitalize())
 	if _special_playtest_requested():
 		title_screen.enable_special_playtest()
+	if _spell_playtest_requested():
+		title_screen.enable_spell_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -2130,6 +2195,12 @@ func _on_battle_finished(result: String) -> void:
 	battling = false
 	if was_tutorial:
 		_first_encounter_done = true
+		# Guided the walk-over and held the camera during it - once the
+		# tutorial fight is actually over (win or the softened loss), it's
+		# done its job and would just sit there as a permanent beam of light
+		# in the overworld otherwise.
+		if is_instance_valid(light_beam):
+			light_beam.queue_free()
 	if _boss_playtest_active or _guardian_playtest_active:
 		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false
@@ -2177,6 +2248,19 @@ func _on_battle_finished(result: String) -> void:
 				_update_hp_bar()
 				_update_oxygen_bar()
 				_announce("The current sweeps you back out, unharmed but empty-handed.")
+			elif was_tutorial:
+				# A brand-new player's first-ever fight has no real save to
+				# fall back to yet - Battle._lose()'s own tutorial caption
+				# already told them losing here isn't a real setback, so this
+				# heals the whole party and returns them to the overworld
+				# instead of the normal game-over flow below.
+				for d in divers:
+					var s: CombatantStats = (d as Diver).stats
+					s.hp = s.hp_max
+					s.oxygen = s.oxygen_max
+				_update_hp_bar()
+				_update_oxygen_bar()
+				_announce("The party regroups and returns to the overworld, fully recovered.")
 			else:
 				_show_game_over()
 		_:

@@ -1299,7 +1299,43 @@ func play_death_fade() -> void:
 	tw.tween_property(self, "position:y", position.y - 0.6, 0.9)
 	tw.tween_property(self, "scale", scale * 0.7, 0.9)
 	tw.set_parallel(false)
-	tw.tween_callback(queue_free)
+	# Unlike goblin.gd's version, this never queue_free()s the actor - a
+	# downed party member can come back from a revive spell (Tidal
+	# Revival), which needs the real actor node still standing on the stage
+	# to un-fade (see play_revive() below). Only an enemy's defeat is
+	# actually permanent for the fight.
+
+# Reverses play_death_fade() - a revive spell brought this diver back (see
+# battle.gd's "revive" handling in _resolve_party_move()), so the actor that
+# faded, sank, and shrank needs to visibly return the same way it left,
+# rather than just standing back up mid-fade with the old death pose/alpha
+# still applied. Clears the override materials play_death_fade() installed
+# once the fade-in finishes rather than leaving them sitting at alpha 1
+# forever - visually identical either way, just not carrying dead weight
+# for the rest of the fight.
+func play_revive() -> void:
+	var overrides: Array = []
+	var tw := create_tween()
+	tw.set_parallel(true)
+	for m in _all_meshes(model):
+		var mesh_instance := m as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		for surface in range(mesh_instance.mesh.get_surface_count()):
+			var mat := mesh_instance.get_surface_override_material(surface)
+			if mat == null or not (mat is BaseMaterial3D):
+				continue
+			overrides.append([mesh_instance, surface])
+			tw.tween_property(mat, "albedo_color:a", 1.0, 0.6)
+	tw.tween_property(self, "position:y", position.y + 0.6, 0.6)
+	tw.tween_property(self, "scale", scale / 0.7, 0.6)
+	tw.set_parallel(false)
+	tw.tween_callback(func() -> void:
+		for pair in overrides:
+			(pair[0] as MeshInstance3D).set_surface_override_material(int(pair[1]), null)
+		_hold = ""
+		play_motion("idle")
+	)
 
 func _all_meshes(n: Node) -> Array:
 	var out: Array = []

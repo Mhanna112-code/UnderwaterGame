@@ -110,6 +110,16 @@ func _test_stabbing_applies_and_ticks_bleed() -> void:
 	var tick := target.end_turn()
 	_expect(tick.bleed_damage == 3 and target.hp == 5,
 		"BLEED TICK WRONG: three bleed must deal three damage after two one-damage hits")
+	# Bleed now expires after 3 turns instead of lasting the rest of the
+	# fight - the first application set that clock, and the Follow-up hit's
+	# own generic auto-stack (CombatRules.resolve()'s "had_bleed" branch)
+	# must not have reset it, only added to the level.
+	_expect(target.status_turns("bleed") == 2,
+		"BLEED DURATION WRONG: a 3-turn Bleed must have 2 turns left after one end_turn()")
+	target.end_turn()
+	target.end_turn()
+	_expect(target.status_level("bleed") == 0,
+		"BLEED NEVER EXPIRES: it must clear once its 3-turn clock reaches zero")
 
 func _test_flash_blast_applies_timed_blindness() -> void:
 	var scuba := _stats(10, 1, 0, 3, 3, 3)

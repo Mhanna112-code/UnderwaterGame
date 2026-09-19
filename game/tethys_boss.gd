@@ -35,7 +35,13 @@ const MOVES := [
 	{
 		"id": "poison_breath", "name": "Poison Breath",
 		"clip": "poison_breath", "target": "all", "hits": 1,
-		"power": 3, "acc_mod": 4, "poison": 2, "poison_turns": 3,
+		# A flat "poison": 2 never scaled with anything - trivial once a
+		# party's HP pool grows past its starting 10, unlike Bleed (already
+		# Strength-scaled). Percentage-of-max-HP keeps Poison Breath a real
+		# threat at any HP total, the same way "heavy"'s heavy_min/heavy_max
+		# already scale off the defender's own max HP instead of a flat
+		# number - see _do_boss_turn()'s own application of this field.
+		"power": 3, "acc_mod": 4, "poison_fraction": 0.15, "poison_turns": 3,
 		"intent": "Party-wide pressure that continues for three turns",
 	},
 	{

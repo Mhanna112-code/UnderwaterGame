@@ -22,6 +22,7 @@ signal load_game_chosen(slot: int)
 signal boss_playtest_chosen
 signal guardian_playtest_chosen
 signal special_playtest_chosen
+signal spell_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
@@ -31,6 +32,7 @@ var _boss_playtest_available := false
 var _guardian_playtest_available := false
 var _guardian_playtest_label := "Play Guardian Test"
 var _special_playtest_available := false
+var _spell_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -140,6 +142,14 @@ func enable_special_playtest() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
+# Same opt-in review plumbing, for testing spells without the level/save-
+# point/key-item grind normally required to reach one. See World's own
+# _on_title_spell_playtest() for what this route actually sets up.
+func enable_spell_playtest() -> void:
+	_spell_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
@@ -187,6 +197,16 @@ func _refresh_main() -> void:
 		special_btn.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
 		special_btn.pressed.connect(special_playtest_chosen.emit)
 		_list.add_child(special_btn)
+
+	if _spell_playtest_available:
+		var spell_btn := Button.new()
+		spell_btn.text = "Play Spell Test"
+		spell_btn.tooltip_text = "Every diver starts with max spell points and every key item, so any spell is learnable right away"
+		spell_btn.custom_minimum_size = Vector2(360, 46)
+		spell_btn.add_theme_font_size_override("font_size", 17)
+		spell_btn.add_theme_color_override("font_color", Color(0.75, 1.0, 0.75))
+		spell_btn.pressed.connect(spell_playtest_chosen.emit)
+		_list.add_child(spell_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save

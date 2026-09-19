@@ -87,21 +87,64 @@ const ABILITY_MEDIA := {
 }
 
 # One entry per status condition a move can apply - shared by the Combat
-# Help tab (game/inventory_menu.gd's Esc-menu pause screen) and battle.gd's
-# tutorial captions, so the numbers only ever have to be right in one
-# place. Blindness's numbers were read straight out of the code that
-# applies them (combatant_stats.gd's effective_accuracy()/effective_
-# agility()/effective_defense(), all three reading status_level("blindness")
-# the same way) - Stun has no move that inflicts it yet, so its entry
-# describes the intended design rather than something presently reachable
-# in a fight.
+# Help tab (game/inventory_menu.gd's Esc-menu pause screen), the hover
+# tooltip _populate_move_menu() attaches to any move whose hint says "Status
+# Effect" (see battle.gd), and battle.gd's own tutorial captions, so the
+# numbers only ever have to be right in one place. Blindness's numbers were
+# read straight out of the code that applies them (combatant_stats.gd's
+# effective_accuracy()/effective_agility()/effective_defense(), all three
+# reading status_level("blindness") the same way) - Stun has no move that
+# inflicts it yet, so its entry describes the intended design rather than
+# something presently reachable in a fight.
 const STATUS_CONDITIONS: Array[Dictionary] = [
 	{
 		"title": "Blindness",
-		"body": "Five levels, 1 through 5. Each level lowers Agility, Accuracy, and Defense by that same number - Blindness 1 takes 1 off all three stats, Blindness 5 takes 5 off all three. Flash Blast is the current source of it, applying level 2 to every enemy for as many turns as the caster's own Accuracy.",
+		"body": "Lowers an enemy's Agility, Accuracy, and Defense all by the same amount at once, for a few turns. Lower Accuracy means their own attacks miss more; lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three - a 4/3/2 enemy becomes 2/1/0 - lasting as many turns as the caster's own Accuracy.",
 	},
 	{
 		"title": "Stun",
-		"body": "A stunned combatant skips their turn entirely - the number attached to Stun is how many of their own upcoming turns get skipped, not a stat penalty the way Blindness's level is.",
+		"body": "Skips the combatant's turn entirely. Its number is how many turns get skipped, not a stat penalty.",
+	},
+	{
+		"title": "Bleed",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, then fades after 3 turns. Another Bleed hit adds to the stack instead of replacing it. Scuba Stabbing applies 1 plus the caster's Strength.",
+	},
+	{
+		"title": "Poison",
+		"body": "Deals its level as damage when the poisoned character's turn ends, then fades after its duration. Poison Breath applies 15% of max HP to the whole party for 3 turns.",
 	},
 ]
+
+# Case-insensitive lookup by title - status names travel as lowercase
+# CombatantStats keys ("blindness", "bleed", ...) everywhere except this
+# table's own "title" field, which is capitalized for display. Empty string
+# (not a crash/placeholder body) for a name with no entry, so a caller can
+# just skip attaching a tooltip rather than showing an empty one.
+static func status_condition_body(status_name: String) -> String:
+	for entry in STATUS_CONDITIONS:
+		if String(entry.get("title", "")).to_lower() == status_name.to_lower():
+			return String(entry.get("body", ""))
+	return ""
+
+# reduce_evasion/self_temporary aren't CombatantStats statuses - nothing
+# calls add_status() for them, so they have no level/duration and no place
+# in STATUS_CONDITIONS above - but they're just as opaque to a new player as
+# a status effect is (a bare "EVA -3" doesn't say whether that's permanent
+# or whose Evasion actually drops). Keyed by the move data's own "kind"
+# string rather than a display title, since every move using a given kind
+# behaves identically - there's nothing move-specific to look up the way a
+# status name is. One title alongside each body, since the kind string
+# itself ("reduce_evasion") isn't fit for display.
+const EFFECT_KIND_EXPLANATIONS: Dictionary = {
+	"reduce_evasion": {
+		"title": "Evasion Reduction",
+		"body": "Permanently lowers the target's Evasion for the rest of the fight, unlike a status effect - it does not wear off on its own.",
+	},
+	"self_temporary": {
+		"title": "Self Cost",
+		"body": "A cost the caster pays on themselves, not the target. It wears off automatically at the caster's own next turn.",
+	},
+}
+
+static func effect_kind_explanation(kind: String) -> Dictionary:
+	return EFFECT_KIND_EXPLANATIONS.get(kind, {}) as Dictionary

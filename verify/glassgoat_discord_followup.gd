@@ -46,6 +46,22 @@ func _test_result_first_move_menu() -> void:
 			"RESULT-FIRST MENU WRONG: expected resolved 1 Damage / 2 Bleed, observed '%s'" % stabbing.text)
 		_expect("STR" not in stabbing.text,
 			"FORMULA POLLUTION: default move choice exposes stat algebra '%s'" % stabbing.text)
+		# "Status Effect" is a matched label _populate_move_menu() looks for
+		# to attach a hover tooltip pulled from TutorialContent.STATUS_
+		# CONDITIONS - guards both halves: the label wording itself, and
+		# that the tooltip lookup actually found Bleed's entry.
+		_expect("Status Effect: 2 Bleed" in stabbing.text,
+			"STATUS EFFECT LABEL MISSING: expected 'Status Effect: 2 Bleed', observed '%s'" % stabbing.text)
+		_expect("Bleed" in stabbing.tooltip_text and stabbing.tooltip_text != "",
+			"STATUS EFFECT TOOLTIP MISSING: Scuba Stabbing's button has no Bleed explanation on hover")
+
+	# Electric Touch's "EVA -3" isn't a CombatantStats status (no
+	# STATUS_CONDITIONS entry, no add_status() call) but it's just as
+	# opaque to a new player as one - it should still get an explanation,
+	# pulled from TutorialContent.EFFECT_KIND_EXPLANATIONS instead.
+	var electric := _move_button(battle, "Electric Touch")
+	_expect(electric != null and "Evasion" in electric.tooltip_text and electric.tooltip_text != "",
+		"NON-STATUS EFFECT TOOLTIP MISSING: Electric Touch's reduce_evasion has no explanation on hover")
 
 	# A resolved preview must be computed from the acting character, not copied
 	# from Scuba's base values. The same authored move at 4 STR is 4/5.
