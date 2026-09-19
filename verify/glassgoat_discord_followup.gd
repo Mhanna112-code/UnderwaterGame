@@ -46,6 +46,22 @@ func _test_result_first_move_menu() -> void:
 			"RESULT-FIRST MENU WRONG: expected resolved 1 Damage / 2 Bleed, observed '%s'" % stabbing.text)
 		_expect("STR" not in stabbing.text,
 			"FORMULA POLLUTION: default move choice exposes stat algebra '%s'" % stabbing.text)
+		# "Status Effect" is a matched label _populate_move_menu() looks for
+		# to attach a hover tooltip pulled from TutorialContent.STATUS_
+		# CONDITIONS - guards both halves: the label wording itself, and
+		# that the tooltip lookup actually found Bleed's entry.
+		_expect("Status Effect: 2 Bleed" in stabbing.text,
+			"STATUS EFFECT LABEL MISSING: expected 'Status Effect: 2 Bleed', observed '%s'" % stabbing.text)
+		_expect("Bleed" in stabbing.tooltip_text and stabbing.tooltip_text != "",
+			"STATUS EFFECT TOOLTIP MISSING: Scuba Stabbing's button has no Bleed explanation on hover")
+
+	# Electric Touch's "EVA -3" isn't a CombatantStats status (no
+	# STATUS_CONDITIONS entry, no add_status() call) but it's just as
+	# opaque to a new player as one - it should still get an explanation,
+	# pulled from TutorialContent.EFFECT_KIND_EXPLANATIONS instead.
+	var electric := _move_button(battle, "Electric Touch")
+	_expect(electric != null and "Evasion" in electric.tooltip_text and electric.tooltip_text != "",
+		"NON-STATUS EFFECT TOOLTIP MISSING: Electric Touch's reduce_evasion has no explanation on hover")
 
 	# A resolved preview must be computed from the acting character, not copied
 	# from Scuba's base values. The same authored move at 4 STR is 4/5.
@@ -57,23 +73,10 @@ func _test_result_first_move_menu() -> void:
 		_expect("4 Damage" in stabbing.text and "5 Bleed" in stabbing.text,
 			"HARDCODED MOVE PREVIEW: 4 STR still renders '%s'" % stabbing.text)
 
-	var details := _button_starting_with(battle.move_menu, "Show formulas")
-	_expect(details != null,
-		"FORMULA DETAILS MISSING: no on-demand control preserves authored calculations")
-	if details != null:
-		details.pressed.emit()
-		stabbing = _move_button(battle, "Scuba Stabbing")
-		_expect(stabbing != null and "STR" in stabbing.text,
-			"FORMULA DETAILS BROKEN: toggling details does not reveal the authored calculation")
-		# FORMULA-FREEZE-1: the control must be reversible. A one-way
-		# rebuild can look correct for one frame yet leave the active combat
-		# turn stranded in details mode.
-		details.pressed.emit()
-		stabbing = _move_button(battle, "Scuba Stabbing")
-		_expect(stabbing != null and "4 Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
-			"FORMULA DETAILS STUCK: toggling back does not restore the result-first choice")
-		_expect(details.text.begins_with("Show formulas"),
-			"FORMULA CONTROL STUCK: the details button does not return to Show formulas")
+	# The "Show formulas" on-demand control was removed - result-first is now
+	# the only move-menu display, with no way back to raw stat algebra.
+	_expect(_button_starting_with(battle.move_menu, "Show formulas") == null,
+		"FORMULA CONTROL STILL PRESENT: the retired details toggle is back in the move menu")
 	battle.queue_free()
 	await process_frame
 

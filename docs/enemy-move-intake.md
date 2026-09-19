@@ -11,10 +11,10 @@ branch per clip.
 - Keep Idle, Swimming Start/Mid/End, Damaged, and Death alongside attacks.
 - Include textures in the FBX or as clearly named files in the same ZIP.
 
-The current Angler file already contains `Bite`, `headbutt`, and `Shine`. Bite
-and Ramming Bite are enabled. Headbutt and Lure Flash are recorded but disabled
-until the team decides their damage/effect and target behavior; they cannot
-accidentally change the live balance.
+The current Angler file already contains `Bite`, `headbutt`, and `Shine`. Only
+Bite is enabled. Headbutt and Lure Flash are recorded but disabled until the
+team decides their damage/effect and target behavior; they cannot accidentally
+change the live balance. Ramming Bite (the old heavy finisher) was removed.
 
 ## Enabling an attack
 

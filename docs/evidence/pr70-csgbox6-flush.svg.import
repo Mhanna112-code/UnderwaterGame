@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://lsg0rd1aduwv"
-path="res://.godot/imported/title-load-game-slots.png-ab71fcccfebcfd5adf810332927836a4.ctex"
+uid="uid://duorxmvedykpw"
+path="res://.godot/imported/pr70-csgbox6-flush.svg-ae207cbcdb5d9685df7c4ede2ea6d701.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://verification/title-load-game-slots.png"
-dest_files=["res://.godot/imported/title-load-game-slots.png-ab71fcccfebcfd5adf810332927836a4.ctex"]
+source_file="res://docs/evidence/pr70-csgbox6-flush.svg"
+dest_files=["res://.godot/imported/pr70-csgbox6-flush.svg-ae207cbcdb5d9685df7c4ede2ea6d701.ctex"]
 
 [params]
 
@@ -32,3 +32,6 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
+svg/scale=1.0
+editor/scale_with_editor_scale=false
+editor/convert_colors_with_editor_theme=false

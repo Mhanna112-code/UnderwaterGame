@@ -6,28 +6,21 @@
 class_name EnemyMoves
 extends RefCounted
 
-# `clip` is a case-insensitive fragment of the FBX animation take. The first
-# two entries preserve the old normal/heavy probabilities exactly: 70/30 in a
-# normal turn and 35/65 when a target is in heavy-finisher range. Normal move
-# power uses the same 1-4 authored-stat scale as Glassgoat's 10-HP party; the two
-# additional delivered clips are deliberately visible to the catalogue but
-# disabled until Glassgoat/team select their intended mechanics.
+# `clip` is a case-insensitive fragment of the FBX animation take. Ramming
+# Bite (the old heavy finisher, "heavy_bite") has been removed entirely -
+# Bite is now the Angler's only enabled move, so `weight`/`finisher_weight`
+# no longer do anything (finisher mode never triggers without any enabled
+# move declaring finisher_below_hp) and aren't set here any more either.
+# Normal move power uses the same 1-4 authored-stat scale as Glassgoat's
+# 10-HP party; the two additional delivered clips are deliberately visible
+# to the catalogue but disabled until Glassgoat/team select their intended
+# mechanics.
 const ANGLER := [
 	{
 		"id": "bite", "name": "Bite", "clip": "attack)bite",
-		"enabled": true, "target": "single", "roll_order": 1, "weight": 70.0,
-		"finisher_weight": 35.0, "verb": "bites at",
+		"enabled": true, "target": "single", "roll_order": 1, "weight": 100.0,
+		"verb": "bites at",
 		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
-	},
-	{
-		"id": "heavy_bite", "name": "Ramming Bite", "clip": "attack)bite",
-		"enabled": true, "target": "single", "roll_order": 0, "weight": 30.0,
-		"finisher_weight": 65.0, "verb": "surges and slams into",
-		"finisher_below_hp": 0.5,
-		"combat": {
-			"power": 0, "acc_mod": -1, "quick_time_bool": true,
-			"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
-		},
 	},
 	{
 		"id": "headbutt", "name": "Headbutt", "clip": "attack)headbutt",

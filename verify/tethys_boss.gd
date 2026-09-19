@@ -122,7 +122,7 @@ func _run() -> void:
 		"DOUBLE SCRATCH: must attack twice to pressure the evasion pool")
 	_expect(String((move_by_id.tail_sweep as Dictionary).target) == "all" and bool((move_by_id.tail_sweep as Dictionary).ignore_defense),
 		"TAIL SWEEP: must hit the party and counter armour")
-	_expect(String((move_by_id.poison_breath as Dictionary).target) == "all" and int((move_by_id.poison_breath as Dictionary).poison) > 0,
+	_expect(String((move_by_id.poison_breath as Dictionary).target) == "all" and float((move_by_id.poison_breath as Dictionary).poison_fraction) > 0.0,
 		"POISON BREATH: must poison the whole party")
 
 	var material_count := 0
@@ -193,8 +193,13 @@ func _run() -> void:
 	_expect(range(battle.party.size()).all(func(i: int) -> bool: return hp_after_sweep[i] < hp_before_sweep[i]),
 		"TAIL SWEEP TURN: did not damage every party member")
 	await battle._do_boss_turn(battle.enemies[0], battle.party)
-	_expect(battle.party.all(func(entry: Dictionary) -> bool: return (entry.stats as CombatantStats).status_level("poison") > 0),
-		"POISON BREATH TURN: did not poison every party member")
+	# 15% of each party member's own 500 max HP (75), not a flat number -
+	# see game/tethys_boss.gd's own comment on why this moved off a flat
+	# "poison": 2 that would have gone trivial at this test's inflated HP.
+	_expect(battle.party.all(func(entry: Dictionary) -> bool:
+		var s := entry.stats as CombatantStats
+		return s.status_level("poison") == int(round(float(s.hp_max) * 0.15))),
+		"POISON BREATH TURN: expected 15%% of max HP, not scaled off max HP correctly")
 	for _remaining in range(3):
 		await battle._do_boss_turn(battle.enemies[0], battle.party)
 	for move_value in TethysBoss.MOVES:

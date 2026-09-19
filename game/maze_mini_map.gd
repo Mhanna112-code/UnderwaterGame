@@ -33,7 +33,6 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(150, 150)
 	clip_contents = true
 	_build_main_map()
-	_start_hall_blink()
 
 # The world-space endpoints of `box`'s own centerline, right now - the
 # longer of its two horizontal dimensions is treated as its length (a
@@ -105,9 +104,66 @@ func _corridor_for_wall(box: CSGBox3D) -> Area3D:
 			return corridor
 	return null
 
+# Builds a wavy "current" path down the middle of `hall_name`'s own two
+# walls, in world space - visual flair for _currents (the hall's own
+# WindCorridor), not read from anything about the corridor itself, just
+# shaped to fit between its two enclosing walls. Matches each of wall A's
+# endpoints to whichever of wall B's endpoints is NEARER rather than
+# assuming index 0 lines up with index 0 - the two walls' own endpoint
+# order has no relationship to each other (they were only ever picked as
+# "nearest two walls to this corridor," see _compute_corridor_wall_pairs()),
+# so naively pairing them could cross the midline into an hourglass shape
+# instead of running straight down the hall's length. Shared by both the
+# radar (_draw()) and the main map (_refresh_main_map()) - each just
+# projects these same 3D points through its own space afterward.
+func _hall_current_path(hall_name: String, segments: int = 14) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	if not _hall_walls.has(hall_name):
+		return pts
+	var walls: Array[CSGBox3D] = _hall_walls[hall_name]
+	if walls.size() < 2 or not is_instance_valid(walls[0]) or not is_instance_valid(walls[1]):
+		return pts
+	var seg_a := _box_segment(walls[0])
+	var seg_b := _box_segment(walls[1])
+	var a0: Vector3 = seg_a[0]
+	var a1: Vector3 = seg_a[1]
+	var b0: Vector3 = seg_b[0]
+	var b1: Vector3 = seg_b[1]
+	var straight: float = a0.distance_to(b0) + a1.distance_to(b1)
+	var crossed: float = a0.distance_to(b1) + a1.distance_to(b0)
+	var matched_b0: Vector3 = b0 if straight <= crossed else b1
+	var matched_b1: Vector3 = b1 if straight <= crossed else b0
+	var near0: Vector3 = (a0 + matched_b0) * 0.5
+	var near1: Vector3 = (a1 + matched_b1) * 0.5
+
+	var forward: Vector3 = near1 - near0
+	var length: float = forward.length()
+	if length < 0.01:
+		return pts
+	forward /= length
+	# Perpendicular to the hall's own length, in the XZ plane - not the
+	# corridor's real 3D "side" (there isn't one meaningful here, both
+	# walls run flat along the ground), just enough to wave the path
+	# sideways within the hall's own width.
+	var side := Vector3(-forward.z, 0.0, forward.x)
+	# Kept a bit short of the full gap (0.6x) so the wave's peaks don't
+	# brush against the walls themselves.
+	var amplitude: float = a0.distance_to(matched_b0) * 0.5 * 0.6
+
+	for i in range(segments + 1):
+		var t := float(i) / float(segments)
+		var wave := sin(t * TAU) * amplitude
+		pts.append(near0.lerp(near1, t) + side * wave)
+	return pts
+
 # Player-facing discovery. hall name -> Array[CSGBox3D] size 2, keys
 # assigned in the order the diver actually found each hall.
 var _hall_walls: Dictionary = {}
+# Same keys as _hall_walls (hall name -> that hall's own WindCorridor
+# Area3D), built alongside it in _update_revealed() below - lets anything
+# that already has a hall name look up its corridor directly instead of
+# re-deriving it through _corridor_wall_pairs/_corridor_for_wall.
+var _currents: Dictionary = {}
 # CSGBox3D -> hall name, once assigned. A wall that turned out to belong
 # to no corridor at all gets "" here instead - not a hall, but still
 # marked so its adjacency isn't rechecked every single frame forever.
@@ -126,29 +182,22 @@ var _hall_discovery_count := 0
 var selectedHall: Array[CSGBox3D] = []
 var selectedHallName := ""
 
-# Blink clock for selectedHall's highlight on the SMALL RADAR's _draw()
-# only - the main map's own blink is separate (see _restart_main_map_blink()
-# down by _main_map_hall_lines), since it tweens real Line2D nodes
-# directly instead. The radar has no persistent line Nodes to tween: every
-# wall there is redrawn from scratch each frame via draw_line()/
-# draw_multiline(), so "blinking" just means _draw() skips
-# selectedHallName's own lines for one redraw whenever this is false.
-# _process() already calls queue_redraw() every frame regardless of this,
-# so flipping it here is picked up on the very next redraw with no extra
-# signal needed. Started once in _ready() - a single looping clock works
-# for whichever hall is selected at any given moment, it doesn't need
-# restarting when selection changes (unlike the main map's tween, which
-# targets specific nodes and so DOES need restarting - see
-# _restart_main_map_blink()).
-var _hall_blink_on := true
+# The hall whose CURRENT (its own WindCorridor Area3D) is currently
+# selected - independent from selectedHall/selectedHallName above, since
+# selecting a hall's walls (_select_rotatable_hall()) and selecting a
+# current (_select_rotatable_current()) are two separate actions that can
+# each point at a different hall (see _select_next_current()/
+# _select_previous_current() for cycling this one on its own).
+var selectedCurrent: Area3D
+var selectedCurrentName := ""
 
-func _start_hall_blink() -> void:
-	var tween := create_tween()
-	tween.set_loops()
-	tween.tween_callback(func(): _hall_blink_on = true)
-	tween.tween_interval(0.5)
-	tween.tween_callback(func(): _hall_blink_on = false)
-	tween.tween_interval(0.5)
+# Neither selection blinks on the radar - only on the main map (see
+# _restart_main_map_blink()/_restart_main_map_current_blink()), which
+# tweens real persistent Line2D nodes' .visible directly. The radar has
+# no persistent line Nodes to tween at all: every wall there is redrawn
+# from scratch each frame via draw_line()/draw_multiline(), so blinking it
+# too would mean skipping a draw call on a timer - deliberately not done,
+# the radar always shows everything discovered solid.
 
 # Same shape as _main_map_hall_lines further down, just for the small
 # radar - not consumed by anything yet (nothing currently supports
@@ -183,13 +232,18 @@ func _update_revealed() -> void:
 		var hall_name := "WindCorridor%d" % _hall_discovery_count
 		var walls: Array[CSGBox3D] = _corridor_wall_pairs[corridor]
 		_hall_walls[hall_name] = walls
+		_currents[hall_name] = corridor
 		for wall in walls:
 			_wall_to_hall[wall] = hall_name
 		# Every newly found hall becomes the selection, not just the first
 		# one - discovering a new hall is the player's cue that this is the
 		# one to look at right now. _select_next_hall()/_select_previous_hall()
-		# below are what let them move off it again afterward.
+		# below are what let them move off it again afterward. Both the
+		# hall (walls) and its current start selected together - without
+		# this, selectedCurrentName would sit at "" until the player
+		# happened to press a Shift+arrow at least once.
 		_select_rotatable_hall(hall_name)
+		_select_rotatable_current(hall_name)
 
 # Points selectedHall at `hall_name`'s own wall pair. Called the moment a
 # new hall is first discovered (see _update_revealed()) so there's always
@@ -203,6 +257,16 @@ func _select_rotatable_hall(hall_name: String) -> void:
 	selectedHall = _hall_walls[hall_name]
 	selectedHallName = hall_name
 	_restart_main_map_blink()
+
+# Same idea as _select_rotatable_hall() above, but for selectedCurrent -
+# points it at `hall_name`'s own WindCorridor Area3D (_currents), kept
+# fully independent of which hall's WALLS are selected.
+func _select_rotatable_current(hall_name: String) -> void:
+	if not _hall_walls.has(hall_name):
+		return
+	selectedCurrent = _currents[hall_name]
+	selectedCurrentName = hall_name
+	_restart_main_map_current_blink()
 
 # Moves the selection to the next/previous discovered hall, wrapping
 # around at either end - _hall_walls' own key order is discovery order
@@ -224,6 +288,24 @@ func _cycle_selected_hall(direction: int) -> void:
 	var idx := names.find(selectedHallName)
 	idx = wrapi((0 if idx == -1 else idx) + direction, 0, names.size())
 	_select_rotatable_hall(names[idx])
+
+# Same idea as _select_next_hall()/_select_previous_hall() above, but
+# cycles selectedCurrentName instead - its OWN position in _hall_walls'
+# key order, not selectedHallName's, since the two selections are
+# independent (see selectedCurrent's own comment).
+func _select_next_current() -> void:
+	_cycle_selected_current(1)
+
+func _select_previous_current() -> void:
+	_cycle_selected_current(-1)
+
+func _cycle_selected_current(direction: int) -> void:
+	var names := _hall_walls.keys()
+	if names.is_empty():
+		return
+	var idx := names.find(selectedCurrentName)
+	idx = wrapi((0 if idx == -1 else idx) + direction, 0, names.size())
+	_select_rotatable_current(names[idx])
 
 func _draw() -> void:
 	if maze_level == null or maze_level._diver == null or not is_instance_valid(maze_level._diver):
@@ -264,18 +346,40 @@ func _draw() -> void:
 		(hall_points[hall_name] as PackedVector2Array).append(p_a)
 		(hall_points[hall_name] as PackedVector2Array).append(p_b)
 	_radar_hall_points = hall_points
+	# No blink here, deliberately - the selected hall/current only blink on
+	# the main map (see _restart_main_map_blink()/
+	# _restart_main_map_current_blink()). The radar always draws every
+	# discovered hall solid.
 	for hall_name in hall_points:
-		if hall_name == selectedHallName and not _hall_blink_on:
-			continue
 		var points := hall_points[hall_name] as PackedVector2Array
 		# A hall can be known to the minimap while every one of its segments
 		# is outside this radar circle. Godot rejects an empty polyline and
 		# otherwise prints an error every redraw.
 		if points.size() >= 2:
 			draw_multiline(points, Color(0.6, 0.64, 0.68, 0.9), 2.0)
+		_draw_current(hall_name, center, mid, px_per_unit)
 
 	var fwd: Vector3 = -maze_level._diver.global_transform.basis.z
 	_draw_arrow(mid, Vector2(fwd.x, fwd.z))
+
+# Draws hall_name's own wavy current line (_hall_current_path()) on the
+# small radar - points beyond view_radius are simply dropped rather than
+# precisely circle-clipped the way the straight wall segments are
+# (_clip_to_circle()); a decorative curve fraying at the radar's edge
+# reads fine, and exactly clipping a multi-point curve to a circle would
+# need far more math for very little visual difference.
+func _draw_current(hall_name: String, center: Vector3, mid: Vector2, px_per_unit: float) -> void:
+	var path := _hall_current_path(hall_name)
+	if path.size() < 2:
+		return
+	var pts := PackedVector2Array()
+	for p in path:
+		var rel: Vector2 = Vector2(p.x, p.z) - Vector2(center.x, center.z)
+		if rel.length() > view_radius:
+			continue
+		pts.append(rel * px_per_unit + mid)
+	if pts.size() >= 2:
+		draw_polyline(pts, Color(0.35, 0.75, 0.95, 0.85), 1.5)
 
 # Identical to mini_map.gd's own _clip_to_circle() - see its comment there
 # for the derivation. Duplicated rather than shared because Control has no
@@ -362,6 +466,13 @@ var _main_map_hall_lines: Dictionary = {}
 # get an entry here at all). One per wall rather than combined into a
 # single Line2D for the same reason as _main_map_hall_lines above.
 var _main_map_lone_lines: Dictionary = {}
+# Hall name -> one persistent Line2D carrying that hall's own wavy current
+# path (_hall_current_path()) - one per hall (not per wall) since a
+# current is a single wavy line, not a pair. Created lazily the first
+# time a hall's current is drawn (see _update_main_map_current_line()),
+# same lazy-creation-then-reposition pattern as _main_map_hall_lines/
+# _main_map_lone_lines above.
+var _main_map_current_lines: Dictionary = {}
 var _main_map_diver_pos := Vector2.ZERO
 # Draws the diver arrow + border above every wall Line2D - see its own
 # z_index comment in _build_main_map().
@@ -406,6 +517,27 @@ func _restart_main_map_blink() -> void:
 		for line in lines:
 			line.visible = true
 	)
+
+# Same idea as _main_map_blink_tween above, but for selectedCurrentName's
+# own current Line2D (_main_map_current_lines) - a separate tween/variable
+# pair rather than folded into the hall blink, since the selected current
+# and the selected hall can differ (see _select_rotatable_current()).
+var _main_map_current_blink_tween: Tween
+
+func _restart_main_map_current_blink() -> void:
+	if _main_map_current_blink_tween != null and _main_map_current_blink_tween.is_valid():
+		_main_map_current_blink_tween.kill()
+	for line in _main_map_current_lines.values():
+		(line as Line2D).visible = true
+	if not _main_map_current_lines.has(selectedCurrentName):
+		return
+	var line: Line2D = _main_map_current_lines[selectedCurrentName]
+	_main_map_current_blink_tween = create_tween()
+	_main_map_current_blink_tween.set_loops()
+	_main_map_current_blink_tween.tween_interval(0.5)
+	_main_map_current_blink_tween.tween_callback(func(): line.visible = false)
+	_main_map_current_blink_tween.tween_interval(0.5)
+	_main_map_current_blink_tween.tween_callback(func(): line.visible = true)
 
 # Common setup for every Line2D this main map creates (hall or standalone)
 # - added as a child of main_map so it renders in the same panel-space
@@ -476,11 +608,24 @@ func _build_main_map() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
 		return
-	var keycode: Key = (event as InputEventKey).keycode
+	var key_event := event as InputEventKey
+	var keycode: Key = key_event.keycode
+	# Shift+arrow branches come FIRST, as part of the SAME if/elif chain as
+	# the plain arrow ones below (they used to be two separate chains, so
+	# Shift+Right fired both _select_next_hall() AND _select_next_current()
+	# at once - the plain KEY_RIGHT check had no idea Shift was held).
+	# event.shift_pressed (this specific event's own modifier state) rather
+	# than polling Input.is_key_pressed(KEY_SHIFT) separately.
 	if keycode == KEY_M:
 		main_map.visible = not main_map.visible
 		if main_map.visible:
 			main_map.queue_redraw()
+		get_viewport().set_input_as_handled()
+	elif keycode == KEY_RIGHT and key_event.shift_pressed:
+		_select_next_current()
+		get_viewport().set_input_as_handled()
+	elif keycode == KEY_LEFT and key_event.shift_pressed:
+		_select_previous_current()
 		get_viewport().set_input_as_handled()
 	elif keycode == KEY_RIGHT:
 		_select_next_hall()
@@ -523,10 +668,33 @@ func _refresh_main_map() -> void:
 			_update_main_map_lone_line(box, p_a, p_b)
 		else:
 			_update_main_map_hall_line(hall_name, box, p_a, p_b)
+	for hall_name in _hall_walls:
+		_update_main_map_current_line(hall_name)
 	if maze_level._diver != null and is_instance_valid(maze_level._diver):
 		_main_map_diver_pos = _project_to_main_map(maze_level._diver.global_position)
 	main_map.queue_redraw()
 	_main_map_overlay.queue_redraw()
+
+# hall_name's own wavy current line on the main map - a single persistent
+# Line2D (see _main_map_current_lines' own comment for why one, not a
+# pair like the walls get), created lazily then just repositioned every
+# frame after that, same pattern as _update_main_map_lone_line() below.
+func _update_main_map_current_line(hall_name: String) -> void:
+	var path := _hall_current_path(hall_name)
+	if path.size() < 2:
+		return
+	var pts := PackedVector2Array()
+	for p in path:
+		pts.append(_project_to_main_map(p))
+	var is_new := not _main_map_current_lines.has(hall_name)
+	if is_new:
+		var line := _make_main_map_line()
+		line.default_color = Color(0.35, 0.75, 0.95, 0.85)
+		line.width = 1.5
+		_main_map_current_lines[hall_name] = line
+	(_main_map_current_lines[hall_name] as Line2D).points = pts
+	if is_new and hall_name == selectedCurrentName:
+		_restart_main_map_current_blink()
 
 # One persistent Line2D per standalone wall - created the first time this
 # particular box is seen, just repositioned on every call after that.
