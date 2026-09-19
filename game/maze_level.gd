@@ -90,15 +90,6 @@ func _place_csgbox6_at_hallway_target() -> void:
 	var wall_6: CSGBox3D = $CSGBox3D6
 	var wall_7: CSGBox3D = $CSGBox3D7
 
-	# CSGBox3D7's offset from CSGBox3D6, expressed in CSGBox3D6's OWN
-	# original local frame - captured before CSGBox3D6 moves, so re-applying
-	# it through CSGBox3D6's NEW transform below carries CSGBox3D7 along
-	# unchanged relative to CSGBox3D6 (same width apart, still parallel),
-	# rather than hand-deriving a specific offset/rotation that would stop
-	# matching if either wall's size ever changed.
-	var wall_6_original_transform := wall_6.global_transform
-	var wall_7_local_offset: Vector3 = wall_6_original_transform.affine_inverse() * wall_7.global_position
-
 	# CSGBox3D6's own rotation, set BEFORE _set_wall_position() below reads
 	# it - that function computes wall_b's "walk out to its own center"
 	# step using wall_b's CURRENT rotation.y, so this has to already be the
@@ -108,22 +99,37 @@ func _place_csgbox6_at_hallway_target() -> void:
 	var wall1_h_yaw: float = wall_a.rotation.y + PI * 0.5
 	wall_6.rotation.y = wall1_h_yaw + PI * 0.5
 
-	# Flush wall_6 to CSGBox3D exactly the way CurrentWall1 itself is
-	# (_set_wall_position($CSGBox3D, $CurrentWall1, true, true) above) -
-	# this puts wall_6 at the SAME spot CurrentWall1 occupies. Pushing it
-	# CurrentWall1's own full length further in world +X then carries it
-	# past CurrentWall1's whole span, landing beyond CurrentWall1's far
-	# end instead of on top of it.
+	# CSGBox3D6 attaches to CurrentWall1's FUTURE far end, not to CSGBox3D
+	# with a world-X correction.  The latter accidentally used a static
+	# reference frame: after CurrentWall1's 90-degree turn it stayed
+	# perpendicular, but its nearest edge stopped short of the wall's end.
+	# Compute the same destination CurrentWall1 will use on H, find that
+	# destination's positive/far endpoint, then place wall_6's near edge on
+	# that endpoint.  Everything is expressed in the rotated wall's local
+	# axes, so changing either length or initial maze orientation preserves
+	# the flush join.
 	var wall_orig = $CSGBox3D
-	_set_wall_position(wall_orig, wall_6, false, false)
-	wall_6.global_position.x += 2 * wall_a.size.x - wall_orig.size.x
+	var wall1_target := _wall_flush_target(wall_a, wall_orig)
+	var wall1_target_yaw := float(wall1_target.yaw)
+	var wall1_target_position := wall1_target.position as Vector3
+	var wall1_forward := Basis(Vector3.UP, wall1_target_yaw).x.normalized()
+	var wall1_far_end := wall1_target_position + wall1_forward * wall_a.size.x * 0.5
+	wall_6.global_position = _flush_position_from_end(
+		wall1_far_end, wall1_forward, wall_a.size.z,
+		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, false
+	)
 
-	# CSGBox3D7 follows the exact same transformation CSGBox3D6 just
-	# underwent - same rotation, same relative offset - so it arrives the
-	# same width apart from and parallel to CSGBox3D6's new spot, instead
-	# of being left behind at the old one.
-	wall_7.rotation.y = wall_6.rotation.y
-	wall_7.global_position = wall_6.global_transform * wall_7_local_offset
+	# CSGBox3D7 is the opposite *static* boundary of the northbound passage,
+	# not another part of CurrentWall1's moving assembly. It must begin on the
+	# same cross-line as CSGBox3D6, but remain laterally separated to form the
+	# passage. Project its pre-existing offset onto Box6's side axis: this
+	# preserves the authored lane width while discarding only the stale forward
+	# and vertical offsets left behind when Box6 was corrected above. Box7 never
+	# moves during H, so it cannot sweep into CurrentWall1's opened position.
+	var lane_side := wall_6.global_transform.basis.z.normalized()
+	var authored_offset := wall_7.global_position - wall_6.global_position
+	var preserved_lane_offset := lane_side * authored_offset.dot(lane_side)
+	wall_7.global_position = wall_6.global_position + preserved_lane_offset
 
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
@@ -167,7 +173,7 @@ func _build_minimap() -> void:
 # there.
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
-	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: swing the CurrentWall1/2 hallway open - also moves WindCorridor1's current into WindCorridor2, and WindCorridor2's into WindCorridor3 (between CSGBox3D6/7, pushing north); press again to reverse it all"
+	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: swing the CurrentWall1/2 hallway open - the northbound current carries you through the CSGBox3D6/7 passage; press again to reverse it all"
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -182,33 +188,6 @@ func _build_rotate_prompt() -> void:
 # position/rotation every frame is enough on its own; nothing extra
 # needs to be kept in sync.
 #
-# Swings wall_a/wall_b around `pivot` like a door on a hinge, not a
-# straight-line slide to a new spot - each wall's OFFSET from the pivot
-# gets rotated by an increasing angle every frame (0 -> yaw_degrees over
-# duration seconds), so the pair traces a real arc. Using the far end of
-# the hallway itself as the pivot (see _hallway_far_end() below) is what
-# makes this read as "extends the hallway" rather than "spins it in
-# place" - the new segment picks up exactly where the old one's exit
-# already was, since that point never moves during the swing at all.
-func swing_hallway(wall_a: CSGBox3D, wall_b: CSGBox3D, pivot: Vector3, yaw_degrees: float = 90.0, duration: float = 1.2) -> Tween:
-	var offset_a: Vector3 = wall_a.position - pivot
-	var offset_b: Vector3 = wall_b.position - pivot
-	var start_yaw_a := wall_a.rotation.y
-	var start_yaw_b := wall_b.rotation.y
-	var target_yaw := deg_to_rad(yaw_degrees)
-
-	var tw := create_tween()
-	tw.tween_method(
-		func(t: float) -> void:
-			var spin := Basis(Vector3.UP, target_yaw * t)
-			wall_a.position = pivot + spin * offset_a
-			wall_a.rotation.y = start_yaw_a + target_yaw * t
-			wall_b.position = pivot + spin * offset_b
-			wall_b.rotation.y = start_yaw_b + target_yaw * t,
-		0.0, 1.0, duration
-	)
-	return tw
-
 # MODIFIED: was the midpoint between wall_a AND wall_b, pushed out by
 # HALF the gap between them - that's a point roughly between the two
 # walls, not a real endpoint of either one. What's actually wanted is
@@ -243,14 +222,50 @@ func _wall_flush_target(wall: CSGBox3D, target: CSGBox3D) -> Dictionary:
 # the one requiring the least travel from the moving wall's current centre.
 func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tween:
 	var t := _wall_flush_target(wall, target)
-	return _tween_wall_to(wall, t.position, t.yaw, duration)
+	return _tween_wall_to_transform_about_hinge(wall, t.position as Vector3, float(t.yaw), duration)
 
-# Shared by _rotate_wall_flush() above (implicitly, via the same tweened
-# properties) and _rotate_hallway_1_2()'s return trip below - just animates
-# a wall straight to an already-known position/yaw, no endpoint-matching
-# math needed since "go back to where you started" doesn't have to pick
-# between two candidate destinations the way swinging onto a new target
-# wall does.
+# The finished flush targets above are valid, but a parallel position/yaw
+# tween makes a wall cut diagonally through the next hallway while it moves.
+# For a non-zero turn there is exactly one hinge in the X/Z plane that takes
+# a wall's current center to its target center under a rigid yaw rotation.
+# Solve target = pivot + R(current - pivot), then animate around that pivot.
+# This works for any wall dimensions and any non-zero yaw change; the two
+# sides of a corridor naturally receive different hinges.
+func _wall_motion_hinge(start: Vector3, target: Vector3, yaw_delta: float) -> Vector3:
+	var c := cos(yaw_delta)
+	var s := sin(yaw_delta)
+	var rotated_start := Basis(Vector3.UP, yaw_delta) * start
+	var rhs := Vector2(target.x - rotated_start.x, target.z - rotated_start.z)
+	var determinant := (1.0 - c) * (1.0 - c) + s * s
+	if determinant < 0.00001:
+		return start
+	return Vector3(
+		((1.0 - c) * rhs.x + s * rhs.y) / determinant,
+		start.y,
+		(-s * rhs.x + (1.0 - c) * rhs.y) / determinant
+	)
+
+func _tween_wall_to_transform_about_hinge(wall: CSGBox3D, target_position: Vector3, target_yaw: float, duration := 1.2) -> Tween:
+	var start_position := wall.global_position
+	var start_yaw := wall.rotation.y
+	var yaw_delta := wrapf(target_yaw - start_yaw, -PI, PI)
+	if absf(yaw_delta) < 0.00001:
+		return _tween_wall_to(wall, target_position, target_yaw, duration)
+	var hinge := _wall_motion_hinge(start_position, target_position, yaw_delta)
+	var start_offset := start_position - hinge
+	var tw := create_tween()
+	tw.tween_method(
+		func(progress: float) -> void:
+			var next_position := hinge + Basis(Vector3.UP, yaw_delta * progress) * start_offset
+			next_position.y = lerpf(start_position.y, target_position.y, progress)
+			wall.global_position = target_position if is_equal_approx(progress, 1.0) else next_position
+			wall.rotation.y = target_yaw if is_equal_approx(progress, 1.0) else start_yaw + yaw_delta * progress,
+		0.0, 1.0, duration
+	)
+	return tw
+
+# Straight motion remains useful for a no-turn caller. Hallway motion never
+# reaches this fallback: opening and closing both rotate 90 degrees.
 func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1.2) -> Tween:
 	var tw := create_tween()
 	tw.set_parallel(true)
@@ -258,14 +273,11 @@ func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1
 	tw.tween_property(wall, "rotation:y", yaw, duration)
 	return tw
 
-# MODIFIED: was wall_a spinning around its own CENTER while wall_b swung
-# around wall_a's position - that only keeps wall_a's own center fixed,
-# not any actual endpoint (a wall spinning around its own middle still
-# moves every point on it other than that middle). What's actually
-# wanted is both walls swinging around the SAME fixed point - a real
-# endpoint of wall_a (see _wall_endpoint() above) - which is exactly
-# what swing_hallway() already does for an arbitrary external pivot, so
-# this just calls that instead of needing its own separate tween.
+# Each side reaches a different static anchor, so the hallway is not a
+# single rigid door with one shared hinge. `_rotate_wall_flush()` derives a
+# target for each wall; `_tween_wall_to_transform_about_hinge()` then derives
+# the corresponding hinge for each target and preserves it throughout the
+# animation.
 # MODIFIED: was a one-way swing every press - a second H just kept flushing
 # wall_a/wall_b onto CSGBox3D/CurrentWall3 again, which (since they'd
 # already arrived there) was a no-op tween rather than a way back. Toggled
@@ -280,9 +292,8 @@ func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1
 # water_current.gd's _on_entered()), so a diver got bounced even with
 # nothing solid left in the way. Now the current moves out of WindCorridor1
 # entirely on the same press: WindCorridor2's current vacates to
-# WindCorridor3 first (the gap between CSGBox3D6/CSGBox3D7, gating that
-# route shut - the design doc's own worked example calls for a rotation to
-# trade one path for another, never just open one for free), then
+# WindCorridor3 first (the gap between CSGBox3D6/CSGBox3D7, carrying the
+# player north through the newly visible passage), then
 # WindCorridor1's current moves into the now-empty WindCorridor2. Closing
 # reverses both moves in the opposite order, alongside swinging the walls
 # back.
@@ -310,8 +321,8 @@ func _rotate_hallway_1_2() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_b: CSGBox3D = $CurrentWall2
 	if _hallway_1_2_swung:
-		_tween_wall_to(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
-		_tween_wall_to(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
+		_tween_wall_to_transform_about_hinge(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
+		_tween_wall_to_transform_about_hinge(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
 		_rotate_wind_corridor_1_current(false)
 		_rotate_wind_corridor_2_current(false)
 		_hallway_1_2_swung = false
@@ -328,39 +339,51 @@ func _rotate_hallway_1_2() -> void:
 	_hallway_1_2_swung = true
 	$HUD/Controls.text = "Hallway swinging..."
 
-# WindCorridor1's own current - moves into WindCorridor2 on open (`open` =
-# true), back to WindCorridor1 on close, rotating 90 degrees in the same
-# move each way via the generic rotate_corridors_right()/rotate_corridors_
-# left() above. Must run AFTER _rotate_wind_corridor_2_current(true) on
-# open (WindCorridor2 has to be vacated before this current can move into
-# it) and BEFORE it on close (this current has to vacate WindCorridor2
-# before the other one can move back into it) - see the call order in
-# _rotate_hallway_1_2() above.
+# WindCorridor1's current is parked while H opens the hallway, then restored
+# on close.  The opened route enters WindCorridor2 from the west and only
+# becomes northbound once it reaches WindCorridor3.  Moving this current into
+# Corridor2 therefore turns the route's *entrance* into a one-way current:
+# the player is bounced or stripped of lateral steering before reaching the
+# northbound gap.  Corridor2's own current is the one that moves to
+# Corridor3 and carries the diver through the visible CSGBox3D6/7 passage;
+# the Corridor1 current must be inactive during that state.
+#
+# Parking preserves the same current object and restores the authored
+# NEGATIVE_Z flow on close, rather than creating a duplicate or relying on a
+# generic 90-degree turn to happen to recover the initial puzzle state.
+var _hallway_1_parked_current: WaterCurrent
+
 func _rotate_wind_corridor_1_current(open: bool) -> void:
 	if open:
-		if _currents_by_corridor.has($WindCorridor1):
-			rotate_corridors_right($WindCorridor1, $WindCorridor2)
+		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor1, null)
+		if current == null:
+			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor1")
+			return
+		current.teardown()
+		_currents_by_corridor.erase($WindCorridor1)
+		_hallway_1_parked_current = current
 	else:
-		if _currents_by_corridor.has($WindCorridor2):
-			rotate_corridors_left($WindCorridor2, $WindCorridor1)
+		var current := _hallway_1_parked_current
+		if current == null:
+			push_warning("_rotate_hallway_1_2: no parked current is available for WindCorridor1")
+			return
+		current.setup($WindCorridor1, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
+		_currents_by_corridor[$WindCorridor1] = current
+		_hallway_1_parked_current = null
 
-# WindCorridor2's own current - moves into WindCorridor3 (the gap between
-# CSGBox3D6/CSGBox3D7) on open, gating that route shut, back to
-# WindCorridor2 on close. Direction is set explicitly rather than derived
-# by rotating 90 degrees from whatever WindCorridor2 happened to be blowing
-# (unlike WindCorridor1's move above) - blocking WindCorridor3 means
-# pushing north/"up" specifically, not just whichever direction a blind
-# 90-degree turn happens to land on. Closing restores WindCorridor2's
-# original POSITIVE_Z - the same direction _setup_currents() gives it at
-# the start, so this always returns to exactly where it began rather than
-# drifting after repeated open/close cycles.
+# WindCorridor2's current moves into WindCorridor3 (the gap between
+# CSGBox3D6/CSGBox3D7) on open, then returns on close. Its open direction
+# is deliberately north/positive-Z: this H state calls the hallway open, so
+# the current must help a player traverse the visible opening rather than
+# overpower their swim input back into the wall. Closing restores the
+# original NEGATIVE_X direction set in _setup_currents().
 func _rotate_wind_corridor_2_current(open: bool) -> void:
 	if open:
 		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
 		if current == null:
 			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
 			return
-		current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
+		current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
 		_currents_by_corridor.erase($WindCorridor2)
 		_currents_by_corridor[$WindCorridor3] = current
 	else:
@@ -368,7 +391,7 @@ func _rotate_wind_corridor_2_current(open: bool) -> void:
 		if current == null:
 			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor3")
 			return
-		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
+		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_X), current.strength, false)
 		_currents_by_corridor.erase($WindCorridor3)
 		_currents_by_corridor[$WindCorridor2] = current
 		
