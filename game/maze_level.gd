@@ -35,6 +35,8 @@ func _ready() -> void:
 	_build_ceiling()
 	_build_minimap()
 	_build_item_rocks()
+	_build_completion_ui()
+	$HUD/Controls.text = "Hallway: CLOSED — press H to open the route to the relic."
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -48,7 +50,11 @@ func _build_item_rocks() -> void:
 			continue
 		var rock := CrackedWall.new()
 		rock.span = Vector3(1.1, 1.1, 1.1)
-		rock.disguised_as_scenery_rock = true
+		# A lone, undiscoverable scenery-rock reward is not a viable manual
+		# completion target in this standalone scene: it has no World sonar
+		# loop to reveal it. Make the final relic read as an interactable
+		# cracked formation, just like the game's ability gates.
+		rock.disguised_as_scenery_rock = false
 		rock.position = marker.global_position
 		rock.broken.connect(_on_item_rock_broken.bind(marker.name, marker.global_position))
 		add_child(rock)
@@ -61,6 +67,33 @@ func _build_item_rocks() -> void:
 # worth deleting once this is confirmed as the one being used.
 const GOLDEN_ENERGY_ORB_SCENE := preload("res://art/characters/golden_energy_orb.glb")
 var goldenOrbs: Array = []
+# The standalone maze has one authored reward chamber. Completion is a public
+# gameplay state rather than an inference from a temporary orb node: callers
+# and the end-to-end regression can ask whether the player actually finished
+# the level after reaching and breaking that relic.
+signal maze_completed(marker_name: String)
+var _completed := false
+
+func is_completed() -> bool:
+	return _completed
+
+func _build_completion_ui() -> void:
+	var label := Label.new()
+	label.name = "MazeComplete"
+	label.text = "MAZE COMPLETE\nRelic secured"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_CENTER)
+	label.offset_left = -190.0
+	label.offset_top = -54.0
+	label.offset_right = 190.0
+	label.offset_bottom = 54.0
+	label.add_theme_font_size_override("font_size", 30)
+	label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.36))
+	label.add_theme_color_override("font_outline_color", Color(0.02, 0.08, 0.1))
+	label.add_theme_constant_override("outline_size", 8)
+	label.visible = false
+	$HUD.add_child(label)
 # `marker_name`/`spot` are the broken ItemRock's own name and position,
 # bound at connect time in _build_item_rocks() - a real drop table would
 # vary by which one broke (see world.gd's own Items/ItemOrb pipeline for
@@ -68,9 +101,20 @@ var goldenOrbs: Array = []
 # that, so every ItemRock just drops the same orb for now).
 func _on_item_rock_broken(marker_name: String, spot: Vector3) -> void:
 	var orb := GOLDEN_ENERGY_ORB_SCENE.instantiate()
-	orb.position = spot
+	# The source orb is authored at boss-scale. At the relic site it should read
+	# as a collectable glow above the broken formation, not fill the third-person
+	# camera and hide the completion confirmation.
+	orb.scale = Vector3.ONE * 0.35
+	orb.position = spot + Vector3(0.0, 1.25, 0.0)
 	goldenOrbs.append(orb)
 	add_child(orb)
+	if _completed:
+		return
+	_completed = true
+	var completion_label := $HUD.get_node("MazeComplete") as Label
+	completion_label.visible = true
+	$HUD/Controls.text = "Relic secured. Maze complete."
+	maze_completed.emit(marker_name)
 
 func _setup_walls():
 	_set_wall_position($CSGBox3D, $CurrentWall1, true, true)
@@ -173,7 +217,7 @@ func _build_minimap() -> void:
 # there.
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
-	label.text = "Press L: rotate currents left (WindCorridor2->3, WindCorridor1->2)\nPress H: swing the CurrentWall1/2 hallway open - the northbound current carries you through the CSGBox3D6/7 passage; press again to reverse it all"
+	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL rotates the left currents; H opens or closes the CurrentWall1/2 hallway."
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -326,7 +370,11 @@ func _rotate_hallway_1_2() -> void:
 		_rotate_wind_corridor_1_current(false)
 		_rotate_wind_corridor_2_current(false)
 		_hallway_1_2_swung = false
-		$HUD/Controls.text = "Hallway swinging back..."
+		$HUD/Controls.text = "Hallway closing..."
+		get_tree().create_timer(1.25).timeout.connect(func() -> void:
+			if not _hallway_1_2_swung and not _completed:
+				$HUD/Controls.text = "Hallway: CLOSED — press H to reopen the route to the relic."
+		)
 		return
 	_hallway_1_2_home_pos_a = wall_a.global_position
 	_hallway_1_2_home_yaw_a = wall_a.rotation.y
@@ -337,7 +385,11 @@ func _rotate_hallway_1_2() -> void:
 	_rotate_wind_corridor_2_current(true)
 	_rotate_wind_corridor_1_current(true)
 	_hallway_1_2_swung = true
-	$HUD/Controls.text = "Hallway swinging..."
+	$HUD/Controls.text = "Hallway opening..."
+	get_tree().create_timer(1.25).timeout.connect(func() -> void:
+		if _hallway_1_2_swung and not _completed:
+			$HUD/Controls.text = "Hallway: OPEN — follow the northbound current to the reward chamber."
+	)
 
 # WindCorridor1's current is parked while H opens the hallway, then restored
 # on close.  The opened route enters WindCorridor2 from the west and only
@@ -929,3 +981,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		_rotate_left_currents_left()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_H:
 		_rotate_hallway_1_2()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
+		# MazeLevel is a standalone review scene, so World cannot forward its
+		# normal ability input here. Keep the final relic interaction on the
+		# same player-facing E key used elsewhere in the game.
+		_diver.use_ability()
