@@ -422,6 +422,17 @@ func _special_playtest_requested() -> bool:
 		return String(search).contains("special=1")
 	return false
 
+func _maze_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--maze-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("maze=1")
+	return false
+
+func _open_maze_playtest() -> void:
+	get_tree().change_scene_to_file("res://game/maze_level.tscn")
+
 func _show_game_over() -> void:
 	# Defeat owns the whole screen just like cold launch. The controls, active
 	# diver label, bars, minimap and any announcement describe a playable world
@@ -526,6 +537,17 @@ var scripted_rise := 0.0
 var _active_cursor: MeshInstance3D
 
 func _ready() -> void:
+	# Query-only reviewer entry point, parallel to ?boss=1 / ?guardian=.  The
+	# maze remains a standalone prototype; this is only a one-click way to
+	# inspect the exact scene and must not imply World-flow integration.
+	if _maze_playtest_requested():
+		# A synchronous scene change while World itself is in _ready() collides
+		# with Godot's parent-child setup. Defer it one frame and stop this
+		# outgoing scene from running against half-built UI in the meantime.
+		set_process(false)
+		set_physics_process(false)
+		call_deferred("_open_maze_playtest")
+		return
 	cam = $Camera3D
 	hud = $HUD/Controls
 	# MODIFIED (added): none of $HUD's own children ever set mouse_filter,
