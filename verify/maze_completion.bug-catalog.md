@@ -1,6 +1,6 @@
 # Bug Catalog: `verify/maze_completion.gd`
 
-**Created:** 2026-09-19  
+**Created:** 2026-09-19
 **Scope:** the standalone `MazeLevel` player journey from the authored
 `DiverEntry`, through the H-operated passage, to the authored `ItemRock`
 reward and an observable completion state.

@@ -4,7 +4,7 @@ extends RefCounted
 # Resolves a Group_StatsV2 move without knowing whether its wielder is a
 # player or enemy. The UI, animations and AI choose a move; this class owns
 # the shared arithmetic and mutations.
-static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Dictionary:
+static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true, dodged: bool = false) -> Dictionary:
 	if apply_self_effects:
 		_apply_self_effects(attacker, move)
 
@@ -12,6 +12,16 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 	if accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(accuracy)
 		return _result(false, 0, spent)
+	# Battle reaches this only after the same visible QTE has accepted an
+	# in-zone X press. A dodge means the whole incoming action missed its
+	# target: no formula damage, Bleed/Stun/Evasion effect, or same-hit bleed
+	# stack. Self costs still belong to the attacker and were deliberately
+	# applied above, before hit resolution, just as they are on an ordinary
+	# miss.
+	if dodged:
+		var dodged_result := _result(true, 0, 0)
+		dodged_result.dodged = true
+		return dodged_result
 
 	var had_bleed := defender.status_level("bleed") > 0
 	var raw := formula_value(attacker, move.get("formula", {}))

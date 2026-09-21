@@ -3181,7 +3181,19 @@ func _show_moves_or_items_from_target_menu() -> void:
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Dictionary:
 	if move.has("formula"):
-		return CombatRules.resolve(attacker, defender, move, apply_self_effects)
+		# Formula-backed authored attacks used to return straight into
+		# CombatRules before the QTE branch below. That made the tutorial's
+		# forced Angler Bite show its explanatory preview but never the actual
+		# timing window. Keep Formula resolution authoritative for its damage
+		# and effects, but let Battle first run the same live QTE interaction
+		# used by legacy attacks after confirming this swing can hit.
+		var formula_can_hit := attacker.effective_accuracy() + int(move.get("acc_mod", 0)) > defender.evasion_current
+		var formula_dodge := false
+		var formula_force_qte := _tutorial_force_next_qte
+		_tutorial_force_next_qte = false
+		if formula_can_hit and bool(move.get("quick_time_bool", false)) and (formula_force_qte or randf() < ENEMY_QTE_CHANCE):
+			formula_dodge = await _quick_time_event(_actor_for_stats(defender))
+		return CombatRules.resolve(attacker, defender, move, apply_self_effects, formula_dodge)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(effective_accuracy)
