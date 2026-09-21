@@ -376,9 +376,11 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 	# formula move doesn't fall through to apply_damage_roll() below and read
 	# a "power" key that formula-based moves never set.
 	if combat.has("formula"):
-		var targets := living_party if String(move.get("target", "single")) == "all" else [target]
+		var targets := Battle.enemy_targets_for_scope(target, living_party, String(move.get("target", "single")))
+		var apply_self_effects := true
 		for target_entry in targets:
-			CombatRules.resolve(actor.stats as CombatantStats, (target_entry as Dictionary).stats as CombatantStats, combat)
+			Battle.resolve_formula_hits(actor.stats as CombatantStats, (target_entry as Dictionary).stats as CombatantStats, combat, apply_self_effects)
+			apply_self_effects = false
 		return
 	var heavy := String(combat.get("effect", "")) == "heavy"
 	var variance := rng.randf_range(0.85, 1.15)
@@ -536,12 +538,25 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: Str
 		_:
 			floor = Goblin.FLOOR_STATS
 	var stats := CombatantStats.new()
-	stats.hp_max = maxi(1, int(round(maxf(float(floor.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.strength = maxi(1, int(round(maxf(float(floor.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.defense = maxi(0, int(round(maxf(float(floor.defense), float(reference.defense)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.agility = maxi(1, int(round(maxf(float(floor.agility), float(reference.agility)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.evasion = maxi(0, int(round(maxf(float(floor.evasion), float(reference.evasion)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.accuracy = maxi(0, int(round(maxf(float(floor.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+	if enemy_id == "swordfish_duelist":
+		# Mirrors SwordDuelist.make_stats(): Glassgoat's supplied Swordfish
+		# block is exact, not an Angler-style minimum that rises above the
+		# party. Keeping this exception here is essential - otherwise the
+		# balance gate would certify a generic scaled duel rather than the
+		# actual 8/2/1/6/4/3 opponent production creates.
+		stats.hp_max = int(floor.hp)
+		stats.strength = int(floor.strength)
+		stats.defense = int(floor.defense)
+		stats.agility = int(floor.agility)
+		stats.evasion = int(floor.evasion)
+		stats.accuracy = int(floor.accuracy)
+	else:
+		stats.hp_max = maxi(1, int(round(maxf(float(floor.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.strength = maxi(1, int(round(maxf(float(floor.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.defense = maxi(0, int(round(maxf(float(floor.defense), float(reference.defense)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.agility = maxi(1, int(round(maxf(float(floor.agility), float(reference.agility)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.evasion = maxi(0, int(round(maxf(float(floor.evasion), float(reference.evasion)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.accuracy = maxi(0, int(round(maxf(float(floor.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.fill()
 	# damage_taken_by/bite_hits/bite_misses/use_flash_blast_next mirror the
 	# per-instance state Goblin now carries for the Angler's move AI - unused

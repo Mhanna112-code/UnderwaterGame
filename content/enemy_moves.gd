@@ -97,32 +97,46 @@ const ANGLER := [
 static func angler_catalogue() -> Array:
 	return ANGLER.duplicate(true)
 
-# The second guardian keeps the proven ordinary-enemy damage/accuracy math.
-# Great Slash carries the former normal Bite slot; Stabbing carries the former
-# low-HP heavy slot. The delivered spinning drill is visible but disabled until
-# the team chooses whether it is a single-target drill or a multi-target move.
+# Glassgoat's Swordfish kit is formula-driven like the V2 diver moves. The
+# artist specified the mechanics and supplied one clip per attack, but not AI
+# selection odds. The provisional initial odds make Arc Slash's two-target
+# persistent Bleed a rare pressure move, Triple Combo an occasional Evasion
+# counter, and Spinning Slayer the readable default. "two" means the weighted-picked
+# primary target plus one other living diver (Battle.enemy_targets_for_scope),
+# which makes Arc Slash's stated Target: 2 deterministic and never duplicates
+# a target. Triple Combo intentionally has no legacy heavy/QTE fields: its
+# authored counterplay is three sequential normal hits, each of which spends
+# the defender's current Evasion pool before the next begins.
 const SWORDFISH_DUELIST := [
 	{
-		"id": "great_slash", "name": "Great Slash", "clip": "attack)greatslash",
-		"enabled": true, "target": "single", "roll_order": 1, "weight": 70.0,
-		"finisher_weight": 35.0, "verb": "slashes at",
-		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
-	},
-	{
-		"id": "stabbing", "name": "Stabbing Lunge", "clip": "attack)stabbing",
-		"enabled": true, "target": "single", "roll_order": 0, "weight": 30.0,
-		"finisher_weight": 65.0, "verb": "lunges at",
-		"finisher_below_hp": 0.5,
+		"id": "arc_slash", "name": "Arc Slash", "clip": "attack)greatslash",
+		"enabled": true, "target": "two", "roll_order": 0, "weight": 0.08,
+		"finisher_weight": 0.08, "verb": "cuts through",
 		"combat": {
-			"power": 0, "acc_mod": -1, "quick_time_bool": true,
-			"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
+			"formula": {"strength": 1, "defense": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "status", "status": "bleed", "level": {"strength": 1}},
+			],
 		},
 	},
 	{
-		"id": "spinning_drill", "name": "Spinning Drill", "clip": "attack)spinning_drill",
-		"enabled": false, "target": "single", "roll_order": 2, "weight": 0.0,
-		"finisher_weight": 0.0, "verb": "spins toward",
-		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
+		"id": "triple_combo", "name": "Triple Combo", "clip": "attack)stabbing",
+		"enabled": true, "target": "single", "roll_order": 1, "weight": 0.25,
+		"finisher_weight": 0.25, "verb": "strikes",
+		"combat": {
+			"formula": {"strength": 1}, "acc_mod": 1, "hits": 3,
+		},
+	},
+	{
+		"id": "spinning_slayer", "name": "Spinning Slayer", "clip": "attack)spinning_drill",
+		"enabled": true, "target": "single", "roll_order": 2, "weight": 0.67,
+		"finisher_weight": 0.67, "verb": "drills into",
+		"combat": {
+			"formula": {"strength": 1, "defense": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "reduce_defense", "amount": {"defense": 1}},
+			],
+		},
 	},
 ]
 

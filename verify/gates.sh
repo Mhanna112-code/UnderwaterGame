@@ -73,6 +73,7 @@ fi
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
 run "angler grunt: is Glassgoat's replacement textured and animation-mapped" "$GODOT" --headless --path . --script verify/angler_grunt.gd
 run "enemy moves: are Angler attacks reusable data and playable clips" "$GODOT" --headless --path . --script verify/enemy_moves.gd
+run "Swordfish moves: does the authored three-move kit resolve as specified" "$GODOT" --headless --path . --script verify/swordfish_moves.gd
 run "artifact guardians: do both models persist from map to one-enemy battle" "$GODOT" --headless --path . --script verify/artifact_guardians.gd
 run "ordinary roster: do random encounters use both delivered enemies" "$GODOT" --headless --path . --script verify/ordinary_roster.gd
 run "battle: does the fight screen build"             "$GODOT" --headless --path . --script tools/test_battle.gd
