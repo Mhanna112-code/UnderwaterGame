@@ -34,6 +34,10 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 			var amount := formula_value(attacker, effect.get("amount", {}))
 			defender.reduce_evasion(amount)
 			applied.append("EVA -%d" % amount)
+		elif kind == "reduce_defense":
+			var amount := formula_value(attacker, effect.get("amount", {}))
+			defender.reduce_defense(amount)
+			applied.append("DEF -%d" % amount)
 		elif kind == "status":
 			var status := String(effect.get("status", ""))
 			var level := formula_value(attacker, effect.get("level", {}))
@@ -73,5 +77,10 @@ static func _result(hit: bool, damage: int, evasion_spent: int) -> Dictionary:
 	}
 
 static func _status_text(status: String, level: int, duration: int) -> String:
+	# Stun's "level" is only ever a presence flag (see add_status()'s level > 0
+	# requirement) - the number itself means nothing to a player, unlike a
+	# Bleed/Blindness level, so it stays out of the floating text.
+	if status == "stun":
+		return "Stun (%d turns)" % duration
 	var label := status.capitalize() + " %d" % level
 	return label if duration <= 0 else "%s (%d turns)" % [label, duration]

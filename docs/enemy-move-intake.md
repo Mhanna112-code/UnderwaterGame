@@ -11,14 +11,14 @@ branch per clip.
 - Keep Idle, Swimming Start/Mid/End, Damaged, and Death alongside attacks.
 - Include textures in the FBX or as clearly named files in the same ZIP.
 
-The current Angler file already contains `Bite`, `headbutt`, and `Shine`. Bite
-and Ramming Bite are enabled. Headbutt and Lure Flash are recorded but disabled
-until the team decides their damage/effect and target behavior; they cannot
-accidentally change the live balance.
+The current Angler file already contains `Bite`, `headbutt`, and `Shine`. All
+three are enabled: Glassgoat's Discord follow-up supplied Headbutt's and Flash
+Blast's (the renamed `Shine`/"Lure Flash") damage/effect and target behavior.
 
 ## Enabling an attack
 
-One data record in `content/enemy_moves.gd` controls a move:
+One data record in `content/enemy_moves.gd` controls a move. A move that only
+deals plain power+strength damage can stay on the older shape:
 
 ```gdscript
 {
@@ -29,11 +29,40 @@ One data record in `content/enemy_moves.gd` controls a move:
 }
 ```
 
+A move whose damage or effect scales off a wielder stat instead uses the same
+`formula`/`effects` shape as `content/combat_moves.gd`'s player kit - Bite,
+Headbutt and Flash Blast all use this one, since `Battle._resolve_attack()`
+dispatches any move carrying a `formula` key straight to `CombatRules.resolve()`
+(see `content/enemy_moves.gd`'s own header comment for the delivered numbers):
+
+```gdscript
+"combat": {
+    "formula": {"strength": 1}, "acc_mod": 1,
+    "effects": [
+        {"kind": "status", "status": "stun", "level": {"flat": 1}, "duration": {"strength": 1}},
+    ],
+},
+```
+
 `clip` is a case-insensitive fragment of the FBX take name. `weight` controls
 normal selection and `finisher_weight` controls selection when a configured
-finisher is possible. New moves currently target one diver; party-wide enemy
-moves need a specific combat-design decision before they are enabled.
+finisher is possible. `target: "all"` (Flash Blast) hits every living diver
+through `Battle._do_enemy_all_foes_turn()` instead of the single picked target
+- that was the party-wide combat-design decision the previous revision of this
+doc was waiting on.
+
+`CombatantStats` supports two effects with no prior ordinary-enemy user: `stun`
+(skips the afflicted combatant's next N turns entirely - see
+`CombatantStats.is_stunned()`/`Battle._advance_turn()`) and `evasion_down` (a
+timed Evasion reduction, the same shape as the existing Blindness status but
+scoped to one stat - see `CombatantStats.effective_evasion()`).
 
 Run `godot --headless --path . --script verify/enemy_moves.gd` after changing
 the catalogue. It fails if a configured clip is absent, disabled art leaks into
-selection, a move cannot start, or a turn mutates the source catalogue.
+selection, a move cannot start, a turn mutates the source catalogue, or Bite/
+Headbutt/Flash Blast's agreed formula or effect regresses. Also run
+`godot --headless --path . --script verify/glassgoat_combat.gd` (the Stun and
+Evasion-down status contracts live there) and
+`godot --headless --path . --script verify/balance.gd` (an enemy move must
+still resolve through the same `formula` dispatch the balance simulator uses
+for the player's own V2 moves).

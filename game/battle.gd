@@ -1040,6 +1040,8 @@ func _ordinary_actor() -> Goblin:
 func _actor_for_enemy_id(enemy_id: String) -> Goblin:
 	if enemy_id == "swordfish_duelist":
 		return SwordDuelist.new()
+	if enemy_id == "frilled_shark":
+		return FrilledShark.new()
 	return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
@@ -2141,6 +2143,18 @@ func _advance_turn() -> void:
 	if (_acting.stats as CombatantStats).hp <= 0:
 		_advance_turn()   # downed since the queue was built - skip them
 		return
+	if (_acting.stats as CombatantStats).is_stunned():
+		# Headbutt's Stun (see content/enemy_moves.gd) skips the whole turn
+		# rather than just blocking the move menu, so it applies the same way
+		# to a stunned party member or a stunned enemy. consume_status_turn()
+		# ticks the clock here because this combatant never reaches its own
+		# end_turn() this round - see that function's own comment.
+		(_acting.stats as CombatantStats).consume_status_turn("stun")
+		_show_floating_text(_acting, "STUNNED", FEEDBACK_NEGATIVE_COLOR)
+		_log("%s is stunned and can't move!" % String(_acting.display_name))
+		_refresh_bar(_acting)
+		_advance_turn()
+		return
 	if String(_acting.kind) == "enemy":
 		var forced_target := {}
 		if tutorial_encounter:
@@ -3158,9 +3172,9 @@ func _show_moves_or_items_from_target_menu() -> void:
 #     left in the whole resolve - whether you hit is deterministic, how
 #     hard is not).
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
-func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
+func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Dictionary:
 	if move.has("formula"):
-		return CombatRules.resolve(attacker, defender, move)
+		return CombatRules.resolve(attacker, defender, move, apply_self_effects)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(effective_accuracy)
@@ -3199,6 +3213,37 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 		player_dodge = await _quick_time_event(_actor_for_stats(defender))
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
+
+# Formula attacks have no random damage roll. That makes repeated authored
+# strikes deterministic at this layer: every impact reads the *remaining*
+# Evasion/HP left by the prior impact, while self-only costs are paid once for
+# the whole action. Battle uses this exact helper for ordinary formula moves;
+# balance and the Swordfish regression gate call it too, so a three-hit move
+# cannot quietly have different semantics in a simulation than on screen.
+static func resolve_formula_hits(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Array:
+	var results: Array = []
+	var count := maxi(1, int(move.get("hits", 1)))
+	for hit_index in range(count):
+		if defender.hp <= 0:
+			break
+		results.append(CombatRules.resolve(attacker, defender, move, apply_self_effects and hit_index == 0))
+	return results
+
+# Formula moves normally have no quick-time branch. The one exception is the
+# tutorial's deliberately forced demonstration, which temporarily adds
+# quick_time_bool to the selected move. Keep that production-only presentation
+# path on _resolve_attack(); all ordinary formula moves use the shared static
+# resolver above so their hit count is testable without a stage or timer.
+func _resolve_enemy_attack_hits(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Array:
+	if move.has("formula") and not bool(move.get("quick_time_bool", false)):
+		return Battle.resolve_formula_hits(attacker, defender, move, apply_self_effects)
+	var results: Array = []
+	var count := maxi(1, int(move.get("hits", 1)))
+	for hit_index in range(count):
+		if defender.hp <= 0:
+			break
+		results.append(await _resolve_attack(attacker, defender, move, apply_self_effects and hit_index == 0))
+	return results
 
 # The deterministic half of _resolve_attack(), shared with verify/balance.gd.
 # Production samples the variance/heavy fraction and the QTE result above;
@@ -3446,6 +3491,11 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
 	await _swing(_acting, mv, target)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
+	# Feeds Goblin's Angler-specific low-HP targeting (see
+	# choose_move_and_target()/_highest_damage_target()) - a no-op against any
+	# other actor type, which has no such method to call.
+	if r.hit and int(r.get("damage", 0)) > 0 and target.actor is Goblin:
+		(target.actor as Goblin).record_damage_taken(_acting.actor, int(r.damage))
 	_react(target, r)
 	_show_combat_feedback(target, r)
 	var applied_effects := r.get("effects", []) as Array
@@ -3501,6 +3551,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 			continue
 		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
 		first = false
+		if result.hit and int(result.get("damage", 0)) > 0 and target.actor is Goblin:
+			(target.actor as Goblin).record_damage_taken(_acting.actor, int(result.damage))
 		changed_agility = changed_agility or (result.get("effects", []) as Array).any(
 			func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))
 		_react(target, result)
@@ -3552,6 +3604,28 @@ func _pick_enemy_target(alive_party: Array) -> Dictionary:
 		if roll <= 0.0:
 			return alive_party[i]
 	return alive_party[alive_party.size() - 1]
+
+# Turns a declared enemy target scope into concrete living party entries. The
+# first target is always Battle's existing weighted primary selection; a
+# two-target strike then takes the next distinct living party entry in stable
+# party order. This preserves target-choice randomness while making an authored
+# `Target: 2` readable, deterministic, and safe in a one-survivor fight.
+static func enemy_targets_for_scope(primary: Dictionary, alive_party: Array, scope: String) -> Array:
+	if primary.is_empty():
+		return []
+	if scope == "all":
+		return alive_party.duplicate()
+	var targets: Array = [primary]
+	if scope != "two":
+		return targets
+	var primary_stats: Variant = primary.get("stats")
+	for entry_value in alive_party:
+		var entry := entry_value as Dictionary
+		if entry.get("stats") == primary_stats:
+			continue
+		targets.append(entry)
+		break
+	return targets
 
 func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 	var boss := actor.actor as TethysBoss
@@ -3627,7 +3701,8 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	# narrating) the target ahead of time - calling _pick_enemy_target()
 	# again here would re-roll its randf() and could land on someone else
 	# entirely, no longer matching what was just explained.
-	var target: Dictionary = forced_target if not forced_target.is_empty() else _pick_enemy_target(alive_party)
+	var forced := not forced_target.is_empty()
+	var target: Dictionary = forced_target if forced else _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
 	if special_encounter:
 		match String(target.get("ability_id", "")):
@@ -3642,12 +3717,24 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 				return
 
 	var enemy_actor := actor.actor as Goblin
-	var move := enemy_actor.choose_move(target_stats)
+	# Angler overrides this to pick move and target together (Headbutt's
+	# highest-damage-dealer, Bite's random pick); every other enemy's override
+	# just echoes the target already picked above and asks choose_move() on
+	# its own, same as before this existed.
+	var picked := enemy_actor.choose_move_and_target(actor.stats as CombatantStats, alive_party, target, forced)
+	var move: Dictionary = picked.get("move", {})
+	target = picked.get("target", target)
+	target_stats = target.stats as CombatantStats
 	if move.is_empty():
 		_log("%s has no enabled attack." % String(actor.display_name))
 		_finish_actor_turn(actor)
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
 		_advance_turn()
+		return
+	var target_scope := String(move.get("target", "single"))
+	if target_scope in ["all", "two"]:
+		await _do_enemy_multi_foes_turn(actor, enemy_actor, move,
+			Battle.enemy_targets_for_scope(target, alive_party, target_scope), target)
 		return
 	await _step_toward(actor, target)
 	# The selected data record owns its animation and mechanics. Step into
@@ -3674,20 +3761,83 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	if _tutorial_force_next_qte:
 		combat_move = combat_move.duplicate()
 		combat_move["quick_time_bool"] = true
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, combat_move)
+	var results: Array = await _resolve_enemy_attack_hits(actor.stats, target.stats, combat_move)
+	# Feeds Goblin's Bite-streak-into-Flash-Blast state machine (see
+	# choose_move_and_target()) - a no-op for every move that isn't Bite, and
+	# for every enemy whose catalogue has no "bite" id at all.
+	if String(move.get("id", "")) == "bite" and not results.is_empty():
+		enemy_actor.record_bite_result(bool((results[0] as Dictionary).get("hit", false)))
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
-	_refresh_bar(target)
-	_react(target, r)
-	_show_combat_feedback(target, r)
 	var verb := "%s %s %s" % [String(actor.display_name), String(move.get("verb", "attacks")), String(target.display_name)]
-	if bool(r.get("dodged", false)):
+	var hit_summaries: Array[String] = []
+	for result_value in results:
+		var r := result_value as Dictionary
+		_refresh_bar(target)
+		_react(target, r)
+		_show_combat_feedback(target, r)
+		if bool(r.get("dodged", false)):
+			hit_summaries.append("QTE dodge")
+		elif not bool(r.get("hit", false)):
+			hit_summaries.append("evades")
+		else:
+			hit_summaries.append("-%d" % int(r.get("damage", 0)))
+	if hit_summaries.size() == 1 and hit_summaries[0] == "QTE dodge":
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
-	elif not r.hit:
+	elif hit_summaries.size() == 1 and hit_summaries[0] == "evades":
 		_log("%s, but %s evades!" % [verb, String(target.display_name)])
 	else:
-		_log("%s for %d." % [verb, int(r.damage)])
+		_log("%s: %s." % [verb, "/".join(hit_summaries)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
+	_finish_actor_turn(actor)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_restore_enemy_idle(actor)
+	_advance_turn()
+
+# Resolves an ordinary-enemy move aimed at more than one living diver. Flash
+# Blast still uses `all`; Swordfish Arc Slash uses `two`. Both share the same
+# result loop, so a new target scope cannot become a data-only label that
+# silently damages just the primary target. A melee sweep steps toward its
+# primary target; a party-wide burst stays planted and only faces the group.
+func _do_enemy_multi_foes_turn(actor: Dictionary, enemy_actor: Goblin, move: Dictionary, targets: Array, primary: Dictionary) -> void:
+	var scope := String(move.get("target", "single"))
+	if scope == "all":
+		if primary.has("actor") and is_instance_valid(primary.actor):
+			enemy_actor.face_toward((primary.actor as Node3D).global_position)
+	else:
+		await _step_toward(actor, primary)
+	var attack_length := enemy_actor.play_move(move)
+	if attack_length > 0.0:
+		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
+	var combat_move := move.combat as Dictionary
+	var summaries: Array[String] = []
+	var apply_self_effects := true
+	for target_value in targets:
+		var target := target_value as Dictionary
+		if (target.stats as CombatantStats).hp <= 0:
+			continue
+		var results: Array = await _resolve_enemy_attack_hits(actor.stats, target.stats as CombatantStats, combat_move, apply_self_effects)
+		apply_self_effects = false
+		var impacts: Array[String] = []
+		for result_value in results:
+			var r := result_value as Dictionary
+			_refresh_bar(target)
+			_react(target, r)
+			_show_combat_feedback(target, r)
+			if not bool(r.get("hit", false)):
+				impacts.append("evades")
+			elif int(r.get("damage", 0)) > 0:
+				impacts.append("-%d" % int(r.get("damage", 0)))
+			else:
+				var effects := r.get("effects", []) as Array
+				impacts.append("; ".join(effects) if not effects.is_empty() else "affected")
+		summaries.append("%s %s" % [String(target.display_name), "/".join(impacts)])
+		if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
+			(target.actor as Diver).play_death_fade()
+	if scope != "all":
+		_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
+	var group_label := "the party" if scope == "all" else ("two divers" if targets.size() > 1 else "the remaining diver")
+	_log("%s %s %s: %s." % [String(actor.display_name), String(move.get("verb", "attacks")), group_label, "; ".join(summaries)])
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_restore_enemy_idle(actor)
