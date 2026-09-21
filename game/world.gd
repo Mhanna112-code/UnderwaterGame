@@ -89,6 +89,7 @@ var _showing_save_prompt := false
 var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
+const AbilityOnboardingScript := preload("res://game/ability_onboarding.gd")
 # Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
 const PLINTH_TOP := 0.7
 
@@ -161,6 +162,12 @@ var title_layer: CanvasLayer
 var special_encounter_prompt: SpecialEncounterPrompt
 var tutorial_book: TutorialBook
 var tutorial_result_popup: TutorialResultPopup
+var ability_onboarding: Control
+# Only one walkthrough belongs to a first tutorial resolution. A loss Retry
+# stays inside the lesson, while win/Skip/loss-Exit may all hand the player to
+# free exploration; this flag prevents an asynchronous result from stacking
+# duplicate modals over the world.
+var _ability_onboarding_shown := false
 # Shown once on a genuinely new save (_on_title_new_game()) instead of the
 # tutorial book auto-opening there - see IntroCrawl's own header comment.
 # The tutorial book itself is untouched: F1 (this file's own
@@ -663,6 +670,8 @@ func _ready() -> void:
 	tutorial_result_popup.retry_chosen.connect(_on_tutorial_loss_retry)
 	tutorial_result_popup.exit_chosen.connect(_on_tutorial_loss_exit)
 	title_layer.add_child(tutorial_result_popup)
+	ability_onboarding = AbilityOnboardingScript.new() as Control
+	title_layer.add_child(ability_onboarding)
 
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
@@ -2260,6 +2269,8 @@ func _on_battle_finished(result: String) -> void:
 	_special_encounter_diver = null
 	_special_guardian = null
 	_special_guardian_decoy = null
+	if was_tutorial and result in ["won", "skipped"]:
+		call_deferred("_show_ability_onboarding")
 
 func _heal_tutorial_party() -> void:
 	for d in divers:
@@ -2276,6 +2287,17 @@ func _on_tutorial_loss_retry() -> void:
 func _on_tutorial_loss_exit() -> void:
 	_heal_tutorial_party()
 	_announce("The party regroups and returns to the overworld.")
+	call_deferred("_show_ability_onboarding")
+
+# The initial combat lesson ends at the moment the player can finally affect
+# the world. This is the right time to teach the actual exploration verbs;
+# doing it before the fight would compete with the QTE/move tutorial, and
+# doing it only from a menu would make a first-time player discover it late.
+func _show_ability_onboarding() -> void:
+	if _ability_onboarding_shown or ability_onboarding == null:
+		return
+	_ability_onboarding_shown = true
+	ability_onboarding.call("open_for_world", self)
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own

@@ -36,6 +36,16 @@ func _run() -> void:
 			if stats.hp != stats.hp_max or stats.oxygen != stats.oxygen_max:
 				findings.append("SKIP DID NOT FULLY RESTORE PARTY")
 				break
+		# Skip is an exit from the combat lesson, not from learning the world
+		# controls. The onboarding is allowed to pause the world while visible,
+		# but it must be dismissible back to the same playable state.
+		if not world.ability_onboarding.visible:
+			findings.append("SKIP DID NOT OPEN WORLD-CONTROL HANDOFF")
+		else:
+			world.ability_onboarding.call("dismiss")
+			await process_frame
+			if paused:
+				findings.append("SKIP HANDOFF LEFT THE TREE PAUSED AFTER DISMISS")
 
 	for finding in findings:
 		push_error(finding)

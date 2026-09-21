@@ -35,6 +35,7 @@ func _run() -> void:
 	await process_frame
 	_expect(not paused, "RETRY LEFT THE TREE PAUSED")
 	_expect(world.battle != null and world.battle.tutorial_encounter, "RETRY DID NOT RESTART TUTORIAL")
+	_expect(not world.ability_onboarding.visible, "RETRY OPENED WORLD-CONTROL HANDOFF INSIDE THE LESSON")
 	for d in world.divers:
 		_expect((d as Diver).stats.hp == (d as Diver).stats.hp_max, "RETRY DID NOT HEAL PARTY")
 
@@ -43,7 +44,15 @@ func _run() -> void:
 	world.tutorial_result_popup.call("_exit")
 	await process_frame
 	_expect(world.battle == null, "EXIT LEFT A BATTLE RUNNING")
-	_expect(not paused, "EXIT LEFT THE TREE PAUSED")
+	# Exit now hands a first-time player to the world-controls walkthrough
+	# instead of silently dropping them into open water. It intentionally keeps
+	# the tree paused until the player dismisses that onboarding, then must
+	# restore the same playable world this test historically checked for.
+	_expect(world.ability_onboarding.visible, "EXIT DID NOT OPEN WORLD-CONTROL HANDOFF")
+	_expect(paused, "EXIT HANDOFF DID NOT PAUSE WORLD WHILE READING")
+	world.ability_onboarding.call("dismiss")
+	await process_frame
+	_expect(not paused, "EXIT HANDOFF LEFT THE TREE PAUSED AFTER DISMISS")
 	for d in world.divers:
 		_expect((d as Diver).stats.hp == (d as Diver).stats.hp_max, "EXIT DID NOT HEAL PARTY")
 
