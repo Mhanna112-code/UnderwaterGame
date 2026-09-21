@@ -78,7 +78,7 @@ mouse/keyboard control when the player dismisses it.
 | 4 | Forward/back navigation loses the current page or lets the final page advance into a blank page. | Medium — a player misses an ability or sees a broken Next button. | Raw #72 only had Next/Close; this slice adds Back navigation. | Decision-table contract | Characterized |
 | 5 | Onboarding opens more than once for one resolution or opens during a loss Retry loop. | Medium — duplicate modals interrupt combat or force repeated reading. | Battle outcomes are asynchronous and loss has two explicit choices. | Negative-path end-to-end | Characterized |
 | 6 | A tutorial caption can only be advanced with an undiscoverable keyboard key, leaving mouse-first players stalled despite a visible lesson. | High — first-time players can mistake waiting for input as a frozen game. | Was present in baseline: `_tutorial_show_step()` rendered only "Press Enter" text. | Captured UI interaction | Fixed |
-| 7 | A reviewer cannot reach the post-tutorial panel without replaying the whole paced lesson, making visual review impractical or likely to target a different build. | Medium — the team cannot efficiently inspect the exact UI asked for. | The live path is deliberately paced and automated browser input cannot hold swim movement. | Query-only review route + browser/manual | Fixed |
+| 7 | A reviewer cannot reach the post-tutorial panel without replaying the whole paced lesson, or sees a stale intro instruction after closing it, making visual review impractical or misleading. | Medium — the team cannot efficiently inspect the exact UI asked for. | The live path is deliberately paced and automated browser input cannot hold swim movement. | Query-only review route + browser/manual | Fixed |
 
 ## Test plan
 

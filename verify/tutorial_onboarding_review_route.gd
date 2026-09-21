@@ -30,6 +30,7 @@ func _run() -> void:
 	_expect(world.ability_onboarding.visible, "ONBOARDING REVIEW ROUTE: action did not open the real walkthrough")
 	_expect(world.battle == null, "ONBOARDING REVIEW ROUTE: visual review unexpectedly started combat")
 	_expect(world._current_slot == -1, "ONBOARDING REVIEW ROUTE: visual review created or selected a save slot")
+	_expect(world.banner.text.is_empty(), "ONBOARDING REVIEW ROUTE: stale intro-beacon instruction remained behind the walkthrough")
 	_expect(paused, "ONBOARDING REVIEW ROUTE: walkthrough did not pause world input")
 	world.ability_onboarding.call("dismiss")
 	await process_frame

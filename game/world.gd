@@ -410,6 +410,12 @@ func _on_title_onboarding_playtest() -> void:
 	# not compete with a visual review of the overlay itself.
 	_intro_active = false
 	_first_encounter_done = true
+	# `_show_intro_text()` ran while World was initially assembling behind the
+	# title. Clear that now-stale instruction as part of entering the review
+	# state; otherwise closing the walkthrough falsely suggests an invisible
+	# required beacon still exists.
+	banner.text = ""
+	_banner_timer = 0.0
 	if is_instance_valid(light_beam):
 		light_beam.visible = false
 	if is_instance_valid(_intro_arrow):
