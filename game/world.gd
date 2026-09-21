@@ -401,6 +401,21 @@ func _on_title_special_playtest() -> void:
 	_special_guardian_decoy = null
 	_offer_special_encounter("current_pearl")
 
+func _on_title_onboarding_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	# This UI represents the first free-play moment. The intro beacon should
+	# not compete with a visual review of the overlay itself.
+	_intro_active = false
+	_first_encounter_done = true
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	_show_ability_onboarding()
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -428,6 +443,14 @@ func _special_playtest_requested() -> bool:
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
+	return false
+
+func _onboarding_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--onboarding-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("onboarding=1")
 	return false
 
 func _maze_playtest_requested() -> bool:
@@ -649,6 +672,7 @@ func _ready() -> void:
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
+	title_screen.onboarding_playtest_chosen.connect(_on_title_onboarding_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -658,6 +682,8 @@ func _ready() -> void:
 		title_screen.enable_guardian_playtest("Play %s Guardian Test" % String(playtest_site.get("item", "Artifact")).capitalize())
 	if _special_playtest_requested():
 		title_screen.enable_special_playtest()
+	if _onboarding_playtest_requested():
+		title_screen.enable_onboarding_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
