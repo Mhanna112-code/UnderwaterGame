@@ -2063,6 +2063,14 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active] or _intro_active:
 		return
+	# An unclaimed guardian site is a deliberate encounter space. Letting a
+	# random roll interrupt there makes it unclear whether the battle belongs
+	# to the artifact or open-water pressure, and adds a fight immediately
+	# before the one the player deliberately approached. The Diver still resets
+	# its distance timer after this roll, so the ordinary 8-16 m / 50% cadence
+	# resumes once the player leaves the site.
+	if _inside_unclaimed_guardian_site(d.global_position):
+		return
 	# An ordinary encounter, and only an ordinary one.
 	#
 	# This used to also hand you a key item for winning a random encounter
@@ -2075,6 +2083,18 @@ func _on_encounter_triggered(d: Diver) -> void:
 	# Swim into the guardian and you get the fight for the item. That is the
 	# whole point of it being somewhere.
 	_start_battle()
+
+func _inside_unclaimed_guardian_site(at: Vector3) -> bool:
+	for site_value in Sites.ALL:
+		var site := site_value as Dictionary
+		var item_id := String(site.get("item", ""))
+		if item_id == "" or key_items.has(item_id):
+			continue
+		var center := site.at as Vector3
+		var horizontal_distance := Vector2(at.x - center.x, at.z - center.z).length()
+		if horizontal_distance <= float(site.radius):
+			return true
+	return false
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin, enemy_id: String) -> void:

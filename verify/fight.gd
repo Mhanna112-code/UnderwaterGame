@@ -95,6 +95,8 @@ func _process(_dt: float) -> bool:
 	var battle: Battle = world.battle
 	if battle != null and not battle.finished.is_connected(_on_finished):
 		battle.finished.connect(_on_finished)
+	if battle != null and not battle.player_swing_staged.is_connected(_on_player_swing_staged):
+		battle.player_swing_staged.connect(_on_player_swing_staged)
 	if battle != null:
 		_watch(battle)
 		_press_something(battle)
@@ -132,11 +134,10 @@ func _watch(battle: Battle) -> void:
 		var who := String(e.model_name)
 		if playing.contains("(Attack)"):
 			_note(swings_seen, who, playing)
-			_check_aim(battle, e, who)
 		elif playing.contains("(Damaged"):
 			_note(reactions_seen, who, playing)
 
-# Is the swing pointed at anybody?
+# Is the swing pointed at its selected target?
 #
 # Glass_Goat animated this cast for a 2D presentation, so an attack travels
 # along the character's own forward axis and nowhere else. Every attack used
@@ -145,38 +146,28 @@ func _watch(battle: Battle) -> void:
 # while the grunt it was aimed at stood off to one side. Reported as "the
 # animations arent aimed at or hit the enemy".
 #
-# Measured against the nearest living enemy, because the attacker has
-# already stepped toward whoever it picked by the time the clip is playing,
-# so the nearest one IS the target.
-func _check_aim(battle: Battle, entry: Dictionary, who: String) -> void:
-	var a := entry.actor as Node3D
-	var nearest: Node3D = null
-	var best := INF
-	for foe in battle.enemies:
-		if not foe.has("actor") or not is_instance_valid(foe.actor):
-			continue
-		if (foe.stats as CombatantStats).hp <= 0:
-			continue
-		var gap: float = a.global_position.distance_to((foe.actor as Node3D).global_position)
-		if gap < best:
-			best = gap
-			nearest = foe.actor as Node3D
-	if nearest == null:
+# Battle emits this immediately after _step_toward() has positioned and
+# turned the attacker, then d.play_clip() has begun.  That is the exact
+# target chosen in the menu; nearest-enemy inference produced false failures
+# whenever a different foe stood closer in a two-enemy pack.
+func _on_player_swing_staged(attacker: Node3D, target: Node3D) -> void:
+	if not is_instance_valid(attacker) or not is_instance_valid(target):
 		return
-
 	aim_samples += 1
-	if best > MAX_SWING_GAP:
-		_note(aim_findings, who, "swung from %.1f m away, further than the %.1f m a swing reaches" % [best, MAX_SWING_GAP])
+	var who: String = String((attacker as Diver).model_name) if attacker is Diver else String(attacker.name)
+	var gap: float = attacker.global_position.distance_to(target.global_position)
+	if gap > MAX_SWING_GAP:
+		_note(aim_findings, who, "swung from %.1f m away, further than the %.1f m a swing reaches" % [gap, MAX_SWING_GAP])
 		return
-	var to: Vector3 = nearest.global_position - a.global_position
+	var to: Vector3 = target.global_position - attacker.global_position
 	to.y = 0.0
 	if to.length() < 0.05:
 		return
 	# rotation.y == 0 faces -Z for these models.
-	var facing := Vector3(-sin(a.rotation.y), 0.0, -cos(a.rotation.y))
+	var facing := Vector3(-sin(attacker.rotation.y), 0.0, -cos(attacker.rotation.y))
 	var off: float = rad_to_deg(facing.angle_to(to.normalized()))
 	if off > MAX_SWING_ANGLE:
-		_note(aim_findings, who, "swung %.0f deg away from the enemy they were aimed at" % off)
+		_note(aim_findings, who, "swung %.0f deg away from its selected target" % off)
 
 func _note(into: Dictionary, who: String, clip: String) -> void:
 	if not into.has(who):

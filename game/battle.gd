@@ -19,6 +19,11 @@ class_name Battle
 extends CanvasLayer
 
 signal finished(result: String)     # "won", "fled", or "lost"
+# Emitted only after a party member has stepped into range, faced the
+# selected target and actually begun an attack clip.  Gameplay does not
+# listen to this; it gives the fight gate the real target rather than asking
+# it to infer one from proximity in a multi-enemy stage.
+signal player_swing_staged(attacker: Node3D, target: Node3D)
 
 # Set by world.gd before add_child - the real Diver nodes from the dive
 # site (world.divers), so .stats (shared by reference - a Resource, not
@@ -134,14 +139,32 @@ var diver_model_name := "Staff_Diver"
 const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
+const OPENING_TWO_ENEMY_CHANCE := 0.35
 
-# A fresh party can face one or two grunts. Three-grunt packs enter the roll
-# only after the party has earned its first level; this removes the observed
-# level-1 automatic-loss pack without deleting the harder formation.
+# A fresh or just-levelled party can face one or two grunts. The second level
+# is reached on the two-guardian introductory route, before a player has had
+# enough encounters to learn the mixed roster; keeping that route at one/two
+# enemies prevents an abrupt three-enemy wall. Three-grunt packs remain the
+# ordinary higher-level formation once the party reaches level 3.
 static func max_enemies_for_level(player_level: int, is_guardian: bool = false) -> int:
 	if is_guardian:
 		return 1
-	return 2 if player_level <= 1 else MAX_ENEMIES
+	return 2 if player_level <= 2 else MAX_ENEMIES
+
+# The two artifact sites are the game's live onboarding route. It keeps a
+# meaningful chance of a two-enemy formation, but most early rolls are one
+# opponent so a player can learn a newly authored enemy before that pressure
+# combines with another roster member. Later packs preserve the even 1–3 roll.
+# `roll` is injected so verify/balance.gd can mirror the shipped distribution
+# from a seeded RNG rather than approximate it with a separate one.
+static func ordinary_enemy_count_for_roll(player_level: int, roll: float, is_guardian: bool = false) -> int:
+	var maximum := max_enemies_for_level(player_level, is_guardian)
+	if maximum <= 1:
+		return 1
+	var clamped := clampf(roll, 0.0, 0.999999)
+	if maximum == 2:
+		return 2 if clamped < OPENING_TWO_ENEMY_CHANCE else 1
+	return 1 + int(floor(clamped * float(maximum)))
 
 # Compatibility alias for verification and any tools that enumerate the
 # roster here. Cast is the single identity source used by Battle and World.
@@ -972,7 +995,7 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -3405,6 +3428,8 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if length <= 0.0:
 		_send_home(entry, 0.0)
 		return
+	if target.has("actor") and is_instance_valid(target.actor) and target.actor is Node3D:
+		player_swing_staged.emit(d, target.actor as Node3D)
 	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
 	# The rest of the clip plays while the caller gets on with the damage
 	# log, and the walk back starts when it finishes.
@@ -3450,9 +3475,13 @@ func _send_home(entry: Dictionary, delay: float) -> void:
 		return
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
-		a = entry.get("actor")
-		if a == null or not is_instance_valid(a):
+		# The fight can finish while the rest of a long attack clip is still
+		# running. Keep this untyped until validity is checked: assigning a
+		# freed Object to a typed Node3D itself emits a Godot script error.
+		var delayed_actor: Variant = entry.get("actor")
+		if delayed_actor == null or not is_instance_valid(delayed_actor):
 			return
+		a = delayed_actor as Node3D
 	var back := a.create_tween()
 	back.tween_property(a, "position", entry.get("home_pos", a.position), SWING_STEP_TIME)
 	back.parallel().tween_property(a, "rotation:y", float(entry.get("home_rot", a.rotation.y)), SWING_STEP_TIME)

@@ -95,7 +95,7 @@ func fill() -> void:
 # legal pack into a foregone conclusion. This restores only a fraction, so
 # damage still matters across the route; a level-up remains the only full
 # refill. Called by Battle after XP and mirrored by the campaign balance gate.
-func recover_after_victory(fraction: float = 0.30) -> void:
+func recover_after_victory(fraction: float = 0.40) -> void:
 	var amount := clampf(fraction, 0.0, 1.0)
 	hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
 	oxygen = minf(oxygen_max, oxygen + oxygen_max * amount)
