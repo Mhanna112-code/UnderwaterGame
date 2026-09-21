@@ -5,9 +5,6 @@ extends RefCounted
 # player or enemy. The UI, animations and AI choose a move; this class owns
 # the shared arithmetic and mutations.
 static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Dictionary:
-	if apply_self_effects:
-		_apply_self_effects(attacker, move)
-
 	var accuracy := attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(accuracy)
@@ -40,6 +37,16 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 			var duration := formula_value(attacker, effect.get("duration", {}))
 			defender.add_status(status, level, duration)
 			applied.append(_status_text(status, level, duration))
+
+	# Applied last, not before the roll above - a self_temporary cost is the
+	# price of THIS move for the attacker's NEXT turn, not a retroactive
+	# penalty on the move that's still resolving. Applying it first used to
+	# feed the reduced accuracy back into this same call's own to-hit roll
+	# and formula_value() calls - e.g. Flash Blast's duration ({"accuracy": 1})
+	# was computing off Scuba's accuracy after her own -1 self-cost already
+	# landed, so a 3-Accuracy caster got a 2-turn Blindness instead of 3.
+	if apply_self_effects:
+		_apply_self_effects(attacker, move)
 
 	var result := _result(true, damage, 0)
 	result.effects = applied

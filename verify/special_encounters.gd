@@ -10,15 +10,20 @@ func _check(ok: bool, message: String) -> void:
 		findings.append(message)
 
 func _enter_special(world: World, diver: Diver, item_id: String) -> Battle:
-	var guardian: ItemGuardian = null
-	for child in world.get_children():
-		if child is ItemGuardian and (child as ItemGuardian).item_id == item_id:
-			guardian = child as ItemGuardian
+	# No guardian node to find and trigger anymore - _offer_special_encounter()
+	# is the real entry point both a random-encounter roll
+	# (World._on_encounter_triggered()) and the special-playtest route use to
+	# open this now, so calling it directly exercises the same path a player
+	# actually takes. Site/reachability existence is verify/encounters.gd's
+	# job, not this lifecycle test's.
+	var enemy_id := "angler"
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		if String(entry.item) == item_id:
+			enemy_id = String(entry.get("enemy", "angler"))
 			break
-	_check(guardian != null, "guarded site was not built")
-	if guardian == null:
-		return null
-	guardian.triggered.emit(item_id)
+	world._pending_guardian_enemy_id = enemy_id
+	world._offer_special_encounter(item_id)
 	_check(world.special_encounter_prompt.visible, "chooser did not open")
 	world.special_encounter_prompt.diver_chosen.emit(diver.model_name)
 	await process_frame

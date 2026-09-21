@@ -1,31 +1,28 @@
 # Is there anywhere to go, and does going there work?
 #
-# Two things this covers, and they used to be one tangled thing.
-#
-# The dive site has two guarded items. Every part of that was built and
-# wired: sonar reveals a spot once you are close enough (diver.gd), the
-# minimap marks it or points at it (mini_map.gd), the guardian is a finished
-# class, and winning its fight grants the item. The only missing piece was
-# the six lines that put a guardian in the water, and they were present but
-# wrapped in a triple-quoted string, which GDScript parses as a string
-# literal and Godot never warns about. So the function ran and built
-# nothing, for weeks, and the map had nothing in it to swim toward. See #45.
-#
-# Meanwhile the half that WAS switched on handed you a key item for winning
-# any random encounter that happened to roll inside an unmarked ten metre
-# circle. That is gone. An encounter is an encounter; the item is behind the
-# guardian.
+# The dive site has two guarded items - no fixed guardian statue to swim
+# into anymore (see game/item_guardian.gd's own header comment for why):
+# sonar reveals a spot's red circle once you're close enough (diver.gd),
+# the minimap marks it or points at it (mini_map.gd), and an ordinary
+# random encounter rolled inside that circle now has a real (not
+# guaranteed) chance of opening the special encounter for that item instead
+# of a normal fight (World._on_encounter_triggered()). Outside the circle,
+# not yet revealed, or already claimed, an encounter there is exactly as
+# ordinary as one in open water.
 #
 # Usage: godot --headless --path . --script verify/encounters.gd
 extends SceneTree
 
-var world: Node3D
+var world: World
 var findings: Array = []
 var frames := 0
-var stage := 0
-var cases: Array = []
-var at := -1
-var expect_reward := ""
+
+# High enough that a run of misses in a row is unremarkable, low enough this
+# doesn't hang if the gate really did regress to "never" - at
+# World.GUARDED_ENCOUNTER_CHANCE (0.35), the odds of this many misses in a
+# row by chance alone are effectively zero, so hitting the cap means a real
+# regression, not bad luck.
+const MAX_ATTEMPTS := 200
 
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
@@ -39,30 +36,16 @@ func _process(_d: float) -> bool:
 		return false
 	if frames == 2:
 		_report_encounter_rate()
-		_check_spawned()
 		_check_spots_are_reachable()
 		# The first tutorial route intentionally suppresses random encounters.
 		# Complete that gate for this ordinary-encounter test rather than
 		# treating the documented onboarding contract as a regression.
 		world._intro_active = false
-		# Ordinary encounters first: open water, and then standing right on
-		# a guarded spot, which must still be an ordinary encounter.
-		cases.append({"at": Vector3(0.0, 2.0, 0.0), "what": "open water", "reward": "", "kind": "encounter"})
-		for s in ItemGuardian.spots():
-			cases.append({"at": s.at as Vector3, "what": "the %s spot" % String(s.item),
-				"reward": "", "kind": "encounter"})
-		# Then walking into each guardian, which must not be ordinary.
-		for s in ItemGuardian.spots():
-			cases.append({"at": s.at as Vector3, "what": "the %s guardian" % String(s.item),
-				"reward": String(s.item), "enemy": String(s.get("enemy", "angler")), "kind": "guardian"})
+		_check_open_water_is_ordinary()
+		_check_unrevealed_spot_is_ordinary()
+		_check_claimed_spot_stays_ordinary()
+		call_deferred("_run_probabilistic_checks")
 		return false
-
-	if at >= 0:
-		_check_result()
-	at += 1
-	if at >= cases.size():
-		return _report()
-	_run(cases[at] as Dictionary)
 	return false
 
 # The bug that started all of this: the spawner ran and built nothing.
@@ -85,39 +68,6 @@ func _report_encounter_rate() -> void:
 		or not is_equal_approx(d.encounter_chance, 0.5):
 		findings.append("ENCOUNTER TUNING IGNORED: Marc's tested 8-16 m / 50%% values were replaced with %.0f-%.0f m / %.0f%%" % [
 			d.min_encounter_distance, d.max_encounter_distance, d.encounter_chance * 100.0])
-
-func _check_spawned() -> void:
-	var guardians: Array = []
-	var decoys: Array = []
-	for c in world.get_children():
-		if c is ItemGuardian:
-			guardians.append(String((c as ItemGuardian).item_id))
-		elif c is Goblin:
-			decoys.append(c as Goblin)
-	print("built: %d guardian(s) %s, %d decoy(s)" % [guardians.size(), guardians, decoys.size()])
-	if guardians.size() != ItemGuardian.spots().size():
-		findings.append("NOTHING TO SWIM TO: %d guardians in the water, expected %d" % [
-			guardians.size(), ItemGuardian.spots().size()])
-	if decoys.size() < guardians.size():
-		findings.append("UNGUARDED: %d guardians but only %d visible enemies beside them" % [
-			guardians.size(), decoys.size()])
-	for entry_value in ItemGuardian.spots():
-		var entry := entry_value as Dictionary
-		var closest: Goblin
-		var closest_distance := INF
-		for decoy_value in decoys:
-			var decoy := decoy_value as Goblin
-			var distance := decoy.global_position.distance_to(entry.at as Vector3)
-			if distance < closest_distance:
-				closest = decoy
-				closest_distance = distance
-		var expected_enemy := String(entry.get("enemy", "angler"))
-		# Guardians sit 3.22 m off their artifacts so the player can approach the
-		# pickup without spawning inside the enemy.  Four metres is close enough
-		# to prove this is the site guardian, not a detached review-only actor.
-		if closest == null or closest_distance > 4.0 or closest.enemy_id() != expected_enemy:
-			findings.append("REAL WORLD GUARDIAN: %s decoy is %s at its reachable artifact site — guards against a Swordfish that only exists in a review URL (got %s at %.2f m)" % [
-				String(entry.item), expected_enemy, closest.enemy_id() if closest != null else "none", closest_distance])
 
 # A spot in clear water you cannot reach is not a destination. The first
 # pair of coordinates sat inside rocks; the second pair I picked sat behind
@@ -146,67 +96,109 @@ func _check_spots_are_reachable() -> void:
 		if not blocked.is_empty():
 			findings.append("WALLED OFF: nothing can swim straight from the start to the %s spot" % String(entry.item))
 
-func _run(spot: Dictionary) -> void:
+func _reset_encounter_state() -> void:
 	if world.battle != null:
 		world.battle.free()
 		world.battle = null
 	world.battling = false
 	world._pending_reward_item = ""
-	expect_reward = String(spot.reward)
-	var d: Diver = world.divers[world.active]
-	d.position = spot.at as Vector3
-	if String(spot.kind) == "encounter":
-		d.encounter_triggered.emit()
-	else:
-		# Walk into it the way a player does, rather than calling the
-		# handler: a guardian whose Area3D never fires is exactly the bug
-		# this is here to catch.
-		d.force_update_transform()
-		for c in world.get_children():
-			if c is ItemGuardian and (c as ItemGuardian).item_id == expect_reward:
-				(c as Area3D).body_entered.emit(d)
-				break
-		# Guardian entry now deliberately opens Marc's chooser. Drive the
-		# public selection signal so this gate verifies the full path from
-		# physical Area3D to one-enemy, correctly rewarded battle.
-		if world.special_encounter_prompt.visible:
-			world.special_encounter_prompt.diver_chosen.emit(d.model_name)
+	world._special_encounter_item = ""
+	if world.special_encounter_prompt.visible:
+		world.special_encounter_prompt.close()
+	# This script IS the SceneTree (extends SceneTree) - `paused` directly,
+	# not get_tree().paused (there is no get_tree() to call from here).
+	paused = false
 
-func _check_result() -> void:
-	var spot: Dictionary = cases[at] as Dictionary
+func _trigger_encounter_at(pos: Vector3) -> Diver:
+	_reset_encounter_state()
+	var d: Diver = world.divers[world.active]
+	d.position = pos
+	d.encounter_triggered.emit()
+	return d
+
+func _expect_ordinary(what: String) -> void:
 	var battles := 0
-	var built_battle: Battle = null
 	for c in world.get_children():
 		if c is Battle:
 			battles += 1
-			built_battle = c as Battle
-	var got := String(world._pending_reward_item)
-	print("%-28s %d battle(s), reward %s" % [
-		String(spot.what), battles, got if got != "" else "none"])
-	if battles == 0:
-		findings.append("NO FIGHT: %s started nothing at all" % String(spot.what))
-	elif battles > 1:
-		findings.append("STACKED FIGHTS: %s started %d battle screens" % [String(spot.what), battles])
-	if got != expect_reward:
-		findings.append("WRONG REWARD: %s is worth '%s', expected '%s'" % [
-			String(spot.what), got, expect_reward])
-	if built_battle != null:
-		var enemy_count := built_battle.enemies.size()
-		if String(spot.kind) == "guardian" and enemy_count != 1:
-			findings.append("GUARDIAN PACK: one visible guardian became %d combat enemies" % enemy_count)
-		elif String(spot.kind) == "encounter" and enemy_count > Battle.max_enemies_for_level(1):
-			findings.append("OPENING PACK: level 1 rolled %d enemies, max is %d" % [
-				enemy_count, Battle.max_enemies_for_level(1)])
-		if String(spot.kind) == "guardian" and enemy_count == 1:
-			var actor := (built_battle.enemies[0] as Dictionary).actor as Goblin
-			var expected_enemy := String(spot.get("enemy", "angler"))
-			if actor == null or actor.enemy_id() != expected_enemy:
-				findings.append("REAL WORLD GUARDIAN: %s trigger builds %s battle — guards against map/battle identity drift (got %s)" % [
-					String(spot.reward), expected_enemy, actor.enemy_id() if actor != null else "none"])
+	if battles != 1:
+		findings.append("EXPECTED ORDINARY FIGHT: %s produced %d battle(s), not exactly one" % [what, battles])
+	if world.special_encounter_prompt.visible:
+		findings.append("UNEXPECTED SPECIAL ENCOUNTER: %s opened the diver-choice prompt instead of an ordinary fight" % what)
 
-func _report() -> bool:
+func _check_open_water_is_ordinary() -> void:
+	_trigger_encounter_at(Vector3(0.0, 2.0, 0.0))
+	_expect_ordinary("open water")
+
+# Standing right on a guarded spot that sonar has never revealed must still
+# be an ordinary encounter - discovery is sonar's job, not proximity alone.
+func _check_unrevealed_spot_is_ordinary() -> void:
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		world.revealed_key_items.clear()
+		world.key_items.clear()
+		_trigger_encounter_at(entry.at as Vector3)
+		_expect_ordinary("the unrevealed %s spot" % String(entry.item))
+
+# Already claimed (in key_items) must stay ordinary too, regardless of
+# revealed_key_items - nothing left to win there.
+func _check_claimed_spot_stays_ordinary() -> void:
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		var item_id := String(entry.item)
+		world.revealed_key_items.assign([item_id])
+		world.key_items.assign([item_id])
+		_trigger_encounter_at(entry.at as Vector3)
+		_expect_ordinary("the already-claimed %s spot" % item_id)
+	world.key_items.clear()
+
+# The one probabilistic case - retries until GUARDED_ENCOUNTER_CHANCE rolls
+# true or MAX_ATTEMPTS is exhausted. Runs as its own deferred pass (not
+# inline in frame 2) so nothing here has to fight the SceneTree's own
+# _process cadence for the awaits _on_special_encounter_diver_chosen()'s
+# battle construction needs.
+func _run_probabilistic_checks() -> void:
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		var item_id := String(entry.item)
+		var expected_enemy := String(entry.get("enemy", "angler"))
+		var opened := false
+		var d: Diver
+		for attempt in range(MAX_ATTEMPTS):
+			world.revealed_key_items.assign([item_id])
+			world.key_items.clear()
+			d = _trigger_encounter_at(entry.at as Vector3)
+			if world.special_encounter_prompt.visible and world._special_encounter_item == item_id:
+				opened = true
+				break
+		if not opened:
+			findings.append("NEVER OPENS: %d attempts inside the revealed %s circle never opened the special encounter" % [MAX_ATTEMPTS, item_id])
+			continue
+		world.special_encounter_prompt.diver_chosen.emit(d.model_name)
+		await process_frame
+		await process_frame
+		var built_battle: Battle = null
+		var battles := 0
+		for c in world.get_children():
+			if c is Battle:
+				battles += 1
+				built_battle = c as Battle
+		if built_battle == null:
+			findings.append("NO FIGHT: revealed %s circle opened the special encounter but built no battle" % item_id)
+			continue
+		if battles > 1:
+			findings.append("STACKED FIGHTS: revealed %s circle started %d battle screens" % [item_id, battles])
+		if built_battle.enemies.size() != 1:
+			findings.append("GUARDIAN PACK: %s special encounter built %d enemies, expected 1" % [item_id, built_battle.enemies.size()])
+		else:
+			var actor := (built_battle.enemies[0] as Dictionary).actor as Goblin
+			if actor == null or actor.enemy_id() != expected_enemy:
+				findings.append("REAL WORLD GUARDIAN: %s special encounter builds %s — guards against map/battle identity drift (got %s)" % [
+					item_id, expected_enemy, actor.enemy_id() if actor != null else "none"])
+	_report()
+
+func _report() -> void:
 	for f in findings:
 		print("FINDING  " + f)
 	print("ENCOUNTERS: clean" if findings.is_empty() else "ENCOUNTERS: %d finding(s)" % findings.size())
 	quit(0 if findings.is_empty() else 1)
-	return true

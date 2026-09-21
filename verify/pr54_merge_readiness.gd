@@ -63,8 +63,13 @@ func _identities_match_in_world_and_battle() -> void:
 	for i in range(world.divers.size()):
 		world.active = i
 		world._update_hud()
+		# The HUD's first line used to be "Name  (height m)" (trailing text
+		# after a space) - it's just the bare name now (see
+		# World._update_hud()), so this checks for an exact match rather
+		# than a "name followed by a space" prefix that nothing produces
+		# anymore.
 		var first_line := String(world.hud.text).split("\n")[0]
-		if not first_line.begins_with(expected[i] + " "):
+		if first_line != expected[i]:
 			findings.append("WORLD NAME %d: expected %s, got %s" % [i, expected[i], first_line])
 
 	var battle := Battle.new()

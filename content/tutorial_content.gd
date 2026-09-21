@@ -20,12 +20,8 @@ const GENERAL_PAGES: Array[Dictionary] = [
 		"body": "A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.",
 	},
 	{
-		"title": "Damage: Attack vs. Defense",
-		"body": "Hits do move power + your Strength (STR in the left stats panel) minus the target's Defense (DEF in the right stats panel), straight off the target's HP. In this case, the attacker's strength equals the target's defense so the attack will only deal its base (1) power.",
-	},
-	{
 		"title": "Every Other Stat",
-		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.",
+		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks. What Strength, Defense, Agility, Accuracy, and Evasion each actually do is covered in the Stats section of the Combat Help tab in the Esc menu out in the world - and often right on the attack itself, in its own hover tooltip.",
 	},
 	{
 		"title": "Special Encounters",
@@ -50,10 +46,74 @@ static func page_body(title: String) -> String:
 			return String(page.body)
 	return ""
 
+# One entry per combat stat - shown as its own "Stats" section in the
+# Combat Help tab (game/inventory_menu.gd's Esc-menu pause screen), and
+# (see battle.gd's _move_tooltip_text()) folded into the hover tooltip of
+# any move whose formula deals damage, since every damaging hit is reduced
+# by the target's Defense the same way regardless of which of the
+# attacker's own stats fed its raw number. Used to live as prose inside
+# GENERAL_PAGES's own "Damage: Attack vs. Defense"/"Dodging: Accuracy vs.
+# Evasion" pages, duplicating whatever a status-effect tooltip or the F1
+# book already said - one glossary entry per stat instead, so a definition
+# only ever has to be right in one place.
+const STAT_GLOSSARY: Array[Dictionary] = [
+	{
+		"title": "HP",
+		"body": "Health. A fight ends the instant either every party member or every enemy reaches 0.",
+	},
+	{
+		"title": "Strength (STR)",
+		"body": "Added to a move's base power for its raw damage number, before the target's Defense reduces it.",
+	},
+	{
+		"title": "Defense (DEF)",
+		"body": "Subtracted from an incoming hit's raw damage (base power plus the attacker's Strength) before it reaches HP.",
+	},
+	{
+		"title": "Agility (AGI)",
+		"body": "Decides turn order - whoever has the highest goes first each round, and the order updates immediately if a move changes it mid-round.",
+	},
+	{
+		"title": "Accuracy (ACC)",
+		"body": "A hit lands only if it's strictly greater than the defender's current Evasion.",
+	},
+	{
+		"title": "Evasion (EVA)",
+		"body": "A pool spent down by a successful dodge, by however much Accuracy it just beat. It only refills at the start of that combatant's own next turn.",
+	},
+]
+
+# Case-insensitive-by-construction lookup (titles here are always this
+# table's own literal strings) - battle.gd's _move_tooltip_text() uses this
+# to fold the Strength/Defense entries into any damage-dealing move's own
+# hover tooltip, rather than only being reachable through the Esc menu.
+static func stat_glossary_body(title: String) -> String:
+	for entry in STAT_GLOSSARY:
+		if String(entry.get("title", "")) == title:
+			return String(entry.get("body", ""))
+	return ""
+
 # One line per special-encounter ability, read on the "Choose who goes"
 # carousel next to whichever diver is currently selected - kept here
 # rather than duplicated in special_encounter_prompt.gd so the wording
 # only has to be right in one place.
+# One line per world ability/passive - shown in CharacterAbilityPopup
+# (character_ability_popup.gd) right after the tutorial fight, one per
+# diver, when world.gd's _show_ability_popups() first walks the party.
+# Distinct from ABILITY_BLURBS below: that one describes the special-
+# encounter minigame's own reflex-test version of an ability, this one
+# describes what pressing E (or Q, for the sonar passive) actually does
+# while exploring - a different context with a different payoff, read
+# straight out of diver.gd's _grapple()/_shockwave()/_swap()/sonar handling
+# rather than guessed at (same "never describe a mechanic wrong" rule as
+# GENERAL_PAGES above).
+const WORLD_ABILITY_BLURBS := {
+	"swap": "Instantly trades places with another party member - press E, cycle who with Left/Right, confirm with Enter. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
+	"grapple": "Press E to aim, then click to fire a beam in that direction. Pulls you to wherever it connects, but only if that point is actually a grapple anchor - firing at open water or a wall does nothing.",
+	"shockwave": "Press E to fire instantly in every direction at once - no aiming needed. Breaks any nearby obstacle that's built to be shockwaved open.",
+	"sonar": "Toggled with Q, not E - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
+}
+
 const ABILITY_BLURBS := {
 	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
 	"grapple": "In the encounter: click to capture the mouse, aim at the glowing weak spot, and left-click to grapple it. Each incoming rock needs two weak-spot hits before impact.",
@@ -107,7 +167,7 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 	},
 	{
 		"title": "Bleed",
-		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, then fades after 3 turns. Another Bleed hit adds to the stack instead of replacing it. Scuba Stabbing applies 1 plus the caster's Strength.",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, then fades after 3 turns. Another Bleed hit only adds to that damage stack - it does not restart the 3-turn clock, so a bleed about to expire won't get more time from a fresh hit, just a harder tick before it does. Scuba Stabbing applies 1 plus the caster's Strength.",
 	},
 	{
 		"title": "Poison",

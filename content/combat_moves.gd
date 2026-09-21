@@ -75,6 +75,7 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 	if not move.has("formula"):
 		return _resolved_legacy_hint(stats, move)
 	var parts: Array[String] = []
+	var has_status := false
 	var damage := CombatRules.formula_value(stats, move.get("formula", {}))
 	if damage > 0:
 		parts.append("%d Damage%s" % [damage, " all" if String(move.get("target", "")) == "all_enemies" else ""])
@@ -92,17 +93,24 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 				# move button has no room for "Status Effect: 2 Bleed for 3
 				# turns" without clipping, and the exact number is already
 				# one hover away in that same tooltip.
+				has_status = true
 				var level := CombatRules.formula_value(stats, effect.get("level", {}))
 				parts.append("Status Effect: %d %s" % [level, String(effect.get("status", "Effect")).capitalize()])
 			"self_temporary":
-				# "for 1 turn" dropped from here - self_temporary is always
-				# exactly 1 turn by design, never variable, so it's constant
-				# filler on the button. Fine alone (Axe Kick/Multiple Knee
-				# Combo already fit either way), but combined with a
-				# "status" line on the same move (Flash Blast) the two
-				# together ran well past the button's width. The duration
-				# itself isn't lost - it's in the "Self Cost" hover tooltip
-				# (see TutorialContent.EFFECT_KIND_EXPLANATIONS).
+				# Dropped from the button entirely when a "status" part is
+				# also present on the same move (Flash Blast) - even with
+				# "for 1 turn" already trimmed, "Status Effect: 2 Blindness"
+				# plus a cost part still ran past the fixed-width button and
+				# got clip_text-truncated (see _menu_button()'s clip_text,
+				# which clips instead of wrapping). The status effect is the
+				# half worth the on-button real estate; the self cost is
+				# still fully explained in the "Self Cost" hover tooltip (see
+				# TutorialContent.EFFECT_KIND_EXPLANATIONS) and still applies
+				# mechanically either way. Axe Kick/Multiple Knee Combo have
+				# no status effect on the same move, so their self cost still
+				# shows on the button as before.
+				if has_status:
+					continue
 				var costs: Array[String] = []
 				var accuracy := int(effect.get("accuracy", 0))
 				var evasion := int(effect.get("evasion", 0))
@@ -133,7 +141,18 @@ static func _resolved_legacy_hint(stats: CombatantStats, move: Dictionary) -> St
 		parts.append("%s -%d" % [debuff.left(3).to_upper(), int(move.get("amount", 0))])
 	elif int(move.get("power", 0)) > 0:
 		parts.append("%d Damage" % (int(move.power) + stats.strength))
-	var flavor := String(move.get("hint", ""))
-	if flavor != "":
-		parts.append(flavor)
+	# Flavor text is skipped for every debuff move - every one of them
+	# ("Lowers a target's defense", "Lowers accuracy", ...) just restates
+	# the "XXX -N" part already added above in prose, so it was pure length
+	# with no new information - and that length is exactly what was pushing
+	# the appended "- N O2" oxygen cost (see _populate_move_menu()) past the
+	# fixed-width move button's clip_text cutoff, e.g. Weaken's trailing
+	# "O2" getting clipped down to just "O". Power-based moves keep their
+	# flavor text (e.g. "Nearly unmissable") since it's the only place
+	# acc_mod's effect is communicated at all - this function never surfaces
+	# acc_mod as a number the way it does power/debuff amounts.
+	if debuff == "":
+		var flavor := String(move.get("hint", ""))
+		if flavor != "":
+			parts.append(flavor)
 	return " • ".join(parts)

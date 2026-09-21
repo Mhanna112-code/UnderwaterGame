@@ -61,8 +61,9 @@ const ITEMS := {
 # repetition (same trick Goblin.jitter_pct's callers use elsewhere: no
 # separate weight table, just how many times an id appears) so a break
 # usually pays out something small and reliable, occasionally something
-# better. Key items are deliberately absent - those only ever come from a
-# guardian fight (see world.gd's _build_item_guardians()), never luck.
+# better. Key items are deliberately absent - those only ever come from
+# winning a special encounter for a revealed guarded item (see world.gd's
+# _on_encounter_triggered()), never luck.
 const RANDOM_DROP_TABLE := [
 	"potion", "potion", "potion", "potion",
 	"oxygen_cell", "oxygen_cell",

@@ -107,8 +107,6 @@ var _showing_save_prompt := false
 var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
-# Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
-const PLINTH_TOP := 0.7
 
 var key_items: Array[String] = []
 
@@ -118,13 +116,6 @@ var key_items: Array[String] = []
 # key_items, not per-diver, and never cleared except implicitly by an id
 # leaving this "revealed but unclaimed" state once it's actually claimed.
 var revealed_key_items: Array[String] = []
-
-# Every guardian _build_item_guardians() placed, as {item, guardian, decoy} -
-# read each frame by _update_item_guardian_visibility() so a guardian (and
-# its decorative decoy) only actually renders once sonar has revealed its
-# item id into revealed_key_items above. Before that, discovery is sonar's
-# job alone - swimming past one blind should show nothing to look at.
-var _item_guardians: Array[Dictionary] = []
 
 # Every persistable world object (breakable rocks, the entrance blockade -
 # see _build_breakable_rocks()/_build_highway()) that's already been
@@ -173,11 +164,27 @@ var title_screen: TitleScreen
 var game_over_screen: GameOverScreen
 var title_layer: CanvasLayer
 
-# Guardian encounters are opt-in and let the player choose which diver's
-# ability minigame to face. The guardian nodes stay in the world until a
-# win, so declining or losing cannot silently delete the site's content.
+# Special encounters (the solo-diver ability minigame) are opt-in - the
+# player chooses which diver's ability to face it with. See
+# _on_encounter_triggered() for what can open this now: an ordinary random
+# encounter that happens to roll within a revealed key item's radius has a
+# chance of opening this instead of a normal fight, rather than needing a
+# fixed guardian statue standing at a specific spot to walk into.
 var special_encounter_prompt: SpecialEncounterPrompt
 var tutorial_book: TutorialBook
+# Shown in place of the old immediate heal-and-return on a tutorial loss -
+# see _on_battle_finished()'s "lost" branch and _on_tutorial_loss_retry()/
+# _on_tutorial_loss_exit() below.
+var tutorial_result_popup: TutorialResultPopup
+
+const SLOT_SCENE := preload("res://slot.tscn")
+# One Slot (see slot.gd) per diver, built once in _ready() by
+# _build_diver_slots() - purely a HUD anchor CharacterAbilityPopup
+# highlights while explaining that diver's world ability, same index order
+# as `divers`. CharacterAbilityPopup itself needs no instancing here - it's
+# an autoload singleton (project.godot's [autoload] section), reached
+# directly by its global name in _show_ability_popups() below.
+var _diver_slots: Array = []
 # Shown once on a genuinely new save (_on_title_new_game()) instead of the
 # tutorial book auto-opening there - see IntroCrawl's own header comment.
 # The tutorial book itself is untouched: F1 (this file's own
@@ -187,24 +194,24 @@ var _special_encounter_item := ""
 var _special_encounter_diver: Diver
 var _special_encounter_pre_hp := 0
 var _special_encounter_pre_oxygen := 0.0
-var _special_guardian: ItemGuardian
-var _special_guardian_decoy: Goblin
+# Which enemy species the special encounter's closing swing (and the real
+# battle if the diver picks to fight it out) should use - set right before
+# _offer_special_encounter() from whichever guarded site's radius the
+# triggering encounter rolled inside (see _on_encounter_triggered()), same
+# per-site mapping (Angler at shallows, Swordfish Duelist at trench)
+# Sites.guarded() has always carried.
 var _pending_guardian_enemy_id := "angler"
 
-# Set right before a guardian fight starts (see _on_item_guardian_triggered
-# ()), read once in _on_battle_finished() and cleared immediately after -
-# "" means an ordinary random encounter, nothing to hand out on a win.
+# Set right before a special encounter opens for a guarded item (see
+# _on_encounter_triggered()), read once in _on_battle_finished() and cleared
+# immediately after - "" means an ordinary random encounter, nothing to hand
+# out on a win.
 var _pending_reward_item := ""
 
 # True only during the isolated ?boss=1 review route. It never writes a
 # save and returns to the title after the result, so repeatedly testing
 # Tethys cannot damage a real playthrough.
 var _boss_playtest_active := false
-# The separate query-only artifact route never writes a save or grants its
-# item. It is a review tool for the second guardian asset, not a shortcut in
-# a normal run.
-var _guardian_playtest_active := false
-var _guardian_playtest_site := ""
 
 # Isolated ?special=1 review route. It opens the real guardian chooser and
 # battle/minigame dispatcher but never grants an item or alters a save.
@@ -372,6 +379,42 @@ func _on_title_new_game(slot: int) -> void:
 		await intro_crawl.finished
 	$HUD.visible = true
 	get_tree().paused = false
+	# Covers the plain --skip-tutorial/?skip_tutorial=1 route: skip_tutorial_
+	# for_test was already true before _ready() ever rendered the light beam
+	# (see the block right after _build_diver_slots()), so a player clicking
+	# the ordinary "New Game" button still never gets the scripted first
+	# fight. Since that fight is what normally triggers _show_ability_popups()
+	# (via _on_battle_finished()), it has to fire from here instead - this is
+	# the actual moment a skipped-tutorial game truly begins.
+	if skip_tutorial_for_test:
+		call_deferred("_show_ability_popups")
+
+# The "New Game (Skip Tutorial)" title-screen button - same idea as
+# --skip-tutorial, reachable without configuring a command-line arg. Unlike
+# that flag, this fires from a button press well after _ready() already
+# rendered the light beam/intro arrow assuming a normal tutorial run (only
+# _tutorial_skip_requested() is checked that early), so this has to undo
+# that setup itself before handing off to the same _on_title_new_game() flow
+# every other new game goes through - reusing it rather than duplicating its
+# save/intro-crawl/HUD handling.
+func _on_title_skip_tutorial(slot: int = 0) -> void:
+	skip_tutorial_for_test = true
+	# Otherwise _on_title_new_game() below still plays the full intro-crawl
+	# narrative cutscene first, same as an ordinary New Game - every other
+	# playtest button (Boss/Guardian/Special/Spell) jumps straight into
+	# gameplay with none of that, and this one silently not matching them
+	# reads as "the button doesn't work" rather than "there's a cutscene
+	# playing first."
+	skip_intro_for_test = true
+	if is_instance_valid(light_beam):
+		light_beam.queue_free()
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.queue_free()
+	_intro_active = false
+	_camera_look_override = null
+	_first_encounter_started = true
+	_first_encounter_done = true
+	await _on_title_new_game(slot)
 
 func _on_title_load_game(slot: int) -> void:
 	_current_slot = slot
@@ -388,27 +431,12 @@ func _on_title_boss_playtest() -> void:
 	get_tree().paused = false
 	call_deferred("_start_battle", "", true)
 
-func _on_title_guardian_playtest() -> void:
-	var site := Sites.by_id(_guardian_playtest_site)
-	if site.is_empty() or String(site.get("item", "")).is_empty():
-		return
-	_current_slot = -1
-	_guardian_playtest_active = true
-	title_screen.close()
-	$HUD.visible = true
-	get_tree().paused = false
-	call_deferred("_start_battle", String(site.item), false, String(site.get("enemy", "angler")))
-
 func _on_title_special_playtest() -> void:
 	_current_slot = -1
 	_special_playtest_active = true
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
-	# The review route deliberately has no live guardian reference: finishing
-	# it must not remove world content or award the Current Pearl.
-	_special_guardian = null
-	_special_guardian_decoy = null
 	_offer_special_encounter("current_pearl")
 
 # Drops straight into ordinary free-roam (no battle, no tutorial - see
@@ -438,25 +466,25 @@ func _boss_playtest_requested() -> bool:
 		return String(search).contains("boss=1")
 	return false
 
-func _guardian_playtest_requested() -> String:
-	if OS.get_cmdline_user_args().has("--guardian-playtest-shallows"):
-		return "shallows"
-	if OS.get_cmdline_user_args().has("--guardian-playtest-trench"):
-		return "trench"
-	if OS.has_feature("web"):
-		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
-		if String(search).contains("guardian=shallows"):
-			return "shallows"
-		if String(search).contains("guardian=trench"):
-			return "trench"
-	return ""
-
 func _special_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--special-playtest"):
 		return true
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
+	return false
+
+# For quickly iterating on tutorial_result_popup's own look/copy without
+# actually needing to lose the scripted first fight every time - opens it
+# immediately once the world loads, standing in for a real tutorial loss.
+# Retry/Exit still work for real off of this (see _on_tutorial_loss_retry()/
+# _on_tutorial_loss_exit()), neither depends on an actual Battle existing.
+func _tutorial_loss_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--tutorial-loss-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("tutorial_loss=1")
 	return false
 
 func _spell_playtest_requested() -> bool:
@@ -642,6 +670,7 @@ func _ready() -> void:
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
+	_build_diver_slots()
 	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
 	# reach a save point immediately, same reason it also grants max spell
 	# points/every key item - fighting through the scripted first battle
@@ -679,20 +708,18 @@ func _ready() -> void:
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
-	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
 	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
+	title_screen.skip_tutorial_chosen.connect(_on_title_skip_tutorial)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
-	_guardian_playtest_site = _guardian_playtest_requested()
-	if not _guardian_playtest_site.is_empty():
-		var playtest_site := Sites.by_id(_guardian_playtest_site)
-		title_screen.enable_guardian_playtest("Play %s Guardian Test" % String(playtest_site.get("item", "Artifact")).capitalize())
 	if _special_playtest_requested():
 		title_screen.enable_special_playtest()
 	if _spell_playtest_requested():
 		title_screen.enable_spell_playtest()
+	if _tutorial_skip_requested():
+		title_screen.enable_skip_tutorial()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -701,6 +728,13 @@ func _ready() -> void:
 
 	tutorial_book = TutorialBook.new()
 	title_layer.add_child(tutorial_book)
+
+	tutorial_result_popup = TutorialResultPopup.new()
+	tutorial_result_popup.retry_chosen.connect(_on_tutorial_loss_retry)
+	tutorial_result_popup.exit_chosen.connect(_on_tutorial_loss_exit)
+	title_layer.add_child(tutorial_result_popup)
+	if _tutorial_loss_playtest_requested():
+		call_deferred("_show_tutorial_loss_playtest")
 
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
@@ -999,11 +1033,12 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # Every other piece of this already existed and was already wired to
 # ItemGuardian.spots(): sonar reveals a spot once you get within the minimap's
 # view radius (diver.gd's update_sonar), the minimap then draws a pulsing
-# marker for it or an arrow toward it (mini_map.gd), winning the fight grants
-# the item (_grant_reward_item), and the guardian itself is a finished class.
-# The only thing missing was the six lines that put one in the water. They
-# were here, wrapped in a triple-quoted string, which GDScript parses as a
-# string literal and Godot never warns about, so the function ran and built
+# marker for it or an arrow toward it (mini_map.gd), and winning the special
+# encounter it can now open (see _on_encounter_triggered()) grants the item
+# (_grant_reward_item). The only thing missing here originally was the six
+# lines that put a guarded site's ring/plinth in the water at all. They were
+# here, wrapped in a triple-quoted string, which GDScript parses as a string
+# literal and Godot never warns about, so the function ran and built
 # nothing. See #45.
 # Places to discover while exploring or using Maxilani's sonar.
 #
@@ -1028,64 +1063,6 @@ func _build_dive_sites() -> void:
 		site.build(d)
 		site_nodes[String(d.id)] = site
 
-	_build_item_guardians()
-
-# The guarded item stands on the plinth at the middle of its site, which is
-# what the plinth is for: the thing you came for presented rather than
-# dropped on the seabed.
-#
-# These six lines were on this branch all along, wrapped in a triple-quoted
-# string. GDScript parses that as a string literal, so the function ran and
-# built nothing and Godot never said a word, for weeks. See #45.
-func _build_item_guardians() -> void:
-	for entry in ItemGuardian.spots():
-		if key_items.has(String(entry.item)):
-			continue
-		# MODIFIED (added): the site's own berm/columns/plinth (see site.gd)
-		# are pure decoration - no CollisionShape3D anywhere in that class -
-		# so hiding them costs nothing physically. Every combat site on the
-		# map today happens to be a guarded one, which made the ring itself
-		# just as much a "there's treasure here" marker as the guardian
-		# standing on it. Folded into the same guardian/decoy visibility
-		# below (see _update_item_guardian_visibility()) so all three
-		# reveal together the instant sonar actually finds this spot.
-		var site_node: Node3D = site_nodes.get(String(entry.get("site", "")))
-		var guardian := ItemGuardian.new()
-		guardian.item_id = String(entry.item)
-		guardian.look = String(entry.get("look", "urchin"))
-		guardian.position = (entry.at as Vector3)
-		# clear of the plinth top rather than inside it, by however much
-		# this particular thing needs to balance on it
-		guardian.position.y = PLINTH_TOP + float(ItemGuardian.LIFT.get(guardian.look, 0.9))
-		add_child(guardian)
-
-		# Decorative only - the same real enemy model that will enter the
-		# guardian battle, standing beside the plinth so
-		# "something is guarding this" is visible from the rim, not just an
-		# invisible volume at the middle. No collision (see goblin.gd), so
-		# it cannot block movement or be mistaken for the trigger.
-		var enemy_id := String(entry.get("enemy", "angler"))
-		var decoy := _guardian_actor(enemy_id)
-		decoy.position = (entry.at as Vector3) + Vector3(1.8, 0.0, 0.6)
-		decoy.position.y = 0.0
-		add_child(decoy)
-
-		guardian.triggered.connect(_on_item_guardian_triggered.bind(guardian, decoy, enemy_id))
-
-		# Sonar alone reveals a guardian now. Both start hidden and
-		# _update_item_guardian_visibility() brings them into view as soon as
-		# this item's id lands in revealed_key_items. The Area3D remains live,
-		# so blindly swimming into an unrevealed site can still start its fight.
-		guardian.visible = revealed_key_items.has(String(entry.item))
-		decoy.visible = guardian.visible
-		if site_node != null:
-			site_node.visible = guardian.visible
-		_item_guardians.append({"item": String(entry.item), "guardian": guardian, "decoy": decoy, "site": site_node})
-
-func _guardian_actor(enemy_id: String) -> Goblin:
-	if enemy_id == "swordfish_duelist":
-		return SwordDuelist.new()
-	return Goblin.new()
 
 # A straight corridor out past the rest of the scattered rocks - and the
 # whole first real gate, not just scenery to swim through. In order:
@@ -1584,7 +1561,6 @@ func _physics_process(dt: float) -> void:
 	_update_banner(dt)
 	_update_save_point_prompt()
 	_check_gap_puzzle()
-	_update_item_guardian_visibility()
 	_update_wall_visibility()
 	_update_intro_sequence()
 
@@ -1753,23 +1729,6 @@ static func _piece_area_overlap(a: Vector3, b: Vector3, area_min: Vector2, area_
 		Vector3(overlap_min.x, a.y, overlap_min.y),
 		Vector3(overlap_max.x, a.y, overlap_max.y),
 	]
-
-# Keeps every still-live guardian's (and its decoy's) visibility in sync
-# with revealed_key_items - a plain re-check each frame rather than an
-# event fired from Diver.update_sonar(), since there are only ever a
-# couple of these and a claimed guardian is freed (see _on_battle_finished)
-# rather than ever needing to go back to hidden.
-func _update_item_guardian_visibility() -> void:
-	for entry in _item_guardians:
-		if not is_instance_valid(entry.guardian):
-			continue
-		var revealed := revealed_key_items.has(String(entry.item))
-		entry.guardian.visible = revealed
-		if is_instance_valid(entry.decoy):
-			entry.decoy.visible = revealed
-		var site_node: Node3D = entry.get("site")
-		if site_node != null and is_instance_valid(site_node):
-			site_node.visible = revealed
 
 func _player_dir() -> Vector3:
 	if scripted:
@@ -2098,32 +2057,32 @@ func _update_banner(dt: float) -> void:
 # a Diver rolled an encounter (see diver.gd's distance-based check). Only the
 # diver you're actually steering gets to start one - the two drifting NPCs
 # roll independently but their triggers are ignored here.
+#
+# No fixed guardian to walk into anymore (see ItemGuardian's own header
+# comment) - instead, rolling an ordinary encounter while inside a revealed
+# item's red circle (the same radius sonar's own reveal check already uses,
+# minimap.view_radius - see Diver.update_sonar()) has a real chance of
+# opening the special encounter (the solo diver ability minigame) for that
+# item instead of a normal fight. Declining or losing that special encounter
+# doesn't consume anything - the item stays unclaimed and revealed, so nothing
+# is lost by rolling into this and turning it down.
+const GUARDED_ENCOUNTER_CHANCE := 0.35
+
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active] or _intro_active:
 		return
-	# An ordinary encounter, and only an ordinary one.
-	#
-	# This used to also hand you a key item for winning a random encounter
-	# that happened to roll while you were standing inside an unmarked ten
-	# metre circle, which was the half of the guardian feature that was
-	# still switched on while the guardians themselves were not. With them
-	# built again the circle is worse than redundant: it gives away the
-	# thing the guardian is guarding, to a player who never found it.
-	#
-	# Swim into the guardian and you get the fight for the item. That is the
-	# whole point of it being somewhere.
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		var item_id := String(entry.item)
+		if key_items.has(item_id) or not revealed_key_items.has(item_id):
+			continue
+		if d.position.distance_to(entry.at as Vector3) > minimap.view_radius:
+			continue
+		if randf() < GUARDED_ENCOUNTER_CHANCE:
+			_pending_guardian_enemy_id = String(entry.get("enemy", "angler"))
+			_offer_special_encounter(item_id)
+			return
 	_start_battle()
-
-# guardian/decoy are bound at connect time (see _build_item_guardians()).
-func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin, enemy_id: String) -> void:
-	if battling:
-		return
-# Both remain in the world if the player declines or loses. They are removed
-# only after a win, so the guarded reward remains available for another try.
-	_special_guardian = guardian
-	_special_guardian_decoy = decoy
-	_pending_guardian_enemy_id = enemy_id
-	_offer_special_encounter(item_id)
 
 func _offer_special_encounter(item_id: String) -> void:
 	_special_encounter_item = item_id
@@ -2150,8 +2109,6 @@ func _on_special_encounter_cancelled() -> void:
 	special_encounter_prompt.close()
 	get_tree().paused = false
 	_special_encounter_item = ""
-	_special_guardian = null
-	_special_guardian_decoy = null
 	if _special_playtest_active:
 		_special_playtest_active = false
 		call_deferred("_show_title_screen")
@@ -2201,10 +2158,9 @@ func _on_battle_finished(result: String) -> void:
 		# in the overworld otherwise.
 		if is_instance_valid(light_beam):
 			light_beam.queue_free()
-	if _boss_playtest_active or _guardian_playtest_active:
-		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
+	if _boss_playtest_active:
+		var test_kind := "Tethys boss"
 		_boss_playtest_active = false
-		_guardian_playtest_active = false
 		_pending_reward_item = ""
 		match result:
 			"won":
@@ -2223,8 +2179,6 @@ func _on_battle_finished(result: String) -> void:
 			_special_encounter_diver.stats.oxygen = _special_encounter_pre_oxygen
 		_special_encounter_item = ""
 		_special_encounter_diver = null
-		_special_guardian = null
-		_special_guardian_decoy = null
 		_announce("Special encounter test complete.")
 		call_deferred("_show_title_screen")
 		return
@@ -2237,10 +2191,25 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 			if _pending_reward_item != "":
 				_grant_reward_item(_pending_reward_item)
+			elif was_tutorial:
+				_announce("You won! You can replay this fight any time from the Esc menu's Combat Help tab.")
 			else:
 				_announce("The enemy backs off into the dark.")
 		"fled":
 			_announce("You successfully ran away.")
+		"skipped":
+			# The "Skip Tutorial" in-battle menu option (see battle.gd's
+			# _on_skip_tutorial_pressed()) - Run itself stays disabled for the
+			# whole tutorial fight, so this is the deliberate way out of it
+			# early, same recovery a loss's own "Exit to World" choice gives
+			# rather than a separate, unique flow.
+			for d in divers:
+				var s: CombatantStats = (d as Diver).stats
+				s.hp = s.hp_max
+				s.oxygen = s.oxygen_max
+			_update_hp_bar()
+			_update_oxygen_bar()
+			_announce("Tutorial skipped. You can replay it any time from the Esc menu's Combat Help tab.")
 		"lost":
 			if was_special and _special_encounter_diver != null:
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
@@ -2250,31 +2219,113 @@ func _on_battle_finished(result: String) -> void:
 				_announce("The current sweeps you back out, unharmed but empty-handed.")
 			elif was_tutorial:
 				# A brand-new player's first-ever fight has no real save to
-				# fall back to yet - Battle._lose()'s own tutorial caption
-				# already told them losing here isn't a real setback, so this
-				# heals the whole party and returns them to the overworld
-				# instead of the normal game-over flow below.
-				for d in divers:
-					var s: CombatantStats = (d as Diver).stats
-					s.hp = s.hp_max
-					s.oxygen = s.oxygen_max
-				_update_hp_bar()
-				_update_oxygen_bar()
-				_announce("The party regroups and returns to the overworld, fully recovered.")
+				# fall back to yet, so losing here was never going to be the
+				# normal game-over flow below - now offered as an actual
+				# choice (see _on_tutorial_loss_retry()/_on_tutorial_loss_
+				# exit()) instead of unconditionally healing and returning to
+				# the world. Both handlers do their own cleanup (heal, HUD
+				# refresh, _show_ability_popups()), so this returns immediately
+				# rather than falling through to the shared cleanup below.
+				tutorial_result_popup.open(
+					"Tutorial Fight Lost",
+					"Losing here isn't a real setback - nothing has been saved yet, so there's nothing to lose by trying again. You can also replay this fight any time later from the Esc menu's Combat Help tab.",
+				)
+				return
 			else:
 				_show_game_over()
 		_:
 			_announce("You regroup and catch your breath.")
 	_pending_reward_item = ""
-	if was_special and result == "won":
-		if is_instance_valid(_special_guardian):
-			_special_guardian.queue_free()
-		if is_instance_valid(_special_guardian_decoy):
-			_special_guardian_decoy.queue_free()
 	_special_encounter_item = ""
 	_special_encounter_diver = null
-	_special_guardian = null
-	_special_guardian_decoy = null
+	if was_tutorial:
+		# Deferred, not called inline - the announcements/HP-bar updates
+		# above still need to land first, and open() itself pauses the
+		# tree, which should only happen once this whole handler (and
+		# whatever signal dispatch got it here) has actually finished.
+		call_deferred("_show_ability_popups")
+
+# Heals the party and returns to the overworld - the same recovery a
+# tutorial loss always did, just now behind an explicit "Exit to World"
+# choice (see tutorial_result_popup.open() above) rather than automatic.
+# In the real loss flow, _on_battle_finished() already freed `battle`
+# before ever opening tutorial_result_popup, so this is a no-op there. It's
+# only load-bearing for --tutorial-loss-playtest (_show_tutorial_loss_
+# playtest()), which starts a real battle to sit visibly behind the popup
+# and never goes through _on_battle_finished() at all - without this, the
+# battle scene just kept running underneath, unpaused, once the popup
+# closed, which looked like Exit/Retry doing nothing at all.
+func _free_lingering_test_battle() -> void:
+	if battle != null:
+		battle.queue_free()
+		battle = null
+		battling = false
+
+func _on_tutorial_loss_exit() -> void:
+	_free_lingering_test_battle()
+	for d in divers:
+		var s: CombatantStats = (d as Diver).stats
+		s.hp = s.hp_max
+		s.oxygen = s.oxygen_max
+	_update_hp_bar()
+	_update_oxygen_bar()
+	_announce("The party regroups and returns to the overworld, fully recovered.")
+	_pending_reward_item = ""
+	_special_encounter_item = ""
+	_special_encounter_diver = null
+	call_deferred("_show_ability_popups")
+
+# --tutorial-loss-playtest's own entry point (see
+# _tutorial_loss_playtest_requested()) - jumps straight past the title
+# screen to the exact popup a real tutorial loss opens, with the same real
+# Retry/Exit handlers behind it.
+func _show_tutorial_loss_playtest() -> void:
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	# A short real-time wait, not just call_deferred (one idle frame) - every
+	# other path that starts a real Battle only ever does so well after the
+	# world has fully settled (player walked to the light beam, etc.), and
+	# this is the one place that builds a full 3D battle scene the instant
+	# the world loads. Cheap insurance either way, though a repro session
+	# established this ISN'T what was behind an earlier string of crashes
+	# investigating this feature - a plain, code-untouched launch failed
+	# just as often in the same session (3/3), which pointed at this
+	# machine's own GPU/driver flakiness (already seen intermittently
+	# elsewhere this session), not a bug in this code path.
+	await get_tree().create_timer(1.0).timeout
+	# A real tutorial battle first, not just the plain overworld behind it -
+	# the point of this mode is seeing the popup exactly as it looks
+	# mid-fight (the popup's own open() pauses the tree right after, which
+	# freezes the battle scene in place behind it, same as a real loss would).
+	_start_battle("", false, "angler", divers, false, true)
+	call_deferred("_open_tutorial_loss_playtest_popup")
+
+func _open_tutorial_loss_playtest_popup() -> void:
+	tutorial_result_popup.open(
+		"Tutorial Fight Lost",
+		"Losing here isn't a real setback - nothing has been saved yet, so there's nothing to lose by trying again. You can also replay this fight any time later from the Esc menu's Combat Help tab.",
+	)
+
+func _on_tutorial_loss_retry() -> void:
+	_free_lingering_test_battle()
+	_replay_tutorial_battle()
+
+# The same tutorial fight _start_first_encounter() launches the first time
+# (all three divers, angler enemy, tutorial_encounter true) - reused by
+# both the "Retry" button above and the Esc menu's own replay option (see
+# inventory_menu.gd's Combat Help tab), so there's exactly one definition of
+# "what the tutorial fight actually is" rather than two copies drifting
+# apart. Heals first so a retry (or an on-demand replay well into a real
+# playthrough) always starts from a fair, undamaged state.
+func _replay_tutorial_battle() -> void:
+	for d in divers:
+		var s: CombatantStats = (d as Diver).stats
+		s.hp = s.hp_max
+		s.oxygen = s.oxygen_max
+	_update_hp_bar()
+	_update_oxygen_bar()
+	_start_battle("", false, "angler", divers, false, true)
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own
@@ -2305,6 +2356,75 @@ func _display_name(model_name: String) -> String:
 	# the stable gameplay/save identifier.
 	return Cast.display_name(model_name)
 
+# One Slot per diver, in a row along the top-left of the HUD - no icon
+# texture yet (none exists), so each Slot just renders as its own empty
+# bordered box until set_diver() is given one. Built once, right after
+# `divers` itself is populated in _ready(), since each Slot needs a live
+# Diver reference for _show_ability_popups() to read ability_id/passive_id
+# off of.
+func _build_diver_slots() -> void:
+	# Not parented into $HUD - with no icon art to actually show yet, the
+	# row just rendered as 3 blank boxes over the diver-name/controls text.
+	# Kept as unparented, invisible Slot instances instead of dropping them
+	# entirely: _show_ability_popups() still uses set_diver()/set_highlighted()
+	# on these, and neither needs the node to be in the scene tree to work -
+	# only actually showing a highlighted box on screen does, which nothing
+	# does right now anyway with the row gone. Once real icon art exists,
+	# re-parent `slot` into $HUD here instead of leaving it detached.
+	for d in divers:
+		var slot: Slot = SLOT_SCENE.instantiate()
+		slot.set_diver(d as Diver)
+		_diver_slots.append(slot)
+
+# Fired once, right after the tutorial fight's own battle screen closes and
+# control returns to the overworld (see _on_battle_finished()) - four fixed
+# CharacterAbilityPopup pages, in party order: the general world-controls
+# blurb (no Slot to highlight - it isn't about any one diver), then
+# Maxilani/Musashi/Bucky's own ability writeups. Text lives on slot.gd
+# itself (worldExplanation/maxilaniAbilityTitle/etc.) rather than here -
+# every Slot instance carries an identical copy of all four, so which one
+# they're read off doesn't matter, only _diver_slots[i] matching CAST's
+# fixed Staff_Diver/Prototype_1(1910)/Prototype_V(1922) order matters for
+# picking the right Slot to highlight per page.
+func _show_ability_popups() -> void:
+	if _diver_slots.is_empty():
+		return
+	var first: Slot = _diver_slots[0]
+	var pages: Array[Dictionary] = [
+		{"slot": null, "title": "The World Map", "body": first.worldExplanation},
+	]
+	if _diver_slots.size() > 0:
+		var maxilani: Slot = _diver_slots[0]
+		pages.append({
+			"slot": maxilani,
+			"title": maxilani.maxilaniAbilityTitle,
+			"body": "%s\n\n%s" % [maxilani.maxilaniSwapBody, maxilani.maxilaniSonarBody],
+		})
+	if _diver_slots.size() > 1:
+		var musashi: Slot = _diver_slots[1]
+		pages.append({
+			"slot": musashi,
+			"title": musashi.musashiAbilityTitle,
+			"body": musashi.musashiGrappleBody,
+		})
+	if _diver_slots.size() > 2:
+		var bucky: Slot = _diver_slots[2]
+		pages.append({
+			"slot": bucky,
+			"title": bucky.buckyAbilityTitle,
+			"body": bucky.buckyShockwaveBody,
+		})
+	# get_node("/root/...") rather than the bare autoload name - the bare
+	# global identifier only resolves when Godot boots the project the
+	# normal way (main scene + autoload pass). verify/'s gates launch
+	# headless via `--script <file>`, which runs that script as the main
+	# loop directly; under that path the GDScript compiler fails to
+	# resolve the bare name at all ("Identifier not found"), which failed
+	# world.gd's own compile and left the affected gate hanging forever
+	# with nothing left to run and no reachable quit(). The NodePath lookup
+	# is a runtime call, not a parse-time identifier, so it works either way.
+	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
+
 func _update_hud() -> void:
 	if target_selector.selecting:
 		var t := target_selector.current_target()
@@ -2317,8 +2437,7 @@ func _update_hud() -> void:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
 		return
 	var d: Diver = divers[active]
-	var line := "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
-		_display_name(d.model_name), d.height]
+	var line := "%s\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % _display_name(d.model_name)
 	if d.ability_id != "":
 		line += "  ·  E: %s" % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see

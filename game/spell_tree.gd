@@ -158,7 +158,7 @@ const SPELL_TREES := {
 				"display": "Guard Break", "cost": 2,
 				"description": "Batters through the target's guard, lowering its defense.",
 				"requires_spells": [], "requires_items": [],
-				"debuff": "defense", "amount": 3, "acc_mod": 0, "oxygen_cost": 16.0,
+				"debuff": "defense", "amount": 3, "acc_mod": 4, "oxygen_cost": 16.0,
 				"hint": "Cracks the target's defense", "text": "You batter through the target's guard",
 			},
 		},

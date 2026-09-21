@@ -1,6 +1,6 @@
-# Shown by World when a diver enters a visible artifact guardian
-# (see world.gd's _on_item_guardian_triggered()/_offer_special_encounter())
-# - two screens, only one visible at a time:
+# Shown by World when a random encounter rolls into a special encounter for
+# a revealed key item (see world.gd's _on_encounter_triggered()/
+# _offer_special_encounter()) - two screens, only one visible at a time:
 #   confirm: explains the stakes (special ability needed, a timed
 #     challenge, real treasure, no permadeath) with Enter/Not Now.
 #   select: a rotating carousel of the three divers - 3D model preview,

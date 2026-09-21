@@ -167,7 +167,7 @@ const DISPLAY_NAMES := Cast.DISPLAY_NAMES
 const BASE_MOVES := {
 	"Staff_Diver": CombatMoves.SCUBA,
 	"Prototype_1(1910)": [
-		{"name": "Precise Tap", "power": 1, "acc_mod": 9, "hint": "Nearly unmissable, light", "text": "You land a precise tap"},
+		{"name": "Precise Tap", "power": 1, "acc_mod": 9, "text": "You land a precise tap"},
 		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers a target's defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
 		{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers a target's agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
 	],
@@ -336,6 +336,13 @@ var target_menu: HFlowContainer
 var item_menu: HFlowContainer
 var attack_btn: Button
 var run_btn: Button
+# Only built for tutorial_encounter (see _build_ui()) - Run itself stays
+# disabled for the whole tutorial fight (see _start_party_turn()), so this
+# is the one way to leave it early without fighting it out or losing on
+# purpose. Ends the fight the same way choosing "Exit to World" on a real
+# loss does (heal, return, mention the Esc menu replay) - see
+# World._on_battle_finished()'s "skipped" case.
+var skip_tutorial_btn: Button
 var items_btn: Button
 var back_btn: Button
 var item_back_btn: Button
@@ -1383,6 +1390,9 @@ func _build_ui() -> void:
 		# a yellow base made those words nearly invisible.
 		_tutorial_caption.add_theme_color_override("default_color", Color.WHITE)
 		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Lets [pulse]...[/pulse] BBCode actually pulse instead of rendering as
+		# literal bracketed text - see pulse_text_effect.gd/_tutorial_show_step().
+		_tutorial_caption.install_effect(PulseTextEffect.new())
 		col.add_child(_tutorial_caption)
 
 	# Unconditional, unlike _tutorial_caption above - a level-up can happen
@@ -1400,6 +1410,7 @@ func _build_ui() -> void:
 	_levelup_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_levelup_caption.add_theme_color_override("default_color", Color.WHITE)
 	_levelup_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_levelup_caption.install_effect(PulseTextEffect.new())
 	col.add_child(_levelup_caption)
 
 	main_menu = HFlowContainer.new()
@@ -1412,6 +1423,10 @@ func _build_ui() -> void:
 	run_btn = _menu_button("Run", "Might not escape")
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
+	if tutorial_encounter:
+		skip_tutorial_btn = _menu_button("Skip Tutorial", "Ends the fight and returns to the world")
+		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
+		main_menu.add_child(skip_tutorial_btn)
 	items_btn = _menu_button("Items", "")
 	items_btn.pressed.connect(_show_items)
 	main_menu.add_child(items_btn)
@@ -1673,7 +1688,13 @@ func _on_qte_timeout() -> void:
 # stat rows included, since anchoring is bottom-up) to a different spot
 # immediately after, leaving the boxes stranded at the stale position.
 func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -> void:
-	_tutorial_caption.text = "%s\n[color=#7a8a94]Press Enter to continue[/color]" % text
+	# [pulse] (see pulse_text_effect.gd, installed on _tutorial_caption in
+	# _build_ui()) keeps this flashing right where it sits in the text flow -
+	# at the end of whatever the caption's last line is, wrapping onto its
+	# own line only if it doesn't fit, the same as any other run of text.
+	# [font_size=22] against the caption's own default (~16) is what makes
+	# it read as its own callout rather than more body text to skim past.
+	_tutorial_caption.text = "%s\n[font_size=22][pulse]Press Enter to continue[/pulse][/font_size]" % text
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
 	if on_layout_ready.is_valid():
@@ -2263,7 +2284,7 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	# for the second half of this one caption doesn't collide with its own
 	# job. _tutorial_show_step()'s own Enter-wait, just spread across two
 	# labels with the QTE preview sandwiched between them instead of one.
-	_levelup_caption.text = "The white bar sweeps across the track, and pressing X the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[color=#7a8a94]Press Enter to continue[/color]"
+	_levelup_caption.text = "The white bar sweeps across the track, and pressing X the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[font_size=22][pulse]Press Enter to continue[/pulse][/font_size]"
 	_levelup_caption.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
@@ -2320,6 +2341,14 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
+	# Run stays off for the entire tutorial fight, not just its scripted
+	# steps - _set_all_buttons(true) just re-enabled it above like every
+	# other button, and this fight is supposed to read as risk-free
+	# (Battle._lose()'s own tutorial caption says as much) rather than
+	# something a new player might reflexively flee from before ever
+	# seeing what losing here actually costs (nothing).
+	if tutorial_encounter:
+		run_btn.disabled = true
 	# Skip straight past Attack/Items/Run ONLY on the scripted diver's own
 	# turn - the tutorial's whole point there is choosing between moves,
 	# not re-discovering the top-level menu. Mech Pilot (never scripted)
@@ -2542,13 +2571,25 @@ func _populate_move_menu(actor: Dictionary) -> void:
 # carries, not just the first - Flash Blast carries both a "status" (its own
 # per-move name, Blindness) and a "self_temporary" cost, and a player
 # hovering it needs both explanations, not whichever happened to be listed
-# first in the move's own data. Returns "" for a move with nothing to
-# explain at all - a plain damage move (self-explanatory), a legacy power/
-# debuff move (those apply their debuff directly, never through
+# first in the move's own data. A damage-dealing move (formula-based with a
+# non-empty formula, or legacy with power > 0) also gets a leading "Damage"
+# section pulled from TutorialContent.STAT_GLOSSARY - Strength/Defense used
+# to be explained inline on the F1 tutorial book's own "Damage: Attack vs.
+# Defense" page, which no move's tooltip ever pointed to; now the same
+# glossary wording (also in the Esc menu's Combat Help tab) is one hover
+# away on the move that actually uses it. Returns "" only when a move has
+# no damage and nothing else to explain either - a legacy debuff move
+# (those apply their debuff directly, never through
 # CombatantStats.add_status(), so there's no STATUS_CONDITIONS entry to
-# point at either), or an effect kind with no EFFECT_KIND_EXPLANATIONS entry.
+# point at) or an effect kind with no EFFECT_KIND_EXPLANATIONS entry.
 func _move_tooltip_text(mv: Dictionary) -> String:
 	var sections: Array[String] = []
+	var deals_damage := (mv.has("formula") and not (mv.get("formula", {}) as Dictionary).is_empty()) or int(mv.get("power", 0)) > 0
+	if deals_damage:
+		sections.append("Damage\n%s %s" % [
+			TutorialContent.stat_glossary_body("Strength (STR)"),
+			TutorialContent.stat_glossary_body("Defense (DEF)"),
+		])
 	for effect_value in mv.get("effects", []):
 		var effect := effect_value as Dictionary
 		var kind := String(effect.get("kind", ""))
@@ -2688,6 +2729,14 @@ func _show_main() -> void:
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	# Reachable via move_menu's own Back button even during a scripted
+	# forced-move step (_start_party_turn() only skips straight past main_menu
+	# on the way IN via _show_moves() - Back still has no such check), which
+	# would otherwise let a player bail out of the lesson entirely instead of
+	# picking the one highlighted move it's demonstrating. Hidden rather than
+	# disabled, same as the tutorial's other "not right now" buttons.
+	if skip_tutorial_btn != null:
+		skip_tutorial_btn.visible = not _is_tutorial_scripted_turn(_acting)
 	call_deferred("_fit_panel_height")
 
 # Every effect still gets a target list rather than an immediate resolve,
@@ -4081,6 +4130,17 @@ func _lose() -> void:
 	_revert_temp_buffs()
 	finished.emit("lost")
 
+func _on_skip_tutorial_pressed() -> void:
+	if _busy:
+		return
+	_busy = true
+	_set_all_buttons(false)
+	main_menu.visible = false
+	_log("Skipping the tutorial fight.")
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_revert_temp_buffs()
+	finished.emit("skipped")
+
 func _on_run() -> void:
 	if _busy:
 		return
@@ -4121,6 +4181,8 @@ func _on_run() -> void:
 func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled
 	run_btn.disabled = not enabled
+	if skip_tutorial_btn != null:
+		skip_tutorial_btn.disabled = not enabled
 	items_btn.disabled = not enabled
 	back_btn.disabled = not enabled
 	item_back_btn.disabled = not enabled

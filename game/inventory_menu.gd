@@ -9,11 +9,16 @@
 # World.inventory now (see world.gd's _on_item_orb_collected()/
 # _grant_reward_item()), and World.use_inventory_item()/use_party_spell()
 # (called from here) are the only places those effects actually resolve.
-# "Combat Help" is pure reference, no buttons that do anything - status
-# condition writeups (see content/tutorial_content.gd's STATUS_CONDITIONS)
-# for whoever wants the full Blindness/Stun numbers again outside of a
-# fight, since the tutorial battle only ever mentions this tab exists
-# rather than reprinting the whole thing itself.
+# "Combat Help" is mostly pure reference - a Stats glossary (content/
+# tutorial_content.gd's STAT_GLOSSARY), an Effects section (TutorialContent.
+# EFFECT_KIND_EXPLANATIONS - "Self Cost"/"Evasion Reduction", the parts of a
+# move that aren't a CombatantStats status), and status condition writeups
+# (STATUS_CONDITIONS) for whoever wants the full Blindness/Stun/Flash-Blast-
+# self-cost numbers again outside of a fight. One real action button sits
+# above all of that, though: replaying the scripted first fight on demand
+# (World._replay_tutorial_battle()) - both the tutorial's own win and loss
+# screens mention it lives here, for anyone who wants to see it again or
+# missed something the first time.
 #
 # Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
 # SpellEquipUI/SavePointMenu - nothing here is scene-file based, on purpose,
@@ -86,10 +91,32 @@ func _ready() -> void:
 	_hint.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	root.add_child(_hint)
 
+	# ScrollContainer, not _list added straight to root - Combat Help's own
+	# content (Stats + Effects + Status Conditions + the Replay Tutorial
+	# Fight button) is tall enough to run past the bottom of the screen with
+	# nothing to scroll it into view, unlike Items/Party Spells which rarely
+	# have enough entries to hit this. size_flags_vertical on the scroll
+	# view (not _list itself) is what gives it a bounded height to actually
+	# scroll within, rather than just growing to fit its content like any
+	# other container would.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# A floor, not the actual size - size_flags_vertical above still lets it
+	# grow to fill whatever's left in `root` at any given resolution. This
+	# just guarantees a real reading window even if that "remaining space"
+	# calculation ever comes out smaller than expected, rather than the
+	# scroll view quietly shrinking to a sliver just because Items/Party
+	# Spells (the other two tabs sharing this same _list/scroll) rarely have
+	# enough entries to make the difference visible there.
+	scroll.custom_minimum_size = Vector2(0, 460)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+
 	_list = VBoxContainer.new()
 	_list.custom_minimum_size = Vector2(360, 0)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 6)
-	root.add_child(_list)
+	scroll.add_child(_list)
 
 func open() -> void:
 	visible = true
@@ -125,7 +152,7 @@ func _refresh_items() -> void:
 	_hint.text = "Using an item applies it to whoever you're currently steering."
 	if world == null or world.inventory.is_empty():
 		var empty := Label.new()
-		empty.text = "No items yet - shockwave a rock or claim a guardian's reward."
+		empty.text = "No items yet"
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list.add_child(empty)
 		return
@@ -155,6 +182,12 @@ func _on_use_item_pressed(item_id: String) -> void:
 		return
 	world.use_inventory_item(item_id)
 	refresh()
+
+# _start_battle() (called via _replay_tutorial_battle()) closes this menu
+# itself, same as starting any other fight - nothing extra needed here.
+func _on_replay_tutorial_pressed() -> void:
+	if world != null:
+		world._replay_tutorial_battle()
 
 # One button per living diver x their inventory-tagged spells (see
 # World._inventory_spells_for()) - disabled rather than hidden when that
@@ -228,12 +261,31 @@ func _on_target_chosen(target: Diver) -> void:
 	_mode = "spells_root"
 	refresh()
 
-# Plain reference text, no buttons - one title/body Label pair per
-# TutorialContent.STATUS_CONDITIONS entry, so a new status only ever needs
-# adding there, not here too.
+# Plain reference text, no buttons - one section heading plus a title/body
+# Label pair per entry, so a new stat/effect/status only ever needs adding
+# to its own TutorialContent table, not here too.
 func _refresh_help() -> void:
-	_hint.text = "Status conditions"
-	for entry in TutorialContent.STATUS_CONDITIONS:
+	_hint.text = "Stats, effects, and status conditions"
+	if world != null:
+		var replay_btn := Button.new()
+		replay_btn.text = "Replay Tutorial Fight"
+		replay_btn.custom_minimum_size = Vector2(340, 40)
+		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
+		_list.add_child(replay_btn)
+	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
+	var effect_entries: Array[Dictionary] = []
+	for kind in TutorialContent.EFFECT_KIND_EXPLANATIONS:
+		effect_entries.append(TutorialContent.EFFECT_KIND_EXPLANATIONS[kind] as Dictionary)
+	_add_help_section("Effects", effect_entries)
+	_add_help_section("Status Conditions", TutorialContent.STATUS_CONDITIONS)
+
+func _add_help_section(heading: String, entries: Array[Dictionary]) -> void:
+	var heading_label := Label.new()
+	heading_label.text = heading
+	heading_label.add_theme_font_size_override("font_size", 15)
+	heading_label.add_theme_color_override("font_color", Color(0.5, 0.65, 0.7))
+	_list.add_child(heading_label)
+	for entry in entries:
 		var title := Label.new()
 		title.text = String(entry.get("title", ""))
 		title.add_theme_font_size_override("font_size", 18)
