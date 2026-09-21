@@ -48,8 +48,10 @@ run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GOD
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd
 run "balance: do casual and skilled policies clear the artifact route" "$GODOT" --headless --path . --script verify/balance.gd
+run "opening packs: are first-route formation probabilities intentional" "$GODOT" --headless --path . --script verify/opening_pack_tuning.gd
 run "sites: are item locations unmarked and physically reachable" "$GODOT" --headless --path . --script verify/sites.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
+run "guardian zones: does the artifact encounter stay distinct" "$GODOT" --headless --path . --script verify/guardian_encounter_exclusion.gd
 run "intro beam: does entering its visible column start tutorial combat" "$GODOT" --headless --path . --script verify/intro_sequence.gd
 run "tutorial QTE: does the first Angler swing show and accept the timing dodge" "$GODOT" --headless --path . --script verify/tutorial_qte.gd
 run "tutorial exit: does a completed lesson win and return to world" "$GODOT" --headless --path . --script verify/tutorial_exit.gd

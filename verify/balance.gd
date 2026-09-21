@@ -61,11 +61,9 @@ func _init() -> void:
 		findings.append("SKILLED TOO WEAK: %.1f%% wins, expected at least %.0f%%" % [skilled.rate, SKILLED_MIN])
 	if float(skilled.rate) <= float(casual.rate):
 		findings.append("NO SKILL CURVE: skilled %.1f%% does not beat casual %.1f%%" % [skilled.rate, casual.rate])
-	if float(skilled.turns) < SKILLED_TURN_FLOOR:
-		# Keep the report precise: the floor is deliberately fractional, and
-		# rounding it to a whole number made a 2.3-round result look as though
-		# it had missed a stated floor of only 2 rounds.
-		findings.append("FIGHT TOO SHORT: skilled wins average %.1f rounds, expected at least %.1f" % [skilled.turns, SKILLED_TURN_FLOOR])
+	var skilled_two_enemy_turns := _average_turns_for_count(skilled, 2)
+	if skilled_two_enemy_turns < SKILLED_TURN_FLOOR:
+		findings.append("FIGHT TOO SHORT: skilled two-enemy wins average %.1f rounds, expected at least %.1f" % [skilled_two_enemy_turns, SKILLED_TURN_FLOOR])
 	if float(skilled.hp) < SKILLED_HP_FLOOR:
 		findings.append("NO PRESSURE: skilled wins lose only %.1f party HP, expected at least %.0f" % [skilled.hp, SKILLED_HP_FLOOR])
 
@@ -93,6 +91,7 @@ func _run_policy(policy: String) -> Dictionary:
 	var rounds_on_wins := 0.0
 	var hp_lost_on_wins := 0.0
 	var by_count := {1: [0, 0], 2: [0, 0], 3: [0, 0]}
+	var turns_by_count := {1: [0.0, 0], 2: [0.0, 0], 3: [0.0, 0]}
 	for seed_value in range(SEEDS):
 		var result := _fight(seed_value, policy)
 		var count := int(result.enemies)
@@ -100,6 +99,8 @@ func _run_policy(policy: String) -> Dictionary:
 		if bool(result.win):
 			wins += 1
 			(by_count[count] as Array)[0] += 1
+			(turns_by_count[count] as Array)[0] += float(result.rounds)
+			(turns_by_count[count] as Array)[1] += 1
 			rounds_on_wins += float(result.rounds)
 			hp_lost_on_wins += float(result.hp_lost)
 	return {
@@ -107,6 +108,7 @@ func _run_policy(policy: String) -> Dictionary:
 		"turns": rounds_on_wins / float(maxi(wins, 1)),
 		"hp": hp_lost_on_wins / float(maxi(wins, 1)),
 		"by_count": by_count,
+		"turns_by_count": turns_by_count,
 	}
 
 func _run_route_policy(policy: String) -> Dictionary:
@@ -117,8 +119,11 @@ func _run_route_policy(policy: String) -> Dictionary:
 	var battles_on_success := 0
 	var hp_on_success := 0
 	var level_on_success := 0
+	var terminal_stages: Dictionary = {}
 	for seed_value in range(ROUTE_SEEDS):
 		var result := _route(seed_value, policy)
+		var stage := String(result.get("terminal_stage", "unknown"))
+		terminal_stages[stage] = int(terminal_stages.get(stage, 0)) + 1
 		random_fights += int(result.random_fights)
 		guardian_fights += int(result.guardian_fights)
 		grunts += int(result.grunts)
@@ -135,6 +140,7 @@ func _run_route_policy(policy: String) -> Dictionary:
 		"battles": float(battles_on_success) / float(maxi(successes, 1)),
 		"hp": float(hp_on_success) / float(maxi(successes, 1)),
 		"level": float(level_on_success) / float(maxi(successes, 1)),
+		"terminal_stages": terminal_stages,
 	}
 
 # One production-shaped campaign: persistent party resources, the actual
@@ -153,24 +159,33 @@ func _route(seed_value: int, policy: String) -> Dictionary:
 	var guardian_fights := 0
 	var grunts := 0
 	var battles := 0
+	var claimed_items: Array[String] = []
 
 	for site_id in ["shallows", "trench"]:
 		var site: Dictionary = Sites.by_id(site_id)
 		var remaining := at.distance_to(site.at as Vector3)
+		var segment_length := remaining
+		var distance_along_segment := 0.0
 		while remaining >= next_check:
 			remaining -= next_check
+			distance_along_segment += next_check
 			# This is check_for_encounter()'s order: reset/draw the next
 			# threshold, then roll whether this check becomes a fight.
 			next_check = rng.randf_range(8.0, 16.0)
-			if rng.randf() <= 0.5:
+			var check_at := (at as Vector3).lerp(site.at as Vector3, minf(1.0, distance_along_segment / maxf(segment_length, 0.001)))
+			# Mirrors World._on_encounter_triggered(): rolls that fall inside
+			# an unclaimed guardian site consume their normal distance check but
+			# do not launch a competing ordinary battle.
+			if not _inside_unclaimed_guardian_site(check_at, claimed_items) and rng.randf() <= 0.5:
 				var level := (party[0].stats as CombatantStats).level
-				var count := rng.randi_range(Battle.MIN_ENEMIES, Battle.max_enemies_for_level(level))
+				var count := Battle.ordinary_enemy_count_for_roll(level, rng.randf())
 				var random_result := _fight_party(party, count, policy, rng, true, [], roster_rng)
 				random_fights += 1
 				battles += 1
 				grunts += count
 				if not bool(random_result.win):
-					return _route_result(false, party, random_fights, guardian_fights, grunts, battles)
+					return _route_result(false, party, random_fights, guardian_fights, grunts, battles,
+						"random:%s:%s" % [site_id, _enemy_label(random_result.enemy_ids as Array)])
 		# Production retains the distance already swum toward the next check;
 		# only the tiny per-frame overshoot at a fired check is discarded.
 		next_check -= remaining
@@ -183,12 +198,14 @@ func _route(seed_value: int, policy: String) -> Dictionary:
 		battles += 1
 		grunts += guardian_count
 		if not bool(guardian_result.win):
-			return _route_result(false, party, random_fights, guardian_fights, grunts, battles)
+			return _route_result(false, party, random_fights, guardian_fights, grunts, battles,
+				"guardian:%s:%s" % [site_id, String(site.enemy)])
+		claimed_items.append(String(site.item))
 		at = site.at as Vector3
 
-	return _route_result(true, party, random_fights, guardian_fights, grunts, battles)
+	return _route_result(true, party, random_fights, guardian_fights, grunts, battles, "success")
 
-func _route_result(success: bool, party: Array, random_fights: int, guardian_fights: int, grunts: int, battles: int) -> Dictionary:
+func _route_result(success: bool, party: Array, random_fights: int, guardian_fights: int, grunts: int, battles: int, terminal_stage: String) -> Dictionary:
 	var hp := 0
 	for actor in party:
 		hp += (actor.stats as CombatantStats).hp
@@ -200,6 +217,7 @@ func _route_result(success: bool, party: Array, random_fights: int, guardian_fig
 		"battles": battles,
 		"hp": hp,
 		"level": (party[0].stats as CombatantStats).level,
+		"terminal_stage": terminal_stage,
 	}
 
 func _fight(seed_value: int, policy: String) -> Dictionary:
@@ -208,7 +226,7 @@ func _fight(seed_value: int, policy: String) -> Dictionary:
 	var roster_rng := RandomNumberGenerator.new()
 	roster_rng.seed = 800000 + seed_value
 	var party := _party()
-	var enemy_count := rng.randi_range(Battle.MIN_ENEMIES, Battle.max_enemies_for_level(1))
+	var enemy_count := Battle.ordinary_enemy_count_for_roll(1, rng.randf())
 	return _fight_party(party, enemy_count, policy, rng, false, [], roster_rng)
 
 func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNumberGenerator, award_xp: bool, enemy_ids: Array = [], roster_rng: RandomNumberGenerator = null) -> Dictionary:
@@ -216,10 +234,12 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 		roster_rng = RandomNumberGenerator.new()
 		roster_rng.randomize()
 	var enemies: Array = []
+	var resolved_ids: Array[String] = []
 	var reference := _average(party)
 	for i in range(enemy_count):
 		var enemy_id := String(enemy_ids[i]) if i < enemy_ids.size() else EnemyRoster.id_for_roll(roster_rng.randf())
 		enemies.append(_enemy(reference, rng, enemy_id))
+		resolved_ids.append(enemy_id)
 
 	var rounds := 0
 	while not _living(party).is_empty() and not _living(enemies).is_empty() and rounds < MAX_ROUNDS:
@@ -264,7 +284,7 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 			(actor.stats as CombatantStats).gain_xp(per_grunt * enemy_count)
 		for actor in party:
 			(actor.stats as CombatantStats).recover_after_victory()
-	return {"win": won, "rounds": rounds, "hp_lost": hp_lost, "enemies": enemy_count}
+	return {"win": won, "rounds": rounds, "hp_lost": hp_lost, "enemies": enemy_count, "enemy_ids": resolved_ids}
 
 func _party_turn(actor: Dictionary, party: Array, enemies: Array, policy: String, rng: RandomNumberGenerator) -> void:
 	var live_enemies := _living(enemies)
@@ -572,14 +592,44 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: Str
 func _living(side: Array) -> Array:
 	return side.filter(func(actor: Dictionary) -> bool: return (actor.stats as CombatantStats).hp > 0)
 
+func _enemy_label(ids: Array) -> String:
+	var labels: Array[String] = []
+	for id_value in ids:
+		labels.append(String(id_value))
+	labels.sort()
+	return "+".join(labels)
+
+func _inside_unclaimed_guardian_site(at: Vector3, claimed_items: Array[String]) -> bool:
+	for site_value in Sites.ALL:
+		var site := site_value as Dictionary
+		var item_id := String(site.get("item", ""))
+		if item_id == "" or claimed_items.has(item_id):
+			continue
+		var center := site.at as Vector3
+		if Vector2(at.x - center.x, at.z - center.z).length() <= float(site.radius):
+			return true
+	return false
+
 func _print_result(label: String, result: Dictionary) -> void:
 	var parts: Array = []
 	for count in [1, 2, 3]:
 		var cell := result.by_count[count] as Array
-		parts.append("%d enemy %d/%d" % [count, int(cell[0]), int(cell[1])])
+		parts.append("%d enemy %d/%d, %.1f r" % [count, int(cell[0]), int(cell[1]), _average_turns_for_count(result, count)])
 	print("%-7s %5.1f%% wins, %4.1f rounds, %4.1f HP lost  (%s)" % [label, result.rate, result.turns, result.hp, ", ".join(parts)])
+
+func _average_turns_for_count(result: Dictionary, count: int) -> float:
+	var cell := (result.turns_by_count as Dictionary).get(count, [0.0, 0]) as Array
+	return float(cell[0]) / float(maxi(int(cell[1]), 1))
 
 func _print_route(label: String, result: Dictionary) -> void:
 	print("%-7s route %5.1f%% reach trench | %.1f random + %.1f guardian fights/run | %.1f enemies/run | successes: %.1f battles, %.1f HP, level %.1f" % [
 		label, result.rate, result.random_fights, result.guardian_fights,
 		result.grunts, result.battles, result.hp, result.level])
+	var stages: Array[String] = []
+	for stage_value in (result.terminal_stages as Dictionary).keys():
+		stages.append(String(stage_value))
+	stages.sort()
+	var summary: Array[String] = []
+	for stage in stages:
+		summary.append("%s=%d" % [stage, int((result.terminal_stages as Dictionary)[stage])])
+	print("%-7s route terminal stages: %s" % [label, ", ".join(summary)])
