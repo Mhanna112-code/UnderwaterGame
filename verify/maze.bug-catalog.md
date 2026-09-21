@@ -35,6 +35,7 @@ finished geometry and the in-motion geometry that a player sees.
 | 3 | Open then close accumulates transform drift. | Medium — repeated puzzle use eventually misaligns walls/currents. | State is retained across two separate tweens. | Round-trip transform invariant | fixed |
 | 4 | A wall follows an arc but lands at a different final transform from the designed flush target. | High — an animation-only repair regresses the static layout. | Arc motion derives a pivot from start/target transforms. | Differential final-state invariant | fixed |
 | 5 | CSGBox3D6 is corrected to the future hallway endpoint while CSGBox3D7 retains its old longitudinal coordinate, producing a staggered corridor mouth. | High — the two passage boundaries do not begin on one cross-line, so the player sees a crooked opening and later map pieces cannot connect predictably. | `_place_csgbox6_at_hallway_target()` intentionally mutates only Box6. | Captured review bug + completed-state geometry invariant | fixed |
+| 6 | A caller must infer a wall's local-axis sign from a screenshot and pass anonymous booleans to attach it, so a new hallway can silently be built off the wrong end. | High — later maze work recreates the same inaccessible or crooked route with no readable code review trail. | `_wall_endpoint(wall, true)` and `_flush_position(..., true, false)` expose local-coordinate signs instead of named spatial choices. | Geometry-query contract | fixed |
 
 ## Test plan
 
@@ -92,6 +93,24 @@ finished geometry and the in-motion geometry that a player sees.
   - Could this fail under a behavior-preserving refactor? No; it observes the
     final physical walls, not a helper or a hard-coded coordinate.
 
+### Bug #6 — anonymous local-axis wall ends
+
+- **Test type:** geometry-query contract.
+- **Description string:**
+  > `maze: named continuation query selects the physically nearest target end — guards against screenshot-derived boolean placement`
+- **What it catches:** a helper that either exposes `true`/`false` local-axis
+  choices to a caller or picks the opposite target continuation after a layout
+  changes. The test derives both legal physical continuations independently,
+  verifies the helper names the selected target end, and verifies it picks the
+  nearer one without the caller making an axis/sign decision.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; it compares the reported
+    placement with both physically valid candidates and the moving wall's
+    actual centre, rather than a hard-coded coordinate.
+  - Could this fail under a behavior-preserving refactor? No; different
+    internal transform math is acceptable so long as the named nearest
+    continuation contract stays true.
+
 ## Skipped
 
 - Full diver collision traversal during the moving wall — deferred: the
@@ -115,4 +134,9 @@ finished geometry and the in-motion geometry that a player sees.
   Box7's authored offset onto Box6's side axis fixes the offset without
   changing the `6.2005 m` clear lane; the real-diver traversal test remains
   clean.
+- **Bugs caught after this refactor:** Bug #6. The new verifier failed first
+  because `_nearest_wall_continuation()` did not exist. The replacement
+  geometry query reports both physical candidates by name and selects the
+  nearer one; it now passes for both rotating hallway walls while the existing
+  completion and motion contracts remain clean.
 - **Tests removed:** none.

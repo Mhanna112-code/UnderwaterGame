@@ -4,13 +4,52 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _horizontal_endpoint_gap(maze: MazeLevel, a: CSGBox3D, b: CSGBox3D) -> float:
+	var a_geometry: Dictionary = maze._wall_geometry(a)
+	var b_geometry: Dictionary = maze._wall_geometry(b)
+	var a_negative := a_geometry["negative_end"] as Vector3
+	var a_positive := a_geometry["positive_end"] as Vector3
+	var b_negative := b_geometry["negative_end"] as Vector3
+	var b_positive := b_geometry["positive_end"] as Vector3
 	var gap := INF
-	for a_positive in [false, true]:
-		for b_positive in [false, true]:
-			var a_end := maze._wall_endpoint(a, a_positive)
-			var b_end := maze._wall_endpoint(b, b_positive)
+	for a_end in [a_negative, a_positive]:
+		for b_end in [b_negative, b_positive]:
 			gap = minf(gap, Vector2(a_end.x, a_end.z).distance_to(Vector2(b_end.x, b_end.z)))
 	return gap
+
+# This calculation deliberately lives in the verifier, not MazeLevel: it is
+# the independent physical oracle for the public continuation query below.
+# A caller of MazeLevel must *not* need to repeat this local-axis work or
+# decide which sign means "the end I want".
+func _physical_continuation_candidates(moving: CSGBox3D, target: CSGBox3D) -> Array[Dictionary]:
+	var target_long_axis := target.global_transform.basis.x.normalized()
+	var target_half_length := target.size.x * 0.5
+	var moving_half_length := moving.size.x * 0.5
+	var negative_end := target.global_position - target_long_axis * target_half_length
+	var positive_end := target.global_position + target_long_axis * target_half_length
+	return [
+		{
+			"target_end": "negative",
+			"position": negative_end - target_long_axis * moving_half_length,
+		},
+		{
+			"target_end": "positive",
+			"position": positive_end + target_long_axis * moving_half_length,
+		},
+	]
+
+func _verify_named_nearest_continuation(maze: MazeLevel, moving: CSGBox3D, target: CSGBox3D, label: String, findings: Array[String]) -> void:
+	var result: Dictionary = maze._nearest_wall_continuation(moving, target)
+	var candidates := _physical_continuation_candidates(moving, target)
+	var nearest := candidates[0]
+	for candidate in candidates:
+		var candidate_position := candidate.position as Vector3
+		var nearest_position := nearest.position as Vector3
+		if moving.global_position.distance_squared_to(candidate_position) <= moving.global_position.distance_squared_to(nearest_position):
+			nearest = candidate
+	var result_position := result.position as Vector3
+	var nearest_position := nearest.position as Vector3
+	if result.get("target_end", "") != nearest.get("target_end", "") or result_position.distance_to(nearest_position) > 0.001:
+		findings.append("%s nearest continuation query does not name and select the physical nearest target end" % label)
 
 func _xz_rotate(vector: Vector3, yaw: float) -> Vector3:
 	var rotated := Vector2(vector.x, vector.z).rotated(-yaw)
@@ -66,12 +105,17 @@ func _run() -> void:
 	var target_b := maze.get_node("CurrentWall3") as CSGBox3D
 	var wall_6 := maze.get_node("CSGBox3D6") as CSGBox3D
 	var wall_7 := maze.get_node("CSGBox3D7") as CSGBox3D
+	var findings: Array[String] = []
 	var start_yaw_a := wall_a.rotation.y
 	var start_yaw_b := wall_b.rotation.y
 	var home_a := wall_a.global_position
 	var home_b := wall_b.global_position
-	var target_wall_a := maze._wall_flush_target(wall_a, target_a)
-	var target_wall_b := maze._wall_flush_target(wall_b, target_b)
+	# Bug #6: the test talks in named target ends and a physical nearest
+	# continuation. It does not pass any boolean local-axis sign to MazeLevel.
+	_verify_named_nearest_continuation(maze, wall_a, target_a, "CurrentWall1 → CSGBox3D", findings)
+	_verify_named_nearest_continuation(maze, wall_b, target_b, "CurrentWall2 → CurrentWall3", findings)
+	var target_wall_a: Dictionary = maze._nearest_wall_continuation(wall_a, target_a)
+	var target_wall_b: Dictionary = maze._nearest_wall_continuation(wall_b, target_b)
 	var target_position_a := target_wall_a.position as Vector3
 	var target_position_b := target_wall_b.position as Vector3
 	var target_yaw_a := float(target_wall_a.yaw)
@@ -89,7 +133,6 @@ func _run() -> void:
 	var mid_turn_b := absf(wrapf(wall_b.rotation.y - start_yaw_b, -PI, PI))
 	print("mid-swing pivot radius errors %.4f / %.4f, turns %.2f / %.2f" % [mid_radius_error_a, mid_radius_error_b, rad_to_deg(mid_turn_a), rad_to_deg(mid_turn_b)])
 	await create_timer(1.4).timeout
-	var findings: Array[String] = []
 	var turn_a := rad_to_deg(wrapf(wall_a.rotation.y - start_yaw_a, -PI, PI))
 	var turn_b := rad_to_deg(wrapf(wall_b.rotation.y - start_yaw_b, -PI, PI))
 	var gap_a := _horizontal_endpoint_gap(maze, wall_a, target_a)

@@ -1,6 +1,14 @@
 class_name MazeLevel
 extends Node3D
 
+# A wall's physical ends.  These names are intentionally kept at the API
+# boundary: callers choose a named authored exit only when the level design
+# explicitly requires one; automatic continuations never expose these signs.
+enum WallEnd {
+	NEGATIVE,
+	POSITIVE,
+}
+
 var markers: Array[Marker3D] = []
 
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
@@ -117,14 +125,19 @@ func _on_item_rock_broken(marker_name: String, spot: Vector3) -> void:
 	maze_completed.emit(marker_name)
 
 func _setup_walls():
-	_set_wall_position($CSGBox3D, $CurrentWall1, true, true)
+	# This is an authored, intentional perpendicular join: CurrentWall1 starts
+	# on CSGBox3D's positive exit with its own positive end as the anchor.  It
+	# is therefore named here instead of being encoded as `_set_...(true, true)`.
+	_attach_wall_to_perpendicular_exit(
+		$CSGBox3D, $CurrentWall1, WallEnd.POSITIVE, WallEnd.POSITIVE
+	)
 	_place_csgbox6_at_hallway_target()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
 # H-key hallway swing (_rotate_hallway_1_2()) were triggered right now,
-# using the same flush-perpendicular math (_wall_flush_target()/
-# _flush_position()) that swing itself uses to actually place CurrentWall1
+# using the same named-continuation math (_nearest_wall_continuation()) that
+# swing itself uses to actually place CurrentWall1
 # there. CurrentWall1 never has to actually swing for this to be correct -
 # this just precomputes that same hypothetical destination up front and
 # leaves CSGBox3D6 sitting there permanently, whether or not H is ever
@@ -134,10 +147,7 @@ func _place_csgbox6_at_hallway_target() -> void:
 	var wall_6: CSGBox3D = $CSGBox3D6
 	var wall_7: CSGBox3D = $CSGBox3D7
 
-	# CSGBox3D6's own rotation, set BEFORE _set_wall_position() below reads
-	# it - that function computes wall_b's "walk out to its own center"
-	# step using wall_b's CURRENT rotation.y, so this has to already be the
-	# final value or that step would use the wrong (stale) facing. One
+	# CSGBox3D6's own rotation is fixed before its placement. One
 	# more 90-degree turn off CurrentWall1's own hypothetical H-rotated yaw
 	# - the same relationship CurrentWall1 has to CSGBox3D.
 	var wall1_h_yaw: float = wall_a.rotation.y + PI * 0.5
@@ -148,19 +158,20 @@ func _place_csgbox6_at_hallway_target() -> void:
 	# reference frame: after CurrentWall1's 90-degree turn it stayed
 	# perpendicular, but its nearest edge stopped short of the wall's end.
 	# Compute the same destination CurrentWall1 will use on H, find that
-	# destination's positive/far endpoint, then place wall_6's near edge on
+	# destination's named outer endpoint, then place wall_6's near edge on
 	# that endpoint.  Everything is expressed in the rotated wall's local
 	# axes, so changing either length or initial maze orientation preserves
 	# the flush join.
 	var wall_orig = $CSGBox3D
-	var wall1_target := _wall_flush_target(wall_a, wall_orig)
+	var wall1_target: Dictionary = _nearest_wall_continuation(wall_a, wall_orig)
 	var wall1_target_yaw := float(wall1_target.yaw)
 	var wall1_target_position := wall1_target.position as Vector3
-	var wall1_forward := Basis(Vector3.UP, wall1_target_yaw).x.normalized()
-	var wall1_far_end := wall1_target_position + wall1_forward * wall_a.size.x * 0.5
-	wall_6.global_position = _flush_position_from_end(
-		wall1_far_end, wall1_forward, wall_a.size.z,
-		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, false
+	var wall1_future: Dictionary = _wall_geometry_at(wall1_target_position, wall1_target_yaw, wall_a.size)
+	var wall1_outer_end := wall1_future["positive_end"] as Vector3
+	var wall1_outward_axis := wall1_future["long_axis"] as Vector3
+	wall_6.global_position = _position_beyond_wall_end(
+		wall1_outer_end, wall1_outward_axis, wall_a.size.z,
+		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, WallEnd.NEGATIVE
 	)
 
 	# CSGBox3D7 is the opposite *static* boundary of the northbound passage,
@@ -170,7 +181,8 @@ func _place_csgbox6_at_hallway_target() -> void:
 	# preserves the authored lane width while discarding only the stale forward
 	# and vertical offsets left behind when Box6 was corrected above. Box7 never
 	# moves during H, so it cannot sweep into CurrentWall1's opened position.
-	var lane_side := wall_6.global_transform.basis.z.normalized()
+	var wall_6_geometry: Dictionary = _wall_geometry(wall_6)
+	var lane_side := wall_6_geometry["side_axis"] as Vector3
 	var authored_offset := wall_7.global_position - wall_6.global_position
 	var preserved_lane_offset := lane_side * authored_offset.dot(lane_side)
 	wall_7.global_position = wall_6.global_position + preserved_lane_offset
@@ -226,46 +238,81 @@ func _build_rotate_prompt() -> void:
 	label.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 	$HUD.add_child(label)
 
-# MOVES THE ACTUAL WALL GEOMETRY - not a current's push zone, the solid
-# collision the diver bumps into. CSGBox3D rebuilds its own collision
-# automatically whenever its transform changes, so animating
-# position/rotation every frame is enough on its own; nothing extra
-# needs to be kept in sync.
-#
-# MODIFIED: was the midpoint between wall_a AND wall_b, pushed out by
-# HALF the gap between them - that's a point roughly between the two
-# walls, not a real endpoint of either one. What's actually wanted is
-# wall_a's own endpoint: computed purely from wall_a's own position,
-# length (size.x, its length axis) and facing (global_transform.basis.x)
-# - doesn't reference wall_b at all, so it's the same physical point
-# regardless of where wall_b currently is.
-func _wall_endpoint(wall: CSGBox3D, positive_end: bool = false) -> Vector3:
-	var forward: Vector3 = wall.global_transform.basis.x.normalized()
-	return wall.global_position + forward * wall.size.x * 0.5 * (1.0 if positive_end else -1.0)
+# Returns the wall's useful physical geometry in world space.  `basis.x` is
+# deliberately contained here: no level-placement caller needs to remember
+# whether a particular scene instance's apparent forward direction is local
+# X, world Z, or the negative of either.
+func _wall_geometry(wall: CSGBox3D) -> Dictionary:
+	return _wall_geometry_at(wall.global_position, wall.rotation.y, wall.size)
 
-# Just the destination-picking math _rotate_wall_flush() below needs,
-# pulled out on its own so other code can find out where `wall` is ABOUT
-# to end up (position + yaw) without actually starting its tween yet -
-# see _rotate_hallway_1_2()'s CSGBox3D6 alignment, which needs wall_a's
-# (CurrentWall1's) post-swing state to align CSGBox3D6 against, not
-# wherever CurrentWall1 happens to be RIGHT NOW mid-animation.
-func _wall_flush_target(wall: CSGBox3D, target: CSGBox3D) -> Dictionary:
-	var target_axis := target.global_transform.basis.x.normalized()
-	var target_negative := _wall_endpoint(target)
-	var target_positive := _wall_endpoint(target, true)
-	var half_length := wall.size.x * 0.5
-	var off_negative := target_negative - target_axis * half_length
-	var off_positive := target_positive + target_axis * half_length
-	var destination := off_negative if wall.global_position.distance_squared_to(off_negative) < wall.global_position.distance_squared_to(off_positive) else off_positive
-	destination.y = target.global_position.y
-	return {"position": destination, "yaw": wall.rotation.y + PI * 0.5}
+# The transform variant supports placing a static wall against another wall's
+# *future* destination without mutating the moving node to inspect it.
+func _wall_geometry_at(center: Vector3, yaw: float, size: Vector3) -> Dictionary:
+	var long_axis := Basis(Vector3.UP, yaw).x.normalized()
+	var side_axis := Basis(Vector3.UP, yaw).z.normalized()
+	var half_length := size.x * 0.5
+	return {
+		"center": center,
+		"long_axis": long_axis,
+		"side_axis": side_axis,
+		"size": size,
+		"negative_end": center - long_axis * half_length,
+		"positive_end": center + long_axis * half_length,
+	}
+
+func _wall_end_sign(end: int) -> float:
+	return 1.0 if end == WallEnd.POSITIVE else -1.0
+
+func _wall_end(geometry: Dictionary, end: int) -> Vector3:
+	return geometry["positive_end"] as Vector3 if end == WallEnd.POSITIVE else geometry["negative_end"] as Vector3
+
+# The two physically valid end-to-end continuations of `target`.  This is a
+# query rather than an action, so a caller can inspect or choose a placement
+# without reverse-engineering either wall's local coordinate system.
+func _wall_continuation_candidates(moving_wall: CSGBox3D, target_wall: CSGBox3D) -> Array[Dictionary]:
+	var target_geometry: Dictionary = _wall_geometry(target_wall)
+	var target_axis := target_geometry["long_axis"] as Vector3
+	var target_negative := target_geometry["negative_end"] as Vector3
+	var target_positive := target_geometry["positive_end"] as Vector3
+	var moving_half_length := moving_wall.size.x * 0.5
+	return [
+		{
+			"target_end": "negative",
+			"position": target_negative - target_axis * moving_half_length,
+		},
+		{
+			"target_end": "positive",
+			"position": target_positive + target_axis * moving_half_length,
+		},
+	]
+
+# The normal way to extend a route.  It examines both named physical target
+# ends and chooses the legal continuation that requires the least movement;
+# the caller never supplies a screenshot-derived boolean or local-axis sign.
+func _nearest_wall_continuation(moving_wall: CSGBox3D, target_wall: CSGBox3D) -> Dictionary:
+	var candidates := _wall_continuation_candidates(moving_wall, target_wall)
+	var selected: Dictionary = candidates[0]
+	for candidate in candidates:
+		var candidate_position := candidate["position"] as Vector3
+		var selected_position := selected["position"] as Vector3
+		# Preserve the prior helper's deterministic tie-break: when both exits
+		# are equally near, use the named positive continuation.
+		if moving_wall.global_position.distance_squared_to(candidate_position) <= moving_wall.global_position.distance_squared_to(selected_position):
+			selected = candidate
+	var destination := selected["position"] as Vector3
+	destination.y = target_wall.global_position.y
+	return {
+		"position": destination,
+		"yaw": moving_wall.rotation.y + PI * 0.5,
+		"target_end": selected["target_end"],
+	}
 
 # Rotates one wall counterclockwise by exactly 90 degrees, then translates
 # it so it continues the named destination wall end-to-end. There are two
 # valid non-overlapping continuations (off either end of `target`); choose
 # the one requiring the least travel from the moving wall's current centre.
 func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tween:
-	var t := _wall_flush_target(wall, target)
+	var t: Dictionary = _nearest_wall_continuation(wall, target)
 	return _tween_wall_to_transform_about_hinge(wall, t.position as Vector3, float(t.yaw), duration)
 
 # The finished flush targets above are valid, but a parallel position/yaw
@@ -447,39 +494,38 @@ func _rotate_wind_corridor_2_current(open: bool) -> void:
 		_currents_by_corridor.erase($WindCorridor3)
 		_currents_by_corridor[$WindCorridor2] = current
 		
-func _set_wall_position(wall_a: CSGBox3D, wall_b: CSGBox3D, positive_end: bool = false, left_end: bool = false) -> void:
-	wall_b.global_position = _flush_position(
-		wall_a.global_position, wall_a.rotation.y, wall_a.size.x, wall_a.size.z,
-		wall_b.rotation.y, wall_b.size.x, wall_b.size.z,
-		positive_end, left_end
+# Places a wall at an intentionally authored perpendicular exit.  This is for
+# fixed scene topology (CurrentWall1's initial attachment), not the usual
+# dynamic route extension; call `_nearest_wall_continuation()` for that.
+func _attach_wall_to_perpendicular_exit(reference_wall: CSGBox3D, moving_wall: CSGBox3D, reference_exit: int, moving_anchor_end: int) -> void:
+	var reference_geometry: Dictionary = _wall_geometry(reference_wall)
+	moving_wall.global_position = _perpendicular_exit_position(
+		reference_geometry, moving_wall.rotation.y, moving_wall.size,
+		reference_exit, moving_anchor_end
 	)
 
-# Same formula _set_wall_position() above uses, generalized to take both
-# walls' position/yaw as plain values instead of reading them live off
-# actual nodes - lets a result be computed against a wall's FUTURE state
-# (see _rotate_hallway_1_2()'s CSGBox3D6 alignment, which needs
-# CurrentWall1's post-swing position/yaw, not wherever it happens to be
-# mid-tween) without first mutating any node's real transform just to
-# read it back.
-func _flush_position(a_position: Vector3, a_yaw: float, a_size_x: float, a_size_z: float, b_yaw: float, b_size_x: float, b_size_z: float, positive_end: bool = false, left_end: bool = false) -> Vector3:
-	var a_basis := Basis(Vector3.UP, a_yaw)
-	var a_forward: Vector3 = a_basis.x.normalized()
-	var a_end: Vector3 = a_position + a_forward * a_size_x * 0.5 * (1.0 if positive_end else -1.0)
-	var b_forward: Vector3 = Basis(Vector3.UP, b_yaw).x.normalized()
-	var clearance: Vector3 = a_forward * b_size_z * 0.5 * (1.0 if positive_end else -1.0)
-	return a_end + clearance + b_forward * b_size_x * 0.5 * (1.0 if left_end else -1.0) - a_basis.z.normalized() * 0.5 * a_size_z
+# The only caller-facing choices are named `reference_exit` and
+# `moving_anchor_end`.  All local-axis math remains here, so a new wall does
+# not require examining basis vectors or trial-and-error screenshots.
+func _perpendicular_exit_position(reference_geometry: Dictionary, moving_yaw: float, moving_size: Vector3, reference_exit: int, moving_anchor_end: int) -> Vector3:
+	var reference_long_axis := reference_geometry["long_axis"] as Vector3
+	var reference_side_axis := reference_geometry["side_axis"] as Vector3
+	var reference_size := reference_geometry["size"] as Vector3
+	var reference_end := _wall_end(reference_geometry, reference_exit)
+	var moving_long_axis := Basis(Vector3.UP, moving_yaw).x.normalized()
+	var outward_sign := _wall_end_sign(reference_exit)
+	var moving_anchor_sign := _wall_end_sign(moving_anchor_end)
+	var clearance := reference_long_axis * moving_size.z * 0.5 * outward_sign
+	return reference_end + clearance + moving_long_axis * moving_size.x * 0.5 * moving_anchor_sign - reference_side_axis * reference_size.z * 0.5
 
-func _flush_position_from_end(a_end: Vector3, a_forward: Vector3, a_size_z: float, b_yaw: float, b_size_x: float, b_size_z: float, left_end: bool = false) -> Vector3:
-	var b_forward: Vector3 = Basis(Vector3.UP, b_yaw).x.normalized()
-	# MODIFIED: was -a_forward, pushing wall_b BACK toward wall_a's own
-	# body from the end point instead of past its tip - a_forward already
-	# points FROM wall_a's body OUT to this end (that's how a_end got
-	# computed in the first place), so continuing further in that SAME
-	# direction is what clears wall_a's tip instead of cutting back across
-	# it partway along its length.
-	var clearance: Vector3 = a_forward * b_size_z * 0.5
-	var a_side: Vector3 = Vector3(-a_forward.z, 0.0, a_forward.x)
-	return a_end + clearance + b_forward * b_size_x * 0.5 * (1.0 if left_end else -1.0) - a_side * 0.5 * a_size_z
+# Extends a wall out from a *known physical endpoint*.  `outward_long_axis`
+# must point away from the source wall at `outward_end`; callers use the
+# geometry query above to obtain both names rather than recreate axis signs.
+func _position_beyond_wall_end(outward_end: Vector3, outward_long_axis: Vector3, source_thickness: float, moving_yaw: float, moving_size_x: float, moving_size_z: float, moving_anchor_end: int) -> Vector3:
+	var moving_long_axis := Basis(Vector3.UP, moving_yaw).x.normalized()
+	var source_side_axis := Vector3(-outward_long_axis.z, 0.0, outward_long_axis.x)
+	var clearance := outward_long_axis * moving_size_z * 0.5
+	return outward_end + clearance + moving_long_axis * moving_size_x * 0.5 * _wall_end_sign(moving_anchor_end) - source_side_axis * source_thickness * 0.5
 
 
 # Each WaterCurrent is a plain controller object, not something attached
