@@ -62,7 +62,10 @@ func _init() -> void:
 	if float(skilled.rate) <= float(casual.rate):
 		findings.append("NO SKILL CURVE: skilled %.1f%% does not beat casual %.1f%%" % [skilled.rate, casual.rate])
 	if float(skilled.turns) < SKILLED_TURN_FLOOR:
-		findings.append("FIGHT TOO SHORT: skilled wins average %.1f rounds, expected at least %.0f" % [skilled.turns, SKILLED_TURN_FLOOR])
+		# Keep the report precise: the floor is deliberately fractional, and
+		# rounding it to a whole number made a 2.3-round result look as though
+		# it had missed a stated floor of only 2 rounds.
+		findings.append("FIGHT TOO SHORT: skilled wins average %.1f rounds, expected at least %.1f" % [skilled.turns, SKILLED_TURN_FLOOR])
 	if float(skilled.hp) < SKILLED_HP_FLOOR:
 		findings.append("NO PRESSURE: skilled wins lose only %.1f party HP, expected at least %.0f" % [skilled.hp, SKILLED_HP_FLOOR])
 

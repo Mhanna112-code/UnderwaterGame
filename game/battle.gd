@@ -336,6 +336,10 @@ var target_menu: HFlowContainer
 var item_menu: HFlowContainer
 var attack_btn: Button
 var run_btn: Button
+# The tutorial must never silently abandon its required encounter through
+# Run.  This explicit exit is available once the player reaches a normal
+# battle menu, and returns to the world through World’s tutorial-safe path.
+var skip_tutorial_btn: Button
 var items_btn: Button
 var back_btn: Button
 var move_details_btn: Button
@@ -1377,6 +1381,10 @@ func _build_ui() -> void:
 	run_btn = _menu_button("Run", "Might not escape")
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
+	if tutorial_encounter:
+		skip_tutorial_btn = _menu_button("Skip Tutorial", "Return to the world without finishing this lesson")
+		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
+		main_menu.add_child(skip_tutorial_btn)
 	items_btn = _menu_button("Items", "")
 	items_btn.pressed.connect(_show_items)
 	main_menu.add_child(items_btn)
@@ -2096,22 +2104,14 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
-	# The lesson is complete only after every scripted move AND the enemy's
-	# QTE-teaching turn have happened.  It must end here: asking a new player
-	# to "Defeat the enemy!" after they have completed what the UI presents as
-	# the tutorial leaves them on the battle screen with no clear distinction
-	# between completing the lesson and starting an unrelated normal fight.
-	# The Angler retreats, then the normal `finished` handoff restores the
-	# world. `_tutorial_finale_shown` keeps this one-shot if an async turn
-	# callback resumes after the signal.
+	# Once the scripted move/QTE lesson has run, hand the encounter over to a
+	# real win-or-loss outcome.  The player can now finish the enemy, lose and
+	# choose Retry/Exit, or use the explicit tutorial Skip button.  Do not
+	# auto-win here: that made the lesson's final state diverge from a real
+	# battle and hid the loss recovery path.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
-		_set_all_buttons(false)
-		_log("Tutorial complete. The Angler retreats into the dark.")
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
-		_revert_temp_buffs()
-		finished.emit("won")
-		return
+		_log("Lesson complete. Defeat the enemy or choose Skip Tutorial.")
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -2300,6 +2300,8 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
+	if tutorial_encounter:
+		run_btn.disabled = true
 	# Skip straight past Attack/Items/Run ONLY on the scripted diver's own
 	# turn - the tutorial's whole point there is choosing between moves,
 	# not re-discovering the top-level menu. Mech Pilot (never scripted)
@@ -2651,6 +2653,11 @@ func _show_main() -> void:
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	if skip_tutorial_btn != null:
+		# Scripted turns teach one required move at a time.  The explicit skip
+		# is available from normal tutorial menus, not as a way to bypass the
+		# particular action currently being taught.
+		skip_tutorial_btn.visible = not _is_tutorial_scripted_turn(_acting)
 	call_deferred("_fit_panel_height")
 
 # Every effect still gets a target list rather than an immediate resolve,
@@ -4158,20 +4165,24 @@ func _lose() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
-	# The choreographed first fight can genuinely be lost now that
-	# _advance_turn() no longer force-wins it after the "Defeat the enemy!"
-	# prompt - spell out what a loss actually means (world.gd's
-	# _on_battle_finished()'s "lost" branch calls _show_game_over(), whose
-	# Restart button reloads the current save slot - see game_over_screen.gd)
-	# instead of the normal terse retreat line, since a first-time player has
-	# no prior loss to have already learned that from.
 	if tutorial_encounter:
-		await _tutorial_show_step("The enemy defeated your whole party, so the fight ends here. Normally, that means restarting from your last save point.")
+		_log("The tutorial fight is over.")
 	else:
 		_log("The party is battered and pulls back.")
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_revert_temp_buffs()
 	finished.emit("lost")
+
+func _on_skip_tutorial_pressed() -> void:
+	if _busy:
+		return
+	_busy = true
+	_set_all_buttons(false)
+	main_menu.visible = false
+	_log("Tutorial skipped.")
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_revert_temp_buffs()
+	finished.emit("skipped")
 
 func _on_run() -> void:
 	if _busy:
@@ -4213,6 +4224,8 @@ func _on_run() -> void:
 func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled
 	run_btn.disabled = not enabled
+	if skip_tutorial_btn != null:
+		skip_tutorial_btn.disabled = not enabled
 	items_btn.disabled = not enabled
 	back_btn.disabled = not enabled
 	item_back_btn.disabled = not enabled

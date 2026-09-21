@@ -160,6 +160,7 @@ var title_layer: CanvasLayer
 # win, so declining or losing cannot silently delete the site's content.
 var special_encounter_prompt: SpecialEncounterPrompt
 var tutorial_book: TutorialBook
+var tutorial_result_popup: TutorialResultPopup
 # Shown once on a genuinely new save (_on_title_new_game()) instead of the
 # tutorial book auto-opening there - see IntroCrawl's own header comment.
 # The tutorial book itself is untouched: F1 (this file's own
@@ -658,6 +659,10 @@ func _ready() -> void:
 
 	tutorial_book = TutorialBook.new()
 	title_layer.add_child(tutorial_book)
+	tutorial_result_popup = TutorialResultPopup.new()
+	tutorial_result_popup.retry_chosen.connect(_on_tutorial_loss_retry)
+	tutorial_result_popup.exit_chosen.connect(_on_tutorial_loss_exit)
+	title_layer.add_child(tutorial_result_popup)
 
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
@@ -2152,6 +2157,11 @@ func _on_battle_finished(result: String) -> void:
 	battling = false
 	if was_tutorial:
 		_first_encounter_done = true
+		# The beam has completed its one job.  Leaving it behind after a win,
+		# loss, or explicit skip makes the world look as if combat is still
+		# mandatory.
+		if is_instance_valid(light_beam):
+			light_beam.queue_free()
 	if _boss_playtest_active or _guardian_playtest_active:
 		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false
@@ -2188,10 +2198,20 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 			if _pending_reward_item != "":
 				_grant_reward_item(_pending_reward_item)
+			elif was_tutorial:
+				_announce("Tutorial complete. You are back in the world.")
 			else:
 				_announce("The enemy backs off into the dark.")
 		"fled":
 			_announce("You successfully ran away.")
+		"skipped":
+			for d in divers:
+				var skipped_stats: CombatantStats = (d as Diver).stats
+				skipped_stats.hp = skipped_stats.hp_max
+				skipped_stats.oxygen = skipped_stats.oxygen_max
+			_update_hp_bar()
+			_update_oxygen_bar()
+			_announce("Tutorial skipped. You are back in the world.")
 		"lost":
 			if was_special and _special_encounter_diver != null:
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
@@ -2199,6 +2219,12 @@ func _on_battle_finished(result: String) -> void:
 				_update_hp_bar()
 				_update_oxygen_bar()
 				_announce("The current sweeps you back out, unharmed but empty-handed.")
+			elif was_tutorial:
+				tutorial_result_popup.open(
+					"Tutorial Fight Lost",
+					"This is a safe practice fight. Retry it, or return to the world fully recovered.",
+				)
+				return
 			else:
 				_show_game_over()
 		_:
@@ -2213,6 +2239,22 @@ func _on_battle_finished(result: String) -> void:
 	_special_encounter_diver = null
 	_special_guardian = null
 	_special_guardian_decoy = null
+
+func _heal_tutorial_party() -> void:
+	for d in divers:
+		var stats: CombatantStats = (d as Diver).stats
+		stats.hp = stats.hp_max
+		stats.oxygen = stats.oxygen_max
+	_update_hp_bar()
+	_update_oxygen_bar()
+
+func _on_tutorial_loss_retry() -> void:
+	_heal_tutorial_party()
+	_start_battle("", false, "angler", divers, false, true)
+
+func _on_tutorial_loss_exit() -> void:
+	_heal_tutorial_party()
+	_announce("The party regroups and returns to the overworld.")
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own
