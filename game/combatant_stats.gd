@@ -26,12 +26,13 @@ var evasion_current: int = 5
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
-# Spent on ability use (Diver.use_ability()), on the sonar passive while
-# it's active, and on casting an equipped spell in battle (battle.gd's
-# _resolve_party_move()) - float rather than int like hp so a continuous
-# drain (sonar) and passive regen (Diver._process) don't get rounded to
-# zero every frame. Same fill()-on-level-up/refill story as hp: nothing
-# but a level-up tops it off instantly, everything else is gradual regen.
+# Spent on the sonar passive while it's active and on casting an equipped
+# spell in battle (battle.gd's _resolve_party_move()). Environmental active
+# abilities deliberately cost 0 O2: Shockwave, Grapple and Swap are route
+# verbs, so an empty tank must not soft-lock a puzzle. Float rather than int
+# like hp so sonar's continuous drain doesn't get rounded to zero every
+# frame. Same fill()-on-level-up/refill story as hp: nothing but a level-up
+# tops it off instantly, everything else is gradual regen.
 @export var oxygen_max: float = 100.0
 var oxygen: float
 
