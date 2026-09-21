@@ -91,9 +91,8 @@ The focused GREENs are:
 - `godot --headless --path . --script verify/enemy_moves.gd`
 
 The full route gate remains deliberately **red** on PR #73, so this packet does
-not claim merge readiness: the untouched PR head records `25.0%` casual and
-`56.7%` skilled route completion, while this Swordfish slice records `28.8%`
-and `61.2%`. Those numbers are an improvement but remain below the existing
-`50%` / `80%` acceptance bands. The remaining balance repair belongs in the
-same PR only if its author/team expands this contribution beyond the requested
-Swordfish implementation.
+not claim merge readiness. On the integrated Swordfish slice it records `28.8%`
+casual and `61.2%` skilled route completion, below the existing `50%` / `80%`
+acceptance bands. The focused Swordfish implementation is green; the remaining
+route-balance repair belongs in the same PR only if its author/team expands this
+contribution beyond the requested Swordfish implementation.
