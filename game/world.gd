@@ -1159,7 +1159,7 @@ func _build_highway() -> void:
 	# far side - a staging point for Musashi on the approach, not itself
 	# a way across.
 	var near_anchor := GrappleAnchor.new()
-	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z)
+	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z - 2.5)
 	add_child(near_anchor)
 
 	# 3. The anchor that unlocks Maxilani's swap - reaching it is the
@@ -2036,6 +2036,7 @@ func _update_aim_marker() -> void:
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [d.get_rid()]
+	query.collision_mask = 1
 	var result := space.intersect_ray(query)
 
 	var point: Vector3 = to if result.is_empty() else (result.position as Vector3)
@@ -2300,7 +2301,7 @@ func _update_hud() -> void:
 	var line := "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
 		_display_name(d.model_name), d.height]
 	if d.ability_id != "":
-		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+		line += "  ·  E: %s (0 O2)" % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the E: hint above already follows for
