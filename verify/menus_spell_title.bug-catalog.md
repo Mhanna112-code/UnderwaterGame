@@ -32,7 +32,7 @@ formula edits.
 | MENU-SAVE-5 | Opening/closing help or replaying practice writes/mutates the active save slot. | High — a UI review path corrupts a player’s progression. | World owns persistence and the new UI calls World directly. | Save-state differential | **Green in focused gate** — replay state is restored after a simulated victory; spell review sets `_current_slot = -1` before opening the actual Save/Update Spells UI, so its Save action cannot write a campaign slot. |
 | MENU-BROWSER-6 | A browser verification route fails solely because another local process occupies a hard-coded server port. | High for release confidence — the full browser gate can report a false failure without exercising the exported game. | The pre-existing boss check bound its private static server to port 8766, which was occupied by a developer preview during the first full-suite run. | Captured browser-harness regression | **Green** — the boss check now requests an OS-assigned unused port; the full suite passed while the developer server remained on 8766. |
 | MENU-ITEM-7 | A usable inventory item is hidden/disabled, applies the wrong amount, consumes twice, or closes the player into a dead UI state. | High — a visible reward becomes unusable or silently wastes progression. | Slice 3 makes the pause-menu reading surface scrollable and reruns its contents after actions; the raw #72 intent includes usable inventory, while World remains the mutation owner. | Public-UI contract pin | **Green in focused gate** — a real Potion button is selected, adds exactly 10 HP, consumes exactly one copy, refreshes, and leaves Inventory usable. |
-| MENU-OVERLAY-8 | Persistent world HUD labels render through full-screen Inventory or Save/Update/Learn screens. | Medium/high — readable menu titles and controls visibly overlap, making a functioning progression UI appear broken. | Those menus initially lived in the same low `HUD` CanvasLayer as the control labels; the initial browser capture showed the overlap. A z-index-only repair and opaque ColorRect still could not outrank the CanvasLayer boundary. | Captured visual regression plus layer contract | **Fixed; awaiting exported visual rerun** — World parents both modal roots to the higher `TitleLayer`, which already owns exclusive title/tutorial UI. |
+| MENU-OVERLAY-8 | Persistent world HUD labels render through full-screen Inventory or Save/Update/Learn screens. | Medium/high — readable menu titles and controls visibly overlap, making a functioning progression UI appear broken. | Those menus initially lived in the same low `HUD` CanvasLayer as the control labels; the initial browser capture showed the overlap. A z-index-only repair, opaque ColorRect, and reparenting alone still left HUD content visually live behind the modal. | Captured visual regression plus modal lifecycle contract | **Fixed; awaiting exported visual rerun** — World parents both modal roots to `TitleLayer`, hides `HUD` while they are open, and restores prior HUD visibility on close. |
 
 ## Skipped for this slice
 
@@ -64,7 +64,7 @@ formula edits.
   exported screenshot review because a node-order assertion is not enough to
   establish readable visual composition. The first visual rerun caught that
   z-index and opacity cannot cross a CanvasLayer boundary; the contract now
-  pins the higher modal parent itself.
+  pins the higher modal parent plus hide/restore lifecycle.
 
 ## Red/green record
 
@@ -100,3 +100,7 @@ formula edits.
   shared key-item list immediately after adding the menu to its live modal
   layer; the focused gate is green again. The final browser rerun must still
   prove the visual composition.
+- Reparenting alone was not sufficient visual isolation: the browser capture
+  still showed the world controls and health bars. The modal open/close path
+  now hides/restores `World.HUD`; the focused gate asserts that spell review
+  hides it and close restores it. Exported browser evidence remains required.

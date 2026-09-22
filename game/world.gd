@@ -149,6 +149,11 @@ var pending_world_drops: Dictionary = {}
 # menu's problem to fix).
 var inventory_menu: InventoryMenu
 
+# Full-screen Save/Inventory UI lives on TitleLayer rather than HUD. Remember
+# whether gameplay HUD was visible before one opens so closing it restores the
+# correct prior presentation.
+var _hud_visible_before_fullscreen_menu := true
+
 # The title screen (New Game/Load Game, shown once at start and again on
 # "Return to Title") and the game-over screen ("lost" a battle) - see
 # _show_title_screen()/_show_game_over() below.
@@ -459,6 +464,16 @@ func _on_title_spell_playtest() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	mouse_look = false
 
+# Save/Inventory are exclusive reading and decision surfaces. Their controls
+# used to fight the persistent HUD visually because they were HUD children;
+# they now live on TitleLayer and explicitly hide that otherwise-live layer.
+func _open_fullscreen_menu() -> void:
+	_hud_visible_before_fullscreen_menu = $HUD.visible
+	$HUD.visible = false
+
+func _close_fullscreen_menu() -> void:
+	$HUD.visible = _hud_visible_before_fullscreen_menu
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -674,6 +689,7 @@ func _ready() -> void:
 
 	save_point_menu = SavePointMenu.new()
 	save_point_menu.save_requested.connect(_on_save_requested)
+	save_point_menu.world = self
 
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self

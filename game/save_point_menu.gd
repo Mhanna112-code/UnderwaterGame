@@ -13,6 +13,7 @@ extends Control
 
 signal save_requested(diver: Diver)
 
+var world: World
 var diver: Diver
 var _display_name := ""
 
@@ -156,6 +157,8 @@ func _on_save_pressed() -> void:
 func open_for(d: Diver, display_name: String = "") -> void:
 	diver = d
 	_display_name = display_name
+	if world != null:
+		world._open_fullscreen_menu()
 	visible = true
 	_show_root()
 
@@ -164,3 +167,5 @@ func close() -> void:
 	diver = null
 	learn_ui.close()
 	equip_ui.close()
+	if world != null:
+		world._close_fullscreen_menu()

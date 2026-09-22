@@ -107,11 +107,15 @@ func _ready() -> void:
 	scroll.add_child(_list)
 
 func open() -> void:
+	if world != null:
+		world._open_fullscreen_menu()
 	visible = true
 	_switch_to("items")
 
 func close() -> void:
 	visible = false
+	if world != null:
+		world._close_fullscreen_menu()
 
 func _switch_to(mode: String) -> void:
 	_mode = mode

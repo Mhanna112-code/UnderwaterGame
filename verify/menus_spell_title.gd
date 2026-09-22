@@ -132,8 +132,8 @@ func _test_spell_review_route(world: World) -> void:
 		return
 	spell_button.pressed.emit()
 	await process_frame
-	_expect(world._current_slot < 0 and not world.title_screen.visible and world.get_node("HUD").visible and not paused,
-		"MENU-SPELL-3: spell review did not enter a save-free playable UI state")
+	_expect(world._current_slot < 0 and not world.title_screen.visible and not world.get_node("HUD").visible and not paused,
+		"MENU-SPELL-3: spell review did not hide world HUD behind its save-free modal UI")
 	_expect(world.save_point_menu.visible,
 		"MENU-SPELL-3: spell review does not open the actual spell interface")
 	_expect(world.save_point_menu.get_parent() == world.title_layer,
@@ -163,6 +163,8 @@ func _test_spell_review_route(world: World) -> void:
 
 func _test_title_review_route_composition(world: World) -> void:
 	world.save_point_menu.close()
+	_expect(world.get_node("HUD").visible,
+		"MENU-OVERLAY-8: closing the full-screen spell menu did not restore normal HUD visibility")
 	world.title_screen.open()
 	# Guardian is intentionally enabled while the title is already live. This
 	# catches a stale screen even when later feature flags happen to rebuild it.
