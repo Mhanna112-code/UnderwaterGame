@@ -86,6 +86,8 @@ func _test_combat_help_surface(world: World) -> void:
 		"MENU-HELP-2: Combat Help does not expose the safe tutorial replay action")
 	_expect(_label_named(world.inventory_menu, "Stats") != null and _label_named(world.inventory_menu, "Effects") != null and _label_named(world.inventory_menu, "Status Conditions") != null,
 		"MENU-HELP-2: Combat Help does not separate stats, effects, and statuses")
+	_expect(world.inventory_menu.z_index > (world.get_node("HUD/Controls") as Control).z_index,
+		"MENU-OVERLAY-8: world HUD can render over Inventory/Combat Help")
 	world.inventory_menu.close()
 
 # The menu is the public boundary for consumables: a player should see the
@@ -134,6 +136,8 @@ func _test_spell_review_route(world: World) -> void:
 		"MENU-SPELL-3: spell review did not enter a save-free playable UI state")
 	_expect(world.save_point_menu.visible,
 		"MENU-SPELL-3: spell review does not open the actual spell interface")
+	_expect(world.save_point_menu.z_index > (world.get_node("HUD/Controls") as Control).z_index,
+		"MENU-OVERLAY-8: world HUD can render over Save/Update/Learn Spells")
 	for item_id in Items.ITEMS:
 		if Items.is_key_item(String(item_id)):
 			_expect(world.key_items.has(String(item_id)),

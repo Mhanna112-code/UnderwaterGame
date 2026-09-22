@@ -24,6 +24,10 @@ var _update_panel: Control
 
 func _ready() -> void:
 	visible = false
+	# Save, Update, Learn, and Equip are full-screen modal surfaces. They share
+	# World.HUD with the persistent control/health labels, so their parent must
+	# sit above those labels or the HUD reads over the menu's title and buttons.
+	z_index = 20
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	_root_panel = _build_root_panel()
