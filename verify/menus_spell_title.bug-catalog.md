@@ -27,10 +27,11 @@ formula edits.
 | --- | --- | --- | --- | --- | --- |
 | MENU-REPLAY-1 | Replaying the tutorial heals, levels, strips statuses, or otherwise mutates the real campaign party. | Critical — a help button becomes an unlimited progress/healing exploit and makes save balance meaningless. | The raw #72 implementation explicitly refills the party and its tutorial battle awards XP/recovery. | Lifecycle contract pin | **Green** — snapshot/restore covers mutable combat, growth, spell and health/oxygen state; an initial omission of current HP was caught and fixed before this record. |
 | MENU-HELP-2 | Combat Help content extends below the 720px HUD with no scrollable reading surface. | High — the help promised by the tutorial cannot be read. | Raw #72 added a `ScrollContainer`; baseline adds the list directly to a full-height VBox. | UI structure plus 1280×720 manual review | **Green in focused gate** — Help now has a bounded vertical `ContentScroll`, a safe replay action, and distinct Stats/Effects/Status Conditions sections. Manual browser review remains required before merge. |
-| MENU-SPELL-3 | A visible spell is learnable despite missing points/prerequisites/key items, or the review route changes normal spell data/costs. | High — spell progression or combat balance silently changes. | The raw branch mixes a spell-test route with an unrelated `acc_mod` change. | Decision-table/invariant | **Green** — the actual title action opens the real spell surface, grants temporary review prerequisites, learns every tree legally, and pins Guard Break's current formula for Slice 5. |
+| MENU-SPELL-3 | A visible spell is learnable despite missing points/prerequisites/key items, the review route changes normal spell data/costs, or the browser route stops before the player reaches the real Learn Spells tree. | High — spell progression or combat balance silently changes, or a reviewer cannot inspect the promised presentation. | The raw branch mixes a spell-test route with an unrelated `acc_mod` change; the public route intentionally has Save, Update, then Learn actions. | Decision-table/invariant plus browser journey | **Green** — the actual title action grants temporary review prerequisites, traverses Save → Update → Learn into the existing spell tree, learns every tree legally, and pins Guard Break's current formula for Slice 5. |
 | MENU-TITLE-4 | Adding spell review removes existing guardian/onboarding/boss/special review routes or makes the normal first-run title show developer actions. | High — prior review links regress, or first-time UX regresses. | Raw #72 replaced several title signals instead of composing them. | Title-route decision table | **Green** — no-flag title excludes Spell Test; feature-flag composition renders all five review routes. The focused test exposed and fixed a real live-title guardian-refresh fault. |
 | MENU-SAVE-5 | Opening/closing help or replaying practice writes/mutates the active save slot. | High — a UI review path corrupts a player’s progression. | World owns persistence and the new UI calls World directly. | Save-state differential | **Green in focused gate** — replay state is restored after a simulated victory; spell review sets `_current_slot = -1` before opening the actual Save/Update Spells UI, so its Save action cannot write a campaign slot. |
-| MENU-BROWSER-6 | A browser verification route fails solely because another local process occupies a hard-coded server port. | High for release confidence — the full browser gate can report a false failure without exercising the exported game. | The pre-existing boss check bound its private static server to port 8766, which was occupied by a developer preview during the first full-suite run. | Captured browser-harness regression | **Fixed; awaiting green rerun** — the boss check now requests an OS-assigned unused port, matching the other browser checks. |
+| MENU-BROWSER-6 | A browser verification route fails solely because another local process occupies a hard-coded server port. | High for release confidence — the full browser gate can report a false failure without exercising the exported game. | The pre-existing boss check bound its private static server to port 8766, which was occupied by a developer preview during the first full-suite run. | Captured browser-harness regression | **Green** — the boss check now requests an OS-assigned unused port; the full suite passed while the developer server remained on 8766. |
+| MENU-ITEM-7 | A usable inventory item is hidden/disabled, applies the wrong amount, consumes twice, or closes the player into a dead UI state. | High — a visible reward becomes unusable or silently wastes progression. | Slice 3 makes the pause-menu reading surface scrollable and reruns its contents after actions; the raw #72 intent includes usable inventory, while World remains the mutation owner. | Public-UI contract pin | **Green in focused gate** — a real Potion button is selected, adds exactly 10 HP, consumes exactly one copy, refreshes, and leaves Inventory usable. |
 
 ## Skipped for this slice
 
@@ -55,6 +56,9 @@ formula edits.
   rather than merely snapshotting labels.
 - MENU-TITLE-4 exercises visible title actions by feature flag; it will fail
   if a route disappears or leaks into the ordinary first-run title.
+- MENU-ITEM-7 exercises the visible Inventory button and observable party
+  state/count, so it catches a real spend/effect/refresh regression without
+  coupling to `World.use_inventory_item()` internals.
 
 ## Red/green record
 
@@ -77,4 +81,10 @@ formula edits.
 - MENU-BROWSER-6 was caught during the first full exported-browser run: the
   generic web check passed, but the boss route threw `EADDRINUSE` before it
   could begin. The change to an ephemeral port will be accepted only after the
-  full suite reruns with the occupied developer port still present.
+  full suite reruns with the occupied developer port still present. That rerun
+  is green: the Tethys fight rendered 662 red samples with the same process
+  still listening on 8766.
+- The first browser spelling route stopped at the Save menu. That was not a
+  game failure, but it was insufficient evidence for spell-tree presentation:
+  the public path deliberately has Save → Update → Learn levels. The browser
+  contract now follows all three, captures the actual tree, and is green.

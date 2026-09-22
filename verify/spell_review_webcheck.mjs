@@ -1,7 +1,8 @@
 // Browser boundary for Slice 3's opt-in spell-review route. Source tests
 // prove the temporary key items and point gates; this proves a human can load
-// the exported build, see the title action at ?spells=1, and reach the real
-// Save / Update Spells surface by clicking it.
+// the exported build, see the title action at ?spells=1, and traverse the
+// real Save / Update Spells surface into the actual Learn Spells tree by
+// following the same two deliberate menu actions a player uses.
 import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
@@ -73,23 +74,47 @@ await page.screenshot({ path: titleOut });
 // guardian, and special-review browser gates.
 await page.mouse.click(640, 405);
 await page.waitForTimeout(1500);
-const spellRoot = await sample();
+const saveMenu = await sample();
+const saveMenuOut = out.replace(/(\.[^.]+)?$/, '.save-menu$1');
+await page.screenshot({ path: saveMenuOut });
+
+// The actual SavePoint menu intentionally exposes Update Spells beneath Save.
+// The review route's no-slot state must keep the normal menu usable while
+// letting a reviewer traverse into the existing spell tree.
+await page.mouse.click(110, 105);
+await page.waitForTimeout(1500);
+const updateMenu = await sample();
+const updateMenuOut = out.replace(/(\.[^.]+)?$/, '.update-menu$1');
+await page.screenshot({ path: updateMenuOut });
+
+// Update Spells deliberately offers Equip and Learn before entering a tree.
+// Choosing Learn Spells is the public path under review, not an implementation
+// shortcut into the underlying scene.
+await page.mouse.click(110, 105);
+await page.waitForTimeout(1500);
+const spellTree = await sample();
 await page.screenshot({ path: out });
 
-const transition = changed(title, spellRoot);
+const menuTransition = changed(title, saveMenu);
+const updateTransition = changed(saveMenu, updateMenu);
+const treeTransition = changed(updateMenu, spellTree);
 console.log(`spell review canvas ${JSON.stringify({
   title: { ok: title.ok, colours: title.colours },
-  spellRoot: { ok: spellRoot.ok, colours: spellRoot.colours },
-  transition,
+  saveMenu: { ok: saveMenu.ok, colours: saveMenu.colours },
+  updateMenu: { ok: updateMenu.ok, colours: updateMenu.colours },
+  spellTree: { ok: spellTree.ok, colours: spellTree.colours },
+  menuTransition,
+  updateTransition,
+  treeTransition,
 })}`);
 if (errors.length) console.log('console             ' + errors.slice(0, 8).join(' | '));
 await browser.close();
 if (!live) server.close();
 
-if (!title.ok || !spellRoot.ok) { console.log('SPELL REVIEW WEB: no canvas element'); process.exit(1); }
+if (!title.ok || !saveMenu.ok || !updateMenu.ok || !spellTree.ok) { console.log('SPELL REVIEW WEB: no canvas element'); process.exit(1); }
 if (errors.length) { console.log('SPELL REVIEW WEB: browser errors'); process.exit(1); }
-if (title.colours < 20 || spellRoot.colours < 20 || transition < 250) {
-  console.log('SPELL REVIEW WEB: title action did not visibly reach the spell review UI');
+if (title.colours < 20 || saveMenu.colours < 20 || updateMenu.colours < 20 || spellTree.colours < 20 || menuTransition < 250 || updateTransition < 250 || treeTransition < 250) {
+  console.log('SPELL REVIEW WEB: title action did not visibly traverse the Save / Update Spells tree');
   process.exit(1);
 }
-console.log(`SPELL REVIEW WEB: ?spells=1 reached Save / Update Spells (${transition} changed samples)`);
+console.log(`SPELL REVIEW WEB: ?spells=1 traversed Save / Update / Learn Spells (${menuTransition}/${updateTransition}/${treeTransition} changed samples)`);

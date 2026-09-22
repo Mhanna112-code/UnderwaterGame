@@ -23,6 +23,7 @@ func _run() -> void:
 	world._first_encounter_done = true
 	world._ability_onboarding_shown = true
 	await _test_combat_help_surface(world)
+	await _test_inventory_item_surface(world)
 	_seed_campaign_state(world)
 	var before := _campaign_state(world)
 
@@ -85,6 +86,30 @@ func _test_combat_help_surface(world: World) -> void:
 		"MENU-HELP-2: Combat Help does not expose the safe tutorial replay action")
 	_expect(_label_named(world.inventory_menu, "Stats") != null and _label_named(world.inventory_menu, "Effects") != null and _label_named(world.inventory_menu, "Status Conditions") != null,
 		"MENU-HELP-2: Combat Help does not separate stats, effects, and statuses")
+	world.inventory_menu.close()
+
+# The menu is the public boundary for consumables: a player should see the
+# usable item, choose it once, receive precisely its documented effect, and
+# never lose a second copy through a refresh or stale button signal.
+func _test_inventory_item_surface(world: World) -> void:
+	var diver := world.divers[world.active] as Diver
+	diver.stats.hp = maxi(1, diver.stats.hp_max - 13)
+	var before_hp := diver.stats.hp
+	world.inventory = {"potion": 1}
+	world.inventory_menu.open()
+	await process_frame
+	var potion_button := _button_with_prefix(world.inventory_menu, "Use Potion")
+	_expect(potion_button != null and not potion_button.disabled,
+		"MENU-ITEM-6: a documented usable potion is not selectable from Inventory")
+	if potion_button != null:
+		potion_button.pressed.emit()
+		await process_frame
+	_expect(diver.stats.hp == mini(diver.stats.hp_max, before_hp + 10),
+		"MENU-ITEM-6: Inventory did not apply exactly Potion's documented 10 HP effect")
+	_expect(not world.inventory.has("potion"),
+		"MENU-ITEM-6: one Inventory click did not consume exactly one item")
+	_expect(world.inventory_menu.visible,
+		"MENU-ITEM-6: applying an item unexpectedly closes or softlocks Inventory")
 	world.inventory_menu.close()
 
 func _test_spell_review_route(world: World) -> void:
@@ -161,6 +186,15 @@ func _button_named(node: Node, text_value: String) -> Button:
 		if child is Button and (child as Button).text == text_value:
 			return child as Button
 		var nested := _button_named(child, text_value)
+		if nested != null:
+			return nested
+	return null
+
+func _button_with_prefix(node: Node, prefix: String) -> Button:
+	for child in node.get_children():
+		if child is Button and (child as Button).text.begins_with(prefix):
+			return child as Button
+		var nested := _button_with_prefix(child, prefix)
 		if nested != null:
 			return nested
 	return null
