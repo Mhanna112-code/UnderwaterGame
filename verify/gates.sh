@@ -44,6 +44,7 @@ run "swim: do they move, and animate while moving"    "$GODOT" --headless --path
 run "current: can full upstream input cross the flow" "$GODOT" --headless --path . --script verify/current_barrier.gd
 run "Glassgoat combat: do the authored V2 rules hold" "$GODOT" --headless --path . --script verify/glassgoat_combat.gd
 run "Glassgoat follow-up: do roster and result-first presentation match Discord" "$GODOT" --headless --path . --script verify/glassgoat_discord_followup.gd
+run "combat Quick Read: do result choices, context, and all-target previews agree" "$GODOT" --headless --path . --script verify/combat_quick_read.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd

@@ -41,8 +41,9 @@ It does not claim the full document's three move kits are finished.
   stats remain contextual rather than permanently displayed.
 - Contextual HP, Defense, Evasion and Accuracy while choosing a target.
 - Result-first move choices resolve the current actor's formula into values such
-  as `1 Damage` and `2 Bleed`; an optional **Show formulas** control preserves
-  the authored calculation details.
+  as `1 Damage` and `2 Bleed`. Each move's contextual tooltip preserves the
+  authored calculation, target scope, effect and duration without adding a
+  second menu state.
 - Damage, beneficial/neutral feedback, and negative effects render separately
   in red, blue, and purple respectively.
 - Campaign balance against the authored 10/10/10 roster, with fixed-seed route
@@ -74,10 +75,9 @@ complete roster uses Glassgoat's supplied names and level-one HP baseline:
 
 ![Resolved combat choices and Bucky identity](evidence/glassgoat-followup-moves.png)
 
-The optional control reveals the authored formulas without making every player
-calculate them during ordinary move selection:
-
-![Optional formula details](evidence/glassgoat-followup-formulas.png)
+Hovering a move (or using the platform's equivalent contextual help gesture)
+reveals its authored calculation and status timing without making every player
+calculate them during ordinary move selection.
 
 Damage and Bleed are distinct floating messages, allowing the requested red and
 purple categories to remain legible when one attack produces both:

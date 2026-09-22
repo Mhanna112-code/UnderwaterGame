@@ -37,6 +37,40 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 ]
 
+# Concise, current-rule definitions used by a move's optional context and by
+# the broader Combat Help surface.  They intentionally explain the general
+# effect, not a particular move's duration: Battle appends the duration from
+# the exact move data, since player Scuba Bleed persists while Angler Bite is
+# explicitly a three-turn version of the same status.
+const STAT_GLOSSARY: Array[Dictionary] = [
+	{
+		"title": "Strength (STR)",
+		"body": "Adds to the move's raw damage before the target's Defense reduces it.",
+	},
+	{
+		"title": "Defense (DEF)",
+		"body": "Reduces an incoming move's raw damage. A hit may still deal at least 1 unless Defense exceeds the raw damage by more than 5.",
+	},
+	{
+		"title": "Agility (AGI)",
+		"body": "Sets turn order. Higher Agility acts earlier each round.",
+	},
+	{
+		"title": "Accuracy (ACC)",
+		"body": "Must be greater than the defender's current Evasion for a hit to land.",
+	},
+	{
+		"title": "Evasion (EVA)",
+		"body": "A dodge pool. A successful dodge spends it down; it refills at the start of that combatant's next turn.",
+	},
+]
+
+static func stat_glossary_body(title: String) -> String:
+	for entry in STAT_GLOSSARY:
+		if String(entry.get("title", "")) == title:
+			return String(entry.get("body", ""))
+	return ""
+
 # Pulls one GENERAL_PAGES entry's body by title, for battle.gd's
 # choreographed first fight to fold into its own tutorial captions
 # (_explain_turn_order() combines this with "Combat Basics",
@@ -98,10 +132,49 @@ const ABILITY_MEDIA := {
 const STATUS_CONDITIONS: Array[Dictionary] = [
 	{
 		"title": "Blindness",
-		"body": "Five levels, 1 through 5. Each level lowers Agility, Accuracy, and Defense by that same number - Blindness 1 takes 1 off all three stats, Blindness 5 takes 5 off all three. Flash Blast is the current source of it, applying level 2 to every enemy for as many turns as the caster's own Accuracy.",
+		"body": "Each level lowers Agility, Accuracy, and Defense by that amount. The move itself says how many turns it lasts.",
 	},
 	{
 		"title": "Stun",
-		"body": "A stunned combatant skips their turn entirely - the number attached to Stun is how many of their own upcoming turns get skipped, not a stat penalty the way Blindness's level is.",
+		"body": "A stunned combatant skips their turn. Its duration is a number of that combatant's upcoming turns, not a stat penalty.",
+	},
+	{
+		"title": "Bleed",
+		"body": "Deals its stacked amount as damage at the end of the bleeding combatant's turn. The move itself says whether it persists for the battle or expires after a duration.",
+	},
+	{
+		"title": "Poison",
+		"body": "Deals its level as damage at the end of the poisoned combatant's turn, then expires after the duration on the move.",
+	},
+	{
+		"title": "Evasion Down",
+		"body": "Lowers the target's Evasion by its level for the duration on the move.",
 	},
 ]
+
+static func status_condition_body(status_name: String) -> String:
+	for entry in STATUS_CONDITIONS:
+		if String(entry.get("title", "")).to_lower() == status_name.to_lower():
+			return String(entry.get("body", ""))
+	return ""
+
+# Effects which are not named statuses still need one clear explanation in
+# the optional move context. The values/durations shown beside these entries
+# are always derived by Battle from the selected move itself.
+const EFFECT_KIND_EXPLANATIONS: Dictionary = {
+	"reduce_evasion": {
+		"title": "Evasion Reduction",
+		"body": "Lowers the target's base Evasion for the rest of this battle.",
+	},
+	"reduce_defense": {
+		"title": "Defense Reduction",
+		"body": "Lowers the target's base Defense for the rest of this battle.",
+	},
+	"self_temporary": {
+		"title": "Self Cost",
+		"body": "A temporary stat loss paid by the caster. It clears at the start of that caster's next turn.",
+	},
+}
+
+static func effect_kind_explanation(kind: String) -> Dictionary:
+	return EFFECT_KIND_EXPLANATIONS.get(kind, {}) as Dictionary

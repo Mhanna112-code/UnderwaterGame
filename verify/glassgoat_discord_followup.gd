@@ -46,6 +46,8 @@ func _test_result_first_move_menu() -> void:
 			"RESULT-FIRST MENU WRONG: expected resolved 1 Damage / 2 Bleed, observed '%s'" % stabbing.text)
 		_expect("STR" not in stabbing.text,
 			"FORMULA POLLUTION: default move choice exposes stat algebra '%s'" % stabbing.text)
+		_expect("Damage" in stabbing.tooltip_text and "Calculation" in stabbing.tooltip_text and "Strength" in stabbing.tooltip_text,
+			"ON-DEMAND CALCULATION MISSING: resolved choice has no contextual explanation")
 
 	# A resolved preview must be computed from the acting character, not copied
 	# from Scuba's base values. The same authored move at 4 STR is 4/5.
@@ -57,23 +59,15 @@ func _test_result_first_move_menu() -> void:
 		_expect("4 Damage" in stabbing.text and "5 Bleed" in stabbing.text,
 			"HARDCODED MOVE PREVIEW: 4 STR still renders '%s'" % stabbing.text)
 
-	var details := _button_starting_with(battle.move_menu, "Show formulas")
-	_expect(details != null,
-		"FORMULA DETAILS MISSING: no on-demand control preserves authored calculations")
-	if details != null:
-		details.pressed.emit()
-		stabbing = _move_button(battle, "Scuba Stabbing")
-		_expect(stabbing != null and "STR" in stabbing.text,
-			"FORMULA DETAILS BROKEN: toggling details does not reveal the authored calculation")
-		# FORMULA-FREEZE-1: the control must be reversible. A one-way
-		# rebuild can look correct for one frame yet leave the active combat
-		# turn stranded in details mode.
-		details.pressed.emit()
-		stabbing = _move_button(battle, "Scuba Stabbing")
-		_expect(stabbing != null and "4 Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
-			"FORMULA DETAILS STUCK: toggling back does not restore the result-first choice")
-		_expect(details.text.begins_with("Show formulas"),
-			"FORMULA CONTROL STUCK: the details button does not return to Show formulas")
+	# The original result/formula toggle created a second lower-panel state
+	# that could look frozen during a live battle. The current contract keeps
+	# results on every choice and puts the actual calculation in that choice's
+	# contextual detail instead, so it is both optional and never a mode.
+	_expect(_button_starting_with(battle.move_menu, "Show formulas") == null,
+		"FORMULA MODE REGRESSION: Quick Read should not retain a second menu state")
+	stabbing = _move_button(battle, "Scuba Stabbing")
+	_expect(stabbing != null and "4 Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
+		"QUICK READ LOST AFTER STAT CHANGE: result-first choice no longer reflects the acting character")
 	battle.queue_free()
 	await process_frame
 
