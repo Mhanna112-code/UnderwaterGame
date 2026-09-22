@@ -79,9 +79,12 @@ const saveMenuOut = out.replace(/(\.[^.]+)?$/, '.save-menu$1');
 await page.screenshot({ path: saveMenuOut });
 
 // The actual SavePoint menu intentionally exposes Update Spells beneath Save.
-// The review route's no-slot state must keep the normal menu usable while
-// letting a reviewer traverse into the existing spell tree.
-await page.mouse.click(110, 105);
+// It is centered by SavePointMenu's full-viewport CenterContainer, so its
+// public action is at the canvas midpoint rather than a fragile old
+// top-left-menu coordinate. The review route's no-slot state must keep the
+// normal menu usable while letting a reviewer traverse into the existing
+// spell tree.
+await page.mouse.click(640, 405);
 await page.waitForTimeout(1500);
 const updateMenu = await sample();
 const updateMenuOut = out.replace(/(\.[^.]+)?$/, '.update-menu$1');
@@ -90,7 +93,7 @@ await page.screenshot({ path: updateMenuOut });
 // Update Spells deliberately offers Equip and Learn before entering a tree.
 // Choosing Learn Spells is the public path under review, not an implementation
 // shortcut into the underlying scene.
-await page.mouse.click(110, 105);
+await page.mouse.click(640, 420);
 await page.waitForTimeout(1500);
 const spellTree = await sample();
 await page.screenshot({ path: out });

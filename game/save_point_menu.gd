@@ -49,6 +49,11 @@ func _build_root_panel() -> Control:
 	# Opaque by design: the persistent world HUD must not read through the
 	# modal title/buttons while a player is saving or changing spells.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	# A full-viewport ColorRect is decorative. Its default STOP filter was
+	# swallowing clicks before the centered Save / Update buttons saw them.
+	# Keep input on the actual buttons, exactly as TitleScreen does for its
+	# cover and readability shade.
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	# CenterContainer, not PRESET_CENTER anchors with hand-picked offsets -
@@ -61,10 +66,12 @@ func _build_root_panel() -> Control:
 	# separate anchor calculation that can end up anchored to the wrong
 	# origin.
 	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.add_child(center)
 
 	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.custom_minimum_size = Vector2(220, 0)
 	box.add_theme_constant_override("separation", 14)
 	center.add_child(box)
@@ -92,13 +99,16 @@ func _build_update_panel() -> Control:
 	# Keep the second level of the same modal equally opaque; otherwise the
 	# world controls reappear between Save and Learn/Equip.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.add_child(center)
 
 	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.custom_minimum_size = Vector2(220, 0)
 	box.add_theme_constant_override("separation", 14)
 	center.add_child(box)

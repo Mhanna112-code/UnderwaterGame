@@ -52,10 +52,14 @@ func _ready() -> void:
 	# The spell tree is a full-screen decision surface, so it intentionally
 	# hides world HUD text instead of allowing it to overlap the tree header.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	# The opaque backdrop provides contrast only; it must not consume the
+	# clicks intended for the actual spell buttons above it.
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 50.0
 	root.offset_top = 50.0
@@ -86,6 +90,7 @@ func _ready() -> void:
 	root.add_child(hint)
 
 	_columns_box = HBoxContainer.new()
+	_columns_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_columns_box.add_theme_constant_override("separation", 40)
 	root.add_child(_columns_box)
 
