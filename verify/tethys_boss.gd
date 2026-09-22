@@ -122,8 +122,9 @@ func _run() -> void:
 		"DOUBLE SCRATCH: must attack twice to pressure the evasion pool")
 	_expect(String((move_by_id.tail_sweep as Dictionary).target) == "all" and bool((move_by_id.tail_sweep as Dictionary).ignore_defense),
 		"TAIL SWEEP: must hit the party and counter armour")
-	_expect(String((move_by_id.poison_breath as Dictionary).target) == "all" and int((move_by_id.poison_breath as Dictionary).poison) > 0,
-		"POISON BREATH: must poison the whole party")
+	var poison_breath := move_by_id.poison_breath as Dictionary
+	_expect(String(poison_breath.target) == "all" and is_equal_approx(float(poison_breath.get("poison_fraction", 0.0)), 0.15),
+		"POISON BREATH: must poison the whole party for 15% of each target's maximum HP")
 
 	var material_count := 0
 	var red_count := 0
@@ -142,10 +143,10 @@ func _run() -> void:
 	var poison_target := CombatantStats.new()
 	poison_target.hp_max = 20
 	poison_target.fill()
-	poison_target.add_status("poison", 2, 3)
+	poison_target.add_status("poison", maxi(1, int(round(float(poison_target.hp_max) * 0.15))), 3)
 	var poison_tick := poison_target.end_turn()
-	_expect(int(poison_tick.poison_damage) == 2 and poison_target.hp == 18 and poison_target.status_turns("poison") == 2,
-		"POISON TICK: expected 2 damage and two turns remaining")
+	_expect(int(poison_tick.poison_damage) == 3 and poison_target.hp == 17 and poison_target.status_turns("poison") == 2,
+		"POISON TICK: expected 15% of 20 maximum HP (3 damage) and two turns remaining")
 
 	var battle := Battle.new()
 	battle.boss_encounter = true
@@ -193,8 +194,10 @@ func _run() -> void:
 	_expect(range(battle.party.size()).all(func(i: int) -> bool: return hp_after_sweep[i] < hp_before_sweep[i]),
 		"TAIL SWEEP TURN: did not damage every party member")
 	await battle._do_boss_turn(battle.enemies[0], battle.party)
-	_expect(battle.party.all(func(entry: Dictionary) -> bool: return (entry.stats as CombatantStats).status_level("poison") > 0),
-		"POISON BREATH TURN: did not poison every party member")
+	_expect(battle.party.all(func(entry: Dictionary) -> bool:
+		var stats := entry.stats as CombatantStats
+		return stats.status_level("poison") == 75 and stats.status_turns("poison") == 3),
+		"POISON BREATH TURN: did not apply 15% of each 500-HP target (75 poison for three turns)")
 	for _remaining in range(3):
 		await battle._do_boss_turn(battle.enemies[0], battle.party)
 	for move_value in TethysBoss.MOVES:

@@ -6,32 +6,19 @@
 class_name EnemyMoves
 extends RefCounted
 
-# `clip` is a case-insensitive fragment of the FBX animation take. Ramming
-# Bite keeps its original 30/65 heavy-finisher weight and plain power+strength
-# formula unchanged. Bite, Headbutt and Flash Blast are Glassgoat's Discord
-# follow-up decision for the other three delivered clips: all three use the
-# same wielder-stat "formula"/"effects" shape as content/combat_moves.gd's V2
-# player kit (see CombatRules.resolve, which _resolve_attack() dispatches to
-# whenever a move carries a "formula" key) rather than the old power/effect
-# fields, so Bite's stacking Bleed, Headbutt's Stun and Flash Blast's timed
-# Evasion drop all read the same way a player's Scuba Stabbing/Electric Touch/
-# Flash Blast do.
+# `clip` is a case-insensitive fragment of the FBX animation take. Glassgoat's
+# final Angler table names exactly Bite, Headbutt and Shine (Flash Blast); the
+# legacy Ramming Bite is not an authored attack and is intentionally absent.
+# The three delivered attacks use the same wielder-stat "formula"/"effects"
+# shape as content/combat_moves.gd's V2 player kit (see CombatRules.resolve),
+# so Bite's stacking Bleed, Headbutt's Strength-scaled Stun and Flash Blast's
+# timed Evasion drop all resolve from the enemy's own stats.
 #
-# Bite's weight dropped from the pre-Bleed 70/30 split to 16/8 (see
-# verify/balance.bug-catalog.md for this project's established practice of
-# retuning ordinary-enemy numbers whenever new content shifts the math): Bite
-# is the AI's default, no-cost pick on most turns, unlike a player's occasional
-# Scuba Stabbing, so even a capped-duration Bleed stacks far more often than
-# the same formula does in a human's hands. verify/balance.gd's route gate (a
-# full two-guardian campaign, not just one isolated fight) is what actually
-# caught this - the isolated per-fight win rate looked fine even at a much
-# higher weight, but the campaign's 30%-victory-recovery model compounds a
-# small per-fight HP cost increase into a much larger route-completion drop.
-# Bite's Bleed itself is capped at 3 turns rather than persistent-for-the-fight
-# (unlike the player's own Stabbing) for the same reason - a wound that closes
-# on its own instead of only clearing at the fight's end. Headbutt and Flash
-# Blast stay deliberately low-weight for the same reason; see their own
-# comments below.
+# The relative selection weights predate this reconciliation and are a balance
+# policy, not a fourth attack. The route simulator remains the guardrail after
+# the authored persistent Bleed is restored; it exercises two guardian sites
+# and random encounters rather than claiming a single isolated fight proves
+# the campaign is fair.
 const ANGLER := [
 	{
 		"id": "bite", "name": "Bite", "clip": "attack)bite",
@@ -40,41 +27,21 @@ const ANGLER := [
 		"combat": {
 			"formula": {"strength": 1}, "acc_mod": 1,
 			"effects": [
-				{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}, "duration": 3},
+				{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
 			],
 		},
 	},
 	{
-		"id": "heavy_bite", "name": "Ramming Bite", "clip": "attack)bite",
-		"enabled": true, "target": "single", "roll_order": 0, "weight": 30.0,
-		"finisher_weight": 65.0, "verb": "surges and slams into",
-		"finisher_below_hp": 0.5,
-		"combat": {
-			"power": 0, "acc_mod": -1, "quick_time_bool": true,
-			"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
-		},
-	},
-	{
-		# Weight is a placeholder selection odd - Glassgoat's follow-up
-		# specified the damage/stun formula, not how often the AI should reach
-		# for it relative to Bite/Ramming Bite. Kept low and out of the
-		# finisher roll entirely (0.0): losing a whole turn to Stun is a bigger
-		# swing than any single hit, so verify/balance.gd's route gate is the
-		# guardrail against over-tuning this one - see that gate for the
-		# accepted casual/skilled band. No reason to also spend it on a target
-		# about to die anyway, the way Ramming Bite's actual finisher does.
-		#
-		# Stun's duration is a flat 2, not a formula off the Angler's own
-		# Strength - a deliberate choice so it stays exactly 2 turns regardless
-		# of the per-fight edge/level scaling in Goblin.make_stats(), rather
-		# than wobbling between 2 and 3 turns depending on that roll.
+		# Headbutt's duration follows the Angler's own Strength exactly as the
+		# authored table specifies. A stunned actor loses that many whole turns;
+		# CombatantStats.consume_status_turn() owns the countdown.
 		"id": "headbutt", "name": "Headbutt", "clip": "attack)headbutt",
 		"enabled": true, "target": "single", "roll_order": 2, "weight": 8.0,
 		"finisher_weight": 0.0, "verb": "headbutts",
 		"combat": {
 			"formula": {"strength": 1}, "acc_mod": 1,
 			"effects": [
-				{"kind": "status", "status": "stun", "level": {"flat": 1}, "duration": 2},
+				{"kind": "status", "status": "stun", "level": {"flat": 1}, "duration": {"strength": 1}},
 			],
 		},
 	},

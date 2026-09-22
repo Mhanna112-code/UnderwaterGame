@@ -42,6 +42,26 @@ run() {
 	return 0
 }
 
+# Project-wide script classes are cached by the Godot editor and that cache is
+# intentionally ignored. A brand-new worktree therefore needs one ordinary
+# headless editor scan before individual `--script` gates can resolve classes
+# such as Battle and Diver. Keep failure output, but avoid flooding a healthy
+# gate log with import progress.
+prepare_godot_classes() {
+	local scan_log
+	scan_log="$(mktemp "${TMPDIR:-/tmp}/underwater-class-scan.XXXXXX")"
+	"$GODOT" --headless --editor --path . --quit >"$scan_log" 2>&1
+	local scan_status=$?
+	if [ "$scan_status" -ne 0 ] || grep -q "SCRIPT ERROR:" "$scan_log"; then
+		cat "$scan_log"
+		rm -f "$scan_log"
+		return 1
+	fi
+	rm -f "$scan_log"
+}
+
+run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
+
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
 run "animations: does every rig change state correctly" "$GODOT" --headless --path . --script verify/animations.gd
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
@@ -49,6 +69,7 @@ run "current: can full upstream input cross the flow" "$GODOT" --headless --path
 run "Glassgoat combat: do the authored V2 rules hold" "$GODOT" --headless --path . --script verify/glassgoat_combat.gd
 run "Glassgoat follow-up: do roster and result-first presentation match Discord" "$GODOT" --headless --path . --script verify/glassgoat_discord_followup.gd
 run "combat Quick Read: do result choices, context, and all-target previews agree" "$GODOT" --headless --path . --script verify/combat_quick_read.gd
+run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd

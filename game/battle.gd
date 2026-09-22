@@ -3594,8 +3594,15 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 # home rather than to wherever it happened to start, so an interrupted
 # swing cannot leave somebody drifting a metre further out every turn.
 func _send_home(entry: Dictionary, delay: float) -> void:
-	var a: Node3D = entry.get("actor")
-	if a == null or not is_instance_valid(a):
+	# Do not type the dictionary lookup before validation: Godot emits an error
+	# merely assigning an already-freed Object to a typed Node3D. Long clips
+	# can complete after battle cleanup, in which case return-home is safely a
+	# no-op.
+	var raw_actor: Variant = entry.get("actor")
+	if raw_actor == null or not is_instance_valid(raw_actor):
+		return
+	var a := raw_actor as Node3D
+	if a == null:
 		return
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
@@ -3663,6 +3670,8 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
 	await _swing(_acting, mv, target)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
+	if String(r.get("debuff", "")) == "revive" and target.has("actor") and is_instance_valid(target.actor) and target.actor is Diver:
+		(target.actor as Diver).play_revive()
 	# Feeds Goblin's Angler-specific low-HP targeting (see
 	# choose_move_and_target()/_highest_damage_target()) - a no-op against any
 	# other actor type, which has no such method to call.
@@ -3824,11 +3833,16 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 			if (target.stats as CombatantStats).hp <= 0:
 				break
 			var result: Dictionary = await _resolve_attack(actor.stats, target.stats, move)
-			if result.hit and int(move.get("poison", 0)) > 0:
-				(target.stats as CombatantStats).add_status(
-					"poison", int(move.poison), int(move.get("poison_turns", 3)))
+			if result.hit and float(move.get("poison_fraction", 0.0)) > 0.0:
+				# Poison Breath scales against the struck diver's maximum HP rather
+				# than their remaining HP: a nearly defeated target still receives
+				# the authored 15%-of-max status, and a higher-level party cannot
+				# outgrow the boss simply by raising its health pool.
+				var target_stats := target.stats as CombatantStats
+				var poison_level := maxi(1, int(round(float(target_stats.hp_max) * float(move.poison_fraction))))
+				target_stats.add_status("poison", poison_level, int(move.get("poison_turns", 3)))
 				var effects := result.get("effects", []) as Array
-				effects.append("Poison %d·%d" % [int(move.poison), int(move.get("poison_turns", 3))])
+				effects.append("Poison %d·%d" % [poison_level, int(move.get("poison_turns", 3))])
 				result["effects"] = effects
 			_react(target, result)
 			_show_combat_feedback(target, result)

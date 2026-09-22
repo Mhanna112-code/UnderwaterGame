@@ -14,6 +14,8 @@ branch per clip.
 The current Angler file already contains `Bite`, `headbutt`, and `Shine`. All
 three are enabled: Glassgoat's Discord follow-up supplied Headbutt's and Flash
 Blast's (the renamed `Shine`/"Lure Flash") damage/effect and target behavior.
+Those are the complete authored Angler attacks; legacy `Ramming Bite` is not a
+fourth selectable move.
 
 ## Enabling an attack
 

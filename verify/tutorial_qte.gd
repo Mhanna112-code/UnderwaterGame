@@ -116,13 +116,19 @@ func _run() -> void:
 				String(battle._acting.get("kind", "none")),
 				str(battle._tutorial_force_next_qte),
 			])
-		# Allow the real enemy coroutine to consume the successful QTE before
-		# sampling party HP. This is deliberately a fixed few frames rather
-		# than another log-string wait, so a following turn cannot overwrite
-		# the evidence under test.
+		# A successful input clears _qte_active synchronously, but the enemy
+		# coroutine still has to resume, apply CombatRules' dodged result, finish
+		# its animation/log delay, and hand the turn to a diver. Four frames was
+		# accidentally enough in an isolated run but not under the full suite;
+		# wait for that real turn boundary instead of sampling scheduler timing.
+		# The party does not auto-act, so it cannot introduce a later hit before
+		# this check observes the completed enemy action.
 		if qte_finished:
-			for frame in 4:
+			var resolution_deadline := Time.get_ticks_msec() + TIMEOUT_MS
+			while Time.get_ticks_msec() < resolution_deadline and String(battle._acting.get("kind", "")) != "party":
 				await process_frame
+			if String(battle._acting.get("kind", "")) != "party":
+				findings.append("TUTORIAL QTE: successful input never completed the enemy turn")
 		for index in range(hp_before.size()):
 			var hp_after := (battle.party[index].stats as CombatantStats).hp
 			if hp_after != hp_before[index]:

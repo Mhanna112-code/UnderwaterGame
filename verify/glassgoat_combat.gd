@@ -21,7 +21,7 @@ func _init() -> void:
 	_test_all_target_self_cost_is_paid_once()
 	_test_evasion_down_status_lowers_evasion_and_expires()
 	_test_stun_status_blocks_a_whole_turn_and_expires()
-	_test_bleed_duration_does_not_reset_on_reapplication()
+	_test_bleed_persists_and_stacks_until_fight_end()
 	_test_tail_spin_strips_defense_by_the_wielders_own_defense()
 
 	for failure in failures:
@@ -186,26 +186,22 @@ func _test_stun_status_blocks_a_whole_turn_and_expires() -> void:
 	target.consume_status_turn("stun")
 	_expect(not target.is_stunned(), "STUN NEVER EXPIRES: it must clear once its turns run out")
 
-# Bite (content/enemy_moves.gd) is the first move to give Bleed a real,
-# capped duration instead of the persistent-for-the-fight duration Scuba
-# Stabbing uses. add_status()'s existing "already bleeding" merge branch only
-# ever touched level, never turns, so a repeat Bite stacks the level onto the
-# existing clock rather than refreshing a fresh 3 turns on top of it - worth
-# locking down explicitly since "shouldn't reapplying it also reset the
-# timer?" is an easy, wrong assumption for a later change to make.
-func _test_bleed_duration_does_not_reset_on_reapplication() -> void:
+# Glassgoat's V2 source defines Bleed stacks and an end-turn tick, but no
+# expiry. Reapplying it increases the stack while keeping the persistent
+# duration contract shared by Scuba Stabbing and Angler Bite.
+func _test_bleed_persists_and_stacks_until_fight_end() -> void:
 	var target := _stats(10, 1, 0, 1, 0, 0)
-	target.add_status("bleed", 2, 3)
+	target.add_status("bleed", 2)
 	target.end_turn()
-	_expect(target.status_level("bleed") == 2 and target.status_turns("bleed") == 2,
-		"BLEED TIMER WRONG: a 3-turn Bleed must have 2 turns left after one end_turn()")
-	target.add_status("bleed", 2, 3)
-	_expect(target.status_level("bleed") == 4 and target.status_turns("bleed") == 2,
-		"BLEED REAPPLICATION WRONG: a second landed Bite must stack onto the existing level without resetting its remaining 2-turn clock")
+	_expect(target.status_level("bleed") == 2 and target.status_turns("bleed") == 0,
+		"BLEED PERSISTENCE WRONG: an unspecified Bleed duration must remain active after end_turn()")
+	target.add_status("bleed", 2)
+	_expect(target.status_level("bleed") == 4 and target.status_turns("bleed") == 0,
+		"BLEED REAPPLICATION WRONG: a second landed Bite must stack without inventing a timer")
 	target.end_turn()
 	target.end_turn()
-	_expect(target.status_level("bleed") == 0,
-		"BLEED NEVER EXPIRES: it must still clear once its original clock reaches zero, even after a mid-flight level increase")
+	_expect(target.status_level("bleed") == 4,
+		"BLEED LOST: stacks must remain until the fight ends when no duration is authored")
 
 # Frilled Shark's Tail Spin (content/enemy_moves.gd) is the first move to use
 # reduce_defense() - Electric Touch's reduce_evasion() counterpart, but for
