@@ -37,7 +37,7 @@
 | ROSTER-1 | Cyclops and Bucky retain legacy inflated stats, making the correctly specified Scuba objectively inferior instead of the accuracy/evasion specialist. | High - combat balance, turn order, route simulations, and character identity are all wrong. | Observed in PR #54 and called out directly by Glassgoat. | captured contract | fixed and GREEN |
 | IDENTITY-1 | The third playable character remains `Mech Pilot` after Glassgoat supplied the name Bucky. | Medium - every world/combat label presents stale identity. | The former label was explicitly provisional. | captured contract | fixed and GREEN |
 | PREVIEW-1 | Move buttons expose formulas such as `1 + STR` instead of the resolved values the current actor will produce. | High - the combat menu remains noisy and forces players to calculate before acting. | Observed in the shipped button hints. | differential UI integration | fixed and GREEN |
-| DETAILS-1 | Hiding formulas without an on-demand details control removes information Glassgoat said may remain available behind a button/menu. | Medium - advanced players cannot inspect why a value changed. | The current menu has no details mode. | decision-table UI integration | fixed and GREEN |
+| DETAILS-1 | Hiding formulas without move-local contextual detail removes information Glassgoat said may remain available on demand. | Medium - advanced players cannot inspect why a value changed. | The normal menu deliberately has no details mode. | decision-table UI integration | fixed and GREEN |
 | COLOR-1 | Damage and applied effects are concatenated into one Label3D and therefore cannot use the requested red/blue/purple semantic colors independently. | Medium - a combined result is less legible precisely when multiple mechanics interact. | Observed in `_show_combat_feedback`. | decision-table UI integration | fixed and GREEN |
 | ASSET-1 | The boss loader unconditionally overwrites artist materials with two guessed reds, so replacement textures can never display. | High - Glassgoat's boss appears wrong even when the correct art is supplied. | Observed; later Discord feedback explicitly rejected the displayed red. | rendered integration | blocked on texture delivery |
 | ASSET-2 | Replacing the FBX can silently lose or detach the non-humanoid motions that PR #54 proved. | High - fixing appearance could make the boss rigid or backward. | The replacement export has a materially different node/bone inventory. | invariant/rendered integration | characterized; replacement passes motion gate but is not shippable alone |
@@ -54,8 +54,8 @@
 ### PREVIEW-1 and DETAILS-1 - result-first move menu
 
 - **Test type:** differential UI integration and a two-state decision table.
-- **Description:** `Move menu: Scuba Stabbing shows 1 Damage and 2 Bleed by default, then authored formula details on demand - guards against formula pollution or lost inspectability.`
-- **What it catches:** raw stat-symbol hints in the default menu, hard-coded previews that fail when actor stats change, and a details toggle that does not restore the formula explanation.
+- **Description:** `Move menu: Scuba Stabbing shows 1 Damage and 2 Bleed by default, with authored calculation context on demand - guards against formula pollution or lost inspectability.`
+- **What it catches:** raw stat-symbol hints in the default menu, hard-coded previews that fail when actor stats change, a missing contextual calculation explanation, or a second formula-menu mode that makes the active combat turn look frozen.
 - **Self-critique:** It compares two actors with different stats, so wrong-but-stable hard-coded text fails. It inspects player-visible button meaning, not helper names or node order.
 
 ### COLOR-1 - semantic result colors

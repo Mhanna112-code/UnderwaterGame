@@ -18,6 +18,8 @@
 class_name Battle
 extends CanvasLayer
 
+const TooltipButtonScript := preload("res://game/tooltip_button.gd")
+
 signal finished(result: String)     # "won", "fled", or "lost"
 # Emitted only after a party member has stepped into range, faced the
 # selected target and actually begun an attack clip.  Gameplay does not
@@ -370,14 +372,11 @@ var run_btn: Button
 var skip_tutorial_btn: Button
 var items_btn: Button
 var back_btn: Button
-var move_details_btn: Button
 var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
 var item_buttons: Array = []
-var _show_move_formulas := false
-var _move_menu_actor: Dictionary = {}
 
 # Set alongside _pending_move for a move, this for an item - exactly one
 # of the two is ever non-empty at a time. _on_target_chosen() (target_menu's
@@ -778,6 +777,41 @@ func _show_stat_preview(move: Dictionary, enemy: Dictionary) -> void:
 # button while reading the caption can't yank the panel/highlights away
 # mid-explanation.
 var _stat_preview_frozen := false
+
+# An all-target move affects a variable number of enemies. The first preview
+# reuses the normal enemy panel; one temporary panel per remaining target
+# makes the target scope legible before commitment and is always cleaned up
+# on hover exit or after choosing/backing out.
+var _extra_enemy_stats_uis: Array[Dictionary] = []
+
+func _show_all_stat_preview(move: Dictionary, enemies_to_preview: Array) -> void:
+	if enemies_to_preview.is_empty():
+		return
+	_show_stat_preview(move, enemies_to_preview[0] as Dictionary)
+	var container := (_enemy_stats_ui.panel as Control).get_parent()
+	if container == null:
+		return
+	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	for i in range(1, enemies_to_preview.size()):
+		var enemy := enemies_to_preview[i] as Dictionary
+		if not enemy.has("stats"):
+			continue
+		var extra := create_stats_panel(String(enemy.get("display_name", "Enemy")))
+		_set_stats_panel_base(extra, enemy.stats as CombatantStats)
+		_apply_stat_delta(extra, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
+		(extra.panel as Control).visible = true
+		container.add_child(extra.panel as Control)
+		_extra_enemy_stats_uis.append(extra)
+
+func _clear_all_stat_preview() -> void:
+	if _stat_preview_frozen:
+		return
+	for extra in _extra_enemy_stats_uis:
+		var panel := extra.get("panel") as Control
+		if panel != null and is_instance_valid(panel):
+			panel.queue_free()
+	_extra_enemy_stats_uis.clear()
+	_clear_stat_preview()
 
 func _clear_stat_preview() -> void:
 	if _enemy_stats_ui.is_empty() or _stat_preview_frozen:
@@ -1474,9 +1508,6 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
-	move_details_btn = _menu_button("Show formulas", "Optional calculation details")
-	move_details_btn.pressed.connect(_toggle_move_details)
-	move_menu.add_child(move_details_btn)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
@@ -1537,7 +1568,7 @@ func _fit_panel_height() -> void:
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
 func _menu_button(title: String, hint: String) -> Button:
-	var b := Button.new()
+	var b := TooltipButtonScript.new() as Button
 	b.text = title if hint == "" else "%s\n%s" % [title, hint]
 	# Four 300px choices plus their gaps fit in the 1248px-wide content area
 	# at the evidence/playtest resolution. The previous 210px width packed five
@@ -2350,6 +2381,7 @@ func _start_party_turn(actor: Dictionary) -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
@@ -2556,36 +2588,92 @@ func _add_power_badge(btn: Button, power: int) -> void:
 	plate.add_child(badge)
 
 func _populate_move_menu(actor: Dictionary) -> void:
-	_move_menu_actor = actor
 	for b in move_buttons:
 		(b as Button).queue_free()
 	move_buttons.clear()
 	var available: float = (actor.stats as CombatantStats).oxygen
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
-		var hint: String = String(mv.hint) if _show_move_formulas else CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
+		var hint := CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
 		if ox_cost > 0.0:
 			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
 		var raw_power := _preview_raw_power(mv, actor.stats as CombatantStats)
 		if raw_power > 0:
 			_add_power_badge(b, raw_power)
+		b.tooltip_text = _move_tooltip_text(mv, actor.stats as CombatantStats)
 		b.disabled = available < ox_cost
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
-	# The two persistent controls are not rebuilt with the move buttons.
-	# Keep them after the choices, in details-then-back order.
-	move_details_btn.text = "Show results\nResolved for %s" % String(actor.display_name) if _show_move_formulas else "Show formulas\nOptional calculation details"
-	move_menu.move_child(move_details_btn, move_menu.get_child_count() - 1)
+	# Back is the one persistent control. Keep it after the newly rebuilt
+	# choices; there is deliberately no separate formula/result mode.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
 
-func _toggle_move_details() -> void:
-	if _move_menu_actor.is_empty():
-		return
-	_show_move_formulas = not _show_move_formulas
-	_populate_move_menu(_move_menu_actor)
-	call_deferred("_fit_panel_height")
+func _move_tooltip_text(mv: Dictionary, actor_stats: CombatantStats) -> String:
+	var sections: Array[String] = []
+	sections.append("Target\n%s" % _move_target_label(mv))
+	var deals_damage := (mv.has("formula") and not (mv.get("formula", {}) as Dictionary).is_empty()) or int(mv.get("power", 0)) > 0
+	if deals_damage:
+		sections.append("Damage\n%s %s" % [
+			TutorialContent.stat_glossary_body("Strength (STR)"),
+			TutorialContent.stat_glossary_body("Defense (DEF)"),
+		])
+		sections.append("Calculation\n%s" % _move_formula_description(mv))
+	for effect_value in mv.get("effects", []):
+		var effect := effect_value as Dictionary
+		var kind := String(effect.get("kind", ""))
+		if kind == "status":
+			var status_name := String(effect.get("status", ""))
+			var timing := _effect_duration_text(effect, actor_stats)
+			var body := TutorialContent.status_condition_body(status_name)
+			if timing != "":
+				body = "%s %s" % [body, timing]
+			sections.append("%s\n%s" % [_status_display_name(status_name), body])
+		else:
+			var explanation := TutorialContent.effect_kind_explanation(kind)
+			if not explanation.is_empty():
+				sections.append("%s\n%s" % [String(explanation.get("title", "")), String(explanation.get("body", ""))])
+	var debuff := String(mv.get("debuff", ""))
+	if debuff != "":
+		sections.append("%s Reduction\nLowers the target's %s by %d for this battle." % [
+			debuff.capitalize(), debuff.capitalize(), int(mv.get("amount", 0)),
+		])
+	return "\n\n".join(sections)
+
+func _move_target_label(mv: Dictionary) -> String:
+	match String(mv.get("effect", "")):
+		"heal": return "One living ally"
+		"revive": return "One downed ally"
+	match String(mv.get("target", "one_enemy")):
+		"all_enemies": return "All enemies"
+		"all_allies": return "All allies"
+		"one_ally": return "One ally"
+		_: return "One enemy"
+
+func _status_display_name(status_name: String) -> String:
+	return status_name.replace("_", " ").capitalize()
+
+func _move_formula_description(mv: Dictionary) -> String:
+	if mv.has("formula"):
+		var formula := mv.get("formula", {}) as Dictionary
+		var terms: Array[String] = []
+		for stat in ["flat", "strength", "defense", "agility", "evasion", "accuracy"]:
+			var coefficient := int(formula.get(stat, 0))
+			if coefficient == 0:
+				continue
+			var label: String = "base %d" % coefficient if stat == "flat" else stat.capitalize()
+			terms.append(label if coefficient == 1 else "%d× %s" % [coefficient, label])
+		return "Raw damage uses %s before the target's Defense." % " + ".join(terms) if not terms.is_empty() else "This move deals no direct damage."
+	if int(mv.get("power", 0)) > 0:
+		return "Raw damage uses base %d + Strength before the target's Defense." % int(mv.get("power", 0))
+	return "This move deals no direct damage."
+
+func _effect_duration_text(effect: Dictionary, actor_stats: CombatantStats) -> String:
+	if not effect.has("duration"):
+		return "It persists for this battle."
+	var turns := CombatRules.formula_value(actor_stats, effect.get("duration", {}))
+	return "It lasts %d turn%s." % [turns, "" if turns == 1 else "s"] if turns > 0 else "It persists for this battle."
 
 func _show_items() -> void:
 	if _busy:
@@ -2709,6 +2797,7 @@ func _show_main() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
@@ -3145,13 +3234,12 @@ func _populate_all_target_menu(targets: Array) -> void:
 		names.append(String(target.display_name))
 	var button := _menu_button("All enemies", ", ".join(names))
 	button.pressed.connect(_on_all_targets_chosen.bind(targets))
-	# "All enemies" only ever targets enemies (nothing heals/revives the
-	# whole party at once), so previewing against the first of them is
-	# always safe here - unlike _populate_target_menu(), which is shared
-	# with heal/revive's ally-targeting case.
+	# All-target moves affect the full set, so the hover has to preview that
+	# full set too. Reusing a first-target-only preview makes a deliberate
+	# multi-enemy decision look like a single-target one.
 	if not targets.is_empty():
-		button.mouse_entered.connect(_show_stat_preview.bind(_pending_move, targets[0]))
-		button.mouse_exited.connect(_clear_stat_preview)
+		button.mouse_entered.connect(_show_all_stat_preview.bind(_pending_move, targets))
+		button.mouse_exited.connect(_clear_all_stat_preview)
 	target_menu.add_child(button)
 	target_buttons.append(button)
 	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
@@ -3188,7 +3276,7 @@ func _populate_target_menu(targets: Array) -> void:
 # the next turn's target picker.
 func _on_target_chosen(target: Dictionary) -> void:
 	target_menu.visible = false
-	_clear_stat_preview()
+	_clear_all_stat_preview()
 	if _pending_item != "":
 		var item_id := _pending_item
 		_pending_item = ""
@@ -3198,7 +3286,7 @@ func _on_target_chosen(target: Dictionary) -> void:
 
 func _on_all_targets_chosen(targets: Array) -> void:
 	target_menu.visible = false
-	_clear_stat_preview()
+	_clear_all_stat_preview()
 	var move := _pending_move
 	_pending_move = {}
 	_resolve_party_move_all(move, targets)
@@ -3217,7 +3305,7 @@ func _show_moves_or_items_from_target_menu() -> void:
 	if _busy:
 		return
 	target_menu.visible = false
-	_clear_stat_preview()
+	_clear_all_stat_preview()
 	if _pending_item != "":
 		_pending_item = ""
 		item_menu.visible = true
@@ -3772,6 +3860,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	_turn_cursor.visible = false
 
 	var alive_party := _living(party)
@@ -4117,6 +4206,7 @@ func _win() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	# Leftover from whoever's move resolved right before this - the name/
 	# power row above the stats panels, and the panels themselves (the
 	# player one sits visible all fight; the enemy one only when a hover
@@ -4242,6 +4332,7 @@ func _lose() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	if tutorial_encounter:
 		_log("The tutorial fight is over.")
 	else:
