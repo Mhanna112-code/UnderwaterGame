@@ -38,6 +38,13 @@ func _run() -> void:
 	world._transitioning_to_encounter = false
 	if is_instance_valid(world._intro_arrow):
 		world._intro_arrow.visible = false
+	# The test adds the real Battle as a World child because it deliberately
+	# uses World-owned divers and actor contracts. Stop only World's map loops
+	# after that state is established: otherwise a scheduled map update could
+	# start a second tutorial battle against the same party stats. Children
+	# continue processing, so this does not fake the Battle or the QTE path.
+	world.set_process(false)
+	world.set_physics_process(false)
 	await process_frame
 	# Construct the real Battle directly with the same party source World
 	# would pass. Lowering only agility makes the Angler naturally take the
@@ -58,6 +65,10 @@ func _run() -> void:
 	if battle.enemies.is_empty():
 		findings.append("TUTORIAL QTE START: no enemy was created")
 	else:
+		var tutorial_enemy := battle.enemies[0] as Dictionary
+		var tutorial_actor := tutorial_enemy.get("actor") as Goblin
+		if tutorial_actor == null or tutorial_actor.enemy_id() != "angler":
+			findings.append("TUTORIAL QTE START: the scripted lesson built %s instead of its named Angler" % String(tutorial_enemy.get("display_name", "no enemy")))
 		# The initial _ready() dispatcher enters the actual tutorial enemy
 		# branch. This test observes that turn only; it never injects a
 		# QTE-capable replacement move, reorders the queue, or calls an enemy
@@ -67,6 +78,8 @@ func _run() -> void:
 			hp_before.append((entry.stats as CombatantStats).hp)
 
 		var qte_seen := false
+		var prior_qte_active := false
+		var qte_window_count := 0
 		var x_pressed := false
 		var qte_finished := false
 		var qte_succeeded := false
@@ -76,6 +89,9 @@ func _run() -> void:
 			if battle._tutorial_awaiting_enter:
 				battle._unhandled_input(_key(KEY_ENTER))
 			if battle._qte_active:
+				if not prior_qte_active:
+					qte_window_count += 1
+				prior_qte_active = true
 				qte_seen = true
 				if not battle.qte_root.visible:
 					findings.append("TUTORIAL QTE: timing widget was active but invisible")
@@ -98,6 +114,7 @@ func _run() -> void:
 			# turn before a heavily loaded suite samples it. The QTE's own success
 			# flag is the public interaction result that CombatRules consumes.
 			elif qte_seen and x_pressed and not battle._qte_active:
+				prior_qte_active = false
 				qte_succeeded = battle._qte_success
 				qte_finished = qte_succeeded
 			await process_frame
@@ -123,12 +140,16 @@ func _run() -> void:
 		# wait for that real turn boundary instead of sampling scheduler timing.
 		# The party does not auto-act, so it cannot introduce a later hit before
 		# this check observes the completed enemy action.
+		var extra_qte_seen := false
 		if qte_finished:
 			var resolution_deadline := Time.get_ticks_msec() + TIMEOUT_MS
 			while Time.get_ticks_msec() < resolution_deadline and String(battle._acting.get("kind", "")) != "party":
+				extra_qte_seen = extra_qte_seen or battle._qte_active
 				await process_frame
 			if String(battle._acting.get("kind", "")) != "party":
 				findings.append("TUTORIAL QTE: successful input never completed the enemy turn")
+			elif extra_qte_seen or qte_window_count != 1:
+				findings.append("TUTORIAL QTE: the one-dodge lesson opened %d timing windows before returning control" % qte_window_count)
 		for index in range(hp_before.size()):
 			var hp_after := (battle.party[index].stats as CombatantStats).hp
 			if hp_after != hp_before[index]:
