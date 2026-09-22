@@ -13,6 +13,7 @@ extends Control
 
 signal save_requested(diver: Diver)
 
+var world: World
 var diver: Diver
 var _display_name := ""
 
@@ -24,7 +25,9 @@ var _update_panel: Control
 
 func _ready() -> void:
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# World parents this complete Save/Update/Learn/Equip flow to its higher
+	# TitleLayer, so persistent HUD labels cannot render across its screens.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_root_panel = _build_root_panel()
 	add_child(_root_panel)
@@ -43,8 +46,15 @@ func _ready() -> void:
 
 func _build_root_panel() -> Control:
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Opaque by design: the persistent world HUD must not read through the
+	# modal title/buttons while a player is saving or changing spells.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	# A full-viewport ColorRect is decorative. Its default STOP filter was
+	# swallowing clicks before the centered Save / Update buttons saw them.
+	# Keep input on the actual buttons, exactly as TitleScreen does for its
+	# cover and readability shade.
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	# CenterContainer, not PRESET_CENTER anchors with hand-picked offsets -
 	# the anchor-point approach put the box's center at the wrong place
@@ -56,10 +66,12 @@ func _build_root_panel() -> Control:
 	# separate anchor calculation that can end up anchored to the wrong
 	# origin.
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.add_child(center)
 
 	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.custom_minimum_size = Vector2(220, 0)
 	box.add_theme_constant_override("separation", 14)
 	center.add_child(box)
@@ -84,14 +96,19 @@ func _build_root_panel() -> Control:
 
 func _build_update_panel() -> Control:
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Keep the second level of the same modal equally opaque; otherwise the
+	# world controls reappear between Save and Learn/Equip.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.add_child(center)
 
 	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.custom_minimum_size = Vector2(220, 0)
 	box.add_theme_constant_override("separation", 14)
 	center.add_child(box)
@@ -150,6 +167,8 @@ func _on_save_pressed() -> void:
 func open_for(d: Diver, display_name: String = "") -> void:
 	diver = d
 	_display_name = display_name
+	if world != null:
+		world._open_fullscreen_menu()
 	visible = true
 	_show_root()
 
@@ -158,3 +177,5 @@ func close() -> void:
 	diver = null
 	learn_ui.close()
 	equip_ui.close()
+	if world != null:
+		world._close_fullscreen_menu()

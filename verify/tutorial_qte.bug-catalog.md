@@ -33,6 +33,8 @@ one attack.
 |---|---|---|---|---|---|
 | 1 | The tutorial sets its force flag, but the selected normal Angler Bite remains QTE-ineligible so no timing widget ever appears. | High — the promised first QTE silently never teaches its mechanic. | Formula-backed Angler moves returned from `_resolve_attack()` before its legacy QTE branch. | captured contract | fixed |
 | 2 | A visible tutorial QTE accepts X outside its live red zone or still applies damage after a correct in-zone X press. | High — the first timing lesson reads as broken or unfair. | The preview temporarily reparents the same widget before the actual attack and the tween/input resolution are asynchronous. | captured contract | fixed |
+| 3 | The tutorial's forced target still lets Angler's normal AI choose all-target Flash Blast. The force flag then never reaches the one-target QTE resolver. | High — the narrated lesson sometimes has no QTE, depending on a random move selection. | `choose_move_and_target(..., forced)` previously used the weighted catalogue instead of an authored single-target lesson move. | repeated tutorial lifecycle | fixed |
+| 4 | The QTE test launches a direct Battle while the map's new-game beam can launch its own tutorial Battle on the next world update. | Medium/high — a race can make a clean QTE look failed or let a second battle change the shared party's HP. | The test intentionally uses a real `World`/party, but did not stop its unrelated map handoff before yielding. | isolated scene-lifecycle pin | fixed |
 
 ## Test plan
 
@@ -40,18 +42,20 @@ one attack.
 
 - **Test type:** captured contract.
 - **Description string:**
-  > `tutorial qte: forced Angler bite shows a live timing window and an in-zone X dodges it`
+  > `tutorial qte: forced Angler Bite opens and moves a live timing widget; its real X handler accepts an in-zone dodge`
 - **What it catches:** a tutorial enemy turn that skips the QTE, a widget that
   is not visible while active, or a successful timing hit that still reduces
   party HP.
 - **Self-critique:**
   - Could this pass for wrong-but-stable output? No. It drives the real
-    tutorial enemy dispatcher, checks the actual live UI state, and submits X
-    using the production input handler only while the drawn indicator is
-    inside the drawn zone.
-  - Could this fail under a behavior-preserving refactor? No. The test does
-    not assert helper names or tween implementation; it asserts the visible
-    QTE and its gameplay result.
+    tutorial enemy dispatcher, checks the actual live UI state and that the
+    tween begins moving, then positions that live indicator in its drawn zone
+    and submits X through the production input handler. It fails if the
+    QTE, movement, zone geometry, input result, or damage prevention breaks.
+  - Could this fail under a behavior-preserving refactor? It does not assert
+    helper names or a frame-specific tween position. It does intentionally
+    require a moving widget, because a static bar is a player-visible
+    regression even if an internal dodge flag still exists.
 
 ## Skipped
 
@@ -62,16 +66,27 @@ one attack.
 
 ## Post-write evaluation
 
-The verifier failed against the integration baseline: the formula-backed
-Angler Bite bypassed `_resolve_attack()`'s QTE logic, so no live widget ever
+The original verifier caught the formula-path issue: the formula-backed
+Angler Bite bypassed `_resolve_attack()`'s QTE logic, so no live widget
 appeared. `Battle._resolve_attack()` now performs the live QTE before handing
 formula arithmetic to `CombatRules.resolve()`, and the latter records a
-successful dodge without applying the target effects.
+successful dodge without applying target effects.
 
-- **Bugs caught:** #1 and #2's shared formula-path cause.
-- **Bugs characterized:** the repaired live QTE is visible, accepts an X only
-  while its indicator occupies the rendered red zone, and leaves every party
-  member's HP unchanged.
-- **Bugs discovered during writing:** formula moves also left the tutorial
-  force flag unconsumed, so a later action could inherit it accidentally.
+The subsequent exact-export suite exposed two more failures. The forced
+tutorial target still let Angler randomly choose Flash Blast, whose `all`
+scope bypassed the one-target QTE hand-off; forced tutorial turns now use the
+artist-authored single-target Bite. The test also suppressed the map's own
+beam-triggered battle before making its direct Battle, and it now samples
+that the real indicator begins moving before placing it in the visible zone
+for the production X handler. This removes scheduler-dependent sampling of a
+6%-wide moving window without replacing the gameplay widget or input path.
+
+- **Bugs caught:** #1 and #2's formula-path cause; #3's probabilistic
+  all-target bypass; #4's competing-world-battle race.
+- **Bugs characterized:** the repaired live QTE is visible and moving, accepts
+  an X through the real handler once its indicator is in the rendered red
+  zone, and leaves every party member's HP unchanged.
+- **Human boundary:** reaction-window duration remains a manual playtest
+  question; the deterministic gate verifies correctness, not whether 1.6
+  seconds feels comfortable.
 - **Tests removed:** none.

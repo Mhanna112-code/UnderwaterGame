@@ -22,15 +22,21 @@ var _list: VBoxContainer
 
 func _ready() -> void:
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Match the Learn screen: an opaque modal keeps persistent HUD labels out of
+	# the player's equipment decision.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	# Decorative backdrop only: preserve pointer delivery to the controls it
+	# covers rather than letting the default STOP filter eat it.
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 50.0
 	root.offset_top = 50.0
 	root.offset_right = -50.0

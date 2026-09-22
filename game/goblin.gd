@@ -304,7 +304,21 @@ func _highest_damage_target(alive_party: Array, fallback: Dictionary) -> Diction
 # scripted target: this state machine sits out entirely rather than risk
 # picking a different target than what was just narrated on screen.
 func choose_move_and_target(self_stats: CombatantStats, alive_party: Array, default_target: Dictionary, forced: bool) -> Dictionary:
-	if forced or alive_party.is_empty():
+	if forced:
+		# The tutorial's one narrated QTE must be a *single-target* Angler
+		# attack. Choosing from the ordinary weighted catalogue here could pick
+		# Flash Blast (target: all); that bypasses _do_enemy_turn()'s one-target
+		# QTE hand-off even though the tutorial had promised a live dodge.
+		# Bite is an authored, enabled Angler move with the delivered animation,
+		# so this is a deterministic lesson example rather than a test-only
+		# substitute. Every non-tutorial turn remains on the normal AI path.
+		var tutorial_bite := _find_move("bite")
+		if not tutorial_bite.is_empty():
+			return {"move": tutorial_bite, "target": default_target}
+		# Keep a safe content fallback if an artist/catalogue revision removes
+		# Bite before the tutorial data is updated.
+		return {"move": choose_move(default_target.stats as CombatantStats), "target": default_target}
+	if alive_party.is_empty():
 		return {"move": choose_move(default_target.stats as CombatantStats), "target": default_target}
 
 	if float(self_stats.hp) < float(self_stats.hp_max) * LOW_HP_FRACTION:

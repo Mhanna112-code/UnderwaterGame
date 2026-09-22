@@ -9,11 +9,12 @@
 # World.inventory now (see world.gd's _on_item_orb_collected()/
 # _grant_reward_item()), and World.use_inventory_item()/use_party_spell()
 # (called from here) are the only places those effects actually resolve.
-# "Combat Help" is pure reference, no buttons that do anything - status
-# condition writeups (see content/tutorial_content.gd's STATUS_CONDITIONS)
-# for whoever wants the full Blindness/Stun numbers again outside of a
-# fight, since the tutorial battle only ever mentions this tab exists
-# rather than reprinting the whole thing itself.
+# "Combat Help" is reference plus one safe action: the current stat glossary,
+# non-status effect explanations, and status condition writeups all live in
+# TutorialContent, while its Replay Tutorial Fight button launches the real
+# lesson through World without mutating campaign state. Its long content must
+# stay readable at the supported web viewport, so the shared list lives in a
+# bounded ScrollContainer rather than silently extending off screen.
 #
 # Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
 # SpellEquipUI/SavePointMenu - nothing here is scene-file based, on purpose,
@@ -41,15 +42,20 @@ var _help_tab: Button
 
 func _ready() -> void:
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# World parents full-screen modal menus to its higher TitleLayer. They must
+	# never share the lower HUD canvas with persistent controls/bars.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# This is a modal, not a heads-up panel. Opaque coverage prevents the
+	# persistent world HUD from bleeding through Help/item text while the player
+	# is deciding what to do.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 50.0
 	root.offset_top = 50.0
 	root.offset_right = -50.0
@@ -86,17 +92,30 @@ func _ready() -> void:
 	_hint.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	root.add_child(_hint)
 
+	var scroll := ScrollContainer.new()
+	scroll.name = "ContentScroll"
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(0, 460)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	root.add_child(scroll)
+
 	_list = VBoxContainer.new()
 	_list.custom_minimum_size = Vector2(360, 0)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 6)
-	root.add_child(_list)
+	scroll.add_child(_list)
 
 func open() -> void:
+	if world != null:
+		world._open_fullscreen_menu()
 	visible = true
 	_switch_to("items")
 
 func close() -> void:
 	visible = false
+	if world != null:
+		world._close_fullscreen_menu()
 
 func _switch_to(mode: String) -> void:
 	_mode = mode
@@ -155,6 +174,10 @@ func _on_use_item_pressed(item_id: String) -> void:
 		return
 	world.use_inventory_item(item_id)
 	refresh()
+
+func _on_replay_tutorial_pressed() -> void:
+	if world != null:
+		world._replay_tutorial_battle()
 
 # One button per living diver x their inventory-tagged spells (see
 # World._inventory_spells_for()) - disabled rather than hidden when that
@@ -228,12 +251,34 @@ func _on_target_chosen(target: Diver) -> void:
 	_mode = "spells_root"
 	refresh()
 
-# Plain reference text, no buttons - one title/body Label pair per
-# TutorialContent.STATUS_CONDITIONS entry, so a new status only ever needs
-# adding there, not here too.
+# One safe action plus plain reference text. Each section is fed by a single
+# TutorialContent table, so adding a stat/effect/status cannot leave Combat
+# Help with stale duplicate prose.
 func _refresh_help() -> void:
-	_hint.text = "Status conditions"
-	for entry in TutorialContent.STATUS_CONDITIONS:
+	_hint.text = "Stats, effects, and status conditions"
+	if world != null:
+		var replay_btn := Button.new()
+		replay_btn.text = "Replay Tutorial Fight"
+		replay_btn.tooltip_text = "Practice the first battle without changing campaign HP, oxygen, XP, levels, or saves."
+		replay_btn.custom_minimum_size = Vector2(340, 40)
+		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
+		_list.add_child(replay_btn)
+	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
+	var effect_entries: Array[Dictionary] = []
+	var effect_kinds: Array = TutorialContent.EFFECT_KIND_EXPLANATIONS.keys()
+	effect_kinds.sort()
+	for kind in effect_kinds:
+		effect_entries.append(TutorialContent.EFFECT_KIND_EXPLANATIONS[kind] as Dictionary)
+	_add_help_section("Effects", effect_entries)
+	_add_help_section("Status Conditions", TutorialContent.STATUS_CONDITIONS)
+
+func _add_help_section(heading: String, entries: Array[Dictionary]) -> void:
+	var heading_label := Label.new()
+	heading_label.text = heading
+	heading_label.add_theme_font_size_override("font_size", 15)
+	heading_label.add_theme_color_override("font_color", Color(0.5, 0.65, 0.7))
+	_list.add_child(heading_label)
+	for entry in entries:
 		var title := Label.new()
 		title.text = String(entry.get("title", ""))
 		title.add_theme_font_size_override("font_size", 18)
