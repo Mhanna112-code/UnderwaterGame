@@ -7,15 +7,15 @@ class_name EnemyMoves
 extends RefCounted
 
 # `clip` is a case-insensitive fragment of the FBX animation take. Ramming
-# Bite keeps its original 30/65 heavy-finisher weight and plain power+strength
-# formula unchanged. Bite, Headbutt and Flash Blast are Glassgoat's Discord
-# follow-up decision for the other three delivered clips: all three use the
-# same wielder-stat "formula"/"effects" shape as content/combat_moves.gd's V2
-# player kit (see CombatRules.resolve, which _resolve_attack() dispatches to
-# whenever a move carries a "formula" key) rather than the old power/effect
-# fields, so Bite's stacking Bleed, Headbutt's Stun and Flash Blast's timed
-# Evasion drop all read the same way a player's Scuba Stabbing/Electric Touch/
-# Flash Blast do.
+# Bite (the old heavy finisher, "heavy_bite") has been removed entirely.
+# Bite, Headbutt and Flash Blast are Glassgoat's Discord follow-up decision
+# for the other three delivered clips: all three use the same wielder-stat
+# "formula"/"effects" shape as content/combat_moves.gd's V2 player kit (see
+# CombatRules.resolve, which _resolve_attack() dispatches to whenever a move
+# carries a "formula" key) rather than the old power/effect fields, so
+# Bite's stacking Bleed, Headbutt's Stun and Flash Blast's timed Evasion
+# drop all read the same way a player's Scuba Stabbing/Electric Touch/Flash
+# Blast do.
 #
 # Bite's weight dropped from the pre-Bleed 70/30 split to 16/8 (see
 # verify/balance.bug-catalog.md for this project's established practice of
@@ -45,24 +45,13 @@ const ANGLER := [
 		},
 	},
 	{
-		"id": "heavy_bite", "name": "Ramming Bite", "clip": "attack)bite",
-		"enabled": true, "target": "single", "roll_order": 0, "weight": 30.0,
-		"finisher_weight": 65.0, "verb": "surges and slams into",
-		"finisher_below_hp": 0.5,
-		"combat": {
-			"power": 0, "acc_mod": -1, "quick_time_bool": true,
-			"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
-		},
-	},
-	{
 		# Weight is a placeholder selection odd - Glassgoat's follow-up
 		# specified the damage/stun formula, not how often the AI should reach
-		# for it relative to Bite/Ramming Bite. Kept low and out of the
-		# finisher roll entirely (0.0): losing a whole turn to Stun is a bigger
-		# swing than any single hit, so verify/balance.gd's route gate is the
-		# guardrail against over-tuning this one - see that gate for the
-		# accepted casual/skilled band. No reason to also spend it on a target
-		# about to die anyway, the way Ramming Bite's actual finisher does.
+		# for it relative to Bite. Kept low and out of the finisher roll
+		# entirely (0.0): losing a whole turn to Stun is a bigger swing than
+		# any single hit, so verify/balance.gd's route gate is the guardrail
+		# against over-tuning this one - see that gate for the accepted
+		# casual/skilled band.
 		#
 		# Stun's duration is a flat 2, not a formula off the Angler's own
 		# Strength - a deliberate choice so it stays exactly 2 turns regardless
