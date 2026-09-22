@@ -111,6 +111,7 @@ else
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs docs /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs docs /tmp/gate-guardian.png
 	run "special webcheck: does ?special=1 reach the chooser" node verify/special_webcheck.mjs docs /tmp/gate-special.png
+	run "spell review webcheck: does ?spells=1 reach the real spell UI" node verify/spell_review_webcheck.mjs docs /tmp/gate-spell-review.png /tmp/gate-spell-review-title.png
 fi
 
 echo
