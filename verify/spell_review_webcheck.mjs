@@ -93,7 +93,7 @@ await page.screenshot({ path: updateMenuOut });
 // Update Spells deliberately offers Equip and Learn before entering a tree.
 // Choosing Learn Spells is the public path under review, not an implementation
 // shortcut into the underlying scene.
-await page.mouse.click(640, 420);
+await page.mouse.click(640, 383);
 await page.waitForTimeout(1500);
 const spellTree = await sample();
 await page.screenshot({ path: out });
