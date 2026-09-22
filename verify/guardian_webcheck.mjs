@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
 // needs a private static server, so the OS can assign an unused port.
 if (!live) await new Promise(r => server.listen(0, r));
 
-const browser = await chromium.launch({ args: [
+const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
 ] });
@@ -47,9 +47,9 @@ await page.mouse.click(640, 405);
 // while all menu clicks were actually ignored.
 await page.waitForTimeout(25000);
 console.log('guardian stage: battle entered');
-// FORMULA-FREEZE-1: exercise the exact player-visible transition Glassgoat
-// reported. The lower combat panel is deliberately fingerprinted without the
-// animated 3D stage, so actor idles cannot masquerade as a responsive menu.
+// QUICK-READ-1: fingerprint the lower panel without the animated 3D stage,
+// so actor idles cannot masquerade as a responsive move menu. Formula mode
+// was intentionally removed: the normal menu is always the resolved result.
 const panelFingerprint = () => page.evaluate(() => {
   const c = document.querySelector('canvas');
   if (!c) return { ok: false, why: 'no canvas element' };
@@ -78,22 +78,8 @@ const resultsOut = out.replace(/(\.[^.]+)?$/, '.results$1');
 await page.screenshot({ path: resultsOut });
 console.log('guardian stage: results menu sampled');
 
-await page.mouse.click(478, 665); // Show formulas in the settled two-row menu
-await page.mouse.move(1270, 710);
-await page.waitForTimeout(5000);
-const formulaPanel = await panelFingerprint();
-const formulaOut = out.replace(/(\.[^.]+)?$/, '.formulas$1');
-await page.screenshot({ path: formulaOut });
-console.log('guardian stage: formula menu sampled');
-
-await page.mouse.click(478, 603); // Show results; formula text makes this menu shorter
-await page.mouse.move(1270, 710);
-await page.waitForTimeout(5000);
-const restoredPanel = await panelFingerprint();
-console.log('guardian stage: results menu restored');
-
 await page.screenshot({ path: out });
-console.log('guardian stage: result mode remained responsive after restoration');
+console.log('guardian stage: result-first menu rendered without a secondary formula mode');
 const pixels = await page.evaluate(() => {
   const c = document.querySelector('canvas');
   if (!c) return { ok: false, why: 'no canvas element' };
@@ -105,12 +91,9 @@ const pixels = await page.evaluate(() => {
   return { ok: true, colours: colours.size, size: [c.width, c.height] };
 });
 console.log('guardian canvas ' + JSON.stringify(pixels));
-console.log('formula toggle  ' + JSON.stringify({ resultsPanel, formulaPanel, restoredPanel }));
+console.log('quick read      ' + JSON.stringify({ resultsPanel }));
 if (errors.length) console.log('console     ' + errors.slice(0, 8).join(' | '));
 await browser.close();
 if (!live) server.close();
-const formulaResponsive = resultsPanel.ok && formulaPanel.ok && restoredPanel.ok
-  && resultsPanel.hash !== formulaPanel.hash
-  && formulaPanel.hash !== restoredPanel.hash;
-if (!pixels.ok || errors.length || pixels.colours < 20 || !formulaResponsive) process.exit(1);
-console.log('GUARDIAN WEB: route opens and formula details toggle reversibly without freezing');
+if (!pixels.ok || errors.length || pixels.colours < 20 || !resultsPanel.ok) process.exit(1);
+console.log('GUARDIAN WEB: route opens and renders the result-first move menu without errors');

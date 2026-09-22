@@ -6,74 +6,140 @@
 class_name EnemyMoves
 extends RefCounted
 
-# `clip` is a case-insensitive fragment of the FBX animation take. The first
-# two entries preserve the old normal/heavy probabilities exactly: 70/30 in a
-# normal turn and 35/65 when a target is in heavy-finisher range. Normal move
-# power uses the same 1-4 authored-stat scale as Glassgoat's 10-HP party; the two
-# additional delivered clips are deliberately visible to the catalogue but
-# disabled until Glassgoat/team select their intended mechanics.
+# `clip` is a case-insensitive fragment of the FBX animation take. Glassgoat's
+# final Angler table names exactly Bite, Headbutt and Shine (Flash Blast); the
+# legacy Ramming Bite is not an authored attack and is intentionally absent.
+# The three delivered attacks use the same wielder-stat "formula"/"effects"
+# shape as content/combat_moves.gd's V2 player kit (see CombatRules.resolve),
+# so Bite's stacking Bleed, Headbutt's Strength-scaled Stun and Flash Blast's
+# timed Evasion drop all resolve from the enemy's own stats.
+#
+# The relative selection weights predate this reconciliation and are a balance
+# policy, not a fourth attack. The route simulator remains the guardrail after
+# the authored persistent Bleed is restored; it exercises two guardian sites
+# and random encounters rather than claiming a single isolated fight proves
+# the campaign is fair.
 const ANGLER := [
 	{
 		"id": "bite", "name": "Bite", "clip": "attack)bite",
-		"enabled": true, "target": "single", "roll_order": 1, "weight": 70.0,
-		"finisher_weight": 35.0, "verb": "bites at",
-		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
-	},
-	{
-		"id": "heavy_bite", "name": "Ramming Bite", "clip": "attack)bite",
-		"enabled": true, "target": "single", "roll_order": 0, "weight": 30.0,
-		"finisher_weight": 65.0, "verb": "surges and slams into",
-		"finisher_below_hp": 0.5,
+		"enabled": true, "target": "single", "roll_order": 1, "weight": 16.0,
+		"finisher_weight": 8.0, "verb": "bites at",
 		"combat": {
-			"power": 0, "acc_mod": -1, "quick_time_bool": true,
-			"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
+			"formula": {"strength": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
+			],
 		},
 	},
 	{
+		# Headbutt's duration follows the Angler's own Strength exactly as the
+		# authored table specifies. A stunned actor loses that many whole turns;
+		# CombatantStats.consume_status_turn() owns the countdown.
 		"id": "headbutt", "name": "Headbutt", "clip": "attack)headbutt",
-		"enabled": false, "target": "single", "roll_order": 2, "weight": 0.0,
+		"enabled": true, "target": "single", "roll_order": 2, "weight": 8.0,
 		"finisher_weight": 0.0, "verb": "headbutts",
-		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
+		"combat": {
+			"formula": {"strength": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "status", "status": "stun", "level": {"flat": 1}, "duration": {"strength": 1}},
+			],
+		},
 	},
 	{
-		"id": "shine", "name": "Lure Flash", "clip": "attack)shine",
-		"enabled": false, "target": "single", "roll_order": 3, "weight": 0.0,
+		# No finisher_weight above zero: a party-wide Evasion debuff isn't a
+		# closing blow, so it stays out of the low-HP finisher roll entirely
+		# (see Goblin.choose_move()'s finisher_below_hp scan).
+		"id": "flash_blast", "name": "Flash Blast", "clip": "attack)shine",
+		"enabled": true, "target": "all", "roll_order": 3, "weight": 15.0,
 		"finisher_weight": 0.0, "verb": "flashes at",
-		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
+		"combat": {
+			"formula": {}, "acc_mod": 1,
+			"effects": [
+				{"kind": "status", "status": "evasion_down", "level": {"accuracy": 1}, "duration": {"accuracy": 1}},
+			],
+		},
 	},
 ]
 
 static func angler_catalogue() -> Array:
 	return ANGLER.duplicate(true)
 
-# The second guardian keeps the proven ordinary-enemy damage/accuracy math.
-# Great Slash carries the former normal Bite slot; Stabbing carries the former
-# low-HP heavy slot. The delivered spinning drill is visible but disabled until
-# the team chooses whether it is a single-target drill or a multi-target move.
+# Glassgoat's Swordfish kit is formula-driven like the V2 diver moves. The
+# artist specified the mechanics and supplied one clip per attack, but not AI
+# selection odds. The provisional initial odds make Arc Slash's two-target
+# persistent Bleed a rare pressure move, Triple Combo an occasional Evasion
+# counter, and Spinning Slayer the readable default. "two" means the weighted-picked
+# primary target plus one other living diver (Battle.enemy_targets_for_scope),
+# which makes Arc Slash's stated Target: 2 deterministic and never duplicates
+# a target. Triple Combo intentionally has no legacy heavy/QTE fields: its
+# authored counterplay is three sequential normal hits, each of which spends
+# the defender's current Evasion pool before the next begins.
 const SWORDFISH_DUELIST := [
 	{
-		"id": "great_slash", "name": "Great Slash", "clip": "attack)greatslash",
-		"enabled": true, "target": "single", "roll_order": 1, "weight": 70.0,
-		"finisher_weight": 35.0, "verb": "slashes at",
-		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
-	},
-	{
-		"id": "stabbing", "name": "Stabbing Lunge", "clip": "attack)stabbing",
-		"enabled": true, "target": "single", "roll_order": 0, "weight": 30.0,
-		"finisher_weight": 65.0, "verb": "lunges at",
-		"finisher_below_hp": 0.5,
+		"id": "arc_slash", "name": "Arc Slash", "clip": "attack)greatslash",
+		"enabled": true, "target": "two", "roll_order": 0, "weight": 0.08,
+		"finisher_weight": 0.08, "verb": "cuts through",
 		"combat": {
-			"power": 0, "acc_mod": -1, "quick_time_bool": true,
-			"effect": "heavy", "heavy_min": 0.25, "heavy_max": 0.5,
+			"formula": {"strength": 1, "defense": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "status", "status": "bleed", "level": {"strength": 1}},
+			],
 		},
 	},
 	{
-		"id": "spinning_drill", "name": "Spinning Drill", "clip": "attack)spinning_drill",
-		"enabled": false, "target": "single", "roll_order": 2, "weight": 0.0,
-		"finisher_weight": 0.0, "verb": "spins toward",
-		"combat": {"power": 3, "acc_mod": 1, "quick_time_bool": false},
+		"id": "triple_combo", "name": "Triple Combo", "clip": "attack)stabbing",
+		"enabled": true, "target": "single", "roll_order": 1, "weight": 0.25,
+		"finisher_weight": 0.25, "verb": "strikes",
+		"combat": {
+			"formula": {"strength": 1}, "acc_mod": 1, "hits": 3,
+		},
+	},
+	{
+		"id": "spinning_slayer", "name": "Spinning Slayer", "clip": "attack)spinning_drill",
+		"enabled": true, "target": "single", "roll_order": 2, "weight": 0.67,
+		"finisher_weight": 0.67, "verb": "drills into",
+		"combat": {
+			"formula": {"strength": 1, "defense": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "reduce_defense", "amount": {"defense": 1}},
+			],
+		},
 	},
 ]
 
 static func swordfish_duelist_catalogue() -> Array:
 	return SWORDFISH_DUELIST.duplicate(true)
+
+# The third ordinary enemy. Bite deals Strength plus the Frilled Shark's own
+# Defense ("Armor") - CombatRules.formula_value() already sums any named stat
+# coefficient, so "Strength + Armor" needs no new engine support, just the
+# {"strength": 1, "defense": 1} formula below. Tail Spin deals plain Strength
+# damage and then (see CombatRules.resolve()'s effects loop running after
+# damage, not before) strips the target's own Defense by the Frilled Shark's
+# Defense - same "amount is the wielder's own stat" convention as Flash
+# Blast's Evasion drop and Headbutt's Stun duration, both by the attacker's
+# own Accuracy/Strength rather than anything belonging to the target.
+# Weight/finisher_weight are placeholder selection odds, same disclaimer as
+# Headbutt/Flash Blast's own comments in the Angler catalogue above.
+const FRILLED_SHARK := [
+	{
+		"id": "bite", "name": "Bite", "clip": "attack)bite",
+		"enabled": true, "target": "single", "roll_order": 0, "weight": 60.0,
+		"finisher_weight": 60.0, "verb": "bites at",
+		"combat": {"formula": {"strength": 1, "defense": 1}, "acc_mod": 1},
+	},
+	{
+		"id": "tail_spin", "name": "Tail Spin", "clip": "attack)tailspin",
+		"enabled": true, "target": "single", "roll_order": 1, "weight": 40.0,
+		"finisher_weight": 40.0, "verb": "spins its tail into",
+		"combat": {
+			"formula": {"strength": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "reduce_defense", "amount": {"defense": 1}},
+			],
+		},
+	},
+]
+
+static func frilled_shark_catalogue() -> Array:
+	return FRILLED_SHARK.duplicate(true)

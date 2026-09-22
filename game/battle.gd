@@ -18,7 +18,14 @@
 class_name Battle
 extends CanvasLayer
 
+const TooltipButtonScript := preload("res://game/tooltip_button.gd")
+
 signal finished(result: String)     # "won", "fled", or "lost"
+# Emitted only after a party member has stepped into range, faced the
+# selected target and actually begun an attack clip.  Gameplay does not
+# listen to this; it gives the fight gate the real target rather than asking
+# it to infer one from proximity in a multi-enemy stage.
+signal player_swing_staged(attacker: Node3D, target: Node3D)
 
 # Set by world.gd before add_child - the real Diver nodes from the dive
 # site (world.divers), so .stats (shared by reference - a Resource, not
@@ -104,6 +111,11 @@ var _tutorial_finale_shown := false
 var _tutorial_force_next_qte := false
 var _tutorial_flash_tween: Tween
 var _tutorial_caption: RichTextLabel
+# Narrative beats are keyboard-friendly, but combat is otherwise mouse-first.
+# A visible click target keeps a player from treating an Enter-only caption as
+# a frozen fight; the small pulse is deliberate affordance, not decoration.
+var tutorial_continue_btn: Button
+var _tutorial_continue_pulse: Tween
 # Built unconditionally (see _build_ui()) - shows the per-diver level-up
 # stat table _win() builds via _build_levelup_block(), any fight, not just
 # the tutorial one.
@@ -134,14 +146,32 @@ var diver_model_name := "Staff_Diver"
 const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
+const OPENING_TWO_ENEMY_CHANCE := 0.35
 
-# A fresh party can face one or two grunts. Three-grunt packs enter the roll
-# only after the party has earned its first level; this removes the observed
-# level-1 automatic-loss pack without deleting the harder formation.
+# A fresh or just-levelled party can face one or two grunts. The second level
+# is reached on the two-guardian introductory route, before a player has had
+# enough encounters to learn the mixed roster; keeping that route at one/two
+# enemies prevents an abrupt three-enemy wall. Three-grunt packs remain the
+# ordinary higher-level formation once the party reaches level 3.
 static func max_enemies_for_level(player_level: int, is_guardian: bool = false) -> int:
 	if is_guardian:
 		return 1
-	return 2 if player_level <= 1 else MAX_ENEMIES
+	return 2 if player_level <= 2 else MAX_ENEMIES
+
+# The two artifact sites are the game's live onboarding route. It keeps a
+# meaningful chance of a two-enemy formation, but most early rolls are one
+# opponent so a player can learn a newly authored enemy before that pressure
+# combines with another roster member. Later packs preserve the even 1–3 roll.
+# `roll` is injected so verify/balance.gd can mirror the shipped distribution
+# from a seeded RNG rather than approximate it with a separate one.
+static func ordinary_enemy_count_for_roll(player_level: int, roll: float, is_guardian: bool = false) -> int:
+	var maximum := max_enemies_for_level(player_level, is_guardian)
+	if maximum <= 1:
+		return 1
+	var clamped := clampf(roll, 0.0, 0.999999)
+	if maximum == 2:
+		return 2 if clamped < OPENING_TWO_ENEMY_CHANCE else 1
+	return 1 + int(floor(clamped * float(maximum)))
 
 # Compatibility alias for verification and any tools that enumerate the
 # roster here. Cast is the single identity source used by Battle and World.
@@ -336,16 +366,17 @@ var target_menu: HFlowContainer
 var item_menu: HFlowContainer
 var attack_btn: Button
 var run_btn: Button
+# The tutorial must never silently abandon its required encounter through
+# Run.  This explicit exit is available once the player reaches a normal
+# battle menu, and returns to the world through World’s tutorial-safe path.
+var skip_tutorial_btn: Button
 var items_btn: Button
 var back_btn: Button
-var move_details_btn: Button
 var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
 var target_buttons: Array = []
 var item_buttons: Array = []
-var _show_move_formulas := false
-var _move_menu_actor: Dictionary = {}
 
 # Set alongside _pending_move for a move, this for an item - exactly one
 # of the two is ever non-empty at a time. _on_target_chosen() (target_menu's
@@ -747,6 +778,41 @@ func _show_stat_preview(move: Dictionary, enemy: Dictionary) -> void:
 # mid-explanation.
 var _stat_preview_frozen := false
 
+# An all-target move affects a variable number of enemies. The first preview
+# reuses the normal enemy panel; one temporary panel per remaining target
+# makes the target scope legible before commitment and is always cleaned up
+# on hover exit or after choosing/backing out.
+var _extra_enemy_stats_uis: Array[Dictionary] = []
+
+func _show_all_stat_preview(move: Dictionary, enemies_to_preview: Array) -> void:
+	if enemies_to_preview.is_empty():
+		return
+	_show_stat_preview(move, enemies_to_preview[0] as Dictionary)
+	var container := (_enemy_stats_ui.panel as Control).get_parent()
+	if container == null:
+		return
+	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	for i in range(1, enemies_to_preview.size()):
+		var enemy := enemies_to_preview[i] as Dictionary
+		if not enemy.has("stats"):
+			continue
+		var extra := create_stats_panel(String(enemy.get("display_name", "Enemy")))
+		_set_stats_panel_base(extra, enemy.stats as CombatantStats)
+		_apply_stat_delta(extra, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
+		(extra.panel as Control).visible = true
+		container.add_child(extra.panel as Control)
+		_extra_enemy_stats_uis.append(extra)
+
+func _clear_all_stat_preview() -> void:
+	if _stat_preview_frozen:
+		return
+	for extra in _extra_enemy_stats_uis:
+		var panel := extra.get("panel") as Control
+		if panel != null and is_instance_valid(panel):
+			panel.queue_free()
+	_extra_enemy_stats_uis.clear()
+	_clear_stat_preview()
+
 func _clear_stat_preview() -> void:
 	if _enemy_stats_ui.is_empty() or _stat_preview_frozen:
 		return
@@ -968,7 +1034,7 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -996,7 +1062,19 @@ func _build_stage() -> void:
 		_frame_stage_camera()
 		return
 	for i in range(count):
-		var g: Goblin = _guardian_actor() if guardian_encounter else _ordinary_actor()
+		# The first battle teaches one named, single-hit Angler Bite plus its
+		# one forced dodge. It must not enter the ordinary random roster: a
+		# Swordfish Triple Combo could consume that first dodge and immediately
+		# follow it with unattended hits, while Frilled Shark contradicts the
+		# lesson's visible Angler identity. Guardian identity remains its own
+		# explicit branch below; only the authored tutorial contract is pinned.
+		var g: Goblin
+		if tutorial_encounter:
+			g = _actor_for_enemy_id("angler")
+		elif guardian_encounter:
+			g = _guardian_actor()
+		else:
+			g = _ordinary_actor()
 		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
 		vp.add_child(g)
 		var party_centre := Vector3.ZERO
@@ -1040,6 +1118,8 @@ func _ordinary_actor() -> Goblin:
 func _actor_for_enemy_id(enemy_id: String) -> Goblin:
 	if enemy_id == "swordfish_duelist":
 		return SwordDuelist.new()
+	if enemy_id == "frilled_shark":
+		return FrilledShark.new()
 	return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
@@ -1347,6 +1427,15 @@ func _build_ui() -> void:
 		_tutorial_caption.add_theme_color_override("default_color", Color.WHITE)
 		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(_tutorial_caption)
+		tutorial_continue_btn = Button.new()
+		tutorial_continue_btn.name = "TutorialContinue"
+		tutorial_continue_btn.text = "Continue  ·  Enter"
+		tutorial_continue_btn.tooltip_text = "Continue this tutorial caption"
+		tutorial_continue_btn.custom_minimum_size = Vector2(188, 38)
+		tutorial_continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		tutorial_continue_btn.visible = false
+		tutorial_continue_btn.pressed.connect(_acknowledge_tutorial_step)
+		col.add_child(tutorial_continue_btn)
 
 	# Unconditional, unlike _tutorial_caption above - a level-up can happen
 	# after ANY win, not just the tutorial fight. RichTextLabel for the same
@@ -1375,6 +1464,10 @@ func _build_ui() -> void:
 	run_btn = _menu_button("Run", "Might not escape")
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
+	if tutorial_encounter:
+		skip_tutorial_btn = _menu_button("Skip Tutorial", "Return to the world without finishing this lesson")
+		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
+		main_menu.add_child(skip_tutorial_btn)
 	items_btn = _menu_button("Items", "")
 	items_btn.pressed.connect(_show_items)
 	main_menu.add_child(items_btn)
@@ -1427,9 +1520,6 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
-	move_details_btn = _menu_button("Show formulas", "Optional calculation details")
-	move_details_btn.pressed.connect(_toggle_move_details)
-	move_menu.add_child(move_details_btn)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
@@ -1490,7 +1580,7 @@ func _fit_panel_height() -> void:
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
 func _menu_button(title: String, hint: String) -> Button:
-	var b := Button.new()
+	var b := TooltipButtonScript.new() as Button
 	b.text = title if hint == "" else "%s\n%s" % [title, hint]
 	# Four 300px choices plus their gaps fit in the 1248px-wide content area
 	# at the evidence/playtest resolution. The previous 210px width packed five
@@ -1635,7 +1725,8 @@ func _on_qte_timeout() -> void:
 # stat rows included, since anchoring is bottom-up) to a different spot
 # immediately after, leaving the boxes stranded at the stale position.
 func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -> void:
-	_tutorial_caption.text = "%s\n[color=#7a8a94]Press Enter to continue[/color]" % text
+	_tutorial_caption.text = "%s\n[color=#7a8a94]Click Continue or press Enter[/color]" % text
+	_set_tutorial_continue_visible(true)
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
 	if on_layout_ready.is_valid():
@@ -1643,6 +1734,25 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	_tutorial_awaiting_enter = true
 	while _tutorial_awaiting_enter:
 		await get_tree().process_frame
+	_set_tutorial_continue_visible(false)
+
+func _acknowledge_tutorial_step() -> void:
+	if _tutorial_awaiting_enter:
+		_tutorial_awaiting_enter = false
+
+func _set_tutorial_continue_visible(on: bool) -> void:
+	if tutorial_continue_btn == null:
+		return
+	if _tutorial_continue_pulse != null and _tutorial_continue_pulse.is_valid():
+		_tutorial_continue_pulse.kill()
+	tutorial_continue_btn.visible = on
+	tutorial_continue_btn.modulate = Color.WHITE
+	if not on:
+		return
+	_tutorial_continue_pulse = create_tween()
+	_tutorial_continue_pulse.set_loops()
+	_tutorial_continue_pulse.tween_property(tutorial_continue_btn, "modulate", Color(0.55, 0.9, 1.0), 0.55)
+	_tutorial_continue_pulse.tween_property(tutorial_continue_btn, "modulate", Color.WHITE, 0.55)
 
 # Two independent gates share this one entry point, each guarded by its own
 # flag so a press meant for one can't be misread as resolving the other:
@@ -1655,7 +1765,7 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 func _unhandled_input(event: InputEvent) -> void:
 	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_ENTER, KEY_KP_ENTER]:
 		get_viewport().set_input_as_handled()
-		_tutorial_awaiting_enter = false
+		_acknowledge_tutorial_step()
 		return
 	# Only ever looked at while _qte_active is true (see _quick_time_event()) -
 	# a stray X press between fights, or one arriving the same frame the sweep
@@ -2094,22 +2204,14 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
-	# The lesson is complete only after every scripted move AND the enemy's
-	# QTE-teaching turn have happened.  It must end here: asking a new player
-	# to "Defeat the enemy!" after they have completed what the UI presents as
-	# the tutorial leaves them on the battle screen with no clear distinction
-	# between completing the lesson and starting an unrelated normal fight.
-	# The Angler retreats, then the normal `finished` handoff restores the
-	# world. `_tutorial_finale_shown` keeps this one-shot if an async turn
-	# callback resumes after the signal.
+	# Once the scripted move/QTE lesson has run, hand the encounter over to a
+	# real win-or-loss outcome.  The player can now finish the enemy, lose and
+	# choose Retry/Exit, or use the explicit tutorial Skip button.  Do not
+	# auto-win here: that made the lesson's final state diverge from a real
+	# battle and hid the loss recovery path.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
-		_set_all_buttons(false)
-		_log("Tutorial complete. The Angler retreats into the dark.")
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
-		_revert_temp_buffs()
-		finished.emit("won")
-		return
+		_log("Lesson complete. Defeat the enemy or choose Skip Tutorial.")
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -2140,6 +2242,18 @@ func _advance_turn() -> void:
 	_refresh_queue_row()
 	if (_acting.stats as CombatantStats).hp <= 0:
 		_advance_turn()   # downed since the queue was built - skip them
+		return
+	if (_acting.stats as CombatantStats).is_stunned():
+		# Headbutt's Stun (see content/enemy_moves.gd) skips the whole turn
+		# rather than just blocking the move menu, so it applies the same way
+		# to a stunned party member or a stunned enemy. consume_status_turn()
+		# ticks the clock here because this combatant never reaches its own
+		# end_turn() this round - see that function's own comment.
+		(_acting.stats as CombatantStats).consume_status_turn("stun")
+		_show_floating_text(_acting, "STUNNED", FEEDBACK_NEGATIVE_COLOR)
+		_log("%s is stunned and can't move!" % String(_acting.display_name))
+		_refresh_bar(_acting)
+		_advance_turn()
 		return
 	if String(_acting.kind) == "enemy":
 		var forced_target := {}
@@ -2233,9 +2347,11 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	_levelup_caption.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
+	_set_tutorial_continue_visible(true)
 	_tutorial_awaiting_enter = true
 	while _tutorial_awaiting_enter:
 		await get_tree().process_frame
+	_set_tutorial_continue_visible(false)
 	_levelup_caption.visible = false
 	_levelup_caption.text = ""
 	qte_root.visible = false
@@ -2277,6 +2393,7 @@ func _start_party_turn(actor: Dictionary) -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
@@ -2286,6 +2403,8 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
+	if tutorial_encounter:
+		run_btn.disabled = true
 	# Skip straight past Attack/Items/Run ONLY on the scripted diver's own
 	# turn - the tutorial's whole point there is choosing between moves,
 	# not re-discovering the top-level menu. Mech Pilot (never scripted)
@@ -2481,36 +2600,92 @@ func _add_power_badge(btn: Button, power: int) -> void:
 	plate.add_child(badge)
 
 func _populate_move_menu(actor: Dictionary) -> void:
-	_move_menu_actor = actor
 	for b in move_buttons:
 		(b as Button).queue_free()
 	move_buttons.clear()
 	var available: float = (actor.stats as CombatantStats).oxygen
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
-		var hint: String = String(mv.hint) if _show_move_formulas else CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
+		var hint := CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
 		if ox_cost > 0.0:
 			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
 		var raw_power := _preview_raw_power(mv, actor.stats as CombatantStats)
 		if raw_power > 0:
 			_add_power_badge(b, raw_power)
+		b.tooltip_text = _move_tooltip_text(mv, actor.stats as CombatantStats)
 		b.disabled = available < ox_cost
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
-	# The two persistent controls are not rebuilt with the move buttons.
-	# Keep them after the choices, in details-then-back order.
-	move_details_btn.text = "Show results\nResolved for %s" % String(actor.display_name) if _show_move_formulas else "Show formulas\nOptional calculation details"
-	move_menu.move_child(move_details_btn, move_menu.get_child_count() - 1)
+	# Back is the one persistent control. Keep it after the newly rebuilt
+	# choices; there is deliberately no separate formula/result mode.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
 
-func _toggle_move_details() -> void:
-	if _move_menu_actor.is_empty():
-		return
-	_show_move_formulas = not _show_move_formulas
-	_populate_move_menu(_move_menu_actor)
-	call_deferred("_fit_panel_height")
+func _move_tooltip_text(mv: Dictionary, actor_stats: CombatantStats) -> String:
+	var sections: Array[String] = []
+	sections.append("Target\n%s" % _move_target_label(mv))
+	var deals_damage := (mv.has("formula") and not (mv.get("formula", {}) as Dictionary).is_empty()) or int(mv.get("power", 0)) > 0
+	if deals_damage:
+		sections.append("Damage\n%s %s" % [
+			TutorialContent.stat_glossary_body("Strength (STR)"),
+			TutorialContent.stat_glossary_body("Defense (DEF)"),
+		])
+		sections.append("Calculation\n%s" % _move_formula_description(mv))
+	for effect_value in mv.get("effects", []):
+		var effect := effect_value as Dictionary
+		var kind := String(effect.get("kind", ""))
+		if kind == "status":
+			var status_name := String(effect.get("status", ""))
+			var timing := _effect_duration_text(effect, actor_stats)
+			var body := TutorialContent.status_condition_body(status_name)
+			if timing != "":
+				body = "%s %s" % [body, timing]
+			sections.append("%s\n%s" % [_status_display_name(status_name), body])
+		else:
+			var explanation := TutorialContent.effect_kind_explanation(kind)
+			if not explanation.is_empty():
+				sections.append("%s\n%s" % [String(explanation.get("title", "")), String(explanation.get("body", ""))])
+	var debuff := String(mv.get("debuff", ""))
+	if debuff != "":
+		sections.append("%s Reduction\nLowers the target's %s by %d for this battle." % [
+			debuff.capitalize(), debuff.capitalize(), int(mv.get("amount", 0)),
+		])
+	return "\n\n".join(sections)
+
+func _move_target_label(mv: Dictionary) -> String:
+	match String(mv.get("effect", "")):
+		"heal": return "One living ally"
+		"revive": return "One downed ally"
+	match String(mv.get("target", "one_enemy")):
+		"all_enemies": return "All enemies"
+		"all_allies": return "All allies"
+		"one_ally": return "One ally"
+		_: return "One enemy"
+
+func _status_display_name(status_name: String) -> String:
+	return status_name.replace("_", " ").capitalize()
+
+func _move_formula_description(mv: Dictionary) -> String:
+	if mv.has("formula"):
+		var formula := mv.get("formula", {}) as Dictionary
+		var terms: Array[String] = []
+		for stat in ["flat", "strength", "defense", "agility", "evasion", "accuracy"]:
+			var coefficient := int(formula.get(stat, 0))
+			if coefficient == 0:
+				continue
+			var label: String = "base %d" % coefficient if stat == "flat" else stat.capitalize()
+			terms.append(label if coefficient == 1 else "%d× %s" % [coefficient, label])
+		return "Raw damage uses %s before the target's Defense." % " + ".join(terms) if not terms.is_empty() else "This move deals no direct damage."
+	if int(mv.get("power", 0)) > 0:
+		return "Raw damage uses base %d + Strength before the target's Defense." % int(mv.get("power", 0))
+	return "This move deals no direct damage."
+
+func _effect_duration_text(effect: Dictionary, actor_stats: CombatantStats) -> String:
+	if not effect.has("duration"):
+		return "It persists for this battle."
+	var turns := CombatRules.formula_value(actor_stats, effect.get("duration", {}))
+	return "It lasts %d turn%s." % [turns, "" if turns == 1 else "s"] if turns > 0 else "It persists for this battle."
 
 func _show_items() -> void:
 	if _busy:
@@ -2634,9 +2809,15 @@ func _show_main() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	if skip_tutorial_btn != null:
+		# Scripted turns teach one required move at a time.  The explicit skip
+		# is available from normal tutorial menus, not as a way to bypass the
+		# particular action currently being taught.
+		skip_tutorial_btn.visible = not _is_tutorial_scripted_turn(_acting)
 	call_deferred("_fit_panel_height")
 
 # Every effect still gets a target list rather than an immediate resolve,
@@ -3065,13 +3246,12 @@ func _populate_all_target_menu(targets: Array) -> void:
 		names.append(String(target.display_name))
 	var button := _menu_button("All enemies", ", ".join(names))
 	button.pressed.connect(_on_all_targets_chosen.bind(targets))
-	# "All enemies" only ever targets enemies (nothing heals/revives the
-	# whole party at once), so previewing against the first of them is
-	# always safe here - unlike _populate_target_menu(), which is shared
-	# with heal/revive's ally-targeting case.
+	# All-target moves affect the full set, so the hover has to preview that
+	# full set too. Reusing a first-target-only preview makes a deliberate
+	# multi-enemy decision look like a single-target one.
 	if not targets.is_empty():
-		button.mouse_entered.connect(_show_stat_preview.bind(_pending_move, targets[0]))
-		button.mouse_exited.connect(_clear_stat_preview)
+		button.mouse_entered.connect(_show_all_stat_preview.bind(_pending_move, targets))
+		button.mouse_exited.connect(_clear_all_stat_preview)
 	target_menu.add_child(button)
 	target_buttons.append(button)
 	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
@@ -3108,7 +3288,7 @@ func _populate_target_menu(targets: Array) -> void:
 # the next turn's target picker.
 func _on_target_chosen(target: Dictionary) -> void:
 	target_menu.visible = false
-	_clear_stat_preview()
+	_clear_all_stat_preview()
 	if _pending_item != "":
 		var item_id := _pending_item
 		_pending_item = ""
@@ -3118,7 +3298,7 @@ func _on_target_chosen(target: Dictionary) -> void:
 
 func _on_all_targets_chosen(targets: Array) -> void:
 	target_menu.visible = false
-	_clear_stat_preview()
+	_clear_all_stat_preview()
 	var move := _pending_move
 	_pending_move = {}
 	_resolve_party_move_all(move, targets)
@@ -3137,7 +3317,7 @@ func _show_moves_or_items_from_target_menu() -> void:
 	if _busy:
 		return
 	target_menu.visible = false
-	_clear_stat_preview()
+	_clear_all_stat_preview()
 	if _pending_item != "":
 		_pending_item = ""
 		item_menu.visible = true
@@ -3158,9 +3338,21 @@ func _show_moves_or_items_from_target_menu() -> void:
 #     left in the whole resolve - whether you hit is deterministic, how
 #     hard is not).
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
-func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
+func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Dictionary:
 	if move.has("formula"):
-		return CombatRules.resolve(attacker, defender, move)
+		# Formula-backed authored attacks used to return straight into
+		# CombatRules before the QTE branch below. That made the tutorial's
+		# forced Angler Bite show its explanatory preview but never the actual
+		# timing window. Keep Formula resolution authoritative for its damage
+		# and effects, but let Battle first run the same live QTE interaction
+		# used by legacy attacks after confirming this swing can hit.
+		var formula_can_hit := attacker.effective_accuracy() + int(move.get("acc_mod", 0)) > defender.evasion_current
+		var formula_dodge := false
+		var formula_force_qte := _tutorial_force_next_qte
+		_tutorial_force_next_qte = false
+		if formula_can_hit and bool(move.get("quick_time_bool", false)) and (formula_force_qte or randf() < ENEMY_QTE_CHANCE):
+			formula_dodge = await _quick_time_event(_actor_for_stats(defender))
+		return CombatRules.resolve(attacker, defender, move, apply_self_effects, formula_dodge)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(effective_accuracy)
@@ -3199,6 +3391,37 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 		player_dodge = await _quick_time_event(_actor_for_stats(defender))
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
+
+# Formula attacks have no random damage roll. That makes repeated authored
+# strikes deterministic at this layer: every impact reads the *remaining*
+# Evasion/HP left by the prior impact, while self-only costs are paid once for
+# the whole action. Battle uses this exact helper for ordinary formula moves;
+# balance and the Swordfish regression gate call it too, so a three-hit move
+# cannot quietly have different semantics in a simulation than on screen.
+static func resolve_formula_hits(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Array:
+	var results: Array = []
+	var count := maxi(1, int(move.get("hits", 1)))
+	for hit_index in range(count):
+		if defender.hp <= 0:
+			break
+		results.append(CombatRules.resolve(attacker, defender, move, apply_self_effects and hit_index == 0))
+	return results
+
+# Formula moves normally have no quick-time branch. The one exception is the
+# tutorial's deliberately forced demonstration, which temporarily adds
+# quick_time_bool to the selected move. Keep that production-only presentation
+# path on _resolve_attack(); all ordinary formula moves use the shared static
+# resolver above so their hit count is testable without a stage or timer.
+func _resolve_enemy_attack_hits(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Array:
+	if move.has("formula") and not bool(move.get("quick_time_bool", false)):
+		return Battle.resolve_formula_hits(attacker, defender, move, apply_self_effects)
+	var results: Array = []
+	var count := maxi(1, int(move.get("hits", 1)))
+	for hit_index in range(count):
+		if defender.hp <= 0:
+			break
+		results.append(await _resolve_attack(attacker, defender, move, apply_self_effects and hit_index == 0))
+	return results
 
 # The deterministic half of _resolve_attack(), shared with verify/balance.gd.
 # Production samples the variance/heavy fraction and the QTE result above;
@@ -3341,6 +3564,8 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if length <= 0.0:
 		_send_home(entry, 0.0)
 		return
+	if target.has("actor") and is_instance_valid(target.actor) and target.actor is Node3D:
+		player_swing_staged.emit(d, target.actor as Node3D)
 	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
 	# The rest of the clip plays while the caller gets on with the damage
 	# log, and the walk back starts when it finishes.
@@ -3381,14 +3606,25 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 # home rather than to wherever it happened to start, so an interrupted
 # swing cannot leave somebody drifting a metre further out every turn.
 func _send_home(entry: Dictionary, delay: float) -> void:
-	var a: Node3D = entry.get("actor")
-	if a == null or not is_instance_valid(a):
+	# Do not type the dictionary lookup before validation: Godot emits an error
+	# merely assigning an already-freed Object to a typed Node3D. Long clips
+	# can complete after battle cleanup, in which case return-home is safely a
+	# no-op.
+	var raw_actor: Variant = entry.get("actor")
+	if raw_actor == null or not is_instance_valid(raw_actor):
+		return
+	var a := raw_actor as Node3D
+	if a == null:
 		return
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
-		a = entry.get("actor")
-		if a == null or not is_instance_valid(a):
+		# The fight can finish while the rest of a long attack clip is still
+		# running. Keep this untyped until validity is checked: assigning a
+		# freed Object to a typed Node3D itself emits a Godot script error.
+		var delayed_actor: Variant = entry.get("actor")
+		if delayed_actor == null or not is_instance_valid(delayed_actor):
 			return
+		a = delayed_actor as Node3D
 	var back := a.create_tween()
 	back.tween_property(a, "position", entry.get("home_pos", a.position), SWING_STEP_TIME)
 	back.parallel().tween_property(a, "rotation:y", float(entry.get("home_rot", a.rotation.y)), SWING_STEP_TIME)
@@ -3446,6 +3682,13 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
 	await _swing(_acting, mv, target)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
+	if String(r.get("debuff", "")) == "revive" and target.has("actor") and is_instance_valid(target.actor) and target.actor is Diver:
+		(target.actor as Diver).play_revive()
+	# Feeds Goblin's Angler-specific low-HP targeting (see
+	# choose_move_and_target()/_highest_damage_target()) - a no-op against any
+	# other actor type, which has no such method to call.
+	if r.hit and int(r.get("damage", 0)) > 0 and target.actor is Goblin:
+		(target.actor as Goblin).record_damage_taken(_acting.actor, int(r.damage))
 	_react(target, r)
 	_show_combat_feedback(target, r)
 	var applied_effects := r.get("effects", []) as Array
@@ -3501,6 +3744,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 			continue
 		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
 		first = false
+		if result.hit and int(result.get("damage", 0)) > 0 and target.actor is Goblin:
+			(target.actor as Goblin).record_damage_taken(_acting.actor, int(result.damage))
 		changed_agility = changed_agility or (result.get("effects", []) as Array).any(
 			func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))
 		_react(target, result)
@@ -3553,6 +3798,28 @@ func _pick_enemy_target(alive_party: Array) -> Dictionary:
 			return alive_party[i]
 	return alive_party[alive_party.size() - 1]
 
+# Turns a declared enemy target scope into concrete living party entries. The
+# first target is always Battle's existing weighted primary selection; a
+# two-target strike then takes the next distinct living party entry in stable
+# party order. This preserves target-choice randomness while making an authored
+# `Target: 2` readable, deterministic, and safe in a one-survivor fight.
+static func enemy_targets_for_scope(primary: Dictionary, alive_party: Array, scope: String) -> Array:
+	if primary.is_empty():
+		return []
+	if scope == "all":
+		return alive_party.duplicate()
+	var targets: Array = [primary]
+	if scope != "two":
+		return targets
+	var primary_stats: Variant = primary.get("stats")
+	for entry_value in alive_party:
+		var entry := entry_value as Dictionary
+		if entry.get("stats") == primary_stats:
+			continue
+		targets.append(entry)
+		break
+	return targets
+
 func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 	var boss := actor.actor as TethysBoss
 	var move := boss.next_move()
@@ -3578,11 +3845,16 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 			if (target.stats as CombatantStats).hp <= 0:
 				break
 			var result: Dictionary = await _resolve_attack(actor.stats, target.stats, move)
-			if result.hit and int(move.get("poison", 0)) > 0:
-				(target.stats as CombatantStats).add_status(
-					"poison", int(move.poison), int(move.get("poison_turns", 3)))
+			if result.hit and float(move.get("poison_fraction", 0.0)) > 0.0:
+				# Poison Breath scales against the struck diver's maximum HP rather
+				# than their remaining HP: a nearly defeated target still receives
+				# the authored 15%-of-max status, and a higher-level party cannot
+				# outgrow the boss simply by raising its health pool.
+				var target_stats := target.stats as CombatantStats
+				var poison_level := maxi(1, int(round(float(target_stats.hp_max) * float(move.poison_fraction))))
+				target_stats.add_status("poison", poison_level, int(move.get("poison_turns", 3)))
 				var effects := result.get("effects", []) as Array
-				effects.append("Poison %d·%d" % [int(move.poison), int(move.get("poison_turns", 3))])
+				effects.append("Poison %d·%d" % [poison_level, int(move.get("poison_turns", 3))])
 				result["effects"] = effects
 			_react(target, result)
 			_show_combat_feedback(target, result)
@@ -3614,6 +3886,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	_turn_cursor.visible = false
 
 	var alive_party := _living(party)
@@ -3627,7 +3900,8 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	# narrating) the target ahead of time - calling _pick_enemy_target()
 	# again here would re-roll its randf() and could land on someone else
 	# entirely, no longer matching what was just explained.
-	var target: Dictionary = forced_target if not forced_target.is_empty() else _pick_enemy_target(alive_party)
+	var forced := not forced_target.is_empty()
+	var target: Dictionary = forced_target if forced else _pick_enemy_target(alive_party)
 	var target_stats := target.stats as CombatantStats
 	if special_encounter:
 		match String(target.get("ability_id", "")):
@@ -3642,12 +3916,24 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 				return
 
 	var enemy_actor := actor.actor as Goblin
-	var move := enemy_actor.choose_move(target_stats)
+	# Angler overrides this to pick move and target together (Headbutt's
+	# highest-damage-dealer, Bite's random pick); every other enemy's override
+	# just echoes the target already picked above and asks choose_move() on
+	# its own, same as before this existed.
+	var picked := enemy_actor.choose_move_and_target(actor.stats as CombatantStats, alive_party, target, forced)
+	var move: Dictionary = picked.get("move", {})
+	target = picked.get("target", target)
+	target_stats = target.stats as CombatantStats
 	if move.is_empty():
 		_log("%s has no enabled attack." % String(actor.display_name))
 		_finish_actor_turn(actor)
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
 		_advance_turn()
+		return
+	var target_scope := String(move.get("target", "single"))
+	if target_scope in ["all", "two"]:
+		await _do_enemy_multi_foes_turn(actor, enemy_actor, move,
+			Battle.enemy_targets_for_scope(target, alive_party, target_scope), target)
 		return
 	await _step_toward(actor, target)
 	# The selected data record owns its animation and mechanics. Step into
@@ -3674,20 +3960,83 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	if _tutorial_force_next_qte:
 		combat_move = combat_move.duplicate()
 		combat_move["quick_time_bool"] = true
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, combat_move)
+	var results: Array = await _resolve_enemy_attack_hits(actor.stats, target.stats, combat_move)
+	# Feeds Goblin's Bite-streak-into-Flash-Blast state machine (see
+	# choose_move_and_target()) - a no-op for every move that isn't Bite, and
+	# for every enemy whose catalogue has no "bite" id at all.
+	if String(move.get("id", "")) == "bite" and not results.is_empty():
+		enemy_actor.record_bite_result(bool((results[0] as Dictionary).get("hit", false)))
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
-	_refresh_bar(target)
-	_react(target, r)
-	_show_combat_feedback(target, r)
 	var verb := "%s %s %s" % [String(actor.display_name), String(move.get("verb", "attacks")), String(target.display_name)]
-	if bool(r.get("dodged", false)):
+	var hit_summaries: Array[String] = []
+	for result_value in results:
+		var r := result_value as Dictionary
+		_refresh_bar(target)
+		_react(target, r)
+		_show_combat_feedback(target, r)
+		if bool(r.get("dodged", false)):
+			hit_summaries.append("QTE dodge")
+		elif not bool(r.get("hit", false)):
+			hit_summaries.append("evades")
+		else:
+			hit_summaries.append("-%d" % int(r.get("damage", 0)))
+	if hit_summaries.size() == 1 and hit_summaries[0] == "QTE dodge":
 		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
-	elif not r.hit:
+	elif hit_summaries.size() == 1 and hit_summaries[0] == "evades":
 		_log("%s, but %s evades!" % [verb, String(target.display_name)])
 	else:
-		_log("%s for %d." % [verb, int(r.damage)])
+		_log("%s: %s." % [verb, "/".join(hit_summaries)])
 	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
 		(target.actor as Diver).play_death_fade()
+	_finish_actor_turn(actor)
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_restore_enemy_idle(actor)
+	_advance_turn()
+
+# Resolves an ordinary-enemy move aimed at more than one living diver. Flash
+# Blast still uses `all`; Swordfish Arc Slash uses `two`. Both share the same
+# result loop, so a new target scope cannot become a data-only label that
+# silently damages just the primary target. A melee sweep steps toward its
+# primary target; a party-wide burst stays planted and only faces the group.
+func _do_enemy_multi_foes_turn(actor: Dictionary, enemy_actor: Goblin, move: Dictionary, targets: Array, primary: Dictionary) -> void:
+	var scope := String(move.get("target", "single"))
+	if scope == "all":
+		if primary.has("actor") and is_instance_valid(primary.actor):
+			enemy_actor.face_toward((primary.actor as Node3D).global_position)
+	else:
+		await _step_toward(actor, primary)
+	var attack_length := enemy_actor.play_move(move)
+	if attack_length > 0.0:
+		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
+	var combat_move := move.combat as Dictionary
+	var summaries: Array[String] = []
+	var apply_self_effects := true
+	for target_value in targets:
+		var target := target_value as Dictionary
+		if (target.stats as CombatantStats).hp <= 0:
+			continue
+		var results: Array = await _resolve_enemy_attack_hits(actor.stats, target.stats as CombatantStats, combat_move, apply_self_effects)
+		apply_self_effects = false
+		var impacts: Array[String] = []
+		for result_value in results:
+			var r := result_value as Dictionary
+			_refresh_bar(target)
+			_react(target, r)
+			_show_combat_feedback(target, r)
+			if not bool(r.get("hit", false)):
+				impacts.append("evades")
+			elif int(r.get("damage", 0)) > 0:
+				impacts.append("-%d" % int(r.get("damage", 0)))
+			else:
+				var effects := r.get("effects", []) as Array
+				impacts.append("; ".join(effects) if not effects.is_empty() else "affected")
+		summaries.append("%s %s" % [String(target.display_name), "/".join(impacts)])
+		if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
+			(target.actor as Diver).play_death_fade()
+	if scope != "all":
+		_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
+	var group_label := "the party" if scope == "all" else ("two divers" if targets.size() > 1 else "the remaining diver")
+	_log("%s %s %s: %s." % [String(actor.display_name), String(move.get("verb", "attacks")), group_label, "; ".join(summaries)])
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_restore_enemy_idle(actor)
@@ -3883,6 +4232,7 @@ func _win() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
+	_clear_all_stat_preview()
 	# Leftover from whoever's move resolved right before this - the name/
 	# power row above the stats panels, and the panels themselves (the
 	# player one sits visible all fight; the enemy one only when a hover
@@ -4008,20 +4358,25 @@ func _lose() -> void:
 	move_menu.visible = false
 	item_menu.visible = false
 	target_menu.visible = false
-	# The choreographed first fight can genuinely be lost now that
-	# _advance_turn() no longer force-wins it after the "Defeat the enemy!"
-	# prompt - spell out what a loss actually means (world.gd's
-	# _on_battle_finished()'s "lost" branch calls _show_game_over(), whose
-	# Restart button reloads the current save slot - see game_over_screen.gd)
-	# instead of the normal terse retreat line, since a first-time player has
-	# no prior loss to have already learned that from.
+	_clear_all_stat_preview()
 	if tutorial_encounter:
-		await _tutorial_show_step("The enemy defeated your whole party, so the fight ends here. Normally, that means restarting from your last save point.")
+		_log("The tutorial fight is over.")
 	else:
 		_log("The party is battered and pulls back.")
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_revert_temp_buffs()
 	finished.emit("lost")
+
+func _on_skip_tutorial_pressed() -> void:
+	if _busy:
+		return
+	_busy = true
+	_set_all_buttons(false)
+	main_menu.visible = false
+	_log("Tutorial skipped.")
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	_revert_temp_buffs()
+	finished.emit("skipped")
 
 func _on_run() -> void:
 	if _busy:
@@ -4063,6 +4418,8 @@ func _on_run() -> void:
 func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled
 	run_btn.disabled = not enabled
+	if skip_tutorial_btn != null:
+		skip_tutorial_btn.disabled = not enabled
 	items_btn.disabled = not enabled
 	back_btn.disabled = not enabled
 	item_back_btn.disabled = not enabled

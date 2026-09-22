@@ -26,12 +26,13 @@ var evasion_current: int = 5
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
-# Spent on ability use (Diver.use_ability()), on the sonar passive while
-# it's active, and on casting an equipped spell in battle (battle.gd's
-# _resolve_party_move()) - float rather than int like hp so a continuous
-# drain (sonar) and passive regen (Diver._process) don't get rounded to
-# zero every frame. Same fill()-on-level-up/refill story as hp: nothing
-# but a level-up tops it off instantly, everything else is gradual regen.
+# Spent on the sonar passive while it's active and on casting an equipped
+# spell in battle (battle.gd's _resolve_party_move()). Environmental active
+# abilities deliberately cost 0 O2: Shockwave, Grapple and Swap are route
+# verbs, so an empty tank must not soft-lock a puzzle. Float rather than int
+# like hp so sonar's continuous drain doesn't get rounded to zero every
+# frame. Same fill()-on-level-up/refill story as hp: nothing but a level-up
+# tops it off instantly, everything else is gradual regen.
 @export var oxygen_max: float = 100.0
 var oxygen: float
 
@@ -95,7 +96,7 @@ func fill() -> void:
 # legal pack into a foregone conclusion. This restores only a fraction, so
 # damage still matters across the route; a level-up remains the only full
 # refill. Called by Battle after XP and mirrored by the campaign balance gate.
-func recover_after_victory(fraction: float = 0.30) -> void:
+func recover_after_victory(fraction: float = 0.40) -> void:
 	var amount := clampf(fraction, 0.0, 1.0)
 	hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
 	oxygen = minf(oxygen_max, oxygen + oxygen_max * amount)
@@ -107,7 +108,7 @@ func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 
 func effective_evasion() -> int:
-	return maxi(0, evasion + int(temporary_modifiers.evasion))
+	return maxi(0, evasion - status_level("evasion_down") + int(temporary_modifiers.evasion))
 
 func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
@@ -156,6 +157,14 @@ func reduce_evasion(amount: int) -> int:
 	evasion_current = mini(evasion_current, effective_evasion())
 	return before - evasion
 
+# Tail Spin's ("Frilled Shark" - content/enemy_moves.gd) counterpart to
+# reduce_evasion() above - a flat, lasts-the-rest-of-the-fight Defense drop,
+# not a timed status like Blindness's own Defense penalty.
+func reduce_defense(amount: int) -> int:
+	var before := defense
+	defense = maxi(0, defense - maxi(0, amount))
+	return before - defense
+
 func add_temporary_modifier(stat: String, amount: int) -> void:
 	if not temporary_modifiers.has(stat):
 		return
@@ -177,6 +186,24 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 
 func status_level(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("level", 0))
+
+func is_stunned() -> bool:
+	return status_level("stun") > 0
+
+# Ticks one status's own duration down by a single turn outside the normal
+# end_turn() sweep. Battle._advance_turn() calls this on "stun" when it skips
+# a stunned combatant's whole turn - that combatant never reaches its own
+# end_turn() this round (see Battle._finish_actor_turn(), only called for
+# whoever actually acted), so nothing else would ever count the skipped turn
+# down and the stun would never expire.
+func consume_status_turn(status: String) -> void:
+	if not statuses.has(status):
+		return
+	var turns := status_turns(status)
+	if turns <= 1:
+		statuses.erase(status)
+	else:
+		(statuses[status] as Dictionary).turns = turns - 1
 
 func status_turns(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("turns", 0))

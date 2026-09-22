@@ -22,6 +22,8 @@ signal load_game_chosen(slot: int)
 signal boss_playtest_chosen
 signal guardian_playtest_chosen
 signal special_playtest_chosen
+signal onboarding_playtest_chosen
+signal spell_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
@@ -31,6 +33,10 @@ var _boss_playtest_available := false
 var _guardian_playtest_available := false
 var _guardian_playtest_label := "Play Guardian Test"
 var _special_playtest_available := false
+var _onboarding_playtest_available := false
+# This is review-only plumbing like the boss/guardian/special/onboarding
+# entries above.  It never appears in a normal first-player title flow.
+var _spell_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -131,12 +137,31 @@ func enable_boss_playtest() -> void:
 func enable_guardian_playtest(label: String) -> void:
 	_guardian_playtest_available = true
 	_guardian_playtest_label = label
+	if visible and _mode == "main":
+		_refresh()
 
 # Like the boss route above, this is opt-in review plumbing rather than part
 # of the ordinary New/Load flow. It lets a reviewer reach the guardian chooser
 # and all three ability minigames without first navigating the full map.
 func enable_special_playtest() -> void:
 	_special_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
+# A reviewer needs to inspect the post-tutorial world-control surface without
+# replaying the deliberately paced combat lesson. Like the existing query-only
+# boss/guardian/special routes, World enables this only for its review URL;
+# normal New/Load presentation never receives a dev button.
+func enable_onboarding_playtest() -> void:
+	_onboarding_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
+# Opens the actual save-point spell UI with temporary review resources.  The
+# World owns the no-save contract and resource setup; TitleScreen only makes
+# the opt-in route visible for ?spells=1 / --spell-playtest reviewers.
+func enable_spell_playtest() -> void:
+	_spell_playtest_available = true
 	if visible and _mode == "main":
 		_refresh()
 
@@ -187,6 +212,26 @@ func _refresh_main() -> void:
 		special_btn.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
 		special_btn.pressed.connect(special_playtest_chosen.emit)
 		_list.add_child(special_btn)
+
+	if _onboarding_playtest_available:
+		var onboarding_btn := Button.new()
+		onboarding_btn.text = "Review World Controls"
+		onboarding_btn.tooltip_text = "Inspect the post-tutorial controls walkthrough"
+		onboarding_btn.custom_minimum_size = Vector2(360, 46)
+		onboarding_btn.add_theme_font_size_override("font_size", 17)
+		onboarding_btn.add_theme_color_override("font_color", Color(0.62, 0.92, 0.82))
+		onboarding_btn.pressed.connect(onboarding_playtest_chosen.emit)
+		_list.add_child(onboarding_btn)
+
+	if _spell_playtest_available:
+		var spell_btn := Button.new()
+		spell_btn.text = "Play Spell Test"
+		spell_btn.tooltip_text = "Open the real spell interface with temporary spell points and every key item. This never writes a save."
+		spell_btn.custom_minimum_size = Vector2(360, 46)
+		spell_btn.add_theme_font_size_override("font_size", 17)
+		spell_btn.add_theme_color_override("font_color", Color(0.75, 1.0, 0.75))
+		spell_btn.pressed.connect(spell_playtest_chosen.emit)
+		_list.add_child(spell_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save

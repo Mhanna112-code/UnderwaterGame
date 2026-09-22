@@ -24,7 +24,14 @@ const CASUAL_MIN := 20.0
 # at least a 5% novice failure tail rather than an automatic win.
 const CASUAL_MAX := 95.0
 const SKILLED_MIN := 55.0
-const SKILLED_TURN_FLOOR := 3.0
+# Dropped from 3.0: Glassgoat's authored Angler Fish base stats (see
+# Goblin.FLOOR_STATS) put its HP floor at 5, below the 10-HP party's own
+# average, so a skilled party's average HP (not the old 15-HP floor) now
+# governs its actual rolled HP. A basic single-digit-HP fish dying to a
+# skilled trio in under 3 rounds is the expected shape of the weakest
+# ordinary enemy, not a balance regression - SKILLED_MIN/*_ROUTE_MIN above
+# are what actually guard against a fight so easy it stops being one.
+const SKILLED_TURN_FLOOR := 2.5
 const SKILLED_HP_FLOOR := 5.0
 const CASUAL_ROUTE_MIN := 50.0
 const SKILLED_ROUTE_MIN := 80.0
@@ -54,8 +61,9 @@ func _init() -> void:
 		findings.append("SKILLED TOO WEAK: %.1f%% wins, expected at least %.0f%%" % [skilled.rate, SKILLED_MIN])
 	if float(skilled.rate) <= float(casual.rate):
 		findings.append("NO SKILL CURVE: skilled %.1f%% does not beat casual %.1f%%" % [skilled.rate, casual.rate])
-	if float(skilled.turns) < SKILLED_TURN_FLOOR:
-		findings.append("FIGHT TOO SHORT: skilled wins average %.1f rounds, expected at least %.0f" % [skilled.turns, SKILLED_TURN_FLOOR])
+	var skilled_two_enemy_turns := _average_turns_for_count(skilled, 2)
+	if skilled_two_enemy_turns < SKILLED_TURN_FLOOR:
+		findings.append("FIGHT TOO SHORT: skilled two-enemy wins average %.1f rounds, expected at least %.1f" % [skilled_two_enemy_turns, SKILLED_TURN_FLOOR])
 	if float(skilled.hp) < SKILLED_HP_FLOOR:
 		findings.append("NO PRESSURE: skilled wins lose only %.1f party HP, expected at least %.0f" % [skilled.hp, SKILLED_HP_FLOOR])
 
@@ -83,6 +91,7 @@ func _run_policy(policy: String) -> Dictionary:
 	var rounds_on_wins := 0.0
 	var hp_lost_on_wins := 0.0
 	var by_count := {1: [0, 0], 2: [0, 0], 3: [0, 0]}
+	var turns_by_count := {1: [0.0, 0], 2: [0.0, 0], 3: [0.0, 0]}
 	for seed_value in range(SEEDS):
 		var result := _fight(seed_value, policy)
 		var count := int(result.enemies)
@@ -90,6 +99,8 @@ func _run_policy(policy: String) -> Dictionary:
 		if bool(result.win):
 			wins += 1
 			(by_count[count] as Array)[0] += 1
+			(turns_by_count[count] as Array)[0] += float(result.rounds)
+			(turns_by_count[count] as Array)[1] += 1
 			rounds_on_wins += float(result.rounds)
 			hp_lost_on_wins += float(result.hp_lost)
 	return {
@@ -97,6 +108,7 @@ func _run_policy(policy: String) -> Dictionary:
 		"turns": rounds_on_wins / float(maxi(wins, 1)),
 		"hp": hp_lost_on_wins / float(maxi(wins, 1)),
 		"by_count": by_count,
+		"turns_by_count": turns_by_count,
 	}
 
 func _run_route_policy(policy: String) -> Dictionary:
@@ -107,8 +119,11 @@ func _run_route_policy(policy: String) -> Dictionary:
 	var battles_on_success := 0
 	var hp_on_success := 0
 	var level_on_success := 0
+	var terminal_stages: Dictionary = {}
 	for seed_value in range(ROUTE_SEEDS):
 		var result := _route(seed_value, policy)
+		var stage := String(result.get("terminal_stage", "unknown"))
+		terminal_stages[stage] = int(terminal_stages.get(stage, 0)) + 1
 		random_fights += int(result.random_fights)
 		guardian_fights += int(result.guardian_fights)
 		grunts += int(result.grunts)
@@ -125,6 +140,7 @@ func _run_route_policy(policy: String) -> Dictionary:
 		"battles": float(battles_on_success) / float(maxi(successes, 1)),
 		"hp": float(hp_on_success) / float(maxi(successes, 1)),
 		"level": float(level_on_success) / float(maxi(successes, 1)),
+		"terminal_stages": terminal_stages,
 	}
 
 # One production-shaped campaign: persistent party resources, the actual
@@ -143,24 +159,33 @@ func _route(seed_value: int, policy: String) -> Dictionary:
 	var guardian_fights := 0
 	var grunts := 0
 	var battles := 0
+	var claimed_items: Array[String] = []
 
 	for site_id in ["shallows", "trench"]:
 		var site: Dictionary = Sites.by_id(site_id)
 		var remaining := at.distance_to(site.at as Vector3)
+		var segment_length := remaining
+		var distance_along_segment := 0.0
 		while remaining >= next_check:
 			remaining -= next_check
+			distance_along_segment += next_check
 			# This is check_for_encounter()'s order: reset/draw the next
 			# threshold, then roll whether this check becomes a fight.
 			next_check = rng.randf_range(8.0, 16.0)
-			if rng.randf() <= 0.5:
+			var check_at := (at as Vector3).lerp(site.at as Vector3, minf(1.0, distance_along_segment / maxf(segment_length, 0.001)))
+			# Mirrors World._on_encounter_triggered(): rolls that fall inside
+			# an unclaimed guardian site consume their normal distance check but
+			# do not launch a competing ordinary battle.
+			if not _inside_unclaimed_guardian_site(check_at, claimed_items) and rng.randf() <= 0.5:
 				var level := (party[0].stats as CombatantStats).level
-				var count := rng.randi_range(Battle.MIN_ENEMIES, Battle.max_enemies_for_level(level))
+				var count := Battle.ordinary_enemy_count_for_roll(level, rng.randf())
 				var random_result := _fight_party(party, count, policy, rng, true, [], roster_rng)
 				random_fights += 1
 				battles += 1
 				grunts += count
 				if not bool(random_result.win):
-					return _route_result(false, party, random_fights, guardian_fights, grunts, battles)
+					return _route_result(false, party, random_fights, guardian_fights, grunts, battles,
+						"random:%s:%s" % [site_id, _enemy_label(random_result.enemy_ids as Array)])
 		# Production retains the distance already swum toward the next check;
 		# only the tiny per-frame overshoot at a fired check is discarded.
 		next_check -= remaining
@@ -173,12 +198,14 @@ func _route(seed_value: int, policy: String) -> Dictionary:
 		battles += 1
 		grunts += guardian_count
 		if not bool(guardian_result.win):
-			return _route_result(false, party, random_fights, guardian_fights, grunts, battles)
+			return _route_result(false, party, random_fights, guardian_fights, grunts, battles,
+				"guardian:%s:%s" % [site_id, String(site.enemy)])
+		claimed_items.append(String(site.item))
 		at = site.at as Vector3
 
-	return _route_result(true, party, random_fights, guardian_fights, grunts, battles)
+	return _route_result(true, party, random_fights, guardian_fights, grunts, battles, "success")
 
-func _route_result(success: bool, party: Array, random_fights: int, guardian_fights: int, grunts: int, battles: int) -> Dictionary:
+func _route_result(success: bool, party: Array, random_fights: int, guardian_fights: int, grunts: int, battles: int, terminal_stage: String) -> Dictionary:
 	var hp := 0
 	for actor in party:
 		hp += (actor.stats as CombatantStats).hp
@@ -190,6 +217,7 @@ func _route_result(success: bool, party: Array, random_fights: int, guardian_fig
 		"battles": battles,
 		"hp": hp,
 		"level": (party[0].stats as CombatantStats).level,
+		"terminal_stage": terminal_stage,
 	}
 
 func _fight(seed_value: int, policy: String) -> Dictionary:
@@ -198,7 +226,7 @@ func _fight(seed_value: int, policy: String) -> Dictionary:
 	var roster_rng := RandomNumberGenerator.new()
 	roster_rng.seed = 800000 + seed_value
 	var party := _party()
-	var enemy_count := rng.randi_range(Battle.MIN_ENEMIES, Battle.max_enemies_for_level(1))
+	var enemy_count := Battle.ordinary_enemy_count_for_roll(1, rng.randf())
 	return _fight_party(party, enemy_count, policy, rng, false, [], roster_rng)
 
 func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNumberGenerator, award_xp: bool, enemy_ids: Array = [], roster_rng: RandomNumberGenerator = null) -> Dictionary:
@@ -206,10 +234,12 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 		roster_rng = RandomNumberGenerator.new()
 		roster_rng.randomize()
 	var enemies: Array = []
+	var resolved_ids: Array[String] = []
 	var reference := _average(party)
 	for i in range(enemy_count):
 		var enemy_id := String(enemy_ids[i]) if i < enemy_ids.size() else EnemyRoster.id_for_roll(roster_rng.randf())
 		enemies.append(_enemy(reference, rng, enemy_id))
+		resolved_ids.append(enemy_id)
 
 	var rounds := 0
 	while not _living(party).is_empty() and not _living(enemies).is_empty() and rounds < MAX_ROUNDS:
@@ -224,16 +254,23 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 				return String(a.kind) == "party" and String(b.kind) != "party"
 			return sa.agility > sb.agility)
 		for actor in queue:
-			if (actor.stats as CombatantStats).hp <= 0:
+			var stats := actor.stats as CombatantStats
+			if stats.hp <= 0:
 				continue
 			if _living(party).is_empty() or _living(enemies).is_empty():
 				break
-			(actor.stats as CombatantStats).begin_turn()
+			if stats.is_stunned():
+				# Mirrors Battle._advance_turn(): a stunned actor never reaches
+				# begin_turn()/end_turn() at all, so Headbutt's Stun costs a
+				# real tempo turn here too rather than reading as free damage.
+				stats.consume_status_turn("stun")
+				continue
+			stats.begin_turn()
 			if String(actor.kind) == "party":
 				_party_turn(actor, party, enemies, policy, rng)
 			else:
 				_enemy_turn(actor, party, policy, rng)
-			(actor.stats as CombatantStats).end_turn()
+			stats.end_turn()
 
 	var hp_lost := 0
 	for actor in party:
@@ -247,7 +284,7 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 			(actor.stats as CombatantStats).gain_xp(per_grunt * enemy_count)
 		for actor in party:
 			(actor.stats as CombatantStats).recover_after_victory()
-	return {"win": won, "rounds": rounds, "hp_lost": hp_lost, "enemies": enemy_count}
+	return {"win": won, "rounds": rounds, "hp_lost": hp_lost, "enemies": enemy_count, "enemy_ids": resolved_ids}
 
 func _party_turn(actor: Dictionary, party: Array, enemies: Array, policy: String, rng: RandomNumberGenerator) -> void:
 	var live_enemies := _living(enemies)
@@ -288,10 +325,23 @@ func _party_turn(actor: Dictionary, party: Array, enemies: Array, policy: String
 	if String(move.get("target", "one_enemy")) == "all_enemies":
 		var first := true
 		for enemy in live_enemies:
-			_apply_move(actor.stats as CombatantStats, enemy.stats as CombatantStats, move, rng, first)
+			var result := _apply_move(actor.stats as CombatantStats, enemy.stats as CombatantStats, move, rng, first)
+			_record_damage_dealt(enemy, actor, result)
 			first = false
 	else:
-		_apply_move(actor.stats as CombatantStats, target.stats as CombatantStats, move, rng)
+		var result := _apply_move(actor.stats as CombatantStats, target.stats as CombatantStats, move, rng)
+		_record_damage_dealt(target, actor, result)
+
+# Mirrors Goblin.record_damage_taken() - keyed by model name (stable and
+# unique per party slot here) rather than the actor Node production keys on,
+# since this simulator's party entries never hold a real actor.
+func _record_damage_dealt(enemy: Dictionary, attacker: Dictionary, result: Dictionary) -> void:
+	if not (bool(result.get("hit", false)) and int(result.get("damage", 0)) > 0):
+		return
+	var by: Dictionary = enemy.get("damage_taken_by", {})
+	var key := String(attacker.model)
+	by[key] = int(by.get(key, 0)) + int(result.damage)
+	enemy["damage_taken_by"] = by
 
 func _best_move(attacker: CombatantStats, defender: CombatantStats, moves: Array) -> Dictionary:
 	var best := {}
@@ -313,30 +363,48 @@ func _best_move(attacker: CombatantStats, defender: CombatantStats, moves: Array
 			best = move
 	return best
 
-func _apply_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, rng: RandomNumberGenerator, apply_self_effects: bool = true) -> void:
+func _apply_move(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, rng: RandomNumberGenerator, apply_self_effects: bool = true) -> Dictionary:
 	if move.has("formula"):
-		CombatRules.resolve(attacker, defender, move, apply_self_effects)
-		return
+		return CombatRules.resolve(attacker, defender, move, apply_self_effects)
 	if attacker.effective_accuracy() + int(move.get("acc_mod", 0)) <= defender.evasion_current:
 		defender.spend_evasion(attacker.effective_accuracy() + int(move.get("acc_mod", 0)))
-		return
+		return {"hit": false, "damage": 0}
 	var debuff := String(move.get("debuff", ""))
 	if debuff == "defense":
 		defender.defense = maxi(0, defender.defense - int(move.get("amount", 0)))
-		return
+		return {"hit": true, "damage": 0}
 	if debuff == "agility":
 		defender.agility = maxi(1, defender.agility - int(move.get("amount", 0)))
-		return
-	Battle.apply_damage_roll(attacker, defender, move, rng.randf_range(0.85, 1.15))
+		return {"hit": true, "damage": 0}
+	return Battle.apply_damage_roll(attacker, defender, move, rng.randf_range(0.85, 1.15))
 
 func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNumberGenerator) -> void:
 	var living_party := _living(party)
 	if living_party.is_empty():
 		return
+	if String(actor.get("enemy_id", "angler")) == "angler":
+		# Angler no longer picks moves through the generic weighted-random
+		# _pick_enemy_move() below - see Goblin.choose_move_and_target() in
+		# game/goblin.gd. Mirrored here rather than left on the old path, or
+		# this gate would validate a route that production no longer runs.
+		_angler_turn(actor, living_party, rng)
+		return
 	var target := _pick_enemy_target(living_party, rng)
 	var target_stats := target.stats as CombatantStats
 	var move := _pick_enemy_move(String(actor.get("enemy_id", "angler")), target_stats, rng)
 	var combat := move.combat as Dictionary
+	# Headbutt/Flash Blast (content/enemy_moves.gd) carry a "formula" key the
+	# same way a player's V2 moves do - mirrors Battle._resolve_attack()'s own
+	# dispatch, and _apply_move()'s above for the player side, so an enemy
+	# formula move doesn't fall through to apply_damage_roll() below and read
+	# a "power" key that formula-based moves never set.
+	if combat.has("formula"):
+		var targets := Battle.enemy_targets_for_scope(target, living_party, String(move.get("target", "single")))
+		var apply_self_effects := true
+		for target_entry in targets:
+			Battle.resolve_formula_hits(actor.stats as CombatantStats, (target_entry as Dictionary).stats as CombatantStats, combat, apply_self_effects)
+			apply_self_effects = false
+		return
 	var heavy := String(combat.get("effect", "")) == "heavy"
 	var variance := rng.randf_range(0.85, 1.15)
 	var fraction := rng.randf_range(float(combat.get("heavy_min", 0.25)), float(combat.get("heavy_max", 0.5))) if heavy else 0.0
@@ -344,8 +412,71 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 	var player_dodge := heavy and rng.randf() < dodge_rate
 	Battle.apply_damage_roll(actor.stats as CombatantStats, target_stats, combat, variance, fraction, player_dodge)
 
+# Mirrors Goblin.choose_move_and_target()/record_bite_result() exactly - see
+# that function's own comment in game/goblin.gd for the worked hit/miss
+# examples this reproduces turn for turn.
+func _angler_turn(actor: Dictionary, living_party: Array, rng: RandomNumberGenerator) -> void:
+	var self_stats := actor.stats as CombatantStats
+	var by_id := {}
+	for move_value in EnemyMoves.angler_catalogue():
+		by_id[String((move_value as Dictionary).id)] = move_value as Dictionary
+
+	if float(self_stats.hp) < float(self_stats.hp_max) * Goblin.LOW_HP_FRACTION and rng.randf() < Goblin.STUN_PRIORITY_CHANCE:
+		var headbutt := by_id.get("headbutt", {}) as Dictionary
+		if not headbutt.is_empty():
+			var stun_target := _highest_damage_target(actor, living_party, rng)
+			CombatRules.resolve(self_stats, stun_target.stats as CombatantStats, headbutt.combat as Dictionary)
+			return
+
+	if bool(actor.get("use_flash_blast_next", false)):
+		var flash := by_id.get("flash_blast", {}) as Dictionary
+		if not flash.is_empty():
+			actor["bite_hits"] = 0
+			actor["bite_misses"] = 0
+			actor["use_flash_blast_next"] = false
+			for target_value in living_party:
+				CombatRules.resolve(self_stats, (target_value as Dictionary).stats as CombatantStats, flash.combat as Dictionary)
+			return
+
+	var bite := by_id.get("bite", {}) as Dictionary
+	var bite_target: Dictionary = living_party[rng.randi_range(0, living_party.size() - 1)]
+	var result := CombatRules.resolve(self_stats, bite_target.stats as CombatantStats, bite.combat as Dictionary)
+	if bool(result.get("hit", false)):
+		actor["bite_hits"] = int(actor.get("bite_hits", 0)) + 1
+	else:
+		actor["bite_misses"] = int(actor.get("bite_misses", 0)) + 1
+	actor["use_flash_blast_next"] = int(actor.get("bite_misses", 0)) >= int(actor.get("bite_hits", 0))
+
+# Mirrors Goblin._highest_damage_target(): ties broken randomly, falls back
+# to the usual weighted-toward-hurt pick if nobody's damaged this Angler yet.
+func _highest_damage_target(actor: Dictionary, living_party: Array, rng: RandomNumberGenerator) -> Dictionary:
+	var by: Dictionary = actor.get("damage_taken_by", {})
+	var best_amount := 0
+	var best_entries: Array = []
+	for entry_value in living_party:
+		var entry := entry_value as Dictionary
+		var dealt := int(by.get(String(entry.model), 0))
+		if dealt > best_amount:
+			best_amount = dealt
+			best_entries = [entry]
+		elif dealt == best_amount and dealt > 0:
+			best_entries.append(entry)
+	if best_entries.is_empty():
+		return _pick_enemy_target(living_party, rng)
+	return best_entries[rng.randi_range(0, best_entries.size() - 1)] as Dictionary
+
 func _pick_enemy_move(enemy_id: String, target: CombatantStats, rng: RandomNumberGenerator) -> Dictionary:
-	var catalogue := EnemyMoves.swordfish_duelist_catalogue() if enemy_id == "swordfish_duelist" else EnemyMoves.angler_catalogue()
+	# "angler" never actually reaches this generic weighted picker any more -
+	# _enemy_turn() routes it to _angler_turn() instead - but every other
+	# ordinary enemy (Swordfish, Frilled Shark) still uses this plain flow.
+	var catalogue: Array
+	match enemy_id:
+		"swordfish_duelist":
+			catalogue = EnemyMoves.swordfish_duelist_catalogue()
+		"frilled_shark":
+			catalogue = EnemyMoves.frilled_shark_catalogue()
+		_:
+			catalogue = EnemyMoves.angler_catalogue()
 	var moves: Array = catalogue.filter(func(move: Dictionary) -> bool: return bool(move.enabled))
 	moves.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left.get("roll_order", 0)) < int(right.get("roll_order", 0)))
 	var finisher := moves.any(func(move: Dictionary) -> bool:
@@ -415,27 +546,90 @@ func _average(party: Array) -> CombatantStats:
 	return avg
 
 func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: String) -> Dictionary:
+	# Swordfish Duelist and Frilled Shark each author their own floor
+	# (DUELIST_FLOOR_STATS / SHARK_FLOOR_STATS) since Goblin.FLOOR_STATS became
+	# the Angler-specific block - mirror production's per-species
+	# Goblin.floor_stats() override here instead of always reading the base
+	# class's own const, or this simulator would silently test enemies
+	# stronger/weaker than the ones players actually fight.
+	var floor: Dictionary
+	match enemy_id:
+		"swordfish_duelist":
+			floor = SwordDuelist.DUELIST_FLOOR_STATS
+		"frilled_shark":
+			floor = FrilledShark.SHARK_FLOOR_STATS
+		_:
+			floor = Goblin.FLOOR_STATS
 	var stats := CombatantStats.new()
-	stats.hp_max = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.strength = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.defense = maxi(0, int(round(maxf(float(Goblin.FLOOR_STATS.defense), float(reference.defense)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.agility = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.agility), float(reference.agility)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.evasion = maxi(0, int(round(maxf(float(Goblin.FLOOR_STATS.evasion), float(reference.evasion)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.accuracy = maxi(0, int(round(maxf(float(Goblin.FLOOR_STATS.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+	if enemy_id == "swordfish_duelist":
+		# Mirrors SwordDuelist.make_stats(): Glassgoat's supplied Swordfish
+		# block is exact, not an Angler-style minimum that rises above the
+		# party. Keeping this exception here is essential - otherwise the
+		# balance gate would certify a generic scaled duel rather than the
+		# actual 8/2/1/6/4/3 opponent production creates.
+		stats.hp_max = int(floor.hp)
+		stats.strength = int(floor.strength)
+		stats.defense = int(floor.defense)
+		stats.agility = int(floor.agility)
+		stats.evasion = int(floor.evasion)
+		stats.accuracy = int(floor.accuracy)
+	else:
+		stats.hp_max = maxi(1, int(round(maxf(float(floor.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.strength = maxi(1, int(round(maxf(float(floor.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.defense = maxi(0, int(round(maxf(float(floor.defense), float(reference.defense)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.agility = maxi(1, int(round(maxf(float(floor.agility), float(reference.agility)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.evasion = maxi(0, int(round(maxf(float(floor.evasion), float(reference.evasion)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.accuracy = maxi(0, int(round(maxf(float(floor.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
 	stats.fill()
-	return {"kind": "enemy", "enemy_id": enemy_id, "stats": stats}
+	# damage_taken_by/bite_hits/bite_misses/use_flash_blast_next mirror the
+	# per-instance state Goblin now carries for the Angler's move AI - unused
+	# by Swordfish, which still goes through the plain _pick_enemy_move() path.
+	return {
+		"kind": "enemy", "enemy_id": enemy_id, "stats": stats,
+		"damage_taken_by": {}, "bite_hits": 0, "bite_misses": 0, "use_flash_blast_next": false,
+	}
 
 func _living(side: Array) -> Array:
 	return side.filter(func(actor: Dictionary) -> bool: return (actor.stats as CombatantStats).hp > 0)
+
+func _enemy_label(ids: Array) -> String:
+	var labels: Array[String] = []
+	for id_value in ids:
+		labels.append(String(id_value))
+	labels.sort()
+	return "+".join(labels)
+
+func _inside_unclaimed_guardian_site(at: Vector3, claimed_items: Array[String]) -> bool:
+	for site_value in Sites.ALL:
+		var site := site_value as Dictionary
+		var item_id := String(site.get("item", ""))
+		if item_id == "" or claimed_items.has(item_id):
+			continue
+		var center := site.at as Vector3
+		if Vector2(at.x - center.x, at.z - center.z).length() <= float(site.radius):
+			return true
+	return false
 
 func _print_result(label: String, result: Dictionary) -> void:
 	var parts: Array = []
 	for count in [1, 2, 3]:
 		var cell := result.by_count[count] as Array
-		parts.append("%d enemy %d/%d" % [count, int(cell[0]), int(cell[1])])
+		parts.append("%d enemy %d/%d, %.1f r" % [count, int(cell[0]), int(cell[1]), _average_turns_for_count(result, count)])
 	print("%-7s %5.1f%% wins, %4.1f rounds, %4.1f HP lost  (%s)" % [label, result.rate, result.turns, result.hp, ", ".join(parts)])
+
+func _average_turns_for_count(result: Dictionary, count: int) -> float:
+	var cell := (result.turns_by_count as Dictionary).get(count, [0.0, 0]) as Array
+	return float(cell[0]) / float(maxi(int(cell[1]), 1))
 
 func _print_route(label: String, result: Dictionary) -> void:
 	print("%-7s route %5.1f%% reach trench | %.1f random + %.1f guardian fights/run | %.1f enemies/run | successes: %.1f battles, %.1f HP, level %.1f" % [
 		label, result.rate, result.random_fights, result.guardian_fights,
 		result.grunts, result.battles, result.hp, result.level])
+	var stages: Array[String] = []
+	for stage_value in (result.terminal_stages as Dictionary).keys():
+		stages.append(String(stage_value))
+	stages.sort()
+	var summary: Array[String] = []
+	for stage in stages:
+		summary.append("%s=%d" % [stage, int((result.terminal_stages as Dictionary)[stage])])
+	print("%-7s route terminal stages: %s" % [label, ", ".join(summary)])

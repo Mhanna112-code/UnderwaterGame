@@ -35,7 +35,12 @@ const MOVES := [
 	{
 		"id": "poison_breath", "name": "Poison Breath",
 		"clip": "poison_breath", "target": "all", "hits": 1,
-		"power": 3, "acc_mod": 4, "poison": 2, "poison_turns": 3,
+		# Unlike ordinary fixed-level poison, this attack must remain threatening
+		# once a party has grown beyond its opening 10 HP. The raw #72 contract
+		# is 15% of each struck target's own maximum HP, rounded with a one-point
+		# floor by Battle._do_boss_turn(). It deliberately does not borrow the
+		# boss's Strength: this is an encounter-scale pressure effect.
+		"power": 3, "acc_mod": 4, "poison_fraction": 0.15, "poison_turns": 3,
 		"intent": "Party-wide pressure that continues for three turns",
 	},
 	{

@@ -409,21 +409,13 @@ const SHOCKWAVE_COOLDOWN := 2.5
 const GRAPPLE_COOLDOWN := 1.2
 const SWAP_COOLDOWN := 2.0
 
-# Swap costs less than the other two - it's a reposition, not a combat move
-# (see the cooldown comment above for the same distinction). Keyed by
-# ability_id rather than three separate consts so _ability_oxygen_cost()
-# stays a one-line lookup no matter how many abilities this ever grows to.
-const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0, "swap": 15.0}
-
-# No passive regen at all - a save point (world.gd's _on_save_requested())
-# is the only way oxygen comes back, so every ability use and every tick
-# of sonar is spending down a tank that stays spent until you actually go
-# find one. Lower than the old always-on-passive drain used to need, since
-# there's no regen fighting it anymore - this is the whole cost, not a net
-# rate against something clawing it back. Still expressed as a per-second
-# rate for balance purposes (tune this the same way you always would), but
-# charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather than
-# smoothly every physics frame - see _physics_process()'s _sonar_drain_timer.
+# Shockwave, Grapple, and Swap are the environmental progression verbs, so
+# their availability must never be exhausted by oxygen. A player can always
+# recover from a missed route step or an empty tank. Sonar deliberately keeps
+# its distinct resource cost below; combat and spell systems own their costs.
+# Its drain is charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather
+# than smoothly every physics frame - see _physics_process()'s
+# _sonar_drain_timer.
 const SONAR_OXYGEN_DRAIN_PER_SEC := 3.0
 
 # How often the sonar drain actually gets charged - a few seconds, not
@@ -462,16 +454,13 @@ func _process(dt: float) -> void:
 			# on the very next physics frame, so it costs nothing there.
 			play_motion(_hold if _hold != "" else "idle")
 
-func _ability_oxygen_cost() -> float:
-	return float(ABILITY_OXYGEN_COST.get(ability_id, 0.0))
-
 # Read-only check world.gd can make before deciding whether to enter aim
 # mode or fire immediately - mirrors use_ability()'s own guard exactly, so
 # there's one place that knows what "ready to use" means instead of
 # world.gd guessing at Diver's private cooldown/grapple-in-progress state.
 func can_use_ability() -> bool:
 	return (ability_id != "" and not ability_locked and _ability_cooldown <= 0.0
-		and not _is_grappling and stats.oxygen >= _ability_oxygen_cost())
+		and not _is_grappling)
 
 # Called by whatever is meant to unlock a locked ability - right now just
 # grapple_anchor.gd's on_grappled_to(), for the one anchor whose
@@ -525,7 +514,6 @@ func ability_needs_aim() -> bool:
 func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> void:
 	if not can_use_ability():
 		return
-	stats.oxygen -= _ability_oxygen_cost()
 	match ability_id:
 		"shockwave":
 			_shockwave()
@@ -673,6 +661,10 @@ func _grapple(aim_dir: Vector3) -> void:
 	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
+	# Keep the live ray aligned with the aim preview: ignore the firing diver
+	# and only query the gameplay collision layer containing route anchors.
+	query.exclude = [get_rid()]
+	query.collision_mask = 1
 	var result := space.intersect_ray(query)
 
 	# Beam end is wherever the ray actually stopped - the max range if it
@@ -1272,7 +1264,22 @@ func _animate(dir: Vector3, dt: float) -> void:
 # shared resource across every Diver instance of the same model_name, and
 # mutating one in place would fade every other diver wearing that model
 # too, including the real party member's own battle-stage neighbors.
+var _death_presentation_active := false
+var _death_restore_position := Vector3.ZERO
+var _death_restore_scale := Vector3.ONE
+var _death_materials: Array[Dictionary] = []
+
 func play_death_fade() -> void:
+	# Party members can be selected by Tidal Revival after reaching 0 HP, so
+	# their stage node is deliberately retained. Enemies use their own permanent
+	# death path in goblin.gd. Repeating a death signal while already down must
+	# not stack a second tween or a second set of material overrides.
+	if _death_presentation_active:
+		return
+	_death_presentation_active = true
+	_death_restore_position = position
+	_death_restore_scale = scale
+	_death_materials.clear()
 	# Faint first. The fade is what removes the body from the stage; the
 	# faint is what says it went down rather than blinked out.
 	play_down()
@@ -1294,12 +1301,45 @@ func play_death_fade() -> void:
 				continue
 			var mat_copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
 			mat_copy.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_death_materials.append({
+				"mesh": mesh_instance,
+				"surface": surface,
+				"previous": mesh_instance.get_surface_override_material(surface),
+			})
 			mesh_instance.set_surface_override_material(surface, mat_copy)
 			tw.tween_property(mat_copy, "albedo_color:a", 0.0, 0.9)
-	tw.tween_property(self, "position:y", position.y - 0.6, 0.9)
-	tw.tween_property(self, "scale", scale * 0.7, 0.9)
+	tw.tween_property(self, "position:y", _death_restore_position.y - 0.6, 0.9)
+	tw.tween_property(self, "scale", _death_restore_scale * 0.7, 0.9)
+
+# Bring a downed party actor back from the retained fade presentation. This
+# reverses both its geometry and its private material overrides, preserving
+# any override the caller had before the death effect.
+func play_revive() -> void:
+	if not _death_presentation_active:
+		return
+	var tw := create_tween()
+	tw.set_parallel(true)
+	for record in _death_materials:
+		var mesh := record.get("mesh") as MeshInstance3D
+		if mesh == null or not is_instance_valid(mesh):
+			continue
+		var surface := int(record.get("surface", 0))
+		var fade_material := mesh.get_surface_override_material(surface)
+		if fade_material is BaseMaterial3D:
+			tw.tween_property(fade_material, "albedo_color:a", 1.0, 0.6)
+	tw.tween_property(self, "position", _death_restore_position, 0.6)
+	tw.tween_property(self, "scale", _death_restore_scale, 0.6)
 	tw.set_parallel(false)
-	tw.tween_callback(queue_free)
+	tw.tween_callback(func() -> void:
+		for record in _death_materials:
+			var mesh := record.get("mesh") as MeshInstance3D
+			if mesh != null and is_instance_valid(mesh):
+				mesh.set_surface_override_material(int(record.get("surface", 0)), record.get("previous"))
+		_death_materials.clear()
+		_death_presentation_active = false
+		_hold = ""
+		play_motion("idle")
+	)
 
 func _all_meshes(n: Node) -> Array:
 	var out: Array = []

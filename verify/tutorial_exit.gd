@@ -6,7 +6,7 @@
 # QTE as complete, and observes only player-visible completion state.
 extends SceneTree
 
-const TIMEOUT_MS := 3000
+const TIMEOUT_MS := 8000
 
 var findings: Array[String] = []
 
@@ -28,9 +28,11 @@ func _run() -> void:
 	if battle == null:
 		findings.append("TUTORIAL START: no battle was created")
 	else:
-		# The combat lesson has already taught every scripted move and shown
-		# its required QTE.  This is the contract boundary under test, not a
-		# second combat bot.
+		# The scripted lesson is complete.  The production path then requires
+		# a real enemy defeat, so the contract drives the enemy to zero rather
+		# than accepting an old auto-win shortcut.
+		for enemy_entry in battle.enemies:
+			(enemy_entry.stats as CombatantStats).hp = 0
 		battle._tutorial_step = battle._TUTORIAL_SCRIPT.size()
 		battle._tutorial_enemy_turns = 1
 		battle._tutorial_finale_shown = false

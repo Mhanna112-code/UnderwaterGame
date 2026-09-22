@@ -4,14 +4,25 @@ extends RefCounted
 # Resolves a Group_StatsV2 move without knowing whether its wielder is a
 # player or enemy. The UI, animations and AI choose a move; this class owns
 # the shared arithmetic and mutations.
-static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Dictionary:
-	if apply_self_effects:
-		_apply_self_effects(attacker, move)
-
+static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true, dodged: bool = false) -> Dictionary:
+	# A temporary self-cost belongs to the following turn, not to the hit roll
+	# and stat formulas of the move that spent it. The result must therefore be
+	# resolved from the actor's current stats first, then the cost is recorded.
+	# _finish() also applies it on a normal miss or a successful QTE dodge: the
+	# player still committed the move, so neither route is a free retry.
 	var accuracy := attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(accuracy)
-		return _result(false, 0, spent)
+		return _finish(attacker, move, _result(false, 0, spent), apply_self_effects)
+	# Battle reaches this only after the same visible QTE has accepted an
+	# in-zone X press. A dodge means the whole incoming action missed its
+	# target: no formula damage, Bleed/Stun/Evasion effect, or same-hit bleed
+	# stack. The self-cost is applied by _finish() after the move's own result,
+	# as it is for both hit and ordinary-miss outcomes.
+	if dodged:
+		var dodged_result := _result(true, 0, 0)
+		dodged_result.dodged = true
+		return _finish(attacker, move, dodged_result, apply_self_effects)
 
 	var had_bleed := defender.status_level("bleed") > 0
 	var raw := formula_value(attacker, move.get("formula", {}))
@@ -34,6 +45,10 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 			var amount := formula_value(attacker, effect.get("amount", {}))
 			defender.reduce_evasion(amount)
 			applied.append("EVA -%d" % amount)
+		elif kind == "reduce_defense":
+			var amount := formula_value(attacker, effect.get("amount", {}))
+			defender.reduce_defense(amount)
+			applied.append("DEF -%d" % amount)
 		elif kind == "status":
 			var status := String(effect.get("status", ""))
 			var level := formula_value(attacker, effect.get("level", {}))
@@ -43,6 +58,11 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 
 	var result := _result(true, damage, 0)
 	result.effects = applied
+	return _finish(attacker, move, result, apply_self_effects)
+
+static func _finish(attacker: CombatantStats, move: Dictionary, result: Dictionary, apply_self_effects: bool) -> Dictionary:
+	if apply_self_effects:
+		_apply_self_effects(attacker, move)
 	return result
 
 static func formula_value(wielder: CombatantStats, formula: Variant) -> int:
@@ -73,5 +93,10 @@ static func _result(hit: bool, damage: int, evasion_spent: int) -> Dictionary:
 	}
 
 static func _status_text(status: String, level: int, duration: int) -> String:
+	# Stun's "level" is only ever a presence flag (see add_status()'s level > 0
+	# requirement) - the number itself means nothing to a player, unlike a
+	# Bleed/Blindness level, so it stays out of the floating text.
+	if status == "stun":
+		return "Stun (%d turns)" % duration
 	var label := status.capitalize() + " %d" % level
 	return label if duration <= 0 else "%s (%d turns)" % [label, duration]

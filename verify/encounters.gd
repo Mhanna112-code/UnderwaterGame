@@ -45,12 +45,10 @@ func _process(_d: float) -> bool:
 		# Complete that gate for this ordinary-encounter test rather than
 		# treating the documented onboarding contract as a regression.
 		world._intro_active = false
-		# Ordinary encounters first: open water, and then standing right on
-		# a guarded spot, which must still be an ordinary encounter.
+		# Ordinary encounters belong to open water. The dedicated guardian-zone
+		# gate verifies that an unclaimed artifact site rejects one instead of
+		# making its deliberate encounter ambiguous.
 		cases.append({"at": Vector3(0.0, 2.0, 0.0), "what": "open water", "reward": "", "kind": "encounter"})
-		for s in ItemGuardian.spots():
-			cases.append({"at": s.at as Vector3, "what": "the %s spot" % String(s.item),
-				"reward": "", "kind": "encounter"})
 		# Then walking into each guardian, which must not be ordinary.
 		for s in ItemGuardian.spots():
 			cases.append({"at": s.at as Vector3, "what": "the %s guardian" % String(s.item),

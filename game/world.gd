@@ -89,6 +89,7 @@ var _showing_save_prompt := false
 var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
+const AbilityOnboardingScript := preload("res://game/ability_onboarding.gd")
 # Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
 const PLINTH_TOP := 0.7
 
@@ -148,6 +149,11 @@ var pending_world_drops: Dictionary = {}
 # menu's problem to fix).
 var inventory_menu: InventoryMenu
 
+# Full-screen Save/Inventory UI lives on TitleLayer rather than HUD. Remember
+# whether gameplay HUD was visible before one opens so closing it restores the
+# correct prior presentation.
+var _hud_visible_before_fullscreen_menu := true
+
 # The title screen (New Game/Load Game, shown once at start and again on
 # "Return to Title") and the game-over screen ("lost" a battle) - see
 # _show_title_screen()/_show_game_over() below.
@@ -160,6 +166,20 @@ var title_layer: CanvasLayer
 # win, so declining or losing cannot silently delete the site's content.
 var special_encounter_prompt: SpecialEncounterPrompt
 var tutorial_book: TutorialBook
+var tutorial_result_popup: TutorialResultPopup
+var ability_onboarding: Control
+# Only one walkthrough belongs to a first tutorial resolution. A loss Retry
+# stays inside the lesson, while win/Skip/loss-Exit may all hand the player to
+# free exploration; this flag prevents an asynchronous result from stacking
+# duplicate modals over the world.
+var _ability_onboarding_shown := false
+# Combat Help can replay the tutorial after a player has entered the real
+# campaign. A tutorial win normally grants XP and recovery, so practice owns
+# an in-memory snapshot of the party and restores it when that battle ends.
+# This is deliberately not SaveManager state: replaying a lesson must neither
+# write a slot nor provide a free heal/level-up exploit.
+var _tutorial_replay_snapshot: Array[Dictionary] = []
+var _tutorial_replay_prompt_active := false
 # Shown once on a genuinely new save (_on_title_new_game()) instead of the
 # tutorial book auto-opening there - see IntroCrawl's own header comment.
 # The tutorial book itself is untouched: F1 (this file's own
@@ -301,6 +321,13 @@ func _load_save() -> void:
 	revealed_key_items.assign((data.get("revealed_key_items", []) as Array).duplicate())
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
+	# _build_item_guardians() has already constructed the fresh physical
+	# sites by the time a title-screen load reaches here.  A key item from the
+	# save therefore has to retire its newly constructed guardian immediately:
+	# leaving it around makes a claimed reward look available again and its
+	# Area3D can reopen the special encounter even though key_items says it was
+	# already won.
+	_retire_claimed_item_guardians()
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -393,6 +420,67 @@ func _on_title_special_playtest() -> void:
 	_special_guardian_decoy = null
 	_offer_special_encounter("current_pearl")
 
+func _on_title_onboarding_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	# This UI represents the first free-play moment. The intro beacon should
+	# not compete with a visual review of the overlay itself.
+	_intro_active = false
+	_first_encounter_done = true
+	# `_show_intro_text()` ran while World was initially assembling behind the
+	# title. Clear that now-stale instruction as part of entering the review
+	# state; otherwise closing the walkthrough falsely suggests an invisible
+	# required beacon still exists.
+	banner.text = ""
+	_banner_timer = 0.0
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	_show_ability_onboarding()
+
+# A fast, isolated review route for the real Save/Update Spells screen.  It
+# deliberately has no save slot, gives only temporary review prerequisites,
+# and starts after the tutorial so no beam/onboarding state competes with the
+# UI under review.  Unlike raw #72's resource-only route, this opens the
+# actual player-facing spell interface immediately.
+func _on_title_spell_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	_intro_active = false
+	_first_encounter_started = true
+	_first_encounter_done = true
+	banner.text = "Spell review: temporary points and key items. No save will be written."
+	_banner_timer = 5.0
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	for item_id in Items.ITEMS:
+		var item_key := String(item_id)
+		if Items.is_key_item(item_key) and not key_items.has(item_key):
+			key_items.append(item_key)
+	for diver_value in divers:
+		var diver := diver_value as Diver
+		diver.stats.spell_points = maxi(diver.stats.spell_points, 99)
+	save_point_menu.open_for(divers[active], _display_name(divers[active].model_name))
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	mouse_look = false
+
+# Save/Inventory are exclusive reading and decision surfaces. Their controls
+# used to fight the persistent HUD visually because they were HUD children;
+# they now live on TitleLayer and explicitly hide that otherwise-live layer.
+func _open_fullscreen_menu() -> void:
+	_hud_visible_before_fullscreen_menu = $HUD.visible
+	$HUD.visible = false
+
+func _close_fullscreen_menu() -> void:
+	$HUD.visible = _hud_visible_before_fullscreen_menu
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -421,6 +509,34 @@ func _special_playtest_requested() -> bool:
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
 	return false
+
+func _onboarding_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--onboarding-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("onboarding=1")
+	return false
+
+func _spell_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--spell-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		var query := String(search)
+		return query.contains("spells=1") or query.contains("spell_playtest=1")
+	return false
+
+func _maze_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--maze-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("maze=1")
+	return false
+
+func _open_maze_playtest() -> void:
+	get_tree().change_scene_to_file("res://game/maze_level.tscn")
 
 func _show_game_over() -> void:
 	# Defeat owns the whole screen just like cold launch. The controls, active
@@ -526,6 +642,17 @@ var scripted_rise := 0.0
 var _active_cursor: MeshInstance3D
 
 func _ready() -> void:
+	# Query-only reviewer entry point, parallel to ?boss=1 / ?guardian=.  The
+	# maze remains a standalone prototype; this is only a one-click way to
+	# inspect the exact scene and must not imply World-flow integration.
+	if _maze_playtest_requested():
+		# A synchronous scene change while World itself is in _ready() collides
+		# with Godot's parent-child setup. Defer it one frame and stop this
+		# outgoing scene from running against half-built UI in the meantime.
+		set_process(false)
+		set_physics_process(false)
+		call_deferred("_open_maze_playtest")
+		return
 	cam = $Camera3D
 	hud = $HUD/Controls
 	# MODIFIED (added): none of $HUD's own children ever set mouse_filter,
@@ -569,12 +696,10 @@ func _ready() -> void:
 
 	save_point_menu = SavePointMenu.new()
 	save_point_menu.save_requested.connect(_on_save_requested)
-	$HUD.add_child(save_point_menu)
-	save_point_menu.learn_ui.key_items = key_items
+	save_point_menu.world = self
 
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
-	$HUD.add_child(inventory_menu)
 
 	_build_hp_bar()
 	_build_oxygen_bar()
@@ -613,12 +738,23 @@ func _ready() -> void:
 	title_layer.name = "TitleLayer"
 	title_layer.layer = 20
 	add_child(title_layer)
+	# Full-screen save/inventory surfaces must live above World.HUD rather than
+	# merely beside its labels. A child z-index cannot outrank a CanvasLayer
+	# ordering boundary, which let the controls and health bars bleed through
+	# the modal screens. TitleLayer already owns every other exclusive UI.
+	title_layer.add_child(save_point_menu)
+	# `learn_ui` is constructed by SavePointMenu._ready(), which runs when the
+	# menu enters this live layer. Assign its shared key list only afterward.
+	save_point_menu.learn_ui.key_items = key_items
+	title_layer.add_child(inventory_menu)
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
+	title_screen.onboarding_playtest_chosen.connect(_on_title_onboarding_playtest)
+	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -628,6 +764,10 @@ func _ready() -> void:
 		title_screen.enable_guardian_playtest("Play %s Guardian Test" % String(playtest_site.get("item", "Artifact")).capitalize())
 	if _special_playtest_requested():
 		title_screen.enable_special_playtest()
+	if _onboarding_playtest_requested():
+		title_screen.enable_onboarding_playtest()
+	if _spell_playtest_requested():
+		title_screen.enable_spell_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -636,6 +776,12 @@ func _ready() -> void:
 
 	tutorial_book = TutorialBook.new()
 	title_layer.add_child(tutorial_book)
+	tutorial_result_popup = TutorialResultPopup.new()
+	tutorial_result_popup.retry_chosen.connect(_on_tutorial_loss_retry)
+	tutorial_result_popup.exit_chosen.connect(_on_tutorial_loss_exit)
+	title_layer.add_child(tutorial_result_popup)
+	ability_onboarding = AbilityOnboardingScript.new() as Control
+	title_layer.add_child(ability_onboarding)
 
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
@@ -1132,7 +1278,7 @@ func _build_highway() -> void:
 	# far side - a staging point for Musashi on the approach, not itself
 	# a way across.
 	var near_anchor := GrappleAnchor.new()
-	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z)
+	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z - 2.5)
 	add_child(near_anchor)
 
 	# 3. The anchor that unlocks Maxilani's swap - reaching it is the
@@ -1706,6 +1852,28 @@ func _update_item_guardian_visibility() -> void:
 		if site_node != null and is_instance_valid(site_node):
 			site_node.visible = revealed
 
+# Retires every presentation/interaction node for an item already owned by
+# the party.  This is used both after loading a save (when build order first
+# creates pristine sites) and after a live victory, so those paths cannot
+# drift into different definitions of "claimed".
+func _retire_claimed_item_guardians() -> void:
+	var remaining: Array[Dictionary] = []
+	for entry in _item_guardians:
+		var item_id := String(entry.item)
+		if not key_items.has(item_id):
+			remaining.append(entry)
+			continue
+		var guardian: ItemGuardian = entry.get("guardian") as ItemGuardian
+		if is_instance_valid(guardian):
+			guardian.queue_free()
+		var decoy: Goblin = entry.get("decoy") as Goblin
+		if is_instance_valid(decoy):
+			decoy.queue_free()
+		var site_node: Node3D = entry.get("site") as Node3D
+		if is_instance_valid(site_node):
+			site_node.visible = false
+	_item_guardians = remaining
+
 func _player_dir() -> Vector3:
 	if scripted:
 		return scripted_dir
@@ -2009,6 +2177,7 @@ func _update_aim_marker() -> void:
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [d.get_rid()]
+	query.collision_mask = 1
 	var result := space.intersect_ray(query)
 
 	var point: Vector3 = to if result.is_empty() else (result.position as Vector3)
@@ -2036,6 +2205,14 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active] or _intro_active:
 		return
+	# An unclaimed guardian site is a deliberate encounter space. Letting a
+	# random roll interrupt there makes it unclear whether the battle belongs
+	# to the artifact or open-water pressure, and adds a fight immediately
+	# before the one the player deliberately approached. The Diver still resets
+	# its distance timer after this roll, so the ordinary 8-16 m / 50% cadence
+	# resumes once the player leaves the site.
+	if _inside_unclaimed_guardian_site(d.global_position):
+		return
 	# An ordinary encounter, and only an ordinary one.
 	#
 	# This used to also hand you a key item for winning a random encounter
@@ -2049,9 +2226,24 @@ func _on_encounter_triggered(d: Diver) -> void:
 	# whole point of it being somewhere.
 	_start_battle()
 
+func _inside_unclaimed_guardian_site(at: Vector3) -> bool:
+	for site_value in Sites.ALL:
+		var site := site_value as Dictionary
+		var item_id := String(site.get("item", ""))
+		if item_id == "" or key_items.has(item_id):
+			continue
+		var center := site.at as Vector3
+		var horizontal_distance := Vector2(at.x - center.x, at.z - center.z).length()
+		if horizontal_distance <= float(site.radius):
+			return true
+	return false
+
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin, enemy_id: String) -> void:
-	if battling:
+	# A stale Area3D can receive an overlap during the same frame a load or
+	# victory queues it for removal.  key_items is the source of truth at this
+	# public trigger boundary, so a claimed item can never reopen its fight.
+	if battling or key_items.has(item_id):
 		return
 # Both remain in the world if the player declines or loses. They are removed
 # only after a win, so the guarded reward remains available for another try.
@@ -2125,11 +2317,19 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	var was_tutorial_replay := was_tutorial and not _tutorial_replay_snapshot.is_empty()
 	battle.queue_free()
 	battle = null
 	battling = false
+	if was_tutorial_replay:
+		_restore_tutorial_replay_snapshot()
 	if was_tutorial:
 		_first_encounter_done = true
+		# The beam has completed its one job.  Leaving it behind after a win,
+		# loss, or explicit skip makes the world look as if combat is still
+		# mandatory.
+		if is_instance_valid(light_beam):
+			light_beam.queue_free()
 	if _boss_playtest_active or _guardian_playtest_active:
 		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false
@@ -2166,10 +2366,23 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 			if _pending_reward_item != "":
 				_grant_reward_item(_pending_reward_item)
+			elif was_tutorial:
+				_announce("Practice complete. Your campaign state is unchanged." if was_tutorial_replay else "Tutorial complete. You are back in the world.")
 			else:
 				_announce("The enemy backs off into the dark.")
 		"fled":
 			_announce("You successfully ran away.")
+		"skipped":
+			if was_tutorial_replay:
+				_announce("Practice skipped. Your campaign state is unchanged.")
+			else:
+				for d in divers:
+					var skipped_stats: CombatantStats = (d as Diver).stats
+					skipped_stats.hp = skipped_stats.hp_max
+					skipped_stats.oxygen = skipped_stats.oxygen_max
+				_update_hp_bar()
+				_update_oxygen_bar()
+				_announce("Tutorial skipped. You are back in the world.")
 		"lost":
 			if was_special and _special_encounter_diver != null:
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
@@ -2177,20 +2390,142 @@ func _on_battle_finished(result: String) -> void:
 				_update_hp_bar()
 				_update_oxygen_bar()
 				_announce("The current sweeps you back out, unharmed but empty-handed.")
+			elif was_tutorial:
+				if was_tutorial_replay:
+					_tutorial_replay_prompt_active = true
+					tutorial_result_popup.open(
+						"Practice Fight Lost",
+						"Your campaign state was restored. Retry the lesson, or return to the world.",
+					)
+				else:
+					tutorial_result_popup.open(
+						"Tutorial Fight Lost",
+						"This is a safe practice fight. Retry it, or return to the world fully recovered.",
+					)
+				return
 			else:
 				_show_game_over()
 		_:
 			_announce("You regroup and catch your breath.")
 	_pending_reward_item = ""
 	if was_special and result == "won":
-		if is_instance_valid(_special_guardian):
-			_special_guardian.queue_free()
-		if is_instance_valid(_special_guardian_decoy):
-			_special_guardian_decoy.queue_free()
+		_retire_claimed_item_guardians()
 	_special_encounter_item = ""
 	_special_encounter_diver = null
 	_special_guardian = null
 	_special_guardian_decoy = null
+	if was_tutorial and not was_tutorial_replay and result in ["won", "skipped"]:
+		call_deferred("_show_ability_onboarding")
+
+func _heal_tutorial_party() -> void:
+	for d in divers:
+		var stats: CombatantStats = (d as Diver).stats
+		stats.hp = stats.hp_max
+		stats.oxygen = stats.oxygen_max
+	_update_hp_bar()
+	_update_oxygen_bar()
+
+func _on_tutorial_loss_retry() -> void:
+	if _tutorial_replay_prompt_active:
+		_tutorial_replay_prompt_active = false
+		_replay_tutorial_battle()
+		return
+	_heal_tutorial_party()
+	_start_battle("", false, "angler", divers, false, true)
+
+func _on_tutorial_loss_exit() -> void:
+	if _tutorial_replay_prompt_active:
+		_tutorial_replay_prompt_active = false
+		_announce("Practice ended. Your campaign state is unchanged.")
+		return
+	_heal_tutorial_party()
+	_announce("The party regroups and returns to the overworld.")
+	call_deferred("_show_ability_onboarding")
+
+# Combat Help's live lesson replay. The battle uses the normal tutorial
+# encounter so its move gates, QTE, Run lock, and explicit Skip are the same
+# ones a new player sees. Its campaign-facing result is different: the
+# snapshot below is restored after win/loss/skip, so it cannot grant XP,
+# recovery, a free status cleanse, or a save-state change.
+func _replay_tutorial_battle() -> void:
+	if battling or divers.is_empty():
+		return
+	_tutorial_replay_prompt_active = false
+	_tutorial_replay_snapshot = _capture_tutorial_replay_snapshot()
+	_start_battle("", false, "angler", divers, false, true)
+
+func _capture_tutorial_replay_snapshot() -> Array[Dictionary]:
+	var snapshot: Array[Dictionary] = []
+	for diver_value in divers:
+		var diver := diver_value as Diver
+		var stats := diver.stats
+		snapshot.append({
+			"known_spells": diver.known_spells.duplicate(),
+			"equipped_spells": diver.equipped_spells.duplicate(),
+			"stats": {
+				"hp_max": stats.hp_max, "strength": stats.strength,
+				"defense": stats.defense, "agility": stats.agility,
+				"accuracy": stats.accuracy, "evasion": stats.evasion,
+				"evasion_current": stats.evasion_current,
+				"statuses": stats.statuses.duplicate(true),
+				"temporary_modifiers": stats.temporary_modifiers.duplicate(true),
+				"oxygen_max": stats.oxygen_max, "oxygen": stats.oxygen, "hp": stats.hp,
+				"level": stats.level, "xp": stats.xp,
+				"xp_to_next": stats.xp_to_next, "spell_points": stats.spell_points,
+				"grow_hp": stats.grow_hp, "grow_strength": stats.grow_strength,
+				"grow_defense": stats.grow_defense, "grow_agility": stats.grow_agility,
+				"grow_accuracy": stats.grow_accuracy, "grow_evasion": stats.grow_evasion,
+			},
+		})
+	return snapshot
+
+func _restore_tutorial_replay_snapshot() -> void:
+	if _tutorial_replay_snapshot.size() != divers.size():
+		_tutorial_replay_snapshot.clear()
+		push_error("Tutorial practice snapshot did not match the current party")
+		return
+	for index in range(divers.size()):
+		var diver := divers[index] as Diver
+		var entry := _tutorial_replay_snapshot[index]
+		diver.known_spells.assign((entry.get("known_spells", []) as Array).duplicate())
+		diver.equipped_spells.assign((entry.get("equipped_spells", []) as Array).duplicate())
+		var saved := entry.get("stats", {}) as Dictionary
+		var stats := diver.stats
+		stats.hp_max = int(saved.get("hp_max", stats.hp_max))
+		stats.strength = int(saved.get("strength", stats.strength))
+		stats.defense = int(saved.get("defense", stats.defense))
+		stats.agility = int(saved.get("agility", stats.agility))
+		stats.accuracy = int(saved.get("accuracy", stats.accuracy))
+		stats.evasion = int(saved.get("evasion", stats.evasion))
+		stats.evasion_current = int(saved.get("evasion_current", stats.evasion_current))
+		stats.statuses = (saved.get("statuses", {}) as Dictionary).duplicate(true)
+		stats.temporary_modifiers = (saved.get("temporary_modifiers", {}) as Dictionary).duplicate(true)
+		stats.oxygen_max = float(saved.get("oxygen_max", stats.oxygen_max))
+		stats.oxygen = float(saved.get("oxygen", stats.oxygen))
+		stats.level = int(saved.get("level", stats.level))
+		stats.xp = int(saved.get("xp", stats.xp))
+		stats.xp_to_next = int(saved.get("xp_to_next", stats.xp_to_next))
+		stats.spell_points = int(saved.get("spell_points", stats.spell_points))
+		stats.grow_hp = int(saved.get("grow_hp", stats.grow_hp))
+		stats.grow_strength = int(saved.get("grow_strength", stats.grow_strength))
+		stats.grow_defense = int(saved.get("grow_defense", stats.grow_defense))
+		stats.grow_agility = int(saved.get("grow_agility", stats.grow_agility))
+		stats.grow_accuracy = int(saved.get("grow_accuracy", stats.grow_accuracy))
+		stats.grow_evasion = int(saved.get("grow_evasion", stats.grow_evasion))
+		stats.hp = int(saved.get("hp", stats.hp))
+	_tutorial_replay_snapshot.clear()
+	_update_hp_bar()
+	_update_oxygen_bar()
+
+# The initial combat lesson ends at the moment the player can finally affect
+# the world. This is the right time to teach the actual exploration verbs;
+# doing it before the fight would compete with the QTE/move tutorial, and
+# doing it only from a menu would make a first-time player discover it late.
+func _show_ability_onboarding() -> void:
+	if _ability_onboarding_shown or ability_onboarding == null:
+		return
+	_ability_onboarding_shown = true
+	ability_onboarding.call("open_for_world", self)
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own
@@ -2203,6 +2538,10 @@ func _grant_reward_item(item_id: String) -> void:
 	if Items.is_key_item(item_id):
 		if not key_items.has(item_id):
 			key_items.append(item_id)
+		# "Revealed but unclaimed" is a real saved state. Once the reward is
+		# granted it must leave that state too, otherwise a later reload has
+		# enough information to render a site that no longer exists.
+		revealed_key_items.erase(item_id)
 		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 		_announce("Victory - you claim the key item %s!" % display)
 		return
@@ -2236,7 +2575,7 @@ func _update_hud() -> void:
 	var line := "%s  (%.2f m)\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % [
 		_display_name(d.model_name), d.height]
 	if d.ability_id != "":
-		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+		line += "  ·  E: %s (0 O2)" % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the E: hint above already follows for

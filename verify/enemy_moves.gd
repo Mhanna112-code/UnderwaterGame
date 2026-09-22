@@ -33,10 +33,43 @@ func _run() -> void:
 			"ENEMY MOVES: %s lacks a declarative move field — guards against a new attack requiring Battle code" % String(move.get("id", "unnamed")))
 		_expect(angler.has_clip_fragment(String(move.get("clip", ""))),
 			"ENEMY MOVES: %s has no imported clip match — guards against selecting a move that the delivered rig cannot play" % String(move.get("id", "unnamed")))
+
+	# Glassgoat's final Angler table names exactly Bite, Headbutt and Shine
+	# (Flash Blast): no legacy Ramming Bite. The table uses the wielder's own
+	# Strength for Headbutt's stun and 1 + Strength for Bite's persistent
+	# Bleed; it gives Flash Blast Accuracy-scaled Evasion loss/duration.
+	# Lock that authored shape here so later balance work cannot silently turn
+	# it back into an old heavy finisher or a made-up timed status.
+	var by_id := {}
+	for move_value in catalogue:
+		by_id[String((move_value as Dictionary).id)] = move_value as Dictionary
+	var bite := by_id.get("bite", {}) as Dictionary
+	var bite_uses_authored_persistent_bleed := (bite.get("combat", {}).get("effects", []) as Array).any(
+		func(e: Dictionary) -> bool: return String(e.get("status", "")) == "bleed" and e.get("level", {}) == {"flat": 1, "strength": 1} and not e.has("duration"))
+	_expect(bite.get("combat", {}).get("formula", {}) == {"strength": 1} and bite_uses_authored_persistent_bleed,
+		"ENEMY MOVES: Bite must deal Strength damage and apply persistent Bleed 1 + Strength")
+	var headbutt := by_id.get("headbutt", {}) as Dictionary
+	var headbutt_effects := headbutt.get("combat", {}).get("effects", []) as Array
+	var headbutt_stuns_by_strength := headbutt_effects.any(func(e: Dictionary) -> bool:
+		var duration: Variant = e.get("duration", {})
+		return String(e.get("status", "")) == "stun" and duration is Dictionary and (duration as Dictionary) == {"strength": 1})
+	_expect(bool(headbutt.get("enabled", false)) and headbutt.get("combat", {}).get("formula", {}) == {"strength": 1} and
+		headbutt_stuns_by_strength,
+		"ENEMY MOVES: Headbutt must be enabled, deal Strength damage, and stun for the Angler's own Strength")
+	var flash_blast := by_id.get("flash_blast", {}) as Dictionary
+	_expect(bool(flash_blast.get("enabled", false)) and String(flash_blast.get("target", "")) == "all" and
+		(flash_blast.get("combat", {}).get("effects", []) as Array).any(func(e: Dictionary) -> bool: return String(e.get("status", "")) == "evasion_down" and e.get("level", {}) == {"accuracy": 1} and e.get("duration", {}) == {"accuracy": 1}),
+		"ENEMY MOVES: Flash Blast must be enabled, target every foe, and lower Evasion by Accuracy for Accuracy turns")
+	_expect(not by_id.has("heavy_bite"),
+		"ENEMY MOVES: legacy Ramming Bite must not displace Glassgoat's three authored Angler attacks")
+
 	for move_value in enabled:
 		var move := move_value as Dictionary
 		_expect(bool(move.enabled), "ENEMY MOVES: disabled %s leaked into selection — guards against unfinished art entering combat" % String(move.id))
-		_expect(String(move.target) == "single", "ENEMY MOVES: enabled %s has an unsupported target scope — guards against silently mis-resolving a move" % String(move.id))
+		# "all" became a supported ordinary-enemy target scope alongside
+		# "single" once Flash Blast (see content/enemy_moves.gd) needed one -
+		# Battle._do_enemy_turn() routes it to _do_enemy_all_foes_turn().
+		_expect(String(move.target) in ["single", "all"], "ENEMY MOVES: enabled %s has an unsupported target scope — guards against silently mis-resolving a move" % String(move.id))
 		var length := angler.play_move(move)
 		_expect(length > 0.0,
 			"ENEMY MOVES: enabled %s did not start — guards against data-driven selection resolving to idle" % String(move.id))

@@ -3,6 +3,11 @@
 # Usage:
 #   godot --path . --script tools/shoot_combat_v2.gd -- /tmp/v2-result.png result
 #   godot --path . --script tools/shoot_combat_v2.gd -- /tmp/v2-target.png target
+#
+# Move buttons carry their calculation and effect context in their tooltip.
+# The default screenshot deliberately captures the result-first labels instead
+# of a second formula-display state, because that state is no longer part of
+# the player UI.
 extends SceneTree
 
 var out_png := "/tmp/v2-combat.png"
@@ -49,10 +54,6 @@ func _stage_evidence() -> void:
 	battle._refresh_queue_row()
 	if mode == "moves":
 		battle._show_moves()
-		return
-	if mode == "formulas":
-		battle._show_moves()
-		battle._toggle_move_details()
 		return
 	if mode == "target":
 		battle._show_moves()
