@@ -50,7 +50,10 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
+	# This is a modal, not a heads-up panel. Opaque coverage prevents the
+	# persistent world HUD from bleeding through Help/item text while the player
+	# is deciding what to do.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 

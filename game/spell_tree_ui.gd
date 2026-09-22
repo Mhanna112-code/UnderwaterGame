@@ -49,7 +49,9 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
+	# The spell tree is a full-screen decision surface, so it intentionally
+	# hides world HUD text instead of allowing it to overlap the tree header.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 

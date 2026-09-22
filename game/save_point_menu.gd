@@ -47,7 +47,9 @@ func _ready() -> void:
 
 func _build_root_panel() -> Control:
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
+	# Opaque by design: the persistent world HUD must not read through the
+	# modal title/buttons while a player is saving or changing spells.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	# CenterContainer, not PRESET_CENTER anchors with hand-picked offsets -
@@ -88,7 +90,9 @@ func _build_root_panel() -> Control:
 
 func _build_update_panel() -> Control:
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
+	# Keep the second level of the same modal equally opaque; otherwise the
+	# world controls reappear between Save and Learn/Equip.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var center := CenterContainer.new()
