@@ -35,11 +35,12 @@ func _run() -> void:
 			"ENEMY MOVES: %s has no imported clip match — guards against selecting a move that the delivered rig cannot play" % String(move.get("id", "unnamed")))
 
 	# Glassgoat's final Angler table names exactly Bite, Headbutt and Shine
-	# (Flash Blast): no legacy Ramming Bite. The table uses the wielder's own
-	# Strength for Headbutt's stun and 1 + Strength for Bite's persistent
-	# Bleed; it gives Flash Blast Accuracy-scaled Evasion loss/duration.
-	# Lock that authored shape here so later balance work cannot silently turn
-	# it back into an old heavy finisher or a made-up timed status.
+	# (Flash Blast): no legacy Ramming Bite. Bite retains the authored
+	# persistent 1 + Strength Bleed and Flash Blast keeps its Accuracy-scaled
+	# Evasion loss/duration. Headbutt's Strength damage is retained, but its
+	# stun is explicitly two turns: the current party-scaled Angler otherwise
+	# produces a three-turn lockout. Lock the approved balance exception here
+	# so it cannot silently return to an old heavy finisher or an untested stun.
 	var by_id := {}
 	for move_value in catalogue:
 		by_id[String((move_value as Dictionary).id)] = move_value as Dictionary
@@ -50,12 +51,11 @@ func _run() -> void:
 		"ENEMY MOVES: Bite must deal Strength damage and apply persistent Bleed 1 + Strength")
 	var headbutt := by_id.get("headbutt", {}) as Dictionary
 	var headbutt_effects := headbutt.get("combat", {}).get("effects", []) as Array
-	var headbutt_stuns_by_strength := headbutt_effects.any(func(e: Dictionary) -> bool:
-		var duration: Variant = e.get("duration", {})
-		return String(e.get("status", "")) == "stun" and duration is Dictionary and (duration as Dictionary) == {"strength": 1})
+	var headbutt_stuns_for_two_turns := headbutt_effects.any(func(e: Dictionary) -> bool:
+		return String(e.get("status", "")) == "stun" and int(e.get("duration", -1)) == 2)
 	_expect(bool(headbutt.get("enabled", false)) and headbutt.get("combat", {}).get("formula", {}) == {"strength": 1} and
-		headbutt_stuns_by_strength,
-		"ENEMY MOVES: Headbutt must be enabled, deal Strength damage, and stun for the Angler's own Strength")
+		headbutt_stuns_for_two_turns,
+		"ENEMY MOVES: Headbutt must be enabled, deal Strength damage, and stun for exactly two turns — guards against the three-turn early-route lockout")
 	var flash_blast := by_id.get("flash_blast", {}) as Dictionary
 	_expect(bool(flash_blast.get("enabled", false)) and String(flash_blast.get("target", "")) == "all" and
 		(flash_blast.get("combat", {}).get("effects", []) as Array).any(func(e: Dictionary) -> bool: return String(e.get("status", "")) == "evasion_down" and e.get("level", {}) == {"accuracy": 1} and e.get("duration", {}) == {"accuracy": 1}),
