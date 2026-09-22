@@ -29,11 +29,15 @@ var maze_level: MazeLevel
 
 @export var view_radius := 22.0
 
+const WALL_COLOR := Color(0.6, 0.64, 0.68, 0.9)
+const SELECTED_WALL_COLOR := Color(1.0, 0.82, 0.32, 1.0)
+const FLOW_COLOR := Color(0.28, 0.82, 1.0, 0.95)
+const SELECTED_FLOW_COLOR := Color(1.0, 0.68, 0.28, 1.0)
+
 func _ready() -> void:
 	custom_minimum_size = Vector2(150, 150)
 	clip_contents = true
 	_build_main_map()
-	_start_hall_blink()
 
 # The world-space endpoints of `box`'s own centerline, right now - the
 # longer of its two horizontal dimensions is treated as its length (a
@@ -108,6 +112,16 @@ func _corridor_for_wall(box: CSGBox3D) -> Area3D:
 # Player-facing discovery. hall name -> Array[CSGBox3D] size 2, keys
 # assigned in the order the diver actually found each hall.
 var _hall_walls: Dictionary = {}
+# Hall name -> the actual WindCorridor Area3D enclosed by that hall's walls.
+# This is deliberately distinct from raw #72's permanent hall-to-current
+# association: `H` and `L` move controller objects between areas, so only
+# MazeLevel._currents_by_corridor tells us where a flow truly exists now.
+var _hall_corridors: Dictionary = {}
+# A corridor may have no unique nearest wall pair (several share an authored
+# boundary), but the player can still see and feel its flow. Track visual
+# discovery separately from the wall-pair heuristic so a live current never
+# vanishes simply because that heuristic assigned a shared wall elsewhere.
+var _discovered_corridors: Dictionary = {}
 # CSGBox3D -> hall name, once assigned. A wall that turned out to belong
 # to no corridor at all gets "" here instead - not a hall, but still
 # marked so its adjacency isn't rechecked every single frame forever.
@@ -125,6 +139,12 @@ var _hall_discovery_count := 0
 # drawing to.
 var selectedHall: Array[CSGBox3D] = []
 var selectedHallName := ""
+
+# The currently highlighted *active flow area*.  It never names a wall pair
+# or an old controller location. Shift+arrow cycles this independently from
+# selectedHallName so map readers can inspect a current without losing their
+# wall selection.
+var selectedCurrentCorridor: Area3D
 
 # Blink clock for selectedHall's highlight on the SMALL RADAR's _draw()
 # only - the main map's own blink is separate (see _restart_main_map_blink()
@@ -168,6 +188,9 @@ func _update_revealed() -> void:
 	if not _corridor_wall_pairs_computed:
 		_compute_corridor_wall_pairs()
 	var diver_pos: Vector3 = maze_level._diver.global_position
+	for corridor in maze_level.corridors:
+		if is_instance_valid(corridor) and corridor.global_position.distance_to(diver_pos) <= view_radius:
+			_discovered_corridors[corridor] = true
 	for box in maze_level.wall_boxes:
 		if not is_instance_valid(box) or _wall_to_hall.has(box):
 			continue
@@ -183,6 +206,7 @@ func _update_revealed() -> void:
 		var hall_name := "WindCorridor%d" % _hall_discovery_count
 		var walls: Array[CSGBox3D] = _corridor_wall_pairs[corridor]
 		_hall_walls[hall_name] = walls
+		_hall_corridors[hall_name] = corridor
 		for wall in walls:
 			_wall_to_hall[wall] = hall_name
 		# Every newly found hall becomes the selection, not just the first
@@ -265,14 +289,23 @@ func _draw() -> void:
 		(hall_points[hall_name] as PackedVector2Array).append(p_b)
 	_radar_hall_points = hall_points
 	for hall_name in hall_points:
-		if hall_name == selectedHallName and not _hall_blink_on:
-			continue
 		var points := hall_points[hall_name] as PackedVector2Array
 		# A hall can be known to the minimap while every one of its segments
 		# is outside this radar circle. Godot rejects an empty polyline and
 		# otherwise prints an error every redraw.
 		if points.size() >= 2:
-			draw_multiline(points, Color(0.6, 0.64, 0.68, 0.9), 2.0)
+			var wall_color := SELECTED_WALL_COLOR if hall_name == selectedHallName else WALL_COLOR
+			var wall_width := 2.8 if hall_name == selectedHallName else 2.0
+			draw_multiline(points, wall_color, wall_width)
+
+	# Current arrows are derived from the live controller dictionary, not from
+	# whatever two walls happened to be closest when a hall was discovered.
+	# A current therefore disappears from Corridor 1 and reappears in Corridor
+	# 3 as soon as H makes that real relocation.
+	for corridor in maze_level._currents_by_corridor:
+		if not _is_discovered_corridor(corridor as Area3D):
+			continue
+		_draw_current_flow(corridor as Area3D, maze_level._currents_by_corridor[corridor] as WaterCurrent, center, mid, px_per_unit)
 
 	var fwd: Vector3 = -maze_level._diver.global_transform.basis.z
 	_draw_arrow(mid, Vector2(fwd.x, fwd.z))
@@ -326,6 +359,63 @@ func _draw_arrow(p: Vector2, facing: Vector2) -> void:
 		PackedColorArray([Color(0.35, 0.95, 0.55)])
 	)
 
+# A WaterCurrent is authoritative only through its collision Area3D and
+# orientation. Its map shaft starts and ends inside that same BoxShape3D,
+# matching the actual region that pushes a diver. This intentionally replaces
+# the raw PR's attractive but wall-derived sine wave, which could continue to
+# claim a current after its controller had moved somewhere else.
+func _flow_path_for_corridor(corridor: Area3D, current: WaterCurrent) -> PackedVector3Array:
+	var points := PackedVector3Array()
+	if corridor == null or current == null or current.area != corridor or current.orientation.length_squared() < 0.0001:
+		return points
+	var shape_node: CollisionShape3D
+	for child in corridor.get_children():
+		if child is CollisionShape3D and (child as CollisionShape3D).shape is BoxShape3D:
+			shape_node = child as CollisionShape3D
+			break
+	if shape_node == null:
+		return points
+	var shape := shape_node.shape as BoxShape3D
+	var flow := current.orientation.normalized()
+	var local_flow := shape_node.global_transform.basis.inverse() * flow
+	var travel_extent := absf(local_flow.x) * shape.size.x + absf(local_flow.y) * shape.size.y + absf(local_flow.z) * shape.size.z
+	if travel_extent < 0.01:
+		return points
+	var center := shape_node.global_transform * Vector3.ZERO
+	# Stay slightly inside both ends: the arrow describes the push zone without
+	# visually crossing the two solid end walls that frame it.
+	var half_span := travel_extent * 0.42
+	points.append(center - flow * half_span)
+	points.append(center + flow * half_span)
+	return points
+
+func _is_discovered_corridor(corridor: Area3D) -> bool:
+	return corridor != null and _discovered_corridors.has(corridor)
+
+func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3, mid: Vector2, px_per_unit: float) -> void:
+	var path := _flow_path_for_corridor(corridor, current)
+	if path.size() < 2:
+		return
+	var rel_a := Vector2(path[0].x - center.x, path[0].z - center.z)
+	var rel_b := Vector2(path[1].x - center.x, path[1].z - center.z)
+	var clipped := _clip_to_circle(rel_a, rel_b, view_radius)
+	if clipped.is_empty():
+		return
+	var start := (clipped[0] as Vector2) * px_per_unit + mid
+	var end := (clipped[1] as Vector2) * px_per_unit + mid
+	var color := SELECTED_FLOW_COLOR if corridor == selectedCurrentCorridor else FLOW_COLOR
+	_draw_flow_arrow(start, end, color, 2.2)
+
+func _draw_flow_arrow(start: Vector2, end: Vector2, color: Color, width: float) -> void:
+	var facing := end - start
+	if facing.length() < 0.01:
+		return
+	draw_line(start, end, color, width)
+	facing = facing.normalized()
+	var side := Vector2(-facing.y, facing.x)
+	var base := end - facing * 7.0
+	draw_polygon(PackedVector2Array([end, base + side * 3.6, base - side * 3.6]), PackedColorArray([color]))
+
 # --- Big persistent overview map, opened/closed with M ---
 # The small radar above recenters on the diver every frame (see _draw()'s
 # own `center`) - fine for "what's near me right now," wrong for a
@@ -362,6 +452,12 @@ var _main_map_hall_lines: Dictionary = {}
 # get an entry here at all). One per wall rather than combined into a
 # single Line2D for the same reason as _main_map_hall_lines above.
 var _main_map_lone_lines: Dictionary = {}
+# Area3D -> Line2D / Polygon2D. These keys are live corridor nodes rather
+# than discovery-order hall names: moving an active controller from Corridor
+# 2 to Corridor 3 must move the visual with the controller, not leave it
+# attached to the old hall.
+var _main_map_current_lines: Dictionary = {}
+var _main_map_current_heads: Dictionary = {}
 var _main_map_diver_pos := Vector2.ZERO
 # Draws the diver arrow + border above every wall Line2D - see its own
 # z_index comment in _build_main_map().
@@ -384,28 +480,27 @@ var _main_map_blink_tween: Tween
 func _restart_main_map_blink() -> void:
 	if _main_map_blink_tween != null and _main_map_blink_tween.is_valid():
 		_main_map_blink_tween.kill()
-	# Reset every hall back to fully visible first - otherwise a hall that
-	# was mid-blink (invisible) when selection moved on to a different hall
-	# would be left stuck invisible forever, with nothing left animating it
-	# back.
-	for lines in _main_map_hall_lines.values():
-		for line in (lines as Array[Line2D]):
-			line.visible = true
-	if not _main_map_hall_lines.has(selectedHallName):
-		return
-	var lines: Array[Line2D] = _main_map_hall_lines[selectedHallName]
-	_main_map_blink_tween = create_tween()
-	_main_map_blink_tween.set_loops()
-	_main_map_blink_tween.tween_interval(0.5)
-	_main_map_blink_tween.tween_callback(func():
-		for line in lines:
-			line.visible = false
-	)
-	_main_map_blink_tween.tween_interval(0.5)
-	_main_map_blink_tween.tween_callback(func():
+	# A selected wall is highlighted rather than blinked invisible. A blink can
+	# look like an open gap precisely while the player is deciding whether it is
+	# safe to swim there; a persistent warm outline conveys selection without
+	# making the collision map lie.
+	for hall_name in _main_map_hall_lines:
+		var lines: Array[Line2D] = _main_map_hall_lines[hall_name]
+		var hall_selected: bool = hall_name == selectedHallName
 		for line in lines:
 			line.visible = true
-	)
+			line.default_color = SELECTED_WALL_COLOR if hall_selected else WALL_COLOR
+			line.width = 3.2 if hall_selected else 2.0
+
+func _refresh_current_highlight() -> void:
+	for corridor in _main_map_current_lines:
+		var selected: bool = corridor == selectedCurrentCorridor
+		var line := _main_map_current_lines[corridor] as Line2D
+		line.default_color = SELECTED_FLOW_COLOR if selected else FLOW_COLOR
+		line.width = 3.4 if selected else 2.2
+		if _main_map_current_heads.has(corridor):
+			(_main_map_current_heads[corridor] as Polygon2D).color = SELECTED_FLOW_COLOR if selected else FLOW_COLOR
+	_refresh_map_copy()
 
 # Common setup for every Line2D this main map creates (hall or standalone)
 # - added as a child of main_map so it renders in the same panel-space
@@ -415,7 +510,7 @@ func _restart_main_map_blink() -> void:
 func _make_main_map_line() -> Line2D:
 	var line := Line2D.new()
 	line.width = 2.0
-	line.default_color = Color(0.6, 0.64, 0.68, 0.9)
+	line.default_color = WALL_COLOR
 	main_map.add_child(line)
 	return line
 
@@ -446,9 +541,13 @@ func _compute_main_map_bounds() -> void:
 
 func _build_main_map() -> void:
 	main_map = Control.new()
+	main_map.name = "MazeMainMap"
+	main_map.size = Vector2(MAIN_MAP_SIZE, MAIN_MAP_SIZE)
 	main_map.custom_minimum_size = Vector2(MAIN_MAP_SIZE, MAIN_MAP_SIZE)
+	main_map.position = Vector2(18.0, 76.0)
 	main_map.clip_contents = true
 	main_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_map.z_index = 4
 	# Starts closed - M toggles it (see _unhandled_input()).
 	main_map.visible = false
 	main_map.draw.connect(_on_main_map_draw)
@@ -472,15 +571,61 @@ func _build_main_map() -> void:
 	_main_map_overlay.z_index = 1
 	_main_map_overlay.draw.connect(_on_main_map_overlay_draw)
 	main_map.add_child(_main_map_overlay)
+	_build_main_map_copy()
+
+func _make_map_label(node_name: String, text: String, position: Vector2, label_size: Vector2, font_size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.name = node_name
+	label.text = text
+	label.position = position
+	label.size = label_size
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color(0.01, 0.04, 0.07, 0.95))
+	label.add_theme_constant_override("outline_size", 4)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.z_index = 3
+	main_map.add_child(label)
+	return label
+
+func _build_main_map_copy() -> void:
+	_make_map_label("MazeMapTitle", "MAZE NAVIGATION   [M] Close", Vector2(16, 10), Vector2(468, 28), 19, Color(0.86, 0.94, 1.0))
+	# Deliberately author the closed-route objective as two short lines instead
+	# of trusting a narrow browser to wrap one long sentence. The map is a
+	# playtest surface as well as a HUD: the first instruction must be readable
+	# at 653px wide, not merely fit on a desktop editor capture.
+	_make_map_label("MazeMapObjective", "OBJECTIVE: [H] Open the route\nThen follow the northbound current to the relic.", Vector2(16, 38), Vector2(468, 40), 14, Color(1.0, 0.84, 0.40))
+	# Plain key names intentionally avoid font-dependent arrow glyphs in the
+	# web export. The old arrows rendered as empty boxes in the browser, which
+	# turned a discoverable map control into an unexplained symbol.
+	_make_map_label("MazeMapLegend", "White: walls   Cyan: current   Amber: selected   Green: you\nLeft/Right: walls   Shift+Left/Right: current", Vector2(16, MAIN_MAP_SIZE - 52), Vector2(468, 42), 12, Color(0.73, 0.87, 0.96))
+
+func _refresh_map_copy() -> void:
+	if main_map == null:
+		return
+	var objective := main_map.get_node_or_null("MazeMapObjective") as Label
+	if objective != null:
+		objective.text = "OBJECTIVE: Follow the northbound current to the relic." if maze_level != null and maze_level._hallway_1_2_swung else "OBJECTIVE: [H] Open the route\nThen follow the northbound current to the relic."
+	var legend := main_map.get_node_or_null("MazeMapLegend") as Label
+	if legend != null:
+		var selected: String = selectedCurrentCorridor.name if selectedCurrentCorridor != null and is_instance_valid(selectedCurrentCorridor) else "none"
+		legend.text = "White: walls   Cyan: current   Amber: selected   Green: you\nLeft/Right: walls   Shift+Left/Right: current [%s]" % selected
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
 		return
-	var keycode: Key = (event as InputEventKey).keycode
+	var key_event := event as InputEventKey
+	var keycode: Key = key_event.keycode
 	if keycode == KEY_M:
 		main_map.visible = not main_map.visible
 		if main_map.visible:
 			main_map.queue_redraw()
+		get_viewport().set_input_as_handled()
+	elif keycode == KEY_RIGHT and key_event.shift_pressed:
+		_cycle_selected_current(1)
+		get_viewport().set_input_as_handled()
+	elif keycode == KEY_LEFT and key_event.shift_pressed:
+		_cycle_selected_current(-1)
 		get_viewport().set_input_as_handled()
 	elif keycode == KEY_RIGHT:
 		_select_next_hall()
@@ -523,10 +668,71 @@ func _refresh_main_map() -> void:
 			_update_main_map_lone_line(box, p_a, p_b)
 		else:
 			_update_main_map_hall_line(hall_name, box, p_a, p_b)
+	_refresh_current_lines()
 	if maze_level._diver != null and is_instance_valid(maze_level._diver):
 		_main_map_diver_pos = _project_to_main_map(maze_level._diver.global_position)
 	main_map.queue_redraw()
 	_main_map_overlay.queue_redraw()
+
+func _refresh_current_lines() -> void:
+	var active_discovered: Dictionary = {}
+	for corridor in maze_level._currents_by_corridor:
+		var area := corridor as Area3D
+		if area == null or not _is_discovered_corridor(area):
+			continue
+		var current := maze_level._currents_by_corridor[corridor] as WaterCurrent
+		if current == null:
+			continue
+		active_discovered[area] = true
+		_update_main_map_current_line(area, current)
+	for stale in _main_map_current_lines.keys():
+		if active_discovered.has(stale):
+			continue
+		var stale_line := _main_map_current_lines[stale] as Line2D
+		stale_line.queue_free()
+		_main_map_current_lines.erase(stale)
+		if _main_map_current_heads.has(stale):
+			(_main_map_current_heads[stale] as Polygon2D).queue_free()
+			_main_map_current_heads.erase(stale)
+	if selectedCurrentCorridor == null or not _main_map_current_lines.has(selectedCurrentCorridor):
+		var available := _main_map_current_lines.keys()
+		selectedCurrentCorridor = available[0] as Area3D if not available.is_empty() else null
+	_refresh_current_highlight()
+
+func _update_main_map_current_line(corridor: Area3D, current: WaterCurrent) -> void:
+	var path := _flow_path_for_corridor(corridor, current)
+	if path.size() < 2:
+		return
+	var start := _project_to_main_map(path[0])
+	var end := _project_to_main_map(path[1])
+	if not _main_map_current_lines.has(corridor):
+		var line := _make_main_map_line()
+		line.name = "Current_%s" % corridor.name
+		line.default_color = FLOW_COLOR
+		line.width = 2.2
+		_main_map_current_lines[corridor] = line
+		var head := Polygon2D.new()
+		head.name = "CurrentArrow_%s" % corridor.name
+		head.color = FLOW_COLOR
+		main_map.add_child(head)
+		_main_map_current_heads[corridor] = head
+	(_main_map_current_lines[corridor] as Line2D).points = PackedVector2Array([start, end])
+	var facing := end - start
+	if facing.length() < 0.01:
+		return
+	facing = facing.normalized()
+	var side := Vector2(-facing.y, facing.x)
+	var base := end - facing * 10.0
+	(_main_map_current_heads[corridor] as Polygon2D).polygon = PackedVector2Array([end, base + side * 4.8, base - side * 4.8])
+
+func _cycle_selected_current(direction: int) -> void:
+	var corridors := _main_map_current_lines.keys()
+	if corridors.is_empty():
+		return
+	var index := corridors.find(selectedCurrentCorridor)
+	index = wrapi((0 if index == -1 else index) + direction, 0, corridors.size())
+	selectedCurrentCorridor = corridors[index] as Area3D
+	_refresh_current_highlight()
 
 # One persistent Line2D per standalone wall - created the first time this
 # particular box is seen, just repositioned on every call after that.
