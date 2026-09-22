@@ -109,6 +109,11 @@ var _tutorial_finale_shown := false
 var _tutorial_force_next_qte := false
 var _tutorial_flash_tween: Tween
 var _tutorial_caption: RichTextLabel
+# Narrative beats are keyboard-friendly, but combat is otherwise mouse-first.
+# A visible click target keeps a player from treating an Enter-only caption as
+# a frozen fight; the small pulse is deliberate affordance, not decoration.
+var tutorial_continue_btn: Button
+var _tutorial_continue_pulse: Tween
 # Built unconditionally (see _build_ui()) - shows the per-diver level-up
 # stat table _win() builds via _build_levelup_block(), any fight, not just
 # the tutorial one.
@@ -1376,6 +1381,15 @@ func _build_ui() -> void:
 		_tutorial_caption.add_theme_color_override("default_color", Color.WHITE)
 		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(_tutorial_caption)
+		tutorial_continue_btn = Button.new()
+		tutorial_continue_btn.name = "TutorialContinue"
+		tutorial_continue_btn.text = "Continue  ·  Enter"
+		tutorial_continue_btn.tooltip_text = "Continue this tutorial caption"
+		tutorial_continue_btn.custom_minimum_size = Vector2(188, 38)
+		tutorial_continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		tutorial_continue_btn.visible = false
+		tutorial_continue_btn.pressed.connect(_acknowledge_tutorial_step)
+		col.add_child(tutorial_continue_btn)
 
 	# Unconditional, unlike _tutorial_caption above - a level-up can happen
 	# after ANY win, not just the tutorial fight. RichTextLabel for the same
@@ -1668,7 +1682,8 @@ func _on_qte_timeout() -> void:
 # stat rows included, since anchoring is bottom-up) to a different spot
 # immediately after, leaving the boxes stranded at the stale position.
 func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -> void:
-	_tutorial_caption.text = "%s\n[color=#7a8a94]Press Enter to continue[/color]" % text
+	_tutorial_caption.text = "%s\n[color=#7a8a94]Click Continue or press Enter[/color]" % text
+	_set_tutorial_continue_visible(true)
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
 	if on_layout_ready.is_valid():
@@ -1676,6 +1691,25 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	_tutorial_awaiting_enter = true
 	while _tutorial_awaiting_enter:
 		await get_tree().process_frame
+	_set_tutorial_continue_visible(false)
+
+func _acknowledge_tutorial_step() -> void:
+	if _tutorial_awaiting_enter:
+		_tutorial_awaiting_enter = false
+
+func _set_tutorial_continue_visible(on: bool) -> void:
+	if tutorial_continue_btn == null:
+		return
+	if _tutorial_continue_pulse != null and _tutorial_continue_pulse.is_valid():
+		_tutorial_continue_pulse.kill()
+	tutorial_continue_btn.visible = on
+	tutorial_continue_btn.modulate = Color.WHITE
+	if not on:
+		return
+	_tutorial_continue_pulse = create_tween()
+	_tutorial_continue_pulse.set_loops()
+	_tutorial_continue_pulse.tween_property(tutorial_continue_btn, "modulate", Color(0.55, 0.9, 1.0), 0.55)
+	_tutorial_continue_pulse.tween_property(tutorial_continue_btn, "modulate", Color.WHITE, 0.55)
 
 # Two independent gates share this one entry point, each guarded by its own
 # flag so a press meant for one can't be misread as resolving the other:
@@ -1688,7 +1722,7 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 func _unhandled_input(event: InputEvent) -> void:
 	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_ENTER, KEY_KP_ENTER]:
 		get_viewport().set_input_as_handled()
-		_tutorial_awaiting_enter = false
+		_acknowledge_tutorial_step()
 		return
 	# Only ever looked at while _qte_active is true (see _quick_time_event()) -
 	# a stray X press between fights, or one arriving the same frame the sweep
@@ -2270,9 +2304,11 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	_levelup_caption.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
+	_set_tutorial_continue_visible(true)
 	_tutorial_awaiting_enter = true
 	while _tutorial_awaiting_enter:
 		await get_tree().process_frame
+	_set_tutorial_continue_visible(false)
 	_levelup_caption.visible = false
 	_levelup_caption.text = ""
 	qte_root.visible = false

@@ -89,6 +89,7 @@ var _showing_save_prompt := false
 var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
+const AbilityOnboardingScript := preload("res://game/ability_onboarding.gd")
 # Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
 const PLINTH_TOP := 0.7
 
@@ -161,6 +162,12 @@ var title_layer: CanvasLayer
 var special_encounter_prompt: SpecialEncounterPrompt
 var tutorial_book: TutorialBook
 var tutorial_result_popup: TutorialResultPopup
+var ability_onboarding: Control
+# Only one walkthrough belongs to a first tutorial resolution. A loss Retry
+# stays inside the lesson, while win/Skip/loss-Exit may all hand the player to
+# free exploration; this flag prevents an asynchronous result from stacking
+# duplicate modals over the world.
+var _ability_onboarding_shown := false
 # Shown once on a genuinely new save (_on_title_new_game()) instead of the
 # tutorial book auto-opening there - see IntroCrawl's own header comment.
 # The tutorial book itself is untouched: F1 (this file's own
@@ -394,6 +401,27 @@ func _on_title_special_playtest() -> void:
 	_special_guardian_decoy = null
 	_offer_special_encounter("current_pearl")
 
+func _on_title_onboarding_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	# This UI represents the first free-play moment. The intro beacon should
+	# not compete with a visual review of the overlay itself.
+	_intro_active = false
+	_first_encounter_done = true
+	# `_show_intro_text()` ran while World was initially assembling behind the
+	# title. Clear that now-stale instruction as part of entering the review
+	# state; otherwise closing the walkthrough falsely suggests an invisible
+	# required beacon still exists.
+	banner.text = ""
+	_banner_timer = 0.0
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	_show_ability_onboarding()
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -421,6 +449,14 @@ func _special_playtest_requested() -> bool:
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
+	return false
+
+func _onboarding_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--onboarding-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("onboarding=1")
 	return false
 
 func _maze_playtest_requested() -> bool:
@@ -642,6 +678,7 @@ func _ready() -> void:
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
+	title_screen.onboarding_playtest_chosen.connect(_on_title_onboarding_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -651,6 +688,8 @@ func _ready() -> void:
 		title_screen.enable_guardian_playtest("Play %s Guardian Test" % String(playtest_site.get("item", "Artifact")).capitalize())
 	if _special_playtest_requested():
 		title_screen.enable_special_playtest()
+	if _onboarding_playtest_requested():
+		title_screen.enable_onboarding_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -663,6 +702,8 @@ func _ready() -> void:
 	tutorial_result_popup.retry_chosen.connect(_on_tutorial_loss_retry)
 	tutorial_result_popup.exit_chosen.connect(_on_tutorial_loss_exit)
 	title_layer.add_child(tutorial_result_popup)
+	ability_onboarding = AbilityOnboardingScript.new() as Control
+	title_layer.add_child(ability_onboarding)
 
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
@@ -2260,6 +2301,8 @@ func _on_battle_finished(result: String) -> void:
 	_special_encounter_diver = null
 	_special_guardian = null
 	_special_guardian_decoy = null
+	if was_tutorial and result in ["won", "skipped"]:
+		call_deferred("_show_ability_onboarding")
 
 func _heal_tutorial_party() -> void:
 	for d in divers:
@@ -2276,6 +2319,17 @@ func _on_tutorial_loss_retry() -> void:
 func _on_tutorial_loss_exit() -> void:
 	_heal_tutorial_party()
 	_announce("The party regroups and returns to the overworld.")
+	call_deferred("_show_ability_onboarding")
+
+# The initial combat lesson ends at the moment the player can finally affect
+# the world. This is the right time to teach the actual exploration verbs;
+# doing it before the fight would compete with the QTE/move tutorial, and
+# doing it only from a menu would make a first-time player discover it late.
+func _show_ability_onboarding() -> void:
+	if _ability_onboarding_shown or ability_onboarding == null:
+		return
+	_ability_onboarding_shown = true
+	ability_onboarding.call("open_for_world", self)
 
 # Key items (current_pearl/reef_plate) go straight into the party-wide
 # key_items array - Items.grant() refuses those on purpose (see its own
