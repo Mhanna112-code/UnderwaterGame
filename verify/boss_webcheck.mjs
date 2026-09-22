@@ -24,7 +24,10 @@ const server = http.createServer((req, res) => {
   });
   fs.createReadStream(p).pipe(res);
 });
-if (!live) await new Promise(r => server.listen(8766, r));
+// This is an isolated static server; asking the OS for an unused port avoids
+// failing the full browser gate when a developer already has a local preview
+// on the historical 8766 port.
+if (!live) await new Promise(r => server.listen(0, r));
 
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
@@ -35,7 +38,7 @@ const errors = [];
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', e => errors.push(String(e)));
 
-const base = live ? dir : 'http://localhost:8766/';
+const base = live ? dir : `http://localhost:${server.address().port}/`;
 const url = base + (base.includes('?') ? '&boss=1' : '?boss=1');
 await page.goto(url, { waitUntil: 'load' });
 await page.waitForTimeout(25000);

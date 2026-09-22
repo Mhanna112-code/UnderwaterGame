@@ -30,6 +30,7 @@ formula edits.
 | MENU-SPELL-3 | A visible spell is learnable despite missing points/prerequisites/key items, or the review route changes normal spell data/costs. | High — spell progression or combat balance silently changes. | The raw branch mixes a spell-test route with an unrelated `acc_mod` change. | Decision-table/invariant | **Green** — the actual title action opens the real spell surface, grants temporary review prerequisites, learns every tree legally, and pins Guard Break's current formula for Slice 5. |
 | MENU-TITLE-4 | Adding spell review removes existing guardian/onboarding/boss/special review routes or makes the normal first-run title show developer actions. | High — prior review links regress, or first-time UX regresses. | Raw #72 replaced several title signals instead of composing them. | Title-route decision table | **Green** — no-flag title excludes Spell Test; feature-flag composition renders all five review routes. The focused test exposed and fixed a real live-title guardian-refresh fault. |
 | MENU-SAVE-5 | Opening/closing help or replaying practice writes/mutates the active save slot. | High — a UI review path corrupts a player’s progression. | World owns persistence and the new UI calls World directly. | Save-state differential | **Green in focused gate** — replay state is restored after a simulated victory; spell review sets `_current_slot = -1` before opening the actual Save/Update Spells UI, so its Save action cannot write a campaign slot. |
+| MENU-BROWSER-6 | A browser verification route fails solely because another local process occupies a hard-coded server port. | High for release confidence — the full browser gate can report a false failure without exercising the exported game. | The pre-existing boss check bound its private static server to port 8766, which was occupied by a developer preview during the first full-suite run. | Captured browser-harness regression | **Fixed; awaiting green rerun** — the boss check now requests an OS-assigned unused port, matching the other browser checks. |
 
 ## Skipped for this slice
 
@@ -73,3 +74,7 @@ formula edits.
   a missing scroll view; it was corrected to find the public named view
   recursively. This is recorded so the green result means the actual rendered
   hierarchy, not an implementation accident.
+- MENU-BROWSER-6 was caught during the first full exported-browser run: the
+  generic web check passed, but the boss route threw `EADDRINUSE` before it
+  could begin. The change to an ephemeral port will be accepted only after the
+  full suite reruns with the occupied developer port still present.
