@@ -1062,7 +1062,19 @@ func _build_stage() -> void:
 		_frame_stage_camera()
 		return
 	for i in range(count):
-		var g: Goblin = _guardian_actor() if guardian_encounter else _ordinary_actor()
+		# The first battle teaches one named, single-hit Angler Bite plus its
+		# one forced dodge. It must not enter the ordinary random roster: a
+		# Swordfish Triple Combo could consume that first dodge and immediately
+		# follow it with unattended hits, while Frilled Shark contradicts the
+		# lesson's visible Angler identity. Guardian identity remains its own
+		# explicit branch below; only the authored tutorial contract is pinned.
+		var g: Goblin
+		if tutorial_encounter:
+			g = _actor_for_enemy_id("angler")
+		elif guardian_encounter:
+			g = _guardian_actor()
+		else:
+			g = _ordinary_actor()
 		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
 		vp.add_child(g)
 		var party_centre := Vector3.ZERO

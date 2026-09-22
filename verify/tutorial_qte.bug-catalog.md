@@ -35,6 +35,7 @@ one attack.
 | 2 | A visible tutorial QTE accepts X outside its live red zone or still applies damage after a correct in-zone X press. | High — the first timing lesson reads as broken or unfair. | The preview temporarily reparents the same widget before the actual attack and the tween/input resolution are asynchronous. | captured contract | fixed |
 | 3 | The tutorial's forced target still lets Angler's normal AI choose all-target Flash Blast. The force flag then never reaches the one-target QTE resolver. | High — the narrated lesson sometimes has no QTE, depending on a random move selection. | `choose_move_and_target(..., forced)` previously used the weighted catalogue instead of an authored single-target lesson move. | repeated tutorial lifecycle | fixed |
 | 4 | The QTE test launches a direct Battle while the map's new-game beam can launch its own tutorial Battle on the next world update. | Medium/high — a race can make a clean QTE look failed or let a second battle change the shared party's HP. | The test intentionally uses a real `World`/party, but did not stop its unrelated map handoff before yielding. | isolated scene-lifecycle pin | fixed |
+| 5 | A tutorial encounter selects the ordinary random roster, so it can introduce Swordfish's three-hit combo or Frilled Shark instead of the narrated Angler Bite. A successful first dodge is then followed by extra, unattended QTEs or damage. | High — the first lesson contradicts its own enemy/one-dodge explanation and can punish a correct input. | `guardian_enemy_id` is only consulted for guardian encounters; the tutorial branch still called `_ordinary_actor()`. A red stress run captured Swordfish follow-up resolves after a successful forced dodge. | roster identity plus one-window lifecycle | fixed |
 
 ## Test plan
 
@@ -81,8 +82,16 @@ that the real indicator begins moving before placing it in the visible zone
 for the production X handler. This removes scheduler-dependent sampling of a
 6%-wide moving window without replacing the gameplay widget or input path.
 
+The next exact-export run exposed a fifth case: a tutorial Battle did not
+actually select its named Angler. Its ordinary roster path could produce
+Swordfish, whose three-hit move consumed the taught dodge on hit one and then
+opened/dropped later hits without a second prompted input. The verifier now
+pins both the player-visible Angler identity and exactly one timing window for
+the scripted lesson.
+
 - **Bugs caught:** #1 and #2's formula-path cause; #3's probabilistic
-  all-target bypass; #4's competing-world-battle race.
+  all-target bypass; #4's competing-world-battle race; #5's random tutorial
+  roster/multi-hit follow-up.
 - **Bugs characterized:** the repaired live QTE is visible and moving, accepts
   an X through the real handler once its indicator is in the rendered red
   zone, and leaves every party member's HP unchanged.
