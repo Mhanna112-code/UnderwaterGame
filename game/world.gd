@@ -674,12 +674,9 @@ func _ready() -> void:
 
 	save_point_menu = SavePointMenu.new()
 	save_point_menu.save_requested.connect(_on_save_requested)
-	$HUD.add_child(save_point_menu)
-	save_point_menu.learn_ui.key_items = key_items
 
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
-	$HUD.add_child(inventory_menu)
 
 	_build_hp_bar()
 	_build_oxygen_bar()
@@ -718,6 +715,15 @@ func _ready() -> void:
 	title_layer.name = "TitleLayer"
 	title_layer.layer = 20
 	add_child(title_layer)
+	# Full-screen save/inventory surfaces must live above World.HUD rather than
+	# merely beside its labels. A child z-index cannot outrank a CanvasLayer
+	# ordering boundary, which let the controls and health bars bleed through
+	# the modal screens. TitleLayer already owns every other exclusive UI.
+	title_layer.add_child(save_point_menu)
+	# `learn_ui` is constructed by SavePointMenu._ready(), which runs when the
+	# menu enters this live layer. Assign its shared key list only afterward.
+	save_point_menu.learn_ui.key_items = key_items
+	title_layer.add_child(inventory_menu)
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)

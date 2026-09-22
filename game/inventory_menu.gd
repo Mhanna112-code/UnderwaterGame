@@ -42,11 +42,8 @@ var _help_tab: Button
 
 func _ready() -> void:
 	visible = false
-	# Inventory is a full-screen modal but lives under the same HUD canvas as
-	# the world controls. Keep its translucent world backdrop while drawing the
-	# actual menu above HUD labels/bars; otherwise controls visibly cut across
-	# Help and item rows at the top of the screen.
-	z_index = 20
+	# World parents full-screen modal menus to its higher TitleLayer. They must
+	# never share the lower HUD canvas with persistent controls/bars.
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
