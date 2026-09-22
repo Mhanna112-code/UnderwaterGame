@@ -321,6 +321,13 @@ func _load_save() -> void:
 	revealed_key_items.assign((data.get("revealed_key_items", []) as Array).duplicate())
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
+	# _build_item_guardians() has already constructed the fresh physical
+	# sites by the time a title-screen load reaches here.  A key item from the
+	# save therefore has to retire its newly constructed guardian immediately:
+	# leaving it around makes a claimed reward look available again and its
+	# Area3D can reopen the special encounter even though key_items says it was
+	# already won.
+	_retire_claimed_item_guardians()
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -1845,6 +1852,28 @@ func _update_item_guardian_visibility() -> void:
 		if site_node != null and is_instance_valid(site_node):
 			site_node.visible = revealed
 
+# Retires every presentation/interaction node for an item already owned by
+# the party.  This is used both after loading a save (when build order first
+# creates pristine sites) and after a live victory, so those paths cannot
+# drift into different definitions of "claimed".
+func _retire_claimed_item_guardians() -> void:
+	var remaining: Array[Dictionary] = []
+	for entry in _item_guardians:
+		var item_id := String(entry.item)
+		if not key_items.has(item_id):
+			remaining.append(entry)
+			continue
+		var guardian: ItemGuardian = entry.get("guardian") as ItemGuardian
+		if is_instance_valid(guardian):
+			guardian.queue_free()
+		var decoy: Goblin = entry.get("decoy") as Goblin
+		if is_instance_valid(decoy):
+			decoy.queue_free()
+		var site_node: Node3D = entry.get("site") as Node3D
+		if is_instance_valid(site_node):
+			site_node.visible = false
+	_item_guardians = remaining
+
 func _player_dir() -> Vector3:
 	if scripted:
 		return scripted_dir
@@ -2211,7 +2240,10 @@ func _inside_unclaimed_guardian_site(at: Vector3) -> bool:
 
 # guardian/decoy are bound at connect time (see _build_item_guardians()).
 func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy: Goblin, enemy_id: String) -> void:
-	if battling:
+	# A stale Area3D can receive an overlap during the same frame a load or
+	# victory queues it for removal.  key_items is the source of truth at this
+	# public trigger boundary, so a claimed item can never reopen its fight.
+	if battling or key_items.has(item_id):
 		return
 # Both remain in the world if the player declines or loses. They are removed
 # only after a win, so the guarded reward remains available for another try.
@@ -2377,10 +2409,7 @@ func _on_battle_finished(result: String) -> void:
 			_announce("You regroup and catch your breath.")
 	_pending_reward_item = ""
 	if was_special and result == "won":
-		if is_instance_valid(_special_guardian):
-			_special_guardian.queue_free()
-		if is_instance_valid(_special_guardian_decoy):
-			_special_guardian_decoy.queue_free()
+		_retire_claimed_item_guardians()
 	_special_encounter_item = ""
 	_special_encounter_diver = null
 	_special_guardian = null
@@ -2509,6 +2538,10 @@ func _grant_reward_item(item_id: String) -> void:
 	if Items.is_key_item(item_id):
 		if not key_items.has(item_id):
 			key_items.append(item_id)
+		# "Revealed but unclaimed" is a real saved state. Once the reward is
+		# granted it must leave that state too, otherwise a later reload has
+		# enough information to render a site that no longer exists.
+		revealed_key_items.erase(item_id)
 		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 		_announce("Victory - you claim the key item %s!" % display)
 		return
