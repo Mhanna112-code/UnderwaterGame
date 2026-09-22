@@ -8,6 +8,10 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 GODOT="${GODOT:-godot}"
+# A review/export gate must be able to exercise the *exact* source export
+# before generated docs/ is refreshed. CI and final release can use docs/;
+# focused slices pass an isolated export directory through WEB_DIR instead.
+WEB_DIR="${WEB_DIR:-docs}"
 fails=0
 skips=0
 
@@ -71,6 +75,7 @@ run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headles
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze traversal: can the player cross the opened CSGBox3D6/7 passage" "$GODOT" --headless --path . --script verify/maze_traversal.gd
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
+run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze review route: does the direct playtest link enter MazeLevel cleanly" "$GODOT" --headless --path . --script verify/maze_review_route.gd -- --maze-playtest
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
 run "merge readiness: is defeat exclusive and identity consistent" "$GODOT" --headless --path . --script verify/pr54_merge_readiness.gd
@@ -98,9 +103,9 @@ run "battle: does the fight screen build"             "$GODOT" --headless --path
 # Skipped rather than failed when either is missing: a machine with only
 # Godot should still get a useful run out of this script, and "playwright is
 # not installed" is not a finding about the game.
-if [ ! -f docs/index.wasm ]; then
+if [ ! -f "$WEB_DIR/index.wasm" ]; then
 	echo
-	echo "=== webcheck: skipped, no docs/index.wasm to serve ==="
+	echo "=== webcheck: skipped, no $WEB_DIR/index.wasm to serve ==="
 	skips=$((skips + 1))
 elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	echo
@@ -108,11 +113,12 @@ elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	echo "    npm i playwright && npx playwright install chromium"
 	skips=$((skips + 1))
 else
-	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs docs /tmp/gate-chromium.png
-	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs docs /tmp/gate-tethys.png /tmp/gate-tethys-title.png
-	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs docs /tmp/gate-guardian.png
-	run "special webcheck: does ?special=1 reach the chooser" node verify/special_webcheck.mjs docs /tmp/gate-special.png
-	run "spell review webcheck: does ?spells=1 reach the real spell UI" node verify/spell_review_webcheck.mjs docs /tmp/gate-spell-review.png /tmp/gate-spell-review-title.png
+	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
+	run "maze navigation webcheck: does ?maze=1 visibly update after H" node verify/maze_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-map-closed.png /tmp/gate-maze-map-open.png
+	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
+	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
+	run "special webcheck: does ?special=1 reach the chooser" node verify/special_webcheck.mjs "$WEB_DIR" /tmp/gate-special.png
+	run "spell review webcheck: does ?spells=1 reach the real spell UI" node verify/spell_review_webcheck.mjs "$WEB_DIR" /tmp/gate-spell-review.png /tmp/gate-spell-review-title.png
 fi
 
 echo

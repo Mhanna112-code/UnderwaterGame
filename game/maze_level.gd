@@ -44,7 +44,7 @@ func _ready() -> void:
 	_build_minimap()
 	_build_item_rocks()
 	_build_completion_ui()
-	$HUD/Controls.text = "Hallway: CLOSED — press H to open the route to the relic."
+	$HUD/Controls.text = "ROUTE: CLOSED — press H to open the current path."
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -212,6 +212,7 @@ func _build_levers() -> void:
 # it `self`.
 func _build_minimap() -> void:
 	var minimap := MazeMiniMap.new()
+	minimap.name = "MazeMiniMap"
 	minimap.maze_level = self
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	minimap.offset_left = -166.0
@@ -229,7 +230,7 @@ func _build_minimap() -> void:
 # there.
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
-	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL rotates the left currents; H opens or closes the CurrentWall1/2 hallway."
+	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nM opens the maze map. L rotates the left currents; H opens or closes the CurrentWall1/2 hallway."
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -417,10 +418,10 @@ func _rotate_hallway_1_2() -> void:
 		_rotate_wind_corridor_1_current(false)
 		_rotate_wind_corridor_2_current(false)
 		_hallway_1_2_swung = false
-		$HUD/Controls.text = "Hallway closing..."
+		$HUD/Controls.text = "ROUTE CLOSING..."
 		get_tree().create_timer(1.25).timeout.connect(func() -> void:
 			if not _hallway_1_2_swung and not _completed:
-				$HUD/Controls.text = "Hallway: CLOSED — press H to reopen the route to the relic."
+				$HUD/Controls.text = "ROUTE: CLOSED — press H to reopen the current path."
 		)
 		return
 	_hallway_1_2_home_pos_a = wall_a.global_position
@@ -432,10 +433,10 @@ func _rotate_hallway_1_2() -> void:
 	_rotate_wind_corridor_2_current(true)
 	_rotate_wind_corridor_1_current(true)
 	_hallway_1_2_swung = true
-	$HUD/Controls.text = "Hallway opening..."
+	$HUD/Controls.text = "ROUTE OPENING..."
 	get_tree().create_timer(1.25).timeout.connect(func() -> void:
 		if _hallway_1_2_swung and not _completed:
-			$HUD/Controls.text = "Hallway: OPEN — follow the northbound current to the reward chamber."
+			$HUD/Controls.text = "ROUTE: OPEN — follow the northbound current to the reward chamber."
 	)
 
 # WindCorridor1's current is parked while H opens the hallway, then restored
