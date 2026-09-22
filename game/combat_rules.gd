@@ -5,23 +5,24 @@ extends RefCounted
 # player or enemy. The UI, animations and AI choose a move; this class owns
 # the shared arithmetic and mutations.
 static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true, dodged: bool = false) -> Dictionary:
-	if apply_self_effects:
-		_apply_self_effects(attacker, move)
-
+	# A temporary self-cost belongs to the following turn, not to the hit roll
+	# and stat formulas of the move that spent it. The result must therefore be
+	# resolved from the actor's current stats first, then the cost is recorded.
+	# _finish() also applies it on a normal miss or a successful QTE dodge: the
+	# player still committed the move, so neither route is a free retry.
 	var accuracy := attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(accuracy)
-		return _result(false, 0, spent)
+		return _finish(attacker, move, _result(false, 0, spent), apply_self_effects)
 	# Battle reaches this only after the same visible QTE has accepted an
 	# in-zone X press. A dodge means the whole incoming action missed its
 	# target: no formula damage, Bleed/Stun/Evasion effect, or same-hit bleed
-	# stack. Self costs still belong to the attacker and were deliberately
-	# applied above, before hit resolution, just as they are on an ordinary
-	# miss.
+	# stack. The self-cost is applied by _finish() after the move's own result,
+	# as it is for both hit and ordinary-miss outcomes.
 	if dodged:
 		var dodged_result := _result(true, 0, 0)
 		dodged_result.dodged = true
-		return dodged_result
+		return _finish(attacker, move, dodged_result, apply_self_effects)
 
 	var had_bleed := defender.status_level("bleed") > 0
 	var raw := formula_value(attacker, move.get("formula", {}))
@@ -57,6 +58,11 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 
 	var result := _result(true, damage, 0)
 	result.effects = applied
+	return _finish(attacker, move, result, apply_self_effects)
+
+static func _finish(attacker: CombatantStats, move: Dictionary, result: Dictionary, apply_self_effects: bool) -> Dictionary:
+	if apply_self_effects:
+		_apply_self_effects(attacker, move)
 	return result
 
 static func formula_value(wielder: CombatantStats, formula: Variant) -> int:

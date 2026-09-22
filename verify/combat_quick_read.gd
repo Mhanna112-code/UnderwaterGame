@@ -75,14 +75,19 @@ func _test_current_rule_context(battle: Battle) -> void:
 	var flash_context := battle._move_tooltip_text(CombatMoves.SCUBA[2], stats)
 	_expect("All enemies" in flash_context and "It lasts 3 turns." in flash_context,
 		"ALL-TARGET CONTEXT DRIFT: Flash Blast context does not expose its live scope/duration")
-	var angler_bite := ((EnemyMoves.ANGLER[0] as Dictionary).get("combat", {}) as Dictionary)
+	# Source order is not a stable game contract: the reconciliation removes the
+	# retired Ramming Bite, so callers must identify an authored move by id rather
+	# than holding a fourth-array-slot assumption. This also asserts the current
+	# persistent-Bite and Accuracy-timed Shine contexts rather than the old
+	# invented three-turn Bite text.
+	var angler_bite := _enemy_combat("bite")
 	var bite_context := battle._move_tooltip_text(angler_bite, stats)
-	_expect("It lasts 3 turns." in bite_context,
-		"TIMED BLEED CONTEXT DRIFT: Angler Bite's live three-turn duration is not shown")
-	var evasion_down := ((EnemyMoves.ANGLER[3] as Dictionary).get("combat", {}) as Dictionary)
+	_expect("persists for this battle" in bite_context,
+		"PERSISTENT BLEED CONTEXT DRIFT: Angler Bite must not advertise an invented expiry")
+	var evasion_down := _enemy_combat("flash_blast")
 	var evasion_context := battle._move_tooltip_text(evasion_down, stats)
-	_expect("Evasion Down" in evasion_context,
-		"STATUS LABEL LEAK: e.g. 'evasion_down' is not rendered as a player-facing name")
+	_expect("Evasion Down" in evasion_context and "It lasts 3 turns." in evasion_context,
+		"STATUS LABEL/DURATION LEAK: Flash Blast's Accuracy-scaled Evasion Down is not rendered for a player")
 	var revive_context := battle._move_tooltip_text({"name": "Revive", "effect": "revive"}, stats)
 	_expect("One downed ally" in revive_context,
 		"ALLY TARGET CONTEXT DRIFT: revive is incorrectly described as targeting an enemy")
@@ -121,6 +126,13 @@ func _button_starting_with(parent: Node, prefix: String) -> Button:
 		if child is Button and (child as Button).text.begins_with(prefix):
 			return child as Button
 	return null
+
+func _enemy_combat(id: String) -> Dictionary:
+	for move_value in EnemyMoves.ANGLER:
+		var move := move_value as Dictionary
+		if String(move.get("id", "")) == id:
+			return move.get("combat", {}) as Dictionary
+	return {}
 
 func _expect(condition: bool, message: String) -> void:
 	if not condition:

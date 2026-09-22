@@ -33,6 +33,15 @@ const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_C
   '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
 ] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// This gate needs real canvas clicks to traverse Godot's button UI. Chromium
+// headless cannot grant the canvas a pointer lock after those modal clicks and
+// emits WrongDocumentError even though the exact click has already reached the
+// button. The game does not need pointer lock for this menu route, so stub
+// only that browser capability before the page loads. Other console/page
+// errors still fail the gate below.
+await page.addInitScript(() => {
+  HTMLElement.prototype.requestPointerLock = () => Promise.resolve();
+});
 const errors = [];
 page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 page.on('pageerror', error => errors.push(String(error)));

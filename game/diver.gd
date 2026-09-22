@@ -1264,7 +1264,22 @@ func _animate(dir: Vector3, dt: float) -> void:
 # shared resource across every Diver instance of the same model_name, and
 # mutating one in place would fade every other diver wearing that model
 # too, including the real party member's own battle-stage neighbors.
+var _death_presentation_active := false
+var _death_restore_position := Vector3.ZERO
+var _death_restore_scale := Vector3.ONE
+var _death_materials: Array[Dictionary] = []
+
 func play_death_fade() -> void:
+	# Party members can be selected by Tidal Revival after reaching 0 HP, so
+	# their stage node is deliberately retained. Enemies use their own permanent
+	# death path in goblin.gd. Repeating a death signal while already down must
+	# not stack a second tween or a second set of material overrides.
+	if _death_presentation_active:
+		return
+	_death_presentation_active = true
+	_death_restore_position = position
+	_death_restore_scale = scale
+	_death_materials.clear()
 	# Faint first. The fade is what removes the body from the stage; the
 	# faint is what says it went down rather than blinked out.
 	play_down()
@@ -1286,12 +1301,45 @@ func play_death_fade() -> void:
 				continue
 			var mat_copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
 			mat_copy.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_death_materials.append({
+				"mesh": mesh_instance,
+				"surface": surface,
+				"previous": mesh_instance.get_surface_override_material(surface),
+			})
 			mesh_instance.set_surface_override_material(surface, mat_copy)
 			tw.tween_property(mat_copy, "albedo_color:a", 0.0, 0.9)
-	tw.tween_property(self, "position:y", position.y - 0.6, 0.9)
-	tw.tween_property(self, "scale", scale * 0.7, 0.9)
+	tw.tween_property(self, "position:y", _death_restore_position.y - 0.6, 0.9)
+	tw.tween_property(self, "scale", _death_restore_scale * 0.7, 0.9)
+
+# Bring a downed party actor back from the retained fade presentation. This
+# reverses both its geometry and its private material overrides, preserving
+# any override the caller had before the death effect.
+func play_revive() -> void:
+	if not _death_presentation_active:
+		return
+	var tw := create_tween()
+	tw.set_parallel(true)
+	for record in _death_materials:
+		var mesh := record.get("mesh") as MeshInstance3D
+		if mesh == null or not is_instance_valid(mesh):
+			continue
+		var surface := int(record.get("surface", 0))
+		var fade_material := mesh.get_surface_override_material(surface)
+		if fade_material is BaseMaterial3D:
+			tw.tween_property(fade_material, "albedo_color:a", 1.0, 0.6)
+	tw.tween_property(self, "position", _death_restore_position, 0.6)
+	tw.tween_property(self, "scale", _death_restore_scale, 0.6)
 	tw.set_parallel(false)
-	tw.tween_callback(queue_free)
+	tw.tween_callback(func() -> void:
+		for record in _death_materials:
+			var mesh := record.get("mesh") as MeshInstance3D
+			if mesh != null and is_instance_valid(mesh):
+				mesh.set_surface_override_material(int(record.get("surface", 0)), record.get("previous"))
+		_death_materials.clear()
+		_death_presentation_active = false
+		_hold = ""
+		play_motion("idle")
+	)
 
 func _all_meshes(n: Node) -> Array:
 	var out: Array = []
