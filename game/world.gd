@@ -168,6 +168,13 @@ var ability_onboarding: Control
 # free exploration; this flag prevents an asynchronous result from stacking
 # duplicate modals over the world.
 var _ability_onboarding_shown := false
+# Combat Help can replay the tutorial after a player has entered the real
+# campaign. A tutorial win normally grants XP and recovery, so practice owns
+# an in-memory snapshot of the party and restores it when that battle ends.
+# This is deliberately not SaveManager state: replaying a lesson must neither
+# write a slot nor provide a free heal/level-up exploit.
+var _tutorial_replay_snapshot: Array[Dictionary] = []
+var _tutorial_replay_prompt_active := false
 # Shown once on a genuinely new save (_on_title_new_game()) instead of the
 # tutorial book auto-opening there - see IntroCrawl's own header comment.
 # The tutorial book itself is untouched: F1 (this file's own
@@ -422,6 +429,36 @@ func _on_title_onboarding_playtest() -> void:
 		_intro_arrow.visible = false
 	_show_ability_onboarding()
 
+# A fast, isolated review route for the real Save/Update Spells screen.  It
+# deliberately has no save slot, gives only temporary review prerequisites,
+# and starts after the tutorial so no beam/onboarding state competes with the
+# UI under review.  Unlike raw #72's resource-only route, this opens the
+# actual player-facing spell interface immediately.
+func _on_title_spell_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	_intro_active = false
+	_first_encounter_started = true
+	_first_encounter_done = true
+	banner.text = "Spell review: temporary points and key items. No save will be written."
+	_banner_timer = 5.0
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	for item_id in Items.ITEMS:
+		var item_key := String(item_id)
+		if Items.is_key_item(item_key) and not key_items.has(item_key):
+			key_items.append(item_key)
+	for diver_value in divers:
+		var diver := diver_value as Diver
+		diver.stats.spell_points = maxi(diver.stats.spell_points, 99)
+	save_point_menu.open_for(divers[active], _display_name(divers[active].model_name))
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	mouse_look = false
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -457,6 +494,15 @@ func _onboarding_playtest_requested() -> bool:
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("onboarding=1")
+	return false
+
+func _spell_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--spell-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		var query := String(search)
+		return query.contains("spells=1") or query.contains("spell_playtest=1")
 	return false
 
 func _maze_playtest_requested() -> bool:
@@ -679,6 +725,7 @@ func _ready() -> void:
 	title_screen.guardian_playtest_chosen.connect(_on_title_guardian_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
 	title_screen.onboarding_playtest_chosen.connect(_on_title_onboarding_playtest)
+	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -690,6 +737,8 @@ func _ready() -> void:
 		title_screen.enable_special_playtest()
 	if _onboarding_playtest_requested():
 		title_screen.enable_onboarding_playtest()
+	if _spell_playtest_requested():
+		title_screen.enable_spell_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -2214,9 +2263,12 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	var was_tutorial_replay := was_tutorial and not _tutorial_replay_snapshot.is_empty()
 	battle.queue_free()
 	battle = null
 	battling = false
+	if was_tutorial_replay:
+		_restore_tutorial_replay_snapshot()
 	if was_tutorial:
 		_first_encounter_done = true
 		# The beam has completed its one job.  Leaving it behind after a win,
@@ -2261,19 +2313,22 @@ func _on_battle_finished(result: String) -> void:
 			if _pending_reward_item != "":
 				_grant_reward_item(_pending_reward_item)
 			elif was_tutorial:
-				_announce("Tutorial complete. You are back in the world.")
+				_announce("Practice complete. Your campaign state is unchanged." if was_tutorial_replay else "Tutorial complete. You are back in the world.")
 			else:
 				_announce("The enemy backs off into the dark.")
 		"fled":
 			_announce("You successfully ran away.")
 		"skipped":
-			for d in divers:
-				var skipped_stats: CombatantStats = (d as Diver).stats
-				skipped_stats.hp = skipped_stats.hp_max
-				skipped_stats.oxygen = skipped_stats.oxygen_max
-			_update_hp_bar()
-			_update_oxygen_bar()
-			_announce("Tutorial skipped. You are back in the world.")
+			if was_tutorial_replay:
+				_announce("Practice skipped. Your campaign state is unchanged.")
+			else:
+				for d in divers:
+					var skipped_stats: CombatantStats = (d as Diver).stats
+					skipped_stats.hp = skipped_stats.hp_max
+					skipped_stats.oxygen = skipped_stats.oxygen_max
+				_update_hp_bar()
+				_update_oxygen_bar()
+				_announce("Tutorial skipped. You are back in the world.")
 		"lost":
 			if was_special and _special_encounter_diver != null:
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
@@ -2282,10 +2337,17 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 				_announce("The current sweeps you back out, unharmed but empty-handed.")
 			elif was_tutorial:
-				tutorial_result_popup.open(
-					"Tutorial Fight Lost",
-					"This is a safe practice fight. Retry it, or return to the world fully recovered.",
-				)
+				if was_tutorial_replay:
+					_tutorial_replay_prompt_active = true
+					tutorial_result_popup.open(
+						"Practice Fight Lost",
+						"Your campaign state was restored. Retry the lesson, or return to the world.",
+					)
+				else:
+					tutorial_result_popup.open(
+						"Tutorial Fight Lost",
+						"This is a safe practice fight. Retry it, or return to the world fully recovered.",
+					)
 				return
 			else:
 				_show_game_over()
@@ -2301,7 +2363,7 @@ func _on_battle_finished(result: String) -> void:
 	_special_encounter_diver = null
 	_special_guardian = null
 	_special_guardian_decoy = null
-	if was_tutorial and result in ["won", "skipped"]:
+	if was_tutorial and not was_tutorial_replay and result in ["won", "skipped"]:
 		call_deferred("_show_ability_onboarding")
 
 func _heal_tutorial_party() -> void:
@@ -2313,13 +2375,96 @@ func _heal_tutorial_party() -> void:
 	_update_oxygen_bar()
 
 func _on_tutorial_loss_retry() -> void:
+	if _tutorial_replay_prompt_active:
+		_tutorial_replay_prompt_active = false
+		_replay_tutorial_battle()
+		return
 	_heal_tutorial_party()
 	_start_battle("", false, "angler", divers, false, true)
 
 func _on_tutorial_loss_exit() -> void:
+	if _tutorial_replay_prompt_active:
+		_tutorial_replay_prompt_active = false
+		_announce("Practice ended. Your campaign state is unchanged.")
+		return
 	_heal_tutorial_party()
 	_announce("The party regroups and returns to the overworld.")
 	call_deferred("_show_ability_onboarding")
+
+# Combat Help's live lesson replay. The battle uses the normal tutorial
+# encounter so its move gates, QTE, Run lock, and explicit Skip are the same
+# ones a new player sees. Its campaign-facing result is different: the
+# snapshot below is restored after win/loss/skip, so it cannot grant XP,
+# recovery, a free status cleanse, or a save-state change.
+func _replay_tutorial_battle() -> void:
+	if battling or divers.is_empty():
+		return
+	_tutorial_replay_prompt_active = false
+	_tutorial_replay_snapshot = _capture_tutorial_replay_snapshot()
+	_start_battle("", false, "angler", divers, false, true)
+
+func _capture_tutorial_replay_snapshot() -> Array[Dictionary]:
+	var snapshot: Array[Dictionary] = []
+	for diver_value in divers:
+		var diver := diver_value as Diver
+		var stats := diver.stats
+		snapshot.append({
+			"known_spells": diver.known_spells.duplicate(),
+			"equipped_spells": diver.equipped_spells.duplicate(),
+			"stats": {
+				"hp_max": stats.hp_max, "strength": stats.strength,
+				"defense": stats.defense, "agility": stats.agility,
+				"accuracy": stats.accuracy, "evasion": stats.evasion,
+				"evasion_current": stats.evasion_current,
+				"statuses": stats.statuses.duplicate(true),
+				"temporary_modifiers": stats.temporary_modifiers.duplicate(true),
+				"oxygen_max": stats.oxygen_max, "oxygen": stats.oxygen, "hp": stats.hp,
+				"level": stats.level, "xp": stats.xp,
+				"xp_to_next": stats.xp_to_next, "spell_points": stats.spell_points,
+				"grow_hp": stats.grow_hp, "grow_strength": stats.grow_strength,
+				"grow_defense": stats.grow_defense, "grow_agility": stats.grow_agility,
+				"grow_accuracy": stats.grow_accuracy, "grow_evasion": stats.grow_evasion,
+			},
+		})
+	return snapshot
+
+func _restore_tutorial_replay_snapshot() -> void:
+	if _tutorial_replay_snapshot.size() != divers.size():
+		_tutorial_replay_snapshot.clear()
+		push_error("Tutorial practice snapshot did not match the current party")
+		return
+	for index in range(divers.size()):
+		var diver := divers[index] as Diver
+		var entry := _tutorial_replay_snapshot[index]
+		diver.known_spells.assign((entry.get("known_spells", []) as Array).duplicate())
+		diver.equipped_spells.assign((entry.get("equipped_spells", []) as Array).duplicate())
+		var saved := entry.get("stats", {}) as Dictionary
+		var stats := diver.stats
+		stats.hp_max = int(saved.get("hp_max", stats.hp_max))
+		stats.strength = int(saved.get("strength", stats.strength))
+		stats.defense = int(saved.get("defense", stats.defense))
+		stats.agility = int(saved.get("agility", stats.agility))
+		stats.accuracy = int(saved.get("accuracy", stats.accuracy))
+		stats.evasion = int(saved.get("evasion", stats.evasion))
+		stats.evasion_current = int(saved.get("evasion_current", stats.evasion_current))
+		stats.statuses = (saved.get("statuses", {}) as Dictionary).duplicate(true)
+		stats.temporary_modifiers = (saved.get("temporary_modifiers", {}) as Dictionary).duplicate(true)
+		stats.oxygen_max = float(saved.get("oxygen_max", stats.oxygen_max))
+		stats.oxygen = float(saved.get("oxygen", stats.oxygen))
+		stats.level = int(saved.get("level", stats.level))
+		stats.xp = int(saved.get("xp", stats.xp))
+		stats.xp_to_next = int(saved.get("xp_to_next", stats.xp_to_next))
+		stats.spell_points = int(saved.get("spell_points", stats.spell_points))
+		stats.grow_hp = int(saved.get("grow_hp", stats.grow_hp))
+		stats.grow_strength = int(saved.get("grow_strength", stats.grow_strength))
+		stats.grow_defense = int(saved.get("grow_defense", stats.grow_defense))
+		stats.grow_agility = int(saved.get("grow_agility", stats.grow_agility))
+		stats.grow_accuracy = int(saved.get("grow_accuracy", stats.grow_accuracy))
+		stats.grow_evasion = int(saved.get("grow_evasion", stats.grow_evasion))
+		stats.hp = int(saved.get("hp", stats.hp))
+	_tutorial_replay_snapshot.clear()
+	_update_hp_bar()
+	_update_oxygen_bar()
 
 # The initial combat lesson ends at the moment the player can finally affect
 # the world. This is the right time to teach the actual exploration verbs;

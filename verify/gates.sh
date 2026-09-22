@@ -61,6 +61,7 @@ run "tutorial onboarding: does combat hand off world controls safely" "$GODOT" -
 run "tutorial onboarding review route: can a reviewer inspect its actual UI" "$GODOT" --headless --path . --script verify/tutorial_onboarding_review_route.gd
 run "tutorial loss: can a player retry or safely exit to world" "$GODOT" --headless --path . --script verify/tutorial_loss_choice.gd
 run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --headless --path . --script verify/tutorial_skip.gd
+run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
