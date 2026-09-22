@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
 });
 if (!live) await new Promise(resolve => server.listen(0, resolve));
 
-const browser = await chromium.launch({ args: [
+const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
 ] });
@@ -77,7 +77,11 @@ const spellRoot = await sample();
 await page.screenshot({ path: out });
 
 const transition = changed(title, spellRoot);
-console.log(`spell review canvas ${JSON.stringify({ title, spellRoot: { ok: spellRoot.ok, colours: spellRoot.colours }, transition })}`);
+console.log(`spell review canvas ${JSON.stringify({
+  title: { ok: title.ok, colours: title.colours },
+  spellRoot: { ok: spellRoot.ok, colours: spellRoot.colours },
+  transition,
+})}`);
 if (errors.length) console.log('console             ' + errors.slice(0, 8).join(' | '));
 await browser.close();
 if (!live) server.close();
