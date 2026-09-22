@@ -44,18 +44,18 @@ func _ready() -> void:
 	visible = false
 	# World parents full-screen modal menus to its higher TitleLayer. They must
 	# never share the lower HUD canvas with persistent controls/bars.
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
 	# This is a modal, not a heads-up panel. Opaque coverage prevents the
 	# persistent world HUD from bleeding through Help/item text while the player
 	# is deciding what to do.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 50.0
 	root.offset_top = 50.0
 	root.offset_right = -50.0

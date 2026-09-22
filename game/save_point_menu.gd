@@ -27,7 +27,7 @@ func _ready() -> void:
 	visible = false
 	# World parents this complete Save/Update/Learn/Equip flow to its higher
 	# TitleLayer, so persistent HUD labels cannot render across its screens.
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_root_panel = _build_root_panel()
 	add_child(_root_panel)
@@ -49,7 +49,7 @@ func _build_root_panel() -> Control:
 	# Opaque by design: the persistent world HUD must not read through the
 	# modal title/buttons while a player is saving or changing spells.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	# CenterContainer, not PRESET_CENTER anchors with hand-picked offsets -
 	# the anchor-point approach put the box's center at the wrong place
@@ -61,7 +61,7 @@ func _build_root_panel() -> Control:
 	# separate anchor calculation that can end up anchored to the wrong
 	# origin.
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.add_child(center)
 
 	var box := VBoxContainer.new()
@@ -92,10 +92,10 @@ func _build_update_panel() -> Control:
 	# Keep the second level of the same modal equally opaque; otherwise the
 	# world controls reappear between Save and Learn/Equip.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.add_child(center)
 
 	var box := VBoxContainer.new()

@@ -88,6 +88,8 @@ func _test_combat_help_surface(world: World) -> void:
 		"MENU-HELP-2: Combat Help does not separate stats, effects, and statuses")
 	_expect(world.inventory_menu.get_parent() == world.title_layer,
 		"MENU-OVERLAY-8: Inventory/Combat Help shares the lower HUD canvas instead of the modal layer")
+	_expect(_fills_viewport(world.inventory_menu, world),
+		"MENU-OVERLAY-8: Inventory/Combat Help backdrop does not cover the viewport")
 	world.inventory_menu.close()
 
 # The menu is the public boundary for consumables: a player should see the
@@ -138,6 +140,8 @@ func _test_spell_review_route(world: World) -> void:
 		"MENU-SPELL-3: spell review does not open the actual spell interface")
 	_expect(world.save_point_menu.get_parent() == world.title_layer,
 		"MENU-OVERLAY-8: Save/Update/Learn Spells shares the lower HUD canvas instead of the modal layer")
+	_expect(_fills_viewport(world.save_point_menu, world) and _fills_viewport(world.save_point_menu.learn_ui, world),
+		"MENU-OVERLAY-8: Save/Update/Learn spell backdrops do not cover the viewport")
 	for item_id in Items.ITEMS:
 		if Items.is_key_item(String(item_id)):
 			_expect(world.key_items.has(String(item_id)),
@@ -204,6 +208,10 @@ func _button_with_prefix(node: Node, prefix: String) -> Button:
 		if nested != null:
 			return nested
 	return null
+
+func _fills_viewport(surface: Control, world: World) -> bool:
+	var viewport := world.get_viewport().get_visible_rect().size
+	return surface.size.x >= viewport.x * 0.98 and surface.size.y >= viewport.y * 0.98
 
 func _label_named(node: Node, text_value: String) -> Label:
 	for child in node.get_children():

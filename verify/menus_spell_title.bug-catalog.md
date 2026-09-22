@@ -32,7 +32,7 @@ formula edits.
 | MENU-SAVE-5 | Opening/closing help or replaying practice writes/mutates the active save slot. | High — a UI review path corrupts a player’s progression. | World owns persistence and the new UI calls World directly. | Save-state differential | **Green in focused gate** — replay state is restored after a simulated victory; spell review sets `_current_slot = -1` before opening the actual Save/Update Spells UI, so its Save action cannot write a campaign slot. |
 | MENU-BROWSER-6 | A browser verification route fails solely because another local process occupies a hard-coded server port. | High for release confidence — the full browser gate can report a false failure without exercising the exported game. | The pre-existing boss check bound its private static server to port 8766, which was occupied by a developer preview during the first full-suite run. | Captured browser-harness regression | **Green** — the boss check now requests an OS-assigned unused port; the full suite passed while the developer server remained on 8766. |
 | MENU-ITEM-7 | A usable inventory item is hidden/disabled, applies the wrong amount, consumes twice, or closes the player into a dead UI state. | High — a visible reward becomes unusable or silently wastes progression. | Slice 3 makes the pause-menu reading surface scrollable and reruns its contents after actions; the raw #72 intent includes usable inventory, while World remains the mutation owner. | Public-UI contract pin | **Green in focused gate** — a real Potion button is selected, adds exactly 10 HP, consumes exactly one copy, refreshes, and leaves Inventory usable. |
-| MENU-OVERLAY-8 | Persistent world HUD labels render through full-screen Inventory or Save/Update/Learn screens. | Medium/high — readable menu titles and controls visibly overlap, making a functioning progression UI appear broken. | Those menus initially lived in the same low `HUD` CanvasLayer as the control labels; the initial browser capture showed the overlap. A z-index-only repair, opaque ColorRect, and reparenting alone still left HUD content visually live behind the modal. | Captured visual regression plus modal lifecycle contract | **Fixed; awaiting exported visual rerun** — World parents both modal roots to `TitleLayer`, hides `HUD` while they are open, and restores prior HUD visibility on close. |
+| MENU-OVERLAY-8 | Persistent world HUD labels render through full-screen Inventory or Save/Update/Learn screens. | Medium/high — readable menu titles and controls visibly overlap, making a functioning progression UI appear broken. | Those menus initially lived in the same low `HUD` CanvasLayer as the control labels; the initial browser capture showed the overlap. The first fixes exposed a second root cause: `set_anchors_preset()` preserved zero offsets for runtime Controls under a CanvasLayer, so their full-screen backdrops never filled the viewport. | Captured visual regression plus modal geometry/lifecycle contract | **Fixed; awaiting exported visual rerun** — modal roots use TitleLayer, hide/restore HUD on open/close, and use full anchor-and-offset presets for every save/inventory/spell backdrop. |
 
 ## Skipped for this slice
 
@@ -60,11 +60,9 @@ formula edits.
 - MENU-ITEM-7 exercises the visible Inventory button and observable party
   state/count, so it catches a real spend/effect/refresh regression without
   coupling to `World.use_inventory_item()` internals.
-- MENU-OVERLAY-8 checks the public canvas ordering contract, then requires an
-  exported screenshot review because a node-order assertion is not enough to
-  establish readable visual composition. The first visual rerun caught that
-  z-index and opacity cannot cross a CanvasLayer boundary; the contract now
-  pins the higher modal parent plus hide/restore lifecycle.
+- MENU-OVERLAY-8 checks the public canvas ordering contract and actual
+  viewport-sized modal rects, then requires exported screenshot review because
+  structure still is not enough to establish readable composition.
 
 ## Red/green record
 
@@ -104,3 +102,8 @@ formula edits.
   still showed the world controls and health bars. The modal open/close path
   now hides/restores `World.HUD`; the focused gate asserts that spell review
   hides it and close restores it. Exported browser evidence remains required.
+- The next capture still showed world geometry because the runtime roots used
+  `set_anchors_preset()`, which preserves their zero CanvasLayer offsets.
+  All full-screen Save/Inventory/Spell controls now use
+  `set_anchors_and_offsets_preset()`, and the focused gate checks their real
+  rects against the viewport before the browser rerun.
