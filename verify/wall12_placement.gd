@@ -26,13 +26,10 @@ func _run() -> void:
 	print("CSGBox3D12   pos=%s yaw=%.3f" % [wall_12.global_position, wall_12.rotation.y])
 	print("CSGBox3D13   pos=%s yaw=%.3f" % [wall_13.global_position, wall_13.rotation.y])
 
-	# Wall2's hypothetical post-swing yaw (same math _rotate_hallway_1_2()
-	# would use) is wall2_target.yaw; Box12 should sit one more 90 degrees
-	# off that, same relationship Box6 has to CurrentWall1.
+	# Box12's own rotation is its authored orientation from the scene, no
+	# longer computed/forced by the script - so there's no fixed relationship
+	# to assert against CurrentWall2's post-swing yaw here.
 	var wall2_target: Dictionary = level._nearest_wall_continuation(wall_2, wall_3)
-	var expected_wall12_yaw := float(wall2_target.yaw) + PI * 0.5
-	_check(is_equal_approx(wrapf(wall_12.rotation.y, -PI, PI), wrapf(expected_wall12_yaw, -PI, PI)),
-		"CSGBox3D12's yaw (%.3f) is not perpendicular to CurrentWall2's hypothetical post-swing yaw (expected %.3f)" % [wall_12.rotation.y, expected_wall12_yaw])
 
 	# Box12 attaches to CurrentWall2's future outer end by ONE OF ITS OWN
 	# ends (moving_anchor_end=NEGATIVE in the real code), not by its center -
