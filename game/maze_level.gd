@@ -32,6 +32,7 @@ func _ready() -> void:
 			markers.append(child)
 		elif child is CSGBox3D:
 			wall_boxes.append(child)
+	_normalize_wall_heights()
 	_setup_walls()
 	_setup_currents()
 	_setup_whirlpool()
@@ -124,6 +125,27 @@ func _on_item_rock_broken(marker_name: String, spot: Vector3) -> void:
 	$HUD/Controls.text = "Relic secured. Maze complete."
 	maze_completed.emit(marker_name)
 
+# Every wall was authored at a slightly different Y (1.44 here, 1.71 there,
+# 1.52881 elsewhere, plus genuinely different structures like the reward
+# chamber at 6.5) - individually negligible, but it leaves small vertical
+# seams wherever two walls meet (exactly what showed up between the new
+# connector/stub and CSGBox3D7). What actually needs to match across every
+# wall, regardless of its own height (size.y), is where its BASE sits - they
+# should all stand on the same floor, not share the same center. _build_floor()
+# already derives the floor's own height from whichever wall currently has
+# the lowest base (position.y - size.y*0.5); reusing that same value here
+# means every wall's base ends up exactly on that floor, and _build_floor()
+# needs no changes at all - it'll naturally compute the same value again
+# once every wall's base already sits there.
+func _normalize_wall_heights() -> void:
+	var floor_y := INF
+	for box in wall_boxes:
+		floor_y = minf(floor_y, box.position.y - box.size.y * 0.5)
+	if floor_y == INF:
+		return
+	for box in wall_boxes:
+		box.position.y = floor_y + box.size.y * 0.5
+
 func _setup_walls():
 	# This is an authored, intentional perpendicular join: CurrentWall1 starts
 	# on CSGBox3D's positive exit with its own positive end as the anchor.  It
@@ -133,8 +155,7 @@ func _setup_walls():
 	)
 	_place_csgbox6_at_hallway_target()
 	_place_csgbox12_at_hallway_target()
-	
-	#_place_new_walls_between_box13_and_box7()
+	_place_new_walls_between_box13_and_box7()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -290,24 +311,60 @@ func _place_new_walls_between_box13_and_box7() -> void:
 	# direction, i.e. each wall's own positive_end.
 	var wall13_target_end := wall_13_geometry["negative_end"] as Vector3
 	var wall7_target_end := wall_7_geometry["negative_end"] as Vector3
-	var connector_length := wall13_target_end.distance_to(wall7_target_end) - wall_13.size.z
+
+	var wall13_long_axis := wall_13_geometry["long_axis"] as Vector3
+	var raw_projection := wall13_long_axis.dot(wall7_target_end - wall13_target_end)
+	var connector_direction := wall13_long_axis if raw_projection >= 0.0 else -wall13_long_axis
+	var connector_length := absf(raw_projection) - wall_13.size.z
+	var connector_yaw := wall_13.rotation.y if raw_projection >= 0.0 else wall_13.rotation.y + PI
 
 	var connector := CSGBox3D.new()
 	connector.name = "CSGBox3DConnector"
 	connector.use_collision = true
 	connector.size = Vector3(connector_length, wall_13.size.y, wall_13.size.z)
 	add_child(connector)
-	connector.rotation.y = 0
-	connector.global_position = (wall13_target_end + wall7_target_end) / 2
+	connector.rotation.y = connector_yaw
+	connector.global_position = wall13_target_end + connector_direction * (connector_length * 0.5)
+
+	# The stub turns perpendicular to the connector and picks up right where
+	# the connector fell short (its own positive_end), closing the remaining
+	# distance to wall7_target_end - same projection approach as the
+	# connector itself, just off a perpendicular axis and a different anchor
+	# point. stub_anchor adds the same clearance the connector itself needed
+	# (see _position_beyond_wall_end's own clearance term): the connector's
+	# positive_end sits size.z short of wall_7's own axis, on purpose, so the
+	# stub's own thickness can fill exactly that gap rather than floating
+	# short of it.
+	var connector_geometry: Dictionary = _wall_geometry(connector)
+	var connector_positive_end := connector_geometry["positive_end"] as Vector3
+	var stub_anchor := connector_positive_end + connector_direction * (wall_13.size.z * 0.5)
+	var stub_axis := Vector3(-connector_direction.z, 0.0, connector_direction.x)
+	var stub_raw_projection := stub_axis.dot(wall7_target_end - stub_anchor)
+	var stub_direction := stub_axis if stub_raw_projection >= 0.0 else -stub_axis
+	# Derive yaw directly from stub_direction rather than conditionally
+	# picking connector_yaw +/- PI*0.5 separately - those two do not
+	# necessarily agree in sign, which left the stub's own geometry using a
+	# different axis than the one it was actually positioned along.
+	var stub_yaw := atan2(-stub_direction.z, stub_direction.x)
+
+	# stub_anchor and wall7_target_end are both centerlines (of the
+	# connector's own thickness, and of wall_7's own thickness,
+	# respectively), not their near faces - without correction the stub's
+	# own two ends only touch a single line through each target's thickness
+	# band, leaving half of each target's own width sticking out past the
+	# stub with no material behind it. Extend both ends by half the
+	# relevant thickness to actually reach each target's near face.
+	var stub_near_end := stub_anchor - stub_direction * (connector.size.z * 0.5)
+	var stub_far_end := wall7_target_end + stub_direction * (wall_7.size.z * 0.5)
+	var stub_length := stub_near_end.distance_to(stub_far_end)
 
 	var stub := CSGBox3D.new()
 	stub.name = "CSGBox3DConnectorStub"
 	stub.use_collision = true
-	stub.size = Vector3(1.0, wall_13.size.y, wall_13.size.z)  # TODO: length (size.x)
+	stub.size = Vector3(stub_length, wall_13.size.y, wall_13.size.z)
 	add_child(stub)
-	# TODO: stub.rotation.y = ... (perpendicular to connector)
-	# TODO: stub.global_position = ... (flush against connector's far end,
-	#       extending south toward wall_7)
+	stub.rotation.y = stub_yaw
+	stub.global_position = stub_near_end + stub_direction * (stub_length * 0.5)
 
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
