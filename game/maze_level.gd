@@ -32,6 +32,7 @@ func _ready() -> void:
 			markers.append(child)
 		elif child is CSGBox3D:
 			wall_boxes.append(child)
+	_normalize_wall_heights()
 	_setup_walls()
 	_setup_currents()
 	_setup_whirlpool()
@@ -124,6 +125,27 @@ func _on_item_rock_broken(marker_name: String, spot: Vector3) -> void:
 	$HUD/Controls.text = "Relic secured. Maze complete."
 	maze_completed.emit(marker_name)
 
+# Every wall was authored at a slightly different Y (1.44 here, 1.71 there,
+# 1.52881 elsewhere, plus genuinely different structures like the reward
+# chamber at 6.5) - individually negligible, but it leaves small vertical
+# seams wherever two walls meet (exactly what showed up between the new
+# connector/stub and CSGBox3D7). What actually needs to match across every
+# wall, regardless of its own height (size.y), is where its BASE sits - they
+# should all stand on the same floor, not share the same center. _build_floor()
+# already derives the floor's own height from whichever wall currently has
+# the lowest base (position.y - size.y*0.5); reusing that same value here
+# means every wall's base ends up exactly on that floor, and _build_floor()
+# needs no changes at all - it'll naturally compute the same value again
+# once every wall's base already sits there.
+func _normalize_wall_heights() -> void:
+	var floor_y := INF
+	for box in wall_boxes:
+		floor_y = minf(floor_y, box.position.y - box.size.y * 0.5)
+	if floor_y == INF:
+		return
+	for box in wall_boxes:
+		box.position.y = floor_y + box.size.y * 0.5
+
 func _setup_walls():
 	# This is an authored, intentional perpendicular join: CurrentWall1 starts
 	# on CSGBox3D's positive exit with its own positive end as the anchor.  It
@@ -132,6 +154,8 @@ func _setup_walls():
 		$CSGBox3D, $CurrentWall1, WallEnd.POSITIVE, WallEnd.POSITIVE
 	)
 	_place_csgbox6_at_hallway_target()
+	_place_csgbox12_at_hallway_target()
+	_place_new_walls_between_box13_and_box7()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -147,11 +171,9 @@ func _place_csgbox6_at_hallway_target() -> void:
 	var wall_6: CSGBox3D = $CSGBox3D6
 	var wall_7: CSGBox3D = $CSGBox3D7
 
-	# CSGBox3D6's own rotation is fixed before its placement. One
-	# more 90-degree turn off CurrentWall1's own hypothetical H-rotated yaw
-	# - the same relationship CurrentWall1 has to CSGBox3D.
-	var wall1_h_yaw: float = wall_a.rotation.y + PI * 0.5
-	wall_6.rotation.y = wall1_h_yaw + PI * 0.5
+	# CSGBox3D6's rotation is its own original authored orientation from the
+	# scene - not derived from CurrentWall1 at all. Only its position is
+	# computed here.
 
 	# CSGBox3D6 attaches to CurrentWall1's FUTURE far end, not to CSGBox3D
 	# with a world-X correction.  The latter accidentally used a static
@@ -167,25 +189,182 @@ func _place_csgbox6_at_hallway_target() -> void:
 	var wall1_target_yaw := float(wall1_target.yaw)
 	var wall1_target_position := wall1_target.position as Vector3
 	var wall1_future: Dictionary = _wall_geometry_at(wall1_target_position, wall1_target_yaw, wall_a.size)
-	var wall1_outer_end := wall1_future["positive_end"] as Vector3
-	var wall1_outward_axis := wall1_future["long_axis"] as Vector3
+	# Which of wall1_future's own two ends is the free/outer one (as opposed
+	# to the one CurrentWall1 pivots/touches at) isn't reliably "positive" or
+	# "negative" - it flips depending on both walls' actual authored
+	# rotations (confirmed: Box6 and Box12 resolve oppositely). Derived by
+	# checking which end sits farther from the real attachment point on
+	# wall_orig, rather than assumed.
+	var wall_orig_geometry: Dictionary = _wall_geometry(wall_orig)
+	var wall1_attach_point: Vector3 = _wall_end(wall_orig_geometry,
+		WallEnd.POSITIVE if String(wall1_target.target_end) == "positive" else WallEnd.NEGATIVE)
+	var wall1_negative_end := wall1_future["negative_end"] as Vector3
+	var wall1_positive_end := wall1_future["positive_end"] as Vector3
+	var wall1_outer_end: Vector3
+	var wall1_outward_axis: Vector3
+	if wall1_negative_end.distance_squared_to(wall1_attach_point) > wall1_positive_end.distance_squared_to(wall1_attach_point):
+		wall1_outer_end = wall1_negative_end
+		wall1_outward_axis = -(wall1_future["long_axis"] as Vector3)
+	else:
+		wall1_outer_end = wall1_positive_end
+		wall1_outward_axis = wall1_future["long_axis"] as Vector3
+	# CSGBox3D6's own long axis, from its own actual rotation - not derived
+	# from CurrentWall1's outward axis, since that derivation only
+	# coincidentally matches a target wall's own axis for some wall pairs
+	# and not others (confirmed opposite-signed for Box6 vs Box12).
+	var wall6_long_axis := Basis(Vector3.UP, wall_6.rotation.y).x.normalized()
+	var wall_6_original_position := wall_6.global_position
 	wall_6.global_position = _position_beyond_wall_end(
 		wall1_outer_end, wall1_outward_axis, wall_a.size.z,
-		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, WallEnd.NEGATIVE
+		wall6_long_axis, wall_6.size.x, wall_6.size.z
 	)
 
 	# CSGBox3D7 is the opposite *static* boundary of the northbound passage,
 	# not another part of CurrentWall1's moving assembly. It must begin on the
 	# same cross-line as CSGBox3D6, but remain laterally separated to form the
-	# passage. Project its pre-existing offset onto Box6's side axis: this
-	# preserves the authored lane width while discarding only the stale forward
-	# and vertical offsets left behind when Box6 was corrected above. Box7 never
-	# moves during H, so it cannot sweep into CurrentWall1's opened position.
+	# passage. Project the ORIGINAL authored offset (from Box6's
+	# pre-correction position, not its corrected one) onto Box6's side axis:
+	# this preserves the authored lane width while discarding only the
+	# forward/vertical offset. Using Box6's corrected position instead would
+	# contaminate this with however much Box6's own correction itself moved
+	# sideways - not necessarily zero, since Box6 attaches by one end
+	# perpendicular to the corridor rather than continuing it in a straight
+	# line. Box7 never moves during H, so it cannot sweep into CurrentWall1's
+	# opened position.
 	var wall_6_geometry: Dictionary = _wall_geometry(wall_6)
 	var lane_side := wall_6_geometry["side_axis"] as Vector3
-	var authored_offset := wall_7.global_position - wall_6.global_position
+	var authored_offset := wall_7.global_position - wall_6_original_position
 	var preserved_lane_offset := lane_side * authored_offset.dot(lane_side)
-	wall_7.global_position = wall_6.global_position + preserved_lane_offset
+
+	var wall7_long_axis := wall_6_geometry["long_axis"] as Vector3
+	var wall6_position := wall_6_geometry["negative_end"] as Vector3
+	var wall7_flush_position := wall6_position + wall7_long_axis * (wall_7.size.x * 0.5)
+	wall_7.global_position = wall7_flush_position + preserved_lane_offset
+
+# CSGBox3D12/13 mirror CSGBox3D6/7's own relationship to CurrentWall1/CSGBox3D
+# one hallway pair over - see that function's own reasoning above, which
+# applies here unchanged. CSGBox3D12 does not rotate or move at runtime
+# either; it's placed exactly ONCE, here, at the position/rotation
+# CurrentWall2 WOULD end up at if the H-key hallway swing were triggered
+# right now. CurrentWall2 never has to actually swing for this to be correct.
+func _place_csgbox12_at_hallway_target() -> void:
+	var wall_2: CSGBox3D = $CurrentWall2
+	var wall_3: CSGBox3D = $CurrentWall3
+	var wall_12: CSGBox3D = $CSGBox3D12
+	var wall_13: CSGBox3D = $CSGBox3D13
+
+	# CSGBox3D12's rotation is its own original authored orientation from the
+	# scene - not derived from CurrentWall2 at all, same as CSGBox3D6 above.
+	# Only its position is computed here.
+
+	# CSGBox3D12 attaches to CurrentWall2's FUTURE far end, not to
+	# CurrentWall3 directly with a static reference frame - same reasoning as
+	# CSGBox3D6's own placement above.
+	var wall2_target: Dictionary = _nearest_wall_continuation(wall_2, wall_3)
+	var wall2_target_yaw := float(wall2_target.yaw)
+	var wall2_target_position := wall2_target.position as Vector3
+	var wall2_future: Dictionary = _wall_geometry_at(wall2_target_position, wall2_target_yaw, wall_2.size)
+	# Same as CSGBox3D6's own placement above: which of wall2_future's own
+	# two ends is the free/outer one isn't reliably "positive" or "negative"
+	# - derived by checking which end sits farther from the real attachment
+	# point on CurrentWall3, rather than assumed.
+	var wall_3_geometry: Dictionary = _wall_geometry(wall_3)
+	var wall2_attach_point: Vector3 = _wall_end(wall_3_geometry,
+		WallEnd.POSITIVE if String(wall2_target.target_end) == "positive" else WallEnd.NEGATIVE)
+	var wall2_negative_end := wall2_future["negative_end"] as Vector3
+	var wall2_positive_end := wall2_future["positive_end"] as Vector3
+	var wall2_outer_end: Vector3
+	var wall2_outward_axis: Vector3
+	if wall2_negative_end.distance_squared_to(wall2_attach_point) > wall2_positive_end.distance_squared_to(wall2_attach_point):
+		wall2_outer_end = wall2_negative_end
+		wall2_outward_axis = -(wall2_future["long_axis"] as Vector3)
+	else:
+		wall2_outer_end = wall2_positive_end
+		wall2_outward_axis = wall2_future["long_axis"] as Vector3
+	# CSGBox3D12's own long axis, from its own actual rotation - same
+	# reasoning as CSGBox3D6 above.
+	var wall12_long_axis := Basis(Vector3.UP, wall_12.rotation.y).x.normalized()
+	var wall_12_original_position := wall_12.global_position
+	wall_12.global_position = _position_beyond_wall_end(
+		wall2_outer_end, wall2_outward_axis, wall_2.size.z,
+		wall12_long_axis, wall_12.size.x, wall_12.size.z
+	)
+
+	var wall_12_geometry: Dictionary = _wall_geometry(wall_12)
+	var lane_side := wall_12_geometry["side_axis"] as Vector3
+	var authored_offset := wall_12.global_position - wall_12_original_position
+	var preserved_lane_offset := lane_side * authored_offset.dot(lane_side)
+	var wall13_long_axis := wall_12_geometry["long_axis"] as Vector3
+	var wall12_position := wall_12_geometry["negative_end"] as Vector3
+	var wall13_flush_position := wall12_position + wall13_long_axis * (wall_13.size.x * 0.5)
+	wall_13.global_position = wall13_flush_position + preserved_lane_offset
+	
+# SCAFFOLDING - position/rotation math not filled in yet. Connects CSGBox3D13
+# to CSGBox3D7 with two new walls: a long one flush against CSGBox3D13, and a
+# short perpendicular one filling the gap it leaves at the CSGBox3D7 end.
+func _place_new_walls_between_box13_and_box7() -> void:
+	var wall_13: CSGBox3D = $CSGBox3D13
+	var wall_7: CSGBox3D = $CSGBox3D7
+	var wall_13_geometry: Dictionary = _wall_geometry(wall_13)
+	var wall_7_geometry: Dictionary = _wall_geometry(wall_7)
+	# Target end = the first end reached moving from center in the +long_axis
+	# direction, i.e. each wall's own positive_end.
+	var wall13_target_end := wall_13_geometry["negative_end"] as Vector3
+	var wall7_target_end := wall_7_geometry["negative_end"] as Vector3
+
+	var wall13_long_axis := wall_13_geometry["long_axis"] as Vector3
+	var raw_projection := wall13_long_axis.dot(wall7_target_end - wall13_target_end)
+	var connector_direction := wall13_long_axis if raw_projection >= 0.0 else -wall13_long_axis
+	var connector_length := absf(raw_projection) - wall_13.size.z
+	var connector_yaw := wall_13.rotation.y if raw_projection >= 0.0 else wall_13.rotation.y + PI
+
+	var connector := CSGBox3D.new()
+	connector.name = "CSGBox3DConnector"
+	connector.use_collision = true
+	connector.size = Vector3(connector_length, wall_13.size.y, wall_13.size.z)
+	add_child(connector)
+	connector.rotation.y = connector_yaw
+	connector.global_position = wall13_target_end + connector_direction * (connector_length * 0.5)
+
+	# The stub turns perpendicular to the connector and picks up right where
+	# the connector fell short (its own positive_end), closing the remaining
+	# distance to wall7_target_end - same projection approach as the
+	# connector itself, just off a perpendicular axis and a different anchor
+	# point. stub_anchor adds the same clearance the connector itself needed
+	# (see _position_beyond_wall_end's own clearance term): the connector's
+	# positive_end sits size.z short of wall_7's own axis, on purpose, so the
+	# stub's own thickness can fill exactly that gap rather than floating
+	# short of it.
+	var connector_geometry: Dictionary = _wall_geometry(connector)
+	var connector_positive_end := connector_geometry["positive_end"] as Vector3
+	var stub_anchor := connector_positive_end + connector_direction * (wall_13.size.z * 0.5)
+	var stub_axis := Vector3(-connector_direction.z, 0.0, connector_direction.x)
+	var stub_raw_projection := stub_axis.dot(wall7_target_end - stub_anchor)
+	var stub_direction := stub_axis if stub_raw_projection >= 0.0 else -stub_axis
+	# Derive yaw directly from stub_direction rather than conditionally
+	# picking connector_yaw +/- PI*0.5 separately - those two do not
+	# necessarily agree in sign, which left the stub's own geometry using a
+	# different axis than the one it was actually positioned along.
+	var stub_yaw := atan2(-stub_direction.z, stub_direction.x)
+
+	# stub_anchor and wall7_target_end are both centerlines (of the
+	# connector's own thickness, and of wall_7's own thickness,
+	# respectively), not their near faces - without correction the stub's
+	# own two ends only touch a single line through each target's thickness
+	# band, leaving half of each target's own width sticking out past the
+	# stub with no material behind it. Extend both ends by half the
+	# relevant thickness to actually reach each target's near face.
+	var stub_near_end := stub_anchor - stub_direction * (connector.size.z * 0.5)
+	var stub_far_end := wall7_target_end + stub_direction * (wall_7.size.z * 0.5)
+	var stub_length := stub_near_end.distance_to(stub_far_end)
+
+	var stub := CSGBox3D.new()
+	stub.name = "CSGBox3DConnectorStub"
+	stub.use_collision = true
+	stub.size = Vector3(stub_length, wall_13.size.y, wall_13.size.z)
+	add_child(stub)
+	stub.rotation.y = stub_yaw
+	stub.global_position = stub_near_end + stub_direction * (stub_length * 0.5)
 
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
@@ -522,11 +701,33 @@ func _perpendicular_exit_position(reference_geometry: Dictionary, moving_yaw: fl
 # Extends a wall out from a *known physical endpoint*.  `outward_long_axis`
 # must point away from the source wall at `outward_end`; callers use the
 # geometry query above to obtain both names rather than recreate axis signs.
-func _position_beyond_wall_end(outward_end: Vector3, outward_long_axis: Vector3, source_thickness: float, moving_yaw: float, moving_size_x: float, moving_size_z: float, moving_anchor_end: int) -> Vector3:
-	var moving_long_axis := Basis(Vector3.UP, moving_yaw).x.normalized()
-	var source_side_axis := Vector3(-outward_long_axis.z, 0.0, outward_long_axis.x)
-	var clearance := outward_long_axis * moving_size_z * 0.5
-	return outward_end + clearance + moving_long_axis * moving_size_x * 0.5 * _wall_end_sign(moving_anchor_end) - source_side_axis * source_thickness * 0.5
+# moving_wall_outer_end must be moving_wall's free/outer end (looking down
+# its own long axis after rotation - not the end it pivots/touches at) with
+# moving_wall_outward_axis pointing away from moving_wall's body at that end;
+# callers derive both by checking which end sits farther from the real
+# attachment point, rather than assuming a fixed positive/negative mapping.
+#
+# target_wall_long_axis is target_wall's own long axis, from its own actual
+# rotation - passed in directly rather than derived from moving_wall's
+# outward axis, since that derivation only coincidentally matches for some
+# wall pairs and not others.
+#
+# Three steps stack on top of moving_wall_outer_end:
+#   - target_wall_size_z * 0.5, along moving_wall_outward_axis: target_wall's
+#     own thickness, pushed out so its face (not its center) lands on the
+#     endpoint instead of straddling back across it.
+#   - target_wall_size_x * 0.5, along target_wall_long_axis's own (original,
+#     unflipped) direction: the half-length step from that touching point to
+#     target_wall's actual center.
+#   - moving_wall_size_z * 0.5, along target_wall_long_axis's OPPOSITE
+#     direction: corrects for moving_wall's own thickness - moving_wall_outer_end
+#     sits on moving_wall's centerline, not its physical face, so this nudges
+#     target_wall onto one actual face of moving_wall's footprint instead.
+func _position_beyond_wall_end(moving_wall_outer_end: Vector3, moving_wall_outward_axis: Vector3, moving_wall_size_z: float, target_wall_long_axis: Vector3, target_wall_size_x: float, target_wall_size_z: float) -> Vector3:
+	return moving_wall_outer_end \
+		+ moving_wall_outward_axis * target_wall_size_z * 0.5 \
+		+ target_wall_long_axis * target_wall_size_x * 0.5 \
+		- target_wall_long_axis * moving_wall_size_z * 0.5
 
 
 # Each WaterCurrent is a plain controller object, not something attached
