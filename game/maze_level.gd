@@ -5,8 +5,8 @@ extends Node3D
 # boundary: callers choose a named authored exit only when the level design
 # explicitly requires one; automatic continuations never expose these signs.
 enum WallEnd {
-	NEGATIVE,
-	POSITIVE,
+    NEGATIVE,
+    POSITIVE,
 }
 
 var markers: Array[Marker3D] = []
@@ -21,30 +21,30 @@ var markers: Array[Marker3D] = []
 var wall_boxes: Array[CSGBox3D] = []
 
 @onready var corridors: Array[Area3D] = [
-	$WindCorridor1, $WindCorridor2, $WindCorridor3, $WindCorridor4,
-	$WindCorridor5, $WindCorridor6, $WindCorridor7, $WindCorridor8,
+    $WindCorridor1, $WindCorridor2, $WindCorridor3, $WindCorridor4,
+    $WindCorridor5, $WindCorridor6, $WindCorridor7, $WindCorridor8,
 ]
 
 
 func _ready() -> void:
-	for child in get_children():
-		if child is Marker3D:
-			markers.append(child)
-		elif child is CSGBox3D:
-			wall_boxes.append(child)
-	_setup_walls()
-	_setup_currents()
-	_setup_whirlpool()
-	_spawn_test_diver()
-	_build_levers()
-	_build_rotate_prompt()
-	_build_floor()
-	_build_perimeter_walls()
-	_build_ceiling()
-	_build_minimap()
-	_build_item_rocks()
-	_build_completion_ui()
-	$HUD/Controls.text = "Hallway: CLOSED — press H to open the route to the relic."
+    for child in get_children():
+        if child is Marker3D:
+            markers.append(child)
+        elif child is CSGBox3D:
+            wall_boxes.append(child)
+    _setup_walls()
+    _setup_currents()
+    _setup_whirlpool()
+    _spawn_test_diver()
+    _build_levers()
+    _build_rotate_prompt()
+    _build_floor()
+    _build_perimeter_walls()
+    _build_ceiling()
+    _build_minimap()
+    _build_item_rocks()
+    _build_completion_ui()
+    $HUD/Controls.text = "Hallway: CLOSED — press H to open the route to the relic."
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -52,20 +52,20 @@ func _ready() -> void:
 # "ItemRock" in THIS scene instead - adding another one is tagging another
 # marker with that group, not editing code.
 func _build_item_rocks() -> void:
-	for node in get_tree().get_nodes_in_group("ItemRock"):
-		var marker := node as Node3D
-		if marker == null:
-			continue
-		var rock := CrackedWall.new()
-		rock.span = Vector3(1.1, 1.1, 1.1)
-		# A lone, undiscoverable scenery-rock reward is not a viable manual
-		# completion target in this standalone scene: it has no World sonar
-		# loop to reveal it. Make the final relic read as an interactable
-		# cracked formation, just like the game's ability gates.
-		rock.disguised_as_scenery_rock = false
-		rock.position = marker.global_position
-		rock.broken.connect(_on_item_rock_broken.bind(marker.name, marker.global_position))
-		add_child(rock)
+    for node in get_tree().get_nodes_in_group("ItemRock"):
+        var marker := node as Node3D
+        if marker == null:
+            continue
+        var rock := CrackedWall.new()
+        rock.span = Vector3(1.1, 1.1, 1.1)
+        # A lone, undiscoverable scenery-rock reward is not a viable manual
+        # completion target in this standalone scene: it has no World sonar
+        # loop to reveal it. Make the final relic read as an interactable
+        # cracked formation, just like the game's ability gates.
+        rock.disguised_as_scenery_rock = false
+        rock.position = marker.global_position
+        rock.broken.connect(_on_item_rock_broken.bind(marker.name, marker.global_position))
+        add_child(rock)
 
 # Single-model .glb (unlike divers.glb, which stacks several models at the
 # origin and needs its own extraction step in lineup.gd - this one's just
@@ -83,55 +83,56 @@ signal maze_completed(marker_name: String)
 var _completed := false
 
 func is_completed() -> bool:
-	return _completed
+    return _completed
 
 func _build_completion_ui() -> void:
-	var label := Label.new()
-	label.name = "MazeComplete"
-	label.text = "MAZE COMPLETE\nRelic secured"
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.set_anchors_preset(Control.PRESET_CENTER)
-	label.offset_left = -190.0
-	label.offset_top = -54.0
-	label.offset_right = 190.0
-	label.offset_bottom = 54.0
-	label.add_theme_font_size_override("font_size", 30)
-	label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.36))
-	label.add_theme_color_override("font_outline_color", Color(0.02, 0.08, 0.1))
-	label.add_theme_constant_override("outline_size", 8)
-	label.visible = false
-	$HUD.add_child(label)
+    var label := Label.new()
+    label.name = "MazeComplete"
+    label.text = "MAZE COMPLETE\nRelic secured"
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    label.set_anchors_preset(Control.PRESET_CENTER)
+    label.offset_left = -190.0
+    label.offset_top = -54.0
+    label.offset_right = 190.0
+    label.offset_bottom = 54.0
+    label.add_theme_font_size_override("font_size", 30)
+    label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.36))
+    label.add_theme_color_override("font_outline_color", Color(0.02, 0.08, 0.1))
+    label.add_theme_constant_override("outline_size", 8)
+    label.visible = false
+    $HUD.add_child(label)
 # `marker_name`/`spot` are the broken ItemRock's own name and position,
 # bound at connect time in _build_item_rocks() - a real drop table would
 # vary by which one broke (see world.gd's own Items/ItemOrb pipeline for
 # what that looks like for real; this standalone test scene has none of
 # that, so every ItemRock just drops the same orb for now).
 func _on_item_rock_broken(marker_name: String, spot: Vector3) -> void:
-	var orb := GOLDEN_ENERGY_ORB_SCENE.instantiate()
-	# The source orb is authored at boss-scale. At the relic site it should read
-	# as a collectable glow above the broken formation, not fill the third-person
-	# camera and hide the completion confirmation.
-	orb.scale = Vector3.ONE * 0.35
-	orb.position = spot + Vector3(0.0, 1.25, 0.0)
-	goldenOrbs.append(orb)
-	add_child(orb)
-	if _completed:
-		return
-	_completed = true
-	var completion_label := $HUD.get_node("MazeComplete") as Label
-	completion_label.visible = true
-	$HUD/Controls.text = "Relic secured. Maze complete."
-	maze_completed.emit(marker_name)
+    var orb := GOLDEN_ENERGY_ORB_SCENE.instantiate()
+    # The source orb is authored at boss-scale. At the relic site it should read
+    # as a collectable glow above the broken formation, not fill the third-person
+    # camera and hide the completion confirmation.
+    orb.scale = Vector3.ONE * 0.35
+    orb.position = spot + Vector3(0.0, 1.25, 0.0)
+    goldenOrbs.append(orb)
+    add_child(orb)
+    if _completed:
+        return
+    _completed = true
+    var completion_label := $HUD.get_node("MazeComplete") as Label
+    completion_label.visible = true
+    $HUD/Controls.text = "Relic secured. Maze complete."
+    maze_completed.emit(marker_name)
 
 func _setup_walls():
-	# This is an authored, intentional perpendicular join: CurrentWall1 starts
-	# on CSGBox3D's positive exit with its own positive end as the anchor.  It
-	# is therefore named here instead of being encoded as `_set_...(true, true)`.
-	_attach_wall_to_perpendicular_exit(
-		$CSGBox3D, $CurrentWall1, WallEnd.POSITIVE, WallEnd.POSITIVE
-	)
-	_place_csgbox6_at_hallway_target()
+    # This is an authored, intentional perpendicular join: CurrentWall1 starts
+    # on CSGBox3D's positive exit with its own positive end as the anchor.  It
+    # is therefore named here instead of being encoded as `_set_...(true, true)`.
+    _attach_wall_to_perpendicular_exit(
+        $CSGBox3D, $CurrentWall1, WallEnd.POSITIVE, WallEnd.POSITIVE
+    )
+    _place_csgbox6_at_hallway_target()
+    _place_csgbox12_at_hallway_target()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -143,49 +144,162 @@ func _setup_walls():
 # leaves CSGBox3D6 sitting there permanently, whether or not H is ever
 # pressed.
 func _place_csgbox6_at_hallway_target() -> void:
-	var wall_a: CSGBox3D = $CurrentWall1
-	var wall_6: CSGBox3D = $CSGBox3D6
-	var wall_7: CSGBox3D = $CSGBox3D7
+    var wall_a: CSGBox3D = $CurrentWall1
+    var wall_6: CSGBox3D = $CSGBox3D6
+    var wall_7: CSGBox3D = $CSGBox3D7
 
-	# CSGBox3D6's own rotation is fixed before its placement. One
-	# more 90-degree turn off CurrentWall1's own hypothetical H-rotated yaw
-	# - the same relationship CurrentWall1 has to CSGBox3D.
-	var wall1_h_yaw: float = wall_a.rotation.y + PI * 0.5
-	wall_6.rotation.y = wall1_h_yaw + PI * 0.5
+    # CSGBox3D6's rotation is its own original authored orientation from the
+    # scene - not derived from CurrentWall1 at all. Only its position is
+    # computed here.
 
-	# CSGBox3D6 attaches to CurrentWall1's FUTURE far end, not to CSGBox3D
-	# with a world-X correction.  The latter accidentally used a static
-	# reference frame: after CurrentWall1's 90-degree turn it stayed
-	# perpendicular, but its nearest edge stopped short of the wall's end.
-	# Compute the same destination CurrentWall1 will use on H, find that
-	# destination's named outer endpoint, then place wall_6's near edge on
-	# that endpoint.  Everything is expressed in the rotated wall's local
-	# axes, so changing either length or initial maze orientation preserves
-	# the flush join.
-	var wall_orig = $CSGBox3D
-	var wall1_target: Dictionary = _nearest_wall_continuation(wall_a, wall_orig)
-	var wall1_target_yaw := float(wall1_target.yaw)
-	var wall1_target_position := wall1_target.position as Vector3
-	var wall1_future: Dictionary = _wall_geometry_at(wall1_target_position, wall1_target_yaw, wall_a.size)
-	var wall1_outer_end := wall1_future["positive_end"] as Vector3
-	var wall1_outward_axis := wall1_future["long_axis"] as Vector3
-	wall_6.global_position = _position_beyond_wall_end(
-		wall1_outer_end, wall1_outward_axis, wall_a.size.z,
-		wall_6.rotation.y, wall_6.size.x, wall_6.size.z, WallEnd.NEGATIVE
-	)
+    # CSGBox3D6 attaches to CurrentWall1's FUTURE far end, not to CSGBox3D
+    # with a world-X correction.  The latter accidentally used a static
+    # reference frame: after CurrentWall1's 90-degree turn it stayed
+    # perpendicular, but its nearest edge stopped short of the wall's end.
+    # Compute the same destination CurrentWall1 will use on H, find that
+    # destination's named outer endpoint, then place wall_6's near edge on
+    # that endpoint.  Everything is expressed in the rotated wall's local
+    # axes, so changing either length or initial maze orientation preserves
+    # the flush join.
+    var wall_orig = $CSGBox3D
+    var wall1_target: Dictionary = _nearest_wall_continuation(wall_a, wall_orig)
+    var wall1_target_yaw := float(wall1_target.yaw)
+    var wall1_target_position := wall1_target.position as Vector3
+    var wall1_future: Dictionary = _wall_geometry_at(wall1_target_position, wall1_target_yaw, wall_a.size)
+    # Which of wall1_future's own two ends is the free/outer one (as opposed
+    # to the one CurrentWall1 pivots/touches at) isn't reliably "positive" or
+    # "negative" - it flips depending on both walls' actual authored
+    # rotations (confirmed: Box6 and Box12 resolve oppositely). Derived by
+    # checking which end sits farther from the real attachment point on
+    # wall_orig, rather than assumed.
+    var wall_orig_geometry: Dictionary = _wall_geometry(wall_orig)
+    var wall1_attach_point: Vector3 = _wall_end(wall_orig_geometry,
+        WallEnd.POSITIVE if String(wall1_target.target_end) == "positive" else WallEnd.NEGATIVE)
+    var wall1_negative_end := wall1_future["negative_end"] as Vector3
+    var wall1_positive_end := wall1_future["positive_end"] as Vector3
+    var wall1_outer_end: Vector3
+    var wall1_outward_axis: Vector3
+    if wall1_negative_end.distance_squared_to(wall1_attach_point) > wall1_positive_end.distance_squared_to(wall1_attach_point):
+        wall1_outer_end = wall1_negative_end
+        wall1_outward_axis = -(wall1_future["long_axis"] as Vector3)
+    else:
+        wall1_outer_end = wall1_positive_end
+        wall1_outward_axis = wall1_future["long_axis"] as Vector3
+    # CSGBox3D6's own long axis, from its own actual rotation - not derived
+    # from CurrentWall1's outward axis, since that derivation only
+    # coincidentally matches a target wall's own axis for some wall pairs
+    # and not others (confirmed opposite-signed for Box6 vs Box12).
+    var wall6_long_axis := Basis(Vector3.UP, wall_6.rotation.y).x.normalized()
+    var wall_6_original_position := wall_6.global_position
+    wall_6.global_position = _position_beyond_wall_end(
+        wall1_outer_end, wall1_outward_axis, wall_a.size.z,
+        wall6_long_axis, wall_6.size.x, wall_6.size.z
+    )
 
-	# CSGBox3D7 is the opposite *static* boundary of the northbound passage,
-	# not another part of CurrentWall1's moving assembly. It must begin on the
-	# same cross-line as CSGBox3D6, but remain laterally separated to form the
-	# passage. Project its pre-existing offset onto Box6's side axis: this
-	# preserves the authored lane width while discarding only the stale forward
-	# and vertical offsets left behind when Box6 was corrected above. Box7 never
-	# moves during H, so it cannot sweep into CurrentWall1's opened position.
-	var wall_6_geometry: Dictionary = _wall_geometry(wall_6)
-	var lane_side := wall_6_geometry["side_axis"] as Vector3
-	var authored_offset := wall_7.global_position - wall_6.global_position
-	var preserved_lane_offset := lane_side * authored_offset.dot(lane_side)
-	wall_7.global_position = wall_6.global_position + preserved_lane_offset
+    # CSGBox3D7 is the opposite *static* boundary of the northbound passage,
+    # not another part of CurrentWall1's moving assembly. It must begin on the
+    # same cross-line as CSGBox3D6, but remain laterally separated to form the
+    # passage. Project the ORIGINAL authored offset (from Box6's
+    # pre-correction position, not its corrected one) onto Box6's side axis:
+    # this preserves the authored lane width while discarding only the
+    # forward/vertical offset. Using Box6's corrected position instead would
+    # contaminate this with however much Box6's own correction itself moved
+    # sideways - not necessarily zero, since Box6 attaches by one end
+    # perpendicular to the corridor rather than continuing it in a straight
+    # line. Box7 never moves during H, so it cannot sweep into CurrentWall1's
+    # opened position.
+    var wall_6_geometry: Dictionary = _wall_geometry(wall_6)
+    var lane_side := wall_6_geometry["side_axis"] as Vector3
+    var authored_offset := wall_7.global_position - wall_6_original_position
+    var preserved_lane_offset := lane_side * authored_offset.dot(lane_side)
+    wall_7.global_position = wall_6.global_position + preserved_lane_offset
+
+# CSGBox3D12/13 mirror CSGBox3D6/7's own relationship to CurrentWall1/CSGBox3D
+# one hallway pair over - see that function's own reasoning above, which
+# applies here unchanged. CSGBox3D12 does not rotate or move at runtime
+# either; it's placed exactly ONCE, here, at the position/rotation
+# CurrentWall2 WOULD end up at if the H-key hallway swing were triggered
+# right now. CurrentWall2 never has to actually swing for this to be correct.
+func _place_csgbox12_at_hallway_target() -> void:
+    var wall_2: CSGBox3D = $CurrentWall2
+    var wall_3: CSGBox3D = $CurrentWall3
+    var wall_12: CSGBox3D = $CSGBox3D12
+    var wall_13: CSGBox3D = $CSGBox3D13
+
+    # CSGBox3D12's rotation is its own original authored orientation from the
+    # scene - not derived from CurrentWall2 at all, same as CSGBox3D6 above.
+    # Only its position is computed here.
+
+    # CSGBox3D12 attaches to CurrentWall2's FUTURE far end, not to
+    # CurrentWall3 directly with a static reference frame - same reasoning as
+    # CSGBox3D6's own placement above.
+    var wall2_target: Dictionary = _nearest_wall_continuation(wall_2, wall_3)
+    var wall2_target_yaw := float(wall2_target.yaw)
+    var wall2_target_position := wall2_target.position as Vector3
+    var wall2_future: Dictionary = _wall_geometry_at(wall2_target_position, wall2_target_yaw, wall_2.size)
+    # Same as CSGBox3D6's own placement above: which of wall2_future's own
+    # two ends is the free/outer one isn't reliably "positive" or "negative"
+    # - derived by checking which end sits farther from the real attachment
+    # point on CurrentWall3, rather than assumed.
+    var wall_3_geometry: Dictionary = _wall_geometry(wall_3)
+    var wall2_attach_point: Vector3 = _wall_end(wall_3_geometry,
+        WallEnd.POSITIVE if String(wall2_target.target_end) == "positive" else WallEnd.NEGATIVE)
+    var wall2_negative_end := wall2_future["negative_end"] as Vector3
+    var wall2_positive_end := wall2_future["positive_end"] as Vector3
+    var wall2_outer_end: Vector3
+    var wall2_outward_axis: Vector3
+    if wall2_negative_end.distance_squared_to(wall2_attach_point) > wall2_positive_end.distance_squared_to(wall2_attach_point):
+        wall2_outer_end = wall2_negative_end
+        wall2_outward_axis = -(wall2_future["long_axis"] as Vector3)
+    else:
+        wall2_outer_end = wall2_positive_end
+        wall2_outward_axis = wall2_future["long_axis"] as Vector3
+    # CSGBox3D12's own long axis, from its own actual rotation - same
+    # reasoning as CSGBox3D6 above.
+    var wall12_long_axis := Basis(Vector3.UP, wall_12.rotation.y).x.normalized()
+    var wall_12_original_position := wall_12.global_position
+    wall_12.global_position = _position_beyond_wall_end(
+        wall2_outer_end, wall2_outward_axis, wall_2.size.z,
+        wall12_long_axis, wall_12.size.x, wall_12.size.z
+    )
+
+    # CSGBox3D13 is the opposite *static* boundary of this passage, the same
+    # role CSGBox3D7 plays for CSGBox3D6 above - preserves its authored lane
+    # width off Box12's own side axis rather than the stale forward/vertical
+    # offset left over from wherever Box13 sat in the editor. Uses Box12's
+    # ORIGINAL (pre-correction) position for the same reason Box6/7 does.
+    var wall_12_geometry: Dictionary = _wall_geometry(wall_12)
+    var wall12_lane_side := wall_12_geometry["side_axis"] as Vector3
+    var wall13_authored_offset := wall_13.global_position - wall_12_original_position
+    var wall13_preserved_lane_offset := wall12_lane_side * wall13_authored_offset.dot(wall12_lane_side)
+    wall_13.global_position = wall_12.global_position + wall13_preserved_lane_offset
+
+# SCAFFOLDING - position/rotation math not filled in yet. Connects CSGBox3D13
+# to CSGBox3D7 with two new walls: a long one flush against CSGBox3D13, and a
+# short perpendicular one filling the gap it leaves at the CSGBox3D7 end.
+func _place_new_walls_between_box13_and_box7() -> void:
+    var wall_13: CSGBox3D = $CSGBox3D13
+    var wall_7: CSGBox3D = $CSGBox3D7
+    var wall_13_geometry: Dictionary = _wall_geometry(wall_13)
+    var wall_7_geometry: Dictionary = _wall_geometry(wall_7)
+
+    var connector := CSGBox3D.new()
+    connector.name = "CSGBox3DConnector"
+    connector.use_collision = true
+    connector.size = Vector3(1.0, wall_13.size.y, wall_13.size.z)  # TODO: length (size.x)
+    add_child(connector)
+    # TODO: connector.rotation.y = ...
+    # TODO: connector.global_position = ... (flush against wall_13, length reaching
+    #       toward wall_7 minus wall_13.size.z)
+
+    var stub := CSGBox3D.new()
+    stub.name = "CSGBox3DConnectorStub"
+    stub.use_collision = true
+    stub.size = Vector3(1.0, wall_13.size.y, wall_13.size.z)  # TODO: length (size.x)
+    add_child(stub)
+    # TODO: stub.rotation.y = ... (perpendicular to connector)
+    # TODO: stub.global_position = ... (flush against connector's far end,
+    #       extending south toward wall_7)
 
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
@@ -196,30 +310,30 @@ func _place_csgbox6_at_hallway_target() -> void:
 # that's on a raw H keypress today) is a follow-up decision, not guessed
 # at here.
 func _build_levers() -> void:
-	var lever_a := Lever.new()
-	lever_a.name = "Lever1"
-	lever_a.position = Vector3(8.8, 1.5, -34.0)
-	add_child(lever_a)
+    var lever_a := Lever.new()
+    lever_a.name = "Lever1"
+    lever_a.position = Vector3(8.8, 1.5, -34.0)
+    add_child(lever_a)
 
-	var lever_b := Lever.new()
-	lever_b.name = "Lever2"
-	lever_b.position = Vector3(10.3, 1.5, -34.0)
-	add_child(lever_b)
+    var lever_b := Lever.new()
+    lever_b.name = "Lever2"
+    lever_b.position = Vector3(10.3, 1.5, -34.0)
+    add_child(lever_b)
 
 # Same top-right corner placement as World's own real minimap (see
 # world.gd's _ready()) - MazeMiniMap only needs this level itself
 # (wall_boxes + the test diver), so there's no extra wiring beyond handing
 # it `self`.
 func _build_minimap() -> void:
-	var minimap := MazeMiniMap.new()
-	minimap.maze_level = self
-	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	minimap.offset_left = -166.0
-	minimap.offset_top = 10.0
-	minimap.offset_right = -10.0
-	minimap.offset_bottom = 166.0
-	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(minimap)
+    var minimap := MazeMiniMap.new()
+    minimap.maze_level = self
+    minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+    minimap.offset_left = -166.0
+    minimap.offset_top = 10.0
+    minimap.offset_right = -10.0
+    minimap.offset_bottom = 166.0
+    minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    $HUD.add_child(minimap)
 
 # A persistent on-screen hint for _rotate_left_currents_left()/_right()
 # below - kept as its own label rather than reusing $HUD/Controls, since
@@ -228,92 +342,92 @@ func _build_minimap() -> void:
 # instruction should stay visible regardless of whatever's happening
 # there.
 func _build_rotate_prompt() -> void:
-	var label := Label.new()
-	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL rotates the left currents; H opens or closes the CurrentWall1/2 hallway."
-	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	label.offset_left = 16.0
-	label.offset_top = -64.0
-	label.offset_right = 560.0
-	label.offset_bottom = -16.0
-	label.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
-	$HUD.add_child(label)
+    var label := Label.new()
+    label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL rotates the left currents; H opens or closes the CurrentWall1/2 hallway."
+    label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+    label.offset_left = 16.0
+    label.offset_top = -64.0
+    label.offset_right = 560.0
+    label.offset_bottom = -16.0
+    label.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+    $HUD.add_child(label)
 
 # Returns the wall's useful physical geometry in world space.  `basis.x` is
 # deliberately contained here: no level-placement caller needs to remember
 # whether a particular scene instance's apparent forward direction is local
 # X, world Z, or the negative of either.
 func _wall_geometry(wall: CSGBox3D) -> Dictionary:
-	return _wall_geometry_at(wall.global_position, wall.rotation.y, wall.size)
+    return _wall_geometry_at(wall.global_position, wall.rotation.y, wall.size)
 
 # The transform variant supports placing a static wall against another wall's
 # *future* destination without mutating the moving node to inspect it.
 func _wall_geometry_at(center: Vector3, yaw: float, size: Vector3) -> Dictionary:
-	var long_axis := Basis(Vector3.UP, yaw).x.normalized()
-	var side_axis := Basis(Vector3.UP, yaw).z.normalized()
-	var half_length := size.x * 0.5
-	return {
-		"center": center,
-		"long_axis": long_axis,
-		"side_axis": side_axis,
-		"size": size,
-		"negative_end": center - long_axis * half_length,
-		"positive_end": center + long_axis * half_length,
-	}
+    var long_axis := Basis(Vector3.UP, yaw).x.normalized()
+    var side_axis := Basis(Vector3.UP, yaw).z.normalized()
+    var half_length := size.x * 0.5
+    return {
+        "center": center,
+        "long_axis": long_axis,
+        "side_axis": side_axis,
+        "size": size,
+        "negative_end": center - long_axis * half_length,
+        "positive_end": center + long_axis * half_length,
+    }
 
 func _wall_end_sign(end: int) -> float:
-	return 1.0 if end == WallEnd.POSITIVE else -1.0
+    return 1.0 if end == WallEnd.POSITIVE else -1.0
 
 func _wall_end(geometry: Dictionary, end: int) -> Vector3:
-	return geometry["positive_end"] as Vector3 if end == WallEnd.POSITIVE else geometry["negative_end"] as Vector3
+    return geometry["positive_end"] as Vector3 if end == WallEnd.POSITIVE else geometry["negative_end"] as Vector3
 
 # The two physically valid end-to-end continuations of `target`.  This is a
 # query rather than an action, so a caller can inspect or choose a placement
 # without reverse-engineering either wall's local coordinate system.
 func _wall_continuation_candidates(moving_wall: CSGBox3D, target_wall: CSGBox3D) -> Array[Dictionary]:
-	var target_geometry: Dictionary = _wall_geometry(target_wall)
-	var target_axis := target_geometry["long_axis"] as Vector3
-	var target_negative := target_geometry["negative_end"] as Vector3
-	var target_positive := target_geometry["positive_end"] as Vector3
-	var moving_half_length := moving_wall.size.x * 0.5
-	return [
-		{
-			"target_end": "negative",
-			"position": target_negative - target_axis * moving_half_length,
-		},
-		{
-			"target_end": "positive",
-			"position": target_positive + target_axis * moving_half_length,
-		},
-	]
+    var target_geometry: Dictionary = _wall_geometry(target_wall)
+    var target_axis := target_geometry["long_axis"] as Vector3
+    var target_negative := target_geometry["negative_end"] as Vector3
+    var target_positive := target_geometry["positive_end"] as Vector3
+    var moving_half_length := moving_wall.size.x * 0.5
+    return [
+        {
+            "target_end": "negative",
+            "position": target_negative - target_axis * moving_half_length,
+        },
+        {
+            "target_end": "positive",
+            "position": target_positive + target_axis * moving_half_length,
+        },
+    ]
 
 # The normal way to extend a route.  It examines both named physical target
 # ends and chooses the legal continuation that requires the least movement;
 # the caller never supplies a screenshot-derived boolean or local-axis sign.
 func _nearest_wall_continuation(moving_wall: CSGBox3D, target_wall: CSGBox3D) -> Dictionary:
-	var candidates := _wall_continuation_candidates(moving_wall, target_wall)
-	var selected: Dictionary = candidates[0]
-	for candidate in candidates:
-		var candidate_position := candidate["position"] as Vector3
-		var selected_position := selected["position"] as Vector3
-		# Preserve the prior helper's deterministic tie-break: when both exits
-		# are equally near, use the named positive continuation.
-		if moving_wall.global_position.distance_squared_to(candidate_position) <= moving_wall.global_position.distance_squared_to(selected_position):
-			selected = candidate
-	var destination := selected["position"] as Vector3
-	destination.y = target_wall.global_position.y
-	return {
-		"position": destination,
-		"yaw": moving_wall.rotation.y + PI * 0.5,
-		"target_end": selected["target_end"],
-	}
+    var candidates := _wall_continuation_candidates(moving_wall, target_wall)
+    var selected: Dictionary = candidates[0]
+    for candidate in candidates:
+        var candidate_position := candidate["position"] as Vector3
+        var selected_position := selected["position"] as Vector3
+        # Preserve the prior helper's deterministic tie-break: when both exits
+        # are equally near, use the named positive continuation.
+        if moving_wall.global_position.distance_squared_to(candidate_position) <= moving_wall.global_position.distance_squared_to(selected_position):
+            selected = candidate
+    var destination := selected["position"] as Vector3
+    destination.y = target_wall.global_position.y
+    return {
+        "position": destination,
+        "yaw": moving_wall.rotation.y + PI * 0.5,
+        "target_end": selected["target_end"],
+    }
 
 # Rotates one wall counterclockwise by exactly 90 degrees, then translates
 # it so it continues the named destination wall end-to-end. There are two
 # valid non-overlapping continuations (off either end of `target`); choose
 # the one requiring the least travel from the moving wall's current centre.
 func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tween:
-	var t: Dictionary = _nearest_wall_continuation(wall, target)
-	return _tween_wall_to_transform_about_hinge(wall, t.position as Vector3, float(t.yaw), duration)
+    var t: Dictionary = _nearest_wall_continuation(wall, target)
+    return _tween_wall_to_transform_about_hinge(wall, t.position as Vector3, float(t.yaw), duration)
 
 # The finished flush targets above are valid, but a parallel position/yaw
 # tween makes a wall cut diagonally through the next hallway while it moves.
@@ -323,46 +437,46 @@ func _rotate_wall_flush(wall: CSGBox3D, target: CSGBox3D, duration := 1.2) -> Tw
 # This works for any wall dimensions and any non-zero yaw change; the two
 # sides of a corridor naturally receive different hinges.
 func _wall_motion_hinge(start: Vector3, target: Vector3, yaw_delta: float) -> Vector3:
-	var c := cos(yaw_delta)
-	var s := sin(yaw_delta)
-	var rotated_start := Basis(Vector3.UP, yaw_delta) * start
-	var rhs := Vector2(target.x - rotated_start.x, target.z - rotated_start.z)
-	var determinant := (1.0 - c) * (1.0 - c) + s * s
-	if determinant < 0.00001:
-		return start
-	return Vector3(
-		((1.0 - c) * rhs.x + s * rhs.y) / determinant,
-		start.y,
-		(-s * rhs.x + (1.0 - c) * rhs.y) / determinant
-	)
+    var c := cos(yaw_delta)
+    var s := sin(yaw_delta)
+    var rotated_start := Basis(Vector3.UP, yaw_delta) * start
+    var rhs := Vector2(target.x - rotated_start.x, target.z - rotated_start.z)
+    var determinant := (1.0 - c) * (1.0 - c) + s * s
+    if determinant < 0.00001:
+        return start
+    return Vector3(
+        ((1.0 - c) * rhs.x + s * rhs.y) / determinant,
+        start.y,
+        (-s * rhs.x + (1.0 - c) * rhs.y) / determinant
+    )
 
 func _tween_wall_to_transform_about_hinge(wall: CSGBox3D, target_position: Vector3, target_yaw: float, duration := 1.2) -> Tween:
-	var start_position := wall.global_position
-	var start_yaw := wall.rotation.y
-	var yaw_delta := wrapf(target_yaw - start_yaw, -PI, PI)
-	if absf(yaw_delta) < 0.00001:
-		return _tween_wall_to(wall, target_position, target_yaw, duration)
-	var hinge := _wall_motion_hinge(start_position, target_position, yaw_delta)
-	var start_offset := start_position - hinge
-	var tw := create_tween()
-	tw.tween_method(
-		func(progress: float) -> void:
-			var next_position := hinge + Basis(Vector3.UP, yaw_delta * progress) * start_offset
-			next_position.y = lerpf(start_position.y, target_position.y, progress)
-			wall.global_position = target_position if is_equal_approx(progress, 1.0) else next_position
-			wall.rotation.y = target_yaw if is_equal_approx(progress, 1.0) else start_yaw + yaw_delta * progress,
-		0.0, 1.0, duration
-	)
-	return tw
+    var start_position := wall.global_position
+    var start_yaw := wall.rotation.y
+    var yaw_delta := wrapf(target_yaw - start_yaw, -PI, PI)
+    if absf(yaw_delta) < 0.00001:
+        return _tween_wall_to(wall, target_position, target_yaw, duration)
+    var hinge := _wall_motion_hinge(start_position, target_position, yaw_delta)
+    var start_offset := start_position - hinge
+    var tw := create_tween()
+    tw.tween_method(
+        func(progress: float) -> void:
+            var next_position := hinge + Basis(Vector3.UP, yaw_delta * progress) * start_offset
+            next_position.y = lerpf(start_position.y, target_position.y, progress)
+            wall.global_position = target_position if is_equal_approx(progress, 1.0) else next_position
+            wall.rotation.y = target_yaw if is_equal_approx(progress, 1.0) else start_yaw + yaw_delta * progress,
+        0.0, 1.0, duration
+    )
+    return tw
 
 # Straight motion remains useful for a no-turn caller. Hallway motion never
 # reaches this fallback: opening and closing both rotate 90 degrees.
 func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1.2) -> Tween:
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(wall, "global_position", position, duration)
-	tw.tween_property(wall, "rotation:y", yaw, duration)
-	return tw
+    var tw := create_tween()
+    tw.set_parallel(true)
+    tw.tween_property(wall, "global_position", position, duration)
+    tw.tween_property(wall, "rotation:y", yaw, duration)
+    return tw
 
 # Each side reaches a different static anchor, so the hallway is not a
 # single rigid door with one shared hinge. `_rotate_wall_flush()` derives a
@@ -409,34 +523,34 @@ var _hallway_1_2_home_pos_b: Vector3
 var _hallway_1_2_home_yaw_b: float
 
 func _rotate_hallway_1_2() -> void:
-	var wall_a: CSGBox3D = $CurrentWall1
-	var wall_b: CSGBox3D = $CurrentWall2
-	if _hallway_1_2_swung:
-		_tween_wall_to_transform_about_hinge(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
-		_tween_wall_to_transform_about_hinge(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
-		_rotate_wind_corridor_1_current(false)
-		_rotate_wind_corridor_2_current(false)
-		_hallway_1_2_swung = false
-		$HUD/Controls.text = "Hallway closing..."
-		get_tree().create_timer(1.25).timeout.connect(func() -> void:
-			if not _hallway_1_2_swung and not _completed:
-				$HUD/Controls.text = "Hallway: CLOSED — press H to reopen the route to the relic."
-		)
-		return
-	_hallway_1_2_home_pos_a = wall_a.global_position
-	_hallway_1_2_home_yaw_a = wall_a.rotation.y
-	_hallway_1_2_home_pos_b = wall_b.global_position
-	_hallway_1_2_home_yaw_b = wall_b.rotation.y
-	_rotate_wall_flush(wall_a, $CSGBox3D)
-	_rotate_wall_flush(wall_b, $CurrentWall3)
-	_rotate_wind_corridor_2_current(true)
-	_rotate_wind_corridor_1_current(true)
-	_hallway_1_2_swung = true
-	$HUD/Controls.text = "Hallway opening..."
-	get_tree().create_timer(1.25).timeout.connect(func() -> void:
-		if _hallway_1_2_swung and not _completed:
-			$HUD/Controls.text = "Hallway: OPEN — follow the northbound current to the reward chamber."
-	)
+    var wall_a: CSGBox3D = $CurrentWall1
+    var wall_b: CSGBox3D = $CurrentWall2
+    if _hallway_1_2_swung:
+        _tween_wall_to_transform_about_hinge(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
+        _tween_wall_to_transform_about_hinge(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
+        _rotate_wind_corridor_1_current(false)
+        _rotate_wind_corridor_2_current(false)
+        _hallway_1_2_swung = false
+        $HUD/Controls.text = "Hallway closing..."
+        get_tree().create_timer(1.25).timeout.connect(func() -> void:
+            if not _hallway_1_2_swung and not _completed:
+                $HUD/Controls.text = "Hallway: CLOSED — press H to reopen the route to the relic."
+        )
+        return
+    _hallway_1_2_home_pos_a = wall_a.global_position
+    _hallway_1_2_home_yaw_a = wall_a.rotation.y
+    _hallway_1_2_home_pos_b = wall_b.global_position
+    _hallway_1_2_home_yaw_b = wall_b.rotation.y
+    _rotate_wall_flush(wall_a, $CSGBox3D)
+    _rotate_wall_flush(wall_b, $CurrentWall3)
+    _rotate_wind_corridor_2_current(true)
+    _rotate_wind_corridor_1_current(true)
+    _hallway_1_2_swung = true
+    $HUD/Controls.text = "Hallway opening..."
+    get_tree().create_timer(1.25).timeout.connect(func() -> void:
+        if _hallway_1_2_swung and not _completed:
+            $HUD/Controls.text = "Hallway: OPEN — follow the northbound current to the reward chamber."
+    )
 
 # WindCorridor1's current is parked while H opens the hallway, then restored
 # on close.  The opened route enters WindCorridor2 from the west and only
@@ -453,22 +567,22 @@ func _rotate_hallway_1_2() -> void:
 var _hallway_1_parked_current: WaterCurrent
 
 func _rotate_wind_corridor_1_current(open: bool) -> void:
-	if open:
-		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor1, null)
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor1")
-			return
-		current.teardown()
-		_currents_by_corridor.erase($WindCorridor1)
-		_hallway_1_parked_current = current
-	else:
-		var current := _hallway_1_parked_current
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no parked current is available for WindCorridor1")
-			return
-		current.setup($WindCorridor1, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
-		_currents_by_corridor[$WindCorridor1] = current
-		_hallway_1_parked_current = null
+    if open:
+        var current: WaterCurrent = _currents_by_corridor.get($WindCorridor1, null)
+        if current == null:
+            push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor1")
+            return
+        current.teardown()
+        _currents_by_corridor.erase($WindCorridor1)
+        _hallway_1_parked_current = current
+    else:
+        var current := _hallway_1_parked_current
+        if current == null:
+            push_warning("_rotate_hallway_1_2: no parked current is available for WindCorridor1")
+            return
+        current.setup($WindCorridor1, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
+        _currents_by_corridor[$WindCorridor1] = current
+        _hallway_1_parked_current = null
 
 # WindCorridor2's current moves into WindCorridor3 (the gap between
 # CSGBox3D6/CSGBox3D7) on open, then returns on close. Its open direction
@@ -477,55 +591,77 @@ func _rotate_wind_corridor_1_current(open: bool) -> void:
 # overpower their swim input back into the wall. Closing restores the
 # original NEGATIVE_X direction set in _setup_currents().
 func _rotate_wind_corridor_2_current(open: bool) -> void:
-	if open:
-		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
-			return
-		current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
-		_currents_by_corridor.erase($WindCorridor2)
-		_currents_by_corridor[$WindCorridor3] = current
-	else:
-		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor3, null)
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor3")
-			return
-		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_X), current.strength, false)
-		_currents_by_corridor.erase($WindCorridor3)
-		_currents_by_corridor[$WindCorridor2] = current
-		
+    if open:
+        var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
+        if current == null:
+            push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
+            return
+        current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
+        _currents_by_corridor.erase($WindCorridor2)
+        _currents_by_corridor[$WindCorridor3] = current
+    else:
+        var current: WaterCurrent = _currents_by_corridor.get($WindCorridor3, null)
+        if current == null:
+            push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor3")
+            return
+        current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_X), current.strength, false)
+        _currents_by_corridor.erase($WindCorridor3)
+        _currents_by_corridor[$WindCorridor2] = current
+        
 # Places a wall at an intentionally authored perpendicular exit.  This is for
 # fixed scene topology (CurrentWall1's initial attachment), not the usual
 # dynamic route extension; call `_nearest_wall_continuation()` for that.
 func _attach_wall_to_perpendicular_exit(reference_wall: CSGBox3D, moving_wall: CSGBox3D, reference_exit: int, moving_anchor_end: int) -> void:
-	var reference_geometry: Dictionary = _wall_geometry(reference_wall)
-	moving_wall.global_position = _perpendicular_exit_position(
-		reference_geometry, moving_wall.rotation.y, moving_wall.size,
-		reference_exit, moving_anchor_end
-	)
+    var reference_geometry: Dictionary = _wall_geometry(reference_wall)
+    moving_wall.global_position = _perpendicular_exit_position(
+        reference_geometry, moving_wall.rotation.y, moving_wall.size,
+        reference_exit, moving_anchor_end
+    )
 
 # The only caller-facing choices are named `reference_exit` and
 # `moving_anchor_end`.  All local-axis math remains here, so a new wall does
 # not require examining basis vectors or trial-and-error screenshots.
 func _perpendicular_exit_position(reference_geometry: Dictionary, moving_yaw: float, moving_size: Vector3, reference_exit: int, moving_anchor_end: int) -> Vector3:
-	var reference_long_axis := reference_geometry["long_axis"] as Vector3
-	var reference_side_axis := reference_geometry["side_axis"] as Vector3
-	var reference_size := reference_geometry["size"] as Vector3
-	var reference_end := _wall_end(reference_geometry, reference_exit)
-	var moving_long_axis := Basis(Vector3.UP, moving_yaw).x.normalized()
-	var outward_sign := _wall_end_sign(reference_exit)
-	var moving_anchor_sign := _wall_end_sign(moving_anchor_end)
-	var clearance := reference_long_axis * moving_size.z * 0.5 * outward_sign
-	return reference_end + clearance + moving_long_axis * moving_size.x * 0.5 * moving_anchor_sign - reference_side_axis * reference_size.z * 0.5
+    var reference_long_axis := reference_geometry["long_axis"] as Vector3
+    var reference_side_axis := reference_geometry["side_axis"] as Vector3
+    var reference_size := reference_geometry["size"] as Vector3
+    var reference_end := _wall_end(reference_geometry, reference_exit)
+    var moving_long_axis := Basis(Vector3.UP, moving_yaw).x.normalized()
+    var outward_sign := _wall_end_sign(reference_exit)
+    var moving_anchor_sign := _wall_end_sign(moving_anchor_end)
+    var clearance := reference_long_axis * moving_size.z * 0.5 * outward_sign
+    return reference_end + clearance + moving_long_axis * moving_size.x * 0.5 * moving_anchor_sign - reference_side_axis * reference_size.z * 0.5
 
 # Extends a wall out from a *known physical endpoint*.  `outward_long_axis`
 # must point away from the source wall at `outward_end`; callers use the
 # geometry query above to obtain both names rather than recreate axis signs.
-func _position_beyond_wall_end(outward_end: Vector3, outward_long_axis: Vector3, source_thickness: float, moving_yaw: float, moving_size_x: float, moving_size_z: float, moving_anchor_end: int) -> Vector3:
-	var moving_long_axis := Basis(Vector3.UP, moving_yaw).x.normalized()
-	var source_side_axis := Vector3(-outward_long_axis.z, 0.0, outward_long_axis.x)
-	var clearance := outward_long_axis * moving_size_z * 0.5
-	return outward_end + clearance + moving_long_axis * moving_size_x * 0.5 * _wall_end_sign(moving_anchor_end) - source_side_axis * source_thickness * 0.5
+# moving_wall_outer_end must be moving_wall's free/outer end (looking down
+# its own long axis after rotation - not the end it pivots/touches at) with
+# moving_wall_outward_axis pointing away from moving_wall's body at that end;
+# callers derive both by checking which end sits farther from the real
+# attachment point, rather than assuming a fixed positive/negative mapping.
+#
+# target_wall_long_axis is target_wall's own long axis, from its own actual
+# rotation - passed in directly rather than derived from moving_wall's
+# outward axis, since that derivation only coincidentally matches for some
+# wall pairs and not others.
+#
+# Three steps stack on top of moving_wall_outer_end:
+#   - target_wall_size_z * 0.5, along moving_wall_outward_axis: target_wall's
+#     own thickness, pushed out so its face (not its center) lands on the
+#     endpoint instead of straddling back across it.
+#   - target_wall_size_x * 0.5, along target_wall_long_axis's own (original,
+#     unflipped) direction: the half-length step from that touching point to
+#     target_wall's actual center.
+#   - moving_wall_size_z * 0.5, along target_wall_long_axis's OPPOSITE
+#     direction: corrects for moving_wall's own thickness - moving_wall_outer_end
+#     sits on moving_wall's centerline, not its physical face, so this nudges
+#     target_wall onto one actual face of moving_wall's footprint instead.
+func _position_beyond_wall_end(moving_wall_outer_end: Vector3, moving_wall_outward_axis: Vector3, moving_wall_size_z: float, target_wall_long_axis: Vector3, target_wall_size_x: float, target_wall_size_z: float) -> Vector3:
+    return moving_wall_outer_end \
+        + moving_wall_outward_axis * target_wall_size_z * 0.5 \
+        + target_wall_long_axis * target_wall_size_x * 0.5 \
+        - target_wall_long_axis * moving_wall_size_z * 0.5
 
 
 # Each WaterCurrent is a plain controller object, not something attached
@@ -554,11 +690,11 @@ func _position_beyond_wall_end(outward_end: Vector3, outward_long_axis: Vector3,
 # had currents sitting there uncounted by the pair logic. Trimmed to
 # exactly the two starting pairs.
 func _setup_currents() -> void:
-	_add_current($WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
-	_add_current($WindCorridor2, WaterCurrent.Direction.NEGATIVE_X)
-	_add_current($WindCorridor4, WaterCurrent.Direction.POSITIVE_Z)
-	_add_current($WindCorridor6, WaterCurrent.Direction.NEGATIVE_Z)
-	
+    _add_current($WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
+    _add_current($WindCorridor2, WaterCurrent.Direction.NEGATIVE_X)
+    _add_current($WindCorridor4, WaterCurrent.Direction.POSITIVE_Z)
+    _add_current($WindCorridor6, WaterCurrent.Direction.NEGATIVE_Z)
+    
 # MODIFIED: both of these were calling rotate_corridors_right()/_left()
 # as if they were methods ON an Area3D (e.g. left_areas[0].
 # rotate_corridors_right(...)) - those are defined below on MazeLevel
@@ -590,20 +726,20 @@ func _setup_currents() -> void:
 # WindCorridor2 - same "move into the vacant slot closest to it first"
 # ordering _rotate_left_currents_right() already uses, just mirrored.
 func _rotate_left_currents_right() -> void:
-	if _currents_by_corridor.has($WindCorridor2) and _currents_by_corridor.has($WindCorridor3):
-		$HUD/Controls.text = "Currents are already as far right as they can go."
-		return
-	rotate_corridors_right($WindCorridor2, $WindCorridor3)
-	rotate_corridors_right($WindCorridor1, $WindCorridor2)
-	$HUD/Controls.text = "Currents rotated right."
+    if _currents_by_corridor.has($WindCorridor2) and _currents_by_corridor.has($WindCorridor3):
+        $HUD/Controls.text = "Currents are already as far right as they can go."
+        return
+    rotate_corridors_right($WindCorridor2, $WindCorridor3)
+    rotate_corridors_right($WindCorridor1, $WindCorridor2)
+    $HUD/Controls.text = "Currents rotated right."
 
 func _rotate_left_currents_left() -> void:
-	if _currents_by_corridor.has($WindCorridor1) and _currents_by_corridor.has($WindCorridor2):
-		$HUD/Controls.text = "Currents are already as far left as they can go."
-		return
-	rotate_corridors_left($WindCorridor2, $WindCorridor1)
-	rotate_corridors_left($WindCorridor3, $WindCorridor2)
-	$HUD/Controls.text = "Currents rotated left."
+    if _currents_by_corridor.has($WindCorridor1) and _currents_by_corridor.has($WindCorridor2):
+        $HUD/Controls.text = "Currents are already as far left as they can go."
+        return
+    rotate_corridors_left($WindCorridor2, $WindCorridor1)
+    rotate_corridors_left($WindCorridor3, $WindCorridor2)
+    $HUD/Controls.text = "Currents rotated left."
 
 # The "right areas" pair - same two-current-window idea as the left group
 # above, but over WindCorridor4-8 with a gap of 2 between the pair
@@ -615,36 +751,36 @@ func _rotate_left_currents_left() -> void:
 # order never risks a collision here - both rotate_corridors_*() calls
 # in each block below are safe in either order.
 func _rotate_right_currents_left() -> void:
-	if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
-		$HUD/Controls.text = "Currents are already as far left as they can go."
-		return
-	if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
-		rotate_corridors_left($WindCorridor6, $WindCorridor5)
-		rotate_corridors_left($WindCorridor8, $WindCorridor7)
-		$HUD/Controls.text = "Currents rotated left."
-		return
-	if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
-		rotate_corridors_left($WindCorridor5, $WindCorridor4)
-		rotate_corridors_left($WindCorridor7, $WindCorridor6)
-		$HUD/Controls.text = "Currents rotated left."
-		return
-	push_warning("_rotate_right_currents_left: right-group currents aren't at a recognized position")
+    if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
+        $HUD/Controls.text = "Currents are already as far left as they can go."
+        return
+    if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
+        rotate_corridors_left($WindCorridor6, $WindCorridor5)
+        rotate_corridors_left($WindCorridor8, $WindCorridor7)
+        $HUD/Controls.text = "Currents rotated left."
+        return
+    if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
+        rotate_corridors_left($WindCorridor5, $WindCorridor4)
+        rotate_corridors_left($WindCorridor7, $WindCorridor6)
+        $HUD/Controls.text = "Currents rotated left."
+        return
+    push_warning("_rotate_right_currents_left: right-group currents aren't at a recognized position")
 
 func _rotate_right_currents_right() -> void:
-	if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
-		$HUD/Controls.text = "Currents are already as far right as they can go."
-		return
-	if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
-		rotate_corridors_right($WindCorridor4, $WindCorridor5)
-		rotate_corridors_right($WindCorridor6, $WindCorridor7)
-		$HUD/Controls.text = "Currents rotated right."
-		return
-	if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
-		rotate_corridors_right($WindCorridor5, $WindCorridor6)
-		rotate_corridors_right($WindCorridor7, $WindCorridor8)
-		$HUD/Controls.text = "Currents rotated right."
-		return
-	push_warning("_rotate_right_currents_right: right-group currents aren't at a recognized position")
+    if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
+        $HUD/Controls.text = "Currents are already as far right as they can go."
+        return
+    if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
+        rotate_corridors_right($WindCorridor4, $WindCorridor5)
+        rotate_corridors_right($WindCorridor6, $WindCorridor7)
+        $HUD/Controls.text = "Currents rotated right."
+        return
+    if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
+        rotate_corridors_right($WindCorridor5, $WindCorridor6)
+        rotate_corridors_right($WindCorridor7, $WindCorridor8)
+        $HUD/Controls.text = "Currents rotated right."
+        return
+    push_warning("_rotate_right_currents_right: right-group currents aren't at a recognized position")
 
 # Every corridor gets its own permanent WaterCurrent (unlike
 # rotate_currents.gd's RotateCurrents, which moves ONE current between
@@ -655,15 +791,15 @@ func _rotate_right_currents_right() -> void:
 var _currents_by_corridor: Dictionary = {}
 
 func _add_current(target_area: Area3D, dir: WaterCurrent.Direction) -> void:
-	var current := WaterCurrent.new()
-	add_child(current)
-	# show_debug_visual = false - a real current shouldn't render as a
-	# visible glowing box, that was only ever a development aid to see the
-	# push zone while getting the sizing/direction right.
-	# Diver swim speed is 5.0. A traversal-blocking current must exceed that
-	# speed, otherwise holding directly upstream still produces forward motion.
-	current.setup(target_area, WaterCurrent.direction_to_vector(dir), 7.0, false)
-	_currents_by_corridor[target_area] = current
+    var current := WaterCurrent.new()
+    add_child(current)
+    # show_debug_visual = false - a real current shouldn't render as a
+    # visible glowing box, that was only ever a development aid to see the
+    # push zone while getting the sizing/direction right.
+    # Diver swim speed is 5.0. A traversal-blocking current must exceed that
+    # speed, otherwise holding directly upstream still produces forward motion.
+    current.setup(target_area, WaterCurrent.direction_to_vector(dir), 7.0, false)
+    _currents_by_corridor[target_area] = current
 
 # Moves the WaterCurrent that's currently at origArea over to newArea,
 # rotating its own flow direction 90 degrees in the process - looked up
@@ -683,48 +819,48 @@ func _add_current(target_area: Area3D, dir: WaterCurrent.Direction) -> void:
 # stream/debug visual fresh at newArea. Every other corridor's own
 # current is untouched.
 func rotate_corridors_right(origArea: Area3D, newArea: Area3D) -> void:
-	_rotate_corridor(origArea, newArea, true)
+    _rotate_corridor(origArea, newArea, true)
 
 func rotate_corridors_left(origArea: Area3D, newArea: Area3D) -> void:
-	_rotate_corridor(origArea, newArea, false)
+    _rotate_corridor(origArea, newArea, false)
 
 func _rotate_corridor(origArea: Area3D, newArea: Area3D, turn_right: bool) -> void:
-	var current: WaterCurrent = _currents_by_corridor.get(origArea, null)
-	if current == null:
-		push_warning("rotate_corridors: no current is set up at %s" % origArea.name)
-		return
-	var current_dir := WaterCurrent.vector_to_direction(current.orientation)
-	var new_dir := _rotate_right(current_dir) if turn_right else _rotate_left(current_dir)
-	current.setup(newArea, WaterCurrent.direction_to_vector(new_dir), current.strength, false)
-	_currents_by_corridor.erase(origArea)
-	_currents_by_corridor[newArea] = current
-	
+    var current: WaterCurrent = _currents_by_corridor.get(origArea, null)
+    if current == null:
+        push_warning("rotate_corridors: no current is set up at %s" % origArea.name)
+        return
+    var current_dir := WaterCurrent.vector_to_direction(current.orientation)
+    var new_dir := _rotate_right(current_dir) if turn_right else _rotate_left(current_dir)
+    current.setup(newArea, WaterCurrent.direction_to_vector(new_dir), current.strength, false)
+    _currents_by_corridor.erase(origArea)
+    _currents_by_corridor[newArea] = current
+    
 static func _rotate_right(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
-	match dir:
-		WaterCurrent.Direction.NEGATIVE_Z:
-			return WaterCurrent.Direction.NEGATIVE_X
-		WaterCurrent.Direction.NEGATIVE_X:
-			return WaterCurrent.Direction.POSITIVE_Z
-		WaterCurrent.Direction.POSITIVE_Z:
-			return WaterCurrent.Direction.POSITIVE_X
-		WaterCurrent.Direction.POSITIVE_X:
-			return WaterCurrent.Direction.NEGATIVE_Z
-	return dir
+    match dir:
+        WaterCurrent.Direction.NEGATIVE_Z:
+            return WaterCurrent.Direction.NEGATIVE_X
+        WaterCurrent.Direction.NEGATIVE_X:
+            return WaterCurrent.Direction.POSITIVE_Z
+        WaterCurrent.Direction.POSITIVE_Z:
+            return WaterCurrent.Direction.POSITIVE_X
+        WaterCurrent.Direction.POSITIVE_X:
+            return WaterCurrent.Direction.NEGATIVE_Z
+    return dir
 
 # The exact reverse of _rotate_right() above - same four directions, same
 # cycle, walked the other way around: NEGATIVE_Z -> POSITIVE_X ->
 # POSITIVE_Z -> NEGATIVE_X -> back to NEGATIVE_Z.
 static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
-	match dir:
-		WaterCurrent.Direction.NEGATIVE_Z:
-			return WaterCurrent.Direction.POSITIVE_X
-		WaterCurrent.Direction.POSITIVE_X:
-			return WaterCurrent.Direction.POSITIVE_Z
-		WaterCurrent.Direction.POSITIVE_Z:
-			return WaterCurrent.Direction.NEGATIVE_X
-		WaterCurrent.Direction.NEGATIVE_X:
-			return WaterCurrent.Direction.NEGATIVE_Z
-	return dir
+    match dir:
+        WaterCurrent.Direction.NEGATIVE_Z:
+            return WaterCurrent.Direction.POSITIVE_X
+        WaterCurrent.Direction.POSITIVE_X:
+            return WaterCurrent.Direction.POSITIVE_Z
+        WaterCurrent.Direction.POSITIVE_Z:
+            return WaterCurrent.Direction.NEGATIVE_X
+        WaterCurrent.Direction.NEGATIVE_X:
+            return WaterCurrent.Direction.NEGATIVE_Z
+    return dir
 
 # Same class world.gd's own highway gap uses (see whirlpool.gd) - a
 # warned approach, then a suction pull no swimming can fight once caught,
@@ -734,18 +870,18 @@ static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
 # real "just before the whirlpool" approach point worth resetting to
 # instead.
 func _setup_whirlpool() -> void:
-	var whirlpool := Whirlpool.new()
-	whirlpool.position = Vector3(35.99, -4.12, 71.67)
-	whirlpool.reset_to = $DiverEntry.position
-	whirlpool.warned.connect(_on_whirlpool_warned)
-	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
-	add_child(whirlpool)
+    var whirlpool := Whirlpool.new()
+    whirlpool.position = Vector3(35.99, -4.12, 71.67)
+    whirlpool.reset_to = $DiverEntry.position
+    whirlpool.warned.connect(_on_whirlpool_warned)
+    whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
+    add_child(whirlpool)
 
 func _on_whirlpool_warned() -> void:
-	$HUD/Controls.text = "Danger - a whirlpool lies just ahead!"
+    $HUD/Controls.text = "Danger - a whirlpool lies just ahead!"
 
 func _on_diver_sucked_in(_d: Diver, amount: int) -> void:
-	$HUD/Controls.text = "You were sucked into the whirlpool! (-%d HP)" % amount
+    $HUD/Controls.text = "You were sucked into the whirlpool! (-%d HP)" % amount
 
 # CSGBox3D's collision (now that every wall has use_collision = true, see
 # maze_level.tscn) only covers the wall's own box - nothing stops a diver
@@ -774,39 +910,39 @@ const _FLOOR_THICKNESS := 2.0
 var _floor_top_y := 0.0
 
 func _build_floor() -> void:
-	var wall_min_y := INF
-	for child in get_children():
-		if child is CSGBox3D:
-			var box := child as CSGBox3D
-			wall_min_y = minf(wall_min_y, box.position.y - box.size.y * 0.5)
-	if wall_min_y == INF:
-		return
+    var wall_min_y := INF
+    for child in get_children():
+        if child is CSGBox3D:
+            var box := child as CSGBox3D
+            wall_min_y = minf(wall_min_y, box.position.y - box.size.y * 0.5)
+    if wall_min_y == INF:
+        return
 
-	var points := _collect_bounds_points()
-	if points.is_empty():
-		return
-	var min_pt: Vector3 = points[0]
-	var max_pt: Vector3 = points[0]
-	for p in points:
-		min_pt = min_pt.min(p)
-		max_pt = max_pt.max(p)
-	var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
-	var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
-	var span_x := padded_max.x - padded_min.x
-	var span_z := padded_max.z - padded_min.z
-	var center_x := (padded_min.x + padded_max.x) * 0.5
-	var center_z := (padded_min.z + padded_max.z) * 0.5
+    var points := _collect_bounds_points()
+    if points.is_empty():
+        return
+    var min_pt: Vector3 = points[0]
+    var max_pt: Vector3 = points[0]
+    for p in points:
+        min_pt = min_pt.min(p)
+        max_pt = max_pt.max(p)
+    var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+    var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+    var span_x := padded_max.x - padded_min.x
+    var span_z := padded_max.z - padded_min.z
+    var center_x := (padded_min.x + padded_max.x) * 0.5
+    var center_z := (padded_min.z + padded_max.z) * 0.5
 
-	var floor_y := wall_min_y - _FLOOR_CLEARANCE - _FLOOR_THICKNESS * 0.5
-	# The floor slab is centered on floor_y and _FLOOR_THICKNESS deep, so
-	# its actual top SURFACE - what anything falling should stop at - is
-	# half a thickness above that center, not floor_y itself (see
-	# _physics_process()'s golden-orb fall).
-	_floor_top_y = floor_y + _FLOOR_THICKNESS * 0.5
+    var floor_y := wall_min_y - _FLOOR_CLEARANCE - _FLOOR_THICKNESS * 0.5
+    # The floor slab is centered on floor_y and _FLOOR_THICKNESS deep, so
+    # its actual top SURFACE - what anything falling should stop at - is
+    # half a thickness above that center, not floor_y itself (see
+    # _physics_process()'s golden-orb fall).
+    _floor_top_y = floor_y + _FLOOR_THICKNESS * 0.5
 
-	_build_invisible_wall(
-		Vector3(center_x, floor_y, center_z),
-		Vector3(span_x, _FLOOR_THICKNESS, span_z))
+    _build_invisible_wall(
+        Vector3(center_x, floor_y, center_z),
+        Vector3(span_x, _FLOOR_THICKNESS, span_z))
 
 # A perimeter around the whole level, same idea as world.gd's own
 # _build_boundary_walls() for the open dive site - invisible collision
@@ -826,66 +962,66 @@ const _PERIMETER_WALL_HEIGHT := 80.0
 const _PERIMETER_THICKNESS := 4.0
 
 func _collect_bounds_points() -> Array[Vector3]:
-	var points: Array[Vector3] = []
-	for child in get_children():
-		if child is CSGBox3D:
-			var box := child as CSGBox3D
-			var half: Vector3 = box.size * 0.5
-			for sx in [-1.0, 1.0]:
-				for sz in [-1.0, 1.0]:
-					points.append(box.global_transform * Vector3(half.x * sx, 0.0, half.z * sz))
-		elif child is Area3D:
-			for shape_node in child.get_children():
-				if shape_node is CollisionShape3D and (shape_node as CollisionShape3D).shape is BoxShape3D:
-					var cs := shape_node as CollisionShape3D
-					var b := (cs.shape as BoxShape3D).size * 0.5
-					for sx in [-1.0, 1.0]:
-						for sz in [-1.0, 1.0]:
-							points.append(cs.global_transform * Vector3(b.x * sx, 0.0, b.z * sz))
-		elif child is Marker3D or child is Whirlpool:
-			points.append((child as Node3D).global_position)
-	return points
+    var points: Array[Vector3] = []
+    for child in get_children():
+        if child is CSGBox3D:
+            var box := child as CSGBox3D
+            var half: Vector3 = box.size * 0.5
+            for sx in [-1.0, 1.0]:
+                for sz in [-1.0, 1.0]:
+                    points.append(box.global_transform * Vector3(half.x * sx, 0.0, half.z * sz))
+        elif child is Area3D:
+            for shape_node in child.get_children():
+                if shape_node is CollisionShape3D and (shape_node as CollisionShape3D).shape is BoxShape3D:
+                    var cs := shape_node as CollisionShape3D
+                    var b := (cs.shape as BoxShape3D).size * 0.5
+                    for sx in [-1.0, 1.0]:
+                        for sz in [-1.0, 1.0]:
+                            points.append(cs.global_transform * Vector3(b.x * sx, 0.0, b.z * sz))
+        elif child is Marker3D or child is Whirlpool:
+            points.append((child as Node3D).global_position)
+    return points
 
 func _build_perimeter_walls() -> void:
-	var points := _collect_bounds_points()
-	if points.is_empty():
-		return
-	var min_pt: Vector3 = points[0]
-	var max_pt: Vector3 = points[0]
-	for p in points:
-		min_pt = min_pt.min(p)
-		max_pt = max_pt.max(p)
+    var points := _collect_bounds_points()
+    if points.is_empty():
+        return
+    var min_pt: Vector3 = points[0]
+    var max_pt: Vector3 = points[0]
+    for p in points:
+        min_pt = min_pt.min(p)
+        max_pt = max_pt.max(p)
 
-	var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
-	var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
-	var span_x := padded_max.x - padded_min.x
-	var span_z := padded_max.z - padded_min.z
-	var center_x := (padded_min.x + padded_max.x) * 0.5
-	var center_z := (padded_min.z + padded_max.z) * 0.5
-	var wall_y := min_pt.y + _PERIMETER_WALL_HEIGHT * 0.5
+    var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+    var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+    var span_x := padded_max.x - padded_min.x
+    var span_z := padded_max.z - padded_min.z
+    var center_x := (padded_min.x + padded_max.x) * 0.5
+    var center_z := (padded_min.z + padded_max.z) * 0.5
+    var wall_y := min_pt.y + _PERIMETER_WALL_HEIGHT * 0.5
 
-	_build_invisible_wall(
-		Vector3(center_x, wall_y, padded_min.z - _PERIMETER_THICKNESS * 0.5),
-		Vector3(span_x + _PERIMETER_THICKNESS * 2.0, _PERIMETER_WALL_HEIGHT, _PERIMETER_THICKNESS))
-	_build_invisible_wall(
-		Vector3(center_x, wall_y, padded_max.z + _PERIMETER_THICKNESS * 0.5),
-		Vector3(span_x + _PERIMETER_THICKNESS * 2.0, _PERIMETER_WALL_HEIGHT, _PERIMETER_THICKNESS))
-	_build_invisible_wall(
-		Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
-		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
-	_build_invisible_wall(
-		Vector3(padded_max.x + _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
-		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
+    _build_invisible_wall(
+        Vector3(center_x, wall_y, padded_min.z - _PERIMETER_THICKNESS * 0.5),
+        Vector3(span_x + _PERIMETER_THICKNESS * 2.0, _PERIMETER_WALL_HEIGHT, _PERIMETER_THICKNESS))
+    _build_invisible_wall(
+        Vector3(center_x, wall_y, padded_max.z + _PERIMETER_THICKNESS * 0.5),
+        Vector3(span_x + _PERIMETER_THICKNESS * 2.0, _PERIMETER_WALL_HEIGHT, _PERIMETER_THICKNESS))
+    _build_invisible_wall(
+        Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
+        Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
+    _build_invisible_wall(
+        Vector3(padded_max.x + _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
+        Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
-	var body := StaticBody3D.new()
-	body.position = center
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = size
-	shape.shape = box
-	body.add_child(shape)
-	add_child(body)
+    var body := StaticBody3D.new()
+    body.position = center
+    var shape := CollisionShape3D.new()
+    var box := BoxShape3D.new()
+    box.size = size
+    shape.shape = box
+    body.add_child(shape)
+    add_child(body)
 
 # Invisible ceiling capping the whole level - one flat slab spanning the
 # same X/Z footprint _build_perimeter_walls() above already computes
@@ -907,28 +1043,28 @@ const _CEILING_CLEARANCE := 1.0
 const _CEILING_THICKNESS := 2.0
 
 func _build_ceiling() -> void:
-	var points := _collect_bounds_points()
-	if points.is_empty():
-		return
-	var min_pt: Vector3 = points[0]
-	var max_pt: Vector3 = points[0]
-	for p in points:
-		min_pt = min_pt.min(p)
-		max_pt = max_pt.max(p)
+    var points := _collect_bounds_points()
+    if points.is_empty():
+        return
+    var min_pt: Vector3 = points[0]
+    var max_pt: Vector3 = points[0]
+    for p in points:
+        min_pt = min_pt.min(p)
+        max_pt = max_pt.max(p)
 
-	var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
-	var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
-	var span_x := padded_max.x - padded_min.x
-	var span_z := padded_max.z - padded_min.z
-	var center_x := (padded_min.x + padded_max.x) * 0.5
-	var center_z := (padded_min.z + padded_max.z) * 0.5
+    var padded_min := min_pt - Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+    var padded_max := max_pt + Vector3(_PERIMETER_MARGIN, 0.0, _PERIMETER_MARGIN)
+    var span_x := padded_max.x - padded_min.x
+    var span_z := padded_max.z - padded_min.z
+    var center_x := (padded_min.x + padded_max.x) * 0.5
+    var center_z := (padded_min.z + padded_max.z) * 0.5
 
-	var wall_a := $CurrentWall1 as CSGBox3D
-	var ceiling_y := wall_a.position.y + wall_a.size.y * 0.5 + _CEILING_CLEARANCE + _CEILING_THICKNESS * 0.5
+    var wall_a := $CurrentWall1 as CSGBox3D
+    var ceiling_y := wall_a.position.y + wall_a.size.y * 0.5 + _CEILING_CLEARANCE + _CEILING_THICKNESS * 0.5
 
-	_build_invisible_wall(
-		Vector3(center_x, ceiling_y, center_z),
-		Vector3(span_x, _CEILING_THICKNESS, span_z))
+    _build_invisible_wall(
+        Vector3(center_x, ceiling_y, center_z),
+        Vector3(span_x, _CEILING_THICKNESS, span_z))
 
 # ============================================================
 # A standalone swimmable diver for testing this level in isolation -
@@ -954,38 +1090,38 @@ var _cam_dist := 6.5
 var _mouse_look := false
 
 func _spawn_test_diver() -> void:
-	_diver = Diver.new()
-	_diver.model_name = TEST_DIVER_MODEL
-	# A short swim before WindCorridor1 (its box sits around x=4.9, z=4.4),
-	# approaching along -Z toward it - close enough to reach quickly, far
-	# enough to actually feel the current take hold before arriving.
-	_diver.position = $DiverEntry.position
-	add_child(_diver)
+    _diver = Diver.new()
+    _diver.model_name = TEST_DIVER_MODEL
+    # A short swim before WindCorridor1 (its box sits around x=4.9, z=4.4),
+    # approaching along -Z toward it - close enough to reach quickly, far
+    # enough to actually feel the current take hold before arriving.
+    _diver.position = $DiverEntry.position
+    add_child(_diver)
 
 func _player_dir() -> Vector3:
-	var f := Vector2.ZERO
-	if Input.is_key_pressed(KEY_W):
-		f.y -= 1.0
-	if Input.is_key_pressed(KEY_S):
-		f.y += 1.0
-	if Input.is_key_pressed(KEY_A):
-		f.x -= 1.0
-	if Input.is_key_pressed(KEY_D):
-		f.x += 1.0
-	if f == Vector2.ZERO:
-		return Vector3.ZERO
-	f = f.normalized()
-	var fwd := Vector3(sin(_yaw), 0, cos(_yaw))
-	var right := Vector3(-cos(_yaw), 0, sin(_yaw))
-	return (right * f.x - fwd * f.y).normalized()
+    var f := Vector2.ZERO
+    if Input.is_key_pressed(KEY_W):
+        f.y -= 1.0
+    if Input.is_key_pressed(KEY_S):
+        f.y += 1.0
+    if Input.is_key_pressed(KEY_A):
+        f.x -= 1.0
+    if Input.is_key_pressed(KEY_D):
+        f.x += 1.0
+    if f == Vector2.ZERO:
+        return Vector3.ZERO
+    f = f.normalized()
+    var fwd := Vector3(sin(_yaw), 0, cos(_yaw))
+    var right := Vector3(-cos(_yaw), 0, sin(_yaw))
+    return (right * f.x - fwd * f.y).normalized()
 
 func _player_rise() -> float:
-	var r := 0.0
-	if Input.is_key_pressed(KEY_SPACE):
-		r += 1.0
-	if Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_CTRL):
-		r -= 1.0
-	return r
+    var r := 0.0
+    if Input.is_key_pressed(KEY_SPACE):
+        r += 1.0
+    if Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_CTRL):
+        r -= 1.0
+    return r
 
 # Slow underwater sink, not real gravity's 9.8 m/s^2 - this is a diver's
 # drowned-treasure orb drifting down through water, not something in
@@ -995,40 +1131,40 @@ func _player_rise() -> float:
 const GOLDEN_ORB_FALL_SPEED := 1.5
 
 func _physics_process(dt: float) -> void:
-	if _diver == null:
-		return
-	for orb in goldenOrbs:
-		if orb.position.y > _floor_top_y:
-			orb.position.y = maxf(orb.position.y - GOLDEN_ORB_FALL_SPEED * dt, _floor_top_y)
-	_diver.swim(_player_dir(), _player_rise(), dt)
-	_move_camera(dt)
+    if _diver == null:
+        return
+    for orb in goldenOrbs:
+        if orb.position.y > _floor_top_y:
+            orb.position.y = maxf(orb.position.y - GOLDEN_ORB_FALL_SPEED * dt, _floor_top_y)
+    _diver.swim(_player_dir(), _player_rise(), dt)
+    _move_camera(dt)
 
 func _move_camera(dt: float) -> void:
-	var cam: Camera3D = $Camera3D
-	var dir := Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
-	var focus: Vector3 = _diver.global_position + Vector3(0, _diver.height * 0.35, 0)
-	var want: Vector3 = focus - dir * _cam_dist
-	want.y = maxf(want.y, 0.6)
-	cam.global_position = cam.global_position.lerp(want, clampf(dt * 8.0, 0.0, 1.0))
-	cam.look_at(focus, Vector3.UP)
+    var cam: Camera3D = $Camera3D
+    var dir := Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
+    var focus: Vector3 = _diver.global_position + Vector3(0, _diver.height * 0.35, 0)
+    var want: Vector3 = focus - dir * _cam_dist
+    want.y = maxf(want.y, 0.6)
+    cam.global_position = cam.global_position.lerp(want, clampf(dt * 8.0, 0.0, 1.0))
+    cam.look_at(focus, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-		_mouse_look = true
-	elif e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		_mouse_look = false
-	elif e is InputEventMouseMotion and _mouse_look:
-		var mm := e as InputEventMouseMotion
-		_yaw -= mm.relative.x * 0.004
-		_pitch = clampf(_pitch - mm.relative.y * 0.003, -1.1, 0.7)
-	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_L:
-		_rotate_left_currents_left()
-	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_H:
-		_rotate_hallway_1_2()
-	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
-		# MazeLevel is a standalone review scene, so World cannot forward its
-		# normal ability input here. Keep the final relic interaction on the
-		# same player-facing E key used elsewhere in the game.
-		_diver.use_ability()
+    if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+        _mouse_look = true
+    elif e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
+        Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+        _mouse_look = false
+    elif e is InputEventMouseMotion and _mouse_look:
+        var mm := e as InputEventMouseMotion
+        _yaw -= mm.relative.x * 0.004
+        _pitch = clampf(_pitch - mm.relative.y * 0.003, -1.1, 0.7)
+    elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_L:
+        _rotate_left_currents_left()
+    elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_H:
+        _rotate_hallway_1_2()
+    elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
+        # MazeLevel is a standalone review scene, so World cannot forward its
+        # normal ability input here. Keep the final relic interaction on the
+        # same player-facing E key used elsewhere in the game.
+        _diver.use_ability()
