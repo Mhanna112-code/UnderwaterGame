@@ -38,13 +38,11 @@ func _build_reef_passage() -> void:
 	for side in [-1.0, 1.0]:
 		_build_buttress(side)
 
-	# The broken bridge is high enough for the divers' normal 2 m swim plane.
-	# It is not collision geometry; the visible opening and real free swimming
-	# must always agree (see verify/route_landmark.gd).
-	_add_cylinder("ReefArchLeft", Vector3(-2.5, 4.2, 0.0), 0.30, 0.42, 3.0,
-		Color(0.13, 0.39, 0.35), Vector3(0.0, 0.0, -0.62))
-	_add_cylinder("ReefArchRight", Vector3(2.5, 4.2, 0.0), 0.30, 0.42, 3.0,
-		Color(0.13, 0.39, 0.35), Vector3(0.0, 0.0, 0.62))
+	# A half-buried torus becomes a readable living arch rather than two
+	# disconnected sticks. Its inner diameter is wider than the public 8 m
+	# opening contract, and it remains mesh-only so what the eye calls a
+	# passage cannot secretly be a wall.
+	_build_coral_arch()
 	_add_glow(Vector3(-4.1, 3.6, 0.15), Color(0.12, 0.85, 0.60), 0.65, 5.2)
 	_add_glow(Vector3(4.1, 3.6, 0.15), Color(0.98, 0.40, 0.22), 0.55, 4.6)
 
@@ -61,6 +59,10 @@ func _build_buttress(side: float) -> void:
 		Color(0.10, 0.24, 0.25))
 	_add_rock("ReefShelf", Vector3(base_x - side * 0.48, 1.45, -0.42), Vector3(1.72, 1.45, 1.34),
 		Color(0.12, 0.32, 0.30))
+	_add_rock("ReefBoulder", Vector3(base_x + side * 0.72, 0.76, 1.18), Vector3(1.42, 1.42, 1.25),
+		Color(0.09, 0.28, 0.29))
+	_add_rock("ReefBoulder", Vector3(base_x - side * 0.98, 0.52, -1.16), Vector3(1.24, 1.02, 1.08),
+		Color(0.13, 0.34, 0.32))
 	_add_cylinder("ReefSpire", Vector3(base_x, 2.72, 0.05), 0.40, 0.72, 3.9,
 		Color(0.16, 0.48, 0.39), Vector3(side * 0.10, 0.0, side * 0.08))
 	# Coral tubes make this read as a reef rather than another stone corridor.
@@ -85,8 +87,40 @@ func _build_buttress(side: float) -> void:
 		fan.scale = Vector3(0.22, 1.0, 1.0)
 		fan.position = Vector3(base_x + side * 0.68, 1.34 + float(i) * 0.36, -0.88 + float(i) * 0.66)
 		fan.rotation = Vector3(0.0, side * 0.54, side * 0.24)
-		fan.material_override = _material(palette[(i + 1) % palette.size()], 0.18)
+		fan.material_override = _material(palette[(i + 1) % palette.size()], 0.42)
 		add_child(fan)
+
+func _build_coral_arch() -> void:
+	var arch := MeshInstance3D.new()
+	arch.name = "LivingReefArch"
+	var ring := TorusMesh.new()
+	ring.inner_radius = REEF_OPENING_WIDTH * 0.56
+	ring.outer_radius = REEF_OPENING_WIDTH * 0.68
+	ring.ring_segments = 10
+	ring.rings = 32
+	arch.mesh = ring
+	arch.position = Vector3(0.0, 0.18, 0.0)
+	arch.rotation.x = PI * 0.5
+	arch.material_override = _material(Color(0.12, 0.45, 0.37), 0.18)
+	add_child(arch)
+	# Uneven coral growth breaks the manufactured-ring silhouette and brings
+	# the repeated accent colours up over the actual gateway.
+	var palette := [Color(0.12, 0.82, 0.58), Color(0.95, 0.40, 0.21), Color(0.61, 0.34, 0.78)]
+	var radius := REEF_OPENING_WIDTH * 0.62
+	for i in range(9):
+		var angle := PI - PI * float(i) / 8.0
+		var knot := MeshInstance3D.new()
+		knot.name = "ArchCoralGrowth"
+		var mesh := SphereMesh.new()
+		mesh.radius = 0.34 + float(i % 2) * 0.09
+		mesh.height = mesh.radius * 2.0
+		mesh.radial_segments = 7
+		mesh.rings = 4
+		knot.mesh = mesh
+		knot.position = Vector3(cos(angle) * radius, 0.18 + sin(angle) * radius, 0.15 + float(i % 3) * 0.14)
+		knot.scale = Vector3(1.0, 1.25, 0.72)
+		knot.material_override = _material(palette[i % palette.size()], 0.48)
+		add_child(knot)
 
 func _add_rock(node_name: String, at: Vector3, scale_by: Vector3, color: Color) -> void:
 	var rock := MeshInstance3D.new()
@@ -114,7 +148,7 @@ func _add_cylinder(node_name: String, at: Vector3, top_radius: float, bottom_rad
 	coral.mesh = mesh
 	coral.position = at
 	coral.rotation = lean
-	coral.material_override = _material(color, 0.14)
+	coral.material_override = _material(color, 0.38)
 	add_child(coral)
 
 func _add_glow(at: Vector3, color: Color, energy: float, range_size: float) -> void:
