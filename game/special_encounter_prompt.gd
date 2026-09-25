@@ -31,6 +31,11 @@ var _preview_diver: Diver
 var _name_label: Label
 var _ability_label: Label
 var _media_frame: PanelContainer
+var _confirm_title: Label
+var _confirm_body: Label
+var _practice_btn: Button
+var _reward_name := ""
+var _showing_practice := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -55,12 +60,15 @@ func _ready() -> void:
 	_select_panel.visible = false
 	add_child(_select_panel)
 
-func open() -> void:
+func open(reward_id: String = "") -> void:
+	_reward_name = reward_id.replace("_", " ").capitalize() if reward_id != "" else "the guarded reward"
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mode = "confirm"
+	_showing_practice = false
 	_confirm_panel.visible = true
 	_select_panel.visible = false
+	_refresh_confirm_copy()
 
 func close() -> void:
 	visible = false
@@ -83,31 +91,35 @@ func _build_confirm_panel() -> Control:
 	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	center.add_child(col)
 
-	var title := Label.new()
-	title.text = "Something Guards This Place"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
-	col.add_child(title)
+	_confirm_title = Label.new()
+	_confirm_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_confirm_title.add_theme_font_size_override("font_size", 24)
+	_confirm_title.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
+	col.add_child(_confirm_title)
 
-	var body := Label.new()
-	body.text = "Breaking through will take one diver's special ability to survive a timed challenge - and the reward is real.\n\nIf that diver falls here, they won't be lost - they'll wash back out with the health they went in with."
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD
-	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	body.add_theme_color_override("font_color", Color(0.75, 0.85, 0.9))
-	col.add_child(body)
+	_confirm_body = Label.new()
+	_confirm_body.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_confirm_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_confirm_body.add_theme_color_override("font_color", Color(0.75, 0.85, 0.9))
+	col.add_child(_confirm_body)
+
+	_practice_btn = Button.new()
+	_practice_btn.text = "Practice Controls"
+	_practice_btn.custom_minimum_size = Vector2(420, 40)
+	_practice_btn.pressed.connect(_on_practice_pressed)
+	col.add_child(_practice_btn)
 
 	var enter_btn := Button.new()
-	enter_btn.text = "Enter"
+	enter_btn.text = "Enter Challenge"
 	enter_btn.custom_minimum_size = Vector2(420, 44)
 	enter_btn.pressed.connect(_on_enter_pressed)
 	col.add_child(enter_btn)
 
-	var not_now_btn := Button.new()
-	not_now_btn.text = "Not Now"
-	not_now_btn.custom_minimum_size = Vector2(420, 40)
-	not_now_btn.pressed.connect(func() -> void: cancelled.emit())
-	col.add_child(not_now_btn)
+	var leave_btn := Button.new()
+	leave_btn.text = "Leave"
+	leave_btn.custom_minimum_size = Vector2(420, 40)
+	leave_btn.pressed.connect(func() -> void: cancelled.emit())
+	col.add_child(leave_btn)
 
 	return center
 
@@ -117,6 +129,58 @@ func _on_enter_pressed() -> void:
 	_select_panel.visible = true
 	_carousel_index = 0
 	_refresh_carousel()
+
+func _on_practice_pressed() -> void:
+	_showing_practice = not _showing_practice
+	_refresh_confirm_copy()
+
+# Public user-facing action seam. The optional-guardian verifier invokes this
+# in the same state as the button, rather than depending on a runtime-built
+# Button node path.
+func show_practice_controls() -> void:
+	if not visible or _mode != "confirm" or _showing_practice:
+		return
+	_on_practice_pressed()
+
+# This is intentionally visible before any diver is committed. The normal
+# route neither needs this challenge nor teaches it as a compulsory gate, so
+# a player must be able to identify the controls, objective and safe exit
+# without accidentally beginning an unexplained minigame.
+func _refresh_confirm_copy() -> void:
+	if _confirm_title == null or _confirm_body == null:
+		return
+	if _showing_practice:
+		_confirm_title.text = "Practice Controls — Optional Challenge"
+		_confirm_body.text = "Objective: complete one diver's timed special challenge to claim %s. This is off the main route; leaving does not block progression.\n\n%s\n\nChoose Enter Challenge only when you are ready to select the diver." % [_reward_name, _practice_controls_copy()]
+		_practice_btn.text = "Back to Challenge Details"
+	else:
+		_confirm_title.text = "Optional Guardian Challenge"
+		_confirm_body.text = "%s is off the main route. The reward is %s.\n\nObjective: choose one diver, use that diver's special ability in a timed challenge, and claim the reward. A loss returns that diver unharmed; Leave keeps the challenge available.\n\n%s" % ["This challenge", _reward_name, _practice_controls_copy()]
+		_practice_btn.text = "Practice Controls"
+
+func _practice_controls_copy() -> String:
+	return "Controls: %s — E then Left/Right and Enter to Swap; %s — E to aim, left-click to Grapple, right-click to cancel; %s — E for Shockwave." % [
+		Cast.display_name("Staff_Diver"), Cast.display_name("Prototype_1(1910)"), Cast.display_name("Prototype_V(1922)"),
+	]
+
+# Read-only visible contract for the guardian prompt verifier and hosted
+# reviewers. It reports player-facing copy, not private challenge state.
+func confirm_text() -> String:
+	return (_confirm_title.text if _confirm_title != null else "") + "\n" + (_confirm_body.text if _confirm_body != null else "")
+
+func confirm_actions() -> Array[String]:
+	var actions: Array[String] = []
+	if _confirm_panel == null:
+		return actions
+	for child in _confirm_panel.get_children():
+		_collect_button_text(child, actions)
+	return actions
+
+func _collect_button_text(node: Node, actions: Array[String]) -> void:
+	if node is Button:
+		actions.append((node as Button).text)
+	for child in node.get_children():
+		_collect_button_text(child, actions)
 
 func _build_select_panel() -> Control:
 	var col := VBoxContainer.new()

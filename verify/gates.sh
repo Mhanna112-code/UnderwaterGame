@@ -99,6 +99,7 @@ run "menus/spells/title: do help, safe tutorial replay, review routing, and titl
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
+run "optional guardian prompt: are purpose, controls, practice, entry, and leave explicit" "$GODOT" --headless --path . --script verify/optional_guardian_prompt.gd
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
 run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd

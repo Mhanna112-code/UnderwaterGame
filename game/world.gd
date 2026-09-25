@@ -2659,7 +2659,7 @@ func _on_item_guardian_triggered(item_id: String, guardian: ItemGuardian, decoy:
 func _offer_special_encounter(item_id: String) -> void:
 	_special_encounter_item = item_id
 	get_tree().paused = true
-	special_encounter_prompt.open()
+	special_encounter_prompt.open(item_id)
 
 func _on_special_encounter_diver_chosen(model_name: String) -> void:
 	special_encounter_prompt.close()

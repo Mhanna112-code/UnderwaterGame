@@ -36,7 +36,7 @@ the earlier route-state suite could not prove.
 | 3 | A long imported enemy is normalized only by height, so its visible mesh exceeds the stage while the camera uses a smaller capped combat radius. | P1: Frilled Shark hides party/target UI. The current actor radius and mesh width intentionally diverge. | Captured visual-bounds camera test. | second repair |
 | 4 | A route beacon exists in state but a player cannot physically reach it from one or more natural approaches because terrain/guardian collision blocks the line. | P1: route looks like an invisible wall. Existing test reaches only the first leg from one directed path. | Physics integration over each leg and multiple approach offsets. | repaired: full collision matrix |
 | 5 | The HUD says LEFT/RIGHT while the visible beacon is on screen, or both cues are simultaneously active. | P1: player receives contradictory navigation. Current code tests target origin, not the beacon's visible bounds. | Camera-quadrant invariant with one active guidance surface. | repaired: rendered-bound contract |
-| 6 | An optional guardian/special challenge begins without saying it is optional, what ability/controls it needs, or how to leave. | P1: an off-route experiment reads as a broken mandatory tutorial. | UI contract test for prompt labels/actions plus hosted manual minigame proof. | later UX repair |
+| 6 | An optional guardian/special challenge begins without saying it is optional, what ability/controls it needs, or how to leave. | P1: an off-route experiment reads as a broken mandatory tutorial. | UI contract test for prompt labels/actions plus hosted manual minigame proof. | repaired: explicit choice + practice |
 | 7 | The deep route presents as the same bright, collinear empty space as shallows, despite phase transition wording. | P2: depth/progression fiction and pacing fail, while state tests remain green. | Visual environment/route-shape contract plus hosted comparison. | repaired: phase presentation contract |
 | 8 | A normal critical-route loss or boss preview returns to an unnamed/incorrect checkpoint, or an unbalanced Tethys fight is represented as route completion. | P0 for the lab endpoint: player cannot tell whether failure is expected or recoverable. Boss test currently inspects moves using inflated HP, not normal play. | Checkpoint round-trip and boss-preview contract; normal-party boss simulation only once final numbers exist. | repaired: explicit preview + named recovery |
 | 9 | Green/red previews can be understood only by their colour, not by result wording or keyboard navigation. | P1 accessibility/regression: the core quick-read becomes inaccessible or misleading. | Semantic UI contract and desaturated hosted screenshot. | later accessibility repair |
@@ -84,6 +84,20 @@ the rendered beacon's bounds and shows the readable HUD direction only when
 those bounds are off-screen. `verify/route_guidance_visibility.gd` exercises
 fully visible, partially visible, and off-screen camera cases on a real
 1280×720 SubViewport.
+
+### Bug #6 — optional guardian reads as an unexplained mandatory gate
+
+- **Test type:** World/UI contract.
+- **Description string:**
+  > `optional guardian: prompt identifies the off-route reward, objective, controls, practice, entry, and leave paths — guards against an unexplained artifact challenge masquerading as mandatory progression`
+- **What it catches:** guardian collision jumps straight into an opaque
+  challenge, fails to say that it is optional, hides its controls, or makes
+  leaving consume the reward/site.
+- **Repaired:** the real site now opens `Optional Guardian Challenge` with the
+  reward and objective, all three named diver/ability control patterns,
+  `Practice Controls`, `Enter Challenge`, and `Leave`. The public prompt
+  contract is exercised against a real World guardian; leaving resumes play
+  without a Battle or a consumed site.
 
 ### Bug #8 — unproven boss boundary and opaque loss recovery
 
