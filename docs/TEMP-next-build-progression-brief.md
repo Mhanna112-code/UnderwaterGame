@@ -240,6 +240,15 @@ players, including players on a weak display or those who do not distinguish
 the two colours easily. Verify the result remains understandable in a
 desaturated screenshot and through keyboard-only move selection.
 
+**Implemented in this repair:** every live target preview now displays a
+neutral-text `Quick Read` line under the selected move. It identifies damage
+as a `Benefit`, an enemy stat decrease as an `Opening`, and a player-side
+decrease as a `Cost`; it resolves formula amounts from the acting diver's
+current stats. `verify/combat_quick_read.gd` and the windowed
+`verify/semantic_quick_read_layout.gd` verify that this line is present and
+in-bounds at 1280×720 and 1920×1080. A desaturated hosted capture remains a
+final visual-evidence requirement.
+
 The hosted build is a product surface, not merely an export artifact. Before
 each review link is posted, cold-launch it in at least Chrome and Firefox,
 verify title → New Game receives input without an extra focus click, and

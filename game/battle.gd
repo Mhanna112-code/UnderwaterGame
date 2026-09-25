@@ -239,6 +239,10 @@ var _enemy_stats_ui: Dictionary = {}
 var _selected_move_panel: PanelContainer
 var _selected_move_name: Label
 var _selected_move_power: Label
+# Appears only while a target preview is active. The stat cards still use
+# green/red values for fast scanning, but this line names the meaning so the
+# combat decision never depends on distinguishing colors alone.
+var _quick_read_summary: Label
 # The party's authored V2 health scale is 10, not the former 10/26/42 mix.
 # Nine flat power plus a grunt's Strength routinely one-shot that roster;
 # three flat power keeps the ordinary claw on the same small-number scale as
@@ -792,12 +796,13 @@ func _apply_stat_delta(ui: Dictionary, s: CombatantStats, deltas: Dictionary) ->
 func _show_stat_preview(move: Dictionary, enemy: Dictionary) -> void:
 	if not enemy.has("stats"):
 		return
-	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	var effects := _stat_effects_for_move(move, _acting.stats as CombatantStats)
 	_apply_stat_delta(_player_stats_ui, _acting.stats as CombatantStats, effects.get("player", {}) as Dictionary)
 	_set_stats_panel_base(_enemy_stats_ui, enemy.stats as CombatantStats)
 	(_enemy_stats_ui.title as Label).text = String(enemy.get("display_name", "Enemy"))
 	_apply_stat_delta(_enemy_stats_ui, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
 	(_enemy_stats_ui.panel as Control).visible = true
+	_set_quick_read_summary(move, enemy, effects)
 
 # Called on mouse_exited, and from every path that leaves target_menu
 # (choosing a target, backing out) so a stale preview never survives past
@@ -821,7 +826,7 @@ func _show_all_stat_preview(move: Dictionary, enemies_to_preview: Array) -> void
 	var container := (_enemy_stats_ui.panel as Control).get_parent()
 	if container == null:
 		return
-	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	var effects := _stat_effects_for_move(move, _acting.stats as CombatantStats)
 	for i in range(1, enemies_to_preview.size()):
 		var enemy := enemies_to_preview[i] as Dictionary
 		if not enemy.has("stats"):
@@ -853,6 +858,89 @@ func _clear_stat_preview() -> void:
 	# tint) after the hover that produced it ends.
 	if _acting.has("stats"):
 		_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
+	_clear_quick_read_summary()
+
+# `stat_effects` is seeded from simple move data in _ready(), but a formula
+# effect such as Electric Touch's `{"accuracy": 1}` means *the acting
+# diver's current Accuracy*, not literal one. Resolve those data-driven
+# effects at preview time so colored cards, textual Quick Read, and
+# CombatRules.resolve() all describe the same current choice.
+func _stat_effects_for_move(move: Dictionary, attacker: CombatantStats) -> Dictionary:
+	var resolved: Dictionary = (stat_effects.get(String(move.get("name", "")), {
+		"player": {}, "enemy": {},
+	}) as Dictionary).duplicate(true)
+	if not resolved.has("player"):
+		resolved["player"] = {}
+	if not resolved.has("enemy"):
+		resolved["enemy"] = {}
+	var enemy_effects := resolved["enemy"] as Dictionary
+	for effect_value in move.get("effects", []):
+		var effect := effect_value as Dictionary
+		match String(effect.get("kind", "")):
+			"reduce_evasion":
+				enemy_effects["evasion"] = -int(CombatRules.formula_value(attacker, effect.get("amount", {})))
+			"status":
+				if not effect.has("level"):
+					continue
+				var level := int(CombatRules.formula_value(attacker, effect.get("level", {})))
+				var status_name := String(effect.get("status", ""))
+				enemy_effects[status_name] = level
+				# Blindness is represented in the four visible stats as well as
+				# its status name, mirroring CombatantStats' live penalty.
+				if status_name == "blindness":
+					enemy_effects["accuracy"] = -level
+					enemy_effects["defense"] = -level
+	return resolved
+
+func _quick_read_stat_name(key: String) -> String:
+	return {"strength": "STR", "defense": "DEF", "accuracy": "ACC", "evasion": "EVA"}.get(key, key.capitalize())
+
+# A concise, visible redundancy for the green/red stat deltas. It names the
+# tactical relationship, not a formula: a player increase is a Benefit, an
+# enemy reduction is an Opening, and a self reduction is a Cost. Damage is a
+# benefit too, so a plain hit never produces an empty preview line.
+func _set_quick_read_summary(move: Dictionary, enemy: Dictionary, effects: Dictionary) -> void:
+	if _quick_read_summary == null or not _acting.has("stats") or not enemy.has("stats"):
+		return
+	var parts: Array[String] = []
+	var damage := _preview_damage(move, _acting.stats as CombatantStats, enemy.stats as CombatantStats)
+	if damage > 0:
+		parts.append("Benefit: %d damage" % damage)
+	var player_effects := effects.get("player", {}) as Dictionary
+	for key in ["strength", "defense", "accuracy", "evasion"]:
+		var amount := int(player_effects.get(key, 0))
+		if amount > 0:
+			parts.append("Benefit: +%d %s" % [amount, _quick_read_stat_name(key)])
+		elif amount < 0:
+			parts.append("Cost: your %s %d" % [_quick_read_stat_name(key), amount])
+	var enemy_effects := effects.get("enemy", {}) as Dictionary
+	for key in ["strength", "defense", "accuracy", "evasion"]:
+		var amount := int(enemy_effects.get(key, 0))
+		if amount < 0:
+			parts.append("Opening: enemy %s %d" % [_quick_read_stat_name(key), amount])
+		elif amount > 0:
+			parts.append("Cost: enemy %s +%d" % [_quick_read_stat_name(key), amount])
+	# Bleed and other statuses do not always own one of the four compact stat
+	# rows. Name them here rather than leaving a player to infer meaning from a
+	# colored number that is not displayed at all.
+	for effect_value in move.get("effects", []):
+		var effect := effect_value as Dictionary
+		if String(effect.get("kind", "")) != "status":
+			continue
+		var status_name := String(effect.get("status", ""))
+		if status_name == "blindness":
+			continue # Its visible ACC/DEF reductions already say Opening above.
+		var level := int(CombatRules.formula_value(_acting.stats as CombatantStats, effect.get("level", {})))
+		if level > 0:
+			parts.append("Opening: %s %d" % [_status_display_name(status_name), level])
+	_quick_read_summary.text = "Quick Read — " + "  •  ".join(parts)
+	_quick_read_summary.visible = not parts.is_empty()
+
+func _clear_quick_read_summary() -> void:
+	if _quick_read_summary == null:
+		return
+	_quick_read_summary.text = ""
+	_quick_read_summary.visible = false
 
 func _begin_boss_encounter() -> void:
 	_busy = true
@@ -1577,6 +1665,9 @@ func _build_ui() -> void:
 	_selected_move_panel = PanelContainer.new()
 	_selected_move_panel.add_theme_stylebox_override("panel", _row_stylebox(false))
 	col.add_child(_selected_move_panel)
+	var selected_move_column := VBoxContainer.new()
+	selected_move_column.add_theme_constant_override("separation", 2)
+	_selected_move_panel.add_child(selected_move_column)
 	var selected_move_row := HBoxContainer.new()
 	# Small, fixed gap rather than the theme default - deliberately not
 	# giving _selected_move_name a SIZE_EXPAND_FILL flag, since that would
@@ -1584,7 +1675,7 @@ func _build_ui() -> void:
 	# the way to the panel's far edge instead of sitting right next to the
 	# name it belongs to.
 	selected_move_row.add_theme_constant_override("separation", 6)
-	_selected_move_panel.add_child(selected_move_row)
+	selected_move_column.add_child(selected_move_row)
 	_selected_move_name = Label.new()
 	_selected_move_name.text = ""
 	_selected_move_name.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
@@ -1594,6 +1685,13 @@ func _build_ui() -> void:
 	_selected_move_power.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
 	_selected_move_power.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	selected_move_row.add_child(_selected_move_power)
+	_quick_read_summary = Label.new()
+	_quick_read_summary.visible = false
+	_quick_read_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quick_read_summary.add_theme_font_size_override("font_size", 13)
+	_quick_read_summary.add_theme_color_override("font_color", Color(0.72, 0.91, 0.96))
+	_quick_read_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	selected_move_column.add_child(_quick_read_summary)
 
 	var stats_row := HBoxContainer.new()
 	stats_row.add_theme_constant_override("separation", 12)
@@ -2528,6 +2626,7 @@ func _start_party_turn(actor: Dictionary) -> void:
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	_clear_quick_read_summary()
 	call_deferred("_fit_panel_height")
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
@@ -2943,6 +3042,7 @@ func _show_main() -> void:
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	_clear_quick_read_summary()
 	if skip_tutorial_btn != null:
 		# Scripted turns teach one required move at a time.  The explicit skip
 		# is available from normal tutorial menus, not as a way to bypass the
@@ -3096,7 +3196,8 @@ func _explain_dodging(enemy: Dictionary) -> void:
 func _explain_evasion_reduction(enemy: Dictionary) -> void:
 	var move_name := String(_pending_move.name)
 	var enemy_name := String(enemy.get("display_name", "the enemy"))
-	var delta := int((stat_effects.get(move_name, {}) as Dictionary).get("enemy", {}).get("evasion", 0))
+	var preview_effects := _stat_effects_for_move(_pending_move, _acting.stats as CombatantStats)
+	var delta := int((preview_effects.get("enemy", {}) as Dictionary).get("evasion", 0))
 	var delta_text := ("+%d" % delta) if delta > 0 else str(delta)
 	await _tutorial_show_step(
 		"%s will lower %s's Evasion - that's why its EVA number is shown in [color=%s]red[/color], with the white (%s) next to it showing exactly how much. A stat shown in [color=%s]red[/color] means its total went down; a stat shown in [color=%s]green[/color] means its total went up." % [

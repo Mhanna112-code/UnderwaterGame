@@ -50,7 +50,7 @@ must use the final public contract rather than private `World` flags.
 | 3 | A capstone unlocks from a random fight, has the wrong roster, or replays after its checkpoint. | High — progression becomes confusing or grindable. | Existing routes are guardian/random-site driven, not phase-driven. | Invariant / round-trip | covered by roster and checkpoint gates |
 | 4 | Electric Touch or Weaken changes presentation but not the Swordfish/Sea Urchin combat outcome. | High — the game's advertised strategy is fake. | The move, UI, enemy stats, and resolver live in separate modules. | Differential / contract pin | covered; caught Electric Touch mismatch |
 | 5 | A loss at a capstone restarts an earlier route segment, restores the wrong resources, or duplicates a defeated encounter. | High — players quit from repeated content or corrupt state. | Saves serialize world objects, party state, and position through separate paths. | Save/load round-trip | pre/post win covered; loss screen pending |
-| 6 | Colour guidance recommends a self-damaging or ineffective action often enough that quick reading is worse than brute force. | High — the central friendly UX affordance becomes misleading. | Colour/UI derivation and combat resolution are separate. | Differential simulation | covered by `verify/progression_balance.gd` |
+| 6 | Colour guidance recommends a self-damaging or ineffective action often enough that quick reading is worse than brute force, or requires colour alone to be understood. | High — the central friendly UX affordance becomes misleading or inaccessible. | Colour/UI derivation and combat resolution are separate. | Differential simulation plus UI contract | covered by `verify/progression_balance.gd`, `verify/combat_quick_read.gd`, and windowed `verify/semantic_quick_read_layout.gd` |
 | 7 | Transition text remains above a resumed world HUD or blocks input after Continue. | Medium — it reads as a rendering/soft-lock fault. | Title/tutorial overlays have previously overlapped HUD surfaces. | Captured bug / browser integration | headless dismissal covered; visual review pending |
 | 8 | A basic or capstone encounter is tuned as an automatic win, a hard wall, or has no measurable advantage for skilled play. | High — the game loses either tension or strategy. | Current `casual` policy is not the proposed quick-read player and current route uses a different encounter topology. | Seeded simulation | covered by `verify/progression_balance.gd` |
 | 9 | A player reaches a visible authored beacon but its Area3D does not detect the diver, leaving the route permanently stalled. | High — first free movement looks functional yet cannot start the game’s first campaign fight. | Route tests originally emitted `body_entered` directly; production Diver uses collision layer 2 while a new Area3D defaults to mask 1. | Physics integration / captured bug | covered by `verify/progression_world_traversal.gd` |
@@ -217,3 +217,8 @@ must use the final public contract rather than private `World` flags.
   plus mesh-corner camera framing now passes that same real battle at both
   1280×720 and 1920×1080; the ordinary eight-fight framing sweep remains
   green.
+- **#6 UI extension:** live target previews now name `Benefit`, `Opening`,
+  and `Cost` beside their coloured deltas, using the same acting-stat formula
+  values that combat resolves. The semantic line is verified in real
+  1280×720 and 1920×1080 combat layouts; a desaturated hosted screenshot is
+  still required as final visual evidence.
