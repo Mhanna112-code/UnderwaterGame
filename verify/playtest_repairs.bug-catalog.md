@@ -40,7 +40,7 @@ the earlier route-state suite could not prove.
 | 7 | The deep route presents as the same bright, collinear empty space as shallows, despite phase transition wording. | P2: depth/progression fiction and pacing fail, while state tests remain green. | Visual environment/route-shape contract plus hosted comparison. | later presentation repair |
 | 8 | A normal critical-route loss or boss preview returns to an unnamed/incorrect checkpoint, or an unbalanced Tethys fight is represented as route completion. | P0 for the lab endpoint: player cannot tell whether failure is expected or recoverable. Boss test currently inspects moves using inflated HP, not normal play. | Checkpoint round-trip and boss-preview contract; normal-party boss simulation only once final numbers exist. | later boundary repair |
 | 9 | Green/red previews can be understood only by their colour, not by result wording or keyboard navigation. | P1 accessibility/regression: the core quick-read becomes inaccessible or misleading. | Semantic UI contract and desaturated hosted screenshot. | later accessibility repair |
-| 10 | A battle cannot identify whether it was a route beat, optional guardian, or other source, so a reported wrong enemy cannot be reproduced. | P1 diagnosis: route/optional content is ambiguous to player and maintainer. | Encounter-source label/log contract across all battle entry paths. | later observability repair |
+| 10 | A battle cannot identify whether it was a route beat, optional guardian, or other source, so a reported wrong enemy cannot be reproduced. | P1 diagnosis: route/optional content is ambiguous to player and maintainer. | Encounter-source label/log contract across all battle entry paths. | repaired: source label contract |
 
 ## Test self-critique
 
@@ -84,6 +84,18 @@ the rendered beacon's bounds and shows the readable HUD direction only when
 those bounds are off-screen. `verify/route_guidance_visibility.gd` exercises
 fully visible, partially visible, and off-screen camera cases on a real
 1280×720 SubViewport.
+
+### Bug #10 — encounter provenance
+
+- **Test type:** World/UI contract.
+- **Description string:**
+  > `progression route: every battle visibly names its authored or optional source — guards against an Angler report that cannot be tied to a route beat`
+- **What it catches:** a displayed fish has no replayable context, or a route
+  source drifts from its declared objective and roster.
+- **Repaired:** `Battle` receives a source label at World’s entry boundary and
+  renders it above the turn queue. Route labels name the zone/beat/roster;
+  tutorial, optional guardian, and wandering paths are distinct. The verifier
+  checks each declared beat through World plus the visible UI label.
 
 ## Skipped for now
 

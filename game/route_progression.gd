@@ -28,16 +28,19 @@ const BEATS := [
 	{
 		"id": "shallow_angler", "phase": PHASE_SHALLOWS,
 		"text": "Shallows — follow the beacon.", "at": Vector3(25.0, 2.0, -50.0),
+		"encounter_label": "Route encounter — Shallows 1: Angler",
 		"roster": ["angler"],
 	},
 	{
 		"id": "shallow_frilled_shark", "phase": PHASE_SHALLOWS,
 		"text": "Shallows — follow the beacon.", "at": Vector3(45.0, 2.0, -5.0),
+		"encounter_label": "Route encounter — Shallows 2: Frilled Shark",
 		"roster": ["frilled_shark"],
 	},
 	{
 		"id": "shallow_capstone", "phase": PHASE_SHALLOWS,
 		"text": "Shallows — secure the reef passage.", "at": Vector3(55.0, 2.0, 40.0),
+		"encounter_label": "Route encounter — Shallows capstone: Angler + Frilled Shark",
 		"roster": ["angler", "frilled_shark"], "capstone": true,
 		# Encounter-only pressure, not a rewrite of either species' delivered
 		# base block. This is the first coordinated pair, so both arrive in
@@ -48,16 +51,19 @@ const BEATS := [
 	{
 		"id": "deep_swordfish", "phase": PHASE_DEEP,
 		"text": "Deep water — follow the beacon.", "at": Vector3(5.0, 2.0, 50.0),
+		"encounter_label": "Route encounter — Deep 1: Swordfish",
 		"roster": ["swordfish_duelist"],
 	},
 	{
 		"id": "deep_sea_urchin", "phase": PHASE_DEEP,
 		"text": "Deep water — find the armored threat.", "at": Vector3(-40.0, 2.0, 35.0),
+		"encounter_label": "Route encounter — Deep 2: Sea Urchin",
 		"roster": ["sea_urchin"],
 	},
 	{
 		"id": "deep_capstone", "phase": PHASE_DEEP,
 		"text": "Deep water — break the final defense.", "at": Vector3(-50.0, 2.0, -10.0),
+		"encounter_label": "Route encounter — Deep capstone: Swordfish + Sea Urchin",
 		"roster": ["swordfish_duelist", "sea_urchin"], "capstone": true,
 		# The coordinated deep pair is deliberately a counterplay check: the
 		# Swordfish stays evasive and the Urchin's reinforced shell rewards
@@ -69,6 +75,7 @@ const BEATS := [
 	{
 		"id": "lab_mermaid_freak", "phase": PHASE_LAB,
 		"text": "The drowned lab — confront Mermaid Freak.", "at": Vector3(-10.0, 2.0, -45.0),
+		"encounter_label": "Route encounter — Lab: Mermaid Freak",
 		"roster": ["tethys"], "boss": true, "transition_after": "route_complete",
 	},
 ]
@@ -98,6 +105,9 @@ func active_roster() -> Array:
 
 func active_enemy_modifiers() -> Array:
 	return (active_beat().get("enemy_modifiers", []) as Array).duplicate(true)
+
+func active_encounter_label() -> String:
+	return String(active_beat().get("encounter_label", objective_id.replace("_", " ").capitalize()))
 
 func active_position() -> Vector3:
 	return active_beat().get("at", Vector3.ZERO) as Vector3

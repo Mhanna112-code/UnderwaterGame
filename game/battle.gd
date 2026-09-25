@@ -62,6 +62,10 @@ var guardian_enemy_id := "angler"
 # encounter count/roster rolls from leaking into authored progression.
 var forced_enemy_ids: Array = []
 var forced_enemy_modifiers: Array = []
+# Player-visible provenance assigned by World at the battle boundary. A route
+# tester should never have to infer whether a fish came from the authored
+# sequence, an optional guardian, or a wandering roll after the fact.
+var encounter_source := ""
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -407,6 +411,7 @@ var _party_status_column: VBoxContainer
 var _enemy_status_column: VBoxContainer
 # The turn order, moved out of the bottom panel to the very top.
 var _queue_bar: PanelContainer
+var _encounter_source_label: Label
 
 # Same green downward cone world.gd's own active-diver cursor uses (see
 # World._active_cursor) - marks whichever DIVER's turn it currently is on
@@ -1536,10 +1541,22 @@ func _build_ui() -> void:
 	qmargin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_queue_bar.add_child(qmargin)
 
+	var queue_column := VBoxContainer.new()
+	queue_column.add_theme_constant_override("separation", 2)
+	queue_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	qmargin.add_child(queue_column)
+	_encounter_source_label = Label.new()
+	_encounter_source_label.name = "EncounterSource"
+	_encounter_source_label.text = encounter_source
+	_encounter_source_label.visible = encounter_source != ""
+	_encounter_source_label.add_theme_font_size_override("font_size", 13)
+	_encounter_source_label.add_theme_color_override("font_color", Color(0.47, 0.84, 0.96))
+	_encounter_source_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	queue_column.add_child(_encounter_source_label)
 	queue_row = HBoxContainer.new()
 	queue_row.add_theme_constant_override("separation", 10)
 	queue_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	qmargin.add_child(queue_row)
+	queue_column.add_child(queue_row)
 
 	# Health and status now hang over each combatant's own head.
 	# See _build_overhead_bar() and _layout_overhead_bars().

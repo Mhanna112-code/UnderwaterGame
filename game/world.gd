@@ -2625,6 +2625,14 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.tutorial_encounter = tutorial
+	if _route_battle_id != "" and route != null:
+		battle.encounter_source = route.active_encounter_label()
+	elif tutorial:
+		battle.encounter_source = "Tutorial encounter — Angler practice"
+	elif special:
+		battle.encounter_source = "Optional guardian challenge"
+	else:
+		battle.encounter_source = "Wandering encounter"
 	battle.forced_enemy_ids = forced_enemy_ids.duplicate()
 	battle.forced_enemy_modifiers = forced_enemy_modifiers.duplicate(true)
 	battle.finished.connect(_on_battle_finished)
