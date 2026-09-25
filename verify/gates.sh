@@ -79,6 +79,7 @@ run "core route battles: do declared route encounters build exact rosters" "$GOD
 run "core route checkpoint: do capstone saves restore full party and next objective" "$GODOT" --headless --path . --script verify/progression_checkpoint.gd
 run "core route safe spaces: do all authored phases reject ordinary rolls" "$GODOT" --headless --path . --script verify/progression_safe_spaces.gd
 run "core route playthrough: do real Battle victories advance every authored phase" "$GODOT" --headless --path . --script verify/progression_playthrough.gd
+run "core route traversal: can normal swimming physically enter the first beacon" "$GODOT" --headless --path . --script verify/progression_world_traversal.gd
 run "deep counter actors: does Swordfish/Sea Urchin counterplay change combat" "$GODOT" --headless --path . --script verify/sea_urchin_route_actor.gd
 run "core route balance: do quick-read and skilled policies meet published bands" "$GODOT" --headless --path . --script verify/progression_balance.gd
 run "opening packs: are first-route formation probabilities intentional" "$GODOT" --headless --path . --script verify/opening_pack_tuning.gd

@@ -53,6 +53,7 @@ must use the final public contract rather than private `World` flags.
 | 6 | Colour guidance recommends a self-damaging or ineffective action often enough that quick reading is worse than brute force. | High — the central friendly UX affordance becomes misleading. | Colour/UI derivation and combat resolution are separate. | Differential simulation | covered by `verify/progression_balance.gd` |
 | 7 | Transition text remains above a resumed world HUD or blocks input after Continue. | Medium — it reads as a rendering/soft-lock fault. | Title/tutorial overlays have previously overlapped HUD surfaces. | Captured bug / browser integration | headless dismissal covered; visual review pending |
 | 8 | A basic or capstone encounter is tuned as an automatic win, a hard wall, or has no measurable advantage for skilled play. | High — the game loses either tension or strategy. | Current `casual` policy is not the proposed quick-read player and current route uses a different encounter topology. | Seeded simulation | covered by `verify/progression_balance.gd` |
+| 9 | A player reaches a visible authored beacon but its Area3D does not detect the diver, leaving the route permanently stalled. | High — first free movement looks functional yet cannot start the game’s first campaign fight. | Route tests originally emitted `body_entered` directly; production Diver uses collision layer 2 while a new Area3D defaults to mask 1. | Physics integration / captured bug | covered by `verify/progression_world_traversal.gd` |
 
 ## Test plan
 
@@ -162,7 +163,23 @@ must use the final public contract rather than private `World` flags.
   - Could this pass for wrong-but-stable output? **No.** It measures outcomes
     from production stats/moves over fixed seeds, not mock numbers.
   - Could this fail under a behavior-preserving refactor? **No.** It asserts
-    published route outcomes and not route implementation details.
+  published route outcomes and not route implementation details.
+
+### Bug #9 — physical beacon cannot start its authored encounter
+
+- **Test type:** physics integration / captured bug.
+- **Description string:**
+  > `progression route: ordinary swim input reaches the first authored beacon — guards against a route objective that exists in state but is physically blocked or disconnected from World collision`
+- **What it catches:** a route beacon's collision mask ignores the layer a real
+  diver occupies, an authored trigger is missing, or collision geometry does
+  not actually cover the displayed destination.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? **No.** It begins a real
+    World route, dismisses the real card, drives production swim input to the
+    route position, and waits for Area3D physics to create the live Battle.
+  - Could this fail under a behavior-preserving refactor? **No.** It never
+    emits `body_entered`, calls the route dispatch helper, or teleports the
+    diver; it only observes the player-visible result of swimming.
 
 ## Skipped
 

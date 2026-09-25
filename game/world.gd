@@ -2250,6 +2250,14 @@ func _refresh_route_guidance() -> void:
 	_route_trigger = Area3D.new()
 	_route_trigger.name = "ActiveRouteTrigger"
 	_route_trigger.position = route.active_position()
+	# Divers intentionally occupy layer 2 (they collide with the seafloor on
+	# layer 1 but not with each other). An Area3D defaults to mask 1, which let
+	# a player swim directly through the visible route beacon without ever
+	# dispatching its authored encounter. Listen specifically for divers; this
+	# is the real collision path that the route trigger needs, not a test-only
+	# body_entered signal.
+	_route_trigger.collision_layer = 0
+	_route_trigger.collision_mask = 2
 	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
 	sphere.radius = 3.0
