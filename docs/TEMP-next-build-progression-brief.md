@@ -226,4 +226,3 @@ state rather than assert private helper names.
 - Any explicit correction by Glassgoat to player/enemy stat tables or the
   Swordfish/Sea Urchin counter mapping.
 - Whether ordinary encounters within a zone are fixed, random, or mixed.
-

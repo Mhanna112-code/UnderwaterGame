@@ -49,5 +49,4 @@ func _probe(world: World, diver: Diver, label: String) -> void:
 		findings.append("ROUTE INTERRUPTION: %s mounted an ordinary Battle" % label)
 		world.battle.queue_free()
 		world.battle = null
-		world.battling = false
-
+	world.battling = false
