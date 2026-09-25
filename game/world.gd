@@ -2309,7 +2309,6 @@ func _update_route_direction_indicator() -> void:
 		direction = Vector2.UP
 	direction = direction.normalized()
 	var edge := center + direction * minf(size.x, size.y) * 0.38
-	route_direction_label.position = edge - Vector2(36.0, 15.0)
 	var angle := direction.angle()
 	var arrow := "→"
 	if angle > 2.35 or angle < -2.35:
@@ -2319,7 +2318,43 @@ func _update_route_direction_indicator() -> void:
 	elif angle < -0.78 and angle > -2.35:
 		arrow = "↑"
 	route_direction_label.text = "%s Beacon" % arrow
+	# The arrow can become central when a nearby beacon slips just outside the
+	# camera frustum. Keep it directional, but never let its label cross the
+	# persistent controls, route objective, or minimap. A live 720p replay
+	# caught the old top-edge placement drawing "Beacon" through the objective.
+	var label_size := route_direction_label.get_combined_minimum_size()
+	route_direction_label.position = route_direction_label_position(
+		edge - Vector2(36.0, 15.0), label_size, direction, size)
 	route_direction_label.visible = true
+
+# Public presentation seam: browser review and headless verification share
+# this placement contract without pretending a 64px headless viewport can
+# render a meaningful off-screen arrow.
+func route_direction_label_position(candidate: Vector2, label_size: Vector2, direction: Vector2, viewport_size: Vector2) -> Vector2:
+	var position := candidate
+	var obstacles: Array[Rect2] = []
+	if is_instance_valid(hud):
+		obstacles.append(hud.get_global_rect().grow(8.0))
+	if is_instance_valid(route_objective_panel) and route_objective_panel.visible:
+		obstacles.append(route_objective_panel.get_global_rect().grow(8.0))
+	if is_instance_valid(minimap):
+		obstacles.append(minimap.get_global_rect().grow(8.0))
+	# Two passes cover the rare case where avoiding the objective moves the
+	# label toward the controls. The label is presentation-only, so choosing a
+	# nearby clear slot is preferable to stacking critical instructions.
+	for _pass in range(2):
+		for obstacle in obstacles:
+			if not Rect2(position, label_size).intersects(obstacle):
+				continue
+			if absf(direction.y) >= absf(direction.x):
+				position.y = obstacle.end.y + 8.0
+			elif direction.x < 0.0:
+				position.x = obstacle.position.x - label_size.x - 8.0
+			else:
+				position.x = obstacle.end.x + 8.0
+		position.x = clampf(position.x, 8.0, maxf(8.0, viewport_size.x - label_size.x - 8.0))
+		position.y = clampf(position.y, 8.0, maxf(8.0, viewport_size.y - label_size.y - 8.0))
+	return position
 
 func _on_route_triggered(body: Node3D) -> void:
 	if route == null or battling or body != divers[active]:
