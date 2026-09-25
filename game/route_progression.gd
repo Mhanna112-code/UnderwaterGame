@@ -118,6 +118,7 @@ func resolve_active_encounter(result: String) -> Dictionary:
 	var was_capstone := bool(beat.get("capstone", false))
 	_pending_transition_id = String(beat.get("transition_after", ""))
 	if _beat_index + 1 >= BEATS.size():
+		_beat_index = BEATS.size()
 		phase = PHASE_COMPLETE
 		phase_changed.emit(phase)
 		objective_id = ""
@@ -135,6 +136,34 @@ func take_pending_transition() -> String:
 	var result := _pending_transition_id
 	_pending_transition_id = ""
 	return result
+
+func save_state() -> Dictionary:
+	return {
+		"beat_index": _beat_index,
+		"checkpoint_id": checkpoint_id,
+	}
+
+# A save is always written outside a live battle.  Treating an in-progress
+# battle as not active on restore guarantees a restart cannot reopen a half
+# resolved enemy turn or consume an encounter merely because the game closed.
+func restore_state(saved: Dictionary) -> void:
+	if saved.is_empty():
+		return
+	var saved_index := int(saved.get("beat_index", -1))
+	checkpoint_id = String(saved.get("checkpoint_id", ""))
+	_encounter_active = false
+	_pending_transition_id = ""
+	if saved_index < 0:
+		return
+	if saved_index >= BEATS.size():
+		_beat_index = BEATS.size()
+		phase = PHASE_COMPLETE
+		objective_id = ""
+		objective_text = ""
+		phase_changed.emit(phase)
+		objective_changed.emit(objective_id)
+		return
+	_set_beat(saved_index)
 
 func _set_beat(index: int) -> void:
 	_beat_index = index

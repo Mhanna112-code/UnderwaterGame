@@ -68,6 +68,10 @@ func _run() -> void:
 		"ROUTE FINISH: Mermaid Freak victory did not complete the delivered route")
 	_expect(route.objective_id == "",
 		"ROUTE FINISH: a deferred Octopus encounter was incorrectly exposed as playable")
+	var restored_complete := RouteProgression.new()
+	restored_complete.restore_state(route.save_state())
+	_expect(restored_complete.phase == RouteProgression.PHASE_COMPLETE and restored_complete.objective_id == "",
+		"ROUTE SAVE: a completed lab route restored as a replayable Mermaid Freak fight")
 	_expect(observed_objectives.has("shallow_angler") and observed_objectives.has("lab_mermaid_freak"),
 		"OBJECTIVE SIGNAL: public handoff signal did not cover the route")
 
