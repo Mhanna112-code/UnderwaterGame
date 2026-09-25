@@ -560,6 +560,9 @@ func _on_title_reef_passage_playtest() -> void:
 	diver.global_position = Vector3(55.0, 2.0, 14.0)
 	yaw = 0.0
 	pitch = -0.16
+	var reef_review_focus := _route_landmark.get_node_or_null("ReefPassageReviewFocus") as Node3D
+	if reef_review_focus != null:
+		_camera_look_override = reef_review_focus
 	_attach_route_arrow_to_active()
 	if is_instance_valid(_active_cursor):
 		_active_cursor.visible = true

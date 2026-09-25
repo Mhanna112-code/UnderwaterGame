@@ -55,6 +55,12 @@ func _build_reef_passage() -> void:
 	opening.name = "ReefPassageOpening"
 	opening.set_meta("clear_width", REEF_OPENING_WIDTH)
 	add_child(opening)
+	# Review-only camera target. It lives on the real landmark so its framing
+	# cannot drift away from the actual route destination.
+	var review_focus := Node3D.new()
+	review_focus.name = "ReefPassageReviewFocus"
+	review_focus.position = Vector3(0.0, 3.2, 0.0)
+	add_child(review_focus)
 
 func _build_buttress(side: float) -> void:
 	var base_x := side * (REEF_OPENING_WIDTH * 0.5 + 1.25)
