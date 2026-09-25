@@ -54,6 +54,7 @@ must use the final public contract rather than private `World` flags.
 | 7 | Transition text remains above a resumed world HUD or blocks input after Continue. | Medium — it reads as a rendering/soft-lock fault. | Title/tutorial overlays have previously overlapped HUD surfaces. | Captured bug / browser integration | headless dismissal covered; visual review pending |
 | 8 | A basic or capstone encounter is tuned as an automatic win, a hard wall, or has no measurable advantage for skilled play. | High — the game loses either tension or strategy. | Current `casual` policy is not the proposed quick-read player and current route uses a different encounter topology. | Seeded simulation | covered by `verify/progression_balance.gd` |
 | 9 | A player reaches a visible authored beacon but its Area3D does not detect the diver, leaving the route permanently stalled. | High — first free movement looks functional yet cannot start the game’s first campaign fight. | Route tests originally emitted `body_entered` directly; production Diver uses collision layer 2 while a new Area3D defaults to mask 1. | Physics integration / captured bug | covered by `verify/progression_world_traversal.gd` |
+| 10 | A completed tutorial QTE leaves its battle stage blank/collapsed or its required Continue control outside the browser viewport. | High — a newcomer reasonably concludes the game froze. | The QTE test injected Enter and never inspected post-QTE browser geometry; the hosted playtest reproduced both success and miss failures. | Captured layout integration | covered by windowed `verify/tutorial_qte_handoff_layout.gd` |
 
 ## Test plan
 
@@ -205,4 +206,8 @@ must use the final public contract rather than private `World` flags.
   sweep is now `verify/progression_safe_spaces.gd`; the seeded
   quick-read/damage-only/skilled simulation is now
   `verify/progression_balance.gd` and reports the selected bands per route
-  encounter.
+  encounter. `verify/playtest_repairs.bug-catalog.md` owns the subsequent
+  hosted-playtest repair suite. Its first windowed regression caught the QTE
+  panel's transient minimum-size race: the old panel landed at y=-3664 with a
+  zero-height stage at 1280×720; the settled-layout repair keeps both success
+  and miss paths visible at 1280×720 and 1920×1080.

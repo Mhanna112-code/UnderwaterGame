@@ -417,6 +417,11 @@ var _turn_cursor: MeshInstance3D
 # changes (_show_moves(), _show_main(), _on_move_chosen(), etc.), not just
 # once at the end of _build_ui().
 var _bottom_panel: PanelContainer
+# RichTextLabel/Container minimum sizes can change one frame after a caption
+# or level table first becomes visible. Keep one coalesced next-frame layout
+# pass so an early, transient minimum can never leave the battle stage with a
+# multi-thousand-pixel panel after the content has already settled smaller.
+var _panel_height_settle_pending := false
 
 # The dodge prompt: an X-glyph panel to its left (what to press, static),
 # a track to its right (when to press it, the part that actually moves).
@@ -1643,6 +1648,22 @@ func _build_ui() -> void:
 # instant a property changes, so reading it immediately after flipping
 # .visible can still return the previous, stale size.
 func _fit_panel_height() -> void:
+	_apply_panel_height()
+	# A caption's first deferred layout can report an over-large temporary
+	# minimum before its available width has settled. That used to pin the
+	# bottom panel thousands of pixels above a 720px browser viewport: the
+	# real caption/button were then technically visible but wholly off-screen,
+	# and the stage height clamped to zero. One coalesced next-frame retry
+	# samples the final Control geometry without a per-frame layout loop.
+	if not _panel_height_settle_pending and get_tree() != null:
+		_panel_height_settle_pending = true
+		get_tree().process_frame.connect(_settle_panel_height, CONNECT_ONE_SHOT)
+
+func _settle_panel_height() -> void:
+	_panel_height_settle_pending = false
+	_apply_panel_height()
+
+func _apply_panel_height() -> void:
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
 	# Hand the rest of the screen to the stage. Both are anchored to the
