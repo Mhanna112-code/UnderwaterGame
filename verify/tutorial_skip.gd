@@ -36,16 +36,20 @@ func _run() -> void:
 			if stats.hp != stats.hp_max or stats.oxygen != stats.oxygen_max:
 				findings.append("SKIP DID NOT FULLY RESTORE PARTY")
 				break
-		# Skip is an exit from the combat lesson, not from learning the world
-		# controls. The onboarding is allowed to pause the world while visible,
-		# but it must be dismissible back to the same playable state.
-		if not world.ability_onboarding.visible:
-			findings.append("SKIP DID NOT OPEN WORLD-CONTROL HANDOFF")
+		# Skip takes the same post-lesson handoff as a tutorial victory. The
+		# former multi-page world-controls overlay was deliberately removed from
+		# this moment: it hid the first objective before a player could see the
+		# beacon. The concise card must instead make the exact first route goal
+		# visible and relinquish control when Continue is pressed.
+		if world.route == null or world.route.objective_id != "shallow_angler":
+			findings.append("SKIP DID NOT OPEN THE SHALLOWS ROUTE OBJECTIVE")
+		if not world.route_transition_card.visible or not paused:
+			findings.append("SKIP DID NOT OPEN THE ROUTE CONTINUE HANDOFF")
 		else:
-			world.ability_onboarding.call("dismiss")
+			world.route_transition_card.dismiss()
 			await process_frame
 			if paused:
-				findings.append("SKIP HANDOFF LEFT THE TREE PAUSED AFTER DISMISS")
+				findings.append("SKIP HANDOFF LEFT THE TREE PAUSED AFTER CONTINUE")
 
 	for finding in findings:
 		push_error(finding)
