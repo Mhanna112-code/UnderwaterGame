@@ -56,10 +56,13 @@ the earlier route-state suite could not prove.
 
 ### Bug #3 — Frilled Shark framing
 
-- The test will project actual `MeshInstance3D` AABB corners through the
-  public stage camera and require the mesh/overhead presentation to fit.
-- It does not assert a magic scale or camera distance, so changing either
-  implementation while retaining an in-frame readable fight remains valid.
+- The test starts a real World-to-Battle encounter with the authored Frilled
+  Shark roster and projects every actual imported mesh corner through the live
+  `Camera3D`.
+- It preserves a behavioral composition contract: mesh bounds must fit the
+  live stage, cannot consume more than 45% of its width, and cannot cover a
+  player fighter's body point. It does not assert a model scale or camera
+  distance.
 
 ### Bugs #4–5 — physical route and guidance
 
@@ -91,6 +94,11 @@ the earlier route-state suite could not prove.
   before its final width settled. Battle now performs one coalesced
   next-frame panel-height settle, after which success and timeout pass at
   1280×720 and 1920×1080 without injecting Enter.
+
+- **#3:** the first 1280×720 run projected the Frilled Shark outside the
+  stage and over all three party-body points. The test now passes at 1280×720
+  and 1920×1080 after the bounded visual normalization and mesh-corner camera
+  framing repair.
 
 ### Bugs characterized
 

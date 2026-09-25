@@ -55,6 +55,7 @@ must use the final public contract rather than private `World` flags.
 | 8 | A basic or capstone encounter is tuned as an automatic win, a hard wall, or has no measurable advantage for skilled play. | High — the game loses either tension or strategy. | Current `casual` policy is not the proposed quick-read player and current route uses a different encounter topology. | Seeded simulation | covered by `verify/progression_balance.gd` |
 | 9 | A player reaches a visible authored beacon but its Area3D does not detect the diver, leaving the route permanently stalled. | High — first free movement looks functional yet cannot start the game’s first campaign fight. | Route tests originally emitted `body_entered` directly; production Diver uses collision layer 2 while a new Area3D defaults to mask 1. | Physics integration / captured bug | covered by `verify/progression_world_traversal.gd` |
 | 10 | A completed tutorial QTE leaves its battle stage blank/collapsed or its required Continue control outside the browser viewport. | High — a newcomer reasonably concludes the game froze. | The QTE test injected Enter and never inspected post-QTE browser geometry; the hosted playtest reproduced both success and miss failures. | Captured layout integration | covered by windowed `verify/tutorial_qte_handoff_layout.gd` |
+| 11 | A horizontally posed enemy renders outside the stage or covers player-controlled fighters while the camera frames only its smaller gameplay radius. | High — Frilled Shark makes combat actors and target choice unreadable. | The imported shark is about 6.7× wider than tall; height-only scale and the radius cap intentionally diverge. | Captured visual-bounds integration | covered by windowed `verify/frilled_shark_framing.gd` |
 
 ## Test plan
 
@@ -211,3 +212,8 @@ must use the final public contract rather than private `World` flags.
   panel's transient minimum-size race: the old panel landed at y=-3664 with a
   zero-height stage at 1280×720; the settled-layout repair keeps both success
   and miss paths visible at 1280×720 and 1920×1080.
+- **#11:** the captured Frilled Shark fight originally projected outside the
+  1280×720 stage and covered all three party-body points. A visual-span cap
+  plus mesh-corner camera framing now passes that same real battle at both
+  1280×720 and 1920×1080; the ordinary eight-fight framing sweep remains
+  green.

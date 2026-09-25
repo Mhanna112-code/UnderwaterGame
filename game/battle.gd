@@ -1194,6 +1194,23 @@ func _frame_stage_camera() -> void:
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
 		var a := e.actor as Node3D
+		# Imported enemies can have a body that is materially wider than their
+		# gameplay radius. Frame its actual mesh corners when available; attack
+		# stand-off distance remains a separate gameplay concern. Without this,
+		# Frilled Shark's long fish pose could overlap the party while the camera
+		# believed it was a small-radius actor.
+		if a.has_method("visual_bounds"):
+			var visual_bounds_value: Variant = a.call("visual_bounds")
+			if visual_bounds_value is AABB:
+				var visual_bounds := visual_bounds_value as AABB
+				if visual_bounds.size.length_squared() > 0.0001:
+					for corner in range(8):
+						pts.append(visual_bounds.get_endpoint(corner))
+					# The mesh is the wide part; reserve enough vertical room for the
+					# information that belongs to this actor as well.
+					var visual_top := visual_bounds.position.y + visual_bounds.size.y + OVERHEAD_LIFT + OVERHEAD_HEADROOM
+					pts.append(Vector3(visual_bounds.get_center().x, visual_top, visual_bounds.get_center().z))
+					continue
 		var low: Vector3 = _bottom_of(a)
 		# Not the top of the model: the top of the model plus the health
 		# bar riding above it. Framing the bodies alone put every head hard

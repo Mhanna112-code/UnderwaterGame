@@ -63,7 +63,17 @@ func _ready() -> void:
 
 	var box: AABB = _world_aabb(model)
 	var raw_height: float = maxf(box.size.y, 0.05)
-	model.scale *= TARGET_HEIGHT / raw_height
+	var raw_horizontal_span: float = maxf(maxf(box.size.x, box.size.z), 0.05)
+	# Height is the useful default for upright rigs, but a fish may have a rest
+	# pose that is many times longer than tall. A subclass can state its largest
+	# readable horizontal span so an artist asset cannot consume the full combat
+	# stage simply because it was exported in an unusual orientation. This stays
+	# visual-only: combat radius and authored stats remain independent below.
+	var visual_scale := TARGET_HEIGHT / raw_height
+	var visual_span_limit := max_visual_horizontal_span()
+	if is_finite(visual_span_limit) and visual_span_limit > 0.0:
+		visual_scale = minf(visual_scale, visual_span_limit / raw_horizontal_span)
+	model.scale *= visual_scale
 	box = _world_aabb(model)
 	height = box.size.y
 	# Scaling by height alone assumes a roughly upright/boxy rest pose (true
@@ -92,6 +102,18 @@ func _ready() -> void:
 				_death_anim = a
 	_attack_anim = _resolve_clip(primary_attack_clip())
 	play("idle")
+
+# Most ordinary rigs are well served by the shared height normalization. A
+# horizontally posed subclass can opt into a visual bound without introducing
+# asset-specific conditionals into battle, saving, or gameplay code.
+func max_visual_horizontal_span() -> float:
+	return INF
+
+# Battle framing must use the model a player can actually see, not the smaller
+# gameplay radius used for attack stand-off distance. Public on purpose: it is
+# also the seam exercised by the visual regression test.
+func visual_bounds() -> AABB:
+	return _world_aabb(self)
 
 # The existing Goblin class is the stable enemy actor contract used by battle,
 # guardian triggers, progression and balance. Subclasses swap only asset-facing
