@@ -37,7 +37,7 @@ the earlier route-state suite could not prove.
 | 4 | A route beacon exists in state but a player cannot physically reach it from one or more natural approaches because terrain/guardian collision blocks the line. | P1: route looks like an invisible wall. Existing test reaches only the first leg from one directed path. | Physics integration over each leg and multiple approach offsets. | repaired: full collision matrix |
 | 5 | The HUD says LEFT/RIGHT while the visible beacon is on screen, or both cues are simultaneously active. | P1: player receives contradictory navigation. Current code tests target origin, not the beacon's visible bounds. | Camera-quadrant invariant with one active guidance surface. | repaired: rendered-bound contract |
 | 6 | An optional guardian/special challenge begins without saying it is optional, what ability/controls it needs, or how to leave. | P1: an off-route experiment reads as a broken mandatory tutorial. | UI contract test for prompt labels/actions plus hosted manual minigame proof. | later UX repair |
-| 7 | The deep route presents as the same bright, collinear empty space as shallows, despite phase transition wording. | P2: depth/progression fiction and pacing fail, while state tests remain green. | Visual environment/route-shape contract plus hosted comparison. | later presentation repair |
+| 7 | The deep route presents as the same bright, collinear empty space as shallows, despite phase transition wording. | P2: depth/progression fiction and pacing fail, while state tests remain green. | Visual environment/route-shape contract plus hosted comparison. | repaired: phase presentation contract |
 | 8 | A normal critical-route loss or boss preview returns to an unnamed/incorrect checkpoint, or an unbalanced Tethys fight is represented as route completion. | P0 for the lab endpoint: player cannot tell whether failure is expected or recoverable. Boss test currently inspects moves using inflated HP, not normal play. | Checkpoint round-trip and boss-preview contract; normal-party boss simulation only once final numbers exist. | later boundary repair |
 | 9 | Green/red previews can be understood only by their colour, not by result wording or keyboard navigation. | P1 accessibility/regression: the core quick-read becomes inaccessible or misleading. | Semantic UI contract and desaturated hosted screenshot. | later accessibility repair |
 | 10 | A battle cannot identify whether it was a route beat, optional guardian, or other source, so a reported wrong enemy cannot be reproduced. | P1 diagnosis: route/optional content is ambiguous to player and maintainer. | Encounter-source label/log contract across all battle entry paths. | repaired: source label contract |
@@ -96,6 +96,18 @@ fully visible, partially visible, and off-screen camera cases on a real
   renders it above the turn queue. Route labels name the zone/beat/roster;
   tutorial, optional guardian, and wandering paths are distinct. The verifier
   checks each declared beat through World plus the visible UI label.
+
+### Bug #7 — phase presentation
+
+- **Test type:** visual-state contract.
+- **Description string:**
+  > `progression route: Deep water changes the live environment and follows a lateral route — guards against a cosmetic phase label on an empty ruler line`
+- **Repaired:** the public Deep/Lab phase changes fog, ambient light, and
+  background colour and reveals three non-colliding ruin silhouettes. The
+  authored route turns around the map instead of forming a collinear chain;
+  it remains independent of maze geometry. Fixed-camera hosted captures are
+  still required to judge the art, while the verifier protects the state
+  distinction and route shape.
 
 ## Skipped for now
 

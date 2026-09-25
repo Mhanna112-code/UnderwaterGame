@@ -27,6 +27,7 @@ var route: RouteProgression
 var _route_beacon: Beacon
 var _route_trigger: Area3D
 var _route_battle_id := ""
+var _route_phase_landmarks: Node3D
 var route_objective_panel: PanelContainer
 var route_objective_label: Label
 var route_direction_label: Label
@@ -729,6 +730,7 @@ func _ready() -> void:
 	add_child(target_selector)
 
 	_build_site()
+	_build_route_phase_landmarks()
 	for c in CAST:
 		var d := Diver.new()
 		d.model_name = String(c.model)
@@ -2213,7 +2215,76 @@ func _on_route_objective_changed(_objective: String) -> void:
 func _on_route_phase_changed(_phase: String) -> void:
 	# The objective signal does the work; keeping this connection documents that
 	# phase is observable without coupling World logic to private route indices.
+	_apply_route_phase_presentation(_phase)
 	_refresh_route_guidance()
+
+# Shallows and Deep use the same open World, but must not read as the same
+# empty bright water. These silhouettes deliberately carry no collision: the
+# core route is a navigation/combat slice, not a second maze or an invisible
+# detour around set dressing.
+func _build_route_phase_landmarks() -> void:
+	_route_phase_landmarks = Node3D.new()
+	_route_phase_landmarks.name = "DeepRouteLandmarks"
+	add_child(_route_phase_landmarks)
+	var landmark_specs := [
+		{"at": Vector3(17.0, 0.0, 47.0), "height": 12.0, "radius": 1.0},
+		{"at": Vector3(-17.0, 0.0, 27.0), "height": 9.0, "radius": 0.75},
+		{"at": Vector3(-30.0, 0.0, 8.0), "height": 7.0, "radius": 0.6},
+	]
+	for spec_value in landmark_specs:
+		var spec := spec_value as Dictionary
+		var pillar := MeshInstance3D.new()
+		pillar.name = "DeepRuinSilhouette"
+		var mesh := CylinderMesh.new()
+		mesh.top_radius = float(spec.radius) * 0.72
+		mesh.bottom_radius = float(spec.radius)
+		mesh.height = float(spec.height)
+		mesh.radial_segments = 7
+		pillar.mesh = mesh
+		pillar.position = spec.at as Vector3
+		pillar.position.y = float(spec.height) * 0.5
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color(0.075, 0.14, 0.19)
+		material.roughness = 1.0
+		pillar.material_override = material
+		_route_phase_landmarks.add_child(pillar)
+		var glow := OmniLight3D.new()
+		glow.light_color = Color(0.13, 0.44, 0.56)
+		glow.light_energy = 0.7
+		glow.omni_range = 7.0
+		glow.position = pillar.position + Vector3(0.0, float(spec.height) * 0.32, 0.0)
+		_route_phase_landmarks.add_child(glow)
+	_route_phase_landmarks.visible = false
+
+func _apply_route_phase_presentation(phase_id: String) -> void:
+	var environment: Environment = $WorldEnvironment.environment
+	if environment == null:
+		return
+	var deep := phase_id in [RouteProgression.PHASE_DEEP, RouteProgression.PHASE_LAB]
+	if deep:
+		environment.background_color = Color(0.018, 0.065, 0.10)
+		environment.ambient_light_color = Color(0.16, 0.31, 0.39)
+		environment.ambient_light_energy = 0.68
+		environment.fog_light_color = Color(0.018, 0.09, 0.14)
+		environment.fog_density = 0.062
+	else:
+		environment.background_color = Color(0.04, 0.12, 0.16)
+		environment.ambient_light_color = Color(0.32, 0.5, 0.56)
+		environment.ambient_light_energy = 1.1
+		environment.fog_light_color = Color(0.05, 0.16, 0.2)
+		environment.fog_density = 0.035
+	if is_instance_valid(_route_phase_landmarks):
+		_route_phase_landmarks.visible = deep
+
+# Public visual route seam. Browser reviewers can inspect the same state a
+# phase-change handler applies without depending on its private node names.
+func route_phase_presentation() -> Dictionary:
+	var environment: Environment = $WorldEnvironment.environment
+	return {
+		"fog_density": environment.fog_density if environment != null else 0.0,
+		"ambient_energy": environment.ambient_light_energy if environment != null else 0.0,
+		"landmarks_visible": is_instance_valid(_route_phase_landmarks) and _route_phase_landmarks.visible,
+	}
 
 func _begin_core_route_after_tutorial() -> void:
 	if route == null or route.objective_id != "":
