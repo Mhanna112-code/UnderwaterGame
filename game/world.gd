@@ -2409,10 +2409,13 @@ func _update_banner(dt: float) -> void:
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active] or _intro_active:
 		return
-	# The critical route is authored end-to-end.  A distance roll may still
-	# fire on the Diver, but it must never turn into a battle while a route
-	# objective, checkpoint, lab approach, or boss approach is active.
-	if route != null and route.encounter_policy == RouteProgression.ENCOUNTER_POLICY_AUTHORED_ONLY:
+	# The critical route is authored end-to-end. A distance roll may still fire
+	# on the Diver, but it must never turn into a battle while an authored route
+	# objective, checkpoint, lab approach, or boss approach is active.  An
+	# unstarted RouteProgression deliberately has no objective; that state can
+	# occur for an old save or an isolated guardian review and must still fall
+	# through to the guardian safe-zone rule below.
+	if route != null and route.objective_id != "" and route.encounter_policy == RouteProgression.ENCOUNTER_POLICY_AUTHORED_ONLY:
 		return
 	# An unclaimed guardian site is a deliberate encounter space. Letting a
 	# random roll interrupt there makes it unclear whether the battle belongs
