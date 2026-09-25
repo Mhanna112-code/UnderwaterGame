@@ -11,6 +11,7 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	_test_swordfish_electric_counter()
 	var urchin := UrchinActor.new()
 	root.add_child(urchin)
 	await process_frame
@@ -40,6 +41,20 @@ func _run() -> void:
 	if findings.is_empty():
 		print("sea urchin route     delivered actor and Weaken payoff hold")
 	quit(0 if findings.is_empty() else 1)
+
+func _test_swordfish_electric_counter() -> void:
+	var swordfish := SwordDuelist.new()
+	var sword_stats := swordfish.make_stats(_stats(99, 9, 9, 9, 9, 9), 1)
+	var scuba := _stats(10, 1, 0, 3, 3, 3)
+	var electric := (CombatMoves.for_model("Staff_Diver")[0] as Dictionary).duplicate(true)
+	var touch := CombatRules.resolve(scuba, sword_stats, electric)
+	_expect(bool(touch.get("hit", false)) and sword_stats.evasion == 1,
+		"SWORDFISH COUNTER: Electric Touch must land on the 4-EVA Swordfish and lower it by Scuba's 3 ACC")
+	var stab := (CombatMoves.for_model("Staff_Diver")[1] as Dictionary).duplicate(true)
+	var follow_up := CombatRules.resolve(scuba, sword_stats, stab)
+	_expect(bool(follow_up.get("hit", false)),
+		"SWORDFISH COUNTER: Electric Touch must turn Scuba's follow-up into a real hit")
+	swordfish.free()
 
 func _stats(hp: int, strength: int, defense: int, agility: int, evasion: int, accuracy: int) -> CombatantStats:
 	var stats := CombatantStats.new()
