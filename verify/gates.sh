@@ -77,7 +77,9 @@ run "balance: do casual and skilled policies clear the artifact route" "$GODOT" 
 run "core route contract: is one authored objective exposed in the declared order" "$GODOT" --headless --path . --script verify/progression_route.gd
 run "core route battles: do declared route encounters build exact rosters" "$GODOT" --headless --path . --script verify/route_authored_battles.gd
 run "core route checkpoint: do capstone saves restore full party and next objective" "$GODOT" --headless --path . --script verify/progression_checkpoint.gd
+run "core route safe spaces: do all authored phases reject ordinary rolls" "$GODOT" --headless --path . --script verify/progression_safe_spaces.gd
 run "deep counter actors: does Swordfish/Sea Urchin counterplay change combat" "$GODOT" --headless --path . --script verify/sea_urchin_route_actor.gd
+run "core route balance: do quick-read and skilled policies meet published bands" "$GODOT" --headless --path . --script verify/progression_balance.gd
 run "opening packs: are first-route formation probabilities intentional" "$GODOT" --headless --path . --script verify/opening_pack_tuning.gd
 run "sites: are item locations unmarked and physically reachable" "$GODOT" --headless --path . --script verify/sites.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd

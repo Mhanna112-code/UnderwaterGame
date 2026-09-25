@@ -2308,7 +2308,7 @@ func _on_route_triggered(body: Node3D) -> void:
 	_route_battle_id = String(encounter.get("id", ""))
 	if bool(encounter.get("checkpoint_before", false)):
 		_secure_route_checkpoint("Checkpoint secured before the %s encounter." % _route_battle_id.replace("_", " "))
-	_start_battle("", bool(encounter.get("boss", false)), "angler", divers, false, false, encounter.get("roster", []) as Array)
+	_start_battle("", bool(encounter.get("boss", false)), "angler", divers, false, false, encounter.get("roster", []) as Array, encounter.get("enemy_modifiers", []) as Array)
 
 func _secure_route_checkpoint(message: String) -> void:
 	for diver_value in divers:
@@ -2504,7 +2504,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, forced_enemy_ids: Array = []) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, forced_enemy_ids: Array = [], forced_enemy_modifiers: Array = []) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
@@ -2520,6 +2520,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.tutorial_encounter = tutorial
 	battle.forced_enemy_ids = forced_enemy_ids.duplicate()
+	battle.forced_enemy_modifiers = forced_enemy_modifiers.duplicate(true)
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 

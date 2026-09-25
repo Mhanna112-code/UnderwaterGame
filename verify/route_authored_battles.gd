@@ -13,6 +13,7 @@ func _run() -> void:
 		var roster := beat.get("roster", []) as Array
 		var battle := Battle.new()
 		battle.forced_enemy_ids = roster.duplicate()
+		battle.forced_enemy_modifiers = (beat.get("enemy_modifiers", []) as Array).duplicate(true)
 		battle.boss_encounter = bool(beat.get("boss", false))
 		root.add_child(battle)
 		await process_frame
@@ -29,6 +30,15 @@ func _run() -> void:
 				actual.append("missing")
 		_expect(actual == roster,
 			"AUTHORED ROSTER: %s built %s, expected %s" % [String(beat.id), actual, roster])
+		var modifiers := beat.get("enemy_modifiers", []) as Array
+		for index in range(modifiers.size()):
+			var modifier := modifiers[index] as Dictionary
+			if index >= battle.enemies.size():
+				continue
+			var spawned := (battle.enemies[index] as Dictionary).stats as CombatantStats
+			for stat in modifier:
+				_expect(int(spawned.get(String(stat))) == int(modifier[stat]),
+					"CAPSTONE PROFILE: %s enemy %d %s was %s, expected %s" % [String(beat.id), index + 1, String(stat), spawned.get(String(stat)), modifier[stat]])
 		battle.queue_free()
 		await process_frame
 

@@ -39,6 +39,10 @@ const BEATS := [
 		"id": "shallow_capstone", "phase": PHASE_SHALLOWS,
 		"text": "Shallows — secure the reef passage.", "at": Vector3(37.0, 2.0, -28.0),
 		"roster": ["angler", "frilled_shark"], "capstone": true,
+		# Encounter-only pressure, not a rewrite of either species' delivered
+		# base block. This is the first coordinated pair, so both arrive in
+		# their healthy capstone profile rather than as ordinary wandering fish.
+		"enemy_modifiers": [{"hp_max": 15, "strength": 2}, {"hp_max": 15, "strength": 2}],
 		"checkpoint": "shallows_capstone", "transition_after": "deep_descent",
 	},
 	{
@@ -55,6 +59,11 @@ const BEATS := [
 		"id": "deep_capstone", "phase": PHASE_DEEP,
 		"text": "Deep water — break the final defense.", "at": Vector3(32.0, 2.0, -53.0),
 		"roster": ["swordfish_duelist", "sea_urchin"], "capstone": true,
+		# The coordinated deep pair is deliberately a counterplay check: the
+		# Swordfish stays evasive and the Urchin's reinforced shell rewards
+		# repeated Weaken before raw damage. Solo species encounters retain the
+		# exact delivered base statistics above.
+		"enemy_modifiers": [{"hp_max": 12, "strength": 3}, {"hp_max": 14, "strength": 2, "defense": 8}],
 		"checkpoint": "deep_capstone", "transition_after": "lab_arrival",
 	},
 	{
@@ -87,6 +96,9 @@ func active_beat() -> Dictionary:
 func active_roster() -> Array:
 	return (active_beat().get("roster", []) as Array).duplicate()
 
+func active_enemy_modifiers() -> Array:
+	return (active_beat().get("enemy_modifiers", []) as Array).duplicate(true)
+
 func active_position() -> Vector3:
 	return active_beat().get("at", Vector3.ZERO) as Vector3
 
@@ -105,6 +117,7 @@ func begin_active_encounter() -> Dictionary:
 		"id": objective_id,
 		"roster": active_roster(),
 		"boss": bool(beat.get("boss", false)),
+		"enemy_modifiers": active_enemy_modifiers(),
 		"checkpoint_before": is_checkpoint,
 	}
 

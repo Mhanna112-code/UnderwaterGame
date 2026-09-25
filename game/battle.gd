@@ -61,6 +61,7 @@ var guardian_enemy_id := "angler"
 # guardian, special, tutorial, and boss behavior; a non-empty list prevents
 # encounter count/roster rolls from leaking into authored progression.
 var forced_enemy_ids: Array = []
+var forced_enemy_modifiers: Array = []
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -1089,6 +1090,8 @@ func _build_stage() -> void:
 		party_centre /= maxf(1.0, float(party.size()))
 		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		if i < forced_enemy_modifiers.size():
+			_apply_forced_enemy_modifier(st, forced_enemy_modifiers[i] as Dictionary)
 		if tutorial_encounter:
 			# Five-plus real turns (every scripted move, then however many
 			# more real ones it actually takes to win or lose once
@@ -1114,6 +1117,16 @@ func _build_stage() -> void:
 		})
 
 	_frame_stage_camera()
+
+func _apply_forced_enemy_modifier(stats: CombatantStats, modifier: Dictionary) -> void:
+	# Route-capstone tuning is data from RouteProgression. It runs after the
+	# species builds its ordinary stats and before the actor is exposed to any
+	# move, so a modifier cannot mutate a shared species constant or leak into
+	# random/guardian encounters.
+	for stat in ["hp_max", "strength", "defense", "agility", "evasion", "accuracy"]:
+		if modifier.has(stat):
+			stats.set(stat, int(modifier[stat]))
+	stats.fill()
 
 func _guardian_actor() -> Goblin:
 	return _actor_for_enemy_id(guardian_enemy_id)
