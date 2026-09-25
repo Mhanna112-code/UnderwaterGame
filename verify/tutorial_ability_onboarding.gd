@@ -8,7 +8,10 @@
 # the new playable route instead.
 extends SceneTree
 
-const TIMEOUT_MS := 9000
+# A complete live win includes staged attack/death animation, one ordinary log
+# beat, the three party XP lines, and the explicit victory Continue. The old
+# 9-second ceiling only covered the start of that real presentation.
+const TIMEOUT_MS := 20000
 var findings: Array[String] = []
 
 func _initialize() -> void:
@@ -37,19 +40,16 @@ func _run() -> void:
 			var lesson := battle._TUTORIAL_SCRIPT[0] as Dictionary
 			_expect(int(lesson.get("party_index", -1)) == 0 and String(lesson.get("move", "")) == "Electric Touch",
 				"TUTORIAL SCOPE: opening quick-read move must remain Maxilani's Electric Touch")
-		for enemy_entry in battle.enemies:
-			(enemy_entry.stats as CombatantStats).hp = 0
-		battle._tutorial_step = battle._TUTORIAL_SCRIPT.size()
-		battle._tutorial_enemy_turns = 1
-		battle._tutorial_finale_shown = false
-		battle._qte_active = false
-		battle._advance_turn()
-		var deadline := Time.get_ticks_msec() + TIMEOUT_MS
-		while world.battle != null and Time.get_ticks_msec() < deadline:
-			if world.battle._tutorial_awaiting_enter:
-				world.battle._tutorial_awaiting_enter = false
-			await process_frame
-		if world.battle != null:
+		# The old check set the enemy HP to zero and jumped straight to
+		# _advance_turn(), which only proved an already-finished battle's
+		# callback. Keep the production Angler intact, then use its actual
+		# Continue button, highlighted move button, hover signal, target button,
+		# CombatRules resolution, live QTE, Battle victory path and World
+		# finished signal. This is the whole tutorial contract, not a fake win.
+		var completed := await _complete_live_quick_read(battle, world)
+		if not completed:
+			findings.append("ROUTE HANDOFF: live quick-read choice did not resolve into the World handoff")
+		elif world.battle != null:
 			findings.append("ROUTE HANDOFF: completed tutorial left Battle mounted")
 		else:
 			await _verify_handoff(world)
@@ -61,6 +61,73 @@ func _run() -> void:
 	world.queue_free()
 	quit(0 if findings.is_empty() else 1)
 
+# Uses the visible controls rather than direct battle helpers. `emit_signal`
+# delivers the exact Button signal a mouse click does; the target hover is
+# deliberately part of the route because it is where the Quick Read's live
+# green/red result appears. The tutorial owns exactly one Angler turn after
+# that choice, then ends through the normal Battle victory wiring; the first
+# route Angler is the first full combat challenge.
+func _complete_live_quick_read(battle: Battle, world: World) -> bool:
+	if not await _wait_for("TUTORIAL CARD", func() -> bool: return battle._tutorial_awaiting_enter and battle.tutorial_continue_btn.visible):
+		return false
+	battle.tutorial_continue_btn.emit_signal("pressed")
+	if not await _wait_for("HIGHLIGHTED MOVE", func() -> bool:
+		return not battle.move_buttons.is_empty() and not (battle.move_buttons[0] as Button).disabled):
+		return false
+	var move_btn := battle.move_buttons[0] as Button
+	_expect(move_btn.text.begins_with("Electric Touch"), "TUTORIAL CHOICE: the only enabled move is not Electric Touch")
+	move_btn.emit_signal("pressed")
+	if not await _wait_for("HIGHLIGHTED TARGET", func() -> bool: return not battle.target_buttons.is_empty()):
+		return false
+	var target_btn := battle.target_buttons[0] as Button
+	# This is the same signal `_show_stat_preview` and the tutorial await use
+	# in production. It demonstrates that the comparison gate is real before
+	# the choice becomes available.
+	target_btn.emit_signal("mouse_entered")
+	if not await _wait_for("QUICK-READ PREVIEW", func() -> bool: return not target_btn.disabled):
+		return false
+	_expect(battle._stat_preview_frozen, "TUTORIAL PREVIEW: target hover did not hold the live comparison")
+	target_btn.emit_signal("pressed")
+	return await _finish_live_tutorial(battle, world)
+
+# The real victory panel deliberately waits for an explicit Continue before
+# handing control back. Press the same rendered button rather than clearing a
+# private await flag, so a stale overlay or a disconnected button is caught.
+func _finish_live_tutorial(battle: Battle, world: World) -> bool:
+	var deadline := Time.get_ticks_msec() + TIMEOUT_MS
+	var victory_continue_seen := false
+	var qte_instruction_seen := false
+	while Time.get_ticks_msec() < deadline:
+		if world.battle == null:
+			if not qte_instruction_seen:
+				findings.append("TUTORIAL ORDER: the guided move did not lead directly to the live QTE")
+			return victory_continue_seen
+		if battle._tutorial_awaiting_enter and battle.tutorial_continue_btn.visible:
+			if battle._tutorial_qte_detail.visible:
+				qte_instruction_seen = true
+				_expect(String(battle._acting.get("kind", "")) == "enemy",
+					"TUTORIAL ORDER: a party turn appeared before the promised Angler QTE")
+			# The QTE explanation and the short post-victory confirmation both
+			# use the same real button. Count only the latter as proof that the
+			# player actually saw the tutorial's completion state.
+			victory_continue_seen = victory_continue_seen or battle._tutorial_caption.text.begins_with("Practice complete")
+			battle.tutorial_continue_btn.emit_signal("pressed")
+		await process_frame
+	if not victory_continue_seen:
+		findings.append("TUTORIAL VICTORY: no visible Continue appeared before timeout")
+	else:
+		findings.append("WORLD HANDOFF: timed out after live tutorial victory Continue")
+	return false
+
+func _wait_for(label: String, predicate: Callable) -> bool:
+	var deadline := Time.get_ticks_msec() + TIMEOUT_MS
+	while Time.get_ticks_msec() < deadline:
+		if predicate.call():
+			return true
+		await process_frame
+	findings.append("%s: timed out" % label)
+	return false
+
 func _verify_handoff(world: World) -> void:
 	_expect(world.route != null and world.route.objective_id == "shallow_angler",
 		"TUTORIAL HANDOFF: no active Shallows Angler objective after the lesson")
@@ -70,6 +137,9 @@ func _verify_handoff(world: World) -> void:
 		"TUTORIAL HANDOFF: sole route objective is not visibly displayed in the world")
 	_expect(world.route_transition_card.visible and paused,
 		"TUTORIAL HANDOFF: the short Continue card did not guard the initial handoff")
+	var handoff_copy := world.route_transition_card.body_text()
+	_expect(handoff_copy.contains("red on an enemy creates an opening"),
+		"TUTORIAL HANDOFF: route card contradicted the Quick Read's side-specific color guidance: %s" % handoff_copy)
 	if not findings.is_empty():
 		return
 	world.route_transition_card.dismiss()

@@ -80,6 +80,12 @@ func open_card(title: String, body: String) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_continue.grab_focus()
 
+# Read-only UI contract used by progression verification. Keeping the copy
+# observable lets the test catch a tutorial card that contradicts the live
+# color language without coupling it to this node's internal label name.
+func body_text() -> String:
+	return _body.get_parsed_text()
+
 func dismiss() -> void:
 	if not visible:
 		return

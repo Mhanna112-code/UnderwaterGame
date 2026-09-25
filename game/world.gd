@@ -2215,7 +2215,7 @@ func _begin_core_route_after_tutorial() -> void:
 	if route == null or route.objective_id != "":
 		return
 	route.start_after_tutorial()
-	_show_route_transition("Shallows", "[color=#78d6f2]Quick Read:[/color] green outcomes improve the current situation; red outcomes carry an immediate cost or risk. Details stay available when you want them.\n\nYour only objective is visible ahead: [b]Shallows — follow the beacon.[/b]")
+	_show_route_transition("Shallows", "[color=#78d6f2]Quick Read:[/color] [color=#65d98a]green[/color] on your side helps; [color=#ef7070]red[/color] on an enemy creates an opening. Red on your side is a cost or risk. Details stay available when you want them.\n\nYour only objective is visible ahead: [b]Shallows — follow the beacon.[/b]")
 
 func _refresh_route_guidance() -> void:
 	if route_objective_label == null or route == null:

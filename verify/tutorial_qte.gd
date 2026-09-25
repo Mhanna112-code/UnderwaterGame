@@ -134,26 +134,33 @@ func _run() -> void:
 				str(battle._tutorial_force_next_qte),
 			])
 		# A successful input clears _qte_active synchronously, but the enemy
-		# coroutine still has to resume, apply CombatRules' dodged result, finish
-		# its animation/log delay, and hand the turn to a diver. Four frames was
-		# accidentally enough in an isolated run but not under the full suite;
-		# wait for that real turn boundary instead of sampling scheduler timing.
-		# The party does not auto-act, so it cannot introduce a later hit before
-		# this check observes the completed enemy action.
+		# coroutine still has to resume and apply CombatRules' dodged result.
+		# The one-move tutorial now ends immediately after that real QTE instead
+		# of asking for an unseen extra kill, so its correct boundary is the
+		# short completion card—not another party turn. Snapshot HP at the live
+		# dodge log before the tutorial's intentional full restore happens.
 		var extra_qte_seen := false
+		var dodge_log_seen := false
+		var hp_after_dodge: Array[int] = []
 		if qte_finished:
 			var resolution_deadline := Time.get_ticks_msec() + TIMEOUT_MS
-			while Time.get_ticks_msec() < resolution_deadline and String(battle._acting.get("kind", "")) != "party":
+			while Time.get_ticks_msec() < resolution_deadline and not battle._tutorial_finale_shown:
 				extra_qte_seen = extra_qte_seen or battle._qte_active
+				dodge_log_seen = dodge_log_seen or battle.log_label.text.contains("dodges clear")
+				if dodge_log_seen and hp_after_dodge.is_empty():
+					for entry in battle.party:
+						hp_after_dodge.append((entry.stats as CombatantStats).hp)
 				await process_frame
-			if String(battle._acting.get("kind", "")) != "party":
-				findings.append("TUTORIAL QTE: successful input never completed the enemy turn")
+			if not battle._tutorial_finale_shown:
+				findings.append("TUTORIAL QTE: successful input never reached the lesson-complete handoff")
 			elif extra_qte_seen or qte_window_count != 1:
-				findings.append("TUTORIAL QTE: the one-dodge lesson opened %d timing windows before returning control" % qte_window_count)
-		for index in range(hp_before.size()):
-			var hp_after := (battle.party[index].stats as CombatantStats).hp
-			if hp_after != hp_before[index]:
-				findings.append("TUTORIAL QTE: an in-zone X still damaged party member %d" % index)
+				findings.append("TUTORIAL QTE: the one-dodge lesson opened %d timing windows before completion" % qte_window_count)
+			if not dodge_log_seen or hp_after_dodge.is_empty():
+				findings.append("TUTORIAL QTE: successful input never produced the live dodge result")
+			else:
+				for index in range(hp_before.size()):
+					if hp_after_dodge[index] != hp_before[index]:
+						findings.append("TUTORIAL QTE: an in-zone X still damaged party member %d" % index)
 
 	for finding in findings:
 		push_error(finding)

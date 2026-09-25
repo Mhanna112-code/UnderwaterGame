@@ -74,8 +74,8 @@ var forced_enemy_modifiers: Array = []
 # spends the goblin's own one scripted turn guaranteeing a Quick Time Event
 # actually shows up at least once (see _tutorial_prep_enemy_turn()) rather
 # than leaving that entirely to ENEMY_QTE_CHANCE. Real _resolve_attack() math
-# applies throughout; after those two ideas, the player can finish or skip a
-# genuine win/loss practice fight with the full party kit.
+# applies throughout; after those two taught interactions the Angler retreats
+# and the first full, punitive fight is the authored shallow-route Angler.
 var tutorial_encounter := false
 # Ordered stage script for the choreographed first fight.  The route brief
 # deliberately limits onboarding to one safe meaningful choice: the player
@@ -1113,12 +1113,9 @@ func _build_stage() -> void:
 		if i < forced_enemy_modifiers.size():
 			_apply_forced_enemy_modifier(st, forced_enemy_modifiers[i] as Dictionary)
 		if tutorial_encounter:
-			# Five-plus real turns (every scripted move, then however many
-			# more real ones it actually takes to win or lose once
-			# _advance_turn()'s "Defeat the enemy!" prompt hands the fight
-			# over for real) would otherwise stand a real chance of killing
-			# this grunt before the lesson's even over - pad its own HP out
-			# so it survives long enough. Its offense gets cut too (see
+			# The tutorial needs to survive the first named counter move and one
+			# returned QTE swing before its automatic lesson-complete handoff, so
+			# pad its own HP out. Its offense gets cut too (see
 			# TUTORIAL_ENEMY_MOVE/_do_enemy_turn()'s tutorial-only no-heavy-
 			# swing rule) - a full-strength grunt one-shotting Maxilani (hp_max
 			# 10) on her very first fight, before any level-up, was an actual
@@ -2287,14 +2284,18 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
-	# Once the scripted move/QTE lesson has run, hand the encounter over to a
-	# real win-or-loss outcome.  The player can now finish the enemy, lose and
-	# choose Retry/Exit, or use the explicit tutorial Skip button.  Do not
-	# auto-win here: that made the lesson's final state diverge from a real
-	# battle and hid the loss recovery path.
+	# This is an onboarding encounter, not the first campaign gate. Once the
+	# player has made the one Quick Read choice and seen the one live QTE, end
+	# the lesson through Battle's normal victory/handoff path. Requiring an
+	# unseen extra kill (or a Skip button) after those taught interactions was
+	# the prior captured tutorial soft-lock: a newcomer could reasonably think
+	# the lesson was over while the game quietly demanded ordinary combat. The
+	# next authored Angler is where the player gets the first complete fight.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
-		_log("Lesson complete. Defeat the enemy or choose Skip Tutorial.")
+		_log("Practice complete. The Angler retreats.")
+		_win()
+		return
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -2321,7 +2322,20 @@ func _advance_turn() -> void:
 			_refresh_queue_row()
 			_start_party_turn(_acting)
 			return
-	_acting = _queue.pop_front()
+	# The one tutorial QTE follows the one guided counter choice immediately.
+	# Without this priority, a higher-agility party member could get a normal
+	# turn between them; browser play exposed that as a confusing Musashi menu
+	# sitting under the still-present lesson card. This only changes the tiny
+	# choreographed opening: after the QTE, ordinary turn order resumes.
+	var tutorial_enemy_next: Dictionary = {}
+	if tutorial_encounter and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns == 0:
+		for candidate_value in enemies:
+			var candidate := candidate_value as Dictionary
+			if _living(enemies).has(candidate) and _queue.has(candidate):
+				_queue.erase(candidate)
+				tutorial_enemy_next = candidate
+				break
+	_acting = tutorial_enemy_next if not tutorial_enemy_next.is_empty() else _queue.pop_front()
 	_refresh_queue_row()
 	if (_acting.stats as CombatantStats).hp <= 0:
 		_advance_turn()   # downed since the queue was built - skip them
@@ -4388,21 +4402,13 @@ func _win() -> void:
 		if entry.has("oxygen_heal_overlay"):
 			_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
 	_refresh_all_bars()
-	# One extra beat only for the choreographed first fight - explains the
-	# XP/level-up lines (and, if any happened, the stat table above, and the
-	# HP/Oxygen refill just shown above that in purple/green) rather than
-	# leaving the player to infer what they meant. Numbers match gain_xp()
-	# (combatant_stats.gd) exactly: every stat it grows, the full HP/Oxygen
-	# refill (fill(), its only heal outside a save point), and the one
-	# Spell Point per level. Deliberately brief on Spell Points/spell trees -
-	# a fuller walkthrough of that is planned as its own separate tutorial
-	# later. Also calls out that a downed diver isn't excluded from any of
-	# this - the XP loop above runs over `party`, not _living(party), and
-	# recover_after_victory() (below) always adds at least 1 HP regardless
-	# of what a diver's hp was, so someone who went down mid-fight still
-	# levels up and comes back partially healed rather than staying at 0.
+	# One short confirmation after the choreographed first fight. The original
+	# version turned this moment into another dense compulsory lecture about
+	# every stat and spell point, undoing the Quick Read's promise that detail
+	# is optional. The visible XP/level rows still give an interested player a
+	# concrete result to inspect; Combat Help owns the explanatory depth.
 	if tutorial_encounter:
-		await _tutorial_show_step("Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else and comes back with some HP instead of staying at 0. Gain enough XP and a diver levels up. Leveling up brings a batch of perks: growth across HP, Strength, Defense, Agility, Accuracy, and Evasion (shown in the stat tables below), a full HP/Oxygen refill (green on the bars, outlined in purple at the top), and one Spell Point, which unlocks new spells in that diver's own spell tree. More on Spell Points and spell trees later.")
+		await _tutorial_show_step("Practice complete. Your party earned XP; any level gains appear below. You are restored before the route begins. Continue for one clear next objective.")
 		for entry in party:
 			if entry.has("card"):
 				_set_row_highlight(entry.card as PanelContainer, false)
