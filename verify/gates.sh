@@ -74,6 +74,10 @@ run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GOD
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd
 run "balance: do casual and skilled policies clear the artifact route" "$GODOT" --headless --path . --script verify/balance.gd
+run "core route contract: is one authored objective exposed in the declared order" "$GODOT" --headless --path . --script verify/progression_route.gd
+run "core route battles: do declared route encounters build exact rosters" "$GODOT" --headless --path . --script verify/route_authored_battles.gd
+run "core route checkpoint: do capstone saves restore full party and next objective" "$GODOT" --headless --path . --script verify/progression_checkpoint.gd
+run "deep counter actors: does Swordfish/Sea Urchin counterplay change combat" "$GODOT" --headless --path . --script verify/sea_urchin_route_actor.gd
 run "opening packs: are first-route formation probabilities intentional" "$GODOT" --headless --path . --script verify/opening_pack_tuning.gd
 run "sites: are item locations unmarked and physically reachable" "$GODOT" --headless --path . --script verify/sites.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
