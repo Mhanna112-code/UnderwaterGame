@@ -2319,13 +2319,21 @@ func _update_route_direction_indicator() -> void:
 	var edge := center + direction * minf(size.x, size.y) * 0.38
 	var angle := direction.angle()
 	var arrow := "→"
+	var direction_word := "RIGHT"
 	if angle > 2.35 or angle < -2.35:
 		arrow = "←"
+		direction_word = "LEFT"
 	elif angle > 0.78 and angle < 2.35:
 		arrow = "↓"
+		direction_word = "DOWN"
 	elif angle < -0.78 and angle > -2.35:
 		arrow = "↑"
-	route_direction_label.text = "%s Beacon" % arrow
+		direction_word = "UP"
+	# The directional glyph is useful at a glance, but explicit copy remains
+	# legible when a browser/device substitutes a weak arrow glyph. This is a
+	# critical route cue, so no player should have to infer meaning from a tiny
+	# icon alone.
+	route_direction_label.text = "Beacon • %s %s" % [direction_word, arrow]
 	# The arrow can become central when a nearby beacon slips just outside the
 	# camera frustum. Keep it directional, but never let its label cross the
 	# persistent controls, route objective, or minimap. A live 720p replay

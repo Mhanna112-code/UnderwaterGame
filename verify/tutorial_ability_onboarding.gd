@@ -152,7 +152,7 @@ func _verify_handoff(world: World) -> void:
 	# declines to draw the cosmetic arrow there. Exercise its public placement
 	# seam at a real 1280×720 review size instead: a top-centre cue that would
 	# have crossed the objective must move into a clear slot.
-	world.route_direction_label.text = "↑ Beacon"
+	world.route_direction_label.text = "Beacon • UP ↑"
 	var arrow_size := world.route_direction_label.get_combined_minimum_size()
 	var arrow_position := world.route_direction_label_position(
 		Vector2(604.0, 72.0), arrow_size, Vector2.UP, Vector2(1280.0, 720.0))
