@@ -135,6 +135,8 @@ func _verify_handoff(world: World) -> void:
 		"TUTORIAL HANDOFF: first player-facing objective drifted")
 	_expect(world.route_objective_label.visible,
 		"TUTORIAL HANDOFF: sole route objective is not visibly displayed in the world")
+	_expect(not world.hud.get_global_rect().intersects(world.route_objective_panel.get_global_rect()),
+		"TUTORIAL HANDOFF: route objective overlaps the persistent world-controls hint")
 	_expect(world.route_transition_card.visible and paused,
 		"TUTORIAL HANDOFF: the short Continue card did not guard the initial handoff")
 	var handoff_copy := world.route_transition_card.body_text()

@@ -2157,18 +2157,21 @@ func intro_arrow() -> void:
 func _show_intro_text() -> void:
 	_intro_announce("Swim over to the light beam.")
 
-# The visible route objective lives above the ordinary control hint, not in
-# the fading announcement line.  It therefore remains readable after combat
-# logs and save notices cycle through the banner, and it is the one place a
-# player needs to look to know what to do next.
+	# The visible route objective lives immediately *below* the ordinary control
+	# hint, not over it and not in the fading announcement line. The original
+	# top-centre placement overlapped the left-aligned controls at 720p in a
+	# real browser playthrough, which made both pieces of essential information
+	# look like a rendering error. This stable 8px gutter clears Controls'
+	# 12..70px rectangle while keeping the objective in the player's first scan
+	# area after a transition.
 func _build_route_objective_ui() -> void:
 	route_objective_panel = PanelContainer.new()
 	route_objective_panel.name = "RouteObjectivePanel"
 	route_objective_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	route_objective_panel.offset_left = -290.0
 	route_objective_panel.offset_right = 290.0
-	route_objective_panel.offset_top = 12.0
-	route_objective_panel.offset_bottom = 52.0
+	route_objective_panel.offset_top = 78.0
+	route_objective_panel.offset_bottom = 118.0
 	var objective_style := StyleBoxFlat.new()
 	objective_style.bg_color = Color(0.02, 0.11, 0.16, 0.9)
 	objective_style.border_color = Color(0.3, 0.75, 0.9, 0.85)
