@@ -47,6 +47,38 @@ while (Date.now() - t0 < budget) {
   await page.waitForTimeout(1000);
 }
 
+// Use a pristine browser context and the normal title route: no review query
+// parameter, no saved slot, and no DOM shortcut. This catches a Firefox-only
+// canvas-focus regression before reviewers discover that New Game is visible
+// but cannot actually receive their input.
+const titleSignature = await page.evaluate(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return null;
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 36;
+  const ctx = g.getContext('2d');
+  ctx.drawImage(c, 0, 0, 64, 36);
+  const d = ctx.getImageData(0, 0, 64, 36).data;
+  let total = 0;
+  for (let i = 0; i < d.length; i += 4) total += d[i] + d[i + 1] + d[i + 2];
+  return total;
+});
+await page.mouse.click(640, 366);
+await page.waitForTimeout(1500);
+const focusAndHandoff = await page.evaluate(before => {
+  const c = document.querySelector('canvas');
+  if (!c) return { focused: false, changed: false };
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 36;
+  const ctx = g.getContext('2d');
+  ctx.drawImage(c, 0, 0, 64, 36);
+  const d = ctx.getImageData(0, 0, 64, 36).data;
+  let total = 0;
+  for (let i = 0; i < d.length; i += 4) total += d[i] + d[i + 1] + d[i + 2];
+  return { focused: document.activeElement === c, changed: before !== null && Math.abs(total - before) > 25000 };
+}, titleSignature);
+await page.keyboard.press('w');
+
 // where did the time go? download, compile, or the first frame after that
 const timing = await page.evaluate(() => {
   const out = {};
@@ -61,9 +93,18 @@ const timing = await page.evaluate(() => {
   return out;
 }).catch(() => ({}));
 console.log('resources ' + JSON.stringify(timing));
+console.log('input     ' + JSON.stringify(focusAndHandoff));
 await page.screenshot({ path: out });
 if (errors.length) console.log('console   ' + errors.slice(0, 4).join(' | '));
 await browser.close();
 
 if (!drew) { console.log(`FIREFOX: never drew within ${budget / 1000}s`); process.exit(1); }
+if (!focusAndHandoff.focused || !focusAndHandoff.changed) {
+  console.log('FIREFOX: normal-entry New Game did not take canvas focus and visibly leave title');
+  process.exit(1);
+}
+if (errors.some(error => /Failed to load worklet module script/.test(error))) {
+  console.log('FIREFOX: deployed audio worklet failed to load');
+  process.exit(1);
+}
 console.log(`FIREFOX: first drawn frame after ${(drew / 1000).toFixed(1)}s`);
