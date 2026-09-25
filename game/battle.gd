@@ -2511,7 +2511,12 @@ func _first_fight_prompt() -> void:
 	if _first_fight_prompt_shown:
 		return
 	_first_fight_prompt_shown = true
-	await _tutorial_show_step("While exploring the deep, random encounters like this one with deep sea enemies can occur at any time")
+	# The first playable route is deliberately authored and protected so a new
+	# player can reach its lessons without an unrelated interruption.  Do not
+	# tell them random fights are possible "at any time": that was once true
+	# of free exploration, but it contradicts the route they enter after this
+	# tutorial and makes the next safety guarantee sound broken before it starts.
+	await _tutorial_show_step("This practice fight teaches combat. The guided route ahead is protected, so follow the beacon without random interruptions.")
 
 # One-shot: circles the turn-order bar in red, folds Combat Basics in with
 # the turn-order explanation (one combined caption instead of two the
