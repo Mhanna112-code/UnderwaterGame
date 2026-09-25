@@ -29,7 +29,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Special Encounters",
-		"body": "Sonar (Q, Maxilani's passive) is the only way these are found - nothing is visible from a distance until sonar actually reveals it. Trigger one and you send in exactly one diver, alone, to survive a short timed challenge built around THEIR ability specifically (see the 'Choose who goes' screen for what each one plays like). Clear it flawlessly - nothing gets through at all - and the enemy's closing swing is guaranteed to miss instead of being a separate roll. Losing costs nothing permanent: a diver who falls here washes back out at the HP they went in with. Wins pay out either a key item or a temporary Attack/Defense boost that lasts the rest of whatever fight you use it in.",
+		"body": "Sonar (Q, Maxilani's passive) can reveal nearby optional special sites. It is never required for the critical beacon route. Triggering a site lets you send in exactly one diver, alone, for a short timed challenge built around that diver's ability; the Optional Guardian Challenge screen lets you review controls or Leave first. Clear it flawlessly - nothing gets through at all - and the enemy's closing swing is guaranteed to miss instead of being a separate roll. Losing costs nothing permanent: a diver who falls here washes back out at the HP they went in with. Wins pay out either a key item or a temporary Attack/Defense boost that lasts the rest of whatever fight you use it in.",
 	},
 	{
 		"title": "Getting Around",

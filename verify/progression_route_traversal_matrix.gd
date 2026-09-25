@@ -114,7 +114,10 @@ func _exercise_live_leg(beat_index: int, approach: float) -> void:
 	if is_preview:
 		_expect(world.battle == null and world.route.phase == RouteProgression.PHASE_COMPLETE and world.route_transition_card.visible and world.route_transition_card.body_text().contains("no boss fight begins"),
 			"ROUTE BOUNDARY: %s from %s approach did not reach the explicit no-boss preview" % [String(beat.id), approach_label])
-		world.free()
+		_expect(_sonar_was_not_needed(world),
+			"ROUTE SONAR: %s from %s approach required or activated sonar on the critical path" % [String(beat.id), approach_label])
+		world.queue_free()
+		await process_frame
 		return
 	_expect(world.battle != null,
 		"ROUTE REACHABILITY: %s from %s approach could not reach its live beacon trigger (player %s, target %s, %.1fm away)" % [
@@ -126,7 +129,16 @@ func _exercise_live_leg(beat_index: int, approach: float) -> void:
 			"ROUTE ROSTER: %s from %s approach opened %s instead of %s" % [
 				String(beat.id), approach_label, _enemy_ids(world.battle), beat.roster,
 			])
-	world.free()
+	_expect(_sonar_was_not_needed(world),
+		"ROUTE SONAR: %s from %s approach required or activated sonar on the critical path" % [String(beat.id), approach_label])
+	world.queue_free()
+	await process_frame
+
+func _sonar_was_not_needed(world: World) -> bool:
+	for diver_value in world.divers:
+		if (diver_value as Diver).sonar_active:
+			return false
+	return true
 
 func _prior_position(beat_index: int) -> Vector3:
 	if beat_index <= 0:
