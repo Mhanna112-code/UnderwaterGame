@@ -28,6 +28,7 @@ var _route_beacon: Beacon
 var _route_trigger: Area3D
 var _route_battle_id := ""
 var _route_phase_landmarks: Node3D
+var _route_landmark: Node3D
 var route_objective_panel: PanelContainer
 var route_objective_label: Label
 var route_direction_label: Label
@@ -103,6 +104,7 @@ var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
 const AbilityOnboardingScript := preload("res://game/ability_onboarding.gd")
+const RouteLandmarkScript := preload("res://game/route_landmark.gd")
 # Top of Site._plinth(): a 0.7 high cylinder centred at y=0.35.
 const PLINTH_TOP := 0.7
 
@@ -527,6 +529,41 @@ func _on_title_open_water_playtest() -> void:
 	_banner_timer = 12.0
 	_update_hud()
 
+# Isolated visual review of the *real* Shallows capstone state.  It advances
+# RouteProgression through its two preceding authored wins rather than placing
+# a standalone prop in the world, so the review proves the landmark is wired
+# to the objective the player sees in a normal playthrough.  It writes no save.
+func _on_title_reef_passage_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	_intro_active = false
+	_first_encounter_started = true
+	_first_encounter_done = true
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	_begin_core_route_after_tutorial()
+	if route_transition_card != null and route_transition_card.visible:
+		route_transition_card.dismiss()
+	for _i in 2:
+		route.begin_active_encounter()
+		route.resolve_active_encounter("won")
+	active = 0
+	var diver := divers[active] as Diver
+	diver.velocity = Vector3.ZERO
+	diver.global_position = Vector3(55.0, 2.0, 29.5)
+	yaw = 0.0
+	pitch = -0.16
+	_attach_route_arrow_to_active()
+	if is_instance_valid(_active_cursor):
+		_active_cursor.visible = true
+	banner.text = "Shallows capstone review — the living reef passage frames this encounter. Swim through its open center."
+	_banner_timer = 0.0
+	_update_hud()
+
 func _update_open_water_playtest() -> void:
 	if not _open_water_playtest_active or _open_water_crossing_confirmed:
 		return
@@ -598,6 +635,14 @@ func _open_water_playtest_requested() -> bool:
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("open-water=1")
+	return false
+
+func _reef_passage_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--reef-passage-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("reef-passage=1")
 	return false
 
 func _maze_playtest_requested() -> bool:
@@ -845,6 +890,7 @@ func _ready() -> void:
 	title_screen.onboarding_playtest_chosen.connect(_on_title_onboarding_playtest)
 	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
 	title_screen.open_water_playtest_chosen.connect(_on_title_open_water_playtest)
+	title_screen.reef_passage_playtest_chosen.connect(_on_title_reef_passage_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -860,6 +906,8 @@ func _ready() -> void:
 		title_screen.enable_spell_playtest()
 	if _open_water_playtest_requested():
 		title_screen.enable_open_water_playtest()
+	if _reef_passage_playtest_requested():
+		title_screen.enable_reef_passage_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -2382,6 +2430,9 @@ func _refresh_route_guidance() -> void:
 	if is_instance_valid(_route_trigger):
 		_route_trigger.queue_free()
 		_route_trigger = null
+	if is_instance_valid(_route_landmark):
+		_route_landmark.queue_free()
+		_route_landmark = null
 	if not has_objective:
 		if is_instance_valid(_intro_arrow):
 			_intro_arrow.visible = false
@@ -2394,6 +2445,16 @@ func _refresh_route_guidance() -> void:
 	_route_beacon.build(route.active_position(), 0)
 	_route_beacon.set_state(Beacon.State.ONWARD)
 	add_child(_route_beacon)
+
+	# A beacon answers "where?" but it cannot make a named destination feel
+	# like a place.  Build an authored, collision-free landmark at beats that
+	# name a concrete location (currently the Shallows reef passage).  It is
+	# rebuilt with the singular active objective, so an old landmark never
+	# accidentally looks like a second route target.
+	var landmark = RouteLandmarkScript.new()
+	if landmark.build_for(route.objective_id, route.active_position()):
+		_route_landmark = landmark
+		add_child(_route_landmark)
 
 	_route_trigger = Area3D.new()
 	_route_trigger.name = "ActiveRouteTrigger"
@@ -2420,6 +2481,15 @@ func _refresh_route_guidance() -> void:
 	# and could contradict the visible post with a stale LEFT/RIGHT label.
 	if is_instance_valid(_intro_arrow):
 		_intro_arrow.visible = false
+
+# Public visual/location contract for reviewers and regression checks.  It
+# deliberately names the player-facing landmark instead of leaking mesh or
+# hierarchy details; the implementation can change as long as the Reef
+# Passage remains a readable, collision-free destination.
+func route_landmark_presentation() -> Dictionary:
+	if is_instance_valid(_route_landmark):
+		return _route_landmark.presentation()
+	return {"kind": "", "opening_width": 0.0, "collision_free": true}
 
 func _attach_route_arrow_to_active() -> void:
 	if not is_instance_valid(_intro_arrow) or divers.is_empty() or active < 0 or active >= divers.size():

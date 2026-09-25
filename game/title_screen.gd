@@ -25,6 +25,7 @@ signal special_playtest_chosen
 signal onboarding_playtest_chosen
 signal spell_playtest_chosen
 signal open_water_playtest_chosen
+signal reef_passage_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
@@ -39,6 +40,7 @@ var _onboarding_playtest_available := false
 # entries above.  It never appears in a normal first-player title flow.
 var _spell_playtest_available := false
 var _open_water_playtest_available := false
+var _reef_passage_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -174,6 +176,14 @@ func enable_open_water_playtest() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
+# Query-only visual review for the actual Shallows capstone route state.  It
+# is intentionally separate from normal New/Load so a first-time player does
+# not see internal review destinations.
+func enable_reef_passage_playtest() -> void:
+	_reef_passage_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
@@ -251,6 +261,16 @@ func _refresh_main() -> void:
 		open_water_btn.add_theme_color_override("font_color", Color(0.72, 0.92, 1.0))
 		open_water_btn.pressed.connect(open_water_playtest_chosen.emit)
 		_list.add_child(open_water_btn)
+
+	if _reef_passage_playtest_available:
+		var reef_passage_btn := Button.new()
+		reef_passage_btn.text = "Review Shallows Reef Passage"
+		reef_passage_btn.tooltip_text = "Open the real Shallows capstone destination after its two preceding route beats."
+		reef_passage_btn.custom_minimum_size = Vector2(360, 46)
+		reef_passage_btn.add_theme_font_size_override("font_size", 17)
+		reef_passage_btn.add_theme_color_override("font_color", Color(0.48, 0.96, 0.76))
+		reef_passage_btn.pressed.connect(reef_passage_playtest_chosen.emit)
+		_list.add_child(reef_passage_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save

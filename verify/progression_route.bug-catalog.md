@@ -64,6 +64,7 @@ must use the final public contract rather than private `World` flags.
 | 15 | The hosted Playwright walkthrough can stall while reading WebGL canvas pixels after the guided target step. | Verification-only — it cannot establish or refute a gameplay failure. | SwiftShader/Chromium canvas readback is an external browser boundary, while focused Godot QTE and handoff gates remain deterministic. | Harness characterization | logged; do not treat as a QTE product defect |
 | 16 | The 21-world physical traversal matrix exits green but Godot reports retained ObjectDB/physics resources during test teardown. | Verification-only — the route behavior completes, but leak warnings can hide real engine diagnostics. | The matrix intentionally disposes live battle SubViewports at arrival instead of completing each fight's usual ownership path. | Harness cleanup characterization | logged; do not treat as route reachability failure |
 | 17 | A collision-only extension of the optional highway blockade cuts across open water outside its visible lane, so party members can be separated by an apparently world-spanning invisible wall. | High — free swimming looks broken and a player cannot reunite the party or explore naturally. | `CrackedWall.collision_width` was enlarged to 60 m to prevent bypassing a legacy corridor, while its visible rocks remain only 8 m wide. | Captured physics integration | fixed; covered by `verify/open_water_blockade.gd` |
+| 18 | The objective says “secure the reef passage,” but the destination is only a generic beacon in empty water—or decorative reef geometry closes the route like a wall. | High — the route has no environmental meaning, or repeats the invisible-barrier failure at its first capstone. | The progression layer previously built exactly one generic beacon for every beat, and route art is created independently of collision/movement code. | Captured contract plus physical traversal | fixed; covered by `verify/route_landmark.gd` |
 
 ## Test plan
 
@@ -231,6 +232,26 @@ must use the final public contract rather than private `World` flags.
     rule is that open water beside a visible obstacle remains traversable;
     implementation and node names can change freely.
 
+### Bug #18 — named reef passage is an empty beacon or a blocked prop
+
+- **Test type:** captured visual-location contract plus physical traversal.
+- **Description string** (will appear in test runner output):
+  > `route landmark: the Shallows capstone is a readable reef passage with a physically open centre — guards against an anonymous beacon destination or decorative geometry becoming another invisible barrier`
+- **What it catches:** a route regression that removes the named capstone
+  landmark, narrows its player-facing opening below the declared 8 m design
+  width, or adds collision that prevents a production Diver from passing
+  through the center.
+- **First run:** the initial test exposed a test-direction error (`Vector3.FORWARD`
+  is Godot -Z), not a product failure. It was corrected to swim shallow-to-deep
+  along +Z. The green test then verified the live capstone World state.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? **No.** It requires the public
+    landmark contract to call the location a `reef_passage`, then moves an
+    actual Diver across its center through `move_and_slide()`.
+  - Could this fail under a behavior-preserving refactor? **No.** The test does
+    not know the mesh hierarchy, material names, or helper functions; those
+    can change freely while the named place and traversable opening remain.
+
 ## Skipped
 
 - Final Octopus balance — deferred until its finished rig/attacks are delivered;
@@ -242,6 +263,10 @@ must use the final public contract rather than private `World` flags.
 - Exact beacon colour/font/pulse timing — cosmetic until a human visual review
   identifies a clarity failure; route visibility and objective singularity are
   the behavioural contract.
+- Final bespoke coral FBX/textures — this slice uses authored low-poly
+  reef/bioluminescent composition so the route has a location now. Replace it
+  later only when a final environment asset package is delivered; that art
+  swap must preserve the landmark’s named, collision-free passage contract.
 
 ## Post-write evaluation
 
