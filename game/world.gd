@@ -554,7 +554,10 @@ func _on_title_reef_passage_playtest() -> void:
 	active = 0
 	var diver := divers[active] as Diver
 	diver.velocity = Vector3.ZERO
-	diver.global_position = Vector3(55.0, 2.0, 29.5)
+	# Start far enough back to inspect the whole gateway silhouette—the normal
+	# route approaches from this direction too—rather than spawning inside its
+	# foreground dressing where a reviewer can only see isolated pieces.
+	diver.global_position = Vector3(55.0, 2.0, 14.0)
 	yaw = 0.0
 	pitch = -0.16
 	_attach_route_arrow_to_active()

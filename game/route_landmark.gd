@@ -45,8 +45,9 @@ func _build_reef_passage() -> void:
 	# 8 m opening contract, and it remains mesh-only so what the eye calls a
 	# passage cannot secretly be a wall.
 	_build_coral_arch()
-	_add_glow(Vector3(-4.1, 3.6, 0.15), Color(0.12, 0.85, 0.60), 0.65, 5.2)
-	_add_glow(Vector3(4.1, 3.6, 0.15), Color(0.98, 0.40, 0.22), 0.55, 4.6)
+	_add_glow(Vector3(-4.1, 3.6, 0.15), Color(0.12, 0.85, 0.60), 1.3, 7.0)
+	_add_glow(Vector3(4.1, 3.6, 0.15), Color(0.98, 0.40, 0.22), 1.15, 7.0)
+	_add_glow(Vector3(0.0, 4.6, 1.2), Color(0.20, 0.72, 0.66), 1.4, 10.0)
 
 	# An invisible semantic marker makes the portal's intended center easy for
 	# map/review consumers to identify without ever becoming a physics body.
@@ -97,11 +98,11 @@ func _build_coral_arch() -> void:
 	# gameplay distance. The slight vertical stagger makes it organic while
 	# still leaving a clean, unmistakable central passage below.
 	_add_rock("ReefArchLeft", Vector3(-2.85, 4.72, 0.0), Vector3(3.35, 1.25, 1.72),
-		Color(0.11, 0.34, 0.31))
+		Color(0.19, 0.53, 0.45), 0.30)
 	_add_rock("ReefArchCenter", Vector3(0.0, 5.12, -0.06), Vector3(3.80, 1.50, 1.94),
-		Color(0.13, 0.39, 0.34))
+		Color(0.22, 0.60, 0.50), 0.34)
 	_add_rock("ReefArchRight", Vector3(2.85, 4.72, 0.0), Vector3(3.35, 1.25, 1.72),
-		Color(0.10, 0.31, 0.30))
+		Color(0.18, 0.49, 0.43), 0.30)
 	# Uneven coral growth brings the route accent colours over the *gateway*,
 	# not just the flanking rocks.
 	var palette := [Color(0.12, 0.82, 0.58), Color(0.95, 0.40, 0.21), Color(0.61, 0.34, 0.78)]
@@ -121,7 +122,8 @@ func _build_coral_arch() -> void:
 		knot.material_override = _material(palette[i % palette.size()], 0.48)
 		add_child(knot)
 
-func _add_rock(node_name: String, at: Vector3, scale_by: Vector3, color: Color) -> void:
+func _add_rock(node_name: String, at: Vector3, scale_by: Vector3, color: Color,
+		emission_energy := 0.0) -> void:
 	var rock := MeshInstance3D.new()
 	rock.name = node_name
 	var mesh := SphereMesh.new()
@@ -132,7 +134,7 @@ func _add_rock(node_name: String, at: Vector3, scale_by: Vector3, color: Color) 
 	rock.mesh = mesh
 	rock.position = at
 	rock.scale = scale_by
-	rock.material_override = _material(color, 0.0)
+	rock.material_override = _material(color, emission_energy)
 	add_child(rock)
 
 func _add_cylinder(node_name: String, at: Vector3, top_radius: float, bottom_radius: float,
