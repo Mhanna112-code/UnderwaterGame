@@ -38,9 +38,11 @@ func _build_reef_passage() -> void:
 	for side in [-1.0, 1.0]:
 		_build_buttress(side)
 
-	# A half-buried torus becomes a readable living arch rather than two
-	# disconnected sticks. Its inner diameter is wider than the public 8 m
-	# opening contract, and it remains mesh-only so what the eye calls a
+	# The roof is deliberately built out of large, overlapping reef shelves,
+	# not a thin procedural ring. From the player's normal water-level camera
+	# it reads as a place they can swim *through*: a heavy coral-and-stone
+	# gateway over two anchored sides. Its visual span is wider than the public
+	# 8 m opening contract, and it remains mesh-only so what the eye calls a
 	# passage cannot secretly be a wall.
 	_build_coral_arch()
 	_add_glow(Vector3(-4.1, 3.6, 0.15), Color(0.12, 0.85, 0.60), 0.65, 5.2)
@@ -91,24 +93,19 @@ func _build_buttress(side: float) -> void:
 		add_child(fan)
 
 func _build_coral_arch() -> void:
-	var arch := MeshInstance3D.new()
-	arch.name = "LivingReefArch"
-	var ring := TorusMesh.new()
-	ring.inner_radius = REEF_OPENING_WIDTH * 0.56
-	ring.outer_radius = REEF_OPENING_WIDTH * 0.68
-	ring.ring_segments = 10
-	ring.rings = 32
-	arch.mesh = ring
-	arch.position = Vector3(0.0, 0.18, 0.0)
-	arch.rotation.x = PI * 0.5
-	arch.material_override = _material(Color(0.12, 0.45, 0.37), 0.18)
-	add_child(arch)
-	# Uneven coral growth breaks the manufactured-ring silhouette and brings
-	# the repeated accent colours up over the actual gateway.
+	# A broad three-piece reef lintel is much more legible than a thin ring at
+	# gameplay distance. The slight vertical stagger makes it organic while
+	# still leaving a clean, unmistakable central passage below.
+	_add_rock("ReefArchLeft", Vector3(-2.85, 4.72, 0.0), Vector3(3.35, 1.25, 1.72),
+		Color(0.11, 0.34, 0.31))
+	_add_rock("ReefArchCenter", Vector3(0.0, 5.12, -0.06), Vector3(3.80, 1.50, 1.94),
+		Color(0.13, 0.39, 0.34))
+	_add_rock("ReefArchRight", Vector3(2.85, 4.72, 0.0), Vector3(3.35, 1.25, 1.72),
+		Color(0.10, 0.31, 0.30))
+	# Uneven coral growth brings the route accent colours over the *gateway*,
+	# not just the flanking rocks.
 	var palette := [Color(0.12, 0.82, 0.58), Color(0.95, 0.40, 0.21), Color(0.61, 0.34, 0.78)]
-	var radius := REEF_OPENING_WIDTH * 0.62
-	for i in range(9):
-		var angle := PI - PI * float(i) / 8.0
+	for i in range(11):
 		var knot := MeshInstance3D.new()
 		knot.name = "ArchCoralGrowth"
 		var mesh := SphereMesh.new()
@@ -117,8 +114,10 @@ func _build_coral_arch() -> void:
 		mesh.radial_segments = 7
 		mesh.rings = 4
 		knot.mesh = mesh
-		knot.position = Vector3(cos(angle) * radius, 0.18 + sin(angle) * radius, 0.15 + float(i % 3) * 0.14)
-		knot.scale = Vector3(1.0, 1.25, 0.72)
+		var x := -3.55 + float(i) * 0.71
+		var y := 4.24 + (0.54 if i % 2 == 0 else 0.15)
+		knot.position = Vector3(x, y, 0.76 + float(i % 3) * 0.16)
+		knot.scale = Vector3(1.18, 1.08, 0.76)
 		knot.material_override = _material(palette[i % palette.size()], 0.48)
 		add_child(knot)
 
