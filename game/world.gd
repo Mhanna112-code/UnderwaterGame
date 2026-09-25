@@ -27,6 +27,7 @@ var route: RouteProgression
 var _route_beacon: Beacon
 var _route_trigger: Area3D
 var _route_battle_id := ""
+var route_objective_panel: PanelContainer
 var route_objective_label: Label
 var route_direction_label: Label
 var route_transition_card: RouteTransitionCard
@@ -2163,20 +2164,38 @@ func _show_intro_text() -> void:
 # logs and save notices cycle through the banner, and it is the one place a
 # player needs to look to know what to do next.
 func _build_route_objective_ui() -> void:
+	route_objective_panel = PanelContainer.new()
+	route_objective_panel.name = "RouteObjectivePanel"
+	route_objective_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	route_objective_panel.offset_left = -290.0
+	route_objective_panel.offset_right = 290.0
+	route_objective_panel.offset_top = 12.0
+	route_objective_panel.offset_bottom = 52.0
+	var objective_style := StyleBoxFlat.new()
+	objective_style.bg_color = Color(0.02, 0.11, 0.16, 0.9)
+	objective_style.border_color = Color(0.3, 0.75, 0.9, 0.85)
+	objective_style.border_width_bottom = 2
+	objective_style.set_corner_radius_all(7)
+	route_objective_panel.add_theme_stylebox_override("panel", objective_style)
+	route_objective_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	route_objective_panel.visible = false
+	$HUD.add_child(route_objective_panel)
+	var objective_margin := MarginContainer.new()
+	objective_margin.add_theme_constant_override("margin_left", 16)
+	objective_margin.add_theme_constant_override("margin_right", 16)
+	objective_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	route_objective_panel.add_child(objective_margin)
+
 	route_objective_label = Label.new()
 	route_objective_label.name = "RouteObjective"
-	route_objective_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	route_objective_label.offset_left = -280.0
-	route_objective_label.offset_right = 280.0
-	route_objective_label.offset_top = 14.0
-	route_objective_label.offset_bottom = 44.0
 	route_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	route_objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	route_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	route_objective_label.add_theme_font_size_override("font_size", 20)
+	route_objective_label.add_theme_font_size_override("font_size", 19)
 	route_objective_label.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0))
 	route_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	route_objective_label.visible = false
-	$HUD.add_child(route_objective_label)
+	objective_margin.add_child(route_objective_label)
 
 	route_direction_label = Label.new()
 	route_direction_label.name = "RouteDirection"
@@ -2204,6 +2223,8 @@ func _refresh_route_guidance() -> void:
 	if route_objective_label == null or route == null:
 		return
 	var has_objective := route.objective_id != ""
+	if route_objective_panel != null:
+		route_objective_panel.visible = has_objective
 	route_objective_label.visible = has_objective
 	route_objective_label.text = route.objective_text if has_objective else ""
 	if is_instance_valid(_route_beacon):

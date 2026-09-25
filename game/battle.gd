@@ -116,6 +116,9 @@ var _tutorial_finale_shown := false
 var _tutorial_force_next_qte := false
 var _tutorial_flash_tween: Tween
 var _tutorial_caption: RichTextLabel
+# The QTE detail belongs to the lesson surface, not the universal level-up
+# label.  This keeps its reading order stable: lesson → live QTE → detail.
+var _tutorial_qte_detail: RichTextLabel
 # Narrative beats are keyboard-friendly, but combat is otherwise mouse-first.
 # A visible click target keeps a player from treating an Enter-only caption as
 # a frozen fight; the small pulse is deliberate affordance, not decoration.
@@ -646,6 +649,30 @@ func _row_stylebox(on: bool, color: Color = Color(1, 0, 0)) -> StyleBoxFlat:
 	if on:
 		style.border_color = color
 		style.set_border_width_all(3)
+	return style
+
+# Tutorial narration should read as one distinct surface, never as another
+# combat-log line.  Route cards intentionally keep their own navigation
+# language in route_transition_card.gd.
+func _tutorial_callout_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.025, 0.105, 0.145, 0.98)
+	style.border_color = Color(0.3, 0.75, 0.9, 0.85)
+	style.border_width_left = 4
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.set_corner_radius_all(7)
+	return style
+
+func _tutorial_continue_style(color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.border_color = Color(0.4, 0.85, 1.0, 0.9)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 12.0
+	style.content_margin_right = 12.0
 	return style
 
 # `row_panel` is one of create_stats_panel()'s returned `rows` entries (a
@@ -1423,6 +1450,10 @@ func _build_ui() -> void:
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
+	# The log is supporting evidence, not the current instruction.  Muting it
+	# lets the tutorial callout below establish a clear next action without
+	# hiding useful "whose turn" feedback.
+	log_label.add_theme_color_override("font_color", Color(0.65, 0.76, 0.8))
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
@@ -1433,6 +1464,30 @@ func _build_ui() -> void:
 	# _tutorial_prep_enemy_turn()), so tutorial fights get their own caption
 	# instead of fighting the log for space.
 	if tutorial_encounter:
+		# A lesson needs a visible boundary from the ordinary transient battle
+		# log.  Without this wrapper, instruction, log and move choices all had
+		# equal visual weight; the cyan edge makes practice guidance primary.
+		var lesson_panel := PanelContainer.new()
+		lesson_panel.add_theme_stylebox_override("panel", _tutorial_callout_style())
+		lesson_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(lesson_panel)
+		var lesson_margin := MarginContainer.new()
+		lesson_margin.add_theme_constant_override("margin_left", 14)
+		lesson_margin.add_theme_constant_override("margin_right", 14)
+		lesson_margin.add_theme_constant_override("margin_top", 10)
+		lesson_margin.add_theme_constant_override("margin_bottom", 10)
+		lesson_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lesson_panel.add_child(lesson_margin)
+		var lesson_column := VBoxContainer.new()
+		lesson_column.add_theme_constant_override("separation", 6)
+		lesson_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lesson_margin.add_child(lesson_column)
+		var lesson_eyebrow := Label.new()
+		lesson_eyebrow.text = "PRACTICE FIGHT  •  COMBAT LESSON"
+		lesson_eyebrow.add_theme_font_size_override("font_size", 12)
+		lesson_eyebrow.add_theme_color_override("font_color", Color(0.42, 0.82, 0.96))
+		lesson_eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lesson_column.add_child(lesson_eyebrow)
 		# RichTextLabel, not Label - _tutorial_show_step() below relies on
 		# BBCode ([color=yellow]highlighted[/color], the dim "press Enter"
 		# hint) actually rendering instead of showing as literal text.
@@ -1446,17 +1501,31 @@ func _build_ui() -> void:
 		# gate()) need a neutral background to actually stand out against;
 		# a yellow base made those words nearly invisible.
 		_tutorial_caption.add_theme_color_override("default_color", Color.WHITE)
+		_tutorial_caption.add_theme_font_size_override("normal_font_size", 18)
 		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.add_child(_tutorial_caption)
+		lesson_column.add_child(_tutorial_caption)
+		_tutorial_qte_detail = RichTextLabel.new()
+		_tutorial_qte_detail.bbcode_enabled = true
+		_tutorial_qte_detail.fit_content = true
+		_tutorial_qte_detail.scroll_active = false
+		_tutorial_qte_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_tutorial_qte_detail.add_theme_font_size_override("normal_font_size", 17)
+		_tutorial_qte_detail.add_theme_color_override("default_color", Color(0.8, 0.9, 0.95))
+		_tutorial_qte_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_tutorial_qte_detail.visible = false
+		lesson_column.add_child(_tutorial_qte_detail)
 		tutorial_continue_btn = Button.new()
 		tutorial_continue_btn.name = "TutorialContinue"
 		tutorial_continue_btn.text = "Continue  ·  Enter"
 		tutorial_continue_btn.tooltip_text = "Continue this tutorial caption"
 		tutorial_continue_btn.custom_minimum_size = Vector2(188, 38)
 		tutorial_continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		tutorial_continue_btn.add_theme_stylebox_override("normal", _tutorial_continue_style(Color(0.08, 0.26, 0.34, 1.0)))
+		tutorial_continue_btn.add_theme_stylebox_override("hover", _tutorial_continue_style(Color(0.12, 0.38, 0.48, 1.0)))
+		tutorial_continue_btn.add_theme_stylebox_override("pressed", _tutorial_continue_style(Color(0.05, 0.18, 0.24, 1.0)))
 		tutorial_continue_btn.visible = false
 		tutorial_continue_btn.pressed.connect(_acknowledge_tutorial_step)
-		col.add_child(tutorial_continue_btn)
+		lesson_column.add_child(tutorial_continue_btn)
 
 	# Unconditional, unlike _tutorial_caption above - a level-up can happen
 	# after ANY win, not just the tutorial fight. RichTextLabel for the same
@@ -2358,14 +2427,10 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	qte_zone.size.x = 0.15 * QTE_TRACK_WIDTH
 	qte_indicator.position.x = 0.0
 	_tutorial_caption.text = "Sometimes during an enemy's attack, a Quick Time Event shows up:"
-	# _levelup_caption reused here purely as "whatever RichTextLabel already
-	# sits right after _tutorial_caption in this column" - never in use
-	# during an actual fight (only _win() ever touches it), so borrowing it
-	# for the second half of this one caption doesn't collide with its own
-	# job. _tutorial_show_step()'s own Enter-wait, just spread across two
-	# labels with the QTE preview sandwiched between them instead of one.
-	_levelup_caption.text = "The white bar sweeps across the track, and pressing X the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[color=#7a8a94]Press Enter to continue[/color]"
-	_levelup_caption.visible = true
+	# This label shares the tutorial callout with its caption and live QTE,
+	# avoiding a scan past an unrelated level-up region for the second sentence.
+	_tutorial_qte_detail.text = "The white bar sweeps across the track, and pressing X the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[color=#7a8a94]Press Enter to continue[/color]"
+	_tutorial_qte_detail.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
 	_set_tutorial_continue_visible(true)
@@ -2373,8 +2438,8 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	while _tutorial_awaiting_enter:
 		await get_tree().process_frame
 	_set_tutorial_continue_visible(false)
-	_levelup_caption.visible = false
-	_levelup_caption.text = ""
+	_tutorial_qte_detail.visible = false
+	_tutorial_qte_detail.text = ""
 	qte_root.visible = false
 	col.remove_child(qte_root)
 	qte_normal_parent.add_child(qte_root)
