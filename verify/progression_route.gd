@@ -13,6 +13,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var route := RouteProgression.new()
+	var restored_complete := RouteProgression.new()
 	var observed_objectives: Array[String] = []
 	route.objective_changed.connect(func(id: String) -> void:
 		observed_objectives.append(id)
@@ -68,7 +69,6 @@ func _run() -> void:
 		"ROUTE FINISH: Mermaid Freak victory did not complete the delivered route")
 	_expect(route.objective_id == "",
 		"ROUTE FINISH: a deferred Octopus encounter was incorrectly exposed as playable")
-	var restored_complete := RouteProgression.new()
 	restored_complete.restore_state(route.save_state())
 	_expect(restored_complete.phase == RouteProgression.PHASE_COMPLETE and restored_complete.objective_id == "",
 		"ROUTE SAVE: a completed lab route restored as a replayable Mermaid Freak fight")
@@ -79,6 +79,11 @@ func _run() -> void:
 		push_error(finding)
 	if findings.is_empty():
 		print("progression route     public route contract and authored order hold")
+	# These routes are intentionally bare Nodes rather than children of the
+	# SceneTree. Dispose of both explicitly so a green contract gate also has a
+	# clean engine shutdown instead of leaking temporary signal/Node objects.
+	route.free()
+	restored_complete.free()
 	quit(0 if findings.is_empty() else 1)
 
 func _expect(condition: bool, finding: String) -> void:
