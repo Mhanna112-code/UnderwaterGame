@@ -103,11 +103,13 @@ func _build_coral_arch() -> void:
 	# A broad three-piece reef lintel is much more legible than a thin ring at
 	# gameplay distance. The slight vertical stagger makes it organic while
 	# still leaving a clean, unmistakable central passage below.
-	_add_rock("ReefArchLeft", Vector3(-2.85, 4.72, 0.0), Vector3(3.35, 1.25, 1.72),
+	# Keep the lintel at swimmer eye-line rather than high in the empty water:
+	# it must silhouette against the sea and read as a gateway on approach.
+	_add_rock("ReefArchLeft", Vector3(-2.85, 3.32, 0.0), Vector3(3.35, 1.25, 1.72),
 		Color(0.19, 0.53, 0.45), 0.30)
-	_add_rock("ReefArchCenter", Vector3(0.0, 5.12, -0.06), Vector3(3.80, 1.50, 1.94),
+	_add_rock("ReefArchCenter", Vector3(0.0, 3.72, -0.06), Vector3(3.80, 1.50, 1.94),
 		Color(0.22, 0.60, 0.50), 0.34)
-	_add_rock("ReefArchRight", Vector3(2.85, 4.72, 0.0), Vector3(3.35, 1.25, 1.72),
+	_add_rock("ReefArchRight", Vector3(2.85, 3.32, 0.0), Vector3(3.35, 1.25, 1.72),
 		Color(0.18, 0.49, 0.43), 0.30)
 	# Uneven coral growth brings the route accent colours over the *gateway*,
 	# not just the flanking rocks.
@@ -122,7 +124,7 @@ func _build_coral_arch() -> void:
 		mesh.rings = 4
 		knot.mesh = mesh
 		var x := -3.55 + float(i) * 0.71
-		var y := 4.24 + (0.54 if i % 2 == 0 else 0.15)
+		var y := 2.84 + (0.54 if i % 2 == 0 else 0.15)
 		knot.position = Vector3(x, y, 0.76 + float(i % 3) * 0.16)
 		knot.scale = Vector3(1.18, 1.08, 0.76)
 		knot.material_override = _material(palette[i % palette.size()], 0.48)
