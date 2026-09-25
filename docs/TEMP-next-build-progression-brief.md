@@ -210,6 +210,83 @@ state rather than assert private helper names.
 - Tests cover the move effects and zone/capstone sequencing. Manual playtests
   cover clarity, frustration, and actual boss feel.
 
+## PR #88 hosted-playtest repair plan
+
+This section converts the first complete hosted playtest into implementation
+work. It is deliberately more specific than the prototype brief above: each
+item says what was observed, the decision for the next build, the repair
+approach, and the evidence required before calling it fixed. Do not use a
+passing headless unit test as a substitute for the required browser evidence.
+
+### Preserve the evidence that worked
+
+The reviewer understood and enjoyed the short combat reading: green on the
+party side is a benefit, red on the enemy is an opening, and red on the party
+side is a cost or risk. The concise opening, contextual move hover text, and
+the live QTE explanation made the first fight understandable. Preserve this
+as the default on-ramp. Do **not** replace it with the full detailed tutorial
+or make formula-reading compulsory.
+
+Hover help is a useful enhancement, not a reason to put duplicate prose on
+every screen. Add it only where a player has a real question in the moment:
+move results/statuses, optional-special-encounter controls, and Combat Help
+entries. Every hover-only explanation must also be reachable by keyboard or
+plain visible text; a mouse tooltip may never be the sole instruction.
+
+The quick-read must also not rely on colour alone. Keep the successful green /
+red treatment, but pair every move-result colour with a short text/icon cue
+such as `Benefit`, `Opening`, or `Cost`. This preserves the fast scan for all
+players, including players on a weak display or those who do not distinguish
+the two colours easily. Verify the result remains understandable in a
+desaturated screenshot and through keyboard-only move selection.
+
+The hosted build is a product surface, not merely an export artifact. Before
+each review link is posted, cold-launch it in at least Chrome and Firefox,
+verify title → New Game receives input without an extra focus click, and
+record its build SHA in the PR. Slow first-load reporting alone is not a
+gameplay bug, but a failure to reach an interactive title screen is.
+
+### Required repair matrix
+
+| Playtest observation | Next-build decision and repair | Required automated evidence | Required human evidence |
+| --- | --- | --- | --- |
+| After Electric Touch, the tutorial stat rows were cut off below the browser viewport. | Make the battle's lesson/UI responsive: reserve a minimum visible stage band, constrain the lower panel to the usable viewport, and place optional/detail content in a scrollable or collapsible region instead of pushing mandatory content off screen. The active instruction, Continue button, move choice, and current fighter must remain visible together. | Render/inspect 1280x720 and 1920x1080 battle layouts after each tutorial caption; assert positive stage height and that the Continue button, mandatory text, and active controls are within viewport bounds. | At normal browser zoom, a fresh tester can complete the lesson without any clipped required text or hidden control. |
+| The QTE succeeded once and missed once, but both paths appeared to freeze on a blank battle screen. Pressing Enter eventually advanced without visible instruction. The dodge animation also read as a pole-spin rather than a dodge. | Treat this as a tutorial-handoff blocker. Trace the live success and miss paths at browser resolution, including the stage camera, bottom-panel height, animation selected, and input state. Keep a visibly labelled `Continue · Enter` button on any acknowledgement step; no progression may require an unseen keypress. Use a stable dodge/fallback reaction if the imported animation does not read as a dodge. | Drive the real moving QTE at production speed without injecting Enter. On both success and miss, assert the result card/button is visible, battle stage height remains positive, exactly one acknowledgement is required, and World regains movement afterward. Capture screenshots/GIF for both paths. | A first-time player can state what happened after the QTE, sees how to continue, and never interprets the screen as frozen. |
+| Combat contact felt like it froze briefly. | Instrument the transition and distinguish expected attack timing from a stalled frame. Show a visible combat-result/turn state while any deliberate delay runs; eliminate avoidable blocking work. | Record frame/transition timing around first contact and QTE resolution; fail/report any unexplained long frame or a hidden busy state. | The fight feels like a deliberate animation/turn transition, not a hang. |
+| The Frilled Shark filled half the stage and obscured Musashi. | Normalize each enemy using its visual bounding box, not only height. For elongated rigs, cap rendered horizontal extent as well as combat radius. Frame the camera from actual rendered bounds plus overhead bars, rather than the actor's capped engagement radius. | Spawn Angler, Frilled Shark, Swordfish, Urchin, and a mixed pair at 1280x720/1920x1080; assert every actor's rendered bounds and overhead bar remain inside the stage and no party actor is occluded by an enemy's body. | Screenshot the Frilled Shark fight: it reads as larger than a normal fish, but every party member, enemy name/HP, and target cursor remains readable. |
+| The first beacon was too close, and a visible beacon could coexist with an on-screen `Beacon • LEFT` label/glyph. | Place each next beacon beyond the immediate spawn/near-camera zone—target roughly 8–12 seconds of ordinary swim, then tune by playtest. The HUD direction label is fallback-only: hide it when the visible beacon bounds are on screen; use a dependable text arrow when it is not. | At each beat, measure spawn-to-objective travel time and assert exactly one guide is active. Test camera quadrants so an on-screen beacon never also emits contradictory LEFT/RIGHT/UP/DOWN text. | A tester can immediately see the next goal, but does not feel that it appeared at their feet or receive conflicting guidance. |
+| The player could be blocked approaching a beacon from one direction and had to backtrack around an unseen object. Existing traversal proof covered only the first direct leg. | Make every mandatory beacon and its trigger physically reachable from the previous beat. Move route targets/triggers away from guardian/maze/environment collision volumes, or author a clear visible corridor around them. A player must not have to discover a detour by trial and error. | For every beat, drive real collision/movement from the preceding beat through multiple approach directions; assert the actor reaches the live trigger without teleporting or emitting its body-entered signal synthetically. Include collision-shape clearance checks for beacon radius and trigger volume. | Complete the hosted route without an invisible-wall moment, backing away to find a hidden route, or guessing which obstacle is solid. |
+| Ignoring the route exposed an optional special encounter whose panels/controls were unintelligible because its ability had not been taught. | Keep it optional rather than treating it as an accidental punishment. Before entry, state that it is off-route, name the required diver/ability, show the exact input/objective, and offer `Practice controls`, `Enter challenge`, and `Leave`. Do not make its reward or failure necessary for the critical route. | Assert the prompt identifies optional status and has reachable practice/leave actions; execute the practice overlay and verify its controls are visible before the challenge starts. | A player who deliberately leaves the beacon understands why the challenge appeared and how to decline or learn it. |
+| The deeper-stat tutorial exists in Combat Help but was not discoverable during the route. | Keep detailed instruction optional, but make it discoverable at the moment it matters: a compact `Need a refresher? Combat Help` affordance on route transitions and a just-in-time Swordfish/Urchin counter card. The counter card must teach only Electric Touch→Evasion and Weaken→Defense, then return control. | Assert the Help affordance exists on shallow/deep transitions, opens the detailed lessons, and returning restores the exact route state. Assert Deep 1 identifies Swordfish/Evasion and Deep 2 identifies Urchin/Defense. | A player can find the detailed lesson without knowing it exists beforehand and can explain each counter after the contextual prompt. |
+| Shallows and Deep water looked equally bright; the route was a visually empty straight line of beacons. | Keep explicit beacons, but give the deep boundary a readable environmental change: denser fog/lower ambient range, a distinct colour/terrain silhouette, and landmarks that form one purposeful lateral dogleg per zone. The start area should not remain clearly visible from deep water, while the active beacon remains readable. This does not make maze work a dependency. | Capture fixed camera comparisons at the shallow/deep boundary; assert phase-specific environment values and route positions are not a single collinear chain. | A reviewer can tell they entered Deep water before reading the label and feels guided through a place, not sent down an empty straight ruler line. |
+| A reported deep-water Angler conflicted with the intended Swordfish-first route. | The critical route must expose its beat and battle source in player-visible copy/logging: for example, `Route encounter — Deep 1: Swordfish`. Keep guardian/special encounters explicitly labelled as optional. Do not silently assume the report was wrong; reproduce it with route state capture before closing the finding. | Every route trigger logs objective id, roster, and source; run the full physical route and assert the declared roster sequence. A random distance roll must remain suppressed while a route objective is active. | A tester can say why a fight began and whether it was the main route or optional content. |
+| The reviewer reached the lab with no usable items and then lost to 180-HP Tethys after reducing her only to 128 HP. It was unclear which checkpoint restored them. | Do not make an unvalidated Tethys fight the required completion gate. Until Glassgoat's final boss stats/encounter direction and a normal-party balance pass exist, the lab ends with a clearly labelled Mermaid Freak preview/reveal plus the temporary escape/core handoff. Keep `?boss=1` as a separate boss playtest. Reintroduce a mandatory boss only with an agreed balance target and no reliance on undisclosed items/healing loops. On any route loss, name the restored checkpoint and restore the documented state. | Add a normal-party boss simulator and a real hosted victory/defeat path before making Tethys mandatory. It must state whether items are intentionally unavailable. Loss/reload tests must assert the named checkpoint, position, route beat, party resources, and no duplicated encounter. | A tester understands whether Tethys is a preview or a winnable boss, never assumes hidden items are required, and knows exactly where/why they restarted after a loss. |
+| Character naming was not immediately legible (`Maxilani`/`Maximilian` in the recording). | Audit display names across world HUD, turn cards, tutorial copy, Combat Help, and dialogue. Do not choose a new canon name without the content owner; make the approved name consistent once confirmed. | A string-consistency test covers approved display names in the relevant UI/data sources. | A player can identify the active diver without having to infer who `Max` is. |
+
+### Verification sequence and merge gate
+
+1. Repair the tutorial layout and QTE handoff first. Do not continue a full
+   route playtest while a first-time player can reasonably believe the game
+   froze.
+2. Repair Frilled Shark sizing and camera framing, then capture a normal
+   single-enemy battle at the review resolutions.
+3. Repair/test physical traversal and guidance for **every** route beat before
+   tuning presentation; synthetic trigger signals are insufficient evidence.
+4. Add optional-content onboarding, route encounter-source labels, and
+   discoverable detailed Combat Help without replacing the successful
+   quick-read.
+5. Add the Deep-water visual/route-shape pass and run another full hosted
+   human playthrough.
+6. Keep Tethys out of the mandatory completion claim until normal-party
+   balance, loss/checkpoint behavior, and a manual hosted victory are all
+   demonstrated.
+
+The next build is merge-ready only when the first five steps have both green
+automated evidence and fresh hosted screenshots/GIF/manual evidence. Tethys
+may remain in the repository and query-string boss test, but it must be
+labelled a preview rather than represented as a completed core-route boss
+until step six is complete.
+
 ## Prototype choices that should be shown, not debated first
 
 - Exact beacon placement, route length, ordinary encounter counts, capstone
