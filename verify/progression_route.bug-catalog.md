@@ -204,6 +204,12 @@ must use the final public contract rather than private `World` flags.
 - **Bugs characterized:** the active route rejects ordinary distance rolls,
   dispatches each declared roster exactly, and preserves pre/post-capstone
   recovery through a real `SaveManager` round trip.
+- **#10 clarification:** the repaired post-QTE card no longer merely implies
+  resolution through colour or the later Continue action. Its actual success
+  and miss paths say, respectively, `Dodge succeeded — no damage taken.` and
+  `Dodge missed — the attack landed normally.` The windowed layout regression
+  asserts those phrases plus a positive stage and visible Continue at both
+  review resolutions; final hosted captures of both outcomes remain required.
 - **Still required:** browser visual acceptance. The phase/volume exclusion
   sweep is now `verify/progression_safe_spaces.gd`; the seeded
   quick-read/damage-only/skilled simulation is now
