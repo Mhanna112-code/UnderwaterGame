@@ -24,6 +24,14 @@ func _run() -> void:
 	_expect(bool(pre.get("checkpoint_before", false)),
 		"CHECKPOINT SETUP: shallow capstone did not request a pre-fight checkpoint")
 	world._secure_route_checkpoint("test pre-capstone")
+	# The loss screen is part of checkpoint recovery, not merely decoration:
+	# it must tell a defeated player the exact secured beat and full-resource
+	# consequence before the real scene-reload/save round trip below.
+	world._show_game_over()
+	var recovery_copy := world.game_over_screen.get("_detail") as Label
+	_expect(world.game_over_screen.visible and recovery_copy != null and recovery_copy.text.contains("Shallows Capstone") and recovery_copy.text.contains("full HP and O2"),
+		"LOSS RECOVERY: defeat screen did not name the secured checkpoint and full HP/O2 restoration")
+	paused = false
 	for diver_value in world.divers:
 		var stats := (diver_value as Diver).stats
 		stats.hp = 1

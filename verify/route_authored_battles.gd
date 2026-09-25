@@ -10,6 +10,10 @@ func _initialize() -> void:
 func _run() -> void:
 	for beat_value in RouteProgression.BEATS:
 		var beat := beat_value as Dictionary
+		if bool(beat.get("preview", false)):
+			_expect(not bool(beat.get("boss", false)),
+				"BOSS BOUNDARY: %s was a preview but still declared itself a mandatory boss" % String(beat.id))
+			continue
 		var roster := beat.get("roster", []) as Array
 		var battle := Battle.new()
 		battle.forced_enemy_ids = roster.duplicate()

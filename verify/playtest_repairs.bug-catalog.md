@@ -38,7 +38,7 @@ the earlier route-state suite could not prove.
 | 5 | The HUD says LEFT/RIGHT while the visible beacon is on screen, or both cues are simultaneously active. | P1: player receives contradictory navigation. Current code tests target origin, not the beacon's visible bounds. | Camera-quadrant invariant with one active guidance surface. | repaired: rendered-bound contract |
 | 6 | An optional guardian/special challenge begins without saying it is optional, what ability/controls it needs, or how to leave. | P1: an off-route experiment reads as a broken mandatory tutorial. | UI contract test for prompt labels/actions plus hosted manual minigame proof. | later UX repair |
 | 7 | The deep route presents as the same bright, collinear empty space as shallows, despite phase transition wording. | P2: depth/progression fiction and pacing fail, while state tests remain green. | Visual environment/route-shape contract plus hosted comparison. | repaired: phase presentation contract |
-| 8 | A normal critical-route loss or boss preview returns to an unnamed/incorrect checkpoint, or an unbalanced Tethys fight is represented as route completion. | P0 for the lab endpoint: player cannot tell whether failure is expected or recoverable. Boss test currently inspects moves using inflated HP, not normal play. | Checkpoint round-trip and boss-preview contract; normal-party boss simulation only once final numbers exist. | later boundary repair |
+| 8 | A normal critical-route loss or boss preview returns to an unnamed/incorrect checkpoint, or an unbalanced Tethys fight is represented as route completion. | P0 for the lab endpoint: player cannot tell whether failure is expected or recoverable. Boss test currently inspects moves using inflated HP, not normal play. | Checkpoint round-trip and boss-preview contract; normal-party boss simulation only once final numbers exist. | repaired: explicit preview + named recovery |
 | 9 | Green/red previews can be understood only by their colour, not by result wording or keyboard navigation. | P1 accessibility/regression: the core quick-read becomes inaccessible or misleading. | Semantic UI contract and desaturated hosted screenshot. | later accessibility repair |
 | 10 | A battle cannot identify whether it was a route beat, optional guardian, or other source, so a reported wrong enemy cannot be reproduced. | P1 diagnosis: route/optional content is ambiguous to player and maintainer. | Encounter-source label/log contract across all battle entry paths. | repaired: source label contract |
 
@@ -84,6 +84,21 @@ the rendered beacon's bounds and shows the readable HUD direction only when
 those bounds are off-screen. `verify/route_guidance_visibility.gd` exercises
 fully visible, partially visible, and off-screen camera cases on a real
 1280×720 SubViewport.
+
+### Bug #8 — unproven boss boundary and opaque loss recovery
+
+- **Test type:** route/battle boundary contract plus save/load round trip.
+- **Description string:**
+  > `progression route: Mermaid Freak reaches an explicit no-boss preview and a loss names its secured full-resource checkpoint — guards against an unbalanced hidden-item wall`
+- **What it catches:** a normal route arrival creates Tethys Battle before it
+  has a normal-party balance pass, or defeat hides the precise checkpoint and
+  recovery outcome that the save will apply.
+- **Repaired:** `lab_mermaid_freak` is a `preview` beat. World resolves it to
+  a labelled transition card with no Battle; the separate `?boss=1` review
+  remains intact. The physical traversal matrix covers all three approaches,
+  and route lifecycle/source gates verify no battle opens. The real checkpoint
+  round-trip now asserts the defeat screen names Shallows Capstone and its
+  full-HP/O2 recovery before recreating World from the saved checkpoint.
 
 ### Bug #10 — encounter provenance
 
@@ -136,6 +151,11 @@ fully visible, partially visible, and off-screen camera cases on a real
   stage and over all three party-body points. The test now passes at 1280×720
   and 1920×1080 after the bounded visual normalization and mesh-corner camera
   framing repair.
+
+- **#8:** the previous lab beat treated a 180-HP Tethys review battle as an
+  implied normal-route finale without normal-party victory evidence. The new
+  preview contract caught that mismatch: the physical matrix completes all
+  seven route legs while its final leg produces an explicit no-boss reveal.
 
 ### Bugs characterized
 

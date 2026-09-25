@@ -114,7 +114,7 @@ requirement for this build.
 | Deep 1 | One Swordfish. | Use Maxilani's Electric Touch to reduce Evasion, then attack. |
 | Deep 2 | One Sea Urchin. | Use Musashi's Weaken to reduce Defense, then damage it. |
 | Deep capstone | One Swordfish + one Sea Urchin, after a rest beacon. | Combine both counter-stat lessons. |
-| Lab | One authored Mermaid Freak boss when its encounter is ready. | The laboratory's danger is a memorable encounter, not another random pack. |
+| Lab | Mermaid Freak preview/reveal until a normal-party boss pass is proven. | The laboratory's danger is visible without turning an unbalanced boss into a progression wall. |
 | Escape | Octopus final boss when its delivered rig/attacks are ready. | Final encounter; no ordinary encounters can interrupt it. |
 
 Defence robots remain environmental storytelling or optional content until they
@@ -163,10 +163,11 @@ counterplay.
 
 ## Verification contract for implementation
 
-Implementation must expose a small public route-state contract (for example,
-phase, objective id, checkpoint id, encounter policy, and an
-`objective_changed` signal). Tests must consume that contract or visible UI
-state rather than assert private helper names.
+Implementation exposes `RouteProgression.public_state()`: phase, objective id
+and text, checkpoint id, encounter policy, active-encounter state, and whether
+the active beat is a preview. `objective_changed(state)` emits that same
+public state object on every visible handoff. Tests consume this contract or
+visible UI state rather than assert private helper names.
 
 | Contract | Automated proof | Human proof |
 | --- | --- | --- |
@@ -269,7 +270,7 @@ gameplay bug, but a failure to reach an interactive title screen is.
 | The deeper-stat tutorial exists in Combat Help but was not discoverable during the route. | Keep detailed instruction optional, but make it discoverable at the moment it matters: a compact `Need a refresher? Combat Help` affordance on route transitions and a just-in-time Swordfish/Urchin counter card. The counter card must teach only Electric Touch→Evasion and Weaken→Defense, then return control. | Assert the Help affordance exists on shallow/deep transitions, opens the detailed lessons, and returning restores the exact route state. Assert Deep 1 identifies Swordfish/Evasion and Deep 2 identifies Urchin/Defense. | A player can find the detailed lesson without knowing it exists beforehand and can explain each counter after the contextual prompt. |
 | Shallows and Deep water looked equally bright; the route was a visually empty straight line of beacons. | **Implemented:** Deep/Lab phase changes densify fog, lower ambient light, shift to a deeper blue, and reveal non-colliding ruin silhouettes. The route now makes a broad lateral dogleg and does not depend on maze geometry. | `verify/route_phase_presentation.gd` asserts phase-applied values, landmarks, and non-collinear route turns. Fixed-camera hosted captures still judge the art. | A reviewer can tell they entered Deep water before reading the label and feels guided through a place, not sent down an empty straight ruler line. |
 | A reported deep-water Angler conflicted with the intended Swordfish-first route. | **Implemented:** every battle now gets a visible source label at the World boundary: route labels name zone/beat/roster, while tutorial, optional guardian, and wandering entries are distinct. | `verify/route_encounter_source.gd` exercises each declared World route entry and its visible source label. The physical route matrix owns actual arrival; safe-space tests keep random rolls suppressed. | A tester can say why a fight began and whether it was the main route or optional content. |
-| The reviewer reached the lab with no usable items and then lost to 180-HP Tethys after reducing her only to 128 HP. It was unclear which checkpoint restored them. | Do not make an unvalidated Tethys fight the required completion gate. Until Glassgoat's final boss stats/encounter direction and a normal-party balance pass exist, the lab ends with a clearly labelled Mermaid Freak preview/reveal plus the temporary escape/core handoff. Keep `?boss=1` as a separate boss playtest. Reintroduce a mandatory boss only with an agreed balance target and no reliance on undisclosed items/healing loops. On any route loss, name the restored checkpoint and restore the documented state. | Add a normal-party boss simulator and a real hosted victory/defeat path before making Tethys mandatory. It must state whether items are intentionally unavailable. Loss/reload tests must assert the named checkpoint, position, route beat, party resources, and no duplicated encounter. | A tester understands whether Tethys is a preview or a winnable boss, never assumes hidden items are required, and knows exactly where/why they restarted after a loss. |
+| The reviewer reached the lab with no usable items and then lost to 180-HP Tethys after reducing her only to 128 HP. It was unclear which checkpoint restored them. | **Implemented:** the lab now ends in a clearly labelled Mermaid Freak preview/reveal; it never launches a boss fight on the normal route. `?boss=1` remains separate. The defeat screen now names the secured checkpoint and says that it restores full HP/O2. Reintroduce a mandatory boss only with agreed normal-party balance, checkpoint recovery, declared item availability, and a hosted manual victory/defeat pass. | The physical traversal matrix reaches the no-boss preview from left/center/right approaches; route/playthrough/source gates assert no battle opens. The checkpoint round-trip now checks the defeat copy plus real save/load state. A normal-party boss simulator and hosted victory/defeat path remain required before changing this boundary. | A tester understands that Tethys is a preview rather than a hidden-item wall, and knows exactly where/why they restart after a loss. |
 | Character naming was not immediately legible (`Maxilani`/`Maximilian` in the recording). | Audit display names across world HUD, turn cards, tutorial copy, Combat Help, and dialogue. Do not choose a new canon name without the content owner; make the approved name consistent once confirmed. | A string-consistency test covers approved display names in the relevant UI/data sources. | A player can identify the active diver without having to infer who `Max` is. |
 
 ### Verification sequence and merge gate

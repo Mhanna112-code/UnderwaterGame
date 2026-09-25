@@ -25,9 +25,9 @@ func _run() -> void:
 	var expected := [
 		["angler"], ["frilled_shark"], ["angler", "frilled_shark"],
 		["swordfish_duelist"], ["sea_urchin"],
-		["swordfish_duelist", "sea_urchin"], ["tethys"],
+		["swordfish_duelist", "sea_urchin"],
 	]
-	for index in range(expected.size()):
+	for index in range(RouteProgression.BEATS.size()):
 		if world.route.objective_id == "":
 			findings.append("PLAYTHROUGH %d: route completed before its expected encounter" % index)
 			break
@@ -50,6 +50,13 @@ func _run() -> void:
 		world._route_trigger.body_entered.emit(player)
 		await process_frame
 		await process_frame
+		var beat := RouteProgression.BEATS[index] as Dictionary
+		if bool(beat.get("preview", false)):
+			_expect(world.battle == null and world.route.phase == RouteProgression.PHASE_COMPLETE and world.route_transition_card.visible and world.route_transition_card.body_text().contains("no boss fight begins"),
+				"PLAYTHROUGH %d: Mermaid Freak preview created a battle or lacked its no-boss boundary card" % index)
+			world.route_transition_card.dismiss()
+			await process_frame
+			continue
 		if world.battle == null:
 			findings.append("PLAYTHROUGH %d: reaching the live beacon did not create a Battle" % index)
 			break
@@ -88,10 +95,10 @@ func _run() -> void:
 			_expect(not paused, "PLAYTHROUGH %d: transition Continue did not restore control" % index)
 
 	_expect(world.route.phase == RouteProgression.PHASE_COMPLETE and world.route.objective_id == "",
-		"PLAYTHROUGH END: Mermaid Freak victory did not complete the playable route")
+		"PLAYTHROUGH END: Mermaid Freak preview did not complete the playable route")
 	_expect(seen_rosters == [
 		"angler", "frilled_shark", "angler+frilled_shark", "swordfish_duelist",
-		"sea_urchin", "swordfish_duelist+sea_urchin", "tethys",
+		"sea_urchin", "swordfish_duelist+sea_urchin",
 	], "PLAYTHROUGH ORDER: real battle lifecycle diverged from the declared route")
 
 	for finding in findings:

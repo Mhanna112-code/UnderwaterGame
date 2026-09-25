@@ -19,13 +19,24 @@ func _run() -> void:
 		world._route_trigger.body_entered.emit(player)
 		await process_frame
 		var beat := RouteProgression.BEATS[beat_index] as Dictionary
+		if bool(beat.get("preview", false)):
+			_expect(world.battle == null,
+				"BOSS BOUNDARY: %s preview unexpectedly opened a mandatory Battle" % String(beat.id))
+			_expect(world.route.phase == RouteProgression.PHASE_COMPLETE and world.route_transition_card.visible and world.route_transition_card.body_text().contains("no boss fight begins"),
+				"BOSS BOUNDARY: %s did not show an explicit no-fight preview handoff" % String(beat.id))
+			world.queue_free()
+			await process_frame
+			continue
 		_expect(world.battle != null,
 			"ENCOUNTER SOURCE: %s did not open a battle through World" % String(beat.id))
 		if world.battle != null:
-			_expect(world.battle.encounter_source == String(beat.encounter_label),
-				"ENCOUNTER SOURCE: %s exposed '%s', expected '%s'" % [beat.id, world.battle.encounter_source, beat.encounter_label])
+			var expected_source := String(beat.encounter_label)
+			if bool(beat.get("capstone", false)):
+				expected_source += " • Checkpoint secured — party restored"
+			_expect(world.battle.encounter_source == expected_source,
+				"ENCOUNTER SOURCE: %s exposed '%s', expected '%s'" % [beat.id, world.battle.encounter_source, expected_source])
 			var label := world.battle.get("_encounter_source_label") as Label
-			_expect(label != null and label.visible and label.text == String(beat.encounter_label),
+			_expect(label != null and label.visible and label.text == expected_source,
 				"ENCOUNTER SOURCE: %s has no matching visible source label" % String(beat.id))
 		world.queue_free()
 		await process_frame

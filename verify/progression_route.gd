@@ -15,8 +15,8 @@ func _run() -> void:
 	var route := RouteProgression.new()
 	var restored_complete := RouteProgression.new()
 	var observed_objectives: Array[String] = []
-	route.objective_changed.connect(func(id: String) -> void:
-		observed_objectives.append(id)
+	route.objective_changed.connect(func(state: Dictionary) -> void:
+		observed_objectives.append(String(state.get("objective_id", "")))
 	)
 
 	_expect(route.phase == RouteProgression.PHASE_TUTORIAL,
@@ -25,6 +25,9 @@ func _run() -> void:
 		"ROUTE CONTRACT: a fresh route exposed a critical objective before tutorial completion")
 	_expect(route.encounter_policy == RouteProgression.ENCOUNTER_POLICY_AUTHORED_ONLY,
 		"ROUTE SAFETY: a fresh tutorial allowed ordinary encounters")
+	var initial_state := route.public_state()
+	_expect(initial_state.get("phase") == RouteProgression.PHASE_TUTORIAL and initial_state.get("objective_id") == "" and initial_state.get("encounter_policy") == RouteProgression.ENCOUNTER_POLICY_AUTHORED_ONLY,
+		"ROUTE STATE: public state did not expose the initial phase/objective/encounter contract")
 
 	route.start_after_tutorial()
 	_expect(route.phase == RouteProgression.PHASE_SHALLOWS,
@@ -35,6 +38,9 @@ func _run() -> void:
 		"TUTORIAL HANDOFF: the player-facing first objective changed")
 	_expect(route.active_roster() == ["angler"],
 		"AUTHORED ROSTER: shallow Angler did not resolve to one Angler")
+	var shallow_state := route.public_state()
+	_expect(shallow_state.get("phase") == RouteProgression.PHASE_SHALLOWS and shallow_state.get("objective_id") == "shallow_angler" and not bool(shallow_state.get("preview", true)),
+		"ROUTE STATE: shallow handoff did not expose one non-preview active objective")
 
 	# Losing cannot advance or consume a route fight.
 	route.begin_active_encounter()
@@ -59,6 +65,9 @@ func _run() -> void:
 			"AUTHORED ROSTER: %s had %s instead of %s" % [route.objective_id, route.active_roster(), expected_beat[1]])
 		var encounter := route.begin_active_encounter()
 		_expect(not encounter.is_empty(), "AUTHORED START: %s could not begin" % route.objective_id)
+		if String(expected_beat[0]) == "lab_mermaid_freak":
+			_expect(bool(encounter.get("preview", false)),
+				"BOSS BOUNDARY: Mermaid Freak was not marked as a non-mandatory route preview")
 		if bool(encounter.get("checkpoint_before", false)):
 			_expect(route.checkpoint_id != "", "CHECKPOINT: capstone had no pre-fight checkpoint id")
 		var result := route.resolve_active_encounter("won")
@@ -66,7 +75,7 @@ func _run() -> void:
 			_expect(route.checkpoint_id != "", "CHECKPOINT: capstone did not retain its secured checkpoint")
 
 	_expect(route.phase == RouteProgression.PHASE_COMPLETE,
-		"ROUTE FINISH: Mermaid Freak victory did not complete the delivered route")
+		"ROUTE FINISH: Mermaid Freak preview did not complete the delivered route")
 	_expect(route.objective_id == "",
 		"ROUTE FINISH: a deferred Octopus encounter was incorrectly exposed as playable")
 	restored_complete.restore_state(route.save_state())

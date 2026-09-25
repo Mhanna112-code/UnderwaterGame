@@ -93,21 +93,29 @@ func _exercise_live_leg(beat_index: int, approach: float) -> void:
 	await physics_frame
 	target = world.route.active_position()
 
+	var is_preview := bool(beat.get("preview", false))
 	var deadline := Time.get_ticks_msec() + TIMEOUT_REAL_MS
-	while world.battle == null and Time.get_ticks_msec() < deadline:
+	var arrived := false
+	while not arrived and Time.get_ticks_msec() < deadline:
 		var toward := target - player.global_position
 		toward.y = 0.0
 		world.scripted = true
 		world.scripted_dir = toward.normalized() if toward.length_squared() > 0.01 else Vector3.ZERO
 		await physics_frame
+		arrived = (world.route_transition_card != null and world.route_transition_card.visible) if is_preview else world.battle != null
 	world.scripted = false
 	world.scripted_dir = Vector3.ZERO
 
 	var approach_label := "center" if is_zero_approx(approach) else ("left" if approach < 0.0 else "right")
-	print("ROUTE TRAVERSAL MATRIX: %s / %s completed with battle=%s, distance=%.2f" % [
-		String(beat.id), approach_label, world.battle != null,
+	print("ROUTE TRAVERSAL MATRIX: %s / %s completed with battle=%s preview=%s, distance=%.2f" % [
+		String(beat.id), approach_label, world.battle != null, is_preview,
 		_horizontal_distance(player.global_position, target),
 	])
+	if is_preview:
+		_expect(world.battle == null and world.route.phase == RouteProgression.PHASE_COMPLETE and world.route_transition_card.visible and world.route_transition_card.body_text().contains("no boss fight begins"),
+			"ROUTE BOUNDARY: %s from %s approach did not reach the explicit no-boss preview" % [String(beat.id), approach_label])
+		world.free()
+		return
 	_expect(world.battle != null,
 		"ROUTE REACHABILITY: %s from %s approach could not reach its live beacon trigger (player %s, target %s, %.1fm away)" % [
 			String(beat.id), approach_label, player.global_position, target,

@@ -9,7 +9,11 @@
 class_name RouteProgression
 extends Node
 
-signal objective_changed(objective_id: String)
+# The emitted dictionary is intentionally the same public contract exposed by
+# public_state().  A UI/log/test consumer never needs to infer progression
+# from World private flags or a node name, and can record an encounter exactly
+# as the player saw it.
+signal objective_changed(state: Dictionary)
 signal phase_changed(phase_id: String)
 signal checkpoint_changed(checkpoint: String)
 
@@ -74,9 +78,13 @@ const BEATS := [
 	},
 	{
 		"id": "lab_mermaid_freak", "phase": PHASE_LAB,
-		"text": "The drowned lab — confront Mermaid Freak.", "at": Vector3(-10.0, 2.0, -45.0),
-		"encounter_label": "Route encounter — Lab: Mermaid Freak",
-		"roster": ["tethys"], "boss": true, "transition_after": "route_complete",
+		"text": "The drowned lab — investigate the Mermaid Freak.", "at": Vector3(-10.0, 2.0, -45.0),
+		"encounter_label": "Route preview — Lab: Mermaid Freak",
+		# Tethys has a finished review rig/move set but not an agreed
+		# normal-party balance target. This route beat is an explicit preview;
+		# `?boss=1` remains the separate combat playtest until that target and
+		# a human victory/defeat pass exist.
+		"roster": ["tethys"], "preview": true, "transition_after": "route_complete",
 	},
 ]
 
@@ -89,6 +97,20 @@ var encounter_policy := ENCOUNTER_POLICY_AUTHORED_ONLY
 var _beat_index := -1
 var _encounter_active := false
 var _pending_transition_id := ""
+
+# Stable, deliberately small public state for route UI, telemetry and tests.
+# Do not expose `_beat_index`: it is an implementation detail and callers only
+# need the named objective/checkpoint/policy they can report to a player.
+func public_state() -> Dictionary:
+	return {
+		"phase": phase,
+		"objective_id": objective_id,
+		"objective_text": objective_text,
+		"checkpoint_id": checkpoint_id,
+		"encounter_policy": encounter_policy,
+		"encounter_active": _encounter_active,
+		"preview": bool(active_beat().get("preview", false)),
+	}
 
 func start_after_tutorial() -> void:
 	if _beat_index >= 0:
@@ -127,6 +149,7 @@ func begin_active_encounter() -> Dictionary:
 		"id": objective_id,
 		"roster": active_roster(),
 		"boss": bool(beat.get("boss", false)),
+		"preview": bool(beat.get("preview", false)),
 		"enemy_modifiers": active_enemy_modifiers(),
 		"checkpoint_before": is_checkpoint,
 	}
@@ -146,7 +169,7 @@ func resolve_active_encounter(result: String) -> Dictionary:
 		phase_changed.emit(phase)
 		objective_id = ""
 		objective_text = ""
-		objective_changed.emit(objective_id)
+		objective_changed.emit(public_state())
 	else:
 		_set_beat(_beat_index + 1)
 	return {
@@ -184,7 +207,7 @@ func restore_state(saved: Dictionary) -> void:
 		objective_id = ""
 		objective_text = ""
 		phase_changed.emit(phase)
-		objective_changed.emit(objective_id)
+		objective_changed.emit(public_state())
 		return
 	_set_beat(saved_index)
 
@@ -197,7 +220,7 @@ func _set_beat(index: int) -> void:
 		phase_changed.emit(phase)
 	objective_id = String(beat.get("id", ""))
 	objective_text = String(beat.get("text", ""))
-	objective_changed.emit(objective_id)
+	objective_changed.emit(public_state())
 
 func _set_checkpoint(id: String) -> void:
 	if id == "" or checkpoint_id == id:

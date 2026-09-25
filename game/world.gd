@@ -562,7 +562,16 @@ func _show_game_over() -> void:
 	$HUD.visible = false
 	title_screen.close()
 	get_tree().paused = true
-	game_over_screen.open()
+	game_over_screen.open(_checkpoint_restart_detail())
+
+# Loss is deliberately punitive only inside the fight. The defeat screen must
+# make the campaign-layer recovery legible before the player presses Restart:
+# they need to know both which checkpoint will load and that HP/O2 return.
+func _checkpoint_restart_detail() -> String:
+	if route == null or route.checkpoint_id == "":
+		return "Restart restores your most recent save point."
+	var checkpoint_name := route.checkpoint_id.replace("_", " ").capitalize()
+	return "Checkpoint secured: %s\nRestart restores this route beat with full HP and O2." % checkpoint_name
 
 func _on_game_over_restart() -> void:
 	_restart_slot = _current_slot
@@ -2209,7 +2218,7 @@ func _build_route_objective_ui() -> void:
 	route_direction_label.visible = false
 	$HUD.add_child(route_direction_label)
 
-func _on_route_objective_changed(_objective: String) -> void:
+func _on_route_objective_changed(_state: Dictionary) -> void:
 	_refresh_route_guidance()
 
 func _on_route_phase_changed(_phase: String) -> void:
@@ -2478,6 +2487,15 @@ func _on_route_triggered(body: Node3D) -> void:
 	_route_battle_id = String(encounter.get("id", ""))
 	if bool(encounter.get("checkpoint_before", false)):
 		_secure_route_checkpoint("Checkpoint secured before the %s encounter." % _route_battle_id.replace("_", " "))
+	# The lab reveal is intentionally a non-combat preview. Tethys has a
+	# separate ?boss=1 review path, but no normal-party balance/checkpoint
+	# recovery evidence yet; silently launching that fight would turn an
+	# unfinished asset into a mandatory route blocker.
+	if bool(encounter.get("preview", false)):
+		route.resolve_active_encounter("won")
+		_route_battle_id = ""
+		_show_route_transition("Mermaid Freak preview", "[b]Route preview — no boss fight begins.[/b]\n\nThe Mermaid Freak is revealed in the drowned lab, but its normal-party balance and checkpoint recovery are still under review. The separate boss playtest remains optional.\n\n[b]Checkpoint secured: Deep Capstone — party restored.[/b]")
+		return
 	_start_battle("", bool(encounter.get("boss", false)), "angler", divers, false, false, encounter.get("roster", []) as Array, encounter.get("enemy_modifiers", []) as Array)
 
 func _secure_route_checkpoint(message: String) -> void:
@@ -2698,6 +2716,8 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.tutorial_encounter = tutorial
 	if _route_battle_id != "" and route != null:
 		battle.encounter_source = route.active_encounter_label()
+		if route.is_capstone():
+			battle.encounter_source += " • Checkpoint secured — party restored"
 	elif tutorial:
 		battle.encounter_source = "Tutorial encounter — Angler practice"
 	elif special:
@@ -2815,13 +2835,13 @@ func _on_battle_finished(result: String) -> void:
 				_secure_route_checkpoint("Checkpoint secured after the %s encounter." % _route_battle_id.replace("_", " "))
 			var transition := String(route_result.get("transition_id", ""))
 			if transition == "deep_descent":
-				_show_route_transition("Deeper water", "[b]Next threat: Swordfish.[/b] It is evasive. Use [color=#78d6f2]Electric Touch[/color] to create an [color=#65d98a]Opening: enemy EVA falls[/color], then attack. Full move detail is optional in Combat Help.", true)
+				_show_route_transition("Deeper water", "[b]Checkpoint secured — party restored.[/b]\n\n[b]Next threat: Swordfish.[/b] It is evasive. Use [color=#78d6f2]Electric Touch[/color] to create an [color=#65d98a]Opening: enemy EVA falls[/color], then attack. Full move detail is optional in Combat Help.", true)
 			elif _route_battle_id == "deep_swordfish":
 				_show_route_transition("Counter cue", "[b]Next threat: Sea Urchin.[/b] Its shell resists raw damage. Use [color=#78d6f2]Weaken[/color] to create an [color=#65d98a]Opening: enemy DEF falls[/color], then attack.", true)
 			elif transition == "lab_arrival":
-				_show_route_transition("The drowned lab", "You reached the final playable encounter. This framing is temporary while final cutscenes and the Octopus escape remain deferred.")
+				_show_route_transition("The drowned lab", "[b]Checkpoint secured — party restored.[/b]\n\nInvestigate the Mermaid Freak reveal ahead. This is a preview, not a mandatory boss fight, while final balance and recovery testing remain deferred.")
 			elif transition == "route_complete":
-				_show_route_transition("Playable route complete", "Mermaid Freak has been defeated. The Octopus escape is intentionally not present until its completed model and authored attacks arrive.")
+				_show_route_transition("Playable route complete", "The Mermaid Freak preview is complete. The Octopus escape is intentionally not present until its completed model and authored attacks arrive.")
 		_route_battle_id = ""
 	_pending_reward_item = ""
 	if was_special and result == "won":
