@@ -8,6 +8,8 @@ are `game/world.gd` (2,742 lines), `verify/encounters.gd` (210 lines),
 route implementation and is now covered by `verify/progression_route.gd`,
 `verify/tutorial_ability_onboarding.gd`, `verify/route_authored_battles.gd`,
 `verify/progression_checkpoint.gd`, and `verify/sea_urchin_route_actor.gd`.
+`verify/tutorial_forward_entry.gd` additionally pins the first physical
+movement decision from the default title start.
 
 ## What this suite does
 
@@ -57,6 +59,7 @@ must use the final public contract rather than private `World` flags.
 | 10 | A completed tutorial QTE leaves its battle stage blank/collapsed or its required Continue control outside the browser viewport. | High — a newcomer reasonably concludes the game froze. | The QTE test injected Enter and never inspected post-QTE browser geometry; the hosted playtest reproduced both success and miss failures. | Captured layout integration | covered by windowed `verify/tutorial_qte_handoff_layout.gd` |
 | 11 | A horizontally posed enemy renders outside the stage or covers player-controlled fighters while the camera frames only its smaller gameplay radius. | High — Frilled Shark makes combat actors and target choice unreadable. | The imported shark is about 6.7× wider than tall; height-only scale and the radius cap intentionally diverge. | Captured visual-bounds integration | covered by windowed `verify/frilled_shark_framing.gd` |
 | 12 | A later World route transition pushes its required Continue control or optional Combat Help outside a browser viewport even though the first handoff fits. | High — a player reads the route as frozen after an otherwise successful fight. | Each route card has distinct copy and an optional action; headless dismissal alone does not measure final Control bounds. | Captured layout integration | covered by windowed `verify/route_transition_layout.gd`; hosted evidence pending |
+| 13 | The first visible tutorial beam starts sideways from the default heading, so a new player can swim with normal input and never reach the fight. | High — the first meaningful interaction looks broken before combat begins. | The beam was placed at +X while default W input travels +Z; a browser run exposed that the old lateral-key assumption was not reproducible. | Captured physics integration plus hosted browser check | fixed by forward placement; covered by `verify/tutorial_forward_entry.gd` |
 
 ## Test plan
 
@@ -184,6 +187,26 @@ must use the final public contract rather than private `World` flags.
     emits `body_entered`, calls the route dispatch helper, or teleports the
     diver; it only observes the player-visible result of swimming.
 
+### Bug #13 — first tutorial destination is sideways from default movement
+
+- **Test type:** captured bug / physics integration.
+- **Description string** (will appear in test runner output):
+  > `tutorial forward entry: default forward swimming reaches the visible light-beam tutorial — guards against a lateral/hidden first objective`
+- **What it catches:** a change that moves the opening beam out of the
+  default W direction, breaks its trigger, or makes production swimming stop
+  short before the tutorial battle.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? **No.** It starts a clean
+    production World, drives its normal swim/update path from the title flow,
+    and requires a live `tutorial_encounter` Battle rather than a position or
+    helper-call assertion.
+  - Could this fail under a behavior-preserving refactor? **No.** It does not
+    inspect beam coordinates or call a trigger; only the player-observable
+    result of forward swimming matters.
+  - **Input generator:** not applicable. This pins the one default heading a
+    fresh keyboard player is shown at the cold start; later camera headings
+    are covered by hosted/manual navigation review.
+
 ## Skipped
 
 - Final Octopus balance — deferred until its finished rig/attacks are delivered;
@@ -229,3 +252,10 @@ must use the final public contract rather than private `World` flags.
   values that combat resolves. The semantic line is verified in real
   1280×720 and 1920×1080 combat layouts; a desaturated hosted screenshot is
   still required as final visual evidence.
+- **#13:** the new forward-entry regression first failed when the probe used
+  Godot's negative-Z `Vector3.FORWARD` constant rather than the positive-Z
+  direction mapped by the displayed W key. It caught a real contract hazard
+  in the test, not a product regression. After pinning that public W mapping
+  as `Vector3.BACK`, the production World reaches the live tutorial battle
+  inside eight seconds. Hosted browser evidence remains required before this
+  repair is accepted visually.

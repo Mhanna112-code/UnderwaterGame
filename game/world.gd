@@ -2111,7 +2111,12 @@ void fragment() {
 	# This runs during World._ready(), while its new Diver children may not
 	# yet be inside the scene tree. Their local position is already valid;
 	# querying global_position here emits an engine error in headless checks.
-	light_beam.position.x = d.position.x + 10
+	# Begin the very first goal directly along the default forward swim axis.
+	# The world camera remains freely steerable; this only means a newcomer can
+	# follow the visible beam with W instead of first having to infer a lateral
+	# strafe from a side-on landmark. The physical trigger remains the rendered
+	# column itself, so the player still learns ordinary movement before combat.
+	light_beam.position = d.position + Vector3(0, beam_height * 0.5, 10)
 	add_child(light_beam)
 
 # A one-shot marker that points at the light beam (render_light_beam()) from
