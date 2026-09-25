@@ -14,8 +14,12 @@ import path from 'path';
 
 const url = process.argv[2];
 const outDir = process.argv[3] || '/tmp/normal-entry-walkthrough';
-const approachMs = Number(process.argv[4] || 1200);
-const movementKey = process.argv[5] || 'KeyA';
+// A fresh title start now places the tutorial beam directly along W.  The
+// previous default A/1.2-second probe could leave the player beside the beam
+// and still publish a screenshot, which proved only that a canvas rendered,
+// not that a newcomer can enter the first fight.
+const approachMs = Number(process.argv[4] || 6000);
+const movementKey = process.argv[5] || 'KeyW';
 if (!url) throw new Error('usage: normal_entry_walkthrough.mjs <public-url> <out-dir>');
 fs.mkdirSync(outDir, { recursive: true });
 
