@@ -57,6 +57,10 @@ var guardian_encounter := false
 # packs roll their own Angler/Swordfish roster independently; this only pins
 # the one visible artifact defender, so exploration never randomizes a reward.
 var guardian_enemy_id := "angler"
+# A route encounter supplies its exact roster.  Empty preserves ordinary,
+# guardian, special, tutorial, and boss behavior; a non-empty list prevents
+# encounter count/roster rolls from leaking into authored progression.
+var forced_enemy_ids: Array = []
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -1034,7 +1038,7 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
+	var count := forced_enemy_ids.size() if not forced_enemy_ids.is_empty() else (1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter))
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -1069,7 +1073,9 @@ func _build_stage() -> void:
 		# lesson's visible Angler identity. Guardian identity remains its own
 		# explicit branch below; only the authored tutorial contract is pinned.
 		var g: Goblin
-		if tutorial_encounter:
+		if not forced_enemy_ids.is_empty():
+			g = _actor_for_enemy_id(String(forced_enemy_ids[i]))
+		elif tutorial_encounter:
 			g = _actor_for_enemy_id("angler")
 		elif guardian_encounter:
 			g = _guardian_actor()
@@ -1120,6 +1126,8 @@ func _actor_for_enemy_id(enemy_id: String) -> Goblin:
 		return SwordDuelist.new()
 	if enemy_id == "frilled_shark":
 		return FrilledShark.new()
+	if enemy_id == "sea_urchin":
+		return SeaUrchin.new()
 	return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel

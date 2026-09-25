@@ -20,6 +20,17 @@ var divers: Array = []
 var active := 0
 var _intro_arrow: MeshInstance3D
 
+# The critical path is intentionally separate from the older optional item
+# sites.  RouteProgression is the public state contract; the World-side nodes
+# below are just its one visible beacon, one proximity trigger, and UI.
+var route: RouteProgression
+var _route_beacon: Beacon
+var _route_trigger: Area3D
+var _route_battle_id := ""
+var route_objective_label: Label
+var route_direction_label: Label
+var route_transition_card: RouteTransitionCard
+
 # Gates TAB/random-encounters and holds the camera on the light beam from
 # the moment the world loads until the active diver actually reaches it -
 # see intro_arrow(), _show_intro_text(), render_light_beam(), and
@@ -261,6 +272,7 @@ func _serialize_state() -> Dictionary:
 		"key_items": key_items.duplicate(),
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
+		"route": route.save_state() if route != null else {},
 		"divers": divers_data,
 	}
 
@@ -321,6 +333,8 @@ func _load_save() -> void:
 	revealed_key_items.assign((data.get("revealed_key_items", []) as Array).duplicate())
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
+	if route != null:
+		route.restore_state(data.get("route", {}) as Dictionary)
 	# _build_item_guardians() has already constructed the fresh physical
 	# sites by the time a title-screen load reaches here.  A key item from the
 	# save therefore has to retire its newly constructed guardian immediately:
@@ -349,6 +363,7 @@ func _load_save() -> void:
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
+	_refresh_route_guidance()
 
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
@@ -682,6 +697,7 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
+	_build_route_objective_ui()
 
 	minimap = MiniMap.new()
 	minimap.world = self
@@ -722,6 +738,11 @@ func _ready() -> void:
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
+	route = RouteProgression.new()
+	route.name = "RouteProgression"
+	route.objective_changed.connect(_on_route_objective_changed)
+	route.phase_changed.connect(_on_route_phase_changed)
+	add_child(route)
 	render_light_beam()
 	intro_arrow()
 	_show_intro_text()
@@ -782,6 +803,9 @@ func _ready() -> void:
 	title_layer.add_child(tutorial_result_popup)
 	ability_onboarding = AbilityOnboardingScript.new() as Control
 	title_layer.add_child(ability_onboarding)
+	route_transition_card = RouteTransitionCard.new()
+	route_transition_card.continued.connect(_on_route_transition_continued)
+	title_layer.add_child(route_transition_card)
 
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
@@ -1461,6 +1485,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		if k == KEY_TAB:
 			if not aiming and not target_selector.selecting and not _intro_active:
 				active = (active + 1) % divers.size()
+				_attach_route_arrow_to_active()
 				_update_hud()
 		elif k == KEY_E:
 			_start_ability()
@@ -1668,6 +1693,8 @@ func _physics_process(dt: float) -> void:
 	_update_item_guardian_visibility()
 	_update_wall_visibility()
 	_update_intro_sequence()
+	_update_route_guidance()
+	_update_route_direction_indicator()
 
 # Runs every physics frame from world load until the active diver reaches
 # the light beam: keeps the arrow aimed at it (the diver keeps moving, so a
@@ -2131,6 +2158,183 @@ func intro_arrow() -> void:
 func _show_intro_text() -> void:
 	_intro_announce("Swim over to the light beam.")
 
+# The visible route objective lives above the ordinary control hint, not in
+# the fading announcement line.  It therefore remains readable after combat
+# logs and save notices cycle through the banner, and it is the one place a
+# player needs to look to know what to do next.
+func _build_route_objective_ui() -> void:
+	route_objective_label = Label.new()
+	route_objective_label.name = "RouteObjective"
+	route_objective_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	route_objective_label.offset_left = -280.0
+	route_objective_label.offset_right = 280.0
+	route_objective_label.offset_top = 14.0
+	route_objective_label.offset_bottom = 44.0
+	route_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	route_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	route_objective_label.add_theme_font_size_override("font_size", 20)
+	route_objective_label.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0))
+	route_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	route_objective_label.visible = false
+	$HUD.add_child(route_objective_label)
+
+	route_direction_label = Label.new()
+	route_direction_label.name = "RouteDirection"
+	route_direction_label.add_theme_font_size_override("font_size", 22)
+	route_direction_label.add_theme_color_override("font_color", Beacon.ONWARD_COL)
+	route_direction_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	route_direction_label.visible = false
+	$HUD.add_child(route_direction_label)
+
+func _on_route_objective_changed(_objective: String) -> void:
+	_refresh_route_guidance()
+
+func _on_route_phase_changed(_phase: String) -> void:
+	# The objective signal does the work; keeping this connection documents that
+	# phase is observable without coupling World logic to private route indices.
+	_refresh_route_guidance()
+
+func _begin_core_route_after_tutorial() -> void:
+	if route == null or route.objective_id != "":
+		return
+	route.start_after_tutorial()
+	_show_route_transition("Shallows", "[color=#78d6f2]Quick Read:[/color] green outcomes improve the current situation; red outcomes carry an immediate cost or risk. Details stay available when you want them.\n\nYour only objective is visible ahead: [b]Shallows — follow the beacon.[/b]")
+
+func _refresh_route_guidance() -> void:
+	if route_objective_label == null or route == null:
+		return
+	var has_objective := route.objective_id != ""
+	route_objective_label.visible = has_objective
+	route_objective_label.text = route.objective_text if has_objective else ""
+	if is_instance_valid(_route_beacon):
+		_route_beacon.queue_free()
+		_route_beacon = null
+	if is_instance_valid(_route_trigger):
+		_route_trigger.queue_free()
+		_route_trigger = null
+	if not has_objective:
+		if is_instance_valid(_intro_arrow):
+			_intro_arrow.visible = false
+		return
+
+	# Exactly one bright route beacon is ever built.  It is not an item marker:
+	# its only job is to identify the next authored encounter in the contract.
+	_route_beacon = Beacon.new()
+	_route_beacon.name = "ActiveRouteBeacon"
+	_route_beacon.build(route.active_position(), 0)
+	_route_beacon.set_state(Beacon.State.ONWARD)
+	add_child(_route_beacon)
+
+	_route_trigger = Area3D.new()
+	_route_trigger.name = "ActiveRouteTrigger"
+	_route_trigger.position = route.active_position()
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 3.0
+	shape.shape = sphere
+	_route_trigger.add_child(shape)
+	_route_trigger.body_entered.connect(_on_route_triggered)
+	add_child(_route_trigger)
+	_attach_route_arrow_to_active()
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = true
+		_point_arrow_at(route.active_position())
+
+func _attach_route_arrow_to_active() -> void:
+	if not is_instance_valid(_intro_arrow) or divers.is_empty() or active < 0 or active >= divers.size():
+		return
+	var d := divers[active] as Diver
+	if _intro_arrow.get_parent() != d:
+		_intro_arrow.reparent(d, false)
+	_intro_arrow.position = Vector3(0.0, d.height * 0.6, -1.0)
+
+func _update_route_guidance() -> void:
+	if route == null or route.objective_id == "" or battling:
+		return
+	if not is_instance_valid(_intro_arrow):
+		return
+	_attach_route_arrow_to_active()
+	_intro_arrow.visible = true
+	_point_arrow_at(route.active_position())
+
+# A physical beacon is useful when it is in view.  When it leaves the view,
+# this deliberately small HUD arrow takes over rather than asking players to
+# toggle Sonar or infer an invisible direction from the minimap.
+func _update_route_direction_indicator() -> void:
+	if route_direction_label == null or route == null or route.objective_id == "" or battling or cam == null:
+		if route_direction_label != null:
+			route_direction_label.visible = false
+		return
+	var target := route.active_position()
+	var size := get_viewport().get_visible_rect().size
+	# Headless contract gates use a deliberately tiny viewport. There is no
+	# meaningful edge band to render there, so skip the cosmetic indicator
+	# instead of constructing an invalid negative Rect2 every physics frame.
+	if size.x < 160.0 or size.y < 180.0:
+		route_direction_label.visible = false
+		return
+	var projected := cam.unproject_position(target)
+	var center := size * 0.5
+	var behind := cam.is_position_behind(target)
+	var safely_on_screen := not behind and Rect2(Vector2(56.0, 72.0), size - Vector2(112.0, 146.0)).has_point(projected)
+	if safely_on_screen:
+		route_direction_label.visible = false
+		return
+	var direction := projected - center
+	if behind:
+		direction = -direction
+	if direction.length_squared() < 0.001:
+		direction = Vector2.UP
+	direction = direction.normalized()
+	var edge := center + direction * minf(size.x, size.y) * 0.38
+	route_direction_label.position = edge - Vector2(36.0, 15.0)
+	var angle := direction.angle()
+	var arrow := "→"
+	if angle > 2.35 or angle < -2.35:
+		arrow = "←"
+	elif angle > 0.78 and angle < 2.35:
+		arrow = "↓"
+	elif angle < -0.78 and angle > -2.35:
+		arrow = "↑"
+	route_direction_label.text = "%s Beacon" % arrow
+	route_direction_label.visible = true
+
+func _on_route_triggered(body: Node3D) -> void:
+	if route == null or battling or body != divers[active]:
+		return
+	var encounter := route.begin_active_encounter()
+	if encounter.is_empty():
+		return
+	_route_battle_id = String(encounter.get("id", ""))
+	if bool(encounter.get("checkpoint_before", false)):
+		_secure_route_checkpoint("Checkpoint secured before the %s encounter." % _route_battle_id.replace("_", " "))
+	_start_battle("", bool(encounter.get("boss", false)), "angler", divers, false, false, encounter.get("roster", []) as Array)
+
+func _secure_route_checkpoint(message: String) -> void:
+	for diver_value in divers:
+		var stats := (diver_value as Diver).stats
+		stats.hp = stats.hp_max
+		stats.oxygen = stats.oxygen_max
+		stats.fill()
+	_update_hp_bar()
+	_update_oxygen_bar()
+	_write_save()
+	_announce(message + " Full HP and O2 restored.")
+
+func _show_route_transition(title: String, body: String) -> void:
+	if route_transition_card != null:
+		route_transition_card.open_card(title, body)
+
+func _on_route_transition_continued() -> void:
+	if route == null:
+		return
+	var transition := route.take_pending_transition()
+	if transition == "":
+		return
+	# The card is deliberately short placeholder framing, not final narration.
+	# Its dismissal leaves the next objective already live and beaconed.
+	_announce(route.objective_text if route.objective_id != "" else "Playable route complete. The Octopus escape is deferred until its finished asset and attacks arrive.")
+
 
 # Where the camera is actually looking, from yaw/pitch (mouse-look or
 # arrow keys) - matches _player_dir()'s horizontal forward when pitch is 0.
@@ -2204,6 +2408,11 @@ func _update_banner(dt: float) -> void:
 # roll independently but their triggers are ignored here.
 func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active] or _intro_active:
+		return
+	# The critical route is authored end-to-end.  A distance roll may still
+	# fire on the Diver, but it must never turn into a battle while a route
+	# objective, checkpoint, lab approach, or boss approach is active.
+	if route != null and route.encounter_policy == RouteProgression.ENCOUNTER_POLICY_AUTHORED_ONLY:
 		return
 	# An unclaimed guardian site is a deliberate encounter space. Letting a
 	# random roll interrupt there makes it unclear whether the battle belongs
@@ -2295,7 +2504,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, forced_enemy_ids: Array = []) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
@@ -2310,6 +2519,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.tutorial_encounter = tutorial
+	battle.forced_enemy_ids = forced_enemy_ids.duplicate()
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 
@@ -2318,6 +2528,7 @@ func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
 	var was_tutorial_replay := was_tutorial and not _tutorial_replay_snapshot.is_empty()
+	var was_route_encounter := _route_battle_id != ""
 	battle.queue_free()
 	battle = null
 	battling = false
@@ -2325,11 +2536,15 @@ func _on_battle_finished(result: String) -> void:
 		_restore_tutorial_replay_snapshot()
 	if was_tutorial:
 		_first_encounter_done = true
+		_intro_active = false
+		_first_encounter_started = true
 		# The beam has completed its one job.  Leaving it behind after a win,
 		# loss, or explicit skip makes the world look as if combat is still
 		# mandatory.
 		if is_instance_valid(light_beam):
 			light_beam.queue_free()
+		if not was_tutorial_replay and result in ["won", "skipped"]:
+			_begin_core_route_after_tutorial()
 	if _boss_playtest_active or _guardian_playtest_active:
 		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false
@@ -2407,6 +2622,19 @@ func _on_battle_finished(result: String) -> void:
 				_show_game_over()
 		_:
 			_announce("You regroup and catch your breath.")
+	if was_route_encounter and route != null:
+		var route_result := route.resolve_active_encounter(result)
+		if result == "won":
+			if bool(route_result.get("checkpoint_after", false)):
+				_secure_route_checkpoint("Checkpoint secured after the %s encounter." % _route_battle_id.replace("_", " "))
+			var transition := String(route_result.get("transition_id", ""))
+			if transition == "deep_descent":
+				_show_route_transition("Deeper water", "The next threats are specialized. A Swordfish's [color=#78d6f2]Evasion[/color] yields to Electric Touch; an Urchin's armor yields to Weaken. Green previews show the setup that helps.")
+			elif transition == "lab_arrival":
+				_show_route_transition("The drowned lab", "You reached the final playable encounter. This framing is temporary while final cutscenes and the Octopus escape remain deferred.")
+			elif transition == "route_complete":
+				_show_route_transition("Playable route complete", "Mermaid Freak has been defeated. The Octopus escape is intentionally not present until its completed model and authored attacks arrive.")
+		_route_battle_id = ""
 	_pending_reward_item = ""
 	if was_special and result == "won":
 		_retire_claimed_item_guardians()
@@ -2414,8 +2642,9 @@ func _on_battle_finished(result: String) -> void:
 	_special_encounter_diver = null
 	_special_guardian = null
 	_special_guardian_decoy = null
-	if was_tutorial and not was_tutorial_replay and result in ["won", "skipped"]:
-		call_deferred("_show_ability_onboarding")
+	# The former automatic four-page ability modal delayed the first free
+	# world objective.  World controls remain in F1/Combat Help, but the
+	# critical route now returns to movement through its short Continue card.
 
 func _heal_tutorial_party() -> void:
 	for d in divers:
