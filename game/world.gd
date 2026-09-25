@@ -224,6 +224,8 @@ var _guardian_playtest_site := ""
 # Isolated ?special=1 review route. It opens the real guardian chooser and
 # battle/minigame dispatcher but never grants an item or alters a save.
 var _special_playtest_active := false
+var _open_water_playtest_active := false
+var _open_water_crossing_confirmed := false
 
 # Which save slot this run is playing into - set the instant the title
 # screen resolves (New Game picks one and writes an initial save into it;
@@ -495,6 +497,8 @@ func _on_title_spell_playtest() -> void:
 # disabled so the reviewer sees only this collision contract.
 func _on_title_open_water_playtest() -> void:
 	_current_slot = -1
+	_open_water_playtest_active = true
+	_open_water_crossing_confirmed = false
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
@@ -510,12 +514,27 @@ func _on_title_open_water_playtest() -> void:
 		diver.velocity = Vector3.ZERO
 		diver.global_position = Vector3(8.0 + float(i) * 7.0, 2.0, 0.0)
 	active = 0
+	# In World coordinates a default-yaw D maps to -X. Turn the dedicated
+	# review camera around so its literal on-screen instruction, "hold D to
+	# swim right", carries the player across the former plane at x=16 toward
+	# the two party members at larger X.
+	yaw = PI
+	pitch = -0.16
 	_attach_route_arrow_to_active()
 	if is_instance_valid(_active_cursor):
 		_active_cursor.visible = true
 	banner.text = "Open-water crossing review — hold D to swim right to your partner. No barrier belongs here."
 	_banner_timer = 12.0
 	_update_hud()
+
+func _update_open_water_playtest() -> void:
+	if not _open_water_playtest_active or _open_water_crossing_confirmed:
+		return
+	if (divers[active] as Diver).global_position.x < 20.0:
+		return
+	_open_water_crossing_confirmed = true
+	banner.text = "Clear — you crossed the former invisible barrier. Open water remains traversable."
+	_banner_timer = 0.0
 
 # Save/Inventory are exclusive reading and decision surfaces. Their controls
 # used to fight the persistent HUD visually because they were HUD children;
@@ -1743,6 +1762,7 @@ func _physics_process(dt: float) -> void:
 	_update_oxygen_bar()
 	_update_active_cursor()
 	_update_banner(dt)
+	_update_open_water_playtest()
 	_update_save_point_prompt()
 	_check_gap_puzzle()
 	_update_item_guardian_visibility()
