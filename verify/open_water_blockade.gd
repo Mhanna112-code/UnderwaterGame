@@ -31,6 +31,12 @@ func _run() -> void:
 	var diver := world.divers[world.active] as Diver
 	_expect(diver.global_position.is_equal_approx(START),
 		"OPEN WATER REVIEW: the review entry did not place the swimmer at its documented start")
+	# The review must isolate collision. A random fight while crossing would
+	# make a successful physical movement look blocked to the human reviewer.
+	diver.encounter_triggered.emit()
+	await process_frame
+	_expect(world.battle == null,
+		"OPEN WATER REVIEW: an ordinary encounter interrupted the dedicated collision check")
 	await physics_frame
 
 	var deadline := Time.get_ticks_msec() + int(TIMEOUT_SECONDS * 1000.0)

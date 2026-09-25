@@ -2666,7 +2666,7 @@ func _update_banner(dt: float) -> void:
 # diver you're actually steering gets to start one - the two drifting NPCs
 # roll independently but their triggers are ignored here.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active] or _intro_active:
+	if battling or d != divers[active] or _intro_active or _open_water_playtest_active:
 		return
 	# The critical route is authored end-to-end. A distance roll may still fire
 	# on the Diver, but it must never turn into a battle while an authored route
