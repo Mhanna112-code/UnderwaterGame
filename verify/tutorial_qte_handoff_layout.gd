@@ -142,6 +142,12 @@ func _check_post_qte_layout(battle: Battle, viewport: Vector2, label: String) ->
 		"%s QTE HANDOFF: Continue is outside viewport (%s in %s)" % [label, button_rect, screen])
 	_expect(battle._tutorial_caption.visible and battle._tutorial_caption.text.contains("Click Continue or press Enter"),
 		"%s QTE HANDOFF: required acknowledgement has no visible instruction" % label)
+	_expect(screen.encloses(battle._tutorial_caption.get_global_rect()),
+		"%s QTE HANDOFF: result/instruction text is clipped by the browser viewport (%s in %s)" % [label, battle._tutorial_caption.get_global_rect(), screen])
+	_expect(battle._bottom_panel.get_global_rect().position.y >= battle._queue_bar.get_global_rect().end.y,
+		"%s QTE HANDOFF: outcome panel rises underneath the fixed party/turn strip (%s under %s)" % [label, battle._bottom_panel.get_global_rect(), battle._queue_bar.get_global_rect()])
+	_expect(not battle._levelup_caption.visible,
+		"%s QTE HANDOFF: detailed level-up rows compete with the compact result/Continue card" % label)
 	_expect(battle._stage_container.size.y >= MIN_STAGE_HEIGHT,
 		"%s QTE HANDOFF: battle stage collapsed to %.1fpx under tutorial UI" % [label, battle._stage_container.size.y])
 	var stage_rect := battle._stage_container.get_global_rect()

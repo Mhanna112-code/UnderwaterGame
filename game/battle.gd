@@ -4543,7 +4543,14 @@ func _win() -> void:
 	# "what winning does" explanation right below instead of vanishing
 	# before the player gets to read both together, and only clears once
 	# that caption's own Enter press does.
-	if not levelup_blocks.is_empty():
+	# The tutorial's final acknowledgement is a short handoff, not a second
+	# full-screen level-up lesson. Keeping a multi-diver stat table visible at
+	# the same time as its outcome sentence can make the bottom HUD taller than
+	# the browser viewport and hide the one line the player needs to read behind
+	# the fixed turn/party strip. The level gains still apply to the party; the
+	# detailed table remains available for normal victories and the outcome card
+	# instead gives the player a compact, legible next step.
+	if not levelup_blocks.is_empty() and not tutorial_encounter:
 		_levelup_caption.text = "\n\n".join(levelup_blocks)
 		_levelup_caption.visible = true
 		call_deferred("_fit_panel_height")
@@ -4575,7 +4582,7 @@ func _win() -> void:
 	# concrete result to inspect; Combat Help owns the explanatory depth.
 	if tutorial_encounter:
 		var qte_result := _tutorial_qte_outcome_text if _tutorial_qte_outcome_text != "" else "[color=#b9d3df]Dodge result recorded in the battle log.[/color]"
-		await _tutorial_show_step("Practice complete. %s Your party earned XP; any level gains appear below. You are restored before the route begins. Continue for one clear next objective." % qte_result)
+		await _tutorial_show_step("Practice complete. %s Your party is restored. Continue to begin the Shallows route." % qte_result)
 		for entry in party:
 			if entry.has("card"):
 				_set_row_highlight(entry.card as PanelContainer, false)

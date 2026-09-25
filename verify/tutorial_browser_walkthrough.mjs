@@ -27,7 +27,10 @@ page.on('pageerror', error => errors.push(String(error)));
 page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 
 async function shot(name) {
-  await page.screenshot({ path: path.join(outDir, name) });
+  // WebGL screenshots can stall while the canvas is being recreated between
+  // combat panels.  Keep an explicit bound here: a verification capture may
+  // fail, but it must never turn a gameplay result into an unbounded process.
+  await page.screenshot({ path: path.join(outDir, name), timeout: 10000 });
 }
 
 // The only QTE information read here is what a human can see on the canvas:
@@ -205,6 +208,7 @@ await page.waitForTimeout(6000);
 await page.keyboard.up('KeyW');
 await page.waitForTimeout(700);
 await shot('01-tutorial-opening.png');
+console.log('tutorial-opening-visible');
 
 // The subsequent visible QTE/card checks are intentionally the definitive
 // proof of tutorial entry. If this physical approach has not opened it, the
@@ -216,19 +220,18 @@ await shot('01-tutorial-opening.png');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(600);
 await shot('02-guided-move.png');
+console.log('guided-move-visible');
 await page.mouse.click(165, 595); // Electric Touch
 await page.waitForTimeout(600);
 await shot('03-guided-target.png');
+console.log('guided-target-visible');
 await page.mouse.move(165, 665);  // required tutorial hover over Angler
 await page.waitForTimeout(350);
-await shot('04-hover-preview.png');
 await page.mouse.click(165, 665); // required tutorial target selection
 await page.waitForTimeout(250);
-await shot('05-after-target.png');
 await page.waitForTimeout(2750);
-await shot('06-qte-pending.png');
 await waitForVisibleQte(360, 560); // the inline, player-readable QTE lesson
-await shot('07-qte-instructions.png');
+console.log('qte-instructions-visible');
 
 // The QTE instructions own their own visible Continue.  After it is
 // dismissed, the live 1.6-second X window appears; a success is timed at
@@ -239,7 +242,7 @@ await shot('07-qte-instructions.png');
 await page.waitForTimeout(350);
 await page.mouse.click(128, 545);
 await page.waitForTimeout(600);
-await shot('08-qte-transition.png');
+console.log('qte-live-transition');
 if (outcome === 'success') {
 	// Do not place a PNG capture between this read and keypress: screenshot
 	// encoding can consume much of a short live timing window.  A separate
