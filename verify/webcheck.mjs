@@ -37,7 +37,14 @@ const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_C
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
 ] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// Vercel preview links can be deployment-protected even when the main-game
+// alias is public. `vercel env run` supplies this short-lived token only to
+// the smoke process; keep it origin-scoped and never print or persist it.
+const headers = process.env.VERCEL_OIDC_TOKEN
+  ? { 'x-vercel-trusted-oidc-idp-token': process.env.VERCEL_OIDC_TOKEN }
+  : {};
+const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, extraHTTPHeaders: headers });
+const page = await context.newPage();
 const errors = [];
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', e => errors.push(String(e)));

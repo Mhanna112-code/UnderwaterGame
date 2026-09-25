@@ -14,7 +14,14 @@ const browser = await firefox.launch({ headless: process.env.HEADED ? false : tr
   'gfx.webrender.all': true,
   'layers.acceleration.force-enabled': true,
 } });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// Same-project previews may be Vercel-protected. `vercel env run` makes the
+// short-lived local development token available only to this process; do not
+// serialize it or print it in the verification report.
+const headers = process.env.VERCEL_OIDC_TOKEN
+  ? { 'x-vercel-trusted-oidc-idp-token': process.env.VERCEL_OIDC_TOKEN }
+  : {};
+const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, extraHTTPHeaders: headers });
+const page = await context.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
