@@ -6,9 +6,11 @@ class_name RouteTransitionCard
 extends Control
 
 signal continued
+signal combat_help_requested
 
 var _title: Label
 var _body: RichTextLabel
+var _help: Button
 var _continue: Button
 
 func _ready() -> void:
@@ -28,8 +30,8 @@ func _ready() -> void:
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.offset_left = -300.0
 	panel.offset_right = 300.0
-	panel.offset_top = -164.0
-	panel.offset_bottom = 164.0
+	panel.offset_top = -184.0
+	panel.offset_bottom = 184.0
 	panel.add_theme_stylebox_override("panel", _panel_style())
 	add_child(panel)
 
@@ -62,6 +64,15 @@ func _ready() -> void:
 	_body.add_theme_font_size_override("normal_font_size", 17)
 	_body.add_theme_color_override("default_color", Color(0.8, 0.9, 0.95))
 	column.add_child(_body)
+	_help = Button.new()
+	_help.text = "Need a refresher? Combat Help"
+	_help.custom_minimum_size = Vector2(270, 38)
+	_help.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_help.tooltip_text = "Open the optional stat and status reference without changing this route objective."
+	_help.add_theme_stylebox_override("normal", _button_style(Color(0.06, 0.20, 0.28, 1.0)))
+	_help.add_theme_stylebox_override("hover", _button_style(Color(0.10, 0.34, 0.44, 1.0)))
+	_help.pressed.connect(_on_help_pressed)
+	column.add_child(_help)
 	_continue = Button.new()
 	_continue.text = "Continue"
 	_continue.custom_minimum_size = Vector2(150, 42)
@@ -72,9 +83,10 @@ func _ready() -> void:
 	_continue.pressed.connect(dismiss)
 	column.add_child(_continue)
 
-func open_card(title: String, body: String) -> void:
+func open_card(title: String, body: String, show_combat_help: bool = false) -> void:
 	_title.text = title
 	_body.text = body
+	_help.visible = show_combat_help
 	visible = true
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -92,6 +104,16 @@ func dismiss() -> void:
 	visible = false
 	get_tree().paused = false
 	continued.emit()
+
+func _on_help_pressed() -> void:
+	if not visible:
+		return
+	# This is not Continue: the current route transition remains pending until
+	# the player later exits Help, so viewing optional detail cannot consume a
+	# checkpoint/phase handoff behind their back.
+	visible = false
+	get_tree().paused = false
+	combat_help_requested.emit()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:

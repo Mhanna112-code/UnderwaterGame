@@ -34,8 +34,8 @@ the earlier route-state suite could not prove.
 | 1 | A real tutorial QTE resolves, but its success or miss leaves a zero-height/blank stage or an acknowledgement control outside the viewport. | P0: a new player believes the game froze. The prior test injects Enter and never inspects final screen geometry. | Captured bug / layout integration at 1280×720 and 1920×1080. | first repair |
 | 2 | A required tutorial acknowledgement is keyboard-only or visually hidden, so an Enter press advances an apparently frozen screen. | P0: indistinguishable from a soft-lock. Deferred panel sizing can hide the only affordance. | Invariant combined with bug #1: visible, enabled Continue button with in-bounds rect whenever `_tutorial_awaiting_enter` is true. | first repair |
 | 3 | A long imported enemy is normalized only by height, so its visible mesh exceeds the stage while the camera uses a smaller capped combat radius. | P1: Frilled Shark hides party/target UI. The current actor radius and mesh width intentionally diverge. | Captured visual-bounds camera test. | second repair |
-| 4 | A route beacon exists in state but a player cannot physically reach it from one or more natural approaches because terrain/guardian collision blocks the line. | P1: route looks like an invisible wall. Existing test reaches only the first leg from one directed path. | Physics integration over each leg and multiple approach offsets. | third repair |
-| 5 | The HUD says LEFT/RIGHT while the visible beacon is on screen, or both cues are simultaneously active. | P1: player receives contradictory navigation. Current code tests target origin, not the beacon's visible bounds. | Camera-quadrant invariant with one active guidance surface. | third repair |
+| 4 | A route beacon exists in state but a player cannot physically reach it from one or more natural approaches because terrain/guardian collision blocks the line. | P1: route looks like an invisible wall. Existing test reaches only the first leg from one directed path. | Physics integration over each leg and multiple approach offsets. | repaired: full collision matrix |
+| 5 | The HUD says LEFT/RIGHT while the visible beacon is on screen, or both cues are simultaneously active. | P1: player receives contradictory navigation. Current code tests target origin, not the beacon's visible bounds. | Camera-quadrant invariant with one active guidance surface. | repaired: rendered-bound contract |
 | 6 | An optional guardian/special challenge begins without saying it is optional, what ability/controls it needs, or how to leave. | P1: an off-route experiment reads as a broken mandatory tutorial. | UI contract test for prompt labels/actions plus hosted manual minigame proof. | later UX repair |
 | 7 | The deep route presents as the same bright, collinear empty space as shallows, despite phase transition wording. | P2: depth/progression fiction and pacing fail, while state tests remain green. | Visual environment/route-shape contract plus hosted comparison. | later presentation repair |
 | 8 | A normal critical-route loss or boss preview returns to an unnamed/incorrect checkpoint, or an unbalanced Tethys fight is represented as route completion. | P0 for the lab endpoint: player cannot tell whether failure is expected or recoverable. Boss test currently inspects moves using inflated HP, not normal play. | Checkpoint round-trip and boss-preview contract; normal-party boss simulation only once final numbers exist. | later boundary repair |
@@ -66,11 +66,24 @@ the earlier route-state suite could not prove.
 
 ### Bugs #4–5 — physical route and guidance
 
-- The test must use ordinary World movement/collision; emitting
-  `body_entered`, teleporting to a target, or checking only RouteProgression
-  state would pass for the shipped invisible-wall bug.
+- `verify/progression_route_traversal_matrix.gd` starts each route beat from
+  its prior location and left/center/right approach offsets, then drives
+  ordinary `Diver.swim()`/`move_and_slide()` into the live `Area3D` trigger.
+  It never emits `body_entered`, calls the route dispatch helper, or assigns a
+  target position to the diver.
 - Camera direction cases test output (one coherent cue), not the current
   `unproject_position` implementation.
+
+**Repaired:** every beat now sits 8–12 seconds of ordinary swimming from its
+predecessor and the full matrix drives each of those seven legs from left,
+center, and right lateral approaches into the real `Area3D` collision. The
+route deliberately goes around the optional guardian and the high corridor
+blockade rather than silently treating either as a core-path detour. The
+tutorial's hovering arrow is hidden during free route play; `World` projects
+the rendered beacon's bounds and shows the readable HUD direction only when
+those bounds are off-screen. `verify/route_guidance_visibility.gd` exercises
+fully visible, partially visible, and off-screen camera cases on a real
+1280×720 SubViewport.
 
 ## Skipped for now
 

@@ -27,17 +27,17 @@ const ENCOUNTER_POLICY_AUTHORED_ONLY := "authored_only"
 const BEATS := [
 	{
 		"id": "shallow_angler", "phase": PHASE_SHALLOWS,
-		"text": "Shallows — follow the beacon.", "at": Vector3(15.0, 2.0, -13.0),
+		"text": "Shallows — follow the beacon.", "at": Vector3(25.0, 2.0, -50.0),
 		"roster": ["angler"],
 	},
 	{
 		"id": "shallow_frilled_shark", "phase": PHASE_SHALLOWS,
-		"text": "Shallows — follow the beacon.", "at": Vector3(26.0, 2.0, -20.0),
+		"text": "Shallows — follow the beacon.", "at": Vector3(45.0, 2.0, -5.0),
 		"roster": ["frilled_shark"],
 	},
 	{
 		"id": "shallow_capstone", "phase": PHASE_SHALLOWS,
-		"text": "Shallows — secure the reef passage.", "at": Vector3(37.0, 2.0, -28.0),
+		"text": "Shallows — secure the reef passage.", "at": Vector3(55.0, 2.0, 40.0),
 		"roster": ["angler", "frilled_shark"], "capstone": true,
 		# Encounter-only pressure, not a rewrite of either species' delivered
 		# base block. This is the first coordinated pair, so both arrive in
@@ -47,17 +47,17 @@ const BEATS := [
 	},
 	{
 		"id": "deep_swordfish", "phase": PHASE_DEEP,
-		"text": "Deep water — follow the beacon.", "at": Vector3(46.0, 2.0, -37.0),
+		"text": "Deep water — follow the beacon.", "at": Vector3(5.0, 2.0, 50.0),
 		"roster": ["swordfish_duelist"],
 	},
 	{
 		"id": "deep_sea_urchin", "phase": PHASE_DEEP,
-		"text": "Deep water — find the armored threat.", "at": Vector3(43.0, 2.0, -49.0),
+		"text": "Deep water — find the armored threat.", "at": Vector3(-40.0, 2.0, 35.0),
 		"roster": ["sea_urchin"],
 	},
 	{
 		"id": "deep_capstone", "phase": PHASE_DEEP,
-		"text": "Deep water — break the final defense.", "at": Vector3(32.0, 2.0, -53.0),
+		"text": "Deep water — break the final defense.", "at": Vector3(-50.0, 2.0, -10.0),
 		"roster": ["swordfish_duelist", "sea_urchin"], "capstone": true,
 		# The coordinated deep pair is deliberately a counterplay check: the
 		# Swordfish stays evasive and the Urchin's reinforced shell rewards
@@ -68,7 +68,7 @@ const BEATS := [
 	},
 	{
 		"id": "lab_mermaid_freak", "phase": PHASE_LAB,
-		"text": "The drowned lab — confront Mermaid Freak.", "at": Vector3(20.0, 2.0, -49.0),
+		"text": "The drowned lab — confront Mermaid Freak.", "at": Vector3(-10.0, 2.0, -45.0),
 		"roster": ["tethys"], "boss": true, "transition_after": "route_complete",
 	},
 ]

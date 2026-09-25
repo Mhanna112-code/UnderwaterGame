@@ -806,6 +806,7 @@ func _ready() -> void:
 	title_layer.add_child(ability_onboarding)
 	route_transition_card = RouteTransitionCard.new()
 	route_transition_card.continued.connect(_on_route_transition_continued)
+	route_transition_card.combat_help_requested.connect(_on_route_transition_combat_help_requested)
 	title_layer.add_child(route_transition_card)
 
 	intro_crawl = IntroCrawl.new()
@@ -2218,7 +2219,7 @@ func _begin_core_route_after_tutorial() -> void:
 	if route == null or route.objective_id != "":
 		return
 	route.start_after_tutorial()
-	_show_route_transition("Shallows", "[color=#78d6f2]Quick Read:[/color] [color=#65d98a]green[/color] on your side helps; [color=#ef7070]red[/color] on an enemy creates an opening. Red on your side is a cost or risk. Details stay available when you want them.\n\nYour only objective is visible ahead: [b]Shallows — follow the beacon.[/b]")
+	_show_route_transition("Shallows", "[color=#78d6f2]Quick Read:[/color] [color=#65d98a]green[/color] on your side helps; [color=#ef7070]red[/color] on an enemy creates an opening. Red on your side is a cost or risk. Details stay available when you want them.\n\nYour only objective is visible ahead: [b]Shallows — follow the beacon.[/b]", true)
 
 func _refresh_route_guidance() -> void:
 	if route_objective_label == null or route == null:
@@ -2265,10 +2266,13 @@ func _refresh_route_guidance() -> void:
 	_route_trigger.add_child(shape)
 	_route_trigger.body_entered.connect(_on_route_triggered)
 	add_child(_route_trigger)
-	_attach_route_arrow_to_active()
+	# The intro's hovering arrow belongs only to the tutorial light-beam. Once
+	# free route play begins, the physical beacon is the sole in-world guide;
+	# the HUD directional label below appears only when that beacon is off
+	# screen. Leaving both arrows live made a nearby goal look over-explained
+	# and could contradict the visible post with a stale LEFT/RIGHT label.
 	if is_instance_valid(_intro_arrow):
-		_intro_arrow.visible = true
-		_point_arrow_at(route.active_position())
+		_intro_arrow.visible = false
 
 func _attach_route_arrow_to_active() -> void:
 	if not is_instance_valid(_intro_arrow) or divers.is_empty() or active < 0 or active >= divers.size():
@@ -2281,11 +2285,8 @@ func _attach_route_arrow_to_active() -> void:
 func _update_route_guidance() -> void:
 	if route == null or route.objective_id == "" or battling:
 		return
-	if not is_instance_valid(_intro_arrow):
-		return
-	_attach_route_arrow_to_active()
-	_intro_arrow.visible = true
-	_point_arrow_at(route.active_position())
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
 
 # A physical beacon is useful when it is in view.  When it leaves the view,
 # this deliberately small HUD arrow takes over rather than asking players to
@@ -2295,7 +2296,6 @@ func _update_route_direction_indicator() -> void:
 		if route_direction_label != null:
 			route_direction_label.visible = false
 		return
-	var target := route.active_position()
 	var size := get_viewport().get_visible_rect().size
 	# Headless contract gates use a deliberately tiny viewport. There is no
 	# meaningful edge band to render there, so skip the cosmetic indicator
@@ -2303,11 +2303,18 @@ func _update_route_direction_indicator() -> void:
 	if size.x < 160.0 or size.y < 180.0:
 		route_direction_label.visible = false
 		return
+	var target := route.active_position()
 	var projected := cam.unproject_position(target)
 	var center := size * 0.5
 	var behind := cam.is_position_behind(target)
-	var safely_on_screen := not behind and Rect2(Vector2(56.0, 72.0), size - Vector2(112.0, 146.0)).has_point(projected)
-	if safely_on_screen:
+	# Point-only visibility let the HUD say "Beacon • LEFT" even while the
+	# actual beacon post was plainly visible at an edge of the camera. Read the
+	# same small physical bounds we render instead. Any meaningful visible part
+	# wins over the fallback arrow: one guide at a time is clearer than two.
+	var safe_view := Rect2(Vector2(56.0, 72.0), size - Vector2(112.0, 146.0))
+	var visible_beacon_bounds := route_beacon_screen_bounds()
+	var beacon_visible := not behind and visible_beacon_bounds.has_area() and safe_view.intersects(visible_beacon_bounds)
+	if beacon_visible:
 		route_direction_label.visible = false
 		return
 	var direction := projected - center
@@ -2342,6 +2349,25 @@ func _update_route_direction_indicator() -> void:
 	route_direction_label.position = route_direction_label_position(
 		edge - Vector2(36.0, 15.0), label_size, direction, size)
 	route_direction_label.visible = true
+
+# Public presentation seam for browser/layout checks.  These are the bounds
+# of the rendered post and lamp (not merely `route.active_position()`), so a
+# refactor cannot silently restore contradictory physical/HUD guidance.
+func route_beacon_screen_bounds() -> Rect2:
+	if not is_instance_valid(_route_beacon) or cam == null:
+		return Rect2()
+	var result := Rect2()
+	var saw_corner := false
+	for x in [-0.32, 0.32]:
+		for y in [0.0, 2.34]:
+			for z in [-0.32, 0.32]:
+				var world_corner := _route_beacon.to_global(Vector3(x, y, z))
+				if cam.is_position_behind(world_corner):
+					continue
+				var screen_corner := cam.unproject_position(world_corner)
+				result = Rect2(screen_corner, Vector2.ZERO) if not saw_corner else result.expand(screen_corner)
+				saw_corner = true
+	return result
 
 # Public presentation seam: browser review and headless verification share
 # this placement contract without pretending a 64px headless viewport can
@@ -2394,9 +2420,13 @@ func _secure_route_checkpoint(message: String) -> void:
 	_write_save()
 	_announce(message + " Full HP and O2 restored.")
 
-func _show_route_transition(title: String, body: String) -> void:
+func _show_route_transition(title: String, body: String, show_combat_help: bool = false) -> void:
 	if route_transition_card != null:
-		route_transition_card.open_card(title, body)
+		route_transition_card.open_card(title, body, show_combat_help)
+
+func _on_route_transition_combat_help_requested() -> void:
+	if inventory_menu != null:
+		inventory_menu.open_combat_help()
 
 func _on_route_transition_continued() -> void:
 	if route == null:
@@ -2706,7 +2736,9 @@ func _on_battle_finished(result: String) -> void:
 				_secure_route_checkpoint("Checkpoint secured after the %s encounter." % _route_battle_id.replace("_", " "))
 			var transition := String(route_result.get("transition_id", ""))
 			if transition == "deep_descent":
-				_show_route_transition("Deeper water", "The next threats are specialized. A Swordfish's [color=#78d6f2]Evasion[/color] yields to Electric Touch; an Urchin's armor yields to Weaken. Green previews show the setup that helps.")
+				_show_route_transition("Deeper water", "[b]Next threat: Swordfish.[/b] It is evasive. Use [color=#78d6f2]Electric Touch[/color] to create an [color=#65d98a]Opening: enemy EVA falls[/color], then attack. Full move detail is optional in Combat Help.", true)
+			elif _route_battle_id == "deep_swordfish":
+				_show_route_transition("Counter cue", "[b]Next threat: Sea Urchin.[/b] Its shell resists raw damage. Use [color=#78d6f2]Weaken[/color] to create an [color=#65d98a]Opening: enemy DEF falls[/color], then attack.", true)
 			elif transition == "lab_arrival":
 				_show_route_transition("The drowned lab", "You reached the final playable encounter. This framing is temporary while final cutscenes and the Octopus escape remain deferred.")
 			elif transition == "route_complete":

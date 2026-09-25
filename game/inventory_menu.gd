@@ -112,6 +112,15 @@ func open() -> void:
 	visible = true
 	_switch_to("items")
 
+# Route transitions use this direct entry point so contextual counter cues can
+# offer optional detail without asking a new player to know that Esc contains
+# a separate Combat Help tab. Closing still restores the exact World state.
+func open_combat_help() -> void:
+	if world != null:
+		world._open_fullscreen_menu()
+	visible = true
+	_switch_to("help")
+
 func close() -> void:
 	visible = false
 	if world != null:
