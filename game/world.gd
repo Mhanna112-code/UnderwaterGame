@@ -1750,11 +1750,9 @@ func _start_first_encounter(d: Diver) -> void:
 	_transitioning_to_encounter = false
 	_intro_active = false
 	_camera_look_override = null
-	# All three divers now, not just the one that walked up - the tutorial
-	# script itself demonstrates one scripted move each from all three (see
-	# battle.gd's _TUTORIAL_SCRIPT), CAST's own order (Staff_Diver,
-	# Prototype_1(1910), Prototype_V(1922)) is what makes divers[0]/[1]/[2]
-	# resolve to Maxilani/Musashi/Mech Pilot there.
+	# All three divers enter the real practice battle. The one mandatory
+	# onboarding move is Maxilani's Electric Touch; the player can freely use
+	# the whole party after that short quick-read lesson.
 	_start_battle("", false, "angler", divers, false, true)
 
 # A real Area3D, radius matched to minimap.view_radius - "revealed" and

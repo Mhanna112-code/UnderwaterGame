@@ -28,6 +28,15 @@ func _run() -> void:
 	if battle == null:
 		findings.append("ROUTE HANDOFF START: no tutorial battle was created")
 	else:
+		# The opening teaches the visual Quick Read with one safe action.  A
+		# longer forced script would contradict the route brief by making full
+		# move/formula instruction mandatory before free exploration.
+		_expect(battle._TUTORIAL_SCRIPT.size() == 1,
+			"TUTORIAL SCOPE: opening lesson must contain one forced quick-read move, not a multi-move lecture")
+		if battle._TUTORIAL_SCRIPT.size() == 1:
+			var lesson := battle._TUTORIAL_SCRIPT[0] as Dictionary
+			_expect(int(lesson.get("party_index", -1)) == 0 and String(lesson.get("move", "")) == "Electric Touch",
+				"TUTORIAL SCOPE: opening quick-read move must remain Maxilani's Electric Touch")
 		for enemy_entry in battle.enemies:
 			(enemy_entry.stats as CombatantStats).hp = 0
 		battle._tutorial_step = battle._TUTORIAL_SCRIPT.size()

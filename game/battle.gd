@@ -69,29 +69,22 @@ var forced_enemy_modifiers: Array = []
 # World._intro_active) against one goblin, weakened across the board (HP
 # padded up, strength/accuracy cut down, heavy swings disabled entirely -
 # see _build_stage()/_do_enemy_turn()) so it can't accidentally kill anyone
-# before the lesson is even over. Walks the player through one scripted
-# move each from Maxilani, Musashi, then Mech Pilot in turn (flashing
-# button, everything else disabled - see _apply_tutorial_move_gate()), and
+# before the lesson is even over. It asks for one safe highlighted
+# Electric Touch choice (everything else disabled only for that moment), then
 # spends the goblin's own one scripted turn guaranteeing a Quick Time Event
 # actually shows up at least once (see _tutorial_prep_enemy_turn()) rather
-# than leaving that entirely to ENEMY_QTE_CHANCE. Real _resolve_attack()
-# math throughout; the fight is handed over for real once the script is
-# done (_advance_turn()'s "Defeat the enemy!" prompt) - a genuine win or
-# loss, not a guaranteed outcome.
+# than leaving that entirely to ENEMY_QTE_CHANCE. Real _resolve_attack() math
+# applies throughout; after those two ideas, the player can finish or skip a
+# genuine win/loss practice fight with the full party kit.
 var tutorial_encounter := false
-# Ordered stage script for the choreographed first fight - each entry names
-# which `party` index acts next and which of their own base moves
-# _apply_tutorial_move_gate() forces, so a stage is a (diver, move) pair,
-# not just a diver. NOT a 1:1 stage-index==party-index mapping: stages 3
-# and 4 revisit Musashi (Weaken) and Maxilani (Flash Blast) for a second
-# lesson each off their own kits, after Mech Pilot's stage 2 turn - see
-# _tutorial_party_index_for_step().
+# Ordered stage script for the choreographed first fight.  The route brief
+# deliberately limits onboarding to one safe meaningful choice: the player
+# sees the actual green/red comparison, uses one highlighted counter move,
+# then may finish or skip the real fight. Formula walk-throughs and the rest
+# of the starting kit stay optional in Combat Help rather than turning the
+# opening into a five-move lecture.
 const _TUTORIAL_SCRIPT: Array[Dictionary] = [
-	{"party_index": 0, "move": "Electric Touch"},   # Maxilani
-	{"party_index": 1, "move": "Precise Tap"},       # Musashi
-	{"party_index": 2, "move": "Crushing Haymaker"}, # Mech Pilot
-	{"party_index": 1, "move": "Weaken"},            # Musashi again
-	{"party_index": 0, "move": "Flash Blast"},       # Maxilani again
+	{"party_index": 0, "move": "Electric Touch"}, # Maxilani; safe EVA counter
 ]
 # Index into _TUTORIAL_SCRIPT of whichever scripted stage is next. Only
 # advances (see _resolve_party_move()/_resolve_party_move_all()) when
@@ -2547,20 +2540,14 @@ func _show_moves() -> void:
 	# turn of their own (their scripted stage already behind them) just
 	# gets a normal move menu with nothing forced or flashing.
 	if _is_tutorial_scripted_turn(_acting):
-		# Turn order/combat-basics gets explained once, on the very first
-		# move menu of the fight - awaited so both fully finish (including
-		# the player's Enter press each time) before the move gate below
-		# ever touches the caption. Every move button (plus Back) is locked
-		# for the whole intro, not just once _apply_tutorial_move_gate()
-		# gets to it - _populate_move_menu() only disables a button for
-		# being unaffordable, so without this the player could click a move
-		# straight through these two prompts.
+		# One small lesson before the actual choice. Every move button (plus
+		# Back) is locked only while that card is up; the detailed combat book
+		# remains optional instead of growing this opening into a lecture.
 		if _tutorial_step == 0:
 			for b in move_buttons:
 				(b as Button).disabled = true
 			back_btn.disabled = true
 			await _first_fight_prompt()
-			await _explain_turn_order()
 		_apply_tutorial_move_gate()
 
 # Guarded on _first_fight_prompt_shown, not just the _tutorial_step == 0
@@ -2581,7 +2568,7 @@ func _first_fight_prompt() -> void:
 	# tell them random fights are possible "at any time": that was once true
 	# of free exploration, but it contradicts the route they enter after this
 	# tutorial and makes the next safety guarantee sound broken before it starts.
-	await _tutorial_show_step("This practice fight teaches combat. The guided route ahead is protected, so follow the beacon without random interruptions.")
+	await _tutorial_show_step("Quick Read: [color=#65d98a]green[/color] on your side is a benefit. [color=#ef7070]Red[/color] on an enemy creates an opening; red on your side is a cost or risk. Detailed formulas stay optional in Combat Help. This practice fight is safe, and the guided route ahead is protected.")
 
 # One-shot: circles the turn-order bar in red, folds Combat Basics in with
 # the turn-order explanation (one combined caption instead of two the
@@ -2650,7 +2637,7 @@ func _apply_tutorial_move_gate() -> void:
 	_tutorial_flash_tween.set_loops()
 	_tutorial_flash_tween.tween_property(btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
 	_tutorial_flash_tween.tween_property(btn, "modulate", Color.WHITE, 0.4)
-	_tutorial_caption.text = "Choose the [color=yellow]highlighted[/color] attack move against the enemy."
+	_tutorial_caption.text = "Choose the [color=yellow]highlighted[/color] move. Its green benefit creates a red opening on the enemy; detailed formulas remain optional."
 	call_deferred("_fit_panel_height")
 	btn.disabled = false
 
@@ -2962,26 +2949,35 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		_populate_target_menu(targets)
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
-	# Only on the scripted diver's own forced move (never heal/revive,
-	# whose targets are allies rather than the enemy these explanations are
-	# actually about) - stage 0 (Maxilani/Electric Touch) gets the full
-	# dodging/evasion/damage walkthrough, stage 1 (Musashi/Precise Tap)
-	# gets the shorter accuracy-boost one, stage 2 (Mech Pilot/Crushing
-	# Haymaker) gets the accuracy-cost one, stage 3 (Musashi again/Weaken)
-	# gets the no-damage-just-a-stat one, stage 4 (Maxilani again/Flash
-	# Blast) gets the status-condition one. Any scripted diver picking a
-	# move on some later un-scripted turn never reaches here at all.
+	# The one forced move makes the colour language concrete with the actual
+	# stat preview. Further move formulas and status explanations are optional
+	# Combat Help material, not mandatory opening content.
 	if _is_tutorial_scripted_turn(_acting) and effect not in ["heal", "revive"] and not targets.is_empty():
-		if _tutorial_step == 0:
-			await _explain_dodging(targets[0] as Dictionary)
-		elif _tutorial_step == 1:
-			await _explain_precise_tap(targets[0] as Dictionary)
-		elif _tutorial_step == 2:
-			await _explain_crushing_haymaker(targets[0] as Dictionary)
-		elif _tutorial_step == 3:
-			await _explain_weaken(targets[0] as Dictionary)
-		elif _tutorial_step == 4:
-			await _explain_flash_blast(targets[0] as Dictionary)
+		await _explain_quick_read_target(targets[0] as Dictionary)
+
+# A single active hover proves the player has encountered the exact visual
+# language they will use in real combat. It intentionally stops there: the
+# player can inspect the detailed stat delta if curious, then clicks one safe
+# target and returns to a normal, skippable practice battle.
+func _explain_quick_read_target(enemy: Dictionary) -> void:
+	for b in target_buttons:
+		(b as Button).disabled = true
+	target_back_btn.disabled = true
+	var enemy_btn := target_buttons[0] as Button
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+	_tutorial_caption.text = "Hover over the highlighted enemy to compare both sides: green helps you; red weakens them. Red on your side is a cost or risk."
+	call_deferred("_fit_panel_height")
+	await enemy_btn.mouse_entered
+	flash.kill()
+	enemy_btn.modulate = Color.WHITE
+	_stat_preview_frozen = true
+	# The opening card already explains the colour rule. Do not make a player
+	# acknowledge it a second time after the hover; the next meaningful input
+	# is the actual target click.
+	await _explain_click_to_attack(enemy)
 
 # Two beats, not one: first "hover over the enemy" (with the enemy button
 # itself flashing and nothing clickable - disabled buttons still fire
@@ -3802,15 +3798,9 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	elif r.hit and String(r.debuff) == "":
 		_play_enemy_hit(target)
 	_finish_actor_turn(_acting)
-	# Guarded on _is_tutorial_scripted_turn(), not just tutorial_encounter -
-	# any diver whose scripted stage has already passed (e.g. Maxilani
-	# resolving a second, un-scripted move later in the fight) can still act
-	# completely normally while _tutorial_step has moved on to a later
-	# diver; without this check that move would wrongly count as the
-	# scripted one and skip a diver's turn in the script entirely.
+	# Once the one safe Quick Read move resolves, the rest of this fight is
+	# ordinary combat: finish it, learn through play, or choose explicit Skip.
 	if _is_tutorial_scripted_turn(_acting):
-		if _tutorial_step == 0:
-			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not target_died:
@@ -3855,12 +3845,9 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	_log("%s: %s." % [String(mv.get("name", "Move")), "; ".join(summaries)])
 	_refresh_bar(_acting)
 	_finish_actor_turn(_acting)
-	# Same guard as _resolve_party_move()'s own copy of this - see its
-	# comment for why _is_tutorial_scripted_turn() matters here and
-	# tutorial_encounter alone doesn't.
+	# Kept symmetric with the single-target path even though the mandatory
+	# Electric Touch is single-target; future one-step lessons stay safe.
 	if _is_tutorial_scripted_turn(_acting):
-		if _tutorial_step == 0:
-			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
