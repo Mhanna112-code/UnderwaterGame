@@ -108,6 +108,9 @@ func _exercise_qte_outcome(label: String, hit_zone: bool, viewport: Vector2) -> 
 	_expect(battle._tutorial_finale_shown and battle._tutorial_awaiting_enter,
 		"%s QTE HANDOFF: result never reached the post-QTE acknowledgement" % label)
 	if battle._tutorial_finale_shown and battle._tutorial_awaiting_enter:
+		var outcome_phrase := "Dodge succeeded" if hit_zone else "Dodge missed"
+		_expect(battle._tutorial_caption.text.contains(outcome_phrase),
+			"%s QTE HANDOFF: final card does not state the resolved dodge outcome" % label)
 		await _check_post_qte_layout(battle, viewport, label)
 		# This models a click on the verified visible button. If production wiring
 		# breaks, World will stay in battle and fail the observable handoff check.

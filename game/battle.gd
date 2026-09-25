@@ -111,6 +111,12 @@ var _tutorial_finale_shown := false
 # ENEMY_QTE_CHANCE roll, so every player sees the mechanic demonstrated at
 # least once instead of it being left entirely to chance.
 var _tutorial_force_next_qte := false
+# The tutorial guarantees exactly one live dodge timing window.  Retain its
+# resolved player-facing result until the short handoff card so a success and
+# a natural miss never collapse into the same ambiguous "Practice complete"
+# screen. This is presentation state only: CombatRules remains authoritative
+# for the actual hit/dodge result.
+var _tutorial_qte_outcome_text := ""
 var _tutorial_flash_tween: Tween
 var _tutorial_caption: RichTextLabel
 # The QTE detail belongs to the lesson surface, not the universal level-up
@@ -3609,6 +3615,8 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 		_tutorial_force_next_qte = false
 		if formula_can_hit and bool(move.get("quick_time_bool", false)) and (formula_force_qte or randf() < ENEMY_QTE_CHANCE):
 			formula_dodge = await _quick_time_event(_actor_for_stats(defender))
+			if tutorial_encounter and formula_force_qte:
+				_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded — no damage taken.[/color]" if formula_dodge else "[color=#ef7070]Dodge missed — the attack landed normally.[/color]"
 		return CombatRules.resolve(attacker, defender, move, apply_self_effects, formula_dodge)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
@@ -3646,6 +3654,8 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	var player_dodge := false
 	if bool(move.get("quick_time_bool", false)) and (force_qte or randf() < ENEMY_QTE_CHANCE):
 		player_dodge = await _quick_time_event(_actor_for_stats(defender))
+		if tutorial_encounter and force_qte:
+			_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded — no damage taken.[/color]" if player_dodge else "[color=#ef7070]Dodge missed — the attack landed normally.[/color]"
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
 
@@ -4564,7 +4574,8 @@ func _win() -> void:
 	# is optional. The visible XP/level rows still give an interested player a
 	# concrete result to inspect; Combat Help owns the explanatory depth.
 	if tutorial_encounter:
-		await _tutorial_show_step("Practice complete. Your party earned XP; any level gains appear below. You are restored before the route begins. Continue for one clear next objective.")
+		var qte_result := _tutorial_qte_outcome_text if _tutorial_qte_outcome_text != "" else "[color=#b9d3df]Dodge result recorded in the battle log.[/color]"
+		await _tutorial_show_step("Practice complete. %s Your party earned XP; any level gains appear below. You are restored before the route begins. Continue for one clear next objective." % qte_result)
 		for entry in party:
 			if entry.has("card"):
 				_set_row_highlight(entry.card as PanelContainer, false)
