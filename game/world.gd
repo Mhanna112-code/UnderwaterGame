@@ -488,6 +488,35 @@ func _on_title_spell_playtest() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	mouse_look = false
 
+# Isolated manual proof for the former collision-only highway extension.
+# The visible legacy lane is centred at z=10; starting at z=0 makes the
+# review instruction precise: hold D / swim right through clear water toward
+# the party member on the far side. Tutorial and random-encounter systems are
+# disabled so the reviewer sees only this collision contract.
+func _on_title_open_water_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	_intro_active = false
+	_first_encounter_started = true
+	_first_encounter_done = true
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	for i in range(divers.size()):
+		var diver := divers[i] as Diver
+		diver.velocity = Vector3.ZERO
+		diver.global_position = Vector3(8.0 + float(i) * 7.0, 2.0, 0.0)
+	active = 0
+	_attach_route_arrow_to_active()
+	if is_instance_valid(_active_cursor):
+		_active_cursor.visible = true
+	banner.text = "Open-water crossing review — hold D to swim right to your partner. No barrier belongs here."
+	_banner_timer = 12.0
+	_update_hud()
+
 # Save/Inventory are exclusive reading and decision surfaces. Their controls
 # used to fight the persistent HUD visually because they were HUD children;
 # they now live on TitleLayer and explicitly hide that otherwise-live layer.
@@ -542,6 +571,14 @@ func _spell_playtest_requested() -> bool:
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		var query := String(search)
 		return query.contains("spells=1") or query.contains("spell_playtest=1")
+	return false
+
+func _open_water_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--open-water-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("open-water=1")
 	return false
 
 func _maze_playtest_requested() -> bool:
@@ -788,6 +825,7 @@ func _ready() -> void:
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
 	title_screen.onboarding_playtest_chosen.connect(_on_title_onboarding_playtest)
 	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
+	title_screen.open_water_playtest_chosen.connect(_on_title_open_water_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -801,6 +839,8 @@ func _ready() -> void:
 		title_screen.enable_onboarding_playtest()
 	if _spell_playtest_requested():
 		title_screen.enable_spell_playtest()
+	if _open_water_playtest_requested():
+		title_screen.enable_open_water_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -1274,11 +1314,13 @@ func _build_highway() -> void:
 	# (and accept, since going over a wall to cut a corner isn't the same
 	# problem as skipping a gate entirely).
 	entrance_rocks.collision_height = 40.0
-	# Also wider than the visible rocks - the corridor's own side walls
-	# don't cap their outer ends, so without this a diver could swim wide
-	# around the whole corridor from the open dive site and cut back in
-	# past the blockade entirely.
-	entrance_rocks.collision_width = 60.0
+	# Keep the horizontal collision exactly inside the visible eight-metre
+	# lane.  The highway is optional/legacy content, not the core route; the
+	# old 60 m Z extension formed a collision-only plane through open water
+	# (well outside these visible rocks) and could split the party from the
+	# rest of the world.  A player may go around the lane, but never meets an
+	# obstacle they cannot see; inside the lane, the tall collision above still
+	# preserves the intended Shockwave gate.
 	entrance_rocks.position = Vector3(START_X + 1.0, WALL_HEIGHT * 0.5, LANE_Z)
 	add_child(entrance_rocks)
 	entrance_rocks.broken.connect(_on_world_object_consumed.bind("entrance_blockade"))

@@ -63,6 +63,7 @@ must use the final public contract rather than private `World` flags.
 | 14 | The tutorial's resolved QTE sentence rises beneath the fixed party/turn strip, so its most important words are dim, clipped, or unreadable. | High — a successful action appears ambiguous exactly when the player needs confirmation and a clear next step. | The handoff tried to show every party member's level-up details beside a full outcome card inside a bottom-anchored panel. | Captured browser layout regression | fixed: compact outcome card; covered by `verify/tutorial_qte_handoff_layout.gd` |
 | 15 | The hosted Playwright walkthrough can stall while reading WebGL canvas pixels after the guided target step. | Verification-only — it cannot establish or refute a gameplay failure. | SwiftShader/Chromium canvas readback is an external browser boundary, while focused Godot QTE and handoff gates remain deterministic. | Harness characterization | logged; do not treat as a QTE product defect |
 | 16 | The 21-world physical traversal matrix exits green but Godot reports retained ObjectDB/physics resources during test teardown. | Verification-only — the route behavior completes, but leak warnings can hide real engine diagnostics. | The matrix intentionally disposes live battle SubViewports at arrival instead of completing each fight's usual ownership path. | Harness cleanup characterization | logged; do not treat as route reachability failure |
+| 17 | A collision-only extension of the optional highway blockade cuts across open water outside its visible lane, so party members can be separated by an apparently world-spanning invisible wall. | High — free swimming looks broken and a player cannot reunite the party or explore naturally. | `CrackedWall.collision_width` was enlarged to 60 m to prevent bypassing a legacy corridor, while its visible rocks remain only 8 m wide. | Captured physics integration | fixed; covered by `verify/open_water_blockade.gd` |
 
 ## Test plan
 
@@ -210,6 +211,26 @@ must use the final public contract rather than private `World` flags.
     fresh keyboard player is shown at the cold start; later camera headings
     are covered by hosted/manual navigation review.
 
+### Bug #17 — highway collision bisects free water
+
+- **Test type:** captured physics integration.
+- **Description string:**
+  > `open water: a diver can cross beside the visible highway blockade — guards against a collision-only wall that bisects the free-swim world`
+- **What it catches:** a collision extension reaches into open water outside
+  the visible 8 m highway lane, where no object tells the player they are
+  blocked.
+- **Reproduction before repair:** a production Diver starts at `(8, 2, 0)`,
+  ten metres outside the lane centred on `z=10`, and swims right through
+  `move_and_slide()` toward `(22, 2, 0)`. The former collider stops it at
+  `x=14.57`, short of the visible gate at `x=16`.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? **No.** It observes the
+    player-facing result of actual collision movement, not a collider
+    property or helper call.
+  - Could this fail under a behavior-preserving refactor? **No.** The public
+    rule is that open water beside a visible obstacle remains traversable;
+    implementation and node names can change freely.
+
 ## Skipped
 
 - Final Octopus balance — deferred until its finished rig/attacks are delivered;
@@ -262,3 +283,10 @@ must use the final public contract rather than private `World` flags.
   as `Vector3.BACK`, the production World reaches the live tutorial battle
   inside eight seconds. Hosted browser evidence remains required before this
   repair is accepted visually.
+- **#17:** the open-water regression initially failed at `x=14.57` while
+  attempting to cross from `(8, 2, 0)` to `x=22`, outside the visible highway
+  lane centred at `z=10`. The cause was the legacy blockade's 60 m invisible
+  horizontal collision extension. Restricting collision to the visible lane
+  makes that same production `move_and_slide()` crossing pass while the full
+  21-path authored-route traversal matrix remains green. The hosted
+  `?open-water=1` entry is the corresponding human-review path.
