@@ -144,6 +144,16 @@ func _verify_handoff(world: World) -> void:
 		"TUTORIAL HANDOFF: route card contradicted the Quick Read's side-specific color guidance: %s" % handoff_copy)
 	if not findings.is_empty():
 		return
+	# Combat Help is optional, but its route-card affordance must work without
+	# consuming the player's one active objective or leaving the world paused.
+	world.route_transition_card.request_combat_help()
+	await process_frame
+	_expect(world.inventory_menu.visible and not paused,
+		"COMBAT HELP: route-card refresher did not open optional detail into an active world")
+	world.inventory_menu.close()
+	await process_frame
+	_expect(not world.inventory_menu.visible and not paused and world.route.objective_id == "shallow_angler",
+		"COMBAT HELP: closing optional detail changed or blocked the active shallow objective")
 	world.route_transition_card.dismiss()
 	await process_frame
 	_expect(not paused and not world.battling,

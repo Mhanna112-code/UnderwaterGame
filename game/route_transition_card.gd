@@ -115,6 +115,12 @@ func _on_help_pressed() -> void:
 	get_tree().paused = false
 	combat_help_requested.emit()
 
+# Player-facing action seam for keyboard/controller adapters and the route
+# verifier. It preserves the pending transition exactly like the rendered
+# Combat Help button; this is intentionally not Continue.
+func request_combat_help() -> void:
+	_on_help_pressed()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
 		var key := event as InputEventKey

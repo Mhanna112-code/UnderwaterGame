@@ -41,6 +41,7 @@ the earlier route-state suite could not prove.
 | 8 | A normal critical-route loss or boss preview returns to an unnamed/incorrect checkpoint, or an unbalanced Tethys fight is represented as route completion. | P0 for the lab endpoint: player cannot tell whether failure is expected or recoverable. Boss test currently inspects moves using inflated HP, not normal play. | Checkpoint round-trip and boss-preview contract; normal-party boss simulation only once final numbers exist. | repaired: explicit preview + named recovery |
 | 9 | Green/red previews can be understood only by their colour, not by result wording or keyboard navigation. | P1 accessibility/regression: the core quick-read becomes inaccessible or misleading. | Semantic UI contract and desaturated hosted screenshot. | later accessibility repair |
 | 10 | A battle cannot identify whether it was a route beat, optional guardian, or other source, so a reported wrong enemy cannot be reproduced. | P1 diagnosis: route/optional content is ambiguous to player and maintainer. | Encounter-source label/log contract across all battle entry paths. | repaired: source label contract |
+| 11 | Opening optional Combat Help can consume a pending route handoff or leave the world paused, while counter lessons can drift away from the encounter they introduce. | P1: optional detail becomes a soft-lock or fails to teach the actual next fight. | Route-card/UI lifecycle plus full World/Battle playthrough. | repaired: Help-return + counter cards |
 
 ## Test self-critique
 
@@ -113,6 +114,16 @@ fully visible, partially visible, and off-screen camera cases on a real
   and route lifecycle/source gates verify no battle opens. The real checkpoint
   round-trip now asserts the defeat screen names Shallows Capstone and its
   full-HP/O2 recovery before recreating World from the saved checkpoint.
+
+### Bug #11 — optional detail consumes the route or counter lesson drifts
+
+- **Test type:** UI lifecycle plus real route progression.
+- **Description string:**
+  > `progression route: Combat Help returns to the same objective and the Deep cards name their immediate counter — guards against optional teaching that blocks or misdirects progression`
+- **Repaired:** requesting the route card’s Combat Help opens the optional
+  reference, closes back to an unpaused world, and leaves Shallows active.
+  The real playthrough asserts Deep entry names Swordfish/Electric
+  Touch/Evasion and the post-Swordfish card names Sea Urchin/Weaken/Defense.
 
 ### Bug #10 — encounter provenance
 

@@ -90,6 +90,13 @@ func _run() -> void:
 			_expect(_party_is_full(world),
 				"PLAYTHROUGH %d: capstone victory did not leave full HP/O2" % index)
 		if world.route_transition_card.visible:
+			var transition_copy := world.route_transition_card.body_text()
+			if index == 2:
+				_expect(transition_copy.contains("Swordfish") and transition_copy.contains("Electric Touch") and transition_copy.contains("EVA"),
+					"COUNTER ONRAMP: Deep-entry card did not name Swordfish/Electric Touch/Evasion")
+			elif index == 3:
+				_expect(transition_copy.contains("Sea Urchin") and transition_copy.contains("Weaken") and transition_copy.contains("DEF"),
+					"COUNTER ONRAMP: Urchin card did not name Sea Urchin/Weaken/Defense")
 			world.route_transition_card.dismiss()
 			await process_frame
 			_expect(not paused, "PLAYTHROUGH %d: transition Continue did not restore control" % index)
