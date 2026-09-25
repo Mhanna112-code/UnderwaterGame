@@ -1488,8 +1488,17 @@ func _check_gap_puzzle() -> void:
 	var cutscene := Cutscene.new()
 	add_child(cutscene)
 	cutscene.play_scroll_text("Welcome to the Deep Sea")
-	_puzzle_goal.visible = true
-	_announce("All three in place - the way ahead opens!")
+	# The highway predates the authored core route. Its wide ring is only a
+	# visual completion marker, not a trigger; showing it beside a live route
+	# objective invited players to stand in it waiting for a battle that could
+	# never start. Keep the legacy reward readable, but leave exactly one
+	# actionable destination on screen.
+	var core_route_active := route != null and route.objective_id != ""
+	_puzzle_goal.visible = not core_route_active
+	if core_route_active:
+		_announce("Highway gate opened. Your active objective remains: %s" % route.objective_text)
+	else:
+		_announce("All three in place - the way ahead opens!")
 
 # One plain wall segment: a StaticBody3D box, solid (divers collide with
 # it via CharacterBody3D's own move_and_slide, same as the floor), centered
@@ -2426,6 +2435,12 @@ func _refresh_route_guidance() -> void:
 	if route_objective_label == null or route == null:
 		return
 	var has_objective := route.objective_id != ""
+	# A completed legacy-highway waypoint is inert. It must not compete with
+	# the single named objective the core route is currently asking the player
+	# to pursue, regardless of whether the highway was solved before or after
+	# the route started.
+	if has_objective and is_instance_valid(_puzzle_goal):
+		_puzzle_goal.visible = false
 	if route_objective_panel != null:
 		route_objective_panel.visible = has_objective
 	route_objective_label.visible = has_objective
@@ -2496,6 +2511,15 @@ func route_landmark_presentation() -> Dictionary:
 	if is_instance_valid(_route_landmark):
 		return _route_landmark.presentation()
 	return {"kind": "", "opening_width": 0.0, "collision_free": true}
+
+# Public review contract for the one destination the player can act on.  The
+# highway puzzle predates the core route; it must never leave a second,
+# non-interactive visual goal on screen while a named route objective exists.
+func route_guidance_presentation() -> Dictionary:
+	return {
+		"objective_id": route.objective_id if route != null else "",
+		"legacy_goal_visible": is_instance_valid(_puzzle_goal) and _puzzle_goal.visible,
+	}
 
 func _attach_route_arrow_to_active() -> void:
 	if not is_instance_valid(_intro_arrow) or divers.is_empty() or active < 0 or active >= divers.size():
