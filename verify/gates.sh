@@ -117,6 +117,14 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
+	run "tutorial QTE layout: are success/miss handoffs visible at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_qte_handoff_layout.gd
+	run "tutorial QTE layout: are success/miss handoffs visible at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/tutorial_qte_handoff_layout.gd
+	run "semantic quick read: is non-colour text visible at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/semantic_quick_read_layout.gd
+	run "semantic quick read: is non-colour text visible at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/semantic_quick_read_layout.gd
+	run "Frilled Shark framing: does the mesh fit at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
+	run "Frilled Shark framing: does the mesh fit at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/frilled_shark_framing.gd
+	run "route transitions: does every handoff fit at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/route_transition_layout.gd
+	run "route transitions: does every handoff fit at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/route_transition_layout.gd
 else
 	echo
 	echo "=== stage framing: skipped, needs a display ==="

@@ -42,6 +42,7 @@ the earlier route-state suite could not prove.
 | 9 | Green/red previews can be understood only by their colour, not by result wording or keyboard navigation. | P1 accessibility/regression: the core quick-read becomes inaccessible or misleading. | Semantic UI contract and desaturated hosted screenshot. | later accessibility repair |
 | 10 | A battle cannot identify whether it was a route beat, optional guardian, or other source, so a reported wrong enemy cannot be reproduced. | P1 diagnosis: route/optional content is ambiguous to player and maintainer. | Encounter-source label/log contract across all battle entry paths. | repaired: source label contract |
 | 11 | Opening optional Combat Help can consume a pending route handoff or leave the world paused, while counter lessons can drift away from the encounter they introduce. | P1: optional detail becomes a soft-lock or fails to teach the actual next fight. | Route-card/UI lifecycle plus full World/Battle playthrough. | repaired: Help-return + counter cards |
+| 12 | A later route-transition card can clip its title, body, Combat Help, or Continue button even though the opening tutorial card fits. | P0 when Continue is hidden: a player reasonably reads it as another frozen handoff. | Browser-sized real World transition-layout integration at 1280×720 and 1920×1080. | automated gate added; hosted evidence pending |
 
 ## Test self-critique
 
@@ -124,6 +125,23 @@ fully visible, partially visible, and off-screen camera cases on a real
   reference, closes back to an unpaused world, and leaves Shallows active.
   The real playthrough asserts Deep entry names Swordfish/Electric
   Touch/Evasion and the post-Swordfish card names Sea Urchin/Weaken/Defense.
+
+### Bug #12 — a later route card hides a required action
+
+- **Test type:** captured browser-layout integration.
+- **Description string:**
+  > `playtest repair: every live route transition keeps its title, body, optional Help, and Continue control inside a browser viewport — guards against a long handoff card becoming another hidden-button soft lock`
+- **What it catches:** a new transition body is taller than the fixed card,
+  VBox layout pushes `Continue` off-screen, a promised Combat Help action
+  overlaps the body, or later World transition code bypasses the modal.
+- **Coverage:** `verify/route_transition_layout.gd` enters Shallows through
+  the actual tutorial handoff, invokes World’s real battle-finished boundary
+  for the shallow capstone, Swordfish and Deep capstone, then physically
+  invokes the final Mermaid-preview trigger. It examines rendered control
+  rectangles at 1280×720 and 1920×1080, not private container offsets.
+- **Human gap:** a green windowed result does not prove readability or
+  dismissibility in the deployed browser. Hosted screenshots/GIF and a normal
+  entry manual route remain required before merge readiness.
 
 ### Bug #10 — encounter provenance
 

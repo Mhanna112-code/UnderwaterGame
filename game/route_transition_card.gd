@@ -12,6 +12,7 @@ var _title: Label
 var _body: RichTextLabel
 var _help: Button
 var _continue: Button
+var _panel: PanelContainer
 
 func _ready() -> void:
 	name = "RouteTransitionCard"
@@ -26,21 +27,21 @@ func _ready() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(shade)
 
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -300.0
-	panel.offset_right = 300.0
-	panel.offset_top = -184.0
-	panel.offset_bottom = 184.0
-	panel.add_theme_stylebox_override("panel", _panel_style())
-	add_child(panel)
+	_panel = PanelContainer.new()
+	_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_panel.offset_left = -300.0
+	_panel.offset_right = 300.0
+	_panel.offset_top = -184.0
+	_panel.offset_bottom = 184.0
+	_panel.add_theme_stylebox_override("panel", _panel_style())
+	add_child(_panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 28)
 	margin.add_theme_constant_override("margin_right", 28)
 	margin.add_theme_constant_override("margin_top", 24)
 	margin.add_theme_constant_override("margin_bottom", 22)
-	panel.add_child(margin)
+	_panel.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 13)
 	margin.add_child(column)
@@ -97,6 +98,18 @@ func open_card(title: String, body: String, show_combat_help: bool = false) -> v
 # color language without coupling it to this node's internal label name.
 func body_text() -> String:
 	return _body.get_parsed_text()
+
+# Browser-resolution verification reads player-visible controls through this
+# stable seam. It catches a long transition body covering Continue/Help
+# without pinning the runtime VBox implementation.
+func visible_rects() -> Dictionary:
+	return {
+		"panel": _panel.get_global_rect() if _panel != null else Rect2(),
+		"title": _title.get_global_rect() if _title != null else Rect2(),
+		"body": _body.get_global_rect() if _body != null else Rect2(),
+		"help": _help.get_global_rect() if _help != null and _help.visible else Rect2(),
+		"continue": _continue.get_global_rect() if _continue != null else Rect2(),
+	}
 
 func dismiss() -> void:
 	if not visible:

@@ -116,7 +116,10 @@ func _exercise_live_leg(beat_index: int, approach: float) -> void:
 			"ROUTE BOUNDARY: %s from %s approach did not reach the explicit no-boss preview" % [String(beat.id), approach_label])
 		_expect(_sonar_was_not_needed(world),
 			"ROUTE SONAR: %s from %s approach required or activated sonar on the critical path" % [String(beat.id), approach_label])
-		world.queue_free()
+		# This verifier creates 21 complete worlds. Release each one immediately
+		# after the physical arrival assertion, then yield so PhysicsServer can
+		# dispose its bodies before the next approach starts.
+		_teardown_world(world)
 		await process_frame
 		return
 	_expect(world.battle != null,
@@ -131,8 +134,23 @@ func _exercise_live_leg(beat_index: int, approach: float) -> void:
 			])
 	_expect(_sonar_was_not_needed(world),
 		"ROUTE SONAR: %s from %s approach required or activated sonar on the critical path" % [String(beat.id), approach_label])
-	world.queue_free()
+	# See the preview branch above: a deferred free leaves short-lived physics
+	# bodies alive across the next isolated approach and turns this gate's
+	# cleanup warning into misleading test output.
+	_teardown_world(world)
 	await process_frame
+
+func _teardown_world(world: World) -> void:
+	# A live encounter owns a SubViewport full of throwaway CharacterBody3D
+	# presentation actors. World normally clears it through _on_battle_finished;
+	# this reachability gate intentionally stops *at* arrival, so dispose that
+	# private presentation tree explicitly before freeing the isolated world.
+	# Otherwise Godot reports retained physics bodies at process exit and hides
+	# real lifecycle regressions in the verification output.
+	if is_instance_valid(world.battle):
+		world.battle.free()
+		world.battle = null
+	world.free()
 
 func _sonar_was_not_needed(world: World) -> bool:
 	for diver_value in world.divers:
