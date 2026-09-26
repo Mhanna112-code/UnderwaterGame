@@ -390,12 +390,6 @@ func _party() -> Array:
 		stats.agility = int(base.agility)
 		stats.evasion = int(base.evasion)
 		stats.accuracy = int(base.accuracy)
-		stats.grow_hp = int(base.grow_hp)
-		stats.grow_strength = int(base.grow_strength)
-		stats.grow_defense = int(base.grow_defense)
-		stats.grow_agility = int(base.grow_agility)
-		stats.grow_accuracy = int(base.get("grow_accuracy", 0))
-		stats.grow_evasion = int(base.get("grow_evasion", 0))
 		stats.fill()
 		out.append({"kind": "party", "model": String(model_name), "stats": stats})
 	return out

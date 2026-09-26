@@ -63,29 +63,20 @@ var SONAR_INTERVAL := 0.2
 # hitter. The earlier mixed 10/26/42 scale made Scuba strictly worse than
 # the two characters whose V2 blocks had not yet been ported.
 #
-# grow_* remains this game's level progression layer. It starts from the
-# authored level-one contract below instead of silently replacing that
-# contract with the older prototype numbers.
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
 		"evasion": 3, "accuracy": 3,
-		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
-		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 10, "strength": 2, "defense": 2, "agility": 2,
 		"evasion": 2, "accuracy": 2,
-		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
-		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 10, "strength": 4, "defense": 4, "agility": 1,
 		"evasion": 0, "accuracy": 1,
-		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
-		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
 	},
 }
@@ -370,12 +361,6 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
-	stats.grow_hp = int(base.grow_hp)
-	stats.grow_strength = int(base.grow_strength)
-	stats.grow_defense = int(base.grow_defense)
-	stats.grow_agility = int(base.grow_agility)
-	stats.grow_accuracy = int(base.get("grow_accuracy", 0))
-	stats.grow_evasion = int(base.get("grow_evasion", 0))
 	stats.fill()
 
 	# Not a CombatantStats field - an ability isn't part of the damage
