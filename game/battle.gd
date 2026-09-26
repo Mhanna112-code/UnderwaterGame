@@ -870,12 +870,6 @@ func _default_player_stats() -> CombatantStats:
 	s.agility = int(base.agility)
 	s.evasion = int(base.evasion)
 	s.accuracy = int(base.accuracy)
-	s.grow_hp = int(base.grow_hp)
-	s.grow_strength = int(base.grow_strength)
-	s.grow_defense = int(base.grow_defense)
-	s.grow_agility = int(base.grow_agility)
-	s.grow_accuracy = int(base.get("grow_accuracy", 0))
-	s.grow_evasion = int(base.get("grow_evasion", 0))
 	s.fill()
 	return s
 
@@ -1423,13 +1417,23 @@ func _build_ui() -> void:
 	run_btn = _menu_button("Run", "Might not escape")
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
-	if tutorial_encounter:
-		skip_tutorial_btn = _menu_button("Skip Tutorial", "Ends the fight and returns to the world")
-		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
-		main_menu.add_child(skip_tutorial_btn)
 	items_btn = _menu_button("Items", "")
 	items_btn.pressed.connect(_show_items)
 	main_menu.add_child(items_btn)
+
+	# Reparented into whichever of main_menu/move_menu/item_menu/target_menu
+	# is currently showing, always as its last button (see
+	# _place_skip_tutorial_btn_last()) - not a fixed child of any one of
+	# them, since those four toggle their own .visible on and off as the
+	# player navigates (_show_main()/_show_moves()/_show_items()) and Skip
+	# Tutorial needs to stay reachable no matter which is up, for the whole
+	# tutorial fight. Plain title, no hint - "Ends the fight and returns to
+	# the world" doesn't fit this button's width without clipping, unlike
+	# the short hints every other menu button carries.
+	if tutorial_encounter:
+		skip_tutorial_btn = _menu_button("Skip Tutorial", "")
+		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
+		_place_skip_tutorial_btn_last(main_menu)
 
 	_selected_move_panel = PanelContainer.new()
 	_selected_move_panel.add_theme_stylebox_override("panel", _row_stylebox(false))
@@ -1551,6 +1555,25 @@ func _menu_button(title: String, hint: String) -> Button:
 	b.custom_minimum_size = Vector2(300, 52)
 	b.clip_text = true
 	return b
+
+# Moves skip_tutorial_btn (a single shared instance, not one per menu) so it
+# always sits as the last button on whichever of main_menu/move_menu/
+# item_menu/target_menu is currently visible - called at the end of every
+# place those menus populate/reorder their own Back button
+# (_populate_move_menu(), _populate_item_menu(), the two target-menu
+# populate functions) plus _show_main()/_start_party_turn(). A Control can
+# only have one parent, so this reparents rather than duplicating the
+# button four times over with four copies of its enabled/disabled state to
+# keep in sync. No-op outside the tutorial fight, where skip_tutorial_btn
+# is never built at all.
+func _place_skip_tutorial_btn_last(menu: Container) -> void:
+	if skip_tutorial_btn == null:
+		return
+	if skip_tutorial_btn.get_parent() != menu:
+		if skip_tutorial_btn.get_parent() != null:
+			skip_tutorial_btn.get_parent().remove_child(skip_tutorial_btn)
+		menu.add_child(skip_tutorial_btn)
+	menu.move_child(skip_tutorial_btn, menu.get_child_count() - 1)
 
 # X-glyph panel (what to press) beside a track (when to press it), laid out
 # by an HBoxContainer so "button then gauge" is just child order, not a
@@ -2333,6 +2356,7 @@ func _start_party_turn(actor: Dictionary) -> void:
 	item_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
+	_place_skip_tutorial_btn_last(main_menu)
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
 	call_deferred("_fit_panel_height")
@@ -2566,6 +2590,7 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		move_buttons.append(b)
 	# Not rebuilt with the move buttons above - keep it after the choices.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
+	_place_skip_tutorial_btn_last(move_menu)
 
 # Ready-to-assign tooltip text covering every explainable effect a move
 # carries, not just the first - Flash Blast carries both a "status" (its own
@@ -2637,6 +2662,7 @@ func _populate_item_menu() -> void:
 	# rebuilt above, so re-adding fresh item buttons pushes it out of
 	# place unless it's explicitly moved back to the end each time.
 	item_menu.move_child(item_back_btn, item_menu.get_child_count() - 1)
+	_place_skip_tutorial_btn_last(item_menu)
 
 # heal/oxygen items only ever make sense on a living party member (a
 # downed diver has no oxygen tank to top off) - _living(party) same as a
@@ -2727,16 +2753,9 @@ func _show_main() -> void:
 	item_menu.visible = false
 	target_menu.visible = false
 	main_menu.visible = true
+	_place_skip_tutorial_btn_last(main_menu)
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
-	# Reachable via move_menu's own Back button even during a scripted
-	# forced-move step (_start_party_turn() only skips straight past main_menu
-	# on the way IN via _show_moves() - Back still has no such check), which
-	# would otherwise let a player bail out of the lesson entirely instead of
-	# picking the one highlighted move it's demonstrating. Hidden rather than
-	# disabled, same as the tutorial's other "not right now" buttons.
-	if skip_tutorial_btn != null:
-		skip_tutorial_btn.visible = not _is_tutorial_scripted_turn(_acting)
 	call_deferred("_fit_panel_height")
 
 # Every effect still gets a target list rather than an immediate resolve,
@@ -3177,6 +3196,7 @@ func _populate_all_target_menu(targets: Array) -> void:
 	target_menu.add_child(button)
 	target_buttons.append(button)
 	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
+	_place_skip_tutorial_btn_last(target_menu)
 
 func _populate_target_menu(targets: Array) -> void:
 	for b in target_buttons:
@@ -3203,6 +3223,7 @@ func _populate_target_menu(targets: Array) -> void:
 	# rebuilt above, so re-adding fresh target buttons pushes it out of
 	# place unless it's explicitly moved back to the end each time.
 	target_menu.move_child(target_back_btn, target_menu.get_child_count() - 1)
+	_place_skip_tutorial_btn_last(target_menu)
 
 # Exactly one of _pending_move/_pending_item is ever set when target_menu
 # is showing (see _on_move_chosen()/_on_item_chosen()) - branch on which,
@@ -3950,36 +3971,22 @@ func _do_swap_minigame(actor: Dictionary, target: Dictionary, _target_stats: Com
 	# own comment.
 	await _finish_special_enemy_turn(actor, target, int(score[0]) >= int(score[1]))
 
-# One diver's block for _win()'s level-up table: name + level reached,
-# then every stat gain_xp() can grow, each as "KEY total" with a green
-# "(+N)" appended only when it actually grew this time (skipped entirely
-# at +0, same "no delta shown" rule _apply_stat_delta() already uses for
-# the in-fight stats panel). `levels` is however many levels one gain_xp()
-# call crossed at once - their per-stat "grown" deltas are summed here so
-# a big XP dump reads as one combined jump, not a level-up block repeated
-# once per level crossed.
+# One diver's block for _win()'s level-up table: name + level reached, plus
+# how many Spell Points that jump earned (1 per level - see gain_xp() in
+# combatant_stats.gd). `levels` is however many levels one gain_xp() call
+# crossed at once, so a big XP dump reads as one combined line rather than
+# a block repeated once per level crossed. Leveling no longer touches
+# combat stats at all, so there's nothing else to report here.
 func _build_levelup_block(entry: Dictionary, levels: Array) -> String:
 	var s := entry.stats as CombatantStats
-	var keys: Array[String] = ["HP", "STR", "DEF", "AGI", "ACC", "EVA"]
-	var totals := {"HP": 0, "STR": 0, "DEF": 0, "AGI": 0, "ACC": 0, "EVA": 0}
-	for lv in levels:
-		var grown: Dictionary = (lv as Dictionary).get("grown", {}) as Dictionary
-		for key in keys:
-			totals[key] = int(totals[key]) + int(grown.get(key, 0))
-	var current := {
-		"HP": s.hp_max, "STR": s.strength, "DEF": s.defense,
-		"AGI": s.agility, "ACC": s.accuracy, "EVA": s.evasion,
-	}
 	var up := STAT_COLOR_UP.to_html(false)
-	var parts: Array[String] = []
-	for key in keys:
-		var delta := int(totals[key])
-		var piece := "%s %d" % [key, int(current[key])]
-		if delta > 0:
-			piece += " [color=%s](+%d)[/color]" % [up, delta]
-		parts.append(piece)
+	var points := levels.size()
+	var line := "+%d Spell Point" % points
+	if points != 1:
+		line += "s"
+	line = "[color=%s]%s[/color]" % [up, line]
 	var last_level := int((levels[levels.size() - 1] as Dictionary).get("level", s.level))
-	return "[b]%s[/b] - Lv.%d\n%s" % [String(entry.display_name), last_level, "   ".join(parts)]
+	return "[b]%s[/b] - Lv.%d\n%s" % [String(entry.display_name), last_level, line]
 
 func _win() -> void:
 	_set_all_buttons(false)
@@ -4005,40 +4012,36 @@ func _win() -> void:
 		if entry.has("actor") and is_instance_valid(entry.actor) and entry.actor is Diver:
 			(entry.actor as Diver).play_win()
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
-	var total_xp := 0
-	for e in enemies:
-		total_xp += int(e.get("xp_reward", 0))
-	if special_encounter:
-		total_xp = int(round(float(total_xp) * 1.5))
-	# One padded grunt's own xp_reward (BASE_XP=10) is well under the 30 XP
-	# a fresh level 1 needs - without this floor, the choreographed first
-	# fight's own level-up stat table (_build_levelup_block() below) would
-	# never actually have anything to show, since gain_xp() would never
-	# cross the threshold at all.
-	if tutorial_encounter:
-		total_xp = maxi(total_xp, 30)
-	# Every party member gets the full amount, not a split share - there's
-	# no shared party XP pool concept in this game, and splitting it would
-	# just make leveling slower for the same fights without adding a
-	# meaningful choice anywhere.
+	# The tutorial's first win is narrated, not real - see the caption below,
+	# which explicitly tells the player this particular win doesn't grant
+	# XP. gain_xp() never runs here, so there's no level-up to log and no
+	# Spell Point block to build for this fight.
 	var levelup_blocks: Array[String] = []
-	for entry in party:
-		var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
-		for lv in levels:
-			_log("%s reached level %d!" % [String(entry.display_name), int((lv as Dictionary).level)])
-			await get_tree().create_timer(LOG_READ_DELAY).timeout
-		if not levels.is_empty():
-			levelup_blocks.append(_build_levelup_block(entry, levels))
-	# One combined stat table for every diver who leveled up this win, not
-	# a separate popup per diver - green (+N) per stat next to whichever
-	# ones actually grew this time (see _rolled_growth() in combatant_
-	# stats.gd for why that's not always the same number twice), same
-	# green used for a rising stat everywhere else in this file
-	# (STAT_COLOR_UP/_apply_stat_delta()). Outside the tutorial fight this
-	# just flashes on its own timer; inside it, it stays up through the
-	# "what winning does" explanation right below instead of vanishing
-	# before the player gets to read both together, and only clears once
-	# that caption's own Enter press does.
+	if not tutorial_encounter:
+		var total_xp := 0
+		for e in enemies:
+			total_xp += int(e.get("xp_reward", 0))
+		if special_encounter:
+			total_xp = int(round(float(total_xp) * 1.5))
+		# Every party member gets the full amount, not a split share - there's
+		# no shared party XP pool concept in this game, and splitting it would
+		# just make leveling slower for the same fights without adding a
+		# meaningful choice anywhere.
+		for entry in party:
+			var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
+			for lv in levels:
+				_log("%s reached level %d!" % [String(entry.display_name), int((lv as Dictionary).level)])
+				await get_tree().create_timer(LOG_READ_DELAY).timeout
+			if not levels.is_empty():
+				levelup_blocks.append(_build_levelup_block(entry, levels))
+	# One combined block for every diver who leveled up this win, not a
+	# separate popup per diver - name, level reached, and Spell Points
+	# earned, in the same green used for a rising stat everywhere else in
+	# this file (STAT_COLOR_UP/_apply_stat_delta()), even though nothing
+	# about the diver's combat stats actually changed. Just a timed flash,
+	# same as everywhere else outside the tutorial fight - the tutorial
+	# fight never populates levelup_blocks at all (see above), so this
+	# never fires during it.
 	if not levelup_blocks.is_empty():
 		_levelup_caption.text = "\n\n".join(levelup_blocks)
 		_levelup_caption.visible = true
@@ -4046,14 +4049,12 @@ func _win() -> void:
 	# The map has repeated random battles plus two guardians and no guaranteed
 	# healer between them. A partial regroup prevents one victory from leaving
 	# the next encounter mathematically decided while preserving attrition.
-	# Shown as a green fill over each diver's own HP/Oxygen bar (any win, not
-	# just the tutorial's), from wherever it sat before this restore up to
-	# wherever it lands after - see _show_heal_overlay() - rather than the
-	# bars just silently jumping to new numbers.
-	if tutorial_encounter:
-		for entry in party:
-			if entry.has("card"):
-				_set_row_highlight(entry.card as PanelContainer, true, Color(0.65, 0.3, 0.9))
+	# Shown as a green fill over each diver's own HP/Oxygen bar (any win,
+	# including the tutorial's - this is the real, ungated partial heal, not
+	# a stand-in for a level-up that isn't happening here), from wherever it
+	# sat before this restore up to wherever it lands after - see
+	# _show_heal_overlay() - rather than the bars just silently jumping to
+	# new numbers.
 	for entry in party:
 		var s := entry.stats as CombatantStats
 		var before_hp := float(s.hp)
@@ -4064,31 +4065,20 @@ func _win() -> void:
 		if entry.has("oxygen_heal_overlay"):
 			_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
 	_refresh_all_bars()
-	# One extra beat only for the choreographed first fight - explains the
-	# XP/level-up lines (and, if any happened, the stat table above, and the
-	# HP/Oxygen refill just shown above that in purple/green) rather than
-	# leaving the player to infer what they meant. Numbers match gain_xp()
-	# (combatant_stats.gd) exactly: every stat it grows, the full HP/Oxygen
-	# refill (fill(), its only heal outside a save point), and the one
-	# Spell Point per level. Deliberately brief on Spell Points/spell trees -
-	# a fuller walkthrough of that is planned as its own separate tutorial
-	# later. Also calls out that a downed diver isn't excluded from any of
-	# this - the XP loop above runs over `party`, not _living(party), and
-	# recover_after_victory() (below) always adds at least 1 HP regardless
-	# of what a diver's hp was, so someone who went down mid-fight still
-	# levels up and comes back partially healed rather than staying at 0.
+	# One extra beat only for the choreographed first fight - explains that
+	# THIS win didn't grant XP, then describes what winning normally does
+	# for every fight after it (XP to the whole party including anyone
+	# downed, a level-up's HP/Oxygen refill, and Spell Points instead of any
+	# stat change) rather than leaving the player to infer what they'll see
+	# later. Deliberately brief on Spell Points/spell trees - a fuller
+	# walkthrough of that is planned as its own separate tutorial later.
 	if tutorial_encounter:
-		await _tutorial_show_step("Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else and comes back with some HP instead of staying at 0. Gain enough XP and a diver levels up. Leveling up brings a batch of perks: growth across HP, Strength, Defense, Agility, Accuracy, and Evasion (shown in the stat tables below), a full HP/Oxygen refill (green on the bars, outlined in purple at the top), and one Spell Point, which unlocks new spells in that diver's own spell tree. More on Spell Points and spell trees later.")
+		await _tutorial_show_step("You have defeated your first enemy! In this case you won't gain XP, but winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down - otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats - instead, you earn Spell Points, which can be used to gain new abilities by defeating enemies in battles. More on Spell Points and spell trees later.")
 		for entry in party:
-			if entry.has("card"):
-				_set_row_highlight(entry.card as PanelContainer, false)
 			if entry.has("hp_heal_overlay"):
 				(entry.hp_heal_overlay as ColorRect).visible = false
 			if entry.has("oxygen_heal_overlay"):
 				(entry.oxygen_heal_overlay as ColorRect).visible = false
-		if not levelup_blocks.is_empty():
-			_levelup_caption.visible = false
-			call_deferred("_fit_panel_height")
 	else:
 		# No accompanying caption outside the tutorial - just a timed flash
 		# instead of an Enter-gate, same reasoning _apply_stat_delta()-style
@@ -4123,7 +4113,7 @@ func _lose() -> void:
 	# and returns them straight to the overworld (see its own was_tutorial
 	# check) rather than showing Game Over.
 	if tutorial_encounter:
-		await _tutorial_show_step("In this case, the party lost the fight, but you can continue to fight enemies in the overworld.")
+		await _tutorial_show_step("In this case, the party lost the fight, but you can continue to fight enemies in the overworld. Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen (green on the bars, outlined in purple at the top) even if they went down - otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats - instead, you earn Spell Points, which can be used to gain new abilities by defeating enemies in battles. More on Spell Points and spell trees later.")
 	else:
 		_log("The party is battered and pulls back.")
 		await get_tree().create_timer(LOG_READ_DELAY).timeout

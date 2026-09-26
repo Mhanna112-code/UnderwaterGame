@@ -74,6 +74,11 @@ var cam_dist := 6.5
 var cam: Camera3D
 var hud: Label
 var mouse_look := false
+# R toggles this - see _on_encounter_triggered()'s own early-out and the
+# "R: Encounters" hint _update_hud() adds next to it. Player-facing (not a
+# dev/test-only flag): on by default, so ordinary play is unaffected unless
+# someone actually presses R.
+var random_encounters_enabled := true
 var _t := 0.0
 
 # First-person aim mode for aimed abilities (grapple): E enters it instead
@@ -253,9 +258,6 @@ func _serialize_state() -> Dictionary:
 				"oxygen_max": s.oxygen_max,
 				"level": s.level, "xp": s.xp, "xp_to_next": s.xp_to_next,
 				"spell_points": s.spell_points,
-				"grow_hp": s.grow_hp, "grow_strength": s.grow_strength,
-				"grow_defense": s.grow_defense, "grow_agility": s.grow_agility,
-				"grow_accuracy": s.grow_accuracy, "grow_evasion": s.grow_evasion,
 				"hp": s.hp, "oxygen": s.oxygen,
 			},
 		})
@@ -304,12 +306,6 @@ func _load_save() -> void:
 		s.xp = int(sd.get("xp", s.xp))
 		s.xp_to_next = int(sd.get("xp_to_next", s.xp_to_next))
 		s.spell_points = int(sd.get("spell_points", s.spell_points))
-		s.grow_hp = int(sd.get("grow_hp", s.grow_hp))
-		s.grow_strength = int(sd.get("grow_strength", s.grow_strength))
-		s.grow_defense = int(sd.get("grow_defense", s.grow_defense))
-		s.grow_agility = int(sd.get("grow_agility", s.grow_agility))
-		s.grow_accuracy = int(sd.get("grow_accuracy", s.grow_accuracy))
-		s.grow_evasion = int(sd.get("grow_evasion", s.grow_evasion))
 		s.hp = int(sd.get("hp", s.hp_max))
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
@@ -735,6 +731,18 @@ func _ready() -> void:
 	title_layer.add_child(tutorial_result_popup)
 	if _tutorial_loss_playtest_requested():
 		call_deferred("_show_tutorial_loss_playtest")
+
+	# _show_ability_popups() (called after every tutorial-fight ending - won,
+	# skipped, or a loss's Retry/Exit choice) is this autoload's only caller
+	# (see that function's own comment), so its "closed" firing always means
+	# the beginning-tutorial walkthrough has fully wrapped up. _start_battle()
+	# drops mouse_look to let the battle UI take clicks, and nothing since
+	# has put it back - without this, the player has to click once, blind,
+	# just to get mouse-look working again back in the overworld. Runtime
+	# get_node() lookup, not the bare autoload name, for the same reason
+	# _show_ability_popups() itself uses one (bare names fail to resolve
+	# under verify/'s headless --script launches).
+	(get_node("/root/CharacterAbilityPopup") as Node).connect("closed", _on_tutorial_ability_popups_closed)
 
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
@@ -1364,6 +1372,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			_toggle_save_menu()
 		elif k == KEY_Q:
 			_toggle_sonar()
+		elif k == KEY_R:
+			_toggle_random_encounters()
 		elif k == KEY_F1:
 			tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
@@ -1419,6 +1429,18 @@ func _toggle_sonar() -> void:
 	else:
 		_announce("Not enough oxygen for sonar.")
 	_update_hud()   # refreshes the "Q: Sonar (On/Off)" hint immediately
+
+# Flips random_encounters_enabled - _on_encounter_triggered() reads it as
+# its own early-out, so this doesn't touch a battle already in progress,
+# only whether a NEW one is allowed to start. No _first_encounter_done gate
+# like _toggle_sonar() has - unlike sonar (a diver ability that wouldn't
+# make sense to explain before the tutorial hands out abilities at all),
+# this is a player convenience that's just as meaningful before the
+# tutorial fight as after it.
+func _toggle_random_encounters() -> void:
+	random_encounters_enabled = not random_encounters_enabled
+	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
+	_update_hud()   # refreshes the "R: Encounters (On/Off)" hint immediately
 
 # Only opens if the active diver is actually standing on a save point -
 # see save_point.gd.has_diver(). Closes on a second press; won't open
@@ -2069,7 +2091,7 @@ func _update_banner(dt: float) -> void:
 const GUARDED_ENCOUNTER_CHANCE := 0.35
 
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active] or _intro_active:
+	if battling or d != divers[active] or _intro_active or not random_encounters_enabled:
 		return
 	for entry_value in ItemGuardian.spots():
 		var entry := entry_value as Dictionary
@@ -2131,7 +2153,10 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Tethys rises from the deep!" if boss_encounter else ("Your first encounter - let's see what you've got." if tutorial else "An angler fish emerges from the murk!"))
+	if boss_encounter:
+		_announce("Tethys rises from the deep!")
+	elif not tutorial:
+		_announce("An angler fish emerges from the murk!")
 	battle = Battle.new()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
@@ -2209,7 +2234,6 @@ func _on_battle_finished(result: String) -> void:
 				s.oxygen = s.oxygen_max
 			_update_hp_bar()
 			_update_oxygen_bar()
-			_announce("Tutorial skipped. You can replay it any time from the Esc menu's Combat Help tab.")
 		"lost":
 			if was_special and _special_encounter_diver != null:
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
@@ -2377,28 +2401,41 @@ func _build_diver_slots() -> void:
 		_diver_slots.append(slot)
 
 # Fired once, right after the tutorial fight's own battle screen closes and
-# control returns to the overworld (see _on_battle_finished()) - four fixed
+# control returns to the overworld (see _on_battle_finished()) - five fixed
 # CharacterAbilityPopup pages, in party order: the general world-controls
 # blurb (no Slot to highlight - it isn't about any one diver), then
-# Maxilani/Musashi/Bucky's own ability writeups. Text lives on slot.gd
-# itself (worldExplanation/maxilaniAbilityTitle/etc.) rather than here -
-# every Slot instance carries an identical copy of all four, so which one
-# they're read off doesn't matter, only _diver_slots[i] matching CAST's
-# fixed Staff_Diver/Prototype_1(1910)/Prototype_V(1922) order matters for
-# picking the right Slot to highlight per page.
+# Maxilani's Swap and Sonar as two separate pages, then Musashi/Bucky's own
+# single-ability writeups. Text lives on slot.gd itself (worldExplanation/
+# maxilaniSwapTitle/etc.) rather than here - every Slot instance carries an
+# identical copy of all of it, so which one they're read off doesn't
+# matter, only _diver_slots[i] matching CAST's fixed Staff_Diver/
+# Prototype_1(1910)/Prototype_V(1922) order matters for picking the right
+# Slot to highlight per page.
 func _show_ability_popups() -> void:
 	if _diver_slots.is_empty():
 		return
 	var first: Slot = _diver_slots[0]
 	var pages: Array[Dictionary] = [
-		{"slot": null, "title": "The World Map", "body": first.worldExplanation},
+		{"slot": null, "title": "The World Map", "body": first.worldExplanation, "media": "world"},
 	]
 	if _diver_slots.size() > 0:
 		var maxilani: Slot = _diver_slots[0]
+		# Two separate pages, not one combined page - Swap and Sonar are two
+		# distinct things to learn (and, eventually, two distinct demo clips;
+		# see "media" below and TutorialContent.ABILITY_MEDIA), and cramming
+		# both into one page's body left Sonar with no clip of its own at
+		# all (the page could only ever show ability_id's one clip, "swap").
 		pages.append({
 			"slot": maxilani,
-			"title": maxilani.maxilaniAbilityTitle,
-			"body": "%s\n\n%s" % [maxilani.maxilaniSwapBody, maxilani.maxilaniSonarBody],
+			"title": maxilani.maxilaniSwapTitle,
+			"body": maxilani.maxilaniSwapBody,
+			"media": "swap",
+		})
+		pages.append({
+			"slot": maxilani,
+			"title": maxilani.maxilaniSonarTitle,
+			"body": maxilani.maxilaniSonarBody,
+			"media": "sonar",
 		})
 	if _diver_slots.size() > 1:
 		var musashi: Slot = _diver_slots[1]
@@ -2425,6 +2462,13 @@ func _show_ability_popups() -> void:
 	# is a runtime call, not a parse-time identifier, so it works either way.
 	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
 
+# See the "closed" connection in _ready() - restores the mouse-look the
+# player had before _start_battle() took it away for the tutorial fight,
+# now that its post-fight popups are actually done.
+func _on_tutorial_ability_popups_closed() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	mouse_look = true
+
 func _update_hud() -> void:
 	if target_selector.selecting:
 		var t := target_selector.current_target()
@@ -2446,6 +2490,7 @@ func _update_hud() -> void:
 	# ability_id.
 	if d.passive_id == "sonar":
 		line += "  ·  Q: Sonar (%s)" % ("On" if d.sonar_active else "Off")
+	line += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during
