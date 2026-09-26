@@ -29,6 +29,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	(%PopupClose as Button).pressed.connect(_on_next_pressed)
 	_style_panel()
+	_build_close_button()
 	# PanelContainer defaults to visible, unlike a PopupPanel (which starts
 	# hidden until .popup() is called) - hide it up front so it isn't just
 	# sitting on screen from the moment the game boots, before open() is
@@ -38,6 +39,57 @@ func _ready() -> void:
 	# and _show_ability_popups() first opens this, several real seconds have
 	# passed, plenty for this one-time render to finish well ahead of need.
 	_wasd_cluster_texture()
+
+# An always-reachable exit independent of which page you're on - PopupClose
+# (below) only reads "Close" on the last page; everywhere else it reads
+# "Next" and a corner X is the only way to leave outright, same "get me out
+# of this modal" job TutorialBook's own corner X does (tutorial_book.gd).
+# A PanelContainer stacks every direct child to the same content rect (the
+# same trick MarginContainer uses for an overlay), so an extra child here
+# sits on top of %Margin's own layout instead of pushing it aside; wrapped
+# in a plain, non-Container Control first since a Container would otherwise
+# force this new child to that same full rect too, fighting the anchor/
+# offset that actually places the button in the corner.
+func _build_close_button() -> void:
+	var panel := %AbilityExplanationPanel as PanelContainer
+	var overlay := Control.new()
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(overlay)
+	var btn := Button.new()
+	btn.text = "×"
+	var btn_size := Vector2(28, 28)
+	btn.custom_minimum_size = btn_size
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.pressed.connect(_close)
+	# Explicit anchors/offsets computed from a fixed size, not
+	# set_anchors_and_offsets_preset()'s PRESET_MODE_MINSIZE - that reads
+	# get_combined_minimum_size() at the moment it's called, and calling it
+	# before add_child() (this button wasn't in the tree yet) measured a
+	# stale, smaller size than the 28x28 + font-16 actually settled on,
+	# undershooting the inset and leaving it hanging half outside the
+	# panel's own rounded top-right corner instead of sitting inside it.
+	var inset := 12.0
+	btn.anchor_left = 1.0
+	btn.anchor_right = 1.0
+	btn.anchor_top = 0.0
+	btn.anchor_bottom = 0.0
+	btn.offset_right = -inset
+	btn.offset_left = -inset - btn_size.x
+	btn.offset_top = inset
+	btn.offset_bottom = inset + btn_size.y
+	overlay.add_child(btn)
+
+# Pulses PopupClose - Next on every page but the last, Close once it
+# relabels itself there (see _refresh()) - so there's always exactly one
+# flashing button pointing at "what to press next", same sine-pulse shape
+# as [pulse] BBCode text elsewhere (pulse_text_effect.gd) and TutorialBook's
+# own Next/Close pulse (tutorial_book.gd) rather than a third effect system.
+func _process(_delta: float) -> void:
+	if not (%AbilityExplanationPanel as PanelContainer).visible:
+		return
+	var flash := 0.35 + 0.65 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0))
+	(%PopupClose as Button).modulate.a = flash
 
 # Dark blue fill, white outline - a permanent look for the whole window,
 # unlike Slot.set_highlighted()'s version of this same StyleBoxFlat
@@ -90,7 +142,15 @@ func _refresh() -> void:
 			slot.set_highlighted(slot == page.get("slot"))
 	(%PopupClose as Button).text = "Close" if _index >= _pages.size() - 1 else "Next"
 	var page_slot: Slot = page.get("slot")
-	_refresh_media(String(page_slot.diver.ability_id) if page_slot != null else "")
+	# "media" lets a page pick its own clip explicitly - needed the moment a
+	# diver gets more than one page (Maxilani's Swap and Sonar are two
+	# separate pages now, see world.gd's _show_ability_popups()), since
+	# page_slot.diver.ability_id alone is one fixed value per diver and
+	# can't tell those two pages apart on its own. Falls back to that same
+	# ability_id-derived lookup for a diver with only one page (Musashi,
+	# Bucky), so they don't need to pass it explicitly.
+	var media_key: String = String(page.get("media", page_slot.diver.ability_id if page_slot != null else ""))
+	_refresh_media(media_key)
 
 # Rebuilds %Paragraph's one RichTextLabel from scratch every call. The
 # inline [E]/[Q]/[Tab] badges are BBCode baked straight into the body string
@@ -113,7 +173,15 @@ func _build_paragraph(body: String) -> void:
 	label.append_text(parts[0])
 	if parts.size() > 1:
 		var tex := await _wasd_cluster_texture()
-		label.add_image(tex, 54, 18)
+		# Native size, not squashed to fit a single text line - add_image()
+		# used to force this into 54x18 against the texture's actual 90x63,
+		# flattening the two-row W/A/S/D layout into an illegible sliver.
+		# RichTextLabel grows that line's own height to fit the tallest
+		# inline content automatically, so drawing it at the size it was
+		# actually rendered at is enough on its own to give it room - no
+		# manual newline needed, which would otherwise break "Use [WASD] and
+		# move..." across a line for no reason.
+		label.add_image(tex, int(WASD_CLUSTER_SIZE.x), int(WASD_CLUSTER_SIZE.y))
 		label.append_text(parts[1])
 
 func _rich_label() -> RichTextLabel:
@@ -130,29 +198,51 @@ func _rich_label() -> RichTextLabel:
 	label.add_theme_color_override("default_color", Color(0.8, 0.88, 0.9))
 	return label
 
+# Key badge/gap sizing, shared between _key_badge()/_wasd_cluster() (the
+# layout) and _wasd_cluster_texture()/_build_paragraph() (the rendered
+# result, which needs the same numbers to size the SubViewport and the
+# inline image it becomes without either squashing or clipping it).
+const _KEY_SIZE := Vector2(26, 26)
+const _KEY_GAP := 3
+const _CLUSTER_PAD := Vector2(3, 4)   # transparent breathing room baked into the texture itself
+const WASD_CLUSTER_CONTENT_SIZE := Vector2(_KEY_SIZE.x * 3 + _KEY_GAP * 2, _KEY_SIZE.y * 2 + _KEY_GAP)
+const WASD_CLUSTER_SIZE := WASD_CLUSTER_CONTENT_SIZE + _CLUSTER_PAD * 2
+
 # Renders _wasd_cluster() once into an off-screen SubViewport and keeps the
 # resulting texture for every page that needs it after - a SubViewport
 # needs a couple of real frames to actually draw before its texture is
 # valid, so doing this per-page-open would flash in a frame or two late
-# every single time instead of just the first.
+# every single time instead of just the first. Padded on all sides
+# (_CLUSTER_PAD) rather than rendered tight to the grid's own edges, so the
+# inline image _build_paragraph() drops into the paragraph text already
+# carries its own breathing room instead of butting straight up against
+# neighboring glyphs.
 func _wasd_cluster_texture() -> ImageTexture:
 	if _wasd_texture != null:
 		return _wasd_texture
 	var vp := SubViewport.new()
-	vp.size = Vector2i(60, 40)
+	vp.size = Vector2i(WASD_CLUSTER_SIZE)
 	vp.transparent_bg = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
-	vp.add_child(_wasd_cluster())
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", int(_CLUSTER_PAD.x))
+	margin.add_theme_constant_override("margin_right", int(_CLUSTER_PAD.x))
+	margin.add_theme_constant_override("margin_top", int(_CLUSTER_PAD.y))
+	margin.add_theme_constant_override("margin_bottom", int(_CLUSTER_PAD.y))
+	vp.add_child(margin)
+	margin.add_child(_wasd_cluster())
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 	_wasd_texture = ImageTexture.create_from_image(vp.get_texture().get_image())
 	vp.queue_free()
 	return _wasd_texture
 
-# A small "keycap" - a black-bordered square with one letter. Sized to sit
-# within a line of body text (see _wasd_cluster()) rather than dominate it,
-# unlike the bigger standalone badges this replaced.
+# A "keycap" - a black-bordered square with one letter, big enough to read
+# clearly inline with the surrounding body text without looking like a
+# smudge (the 18x18/font-11 version this replaced did, once forced through
+# add_image()'s old 54x18 squash - see _build_paragraph()).
 func _key_badge(letter: String) -> PanelContainer:
 	var badge := PanelContainer.new()
 	var style := StyleBoxFlat.new()
@@ -161,14 +251,14 @@ func _key_badge(letter: String) -> PanelContainer:
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(3)
 	badge.add_theme_stylebox_override("panel", style)
-	badge.custom_minimum_size = Vector2(18, 18)
+	badge.custom_minimum_size = _KEY_SIZE
 	var label := Label.new()
 	label.text = letter
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_font_size_override("font_size", 15)
 	label.add_theme_color_override("font_color", Color.WHITE)
 	badge.add_child(label)
 	return badge
@@ -182,12 +272,12 @@ func _wasd_cluster() -> GridContainer:
 	var grid := GridContainer.new()
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 2)
-	grid.add_theme_constant_override("v_separation", 2)
+	grid.add_theme_constant_override("h_separation", _KEY_GAP)
+	grid.add_theme_constant_override("v_separation", _KEY_GAP)
 	var spacer_a := Control.new()
-	spacer_a.custom_minimum_size = Vector2(18, 18)
+	spacer_a.custom_minimum_size = _KEY_SIZE
 	var spacer_b := Control.new()
-	spacer_b.custom_minimum_size = Vector2(18, 18)
+	spacer_b.custom_minimum_size = _KEY_SIZE
 	grid.add_child(spacer_a)
 	grid.add_child(_key_badge("W"))
 	grid.add_child(spacer_b)

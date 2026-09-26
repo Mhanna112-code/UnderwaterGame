@@ -141,7 +141,9 @@ const FIRST_BATTLE_MOVE_NOTES := {
 # changes needed. .ogv plays as video (Godot's built-in VideoStreamPlayer
 # format); anything else is loaded as a still image.
 const ABILITY_MEDIA := {
+	"world": "res://media/tutorials/WorldMap.ogv",
 	"swap": "res://media/tutorials/swap_demo.ogv",
+	"sonar": "res://media/tutorials/sonar_demo.ogv",
 	"grapple": "res://media/tutorials/grapple_demo.ogv",
 	"shockwave": "res://media/tutorials/shockwave_demo.ogv",
 }

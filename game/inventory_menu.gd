@@ -14,11 +14,13 @@
 # EFFECT_KIND_EXPLANATIONS - "Self Cost"/"Evasion Reduction", the parts of a
 # move that aren't a CombatantStats status), and status condition writeups
 # (STATUS_CONDITIONS) for whoever wants the full Blindness/Stun/Flash-Blast-
-# self-cost numbers again outside of a fight. One real action button sits
+# self-cost numbers again outside of a fight. Two real action buttons sit
 # above all of that, though: replaying the scripted first fight on demand
 # (World._replay_tutorial_battle()) - both the tutorial's own win and loss
 # screens mention it lives here, for anyone who wants to see it again or
-# missed something the first time.
+# missed something the first time - and reopening the paged walkthrough
+# (World.tutorial_book, TutorialContent.GENERAL_PAGES), previously only
+# reachable via the F1 keybind.
 #
 # Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
 # SpellEquipUI/SavePointMenu - nothing here is scene-file based, on purpose,
@@ -189,6 +191,14 @@ func _on_replay_tutorial_pressed() -> void:
 	if world != null:
 		world._replay_tutorial_battle()
 
+# The F1 walkthrough (world.gd's _unhandled_input(), TutorialContent.
+# GENERAL_PAGES) was only ever reachable by that keybind - this gives it a
+# discoverable, mouse-only way back in too, right next to the button that
+# replays the scripted fight itself.
+func _on_replay_tutorial_guide_pressed() -> void:
+	if world != null:
+		world.tutorial_book.open(TutorialContent.GENERAL_PAGES)
+
 # One button per living diver x their inventory-tagged spells (see
 # World._inventory_spells_for()) - disabled rather than hidden when that
 # diver can't currently afford it, same "show what you can't afford yet"
@@ -272,6 +282,11 @@ func _refresh_help() -> void:
 		replay_btn.custom_minimum_size = Vector2(340, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
+		var replay_guide_btn := Button.new()
+		replay_guide_btn.text = "Reopen Tutorial Guide"
+		replay_guide_btn.custom_minimum_size = Vector2(340, 40)
+		replay_guide_btn.pressed.connect(_on_replay_tutorial_guide_pressed)
+		_list.add_child(replay_guide_btn)
 	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
 	var effect_entries: Array[Dictionary] = []
 	for kind in TutorialContent.EFFECT_KIND_EXPLANATIONS:
