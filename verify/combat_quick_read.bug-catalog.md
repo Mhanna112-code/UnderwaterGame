@@ -57,6 +57,7 @@ durations, or balance; it explains the current rules as they exist.
 | QUICK-READ-4 | Tooltip copy claims a timed Bleed imported from raw #72 even though the integrated rules make Scuba/Swordfish Bleed persist for the battle. | High — players learn a false rule. | Raw #72 changed both text and formulas; this slice must port display work without adopting its stale mechanics. | Current-rule text assertion | Fixed and GREEN |
 | QUICK-READ-5 | Hover cleanup leaves extra stat cards on screen and makes later target decisions look like they affect the wrong enemy. | Medium — visual misinformation survives a valid action. | All-target previews allocate a variable number of panels asynchronously. | Round-trip cleanup invariant | Fixed and GREEN |
 | QUICK-READ-6 | A shared status name or support move displays an internal key, an enemy target, or a player Bleed duration for an unlike move. | High — current-rule explanations become false exactly when the roster introduces varied status behavior. | Angler and Scuba share Bleed with different durations; legacy revive has no `target` key. | Current-rule context differential | Fixed and GREEN |
+| QUICK-READ-7 | A target preview changes red/green values but does not state whether the change is a player benefit, enemy opening, or self-cost. | High — color-blind or hurried players cannot use the core strategy without reverse-engineering the UI. | Preview values have only color and signed numbers; the tutorial prose is transient and not present in normal fights. | Captured UI contract | Fixed and GREEN |
 
 ## Test strategy
 
@@ -99,3 +100,9 @@ has one resolved state, wrapped contextual detail, actor-scaled values,
 current persistent/timed-Bleed wording, all-target extra panels, support-move
 targeting, and cleanup. The existing Glassgoat follow-up and combat-feedback
 contracts remain green.
+
+QUICK-READ-7 first failed because the live target preview exposed no semantic
+label. The fix adds `Quick Read — Benefit/Opening/Cost` text from the same
+actor-scaled preview data as the colored stat rows. The focused UI contract
+and the 1280×720/1920×1080 layout contract are green; a desaturated hosted
+capture remains required before the public build is called merge-ready.

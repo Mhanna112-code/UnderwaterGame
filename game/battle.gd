@@ -57,6 +57,15 @@ var guardian_encounter := false
 # packs roll their own Angler/Swordfish roster independently; this only pins
 # the one visible artifact defender, so exploration never randomizes a reward.
 var guardian_enemy_id := "angler"
+# A route encounter supplies its exact roster.  Empty preserves ordinary,
+# guardian, special, tutorial, and boss behavior; a non-empty list prevents
+# encounter count/roster rolls from leaking into authored progression.
+var forced_enemy_ids: Array = []
+var forced_enemy_modifiers: Array = []
+# Player-visible provenance assigned by World at the battle boundary. A route
+# tester should never have to infer whether a fish came from the authored
+# sequence, an optional guardian, or a wandering roll after the fact.
+var encounter_source := ""
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -64,29 +73,36 @@ var guardian_enemy_id := "angler"
 # World._intro_active) against one goblin, weakened across the board (HP
 # padded up, strength/accuracy cut down, heavy swings disabled entirely -
 # see _build_stage()/_do_enemy_turn()) so it can't accidentally kill anyone
-# before the lesson is even over. Walks the player through one scripted
-# move each from Maxilani, Musashi, then Mech Pilot in turn (flashing
-# button, everything else disabled - see _apply_tutorial_move_gate()), and
+# before the lesson is even over. It asks for one safe highlighted
+# Electric Touch choice (everything else disabled only for that moment), then
 # spends the goblin's own one scripted turn guaranteeing a Quick Time Event
 # actually shows up at least once (see _tutorial_prep_enemy_turn()) rather
-# than leaving that entirely to ENEMY_QTE_CHANCE. Real _resolve_attack()
-# math throughout; the fight is handed over for real once the script is
-# done (_advance_turn()'s "Defeat the enemy!" prompt) - a genuine win or
-# loss, not a guaranteed outcome.
+# than leaving that entirely to ENEMY_QTE_CHANCE. Real _resolve_attack() math
+# applies throughout; after those two taught interactions the Angler retreats
+# and the first full, punitive fight is the authored shallow-route Angler.
 var tutorial_encounter := false
-# Ordered stage script for the choreographed first fight - each entry names
-# which `party` index acts next and which of their own base moves
-# _apply_tutorial_move_gate() forces, so a stage is a (diver, move) pair,
-# not just a diver. NOT a 1:1 stage-index==party-index mapping: stages 3
-# and 4 revisit Musashi (Weaken) and Maxilani (Flash Blast) for a second
-# lesson each off their own kits, after Mech Pilot's stage 2 turn - see
-# _tutorial_party_index_for_step().
+const TUTORIAL_PROFILE_OPENING := "opening_quick_read"
+const TUTORIAL_PROFILE_INTERACTIVE := "interactive_combat_training"
+
+# World selects this before the battle enters the scene tree. The opening
+# profile is intentionally one concise lesson; the longer authored lesson is
+# a player-requested practice activity from Combat Help.
+var tutorial_profile := TUTORIAL_PROFILE_OPENING
+# Ordered stage script for the choreographed first fight.  The route brief
+# deliberately limits onboarding to one safe meaningful choice: the player
+# sees the actual green/red comparison, uses one highlighted counter move,
+# then may finish or skip the real fight. Formula walk-throughs and the rest
+# of the starting kit stay optional in Combat Help rather than turning the
+# opening into a five-move lecture.
 const _TUTORIAL_SCRIPT: Array[Dictionary] = [
-	{"party_index": 0, "move": "Electric Touch"},   # Maxilani
-	{"party_index": 1, "move": "Precise Tap"},       # Musashi
-	{"party_index": 2, "move": "Crushing Haymaker"}, # Mech Pilot
-	{"party_index": 1, "move": "Weaken"},            # Musashi again
-	{"party_index": 0, "move": "Flash Blast"},       # Maxilani again
+	{"party_index": 0, "move": "Electric Touch"}, # Maxilani; safe EVA counter
+]
+const _INTERACTIVE_TUTORIAL_SCRIPT: Array[Dictionary] = [
+	{"party_index": 0, "move": "Electric Touch"},   # Maxilani: EVA counter
+	{"party_index": 1, "move": "Precise Tap"},       # Musashi: accuracy
+	{"party_index": 2, "move": "Crushing Haymaker"}, # Bucky: trade-off
+	{"party_index": 1, "move": "Weaken"},            # Musashi: defense break
+	{"party_index": 0, "move": "Flash Blast"},       # Maxilani: all foes
 ]
 # Index into _TUTORIAL_SCRIPT of whichever scripted stage is next. Only
 # advances (see _resolve_party_move()/_resolve_party_move_all()) when
@@ -109,8 +125,23 @@ var _tutorial_finale_shown := false
 # ENEMY_QTE_CHANCE roll, so every player sees the mechanic demonstrated at
 # least once instead of it being left entirely to chance.
 var _tutorial_force_next_qte := false
+# The tutorial guarantees exactly one live dodge timing window.  Retain its
+# resolved player-facing result until the short handoff card so a success and
+# a natural miss never collapse into the same ambiguous "Practice complete"
+# screen. This is presentation state only: CombatRules remains authoritative
+# for the actual hit/dodge result.
+var _tutorial_qte_outcome_text := ""
 var _tutorial_flash_tween: Tween
 var _tutorial_caption: RichTextLabel
+# The QTE detail belongs to the lesson surface, not the universal level-up
+# label.  This keeps its reading order stable: lesson → live QTE → detail.
+var _tutorial_qte_detail: RichTextLabel
+
+func active_tutorial_script() -> Array[Dictionary]:
+	return _INTERACTIVE_TUTORIAL_SCRIPT if tutorial_profile == TUTORIAL_PROFILE_INTERACTIVE else _TUTORIAL_SCRIPT
+
+func _is_interactive_combat_training() -> bool:
+	return tutorial_profile == TUTORIAL_PROFILE_INTERACTIVE
 # Narrative beats are keyboard-friendly, but combat is otherwise mouse-first.
 # A visible click target keeps a player from treating an Enter-only caption as
 # a frozen fight; the small pulse is deliberate affordance, not decoration.
@@ -238,6 +269,10 @@ var _enemy_stats_ui: Dictionary = {}
 var _selected_move_panel: PanelContainer
 var _selected_move_name: Label
 var _selected_move_power: Label
+# Appears only while a target preview is active. The stat cards still use
+# green/red values for fast scanning, but this line names the meaning so the
+# combat decision never depends on distinguishing colors alone.
+var _quick_read_summary: Label
 # The party's authored V2 health scale is 10, not the former 10/26/42 mix.
 # Nine flat power plus a grunt's Strength routinely one-shot that roster;
 # three flat power keeps the ordinary claw on the same small-number scale as
@@ -393,15 +428,15 @@ var _stage_vp: SubViewport
 # height of the screen behind it. See _fit_panel_height().
 var _stage_container: SubViewportContainer
 var _stage_cam: Camera3D
-# Fixed 2D status stacks, not labels floating over each combatant in the
-# 3D stage - the party's own cards stack down the left edge, the enemies'
-# down the right (see _build_overhead_bar()). Static means no per-frame
-# 3D->screen projection or anti-overlap juggling is needed at all, unlike
-# the old head-tracking version this replaced.
-var _party_status_column: VBoxContainer
+# Fixed 2D status cards, not labels floating over each combatant in the
+# 3D stage. Party cards share a compact row under the turn header, while
+# enemies retain a right-side stack (see _build_overhead_bar()). A vertical
+# three-diver stack cannot fit above a tall tutorial panel at 1280x720.
+var _party_status_column: HBoxContainer
 var _enemy_status_column: VBoxContainer
 # The turn order, moved out of the bottom panel to the very top.
 var _queue_bar: PanelContainer
+var _encounter_source_label: Label
 
 # Same green downward cone world.gd's own active-diver cursor uses (see
 # World._active_cursor) - marks whichever DIVER's turn it currently is on
@@ -416,6 +451,11 @@ var _turn_cursor: MeshInstance3D
 # changes (_show_moves(), _show_main(), _on_move_chosen(), etc.), not just
 # once at the end of _build_ui().
 var _bottom_panel: PanelContainer
+# RichTextLabel/Container minimum sizes can change one frame after a caption
+# or level table first becomes visible. Keep one coalesced next-frame layout
+# pass so an early, transient minimum can never leave the battle stage with a
+# multi-thousand-pixel panel after the content has already settled smaller.
+var _panel_height_settle_pending := false
 
 # The dodge prompt: an X-glyph panel to its left (what to press, static),
 # a track to its right (when to press it, the part that actually moves).
@@ -643,6 +683,30 @@ func _row_stylebox(on: bool, color: Color = Color(1, 0, 0)) -> StyleBoxFlat:
 		style.set_border_width_all(3)
 	return style
 
+# Tutorial narration should read as one distinct surface, never as another
+# combat-log line.  Route cards intentionally keep their own navigation
+# language in route_transition_card.gd.
+func _tutorial_callout_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.025, 0.105, 0.145, 0.98)
+	style.border_color = Color(0.3, 0.75, 0.9, 0.85)
+	style.border_width_left = 4
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.set_corner_radius_all(7)
+	return style
+
+func _tutorial_continue_style(color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.border_color = Color(0.4, 0.85, 1.0, 0.9)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 12.0
+	style.content_margin_right = 12.0
+	return style
+
 # `row_panel` is one of create_stats_panel()'s returned `rows` entries (a
 # PanelContainer wrapping that stat's name/value/delta row) - see
 # _explain_dodging()/_explain_damage() for actual use.
@@ -762,12 +826,13 @@ func _apply_stat_delta(ui: Dictionary, s: CombatantStats, deltas: Dictionary) ->
 func _show_stat_preview(move: Dictionary, enemy: Dictionary) -> void:
 	if not enemy.has("stats"):
 		return
-	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	var effects := _stat_effects_for_move(move, _acting.stats as CombatantStats)
 	_apply_stat_delta(_player_stats_ui, _acting.stats as CombatantStats, effects.get("player", {}) as Dictionary)
 	_set_stats_panel_base(_enemy_stats_ui, enemy.stats as CombatantStats)
 	(_enemy_stats_ui.title as Label).text = String(enemy.get("display_name", "Enemy"))
 	_apply_stat_delta(_enemy_stats_ui, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
 	(_enemy_stats_ui.panel as Control).visible = true
+	_set_quick_read_summary(move, enemy, effects)
 
 # Called on mouse_exited, and from every path that leaves target_menu
 # (choosing a target, backing out) so a stale preview never survives past
@@ -791,7 +856,7 @@ func _show_all_stat_preview(move: Dictionary, enemies_to_preview: Array) -> void
 	var container := (_enemy_stats_ui.panel as Control).get_parent()
 	if container == null:
 		return
-	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	var effects := _stat_effects_for_move(move, _acting.stats as CombatantStats)
 	for i in range(1, enemies_to_preview.size()):
 		var enemy := enemies_to_preview[i] as Dictionary
 		if not enemy.has("stats"):
@@ -823,6 +888,89 @@ func _clear_stat_preview() -> void:
 	# tint) after the hover that produced it ends.
 	if _acting.has("stats"):
 		_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
+	_clear_quick_read_summary()
+
+# `stat_effects` is seeded from simple move data in _ready(), but a formula
+# effect such as Electric Touch's `{"accuracy": 1}` means *the acting
+# diver's current Accuracy*, not literal one. Resolve those data-driven
+# effects at preview time so colored cards, textual Quick Read, and
+# CombatRules.resolve() all describe the same current choice.
+func _stat_effects_for_move(move: Dictionary, attacker: CombatantStats) -> Dictionary:
+	var resolved: Dictionary = (stat_effects.get(String(move.get("name", "")), {
+		"player": {}, "enemy": {},
+	}) as Dictionary).duplicate(true)
+	if not resolved.has("player"):
+		resolved["player"] = {}
+	if not resolved.has("enemy"):
+		resolved["enemy"] = {}
+	var enemy_effects := resolved["enemy"] as Dictionary
+	for effect_value in move.get("effects", []):
+		var effect := effect_value as Dictionary
+		match String(effect.get("kind", "")):
+			"reduce_evasion":
+				enemy_effects["evasion"] = -int(CombatRules.formula_value(attacker, effect.get("amount", {})))
+			"status":
+				if not effect.has("level"):
+					continue
+				var level := int(CombatRules.formula_value(attacker, effect.get("level", {})))
+				var status_name := String(effect.get("status", ""))
+				enemy_effects[status_name] = level
+				# Blindness is represented in the four visible stats as well as
+				# its status name, mirroring CombatantStats' live penalty.
+				if status_name == "blindness":
+					enemy_effects["accuracy"] = -level
+					enemy_effects["defense"] = -level
+	return resolved
+
+func _quick_read_stat_name(key: String) -> String:
+	return {"strength": "STR", "defense": "DEF", "accuracy": "ACC", "evasion": "EVA"}.get(key, key.capitalize())
+
+# A concise, visible redundancy for the green/red stat deltas. It names the
+# tactical relationship, not a formula: a player increase is a Benefit, an
+# enemy reduction is an Opening, and a self reduction is a Cost. Damage is a
+# benefit too, so a plain hit never produces an empty preview line.
+func _set_quick_read_summary(move: Dictionary, enemy: Dictionary, effects: Dictionary) -> void:
+	if _quick_read_summary == null or not _acting.has("stats") or not enemy.has("stats"):
+		return
+	var parts: Array[String] = []
+	var damage := _preview_damage(move, _acting.stats as CombatantStats, enemy.stats as CombatantStats)
+	if damage > 0:
+		parts.append("Benefit: %d damage" % damage)
+	var player_effects := effects.get("player", {}) as Dictionary
+	for key in ["strength", "defense", "accuracy", "evasion"]:
+		var amount := int(player_effects.get(key, 0))
+		if amount > 0:
+			parts.append("Benefit: +%d %s" % [amount, _quick_read_stat_name(key)])
+		elif amount < 0:
+			parts.append("Cost: your %s %d" % [_quick_read_stat_name(key), amount])
+	var enemy_effects := effects.get("enemy", {}) as Dictionary
+	for key in ["strength", "defense", "accuracy", "evasion"]:
+		var amount := int(enemy_effects.get(key, 0))
+		if amount < 0:
+			parts.append("Opening: enemy %s %d" % [_quick_read_stat_name(key), amount])
+		elif amount > 0:
+			parts.append("Cost: enemy %s +%d" % [_quick_read_stat_name(key), amount])
+	# Bleed and other statuses do not always own one of the four compact stat
+	# rows. Name them here rather than leaving a player to infer meaning from a
+	# colored number that is not displayed at all.
+	for effect_value in move.get("effects", []):
+		var effect := effect_value as Dictionary
+		if String(effect.get("kind", "")) != "status":
+			continue
+		var status_name := String(effect.get("status", ""))
+		if status_name == "blindness":
+			continue # Its visible ACC/DEF reductions already say Opening above.
+		var level := int(CombatRules.formula_value(_acting.stats as CombatantStats, effect.get("level", {})))
+		if level > 0:
+			parts.append("Opening: %s %d" % [_status_display_name(status_name), level])
+	_quick_read_summary.text = "Quick Read: " + "  •  ".join(parts)
+	_quick_read_summary.visible = not parts.is_empty()
+
+func _clear_quick_read_summary() -> void:
+	if _quick_read_summary == null:
+		return
+	_quick_read_summary.text = ""
+	_quick_read_summary.visible = false
 
 func _begin_boss_encounter() -> void:
 	_busy = true
@@ -1034,7 +1182,7 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
+	var count := forced_enemy_ids.size() if not forced_enemy_ids.is_empty() else (1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter))
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -1069,7 +1217,9 @@ func _build_stage() -> void:
 		# lesson's visible Angler identity. Guardian identity remains its own
 		# explicit branch below; only the authored tutorial contract is pinned.
 		var g: Goblin
-		if tutorial_encounter:
+		if not forced_enemy_ids.is_empty():
+			g = _actor_for_enemy_id(String(forced_enemy_ids[i]))
+		elif tutorial_encounter:
 			g = _actor_for_enemy_id("angler")
 		elif guardian_encounter:
 			g = _guardian_actor()
@@ -1083,13 +1233,12 @@ func _build_stage() -> void:
 		party_centre /= maxf(1.0, float(party.size()))
 		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		if i < forced_enemy_modifiers.size():
+			_apply_forced_enemy_modifier(st, forced_enemy_modifiers[i] as Dictionary)
 		if tutorial_encounter:
-			# Five-plus real turns (every scripted move, then however many
-			# more real ones it actually takes to win or lose once
-			# _advance_turn()'s "Defeat the enemy!" prompt hands the fight
-			# over for real) would otherwise stand a real chance of killing
-			# this grunt before the lesson's even over - pad its own HP out
-			# so it survives long enough. Its offense gets cut too (see
+			# The tutorial needs to survive the first named counter move and one
+			# returned QTE swing before its automatic lesson-complete handoff, so
+			# pad its own HP out. Its offense gets cut too (see
 			# TUTORIAL_ENEMY_MOVE/_do_enemy_turn()'s tutorial-only no-heavy-
 			# swing rule) - a full-strength grunt one-shotting Maxilani (hp_max
 			# 10) on her very first fight, before any level-up, was an actual
@@ -1109,6 +1258,16 @@ func _build_stage() -> void:
 
 	_frame_stage_camera()
 
+func _apply_forced_enemy_modifier(stats: CombatantStats, modifier: Dictionary) -> void:
+	# Route-capstone tuning is data from RouteProgression. It runs after the
+	# species builds its ordinary stats and before the actor is exposed to any
+	# move, so a modifier cannot mutate a shared species constant or leak into
+	# random/guardian encounters.
+	for stat in ["hp_max", "strength", "defense", "agility", "evasion", "accuracy"]:
+		if modifier.has(stat):
+			stats.set(stat, int(modifier[stat]))
+	stats.fill()
+
 func _guardian_actor() -> Goblin:
 	return _actor_for_enemy_id(guardian_enemy_id)
 
@@ -1120,6 +1279,8 @@ func _actor_for_enemy_id(enemy_id: String) -> Goblin:
 		return SwordDuelist.new()
 	if enemy_id == "frilled_shark":
 		return FrilledShark.new()
+	if enemy_id == "sea_urchin":
+		return SeaUrchin.new()
 	return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
@@ -1151,6 +1312,23 @@ func _frame_stage_camera() -> void:
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
 		var a := e.actor as Node3D
+		# Imported enemies can have a body that is materially wider than their
+		# gameplay radius. Frame its actual mesh corners when available; attack
+		# stand-off distance remains a separate gameplay concern. Without this,
+		# Frilled Shark's long fish pose could overlap the party while the camera
+		# believed it was a small-radius actor.
+		if a.has_method("visual_bounds"):
+			var visual_bounds_value: Variant = a.call("visual_bounds")
+			if visual_bounds_value is AABB:
+				var visual_bounds := visual_bounds_value as AABB
+				if visual_bounds.size.length_squared() > 0.0001:
+					for corner in range(8):
+						pts.append(visual_bounds.get_endpoint(corner))
+					# The mesh is the wide part; reserve enough vertical room for the
+					# information that belongs to this actor as well.
+					var visual_top := visual_bounds.position.y + visual_bounds.size.y + OVERHEAD_LIFT + OVERHEAD_HEADROOM
+					pts.append(Vector3(visual_bounds.get_center().x, visual_top, visual_bounds.get_center().z))
+					continue
 		var low: Vector3 = _bottom_of(a)
 		# Not the top of the model: the top of the model plus the health
 		# bar riding above it. Framing the bodies alone put every head hard
@@ -1277,15 +1455,17 @@ func _spread(i: int, n: int, step: float) -> float:
 	return (float(i) - float(n - 1) * 0.5) * step
 
 func _build_ui() -> void:
-	# Party's status cards stack down the left edge, enemies' down the
-	# right - added before the bottom panel/queue bar just so those still
-	# win in z-order if a stack ever ran long enough to reach them.
-	_party_status_column = VBoxContainer.new()
+	# Party cards run across the top-left under the turn header. A previous
+	# vertical stack extended behind tutorial dialogue at browser height,
+	# which hid later party members and made the header appear to cut names
+	# off. Enemies can still stack on the right because there are fewer of
+	# them and their cards do not need oxygen rows.
+	_party_status_column = HBoxContainer.new()
 	_party_status_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_party_status_column.offset_left = 12.0
 	_party_status_column.offset_top = 70.0
-	_party_status_column.offset_right = 12.0 + STATUS_COLUMN_WIDTH
-	_party_status_column.offset_bottom = 70.0 + 320.0
+	_party_status_column.offset_right = 12.0 + STATUS_COLUMN_WIDTH * 3 + 16.0
+	_party_status_column.offset_bottom = 70.0 + 78.0
 	_party_status_column.add_theme_constant_override("separation", 8)
 	_party_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_party_status_column)
@@ -1388,10 +1568,22 @@ func _build_ui() -> void:
 	qmargin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_queue_bar.add_child(qmargin)
 
+	var queue_column := VBoxContainer.new()
+	queue_column.add_theme_constant_override("separation", 2)
+	queue_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	qmargin.add_child(queue_column)
+	_encounter_source_label = Label.new()
+	_encounter_source_label.name = "EncounterSource"
+	_encounter_source_label.text = encounter_source
+	_encounter_source_label.visible = encounter_source != ""
+	_encounter_source_label.add_theme_font_size_override("font_size", 13)
+	_encounter_source_label.add_theme_color_override("font_color", Color(0.47, 0.84, 0.96))
+	_encounter_source_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	queue_column.add_child(_encounter_source_label)
 	queue_row = HBoxContainer.new()
 	queue_row.add_theme_constant_override("separation", 10)
 	queue_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	qmargin.add_child(queue_row)
+	queue_column.add_child(queue_row)
 
 	# Health and status now hang over each combatant's own head.
 	# See _build_overhead_bar() and _layout_overhead_bars().
@@ -1402,6 +1594,10 @@ func _build_ui() -> void:
 
 	log_label = Label.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
+	# The log is supporting evidence, not the current instruction.  Muting it
+	# lets the tutorial callout below establish a clear next action without
+	# hiding useful "whose turn" feedback.
+	log_label.add_theme_color_override("font_color", Color(0.65, 0.76, 0.8))
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
@@ -1412,6 +1608,30 @@ func _build_ui() -> void:
 	# _tutorial_prep_enemy_turn()), so tutorial fights get their own caption
 	# instead of fighting the log for space.
 	if tutorial_encounter:
+		# A lesson needs a visible boundary from the ordinary transient battle
+		# log.  Without this wrapper, instruction, log and move choices all had
+		# equal visual weight; the cyan edge makes practice guidance primary.
+		var lesson_panel := PanelContainer.new()
+		lesson_panel.add_theme_stylebox_override("panel", _tutorial_callout_style())
+		lesson_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(lesson_panel)
+		var lesson_margin := MarginContainer.new()
+		lesson_margin.add_theme_constant_override("margin_left", 14)
+		lesson_margin.add_theme_constant_override("margin_right", 14)
+		lesson_margin.add_theme_constant_override("margin_top", 10)
+		lesson_margin.add_theme_constant_override("margin_bottom", 10)
+		lesson_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lesson_panel.add_child(lesson_margin)
+		var lesson_column := VBoxContainer.new()
+		lesson_column.add_theme_constant_override("separation", 6)
+		lesson_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lesson_margin.add_child(lesson_column)
+		var lesson_eyebrow := Label.new()
+		lesson_eyebrow.text = "PRACTICE FIGHT  •  COMBAT LESSON"
+		lesson_eyebrow.add_theme_font_size_override("font_size", 12)
+		lesson_eyebrow.add_theme_color_override("font_color", Color(0.42, 0.82, 0.96))
+		lesson_eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lesson_column.add_child(lesson_eyebrow)
 		# RichTextLabel, not Label - _tutorial_show_step() below relies on
 		# BBCode ([color=yellow]highlighted[/color], the dim "press Enter"
 		# hint) actually rendering instead of showing as literal text.
@@ -1425,17 +1645,31 @@ func _build_ui() -> void:
 		# gate()) need a neutral background to actually stand out against;
 		# a yellow base made those words nearly invisible.
 		_tutorial_caption.add_theme_color_override("default_color", Color.WHITE)
+		_tutorial_caption.add_theme_font_size_override("normal_font_size", 18)
 		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.add_child(_tutorial_caption)
+		lesson_column.add_child(_tutorial_caption)
+		_tutorial_qte_detail = RichTextLabel.new()
+		_tutorial_qte_detail.bbcode_enabled = true
+		_tutorial_qte_detail.fit_content = true
+		_tutorial_qte_detail.scroll_active = false
+		_tutorial_qte_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_tutorial_qte_detail.add_theme_font_size_override("normal_font_size", 17)
+		_tutorial_qte_detail.add_theme_color_override("default_color", Color(0.8, 0.9, 0.95))
+		_tutorial_qte_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_tutorial_qte_detail.visible = false
+		lesson_column.add_child(_tutorial_qte_detail)
 		tutorial_continue_btn = Button.new()
 		tutorial_continue_btn.name = "TutorialContinue"
 		tutorial_continue_btn.text = "Continue  ·  Enter"
 		tutorial_continue_btn.tooltip_text = "Continue this tutorial caption"
 		tutorial_continue_btn.custom_minimum_size = Vector2(188, 38)
 		tutorial_continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		tutorial_continue_btn.add_theme_stylebox_override("normal", _tutorial_continue_style(Color(0.08, 0.26, 0.34, 1.0)))
+		tutorial_continue_btn.add_theme_stylebox_override("hover", _tutorial_continue_style(Color(0.12, 0.38, 0.48, 1.0)))
+		tutorial_continue_btn.add_theme_stylebox_override("pressed", _tutorial_continue_style(Color(0.05, 0.18, 0.24, 1.0)))
 		tutorial_continue_btn.visible = false
 		tutorial_continue_btn.pressed.connect(_acknowledge_tutorial_step)
-		col.add_child(tutorial_continue_btn)
+		lesson_column.add_child(tutorial_continue_btn)
 
 	# Unconditional, unlike _tutorial_caption above - a level-up can happen
 	# after ANY win, not just the tutorial fight. RichTextLabel for the same
@@ -1465,7 +1699,9 @@ func _build_ui() -> void:
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
 	if tutorial_encounter:
-		skip_tutorial_btn = _menu_button("Skip Tutorial", "Return to the world without finishing this lesson")
+		var skip_label := "End Training" if _is_interactive_combat_training() else "Skip Tutorial"
+		var skip_hint := "Return to the world without changing campaign progress" if _is_interactive_combat_training() else "Return to the world without finishing this lesson"
+		skip_tutorial_btn = _menu_button(skip_label, skip_hint)
 		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
 		main_menu.add_child(skip_tutorial_btn)
 	items_btn = _menu_button("Items", "")
@@ -1475,6 +1711,9 @@ func _build_ui() -> void:
 	_selected_move_panel = PanelContainer.new()
 	_selected_move_panel.add_theme_stylebox_override("panel", _row_stylebox(false))
 	col.add_child(_selected_move_panel)
+	var selected_move_column := VBoxContainer.new()
+	selected_move_column.add_theme_constant_override("separation", 2)
+	_selected_move_panel.add_child(selected_move_column)
 	var selected_move_row := HBoxContainer.new()
 	# Small, fixed gap rather than the theme default - deliberately not
 	# giving _selected_move_name a SIZE_EXPAND_FILL flag, since that would
@@ -1482,7 +1721,7 @@ func _build_ui() -> void:
 	# the way to the panel's far edge instead of sitting right next to the
 	# name it belongs to.
 	selected_move_row.add_theme_constant_override("separation", 6)
-	_selected_move_panel.add_child(selected_move_row)
+	selected_move_column.add_child(selected_move_row)
 	_selected_move_name = Label.new()
 	_selected_move_name.text = ""
 	_selected_move_name.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
@@ -1492,6 +1731,13 @@ func _build_ui() -> void:
 	_selected_move_power.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
 	_selected_move_power.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	selected_move_row.add_child(_selected_move_power)
+	_quick_read_summary = Label.new()
+	_quick_read_summary.visible = false
+	_quick_read_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quick_read_summary.add_theme_font_size_override("font_size", 13)
+	_quick_read_summary.add_theme_color_override("font_color", Color(0.72, 0.91, 0.96))
+	_quick_read_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	selected_move_column.add_child(_quick_read_summary)
 
 	var stats_row := HBoxContainer.new()
 	stats_row.add_theme_constant_override("separation", 12)
@@ -1563,6 +1809,22 @@ func _build_ui() -> void:
 # instant a property changes, so reading it immediately after flipping
 # .visible can still return the previous, stale size.
 func _fit_panel_height() -> void:
+	_apply_panel_height()
+	# A caption's first deferred layout can report an over-large temporary
+	# minimum before its available width has settled. That used to pin the
+	# bottom panel thousands of pixels above a 720px browser viewport: the
+	# real caption/button were then technically visible but wholly off-screen,
+	# and the stage height clamped to zero. One coalesced next-frame retry
+	# samples the final Control geometry without a per-frame layout loop.
+	if not _panel_height_settle_pending and get_tree() != null:
+		_panel_height_settle_pending = true
+		get_tree().process_frame.connect(_settle_panel_height, CONNECT_ONE_SHOT)
+
+func _settle_panel_height() -> void:
+	_panel_height_settle_pending = false
+	_apply_panel_height()
+
+func _apply_panel_height() -> void:
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
 	# Hand the rest of the screen to the stage. Both are anchored to the
@@ -1576,6 +1838,22 @@ func _fit_panel_height() -> void:
 		# rendered under an opaque bar is rendered where nobody can see it.
 		# The stage is now strictly the band between the two.
 		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
+	_layout_status_columns()
+
+# The encounter label is optional, but its wrapped height changes the top
+# strip. Status cards used to begin at a fixed 70px, which put Maxilani's name
+# underneath a two-row tutorial header. Measure the real strip after Godot has
+# laid it out, then reserve a small gutter below it for both columns.
+func _layout_status_columns() -> void:
+	if _queue_bar == null:
+		return
+	var top := maxf(70.0, _queue_bar.size.y + 12.0)
+	if _party_status_column != null:
+		_party_status_column.offset_top = top
+		_party_status_column.offset_bottom = top + 78.0
+	if _enemy_status_column != null:
+		_enemy_status_column.offset_top = top
+		_enemy_status_column.offset_bottom = top + 320.0
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -2204,14 +2482,18 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # ended, then hands off to the enemy-AI path or the player-menu path
 # depending on who's up.
 func _advance_turn() -> void:
-	# Once the scripted move/QTE lesson has run, hand the encounter over to a
-	# real win-or-loss outcome.  The player can now finish the enemy, lose and
-	# choose Retry/Exit, or use the explicit tutorial Skip button.  Do not
-	# auto-win here: that made the lesson's final state diverge from a real
-	# battle and hid the loss recovery path.
-	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
+	# This is an onboarding encounter, not the first campaign gate. Once the
+	# player has made the one Quick Read choice and seen the one live QTE, end
+	# the lesson through Battle's normal victory/handoff path. Requiring an
+	# unseen extra kill (or a Skip button) after those taught interactions was
+	# the prior captured tutorial soft-lock: a newcomer could reasonably think
+	# the lesson was over while the game quietly demanded ordinary combat. The
+	# next authored Angler is where the player gets the first complete fight.
+	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= active_tutorial_script().size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
-		_log("Lesson complete. Defeat the enemy or choose Skip Tutorial.")
+		_log("Practice complete. The Angler retreats.")
+		_win()
+		return
 	if _living(enemies).is_empty():
 		_win()
 		return
@@ -2238,7 +2520,20 @@ func _advance_turn() -> void:
 			_refresh_queue_row()
 			_start_party_turn(_acting)
 			return
-	_acting = _queue.pop_front()
+	# The one tutorial QTE follows the one guided counter choice immediately.
+	# Without this priority, a higher-agility party member could get a normal
+	# turn between them; browser play exposed that as a confusing Musashi menu
+	# sitting under the still-present lesson card. This only changes the tiny
+	# choreographed opening: after the QTE, ordinary turn order resumes.
+	var tutorial_enemy_next: Dictionary = {}
+	if tutorial_encounter and _tutorial_step >= active_tutorial_script().size() and _tutorial_enemy_turns == 0:
+		for candidate_value in enemies:
+			var candidate := candidate_value as Dictionary
+			if _living(enemies).has(candidate) and _queue.has(candidate):
+				_queue.erase(candidate)
+				tutorial_enemy_next = candidate
+				break
+	_acting = tutorial_enemy_next if not tutorial_enemy_next.is_empty() else _queue.pop_front()
 	_refresh_queue_row()
 	if (_acting.stats as CombatantStats).hp <= 0:
 		_advance_turn()   # downed since the queue was built - skip them
@@ -2337,14 +2632,10 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	qte_zone.size.x = 0.15 * QTE_TRACK_WIDTH
 	qte_indicator.position.x = 0.0
 	_tutorial_caption.text = "Sometimes during an enemy's attack, a Quick Time Event shows up:"
-	# _levelup_caption reused here purely as "whatever RichTextLabel already
-	# sits right after _tutorial_caption in this column" - never in use
-	# during an actual fight (only _win() ever touches it), so borrowing it
-	# for the second half of this one caption doesn't collide with its own
-	# job. _tutorial_show_step()'s own Enter-wait, just spread across two
-	# labels with the QTE preview sandwiched between them instead of one.
-	_levelup_caption.text = "The white bar sweeps across the track, and pressing X the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[color=#7a8a94]Press Enter to continue[/color]"
-	_levelup_caption.visible = true
+	# This label shares the tutorial callout with its caption and live QTE,
+	# avoiding a scan past an unrelated level-up region for the second sentence.
+	_tutorial_qte_detail.text = "The white bar sweeps across the track, and pressing X the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[color=#7a8a94]Press Enter to continue[/color]"
+	_tutorial_qte_detail.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
 	_set_tutorial_continue_visible(true)
@@ -2352,8 +2643,8 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	while _tutorial_awaiting_enter:
 		await get_tree().process_frame
 	_set_tutorial_continue_visible(false)
-	_levelup_caption.visible = false
-	_levelup_caption.text = ""
+	_tutorial_qte_detail.visible = false
+	_tutorial_qte_detail.text = ""
 	qte_root.visible = false
 	col.remove_child(qte_root)
 	qte_normal_parent.add_child(qte_root)
@@ -2367,9 +2658,10 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 # is what let stage 3 revisit Musashi (party index 1) without every call
 # site re-deriving "which diver is this stage about" its own way.
 func _tutorial_party_index_for_step(step: int) -> int:
-	if step < 0 or step >= _TUTORIAL_SCRIPT.size():
+	var script := active_tutorial_script()
+	if step < 0 or step >= script.size():
 		return -1
-	var idx := int(_TUTORIAL_SCRIPT[step].get("party_index", -1))
+	var idx := int(script[step].get("party_index", -1))
 	return idx if idx < party.size() else -1
 
 # True only on the exact turn _TUTORIAL_SCRIPT's current stage is meant to
@@ -2397,6 +2689,7 @@ func _start_party_turn(actor: Dictionary) -> void:
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	_clear_quick_read_summary()
 	call_deferred("_fit_panel_height")
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
@@ -2461,20 +2754,14 @@ func _show_moves() -> void:
 	# turn of their own (their scripted stage already behind them) just
 	# gets a normal move menu with nothing forced or flashing.
 	if _is_tutorial_scripted_turn(_acting):
-		# Turn order/combat-basics gets explained once, on the very first
-		# move menu of the fight - awaited so both fully finish (including
-		# the player's Enter press each time) before the move gate below
-		# ever touches the caption. Every move button (plus Back) is locked
-		# for the whole intro, not just once _apply_tutorial_move_gate()
-		# gets to it - _populate_move_menu() only disables a button for
-		# being unaffordable, so without this the player could click a move
-		# straight through these two prompts.
+		# One small lesson before the actual choice. Every move button (plus
+		# Back) is locked only while that card is up; the detailed combat book
+		# remains optional instead of growing this opening into a lecture.
 		if _tutorial_step == 0:
 			for b in move_buttons:
 				(b as Button).disabled = true
 			back_btn.disabled = true
 			await _first_fight_prompt()
-			await _explain_turn_order()
 		_apply_tutorial_move_gate()
 
 # Guarded on _first_fight_prompt_shown, not just the _tutorial_step == 0
@@ -2490,7 +2777,12 @@ func _first_fight_prompt() -> void:
 	if _first_fight_prompt_shown:
 		return
 	_first_fight_prompt_shown = true
-	await _tutorial_show_step("While exploring the deep, random encounters like this one with deep sea enemies can occur at any time")
+	# The first playable route is deliberately authored and protected so a new
+	# player can reach its lessons without an unrelated interruption.  Do not
+	# tell them random fights are possible "at any time": that was once true
+	# of free exploration, but it contradicts the route they enter after this
+	# tutorial and makes the next safety guarantee sound broken before it starts.
+	await _tutorial_show_step("Quick Read: [color=#65d98a]green[/color] on your side is a benefit. [color=#ef7070]Red[/color] on an enemy creates an opening; red on your side is a cost or risk. Detailed formulas stay optional in Combat Help. This practice fight is safe, and the guided route ahead is protected.")
 
 # One-shot: circles the turn-order bar in red, folds Combat Basics in with
 # the turn-order explanation (one combined caption instead of two the
@@ -2544,9 +2836,10 @@ func _apply_tutorial_move_gate() -> void:
 	if move_buttons.is_empty():
 		return
 	var moves := _moves_for(_acting)
+	var script := active_tutorial_script()
 	var forced_name := String(
-		(_TUTORIAL_SCRIPT[_tutorial_step] as Dictionary).get("move", "")
-	) if _tutorial_step < _TUTORIAL_SCRIPT.size() else ""
+		(script[_tutorial_step] as Dictionary).get("move", "")
+	) if _tutorial_step < script.size() else ""
 	var move_index := 0
 	for i in range(moves.size()):
 		if String((moves[i] as Dictionary).name) == forced_name:
@@ -2559,7 +2852,7 @@ func _apply_tutorial_move_gate() -> void:
 	_tutorial_flash_tween.set_loops()
 	_tutorial_flash_tween.tween_property(btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
 	_tutorial_flash_tween.tween_property(btn, "modulate", Color.WHITE, 0.4)
-	_tutorial_caption.text = "Choose the [color=yellow]highlighted[/color] attack move against the enemy."
+	_tutorial_caption.text = "Choose the [color=yellow]highlighted[/color] move. Its green benefit creates a red opening on the enemy; detailed formulas remain optional."
 	call_deferred("_fit_panel_height")
 	btn.disabled = false
 
@@ -2813,6 +3106,7 @@ func _show_main() -> void:
 	main_menu.visible = true
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	_clear_quick_read_summary()
 	if skip_tutorial_btn != null:
 		# Scripted turns teach one required move at a time.  The explicit skip
 		# is available from normal tutorial menus, not as a way to bypass the
@@ -2871,17 +3165,13 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		_populate_target_menu(targets)
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
-	# Only on the scripted diver's own forced move (never heal/revive,
-	# whose targets are allies rather than the enemy these explanations are
-	# actually about) - stage 0 (Maxilani/Electric Touch) gets the full
-	# dodging/evasion/damage walkthrough, stage 1 (Musashi/Precise Tap)
-	# gets the shorter accuracy-boost one, stage 2 (Mech Pilot/Crushing
-	# Haymaker) gets the accuracy-cost one, stage 3 (Musashi again/Weaken)
-	# gets the no-damage-just-a-stat one, stage 4 (Maxilani again/Flash
-	# Blast) gets the status-condition one. Any scripted diver picking a
-	# move on some later un-scripted turn never reaches here at all.
+	# The opening profile makes the colour language concrete with one safe
+	# preview. Optional interactive training restores the deeper, live
+	# five-move explanations without making a new player sit through them.
 	if _is_tutorial_scripted_turn(_acting) and effect not in ["heal", "revive"] and not targets.is_empty():
-		if _tutorial_step == 0:
+		if not _is_interactive_combat_training():
+			await _explain_quick_read_target(targets[0] as Dictionary)
+		elif _tutorial_step == 0:
 			await _explain_dodging(targets[0] as Dictionary)
 		elif _tutorial_step == 1:
 			await _explain_precise_tap(targets[0] as Dictionary)
@@ -2891,6 +3181,30 @@ func _on_move_chosen(mv: Dictionary) -> void:
 			await _explain_weaken(targets[0] as Dictionary)
 		elif _tutorial_step == 4:
 			await _explain_flash_blast(targets[0] as Dictionary)
+
+# A single active hover proves the player has encountered the exact visual
+# language they will use in real combat. It intentionally stops there: the
+# player can inspect the detailed stat delta if curious, then clicks one safe
+# target and returns to a normal, skippable practice battle.
+func _explain_quick_read_target(enemy: Dictionary) -> void:
+	for b in target_buttons:
+		(b as Button).disabled = true
+	target_back_btn.disabled = true
+	var enemy_btn := target_buttons[0] as Button
+	var flash := create_tween()
+	flash.set_loops()
+	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
+	flash.tween_property(enemy_btn, "modulate", Color.WHITE, 0.4)
+	_tutorial_caption.text = "Hover over the highlighted enemy to compare both sides: green helps you; red weakens them. Red on your side is a cost or risk."
+	call_deferred("_fit_panel_height")
+	await enemy_btn.mouse_entered
+	flash.kill()
+	enemy_btn.modulate = Color.WHITE
+	_stat_preview_frozen = true
+	# The opening card already explains the colour rule. Do not make a player
+	# acknowledge it a second time after the hover; the next meaningful input
+	# is the actual target click.
+	await _explain_click_to_attack(enemy)
 
 # Two beats, not one: first "hover over the enemy" (with the enemy button
 # itself flashing and nothing clickable - disabled buttons still fire
@@ -2957,7 +3271,8 @@ func _explain_dodging(enemy: Dictionary) -> void:
 func _explain_evasion_reduction(enemy: Dictionary) -> void:
 	var move_name := String(_pending_move.name)
 	var enemy_name := String(enemy.get("display_name", "the enemy"))
-	var delta := int((stat_effects.get(move_name, {}) as Dictionary).get("enemy", {}).get("evasion", 0))
+	var preview_effects := _stat_effects_for_move(_pending_move, _acting.stats as CombatantStats)
+	var delta := int((preview_effects.get("enemy", {}) as Dictionary).get("evasion", 0))
 	var delta_text := ("+%d" % delta) if delta > 0 else str(delta)
 	await _tutorial_show_step(
 		"%s will lower %s's Evasion - that's why its EVA number is shown in [color=%s]red[/color], with the white (%s) next to it showing exactly how much. A stat shown in [color=%s]red[/color] means its total went down; a stat shown in [color=%s]green[/color] means its total went up." % [
@@ -3352,6 +3667,8 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 		_tutorial_force_next_qte = false
 		if formula_can_hit and bool(move.get("quick_time_bool", false)) and (formula_force_qte or randf() < ENEMY_QTE_CHANCE):
 			formula_dodge = await _quick_time_event(_actor_for_stats(defender))
+			if tutorial_encounter and formula_force_qte:
+				_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded: no damage taken.[/color]" if formula_dodge else "[color=#ef7070]Dodge missed: the attack landed normally.[/color]"
 		return CombatRules.resolve(attacker, defender, move, apply_self_effects, formula_dodge)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
@@ -3389,6 +3706,8 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	var player_dodge := false
 	if bool(move.get("quick_time_bool", false)) and (force_qte or randf() < ENEMY_QTE_CHANCE):
 		player_dodge = await _quick_time_event(_actor_for_stats(defender))
+		if tutorial_encounter and force_qte:
+			_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded: no damage taken.[/color]" if player_dodge else "[color=#ef7070]Dodge missed: the attack landed normally.[/color]"
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
 
@@ -3711,14 +4030,10 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	elif r.hit and String(r.debuff) == "":
 		_play_enemy_hit(target)
 	_finish_actor_turn(_acting)
-	# Guarded on _is_tutorial_scripted_turn(), not just tutorial_encounter -
-	# any diver whose scripted stage has already passed (e.g. Maxilani
-	# resolving a second, un-scripted move later in the fight) can still act
-	# completely normally while _tutorial_step has moved on to a later
-	# diver; without this check that move would wrongly count as the
-	# scripted one and skip a diver's turn in the script entirely.
+	# Once the one safe Quick Read move resolves, the rest of this fight is
+	# ordinary combat: finish it, learn through play, or choose explicit Skip.
 	if _is_tutorial_scripted_turn(_acting):
-		if _tutorial_step == 0:
+		if _is_interactive_combat_training() and _tutorial_step == 0:
 			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -3764,11 +4079,10 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	_log("%s: %s." % [String(mv.get("name", "Move")), "; ".join(summaries)])
 	_refresh_bar(_acting)
 	_finish_actor_turn(_acting)
-	# Same guard as _resolve_party_move()'s own copy of this - see its
-	# comment for why _is_tutorial_scripted_turn() matters here and
-	# tutorial_encounter alone doesn't.
+	# Kept symmetric with the single-target path even though the mandatory
+	# Electric Touch is single-target; future one-step lessons stay safe.
 	if _is_tutorial_scripted_turn(_acting):
-		if _tutorial_step == 0:
+		if _is_interactive_combat_training() and _tutorial_step == 0:
 			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -4285,7 +4599,14 @@ func _win() -> void:
 	# "what winning does" explanation right below instead of vanishing
 	# before the player gets to read both together, and only clears once
 	# that caption's own Enter press does.
-	if not levelup_blocks.is_empty():
+	# The tutorial's final acknowledgement is a short handoff, not a second
+	# full-screen level-up lesson. Keeping a multi-diver stat table visible at
+	# the same time as its outcome sentence can make the bottom HUD taller than
+	# the browser viewport and hide the one line the player needs to read behind
+	# the fixed turn/party strip. The level gains still apply to the party; the
+	# detailed table remains available for normal victories and the outcome card
+	# instead gives the player a compact, legible next step.
+	if not levelup_blocks.is_empty() and not tutorial_encounter:
 		_levelup_caption.text = "\n\n".join(levelup_blocks)
 		_levelup_caption.visible = true
 		call_deferred("_fit_panel_height")
@@ -4310,21 +4631,15 @@ func _win() -> void:
 		if entry.has("oxygen_heal_overlay"):
 			_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
 	_refresh_all_bars()
-	# One extra beat only for the choreographed first fight - explains the
-	# XP/level-up lines (and, if any happened, the stat table above, and the
-	# HP/Oxygen refill just shown above that in purple/green) rather than
-	# leaving the player to infer what they meant. Numbers match gain_xp()
-	# (combatant_stats.gd) exactly: every stat it grows, the full HP/Oxygen
-	# refill (fill(), its only heal outside a save point), and the one
-	# Spell Point per level. Deliberately brief on Spell Points/spell trees -
-	# a fuller walkthrough of that is planned as its own separate tutorial
-	# later. Also calls out that a downed diver isn't excluded from any of
-	# this - the XP loop above runs over `party`, not _living(party), and
-	# recover_after_victory() (below) always adds at least 1 HP regardless
-	# of what a diver's hp was, so someone who went down mid-fight still
-	# levels up and comes back partially healed rather than staying at 0.
+	# One short confirmation after the choreographed first fight. The original
+	# version turned this moment into another dense compulsory lecture about
+	# every stat and spell point, undoing the Quick Read's promise that detail
+	# is optional. The visible XP/level rows still give an interested player a
+	# concrete result to inspect; Combat Help owns the explanatory depth.
 	if tutorial_encounter:
-		await _tutorial_show_step("Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else and comes back with some HP instead of staying at 0. Gain enough XP and a diver levels up. Leveling up brings a batch of perks: growth across HP, Strength, Defense, Agility, Accuracy, and Evasion (shown in the stat tables below), a full HP/Oxygen refill (green on the bars, outlined in purple at the top), and one Spell Point, which unlocks new spells in that diver's own spell tree. More on Spell Points and spell trees later.")
+		var qte_result := _tutorial_qte_outcome_text if _tutorial_qte_outcome_text != "" else "[color=#b9d3df]Dodge result recorded in the battle log.[/color]"
+		var completion := "Training complete. %s Your campaign state is restored. Continue to return to the world." if _is_interactive_combat_training() else "Practice complete. %s Your party is restored. Continue to begin the Shallows route."
+		await _tutorial_show_step(completion % qte_result)
 		for entry in party:
 			if entry.has("card"):
 				_set_row_highlight(entry.card as PanelContainer, false)

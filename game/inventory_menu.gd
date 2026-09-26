@@ -112,6 +112,15 @@ func open() -> void:
 	visible = true
 	_switch_to("items")
 
+# Route transitions use this direct entry point so contextual counter cues can
+# offer optional detail without asking a new player to know that Esc contains
+# a separate Combat Help tab. Closing still restores the exact World state.
+func open_combat_help() -> void:
+	if world != null:
+		world._open_fullscreen_menu()
+	visible = true
+	_switch_to("help")
+
 func close() -> void:
 	visible = false
 	if world != null:
@@ -178,6 +187,22 @@ func _on_use_item_pressed(item_id: String) -> void:
 func _on_replay_tutorial_pressed() -> void:
 	if world != null:
 		world._replay_tutorial_battle()
+
+func _on_interactive_combat_training_pressed() -> void:
+	if world != null:
+		world._replay_interactive_combat_training()
+
+# These deliberately open separate optional surfaces. The opening lesson
+# remains short and route-ready; a player who wants either exploration controls
+# or the deeper combat rules can ask for them without being pushed through both
+# topics at once.
+func _on_world_ability_training_pressed() -> void:
+	if world != null:
+		world.open_world_ability_training()
+
+func _on_advanced_combat_guide_pressed() -> void:
+	if world != null:
+		world.open_advanced_combat_guide()
 
 # One button per living diver x their inventory-tagged spells (see
 # World._inventory_spells_for()) - disabled rather than hidden when that
@@ -258,11 +283,42 @@ func _refresh_help() -> void:
 	_hint.text = "Stats, effects, and status conditions"
 	if world != null:
 		var replay_btn := Button.new()
+		replay_btn.name = "ReplayTutorialFight"
 		replay_btn.text = "Replay Tutorial Fight"
 		replay_btn.tooltip_text = "Practice the first battle without changing campaign HP, oxygen, XP, levels, or saves."
 		replay_btn.custom_minimum_size = Vector2(340, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
+
+		var training_heading := Label.new()
+		training_heading.text = "Optional Training"
+		training_heading.add_theme_font_size_override("font_size", 15)
+		training_heading.add_theme_color_override("font_color", Color(0.5, 0.65, 0.7))
+		_list.add_child(training_heading)
+
+		var ability_btn := Button.new()
+		ability_btn.name = "WorldAbilityTraining"
+		ability_btn.text = "World Ability Training"
+		ability_btn.tooltip_text = "Review movement, switching divers, Swap/Sonar, Grapple, and Shockwave."
+		ability_btn.custom_minimum_size = Vector2(340, 40)
+		ability_btn.pressed.connect(_on_world_ability_training_pressed)
+		_list.add_child(ability_btn)
+
+		var interactive_btn := Button.new()
+		interactive_btn.name = "InteractiveCombatTraining"
+		interactive_btn.text = "Interactive Combat Training"
+		interactive_btn.tooltip_text = "Practice Electric Touch, Precise Tap, Crushing Haymaker, Weaken, and Flash Blast in a safe five-move lesson."
+		interactive_btn.custom_minimum_size = Vector2(340, 40)
+		interactive_btn.pressed.connect(_on_interactive_combat_training_pressed)
+		_list.add_child(interactive_btn)
+
+		var advanced_btn := Button.new()
+		advanced_btn.name = "AdvancedCombatGuide"
+		advanced_btn.text = "Advanced Combat Guide"
+		advanced_btn.tooltip_text = "Review turn order, hit chance, damage, oxygen, and move trade-offs without lengthening the opening lesson."
+		advanced_btn.custom_minimum_size = Vector2(340, 40)
+		advanced_btn.pressed.connect(_on_advanced_combat_guide_pressed)
+		_list.add_child(advanced_btn)
 	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
 	var effect_entries: Array[Dictionary] = []
 	var effect_kinds: Array = TutorialContent.EFFECT_KIND_EXPLANATIONS.keys()

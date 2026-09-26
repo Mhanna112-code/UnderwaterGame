@@ -29,7 +29,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Special Encounters",
-		"body": "Sonar (Q, Maxilani's passive) is the only way these are found - nothing is visible from a distance until sonar actually reveals it. Trigger one and you send in exactly one diver, alone, to survive a short timed challenge built around THEIR ability specifically (see the 'Choose who goes' screen for what each one plays like). Clear it flawlessly - nothing gets through at all - and the enemy's closing swing is guaranteed to miss instead of being a separate roll. Losing costs nothing permanent: a diver who falls here washes back out at the HP they went in with. Wins pay out either a key item or a temporary Attack/Defense boost that lasts the rest of whatever fight you use it in.",
+		"body": "Sonar (Q, Maxilani's passive) can reveal nearby optional special sites. It is never required for the critical beacon route. Triggering a site lets you send in exactly one diver, alone, for a short timed challenge built around that diver's ability; the Optional Guardian Challenge screen lets you review controls or Leave first. Clear it flawlessly - nothing gets through at all - and the enemy's closing swing is guaranteed to miss instead of being a separate roll. Losing costs nothing permanent: a diver who falls here washes back out at the HP they went in with. Wins pay out either a key item or a temporary Attack/Defense boost that lasts the rest of whatever fight you use it in.",
 	},
 	{
 		"title": "Getting Around",
@@ -83,6 +83,27 @@ static func page_body(title: String) -> String:
 		if String(page.title) == title:
 			return String(page.body)
 	return ""
+
+# The mandatory opening teaches only Quick Read and one dodge so it can get a
+# new player into the authored route promptly. This opt-in sequence keeps the
+# deeper concepts discoverable without pretending that reading a glossary is
+# the same thing as mastering them in a live fight. It deliberately reuses the
+# same current-rule pages as F1 rather than maintaining competing formulas.
+static func advanced_combat_pages() -> Array[Dictionary]:
+	var pages: Array[Dictionary] = [
+		{
+			"title": "Advanced Combat Guide",
+			"body": "You already know Quick Read: green is a benefit, red on an enemy is an opening, and red on your side is a cost or risk. This optional guide explains why those cues change. In a fight, hover a target or move for the exact current result; Combat Help holds the full reference.",
+		},
+	]
+	# Combat Basics, Accuracy vs Evasion, Damage, and Every Other Stat.
+	for index in range(4):
+		pages.append((GENERAL_PAGES[index] as Dictionary).duplicate(true))
+	pages.append({
+		"title": "Move Trade-offs",
+		"body": "Not every useful move deals immediate damage. Lowering enemy Evasion makes later attacks land; lowering Defense creates a damage opening; statuses can change a later turn. Some attacks affect all enemies or carry a temporary cost to your own stats. The move button shows the resolved outcome first, and its detail explains target, duration, and risk before you commit.",
+	})
+	return pages
 
 # One line per special-encounter ability, read on the "Choose who goes"
 # carousel next to whichever diver is currently selected - kept here

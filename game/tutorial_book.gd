@@ -102,6 +102,17 @@ func open(pages: Array[Dictionary]) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_refresh()
 
+# Read-only presentation contract used by focused UI verification. Rendering
+# remains private; callers can ask which player-facing page is live without
+# reaching into labels or container structure.
+func current_page_data() -> Dictionary:
+	if _pages.is_empty() or _index < 0 or _index >= _pages.size():
+		return {}
+	var page := (_pages[_index] as Dictionary).duplicate(true)
+	page["page_index"] = _index
+	page["page_count"] = _pages.size()
+	return page
+
 func _refresh() -> void:
 	var page := _pages[_index]
 	_page_label.text = "%d / %d" % [_index + 1, _pages.size()]
