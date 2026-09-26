@@ -84,6 +84,27 @@ static func page_body(title: String) -> String:
 			return String(page.body)
 	return ""
 
+# The mandatory opening teaches only Quick Read and one dodge so it can get a
+# new player into the authored route promptly. This opt-in sequence keeps the
+# deeper concepts discoverable without pretending that reading a glossary is
+# the same thing as mastering them in a live fight. It deliberately reuses the
+# same current-rule pages as F1 rather than maintaining competing formulas.
+static func advanced_combat_pages() -> Array[Dictionary]:
+	var pages: Array[Dictionary] = [
+		{
+			"title": "Advanced Combat Guide",
+			"body": "You already know Quick Read: green is a benefit, red on an enemy is an opening, and red on your side is a cost or risk. This optional guide explains why those cues change. In a fight, hover a target or move for the exact current result; Combat Help holds the full reference.",
+		},
+	]
+	# Combat Basics, Accuracy vs Evasion, Damage, and Every Other Stat.
+	for index in range(4):
+		pages.append((GENERAL_PAGES[index] as Dictionary).duplicate(true))
+	pages.append({
+		"title": "Move Trade-offs",
+		"body": "Not every useful move deals immediate damage. Lowering enemy Evasion makes later attacks land; lowering Defense creates a damage opening; statuses can change a later turn. Some attacks affect all enemies or carry a temporary cost to your own stats. The move button shows the resolved outcome first, and its detail explains target, duration, and risk before you commit.",
+	})
+	return pages
+
 # One line per special-encounter ability, read on the "Choose who goes"
 # carousel next to whichever diver is currently selected - kept here
 # rather than duplicated in special_encounter_prompt.gd so the wording

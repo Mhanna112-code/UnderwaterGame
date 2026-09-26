@@ -3046,6 +3046,24 @@ func _on_tutorial_loss_exit() -> void:
 	_announce("The party regroups and returns to the overworld.")
 	call_deferred("_show_ability_onboarding")
 
+# Optional learning actions from Combat Help. They intentionally close the
+# existing full-screen menu before opening their own full-screen surface: a
+# player should never need to escape twice, and dismissing either training
+# surface must return to the usable world rather than a hidden Help modal.
+func open_world_ability_training() -> void:
+	if battling or ability_onboarding == null:
+		return
+	if inventory_menu.visible:
+		inventory_menu.close()
+	ability_onboarding.call("open_for_world", self)
+
+func open_advanced_combat_guide() -> void:
+	if battling or tutorial_book == null:
+		return
+	if inventory_menu.visible:
+		inventory_menu.close()
+	tutorial_book.open(TutorialContent.advanced_combat_pages())
+
 # Combat Help's live lesson replay. The battle uses the normal tutorial
 # encounter so its move gates, QTE, Run lock, and explicit Skip are the same
 # ones a new player sees. Its campaign-facing result is different: the
