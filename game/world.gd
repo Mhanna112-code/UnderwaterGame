@@ -2157,6 +2157,16 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		_announce("Tethys rises from the deep!")
 	elif not tutorial:
 		_announce("An angler fish emerges from the murk!")
+	else:
+		# No announce line for the tutorial fight itself (removed on
+		# purpose), but _show_intro_text()'s "Swim over to the light beam."
+		# sits in the same banner via _intro_announce(), which - unlike
+		# _announce() - never sets a timer to clear itself. Every other
+		# branch here overwrites it with a fresh, self-clearing announce;
+		# without an explicit clear here too, that intro line would just
+		# hang on screen through the whole fight and after.
+		banner.text = ""
+		_banner_timer = 0.0
 	battle = Battle.new()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
