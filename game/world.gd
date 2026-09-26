@@ -525,7 +525,7 @@ func _on_title_open_water_playtest() -> void:
 	_attach_route_arrow_to_active()
 	if is_instance_valid(_active_cursor):
 		_active_cursor.visible = true
-	banner.text = "Open-water crossing review — hold D to swim right to your partner. No barrier belongs here."
+	banner.text = "Open-water crossing review: hold D to swim right to your partner. No barrier belongs here."
 	_banner_timer = 12.0
 	_update_hud()
 
@@ -566,7 +566,7 @@ func _on_title_reef_passage_playtest() -> void:
 	_attach_route_arrow_to_active()
 	if is_instance_valid(_active_cursor):
 		_active_cursor.visible = true
-	banner.text = "Shallows capstone review — the living reef passage frames this encounter. Swim through its open center."
+	banner.text = "Shallows capstone review: the living reef passage frames this encounter. Swim through its open center."
 	_banner_timer = 0.0
 	_update_hud()
 
@@ -576,7 +576,7 @@ func _update_open_water_playtest() -> void:
 	if (divers[active] as Diver).global_position.x < 20.0:
 		return
 	_open_water_crossing_confirmed = true
-	banner.text = "Clear — you crossed the former invisible barrier. Open water remains traversable."
+	banner.text = "Clear: you crossed the former invisible barrier. Open water remains traversable."
 	_banner_timer = 0.0
 
 # Save/Inventory are exclusive reading and decision surfaces. Their controls
@@ -2429,7 +2429,7 @@ func _begin_core_route_after_tutorial() -> void:
 	if route == null or route.objective_id != "":
 		return
 	route.start_after_tutorial()
-	_show_route_transition("Shallows", "[color=#78d6f2]Quick Read:[/color] [color=#65d98a]green[/color] on your side helps; [color=#ef7070]red[/color] on an enemy creates an opening. Red on your side is a cost or risk. Details stay available when you want them.\n\nYour only objective is visible ahead: [b]Shallows — follow the beacon.[/b]", true)
+	_show_route_transition("Shallows", "[color=#78d6f2]Quick Read:[/color] [color=#65d98a]green[/color] on your side helps; [color=#ef7070]red[/color] on an enemy creates an opening. Red on your side is a cost or risk. Details stay available when you want them.\n\nYour only objective is visible ahead: [b]Shallows: follow the beacon.[/b]", true)
 
 func _refresh_route_guidance() -> void:
 	if route_objective_label == null or route == null:
@@ -2661,7 +2661,7 @@ func _on_route_triggered(body: Node3D) -> void:
 	if bool(encounter.get("preview", false)):
 		route.resolve_active_encounter("won")
 		_route_battle_id = ""
-		_show_route_transition("Mermaid Freak preview", "[b]Route preview — no boss fight begins.[/b]\n\nThe Mermaid Freak is revealed in the drowned lab, but its normal-party balance and checkpoint recovery are still under review. The separate boss playtest remains optional.\n\n[b]Checkpoint secured: Deep Capstone — party restored.[/b]")
+		_show_route_transition("Mermaid Freak preview", "[b]Route preview: no boss fight begins.[/b]\n\nThe Mermaid Freak is revealed in the drowned lab, but its normal-party balance and checkpoint recovery are still under review. The separate boss playtest remains optional.\n\n[b]Checkpoint secured: Deep Capstone, party restored.[/b]")
 		return
 	_start_battle("", bool(encounter.get("boss", false)), "angler", divers, false, false, encounter.get("roster", []) as Array, encounter.get("enemy_modifiers", []) as Array)
 
@@ -2884,9 +2884,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	if _route_battle_id != "" and route != null:
 		battle.encounter_source = route.active_encounter_label()
 		if route.is_capstone():
-			battle.encounter_source += " • Checkpoint secured — party restored"
+			battle.encounter_source += " • Checkpoint secured: party restored"
 	elif tutorial:
-		battle.encounter_source = "Tutorial encounter — Angler practice"
+		battle.encounter_source = "Tutorial encounter: Angler practice"
 	elif special:
 		battle.encounter_source = "Optional guardian challenge"
 	else:
@@ -3002,11 +3002,11 @@ func _on_battle_finished(result: String) -> void:
 				_secure_route_checkpoint("Checkpoint secured after the %s encounter." % _route_battle_id.replace("_", " "))
 			var transition := String(route_result.get("transition_id", ""))
 			if transition == "deep_descent":
-				_show_route_transition("Deeper water", "[b]Checkpoint secured — party restored.[/b]\n\n[b]Next threat: Swordfish.[/b] It is evasive. Use [color=#78d6f2]Electric Touch[/color] to create an [color=#65d98a]Opening: enemy EVA falls[/color], then attack. Full move detail is optional in Combat Help.", true)
+				_show_route_transition("Deeper water", "[b]Checkpoint secured: party restored.[/b]\n\n[b]Next threat: Swordfish.[/b] It is evasive. Use [color=#78d6f2]Electric Touch[/color] to create an [color=#65d98a]Opening: enemy EVA falls[/color], then attack. Full move detail is optional in Combat Help.", true)
 			elif _route_battle_id == "deep_swordfish":
 				_show_route_transition("Counter cue", "[b]Next threat: Sea Urchin.[/b] Its shell resists raw damage. Use [color=#78d6f2]Weaken[/color] to create an [color=#65d98a]Opening: enemy DEF falls[/color], then attack.", true)
 			elif transition == "lab_arrival":
-				_show_route_transition("The drowned lab", "[b]Checkpoint secured — party restored.[/b]\n\nInvestigate the Mermaid Freak reveal ahead. This is a preview, not a mandatory boss fight, while final balance and recovery testing remain deferred.")
+				_show_route_transition("The drowned lab", "[b]Checkpoint secured: party restored.[/b]\n\nInvestigate the Mermaid Freak reveal ahead. This is a preview, not a mandatory boss fight, while final balance and recovery testing remain deferred.")
 			elif transition == "route_complete":
 				_show_route_transition("Playable route complete", "The Mermaid Freak preview is complete. The Octopus escape is intentionally not present until its completed model and authored attacks arrive.")
 		_route_battle_id = ""

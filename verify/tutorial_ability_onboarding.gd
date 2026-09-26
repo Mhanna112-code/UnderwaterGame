@@ -31,6 +31,8 @@ func _run() -> void:
 	if battle == null:
 		findings.append("ROUTE HANDOFF START: no tutorial battle was created")
 	else:
+		_expect(battle.encounter_source == "Tutorial encounter: Angler practice" and not battle.encounter_source.contains("—"),
+			"TUTORIAL COPY: the visible encounter label must use concise colon punctuation, not an em dash")
 		# The opening teaches the visual Quick Read with one safe action.  A
 		# longer forced script would contradict the route brief by making full
 		# move/formula instruction mandatory before free exploration.
@@ -131,7 +133,7 @@ func _wait_for(label: String, predicate: Callable) -> bool:
 func _verify_handoff(world: World) -> void:
 	_expect(world.route != null and world.route.objective_id == "shallow_angler",
 		"TUTORIAL HANDOFF: no active Shallows Angler objective after the lesson")
-	_expect(world.route != null and world.route.objective_text == "Shallows — follow the beacon.",
+	_expect(world.route != null and world.route.objective_text == "Shallows: follow the beacon.",
 		"TUTORIAL HANDOFF: first player-facing objective drifted")
 	_expect(world.route_objective_label.visible,
 		"TUTORIAL HANDOFF: sole route objective is not visibly displayed in the world")

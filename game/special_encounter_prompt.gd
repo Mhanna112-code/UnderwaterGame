@@ -150,7 +150,7 @@ func _refresh_confirm_copy() -> void:
 	if _confirm_title == null or _confirm_body == null:
 		return
 	if _showing_practice:
-		_confirm_title.text = "Practice Controls — Optional Challenge"
+		_confirm_title.text = "Practice Controls: Optional Challenge"
 		_confirm_body.text = "Objective: complete one diver's timed special challenge to claim %s. This is off the main route; leaving does not block progression.\n\n%s\n\nChoose Enter Challenge only when you are ready to select the diver." % [_reward_name, _practice_controls_copy()]
 		_practice_btn.text = "Back to Challenge Details"
 	else:
@@ -159,7 +159,7 @@ func _refresh_confirm_copy() -> void:
 		_practice_btn.text = "Practice Controls"
 
 func _practice_controls_copy() -> String:
-	return "Controls: %s — E then Left/Right and Enter to Swap; %s — E to aim, left-click to Grapple, right-click to cancel; %s — E for Shockwave." % [
+	return "Controls: %s: E then Left/Right and Enter to Swap; %s: E to aim, left-click to Grapple, right-click to cancel; %s: E for Shockwave." % [
 		Cast.display_name("Staff_Diver"), Cast.display_name("Prototype_1(1910)"), Cast.display_name("Prototype_V(1922)"),
 	]
 

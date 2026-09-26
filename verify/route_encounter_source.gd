@@ -32,7 +32,7 @@ func _run() -> void:
 		if world.battle != null:
 			var expected_source := String(beat.encounter_label)
 			if bool(beat.get("capstone", false)):
-				expected_source += " • Checkpoint secured — party restored"
+				expected_source += " • Checkpoint secured: party restored"
 			_expect(world.battle.encounter_source == expected_source,
 				"ENCOUNTER SOURCE: %s exposed '%s', expected '%s'" % [beat.id, world.battle.encounter_source, expected_source])
 			var label := world.battle.get("_encounter_source_label") as Label

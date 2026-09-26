@@ -153,6 +153,19 @@ func _check_post_qte_layout(battle: Battle, viewport: Vector2, label: String) ->
 	var stage_rect := battle._stage_container.get_global_rect()
 	_expect(screen.encloses(stage_rect) and stage_rect.size.y >= MIN_STAGE_HEIGHT,
 		"%s QTE HANDOFF: stage is clipped or too short (%s)" % [label, stage_rect])
+	# The source/turn header can grow taller when it names a tutorial or route
+	# encounter. Fixed 70px status-card offsets once placed a diver name under
+	# that opaque strip, exactly like the captured browser screenshot. Cards
+	# must begin beneath the actual laid-out header, not a guessed height.
+	var queue_bottom := battle._queue_bar.get_global_rect().end.y
+	for entry_value in battle.party:
+		var entry := entry_value as Dictionary
+		var card := entry.get("card") as Control
+		_expect(card != null and card.visible and card.get_global_rect().position.y >= queue_bottom + 8.0,
+			"%s QTE HANDOFF: party status card begins under the variable-height encounter header" % label)
+		if card != null:
+			_expect(screen.encloses(card.get_global_rect()),
+				"%s QTE HANDOFF: party status card is clipped by the browser viewport (%s in %s)" % [label, card.get_global_rect(), screen])
 	if battle._levelup_caption.visible:
 		_expect(screen.encloses(battle._levelup_caption.get_global_rect()),
 			"%s QTE HANDOFF: mandatory level-up information is clipped" % label)

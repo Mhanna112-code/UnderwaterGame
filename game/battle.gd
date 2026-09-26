@@ -408,12 +408,11 @@ var _stage_vp: SubViewport
 # height of the screen behind it. See _fit_panel_height().
 var _stage_container: SubViewportContainer
 var _stage_cam: Camera3D
-# Fixed 2D status stacks, not labels floating over each combatant in the
-# 3D stage - the party's own cards stack down the left edge, the enemies'
-# down the right (see _build_overhead_bar()). Static means no per-frame
-# 3D->screen projection or anti-overlap juggling is needed at all, unlike
-# the old head-tracking version this replaced.
-var _party_status_column: VBoxContainer
+# Fixed 2D status cards, not labels floating over each combatant in the
+# 3D stage. Party cards share a compact row under the turn header, while
+# enemies retain a right-side stack (see _build_overhead_bar()). A vertical
+# three-diver stack cannot fit above a tall tutorial panel at 1280x720.
+var _party_status_column: HBoxContainer
 var _enemy_status_column: VBoxContainer
 # The turn order, moved out of the bottom panel to the very top.
 var _queue_bar: PanelContainer
@@ -944,7 +943,7 @@ func _set_quick_read_summary(move: Dictionary, enemy: Dictionary, effects: Dicti
 		var level := int(CombatRules.formula_value(_acting.stats as CombatantStats, effect.get("level", {})))
 		if level > 0:
 			parts.append("Opening: %s %d" % [_status_display_name(status_name), level])
-	_quick_read_summary.text = "Quick Read — " + "  •  ".join(parts)
+	_quick_read_summary.text = "Quick Read: " + "  •  ".join(parts)
 	_quick_read_summary.visible = not parts.is_empty()
 
 func _clear_quick_read_summary() -> void:
@@ -1436,15 +1435,17 @@ func _spread(i: int, n: int, step: float) -> float:
 	return (float(i) - float(n - 1) * 0.5) * step
 
 func _build_ui() -> void:
-	# Party's status cards stack down the left edge, enemies' down the
-	# right - added before the bottom panel/queue bar just so those still
-	# win in z-order if a stack ever ran long enough to reach them.
-	_party_status_column = VBoxContainer.new()
+	# Party cards run across the top-left under the turn header. A previous
+	# vertical stack extended behind tutorial dialogue at browser height,
+	# which hid later party members and made the header appear to cut names
+	# off. Enemies can still stack on the right because there are fewer of
+	# them and their cards do not need oxygen rows.
+	_party_status_column = HBoxContainer.new()
 	_party_status_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_party_status_column.offset_left = 12.0
 	_party_status_column.offset_top = 70.0
-	_party_status_column.offset_right = 12.0 + STATUS_COLUMN_WIDTH
-	_party_status_column.offset_bottom = 70.0 + 320.0
+	_party_status_column.offset_right = 12.0 + STATUS_COLUMN_WIDTH * 3 + 16.0
+	_party_status_column.offset_bottom = 70.0 + 78.0
 	_party_status_column.add_theme_constant_override("separation", 8)
 	_party_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_party_status_column)
@@ -1815,6 +1816,22 @@ func _apply_panel_height() -> void:
 		# rendered under an opaque bar is rendered where nobody can see it.
 		# The stage is now strictly the band between the two.
 		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
+	_layout_status_columns()
+
+# The encounter label is optional, but its wrapped height changes the top
+# strip. Status cards used to begin at a fixed 70px, which put Maxilani's name
+# underneath a two-row tutorial header. Measure the real strip after Godot has
+# laid it out, then reserve a small gutter below it for both columns.
+func _layout_status_columns() -> void:
+	if _queue_bar == null:
+		return
+	var top := maxf(70.0, _queue_bar.size.y + 12.0)
+	if _party_status_column != null:
+		_party_status_column.offset_top = top
+		_party_status_column.offset_bottom = top + 78.0
+	if _enemy_status_column != null:
+		_enemy_status_column.offset_top = top
+		_enemy_status_column.offset_bottom = top + 320.0
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -3616,7 +3633,7 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 		if formula_can_hit and bool(move.get("quick_time_bool", false)) and (formula_force_qte or randf() < ENEMY_QTE_CHANCE):
 			formula_dodge = await _quick_time_event(_actor_for_stats(defender))
 			if tutorial_encounter and formula_force_qte:
-				_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded — no damage taken.[/color]" if formula_dodge else "[color=#ef7070]Dodge missed — the attack landed normally.[/color]"
+				_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded: no damage taken.[/color]" if formula_dodge else "[color=#ef7070]Dodge missed: the attack landed normally.[/color]"
 		return CombatRules.resolve(attacker, defender, move, apply_self_effects, formula_dodge)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
@@ -3655,7 +3672,7 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if bool(move.get("quick_time_bool", false)) and (force_qte or randf() < ENEMY_QTE_CHANCE):
 		player_dodge = await _quick_time_event(_actor_for_stats(defender))
 		if tutorial_encounter and force_qte:
-			_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded — no damage taken.[/color]" if player_dodge else "[color=#ef7070]Dodge missed — the attack landed normally.[/color]"
+			_tutorial_qte_outcome_text = "[color=#65d98a]Dodge succeeded: no damage taken.[/color]" if player_dodge else "[color=#ef7070]Dodge missed: the attack landed normally.[/color]"
 
 	return apply_damage_roll(attacker, defender, move, variance, heavy_fraction, player_dodge)
 

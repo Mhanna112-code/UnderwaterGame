@@ -34,7 +34,7 @@ func _run() -> void:
 		"TUTORIAL HANDOFF: route did not enter the shallows phase")
 	_expect(route.objective_id == "shallow_angler",
 		"TUTORIAL HANDOFF: the sole shallow objective was not the authored Angler")
-	_expect(route.objective_text == "Shallows — follow the beacon.",
+	_expect(route.objective_text == "Shallows: follow the beacon.",
 		"TUTORIAL HANDOFF: the player-facing first objective changed")
 	_expect(route.active_roster() == ["angler"],
 		"AUTHORED ROSTER: shallow Angler did not resolve to one Angler")
