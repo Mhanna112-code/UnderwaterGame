@@ -81,6 +81,13 @@ var encounter_source := ""
 # applies throughout; after those two taught interactions the Angler retreats
 # and the first full, punitive fight is the authored shallow-route Angler.
 var tutorial_encounter := false
+const TUTORIAL_PROFILE_OPENING := "opening_quick_read"
+const TUTORIAL_PROFILE_INTERACTIVE := "interactive_combat_training"
+
+# World selects this before the battle enters the scene tree. The opening
+# profile is intentionally one concise lesson; the longer authored lesson is
+# a player-requested practice activity from Combat Help.
+var tutorial_profile := TUTORIAL_PROFILE_OPENING
 # Ordered stage script for the choreographed first fight.  The route brief
 # deliberately limits onboarding to one safe meaningful choice: the player
 # sees the actual green/red comparison, uses one highlighted counter move,
@@ -89,6 +96,13 @@ var tutorial_encounter := false
 # opening into a five-move lecture.
 const _TUTORIAL_SCRIPT: Array[Dictionary] = [
 	{"party_index": 0, "move": "Electric Touch"}, # Maxilani; safe EVA counter
+]
+const _INTERACTIVE_TUTORIAL_SCRIPT: Array[Dictionary] = [
+	{"party_index": 0, "move": "Electric Touch"},   # Maxilani: EVA counter
+	{"party_index": 1, "move": "Precise Tap"},       # Musashi: accuracy
+	{"party_index": 2, "move": "Crushing Haymaker"}, # Bucky: trade-off
+	{"party_index": 1, "move": "Weaken"},            # Musashi: defense break
+	{"party_index": 0, "move": "Flash Blast"},       # Maxilani: all foes
 ]
 # Index into _TUTORIAL_SCRIPT of whichever scripted stage is next. Only
 # advances (see _resolve_party_move()/_resolve_party_move_all()) when
@@ -122,6 +136,12 @@ var _tutorial_caption: RichTextLabel
 # The QTE detail belongs to the lesson surface, not the universal level-up
 # label.  This keeps its reading order stable: lesson → live QTE → detail.
 var _tutorial_qte_detail: RichTextLabel
+
+func active_tutorial_script() -> Array[Dictionary]:
+	return _INTERACTIVE_TUTORIAL_SCRIPT if tutorial_profile == TUTORIAL_PROFILE_INTERACTIVE else _TUTORIAL_SCRIPT
+
+func _is_interactive_combat_training() -> bool:
+	return tutorial_profile == TUTORIAL_PROFILE_INTERACTIVE
 # Narrative beats are keyboard-friendly, but combat is otherwise mouse-first.
 # A visible click target keeps a player from treating an Enter-only caption as
 # a frozen fight; the small pulse is deliberate affordance, not decoration.
@@ -1679,7 +1699,9 @@ func _build_ui() -> void:
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
 	if tutorial_encounter:
-		skip_tutorial_btn = _menu_button("Skip Tutorial", "Return to the world without finishing this lesson")
+		var skip_label := "End Training" if _is_interactive_combat_training() else "Skip Tutorial"
+		var skip_hint := "Return to the world without changing campaign progress" if _is_interactive_combat_training() else "Return to the world without finishing this lesson"
+		skip_tutorial_btn = _menu_button(skip_label, skip_hint)
 		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
 		main_menu.add_child(skip_tutorial_btn)
 	items_btn = _menu_button("Items", "")
@@ -2467,7 +2489,7 @@ func _advance_turn() -> void:
 	# the prior captured tutorial soft-lock: a newcomer could reasonably think
 	# the lesson was over while the game quietly demanded ordinary combat. The
 	# next authored Angler is where the player gets the first complete fight.
-	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
+	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= active_tutorial_script().size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
 		_log("Practice complete. The Angler retreats.")
 		_win()
@@ -2504,7 +2526,7 @@ func _advance_turn() -> void:
 	# sitting under the still-present lesson card. This only changes the tiny
 	# choreographed opening: after the QTE, ordinary turn order resumes.
 	var tutorial_enemy_next: Dictionary = {}
-	if tutorial_encounter and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns == 0:
+	if tutorial_encounter and _tutorial_step >= active_tutorial_script().size() and _tutorial_enemy_turns == 0:
 		for candidate_value in enemies:
 			var candidate := candidate_value as Dictionary
 			if _living(enemies).has(candidate) and _queue.has(candidate):
@@ -2636,9 +2658,10 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 # is what let stage 3 revisit Musashi (party index 1) without every call
 # site re-deriving "which diver is this stage about" its own way.
 func _tutorial_party_index_for_step(step: int) -> int:
-	if step < 0 or step >= _TUTORIAL_SCRIPT.size():
+	var script := active_tutorial_script()
+	if step < 0 or step >= script.size():
 		return -1
-	var idx := int(_TUTORIAL_SCRIPT[step].get("party_index", -1))
+	var idx := int(script[step].get("party_index", -1))
 	return idx if idx < party.size() else -1
 
 # True only on the exact turn _TUTORIAL_SCRIPT's current stage is meant to
@@ -2813,9 +2836,10 @@ func _apply_tutorial_move_gate() -> void:
 	if move_buttons.is_empty():
 		return
 	var moves := _moves_for(_acting)
+	var script := active_tutorial_script()
 	var forced_name := String(
-		(_TUTORIAL_SCRIPT[_tutorial_step] as Dictionary).get("move", "")
-	) if _tutorial_step < _TUTORIAL_SCRIPT.size() else ""
+		(script[_tutorial_step] as Dictionary).get("move", "")
+	) if _tutorial_step < script.size() else ""
 	var move_index := 0
 	for i in range(moves.size()):
 		if String((moves[i] as Dictionary).name) == forced_name:
@@ -3141,11 +3165,22 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		_populate_target_menu(targets)
 	target_menu.visible = true
 	call_deferred("_fit_panel_height")
-	# The one forced move makes the colour language concrete with the actual
-	# stat preview. Further move formulas and status explanations are optional
-	# Combat Help material, not mandatory opening content.
+	# The opening profile makes the colour language concrete with one safe
+	# preview. Optional interactive training restores the deeper, live
+	# five-move explanations without making a new player sit through them.
 	if _is_tutorial_scripted_turn(_acting) and effect not in ["heal", "revive"] and not targets.is_empty():
-		await _explain_quick_read_target(targets[0] as Dictionary)
+		if not _is_interactive_combat_training():
+			await _explain_quick_read_target(targets[0] as Dictionary)
+		elif _tutorial_step == 0:
+			await _explain_dodging(targets[0] as Dictionary)
+		elif _tutorial_step == 1:
+			await _explain_precise_tap(targets[0] as Dictionary)
+		elif _tutorial_step == 2:
+			await _explain_crushing_haymaker(targets[0] as Dictionary)
+		elif _tutorial_step == 3:
+			await _explain_weaken(targets[0] as Dictionary)
+		elif _tutorial_step == 4:
+			await _explain_flash_blast(targets[0] as Dictionary)
 
 # A single active hover proves the player has encountered the exact visual
 # language they will use in real combat. It intentionally stops there: the
@@ -3998,6 +4033,8 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# Once the one safe Quick Read move resolves, the rest of this fight is
 	# ordinary combat: finish it, learn through play, or choose explicit Skip.
 	if _is_tutorial_scripted_turn(_acting):
+		if _is_interactive_combat_training() and _tutorial_step == 0:
+			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if not target_died:
@@ -4045,6 +4082,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	# Kept symmetric with the single-target path even though the mandatory
 	# Electric Touch is single-target; future one-step lessons stay safe.
 	if _is_tutorial_scripted_turn(_acting):
+		if _is_interactive_combat_training() and _tutorial_step == 0:
+			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_advance_turn()
@@ -4599,7 +4638,8 @@ func _win() -> void:
 	# concrete result to inspect; Combat Help owns the explanatory depth.
 	if tutorial_encounter:
 		var qte_result := _tutorial_qte_outcome_text if _tutorial_qte_outcome_text != "" else "[color=#b9d3df]Dodge result recorded in the battle log.[/color]"
-		await _tutorial_show_step("Practice complete. %s Your party is restored. Continue to begin the Shallows route." % qte_result)
+		var completion := "Training complete. %s Your campaign state is restored. Continue to return to the world." if _is_interactive_combat_training() else "Practice complete. %s Your party is restored. Continue to begin the Shallows route."
+		await _tutorial_show_step(completion % qte_result)
 		for entry in party:
 			if entry.has("card"):
 				_set_row_highlight(entry.card as PanelContainer, false)

@@ -195,6 +195,7 @@ var _ability_onboarding_shown := false
 # write a slot nor provide a free heal/level-up exploit.
 var _tutorial_replay_snapshot: Array[Dictionary] = []
 var _tutorial_replay_prompt_active := false
+var _tutorial_replay_profile := Battle.TUTORIAL_PROFILE_OPENING
 # Shown once on a genuinely new save (_on_title_new_game()) instead of the
 # tutorial book auto-opening there - see IntroCrawl's own header comment.
 # The tutorial book itself is untouched: F1 (this file's own
@@ -2866,13 +2867,13 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, forced_enemy_ids: Array = [], forced_enemy_modifiers: Array = []) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, forced_enemy_ids: Array = [], forced_enemy_modifiers: Array = [], tutorial_profile: String = Battle.TUTORIAL_PROFILE_OPENING) -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
-	_announce("Tethys rises from the deep!" if boss_encounter else ("Your first encounter - let's see what you've got." if tutorial else "An angler fish emerges from the murk!"))
+	_announce("Tethys rises from the deep!" if boss_encounter else ("Interactive combat training - practice safely." if tutorial and tutorial_profile == Battle.TUTORIAL_PROFILE_INTERACTIVE else ("Your first encounter - let's see what you've got." if tutorial else "An angler fish emerges from the murk!")))
 	battle = Battle.new()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
@@ -2881,12 +2882,13 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.tutorial_encounter = tutorial
+	battle.tutorial_profile = tutorial_profile
 	if _route_battle_id != "" and route != null:
 		battle.encounter_source = route.active_encounter_label()
 		if route.is_capstone():
 			battle.encounter_source += " • Checkpoint secured: party restored"
 	elif tutorial:
-		battle.encounter_source = "Tutorial encounter: Angler practice"
+		battle.encounter_source = "Optional interactive combat training" if tutorial_profile == Battle.TUTORIAL_PROFILE_INTERACTIVE else "Tutorial encounter: Angler practice"
 	elif special:
 		battle.encounter_source = "Optional guardian challenge"
 	else:
@@ -3032,7 +3034,7 @@ func _heal_tutorial_party() -> void:
 func _on_tutorial_loss_retry() -> void:
 	if _tutorial_replay_prompt_active:
 		_tutorial_replay_prompt_active = false
-		_replay_tutorial_battle()
+		_replay_tutorial_battle(_tutorial_replay_profile)
 		return
 	_heal_tutorial_party()
 	_start_battle("", false, "angler", divers, false, true)
@@ -3069,12 +3071,16 @@ func open_advanced_combat_guide() -> void:
 # ones a new player sees. Its campaign-facing result is different: the
 # snapshot below is restored after win/loss/skip, so it cannot grant XP,
 # recovery, a free status cleanse, or a save-state change.
-func _replay_tutorial_battle() -> void:
+func _replay_tutorial_battle(profile: String = Battle.TUTORIAL_PROFILE_OPENING) -> void:
 	if battling or divers.is_empty():
 		return
 	_tutorial_replay_prompt_active = false
+	_tutorial_replay_profile = profile
 	_tutorial_replay_snapshot = _capture_tutorial_replay_snapshot()
-	_start_battle("", false, "angler", divers, false, true)
+	_start_battle("", false, "angler", divers, false, true, [], [], profile)
+
+func _replay_interactive_combat_training() -> void:
+	_replay_tutorial_battle(Battle.TUTORIAL_PROFILE_INTERACTIVE)
 
 func _capture_tutorial_replay_snapshot() -> Array[Dictionary]:
 	var snapshot: Array[Dictionary] = []

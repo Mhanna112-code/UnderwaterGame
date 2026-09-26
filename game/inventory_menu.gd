@@ -188,6 +188,10 @@ func _on_replay_tutorial_pressed() -> void:
 	if world != null:
 		world._replay_tutorial_battle()
 
+func _on_interactive_combat_training_pressed() -> void:
+	if world != null:
+		world._replay_interactive_combat_training()
+
 # These deliberately open separate optional surfaces. The opening lesson
 # remains short and route-ready; a player who wants either exploration controls
 # or the deeper combat rules can ask for them without being pushed through both
@@ -299,6 +303,14 @@ func _refresh_help() -> void:
 		ability_btn.custom_minimum_size = Vector2(340, 40)
 		ability_btn.pressed.connect(_on_world_ability_training_pressed)
 		_list.add_child(ability_btn)
+
+		var interactive_btn := Button.new()
+		interactive_btn.name = "InteractiveCombatTraining"
+		interactive_btn.text = "Interactive Combat Training"
+		interactive_btn.tooltip_text = "Practice Electric Touch, Precise Tap, Crushing Haymaker, Weaken, and Flash Blast in a safe five-move lesson."
+		interactive_btn.custom_minimum_size = Vector2(340, 40)
+		interactive_btn.pressed.connect(_on_interactive_combat_training_pressed)
+		_list.add_child(interactive_btn)
 
 		var advanced_btn := Button.new()
 		advanced_btn.name = "AdvancedCombatGuide"
