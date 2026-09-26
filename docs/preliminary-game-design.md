@@ -23,8 +23,39 @@ Every feature is assigned one of four states:
 
 The current `main` branch is the only merged baseline. PR #88's authored-route
 work is an **open prototype**, not a claim that its route, temporary art, or
-balance is already accepted. Query-string review routes are test access, not
-additional player progression.
+balance is already accepted. PR #86's Angler stun exception and PR #87's maze
+wall work are likewise proposals until merged and verified. Query-string review
+routes are test access, not additional player progression.
+
+### Source hierarchy and branch boundary
+
+When sources disagree, use this order:
+
+1. Current `main` source plus a focused automated check establishes what is
+   actually playable now.
+2. Content maps and authored tables establish the intended numbers, move names,
+   and asset ownership; a conflict must be recorded rather than silently
+   resolved in code.
+3. An accepted issue decision establishes the target behaviour.
+4. A PR or meeting proposal establishes a hypothesis to test, not shipped game
+   behaviour. The README is an operational overview and may lag source.
+
+This prevents a review build, a query shortcut, or a branch-local screenshot
+from being described as a delivered feature. It also means automated gates prove
+specific contracts; they do not by themselves prove that a visual, tutorial, or
+balance choice is enjoyable.
+
+### Repository systems map
+
+| Area | Current source of behaviour | What it establishes for this design map |
+| --- | --- | --- |
+| World, title, saves, sites, and transitions | `game/world.gd` | New/Load flow, persistence, traversal, guardian access, legacy ability-puzzle hooks, and the boundary between world and battle. |
+| Diver controls and ordinary encounter checks | `game/diver.gd` | Swimming, camera, switching, Sonar/Grapple/Shockwave/Swap access, oxygen, and the current distance/random encounter baseline. |
+| Turn combat and combatant state | `game/battle.gd`, `game/combatant_stats.gd`, `game/combat_rules.gd` | Turn order, move resolution, statuses, QTE integration, party/enemy rendering, and result-first combat data. |
+| Party, enemies, moves, sites, and items | `content/`, `game/items.gd`, `game/spell_tree.gd` | The current roster, authored move definitions, world-site layout, consumables, key items, and available progression content. |
+| Special encounters and maze | `game/*minigame.gd`, `game/maze_level.gd` | The three implemented special challenges and the separate rotating-current maze system; existence does not establish required placement in the campaign. |
+| Verification and deployed export | `verify/`, `tools/`, `docs/` | Focused gameplay/browser checks and the committed web-export workflow. They supply reproducible evidence, not automatic design acceptance or deployment. |
+| Imported art | `art/`, `assets/`, FBX import records | What can render today. Import success is distinct from a reviewed material, scale, collision, animation, and normal-route placement. |
 
 ## Player promise and core loop
 
@@ -60,9 +91,13 @@ ordinary encounters are visible/avoidable rather than random. See [#49](https://
 | Shallows route | Learn basic combat against Angler and Frilled Shark; reach a first capstone. | **Prototype / playtest candidate** in PR #88 | Authored route roster/order and checkpoint contract exist on the branch. The decorative reef passage is rejected placeholder art, not finished environment content. |
 | Deep route | Apply Evasion and Defense counterplay against Swordfish and Sea Urchin. | **Prototype / playtest candidate** in PR #88 | Route cards and counter tests exist. Current deep "ruin" primitives are rejected placeholders, not approved scenery. |
 | Guardians and optional specials | Discover an artifact site, choose a diver, complete an optional challenge, earn a key item. | **Implemented, needs presentation/playtest work** | Physical artifact guardians, sonar discovery, loss-safe retry, and item persistence are wired. Their discoverability and player-facing purpose remain part of world/UX review. |
+| Save, recovery, and checkpoint loop | Keep earned progress, understand what a loss costs, and safely resume a route. | **Implemented systems, decision/presentation incomplete** | Save slots, save points, item persistence, consumables, and world-state restoration exist. [#16](https://github.com/Mhanna112-code/UnderwaterGame/issues/16) and [#34](https://github.com/Mhanna112-code/UnderwaterGame/issues/34) require a clear player-facing recovery rule and normal-path proof. |
+| Items, spells, and equipment | Use discoveries to broaden party options and make build choices. | **Implemented initial slice; breadth/spec reconciliation incomplete** | The inventory, spell tree, shards, key items, and battle tonics exist. [#28](https://github.com/Mhanna112-code/UnderwaterGame/issues/28) is about meaningful content breadth and resolving the authored specification, not merely making a menu appear. |
+| Special challenges | Exercise Swap, Shockwave, and Grapple in compact optional encounters. | **Implemented mechanisms; role unresolved** | Diver Swap, Rock Dodge/Shockwave, and Grapple Intercept can be dispatched, but [#49](https://github.com/Mhanna112-code/UnderwaterGame/issues/49) must decide which remain in the core loop and how they are taught. |
 | Lab and core | Reveal the laboratory danger and acquire the core. | **Not delivered / deferred** | The branch uses a Mermaid Freak *preview* rather than a mandatory fight. Final lab pieces, encounter sequence, core interaction, and narration are not delivered. |
 | Escape / Octopus | Resolve the game with a final encounter and ending. | **Not delivered / deferred** | Octopus asset, attack set, balance, checkpoint/retry flow, and final ending presentation are not ready. Do not represent this as complete. |
 | Maze | Optional/parallel spatial puzzle content, not a required dependency for the core route. | **Implemented separately; design placement unresolved** | Maze geometry/minimap work belongs to its own review path. [#78](https://github.com/Mhanna112-code/UnderwaterGame/issues/78) owns discoverability; route design must decide whether/how it connects without blocking the core loop. |
+| Audio and music | Give the title, exploration, combat, and major transitions an intentional sonic identity. | **Not delivered in the tracked runtime** | No tracked game audio assets are present in the current source. Music discussion and works-in-progress must be treated as external intake until a reviewed, credited runtime integration exists. |
 
 ## Navigation and world rules
 
@@ -78,13 +113,18 @@ directional cue for its authored route. That is a testable navigation choice,
 not a license to make every place a marker or to use ordinary enemies as route
 signposts.
 
+Current `main` still checks for ordinary random encounters after 8–16 metres
+with a 50% trigger chance, drawing from Angler, Swordfish, and Frilled Shark.
+That is the implemented baseline, not the agreed target for [#8](https://github.com/Mhanna112-code/UnderwaterGame/issues/8). The proposed authored-route
+exclusions in PR #88 also do not settle the broader open-world policy.
+
 | Rule | State | Proof needed |
 | --- | --- | --- |
 | One active critical objective at a time. | **Prototype / playtest candidate** | A fresh player can state the next action without coaching; normal-path recording proves no competing HUD/marker. |
 | Beacons/arrows guide required progression. | **Prototype / playtest candidate** | Normal play reaches each route beat without Sonar or URL shortcut. |
 | Sonar finds optional artifact/guardian content. | **Implemented** | Save/load and guardian integration tests exist; human playtest must show it is understandable rather than invisible. |
 | Item sites are not route-marked. | **Implemented design boundary** | Maintain separation between optional discovery and critical route guidance. |
-| Normal encounters are visible and avoidable, with a meaningful skip cost. | **Decision required** | [#8](https://github.com/Mhanna112-code/UnderwaterGame/issues/8) records this as a team decision; current authored-route random exclusion does not settle open-world policy. |
+| Normal encounters are visible and avoidable, with a meaningful skip cost. | **Decision recorded; implementation incomplete** | [#8](https://github.com/Mhanna112-code/UnderwaterGame/issues/8) records the target. Replace or deliberately retain the current random-distance baseline only after the skip cost, placement, and normal-path proof are specified. |
 
 ### Environment and art contract
 
@@ -121,9 +161,10 @@ The current Group Stats V2 baseline is implemented:
 | Bucky | Slow power/tank character | 10 HP, 4 STR, 4 DEF, 1 AGI, 0 EVA, 1 ACC |
 
 Stats, current Evasion, status effects, result-first move choices, and
-optional Combat Help are implemented. The source map remains
-`docs/glassgoat-combat-v2.md`; it is the authority for what the current slice
-does and does not claim.
+optional Combat Help are implemented. `docs/glassgoat-combat-v2.md` records the
+current V2 baseline; `docs/combat-content-source-map.md` records reconciled
+authored content and unresolved conflicts. Neither should be replaced by a
+convenient code-only reinterpretation.
 
 ### Combat reading model
 
@@ -160,6 +201,7 @@ strategic purpose it serves, and its kill condition after fresh playtests.
 | --- | --- | --- |
 | Does a successful QTE negate or reduce damage? | [#11](https://github.com/Mhanna112-code/UnderwaterGame/issues/11) | Explicit team ruling plus a test of that exact rule. |
 | Does the QTE improve combat enough to keep? | [#9](https://github.com/Mhanna112-code/UnderwaterGame/issues/9) and [#49](https://github.com/Mhanna112-code/UnderwaterGame/issues/49) | Named playtest count, measured result, keep/cut ruling. |
+| Does the prompt occupy its full actionable window? | [#14](https://github.com/Mhanna112-code/UnderwaterGame/issues/14) | Twenty consecutive real QTEs with the prompt visible from the start of the timing window, within the issue's timing tolerance. |
 | Are special environmental minigames understandable and necessary? | [#47](https://github.com/Mhanna112-code/UnderwaterGame/issues/47) | First-time player completes the teaching sequence without coaching. |
 
 ## Player access versus review access
@@ -192,6 +234,44 @@ This grouping states why each set matters to the player.
 | The game has authored tone and an endgame. | [#58](https://github.com/Mhanna112-code/UnderwaterGame/issues/58), [#59](https://github.com/Mhanna112-code/UnderwaterGame/issues/59) | Glassgoat narration, textures, lab/core/escape content, and boss acceptance. |
 | A shared web build is trustworthy to test. | [#12](https://github.com/Mhanna112-code/UnderwaterGame/issues/12), [#38](https://github.com/Mhanna112-code/UnderwaterGame/issues/38), [#40](https://github.com/Mhanna112-code/UnderwaterGame/issues/40), [#41](https://github.com/Mhanna112-code/UnderwaterGame/issues/41) | Fresh-player testing, review discipline, loading experience, and explicit decision ownership. |
 
+### Open-issue coverage ledger
+
+This ledger is intentionally exhaustive. It prevents an issue from disappearing
+because it was only implicit in a broad feature section. A row is not a promise
+to solve the issue in one PR; it names the design home and the condition that
+makes its state safe to change.
+
+| Issue | Design home | State / next evidence |
+| --- | --- | --- |
+| [#8](https://github.com/Mhanna112-code/UnderwaterGame/issues/8) | Encounter policy | Decision recorded; convert random open-world checks to a visible/avoidable policy only with a specified skip cost and route test. |
+| [#9](https://github.com/Mhanna112-code/UnderwaterGame/issues/9) | QTE probation | Decision required; retain or cut after a named fresh-player study and success/failure data. |
+| [#11](https://github.com/Mhanna112-code/UnderwaterGame/issues/11) | QTE result | Decision required; state whether a success negates or reduces damage, then test that exact result. |
+| [#12](https://github.com/Mhanna112-code/UnderwaterGame/issues/12) | Fresh-player validation | Not delivered; recruit a player without project context and preserve their uncoached observations. |
+| [#14](https://github.com/Mhanna112-code/UnderwaterGame/issues/14) | QTE timing | Open defect; run the issue's 20-window timing test rather than relying on one successful press. |
+| [#15](https://github.com/Mhanna112-code/UnderwaterGame/issues/15) | Combat strategy | Open balance/design validation; demonstrate multiple viable choices across the intended roster. |
+| [#16](https://github.com/Mhanna112-code/UnderwaterGame/issues/16) | Spell/save discovery | Systems exist; normal play must reveal the save point and spell purpose before they are needed. |
+| [#17](https://github.com/Mhanna112-code/UnderwaterGame/issues/17) | Combat response epic | Partially implemented; response, status, and counterplay require integrated human review. |
+| [#21](https://github.com/Mhanna112-code/UnderwaterGame/issues/21) | Turn clarity | Open UX acceptance; player must identify the active combatant without coaching. |
+| [#22](https://github.com/Mhanna112-code/UnderwaterGame/issues/22) | Character/move attention | Open presentation task; portraits and turn/move focus need a scoped reviewed design. |
+| [#27](https://github.com/Mhanna112-code/UnderwaterGame/issues/27) | World direction | Open world-design task; use intentional landmarks/guidance, not a claim that bare open water is solved. |
+| [#28](https://github.com/Mhanna112-code/UnderwaterGame/issues/28) | Spell/equipment breadth | Menus and initial entries exist; reconcile the authored content list and prove meaningful choices. |
+| [#29](https://github.com/Mhanna112-code/UnderwaterGame/issues/29) | Status specifications | Open source-of-truth task; record which effects lower which stat, duration, stacking, and UI language. |
+| [#31](https://github.com/Mhanna112-code/UnderwaterGame/issues/31) | Beach-asset intake | Delivered intake, untested; place, scale, collide, web-test, and accept/revise individually. |
+| [#33](https://github.com/Mhanna112-code/UnderwaterGame/issues/33) | Difficulty evidence | Open methodology task; report exact build SHA, party policy, QTE policy, and outcomes before comparing playtests. |
+| [#34](https://github.com/Mhanna112-code/UnderwaterGame/issues/34) | Recovery loop | Systems exist but rule is unclear; define recovery resources/checkpoints and test that players discover them. |
+| [#35](https://github.com/Mhanna112-code/UnderwaterGame/issues/35) | Combat messages | Open readability defect; a player must have enough time and an accessible history/detail path to read outcomes. |
+| [#36](https://github.com/Mhanna112-code/UnderwaterGame/issues/36) | QTE instruction | Partially addressed in branch work; normal-entry test must show the required input before the first QTE. |
+| [#38](https://github.com/Mhanna112-code/UnderwaterGame/issues/38) | Review discipline | Process rule; play the exact build before approving and do not change its branch during active review. |
+| [#40](https://github.com/Mhanna112-code/UnderwaterGame/issues/40) | Web first load | Open performance/reliability task; measure Firefox and Chromium on a fresh load and give the wait a visible state. |
+| [#41](https://github.com/Mhanna112-code/UnderwaterGame/issues/41) | Decision and process blockers | Open coordination task; record owner, decision, evidence, and deadline rather than attempting a code-only close. |
+| [#47](https://github.com/Mhanna112-code/UnderwaterGame/issues/47) | Ability teaching and combined puzzle | Open sequence task; teach each required ability in isolation before asking for the combination. |
+| [#49](https://github.com/Mhanna112-code/UnderwaterGame/issues/49) | Core minigame loop | Decision required; assign each retained minigame a progression job or remove it from the critical path. |
+| [#57](https://github.com/Mhanna112-code/UnderwaterGame/issues/57) | Incremental environment art | Open asset pipeline; accept small reusable kits in normal locations, never a hidden monolithic scene. |
+| [#58](https://github.com/Mhanna112-code/UnderwaterGame/issues/58) | Final narration and intro | Deferred to Glassgoat; temporary text may not be promoted as final story. |
+| [#59](https://github.com/Mhanna112-code/UnderwaterGame/issues/59) | Tethys materials | Open asset integration; use the corrected textured intake and review it in the actual boss framing. |
+| [#77](https://github.com/Mhanna112-code/UnderwaterGame/issues/77) | Combat on-ramp | Open UX validation; visual Quick Read and optional detail must work in a normal browser viewport. |
+| [#78](https://github.com/Mhanna112-code/UnderwaterGame/issues/78) | Maze minimap | Separate maze UX task; test orientation and readability without using it to claim the core route is complete. |
+
 ## Proof standard
 
 Every future slice should name both its automated contract and its human
@@ -204,6 +284,11 @@ evidence before implementation. Neither is a substitute for the other.
 | An asset belongs in the game. | Import/material/scale/collision/spawn-clearance and web-build checks. | Screenshot/GIF from the normal location plus explicit keep/revise ruling. |
 | A balance change is better. | Reproducible policy/simulation comparison against current rules. | Several human runs, including loss reasons and frustration notes. |
 | A UI is accessible. | Responsive viewport and keyboard path checks. | Normal browser review at ordinary zoom, no coaching. |
+
+Automated results must report the exact source SHA, test policy, and any skipped
+browser/display prerequisite. A green aggregate gate is not permission to call
+an unreviewed human-facing design acceptable; it is evidence only for the
+contracts it actually exercised.
 
 ## Immediate design decisions to record before broad implementation
 
@@ -218,6 +303,11 @@ evidence before implementation. Neither is a substitute for the other.
 6. Keep Glassgoat's final narration, final environment pieces, corrected
    Tethys textures, lab/core, and Octopus escape explicitly deferred until
    their delivery and acceptance criteria are met.
+7. Define the visible recovery/checkpoint rule and when spell/equipment options
+   become discoverable before broad route implementation.
+8. Require every balance report to name its build SHA, party/move policy, QTE
+   policy, encounter source, and loss reason so conflicting playtests can be
+   compared honestly.
 
 ## Maintenance rules
 
