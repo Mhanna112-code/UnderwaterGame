@@ -484,7 +484,7 @@ var _qte_active := false
 var _qte_success := false
 
 # Set for the duration of one _tutorial_show_step() call - _unhandled_input()
-# flips this off the instant Enter/Numpad Enter is pressed, which is what
+# flips this off the instant Space/Enter is pressed, which is what
 # lets the awaiting `while _tutorial_awaiting_enter` loop in that function
 # return.
 var _tutorial_awaiting_enter := false
@@ -1633,7 +1633,7 @@ func _build_ui() -> void:
 		lesson_eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		lesson_column.add_child(lesson_eyebrow)
 		# RichTextLabel, not Label - _tutorial_show_step() below relies on
-		# BBCode ([color=yellow]highlighted[/color], the dim "press Enter"
+# BBCode ([color=yellow]highlighted[/color], the dim "Continue / Space"
 		# hint) actually rendering instead of showing as literal text.
 		_tutorial_caption = RichTextLabel.new()
 		_tutorial_caption.bbcode_enabled = true
@@ -1660,7 +1660,7 @@ func _build_ui() -> void:
 		lesson_column.add_child(_tutorial_qte_detail)
 		tutorial_continue_btn = Button.new()
 		tutorial_continue_btn.name = "TutorialContinue"
-		tutorial_continue_btn.text = "Continue  ·  Enter"
+		tutorial_continue_btn.text = "Continue  ·  Space / Enter"
 		tutorial_continue_btn.tooltip_text = "Continue this tutorial caption"
 		tutorial_continue_btn.custom_minimum_size = Vector2(188, 38)
 		tutorial_continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -2003,7 +2003,7 @@ func _on_qte_timeout() -> void:
 # stat rows included, since anchoring is bottom-up) to a different spot
 # immediately after, leaving the boxes stranded at the stale position.
 func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -> void:
-	_tutorial_caption.text = "%s\n[color=#7a8a94]Click Continue or press Enter[/color]" % text
+	_tutorial_caption.text = "%s\n[color=#7a8a94]Click Continue, press Space, or press Enter[/color]" % text
 	_set_tutorial_continue_visible(true)
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
@@ -2034,14 +2034,14 @@ func _set_tutorial_continue_visible(on: bool) -> void:
 
 # Two independent gates share this one entry point, each guarded by its own
 # flag so a press meant for one can't be misread as resolving the other:
-# Enter/Numpad Enter dismisses a narration caption while _tutorial_awaiting_
+# Space/Enter dismisses a narration caption while _tutorial_awaiting_
 # enter is true (see _tutorial_show_step()), X resolves a QTE while
 # _qte_active is true (see below). Neither is ever true at the same moment
 # in practice (a QTE never runs while a caption's up), but checking each
 # flag independently rather than an if/elif on one shared state keeps that
 # an implementation detail instead of a hard requirement.
 func _unhandled_input(event: InputEvent) -> void:
-	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_ENTER, KEY_KP_ENTER]:
+	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		get_viewport().set_input_as_handled()
 		_acknowledge_tutorial_step()
 		return

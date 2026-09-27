@@ -140,7 +140,7 @@ func _check_post_qte_layout(battle: Battle, viewport: Vector2, label: String) ->
 		"%s QTE HANDOFF: Continue is hidden or disabled while acknowledgement is required" % label)
 	_expect(screen.encloses(button_rect),
 		"%s QTE HANDOFF: Continue is outside viewport (%s in %s)" % [label, button_rect, screen])
-	_expect(battle._tutorial_caption.visible and battle._tutorial_caption.text.contains("Click Continue or press Enter"),
+	_expect(battle._tutorial_caption.visible and battle._tutorial_caption.text.contains("Click Continue, press Space, or press Enter"),
 		"%s QTE HANDOFF: required acknowledgement has no visible instruction" % label)
 	_expect(screen.encloses(battle._tutorial_caption.get_global_rect()),
 		"%s QTE HANDOFF: result/instruction text is clipped by the browser viewport (%s in %s)" % [label, battle._tutorial_caption.get_global_rect(), screen])

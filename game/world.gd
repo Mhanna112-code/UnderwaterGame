@@ -1573,21 +1573,21 @@ func _unhandled_input(e: InputEvent) -> void:
 			_cancel_aim()
 			return
 
-	# TargetSelector intercepts Left/Right/Enter the same way aim mode
+	# TargetSelector intercepts the documented Swap controls the same way aim mode
 	# intercepts clicks - before they'd otherwise turn the camera or do
 	# nothing at all (see _physics_process, which suppresses the normal
 	# arrow-key camera turn outright while target_selector.selecting).
 	if target_selector.selecting and e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var sk := (e as InputEventKey).keycode
-		if sk == KEY_RIGHT:
+		if sk == KEY_RIGHT or sk == KEY_D:
 			target_selector.select_next()
 			_update_hud()
 			return
-		elif sk == KEY_LEFT:
+		elif sk == KEY_LEFT or sk == KEY_A:
 			target_selector.select_previous()
 			_update_hud()
 			return
-		elif sk == KEY_ENTER or sk == KEY_KP_ENTER:
+		elif sk == KEY_ENTER or sk == KEY_KP_ENTER or sk == KEY_SPACE:
 			target_selector.confirm_selection()
 			return
 
@@ -3192,9 +3192,9 @@ func _update_hud() -> void:
 	if target_selector.selecting:
 		var t := target_selector.current_target()
 		if t != null and t is Diver:
-			hud.text = "Swap with %s?\nLeft/Right: cycle   ·   Enter: confirm   ·   Esc: cancel" % _display_name((t as Diver).model_name)
+			hud.text = "Swap with %s?\nA/D or Left/Right: choose   ·   Space or Enter: confirm   ·   Esc: cancel" % _display_name((t as Diver).model_name)
 		else:
-			hud.text = "Left/Right: cycle   ·   Enter: confirm   ·   Esc: cancel"
+			hud.text = "A/D or Left/Right: choose   ·   Space or Enter: confirm   ·   Esc: cancel"
 		return
 	if aiming:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
