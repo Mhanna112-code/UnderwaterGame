@@ -137,6 +137,10 @@ func _verify_handoff(world: World) -> void:
 		"TUTORIAL HANDOFF: first player-facing objective drifted")
 	_expect(world.route_objective_label.visible,
 		"TUTORIAL HANDOFF: sole route objective is not visibly displayed in the world")
+	_expect(world.banner.text.is_empty(),
+		"TUTORIAL HANDOFF: stale light-beam banner competes with the authored Shallows objective")
+	_expect(not is_instance_valid(world._intro_arrow) or not world._intro_arrow.visible,
+		"TUTORIAL HANDOFF: stale light-beam arrow competes with the authored Beacon guidance")
 	_expect(not world.hud.get_global_rect().intersects(world.route_objective_panel.get_global_rect()),
 		"TUTORIAL HANDOFF: route objective overlaps the persistent world-controls hint")
 	_expect(world.route_transition_card.visible and paused,

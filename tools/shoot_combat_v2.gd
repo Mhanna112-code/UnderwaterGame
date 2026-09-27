@@ -45,7 +45,8 @@ func _process(_delta: float) -> bool:
 		return false
 	root.get_texture().get_image().save_png(out_png)
 	print("V2 EVIDENCE  %s (%s)" % [out_png, mode])
-	return true
+	quit(0)
+	return false
 
 func _stage_evidence() -> void:
 	var battle := world.battle as Battle

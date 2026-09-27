@@ -2426,7 +2426,21 @@ func route_phase_presentation() -> Dictionary:
 		"landmarks_visible": is_instance_valid(_route_phase_landmarks) and _route_phase_landmarks.visible,
 	}
 
+func _retire_intro_guidance() -> void:
+	# The tutorial beam and its banner describe a completed objective.  Retire
+	# both visual channels before the authored route publishes its one objective,
+	# otherwise a player receives contradictory navigation instructions.
+	_intro_active = false
+	_camera_look_override = null
+	banner.text = ""
+	_banner_timer = 0.0
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+
 func _begin_core_route_after_tutorial() -> void:
+	_retire_intro_guidance()
 	if route == null or route.objective_id != "":
 		return
 	route.start_after_tutorial()
@@ -2904,6 +2918,7 @@ func _on_battle_finished(result: String) -> void:
 	var was_tutorial := battle.tutorial_encounter
 	var was_tutorial_replay := was_tutorial and not _tutorial_replay_snapshot.is_empty()
 	var was_route_encounter := _route_battle_id != ""
+	var begin_core_route_after_tutorial := false
 	battle.queue_free()
 	battle = null
 	battling = false
@@ -2918,8 +2933,7 @@ func _on_battle_finished(result: String) -> void:
 		# mandatory.
 		if is_instance_valid(light_beam):
 			light_beam.queue_free()
-		if not was_tutorial_replay and result in ["won", "skipped"]:
-			_begin_core_route_after_tutorial()
+		begin_core_route_after_tutorial = not was_tutorial_replay and result in ["won", "skipped"]
 	if _boss_playtest_active or _guardian_playtest_active:
 		var test_kind := "Tethys boss" if _boss_playtest_active else "Reef Plate guardian"
 		_boss_playtest_active = false
@@ -2997,6 +3011,11 @@ func _on_battle_finished(result: String) -> void:
 				_show_game_over()
 		_:
 			_announce("You regroup and catch your breath.")
+	# The result copy above is written after Battle resolves.  Start the
+	# authored route only afterwards so its cleanup cannot be overwritten by
+	# the stale tutorial-return banner.
+	if begin_core_route_after_tutorial:
+		_begin_core_route_after_tutorial()
 	if was_route_encounter and route != null:
 		var route_result := route.resolve_active_encounter(result)
 		if result == "won":
