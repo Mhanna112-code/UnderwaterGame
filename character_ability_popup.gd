@@ -325,9 +325,20 @@ func _refresh_media(ability_id: String) -> void:
 			var video_stream := VideoStreamTheora.new()
 			video_stream.file = path
 			player.stream = video_stream
-			# Constrain the source to the fixed MediaFrame instead of allowing its
-			# native 1920x1080 dimensions to become the container's minimum size.
+			# expand=true scales the video to fill whatever rect it's given,
+			# with no aspect-ratio awareness at all (unlike TextureRect, which
+			# has STRETCH_KEEP_ASPECT_CENTERED below) - filling %MediaFrame's
+			# own ~160x140 rect directly stretched a 1920x1080 (16:9) source
+			# into a near-square frame, visibly squashed. AspectRatioContainer
+			# is what actually keeps it undistorted: it sizes/centers its one
+			# child to the given ratio and lets expand=true fill THAT correctly
+			# proportioned rect instead of the mismatched frame directly.
+			var aspect := AspectRatioContainer.new()
+			aspect.ratio = 16.0 / 9.0
+			aspect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			aspect.add_child(player)
 			player.expand = true
+			player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			player.finished.connect(player.play)
 			# Parented to frame (%MediaFrame), not self - a plain add_child()
 			# here put it on the popup's own root instead, which (a) never
@@ -335,7 +346,7 @@ func _refresh_media(ability_id: String) -> void:
 			# above, leaking a new VideoStreamPlayer every time this page is
 			# shown again, and (b) left it outside the frame cleanup path instead
 			# of keeping the clip inside this small MediaFrame.
-			frame.add_child(player)
+			frame.add_child(aspect)
 			# Not autoplay=true - that starts Theora decode synchronously the
 			# same frame this popup pauses the tree and _wasd_cluster_texture()
 			# may still be mid-render (its own SubViewport awaits two
