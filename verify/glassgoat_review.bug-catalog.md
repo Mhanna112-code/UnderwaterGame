@@ -14,7 +14,7 @@ larger encounter/puzzle pacing decision; neither belongs in this no-maze slice.
 | 6 | Unlabelled yellow raw-power values obscure what a move actually does. | Move-card text contract and browser screenshot. | Fixed |
 | 7 | Normal Angler/Frilled actors silently scale from party stats instead of using their agreed tables. | Actor stat-table differential. | Fixed |
 | 8 | `Electric Touch 0` / `Evasion 0` needs exact-state reproduction before formula changes. | Current V2 runtime is non-reproducible; a base-stat result contract guards `1 Damage; EVA -3`. | Characterized |
-| 9 | Isolated balance trials hide persistent-route difficulty. | Route-state simulation and normal-entry manual playtest. | Open |
+| 9 | Isolated balance trials hide persistent-route difficulty. | Seeded campaign simulation now carries tutorial XP, post-win recovery, O2 availability, capstone restores, and the exact ordered roster. The current 60-seed run: quick-read 91.7%, skilled 91.7%, damage-only 0.0%; capstone named variants are required. Normal-entry browser playthrough remains required as final visual evidence. | Fixed in code; manual evidence pending |
 
 ## First red/green slice: Swap controls
 

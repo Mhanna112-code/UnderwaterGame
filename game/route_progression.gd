@@ -50,7 +50,7 @@ const BEATS := [
 		# base block. These named Reef Guards are the first coordinated pair;
 		# their tougher health is reviewable on the enemy card and in the route
 		# data instead of being a hidden ordinary-enemy scaler.
-		"enemy_modifiers": [{"variant_name": "Reef Guard", "hp_max": 22, "strength": 4}, {"variant_name": "Reef Guard", "hp_max": 22, "strength": 4}],
+		"enemy_modifiers": [{"variant_name": "Reef Guard", "hp_max": 52, "strength": 7, "agility": 5}, {"variant_name": "Reef Guard", "hp_max": 52, "strength": 7, "agility": 5}],
 		"checkpoint": "shallows_capstone", "transition_after": "deep_descent",
 	},
 	{
@@ -74,7 +74,7 @@ const BEATS := [
 		# Swordfish stays evasive and the Urchin's reinforced shell rewards
 		# repeated Weaken before raw damage. Solo species encounters retain the
 		# exact delivered base statistics above.
-		"enemy_modifiers": [{"variant_name": "Abyss Guard", "hp_max": 12, "strength": 3}, {"variant_name": "Abyss Guard", "hp_max": 14, "strength": 2, "defense": 8}],
+		"enemy_modifiers": [{"variant_name": "Abyss Guard", "hp_max": 24, "strength": 3, "evasion": 6}, {"variant_name": "Abyss Guard", "hp_max": 20, "strength": 2, "defense": 20}],
 		"checkpoint": "deep_capstone", "transition_after": "lab_arrival",
 	},
 	{

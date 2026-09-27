@@ -78,6 +78,18 @@ func _run() -> void:
 		"ANGLER STATS: ordinary Angler does not use its agreed 5/2/0/2/1/3 table")
 	_expect(_matches_stats(FrilledShark.new().make_stats(strong_reference), [5, 2, 2, 1, 2, 2]),
 		"FRILLED STATS: ordinary Frilled Shark does not use its agreed 5/2/2/1/2/2 table")
+	_expect(_matches_stats(Goblin.new().make_stats(strong_reference, 2), [5, 2, 0, 2, 1, 3]) and _matches_stats(FrilledShark.new().make_stats(strong_reference, 2), [5, 2, 2, 1, 2, 2]),
+		"ORDINARY STATS: player level changes an ordinary Angler or Frilled Shark away from its authored table")
+	# Any extra capstone pressure must announce itself in the route data and in
+	# battle, never masquerade as a stealth boost to a delivered normal enemy.
+	for beat_value in RouteProgression.BEATS:
+		var beat := beat_value as Dictionary
+		if not bool(beat.get("capstone", false)):
+			continue
+		for modifier_value in beat.get("enemy_modifiers", []) as Array:
+			var modifier := modifier_value as Dictionary
+			_expect(not String(modifier.get("variant_name", "")).is_empty(),
+				"CAPSTONE VARIANT: encounter-only enemy modifier has no visible name")
 
 	# Enemy risk belongs on the persistent combat card, while move cards need
 	# to name their direct result rather than show an unexplained yellow total.
