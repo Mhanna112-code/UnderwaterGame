@@ -47,9 +47,10 @@ const BEATS := [
 		"encounter_label": "Route encounter: Shallows capstone, Angler + Frilled Shark",
 		"roster": ["angler", "frilled_shark"], "capstone": true,
 		# Encounter-only pressure, not a rewrite of either species' delivered
-		# base block. This is the first coordinated pair, so both arrive in
-		# their healthy capstone profile rather than as ordinary wandering fish.
-		"enemy_modifiers": [{"hp_max": 15, "strength": 2}, {"hp_max": 15, "strength": 2}],
+		# base block. These named Reef Guards are the first coordinated pair;
+		# their tougher health is reviewable on the enemy card and in the route
+		# data instead of being a hidden ordinary-enemy scaler.
+		"enemy_modifiers": [{"variant_name": "Reef Guard", "hp_max": 22, "strength": 4}, {"variant_name": "Reef Guard", "hp_max": 22, "strength": 4}],
 		"checkpoint": "shallows_capstone", "transition_after": "deep_descent",
 	},
 	{
@@ -73,7 +74,7 @@ const BEATS := [
 		# Swordfish stays evasive and the Urchin's reinforced shell rewards
 		# repeated Weaken before raw damage. Solo species encounters retain the
 		# exact delivered base statistics above.
-		"enemy_modifiers": [{"hp_max": 12, "strength": 3}, {"hp_max": 14, "strength": 2, "defense": 8}],
+		"enemy_modifiers": [{"variant_name": "Abyss Guard", "hp_max": 12, "strength": 3}, {"variant_name": "Abyss Guard", "hp_max": 14, "strength": 2, "defense": 8}],
 		"checkpoint": "deep_capstone", "transition_after": "lab_arrival",
 	},
 	{

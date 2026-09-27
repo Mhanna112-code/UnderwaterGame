@@ -1233,8 +1233,11 @@ func _build_stage() -> void:
 		party_centre /= maxf(1.0, float(party.size()))
 		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		var variant_name := ""
 		if i < forced_enemy_modifiers.size():
-			_apply_forced_enemy_modifier(st, forced_enemy_modifiers[i] as Dictionary)
+			var modifier := forced_enemy_modifiers[i] as Dictionary
+			_apply_forced_enemy_modifier(st, modifier)
+			variant_name = String(modifier.get("variant_name", ""))
 		if tutorial_encounter:
 			# The tutorial needs to survive the first named counter move and one
 			# returned QTE swing before its automatic lesson-complete handoff, so
@@ -1249,7 +1252,7 @@ func _build_stage() -> void:
 			st.accuracy = maxi(1, int(round(float(st.accuracy) * 0.7)))
 		enemies.append({
 			"kind": "enemy", "stats": st,
-			"display_name": g.display_name() if count == 1 else "%s %d" % [g.display_name(), i + 1],
+			"display_name": ("%s %s" % [variant_name, g.display_name()]) if variant_name != "" else (g.display_name() if count == 1 else "%s %d" % [g.display_name(), i + 1]),
 			"actor": g,
 			"home_pos": g.position,
 			"home_rot": g.rotation.y,

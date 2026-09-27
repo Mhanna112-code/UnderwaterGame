@@ -159,8 +159,6 @@ func _move_for_party(actor: Dictionary, target: Dictionary, policy: String) -> D
 		var scuba := CombatMoves.for_model(model)
 		if policy != "damage_only" and target_id == "swordfish_duelist" and (target.stats as CombatantStats).evasion >= 2:
 			return scuba[0] as Dictionary # Electric Touch
-		if policy == "skilled" and (target.stats as CombatantStats).evasion >= 2:
-			return scuba[0] as Dictionary # remove a live evasive defense first
 		# Axe Kick's self-EVA loss is visibly red risk, so a skilled reader does
 		# not mash it into an enemy turn; Scuba Stabbing is the reliable follow-up.
 		return scuba[1] as Dictionary

@@ -14,21 +14,12 @@ const TARGET_HEIGHT := 1.6
 # the same forward axis.
 const COMBAT_FRONT_AXIS := Vector3.FORWARD
 
-# No grow_* here, and no independent base spread either anymore - a grunt's
-# stats are derived straight from the party's own current stats in
-# make_stats() (battle.gd hands it the party's average CombatantStats), not
-# a separate curve that could drift away from what the party can actually
-# do. FLOOR_STATS is Glassgoat's authored Angler Fish base block (5 HP, 2
-# Strength, 0 Defense, 2 Agility, 1 Evasion, 3 Accuracy) - the same role it
-# always had (a bare-minimum shape for the extreme edge case of an empty/
-# all-zero reference), just with the specific numbers now authored rather
-# than tuned only against the party average. make_stats() still takes
-# whichever is higher between this floor and the party's own current stat,
-# then applies _edge() on top, so a party that out-levels these numbers keeps
-# facing a grunt that scales with it rather than one stuck at a stale floor.
-# floor_stats() is a virtual hook (not the const directly) so a subclass with
-# its own authored block - Swordfish Duelist - can keep a different one
-# without this file's Angler-specific numbers leaking into it.
+# Glassgoat's ordinary-enemy tables are authored gameplay content, not floors
+# for party-relative scaling. An ordinary Angler is always 5 HP / 2 STR / 0
+# DEF / 2 AGI / 1 EVA / 3 ACC. Route capstones may opt into an explicitly
+# named modifier in RouteProgression, but no ordinary encounter may silently
+# grow because a party happened to have higher stats. `floor_stats()` is a
+# virtual hook so each species supplies its own complete table.
 const FLOOR_STATS := {
 	"hp": 5, "strength": 2, "defense": 0, "agility": 2,
 	"evasion": 1, "accuracy": 3,
@@ -142,21 +133,8 @@ func display_name() -> String:
 func primary_attack_clip() -> String:
 	return "attack)bite"
 
-# Always at least a little stronger than ref on every stat, never weaker
-# and never exactly equal - a fight should never quietly be easier than the
-# party's own numbers just because the roll happened to land low. _edge()
-# is one-sided (always > 1.0), independently rolled per stat rather than
-# one shared multiplier for the whole grunt, so a pack of several still
-# doesn't read as identical clones - one might land a bit tougher, another
-# a bit more accurate, but never a bit weaker.
-const MIN_EDGE := 1.08
-const MAX_EDGE := 1.35
-
-# Fresh stats for one fight, rolled off ref (the party's average
-# CombatantStats - see battle.gd's _build_stage(), which builds that
-# average across every living party member before calling this). Enemies
-# don't persist between battles, so unlike Diver.stats this isn't built
-# once and kept - battle.gd calls this each time it stands a grunt up.
+# Fresh exact stats for one fight. Enemies do not persist between battles, so
+# unlike Diver.stats this is built once when Battle stands the actor up.
 # This one stands its model's feet on its own origin (see _ready()'s
 # model.position.y line), which is the opposite of what diver.gd does. Both
 # conventions are fine; assuming either one is not. See Diver.head_offset().
@@ -166,22 +144,19 @@ func head_offset() -> float:
 func foot_offset() -> float:
 	return 0.0
 
-func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
+func make_stats(_ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
 
-	var floor: Dictionary = floor_stats()
+	var authored: Dictionary = floor_stats()
 	var s := CombatantStats.new()
-	s.hp_max = maxi(1, int(round(maxf(float(floor.hp), float(ref.hp_max)) * _edge())))
-	s.strength = maxi(1, int(round(maxf(float(floor.strength), float(ref.strength)) * _edge())))
-	s.defense = maxi(0, int(round(maxf(float(floor.defense), float(ref.defense)) * _edge())))
-	s.agility = maxi(1, int(round(maxf(float(floor.agility), float(ref.agility)) * _edge())))
-	s.evasion = maxi(0, int(round(maxf(float(floor.evasion), float(ref.evasion)) * _edge())))
-	s.accuracy = maxi(0, int(round(maxf(float(floor.accuracy), float(ref.accuracy)) * _edge())))
+	s.hp_max = int(authored.hp)
+	s.strength = int(authored.strength)
+	s.defense = int(authored.defense)
+	s.agility = int(authored.agility)
+	s.evasion = int(authored.evasion)
+	s.accuracy = int(authored.accuracy)
 	s.fill()
 	return s
-
-func _edge() -> float:
-	return randf_range(MIN_EDGE, MAX_EDGE)
 
 # Keys are semantic rather than raw FBX paths. Glassgoat's non-humanoid rig
 # names its moves differently from the retired Goblin: swim loop, Bite,

@@ -70,6 +70,15 @@ func _run() -> void:
 			"FRILLED IDLE: actor did not resume idle after an action")
 	shark.queue_free()
 
+	# Ordinary route species are authored content, not party-relative random
+	# scalers. Use an intentionally stronger reference so a floor/max algorithm
+	# cannot accidentally pass by returning the same small numbers.
+	var strong_reference := _stats(30, 8, 7, 6, 6, 6)
+	_expect(_matches_stats(Goblin.new().make_stats(strong_reference), [5, 2, 0, 2, 1, 3]),
+		"ANGLER STATS: ordinary Angler does not use its agreed 5/2/0/2/1/3 table")
+	_expect(_matches_stats(FrilledShark.new().make_stats(strong_reference), [5, 2, 2, 1, 2, 2]),
+		"FRILLED STATS: ordinary Frilled Shark does not use its agreed 5/2/2/1/2/2 table")
+
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
@@ -86,3 +95,17 @@ func _key(code: Key) -> InputEventKey:
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		findings.append(message)
+
+func _stats(hp: int, strength: int, defense: int, agility: int, evasion: int, accuracy: int) -> CombatantStats:
+	var stats := CombatantStats.new()
+	stats.hp_max = hp
+	stats.strength = strength
+	stats.defense = defense
+	stats.agility = agility
+	stats.evasion = evasion
+	stats.accuracy = accuracy
+	stats.fill()
+	return stats
+
+func _matches_stats(stats: CombatantStats, expected: Array) -> bool:
+	return [stats.hp_max, stats.strength, stats.defense, stats.agility, stats.evasion, stats.accuracy] == expected
