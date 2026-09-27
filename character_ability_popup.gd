@@ -40,6 +40,21 @@ func _ready() -> void:
 	# passed, plenty for this one-time render to finish well ahead of need.
 	_wasd_cluster_texture()
 
+# Every other paged/modal overlay in this project (TutorialBook, IntroCrawl)
+# closes on Escape - this one didn't, so Escape here did nothing at all:
+# the popup has no listener for it, and get_tree().paused (set by open())
+# freezes World's own Escape handling underneath it too. _close() never ran,
+# "closed" never fired, and whatever depends on that signal (World restoring
+# camera control once the tutorial's post-fight walkthrough is done) never
+# happened either - reads exactly like "camera's still broken" even though
+# mouse_look/Input.mouse_mode were both fine the whole time.
+func _unhandled_input(event: InputEvent) -> void:
+	if not (%AbilityExplanationPanel as PanelContainer).visible:
+		return
+	if event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).keycode == KEY_ESCAPE:
+		get_viewport().set_input_as_handled()
+		_close()
+
 # An always-reachable exit independent of which page you're on - PopupClose
 # (below) only reads "Close" on the last page; everywhere else it reads
 # "Next" and a corner X is the only way to leave outright, same "get me out
