@@ -46,6 +46,14 @@ const SKILLED_QTE_DODGE := 0.80
 var findings: Array = []
 
 func _init() -> void:
+	# This verifier models the retired Sites/guardian/random campaign, which
+	# PR #88 deliberately replaced with RouteProgression's authored protected
+	# route. Running it as a merge gate would manufacture failures (or worse,
+	# certify the wrong game). `verify/progression_balance.gd` is the active
+	# encounter gate; its persistent-route successor is tracked separately.
+	print("BALANCE: skipped retired Sites route; use verify/progression_balance.gd for the active authored route")
+	quit(0)
+	return
 	var casual := _run_policy("casual")
 	var skilled := _run_policy("skilled")
 	_print_result("casual", casual)
@@ -545,13 +553,11 @@ func _average(party: Array) -> CombatantStats:
 	avg.fill()
 	return avg
 
-func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: String) -> Dictionary:
-	# Swordfish Duelist and Frilled Shark each author their own floor
-	# (DUELIST_FLOOR_STATS / SHARK_FLOOR_STATS) since Goblin.FLOOR_STATS became
-	# the Angler-specific block - mirror production's per-species
-	# Goblin.floor_stats() override here instead of always reading the base
-	# class's own const, or this simulator would silently test enemies
-	# stronger/weaker than the ones players actually fight.
+func _enemy(_reference: CombatantStats, _rng: RandomNumberGenerator, enemy_id: String) -> Dictionary:
+	# Every ordinary species now uses its complete authored table. This legacy
+	# simulator still covers the older site route, but it must at least build
+	# the same enemy stats as production rather than referring to the retired
+	# party-scaling constants.
 	var floor: Dictionary
 	match enemy_id:
 		"swordfish_duelist":
@@ -561,25 +567,12 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: Str
 		_:
 			floor = Goblin.FLOOR_STATS
 	var stats := CombatantStats.new()
-	if enemy_id == "swordfish_duelist":
-		# Mirrors SwordDuelist.make_stats(): Glassgoat's supplied Swordfish
-		# block is exact, not an Angler-style minimum that rises above the
-		# party. Keeping this exception here is essential - otherwise the
-		# balance gate would certify a generic scaled duel rather than the
-		# actual 8/2/1/6/4/3 opponent production creates.
-		stats.hp_max = int(floor.hp)
-		stats.strength = int(floor.strength)
-		stats.defense = int(floor.defense)
-		stats.agility = int(floor.agility)
-		stats.evasion = int(floor.evasion)
-		stats.accuracy = int(floor.accuracy)
-	else:
-		stats.hp_max = maxi(1, int(round(maxf(float(floor.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.strength = maxi(1, int(round(maxf(float(floor.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.defense = maxi(0, int(round(maxf(float(floor.defense), float(reference.defense)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.agility = maxi(1, int(round(maxf(float(floor.agility), float(reference.agility)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.evasion = maxi(0, int(round(maxf(float(floor.evasion), float(reference.evasion)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.accuracy = maxi(0, int(round(maxf(float(floor.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+	stats.hp_max = int(floor.hp)
+	stats.strength = int(floor.strength)
+	stats.defense = int(floor.defense)
+	stats.agility = int(floor.agility)
+	stats.evasion = int(floor.evasion)
+	stats.accuracy = int(floor.accuracy)
 	stats.fill()
 	# damage_taken_by/bite_hits/bite_misses/use_flash_blast_next mirror the
 	# per-instance state Goblin now carries for the Angler's move AI - unused
