@@ -5,19 +5,20 @@
 # normalization, where the long rest pose filled the screen even though the
 # logical combat radius had been capped.
 #
-# MUST run windowed, not headless:
-#   godot --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
-#   godot --path . --resolution 1920x1080 --script verify/frilled_shark_framing.gd
+# Runs in a real 1280×720 SubViewport, so it is reproducible in headless CI
+# without substituting a fake mesh-bound calculation.
 extends SceneTree
 
 const SETTLE_FRAMES := 28
 const SAFE_MARGIN_PX := 12.0
+const BROWSER_SIZE := Vector2i(1280, 720)
 # This leaves enough negative space for party actors, their fixed status
 # columns, and the target selector. It is a composition budget, not a hidden
 # gameplay-radius cap.
 const MAX_STAGE_WIDTH_FRACTION := 0.45
 
 var world: Node3D
+var render_view: SubViewport
 var frames := 0
 var settle := 0
 var started := false
@@ -27,18 +28,14 @@ func _initialize() -> void:
 	call_deferred("_setup")
 
 func _setup() -> void:
-	# A standalone script briefly reports a 100×100 bootstrap viewport before
-	# ProjectSettings/--resolution take effect. Yielding one frame prevents this
-	# gate from treating a real 1280×720 window as headless.
 	await process_frame
-	var browser_size := root.get_visible_rect().size
-	if browser_size.x < 1000.0 or browser_size.y < 600.0:
-		push_error("Frilled Shark framing must run in a real browser-sized window; got %s" % browser_size)
-		quit(2)
-		return
+	render_view = SubViewport.new()
+	render_view.size = BROWSER_SIZE
+	render_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(render_view)
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
 	world.skip_intro_for_test = true
-	root.add_child(world)
+	render_view.add_child(world)
 
 func _process(_delta: float) -> bool:
 	if world == null:
