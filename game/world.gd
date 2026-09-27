@@ -838,29 +838,38 @@ func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	body.add_child(shape)
 	add_child(body)
 
-# A couple of small CrackedWalls scattered in the open dive site, before
-# the tunnel entrance - unlike the entrance blockade (a full-width gate),
-# these are just optional side pickups: break one with shockwave and it
-# pops an ItemOrb instead of handing out a fixed reward directly (see
-# _on_breakable_rock_broken()) - what actually comes out is rolled fresh
-# per break (Items.random_drop()), not always the same potion. No invisible
-# collision extension (collision_height/width stay 0) since nothing needs
-# to stop a diver going around one, only breaking it matters.
+# A handful of small CrackedWalls scattered around the open world - unlike
+# the entrance blockade (a full-width gate), these are just optional side
+# pickups: break one with shockwave and it pops an ItemOrb instead of
+# handing out a fixed reward directly (see _on_breakable_rock_broken()) -
+# what actually comes out is rolled fresh per break (Items.random_drop():
+# mostly potions, some oxygen cells, an occasional spell shard), not always
+# the same thing. No invisible collision extension (collision_height/width
+# stay 0) since nothing needs to stop a diver going around one, only
+# breaking it matters.
 #
-# disguised_as_scenery_rock = true - these look exactly like the ambient
-# rock scatter from _build_site() until shockwaved, discoverable by
-# actually sweeping the site rather than obviously marked out as "a thing"
-# the way the old brown box read (see cracked_wall.gd's own comment on
-# the flag). The entrance blockade below stays a plain (non-disguised)
-# box - a gate should still read as a gate.
+# Spread through open water away from every other placed thing - clear of
+# the anchor's own radius (Sites.ALL[0], r=6.5), both combat sites' radii
+# (shallows r=9.5 at (-24,-12), trench r=10.0 at (12,-42)), and the gated
+# highway corridor (x 15-45, z 10 +/-4) - so none of them read as "part of"
+# a site or the gate, just ordinary scenery worth sweeping anywhere.
+#
+# disguised_as_scenery_rock left at its default (false) on purpose - these
+# read as the same brown box the entrance blockade below uses, so a player
+# can spot "this one's breakable" on sight rather than only discovering
+# these by sweeping the whole site with shockwave.
 func _build_breakable_rocks() -> void:
-	const SPOTS := [Vector3(6.0, 1.0, -7.0), Vector3(-7.0, 1.0, 5.0)]
+	const SPOTS := [
+		Vector3(6.0, 1.0, -7.0), Vector3(-7.0, 1.0, 5.0),
+		Vector3(-15.0, 1.0, -20.0), Vector3(18.0, 1.0, -18.0),
+		Vector3(-25.0, 1.0, 12.0), Vector3(30.0, 1.0, -3.0),
+		Vector3(8.0, 1.0, 22.0),
+	]
 	for i in range(SPOTS.size()):
 		var spot: Vector3 = SPOTS[i]
 		var id := "rock_%d" % i
 		var rock := CrackedWall.new()
 		rock.span = Vector3(1.1, 1.1, 1.1)
-		rock.disguised_as_scenery_rock = true
 		rock.position = spot
 		rock.broken.connect(_on_breakable_rock_broken.bind(id, spot))
 		# Separate listener purely for save persistence (see
