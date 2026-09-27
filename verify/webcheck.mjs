@@ -37,14 +37,69 @@ const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_C
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
 ] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// Vercel preview links can be deployment-protected even when the main-game
+// alias is public. `vercel env run` supplies this short-lived token only to
+// the smoke process; keep it origin-scoped and never print or persist it.
+const headers = process.env.VERCEL_OIDC_TOKEN
+  ? { 'x-vercel-trusted-oidc-idp-token': process.env.VERCEL_OIDC_TOKEN }
+  : {};
+const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, extraHTTPHeaders: headers });
+const page = await context.newPage();
 const errors = [];
+const worklets = [];
+const failedWorklets = [];
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', e => errors.push(String(e)));
+page.on('response', response => {
+  if (/\.audio(?:\.position)?\.worklet\.js$/.test(response.url())) {
+    const headers = response.headers();
+    worklets.push({
+      url: response.url().split('/').pop(), status: response.status(),
+      type: headers['content-type'] || '',
+      coop: headers['cross-origin-opener-policy'] || '',
+      coep: headers['cross-origin-embedder-policy'] || '',
+      corp: headers['cross-origin-resource-policy'] || '',
+    });
+  }
+});
+page.on('requestfailed', request => {
+  if (/\.audio(?:\.position)?\.worklet\.js$/.test(request.url())) {
+    failedWorklets.push({ url: request.url().split('/').pop(), failure: request.failure()?.errorText || 'unknown' });
+  }
+});
 
 await page.goto(live ? dir : 'http://localhost:8765/', { waitUntil: 'load' });
 await page.waitForTimeout(25000);          // wasm compile + engine boot + first frames
-await page.mouse.click(640, 400);          // the click that takes the pointer
+
+// A fresh browser context has no save, so the title's primary action starts
+// a normal run immediately. This deliberately avoids query-string review
+// shortcuts and proves the canvas receives real title-screen input.
+const titleSignature = await page.evaluate(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return null;
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 36;
+  const ctx = g.getContext('2d');
+  ctx.drawImage(c, 0, 0, 64, 36);
+  const d = ctx.getImageData(0, 0, 64, 36).data;
+  let total = 0;
+  for (let i = 0; i < d.length; i += 4) total += d[i] + d[i + 1] + d[i + 2];
+  return total;
+});
+await page.mouse.click(640, 366);          // visible New Game center at 1280x720
+await page.waitForTimeout(1500);
+const focusAndHandoff = await page.evaluate(before => {
+  const c = document.querySelector('canvas');
+  if (!c) return { focused: false, changed: false };
+  const g = document.createElement('canvas');
+  g.width = 64; g.height = 36;
+  const ctx = g.getContext('2d');
+  ctx.drawImage(c, 0, 0, 64, 36);
+  const d = ctx.getImageData(0, 0, 64, 36).data;
+  let total = 0;
+  for (let i = 0; i < d.length; i += 4) total += d[i] + d[i + 1] + d[i + 2];
+  return { focused: document.activeElement === c, changed: before !== null && Math.abs(total - before) > 25000 };
+}, titleSignature);
 await page.keyboard.down('w');
 await page.waitForTimeout(2500);
 await page.keyboard.up('w');
@@ -66,10 +121,22 @@ const spread = await page.evaluate(() => {
 });
 
 console.log('canvas    ' + JSON.stringify(spread));
+console.log('input     ' + JSON.stringify(focusAndHandoff));
+if (live) console.log('isolation ' + JSON.stringify(await page.evaluate(() => ({ isolated: window.crossOriginIsolated, secure: window.isSecureContext }))));
+if (worklets.length) console.log('worklets  ' + JSON.stringify(worklets));
+if (failedWorklets.length) console.log('worklet failures ' + JSON.stringify(failedWorklets));
 if (errors.length) console.log('console   ' + errors.slice(0, 6).join(' | '));
 await browser.close();
 if (!live) server.close();
 
 if (!spread.ok) { console.log('WEB: ' + spread.why); process.exit(1); }
 if (spread.colours < 12) { console.log('WEB: canvas shows only ' + spread.colours + ' colours, the build is not drawing'); process.exit(1); }
+if (!focusAndHandoff.focused || !focusAndHandoff.changed) {
+  console.log('WEB: normal-entry New Game did not take canvas focus and visibly leave title');
+  process.exit(1);
+}
+if (errors.some(error => /Failed to load worklet module script/.test(error)) || failedWorklets.length) {
+  console.log('WEB: deployed audio worklet failed to load');
+  process.exit(1);
+}
 console.log('WEB: the exported build boots and draws (' + spread.colours + ' distinct colours)');

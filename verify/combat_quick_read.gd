@@ -22,6 +22,7 @@ func _run() -> void:
 	_test_quick_read_and_details(battle)
 	_test_current_rule_context(battle)
 	_test_all_target_preview_scope(battle)
+	_test_semantic_preview_cues(battle)
 
 	for failure in failures:
 		push_error(failure)
@@ -113,6 +114,27 @@ func _test_all_target_preview_scope(battle: Battle) -> void:
 	extras = battle.get("_extra_enemy_stats_uis")
 	_expect(extras is Array and (extras as Array).is_empty(),
 		"ALL-TARGET PREVIEW STALE: extra target stat panels survive after the hover ends")
+
+func _test_semantic_preview_cues(battle: Battle) -> void:
+	# The result preview currently changes red/green values. A player must not
+	# need to distinguish colour to learn whether that means a benefit, enemy
+	# opening, or self-cost. Use authored moves with both dynamic enemy and
+	# self-side effects, not a copied text fixture.
+	var summary := battle.get("_quick_read_summary") as Label
+	_expect(summary != null,
+		"SEMANTIC QUICK READ MISSING: target preview has no visible Benefit/Opening/Cost label")
+	if summary == null:
+		return
+	var target := battle.enemies[0] as Dictionary
+	battle.call("_show_stat_preview", CombatMoves.SCUBA[0], target) # Electric Touch
+	_expect(summary.visible and "Benefit:" in summary.text and "Opening: enemy EVA -3" in summary.text,
+		"SEMANTIC QUICK READ DRIFT: Electric Touch should name its benefit and current ACC-scaled enemy EVA opening, observed '%s'" % summary.text)
+	battle.call("_show_stat_preview", CombatMoves.SCUBA[4], target) # Axe Kick
+	_expect(summary.visible and "Cost: your EVA -3" in summary.text,
+		"SEMANTIC QUICK READ COST MISSING: Axe Kick's red self-EVA preview has no textual cost cue, observed '%s'" % summary.text)
+	battle.call("_clear_stat_preview")
+	_expect(not summary.visible,
+		"SEMANTIC QUICK READ STALE: label survives after target preview closes")
 
 func _move_button(battle: Battle, move_name: String) -> Button:
 	for button_value in battle.move_buttons:

@@ -44,7 +44,7 @@ func _ready() -> void:
 	_build_minimap()
 	_build_item_rocks()
 	_build_completion_ui()
-	$HUD/Controls.text = "ROUTE: CLOSED — press H to open the current path."
+	$HUD/Controls.text = "ROUTE: CLOSED - press H to open the current path."
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -421,7 +421,7 @@ func _rotate_hallway_1_2() -> void:
 		$HUD/Controls.text = "ROUTE CLOSING..."
 		get_tree().create_timer(1.25).timeout.connect(func() -> void:
 			if not _hallway_1_2_swung and not _completed:
-				$HUD/Controls.text = "ROUTE: CLOSED — press H to reopen the current path."
+				$HUD/Controls.text = "ROUTE: CLOSED - press H to reopen the current path."
 		)
 		return
 	_hallway_1_2_home_pos_a = wall_a.global_position
@@ -436,7 +436,7 @@ func _rotate_hallway_1_2() -> void:
 	$HUD/Controls.text = "ROUTE OPENING..."
 	get_tree().create_timer(1.25).timeout.connect(func() -> void:
 		if _hallway_1_2_swung and not _completed:
-			$HUD/Controls.text = "ROUTE: OPEN — follow the northbound current to the reward chamber."
+			$HUD/Controls.text = "ROUTE: OPEN - follow the northbound current to the reward chamber."
 	)
 
 # WindCorridor1's current is parked while H opens the hallway, then restored

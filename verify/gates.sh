@@ -74,6 +74,14 @@ run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GOD
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd
 run "balance: do casual and skilled policies clear the artifact route" "$GODOT" --headless --path . --script verify/balance.gd
+run "core route contract: is one authored objective exposed in the declared order" "$GODOT" --headless --path . --script verify/progression_route.gd
+run "core route battles: do declared route encounters build exact rosters" "$GODOT" --headless --path . --script verify/route_authored_battles.gd
+run "core route checkpoint: do capstone saves restore full party and next objective" "$GODOT" --headless --path . --script verify/progression_checkpoint.gd
+run "core route safe spaces: do all authored phases reject ordinary rolls" "$GODOT" --headless --path . --script verify/progression_safe_spaces.gd
+run "core route playthrough: do real Battle victories advance every authored phase" "$GODOT" --headless --path . --script verify/progression_playthrough.gd
+run "core route traversal: can normal swimming physically enter the first beacon" "$GODOT" --headless --path . --script verify/progression_world_traversal.gd
+run "deep counter actors: does Swordfish/Sea Urchin counterplay change combat" "$GODOT" --headless --path . --script verify/sea_urchin_route_actor.gd
+run "core route balance: do quick-read and skilled policies meet published bands" "$GODOT" --headless --path . --script verify/progression_balance.gd
 run "opening packs: are first-route formation probabilities intentional" "$GODOT" --headless --path . --script verify/opening_pack_tuning.gd
 run "sites: are item locations unmarked and physically reachable" "$GODOT" --headless --path . --script verify/sites.gd
 run "encounters: does a fight start from anywhere"     "$GODOT" --headless --path . --script verify/encounters.gd
@@ -88,9 +96,11 @@ run "tutorial onboarding review route: can a reviewer inspect its actual UI" "$G
 run "tutorial loss: can a player retry or safely exit to world" "$GODOT" --headless --path . --script verify/tutorial_loss_choice.gd
 run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --headless --path . --script verify/tutorial_skip.gd
 run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
+run "interactive combat training: is five-move practice reachable and campaign-safe" "$GODOT" --headless --path . --script verify/interactive_combat_training.gd
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
+run "optional guardian prompt: are purpose, controls, practice, entry, and leave explicit" "$GODOT" --headless --path . --script verify/optional_guardian_prompt.gd
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
 run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd
@@ -108,6 +118,14 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
+	run "tutorial QTE layout: are success/miss handoffs visible at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_qte_handoff_layout.gd
+	run "tutorial QTE layout: are success/miss handoffs visible at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/tutorial_qte_handoff_layout.gd
+	run "semantic quick read: is non-colour text visible at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/semantic_quick_read_layout.gd
+	run "semantic quick read: is non-colour text visible at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/semantic_quick_read_layout.gd
+	run "Frilled Shark framing: does the mesh fit at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
+	run "Frilled Shark framing: does the mesh fit at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/frilled_shark_framing.gd
+	run "route transitions: does every handoff fit at 1280x720" "$GODOT" --path . --resolution 1280x720 --script verify/route_transition_layout.gd
+	run "route transitions: does every handoff fit at 1920x1080" "$GODOT" --path . --resolution 1920x1080 --script verify/route_transition_layout.gd
 else
 	echo
 	echo "=== stage framing: skipped, needs a display ==="

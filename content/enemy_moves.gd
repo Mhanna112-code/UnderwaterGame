@@ -143,3 +143,20 @@ const FRILLED_SHARK := [
 
 static func frilled_shark_catalogue() -> Array:
 	return FRILLED_SHARK.duplicate(true)
+
+# Sea Urchin is a delivered model, but Glassgoat has not yet supplied its
+# authored attack names/clips.  This deliberately conservative placeholder
+# exists only so the armored counter lesson is playable now.  Its neutral
+# contact move has no clip requirement and must be replaced—not expanded—when
+# the final urchin kit is delivered.
+const SEA_URCHIN := [
+	{
+		"id": "contact_spines", "name": "Contact Spines", "clip": "",
+		"enabled": true, "target": "single", "roll_order": 0, "weight": 1.0,
+		"finisher_weight": 1.0, "verb": "scrapes against",
+		"combat": {"formula": {"strength": 1}, "acc_mod": 0},
+	},
+]
+
+static func sea_urchin_catalogue() -> Array:
+	return SEA_URCHIN.duplicate(true)

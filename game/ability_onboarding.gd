@@ -186,8 +186,8 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "swap-sonar",
 			"title": "%s · Swap and Sonar" % maxilani,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]E[/color] to choose a teammate, use [color=#79c7e8]Left / Right[/color] to choose, then [color=#79c7e8]Enter[/color] to swap places. Press [color=#79c7e8]Q[/color] to toggle Sonar when %s is active; it reveals nearby hidden sites and spends [color=#79c7e8]3 O2 every 3 seconds[/color] while on." % [maxilani, maxilani],
-			"keys": ["TAB  %s" % maxilani, "E  Swap", "Left / Right  Choose", "Enter  Confirm", "Q  Sonar"],
+			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]E[/color] to choose a teammate, use [color=#79c7e8]A / D[/color] (or Left / Right) to choose, then [color=#79c7e8]Space[/color] (or Enter) to swap places. Press [color=#79c7e8]Q[/color] to toggle Sonar when %s is active; it reveals nearby hidden sites and spends [color=#79c7e8]3 O2 every 3 seconds[/color] while on." % [maxilani, maxilani],
+			"keys": ["TAB  %s" % maxilani, "E  Swap", "A / D  Choose", "Space  Confirm", "Q  Sonar"],
 			"ability_id": "swap",
 			"passive_id": "sonar",
 			"requires_aim": false,

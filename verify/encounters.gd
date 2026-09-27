@@ -41,14 +41,10 @@ func _process(_d: float) -> bool:
 		_report_encounter_rate()
 		_check_spawned()
 		_check_spots_are_reachable()
-		# The first tutorial route intentionally suppresses random encounters.
-		# Complete that gate for this ordinary-encounter test rather than
-		# treating the documented onboarding contract as a regression.
-		world._intro_active = false
-		# Ordinary encounters belong to open water. The dedicated guardian-zone
-		# gate verifies that an unclaimed artifact site rejects one instead of
-		# making its deliberate encounter ambiguous.
-		cases.append({"at": Vector3(0.0, 2.0, 0.0), "what": "open water", "reward": "", "kind": "encounter"})
+		# The full core route is authored, not merely the first tutorial beam.
+		# A Diver may still emit the ordinary distance signal, but it must not
+		# mount a Battle while the protected route policy is active.
+		cases.append({"at": Vector3(0.0, 2.0, 0.0), "what": "protected core route", "reward": "", "kind": "protected"})
 		# Then walking into each guardian, which must not be ordinary.
 		for s in ItemGuardian.spots():
 			cases.append({"at": s.at as Vector3, "what": "the %s guardian" % String(s.item),
@@ -153,7 +149,7 @@ func _run(spot: Dictionary) -> void:
 	expect_reward = String(spot.reward)
 	var d: Diver = world.divers[world.active]
 	d.position = spot.at as Vector3
-	if String(spot.kind) == "encounter":
+	if String(spot.kind) == "protected":
 		d.encounter_triggered.emit()
 	else:
 		# Walk into it the way a player does, rather than calling the
@@ -181,6 +177,10 @@ func _check_result() -> void:
 	var got := String(world._pending_reward_item)
 	print("%-28s %d battle(s), reward %s" % [
 		String(spot.what), battles, got if got != "" else "none"])
+	if String(spot.kind) == "protected":
+		if battles != 0:
+			findings.append("ROUTE INTERRUPTION: %s started %d ordinary battle(s)" % [String(spot.what), battles])
+		return
 	if battles == 0:
 		findings.append("NO FIGHT: %s started nothing at all" % String(spot.what))
 	elif battles > 1:

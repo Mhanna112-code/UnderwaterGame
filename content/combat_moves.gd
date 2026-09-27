@@ -6,11 +6,16 @@ extends RefCounted
 # uses the move, which lets the same definition work for a diver or an enemy.
 const SCUBA := [
 	{
-		"name": "Electric Touch", "formula": {"strength": 1},
+		# Scuba's 3 Accuracy is deliberately one point below Swordfish's
+		# authored 4 Evasion. The shock is the dedicated counter move, so its
+		# small reliability bonus lets the listed EVA reduction actually land
+		# instead of asking the player to first waste a turn on an unrelated
+		# miss that merely drains the transient evasion pool.
+		"name": "Electric Touch", "formula": {"strength": 1}, "acc_mod": 2,
 		"target": "one_enemy", "effects": [
 			{"kind": "reduce_evasion", "amount": {"accuracy": 1}},
 		],
-		"hint": "1 STR damage; strips EVA by ACC",
+		"hint": "Reliable shock; strips EVA by ACC",
 		"text": "Electric Touch shocks the target",
 	},
 	{

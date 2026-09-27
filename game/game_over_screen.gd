@@ -8,6 +8,8 @@ extends Control
 signal restart_chosen
 signal title_chosen
 
+var _detail: Label
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
@@ -38,6 +40,13 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	col.add_child(title)
 
+	_detail = Label.new()
+	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail.custom_minimum_size = Vector2(360, 0)
+	_detail.add_theme_color_override("font_color", Color(0.76, 0.87, 0.91))
+	col.add_child(_detail)
+
 	var restart_btn := Button.new()
 	restart_btn.text = "Restart from Save Point"
 	restart_btn.custom_minimum_size = Vector2(360, 44)
@@ -50,7 +59,8 @@ func _ready() -> void:
 	title_btn.pressed.connect(func() -> void: title_chosen.emit())
 	col.add_child(title_btn)
 
-func open() -> void:
+func open(restart_detail: String = "") -> void:
+	_detail.text = restart_detail if restart_detail != "" else "Restart from your most recent save point."
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 

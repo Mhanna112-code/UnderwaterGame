@@ -32,6 +32,14 @@ func choose_move_and_target(_self_stats: CombatantStats, _alive_party: Array, de
 func model_source() -> PackedScene:
 	return SHARK_SRC
 
+# Frilled Shark remains visibly larger than the ordinary fish (3.4 m nose to
+# tail in the battle presentation), but the rig's 6.7:1 horizontal rest pose
+# must not be normalized solely by height and fill the stage. The base class
+# applies this only to visible mesh scale; authored combat reach/stats remain
+# unchanged.
+func max_visual_horizontal_span() -> float:
+	return 3.4
+
 func enemy_catalogue() -> Array:
 	return EnemyMoves.frilled_shark_catalogue()
 
