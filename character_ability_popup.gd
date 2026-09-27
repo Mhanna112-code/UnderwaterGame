@@ -17,14 +17,11 @@ extends Control
 # it's describing are visually tied together while it's open.
 signal closed
 
-# Still reproduces the full-screen black-out (2026-09-26) even after fixing
-# the parenting bug (was add_child(player) instead of frame.add_child()),
-# the missing return (placeholder was always overwriting the video after it
-# was set up), and the missing first play() call. Something deeper than
-# those three bugs is going on - parked false again until it can be
-# diagnosed with real video tooling (ffprobe/ffmpeg) rather than more
-# blind code changes.
-const ENABLE_VIDEO_CLIPS := false
+# Embedded clips are enabled only after the player is constrained to its
+# MediaFrame. See _refresh_media(): a non-expanded VideoStreamPlayer reports
+# its native 1920x1080 source size as a minimum and can grow this small popup
+# into a full-screen overlay.
+const ENABLE_VIDEO_CLIPS := true
 
 var _pages: Array[Dictionary] = []
 var _index := 0
@@ -331,15 +328,16 @@ func _refresh_media(ability_id: String) -> void:
 			var video_stream := VideoStreamTheora.new()
 			video_stream.file = path
 			player.stream = video_stream
-			player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			# Constrain the source to the fixed MediaFrame instead of allowing its
+			# native 1920x1080 dimensions to become the container's minimum size.
+			player.expand = true
 			player.finished.connect(player.play)
 			# Parented to frame (%MediaFrame), not self - a plain add_child()
 			# here put it on the popup's own root instead, which (a) never
 			# gets cleared by this function's own frame.get_children() cleanup
 			# above, leaking a new VideoStreamPlayer every time this page is
-			# shown again, and (b) filled the WHOLE popup (PRESET_FULL_RECT
-			# resolves against whatever parent it's actually under) instead of
-			# staying inside the small MediaFrame area.
+			# shown again, and (b) left it outside the frame cleanup path instead
+			# of keeping the clip inside this small MediaFrame.
 			frame.add_child(player)
 			# Not autoplay=true - that starts Theora decode synchronously the
 			# same frame this popup pauses the tree and _wasd_cluster_texture()
