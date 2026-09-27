@@ -644,10 +644,13 @@ func _stat_value(s: CombatantStats, stat: String) -> int:
 # formula_value() - the same static helper CombatRules.resolve() itself
 # calls, so this can never read differently than a real hit's own raw
 # damage; legacy power-based moves use apply_damage_roll()'s "power +
-# strength", without its ±15% variance multiplier. Shown on the move
-# button and the selected-move label (see _populate_move_menu()/
-# _on_move_chosen()) - _preview_damage() below is the further, target-
-# specific number _explain_damage() builds on top of this one.
+# strength", without its ±15% variance multiplier. Shown on the selected-
+# move label (see _on_move_chosen()) - _preview_damage() below is the
+# further, target-specific number _explain_damage() builds on top of this
+# one. NOT what the move button's own corner badge shows (see
+# _move_base_power() below, right next to this) - that's the move's own
+# power alone, attacker-independent, so the same move reads the same
+# number no matter who's about to use it.
 func _preview_raw_power(mv: Dictionary, attacker: CombatantStats) -> int:
 	# heal/revive have neither "formula" nor "power" - they're not an
 	# attack missing one, they're a third category that does no damage
@@ -662,6 +665,26 @@ func _preview_raw_power(mv: Dictionary, attacker: CombatantStats) -> int:
 	if mv.has("formula"):
 		return int(round(CombatRules.formula_value(attacker, mv.get("formula", {}))))
 	return int(round(float(mv.get("power", 0)) + float(attacker.strength)))
+
+# The move's own power, on its own - no attacker stats folded in (contrast
+# _preview_raw_power() above, which adds the wielder's Strength/other stats
+# for a real damage preview). This is what the move button's own corner
+# badge shows (see _add_power_badge()/_populate_move_menu()) and what
+# _explain_damage()'s tutorial caption calls out as "the same number in the
+# yellow badge" - a fixed property of the move itself, not a preview of what
+# it'll do in this particular attacker's hands, so two divers looking at the
+# same move see the same badge. Legacy moves: the "power" field directly.
+# Formula moves: just the formula's own "base" term, none of its
+# strength/defense/agility/evasion coefficients (see CombatRules.
+# formula_value()) - those are exactly the attacker-dependent part this is
+# deliberately leaving out.
+func _move_base_power(mv: Dictionary) -> int:
+	var effect := String(mv.get("effect", ""))
+	if effect == "heal" or effect == "revive":
+		return 0
+	if mv.has("formula"):
+		return int((mv.get("formula", {}) as Dictionary).get("base", 0))
+	return int(mv.get("power", 0))
 
 # Deterministic preview of what a move would actually deal against a
 # specific defender right now - _preview_raw_power() above, minus that
@@ -2578,9 +2601,9 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		if ox_cost > 0.0:
 			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
-		var raw_power := _preview_raw_power(mv, actor.stats as CombatantStats)
-		if raw_power > 0:
-			_add_power_badge(b, raw_power)
+		var base_power := _move_base_power(mv)
+		if base_power > 0:
+			_add_power_badge(b, base_power)
 		var tooltip := _move_tooltip_text(mv)
 		if tooltip != "":
 			b.tooltip_text = tooltip
@@ -2922,7 +2945,7 @@ func _explain_evasion_reduction(enemy: Dictionary) -> void:
 func _explain_damage(enemy: Dictionary) -> void:
 	var attacker := _acting.stats as CombatantStats
 	var defender := enemy.stats as CombatantStats
-	var raw := _preview_raw_power(_pending_move, attacker)
+	var base_power := _move_base_power(_pending_move)
 	var total := _preview_damage(_pending_move, attacker, defender)
 	var move_name := String(_pending_move.name)
 	var attacker_name := String(_acting.display_name)
@@ -2935,8 +2958,8 @@ func _explain_damage(enemy: Dictionary) -> void:
 	_set_row_highlight(_player_stats_ui.rows.STR as PanelContainer, true)
 	_set_row_highlight(_enemy_stats_ui.rows.DEF as PanelContainer, true)
 	await _tutorial_show_step(
-		"Since %s's base power is %d, and these are %s's Strength vs %s's Defense (1-1 = 0), this attack will deal %d damage." % [
-			move_name, raw, attacker_name, enemy_name, total,
+		"%s's own power is %d - the same number shown in yellow at the top-right of its button, before anything else is added. Add %s's Strength, then subtract %s's Defense (1-1 = 0), and this attack will deal %d damage." % [
+			move_name, base_power, attacker_name, enemy_name, total,
 		]
 	)
 	_set_row_highlight(_selected_move_panel, false)
