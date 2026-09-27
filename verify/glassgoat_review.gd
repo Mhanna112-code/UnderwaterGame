@@ -79,6 +79,28 @@ func _run() -> void:
 	_expect(_matches_stats(FrilledShark.new().make_stats(strong_reference), [5, 2, 2, 1, 2, 2]),
 		"FRILLED STATS: ordinary Frilled Shark does not use its agreed 5/2/2/1/2/2 table")
 
+	# Enemy risk belongs on the persistent combat card, while move cards need
+	# to name their direct result rather than show an unexplained yellow total.
+	var battle := Battle.new()
+	root.add_child(battle)
+	await process_frame
+	await process_frame
+	if battle.enemies.is_empty():
+		findings.append("COMBAT CARD: no live enemy was built for review")
+	else:
+		battle._refresh_all_bars()
+		var enemy_status := String((battle.enemies[0] as Dictionary).status_label.text)
+		_expect(enemy_status.contains("EVA"),
+			"COMBAT CARD: enemy EVA is hidden before target hover")
+	if not battle.party.is_empty():
+		battle._populate_move_menu(battle.party[0] as Dictionary)
+		var first_move := battle.move_buttons[0] as Button if not battle.move_buttons.is_empty() else null
+		_expect(first_move != null and first_move.text.contains("Damage"),
+			"MOVE CARD: direct damage is not labelled on the player-facing move card")
+		_expect(first_move != null and first_move.get_child_count() == 0,
+			"MOVE CARD: an unlabeled raw-power badge still overlays the move name")
+	battle.queue_free()
+
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():

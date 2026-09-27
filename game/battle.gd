@@ -259,13 +259,10 @@ const STAT_ROW_KEYS := {"STR": "strength", "DEF": "defense", "ACC": "accuracy", 
 # in target_menu (see _show_stat_preview()/_clear_stat_preview()).
 var _player_stats_ui: Dictionary = {}
 var _enemy_stats_ui: Dictionary = {}
-# Set by _on_move_chosen() once a move's picked - the move's name on the
-# left, its raw power right-aligned on the right (same "spell cost" layout
-# as _add_power_badge() on the move button itself), sitting right above the
-# two stat panels for as long as target_menu is up. _selected_move_panel
-# wraps the row so _explain_damage() can box just the power number the
-# same way _set_row_highlight() boxes a stat row. Cleared back to main
-# menu/next turn - see _show_main()/_start_party_turn().
+# Set by _on_move_chosen() once a move is picked. The compact selected-move
+# row states the choice and asks for a target; direct damage/effects are on
+# the move card and the exact formula remains in its tooltip. There is no
+# detached raw-power number for a player to reverse-engineer.
 var _selected_move_panel: PanelContainer
 var _selected_move_name: Label
 var _selected_move_power: Label
@@ -1731,7 +1728,7 @@ func _build_ui() -> void:
 	selected_move_row.add_child(_selected_move_name)
 	_selected_move_power = Label.new()
 	_selected_move_power.text = ""
-	_selected_move_power.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
+	_selected_move_power.visible = false
 	_selected_move_power.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	selected_move_row.add_child(_selected_move_power)
 	_quick_read_summary = Label.new()
@@ -2254,6 +2251,14 @@ func _refresh_bar(entry: Dictionary) -> void:
 		(entry.oxygen_label as Label).text = "%d / %d O2" % [int(s.oxygen), int(s.oxygen_max)]
 	var status_text := s.status_summary()
 	if String(entry.kind) == "party":
+		status_text = "EVA %d/%d%s" % [
+			s.evasion_current, s.effective_evasion(),
+			"   " + status_text if status_text != "" else "",
+		]
+	else:
+		# Target hover still reveals the full four-stat panel and projected
+		# deltas, but EVA is a live hit-risk number and must be comparable on
+		# the persistent enemy card before the player chooses a move.
 		status_text = "EVA %d/%d%s" % [
 			s.evasion_current, s.effective_evasion(),
 			"   " + status_text if status_text != "" else "",
@@ -2859,42 +2864,6 @@ func _apply_tutorial_move_gate() -> void:
 	call_deferred("_fit_panel_height")
 	btn.disabled = false
 
-# Overlays `power` in the top-right corner of `btn`, on the same row as
-# the move's name (the button's own text is two lines - name, then hint -
-# so top-right lands beside the name specifically, not the hint below it),
-# like a spell's mana cost sitting beside its name in other games. A
-# separate Label layered on top via anchors rather than folded into the
-# button's own text, so it reads as its own fixed number regardless of how
-# long the name/hint text runs. mouse_filter IGNORE keeps it from stealing
-# the click meant for the button underneath it.
-func _add_power_badge(btn: Button, power: int) -> void:
-	# A small opaque plate behind the number, not just the number floating
-	# over the button's own text - on a long move name the text can run
-	# right up under the corner, and a bare number there was getting lost
-	# in/blended with the letters behind it.
-	var plate := PanelContainer.new()
-	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var plate_style := StyleBoxFlat.new()
-	plate_style.bg_color = Color(0.05, 0.08, 0.1, 0.85)
-	plate_style.set_corner_radius_all(4)
-	plate_style.set_content_margin_all(2)
-	plate.add_theme_stylebox_override("panel", plate_style)
-	plate.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	plate.offset_left = -40
-	plate.offset_top = 3
-	plate.offset_right = -4
-	plate.offset_bottom = 21
-	btn.add_child(plate)
-
-	var badge := Label.new()
-	badge.text = str(power)
-	badge.add_theme_font_size_override("font_size", 16)
-	badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.25))
-	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	plate.add_child(badge)
-
 func _populate_move_menu(actor: Dictionary) -> void:
 	for b in move_buttons:
 		(b as Button).queue_free()
@@ -2902,13 +2871,10 @@ func _populate_move_menu(actor: Dictionary) -> void:
 	var available: float = (actor.stats as CombatantStats).oxygen
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
-		var hint := CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
+		var hint := _move_card_summary(mv, actor.stats as CombatantStats)
 		if ox_cost > 0.0:
-			hint = "%s - %d O2" % [hint, int(ox_cost)]
+			hint = "%s • costs %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
-		var raw_power := _preview_raw_power(mv, actor.stats as CombatantStats)
-		if raw_power > 0:
-			_add_power_badge(b, raw_power)
 		b.tooltip_text = _move_tooltip_text(mv, actor.stats as CombatantStats)
 		b.disabled = available < ox_cost
 		b.pressed.connect(_on_move_chosen.bind(mv))
@@ -2917,6 +2883,26 @@ func _populate_move_menu(actor: Dictionary) -> void:
 	# Back is the one persistent control. Keep it after the newly rebuilt
 	# choices; there is deliberately no separate formula/result mode.
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
+
+func _move_card_summary(mv: Dictionary, actor_stats: CombatantStats) -> String:
+	if mv.has("formula"):
+		return CombatMoves.resolved_hint(actor_stats, mv)
+	var parts: Array[String] = []
+	var effect := String(mv.get("effect", ""))
+	if effect == "heal":
+		parts.append("Restores %d HP" % int(mv.get("amount", 0)))
+	elif effect == "revive":
+		parts.append("Revives with %d HP" % int(mv.get("amount", 0)))
+	else:
+		var damage := _preview_raw_power(mv, actor_stats)
+		if damage > 0:
+			parts.append("%d Damage" % damage)
+		match String(mv.get("debuff", "")):
+			"defense": parts.append("DEF -%d" % int(mv.get("amount", 0)))
+			"agility": parts.append("AGI -%d" % int(mv.get("amount", 0)))
+	if parts.is_empty():
+		return String(mv.get("hint", "No direct damage"))
+	return " • ".join(parts)
 
 func _move_tooltip_text(mv: Dictionary, actor_stats: CombatantStats) -> String:
 	var sections: Array[String] = []
@@ -3151,17 +3137,11 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		call_deferred("_fit_panel_height")
 		return
 	_pending_move = mv
-	# Name on the left, raw power right-aligned on the right - see
-	# _selected_move_panel's own declaration. Cleared again in
-	# _show_main()/_start_party_turn(). Heal/revive have no "power" concept,
-	# so the amount goes in the name slot instead and the power slot stays
-	# blank rather than showing a misleading 0.
-	_selected_move_name.text = String(mv.name)
-	if effect == "heal" or effect == "revive":
-		_selected_move_name.text = "%s - restores %d HP" % [String(mv.name), int(mv.get("amount", 0))]
-		_selected_move_power.text = ""
-	else:
-		_selected_move_power.text = str(_preview_raw_power(mv, _acting.stats as CombatantStats))
+	# Do not reintroduce a detached yellow raw total at target selection.
+	# The card already named the result; target hover supplies the one detail
+	# that genuinely depends on a defender (the projection and stat deltas).
+	_selected_move_name.text = "%s: choose a target" % String(mv.name)
+	_selected_move_power.text = ""
 	if String(mv.get("target", "one_enemy")) == "all_enemies":
 		_populate_all_target_menu(targets)
 	else:
