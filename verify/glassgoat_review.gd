@@ -39,6 +39,16 @@ func _run() -> void:
 		_expect(not world.target_selector.selecting,
 			"SWAP CONTROL: Space did not confirm the highlighted teammate")
 
+	# Steering identity must not masquerade as the route's forward beacon. A low
+	# ring has no directional point and leaves the amber route post as the only
+	# "go this way" landmark.
+	world._update_active_cursor()
+	var active_diver := world.divers[world.active] as Diver
+	_expect(world._active_cursor.mesh is TorusMesh,
+		"ACTIVE MARKER: active diver is still marked by a directional cone instead of a neutral halo")
+	_expect(world._active_cursor.global_position.y - active_diver.global_position.y <= 0.25,
+		"ACTIVE MARKER: selection halo floats high enough to read as route guidance")
+
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():

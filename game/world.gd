@@ -3318,24 +3318,25 @@ func _update_oxygen_bar() -> void:
 	oxygen_bar.value = d.stats.oxygen
 	oxygen_bar_label.text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
 
-# Same downward-pointing cone TargetSelector's own cursor uses, same green,
-# built once here rather than in TargetSelector since this one's purpose is
-# different (mark who you're steering, not who you're about to swap into)
-# even though the shape is deliberately identical.
+# A low, neutral halo says "this is the diver you steer" without competing
+# with the amber beacon's directional language. The earlier raised green cone
+# looked like a forward arrow in the real route view, so it encouraged players
+# to follow the active diver into a boundary rather than follow the beacon.
 func _build_active_cursor() -> void:
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.0
-	cone.bottom_radius = 0.22
-	cone.height = 0.4
+	var halo := TorusMesh.new()
+	halo.inner_radius = 0.30
+	halo.outer_radius = 0.39
+	halo.ring_segments = 24
+	halo.rings = 8
 	_active_cursor = MeshInstance3D.new()
-	_active_cursor.mesh = cone
+	_active_cursor.mesh = halo
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.emission_enabled = true
-	mat.albedo_color = Color(0.35, 0.95, 0.4)
-	mat.emission = Color(0.35, 0.95, 0.4)
+	mat.albedo_color = Color(0.24, 0.82, 0.62, 0.82)
+	mat.emission = Color(0.12, 0.42, 0.30)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_active_cursor.material_override = mat
-	_active_cursor.rotation_degrees.x = 180.0   # cone points down at the diver's head
 	add_child(_active_cursor)
 
 # Refreshed every physics frame (same cadence as _update_hp_bar()/
@@ -3350,7 +3351,7 @@ func _update_active_cursor() -> void:
 		return
 	var d: Diver = divers[active]
 	_active_cursor.visible = true
-	_active_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.5)
+	_active_cursor.global_position = d.global_position + Vector3.UP * 0.10
 
 # Called on top of the normal value drop (which already reads as "the bar
 # is noticeably lower now") for a brief extra flash, so a hit lands even

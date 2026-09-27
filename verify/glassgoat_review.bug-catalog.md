@@ -8,7 +8,7 @@ larger encounter/puzzle pacing decision; neither belongs in this no-maze slice.
 | --- | --- | --- | --- |
 | 1 | Swap says arrows/Enter and does not support the expected `A`/`D` and Space controls. | Captured live World input contract. | Fixed |
 | 2 | Tutorial continuation is too easy to mistake for an Enter-only stall. | Existing live Continue-button test plus Space alias contract. | Fixed |
-| 3 | The active-diver marker is a tall green forward-looking cone, indistinguishable from route guidance. | Marker mesh/placement contract plus review screenshot. | Open |
+| 3 | The active-diver marker is a tall green forward-looking cone, indistinguishable from route guidance. | Marker mesh/placement contract plus review screenshot. | Fixed |
 | 4 | Frilled Shark can stop animating after its idle/attack transition. | Real actor idle loop and post-action recovery observation. | Open |
 | 5 | Enemy EVA is hidden until hover, so target risk cannot be compared before selection. | Combat menu card state contract. | Open |
 | 6 | Unlabelled yellow raw-power values obscure what a move actually does. | Move-card text contract and browser screenshot. | Open |
