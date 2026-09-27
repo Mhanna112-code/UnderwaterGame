@@ -13,7 +13,7 @@ larger encounter/puzzle pacing decision; neither belongs in this no-maze slice.
 | 5 | Enemy EVA is hidden until hover, so target risk cannot be compared before selection. | Combat menu card state contract. | Fixed |
 | 6 | Unlabelled yellow raw-power values obscure what a move actually does. | Move-card text contract and browser screenshot. | Fixed |
 | 7 | Normal Angler/Frilled actors silently scale from party stats instead of using their agreed tables. | Actor stat-table differential. | Fixed |
-| 8 | `Electric Touch 0` / `Evasion 0` needs exact-state reproduction before formula changes. | Characterization against the reported build/state. | Open |
+| 8 | `Electric Touch 0` / `Evasion 0` needs exact-state reproduction before formula changes. | Current V2 runtime is non-reproducible; a base-stat result contract guards `1 Damage; EVA -3`. | Characterized |
 | 9 | Isolated balance trials hide persistent-route difficulty. | Route-state simulation and normal-entry manual playtest. | Open |
 
 ## First red/green slice: Swap controls

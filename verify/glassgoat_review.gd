@@ -101,6 +101,16 @@ func _run() -> void:
 			"MOVE CARD: an unlabeled raw-power badge still overlays the move name")
 	battle.queue_free()
 
+	# Glassgoat's old screenshot reported Electric Touch as zero damage and zero
+	# EVA reduction. The shipped V2 Scuba table is nonzero with the real base
+	# stats; lock that player-visible result so a zero-initialized preview
+	# cannot quietly return.
+	var scuba_base := _stats(10, 1, 0, 3, 3, 3)
+	var electric := CombatMoves.SCUBA[0] as Dictionary
+	var electric_summary := CombatMoves.resolved_hint(scuba_base, electric)
+	_expect(electric_summary.contains("1 Damage") and electric_summary.contains("EVA -3"),
+		"ELECTRIC TOUCH: base Scuba preview regressed to zero damage or zero EVA reduction")
+
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
