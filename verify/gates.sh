@@ -57,6 +57,7 @@ run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headl
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
+run "ability popup video: are tutorial clips playing and contained" "$GODOT" --headless --path . --script verify/ability_popup_video.gd
 run "merge readiness: is defeat exclusive and identity consistent" "$GODOT" --headless --path . --script verify/pr54_merge_readiness.gd
 run "fight: play one to the end and come back"        "$GODOT" --headless --path . --script verify/fight.gd
 # The only gate here that must NOT be headless. It measures where combatants
