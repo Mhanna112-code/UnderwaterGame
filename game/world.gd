@@ -1356,7 +1356,13 @@ func _unhandled_input(e: InputEvent) -> void:
 			inventory_menu.open()
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		mouse_look = false
-	elif e is InputEventMouseMotion and mouse_look:
+	# Left-click-and-drag always works here, independent of mouse_look/
+	# MOUSE_MODE_CAPTURED - a guaranteed fallback for whatever's leaving
+	# capture-based free-look dead after the tutorial (reported: arrow-key
+	# turning still works, so battling/pause aren't the gate; captured
+	# mouse-look specifically goes silent). Doesn't touch mouse_look or
+	# Input.mouse_mode at all, so it can't make that separate problem worse.
+	elif e is InputEventMouseMotion and (mouse_look or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
 		var mm := e as InputEventMouseMotion
 		yaw -= mm.relative.x * 0.004
 		pitch = clampf(pitch - mm.relative.y * 0.003, -1.1, 0.7)
