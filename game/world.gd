@@ -812,7 +812,6 @@ func _build_site() -> void:
 
 	_build_breakable_rocks()
 	_build_highway()
-	_build_dive_sites()
 	_build_boundary_walls()
 
 # Keep the playable space inside the visible 120-by-120 seafloor. These are
