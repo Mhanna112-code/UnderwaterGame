@@ -100,6 +100,15 @@ func _ready() -> void:
 				_hurt_anim = a
 			elif "death" in lower:
 				_death_anim = a
+	# FBX importers preserve an artist's one-shot action clips, but a rest pose
+	# is never a one-shot gameplay action. Frilled Shark's delivered idle is
+	# imported as non-looping; normalize only the semantic idle clip at runtime
+	# so every ordinary actor stays alive between turns without changing attack,
+	# hurt, or death timing.
+	if _idle_anim != "":
+		var idle_animation := anim.get_animation(_idle_anim)
+		if idle_animation != null:
+			idle_animation.loop_mode = Animation.LOOP_LINEAR
 	_attack_anim = _resolve_clip(primary_attack_clip())
 	play("idle")
 
@@ -193,7 +202,10 @@ func play(substr: String) -> void:
 			want = _death_anim
 	if want == "" and not anim.get_animation_list().is_empty():
 		want = anim.get_animation_list()[0]
-	if want != "" and anim.current_animation != want:
+	# `current_animation == want` does not imply it is still moving: a
+	# previously non-looping imported idle can have reached its end. Resume it
+	# explicitly so Battle's post-action `_restore_enemy_idle()` is reliable.
+	if want != "" and (anim.current_animation != want or not anim.is_playing()):
 		anim.play(want)
 
 # A fresh deep copy makes it safe for Battle/UI code to attach per-turn data

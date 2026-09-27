@@ -49,6 +49,27 @@ func _run() -> void:
 	_expect(world._active_cursor.global_position.y - active_diver.global_position.y <= 0.25,
 		"ACTIVE MARKER: selection halo floats high enough to read as route guidance")
 
+	# The delivered Frilled rig must continue its actual idle after any action;
+	# a one-shot rest pose makes the fish appear frozen in a real battle.
+	var shark := FrilledShark.new()
+	root.add_child(shark)
+	await process_frame
+	var idle := shark.anim.get_animation(shark._idle_anim) if shark.anim != null and shark._idle_anim != "" else null
+	_expect(idle != null and idle.loop_mode != Animation.LOOP_NONE,
+		"FRILLED IDLE: imported idle clip is not configured to loop")
+	shark.play("idle")
+	await create_timer(1.5).timeout
+	_expect(shark.anim != null and shark.anim.is_playing(),
+		"FRILLED IDLE: actor stopped playing during an idle observation")
+	if not shark.available_moves().is_empty():
+		shark.play_move(shark.available_moves()[0] as Dictionary)
+		await create_timer(0.2).timeout
+		shark.play("idle")
+		await process_frame
+		_expect(shark.anim != null and shark.anim.is_playing(),
+			"FRILLED IDLE: actor did not resume idle after an action")
+	shark.queue_free()
+
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
