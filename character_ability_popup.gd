@@ -50,13 +50,10 @@ func _ready() -> void:
 	_wasd_cluster_texture()
 
 # Every other paged/modal overlay in this project (TutorialBook, IntroCrawl)
-# closes on Escape - this one didn't, so Escape here did nothing at all:
-# the popup has no listener for it, and get_tree().paused (set by open())
-# freezes World's own Escape handling underneath it too. _close() never ran,
-# "closed" never fired, and whatever depends on that signal (World restoring
-# camera control once the tutorial's post-fight walkthrough is done) never
-# happened either - reads exactly like "camera's still broken" even though
-# mouse_look/Input.mouse_mode were both fine the whole time.
+# closes on Escape - this one didn't, so Escape here did nothing at all: the
+# popup has no listener for it, and get_tree().paused (set by open()) freezes
+# World's own Escape handling underneath it too. _close() never ran, "closed"
+# never fired, and anything depending on that signal never happened either.
 func _unhandled_input(event: InputEvent) -> void:
 	if not (%AbilityExplanationPanel as PanelContainer).visible:
 		return

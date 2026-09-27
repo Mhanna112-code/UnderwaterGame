@@ -732,18 +732,6 @@ func _ready() -> void:
 	if _tutorial_loss_playtest_requested():
 		call_deferred("_show_tutorial_loss_playtest")
 
-	# _show_ability_popups() (called after every tutorial-fight ending - won,
-	# skipped, or a loss's Retry/Exit choice) is this autoload's only caller
-	# (see that function's own comment), so its "closed" firing always means
-	# the beginning-tutorial walkthrough has fully wrapped up. _start_battle()
-	# drops mouse_look to let the battle UI take clicks, and nothing since
-	# has put it back - without this, the player has to click once, blind,
-	# just to get mouse-look working again back in the overworld. Runtime
-	# get_node() lookup, not the bare autoload name, for the same reason
-	# _show_ability_popups() itself uses one (bare names fail to resolve
-	# under verify/'s headless --script launches).
-	(get_node("/root/CharacterAbilityPopup") as Node).connect("closed", _on_tutorial_ability_popups_closed)
-
 	intro_crawl = IntroCrawl.new()
 	title_layer.add_child(intro_crawl)
 
@@ -2477,13 +2465,6 @@ func _show_ability_popups() -> void:
 	# with nothing left to run and no reachable quit(). The NodePath lookup
 	# is a runtime call, not a parse-time identifier, so it works either way.
 	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
-
-# See the "closed" connection in _ready() - restores the mouse-look the
-# player had before _start_battle() took it away for the tutorial fight,
-# now that its post-fight popups are actually done.
-func _on_tutorial_ability_popups_closed() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	mouse_look = true
 
 func _update_hud() -> void:
 	if target_selector.selecting:
