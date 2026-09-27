@@ -39,8 +39,13 @@ func _run() -> void:
 			var modifier := modifiers[index] as Dictionary
 			if index >= battle.enemies.size():
 				continue
-			var spawned := (battle.enemies[index] as Dictionary).stats as CombatantStats
+			var spawned_entry := battle.enemies[index] as Dictionary
+			var spawned := spawned_entry.stats as CombatantStats
 			for stat in modifier:
+				if String(stat) == "variant_name":
+					_expect(String(spawned_entry.display_name).begins_with(String(modifier[stat])),
+						"CAPSTONE PROFILE: %s enemy %d did not visibly identify its %s variant" % [String(beat.id), index + 1, String(modifier[stat])])
+					continue
 				_expect(int(spawned.get(String(stat))) == int(modifier[stat]),
 					"CAPSTONE PROFILE: %s enemy %d %s was %s, expected %s" % [String(beat.id), index + 1, String(stat), spawned.get(String(stat)), modifier[stat]])
 		battle.queue_free()
