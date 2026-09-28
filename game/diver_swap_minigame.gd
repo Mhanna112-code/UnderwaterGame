@@ -297,7 +297,7 @@ func _confirm_swap() -> void:
 # this file already calls out for blast_rocks_minigame.gd's flight time.
 # _current_travel_time (below) now derives the actual duration from this
 # speed and this round's real distance instead.
-var portraitSpeed = 2.3
+var portraitSpeed = 2.6
 # This round's travel duration, computed in _select_correct_portraits()
 # from the actual enemy-to-player distance and portraitSpeed above - used
 # for both the tween itself and _spawn_loop()'s round-to-round pacing, so

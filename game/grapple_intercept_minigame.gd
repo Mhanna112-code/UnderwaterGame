@@ -69,6 +69,11 @@ var stage_camera: Camera3D
 var target_actor: Node3D
 var source_position := Vector3.ZERO
 
+# by battle.gd (_do_grapple_intercept_encounter()) to _stage_container's
+# own local rect - both it and this minigame are direct siblings under the
+# same Battle CanvasLayer, so no coordinate conversion is needed.
+var stage_rect := Rect2()
+
 # Set by battle.gd (_do_grapple_intercept_encounter()) - the actual enemy
 # Goblin, so run() below can physically move it, not just the abstract
 # source_position rocks spawn relative to. Optional: null is a valid,
@@ -140,7 +145,16 @@ var _start_button: Button
 var _grapple_controls_active := false
 
 func _ready() -> void:
-	if get_parent() is Control:
+	if stage_rect.size != Vector2.ZERO:
+		# Matches the 3D stage's own actual rendered rect - see stage_rect's
+		# own declaration for why this has to be narrower than the full
+		# viewport. set_anchors_preset(TOP_LEFT) first so position/size below
+		# are read as plain top-left-relative values, not offsets from some
+		# other anchor point.
+		set_anchors_preset(Control.PRESET_TOP_LEFT)
+		position = stage_rect.position
+		size = stage_rect.size
+	elif get_parent() is Control:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	else:
 		set_anchors_preset(Control.PRESET_TOP_LEFT)

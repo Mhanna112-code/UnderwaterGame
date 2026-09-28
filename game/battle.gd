@@ -4588,6 +4588,12 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _tar
 	minigame.target_actor = target.actor
 	minigame.enemy_actor = actor.actor
 	minigame.source_position = (actor.actor as Node3D).global_position + Vector3.UP * (actor.actor as Goblin).height
+	# MODIFIED (added): the crosshair (and this minigame's whole 2D
+	# coordinate frame) has to match where the 3D stage actually renders,
+	# not the full screen - see GrappleInterceptMinigame.stage_rect's own
+	# comment for why the two differ and what that mismatch did to aiming.
+	if _stage_container != null:
+		minigame.stage_rect = Rect2(_stage_container.position, _stage_container.size)
 	add_child(minigame)
 	var total_taken := 0
 	minigame.object_hit.connect(func() -> void:
