@@ -664,11 +664,10 @@ const VORTEX_MIN_TRAVEL_DISTANCE := 1.0
 # (VORTEX_SPEED_MIN/MAX below); this is "slowly launch," that is the
 # swirling once it's already moving.
 const VORTEX_TRAVEL_TIME := 5.0
-# The post-collision playfield stays compact as it reaches the player. At the
-# 3 m final click plane, this 1.25 m radius plus a sphere's 0.35 m radius
-# fits fully within both the camera and bounded aim cone; a 3 m boundary did
-# not. The deliberate extra room avoids treating a frame edge as playable.
-const VORTEX_BOUNDARY_RADIUS := 1.25
+# Match the wide PR #50 playfield while the wave is distant. The live boundary
+# is narrowed automatically as it approaches (see _vortex_reachable_radius())
+# so this is a maximum, never permission to put a late target off screen.
+const VORTEX_BOUNDARY_RADIUS := 3.0
 const VORTEX_SPHERE_RADIUS := 0.35
 const VORTEX_MIN_SPHERES := 3
 const VORTEX_MAX_SPHERES := 5
@@ -939,16 +938,32 @@ func vortex_targets_are_aimable() -> bool:
 		# aim or camera boundary.
 		var yaw := atan2(absf(local.x) + VORTEX_SPHERE_RADIUS, forward_distance)
 		var pitch := atan2(absf(local.y) + VORTEX_SPHERE_RADIUS, sqrt(local.x * local.x + local.z * local.z))
-		var viewport_size := stage_root.size
-		var half_vertical_fov := deg_to_rad(stage_camera.fov) * 0.5
-		var half_horizontal_fov := atan(tan(half_vertical_fov) * viewport_size.x / maxf(1.0, viewport_size.y))
-		# Keep a 0.08-radian (~4.6°) buffer from both frame edges as well as
-		# from the mouse-look clamp. A target on either boundary is not fair.
-		var allowed_yaw := minf(MAX_YAW, half_horizontal_fov) - 0.08
-		var allowed_pitch := minf(MAX_PITCH, half_vertical_fov) - 0.08
+		var aim_limits := _vortex_aim_limits()
+		var allowed_yaw := aim_limits.x
+		var allowed_pitch := aim_limits.y
 		if yaw > allowed_yaw or pitch > allowed_pitch:
 			return false
 	return true
+
+# The smaller of the view and mouse-look cones, less a deliberate comfort
+# margin. Keeping this in one helper makes the motion constraint use the exact
+# same definition of "reachable" as the regression assertion above.
+func _vortex_aim_limits() -> Vector2:
+	var viewport_size := stage_root.size
+	var half_vertical_fov := deg_to_rad(stage_camera.fov) * 0.5
+	var half_horizontal_fov := atan(tan(half_vertical_fov) * viewport_size.x / maxf(1.0, viewport_size.y))
+	return Vector2(minf(MAX_YAW, half_horizontal_fov) - 0.08, minf(MAX_PITCH, half_vertical_fov) - 0.08)
+
+# A full-sized sphere must fit inside the narrowest reachable cone. Far from
+# the player this returns the historical 3 m field; as the vortex gets close,
+# it continuously contracts only as much as needed to keep every bounced
+# sphere fair to aim at. This preserves PR #50's broad early travel without
+# accepting its late off-screen target problem.
+func _vortex_reachable_radius() -> float:
+	var distance := _vortex_center.distance_to(stage_camera.global_position)
+	var narrowest_limit := minf(_vortex_aim_limits().x, _vortex_aim_limits().y)
+	var allowed_radius := distance * tan(narrowest_limit) - VORTEX_SPHERE_RADIUS
+	return clampf(allowed_radius, VORTEX_SPHERE_RADIUS, VORTEX_BOUNDARY_RADIUS)
 
 # MODIFIED: was _process() - get_overlapping_areas() (see _update_vortex())
 # only reflects newly-updated overlap state once per PHYSICS tick, not
@@ -1111,14 +1126,15 @@ func _update_vortex(delta: float) -> void:
 	# ray or a billiard ball bouncing off a flat wall uses. The boundary
 	# itself isn't a real collision object (there's nothing to overlap-
 	# detect against), so this stays a plain geometric check.
+	var reachable_radius := _vortex_reachable_radius()
 	for entry in _vortex_spheres:
 		if not entry.using_physics:
 			continue
-		if entry.pos2d.length() + VORTEX_SPHERE_RADIUS <= VORTEX_BOUNDARY_RADIUS:
+		if entry.pos2d.length() + VORTEX_SPHERE_RADIUS <= reachable_radius:
 			continue
 		var normal: Vector2 = entry.pos2d.normalized()
 		entry.vel2d = entry.vel2d - 2.0 * entry.vel2d.dot(normal) * normal
-		entry.pos2d = normal * (VORTEX_BOUNDARY_RADIUS - VORTEX_SPHERE_RADIUS)
+		entry.pos2d = normal * (reachable_radius - VORTEX_SPHERE_RADIUS)
 
 	# Re-sync every node's world position after any separation/wall
 	# correction the passes above may have applied to pos2d.

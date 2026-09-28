@@ -32,6 +32,7 @@ func _run() -> void:
 	var special_stage_has_depth := false
 	var every_live_target_was_aimable := true
 	var closest_wave_distance := INF
+	var widest_vortex_radius := 0.0
 	var forced_one_timeout := false
 
 	var minigame: GrappleInterceptMinigame = null
@@ -52,6 +53,8 @@ func _run() -> void:
 			if minigame._vortex_active:
 				every_live_target_was_aimable = every_live_target_was_aimable and minigame.vortex_targets_are_aimable()
 				closest_wave_distance = minf(closest_wave_distance, minigame._vortex_center.distance_to(minigame.stage_camera.global_position))
+				for entry in minigame._vortex_spheres:
+					widest_vortex_radius = maxf(widest_vortex_radius, (entry.pos2d as Vector2).length())
 			if minigame._vortex_active and not sampled_vortex_motion:
 				var start_distance := minigame._vortex_center.distance_to(minigame.stage_camera.global_position)
 				await create_timer(0.35).timeout
@@ -65,6 +68,8 @@ func _run() -> void:
 				await create_timer(GrappleInterceptMinigame.VORTEX_TRAVEL_TIME - 0.45).timeout
 				every_live_target_was_aimable = every_live_target_was_aimable and minigame.vortex_targets_are_aimable()
 				closest_wave_distance = minf(closest_wave_distance, minigame._vortex_center.distance_to(minigame.stage_camera.global_position))
+				for entry in minigame._vortex_spheres:
+					widest_vortex_radius = maxf(widest_vortex_radius, (entry.pos2d as Vector2).length())
 				sampled_final_click_window = true
 			elif minigame._vortex_active and not forced_one_timeout:
 				var yellow := 0
@@ -107,9 +112,9 @@ func _run() -> void:
 	# One intentionally uncleared wave leaves four cleared safe targets across
 	# the remaining two waves. Its impact must be the actual Battle damage
 	# callback, not merely a minigame-local signal.
-	var clean := result == [expected - GrappleInterceptMinigame.TARGET_COUNT, expected] and forced_one_timeout and wave_composition_is_valid and special_stage_has_depth and vortex_moves_toward_diver and sampled_final_click_window and every_live_target_was_aimable and closest_wave_distance >= GrappleInterceptMinigame.VORTEX_CLICKABLE_END_DISTANCE - 0.1 and closest_wave_distance <= GrappleInterceptMinigame.VORTEX_CLICKABLE_END_DISTANCE + 0.5 and timed_out_wave_impacts == 1 and timed_out_wave_damage > 0 and hp_after <= hp_before and actor_visible and camera_restored
-	print("GRAPPLE BATTLE: result %s, wave 4=%s, stage depth=%s, moves toward diver=%s, targets aimable=%s, closest wave %.2f, timeout impacts %d, timeout damage %d, HP %d -> %d, camera %s, actor visible %s" % [
-		str(result), str(wave_composition_is_valid), str(special_stage_has_depth), str(vortex_moves_toward_diver), str(every_live_target_was_aimable), closest_wave_distance, timed_out_wave_impacts, timed_out_wave_damage, hp_before, hp_after, str(camera_restored), str(actor_visible)
+	var clean := result == [expected - GrappleInterceptMinigame.TARGET_COUNT, expected] and forced_one_timeout and wave_composition_is_valid and special_stage_has_depth and vortex_moves_toward_diver and sampled_final_click_window and every_live_target_was_aimable and widest_vortex_radius >= 1.45 and closest_wave_distance >= GrappleInterceptMinigame.VORTEX_CLICKABLE_END_DISTANCE - 0.1 and closest_wave_distance <= GrappleInterceptMinigame.VORTEX_CLICKABLE_END_DISTANCE + 0.5 and timed_out_wave_impacts == 1 and timed_out_wave_damage > 0 and hp_after <= hp_before and actor_visible and camera_restored
+	print("GRAPPLE BATTLE: result %s, wave 4=%s, stage depth=%s, moves toward diver=%s, targets aimable=%s, widest radius %.2f, closest wave %.2f, timeout impacts %d, timeout damage %d, HP %d -> %d, camera %s, actor visible %s" % [
+		str(result), str(wave_composition_is_valid), str(special_stage_has_depth), str(vortex_moves_toward_diver), str(every_live_target_was_aimable), widest_vortex_radius, closest_wave_distance, timed_out_wave_impacts, timed_out_wave_damage, hp_before, hp_after, str(camera_restored), str(actor_visible)
 	])
 	if not clean:
 		push_error("GRAPPLE BATTLE: integration contract failed")
