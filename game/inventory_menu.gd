@@ -14,11 +14,9 @@
 # EFFECT_KIND_EXPLANATIONS - "Self Cost"/"Evasion Reduction", the parts of a
 # move that aren't a CombatantStats status), and status condition writeups
 # (STATUS_CONDITIONS) for whoever wants the full Blindness/Stun/Flash-Blast-
-# self-cost numbers again outside of a fight. Two real action buttons sit
-# above all of that, though: replaying the scripted first fight on demand
-# (World._replay_tutorial_battle()) - both the tutorial's own win and loss
-# screens mention it lives here, for anyone who wants to see it again or
-# missed something the first time - and reopening the paged walkthrough
+# self-cost numbers again outside of a fight. Three real action buttons sit
+# above all of that: replaying the scripted first fight, replaying the
+# special-encounter tutorial, and reopening the paged walkthrough
 # (World.tutorial_book, TutorialContent.GENERAL_PAGES), previously only
 # reachable via the F1 keybind.
 #
@@ -57,8 +55,12 @@ func _ready() -> void:
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 50.0
-	root.offset_top = 50.0
+	# MODIFIED (changed): offset_top was 50 - the world HUD's own diver-name/
+	# Match the HUD label's 12px left inset and sit shortly below its two
+	# lines, leaving enough room for the controls hint without a large gap.
+	# SavePointMenu uses the same offsets so both menu surfaces line up.
+	root.offset_left = 12.0
+	root.offset_top = 75.0
 	root.offset_right = -50.0
 	root.offset_bottom = -50.0
 	root.add_theme_constant_override("separation", 18)
@@ -165,9 +167,33 @@ func _refresh_items() -> void:
 			continue
 		var def: Dictionary = Items.ITEMS.get(item_id, {})
 		var btn := Button.new()
-		btn.text = "Use %s (x%d)" % [String(def.get("display", item_id)), count]
+		# MODIFIED (changed): was "Use %s (x%d)" as the button's own text -
+		# the count now lives in its own tile at the button's right edge
+		# instead (see the plate/badge built below, same "opaque plate
+		# behind a number" convention battle.gd's _add_power_badge() uses
+		# for a move's power badge), so the button's text is just the
+		# item's name, left-aligned so it doesn't visually crowd the tile.
+		btn.text = String(def.get("display", item_id))
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.tooltip_text = String(def.get("description", ""))
 		btn.custom_minimum_size = Vector2(340, 40)
+		# MODIFIED (fixed): the count tile is correctly anchored inside this
+		# button's own rect (8px in from its true right edge), but Godot's
+		# default Button theme has no visible background in its normal
+		# (non-hover) state - against this menu's own dark panel background,
+		# that made the button read as invisible, so the tile looked like it
+		# was floating disconnected in empty space past "Potion" rather than
+		# sitting inside the same row. A real background/border ties them
+		# together as one visible row, same dark-bordered-panel look used
+		# elsewhere in this game (e.g. battle.gd's swap demo frame).
+		var btn_style := StyleBoxFlat.new()
+		btn_style.bg_color = Color(0.03, 0.09, 0.12)
+		btn_style.border_color = Color(0.18, 0.34, 0.4)
+		btn_style.set_border_width_all(1)
+		btn_style.set_corner_radius_all(4)
+		btn_style.set_content_margin_all(8)
+		btn.add_theme_stylebox_override("normal", btn_style)
+		btn.add_theme_stylebox_override("disabled", btn_style)
 		# Disabled rather than hidden when it wouldn't help the currently
 		# steered diver right now (full HP for a potion, full oxygen for a
 		# cell, etc.) - same "show what you can't use yet" convention
@@ -177,6 +203,34 @@ func _refresh_items() -> void:
 		if not world.divers.is_empty():
 			btn.disabled = not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
 		btn.pressed.connect(_on_use_item_pressed.bind(item_id))
+		# A black tile pinned to the button's own right edge, vertically
+		# centered - same "opaque plate behind a number" idea as battle.gd's
+		# _add_power_badge() (a move's power badge), just centered on this
+		# button's right edge instead of its top-right corner, since this
+		# button is a wide horizontal bar rather than a small square tile.
+		var count_tile := PanelContainer.new()
+		count_tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tile_style := StyleBoxFlat.new()
+		tile_style.bg_color = Color(0.0, 0.0, 0.0, 0.85)
+		tile_style.set_corner_radius_all(4)
+		tile_style.set_content_margin_all(2)
+		count_tile.add_theme_stylebox_override("panel", tile_style)
+		count_tile.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+		count_tile.offset_left = -32
+		count_tile.offset_right = -8
+		count_tile.offset_top = -12
+		count_tile.offset_bottom = 12
+		btn.add_child(count_tile)
+
+		var count_label := Label.new()
+		count_label.text = str(count)
+		count_label.add_theme_font_size_override("font_size", 16)
+		count_label.add_theme_color_override("font_color", Color.WHITE)
+		count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		count_tile.add_child(count_label)
+
 		_list.add_child(btn)
 
 func _on_use_item_pressed(item_id: String) -> void:
@@ -190,6 +244,13 @@ func _on_use_item_pressed(item_id: String) -> void:
 func _on_replay_tutorial_pressed() -> void:
 	if world != null:
 		world._replay_tutorial_battle()
+
+# Replay the first special-encounter lesson from Combat Help without needing
+# to discover a sonar site first. This is the Maxilani practice encounter;
+# its tutorial path never grants the guarded item.
+func _on_replay_special_encounter_tutorial_pressed() -> void:
+	if world != null:
+		world._replay_special_encounter_tutorial("attack_up", "angler")
 
 # The F1 walkthrough (world.gd's _unhandled_input(), TutorialContent.
 # GENERAL_PAGES) was only ever reachable by that keybind - this gives it a
@@ -282,6 +343,11 @@ func _refresh_help() -> void:
 		replay_btn.custom_minimum_size = Vector2(340, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
+		var replay_special_btn := Button.new()
+		replay_special_btn.text = "Replay Special Encounter Tutorial"
+		replay_special_btn.custom_minimum_size = Vector2(340, 40)
+		replay_special_btn.pressed.connect(_on_replay_special_encounter_tutorial_pressed)
+		_list.add_child(replay_special_btn)
 		var replay_guide_btn := Button.new()
 		replay_guide_btn.text = "Reopen Tutorial Guide"
 		replay_guide_btn.custom_minimum_size = Vector2(340, 40)
