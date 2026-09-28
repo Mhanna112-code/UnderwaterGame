@@ -42,16 +42,16 @@ func _run() -> void:
 	var diver := Diver.new()
 	diver.model_name = "Prototype_1(1910)"
 	viewport.add_child(diver)
-	# Match the special-encounter stage spacing. This is deliberately closer
-	# than the historical evidence scene so the capture proves a vortex still
-	# approaches when battle staging changes.
+	# Match the special-encounter stage spacing. The Goblin is far enough away
+	# for the wave to visibly travel, yet its final 3 m click window remains
+	# inside the player's bounded aim cone.
 	diver.global_position = Vector3(0.0, 0.0, 2.2)
 	# MODIFIED (added): the grapple target is enemy_actor himself now, not
 	# a group of thrown rocks - required for run() to do anything at all
 	# (see its own guard).
 	var enemy := Goblin.new()
 	viewport.add_child(enemy)
-	enemy.global_position = Vector3(0.6, 0.0, -2.2)
+	enemy.global_position = Vector3(0.6, 0.0, -4.6)
 
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = viewport

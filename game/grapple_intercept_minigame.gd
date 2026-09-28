@@ -648,19 +648,27 @@ func auto_intercept_closest() -> bool:
 # feet - nothing else in this file uses feet, everything else here
 # (GRAPPLE_RANGE, ENEMY_MOVE_MIN/MAX_DIST) is already in meters.
 const FEET_TO_METERS := 0.3048
-# How far short of the enemy/player the vortex starts/ends. This must stay
-# small relative to the special-battle spacing: reserving three metres at
-# both ends after that stage was tightened made the start point closer to the
-# diver than the end point, so the supposed incoming wave looked stationary
-# or travelled away. A capped edge margin guarantees visible enemy-to-diver
-# travel even if another stage layout brings the actors closer together.
-const VORTEX_EDGE_MARGIN := 0.75
+# How far in front of the enemy the vortex begins. The special battle keeps
+# enough stage depth for this to read as a launch rather than an in-place ring.
+const VORTEX_ENEMY_EDGE_MARGIN := 0.75
+# The wave stops this far in front of the player. Its outer targets are 1.5 m
+# from the center, so ending at 3 m keeps every target inside the 70° camera
+# view and the deliberately bounded 0.63-radian pitch limit. It is a gameplay
+# contract: a visible final sphere must remain aimable, not merely dramatic.
+const VORTEX_CLICKABLE_END_DISTANCE := 3.0
+# A close future stage must still leave a perceptible forward motion. This is
+# only a defensive cap; the Battle special-encounter lane is farther away.
+const VORTEX_MIN_TRAVEL_DISTANCE := 1.0
 # How long the whole disc takes to travel from its start point to its end
 # point - separate from how fast the SPHERES move within the disc
 # (VORTEX_SPEED_MIN/MAX below); this is "slowly launch," that is the
 # swirling once it's already moving.
 const VORTEX_TRAVEL_TIME := 5.0
-const VORTEX_BOUNDARY_RADIUS := 3.0
+# The post-collision playfield stays compact as it reaches the player. At the
+# 3 m final click plane, this 1.25 m radius plus a sphere's 0.35 m radius
+# fits fully within both the camera and bounded aim cone; a 3 m boundary did
+# not. The deliberate extra room avoids treating a frame edge as playable.
+const VORTEX_BOUNDARY_RADIUS := 1.25
 const VORTEX_SPHERE_RADIUS := 0.35
 const VORTEX_MIN_SPHERES := 3
 const VORTEX_MAX_SPHERES := 5
@@ -748,13 +756,14 @@ var _vortex_touching: Dictionary = {}
 func launch_vortex() -> void:
 	vortex_count += 1
 	var camera_position := stage_camera.global_position
-	var enemy_distance := enemy_actor.global_position.distance_to(camera_position)
-	# Preserve at least half of the distance as a visible travel lane. The
-	# cap matters if a future stage frames this special encounter unusually
-	# close; `start` still stays on the enemy side of `end` in that case.
-	var edge_margin := minf(VORTEX_EDGE_MARGIN, enemy_distance * 0.25)
-	var start := enemy_actor.global_position - _base_forward * edge_margin
-	var end := camera_position + _base_forward * edge_margin
+	var start := enemy_actor.global_position - _base_forward * VORTEX_ENEMY_EDGE_MARGIN
+	var start_distance := start.distance_to(camera_position)
+	# Keep the ending plane far enough away that its full radius remains within
+	# the player's capped aim cone, while preserving at least a metre of travel
+	# if this minigame is ever staged closer than the combat arena.
+	var end_distance := minf(VORTEX_CLICKABLE_END_DISTANCE, start_distance - VORTEX_MIN_TRAVEL_DISTANCE)
+	end_distance = maxf(0.0, end_distance)
+	var end := camera_position + _base_forward * end_distance
 	_vortex_center = start
 	_vortex_right = _base_forward.cross(Vector3.UP).normalized()
 	_vortex_up = _vortex_right.cross(_base_forward).normalized()
@@ -908,6 +917,38 @@ func _spawn_vortex_sphere(is_yellow: bool) -> void:
 
 func _vortex_world_pos(p2: Vector2) -> Vector3:
 	return _vortex_center + _vortex_right * p2.x + _vortex_up * p2.y
+
+# A bounded look range is intentional. This predicate makes the player-facing
+# guarantee testable: a sphere may only be presented while its center is both
+# on screen and inside that bounded yaw/pitch cone. A small angular margin
+# leaves room for normal mouse imprecision instead of treating the clamp edge
+# as a valid target location.
+func vortex_targets_are_aimable() -> bool:
+	if not _vortex_active:
+		return true
+	for entry in _vortex_spheres:
+		var node := entry.node as Area3D
+		if node == null or not is_instance_valid(node):
+			continue
+		var local := stage_camera.to_local(node.global_position)
+		if local.z >= -0.01 or not stage_camera.is_position_in_frustum(node.global_position):
+			return false
+		var forward_distance := -local.z
+		# Check the outside edge rather than merely the center. The center can
+		# be visible while a large near-camera sphere visibly clips past the
+		# aim or camera boundary.
+		var yaw := atan2(absf(local.x) + VORTEX_SPHERE_RADIUS, forward_distance)
+		var pitch := atan2(absf(local.y) + VORTEX_SPHERE_RADIUS, sqrt(local.x * local.x + local.z * local.z))
+		var viewport_size := stage_root.size
+		var half_vertical_fov := deg_to_rad(stage_camera.fov) * 0.5
+		var half_horizontal_fov := atan(tan(half_vertical_fov) * viewport_size.x / maxf(1.0, viewport_size.y))
+		# Keep a 0.08-radian (~4.6°) buffer from both frame edges as well as
+		# from the mouse-look clamp. A target on either boundary is not fair.
+		var allowed_yaw := minf(MAX_YAW, half_horizontal_fov) - 0.08
+		var allowed_pitch := minf(MAX_PITCH, half_vertical_fov) - 0.08
+		if yaw > allowed_yaw or pitch > allowed_pitch:
+			return false
+	return true
 
 # MODIFIED: was _process() - get_overlapping_areas() (see _update_vortex())
 # only reflects newly-updated overlap state once per PHYSICS tick, not
