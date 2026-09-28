@@ -14,19 +14,54 @@ const TARGET_HEIGHT := 1.6
 # the same forward axis.
 const COMBAT_FRONT_AXIS := Vector3.FORWARD
 
-# No grow_* here, and no independent base spread either anymore - a grunt's
-# stats are derived straight from the party's own current stats in
-# make_stats() (battle.gd hands it the party's average CombatantStats), not
-# a separate curve that could drift away from what the party can actually
-# do. floor_stats is the only thing still fixed here: a bare-minimum shape
-# for the extreme edge case of an empty/all-zero reference (shouldn't
-# happen in practice - there's always at least one living party member by
-# the time a Battle exists - but make_stats() has to return *something*
-# sane rather than a grunt with 0 evasion/accuracy/agility).
-const FLOOR_STATS := {
+# MODIFIED (changed): a grunt's stats used to be derived from the party's
+# own current stats (battle.gd hands make_stats() the party's average
+# CombatantStats) plus a random 8-35% "edge" on top, so no two fights
+# against the same enemy type played out quite the same and difficulty
+# implicitly tracked the party's own growth. Replaced with Angler's own
+# fixed, real stats instead - every fight against a plain Angler now uses
+# exactly these numbers, no scaling and no per-fight variance.
+const BASE_STATS := {
+	"hp": 5, "strength": 2, "defense": 0, "agility": 2,
+	"evasion": 1, "accuracy": 3,
+}
+
+# Dev-only revert switch, same --flag/?query=1 convention world.gd's own
+# playtest routes use (_boss_playtest_requested() and friends) - brings
+# back the exact old floor+random-edge formula below instead of BASE_STATS/
+# SwordDuelist.DUELIST_BASE_STATS, purely so old vs. new balance can be
+# compared side by side while testing. Off by default; a real player always
+# gets the new fixed stats.
+static func legacy_scaling_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--legacy-enemy-scaling"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("legacy_enemy_scaling=1")
+	return false
+
+# The exact floor/edge formula every enemy used before BASE_STATS/
+# DUELIST_BASE_STATS replaced it - kept only for legacy_scaling_requested().
+const LEGACY_FLOOR_STATS := {
 	"hp": 15, "strength": 3, "defense": 1, "agility": 3,
 	"evasion": 2, "accuracy": 3,
 }
+const LEGACY_MIN_EDGE := 1.08
+const LEGACY_MAX_EDGE := 1.35
+
+func _legacy_edge() -> float:
+	return randf_range(LEGACY_MIN_EDGE, LEGACY_MAX_EDGE)
+
+func _legacy_stats_from(ref: CombatantStats) -> CombatantStats:
+	var s := CombatantStats.new()
+	s.hp_max = maxi(1, int(round(maxf(float(LEGACY_FLOOR_STATS.hp), float(ref.hp_max)) * _legacy_edge())))
+	s.strength = maxi(1, int(round(maxf(float(LEGACY_FLOOR_STATS.strength), float(ref.strength)) * _legacy_edge())))
+	s.defense = maxi(0, int(round(maxf(float(LEGACY_FLOOR_STATS.defense), float(ref.defense)) * _legacy_edge())))
+	s.agility = maxi(1, int(round(maxf(float(LEGACY_FLOOR_STATS.agility), float(ref.agility)) * _legacy_edge())))
+	s.evasion = maxi(0, int(round(maxf(float(LEGACY_FLOOR_STATS.evasion), float(ref.evasion)) * _legacy_edge())))
+	s.accuracy = maxi(0, int(round(maxf(float(LEGACY_FLOOR_STATS.accuracy), float(ref.accuracy)) * _legacy_edge())))
+	s.fill()
+	return s
 
 # XP a win pays out, before level scaling (see make_stats). Read by
 # game/battle.gd's _win() as enemy_actor.xp_reward - a grunt matched to a
@@ -90,21 +125,6 @@ func display_name() -> String:
 func primary_attack_clip() -> String:
 	return "attack)bite"
 
-# Always at least a little stronger than ref on every stat, never weaker
-# and never exactly equal - a fight should never quietly be easier than the
-# party's own numbers just because the roll happened to land low. _edge()
-# is one-sided (always > 1.0), independently rolled per stat rather than
-# one shared multiplier for the whole grunt, so a pack of several still
-# doesn't read as identical clones - one might land a bit tougher, another
-# a bit more accurate, but never a bit weaker.
-const MIN_EDGE := 1.08
-const MAX_EDGE := 1.35
-
-# Fresh stats for one fight, rolled off ref (the party's average
-# CombatantStats - see battle.gd's _build_stage(), which builds that
-# average across every living party member before calling this). Enemies
-# don't persist between battles, so unlike Diver.stats this isn't built
-# once and kept - battle.gd calls this each time it stands a grunt up.
 # This one stands its model's feet on its own origin (see _ready()'s
 # model.position.y line), which is the opposite of what diver.gd does. Both
 # conventions are fine; assuming either one is not. See Diver.head_offset().
@@ -114,21 +134,47 @@ func head_offset() -> float:
 func foot_offset() -> float:
 	return 0.0
 
+# `ref` (the party's average CombatantStats, still passed by battle.gd's
+# _build_stage()) only matters at all when legacy_scaling_requested() is on
+# - see BASE_STATS' own comment for why it's otherwise unused. Kept as a
+# parameter anyway so this stays a drop-in override for SwordDuelist.
+# make_stats() and a stable call signature for battle.gd.
 func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
+	if legacy_scaling_requested():
+		return _legacy_stats_from(ref)
+	return _stats_from(BASE_STATS)
 
+# A per-stat 5-25% boost on top of `base`, independently rolled per stat -
+# same "no two fights play out quite the same, one stat might land tougher
+# than another" flavor the old floor+edge formula had, just a smaller,
+# tighter range now that `base` is each enemy's own real stats rather than
+# a bare-minimum floor under the party's own (usually much higher) numbers.
+const BOOST_MIN := 1.05
+const BOOST_MAX := 1.25
+func _boost() -> float:
+	return randf_range(BOOST_MIN, BOOST_MAX)
+
+# Shared by SwordDuelist's own make_stats() override, so both "read a fixed
+# stat block, boost it, and remember the un-boosted floor" only exists once.
+# stat_floor is `base` itself, unboosted - a debuff (Weaken/Slow/...) can
+# knock this fight's boosted starting value back down, but never past the
+# species' own real stat (see battle.gd's _apply_debuff()).
+func _stats_from(base: Dictionary) -> CombatantStats:
 	var s := CombatantStats.new()
-	s.hp_max = maxi(1, int(round(maxf(float(FLOOR_STATS.hp), float(ref.hp_max)) * _edge())))
-	s.strength = maxi(1, int(round(maxf(float(FLOOR_STATS.strength), float(ref.strength)) * _edge())))
-	s.defense = maxi(0, int(round(maxf(float(FLOOR_STATS.defense), float(ref.defense)) * _edge())))
-	s.agility = maxi(1, int(round(maxf(float(FLOOR_STATS.agility), float(ref.agility)) * _edge())))
-	s.evasion = maxi(0, int(round(maxf(float(FLOOR_STATS.evasion), float(ref.evasion)) * _edge())))
-	s.accuracy = maxi(0, int(round(maxf(float(FLOOR_STATS.accuracy), float(ref.accuracy)) * _edge())))
+	s.hp_max = int(round(float(base.hp) * _boost()))
+	s.strength = int(round(float(base.strength) * _boost()))
+	s.defense = int(round(float(base.defense) * _boost()))
+	s.agility = int(round(float(base.agility) * _boost()))
+	s.evasion = int(round(float(base.evasion) * _boost()))
+	s.accuracy = int(round(float(base.accuracy) * _boost()))
 	s.fill()
+	s.stat_floor = {
+		"strength": int(base.strength), "defense": int(base.defense),
+		"agility": int(base.agility), "evasion": int(base.evasion),
+		"accuracy": int(base.accuracy),
+	}
 	return s
-
-func _edge() -> float:
-	return randf_range(MIN_EDGE, MAX_EDGE)
 
 # Keys are semantic rather than raw FBX paths. Glassgoat's non-humanoid rig
 # names its moves differently from the retired Goblin: swim loop, Bite,

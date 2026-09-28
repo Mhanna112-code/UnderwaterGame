@@ -21,6 +21,15 @@ extends Resource
 # pool refills at the start of this combatant's next turn.
 var evasion_current: int = 5
 
+# Per-stat debuff floor - empty for a Diver (permanent debuffs only ever
+# target enemies today, see battle.gd's _apply_debuff()), populated for an
+# enemy with its own species BASE_STATS (Goblin._stats_from()). A stat can
+# be debuffed down to this floor and no further, even though the enemy's
+# actual starting value this fight is usually higher (make_stats()'s own
+# 5-25% roll on top of it) - the species' real base stays a hard bottom
+# regardless of how much of that roll a Weaken/Slow strips back off.
+var stat_floor: Dictionary = {}
+
 # Status entries are {level, turns}. A turns value of 0 means persistent for
 # the battle (Bleed); positive durations tick after this combatant's turn.
 var statuses: Dictionary = {}

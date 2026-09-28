@@ -206,10 +206,9 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 		roster_rng = RandomNumberGenerator.new()
 		roster_rng.randomize()
 	var enemies: Array = []
-	var reference := _average(party)
 	for i in range(enemy_count):
 		var enemy_id := String(enemy_ids[i]) if i < enemy_ids.size() else EnemyRoster.id_for_roll(roster_rng.randf())
-		enemies.append(_enemy(reference, rng, enemy_id))
+		enemies.append(_enemy(enemy_id))
 
 	var rounds := 0
 	while not _living(party).is_empty() and not _living(enemies).is_empty() and rounds < MAX_ROUNDS:
@@ -394,28 +393,22 @@ func _party() -> Array:
 		out.append({"kind": "party", "model": String(model_name), "stats": stats})
 	return out
 
-func _average(party: Array) -> CombatantStats:
-	var avg := CombatantStats.new()
-	var living := _living(party)
-	var pool: Array = living if not living.is_empty() else party
-	var n := float(pool.size())
-	avg.hp_max = int(round(pool.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).hp_max, 0) / n))
-	avg.strength = int(round(pool.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).strength, 0) / n))
-	avg.defense = int(round(pool.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).defense, 0) / n))
-	avg.agility = int(round(pool.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).agility, 0) / n))
-	avg.evasion = int(round(pool.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).evasion, 0) / n))
-	avg.accuracy = int(round(pool.reduce(func(sum: int, e: Dictionary) -> int: return sum + (e.stats as CombatantStats).accuracy, 0) / n))
-	avg.fill()
-	return avg
-
-func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: String) -> Dictionary:
+# MODIFIED (changed): enemies used to be scaled off the party's own average
+# stats (_average() above, now removed - nothing else called it) plus a
+# random edge, mirroring Goblin.make_stats()'s old formula so this gate
+# could never silently drift from what a real fight actually does. Goblin/
+# SwordDuelist now return fixed, real stats instead (see their own
+# BASE_STATS), so this mirrors that instead - reading each enemy's real
+# stat block straight off its own class rather than deriving anything.
+func _enemy(enemy_id: String) -> Dictionary:
+	var base: Dictionary = SwordDuelist.DUELIST_BASE_STATS if enemy_id == "swordfish_duelist" else Goblin.BASE_STATS
 	var stats := CombatantStats.new()
-	stats.hp_max = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.strength = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.defense = maxi(0, int(round(maxf(float(Goblin.FLOOR_STATS.defense), float(reference.defense)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.agility = maxi(1, int(round(maxf(float(Goblin.FLOOR_STATS.agility), float(reference.agility)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.evasion = maxi(0, int(round(maxf(float(Goblin.FLOOR_STATS.evasion), float(reference.evasion)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-	stats.accuracy = maxi(0, int(round(maxf(float(Goblin.FLOOR_STATS.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+	stats.hp_max = int(base.hp)
+	stats.strength = int(base.strength)
+	stats.defense = int(base.defense)
+	stats.agility = int(base.agility)
+	stats.evasion = int(base.evasion)
+	stats.accuracy = int(base.accuracy)
 	stats.fill()
 	return {"kind": "enemy", "enemy_id": enemy_id, "stats": stats}
 
