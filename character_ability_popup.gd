@@ -33,6 +33,12 @@ var _wasd_texture: ImageTexture = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# This autoload Control stays visible for the lifetime of the game; only
+	# its inner panel is hidden between uses. Ignore input on the root so its
+	# centered 600x350 rect cannot swallow world mouse-look or IntroCrawl's
+	# click-to-skip events while the panel is hidden. The panel and its child
+	# buttons still receive input when the modal is open.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	(%PopupClose as Button).pressed.connect(_on_next_pressed)
 	_style_panel()
 	_build_close_button()
@@ -318,6 +324,13 @@ func _refresh_media(ability_id: String) -> void:
 	var frame := %MediaFrame as PanelContainer
 	for child in frame.get_children():
 		child.queue_free()
+	# Pages such as Inventory have no clip by design. Hide the entire media
+	# frame instead of showing the generic "Clip coming soon" placeholder,
+	# which is reserved for abilities that are expected to have media.
+	if ability_id.is_empty():
+		frame.hide()
+		return
+	frame.show()
 	var path := String(TutorialContent.ABILITY_MEDIA.get(ability_id, ""))
 	if path != "" and ResourceLoader.exists(path):
 		if path.get_extension() == "ogv" and ENABLE_VIDEO_CLIPS:
@@ -325,6 +338,24 @@ func _refresh_media(ability_id: String) -> void:
 			var video_stream := VideoStreamTheora.new()
 			video_stream.file = path
 			player.stream = video_stream
+			if ability_id == "grapple":
+				# The Grapple recording has pillarbox bars encoded into the video
+				# itself. VideoStreamPlayer.expand scales the full source frame,
+				# including those black margins, so crop the unused sides before
+				# drawing it into MediaFrame.
+				var crop_shader := Shader.new()
+				crop_shader.code = """
+				shader_type canvas_item;
+				uniform float side_crop = 0.18;
+				void fragment() {
+					vec2 source_uv = UV;
+					source_uv.x = mix(side_crop, 1.0 - side_crop, UV.x);
+					COLOR = texture(TEXTURE, source_uv) * COLOR;
+				}
+				"""
+				var crop_material := ShaderMaterial.new()
+				crop_material.shader = crop_shader
+				player.material = crop_material
 			# expand=true scales the video to fill whatever rect it's given,
 			# with no aspect-ratio awareness at all (unlike TextureRect, which
 			# has STRETCH_KEEP_ASPECT_CENTERED below) - filling %MediaFrame's
