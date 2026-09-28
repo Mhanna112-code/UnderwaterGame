@@ -78,24 +78,34 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 	var has_status := false
 	var damage := CombatRules.formula_value(stats, move.get("formula", {}))
 	if damage > 0:
-		parts.append("%d Damage%s" % [damage, " all" if String(move.get("target", "")) == "all_enemies" else ""])
+		# MODIFIED (changed): was "%d Damage" - a number here duplicated the
+		# same preview _preview_raw_power()/_selected_move_power already
+		# show once a move is actually selected, and there's no fixed
+		# "power" badge for a formula move to check it against (see
+		# _move_base_power() - every Scuba formula is pure stat
+		# coefficients, no flat base term). "Strength Damage" names WHICH
+		# stat drives it instead of a number that's really a preview against
+		# whoever's turn it happens to be; the full per-move breakdown
+		# (including Axe Kick's added Accuracy) is one hover away in the
+		# move's own tooltip.
+		parts.append("Strength Damage%s" % (" all" if String(move.get("target", "")) == "all_enemies" else ""))
 	for effect_value in move.get("effects", []):
 		var effect := effect_value as Dictionary
 		match String(effect.get("kind", "")):
 			"reduce_evasion":
 				parts.append("EVA -%d" % CombatRules.formula_value(stats, effect.get("amount", {})))
 			"status":
-				# "Status Effect" is intentional wording, not just flavor -
-				# it's the visible cue a status-inflicting move carries one
-				# (the hover tooltip itself is attached by move data, not by
-				# parsing this string - see battle.gd's _move_tooltip_text()).
-				# Duration is deliberately left off here: the fixed-width
-				# move button has no room for "Status Effect: 2 Bleed for 3
-				# turns" without clipping, and the exact number is already
-				# one hover away in that same tooltip.
+				# MODIFIED (changed): was "Status Effect: %d %s" - the
+				# "Status Effect:" prefix was redundant with the status name
+				# itself (Bleed/Blindness/... already reads as a status on
+				# sight) and just ate into the fixed-width button's limited
+				# room. Duration is still deliberately left off here: no
+				# room for "2 Bleed for 3 turns" without clipping, and the
+				# exact number is one hover away in the move's own tooltip
+				# (see battle.gd's _move_tooltip_text()).
 				has_status = true
 				var level := CombatRules.formula_value(stats, effect.get("level", {}))
-				parts.append("Status Effect: %d %s" % [level, String(effect.get("status", "Effect")).capitalize()])
+				parts.append("%d %s" % [level, String(effect.get("status", "Effect")).capitalize()])
 			"self_temporary":
 				# Dropped from the button entirely when a "status" part is
 				# also present on the same move (Flash Blast) - even with
@@ -129,18 +139,17 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 # formulas" toggle to fall back on for a numeric preview - now that that
 # control is gone entirely (removed, not just hidden), the default view has
 # to be complete on its own here too, not just for the formula-based Scuba
-# moves above. Mirrors _preview_raw_power()'s own power+Strength math and
-# Battle._apply_debuff()'s flat amount, so the number shown here always
-# matches what the move badge/actual hit will do. The authored flavor
-# `hint` (accuracy/weight feel a bare number can't convey, e.g. "Very heavy,
-# slow") is kept as a trailing detail rather than dropped.
+# moves above. Battle._apply_debuff()'s own flat amount still shows for a
+# debuff move; a power-based attack's own combined power+Strength number no
+# longer does (see the elif this replaced) - the power badge on the button
+# already shows the move's own raw power without doing that math for the
+# player. The authored flavor `hint` (accuracy/weight feel a bare number
+# can't convey, e.g. "Very heavy, slow") is kept as a trailing detail.
 static func _resolved_legacy_hint(stats: CombatantStats, move: Dictionary) -> String:
 	var parts: Array[String] = []
 	var debuff := String(move.get("debuff", ""))
 	if debuff != "":
 		parts.append("%s -%d" % [debuff.left(3).to_upper(), int(move.get("amount", 0))])
-	elif int(move.get("power", 0)) > 0:
-		parts.append("%d Damage" % (int(move.power) + stats.strength))
 	# Flavor text is skipped for every debuff move - every one of them
 	# ("Lowers a target's defense", "Lowers accuracy", ...) just restates
 	# the "XXX -N" part already added above in prose, so it was pure length
