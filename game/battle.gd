@@ -1006,6 +1006,12 @@ func _build_stage() -> void:
 	light.rotation_degrees = Vector3(-45, -25, 0)
 	light.light_color = Color(0.75, 0.9, 1.0)
 	vp.add_child(light)
+	# Tethys has a purpose-built enclosed room that was supplied separately
+	# from the ordinary open-water encounters. It is intentionally boss-only:
+	# adding its walls to every fight would visually claim every Angler or
+	# Swordfish encounter happens in the broken lab.
+	if boss_encounter:
+		vp.add_child(TethysLabArena.new())
 
 	var cam := Camera3D.new()
 	cam.fov = 70.0
