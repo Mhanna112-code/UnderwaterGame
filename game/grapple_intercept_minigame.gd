@@ -738,9 +738,10 @@ var _vortex_touching: Dictionary = {}
 # player over VORTEX_TRAVEL_TIME. `start`/`end` are both measured along
 # _base_forward (the same fixed "dead ahead" direction _vortex_right/
 # _vortex_up are already built from, not the player's LIVE aim), pulled
-# in from each end by VORTEX_LAUNCH_OFFSET so it visibly leaves the
+# in from each end by a capped edge margin so it visibly leaves the
 # enemy's side and arrives at the player's rather than starting/ending
-# exactly on top of either model. enemy_actor.global_position is read
+# exactly on top of either model. The cap preserves a travel lane even
+# when stage spacing is tightened. enemy_actor.global_position is read
 # ONCE here, at launch - if he's mid-drift (_drift_enemy()) this just
 # takes wherever he happens to be at that instant as the launch point,
 # it doesn't track him afterward.
