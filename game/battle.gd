@@ -1109,7 +1109,11 @@ func _build_stage() -> void:
 		return
 	for i in range(count):
 		var g: Goblin = _guardian_actor() if guardian_encounter else _ordinary_actor()
-		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, -2.2 - _spread(i, count, 0.5))
+		# Special encounters use the deliberately deeper lane selected above.
+		# Grapple Intercept needs that depth to read as an incoming wave rather
+		# than a ring spinning near the player; swap encounters already use the
+		# same spacing principle for their incoming portraits.
+		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, enemy_z - _spread(i, count, 0.5))
 		vp.add_child(g)
 		# Same hp<=0-skips-the-actor case as the boss branch above.
 		var party_centre := Vector3.ZERO
@@ -4574,14 +4578,9 @@ func _swap_tutorial_special_diver(new_model_name: String, intro_caption: String)
 	_start_party_turn(entry)
 
 func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _target_stats: CombatantStats) -> void:
-	# MODIFIED (changed): "...mentioned at the top of the screen" was
-	# referring to GrappleInterceptMinigame's own floating _hint Label,
-	# removed along with every other Control-based text overlay this
-	# minigame used to show (title/static hint/progress) - see its own
-	# _ready() comment. The per-wave "which color is safe" callout that
-	# hint used to carry moves into the battle log too now, via
-	# wave_started below, one line per wave instead of a screen overlay.
-	_log("%s launches a rock swarm. Grapple the weak spots! Move the mouse to aim, left click to grapple." % String(actor.display_name))
+	# The safe color is announced by the minigame's wave_started signal.
+	# This first line establishes the actual objective before its first wave.
+	_log("%s launches a colored vortex. Grapple the instructed color before it reaches you!" % String(actor.display_name))
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = _stage_vp
@@ -4609,7 +4608,7 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _tar
 	minigame.queue_free()
 	(target.actor as Node3D).visible = true
 	_restore_stage_camera()
-	_log("%s intercepts %d/%d rocks%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
+	_log("%s clears %d/%d vortex targets%s" % [String(target.display_name), int(score[0]), int(score[1]), " without damage." if total_taken == 0 else " and takes %d damage." % total_taken])
 	await get_tree().create_timer(0.45).timeout
 	# MODIFIED (added): passes along whether this was a flawless run (every
 	# rock intercepted, none reaching the diver) so a perfect clear
