@@ -21,7 +21,11 @@ const TURN_AT := 70
 const MEASURE_AT := 130
 const LET_GO_AT := 135
 const MOUSE_LOOK_AT := 45
-const MOUSE_LOOK_CHECK_AT := 60
+# `_move_camera()` runs on physics frames and deliberately lerps to its new
+# orbit.  Idle frames in a headless run can advance far faster than physics
+# time, so a frame-count check samples the old camera position and mistakes
+# its intended smoothing for a hard-coded angle.
+const MOUSE_LOOK_SETTLE_SECONDS := 0.40
 # After letting go the gate waits on the clips rather than on a frame count.
 # A headless iteration takes about a millisecond and the End clip is a second
 # long, so "a few hundred frames" is nowhere near enough real time for it to
@@ -36,6 +40,8 @@ var start: Array = []
 var findings: Array = []
 var camera_before_mouse := Vector3.ZERO
 var yaw_before_mouse := 0.0
+var mouse_look_dispatched_ms := 0
+var mouse_look_checked := false
 
 # Every clip the player's diver plays, in order, with consecutive repeats
 # collapsed. The swim clips ship as Start / Mid (Loop) / End, and playing
@@ -90,10 +96,13 @@ func _process(_dt: float) -> bool:
 		var motion := InputEventMouseMotion.new()
 		motion.relative = Vector2(-150.0, 0.0)
 		Input.parse_input_event(motion)
+		mouse_look_dispatched_ms = Time.get_ticks_msec()
 		return false
 
-	if frames == MOUSE_LOOK_CHECK_AT:
+	if not mouse_look_checked and mouse_look_dispatched_ms > 0 \
+			and Time.get_ticks_msec() - mouse_look_dispatched_ms >= int(MOUSE_LOOK_SETTLE_SECONDS * 1000.0):
 		_check_mouse_look()
+		mouse_look_checked = true
 		return false
 
 	if frames == TURN_AT:
