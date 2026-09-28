@@ -38,6 +38,9 @@ func _run() -> void:
 			if not entry.has("actor") or not is_instance_valid(entry.actor):
 				continue
 			var actor := entry.actor as Node3D
+			var foot_offset := float(actor.call("foot_offset")) if actor.has_method("foot_offset") else 0.0
+			_expect(is_zero_approx(actor.position.y + foot_offset),
+				"LAB FLOOR CLIP: %s's visible feet are at y=%.3f instead of the room floor" % [String(entry.display_name), actor.position.y + foot_offset])
 			var radius := maxf(0.0, float(actor.get("radius")))
 			var height := maxf(0.0, float(actor.get("height")))
 			_expect(arena.contains_combatant(actor.position, radius, height),

@@ -161,7 +161,7 @@ func _run() -> void:
 		"BOSS ENCOUNTER: Mermaid Freak incorrectly replaced/added a grunt")
 	var battle_boss := battle.enemies[0].actor as TethysBoss
 	var party_centre := _party_centre(battle.party)
-	var toward_party := (party_centre - battle_boss.global_position).normalized()
+	var toward_party := _level_direction(battle_boss.global_position, party_centre)
 	# Tethys: her imported face points along local +Z, unlike the humanoid
 	# actors. At encounter start her visible front must face the party.
 	_expect(battle_boss.basis.z.normalized().dot(toward_party) > 0.95,
@@ -252,9 +252,17 @@ func _party_centre(entries: Array) -> Vector3:
 func _best_party_facing_dot(actor: Node3D, entries: Array) -> float:
 	var best := -1.0
 	for entry in entries:
-		var toward := ((entry.actor as Node3D).global_position - actor.global_position).normalized()
+		var toward := _level_direction(actor.global_position, (entry.actor as Node3D).global_position)
 		best = maxf(best, actor.basis.z.normalized().dot(toward))
 	return best
+
+# Tethys deliberately faces on the horizontal plane (see
+# TethysBoss.face_toward()). A grounded party is higher than her visual root,
+# which must not turn a correct yaw into a false failing three-dimensional dot.
+func _level_direction(from: Vector3, to: Vector3) -> Vector3:
+	var delta := to - from
+	delta.y = 0.0
+	return delta.normalized()
 
 func _find_skeleton(node: Node) -> Skeleton3D:
 	if node is Skeleton3D:

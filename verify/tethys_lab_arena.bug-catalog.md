@@ -34,6 +34,7 @@ remain open water.
 | 3 | The shell is added as decoration only and no floor/wall/ceiling collision volume exists. | Medium — future physical movement ignores the room completely. | Delivered FBX contains mesh nodes but zero collision shapes. | structural invariant | fixed |
 | 4 | A new checkout parses the arena before Godot imports the new FBX, making the whole project fail to compile. | High — first run is broken. | A static FBX preload produced this exact failure during implementation. | captured import-path contract | fixed |
 | 5 | Adding the boss room leaks it into ordinary Angler/Swordfish encounters. | Medium — environmental fiction becomes incorrect across most battles. | Battle builds one shared stage path and needs an explicit boss branch. | decision-table integration | fixed |
+| 6 | A Diver whose mesh is centred on its origin is placed at the room floor origin, leaving its visible feet below the floor. | High — the requested room visibly swallows the party even though collision-volume tests pass. | Divers and enemy models deliberately use different root/foot conventions. | captured visual-floor invariant | caught |
 
 ## Test plan
 
@@ -82,6 +83,15 @@ remain open water.
   - Could this pass for wrong-but-stable output? No; both rows observe the actual stage node tree.
   - Could this fail under a behavior-preserving refactor? No; it does not depend on the branch's internal arrangement.
 
+### Bug #6 — party clips into the visible floor
+
+- **Test type:** Captured visual-floor invariant.
+- **Description string:** `Battle: every Tethys-room combatant's visible feet meet the floor — guards against centred Diver roots sinking below y=0`
+- **What it catches:** placing a Diver at y=0 without compensating for its public `foot_offset()`, or later changing an actor's origin convention without updating grounded staging.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; it observes the public foot-plane contract, not a model node or a fixed offset.
+  - Could this fail under a behavior-preserving refactor? No; any grounded room must keep visible feet on its floor regardless of internal formation logic.
+
 ## Skipped
 
 - Final prop placement from `Broken_Office.fbx` — its delivered offsets do not compose with the room shell; this needs Glass Goat's layout direction rather than automatic placement.
@@ -90,7 +100,7 @@ remain open water.
 
 ## Post-write evaluation
 
-- **Bugs caught:** static FBX preload failed on first import; replaced with runtime load.
+- **Bugs caught:** static FBX preload failed on first import; replaced with runtime load. The first arena fit test also missed that Diver origins are centred while their visible feet are below the origin; the new floor-plane test catches that real defect.
 - **Bugs characterized:** the delivered tall shell, all six collision boundaries, real production boss/party formation, party swing lanes, and the boss/ordinary stage split all pass.
 - **Bugs discovered during writing:** `Broken_Office.fbx` prop transforms are not safe to combine with the centred boss stage; it is deliberately deferred rather than making the review room look accidentally assembled.
 - **Tests removed:** none.
