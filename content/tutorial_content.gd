@@ -21,7 +21,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Every Other Stat",
-		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks. What Strength, Defense, Agility, Accuracy, and Evasion each actually do is covered in the Stats section of the Combat Help tab in the Esc menu out in the world - and often right on the attack itself, in its own hover tooltip.",
+		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.",
 	},
 	{
 		"title": "Special Encounters",
@@ -135,17 +135,41 @@ const FIRST_BATTLE_MOVE_NOTES := {
 }
 
 # Where a short demo clip/image for each ability lives, once one exists.
-# The carousel (special_encounter_prompt.gd) checks ResourceLoader.exists()
-# and falls back to a plain placeholder frame if the file isn't there yet -
-# these paths can be filled in one ability at a time with no other code
-# changes needed. .ogv plays as video (Godot's built-in VideoStreamPlayer
-# format); anything else is loaded as a still image.
+# character_ability_popup.gd's own Esc-menu reference carousel (every
+# ability, in or out of combat) checks ResourceLoader.exists() and falls
+# back to a plain placeholder frame if the file isn't there yet - these
+# paths can be filled in one ability at a time with no other code changes
+# needed. .ogv plays as video (Godot's built-in VideoStreamPlayer format);
+# anything else is loaded as a still image.
+# MODIFIED (changed): this used to be one shared ABILITY_MEDIA table, its
+# "swap"/"grapple"/"shockwave" entries pointed to by special_encounter_
+# prompt.gd's own diver-choice carousel and battle.gd's in-fight tutorial
+# demo frame too - the same clip playing in three different contexts (a
+# general reference page, a pre-fight choice screen, and mid-battle) made
+# it unclear which folder's own file a change was even supposed to affect.
+# Split into this table (character_ability_popups/) and SPECIAL_ENCOUNTER_
+# MEDIA below (special_encounters/) - each side now owns its own copy of
+# a clip even where the content starts out identical (e.g. both still have
+# their own "swap"), so replacing one never silently changes the other.
 const ABILITY_MEDIA := {
-	"world": "res://media/tutorials/WorldMap.ogv",
-	"swap": "res://media/tutorials/swap_demo.ogv",
-	"sonar": "res://media/tutorials/sonar_demo.ogv",
-	"grapple": "res://media/tutorials/grapple_demo.ogv",
-	"shockwave": "res://media/tutorials/shockwave_demo.ogv",
+	"world": "res://media/tutorials/character_ability_popups/WorldMap.ogv",
+	"swap": "res://media/tutorials/character_ability_popups/swap_demo.ogv",
+	"sonar": "res://media/tutorials/character_ability_popups/sonar_demo.ogv",
+	"grapple": "res://media/tutorials/character_ability_popups/grapple_demo.ogv",
+	"shockwave": "res://media/tutorials/character_ability_popups/shockwave_demo.ogv",
+}
+
+# special_encounter_prompt.gd's diver-choice carousel (shown before a real
+# special encounter starts) and battle.gd's own in-fight demo frame (shown
+# by the special-encounter tutorial while explaining each diver's minigame)
+# - see ABILITY_MEDIA's own comment for why this is a separate table now
+# rather than the same one. Only the three diver minigames apply here;
+# "world" (the world map) and "sonar" (an out-of-combat passive) have
+# nothing to do with a special encounter, so neither has an entry.
+const SPECIAL_ENCOUNTER_MEDIA := {
+	"swap": "res://media/tutorials/special_encounters/swap_demo.ogv",
+	"grapple": "res://media/tutorials/special_encounters/grapple_demo.ogv",
+	"shockwave": "res://media/tutorials/special_encounters/shockwave_demo.ogv",
 }
 
 # One entry per status condition a move can apply - shared by the Combat
@@ -161,7 +185,7 @@ const ABILITY_MEDIA := {
 const STATUS_CONDITIONS: Array[Dictionary] = [
 	{
 		"title": "Blindness",
-		"body": "Lowers an enemy's Agility, Accuracy, and Defense all by the same amount at once, for a few turns. Lower Accuracy means their own attacks miss more; lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three - a 4/3/2 enemy becomes 2/1/0 - lasting as many turns as the caster's own Accuracy. Unlike Bleed, it does not stack: recasting it while already active does not add to the penalty, only refreshes the remaining turns if the new cast would last longer.",
+		"body": "Flash Blast subtracts 2 from an enemy's Agility, Accuracy, and Defense, lasting as many turns as the caster's own Accuracy. Unlike Bleed, it does not stack: recasting it while already active does not add to the penalty, only refreshes the remaining turns if the new cast would last longer.",
 	},
 	{
 		"title": "Stun",
