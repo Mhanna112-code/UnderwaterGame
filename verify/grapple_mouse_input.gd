@@ -50,6 +50,13 @@ func _run() -> void:
 		return
 	await physics_frame
 	_check(minigame.vortex_targets_are_aimable(), "grapple_mouse_input: generated target fits bounded mouse look — guards against off-cone targets")
+	var web_safe := _first_target(minigame, true)
+	_check(web_safe != null, "grapple_mouse_input: safe target exists for web direct-click ray — guards against empty browser objective")
+	if web_safe != null:
+		var web_safe_id := web_safe.get_instance_id()
+		await _web_point_and_click(minigame, web_safe)
+		_check(not _contains_target_id(minigame, web_safe_id), "grapple_mouse_input: rendered web point resolves its safe sphere — guards against stage-to-ray coordinate drift")
+		_check(minigame._hits == 1, "grapple_mouse_input: rendered web point increments the safe-hit score — guards against visual-only browser clicks")
 
 	var wrong := _first_target(minigame, false)
 	_check(wrong != null, "grapple_mouse_input: wrong-color target exists — guards against invalid wave composition")
@@ -133,6 +140,20 @@ func _aim_and_click(minigame: GrappleInterceptMinigame, target: Area3D) -> void:
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	Input.parse_input_event(click)
+	await physics_frame
+
+func _web_point_and_click(minigame: GrappleInterceptMinigame, target: Area3D) -> void:
+	# Reconstruct the exact pointer coordinate a browser user sees, then call
+	# the production web handler. This is the inverse stage-rect transform in
+	# _grapple_at_web_pointer(), and catches a visual target that is not actually
+	# raycastable because the SubViewport has been stretched or repositioned.
+	var projected := minigame.stage_camera.unproject_position(target.global_position)
+	var rect := minigame.stage_rect
+	var pointer := rect.position + Vector2(
+		projected.x / minigame.stage_root.size.x * rect.size.x,
+		projected.y / minigame.stage_root.size.y * rect.size.y
+	)
+	minigame._grapple_at_web_pointer(pointer)
 	await physics_frame
 
 func _check(condition: bool, description: String) -> void:

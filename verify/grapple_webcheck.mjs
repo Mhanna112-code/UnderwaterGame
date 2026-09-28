@@ -137,14 +137,27 @@ await checkpoint('targets');
 await click(165, 664, 4200); // Angler target, then its special attack and vortex setup
 await checkpoint('vortex-before-start');
 
-await click(640, 365, 1800); // visible-cursor start button, then title hold
+// The first canvas click gives the embedded Godot surface focus in Chromium;
+// the second activates the visible button. If focus was already held, the
+// second lands during the inert title hold and cannot affect the wave.
+await click(640, 360, 120);
+await click(640, 360, 800); // visible-cursor start button, then title hold
 const pointerRequests = await page.evaluate(() => window.__pointerLockRequests || []);
-const blobs = await coloredSphereBlobs();
+let blobs = [];
+let stageBlobs = [];
+// The first sphere frame follows a short in-game title hold. Poll the render
+// result rather than relying on an arbitrary machine-dependent delay.
+for (let attempt = 0; attempt < 12; attempt++) {
+	blobs = await coloredSphereBlobs();
+	stageBlobs = blobs.filter(blob => blob.x > 520 && blob.x < 760 && blob.y > 180 && blob.y < 360 && blob.pixels >= 20);
+	if (stageBlobs.length >= 3) break; // two spheres can briefly overlap the crosshair
+	await page.waitForTimeout(150);
+}
 await page.screenshot({ path: out });
 
-console.log('grapple web ' + JSON.stringify({ pointerRequests, blobs, errors, trace }));
+console.log('grapple web ' + JSON.stringify({ pointerRequests, blobs, stageBlobs, errors, trace }));
 await browser.close();
 await new Promise(resolve => server.close(resolve));
 
-if (errors.length || pointerRequests.length || blobs.length < 4) process.exit(1);
-console.log('GRAPPLE WEB: normal browser route exposed a live colored vortex wave without pointer-lock errors');
+if (errors.length || pointerRequests.length || stageBlobs.length < 3) process.exit(1);
+console.log('GRAPPLE WEB: normal browser route starts a live colored vortex wave without pointer-lock errors');

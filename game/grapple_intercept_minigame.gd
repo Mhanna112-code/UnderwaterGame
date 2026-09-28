@@ -142,6 +142,7 @@ var _base_forward := Vector3.FORWARD
 var _old_mouse_mode := Input.MOUSE_MODE_VISIBLE
 var _target_was_visible := true
 var _start_button: Button
+var _crosshair: Label
 var _grapple_controls_active := false
 
 func _ready() -> void:
@@ -159,7 +160,11 @@ func _ready() -> void:
 	else:
 		set_anchors_preset(Control.PRESET_TOP_LEFT)
 		size = get_viewport_rect().size
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The visible web start button is a child of this overlay. A parent with
+	# IGNORE silently prevents its children from receiving pointer events, so
+	# use PASS until the button has started the minigame. Gameplay itself is
+	# still consumed by _input() below, then the overlay returns to IGNORE.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 
 	# MODIFIED (removed): the "GRAPPLE INTERCEPT" title, the static
 	# "Grapple the glowing weak spot..." hint, and this progress readout all
@@ -171,26 +176,26 @@ func _ready() -> void:
 	# not flavor text, so it moved to wave_started (see this script's own
 	# signal declaration) instead of just disappearing - battle.gd logs it.
 
-	var crosshair := Label.new()
-	crosshair.text = "+"
-	crosshair.set_anchors_preset(Control.PRESET_CENTER)
-	crosshair.offset_left = -22.0
-	crosshair.offset_top = -30.0
-	crosshair.offset_right = 22.0
-	crosshair.offset_bottom = 30.0
-	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	crosshair.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	crosshair.add_theme_font_size_override("font_size", 42)
-	crosshair.add_theme_color_override("font_color", Color(1.0, 0.95, 0.25))
-	crosshair.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 1.0))
-	crosshair.add_theme_constant_override("outline_size", 4)
-	crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_crosshair = Label.new()
+	_crosshair.text = "+"
+	_crosshair.set_anchors_preset(Control.PRESET_CENTER)
+	_crosshair.offset_left = -22.0
+	_crosshair.offset_top = -30.0
+	_crosshair.offset_right = 22.0
+	_crosshair.offset_bottom = 30.0
+	_crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_crosshair.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_crosshair.add_theme_font_size_override("font_size", 42)
+	_crosshair.add_theme_color_override("font_color", Color(1.0, 0.95, 0.25))
+	_crosshair.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 1.0))
+	_crosshair.add_theme_constant_override("outline_size", 4)
+	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Battle is a CanvasLayer with other HUD controls. Draw the aiming mark
 	# at the top of that canvas so the SubViewport and status panels cannot
 	# cover it during the grapple minigame.
-	crosshair.z_index = 4096
-	crosshair.z_as_relative = false
-	add_child(crosshair)
+	_crosshair.z_index = 4096
+	_crosshair.z_as_relative = false
+	add_child(_crosshair)
 
 	_start_button = Button.new()
 	_start_button.text = "CLICK TO START PLAYTEST"
@@ -222,8 +227,10 @@ func run() -> void:
 		_start_button.visible = true
 		await _start_button.pressed
 		_start_button.visible = false
+		_crosshair.visible = false # the visible browser pointer is the web reticle
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_target_was_visible = target_actor.visible
 	target_actor.visible = false
 	var eye := target_actor.global_position + Vector3(0.0, (target_actor as Diver).height * 0.4, 0.0)
@@ -297,9 +304,13 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		_yaw = clampf(_yaw - motion.relative.x * LOOK_SENSITIVITY, -MAX_YAW, MAX_YAW)
-		_pitch = clampf(_pitch - motion.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
-		_update_camera()
+		if not OS.has_feature("web"):
+			_yaw = clampf(_yaw - motion.relative.x * LOOK_SENSITIVITY, -MAX_YAW, MAX_YAW)
+			_pitch = clampf(_pitch - motion.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
+			_update_camera()
+		# Web play uses the visible cursor as the grapple reticle. Do not turn
+		# normal mouse movement into camera rotation there; the click handler
+		# below casts through the exact rendered stage coordinate instead.
 		# Capture the event before battle HUD Controls can consume it. Grapple
 		# aim is active only during this minigame, so it cannot steal normal UI
 		# input outside this state.
@@ -308,7 +319,27 @@ func _input(event: InputEvent) -> void:
 		# A click that misses a sphere still belongs to the minigame; it must
 		# not activate any control behind the full-screen grapple overlay.
 		get_viewport().set_input_as_handled()
-		_grapple()
+		if OS.has_feature("web"):
+			_grapple_at_web_pointer((event as InputEventMouseButton).position)
+		else:
+			_grapple()
+
+func _grapple_at_web_pointer(pointer_position: Vector2) -> void:
+	var rect := stage_rect
+	if rect.size == Vector2.ZERO:
+		rect = get_global_rect()
+	if not rect.has_point(pointer_position) or stage_root == null:
+		return
+	# `stage_root` renders at its own internal resolution before the
+	# SubViewportContainer stretches it into rect. Convert the browser's
+	# visible stage coordinate back into that render space before asking the
+	# Camera for a ray; this is the inverse of the on-screen presentation.
+	var local := pointer_position - rect.position
+	var viewport_point := Vector2(
+		local.x / rect.size.x * stage_root.size.x,
+		local.y / rect.size.y * stage_root.size.y
+	)
+	_grapple_with_ray(stage_camera.project_ray_origin(viewport_point), stage_camera.project_ray_normal(viewport_point))
 
 func _update_camera() -> void:
 	var forward := _base_forward.rotated(Vector3.UP, _yaw)
@@ -480,8 +511,11 @@ func _start_weak_spot_timeout(spot: Area3D) -> void:
 func _grapple() -> void:
 	if not is_instance_valid(stage_camera):
 		return
-	var from: Vector3 = stage_camera.global_position
-	var dir: Vector3 = -stage_camera.global_transform.basis.z.normalized()
+	_grapple_with_ray(stage_camera.global_position, -stage_camera.global_transform.basis.z.normalized())
+
+func _grapple_with_ray(from: Vector3, dir: Vector3) -> void:
+	if not is_instance_valid(stage_camera):
+		return
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	# Only target Areas participate in the click ray. The default mask also
