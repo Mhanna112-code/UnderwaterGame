@@ -92,6 +92,8 @@ func _ready() -> void:
 	tabs.add_child(_help_tab)
 
 	_hint = Label.new()
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	root.add_child(_hint)
 
@@ -117,7 +119,7 @@ func _ready() -> void:
 	root.add_child(scroll)
 
 	_list = VBoxContainer.new()
-	_list.custom_minimum_size = Vector2(360, 0)
+	_list.custom_minimum_size = Vector2(0, 0)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 6)
 	scroll.add_child(_list)
@@ -157,6 +159,8 @@ func _refresh_items() -> void:
 	if world == null or world.inventory.is_empty():
 		var empty := Label.new()
 		empty.text = "No items yet"
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD
+		empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list.add_child(empty)
 		return
@@ -288,6 +292,8 @@ func _refresh_spells_root() -> void:
 	if not any:
 		var empty := Label.new()
 		empty.text = "No party spells known yet."
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD
+		empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list.add_child(empty)
 
@@ -375,6 +381,6 @@ func _add_help_section(heading: String, entries: Array[Dictionary]) -> void:
 		var body := Label.new()
 		body.text = String(entry.get("body", ""))
 		body.autowrap_mode = TextServer.AUTOWRAP_WORD
-		body.custom_minimum_size = Vector2(360, 0)
+		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		body.add_theme_color_override("font_color", Color(0.8, 0.88, 0.9))
 		_list.add_child(body)
