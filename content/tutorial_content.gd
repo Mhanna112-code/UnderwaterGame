@@ -172,6 +172,15 @@ const SPECIAL_ENCOUNTER_MEDIA := {
 	"shockwave": "res://media/tutorials/special_encounters/shockwave_demo.ogv",
 }
 
+# The supplied Swap recording is a 1920x1080 capture with its actual 16:9
+# game view centered inside a large black canvas.  Keep the delivered file
+# intact, but sample its useful 384x216 region when it is shown in-game so
+# the chooser presents the instruction instead of the recording's padding.
+# Other clips are already framed correctly and intentionally have no entry.
+const SPECIAL_ENCOUNTER_VIDEO_CROPS := {
+	"swap": Vector4(732.0 / 1920.0, 384.0 / 1080.0, 384.0 / 1920.0, 216.0 / 1080.0),
+}
+
 # One entry per status condition a move can apply - shared by the Combat
 # Help tab (game/inventory_menu.gd's Esc-menu pause screen), the hover
 # tooltip _populate_move_menu() attaches to any move whose hint says "Status

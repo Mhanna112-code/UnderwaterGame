@@ -151,12 +151,16 @@ func _build_select_panel() -> Control:
 	row.add_child(left_btn)
 
 	var preview_container := SubViewportContainer.new()
-	preview_container.custom_minimum_size = Vector2(280, 260)
+	# Keep the character showcase beside—not inside—a landscape tutorial
+	# recording.  The old 280x260/220x260 pair made every 16:9 clip occupy
+	# less than half its portrait-shaped panel, which read as a tiny video
+	# surrounded by empty black space at normal game resolution.
+	preview_container.custom_minimum_size = Vector2(260, 225)
 	preview_container.stretch = true
 	row.add_child(preview_container)
 
 	_preview_vp = SubViewport.new()
-	_preview_vp.size = Vector2i(280, 260)
+	_preview_vp.size = Vector2i(260, 225)
 	_preview_vp.transparent_bg = true
 	_preview_vp.disable_3d = false
 	# Keep the carousel's review model isolated from the live overworld. A
@@ -187,7 +191,10 @@ func _build_select_panel() -> Control:
 	# _refresh_carousel(), since which ability (and so which clip) is
 	# showing changes with _carousel_index.
 	_media_frame = PanelContainer.new()
-	_media_frame.custom_minimum_size = Vector2(220, 260)
+	# The media frame deliberately has the source video's 16:9 geometry.
+	# That lets a real tutorial clip use the whole framed area without
+	# stretching or letterboxing it into a portrait slot.
+	_media_frame.custom_minimum_size = Vector2(400, 225)
 	var media_bg := StyleBoxFlat.new()
 	media_bg.bg_color = Color(0.03, 0.08, 0.11)
 	media_bg.set_border_width_all(1)
@@ -300,8 +307,11 @@ func _refresh_media(ability_id: String) -> void:
 			video_stream.file = path
 			player.stream = video_stream
 			player.expand = true
+			_apply_video_crop(player, ability_id)
 			var aspect := AspectRatioContainer.new()
 			aspect.ratio = 16.0 / 9.0
+			aspect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			aspect.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			aspect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			aspect.add_child(player)
@@ -329,3 +339,25 @@ func _refresh_media(ability_id: String) -> void:
 	placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	placeholder.add_theme_color_override("font_color", Color(0.35, 0.5, 0.55))
 	_media_frame.add_child(placeholder)
+
+# Some source recordings are deliberately kept unmodified in the repository
+# for provenance, but contain capture padding that is not part of the lesson.
+# Crop those at render time rather than scaling black pixels up with the game
+# footage.  The crop values are normalized source UV coordinates owned by
+# TutorialContent, where the clip path itself is declared.
+func _apply_video_crop(player: VideoStreamPlayer, ability_id: String) -> void:
+	var crop_data: Variant = TutorialContent.SPECIAL_ENCOUNTER_VIDEO_CROPS.get(ability_id)
+	if not (crop_data is Vector4):
+		return
+	var shader := Shader.new()
+	shader.code = """shader_type canvas_item;
+uniform vec4 source_crop;
+void fragment() {
+	vec2 source_uv = source_crop.xy + UV * source_crop.zw;
+	COLOR = texture(TEXTURE, source_uv);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("source_crop", crop_data)
+	player.material = material
