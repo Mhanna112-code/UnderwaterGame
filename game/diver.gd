@@ -638,7 +638,20 @@ func update_sonar() -> void:
 		# used to carry a "radius" of their own for this; it is gone, along
 		# with the guaranteed-encounter rule that was the only thing that
 		# ever read it.
-		if position.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
+		#
+		# MODIFIED (fixed): checked against `position` - this diver's OWN
+		# position - which only reads right if she also happens to be the
+		# one the player is currently swimming. She isn't always: switching
+		# to another diver (Tab) leaves her parked wherever she was left
+		# (see world.gd's own swim() loop - an inactive diver gets zero
+		# input, not skipped), while this still runs every SONAR_INTERVAL
+		# regardless of which diver is active (gated on passive_id/sonar_
+		# active, not on being the active diver). Sonar being "on" should
+		# mean "reveals whatever's near wherever you actually are right
+		# now," not "near wherever Maxilani happens to be standing" -
+		# checked against the actually-active diver's position instead.
+		var scan_pos: Vector3 = (world.divers[world.active] as Diver).position
+		if scan_pos.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
 
 
