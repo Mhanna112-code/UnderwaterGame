@@ -43,9 +43,17 @@ func _run() -> void:
 	var hits_before_wrong := minigame._hits
 	var resolved_before_wrong := minigame._resolved
 	if wrong != null:
+		var wrong_mesh := wrong.get_child(0) as MeshInstance3D
+		var wrong_material := wrong_mesh.material_override as StandardMaterial3D
+		var wrong_original_color := wrong_material.albedo_color
 		await _aim_and_click(minigame, wrong)
 		_check(_contains_target(minigame, wrong), "grapple_mouse_input: wrong-color left click leaves target — guards against color-choice bypass")
 		_check(minigame._hits == hits_before_wrong and minigame._resolved == resolved_before_wrong, "grapple_mouse_input: wrong-color left click leaves score unchanged — guards against accidental scoring")
+		await create_timer(0.08).timeout
+		var flash_color := wrong_material.albedo_color
+		_check(flash_color.r > flash_color.g and flash_color.r > flash_color.b, "grapple_mouse_input: wrong-color sphere flashes red — guards against invisible rejection feedback")
+		await create_timer(0.24).timeout
+		_check(wrong_material.albedo_color.is_equal_approx(wrong_original_color), "grapple_mouse_input: wrong-color sphere restores its original color — guards against permanent red tint")
 
 	var safe_first := _first_target(minigame, true)
 	_check(safe_first != null, "grapple_mouse_input: first safe target exists — guards against empty safe set")

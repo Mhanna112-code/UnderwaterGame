@@ -30,6 +30,7 @@ This verification dispatches Grapple Intercept mouse-motion and left-button even
 | 1 | The auto-aim helper can clear a wave while actual mouse deltas cannot aim at a displayed sphere or a normal left click cannot register it. | High — the encounter is unwinnable with player controls despite passing automation. | High — prior coverage uses `look_at()` directly and bypasses `_input`. | captured / differential | open |
 | 2 | A wrong-color left click removes or scores a sphere, letting players brute-force the wave instead of choosing the announced safe color. | Medium — the color-reading mechanic loses its decision. | Medium — correct and wrong resolution share the same raycast and list mutation path. | negative-path | open |
 | 3 | A late or wide target fits only at its center while its visible edge falls outside the bounded aim cone. | High — an on-screen target can become physically unclickable. | High — field radius changes while the wave travels. | invariant | characterized by `verify/grapple_battle_integration.gd` |
+| 4 | A wrong-color click leaves a sphere permanently red rather than delivering short-lived rejection feedback. | Medium — players lose the color vocabulary for later choices. | Confirmed — the feedback tween previously had no restoration step. | captured / negative-path | fixed |
 
 ## Test plan
 
@@ -53,6 +54,16 @@ This verification dispatches Grapple Intercept mouse-motion and left-button even
   - Could this pass for wrong-but-stable output? No. It asserts both persistent target identity and unchanged score.
   - Could this fail under a behavior-preserving refactor? No. The no-removal/no-score rule is an explicit gameplay contract.
 
+### Bug #4 — wrong-color feedback persists
+
+- **Test type:** captured / negative-path
+- **Description string** (will appear in test runner output):
+  > `grapple_mouse_input: wrong-color sphere flashes red then restores — guards against permanent rejection tint`
+- **What it catches:** a wrong click visually marking a still-active sphere red indefinitely, which makes the next color-choice ambiguous.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No. It checks both a red-dominant feedback moment and restoration to the material's original color.
+  - Could this fail under a behavior-preserving refactor? No. A brief red flash with palette restoration is the player-facing behavior, independent of tween implementation.
+
 ## Skipped
 
 - Browser pointer-lock permission — headless Godot cannot model browser user-gesture policy; the existing on-screen start button covers that platform boundary.
@@ -63,8 +74,8 @@ This verification dispatches Grapple Intercept mouse-motion and left-button even
 
 *(Filled after the test is written and run.)*
 
-- **Bugs caught** (test failed against current code, fix required): the first version of this new test used an absolute yaw calculation even after the camera had already moved. It aimed the second safe click at a neighboring wrong-color sphere. The production handler's yaw convention is relative to the current camera frame, so the test was corrected to send sequential relative yaw and pitch motion, matching real mouse semantics. No production input defect was found.
-- **Bugs characterized** (test passes; behavior pinned): #1 and #2. Generated safe spheres can be acquired and removed by actual `InputEventMouseMotion` plus left-click events dispatched through `Input.parse_input_event()`; a wrong-color event raycasts correctly but changes neither score nor target list.
+- **Bugs caught** (test failed against current code, fix required): #4. Wrong-color click feedback transitioned to red but never returned to the sphere's original material color. The tween now restores it after the flash. The first version of this new test also used an absolute yaw calculation even after the camera had already moved; that test harness error was corrected to send sequential relative yaw and pitch motion matching real mouse semantics.
+- **Bugs characterized** (test passes; behavior pinned): #1, #2, and #4. Generated safe spheres can be acquired and removed by actual `InputEventMouseMotion` plus left-click events dispatched through `Input.parse_input_event()`; a wrong-color event raycasts correctly but changes neither score nor target list, flashes red, and returns to its original color.
 - **Bugs discovered during writing** not in the original catalog: a freed `Area3D` cannot be safely passed through a typed helper for an identity assertion. The test records the target instance id before the click instead, which also more directly verifies removal.
 - **Tests removed** (failed self-critique mid-write): none.
 

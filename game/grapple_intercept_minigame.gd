@@ -1226,8 +1226,14 @@ func _flash_vortex_sphere(node: Area3D, color: Color) -> void:
 	var mat := mesh_inst.material_override as StandardMaterial3D
 	if mat == null:
 		return
+	var original_color := mat.albedo_color
 	var tw := node.create_tween()
 	tw.tween_property(mat, "albedo_color", color, 0.06)
+	# Wrong-color feedback must be legible but temporary. Correct spheres are
+	# queued for removal immediately after this starts, so restoring their
+	# material is harmless; wrong spheres visibly turn red, then return to the
+	# original yellow/green palette and remain in the active wave.
+	tw.tween_property(mat, "albedo_color", original_color, 0.16)
 
 func _remove_vortex_sphere(entry: Dictionary) -> void:
 	_vortex_spheres.erase(entry)
