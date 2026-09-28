@@ -89,27 +89,29 @@ func _contains_target_id(minigame: GrappleInterceptMinigame, target_id: int) -> 
 
 func _aim_and_click(minigame: GrappleInterceptMinigame, target: Area3D) -> void:
 	# Work from the camera's current local frame, then correct yaw and pitch
-	# separately. This deliberately sends the same relative deltas a player
-	# would generate rather than using `look_at()` or a test-only hit helper.
+	# separately. `Input.parse_input_event()` sends those events through Godot's
+	# normal input dispatch rather than calling the minigame handler directly.
+	# This deliberately uses the same relative deltas a player would generate,
+	# never `look_at()` or a test-only hit helper.
 	# Yaw is inverted because a positive local X is right of the crosshair,
 	# while this camera's positive yaw turns left around world UP.
 	var local := minigame.stage_camera.to_local(target.global_position)
 	var yaw_delta := -atan2(local.x, -local.z)
 	var yaw_motion := InputEventMouseMotion.new()
 	yaw_motion.relative = Vector2(-yaw_delta / GrappleInterceptMinigame.LOOK_SENSITIVITY, 0.0)
-	minigame._input(yaw_motion)
+	Input.parse_input_event(yaw_motion)
 	await physics_frame
 	local = minigame.stage_camera.to_local(target.global_position)
 	var flat_distance := sqrt(local.x * local.x + local.z * local.z)
 	var pitch_delta := atan2(local.y, flat_distance)
 	var pitch_motion := InputEventMouseMotion.new()
 	pitch_motion.relative = Vector2(0.0, -pitch_delta / GrappleInterceptMinigame.LOOK_SENSITIVITY)
-	minigame._input(pitch_motion)
+	Input.parse_input_event(pitch_motion)
 	await physics_frame
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
-	minigame._input(click)
+	Input.parse_input_event(click)
 	await physics_frame
 
 func _check(condition: bool, description: String) -> void:

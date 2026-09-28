@@ -5,7 +5,7 @@
 
 ## What this file does
 
-This verification drives the Grapple Intercept minigame through the same mouse-motion and left-button input handler a player uses. It proves that the bounded camera can acquire a generated sphere, a left click raycasts to that sphere, correct-color hits remove only the intended safe targets, and wrong-color hits leave their target in play.
+This verification dispatches Grapple Intercept mouse-motion and left-button events through Godot's normal input pipeline. It proves that the bounded camera can acquire a generated sphere, a left click raycasts to that sphere, correct-color hits remove only the intended safe targets, and wrong-color hits leave their target in play.
 
 ## Public interface
 
@@ -64,7 +64,7 @@ This verification drives the Grapple Intercept minigame through the same mouse-m
 *(Filled after the test is written and run.)*
 
 - **Bugs caught** (test failed against current code, fix required): the first version of this new test used an absolute yaw calculation even after the camera had already moved. It aimed the second safe click at a neighboring wrong-color sphere. The production handler's yaw convention is relative to the current camera frame, so the test was corrected to send sequential relative yaw and pitch motion, matching real mouse semantics. No production input defect was found.
-- **Bugs characterized** (test passes; behavior pinned): #1 and #2. Generated safe spheres can be acquired and removed by actual `InputEventMouseMotion` plus left-click events; a wrong-color event raycasts correctly but changes neither score nor target list.
+- **Bugs characterized** (test passes; behavior pinned): #1 and #2. Generated safe spheres can be acquired and removed by actual `InputEventMouseMotion` plus left-click events dispatched through `Input.parse_input_event()`; a wrong-color event raycasts correctly but changes neither score nor target list.
 - **Bugs discovered during writing** not in the original catalog: a freed `Area3D` cannot be safely passed through a typed helper for an identity assertion. The test records the target instance id before the click instead, which also more directly verifies removal.
 - **Tests removed** (failed self-critique mid-write): none.
 

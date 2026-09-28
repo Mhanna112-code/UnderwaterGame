@@ -45,8 +45,8 @@ const LOOK_SENSITIVITY := 0.0035
 # camera never changes). Widened past the worst case with margin; the
 # _fly_rock() curve below does most of the real work by shrinking that
 # angle over time, this is just headroom for the first instant of flight.
-const MAX_YAW := 0.85
-const MAX_PITCH := 0.63
+const MAX_YAW := 1.0
+const MAX_PITCH := 1.0
 
 # How far _grapple()'s raycast reaches. MUST stay comfortably past
 # ENEMY_MOVE_MAX_DIST (50, see below) - the enemy himself is the target
@@ -54,14 +54,10 @@ const MAX_PITCH := 0.63
 # would make him literally unhittable whenever he's out past it, not
 # just hard to hit.
 const GRAPPLE_RANGE := 60.0
-# Keep grapple targets on their own physics layers. The ray should ignore
-# the diver, enemy, and stage geometry so those bodies cannot intercept a
-# click aimed at a visible sphere/weak spot. Vortex spheres still share a
-# layer and mask with each other so their Area3D overlap/bounce simulation
-# continues to work.
+# Dedicated target layers let the grapple ray ignore every world/body and
+# unrelated Area while still reaching the active weak spot or vortex spheres.
 const WEAK_SPOT_COLLISION_LAYER := 1 << 19
 const VORTEX_COLLISION_LAYER := 1 << 20
-
 # MODIFIED: was 0.16 - still hard to pick out at typical viewing distance
 # even with no_depth_test/the color pulse. Bumped up; see _spawn_weak_
 # spot()'s own pixel_size line, which derives the sprite's actual size
@@ -164,14 +160,22 @@ func _ready() -> void:
 	var crosshair := Label.new()
 	crosshair.text = "+"
 	crosshair.set_anchors_preset(Control.PRESET_CENTER)
-	crosshair.offset_left = -16.0
-	crosshair.offset_top = -25.0
-	crosshair.offset_right = 16.0
-	crosshair.offset_bottom = 25.0
+	crosshair.offset_left = -22.0
+	crosshair.offset_top = -30.0
+	crosshair.offset_right = 22.0
+	crosshair.offset_bottom = 30.0
 	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	crosshair.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	crosshair.add_theme_font_size_override("font_size", 34)
-	crosshair.add_theme_color_override("font_color", Color(0.95, 0.9, 0.45))
+	crosshair.add_theme_font_size_override("font_size", 42)
+	crosshair.add_theme_color_override("font_color", Color(1.0, 0.95, 0.25))
+	crosshair.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 1.0))
+	crosshair.add_theme_constant_override("outline_size", 4)
+	crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Battle is a CanvasLayer with other HUD controls. Draw the aiming mark
+	# at the top of that canvas so the SubViewport and status panels cannot
+	# cover it during the grapple minigame.
+	crosshair.z_index = 4096
+	crosshair.z_as_relative = false
 	add_child(crosshair)
 
 	_start_button = Button.new()
@@ -208,6 +212,18 @@ func run() -> void:
 	var eye := target_actor.global_position + Vector3(0.0, (target_actor as Diver).height * 0.4, 0.0)
 	_base_forward = (source_position - eye).normalized()
 	stage_camera.global_position = eye
+	# Put the attacker far enough away to give the vortex a visible approach.
+	# Preserve the caller-provided source point's offset from the actor root
+	# (normally Goblin.height) and restore the actor when the minigame ends.
+	_enemy_home_position = enemy_actor.global_position
+	var enemy_source_offset := source_position - _enemy_home_position
+	var horizontal_forward := Vector3(_base_forward.x, 0.0, _base_forward.z).normalized()
+	if horizontal_forward.length_squared() < 0.001:
+		horizontal_forward = Vector3.FORWARD
+	_enemy_was_moved = true
+	enemy_actor.global_position = target_actor.global_position + horizontal_forward * VORTEX_ENEMY_DISTANCE
+	source_position = enemy_actor.global_position + enemy_source_offset
+	_base_forward = (source_position - eye).normalized()
 	stage_camera.look_at(eye + _base_forward * 10.0, Vector3.UP)
 	# MODIFIED: this used to also set up ENEMY_START/ENEMY_END and call
 	# _assign_next_weak_spot() to start the enemy-body weak-spot cycle -
@@ -267,11 +283,13 @@ func _input(event: InputEvent) -> void:
 		_yaw = clampf(_yaw - motion.relative.x * LOOK_SENSITIVITY, -MAX_YAW, MAX_YAW)
 		_pitch = clampf(_pitch - motion.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
 		_update_camera()
-		# Claim aim input before GUI controls or other overlays can consume it.
+		# Capture the event before battle HUD Controls can consume it. Grapple
+		# aim is active only during this minigame, so it cannot steal normal UI
+		# input outside this state.
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		# Every left click belongs to the minigame. Only a ray hit on one of
-		# the active spheres scores; misses cannot activate UI behind it.
+		# A click that misses a sphere still belongs to the minigame; it must
+		# not activate any control behind the full-screen grapple overlay.
 		get_viewport().set_input_as_handled()
 		_grapple()
 
@@ -443,14 +461,15 @@ func _start_weak_spot_timeout(spot: Area3D) -> void:
 # check; no separate distance/angle math needed once the shape is sized
 # correctly; whether the ray reached that shape is the whole answer.
 func _grapple() -> void:
+	if not is_instance_valid(stage_camera):
+		return
 	var from: Vector3 = stage_camera.global_position
 	var dir: Vector3 = -stage_camera.global_transform.basis.z.normalized()
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	# Only target Areas participate in the click ray. The default mask also
-	# includes the diver/enemy/stage, which can intercept a ray before it
-	# reaches a sphere the player can plainly see. The dedicated layers are
-	# assigned by _spawn_weak_spot()/_spawn_vortex_sphere().
+	# includes the diver, enemy, and stage, which can intercept a ray before it
+	# reaches a sphere the player can plainly see.
 	query.collision_mask = VORTEX_COLLISION_LAYER if _vortex_active else WEAK_SPOT_COLLISION_LAYER
 	query.collide_with_bodies = false
 	query.collide_with_areas = true
@@ -474,13 +493,6 @@ func _grapple() -> void:
 	if _vortex_active:
 		for entry in _vortex_spheres:
 			if result.collider == entry.node:
-				var is_yellow := bool(entry.is_yellow)
-				var is_safe := is_yellow == _vortex_safe_is_yellow
-				print("[Grapple debug] Beam intersected %s sphere at %s (%s this wave)." % [
-					"yellow" if is_yellow else "green",
-					str(result.position),
-					"safe" if is_safe else "unsafe",
-				])
 				_resolve_vortex_hit(entry)
 				return
 
@@ -644,20 +656,14 @@ func auto_intercept_closest() -> bool:
 # after N hits) is still an open call.
 # =====================================================================
 
-# Real-world-unit conversion since the travel distance was specified in
-# feet - nothing else in this file uses feet, everything else here
-# (GRAPPLE_RANGE, ENEMY_MOVE_MIN/MAX_DIST) is already in meters.
-const FEET_TO_METERS := 0.3048
-# How far in front of the enemy the vortex begins. The special battle keeps
-# enough stage depth for this to read as a launch rather than an in-place ring.
-const VORTEX_ENEMY_EDGE_MARGIN := 0.75
-# The wave stops this far in front of the player. Its outer targets are 1.5 m
-# from the center, so ending at 3 m keeps every target inside the 70° camera
-# view and the deliberately bounded 0.63-radian pitch limit. It is a gameplay
-# contract: a visible final sphere must remain aimable, not merely dramatic.
-const VORTEX_CLICKABLE_END_DISTANCE := 3.0
-# A close future stage must still leave a perceptible forward motion. This is
-# only a defensive cap; the Battle special-encounter lane is farther away.
+# All distances below are meters. Marc's 16m attacker staging makes the
+# incoming wave visibly travel from its source. The four-metre standoff is
+# only the preferred end point: the dynamic reachable-radius contract below
+# remains the authority that keeps every visible sphere inside both the camera
+# and bounded mouse-look cones at every point in that approach.
+const VORTEX_ENEMY_DISTANCE := 16.0
+const VORTEX_ENEMY_LAUNCH_OFFSET := 0.6
+const VORTEX_PLAYER_STANDOFF := 4.0
 const VORTEX_MIN_TRAVEL_DISTANCE := 1.0
 # How long the whole disc takes to travel from its start point to its end
 # point - separate from how fast the SPHERES move within the disc
@@ -734,35 +740,16 @@ var _vortex_safe_is_yellow := true
 # and vel2d takes over completely instead.
 var _vortex_spheres: Array[Dictionary] = []
 
-# "instance_id_a_instance_id_b" (lower id first) -> bool, whether that
-# specific pair was touching as of the last _update_vortex() check - see
-# 2b's own comment in _update_vortex() for why this rising-edge tracking
-# exists (a real observed double-bounce bug without it).
-var _vortex_touching: Dictionary = {}
-
-# MODIFIED (added): the disc used to sit at one fixed point 30m dead
-# ahead - now it launches from near the enemy and travels to near the
-# player over VORTEX_TRAVEL_TIME. `start`/`end` are both measured along
-# _base_forward (the same fixed "dead ahead" direction _vortex_right/
-# _vortex_up are already built from, not the player's LIVE aim), pulled
-# in from each end by a capped edge margin so it visibly leaves the
-# enemy's side and arrives at the player's rather than starting/ending
-# exactly on top of either model. The cap preserves a travel lane even
-# when stage spacing is tightened. enemy_actor.global_position is read
-# ONCE here, at launch - if he's mid-drift (_drift_enemy()) this just
-# takes wherever he happens to be at that instant as the launch point,
-# it doesn't track him afterward.
+# The disc moves along the fixed direction from player to enemy, not the
+# player's live aim. The far endpoint is just ahead of the deliberately
+# staged attacker; the preferred near endpoint is bounded so even a future
+# close stage still shows an actual approach rather than spawning in place.
 func launch_vortex() -> void:
 	vortex_count += 1
-	var camera_position := stage_camera.global_position
-	var start := enemy_actor.global_position - _base_forward * VORTEX_ENEMY_EDGE_MARGIN
-	var start_distance := start.distance_to(camera_position)
-	# Keep the ending plane far enough away that its full radius remains within
-	# the player's capped aim cone, while preserving at least a metre of travel
-	# if this minigame is ever staged closer than the combat arena.
-	var end_distance := minf(VORTEX_CLICKABLE_END_DISTANCE, start_distance - VORTEX_MIN_TRAVEL_DISTANCE)
-	end_distance = maxf(0.0, end_distance)
-	var end := camera_position + _base_forward * end_distance
+	var start := enemy_actor.global_position - _base_forward * VORTEX_ENEMY_LAUNCH_OFFSET
+	var start_distance := start.distance_to(stage_camera.global_position)
+	var end_distance := maxf(0.0, minf(VORTEX_PLAYER_STANDOFF, start_distance - VORTEX_MIN_TRAVEL_DISTANCE))
+	var end := stage_camera.global_position + _base_forward * end_distance
 	_vortex_center = start
 	_vortex_right = _base_forward.cross(Vector3.UP).normalized()
 	_vortex_up = _vortex_right.cross(_base_forward).normalized()
@@ -1068,21 +1055,10 @@ func _update_vortex(delta: float) -> void:
 	# would (see _apply_vortex_bounce()'s physics-mode branch for the
 	# velocity side of this).
 	#
-	# MODIFIED (added): _vortex_touching gates the actual bounce to the
-	# RISING EDGE of contact (wasn't touching last check, is touching
-	# now) - a real, observed bug otherwise: get_overlapping_areas()'s
-	# underlying state only updates once per physics tick, and can keep
-	# reporting "still touching" for several consecutive ticks after a
-	# bounce already separated the pair (whether from a genuine one-tick
-	# lag or the physics engine's own small collision margin around each
-	# shape), and a plain "if touching, bounce" check would re-fire every
-	# one of those ticks - each firing negates velocity again, so an even
-	# number of extra re-fires cancels straight back to the ORIGINAL
-	# pre-bounce direction, which read as the pair bouncing over and over
-	# in place instead of separating cleanly. Tracking "was this exact
-	# pair already touching as of the last check" and only bouncing when
-	# that flips from false to true makes one real contact fire exactly
-	# once, no matter how many extra ticks the overlap state lags behind.
+	# The contact helper handles separation and an equal-mass impulse only
+	# when the spheres are moving toward one another. If Area3D reports the
+	# same just-separated overlap on another physics tick, it corrects any
+	# remaining penetration without reversing their separating velocities.
 	for i in range(_vortex_spheres.size()):
 		var a: Dictionary = _vortex_spheres[i]
 		if not bool(a.using_physics):
@@ -1097,26 +1073,14 @@ func _update_vortex(delta: float) -> void:
 			var b_node := b.node as Area3D
 			if not is_instance_valid(b_node):
 				continue
-			var key: String = _vortex_pair_key(a_node, b_node)
-			var now_touching: bool = b_node in a_node.get_overlapping_areas()
-			var was_touching: bool = bool(_vortex_touching.get(key, false))
-			_vortex_touching[key] = now_touching
-			if not now_touching:
+			if not (b_node in a_node.get_overlapping_areas()):
 				continue
-			var diff: Vector2 = a.pos2d - b.pos2d
-			var dist: float = diff.length()
-			var normal: Vector2 = diff / dist if dist > 0.001 else Vector2.RIGHT
-			# Separation runs every tick the pair is still touching (cheap,
-			# and keeps nudging them apart even across a laggy multi-tick
-			# overlap report) - only the bounce itself is gated to the
-			# rising edge below.
-			var overlap: float = maxf(VORTEX_SPHERE_RADIUS * 2.0 - dist, 0.0)
-			a.pos2d = a.pos2d + normal * (overlap * 0.5)
-			b.pos2d = b.pos2d - normal * (overlap * 0.5)
-			if was_touching:
-				continue
-			_apply_vortex_bounce(a)
-			_apply_vortex_bounce(b)
+			var contact := VortexCollision.resolve_sphere_contact(
+				a.pos2d, a.vel2d, b.pos2d, b.vel2d, VORTEX_SPHERE_RADIUS)
+			a.pos2d = contact.first_position as Vector2
+			a.vel2d = contact.first_velocity as Vector2
+			b.pos2d = contact.second_position as Vector2
+			b.vel2d = contact.second_velocity as Vector2
 
 	# 3) Wall collision: only meaningful once a sphere is in physics mode
 	# (a phase-1 sphere is still converging toward center along its arc,
@@ -1289,15 +1253,7 @@ func _clear_vortex() -> void:
 		if is_instance_valid(node):
 			node.queue_free()
 	_vortex_spheres.clear()
-	_vortex_touching.clear()
 
-# A stable, order-independent key for one pair of sphere nodes - sorted
-# by instance id so (a, b) and (b, a) always produce the identical string,
-# regardless of which one _update_vortex()'s loop happens to visit first.
-func _vortex_pair_key(a: Area3D, b: Area3D) -> String:
-	var id_a := a.get_instance_id()
-	var id_b := b.get_instance_id()
-	return "%d_%d" % [mini(id_a, id_b), maxi(id_a, id_b)]
 
 # Battle-lifecycle verification uses direct resolution so its assertions
 # isolate HP/camera/visibility wiring from the separate aim-selection test.
