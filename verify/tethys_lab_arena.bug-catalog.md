@@ -7,9 +7,9 @@
 
 `TethysLabArena` imports Glass Goat's tall-ceiling room into Tethys's isolated
 combat `SubViewport`, aligns its offset FBX footprint around the existing
-party/boss formation, adds a visible floor and six collision boundaries, and
-answers whether a combatant fits in the usable volume. Ordinary encounters
-remain open water.
+party/boss formation, preserves the delivered visible floor, adds six collision
+boundaries, and answers whether a combatant fits in the usable volume. Ordinary
+encounters remain open water.
 
 ## Public interface
 

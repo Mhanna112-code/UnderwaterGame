@@ -26,7 +26,6 @@ var _interior := AABB(
 func _ready() -> void:
 	name = "TethysLabArena"
 	_build_shell()
-	_build_floor()
 	_build_boundaries()
 
 # Public contract for battle verification and future encounter staging. The
@@ -56,19 +55,6 @@ func _build_shell() -> void:
 	shell.name = "TallCeilingShell"
 	shell.position = SHELL_OFFSET
 	add_child(shell)
-
-func _build_floor() -> void:
-	var floor := MeshInstance3D.new()
-	floor.name = "LabFloor"
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(INTERIOR_SIZE.x, BOUNDARY_THICKNESS, INTERIOR_SIZE.z)
-	floor.mesh = mesh
-	floor.position = Vector3(0.0, -BOUNDARY_THICKNESS * 0.5, 0.0)
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.045, 0.14, 0.18)
-	material.roughness = 0.82
-	floor.material_override = material
-	add_child(floor)
 
 func _build_boundaries() -> void:
 	_add_boundary("FloorCollision", Vector3(INTERIOR_SIZE.x, BOUNDARY_THICKNESS, INTERIOR_SIZE.z), Vector3(0.0, -BOUNDARY_THICKNESS * 0.5, 0.0))
