@@ -36,6 +36,14 @@ func _run() -> void:
 	await process_frame
 	world.title_screen.new_game_chosen.emit(1)
 	await process_frame
+	# The very first special encounter of a real game skips this chooser
+	# entirely and forces Maxilani straight into battle instead (see World.
+	# _offer_special_encounter()) - verify/encounters.gd's own
+	# _check_first_special_encounter_skips_prompt() is what tests that path.
+	# Every check below is about the chooser/dispatcher's steady-state
+	# lifecycle (loss/win restores, the playtest route), so it forces past
+	# the one-time skip up front rather than tripping over it by accident.
+	world.player_first_special_encounter = false
 
 	var diver := world.divers[0] as Diver
 	var entry_hp := diver.stats.hp - 3
@@ -59,8 +67,12 @@ func _run() -> void:
 	diver.stats.oxygen = 2.0
 	battle.finished.emit("won")
 	await process_frame
-	_check(diver.stats.hp == diver.stats.hp_max, "win did not fill HP")
-	_check(is_equal_approx(diver.stats.oxygen, diver.stats.oxygen_max), "win did not fill oxygen")
+	# MODIFIED (changed): a win used to fill HP/oxygen to max - now matches
+	# a loss's own restore, reverting to whatever the diver had on entering
+	# the encounter (entry_hp/entry_oxygen, captured by _enter_special()
+	# just above) rather than leaving a win in better shape than a loss.
+	_check(diver.stats.hp == entry_hp, "win did not restore entry HP")
+	_check(is_equal_approx(diver.stats.oxygen, entry_oxygen), "win did not restore entry oxygen")
 	_check(world.key_items.has("current_pearl"), "win did not grant the guarded item")
 
 	# The web-only review route must exercise the real chooser/dispatcher but

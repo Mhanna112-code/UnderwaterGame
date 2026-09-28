@@ -19,6 +19,17 @@ extends Control
 
 signal finished(hits: int, total: int)
 signal object_hit
+# MODIFIED (added): battle.gd listens for this and logs it (see
+# _do_grapple_intercept_encounter()) - the "grapple YELLOW, avoid GREEN"
+# per-wave callout used to be this script's own floating _hint Label,
+# removed along with the title/static hint/progress readout per direct
+# request (no more Control-based text overlaying the minigame). Which
+# color is safe changes every wave and isn't otherwise conveyed anywhere
+# (the spheres themselves are colored, but nothing on screen says which
+# color is safe THIS wave without it), so that one piece has to keep
+# reaching the player somehow - real battle-log body text now, instead of
+# an overlay.
+signal wave_started(safe_is_yellow: bool, wave_index: int, total_waves: int)
 
 # MODIFIED: was 5 (one hit per thrown rock, all in a single wave) - now
 # the number of correct-color spheres that clear ONE vortex wave (2
@@ -54,6 +65,13 @@ const MAX_PITCH := 0.63
 # would make him literally unhittable whenever he's out past it, not
 # just hard to hit.
 const GRAPPLE_RANGE := 60.0
+# Keep grapple targets on their own physics layers. The ray should ignore
+# the diver, enemy, and stage geometry so those bodies cannot intercept a
+# click aimed at a visible sphere/weak spot. Vortex spheres still share a
+# layer and mask with each other so their Area3D overlap/bounce simulation
+# continues to work.
+const WEAK_SPOT_COLLISION_LAYER := 1 << 19
+const VORTEX_COLLISION_LAYER := 1 << 20
 
 # MODIFIED: was 0.16 - still hard to pick out at typical viewing distance
 # even with no_depth_test/the color pulse. Bumped up; see _spawn_weak_
@@ -133,11 +151,8 @@ var _pitch := 0.0
 var _base_forward := Vector3.FORWARD
 var _old_mouse_mode := Input.MOUSE_MODE_VISIBLE
 var _target_was_visible := true
-var _progress: Label
 var _start_button: Button
-# MODIFIED (added): was a local in _ready() - promoted to a member so
-# launch_vortex() can repoint it at the round's yellow/green rule.
-var _hint: Label
+var _grapple_controls_active := false
 
 func _ready() -> void:
 	if get_parent() is Control:
@@ -147,40 +162,15 @@ func _ready() -> void:
 		size = get_viewport_rect().size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var shade := ColorRect.new()
-	shade.color = Color(0.01, 0.02, 0.04, 0.18)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(shade)
-
-	var title := Label.new()
-	title.text = "GRAPPLE INTERCEPT"
-	title.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	title.offset_top = 35.0
-	title.offset_left = -220.0
-	title.offset_right = 220.0
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", Color(0.95, 0.82, 0.3))
-	add_child(title)
-
-	_hint = Label.new()
-	_hint.text = "Grapple the glowing weak spot on the enemy before it moves"
-	_hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_hint.offset_top = 78.0
-	_hint.offset_left = -330.0
-	_hint.offset_right = 330.0
-	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(_hint)
-
-	_progress = Label.new()
-	_progress.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_progress.offset_top = 110.0
-	_progress.offset_left = -100.0
-	_progress.offset_right = 100.0
-	_progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(_progress)
-	_update_progress()
+	# MODIFIED (removed): the "GRAPPLE INTERCEPT" title, the static
+	# "Grapple the glowing weak spot..." hint, and this progress readout all
+	# used to render here as floating Control text over the minigame - per
+	# direct request, every one of them is gone now, same as diver_swap_
+	# minigame.gd's/rock_dodge_minigame.gd's own matching removals. The
+	# per-wave "which color is safe" callout that used to live in this same
+	# _hint Label (see the old launch_vortex()) is real gameplay information,
+	# not flavor text, so it moved to wave_started (see this script's own
+	# signal declaration) instead of just disappearing - battle.gd logs it.
 
 	var crosshair := Label.new()
 	crosshair.text = "+"
@@ -240,6 +230,7 @@ func run() -> void:
 	# not a real repeat, just two wasted spawns. Restored to one working
 	# launch, after the same TITLE_HOLD pause the old ending used.
 	await get_tree().create_timer(TITLE_HOLD).timeout
+	_grapple_controls_active = true
 	launch_vortex()
 
 
@@ -279,13 +270,20 @@ func _exit_tree() -> void:
 	# is a no-op the second time either way).
 	_restore_enemy_home()
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
+	if not _grapple_controls_active:
+		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
 		_yaw = clampf(_yaw - motion.relative.x * LOOK_SENSITIVITY, -MAX_YAW, MAX_YAW)
 		_pitch = clampf(_pitch - motion.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
 		_update_camera()
+		# Claim aim input before GUI controls or other overlays can consume it.
+		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		# Every left click belongs to the minigame. Only a ray hit on one of
+		# the active spheres scores; misses cannot activate UI behind it.
+		get_viewport().set_input_as_handled()
 		_grapple()
 
 func _update_camera() -> void:
@@ -332,6 +330,8 @@ func _random_point_on_enemy() -> Vector3:
 # frame repositioning of its own.
 func _spawn_weak_spot() -> Area3D:
 	var spot := Area3D.new()
+	spot.collision_layer = WEAK_SPOT_COLLISION_LAYER
+	spot.collision_mask = 0
 	var mesh_inst := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = WEAK_SPOT_RADIUS
@@ -458,9 +458,12 @@ func _grapple() -> void:
 	var dir: Vector3 = -stage_camera.global_transform.basis.z.normalized()
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
-	# Area3D (what the weak spot is - see _spawn_weak_spot()) isn't checked
-	# by a ray query unless this is explicitly turned on - it defaults to
-	# false, only PhysicsBody3D is checked by default.
+	# Only target Areas participate in the click ray. The default mask also
+	# includes the diver/enemy/stage, which can intercept a ray before it
+	# reaches a sphere the player can plainly see. The dedicated layers are
+	# assigned by _spawn_weak_spot()/_spawn_vortex_sphere().
+	query.collision_mask = VORTEX_COLLISION_LAYER if _vortex_active else WEAK_SPOT_COLLISION_LAYER
+	query.collide_with_bodies = false
 	query.collide_with_areas = true
 	var space := stage_camera.get_world_3d().direct_space_state
 	var result := space.intersect_ray(query)
@@ -482,6 +485,13 @@ func _grapple() -> void:
 	if _vortex_active:
 		for entry in _vortex_spheres:
 			if result.collider == entry.node:
+				var is_yellow := bool(entry.is_yellow)
+				var is_safe := is_yellow == _vortex_safe_is_yellow
+				print("[Grapple debug] Beam intersected %s sphere at %s (%s this wave)." % [
+					"yellow" if is_yellow else "green",
+					str(result.position),
+					"safe" if is_safe else "unsafe",
+				])
 				_resolve_vortex_hit(entry)
 				return
 
@@ -548,13 +558,12 @@ func _grapple_beam(from: Vector3, to: Vector3) -> void:
 	fade.tween_property(beam, "scale", Vector3(1.0, 1.0, 0.0), 0.16)
 	fade.tween_callback(beam.queue_free)
 
+# MODIFIED (changed): used to write into _progress, now removed (see
+# _ready()'s own comment) - kept as a no-op rather than deleted outright so
+# every call site that reports a hit doesn't need its own edit just to drop
+# a call to a function that used to matter.
 func _update_progress() -> void:
-	# MODIFIED: TARGET_COUNT alone is now just ONE wave's worth (2) - the
-	# real total across the whole encounter is TARGET_COUNT *
-	# TOTAL_VORTEX_WAVES (6), same product _finish_now()'s own final
-	# report uses.
-	if _progress != null:
-		_progress.text = "%d / %d hits" % [_hits, TARGET_COUNT * TOTAL_VORTEX_WAVES]
+	pass
 
 func _maybe_finish() -> void:
 	if _resolved < TARGET_COUNT:
@@ -573,6 +582,7 @@ func _finish_now() -> void:
 	if _did_finish:
 		return
 	_did_finish = true
+	_grapple_controls_active = false
 	Input.mouse_mode = _old_mouse_mode
 	if target_actor != null and is_instance_valid(target_actor):
 		target_actor.visible = _target_was_visible
@@ -750,8 +760,7 @@ func launch_vortex() -> void:
 	_vortex_right = _base_forward.cross(Vector3.UP).normalized()
 	_vortex_up = _vortex_right.cross(_base_forward).normalized()
 	_vortex_safe_is_yellow = randf() < 0.5
-	if _hint != null:
-		_hint.text = "Grapple YELLOW, avoid GREEN (wave %d/%d)" % [vortex_count, TOTAL_VORTEX_WAVES] if _vortex_safe_is_yellow else "Grapple GREEN, avoid YELLOW (wave %d/%d)" % [vortex_count, TOTAL_VORTEX_WAVES]
+	wave_started.emit(_vortex_safe_is_yellow, vortex_count, TOTAL_VORTEX_WAVES)
 
 	_clear_vortex()
 	# Each new launch starts the cardinal-direction cycle fresh (see
@@ -867,6 +876,8 @@ func _spawn_vortex_sphere(is_yellow: bool) -> void:
 	var leg_end := Vector2.ZERO
 
 	var area := Area3D.new()
+	area.collision_layer = VORTEX_COLLISION_LAYER
+	area.collision_mask = VORTEX_COLLISION_LAYER
 	var mesh_inst := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = VORTEX_SPHERE_RADIUS

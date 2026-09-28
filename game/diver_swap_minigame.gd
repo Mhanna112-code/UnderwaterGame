@@ -24,7 +24,7 @@ signal round_finished
 # sprites, reference sprites, the cursor) - stage_root is a SubViewport that
 # outlives any one DiverSwapMinigame instance, so nothing parented to it
 # gets cleaned up just because this Control does. Individual pieces mostly
-# free themselves as they resolve (see _on_portrait_arrived(),
+# free themselves as they mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmresolve (see _on_portrait_arrived(),
 # _clear_reference_sprites()), but that's proven easy to miss a case of
 # (the cursor was left behind entirely until this was added) - this is a
 # final safety-net sweep in _maybe_finish() that frees whatever, if
@@ -50,77 +50,53 @@ var enemy_actor: Node3D
 var _hits := 0
 var _resolved := 0
 var _spawned := 0
-var _title_label: Label
-var _progress_label: Label
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# MODIFIED (fixed): battle.gd's Battle extends CanvasLayer, not Control -
+	# added directly under it (see _do_swap_minigame()'s add_child(minigame)),
+	# this Control has no Control ancestor to resolve set_anchors_preset()'s
+	# anchor fractions against. Without an explicit offsets pass (or a real
+	# size), a Control parented under a non-Control never gets its rect
+	# recomputed from anchors at all - it just stays at the (0,0)/zero-size
+	# default a fresh Control.new() starts with. Every child's PRESET_CENTER_*
+	# anchor below (title/hint/progress) then collapsed to that same (0,0)
+	# point instead of true screen-center, which is exactly why "SWAP TO
+	# SAFETY" and the old control-hint text were both rendering crammed into
+	# the top-left corner instead of centered. Same fallback grapple_
+	# intercept_minigame.gd's own _ready() already uses correctly.
+	if get_parent() is Control:
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	else:
+		set_anchors_preset(Control.PRESET_TOP_LEFT)
+		size = get_viewport_rect().size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only individual rocks/labels catch clicks, not the whole overlay
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.03, 0.05, 0.35)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	# No full-screen dimmer: the special encounter should leave the battle
+	# scene at its normal brightness while the portrait lanes are overlaid.
 
-	_title_label = Label.new()
-	_title_label.text = "SWAP TO SAFETY"
-	_title_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_title_label.offset_top = 40.0
-	_title_label.offset_left = -160.0
-	_title_label.offset_right = 160.0
-	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title_label.add_theme_font_size_override("font_size", 30)
-	_title_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3))
-	add_child(_title_label)
+	# MODIFIED (removed): the "SWAP TO SAFETY" title, the "Left/Right to aim,
+	# E to swap into that spot" hint, and this progress readout all used to
+	# render here as floating Control text over the minigame - per direct
+	# request, every one of them is gone now. The controls explanation and
+	# the "flawless run" wave narration already live in the battle log
+	# instead (see battle.gd's _do_swap_minigame() and _finish_special_
+	# enemy_turn()), so nothing is actually lost, just no longer duplicated
+	# as an overlay competing with the HUD for the same screen space.
 
-	# MODIFIED: was left-click, wording updated to match - "above center"
-	# (anchored to the top of the screen, not dead-center) so it doesn't
-	# sit on top of the diver/rocks the 3D stage is showing in the middle
-	# of the screen. Same repositioning applied to blast_rocks_minigame.gd
-	# for a consistent prompt placement between both minigames.
-	var hint := Label.new()
-	hint.text = "Left/Right to aim, E to swap into that spot"
-	hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	hint.offset_top = 90.0
-	hint.offset_left = -220.0
-	hint.offset_right = 220.0
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
-	hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
-	add_child(hint)
-
-	_progress_label = Label.new()
-	_progress_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_progress_label.offset_top = 130.0
-	_progress_label.offset_left = -80.0
-	_progress_label.offset_right = 80.0
-	_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_progress_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.85))
-	_progress_label.visible = false
-	add_child(_progress_label)
-
-# Held on screen alone for a beat (the "popup" - see battle.gd's own
-# _log() call right before this runs, which is the in-fiction lead-in;
-# this is the visual one) before rocks start - a burst that begins the
-# instant the screen appears would read as starting mid-warning.
-const TITLE_HOLD := 1.1
-
+# No more title card to hold on screen before the portraits start - the
+# battle log's own lead-in line (see _do_swap_minigame()) already covers
+# that beat, so this starts the encounter immediately instead of waiting
+# out a title that no longer exists.
 func run() -> void:
-	await get_tree().create_timer(TITLE_HOLD).timeout
-	_title_label.visible = false
-	_progress_label.visible = true
-	_update_progress()
 	_spawn_loop()
 	_maybe_finish()
 
+# MODIFIED (changed): used to write into _progress_label, now removed (see
+# _ready()'s own comment) - kept as a no-op rather than deleted outright so
+# every call site that reports a hit (_maybe_finish() and friends) doesn't
+# need its own edit just to drop a call to a function that used to matter.
 func _update_progress() -> void:
-	# MODIFIED: was PORTRAIT_COUNT * 2 (6) - stale from before
-	# _safe_player_permutation() existed. Only one lane per round (the
-	# blank one) can ever actually match now, so PORTRAIT_COUNT (3, one
-	# per round) is the real achievable max for _hits, not 6 or the 9
-	# total individual resolutions _maybe_finish() waits for.
-	_progress_label.text = "%d / %d" % [_hits, PORTRAIT_COUNT]
+	pass
 
 var PORTRAIT_COUNT = 3
 # MODIFIED: was `await get_tree().create_timer(_current_travel_time).timeout`
@@ -136,11 +112,21 @@ var PORTRAIT_COUNT = 3
 # though the code "should" be fine. Awaiting round_finished instead makes
 # round N+1 wait for round N's _round_resolved to genuinely reach 3 first,
 # so rounds can never overlap.
+# MODIFIED (fixed): this loop had no idea request_abort() (or a natural
+# finish - PORTRAIT_COUNT rounds already spawned before a slow last one even
+# resolves) had already happened, since `run()` fires it off unawaited and
+# nothing here ever checked _did_finish. On an early abort (the diver died
+# partway through) it just kept going, spawning another round - and each
+# round's own _start_spawn_minigame() re-parks the diver back in the swap
+# grid (_blank_slot_position) to set it up, undoing whatever already put her
+# back at her real rest spot, which is exactly why the camera kept reading
+# as zoomed into the grid: new portraits, and her, both back in the middle
+# of it, well after battle.gd had already moved on to the death/loss flow.
 func _spawn_loop() -> void:
-	while _spawned < PORTRAIT_COUNT:
+	while _spawned < PORTRAIT_COUNT and not _did_finish:
 		_start_spawn_minigame()
 		_spawned += 1
-		if _spawned < PORTRAIT_COUNT:
+		if _spawned < PORTRAIT_COUNT and not _did_finish:
 			await round_finished
 
 # MODIFIED: removed the old 2D Panel-based _spawn_rock() that used to sit
