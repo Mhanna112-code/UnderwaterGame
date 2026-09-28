@@ -48,6 +48,14 @@ func _run() -> void:
 	if not minigame._vortex_active:
 		_finish()
 		return
+	var expected_instruction := "YELLOW" if minigame._vortex_safe_is_yellow else "GREEN"
+	_check(minigame.wave_instruction == expected_instruction, "grapple_mouse_input: central prompt names this wave's safe color — guards against log-only or mismatched instructions")
+	_check(minigame._wave_callout.visible and minigame._wave_callout.text == "GRAPPLE", "grapple_mouse_input: first central callout is GRAPPLE — guards against forcing players to scan the battle log")
+	var callout_rect := minigame._wave_callout.get_global_rect()
+	var stage_center := minigame.get_global_rect().get_center()
+	_check(absf(callout_rect.get_center().x - stage_center.x) < 1.0 and absf(callout_rect.get_center().y - stage_center.y) < 1.0, "grapple_mouse_input: instruction is centered over the playable stage — guards against lower-HUD eye travel")
+	await create_timer(GrappleInterceptMinigame.WAVE_CALLOUT_GRAPPLE_TIME + 0.04).timeout
+	_check(minigame._wave_callout.visible and minigame._wave_callout.text == expected_instruction, "grapple_mouse_input: central callout advances to the required color word — guards against ambiguous color-only cues")
 	await physics_frame
 	_check(minigame.vortex_targets_are_aimable(), "grapple_mouse_input: generated target fits bounded mouse look — guards against off-cone targets")
 	var web_safe := _first_target(minigame, true)
