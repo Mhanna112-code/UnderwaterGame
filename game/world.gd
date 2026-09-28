@@ -87,13 +87,6 @@ var mouse_look := false
 var random_encounters_enabled := true
 var _t := 0.0
 
-# Debug aid for tracking down sonar/encounter-reveal issues live (e.g.
-# whether the active diver is actually close enough to a guarded site) -
-# prints to console every half second rather than every physics frame, so
-# it's readable instead of a wall of spam. Not gated behind anything since
-# it's a plain print(), not an in-game announcement - harmless left in.
-var _pos_debug_timer := 0.0
-
 # First-person aim mode for aimed abilities (grapple): E enters it instead
 # of firing right away, camera cuts to the diver's own eye line, left click
 # fires, right click backs out. Nothing about the ability itself changes -
@@ -1094,9 +1087,8 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 # it mean anything in three dimensions, where anything in open water can be
 # swum around.
 #
-# The site bowls themselves have no decorative lamps. Guarded item locations
-# get grappleable rings (built by _build_item_grapple_anchors()): gold for
-# special encounters, cyan for the other guarded items.
+# The site bowls themselves have no decorative lamps. Ordinary guarded item
+# locations get cyan grappleable rings; special encounter sites have none.
 func _build_dive_sites() -> void:
 	for d in Sites.ALL:
 		var site: Site = SiteScript.new()
@@ -1585,11 +1577,6 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
-	_pos_debug_timer -= dt
-	if _pos_debug_timer <= 0.0:
-		_pos_debug_timer = 0.5
-		var active_diver: Diver = divers[active]
-		print("active diver: %s at %s" % [active_diver.model_name, active_diver.position])
 	if battling or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
@@ -2004,15 +1991,16 @@ void fragment() {
 	light_beam.position.x = d.position.x + 10
 	add_child(light_beam)
 
-# Grappleable, color-coded rings mark every guarded item location. Special
-# encounter rewards use gold; the ordinary guarded-item sites use cyan.
-const SPECIAL_ITEM_RING_COLOR := Color(1.0, 0.82, 0.15)
+# Ordinary guarded-item locations use cyan rings. Special encounter sites
+# intentionally have no decorative grapple rings.
 const OTHER_ITEM_RING_COLOR := Color(0.2, 0.88, 0.95)
 func _build_item_grapple_anchors() -> void:
 	for entry_value in ItemGuardian.spots():
 		var entry := entry_value as Dictionary
+		if bool(entry.get("special", false)):
+			continue
 		var anchor := GrappleAnchor.new()
-		anchor.ring_color = SPECIAL_ITEM_RING_COLOR if bool(entry.get("special", false)) else OTHER_ITEM_RING_COLOR
+		anchor.ring_color = OTHER_ITEM_RING_COLOR
 		anchor.ring_inner_radius = 0.95
 		anchor.ring_outer_radius = 1.25
 		anchor.target_radius = 1.8
