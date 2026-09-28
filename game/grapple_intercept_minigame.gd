@@ -213,14 +213,17 @@ func run() -> void:
 		finished.emit(0, TARGET_COUNT * TOTAL_VORTEX_WAVES)
 		return
 	_old_mouse_mode = Input.mouse_mode
-	# Browsers reject pointer lock unless it is requested from a user gesture.
-	# The dedicated web playtest therefore waits on a real click; desktop keeps
-	# the immediate start used by automated/local playtests.
+	# The web build waits for a real click so the instructional overlay cannot
+	# start moving targets beneath a player who has not opted in. It keeps the
+	# cursor visible: every target is generated inside a compact reachable cone,
+	# so normal bounded browser mouse motion is sufficient and we avoid making
+	# playability depend on the Pointer Lock API.
 	if OS.has_feature("web"):
 		_start_button.visible = true
 		await _start_button.pressed
 		_start_button.visible = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	else:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_target_was_visible = target_actor.visible
 	target_actor.visible = false
 	var eye := target_actor.global_position + Vector3(0.0, (target_actor as Diver).height * 0.4, 0.0)

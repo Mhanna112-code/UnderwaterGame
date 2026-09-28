@@ -19,14 +19,27 @@ func _run() -> void:
 	viewport.add_child(enemy)
 	enemy.global_position = Vector3(0.0, 1.5, -8.0)
 
+	# Match battle.gd's split layout: the 3D SubViewport only owns the upper
+	# playfield while combat controls sit below it. This guards the browser
+	# regression where full-window UI coordinates and 3D aim coordinates drifted
+	# apart after a layout change.
+	var stage_frame := Control.new()
+	stage_frame.position = Vector2(0.0, 58.0)
+	stage_frame.size = Vector2(1280.0, 410.0)
+	root.add_child(stage_frame)
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = viewport
 	minigame.stage_camera = camera
 	minigame.target_actor = diver
 	minigame.enemy_actor = enemy
 	minigame.source_position = enemy.global_position
+	minigame.stage_rect = Rect2(stage_frame.position, stage_frame.size)
+	# Battle keeps the overlay in its HUD layer, not as a child of the 3D
+	# stage frame. Keeping it a sibling makes stage_rect a global UI rectangle.
 	root.add_child(minigame)
 	minigame.run()
+	await process_frame
+	_check(minigame.get_global_rect().is_equal_approx(Rect2(Vector2(0.0, 58.0), Vector2(1280.0, 410.0))), "grapple_mouse_input: overlay exactly follows the battle stage rectangle — guards against full-window aim/UI drift")
 
 	var deadline := Time.get_ticks_msec() + 4000
 	while not minigame._vortex_active and Time.get_ticks_msec() < deadline:
