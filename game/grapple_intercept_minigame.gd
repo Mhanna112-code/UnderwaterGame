@@ -1,19 +1,8 @@
-# Musashi's special-encounter defense: mouse-look aims a first-person
-# camera at the enemy himself, who drifts between two random points
-# 30-50m out (ENEMY_START/ENEMY_END, both within the aim cone) rather
-# than standing still. A single yellow weak spot hops to a new random
-# point on his body after every hit (or after WEAK_SPOT_TIMEOUT with no
-# hit) - land TARGET_COUNT hits to clear the encounter.
-#
-# MODIFIED: this used to be "the enemy launches rocks at the diver, shoot
-# them down before they land" - object_hit/the battle-owned damage path
-# that went with unshot rocks reaching the diver is still declared and
-# connected in battle.gd, but nothing in this file emits it anymore now
-# that there's nothing incoming to dodge. Worth a real decision, not
-# assumed here: should something else put the diver at risk during this
-# encounter (a timer, an occasional counter-swing), or is this now a
-# pure-offense encounter with the follow-up swing afterward as the only
-# risk, same as a flawless run already guarantees dodging entirely?
+# Musashi's special-encounter defense. Each colored-vortex wave contains
+# two yellow and two green spheres. The HUD names one color as safe; grapple
+# both safe spheres before the wave reaches the diver. A completed wave does
+# no damage. An uncleared wave emits object_hit, which Battle connects to its
+# normal special-impact damage path before this minigame starts the next wave.
 class_name GrappleInterceptMinigame
 extends Control
 
@@ -659,10 +648,13 @@ func auto_intercept_closest() -> bool:
 # feet - nothing else in this file uses feet, everything else here
 # (GRAPPLE_RANGE, ENEMY_MOVE_MIN/MAX_DIST) is already in meters.
 const FEET_TO_METERS := 0.3048
-# How far short of the enemy/player the vortex starts/ends - not AT
-# either one, so it visibly launches from near him and arrives near you
-# rather than starting/ending exactly on top of a model.
-const VORTEX_LAUNCH_OFFSET := 10.0 * FEET_TO_METERS
+# How far short of the enemy/player the vortex starts/ends. This must stay
+# small relative to the special-battle spacing: reserving three metres at
+# both ends after that stage was tightened made the start point closer to the
+# diver than the end point, so the supposed incoming wave looked stationary
+# or travelled away. A capped edge margin guarantees visible enemy-to-diver
+# travel even if another stage layout brings the actors closer together.
+const VORTEX_EDGE_MARGIN := 0.75
 # How long the whole disc takes to travel from its start point to its end
 # point - separate from how fast the SPHERES move within the disc
 # (VORTEX_SPEED_MIN/MAX below); this is "slowly launch," that is the
@@ -754,8 +746,14 @@ var _vortex_touching: Dictionary = {}
 # it doesn't track him afterward.
 func launch_vortex() -> void:
 	vortex_count += 1
-	var start := enemy_actor.global_position - _base_forward * VORTEX_LAUNCH_OFFSET
-	var end := stage_camera.global_position + _base_forward * VORTEX_LAUNCH_OFFSET
+	var camera_position := stage_camera.global_position
+	var enemy_distance := enemy_actor.global_position.distance_to(camera_position)
+	# Preserve at least half of the distance as a visible travel lane. The
+	# cap matters if a future stage frames this special encounter unusually
+	# close; `start` still stays on the enemy side of `end` in that case.
+	var edge_margin := minf(VORTEX_EDGE_MARGIN, enemy_distance * 0.25)
+	var start := enemy_actor.global_position - _base_forward * edge_margin
+	var end := camera_position + _base_forward * edge_margin
 	_vortex_center = start
 	_vortex_right = _base_forward.cross(Vector3.UP).normalized()
 	_vortex_up = _vortex_right.cross(_base_forward).normalized()
