@@ -1,11 +1,10 @@
-# Records Musashi's first-person grapple-intercept minigame using its
-# verification aim helper so the proof is deterministic.
+# Records the first Grapple Intercept vortex at close special-encounter
+# spacing. It deliberately does not auto-clear a sphere: the proof is the
+# whole colored cluster visibly travelling toward the diver.
 # Usage: godot --path . --script tools/shoot_grapple_intercept.gd -- /tmp/grapple-frames
 extends SceneTree
 
 var frame_dir := "/tmp/grapple-intercept-frames"
-var result: Array = []
-
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty():
@@ -20,6 +19,7 @@ func _run() -> void:
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1280, 720)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
 	container.add_child(viewport)
 
 	var environment := WorldEnvironment.new()
@@ -42,42 +42,36 @@ func _run() -> void:
 	var diver := Diver.new()
 	diver.model_name = "Prototype_1(1910)"
 	viewport.add_child(diver)
+	# Match the special-encounter stage spacing. This is deliberately closer
+	# than the historical evidence scene so the capture proves a vortex still
+	# approaches when battle staging changes.
+	diver.global_position = Vector3(0.0, 0.0, 2.2)
 	# MODIFIED (added): the grapple target is enemy_actor himself now, not
 	# a group of thrown rocks - required for run() to do anything at all
 	# (see its own guard).
 	var enemy := Goblin.new()
 	viewport.add_child(enemy)
-	enemy.global_position = Vector3(0.0, 1.4, -9.0)
+	enemy.global_position = Vector3(0.6, 0.0, -2.2)
 
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = viewport
 	minigame.stage_camera = camera
 	minigame.target_actor = diver
 	minigame.enemy_actor = enemy
-	minigame.source_position = Vector3(0.0, 1.4, -9.0)
-	minigame.finished.connect(func(hits: int, total: int) -> void: result = [hits, total])
+	minigame.source_position = enemy.global_position + Vector3.UP * enemy.height
 	root.add_child(minigame)
 	minigame.run()
 
-	await process_frame
-	await process_frame
+	# Wait through the minigame's title beat, then capture its first incoming
+	# wave before the five-second arrival timeout can start the next one.
+	await create_timer(GrappleInterceptMinigame.TITLE_HOLD + 0.1).timeout
+	var start_distance := minigame._vortex_center.distance_to(camera.global_position)
 	var frame := 0
-	var next_shot := Time.get_ticks_msec() + 900
-	while result.is_empty() and frame < 260:
-		if Time.get_ticks_msec() >= next_shot:
-			if minigame.auto_intercept_closest():
-				next_shot = Time.get_ticks_msec() + 430
+	while frame < 76:
 		await create_timer(1.0 / 20.0).timeout
 		root.get_texture().get_image().save_png(frame_dir.path_join("frame_%03d.png" % frame))
 		frame += 1
-	# Hold the completed score long enough to read in the loop.
-	diver.visible = false
-	for hold in range(20):
-		await create_timer(1.0 / 20.0).timeout
-		root.get_texture().get_image().save_png(frame_dir.path_join("frame_%03d.png" % frame))
-		frame += 1
-	print("GRAPPLE GIF: %s across %d frames" % [str(result), frame])
-	# MODIFIED: was hardcoded [8, 8] - stale since TARGET_COUNT dropped to
-	# 5 (see grapple_intercept_minigame.gd's own header).
-	var expected := GrappleInterceptMinigame.TARGET_COUNT
-	quit(0 if result == [expected, expected] else 1)
+	var end_distance := minigame._vortex_center.distance_to(camera.global_position)
+	print("GRAPPLE GIF: first-wave distance %.2f -> %.2f across %d frames" % [start_distance, end_distance, frame])
+	minigame.queue_free()
+	quit(0 if end_distance < start_distance else 1)
