@@ -330,7 +330,7 @@ var _acting: Dictionary = {}
 var _pending_move: Dictionary = {}
 var _busy := false
 
-var log_label: Label
+var log_label: RichTextLabel
 var queue_row: HBoxContainer
 # HFlowContainer, not HBoxContainer - main_menu only ever has 2 buttons so
 # it never mattered, but move_menu can hold up to 3 base moves + 4 equipped
@@ -1497,8 +1497,10 @@ func _build_ui() -> void:
 	for entry in enemies:
 		_build_overhead_bar(entry)
 
-	log_label = Label.new()
+	log_label = RichTextLabel.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
+	log_label.scroll_active = false
+	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
@@ -2153,7 +2155,23 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	overlay.visible = true
 
 func _log(text: String) -> void:
-	log_label.text = text
+	log_label.clear()
+	log_label.add_text(text)
+
+func _current_log_text() -> String:
+	return log_label.get_parsed_text()
+
+func _log_grapple_wave(safe_is_yellow: bool, wave_index: int, total_waves: int) -> void:
+	log_label.clear()
+	log_label.add_text("Wave %d/%d: grapple " % [wave_index, total_waves])
+	log_label.push_color(Color(1.0, 0.9, 0.15) if safe_is_yellow else Color(0.15, 0.95, 0.35))
+	log_label.add_text("YELLOW" if safe_is_yellow else "GREEN")
+	log_label.pop()
+	log_label.add_text(", avoid ")
+	log_label.push_color(Color(0.15, 0.95, 0.35) if safe_is_yellow else Color(1.0, 0.9, 0.15))
+	log_label.add_text("GREEN" if safe_is_yellow else "YELLOW")
+	log_label.pop()
+	log_label.add_text(".")
 
 # A combat result belongs on the combatant it happened to, not only in the
 # fast-moving sentence at the bottom of the screen. Label3D keeps the proof
@@ -2203,11 +2221,11 @@ func _finish_actor_turn(entry: Dictionary) -> void:
 	var bleed_damage := int(tick.get("bleed_damage", 0))
 	if bleed_damage > 0:
 		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2))
-		_log("%s  •  %s bleeds for %d." % [log_label.text, String(entry.display_name), bleed_damage])
+		_log("%s  •  %s bleeds for %d." % [_current_log_text(), String(entry.display_name), bleed_damage])
 	var poison_damage := int(tick.get("poison_damage", 0))
 	if poison_damage > 0:
 		_show_floating_text(entry, "POISON -%d" % poison_damage, Color(0.55, 0.9, 0.28))
-		_log("%s  •  %s takes %d poison damage." % [log_label.text, String(entry.display_name), poison_damage])
+		_log("%s  •  %s takes %d poison damage." % [_current_log_text(), String(entry.display_name), poison_damage])
 	_refresh_bar(entry)
 	if (entry.stats as CombatantStats).hp <= 0 and entry.has("actor") and is_instance_valid(entry.actor):
 		if entry.actor is Diver:
@@ -2529,7 +2547,7 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 				_swap_demo_frame.visible = true
 				_refresh_swap_demo_media("grapple")
 				call_deferred("_fit_panel_height")
-				await _tutorial_show_step("Musashi's special encounter involves grappling the correctly-colored spheres before their wave reaches him. Move the mouse to aim your crosshair, then left-click to fire the grapple at the safe color - the wave clears once every safe-colored sphere has been hit, so watch which color is safe each round.")
+				await _tutorial_show_step("Musashi's special encounter involves grappling the correctly-colored spheres before their wave reaches him. Move the mouse to aim your crosshair, then left-click to fire the grapple at the safe color - the wave clears once every safe-colored sphere has been hit, so watch which color is safe each round in the bottom battle text where it mentions to grapple/avoid [color=#ffe626]YELLOW[/color] and [color=#26f259]GREEN[/color].")
 				for child in _swap_demo_frame.get_children():
 					child.queue_free()
 				_swap_demo_frame.visible = false
@@ -3995,7 +4013,7 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 	_log("%s for %d." % [text, int(r.damage)])
 	var effects := r.get("effects", []) as Array
 	if not effects.is_empty():
-		_log("%s  •  %s" % [log_label.text, ", ".join(effects)])
+		_log("%s  •  %s" % [_current_log_text(), ", ".join(effects)])
 
 # Swing first, resolve at the moment of impact. Returns once the hit is
 # supposed to land, leaving the rest of the clip to play out underneath the
@@ -4605,11 +4623,7 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _tar
 			minigame.request_abort()
 	)
 	minigame.wave_started.connect(func(safe_is_yellow: bool, wave_index: int, total_waves: int) -> void:
-		_log("Wave %d/%d: grapple %s, avoid %s." % [
-			wave_index, total_waves,
-			"YELLOW" if safe_is_yellow else "GREEN",
-			"GREEN" if safe_is_yellow else "YELLOW",
-		])
+		_log_grapple_wave(safe_is_yellow, wave_index, total_waves)
 	)
 	minigame.run()
 	var score: Array = await minigame.finished
