@@ -4129,7 +4129,12 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
 		return
 	var d := entry.actor as Diver
-	await _step_toward(entry, target)
+	# Heal/revive target an ally, and allies stand in a row ~2.9m apart:
+	# stepping to melee reach of a non-adjacent ally parked the caster right
+	# on top of the diver standing between them. Support casts turn to face
+	# the ally and cast from where they stand instead.
+	var in_place := String(mv.get("effect", "")) in ["heal", "revive"]
+	await _step_toward(entry, target, in_place)
 	var length: float = d.play_clip(Cast.ability(String(entry.model_name), String(mv.get("name", ""))))
 	if length <= 0.0:
 		_send_home(entry, 0.0)
@@ -4143,7 +4148,7 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 # distance short of the target rather than the target itself, because these
 # attacks have length: standing on top of somebody puts the swing through
 # them and out the other side.
-func _step_toward(entry: Dictionary, target: Dictionary) -> void:
+func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false) -> void:
 	var a: Node3D = entry.get("actor")
 	if a == null or not is_instance_valid(a):
 		return
@@ -4160,6 +4165,8 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 		(a as Goblin).face_toward((target.actor as Node3D).global_position)
 	else:
 		a.rotation.y = atan2(-to.x, -to.z)
+	if face_only:
+		return
 	var target_radius := 0.0
 	var radius_value: Variant = (target.actor as Node3D).get("radius")
 	if radius_value != null:
