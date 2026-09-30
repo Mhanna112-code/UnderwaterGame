@@ -153,39 +153,52 @@ func _spawn_loop() -> void:
 # itself, not whichever rock happens to be "the" active one.
 var _live_rocks: Array[MeshInstance3D] = []
 var _rock_tweens: Dictionary = {}   # MeshInstance3D -> Tween, only while that rock is still in flight
-const PORTRAIT_PATHS := [
-	"res://portraits/portrait_01_normal.png",
-	"res://portraits/portrait_02_smile.png",
-	"res://portraits/portrait_03_eyes_closed.png",
-	"res://portraits/portrait_04_angry.png",
-	"res://portraits/portrait_05_grimace.png",
-	"res://portraits/portrait_06_surprised.png",
-	"res://portraits/portrait_07_sad.png",
-	"res://portraits/portrait_08_wink.png",
+# Three separate 8-portrait pools, one per character - kept as their own
+# arrays rather than merged so select_random_portraits() can pick a pool
+# first and draw both of a wave's portraits from just that one, never
+# mixing characters in the same wave.
+const MAXILANI_PORTRAIT_PATHS := [
+	"res://portraits/maxilani_pool/maxilani_01_normal.png",
+	"res://portraits/maxilani_pool/maxilani_02_smile.png",
+	"res://portraits/maxilani_pool/maxilani_03_eyes_closed.png",
+	"res://portraits/maxilani_pool/maxilani_04_smirk.png",
+	"res://portraits/maxilani_pool/maxilani_05_grimace.png",
+	"res://portraits/maxilani_pool/maxilani_06_surprised.png",
+	"res://portraits/maxilani_pool/maxilani_07_sad.png",
+	"res://portraits/maxilani_pool/maxilani_08_wink.png",
 ]
 
-# Second, separate 8-portrait pool (the "Cyclops" helmet set) - kept as its
-# own array rather than merged into PORTRAIT_PATHS so select_random_
-# portraits() can pick a pool first and draw both of a round's portraits
-# from just that one, never mixing an image from each set in the same
-# round.
-const CYCLOPS_PORTRAIT_PATHS := [
-	"res://portraits/helmet_pool/cyclops_01_calm.png",
-	"res://portraits/helmet_pool/cyclops_02_wavy.png",
-	"res://portraits/helmet_pool/cyclops_03_content.png",
-	"res://portraits/helmet_pool/cyclops_04_grin.png",
-	"res://portraits/helmet_pool/cyclops_05_angry.png",
-	"res://portraits/helmet_pool/cyclops_06_surprised.png",
-	"res://portraits/helmet_pool/cyclops_07_pout.png",
-	"res://portraits/helmet_pool/cyclops_08_mystery.png",
+const BUCKY_PORTRAIT_PATHS := [
+	"res://portraits/bucky_pool/bucky_01_calm.png",
+	"res://portraits/bucky_pool/bucky_02_grin.png",
+	"res://portraits/bucky_pool/bucky_03_love.png",
+	"res://portraits/bucky_pool/bucky_04_angry.png",
+	"res://portraits/bucky_pool/bucky_05_crying.png",
+	"res://portraits/bucky_pool/bucky_06_frown.png",
+	"res://portraits/bucky_pool/bucky_07_bored.png",
+	"res://portraits/bucky_pool/bucky_08_surprised.png",
 ]
+
+const MUSASHI_PORTRAIT_PATHS := [
+	"res://portraits/musashi_pool/cyclops_01_calm.png",
+	"res://portraits/musashi_pool/cyclops_02_wavy.png",
+	"res://portraits/musashi_pool/cyclops_03_content.png",
+	"res://portraits/musashi_pool/cyclops_04_grin.png",
+	"res://portraits/musashi_pool/cyclops_05_angry.png",
+	"res://portraits/musashi_pool/cyclops_06_surprised.png",
+	"res://portraits/musashi_pool/cyclops_07_pout.png",
+	"res://portraits/musashi_pool/cyclops_08_mystery.png",
+]
+
+const PORTRAIT_POOLS := [MAXILANI_PORTRAIT_PATHS, BUCKY_PORTRAIT_PATHS, MUSASHI_PORTRAIT_PATHS]
 
 func select_random_portraits() -> Array:
-	# MODIFIED (added): picks one of the two 8-portrait pools first, then
-	# draws both portraits from that same pool - duplicated before
-	# shuffling so this never mutates the shared const array in place, and
-	# so the other pool's own array is never touched by picking this one.
-	var pool: Array = (PORTRAIT_PATHS if randi() % 2 == 0 else CYCLOPS_PORTRAIT_PATHS).duplicate()
+	# Picks one of the three pools at random, then draws two different
+	# portraits from it - duplicated before shuffling so this never mutates
+	# the shared const array in place. Called once per wave
+	# (_select_correct_portraits()), so each wave re-rolls both the pool and
+	# the pair.
+	var pool: Array = (PORTRAIT_POOLS.pick_random() as Array).duplicate()
 	pool.shuffle()
 	var portraits: Array = [pool[0], pool[1]]
 	return portraits
