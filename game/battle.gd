@@ -393,6 +393,8 @@ var _queue_bar: PanelContainer
 # "whose turn" marker needed over a grunt, the move log already says who's
 # attacking.
 var _turn_cursor: MeshInstance3D
+var _turn_cursor_target: Node3D
+var _turn_cursor_height := 0.0
 
 # Stored so _fit_panel_height() can resize it from anywhere menu visibility
 # changes (_show_moves(), _show_main(), _on_move_chosen(), etc.), not just
@@ -2738,12 +2740,22 @@ func _play_special_encounter_intro() -> void:
 # Only ever called with a party entry (see _advance_turn()'s kind check) -
 # actor.actor is always the Diver battle-stage instance built in
 # _build_stage(), never a Goblin, so no type check needed before the cast.
+func _process(_delta: float) -> void:
+	if not is_instance_valid(_turn_cursor) or not _turn_cursor.visible:
+		return
+	if not is_instance_valid(_turn_cursor_target):
+		_turn_cursor.visible = false
+		return
+	_turn_cursor.global_position = _turn_cursor_target.global_position + Vector3.UP * _turn_cursor_height
+
 func _show_turn_cursor_on(actor: Dictionary) -> void:
-	if not actor.has("actor") or not is_instance_valid(actor.actor):
+	if not actor.has("actor") or not is_instance_valid(actor.actor) or not is_instance_valid(_turn_cursor):
 		return
 	var d := actor.actor as Diver
+	_turn_cursor_target = d
+	_turn_cursor_height = d.height + 0.4
+	_turn_cursor.global_position = d.global_position + Vector3.UP * _turn_cursor_height
 	_turn_cursor.visible = true
-	_turn_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.4)
 
 # This diver's own BASE_MOVES plus whatever they currently have equipped,
 # translated from spell data into the same move shape battle resolution
