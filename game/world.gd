@@ -511,7 +511,7 @@ func _stage_special_site_playtest() -> void:
 	var target := site.at as Vector3
 	var radius := float(site.get("radius", 0.0))
 	# Camera yaw is aligned with this vector, so the one instruction is genuinely
-	# “hold W briefly”, not an impossible coordinate/navigation puzzle. Start
+	# “hold W for about two seconds”, not an impossible coordinate/navigation puzzle. Start
 	# outside the radius: setup itself must never pass the test.
 	var forward := Vector3.FORWARD
 	diver.global_position = target - forward * (radius + 1.5)
@@ -523,7 +523,7 @@ func _stage_special_site_playtest() -> void:
 	if item_id != "" and not revealed_key_items.has(item_id):
 		revealed_key_items.append(item_id)
 	_update_hud()
-	_announce("Developer review: hold W briefly. Crossing this boundary must start the %s special encounter." % String(site.get("id", "selected")))
+	_announce("Developer review: hold W for about two seconds. Crossing this boundary must start the %s special encounter." % String(site.get("id", "selected")))
 
 # For quickly iterating on tutorial_result_popup's own look/copy without
 # actually needing to lose the scripted first fight every time - opens it

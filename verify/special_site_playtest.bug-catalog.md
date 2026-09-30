@@ -80,6 +80,10 @@ give a reviewer a conclusive trigger result.
   because the site is neither visibly marked nor reachable by human-readable
   directions. The new route proves the proximity behavior without disguising
   it as a direct `?special=1` dispatcher test.
+- **Browser confirmation:** The exported focused URL showed the reviewer at
+  the boundary with the one-step instruction visible. Holding forward long
+  enough to cross it entered the Angler special battle; no query-string
+  dispatcher or synthetic teleport was used in that browser check.
 - **Bugs discovered during writing:** A raw headless script does not know the
   project's global classes until Godot has run one editor/import scan. The
   verification procedure now performs that scan first. A second potential bug
