@@ -125,12 +125,6 @@ func _ready() -> void:
 		size = get_viewport_rect().size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only individual rocks/labels catch clicks, not the whole overlay
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.03, 0.05, 0.35)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
-
 	# MODIFIED (removed): the "DODGE THE ROCKS" title, the "Hold Left/Right
 	# to line up with the rock, E to shockwave it..." hint, and this
 	# progress readout all used to render here as floating Control text
