@@ -677,17 +677,17 @@ func auto_intercept_closest() -> bool:
 # and bounded mouse-look cones at every point in that approach.
 const VORTEX_ENEMY_DISTANCE := 16.0
 const VORTEX_ENEMY_LAUNCH_OFFSET := 0.6
-const VORTEX_PLAYER_STANDOFF := 4.0
+const VORTEX_PLAYER_STANDOFF := 3.5
 const VORTEX_MIN_TRAVEL_DISTANCE := 1.0
 # How long the whole disc takes to travel from its start point to its end
 # point - separate from how fast the SPHERES move within the disc
 # (VORTEX_SPEED_MIN/MAX below); this is "slowly launch," that is the
 # swirling once it's already moving.
-const VORTEX_TRAVEL_TIME := 5.0
+const VORTEX_TRAVEL_TIME := 4.5
 # Match the wide PR #50 playfield while the wave is distant. The live boundary
 # is narrowed automatically as it approaches (see _vortex_reachable_radius())
 # so this is a maximum, never permission to put a late target off screen.
-const VORTEX_BOUNDARY_RADIUS := 3.0
+const VORTEX_BOUNDARY_RADIUS := 3.5
 const VORTEX_SPHERE_RADIUS := 0.35
 const VORTEX_MIN_SPHERES := 3
 const VORTEX_MAX_SPHERES := 5
@@ -713,7 +713,10 @@ const VORTEX_DANGER_EMISSION := Color(0.1, 0.9, 0.3)
 # reversed as the bounce, and handed off to real integration + collision
 # physics for the rest of the wave. A sphere never goes back to the arc
 # formula once it's made that switch.
-const VORTEX_ARC_LEG_TIME := 1.4
+# Also sets post-bounce speed: _apply_vortex_bounce() derives each sphere's
+# physics velocity from its arc rate, so a shorter leg means a faster swirl
+# AND faster, more frequent bounces for the rest of the wave.
+const VORTEX_ARC_LEG_TIME := 0.95
 
 # How many waves have been launched so far - incremented at the top of
 # launch_vortex() itself (not by its callers), since it's called from
@@ -1033,7 +1036,7 @@ func _update_vortex(delta: float) -> void:
 	# partner already peeled off into physics and wandered away, might
 	# not come back around for a long, unpredictable stretch (this was an
 	# actual observed bug: a straggler sphere took 5+ real seconds to
-	# finally get released, well past the ~1.4s the whole meeting should
+	# finally get released, well past the ~1.25s the whole meeting should
 	# take).
 	var center_meet_happened := false
 	for i in range(_vortex_spheres.size()):
