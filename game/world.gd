@@ -227,6 +227,13 @@ var _boss_playtest_active := false
 # battle/minigame dispatcher but never grants an item or alters a save.
 var _special_playtest_active := false
 
+# Developer-only normal-world review route. Unlike ?special=1, this never
+# opens a chooser or battle itself: it stages the active diver just outside a
+# named special site's real radius, facing inward, so holding W crosses the
+# same proximity trigger ordinary play uses. The site data remains the source
+# of truth; this route does not duplicate its position or radius.
+var _special_site_playtest_id := ""
+
 # Which save slot this run is playing into - set the instant the title
 # screen resolves (New Game picks one and writes an initial save into it;
 # Load Game picks one and reads from it), -1 only while the title screen
@@ -369,8 +376,12 @@ func _show_title_screen() -> void:
 # role the old implicit end-of-_ready() checkpoint used to serve, now a
 # real file instead of an in-memory snapshot.
 func _on_title_new_game(slot: int) -> void:
-	_current_slot = slot
-	_write_save()
+	# A query-selected developer route must not create or overwrite a player
+	# save just because its review starts with the title's New Game button.
+	# Ordinary New Game retains its existing first-save behavior.
+	_current_slot = -1 if not _special_site_playtest_id.is_empty() else slot
+	if _current_slot >= 0:
+		_write_save()
 	title_screen.close()
 	# This is the draft narration under review. It intentionally plays before
 	# the HUD/world are enabled, so Glassgoat can approve or replace it from
@@ -387,7 +398,9 @@ func _on_title_new_game(slot: int) -> void:
 	# fight. Since that fight is what normally triggers _show_ability_popups()
 	# (via _on_battle_finished()), it has to fire from here instead - this is
 	# the actual moment a skipped-tutorial game truly begins.
-	if skip_tutorial_for_test:
+	if not _special_site_playtest_id.is_empty():
+		call_deferred("_stage_special_site_playtest")
+	elif skip_tutorial_for_test:
 		call_deferred("_show_ability_popups")
 
 # The "New Game (Skip Tutorial)" title-screen button - same idea as
@@ -474,6 +487,43 @@ func _special_playtest_requested() -> bool:
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
 	return false
+
+# `?special_site=reef` is a review-only navigation aid, not an alternate
+# encounter implementation. A command-line spelling gives the headless gate
+# the same public entry surface. Unknown ids deliberately stage nothing.
+func _special_site_playtest_requested() -> String:
+	const ARG_PREFIX := "--special-site-playtest="
+	for arg_value in OS.get_cmdline_user_args():
+		var arg := String(arg_value)
+		if arg.begins_with(ARG_PREFIX):
+			return arg.trim_prefix(ARG_PREFIX).strip_edges()
+	if OS.has_feature("web"):
+		var value: Variant = JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('special_site') || ''", true)
+		return String(value).strip_edges()
+	return ""
+
+func _stage_special_site_playtest() -> void:
+	var site := Sites.by_id(_special_site_playtest_id)
+	if site.is_empty() or not bool(site.get("special", false)):
+		_announce("Developer special-site review is unavailable for '%s'." % _special_site_playtest_id)
+		return
+	var diver := divers[active] as Diver
+	var target := site.at as Vector3
+	var radius := float(site.get("radius", 0.0))
+	# Camera yaw is aligned with this vector, so the one instruction is genuinely
+	# “hold W for about two seconds”, not an impossible coordinate/navigation puzzle. Start
+	# outside the radius: setup itself must never pass the test.
+	var forward := Vector3.FORWARD
+	diver.global_position = target - forward * (radius + 1.5)
+	yaw = atan2(forward.x, forward.z)
+	pitch = -0.16
+	random_encounters_enabled = true
+	_inside_item_site_id = ""
+	var item_id := String(site.get("item", ""))
+	if item_id != "" and not revealed_key_items.has(item_id):
+		revealed_key_items.append(item_id)
+	_update_hud()
+	_announce("Developer review: hold W for about two seconds. Crossing this boundary must start the %s special encounter." % String(site.get("id", "selected")))
 
 # For quickly iterating on tutorial_result_popup's own look/copy without
 # actually needing to lose the scripted first fight every time - opens it
@@ -672,6 +722,20 @@ func _ready() -> void:
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
 	_build_diver_slots()
+	_special_site_playtest_id = _special_site_playtest_requested()
+	# A typo in a public review URL must fall back to the ordinary game.  Do not
+	# make a query string strand a reviewer in a tutorial-skipped world with no
+	# valid destination.
+	if not _special_site_playtest_id.is_empty():
+		var requested_site := Sites.by_id(_special_site_playtest_id)
+		if requested_site.is_empty() or not bool(requested_site.get("special", false)):
+			_special_site_playtest_id = ""
+	if not _special_site_playtest_id.is_empty():
+		# The route starts with an ordinary New Game click but must immediately
+		# become controllable. Do not make a reviewer clear the narrative crawl,
+		# tutorial fight, or ability carousel before the single intended W input.
+		skip_intro_for_test = true
+		skip_tutorial_for_test = true
 	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
 	# reach a save point immediately, same reason it also grants max spell
 	# points/every key item - fighting through the scripted first battle
