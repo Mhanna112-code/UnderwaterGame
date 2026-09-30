@@ -322,6 +322,8 @@ func _wasd_cluster() -> GridContainer:
 # falls through to the placeholder rather than a blank frame.
 func _refresh_media(ability_id: String) -> void:
 	var frame := %MediaFrame as PanelContainer
+	frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for child in frame.get_children():
 		child.queue_free()
 	# Pages such as Inventory have no clip by design. Hide the entire media

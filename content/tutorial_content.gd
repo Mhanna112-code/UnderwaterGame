@@ -10,6 +10,10 @@
 class_name TutorialContent
 extends RefCounted
 
+# One landscape slot shared by every tutorial clip surface: the post-combat
+# ability modal, the special-encounter chooser, and the in-fight tutorial.
+const VIDEO_FRAME_SIZE := Vector2(320, 180)
+
 const GENERAL_PAGES: Array[Dictionary] = [
 	{
 		"title": "Combat Basics",

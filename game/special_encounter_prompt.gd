@@ -187,7 +187,7 @@ func _build_select_panel() -> Control:
 	# _refresh_carousel(), since which ability (and so which clip) is
 	# showing changes with _carousel_index.
 	_media_frame = PanelContainer.new()
-	_media_frame.custom_minimum_size = Vector2(220, 260)
+	_media_frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
 	var media_bg := StyleBoxFlat.new()
 	media_bg.bg_color = Color(0.03, 0.08, 0.11)
 	media_bg.set_border_width_all(1)

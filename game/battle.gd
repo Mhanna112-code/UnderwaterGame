@@ -1439,9 +1439,11 @@ func _build_ui() -> void:
 	# it (col's first two rows) rather than the bottom of the whole panel.
 	_swap_demo_frame = PanelContainer.new()
 	_swap_demo_frame.visible = false
-	_swap_demo_frame.custom_minimum_size = Vector2(320, 180)
-	_swap_demo_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_swap_demo_frame.size_flags_stretch_ratio = 1.0
+	_swap_demo_frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
+	# Keep tutorial clips at the same fixed size as the other tutorial
+	# surfaces. Expanding this child shared the battle row's spare width and
+	# made its video frame wider than its 16:9 height could support.
+	_swap_demo_frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_swap_demo_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var demo_style := StyleBoxFlat.new()
 	demo_style.bg_color = Color(0.03, 0.09, 0.12)
