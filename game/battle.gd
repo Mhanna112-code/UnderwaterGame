@@ -448,86 +448,109 @@ var _tutorial_awaiting_enter := false
 # tutorial, so turn flow cannot accidentally cancel instructional captions.
 var _skip_tutorial_requested := false
 
+# The subset of a spell def _register_stat_effects() reads, keyed by the
+# same display name _moves_for() gives the spell's move-menu entry.
+func _spell_preview_move(def: Dictionary, spell_id: String) -> Dictionary:
+	var mv := {"name": String(def.get("display", spell_id))}
+	for key in ["power", "acc_mod", "debuff", "amount", "effects"]:
+		if def.has(key):
+			mv[key] = def[key]
+	if String(mv.get("debuff", "")) == "":
+		mv.erase("debuff")
+	return mv
+
+# One move's entry in stat_effects - the per-stat deltas the stats panels
+# preview while hovering a target (see _show_stat_preview()).
+func _register_stat_effects(attack: Dictionary) -> void:
+	var attack_name: String = attack["name"]
+
+	if not stat_effects.has(attack_name):
+		stat_effects[attack_name] = {
+			"player": {},
+			"enemy": {}
+		}
+
+	# -------------------------
+	# Player's stat changes
+	# -------------------------
+	if "power" in attack:
+		stat_effects[attack_name]["player"]["power"] = attack["power"]
+
+	if "acc_mod" in attack:
+		stat_effects[attack_name]["player"]["accuracy"] = attack["acc_mod"]
+
+	# -------------------------
+	# Enemy stat changes
+	# -------------------------
+	if "debuff" in attack:
+		# Negated - _apply_debuff() actually subtracts `amount` from
+		# the stat (a "debuff" lowers it), so the stored delta has to
+		# be negative too, or _apply_stat_delta() would preview the
+		# target's stat rising (green) instead of the drop (red) the
+		# move actually causes.
+		stat_effects[attack_name]["enemy"][attack["debuff"]] = -int(attack["amount"])
+
+	# -------------------------
+	# CombatMoves effects
+	# -------------------------
+	if "effects" in attack:
+		for effect in attack["effects"]:
+			var kind: String = effect.get("kind", "")
+
+			match kind:
+
+				"reduce_evasion":
+					if "amount" in effect:
+						if "accuracy" in effect["amount"]:
+							# Negated - this is a reduction (see the
+							# "reduce_" in the effect's own name), so
+							# the preview reads as a decrease (red,
+							# "-1"), not a stat increase.
+							stat_effects[attack_name]["enemy"]["evasion"] = \
+								-int(effect["amount"]["accuracy"])
+
+				"status":
+					if "status" in effect:
+						var status_name: String = String(effect["status"])
+						if "level" in effect:
+							if "flat" in effect["level"]:
+								var lvl: int = int(effect["level"]["flat"])
+								stat_effects[attack_name]["enemy"][status_name] = lvl
+								# Blindness has no row of its own in the
+								# stats panel (see STAT_ROW_KEYS - only
+								# STR/DEF/ACC/EVA), so without this its
+								# preview would silently show nothing at
+								# all despite actually lowering Agility,
+								# Accuracy, AND Defense (see combatant_
+								# stats.gd's effective_accuracy()/
+								# effective_defense()). Negated same as
+								# every other reduction above - mirror
+								# onto the two of those three stats that
+								# DO have a row.
+								if status_name == "blindness":
+									stat_effects[attack_name]["enemy"]["accuracy"] = -lvl
+									stat_effects[attack_name]["enemy"]["defense"] = -lvl
+
+				"self_temporary":
+					if "accuracy" in effect:
+						stat_effects[attack_name]["player"]["accuracy"] = \
+							effect["accuracy"]
+
+					if "evasion" in effect:
+						stat_effects[attack_name]["player"]["evasion"] = \
+							effect["evasion"]
+
 func _ready() -> void:
 	for diver in BASE_MOVES:
 		for attack in BASE_MOVES[diver]:
-			var attack_name: String = attack["name"]
-
-			if not stat_effects.has(attack_name):
-				stat_effects[attack_name] = {
-					"player": {},
-					"enemy": {}
-				}
-
-			# -------------------------
-			# Player's stat changes
-			# -------------------------
-			if "power" in attack:
-				stat_effects[attack_name]["player"]["power"] = attack["power"]
-
-			if "acc_mod" in attack:
-				stat_effects[attack_name]["player"]["accuracy"] = attack["acc_mod"]
-
-			# -------------------------
-			# Enemy stat changes
-			# -------------------------
-			if "debuff" in attack:
-				# Negated - _apply_debuff() actually subtracts `amount` from
-				# the stat (a "debuff" lowers it), so the stored delta has to
-				# be negative too, or _apply_stat_delta() would preview the
-				# target's stat rising (green) instead of the drop (red) the
-				# move actually causes.
-				stat_effects[attack_name]["enemy"][attack["debuff"]] = -int(attack["amount"])
-
-			# -------------------------
-			# CombatMoves effects
-			# -------------------------
-			if "effects" in attack:
-				for effect in attack["effects"]:
-					var kind: String = effect.get("kind", "")
-
-					match kind:
-
-						"reduce_evasion":
-							if "amount" in effect:
-								if "accuracy" in effect["amount"]:
-									# Negated - this is a reduction (see the
-									# "reduce_" in the effect's own name), so
-									# the preview reads as a decrease (red,
-									# "-1"), not a stat increase.
-									stat_effects[attack_name]["enemy"]["evasion"] = \
-										-int(effect["amount"]["accuracy"])
-
-						"status":
-							if "status" in effect:
-								var status_name: String = String(effect["status"])
-								if "level" in effect:
-									if "flat" in effect["level"]:
-										var lvl: int = int(effect["level"]["flat"])
-										stat_effects[attack_name]["enemy"][status_name] = lvl
-										# Blindness has no row of its own in the
-										# stats panel (see STAT_ROW_KEYS - only
-										# STR/DEF/ACC/EVA), so without this its
-										# preview would silently show nothing at
-										# all despite actually lowering Agility,
-										# Accuracy, AND Defense (see combatant_
-										# stats.gd's effective_accuracy()/
-										# effective_defense()). Negated same as
-										# every other reduction above - mirror
-										# onto the two of those three stats that
-										# DO have a row.
-										if status_name == "blindness":
-											stat_effects[attack_name]["enemy"]["accuracy"] = -lvl
-											stat_effects[attack_name]["enemy"]["defense"] = -lvl
-
-						"self_temporary":
-							if "accuracy" in effect:
-								stat_effects[attack_name]["player"]["accuracy"] = \
-									effect["accuracy"]
-
-							if "evasion" in effect:
-								stat_effects[attack_name]["player"]["evasion"] = \
-									effect["evasion"]
+			_register_stat_effects(attack)
+	# Spell-tree moves too - they reach the move menu through _moves_for(),
+	# not BASE_MOVES, so without this a learned spell's own acc_mod/debuff
+	# (Tidal Burst's -4 ACC, Guard Break's -3 DEF) never previewed at all.
+	for model_name in SpellTree.SPELL_TREES:
+		for branch in SpellTree.SPELL_TREES[model_name]:
+			for spell_id in SpellTree.SPELL_TREES[model_name][branch]:
+				_register_stat_effects(_spell_preview_move(SpellTree.SPELL_TREES[model_name][branch][spell_id], String(spell_id)))
 
 	layer = 10
 	_build_party()
