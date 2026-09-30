@@ -309,6 +309,8 @@ const SLOT_NAMES := ["left", "middle", "right"]
 # math below uses the exact same number the sprite is actually built with,
 # instead of relying on the default staying 0.01 forever.
 const PORTRAIT_PIXEL_SIZE := 0.01
+const PORTRAIT_TARGET_SIZE := Vector2(410.0, 384.0)
+const PORTRAIT_LANE_GAP := 0.3
 
 signal portrait_hit(slot_name: String)
 
@@ -374,13 +376,41 @@ var right_image
 # for rocks/cursors elsewhere.
 func _make_portrait_sprite(texture: Texture2D, at_position: Vector3) -> Sprite3D:
 	var sprite := Sprite3D.new()
-	sprite.texture = texture
+	if texture != null:
+		sprite.texture = texture
 	sprite.pixel_size = PORTRAIT_PIXEL_SIZE
+	if texture != null:
+		sprite.scale = _portrait_scale(texture)
+	else:
+		# Keep a non-rendering arrival marker for the intentionally blank
+		# lane. Its tween/callback must still complete so every round reaches
+		# all three lane results, but there is no portrait to draw or scale.
+		sprite.visible = false
 	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.global_position = at_position
+	# Add to the tree BEFORE touching global_position: off-tree,
+	# set_global_position() reads get_global_transform(), which fails
+	# ("!is_inside_tree()") and returns an identity Transform3D - writing
+	# that back wiped the scale set above, so every portrait drew at its
+	# raw texture size instead of PORTRAIT_TARGET_SIZE.
 	stage_root.add_child(sprite)
+	sprite.global_position = at_position
 	_spawned_stage_nodes.append(sprite)
 	return sprite
+
+# AtlasTexture.get_size() can report a size that doesn't match the crop we
+# actually want to display. Read AtlasTexture.region explicitly so scaling
+# and lane spacing use the cropped frame dimensions, not the source atlas.
+func _portrait_texture_size(texture: Texture2D) -> Vector2:
+	if texture is AtlasTexture:
+		return (texture as AtlasTexture).region.size
+	return texture.get_size()
+
+# Stretch every portrait crop to exactly PORTRAIT_TARGET_SIZE pixels, so all
+# cards read as the same size regardless of crop or source pool. X and Y are
+# scaled independently, which does not preserve each crop's aspect ratio.
+func _portrait_scale(texture: Texture2D) -> Vector3:
+	var s := PORTRAIT_TARGET_SIZE / _portrait_texture_size(texture)
+	return Vector3(s.x, s.y, 1.0)
 
 func _select_correct_portraits() -> void:
 	var portraits: Array = select_random_portraits()
@@ -392,15 +422,14 @@ func _select_correct_portraits() -> void:
 	var right_image: Texture2D = load(portraits[1])
 
 	var gap := 2.0
-	# MODIFIED: was left_image.get_rect().size.x * left_image.scale.x -
-	# get_rect()/scale are Sprite2D/Control properties, not Texture2D ones
-	# (left_image here is the raw Texture2D select_random_portrait()
-	# returns), so this would have errored the first time it ran.
-	# Texture2D's own get_size() is the pixel dimensions; multiplying by
-	# the sprite's pixel_size converts that to the same world-unit scale
-	# the Sprite3D nodes below are actually built at.
-	var half_width: float = left_image.get_size().x * PORTRAIT_PIXEL_SIZE / 2.0
-	var spacing: float = half_width + gap  # extra breathing room beyond the sprite's own half-width
+	# Every portrait is scaled to PORTRAIT_TARGET_SIZE.x pixels wide
+	# (_portrait_scale()); multiplying by the sprite's pixel_size converts
+	# that to the world-unit width the Sprite3D nodes below are built at.
+	# Adjacent lane centers are one `spacing` apart (left-to-middle and
+	# middle-to-right), so use the full card width here, then add a small
+	# visible gap. Using the half-width made neighboring cards overlap.
+	var card_width: float = PORTRAIT_TARGET_SIZE.x * PORTRAIT_PIXEL_SIZE
+	var spacing: float = card_width + PORTRAIT_LANE_GAP
 
 	var forward = _player_anchor_forward
 	var right = _player_anchor_right
