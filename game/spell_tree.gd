@@ -17,16 +17,13 @@
 #     no longer exists, see combatant_stats.gd), so it's gone rather than
 #     left with nothing in it. Worth a real design pass, not assumed here:
 #     her whole "tank" identity was that branch; she has no replacement
-#     mechanic yet, and reef_plate (see items.gd) no longer unlocks
-#     anything now that bulwark_stance is gone with it.
+#     mechanic yet; its support path grows from world-found key items.
 #
 # Each branch is a small DAG, not a straight line: a spell's
 # "requires_spells" can point at any earlier node in its branch, so one
-# node can unlock several different follow-ups at once. "requires_items" is
-# the same idea for key items earned from NPC mini-quests later - not
-# wired to a real source yet (see find_def()'s caller sites), so any spell
-# gated behind one is intentionally unreachable for now, same as it's been
-# since this system was scaffolded.
+# node can unlock several different follow-ups at once. "requires_items"
+# gates specific spells behind key items found in the world or won from
+# guardians.
 #
 # Every spell doubles as a battle.gd move definition - "power"/"acc_mod"
 # work exactly like BASE_MOVES entries there. "effect" picks how the move
@@ -65,14 +62,14 @@ const SPELL_TREES := {
 			},
 			"riptide_slash": {
 				"display": "Riptide Slash", "cost": 2,
-				"description": "A heavier cut carried on a current - more damage, less certain to land.",
-				"requires_spells": ["swift_strike"], "requires_items": [],
+				"description": "A heavier cut carried on a current - more damage, less certain to land. Requires an Abyssal Lens.",
+				"requires_spells": ["swift_strike"], "requires_items": ["abyssal_lens"],
 				"power": 10, "acc_mod": 1, "oxygen_cost": 16.0,
 				"hint": "Heavier, less certain", "text": "You carve a riptide slash",
 			},
 			"tidal_burst": {
 				"display": "Tidal Burst", "cost": 3,
-				"description": "A devastating burst of churning water. Real miss risk - the glass cannon's payoff move. Needs a current pearl to learn.",
+				"description": "A devastating burst of churning water. Real miss risk - the glass cannon's payoff move. Requires a Current Pearl.",
 				"requires_spells": ["riptide_slash"], "requires_items": ["current_pearl"],
 				"power": 17, "acc_mod": -4, "oxygen_cost": 24.0,
 				"hint": "Devastating, real miss risk", "text": "You unleash a churning tidal burst",
@@ -120,15 +117,15 @@ const SPELL_TREES := {
 			},
 			"blinding_silt": {
 				"display": "Blinding Silt", "cost": 2,
-				"description": "Kicks up a cloud that lowers the target's accuracy - builds on the same opening Weaken creates.",
-				"requires_spells": ["weaken"], "requires_items": [],
+				"description": "Kicks up a cloud that lowers the target's accuracy - builds on the same opening Weaken Empowered creates. Requires a Sunken Core.",
+				"requires_spells": ["weaken"], "requires_items": ["sunken_core"],
 				"debuff": "accuracy", "amount": 3, "acc_mod": 1, "oxygen_cost": 16.0,
 				"hint": "Lowers accuracy", "text": "A cloud of silt blinds the target",
 			},
 			"exploit_opening": {
 				"display": "Exploit Opening", "cost": 3,
-				"description": "A precise strike into every weakness you've already opened up. Rarely misses.",
-				"requires_spells": ["blinding_silt"], "requires_items": [],
+				"description": "A precise strike into every weakness you've already opened up. Rarely misses. Requires an Abyssal Lens.",
+				"requires_spells": ["blinding_silt"], "requires_items": ["abyssal_lens"],
 				"power": 8, "acc_mod": 5, "oxygen_cost": 24.0,
 				"hint": "A precise strike, rarely misses", "text": "You exploit the opening",
 			},
@@ -156,8 +153,8 @@ const SPELL_TREES := {
 		"debuff": {
 			"guard_break": {
 				"display": "Guard Break", "cost": 2,
-				"description": "Batters through the target's guard, lowering its defense.",
-				"requires_spells": [], "requires_items": [],
+				"description": "Batters through the target's guard, lowering its defense. Requires a Sunken Core.",
+				"requires_spells": [], "requires_items": ["sunken_core"],
 				"debuff": "defense", "amount": 3, "acc_mod": 4, "oxygen_cost": 16.0,
 				"hint": "Cracks the target's defense", "text": "You batter through the target's guard",
 			},
@@ -178,8 +175,8 @@ const SPELL_TREES := {
 			},
 			"tidal_revival": {
 				"display": "Tidal Revival", "cost": 3,
-				"description": "Pulls a downed ally back up on a surge of current. The tank's other capstone - reviving an ally is worth more than any amount of raw defense.",
-				"requires_spells": ["mending_current"], "requires_items": [],
+				"description": "Pulls a downed ally back up on a surge of current. Requires a Reef Plate.",
+				"requires_spells": ["mending_current"], "requires_items": ["reef_plate"],
 				"effect": "revive", "amount": 12, "oxygen_cost": 28.0, "inventory": true,
 				"hint": "Revives a downed ally", "text": "A surge of current pulls an ally back up",
 			},
