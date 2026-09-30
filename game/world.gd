@@ -1991,18 +1991,15 @@ void fragment() {
 	light_beam.position.x = d.position.x + 10
 	add_child(light_beam)
 
-# Ordinary guarded-item locations use cyan rings. Special encounter sites
-# intentionally have no decorative grapple rings.
-const OTHER_ITEM_RING_COLOR := Color(0.2, 0.88, 0.95)
+# Ordinary guarded-item locations retain their grapple targets without a
+# visible ring. Special encounter sites have no item-location grapple target.
 func _build_item_grapple_anchors() -> void:
 	for entry_value in ItemGuardian.spots():
 		var entry := entry_value as Dictionary
 		if bool(entry.get("special", false)):
 			continue
 		var anchor := GrappleAnchor.new()
-		anchor.ring_color = OTHER_ITEM_RING_COLOR
-		anchor.ring_inner_radius = 0.95
-		anchor.ring_outer_radius = 1.25
+		anchor.show_ring = false
 		anchor.target_radius = 1.8
 		anchor.target_height = 3.2
 		anchor.position = entry.at as Vector3
