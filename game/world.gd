@@ -122,6 +122,13 @@ var site_nodes: Dictionary = {}
 const SiteScript := preload("res://game/site.gd")
 
 var key_items: Array[String] = []
+const BLOCKADE_HEIGHT := 6.0
+const AIRBORNE_ROCK_HEIGHT := BLOCKADE_HEIGHT * 3.0
+const ROCK_KEY_ITEM_REWARDS := {
+	"rock_7": "abyssal_lens",
+	"rock_8": "sunken_core",
+}
+const ROCK_AMBUSH_IDS := ["rock_9", "rock_10"]
 
 # Which ItemGuardian.spots() item ids sonar has ever pinged (see
 # Diver.update_sonar()) - MiniMap draws a marker for anything in here
@@ -836,6 +843,13 @@ func _build_boundary_walls() -> void:
 	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
 	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
 	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+	# Collision-only roof; its underside is exactly four blockade-heights
+	# above the floor. Airborne reward rocks at 3x height stay reachable.
+	const CEILING_THICKNESS := 2.0
+	_build_invisible_wall(
+		Vector3(0.0, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
+		Vector3(BOUND * 2.0, CEILING_THICKNESS, BOUND * 2.0)
+	)
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -847,15 +861,10 @@ func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	body.add_child(shape)
 	add_child(body)
 
-# A handful of small CrackedWalls scattered around the open world - unlike
-# the entrance blockade (a full-width gate), these are just optional side
-# pickups: break one with shockwave and it pops an ItemOrb instead of
-# handing out a fixed reward directly (see _on_breakable_rock_broken()) -
-# what actually comes out is rolled fresh per break (Items.random_drop():
-# mostly potions, some oxygen cells, an occasional spell shard), not always
-# the same thing. No invisible collision extension (collision_height/width
-# stay 0) since nothing needs to stop a diver going around one, only
-# breaking it matters.
+# CrackedWalls scattered around the open world. Ground-level rocks give a
+# random consumable; the four airborne rocks at 3x blockade height instead
+# hold two fixed spell keys and two enemy ambushes. No invisible collision
+# extension (collision_height/width stay 0) since only breaking them matters.
 #
 # Spread through open water away from every other placed thing - clear of
 # the anchor's own radius (Sites.ALL[0], r=6.5), both combat sites' radii
@@ -882,6 +891,14 @@ func _build_breakable_rocks() -> void:
 		Vector3(-15.0, 1.0, -20.0), Vector3(-3.0, 1.0, -30.0),
 		Vector3(-25.0, 1.0, 12.0), Vector3(10.0, 1.0, -15.0),
 		Vector3(8.0, 1.0, 22.0),
+		# These four rocks float three times the 6m blockade height above the
+		# seafloor. Two hold spell keys and two conceal encounter ambushes.
+		# All four stay at x < 15 (see the MODIFIED note above): the right-hand
+		# pair used to sit at x=38, behind the entrance blockade's invisible
+		# collision, so the Sunken Core and one ambush were unreachable until
+		# the gate was broken.
+		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, 22.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, -48.0),
+		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, -30.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, 46.0),
 	]
 	for i in range(SPOTS.size()):
 		var spot: Vector3 = SPOTS[i]
@@ -905,6 +922,16 @@ func _build_breakable_rocks() -> void:
 # `broken` signal stays ability/reward-agnostic. The stable id ties together
 # the consumed source and its pending reward across save/load.
 func _on_breakable_rock_broken(id: String, spot: Vector3) -> void:
+	if ROCK_KEY_ITEM_REWARDS.has(id):
+		var key_item := String(ROCK_KEY_ITEM_REWARDS[id])
+		if not key_items.has(key_item):
+			key_items.append(key_item)
+		var display := String(Items.ITEMS.get(key_item, {}).get("display", key_item))
+		_announce("Found the key item %s!" % display)
+		return
+	if id in ROCK_AMBUSH_IDS:
+		_start_battle("", false, "angler", [], false, false, "Some enemies were hiding in the rocks!")
+		return
 	var item_id := Items.random_drop()
 	var drop_position := spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
 	pending_world_drops[id] = {
@@ -1135,7 +1162,7 @@ func _build_highway() -> void:
 	const END_X := 45.0
 	const LANE_Z := 10.0
 	const LANE_HALF_WIDTH := 4.0
-	const WALL_HEIGHT := 6.0
+	const WALL_HEIGHT := BLOCKADE_HEIGHT
 
 	var length := END_X - START_X
 	var center_x := (START_X + END_X) * 0.5
@@ -2274,7 +2301,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "") -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
@@ -2309,6 +2336,8 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.tutorial_encounter = tutorial
+	battle.reward_item_on_win = reward_item
+	battle.encounter_intro_override = intro_text
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 

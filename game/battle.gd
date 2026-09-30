@@ -33,6 +33,8 @@ var party_source: Array = []
 # _show_items()/_populate_item_menu()). Nothing else in this file touches
 # world at all.
 var world: World
+var reward_item_on_win := ""
+var encounter_intro_override := ""
 
 # Set by World for the dedicated Glassgoat validation route. Ordinary
 # random and guardian encounters still build Goblin grunts; this builds one
@@ -530,7 +532,7 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log(encounter_intro(enemies))
+		_log(encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies))
 		_advance_turn()
 
 static func encounter_intro(entries: Array) -> String:
