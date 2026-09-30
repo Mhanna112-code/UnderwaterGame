@@ -335,9 +335,8 @@ var _busy := false
 var log_label: RichTextLabel
 var queue_row: HBoxContainer
 # HFlowContainer, not HBoxContainer - main_menu only ever has 2 buttons so
-# it never mattered, but move_menu can hold up to 3 base moves + 4 equipped
-# spells + Back (8 buttons at 150px each, wider than the whole viewport at
-# 1280px) and target_menu can hold one button per living enemy/ally. A
+# it never mattered, but move_menu holds a diver's base moves + every
+# learned spell + Back (more than one row's worth of 300px buttons) and target_menu can hold one button per living enemy/ally. A
 # plain HBoxContainer doesn't wrap - it would just run buttons off the
 # right edge instead of overflowing downward, the same "off-screen" bug
 # class as _bottom_panel not sizing to content (see _fit_panel_height()).
@@ -359,6 +358,16 @@ var back_btn: Button
 var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
+# Move-menu scrolling. Learned spells are all auto-equipped with no cap, so
+# a diver can have more moves than fit. At most MOVE_MENU_SLOTS buttons show
+# at once (two rows of four); past that, the list pages with Up/Down,
+# keeping MOVE_MENU_VISIBLE_MOVES moves plus the Up/Down pair and Back.
+const MOVE_MENU_SLOTS := 8
+const MOVE_MENU_VISIBLE_MOVES := MOVE_MENU_SLOTS - 2
+var _move_scroll_box: VBoxContainer
+var _move_up_btn: Button
+var _move_down_btn: Button
+var _move_scroll_offset := 0
 var target_buttons: Array = []
 var item_buttons: Array = []
 
@@ -1650,6 +1659,22 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
+	# Up/Down stacked into one button-sized slot so they cost a single cell
+	# of the flow rather than two. Hidden unless the moves overflow.
+	_move_scroll_box = VBoxContainer.new()
+	_move_scroll_box.add_theme_constant_override("separation", 4)
+	_move_scroll_box.visible = false
+	move_menu.add_child(_move_scroll_box)
+	_move_up_btn = Button.new()
+	_move_up_btn.text = "▲ Up"
+	_move_up_btn.custom_minimum_size = Vector2(300, 24)
+	_move_up_btn.pressed.connect(_scroll_moves.bind(-1))
+	_move_scroll_box.add_child(_move_up_btn)
+	_move_down_btn = Button.new()
+	_move_down_btn.text = "▼ Down"
+	_move_down_btn.custom_minimum_size = Vector2(300, 24)
+	_move_down_btn.pressed.connect(_scroll_moves.bind(1))
+	_move_scroll_box.add_child(_move_down_btn)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
@@ -3009,6 +3034,7 @@ func _apply_tutorial_move_gate() -> void:
 	var mv: Dictionary = moves[move_index]
 	var note := String(TutorialContent.FIRST_BATTLE_MOVE_NOTES.get(String(mv.name), ""))
 	var btn := move_buttons[move_index] as Button
+	_scroll_move_into_view(move_index)
 	_tutorial_flash_tween = create_tween()
 	_tutorial_flash_tween.set_loops()
 	_tutorial_flash_tween.tween_property(btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -3074,9 +3100,43 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
-	# Not rebuilt with the move buttons above - keep it after the choices.
+	# Not rebuilt with the move buttons above - keep them after the choices.
+	move_menu.move_child(_move_scroll_box, move_menu.get_child_count() - 1)
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
 	_place_skip_tutorial_btn_last(move_menu)
+	_move_scroll_offset = 0
+	_apply_move_scroll()
+
+func _moves_overflow() -> bool:
+	return move_buttons.size() + 1 > MOVE_MENU_SLOTS
+
+# Shows only the current page of move buttons. The rest stay in
+# move_buttons (hidden), so index-based callers - the tutorial gate,
+# verify scripts - still see every move.
+func _apply_move_scroll() -> void:
+	if _move_scroll_box == null:
+		return
+	var overflow := _moves_overflow()
+	var max_offset := maxi(0, move_buttons.size() - MOVE_MENU_VISIBLE_MOVES)
+	_move_scroll_offset = clampi(_move_scroll_offset, 0, max_offset) if overflow else 0
+	for i in range(move_buttons.size()):
+		(move_buttons[i] as Button).visible = not overflow or (i >= _move_scroll_offset and i < _move_scroll_offset + MOVE_MENU_VISIBLE_MOVES)
+	_move_scroll_box.visible = overflow
+	_move_up_btn.disabled = _move_scroll_offset <= 0
+	_move_down_btn.disabled = _move_scroll_offset >= max_offset
+	call_deferred("_fit_panel_height")
+
+# Pages a full window at a time; the clamp in _apply_move_scroll() makes the
+# last page end exactly on the last move instead of showing a short page.
+func _scroll_moves(direction: int) -> void:
+	_move_scroll_offset += direction * MOVE_MENU_VISIBLE_MOVES
+	_apply_move_scroll()
+
+# Scrolls just enough that move_buttons[index] is on screen.
+func _scroll_move_into_view(index: int) -> void:
+	if index < _move_scroll_offset or index >= _move_scroll_offset + MOVE_MENU_VISIBLE_MOVES:
+		_move_scroll_offset = index
+		_apply_move_scroll()
 
 # Ready-to-assign tooltip text covering every explainable effect a move
 # carries, not just the first - Flash Blast carries both a "status" (its own
@@ -5004,6 +5064,12 @@ func _set_all_buttons(enabled: bool) -> void:
 	target_back_btn.disabled = not enabled
 	for b in move_buttons:
 		(b as Button).disabled = not enabled
+	if _move_up_btn != null:
+		if enabled:
+			_apply_move_scroll()
+		else:
+			_move_up_btn.disabled = true
+			_move_down_btn.disabled = true
 	for b in target_buttons:
 		(b as Button).disabled = not enabled
 	for b in item_buttons:
