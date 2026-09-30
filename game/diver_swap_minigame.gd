@@ -546,18 +546,30 @@ func _on_portrait_arrived(sprite: Sprite3D, target_slot: String) -> void:
 		# lanes can misfire per round, either way round.
 		portrait_landed.emit()
 	_round_resolved += 1
-	if _round_resolved >= SLOT_NAMES.size():
-		_clear_reference_sprites()
-		round_finished.emit()
+	var is_last_in_round := _round_resolved >= SLOT_NAMES.size()
 	_update_progress()
 
-	# MODIFIED: was a bare sprite.queue_free() right after the hit check -
-	# freed the sprite before flash_object's own await get_tree().
-	# create_timer() ever had a chance to finish, so the flash would never
-	# actually be seen. Awaiting it here first means queue_free() only runs
-	# once the flash has fully played out.
-	await flash_object(sprite, Color.GREEN if hit else Color.RED, 0.15)
+	# Only the player-side reference portrait in this lane flashes: red if
+	# it's in the wrong lane (doesn't match what just arrived), green if it
+	# matches. The incoming sprite lands exactly on top of the reference, so
+	# it's freed right away rather than flashed - otherwise it would cover
+	# the reference's flash. The diver's own lane has no reference, so it
+	# doesn't flash either way.
 	sprite.queue_free()
+	if reference != null and is_instance_valid(reference):
+		await flash_object(reference, Color.GREEN if hit else Color.RED, 0.15)
+	else:
+		# Same wait as a flash, so the last-in-round ordering below still
+		# holds no matter which lane resolves last.
+		await get_tree().create_timer(0.15).timeout
+
+	# References are cleared only AFTER this round's flashes - clearing on
+	# the third arrival (before awaiting) freed them mid-flash. All three
+	# lanes land in the same frame with the same flash duration, so the
+	# last arrival's timer is also the last to fire.
+	if is_last_in_round:
+		_clear_reference_sprites()
+		round_finished.emit()
 
 	# MODIFIED: _resolved's increment (and the _maybe_finish() check) used
 	# to happen BEFORE this sprite's own flash/free above, so the 9th
@@ -584,7 +596,8 @@ func flash_object(object: Sprite3D, flash_color: Color, duration: float) -> void
 	var original_color = object.modulate
 	object.modulate = flash_color
 	await get_tree().create_timer(duration).timeout
-	object.modulate = original_color
+	if is_instance_valid(object):
+		object.modulate = original_color
 
 # MODIFIED: was 1.5 - battle.gd widened the diver/enemy gap for special
 # encounters (roughly doubled), but this radius stayed the same, so a rock
