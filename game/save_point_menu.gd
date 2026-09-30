@@ -1,11 +1,8 @@
 # The screen a save point actually opens (see world.gd's
-# _toggle_save_menu/_update_save_point_prompt) - this is the only entry
-# point into spell learning/equipping in the whole game, on purpose.
-# Owns navigation between six screens, only one visible at a time:
-#   root:      "Save" / "Update Spells"
-#   update:    "Equip Spells" / "Learn Spells" / "Back"
-#   learn:     SpellTreeUI (its own Back returns here)
-#   equip:     SpellEquipUI (its own Back returns here)
+# _toggle_save_menu/_update_save_point_prompt). Spell learning is handled
+# automatically after battles; this menu is only for writing save slots.
+# Owns navigation between the save menu, slot picker, and overwrite prompt:
+#   root:      "Save"
 #   slots:     one button per save slot (same slots the title screen's own
 #              Load/New Game picker shows), plus Back
 #   confirm:   "Are you sure you want to overwrite this save progress?"
@@ -23,13 +20,8 @@ extends Control
 signal save_requested(diver: Diver, slot: int)
 
 var diver: Diver
-var _display_name := ""
-
-var learn_ui: SpellTreeUI
-var equip_ui: SpellEquipUI
 
 var _root_panel: Control
-var _update_panel: Control
 var _slots_panel: Control
 var _confirm_panel: Control
 var _slots_list: VBoxContainer
@@ -43,10 +35,6 @@ func _ready() -> void:
 	_root_panel = _build_root_panel()
 	add_child(_root_panel)
 
-	_update_panel = _build_update_panel()
-	_update_panel.visible = false
-	add_child(_update_panel)
-
 	_slots_panel = _build_slots_panel()
 	_slots_panel.visible = false
 	add_child(_slots_panel)
@@ -55,13 +43,6 @@ func _ready() -> void:
 	_confirm_panel.visible = false
 	add_child(_confirm_panel)
 
-	learn_ui = SpellTreeUI.new()
-	learn_ui.back_pressed.connect(_on_sub_screen_back.bind(learn_ui))
-	add_child(learn_ui)
-
-	equip_ui = SpellEquipUI.new()
-	equip_ui.back_pressed.connect(_on_sub_screen_back.bind(equip_ui))
-	add_child(equip_ui)
 
 # A left-aligned dark panel at a fixed screen position, not a CenterContainer
 # - matches inventory_menu.gd's own root panel (same offset_left/offset_top),
@@ -92,7 +73,7 @@ func _build_root_panel() -> Control:
 	var col := _panel_column(bg)
 
 	var title := Label.new()
-	title.text = "Save / Update Spells"
+	title.text = "Save Point"
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
 	col.add_child(title)
@@ -102,48 +83,6 @@ func _build_root_panel() -> Control:
 	save_btn.custom_minimum_size = Vector2(360, 40)
 	save_btn.pressed.connect(_show_slots)
 	col.add_child(save_btn)
-
-	var update_btn := Button.new()
-	update_btn.text = "Update Spells"
-	update_btn.custom_minimum_size = Vector2(360, 40)
-	update_btn.pressed.connect(_show_update)
-	col.add_child(update_btn)
-
-	return bg
-
-func _build_update_panel() -> Control:
-	var bg := _build_left_panel()
-	var col := _panel_column(bg)
-
-	var title := Label.new()
-	title.text = "Update Spells"
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
-	col.add_child(title)
-
-	var equip_btn := Button.new()
-	equip_btn.text = "Equip Spells"
-	equip_btn.custom_minimum_size = Vector2(360, 40)
-	equip_btn.pressed.connect(func() -> void:
-		_update_panel.visible = false
-		equip_ui.open_for(diver, _display_name)
-	)
-	col.add_child(equip_btn)
-
-	var learn_btn := Button.new()
-	learn_btn.text = "Learn Spells"
-	learn_btn.custom_minimum_size = Vector2(360, 40)
-	learn_btn.pressed.connect(func() -> void:
-		_update_panel.visible = false
-		learn_ui.open_for(diver, _display_name)
-	)
-	col.add_child(learn_btn)
-
-	var back_btn := Button.new()
-	back_btn.text = "< Back"
-	back_btn.custom_minimum_size = Vector2(360, 36)
-	back_btn.pressed.connect(_show_root)
-	col.add_child(back_btn)
 
 	return bg
 
@@ -250,39 +189,22 @@ func _on_confirm_overwrite_no() -> void:
 	_confirm_panel.visible = false
 	_show_slots()
 
-func _on_sub_screen_back(screen: Control) -> void:
-	screen.close()
-	_show_update()
-
 func _show_root() -> void:
 	_root_panel.visible = true
-	_update_panel.visible = false
-	_slots_panel.visible = false
-	_confirm_panel.visible = false
-	learn_ui.close()
-	equip_ui.close()
-
-func _show_update() -> void:
-	_root_panel.visible = false
-	_update_panel.visible = true
 	_slots_panel.visible = false
 	_confirm_panel.visible = false
 
 func _show_slots() -> void:
 	_refresh_slots_list()
 	_root_panel.visible = false
-	_update_panel.visible = false
 	_confirm_panel.visible = false
 	_slots_panel.visible = true
 
-func open_for(d: Diver, display_name: String = "") -> void:
+func open_for(d: Diver) -> void:
 	diver = d
-	_display_name = display_name
 	visible = true
 	_show_root()
 
 func close() -> void:
 	visible = false
 	diver = null
-	learn_ui.close()
-	equip_ui.close()

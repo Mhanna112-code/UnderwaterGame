@@ -160,7 +160,7 @@ const DISPLAY_NAMES := Cast.DISPLAY_NAMES
 
 # Attack is a category, not a single action: pressing it opens a move list
 # instead of swinging right away. These base moves are always available -
-# on top of whichever spells that specific party member has equipped (see
+# on top of whichever spells that specific party member has learned (see
 # _moves_for()) - and now differ per diver instead of being one shared
 # list, so the base kit itself carries some identity too, not just the
 # spell tree layered on top of it. Glassgoat V2 moves use a `formula`
@@ -952,6 +952,7 @@ func _build_party() -> void:
 			"kind": "party", "stats": dv.stats,
 			"model_name": dv.model_name, "display_name": _display(dv.model_name),
 			"equipped_spells": dv.equipped_spells, "ability_id": dv.ability_id,
+			"diver": dv,
 		})
 
 # A SubViewport with its own camera, light and fog: isolated from the dive
@@ -4792,6 +4793,7 @@ func _win() -> void:
 	# XP. gain_xp() never runs here, so there's no level-up to log and no
 	# Spell Point block to build for this fight.
 	var levelup_blocks: Array[String] = []
+	var spell_unlock_announcements: Array[Dictionary] = []
 	if not tutorial_encounter:
 		var total_xp := 0
 		for e in enemies:
@@ -4809,6 +4811,21 @@ func _win() -> void:
 				await get_tree().create_timer(LOG_READ_DELAY).timeout
 			if not levels.is_empty():
 				levelup_blocks.append(_build_levelup_block(entry, levels))
+		var available_key_items: Array = world.key_items.duplicate() if world != null else []
+		# A guardian's key item is granted by World after this battle emits
+		# "won". Include it now so the win that earns it can unlock its spell.
+		if Items.is_key_item(reward_item_on_win) and not available_key_items.has(reward_item_on_win):
+			available_key_items.append(reward_item_on_win)
+		for entry in party:
+			if not entry.has("diver"):
+				continue
+			var diver := entry.diver as Diver
+			var unlocked: PackedStringArray = SpellTree.learn_all_available(diver, available_key_items)
+			if not unlocked.is_empty():
+				spell_unlock_announcements.append({
+					"display_name": String(entry.display_name),
+					"skills": unlocked,
+				})
 	# One combined block for every diver who leveled up this win, not a
 	# separate popup per diver - name, level reached, and Spell Points
 	# earned, in the same green used for a rising stat everywhere else in
@@ -4875,6 +4892,10 @@ func _win() -> void:
 		if not levelup_blocks.is_empty():
 			_levelup_caption.visible = false
 			call_deferred("_fit_panel_height")
+	for unlock in spell_unlock_announcements:
+		await _tutorial_show_step("%s unlocked %s." % [
+			String(unlock.display_name), ", ".join(unlock.skills)
+		])
 	_revert_temp_buffs()
 	finished.emit("won")
 

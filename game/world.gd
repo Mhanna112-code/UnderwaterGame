@@ -101,20 +101,17 @@ var aiming := false
 var target_selector: TargetSelector
 
 # P opens save_point_menu, but only while standing on a SavePoint (see
-# _save_points/_toggle_save_menu/_update_save_point_prompt) - spell
-# learning/equipping is deliberately unavailable anywhere else.
+# _save_points/_toggle_save_menu/_update_save_point_prompt). Spell learning
+# and equipping happen automatically after battles.
 var save_point_menu: SavePointMenu
 var _save_points: Array = []
 var _showing_save_prompt := false
 var _save_point_contact_active := false
 var _save_point_tutorial_seen := false
 
-# Party-wide, not per-diver - a key item (current_pearl/reef_plate) unlocks
-# a spell for whichever diver's tree gates on it, it isn't "held" by
-# whoever happened to win the guardian fight. Same array object gets handed
-# to save_point_menu.learn_ui in _ready() (see SpellTree.can_learn()'s
-# key_items param) rather than copied, so appending here is automatically
-# visible there without any extra sync step.
+# Party-wide, not per-diver - key items unlock spells in whichever diver's
+# tree requires them, they aren't "held" by whoever found one or won the
+# guardian fight.
 # The dive site as physical places from content/sites.gd. Built by
 # _build_dive_sites(); site_nodes is keyed by site id.
 var site_nodes: Dictionary = {}
@@ -308,6 +305,8 @@ func _load_save() -> void:
 		d.position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
 		d.known_spells.assign((snap.get("known_spells", []) as Array).duplicate())
 		d.equipped_spells.assign((snap.get("equipped_spells", []) as Array).duplicate())
+		# Saves from before auto-equip can have learned-but-unequipped spells.
+		SpellTree.equip_all_known(d)
 		var sd: Dictionary = snap.get("stats", {})
 		var s: CombatantStats = d.stats
 		s.hp_max = int(sd.get("hp_max", s.hp_max))
@@ -655,7 +654,6 @@ func _ready() -> void:
 	save_point_menu = SavePointMenu.new()
 	save_point_menu.save_requested.connect(_on_save_requested)
 	$HUD.add_child(save_point_menu)
-	save_point_menu.learn_ui.key_items = key_items
 
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
@@ -1168,7 +1166,7 @@ func _build_highway() -> void:
 	var center_x := (START_X + END_X) * 0.5
 
 	# 0. A save point before the corridor even starts - the first place in
-	# the game spell learning/equipping becomes available at all (see
+	# the game save menu becomes available at all (see
 	# save_point.gd/SavePointMenu). Sits in the open dive site ahead of the
 	# entrance blockade, not inside the walled corridor, so it reads as
 	# "rest here before attempting the gate," not "partway through it."

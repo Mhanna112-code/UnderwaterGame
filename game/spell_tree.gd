@@ -44,9 +44,8 @@
 # World._inventory_spells_for()/World.use_party_spell(), which only know
 # how to resolve those two effects (same restriction as battle.gd's
 # BASE_MOVES' own "inventory" tag). A known spell shows up there the moment
-# it's learned, whether or not it's actually equipped for battle - the
-# 4-slot equip cap (Diver.MAX_EQUIPPED_SPELLS) is a battle-loadout
-# restriction, not a "can this diver use it at all" one.
+# it's learned. Learning a spell also equips it for battle automatically
+# (see learn()) - there's no loadout cap or manual equip screen.
 class_name SpellTree
 extends RefCounted
 
@@ -202,8 +201,7 @@ static func spell_def(model_name: String, branch: String, spell_id: String) -> D
 	return tree_for(model_name)[branch][spell_id]
 
 # Looks a spell id up without knowing which branch it's in - used by
-# SpellEquipUI (which only has known_spells, just ids) and by battle.gd
-# (which only has equipped_spells, also just ids).
+# battle.gd (which only has equipped_spells, just ids).
 static func find_def(model_name: String, spell_id: String) -> Dictionary:
 	var tree: Dictionary = tree_for(model_name)
 	for branch in tree:
@@ -237,26 +235,33 @@ static func learn(diver: Diver, branch: String, spell_id: String, key_items: Arr
 	var def: Dictionary = spell_def(diver.model_name, branch, spell_id)
 	diver.stats.spell_points -= int(def.cost)
 	diver.known_spells.append(spell_id)
-	return true
-
-static func can_equip(diver: Diver, spell_id: String) -> bool:
-	if not diver.known_spells.has(spell_id) or diver.equipped_spells.has(spell_id):
-		return false
-	return diver.equipped_spells.size() < Diver.MAX_EQUIPPED_SPELLS
-
-static func equip(diver: Diver, spell_id: String) -> bool:
-	if not can_equip(diver, spell_id):
-		return false
-	diver.equipped_spells.append(spell_id)
-	return true
-
-# Unlike learn(), unequipping is never actually invalid to attempt (a
-# spell already missing from the loadout is just a no-op) - this returns
-# whether anything changed, so callers know whether it's worth refreshing.
-# (Array.erase() returns void in GDScript, not whether it found anything -
-# the has() check is what actually answers that.)
-static func unequip(diver: Diver, spell_id: String) -> bool:
+	# Learned spells go straight into the battle loadout - there's no
+	# manual equip step anymore (see equip_all_known()).
 	if not diver.equipped_spells.has(spell_id):
-		return false
-	diver.equipped_spells.erase(spell_id)
+		diver.equipped_spells.append(spell_id)
 	return true
+
+# Brings an older save's loadout in line with the auto-equip rule: every
+# known spell equipped, in the order it was learned.
+static func equip_all_known(diver: Diver) -> void:
+	for spell_id in diver.known_spells:
+		if not diver.equipped_spells.has(spell_id):
+			diver.equipped_spells.append(spell_id)
+
+# Automatically spends every currently usable point after a battle. Repeat
+# until a full pass makes no progress so a newly learned prerequisite can
+# unlock its dependent spell immediately in the same victory.
+static func learn_all_available(diver: Diver, key_items: Array) -> PackedStringArray:
+	var learned := PackedStringArray()
+	var tree := tree_for(diver.model_name)
+	var made_progress := true
+	while made_progress:
+		made_progress = false
+		for branch in BRANCH_ORDER:
+			if not tree.has(branch):
+				continue
+			for spell_id in tree[branch]:
+				if learn(diver, String(branch), String(spell_id), key_items):
+					learned.append(String(spell_def(diver.model_name, String(branch), String(spell_id)).display))
+					made_progress = true
+	return learned
