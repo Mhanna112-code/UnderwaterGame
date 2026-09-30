@@ -101,14 +101,14 @@ const SPELL_TREES := {
 	"Prototype_1(1910)": {
 		"debuff": {
 			"weaken": {
-				"display": "Weaken", "cost": 1,
+				"display": "Weaken Empowered", "cost": 1,
 				"description": "Strikes a nerve, lowering the target's defense.",
 				"requires_spells": [], "requires_items": [],
 				"debuff": "defense", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
 				"hint": "Lowers defense", "text": "You strike a nerve - defense drops",
 			},
 			"slow": {
-				"display": "Slow", "cost": 1,
+				"display": "Slow Empowered", "cost": 1,
 				"description": "Hobbles the target, lowering its agility.",
 				"requires_spells": [], "requires_items": [],
 				"debuff": "agility", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
