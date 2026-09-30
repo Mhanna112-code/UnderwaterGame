@@ -106,6 +106,8 @@ var target_selector: TargetSelector
 var save_point_menu: SavePointMenu
 var _save_points: Array = []
 var _showing_save_prompt := false
+var _save_point_contact_active := false
+var _save_point_tutorial_seen := false
 
 # Party-wide, not per-diver - a key item (current_pearl/reef_plate) unlocks
 # a spell for whichever diver's tree gates on it, it isn't "held" by
@@ -273,6 +275,7 @@ func _serialize_state() -> Dictionary:
 		"key_items": key_items.duplicate(),
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
+		"save_point_tutorial_seen": _save_point_tutorial_seen,
 		"divers": divers_data,
 	}
 
@@ -327,6 +330,7 @@ func _load_save() -> void:
 	revealed_key_items.assign((data.get("revealed_key_items", []) as Array).duplicate())
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
+	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -1492,7 +1496,7 @@ func _toggle_save_menu() -> void:
 	if not _diver_on_save_point(divers[active]):
 		_announce("No save point nearby.")
 		return
-	save_point_menu.open_for(divers[active], _display_name(divers[active].model_name))
+	save_point_menu.open_for(divers[active])
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	mouse_look = false
 
@@ -1506,10 +1510,8 @@ func _diver_on_save_point(d: Diver) -> bool:
 # itself only ever emits the request, it doesn't know whether saving
 # "worked" since there's nothing real to fail yet (see save_point_menu.gd).
 #
-# Also the only way oxygen ever comes back now that there's no passive
-# regen - a save point is a real destination to swim for once you've spent
-# it down on abilities/sonar/spells, not just a spell-loadout menu. And now
-# a real save-file write (_write_save()) to whichever slot this run is
+# A save-point visit restores HP/O2 on contact; this handler writes a real
+# save file (_write_save()) to whichever slot this run is
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
 #
@@ -1534,26 +1536,48 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 	_announce("Progress saved to Slot %d." % (slot + 1))
 	save_point_menu.close()
 
-# Shows "Save/Update Spells" while standing on a save point with the menu
+# Shows the save prompt while standing on a save point with the menu
 # closed, clears it the moment either stops being true. Tracked separately
 # from _announce()'s normal fade (_banner_timer stays 0 here) so the
 # prompt persists exactly as long as you're standing there, not for a
 # fixed few seconds - but that also means it only ever clears its own
 # text, never a real announcement's, via _showing_save_prompt.
 func _update_save_point_prompt() -> void:
+	var on_point := _diver_on_save_point(divers[active]) and _first_encounter_done
+	if on_point and not _save_point_contact_active:
+		_save_point_contact_active = true
+		_restore_party_at_save_point()
+	elif not on_point:
+		_save_point_contact_active = false
+
 	if save_point_menu.visible:
 		if _showing_save_prompt:
 			banner.text = ""
 			_showing_save_prompt = false
 		return
-	var on_point := _diver_on_save_point(divers[active]) and _first_encounter_done
 	if on_point and not _showing_save_prompt:
-		banner.text = "Save/Update Spells - Press P"
+		if not _save_point_tutorial_seen:
+			_save_point_tutorial_seen = true
+			var pages: Array[Dictionary] = [{
+				"title": "Save Points",
+				"body": "At Save Points you can write/overwrite your game progress to one of three save slots. Save points also revive any downed party members and fully replenish the party's health/O2 bars.",
+				"slot": null,
+			}]
+			(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
+		banner.text = "Save - Press P"
 		_banner_timer = 0.0
 		_showing_save_prompt = true
 	elif not on_point and _showing_save_prompt:
 		banner.text = ""
 		_showing_save_prompt = false
+
+func _restore_party_at_save_point() -> void:
+	for other in divers:
+		var s: CombatantStats = (other as Diver).stats
+		s.hp = s.hp_max
+		s.oxygen = s.oxygen_max
+	_update_hp_bar()
+	_update_oxygen_bar()
 
 func _fire_aimed_ability() -> void:
 	aiming = false
