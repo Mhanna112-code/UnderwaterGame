@@ -52,6 +52,30 @@ const ALL := [
 		"item": "reef_plate", "look": "salvage", "enemy": "swordfish_duelist",
 		"links": [],
 	},
+	# Special-encounter sites - not on anyone's "links" chain (no beacon
+	# trail leads here, same as every other guarded site - see
+	# _check_no_loot_signposts() in verify/sites.gd). Sonar can help locate
+	# them, but entering their radius starts the encounter directly.
+	# "special": true is what routes these through the solo diver-ability
+	# minigame (World._offer_special_encounter()) instead of a plain fight -
+	# shallows/trench above stay plain fights on purpose (key items, not
+	# minigames). Reward is a battle-only stat tonic (Items.ITEMS'
+	# attack_up/defense_up), not a key item, so there is no capstone-spell
+	# gate riding on either of these.
+	{
+		"id": "reef", "kind": "combat",
+		"at": Vector3(-45.0, 2.6, 15.0), "radius": 9.0,
+		"item": "attack_up", "look": "coral_case", "enemy": "angler",
+		"special": true,
+		"links": [],
+	},
+	{
+		"id": "grotto", "kind": "combat",
+		"at": Vector3(-15.0, 2.6, -44.0), "radius": 9.0,
+		"item": "defense_up", "look": "shell_vault", "enemy": "swordfish_duelist",
+		"special": true,
+		"links": [],
+	},
 ]
 
 static func by_id(id: String) -> Dictionary:
@@ -64,20 +88,25 @@ static func start() -> Dictionary:
 	return ALL[0] as Dictionary
 
 # Which item is guarded here, for the combat sites. One list, so the site,
-# the guardian standing on its plinth, sonar and the minimap cannot disagree
-# about where a thing is. See ItemGuardian.spots().
-# "look" is what is actually standing on the plinth. Two sites with the
-# same thing on them is two of the same fetch quest wearing one coat of
-# paint, which is exactly how it read in the build: verify/sites.gd fails
-# if any two guarded sites share a look.
+# sonar, and the minimap cannot disagree about where a thing is. See
+# ItemGuardian.spots(). "look" identifies what's guarded in writeups/logs,
+# not a placed object (no on-screen guardian model exists any more). Two
+# sites with the same thing on them is two of the same fetch quest wearing
+# one coat of paint, which is exactly how it read in the build: verify/
+# sites.gd fails if any two guarded sites share a look. "special" routes a
+# site through the solo-diver ability minigame (World._offer_special_
+# encounter()) instead of a plain fight - see World._try_trigger_item_site()
+# for where this actually gets read.
 static func guarded() -> Array:
 	var out: Array = []
 	for s in ALL:
 		if String(s.get("item", "")) != "":
 			out.append({
 				"item": String(s.item), "at": s.at as Vector3,
+				"radius": float(s.get("radius", 0.0)),
 				"site": String(s.id), "look": String(s.get("look", "urchin")),
 				"enemy": String(s.get("enemy", "angler")),
+				"special": bool(s.get("special", false)),
 			})
 	return out
 

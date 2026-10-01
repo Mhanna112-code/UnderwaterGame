@@ -49,17 +49,25 @@ signal broken
 @export var collision_width := 0.0
 
 # When true, looks exactly like one of the ambient scenery rocks from
-# world.gd's _build_site() (same SphereMesh dimensions/color) instead of
-# the default brown box - used for the reward rocks specifically (see
-# _build_breakable_rocks()) so they read as "just another rock" until
-# shockwaved, discoverable by exploring/sweeping the site rather than
-# telegraphed from across the map. The entrance blockade leaves this
-# false on purpose - a gate SHOULD read as obviously different from
-# scenery; only the hidden reward rocks want to disappear into it.
-# `span` still governs the (invisible either way) collision box - a
+# world.gd's _build_site() (same SphereMesh dimensions AND color) instead
+# of the visibly-different brown breakable rock - true "invisible until
+# shockwaved" camouflage. Nothing sets this true today (the reward rocks
+# used to, before feedback that they should read as spottable/breakable on
+# sight instead - see _build_breakable_rocks()'s own header comment), but
+# the option stays since it's still a real, useful look for a future hidden
+# reward. `span` still governs the (invisible either way) collision box - a
 # sphere's visual size doesn't need to match its blast-detection box
 # exactly, same approximation the box mesh itself already was.
 @export var disguised_as_scenery_rock := false
+
+# Shape only, independent of disguised_as_scenery_rock's color: the small
+# reward rocks (_build_breakable_rocks()) want the same rounded-rock
+# silhouette as world.gd's ambient scenery (so they read as "a rock", not a
+# crate), just recolored brown so they're still spottable as breakable on
+# sight. The entrance blockade leaves this false - a corridor-wide gate
+# reads better as a slab of rubble than a single giant sphere, and its
+# `span` (the visible size) is sized per-instance for that shape anyway.
+@export var sphere_shaped := false
 
 var _mesh: MeshInstance3D
 
@@ -68,26 +76,27 @@ func _ready() -> void:
 
 	_mesh = MeshInstance3D.new()
 	var mat := StandardMaterial3D.new()
-	if disguised_as_scenery_rock:
+	if disguised_as_scenery_rock or sphere_shaped:
 		var rock := SphereMesh.new()
 		rock.radius = 0.5
 		rock.height = 0.7
 		rock.radial_segments = 7
 		rock.rings = 4
 		_mesh.mesh = rock
-		# Matches _build_site()'s ambient rock color/roughness exactly -
-		# the whole point is being indistinguishable from one until broken.
-		mat.albedo_color = Color(0.13, 0.19, 0.21)
-		mat.roughness = 1.0
+		if disguised_as_scenery_rock:
+			# Matches _build_site()'s ambient rock color/roughness exactly -
+			# the whole point is being indistinguishable from one until broken.
+			mat.albedo_color = Color(0.13, 0.19, 0.21)
+			mat.roughness = 1.0
+		else:
+			# Same rounded shape as the ambient rocks, but brown - visibly
+			# different from scenery on sight, just not box-shaped about it.
+			mat.albedo_color = Color(0.42, 0.22, 0.14)
+			mat.roughness = 0.9
 	else:
 		var box := BoxMesh.new()
 		box.size = span
 		_mesh.mesh = box
-		# Visibly different from the scenery rocks in world.gd - a player
-		# should be able to tell "this one's a kind of thing" before they
-		# have any ability that reacts to it. (Only true when NOT
-		# disguised - see disguised_as_scenery_rock above for the opposite
-		# case, used by the two reward rocks.)
 		mat.albedo_color = Color(0.42, 0.22, 0.14)
 		mat.roughness = 0.9
 	_mesh.material_override = mat

@@ -1,6 +1,6 @@
-# Shown by World when a diver enters a visible artifact guardian
-# (see world.gd's _on_item_guardian_triggered()/_offer_special_encounter())
-# - two screens, only one visible at a time:
+# Shown by World when a random encounter rolls into a special encounter for
+# a revealed key item (see world.gd's _on_encounter_triggered()/
+# _offer_special_encounter()) - two screens, only one visible at a time:
 #   confirm: explains the stakes (special ability needed, a timed
 #     challenge, real treasure, no permadeath) with Enter/Not Now.
 #   select: a rotating carousel of the three divers - 3D model preview,
@@ -15,10 +15,13 @@ extends Control
 signal diver_chosen(model_name: String)
 signal cancelled
 
-# MODIFIED: the blurb text and the demo-media paths both moved to
-# content/tutorial_content.gd (ABILITY_BLURBS/ABILITY_MEDIA) so the
-# general tutorial book and this carousel can't drift apart from each
-# other by each keeping their own copy.
+# MODIFIED: the blurb text moved to content/tutorial_content.gd
+# (ABILITY_BLURBS), shared with the general Esc-menu reference carousel so
+# the wording can't drift apart between the two. The demo-media paths used
+# to be shared the same way (ABILITY_MEDIA), but this carousel now reads
+# its own SPECIAL_ENCOUNTER_MEDIA table instead - same idea as battle.gd's
+# in-fight tutorial demo frame, which reads that same table (see content/
+# tutorial_content.gd's own comment on why the two were split apart).
 const ROSTER := ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]
 
 var _mode := "confirm"
@@ -148,12 +151,16 @@ func _build_select_panel() -> Control:
 	row.add_child(left_btn)
 
 	var preview_container := SubViewportContainer.new()
-	preview_container.custom_minimum_size = Vector2(280, 260)
+	# Keep the character showcase beside—not inside—a landscape tutorial
+	# recording.  The old 280x260/220x260 pair made every 16:9 clip occupy
+	# less than half its portrait-shaped panel, which read as a tiny video
+	# surrounded by empty black space at normal game resolution.
+	preview_container.custom_minimum_size = Vector2(260, 225)
 	preview_container.stretch = true
 	row.add_child(preview_container)
 
 	_preview_vp = SubViewport.new()
-	_preview_vp.size = Vector2i(280, 260)
+	_preview_vp.size = Vector2i(260, 225)
 	_preview_vp.transparent_bg = true
 	_preview_vp.disable_3d = false
 	# Keep the carousel's review model isolated from the live overworld. A
@@ -184,7 +191,10 @@ func _build_select_panel() -> Control:
 	# _refresh_carousel(), since which ability (and so which clip) is
 	# showing changes with _carousel_index.
 	_media_frame = PanelContainer.new()
-	_media_frame.custom_minimum_size = Vector2(220, 260)
+	# The media frame deliberately has the source video's 16:9 geometry.
+	# That lets a real tutorial clip use the whole framed area without
+	# stretching or letterboxing it into a portrait slot.
+	_media_frame.custom_minimum_size = Vector2(400, 225)
 	var media_bg := StyleBoxFlat.new()
 	media_bg.bg_color = Color(0.03, 0.08, 0.11)
 	media_bg.set_border_width_all(1)
@@ -270,22 +280,49 @@ func _refresh_carousel() -> void:
 # Swaps in whatever demo clip/image exists for `ability_id` - a still image
 # loads straight into a TextureRect; a .ogv loads into a VideoStreamPlayer
 # and loops by replaying on `finished` rather than relying on any built-in
-# loop flag. Neither file exists yet for any ability (see
-# TutorialContent.ABILITY_MEDIA's own comment), so today this always falls
-# through to the placeholder - that fallback is the point, not a bug: it
-# reserves the spot so dropping in a real clip later needs no code changes.
+# loop flag.
+# MODIFIED (fixed): this never got the same fix character_ability_popup.gd's
+# own copy of this same loading logic did (see its "Fix tutorial clip aspect
+# ratio and oversized media frame" commit) - expand was never set true (a
+# VideoStreamPlayer with expand false renders at the source video's native
+# resolution, ignoring the PRESET_FULL_RECT anchors entirely, which is what
+# actually blew the whole carousel out to fill most of the screen the moment
+# a real swap_demo.ogv existed to test this against) and there was no
+# AspectRatioContainer, so a 16:9 source stretched to whatever raw shape
+# _media_frame happened to be. Also: `player.stream = load(path)` reused
+# Godot's cached VideoStreamTheora resource across every _refresh_media()
+# call this carousel makes (Left/Right cycling calls it once per diver, and
+# switching back to the same diver again re-hits the cache) - a fresh
+# VideoStreamTheora.new() per call is what character_ability_popup.gd's own
+# version does instead, avoiding one decoder's playback state leaking
+# between players that all point at the same cached resource.
 func _refresh_media(ability_id: String) -> void:
 	for child in _media_frame.get_children():
 		child.queue_free()
-	var path := String(TutorialContent.ABILITY_MEDIA.get(ability_id, ""))
+	var path := String(TutorialContent.SPECIAL_ENCOUNTER_MEDIA.get(ability_id, ""))
 	if path != "" and ResourceLoader.exists(path):
 		if path.get_extension() == "ogv":
 			var player := VideoStreamPlayer.new()
-			player.stream = load(path)
-			player.autoplay = true
+			var video_stream := VideoStreamTheora.new()
+			video_stream.file = path
+			player.stream = video_stream
+			player.expand = true
+			_apply_video_crop(player, ability_id)
+			var aspect := AspectRatioContainer.new()
+			aspect.ratio = 16.0 / 9.0
+			aspect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			aspect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			aspect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			aspect.add_child(player)
 			player.finished.connect(player.play)
-			_media_frame.add_child(player)
+			_media_frame.add_child(aspect)
+			# Deferred, not autoplay=true - same reasoning as character_
+			# ability_popup.gd's own player: starting Theora decode the
+			# instant this frame's still mid-build (or the tree's mid-pause
+			# transition from world.gd opening this popup) risks contending
+			# with that instead of showing a small clip cleanly.
+			player.call_deferred("play")
 			return
 		var tex := load(path) as Texture2D
 		if tex != null:
@@ -302,3 +339,25 @@ func _refresh_media(ability_id: String) -> void:
 	placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	placeholder.add_theme_color_override("font_color", Color(0.35, 0.5, 0.55))
 	_media_frame.add_child(placeholder)
+
+# Some source recordings are deliberately kept unmodified in the repository
+# for provenance, but contain capture padding that is not part of the lesson.
+# Crop those at render time rather than scaling black pixels up with the game
+# footage.  The crop values are normalized source UV coordinates owned by
+# TutorialContent, where the clip path itself is declared.
+func _apply_video_crop(player: VideoStreamPlayer, ability_id: String) -> void:
+	var crop_data: Variant = TutorialContent.SPECIAL_ENCOUNTER_VIDEO_CROPS.get(ability_id)
+	if not (crop_data is Vector4):
+		return
+	var shader := Shader.new()
+	shader.code = """shader_type canvas_item;
+uniform vec4 source_crop;
+void fragment() {
+	vec2 source_uv = source_crop.xy + UV * source_crop.zw;
+	COLOR = texture(TEXTURE, source_uv);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("source_crop", crop_data)
+	player.material = material

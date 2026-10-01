@@ -23,6 +23,7 @@ var _page_label: Label
 var _prev_btn: Button
 var _next_btn: Button
 var _close_btn: Button
+var _x_close_btn: Button
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -90,6 +91,32 @@ func _ready() -> void:
 	_close_btn.pressed.connect(_on_close_pressed)
 	button_row.add_child(_close_btn)
 
+	# Always-available exit independent of which page you're on - the
+	# Prev/Next/Close row (above) already dismisses via Close, but a corner
+	# X reads as the universal "get me out of this modal" control everyone
+	# already expects, same job as _on_close_pressed() either way.
+	_x_close_btn = Button.new()
+	_x_close_btn.text = "×"
+	var x_btn_size := Vector2(36, 36)
+	_x_close_btn.custom_minimum_size = x_btn_size
+	_x_close_btn.add_theme_font_size_override("font_size", 20)
+	_x_close_btn.pressed.connect(_on_close_pressed)
+	# Explicit anchors/offsets from a fixed size, not
+	# set_anchors_and_offsets_preset()'s PRESET_MODE_MINSIZE - see
+	# character_ability_popup.gd's own corner X for why that undershoots
+	# (it measures get_combined_minimum_size() before add_child(), so
+	# before the size/font overrides just above have actually taken).
+	var x_inset := 16.0
+	_x_close_btn.anchor_left = 1.0
+	_x_close_btn.anchor_right = 1.0
+	_x_close_btn.anchor_top = 0.0
+	_x_close_btn.anchor_bottom = 0.0
+	_x_close_btn.offset_right = -x_inset
+	_x_close_btn.offset_left = -x_inset - x_btn_size.x
+	_x_close_btn.offset_top = x_inset
+	_x_close_btn.offset_bottom = x_inset + x_btn_size.y
+	add_child(_x_close_btn)
+
 # `pages` must have at least one entry - callers own the content, this just
 # renders whatever's handed to it.
 func open(pages: Array[Dictionary]) -> void:
@@ -111,6 +138,19 @@ func _refresh() -> void:
 	# "Next" carries you forward right up to the last page, where only
 	# Close is left - no dead click on a "Next" that has nowhere to go.
 	_next_btn.visible = _index < _pages.size() - 1
+
+# Pulses whichever button actually moves the player forward right now -
+# Next on every page but the last, Close once Next has hidden itself (see
+# _refresh() above) - so there's always exactly one flashing button
+# pointing at "what to press next", same sine-pulse shape as [pulse] BBCode
+# text elsewhere (pulse_text_effect.gd) rather than a second effect system.
+func _process(_delta: float) -> void:
+	if not visible:
+		return
+	var flash := 0.35 + 0.65 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0))
+	var forward_btn := _next_btn if _next_btn.visible else _close_btn
+	_next_btn.modulate.a = flash if forward_btn == _next_btn else 1.0
+	_close_btn.modulate.a = flash if forward_btn == _close_btn else 1.0
 
 func _step(dir: int) -> void:
 	_index = clampi(_index + dir, 0, _pages.size() - 1)

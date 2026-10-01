@@ -21,18 +21,26 @@ extends Resource
 # pool refills at the start of this combatant's next turn.
 var evasion_current: int = 5
 
+# Per-stat debuff floor - empty for a Diver (permanent debuffs only ever
+# target enemies today, see battle.gd's _apply_debuff()), populated for an
+# enemy with its own species BASE_STATS (Goblin._stats_from()). A stat can
+# be debuffed down to this floor and no further, even though the enemy's
+# actual starting value this fight is usually higher (make_stats()'s own
+# 5-25% roll on top of it) - the species' real base stays a hard bottom
+# regardless of how much of that roll a Weaken/Slow strips back off.
+var stat_floor: Dictionary = {}
+
 # Status entries are {level, turns}. A turns value of 0 means persistent for
 # the battle (Bleed); positive durations tick after this combatant's turn.
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
-# Spent on the sonar passive while it's active and on casting an equipped
-# spell in battle (battle.gd's _resolve_party_move()). Environmental active
-# abilities deliberately cost 0 O2: Shockwave, Grapple and Swap are route
-# verbs, so an empty tank must not soft-lock a puzzle. Float rather than int
-# like hp so sonar's continuous drain doesn't get rounded to zero every
-# frame. Same fill()-on-level-up/refill story as hp: nothing but a level-up
-# tops it off instantly, everything else is gradual regen.
+# Spent on ability use (Diver.use_ability()), on the sonar passive while
+# it's active, and on casting an equipped spell in battle (battle.gd's
+# _resolve_party_move()) - float rather than int like hp so a continuous
+# drain (sonar) and passive regen (Diver._process) don't get rounded to
+# zero every frame. Same fill()-on-level-up/refill story as hp: nothing
+# but a level-up tops it off instantly, everything else is gradual regen.
 @export var oxygen_max: float = 100.0
 var oxygen: float
 
@@ -40,9 +48,9 @@ var oxygen: float
 @export var xp: int = 0
 @export var xp_to_next: int = 30
 
-# Currency spent in game/spell_tree.gd - one per level-up, awarded in the
-# same loop that already applies growth stats (see gain_xp below), so it
-# rides along with leveling rather than needing its own trigger.
+# Currency spent in game/spell_tree.gd - one per level-up (see gain_xp
+# below). Leveling doesn't touch hp_max/strength/defense/etc at all - a
+# level-up is a full HP/Oxygen refill plus this, nothing more.
 @export var spell_points: int = 0
 
 # FF-style XP curve: each level needs XP_BASE * level^XP_CURVE, not a flat
@@ -52,28 +60,6 @@ var oxygen: float
 # (see gain_xp below) rather than accumulated, so there's no drift.
 const XP_BASE := 30.0
 const XP_CURVE := 1.5
-
-# Per-level growth. Zero on all of these (the default) means "doesn't
-# level" - what enemies get, since only divers gain XP.
-#
-# grow_accuracy/grow_evasion exist so neither side of _resolve_attack's
-# accuracy-vs-evasion comparison can permanently cross the other and get
-# stuck there. Before these existed, a diver's accuracy/evasion were fixed
-# forever while Goblin.SCALE_PER_LEVEL scaled a grunt's accuracy AND
-# evasion up every player level - eventually a low-accuracy diver would
-# start missing every grunt permanently (or a low-evasion one would start
-# getting hit by everything), with no way back since only one side of the
-# comparison was ever moving. Small growth on both stats keeps the
-# player's own numbers climbing roughly in step with whatever they're
-# fighting, on top of goblin.gd now deriving enemy stats from the party's
-# current numbers directly rather than an independent curve (see
-# Goblin.make_stats()) - belt and suspenders against the same failure mode.
-@export var grow_hp: int = 0
-@export var grow_strength: int = 0
-@export var grow_defense: int = 0
-@export var grow_agility: int = 0
-@export var grow_accuracy: int = 0
-@export var grow_evasion: int = 0
 
 var hp: int
 
@@ -94,11 +80,16 @@ func fill() -> void:
 # A short post-victory regroup. Without a camp/healer between the two artifact
 # sites, even a won encounter could leave a diver at 0 HP and turn the next
 # legal pack into a foregone conclusion. This restores only a fraction, so
-# damage still matters across the route; a level-up remains the only full
-# refill. Called by Battle after XP and mirrored by the campaign balance gate.
-func recover_after_victory(fraction: float = 0.40) -> void:
+# damage still matters across the route; a level-up remains the only free
+# full refill. Called by Battle after XP and mirrored by the campaign balance
+# gate. Skips the HP restore entirely for anyone already at 0 - a downed
+# diver doesn't get back up just because the party won; only a level-up
+# (fill(), above) or an actual Revive spell (battle.gd's "revive" effect,
+# world.gd's out-of-battle version) brings them back.
+func recover_after_victory(fraction: float = 0.30) -> void:
 	var amount := clampf(fraction, 0.0, 1.0)
-	hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
+	if hp > 0:
+		hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
 	oxygen = minf(oxygen_max, oxygen + oxygen_max * amount)
 	statuses.clear()
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
@@ -108,7 +99,7 @@ func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 
 func effective_evasion() -> int:
-	return maxi(0, evasion - status_level("evasion_down") + int(temporary_modifiers.evasion))
+	return maxi(0, evasion + int(temporary_modifiers.evasion))
 
 func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
@@ -157,14 +148,6 @@ func reduce_evasion(amount: int) -> int:
 	evasion_current = mini(evasion_current, effective_evasion())
 	return before - evasion
 
-# Tail Spin's ("Frilled Shark" - content/enemy_moves.gd) counterpart to
-# reduce_evasion() above - a flat, lasts-the-rest-of-the-fight Defense drop,
-# not a timed status like Blindness's own Defense penalty.
-func reduce_defense(amount: int) -> int:
-	var before := defense
-	defense = maxi(0, defense - maxi(0, amount))
-	return before - defense
-
 func add_temporary_modifier(stat: String, amount: int) -> void:
 	if not temporary_modifiers.has(stat):
 		return
@@ -187,24 +170,6 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 func status_level(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("level", 0))
 
-func is_stunned() -> bool:
-	return status_level("stun") > 0
-
-# Ticks one status's own duration down by a single turn outside the normal
-# end_turn() sweep. Battle._advance_turn() calls this on "stun" when it skips
-# a stunned combatant's whole turn - that combatant never reaches its own
-# end_turn() this round (see Battle._finish_actor_turn(), only called for
-# whoever actually acted), so nothing else would ever count the skipped turn
-# down and the stun would never expire.
-func consume_status_turn(status: String) -> void:
-	if not statuses.has(status):
-		return
-	var turns := status_turns(status)
-	if turns <= 1:
-		statuses.erase(status)
-	else:
-		(statuses[status] as Dictionary).turns = turns - 1
-
 func status_turns(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("turns", 0))
 
@@ -218,42 +183,19 @@ func status_summary() -> String:
 
 # Adds XP and applies every level-up it crosses (a big win can jump more
 # than one level at once). Returns one Dictionary per level reached -
-# {"level": int, "grown": {"HP"/"STR"/"DEF"/"AGI"/"ACC"/"EVA": int}} - empty
-# if none. battle.gd uses "level" to decide whether/what to log, and
-# "grown" to build the level-up stat table (_build_levelup_block()).
+# {"level": int} - empty if none. battle.gd uses "level" to decide whether/
+# what to log. Purely a counter plus a reward trigger: hp_max/strength/
+# defense/agility/accuracy/evasion never change here, only spell_points and
+# (via fill() below) current HP/oxygen.
 func gain_xp(amount: int) -> Array:
 	xp += amount
 	var levels_gained: Array = []
 	while xp >= xp_to_next:
 		xp -= xp_to_next
 		level += 1
-		var hp_up := _rolled_growth(grow_hp)
-		var str_up := _rolled_growth(grow_strength)
-		var def_up := _rolled_growth(grow_defense)
-		var agi_up := _rolled_growth(grow_agility)
-		var acc_up := _rolled_growth(grow_accuracy)
-		var eva_up := _rolled_growth(grow_evasion)
-		hp_max += hp_up
-		strength += str_up
-		defense += def_up
-		agility += agi_up
-		accuracy += acc_up
-		evasion += eva_up
 		xp_to_next = int(round(XP_BASE * pow(float(level), XP_CURVE)))
 		spell_points += 1
-		levels_gained.append({
-			"level": level,
-			"grown": {
-				"HP": hp_up, "STR": str_up, "DEF": def_up,
-				"AGI": agi_up, "ACC": acc_up, "EVA": eva_up,
-			},
-		})
+		levels_gained.append({"level": level})
 	if not levels_gained.is_empty():
-		fill()      # a level-up is the game's only heal/recharge right now
+		fill()      # a level-up is the game's only full heal/recharge right now
 	return levels_gained
-
-# Keep the stat growth table deterministic. The tutorial/UI can accurately
-# show what a level-up did, and the seeded route simulator remains a genuine
-# regression test instead of depending on the process-wide RNG.
-func _rolled_growth(base: int) -> int:
-	return maxi(0, base)
