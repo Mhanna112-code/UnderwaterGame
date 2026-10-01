@@ -95,6 +95,13 @@ const PLINTH_TOP := 0.7
 
 var key_items: Array[String] = []
 
+# Stable ids of the new key-item doors that have already completed their
+# authored opening.  This is deliberately separate from key_items: one key
+# can open several doors, but only doors actually opened belong in a save.
+# KeyDoor remains placement-agnostic; World owns the run-wide persistence
+# contract in the same way it already owns consumed rocks and guardian items.
+var opened_key_doors: Array[String] = []
+
 # Which ItemGuardian.spots() item ids sonar has ever pinged (see
 # Diver.update_sonar()) - MiniMap draws a marker for anything in here
 # that isn't also in key_items yet (still unclaimed). Party-wide like
@@ -259,6 +266,7 @@ func _serialize_state() -> Dictionary:
 		"inventory": inventory.duplicate(),
 		"pending_world_drops": pending_world_drops.duplicate(true),
 		"key_items": key_items.duplicate(),
+		"opened_key_doors": opened_key_doors.duplicate(),
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
 		"divers": divers_data,
@@ -318,6 +326,7 @@ func _load_save() -> void:
 	# existing typed array in place, same pattern known_spells/
 	# equipped_spells above already use for exactly this reason.
 	key_items.assign((data.get("key_items", []) as Array).duplicate())
+	opened_key_doors.assign((data.get("opened_key_doors", []) as Array).duplicate())
 	revealed_key_items.assign((data.get("revealed_key_items", []) as Array).duplicate())
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
@@ -328,6 +337,7 @@ func _load_save() -> void:
 	# Area3D can reopen the special encounter even though key_items says it was
 	# already won.
 	_retire_claimed_item_guardians()
+	_restore_opened_key_doors()
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -471,6 +481,106 @@ func _on_title_spell_playtest() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	mouse_look = false
 
+# `?keydoor=1` / `--key-door-playtest` is an asset-and-interaction review
+# route, not a campaign shortcut.  It puts a real Door FBX and a temporary
+# Current Pearl pickup in an open section of the real World, with no save
+# slot and no dependence on Marc's unpushed maze placement.  A reviewer can:
+# (1) approach the closed door and see the requirement, (2) press E without
+# the key, (3) collect the visible test key, and (4) return and watch the
+# authored `Open` shape key release the passage.
+func _open_key_door_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	_intro_active = false
+	_first_encounter_started = true
+	_first_encounter_done = true
+	if is_instance_valid(light_beam):
+		light_beam.visible = false
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+	for diver_value in divers:
+		var diver := diver_value as Diver
+		diver.min_encounter_distance = 100000.0
+		diver.max_encounter_distance = 100000.0
+
+	var start := Vector3(-18.0, 2.0, -12.0)
+	for i in range(divers.size()):
+		(divers[i] as Diver).position = start + Vector3(float(i) * 1.3, 0.0, 0.7)
+	active = 0
+	var door := KeyDoor.new()
+	door.name = "KeyDoorReview"
+	door.door_id = "key_door_review"
+	door.required_key_id = "current_pearl"
+	door.visual_height = 3.2
+	door.interaction_radius = 4.0
+	# Five to six metres ahead and slightly right of the start: close enough
+	# that the real model reads immediately in the chase camera, but just
+	# outside the interaction radius so the reviewer first sees the locked
+	# state rather than opening it by accident.  Keeping it out of the party's
+	# initial silhouette avoids a misleading "where is the Door?" first frame.
+	# The key sits off the direct line so both beats are visible.
+	door.position = Vector3(-15.6, 0.0, -6.0)
+	add_child(door)
+	# This sign belongs only to the direct human-review route. KeyDoor itself
+	# remains generic and only shows its in-range interaction prompt; the route
+	# sign makes the delivered asset immediately findable in a crowded party
+	# starting frame without sneaking level-specific UI into the component.
+	var review_sign := Label3D.new()
+	review_sign.name = "KeyDoorReviewSign"
+	review_sign.text = "REVIEW DOOR\nRequires: Current Pearl"
+	review_sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	review_sign.pixel_size = 0.007
+	review_sign.font_size = 42
+	review_sign.outline_size = 8
+	review_sign.no_depth_test = true
+	review_sign.modulate = Color(0.65, 0.95, 1.0)
+	review_sign.position = door.position + Vector3(0.0, door.visual_height + 0.5, 0.0)
+	add_child(review_sign)
+	_build_key_door_review_key(Vector3(-23.0, 0.45, -7.0))
+	_announce("Door review: the glowing Current Pearl opens the door. Approach it and press E.")
+	_update_hud()
+
+func _build_key_door_review_key(at: Vector3) -> void:
+	var key := Area3D.new()
+	key.name = "KeyDoorReviewCurrentPearl"
+	key.position = at
+	key.collision_mask = 2
+	var orb := SphereMesh.new()
+	orb.radius = 0.45
+	orb.height = 0.9
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = orb
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.95, 0.78, 0.22)
+	mat.emission_enabled = true
+	mat.emission = Color(0.95, 0.6, 0.12)
+	mat.emission_energy_multiplier = 1.5
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.material_override = mat
+	key.add_child(mesh)
+	var label := Label3D.new()
+	label.text = "Test Key: Current Pearl"
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.pixel_size = 0.006
+	label.font_size = 42
+	label.outline_size = 8
+	label.position.y = 0.9
+	label.modulate = Color(1.0, 0.9, 0.45)
+	key.add_child(label)
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 1.0
+	shape.shape = sphere
+	key.add_child(shape)
+	key.body_entered.connect(func(body: Node3D) -> void:
+		if body is Diver and not key_items.has("current_pearl"):
+			key_items.append("current_pearl")
+			_announce("Current Pearl acquired. Return to the door and press E.")
+			key.queue_free())
+	add_child(key)
+
 # Save/Inventory are exclusive reading and decision surfaces. Their controls
 # used to fight the persistent HUD visually because they were HUD children;
 # they now live on TitleLayer and explicitly hide that otherwise-live layer.
@@ -525,6 +635,14 @@ func _spell_playtest_requested() -> bool:
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		var query := String(search)
 		return query.contains("spells=1") or query.contains("spell_playtest=1")
+	return false
+
+func _key_door_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--key-door-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("keydoor=1")
 	return false
 
 func _maze_playtest_requested() -> bool:
@@ -796,7 +914,12 @@ func _ready() -> void:
 	# A game-over restart must rebuild the scene before applying its save so
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
 	# still opens the title screen exactly as before.
-	if _restart_slot >= 0:
+	if _key_door_playtest_requested():
+		# A direct, no-save reviewer entry point for the reusable asset. It is
+		# separate from the maze because Marc has not selected a maze placement
+		# or first key location yet.
+		call_deferred("_open_key_door_playtest")
+	elif _restart_slot >= 0:
 		_current_slot = _restart_slot
 		_restart_slot = -1
 		_load_save()
@@ -1463,7 +1586,11 @@ func _unhandled_input(e: InputEvent) -> void:
 				active = (active + 1) % divers.size()
 				_update_hud()
 		elif k == KEY_E:
-			_start_ability()
+			# A nearby KeyDoor owns E before a diver ability can.  Without this
+			# explicit delegation, a missing-key prompt could also fire Shockwave
+			# or enter Grapple aim, which makes the door interaction feel broken.
+			if not _try_key_door_interaction(divers[active]):
+				_start_ability()
 		elif k == KEY_P:
 			_toggle_save_menu()
 		elif k == KEY_Q:
@@ -1491,6 +1618,28 @@ func _start_ability() -> void:
 		_update_hud()
 	else:
 		d.use_ability(_aim_dir())
+
+# KeyDoor is a standalone component: it only knows whether a particular
+# diver is close enough and whether that diver's party owns its configured
+# key.  World owns which diver is active and the one E-input routing point.
+func _try_key_door_interaction(d: Diver) -> bool:
+	for node in get_tree().get_nodes_in_group("key_door"):
+		if node is KeyDoor and (node as KeyDoor).interact(d):
+			return true
+	return false
+
+func is_key_door_open(id: String) -> bool:
+	return not id.is_empty() and opened_key_doors.has(id)
+
+func mark_key_door_open(id: String) -> void:
+	if id.is_empty() or opened_key_doors.has(id):
+		return
+	opened_key_doors.append(id)
+
+func _restore_opened_key_doors() -> void:
+	for node in get_tree().get_nodes_in_group("key_door"):
+		if node is KeyDoor and is_key_door_open((node as KeyDoor).door_id):
+			(node as KeyDoor).restore_open_state()
 
 # Q, separate from E - sonar isn't the active diver's "ability" (that slot
 # is swap, on this same diver), it's a passive being switched on and off,

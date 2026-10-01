@@ -89,6 +89,9 @@ run "tutorial loss: can a player retry or safely exit to world" "$GODOT" --headl
 run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --headless --path . --script verify/tutorial_skip.gd
 run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
+run "key door art: does the delivered FBX retain its authored Open shape key" "$GODOT" --headless --path . --script verify/key_door_art.gd
+run "key door: does a keyed Door FBX open, persist, and leave legacy lock plates alone" "$GODOT" --headless --path . --script verify/key_door.gd
+run "key door review route: does the public manual-test route place a real door and key" "$GODOT" --headless --path . --script verify/key_door_review_route.gd -- --key-door-playtest
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
@@ -141,6 +144,7 @@ else
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
 	run "special webcheck: does ?special=1 reach the chooser" node verify/special_webcheck.mjs "$WEB_DIR" /tmp/gate-special.png
 	run "spell review webcheck: does ?spells=1 reach the real spell UI" node verify/spell_review_webcheck.mjs "$WEB_DIR" /tmp/gate-spell-review.png /tmp/gate-spell-review-title.png
+	run "key door webcheck: does ?keydoor=1 boot the real Door FBX review route" node verify/key_door_webcheck.mjs "$WEB_DIR" /tmp/gate-key-door.png
 fi
 
 echo
