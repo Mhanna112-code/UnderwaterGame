@@ -21,8 +21,9 @@ func _run() -> void:
 		_finish()
 		return
 	var bounds := (door._collision.shape as BoxShape3D).size if door._collision != null and door._collision.shape is BoxShape3D else Vector3.ZERO
-	print("key door                 collision bounds %s at visual height %.2f" % [bounds, door.visual_height])
+	print("key door                 collision bounds %s centered at %s, visual height %.2f" % [bounds, door._collision.position if door._collision != null else Vector3.ZERO, door.visual_height])
 	_expect(is_equal_approx(bounds.y, door.visual_height), "DOOR BOUNDS: collision height %s does not match configured visual height %.2f" % [bounds.y, door.visual_height])
+	_expect(is_zero_approx(door._collision.position.y - bounds.y * 0.5), "DOOR GROUNDING: collision bottom %.3f is not aligned to the placement floor" % (door._collision.position.y - bounds.y * 0.5))
 
 	# key door: missing key retains collision and reports requirement — guards
 	# against locked-route bypass.
@@ -105,7 +106,10 @@ func _add_door(world: World, actor: Diver, expect_closed := true) -> KeyDoor:
 	door.opening_duration = 1.0
 	door.visual_height = 2.4
 	door.interaction_radius = 4.0
-	door.position = actor.position
+	# KeyDoor's placement is floor-anchored, while a Diver's position is at its
+	# collision-body center. Keeping the test on the floor catches a component
+	# that would otherwise look correct only when spawned mid-water.
+	door.position = Vector3(actor.position.x, 0.0, actor.position.z)
 	door.door_opened.connect(func(_id: String) -> void: opened_signal_count += 1)
 	world.add_child(door)
 	await process_frame

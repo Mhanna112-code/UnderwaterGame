@@ -521,9 +521,9 @@ func _open_key_door_playtest() -> void:
 	# state rather than opening it by accident.  Keeping it out of the party's
 	# initial silhouette avoids a misleading "where is the Door?" first frame.
 	# The key sits off the direct line so both beats are visible.
-	door.position = Vector3(-15.6, 1.6, -6.0)
+	door.position = Vector3(-15.6, 0.0, -6.0)
 	add_child(door)
-	_build_key_door_review_key(Vector3(-23.0, 1.1, -7.0))
+	_build_key_door_review_key(Vector3(-23.0, 0.45, -7.0))
 	_announce("Door review: the glowing Current Pearl opens the door. Approach it and press E.")
 	_update_hud()
 

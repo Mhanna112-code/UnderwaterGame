@@ -36,6 +36,7 @@
 | 5 | An opened door re-locks after save/load. | High — saved route progress is lost. | Existing save state does not yet know the new component. | Round-trip | characterized — passes |
 | 6 | The new key-door work changes the existing three lock-plate `Door` behavior. | High — current world gate regresses. | Both classes represent doors and could be confused during integration. | Regression characterization | characterized — passes |
 | 7 | The reviewer route loads the Door FBX but its initial placement is hidden in the party silhouette, so human review cannot tell whether the delivered model is there. | Medium — reviewers may approve a route they cannot actually inspect. | The third-person party starts in a compact formation and can occlude an object directly ahead. | Browser screenshot review | fixed — moved the review-only placement laterally and captured the FBX separately |
+| 8 | The centred FBX origin puts half of a placed Door below the floor, while its collision remains centred there too. | High — the door looks broken and its physical passage disagrees with level intent. | Imported artist assets commonly use a centre origin rather than a floor-contact origin. | Bounds-derived grounding invariant + rendered capture | fixed — floor-align art and collision from the same imported bounds |
 
 ## Test plan
 
@@ -103,13 +104,17 @@
 ## Post-write evaluation
 
 - **Bugs caught:** the first exported review frame placed the real Door FBX
-  behind the starting party silhouette. The review-only placement was moved
-  laterally; the public route remains independent of any maze coordinate.
+  behind the starting party silhouette, and visual inspection caught its
+  vertically centred origin putting the lower half through the floor. The
+  review-only placement was moved laterally; KeyDoor now derives a floor
+  offset for both mesh and physics. The public route remains independent of
+  any maze coordinate.
 - **Bugs characterized:** all six functional contracts pass: `Open` imports at
   `0.0` and drives to `1.0`; its source mesh bounds are
   `(0.03911, 0.017409, 0.065218)` at unit root scale; KeyDoor derives a
-  correctly scaled physical box (`1.439248 × 2.4 × 0.66238` in the focused
-  test) from those imported bounds.
+  correctly scaled, floor-grounded physical box
+  (`1.439248 × 2.4 × 0.66238`, centered at y=`1.2`, in the focused test)
+  from those imported bounds.
 - **Bugs discovered during writing:** an early route check only asserted that
   a key orb node existed. It was strengthened to physically walk a Diver into
   the `Area3D`, wait for collision broad-phase updates, and then press `E` at

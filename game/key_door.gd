@@ -151,6 +151,13 @@ func _build_art_and_collision() -> void:
 		return
 	var scale_factor := visual_height / raw_bounds.size.y
 	art.scale = Vector3.ONE * scale_factor
+	# The imported FBX is centred vertically around its own origin.  A level
+	# placement, however, is a world-floor placement: `KeyDoor.position.y`
+	# must mean "this door rests here," not "bury half the door below here."
+	# Apply the same derived grounding offset to art and physics so they never
+	# disagree about where the visible doorway begins.
+	var floor_offset := Vector3(0.0, -raw_bounds.position.y * scale_factor, 0.0)
+	art.position = floor_offset
 
 	_collision = CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -159,7 +166,7 @@ func _build_art_and_collision() -> void:
 		maxf(0.2, raw_bounds.size.y * scale_factor),
 		maxf(0.2, raw_bounds.size.z * scale_factor))
 	_collision.shape = box
-	_collision.position = raw_bounds.get_center() * scale_factor
+	_collision.position = floor_offset + raw_bounds.get_center() * scale_factor
 	add_child(_collision)
 
 func _build_prompt() -> void:
