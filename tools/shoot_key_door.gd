@@ -9,6 +9,7 @@ extends SceneTree
 
 var before_path := "/tmp/key-door-locked.png"
 var open_path := "/tmp/key-door-open.png"
+var frame_dir := ""
 var stage := Node3D.new()
 var door: KeyDoor
 var camera: Camera3D
@@ -19,6 +20,8 @@ func _initialize() -> void:
 		before_path = String(args[0])
 	if args.size() > 1:
 		open_path = String(args[1])
+	if args.size() > 2:
+		frame_dir = String(args[2])
 	root.add_child(stage)
 	_build_stage()
 	call_deferred("_run")
@@ -78,6 +81,14 @@ func _run() -> void:
 	await _capture(before_path)
 	# This is the same progress setter driven by KeyDoor's opening tween; using
 	# it here permits a stable review capture without faking a separate model.
+	if not frame_dir.is_empty():
+		DirAccess.make_dir_recursive_absolute(frame_dir)
+		# Capture every authored shape-key stage, not just a binary before/after.
+		# The resulting GIF is deliberately slow enough for a reviewer to judge
+		# whether the door clears rather than merely disappears between frames.
+		for step in range(13):
+			door._open_progress = float(step) / 12.0
+			await _capture(frame_dir.path_join("frame_%02d.png" % step))
 	door._open_progress = 1.0
 	await _capture(open_path)
 	quit()
