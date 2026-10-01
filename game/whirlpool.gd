@@ -32,6 +32,20 @@ signal diver_sucked_in(d: Diver, amount: int)
 @export var vanish_duration := 0.35
 
 var armed := true
+
+# "Danger: Whirlpool ahead" - one shared orange caption at the bottom centre
+# of the screen (World's banner style, one line above it), shown for as long as a
+# diver is inside ANY whirlpool's warning_radius and hidden once none is.
+# Owned by the whirlpools themselves so it behaves the same in every scene
+# (the opening blockade, the maze, ...).
+const WARNING_TEXT := "Danger: Whirlpool ahead"
+const WARNING_COLOR := Color(1.0, 0.6, 0.45)
+static var _warning_caption: Label
+static var _warning_whirlpools: Dictionary = {}   # Whirlpool -> true while a diver is inside its warning radius
+var _divers_in_warning: Dictionary = {}           # Diver -> true
+# Optional: returns true when something (e.g. a current running through
+# this whirlpool) carries the diver past it, so suction doesn't catch them.
+var bypass: Callable
 var _warned_now := false
 
 func _ready() -> void:
@@ -86,17 +100,61 @@ func _on_warning_entered(body: Node3D) -> void:
 	if not (body is Diver):
 		return
 	_warned_now = true
+	_divers_in_warning[body] = true
+	_update_warning_caption()
 	warned.emit()
 
 func _on_warning_exited(body: Node3D) -> void:
 	if body is Diver:
-		_warned_now = false
+		_divers_in_warning.erase(body)
+		_warned_now = not _divers_in_warning.is_empty()
+		_update_warning_caption()
+
+func _exit_tree() -> void:
+	_divers_in_warning.clear()
+	_update_warning_caption()
+
+func _update_warning_caption() -> void:
+	if _divers_in_warning.is_empty():
+		_warning_whirlpools.erase(self)
+	else:
+		_warning_whirlpools[self] = true
+	if _warning_caption == null or not is_instance_valid(_warning_caption):
+		if _warning_whirlpools.is_empty() or not is_inside_tree():
+			return
+		_build_warning_caption()
+	_warning_caption.visible = not _warning_whirlpools.is_empty()
+
+func _build_warning_caption() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	var label := Label.new()
+	label.text = WARNING_TEXT
+	label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	label.offset_left = -320.0
+	label.offset_right = 320.0
+	# One line above World's banner slot (-170..-130), so an announcement
+	# shown at the same time doesn't draw on top of this.
+	label.offset_top = -210.0
+	label.offset_bottom = -172.0
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	label.add_theme_font_size_override("font_size", 20)
+	label.add_theme_color_override("font_color", WARNING_COLOR)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(label)
+	# On the scene root so it outlives any one whirlpool; hidden whenever no
+	# whirlpool has a diver nearby.
+	get_tree().root.add_child.call_deferred(layer)
+	_warning_caption = label
 
 func _on_suction_entered(body: Node3D) -> void:
 	if not armed or not (body is Diver):
 		return
 	var d := body as Diver
 	if d.is_grappling() or d.is_suction_locked():
+		return
+	if bypass.is_valid() and bool(bypass.call()):
 		return
 	_pull_in(d)
 

@@ -175,9 +175,9 @@ use_collision = true
 size = Vector3(22.3219, 14, 1)
 
 [node name="RewardChamberWestWall" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.4143, 6.5, 35.4766)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.665, 6.5, 35.4766)
 use_collision = true
-size = Vector3(2.9714, 14, 1)
+size = Vector3(21.4728, 14, 1)
 
 [node name="CSGBox3D15" type="CSGBox3D" parent="." groups=["Wall"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83.3195, 1.52881, 5.53757)
@@ -230,7 +230,7 @@ shape = SubResource("BoxShape3D_be2ma")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.51392, 0, 3.46203)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridor3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.703, 1.03851, 4.32754)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 2.44155, 19.703, 1.03851, 4.32754)
 shape = SubResource("BoxShape3D_xwv3d")
 
 [node name="WindCorridor4" type="Area3D" parent="."]
@@ -331,11 +331,6 @@ size = Vector3(20.3733, 14, 1)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5333, 6.5, 105.56)
 use_collision = true
 size = Vector3(46.3055, 14, 1)
-
-[node name="CSGBox3D31" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.795692, 6.5, 95.6095)
-use_collision = true
-size = Vector3(20.9814, 14, 1)
 
 [node name="CSGBox3D34" type="CSGBox3D" parent="." groups=["Wall"]]
 transform = Transform3D(0.00918025, 0, 0.999958, 0, 1, 0, -0.999958, 0, 0.00918025, -33.0347, 3.05762, -27.8205)

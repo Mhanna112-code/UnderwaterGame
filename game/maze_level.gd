@@ -33,10 +33,20 @@ func _ready() -> void:
 		elif child is CSGBox3D:
 			wall_boxes.append(child)
 	_normalize_wall_heights()
+	# Before _setup_walls(): wall placement can reposition _diver (see
+	# _place_wall_straight_to_reference()), which needs it to exist already.
+	_spawn_test_diver()
 	_setup_walls()
+	# After _setup_walls() so it uses both walls' placed positions (and
+	# overrides any debug move of the diver during wall placement).
+	_place_diver_between($CSGBox3D, $CurrentWall3)
+	_corridor_walls = {
+		$WindCorridor3: [$CSGBox3D6, $CSGBox3D7],
+		$WindCorridor4: [$CSGBox3D12, $CSGBox3D13],
+	}
+	_align_corridors_to_walls()
 	_setup_currents()
 	_setup_whirlpool()
-	_spawn_test_diver()
 	_build_levers()
 	_build_rotate_prompt()
 	_build_floor()
@@ -45,7 +55,17 @@ func _ready() -> void:
 	_build_minimap()
 	_build_item_rocks()
 	_build_completion_ui()
+	_spawn_debug_door()
 	$HUD/Controls.text = "Hallway: CLOSED — press H to open the route to the relic."
+
+# TEMPORARY - just here to get door.fbx's raw mesh size printed to the
+# Output panel (see Door._ready()'s own print(mesh_instance.get_aabb().size)).
+# Remove this call once that's no longer needed; Door is a real gameplay
+# class used elsewhere (world.gd's lock-plate puzzle), not something the
+# maze level normally spawns on its own.
+func _spawn_debug_door() -> void:
+	var door := Door.new()
+	add_child(door)
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -156,6 +176,10 @@ func _setup_walls():
 	_place_csgbox6_at_hallway_target()
 	_place_csgbox12_at_hallway_target()
 	_place_new_walls_between_box13_and_box7()
+	_place_box8_and_box9_flush()
+	_place_remaining_perimeter_walls_flush()
+	_place_box28_flush_to_box14()
+	_build_door_frame_between_box30_and_box32()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -366,6 +390,210 @@ func _place_new_walls_between_box13_and_box7() -> void:
 	stub.rotation.y = stub_yaw
 	stub.global_position = stub_near_end + stub_direction * (stub_length * 0.5)
 
+# CSGBox3D8/9 already sit at yaw=0, perpendicular to CSGBox3D12/13's own
+# (roughly +/-90 degree) rotation - like CSGBox3D6/12 above, only their
+# position needs correcting, not their rotation. Each attaches to whichever
+# of its own target's two ends its current (pre-correction) position sits
+# closer to, same distance-based derivation as everywhere else in this file,
+# rather than assuming a fixed end.
+func _place_box8_and_box9_flush() -> void:
+	_place_wall_flush_to_reference($CSGBox3D8, $CSGBox3D12)
+	_place_wall_flush_to_reference($CSGBox3D9, $CSGBox3D13)
+
+# Continues the same chain outward from Box8/9 - each wall here attaches to
+# whichever of the previous wall's own ends it sits closer to, same as
+# above, so this must run after _place_box8_and_box9_flush() and each call
+# below must stay in dependency order: a wall has to already be placed
+# before anything attaches to it.
+func _place_remaining_perimeter_walls_flush() -> void:
+	_place_wall_flush_to_reference($CSGBox3D11, $CSGBox3D9)
+	_place_wall_flush_to_reference($CSGBox3D10, $CSGBox3D8)
+	_place_wall_flush_to_reference($CSGBox3D15, $CSGBox3D10)
+	_place_wall_flush_to_reference($CSGBox3D14, $CSGBox3D11)
+	# Exactly perpendicular to Box15, running +Z: the scene's authored yaw was
+	# -89.771 degrees, which drifted Box16's far end ~0.16m off square.
+	# Box15's yaw minus 90 degrees puts Box16's long axis (basis.x) on +Z.
+	($CSGBox3D16 as CSGBox3D).rotation.y = ($CSGBox3D15 as CSGBox3D).rotation.y - PI * 0.5
+	_place_wall_flush_to_reference($CSGBox3D16, $CSGBox3D15)
+	
+	_place_wall_flush_to_reference($CSGBox3D27, $CSGBox3D14)
+	_place_wall_flush_to_reference($CSGBox3D22, $CSGBox3D21)
+	# Box17 continues Box27 in a straight line (opposite yaw), not at a
+	# right angle - the flush helper's perpendicular offsets sank Box17
+	# almost entirely inside Box27.
+	_place_wall_straight_to_reference($CSGBox3D17, $CSGBox3D27)
+	_place_wall_flush_to_reference($CSGBox3D19, $CSGBox3D17, true)
+	_place_wall_flush_to_reference($CSGBox3D18, $CSGBox3D16, true)
+	_place_wall_flush_to_reference($CSGBox3D21, $CSGBox3D18)
+	_place_wall_flush_to_reference($CSGBox3D20, $CSGBox3D19)
+	_place_wall_flush_to_reference($CSGBox3D22, $CSGBox3D21, true)
+	_place_wall_flush_to_reference($CSGBox3D23, $CSGBox3D22)
+	_place_wall_flush_to_reference($CSGBox3D25, $CSGBox3D23, true)
+	_place_wall_flush_to_reference($CSGBox3D24, $CSGBox3D25)
+	_place_wall_flush_to_reference($RewardChamberWestWall, $CSGBox3D24)
+	_place_wall_flush_to_reference($CSGBox3D30, $CSGBox3D6, true)
+	_place_wall_flush_to_reference($CSGBox3D29, $CSGBox3D7)
+	_place_wall_flush_to_reference($CSGBox3D33, $CSGBox3D29, true)
+	_place_wall_flush_to_reference($CSGBox3D32, $CSGBox3D33, true)
+
+
+# Opening left between the two door-frame walls below: width x height,
+# matching Door's own default span (z = width across, y = height).
+const DOOR_OPENING := Vector2(2.3, 6.0)
+
+# Closes the gap between CSGBox3D30 and CSGBox3D32 (parallel walls) with a
+# wall running from Box30's positive end across to Box32's near face, split
+# into two pieces with a DOOR_OPENING-wide gap in the middle, plus a lintel
+# over the gap that reaches the top of the walls. Everything is derived from
+# both walls' placed geometry, so this must run after their flush placement.
+func _build_door_frame_between_box30_and_box32() -> void:
+	var box30 := $CSGBox3D30 as CSGBox3D
+	var box32 := $CSGBox3D32 as CSGBox3D
+	var g30: Dictionary = _wall_geometry(box30)
+	var g32: Dictionary = _wall_geometry(box32)
+
+	# Across from Box30 toward Box32 (Box30's own side axis, signed), and
+	# out past Box30's positive end so the new wall sits flush against it.
+	var side30 := g30["side_axis"] as Vector3
+	var toward := side30 if ((g32["center"] as Vector3) - (g30["center"] as Vector3)).dot(side30) > 0.0 else -side30
+	var outward := g30["long_axis"] as Vector3
+	var end30 := g30["positive_end"] as Vector3
+	var thickness := box30.size.z
+	var line_origin := end30 + outward * thickness * 0.5
+
+	# Starts at Box30's far face (filling the corner, same as the flush
+	# helper does) and stops at Box32's near face.
+	var start := line_origin - toward * box30.size.z * 0.5
+	var length := ((g32["center"] as Vector3) - start).dot(toward) - box32.size.z * 0.5
+	var piece_length := (length - DOOR_OPENING.x) * 0.5
+	if piece_length <= 0.0:
+		push_warning("_build_door_frame_between_box30_and_box32: walls are too close for the door opening")
+		return
+
+	var height := box30.size.y
+	var bottom := box30.global_position.y - height * 0.5
+	var yaw := atan2(-toward.z, toward.x)   # long axis (basis.x) along `toward`
+
+	var piece_a := start + toward * piece_length * 0.5
+	var piece_b := start + toward * (length - piece_length * 0.5)
+	var door_center := start + toward * (piece_length + DOOR_OPENING.x * 0.5)
+	piece_a.y = bottom + height * 0.5
+	piece_b.y = bottom + height * 0.5
+	wall_boxes.append(_spawn_wall("Box30DoorWallA", piece_a, yaw, Vector3(piece_length, height, thickness)))
+	wall_boxes.append(_spawn_wall("Box30DoorWallB", piece_b, yaw, Vector3(piece_length, height, thickness)))
+
+	# Kept out of wall_boxes so the minimap still shows the doorway as open.
+	var lintel_height := height - DOOR_OPENING.y
+	door_center.y = bottom + DOOR_OPENING.y + lintel_height * 0.5
+	_spawn_wall("Box30DoorLintel", door_center, yaw, Vector3(DOOR_OPENING.x, lintel_height, thickness))
+
+func _spawn_wall(wall_name: String, center: Vector3, yaw: float, wall_size: Vector3) -> CSGBox3D:
+	var wall := CSGBox3D.new()
+	wall.name = wall_name
+	wall.size = wall_size
+	wall.use_collision = true
+	wall.add_to_group("Wall")
+	add_child(wall)
+	wall.rotation.y = yaw
+	wall.global_position = center
+	return wall
+
+# CSGBox3D28 stays at its own authored rotation (already perpendicular to
+# CSGBox3D14 - 90 degrees vs Box14's 0). Walking the Box11->Box14->Box27
+# corridor south to north, Box14 runs east-west and Box27 continues north
+# from Box14's east (+X, its own positive_end) side, so "flush to the right
+# side of Box14" (facing north) means flush against that same +X end - which
+# is also just Box14's own long axis direction. Runs after
+# _place_remaining_perimeter_walls_flush() since it depends on Box14's own
+# final corrected position.
+func _place_box28_flush_to_box14() -> void:
+	var box14 := $CSGBox3D14 as CSGBox3D
+	var box28 := $CSGBox3D28 as CSGBox3D
+	var box14_geometry: Dictionary = _wall_geometry(box14)
+	var box14_long_axis := box14_geometry["long_axis"] as Vector3
+	var box14_bottom := box14.position.y - box14.size.y * 0.5
+
+	box28.global_position = box14.global_position
+	box28.rotation.y = box14.rotation.y - PI * 0.5
+	box28.position.y = box14_bottom + box28.size.y * 0.5
+	
+	var push_direction := Basis(Vector3.UP, box28.rotation.y).x.normalized()
+	box28.global_position += push_direction * (box28.size.x * 0.5)
+	var side_direction := Vector3(-push_direction.z, 0.0, push_direction.x)
+	box28.global_position += side_direction * (box28.size.z * 0.5 + box14.size.z * 0.5)
+	box28.position.y = box14_bottom + box28.size.y * 0.5
+
+# Named from wall_to_place/reference_wall's own point of view, not
+# _position_beyond_wall_end()'s (that function calls the fixed anchor
+# "moving_wall" and the wall being positioned "target_wall" - opposite of
+# what those words would suggest here - so this wrapper uses its own,
+# unambiguous names and maps them onto that call explicitly).
+func _place_wall_flush_to_reference(wall_to_place: CSGBox3D, reference_wall: CSGBox3D, use_positive: bool = false) -> void:
+	var reference_geometry: Dictionary = _wall_geometry(reference_wall)
+	var reference_negative_end := reference_geometry["negative_end"] as Vector3
+	var reference_positive_end := reference_geometry["positive_end"] as Vector3
+	var reference_outer_end: Vector3
+	var reference_outward_axis: Vector3
+	if wall_to_place.global_position.distance_squared_to(reference_negative_end) < wall_to_place.global_position.distance_squared_to(reference_positive_end):
+		reference_outer_end = reference_negative_end
+		reference_outward_axis = -(reference_geometry["long_axis"] as Vector3)
+	else:
+		reference_outer_end = reference_positive_end
+		reference_outward_axis = reference_geometry["long_axis"] as Vector3
+	var wall_to_place_long_axis := Basis(Vector3.UP, wall_to_place.rotation.y).x.normalized()
+	wall_to_place.global_position = _position_beyond_wall_end(
+		reference_outer_end, reference_outward_axis, reference_wall.size.z,
+		wall_to_place_long_axis, wall_to_place.size.x, wall_to_place.size.z, use_positive
+	)
+	_match_wall_bottom(wall_to_place, reference_wall)
+
+# The ends from _wall_geometry() sit at the reference wall's centre height,
+# so placing off them copies that centre y. For walls of different heights
+# (Box25/24/RewardChamberWestWall are 14 tall, the rest ~4) that sank the
+# taller wall's bottom below the floor. Line the bottoms up instead.
+func _match_wall_bottom(wall_to_place: CSGBox3D, reference_wall: CSGBox3D) -> void:
+	var reference_bottom := reference_wall.global_position.y - reference_wall.size.y * 0.5
+	wall_to_place.global_position.y = reference_bottom + wall_to_place.size.y * 0.5
+
+# Places wall_to_place in a straight line off whichever end of reference_wall
+# it sits closer to. Assumes wall_to_place is rotated in the direction
+# opposite from reference_wall.
+func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: CSGBox3D) -> void:
+	var reference_geometry: Dictionary = _wall_geometry(reference_wall)
+	var reference_negative_end := reference_geometry["negative_end"] as Vector3
+	var reference_positive_end := reference_geometry["positive_end"] as Vector3
+	var reference_outer_end: Vector3
+	var reference_outward_axis: Vector3
+	if wall_to_place.global_position.distance_squared_to(reference_negative_end) < wall_to_place.global_position.distance_squared_to(reference_positive_end):
+		reference_outer_end = reference_negative_end
+		reference_outward_axis = -(reference_geometry["long_axis"] as Vector3)
+	else:
+		reference_outer_end = reference_positive_end
+		reference_outward_axis = reference_geometry["long_axis"] as Vector3
+
+
+	# Centre on the chosen end, then push out along that end's outward axis
+	# by half wall_to_place's length so its near end meets the reference
+	# wall's end instead of straddling it.
+	wall_to_place.global_position = reference_outer_end
+	if _diver != null:
+		_diver.global_position = reference_outer_end + Vector3(10,10,10)
+	#wall_to_place.global_position += reference_outward_axis * wall_to_place.size.x * 0.5
+	
+	var wall_27 := $CSGBox3D27 as CSGBox3D
+	var wall_17 := $CSGBox3D17 as CSGBox3D
+	var outer_axis: Vector3 = wall_27.global_transform.basis.x.normalized()
+
+	wall_17.rotation.y = wall_17.rotation.y + PI
+	var placed_axis: Vector3 = wall_17.global_transform.basis.x.normalized()
+	var center_sign := 1.0 if placed_axis.dot(Vector3.LEFT) > 0.0 else -1.0
+	wall_17.global_position = reference_outer_end + placed_axis * wall_17.size.x * 0.5
+	const WIDTH := 2.3
+	wall_17.global_position += outer_axis * WIDTH
+
+	
+
+
 # Two levers placed together near the requested spot (8.8, 1.5, -34), a
 # short reach apart so both are reachable from one spot without the
 # trigger volumes overlapping (see lever.gd's own COL radius of 1.1).
@@ -391,6 +619,8 @@ func _build_levers() -> void:
 # it `self`.
 func _build_minimap() -> void:
 	var minimap := MazeMiniMap.new()
+	# Named so verify/maze_minimap.gd can find it at HUD/MazeMiniMap.
+	minimap.name = "MazeMiniMap"
 	minimap.maze_level = self
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	minimap.offset_left = -166.0
@@ -408,7 +638,7 @@ func _build_minimap() -> void:
 # there.
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
-	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL rotates the left currents; H opens or closes the CurrentWall1/2 hallway."
+	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL opens the maze map (Left/Right: walls, Shift+Left/Right: currents); H swings CurrentWall1/2; C moves Corridor1's current to Corridor2; V moves Corridor3's current to Corridor4 (past the whirlpool) and back."
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -587,14 +817,23 @@ var _hallway_1_2_home_yaw_a: float
 var _hallway_1_2_home_pos_b: Vector3
 var _hallway_1_2_home_yaw_b: float
 
+# Wall sets the L maze map can select and rotate: the nearest revealed set
+# blinks (walls plus the current running between them) and E rotates it.
+# "rotate" swings the set to its other position and back. Only
+# CurrentWall1/2 rotate so far - add an entry here for each new set.
+func rotatable_wall_sets() -> Array[Dictionary]:
+	return [{
+		"name": "CurrentWall1/2",
+		"walls": [$CurrentWall1, $CurrentWall2],
+		"rotate": _rotate_hallway_1_2,
+	}]
+
 func _rotate_hallway_1_2() -> void:
 	var wall_a: CSGBox3D = $CurrentWall1
 	var wall_b: CSGBox3D = $CurrentWall2
 	if _hallway_1_2_swung:
 		_tween_wall_to_transform_about_hinge(wall_a, _hallway_1_2_home_pos_a, _hallway_1_2_home_yaw_a)
 		_tween_wall_to_transform_about_hinge(wall_b, _hallway_1_2_home_pos_b, _hallway_1_2_home_yaw_b)
-		_rotate_wind_corridor_1_current(false)
-		_rotate_wind_corridor_2_current(false)
 		_hallway_1_2_swung = false
 		$HUD/Controls.text = "Hallway closing..."
 		get_tree().create_timer(1.25).timeout.connect(func() -> void:
@@ -608,71 +847,65 @@ func _rotate_hallway_1_2() -> void:
 	_hallway_1_2_home_yaw_b = wall_b.rotation.y
 	_rotate_wall_flush(wall_a, $CSGBox3D)
 	_rotate_wall_flush(wall_b, $CurrentWall3)
-	_rotate_wind_corridor_2_current(true)
-	_rotate_wind_corridor_1_current(true)
 	_hallway_1_2_swung = true
 	$HUD/Controls.text = "Hallway opening..."
 	get_tree().create_timer(1.25).timeout.connect(func() -> void:
 		if _hallway_1_2_swung and not _completed:
-			$HUD/Controls.text = "Hallway: OPEN — follow the northbound current to the reward chamber."
+			$HUD/Controls.text = "Hallway: OPEN."
 	)
 
-# WindCorridor1's current is parked while H opens the hallway, then restored
-# on close.  The opened route enters WindCorridor2 from the west and only
-# becomes northbound once it reaches WindCorridor3.  Moving this current into
-# Corridor2 therefore turns the route's *entrance* into a one-way current:
-# the player is bounced or stripped of lateral steering before reaching the
-# northbound gap.  Corridor2's own current is the one that moves to
-# Corridor3 and carries the diver through the visible CSGBox3D6/7 passage;
-# the Corridor1 current must be inactive during that state.
-#
-# Parking preserves the same current object and restores the authored
-# NEGATIVE_Z flow on close, rather than creating a duplicate or relying on a
-# generic 90-degree turn to happen to recover the initial puzzle state.
-var _hallway_1_parked_current: WaterCurrent
+# Currents move independently of the walls (H only swings CurrentWall1/2):
+#   C - WindCorridor1's current rotates into WindCorridor2, flowing east
+#       (+X), and back. WindCorridor2 has no current of its own.
+#   V - the current starts in WindCorridor3 pushing -Z (south), which blocks
+#       the way forward from Corridor2. V moves it into WindCorridor4, where
+#       it pushes +Z (north) - the only way past the whirlpool at the back of
+#       Corridor4 (see _setup_whirlpool()), but it then blocks Corridor3's
+#       route the other way until it's moved back. V again returns it.
+var _current_1_in_2 := false
+var _current_3_in_4 := false
 
-func _rotate_wind_corridor_1_current(open: bool) -> void:
-	if open:
-		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor1, null)
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor1")
-			return
-		current.teardown()
-		_currents_by_corridor.erase($WindCorridor1)
-		_hallway_1_parked_current = current
+func _toggle_current_1_to_2() -> void:
+	if _current_1_in_2:
+		_move_current($WindCorridor2, $WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
 	else:
-		var current := _hallway_1_parked_current
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no parked current is available for WindCorridor1")
-			return
-		current.setup($WindCorridor1, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_Z), current.strength, false)
-		_currents_by_corridor[$WindCorridor1] = current
-		_hallway_1_parked_current = null
+		_move_current($WindCorridor1, $WindCorridor2, WaterCurrent.Direction.POSITIVE_X)
+	_current_1_in_2 = not _current_1_in_2
+	$HUD/Controls.text = "Current moved to WindCorridor2." if _current_1_in_2 else "Current moved back to WindCorridor1."
 
-# WindCorridor2's current moves into WindCorridor3 (the gap between
-# CSGBox3D6/CSGBox3D7) on open, then returns on close. Its open direction
-# is deliberately north/positive-Z: this H state calls the hallway open, so
-# the current must help a player traverse the visible opening rather than
-# overpower their swim input back into the wall. Closing restores the
-# original NEGATIVE_X direction set in _setup_currents().
-func _rotate_wind_corridor_2_current(open: bool) -> void:
-	if open:
-		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor2, null)
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor2")
-			return
-		current.setup($WindCorridor3, WaterCurrent.direction_to_vector(WaterCurrent.Direction.POSITIVE_Z), current.strength, false)
-		_currents_by_corridor.erase($WindCorridor2)
-		_currents_by_corridor[$WindCorridor3] = current
+func _toggle_current_3_to_4() -> void:
+	if _current_3_in_4:
+		_move_current($WindCorridor4, $WindCorridor3, WaterCurrent.Direction.NEGATIVE_Z)
 	else:
-		var current: WaterCurrent = _currents_by_corridor.get($WindCorridor3, null)
-		if current == null:
-			push_warning("_rotate_hallway_1_2: no current is set up at WindCorridor3")
-			return
-		current.setup($WindCorridor2, WaterCurrent.direction_to_vector(WaterCurrent.Direction.NEGATIVE_X), current.strength, false)
-		_currents_by_corridor.erase($WindCorridor3)
-		_currents_by_corridor[$WindCorridor2] = current
-		
+		_move_current($WindCorridor3, $WindCorridor4, WaterCurrent.Direction.POSITIVE_Z)
+	_current_3_in_4 = not _current_3_in_4
+	$HUD/Controls.text = "Current moved to WindCorridor4 - it can carry you past the whirlpool." if _current_3_in_4 else "Current moved back to WindCorridor3."
+
+# R on the maze map: rotates whichever current is in `corridor` to its
+# paired corridor - Corridor1 <-> 2 (same as C) and Corridor3 <-> 4 (same
+# as V). Returns the corridor the current ended up in, or null if this
+# current has nowhere to rotate to.
+func rotate_current_in(corridor: Area3D) -> Area3D:
+	if corridor == $WindCorridor1 or corridor == $WindCorridor2:
+		_toggle_current_1_to_2()
+		return $WindCorridor2 if _current_1_in_2 else $WindCorridor1
+	if corridor == $WindCorridor3 or corridor == $WindCorridor4:
+		_toggle_current_3_to_4()
+		return $WindCorridor4 if _current_3_in_4 else $WindCorridor3
+	$HUD/Controls.text = "That current can't be rotated."
+	return null
+
+# Re-targets the same WaterCurrent object from one corridor to another with
+# a new flow direction, keeping _currents_by_corridor keyed by where it is.
+func _move_current(from_area: Area3D, to_area: Area3D, dir: WaterCurrent.Direction) -> void:
+	var current: WaterCurrent = _currents_by_corridor.get(from_area, null)
+	if current == null:
+		push_warning("_move_current: no current at %s" % from_area.name)
+		return
+	current.setup(to_area, WaterCurrent.direction_to_vector(dir), current.strength, false)
+	_currents_by_corridor.erase(from_area)
+	_currents_by_corridor[to_area] = current
+
 # Places a wall at an intentionally authored perpendicular exit.  This is for
 # fixed scene topology (CurrentWall1's initial attachment), not the usual
 # dynamic route extension; call `_nearest_wall_continuation()` for that.
@@ -722,11 +955,17 @@ func _perpendicular_exit_position(reference_geometry: Dictionary, moving_yaw: fl
 #     direction: corrects for moving_wall's own thickness - moving_wall_outer_end
 #     sits on moving_wall's centerline, not its physical face, so this nudges
 #     target_wall onto one actual face of moving_wall's footprint instead.
-func _position_beyond_wall_end(moving_wall_outer_end: Vector3, moving_wall_outward_axis: Vector3, moving_wall_size_z: float, target_wall_long_axis: Vector3, target_wall_size_x: float, target_wall_size_z: float) -> Vector3:
-	return moving_wall_outer_end \
-		+ moving_wall_outward_axis * target_wall_size_z * 0.5 \
+func _position_beyond_wall_end(reference_wall_outer_end: Vector3, reference_wall_outward_axis: Vector3, reference_wall_size_z: float, target_wall_long_axis: Vector3, target_wall_size_x: float, target_wall_size_z: float, use_positive: bool = false) -> Vector3:
+	if use_positive:
+		return reference_wall_outer_end \
+			+ reference_wall_outward_axis * target_wall_size_z * 0.5 \
+			- target_wall_long_axis * target_wall_size_x * 0.5 \
+			- target_wall_long_axis * reference_wall_size_z * 0.5 \
+			+ target_wall_long_axis * reference_wall_size_z
+	return reference_wall_outer_end \
+		+ reference_wall_outward_axis * target_wall_size_z * 0.5 \
 		+ target_wall_long_axis * target_wall_size_x * 0.5 \
-		- target_wall_long_axis * moving_wall_size_z * 0.5
+		- target_wall_long_axis * reference_wall_size_z * 0.5
 
 
 # Each WaterCurrent is a plain controller object, not something attached
@@ -756,8 +995,7 @@ func _position_beyond_wall_end(moving_wall_outer_end: Vector3, moving_wall_outwa
 # exactly the two starting pairs.
 func _setup_currents() -> void:
 	_add_current($WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
-	_add_current($WindCorridor2, WaterCurrent.Direction.NEGATIVE_X)
-	_add_current($WindCorridor4, WaterCurrent.Direction.POSITIVE_Z)
+	_add_current($WindCorridor3, WaterCurrent.Direction.NEGATIVE_Z)
 	_add_current($WindCorridor6, WaterCurrent.Direction.NEGATIVE_Z)
 	
 # MODIFIED: both of these were calling rotate_corridors_right()/_left()
@@ -941,9 +1179,78 @@ func _setup_whirlpool() -> void:
 	whirlpool.warned.connect(_on_whirlpool_warned)
 	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
 	add_child(whirlpool)
+	_setup_corridor_4_whirlpool()
+
+# Corridor -> the two walls it sits between. Each corridor's collision box
+# (its current's push zone) is kept centred between its pair: once after
+# _setup_walls() (before _setup_currents(), so currents start in place) and
+# then every physics frame, so if either wall is repositioned the corridor,
+# the current in it, and Corridor4's whirlpool all move with it.
+# WindCorridor3 is the passage between Box6 and Box7 (where the current
+# starts, pushing -Z); WindCorridor4 is between Box12 and Box13 (+Z once the
+# current is moved there).
+var _corridor_walls: Dictionary = {}
+var _corridor_4_whirlpool: Whirlpool
+
+func _align_corridors_to_walls() -> void:
+	for corridor in _corridor_walls:
+		var walls: Array = _corridor_walls[corridor]
+		var shape_node := _corridor_shape(corridor as Area3D)
+		if shape_node == null:
+			continue
+		# Centred ACROSS the gap only - the corridor keeps its authored spot
+		# along the passage (Box6/Box7 run 80 units, so centring lengthwise
+		# would drag Corridor3 far from where it sits).
+		var centre := _midpoint_between(walls[0], walls[1])
+		var side := _wall_geometry(walls[0])["side_axis"] as Vector3
+		side.y = 0.0
+		var target := shape_node.global_position + side * (centre - shape_node.global_position).dot(side)
+		if not shape_node.global_position.is_equal_approx(target):
+			shape_node.global_position = target
+	_place_corridor_4_whirlpool()
+
+func _corridor_shape(corridor: Area3D) -> CollisionShape3D:
+	for child in corridor.get_children():
+		if child is CollisionShape3D:
+			return child
+	return null
+
+# A whirlpool across the back of WindCorridor4: the north end of the stretch
+# where its two walls face each other (Corridor4 pushes +Z, so north is the
+# back). It swallows a diver and returns them to that stretch's south end -
+# unless WindCorridor4 holds the current (V / R on the map), which carries
+# the diver through it instead. Sized to the gap so it can't be swum around.
+func _setup_corridor_4_whirlpool() -> void:
+	var corridor := $WindCorridor4 as Area3D
+	var walls: Array = _corridor_walls[corridor]
+	var whirlpool := Whirlpool.new()
+	whirlpool.suction_radius = _gap_width_between(walls[0], walls[1]) * 0.5 + 0.4
+	whirlpool.warning_radius = whirlpool.suction_radius + 5.0
+	whirlpool.bypass = func() -> bool: return _currents_by_corridor.has(corridor)
+	whirlpool.warned.connect(_on_whirlpool_warned)
+	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
+	add_child(whirlpool)
+	_corridor_4_whirlpool = whirlpool
+	_place_corridor_4_whirlpool()
+
+func _place_corridor_4_whirlpool() -> void:
+	if _corridor_4_whirlpool == null:
+		return
+	var walls: Array = _corridor_walls[$WindCorridor4]
+	var ends := _overlap_ends_between(walls[0], walls[1])
+	var back: Vector3 = ends[0] if ends[0].z > ends[1].z else ends[1]
+	var start: Vector3 = ends[1] if ends[0].z > ends[1].z else ends[0]
+	var into := (start - back).normalized()
+	var floor_y: float = ($DiverEntry as Node3D).global_position.y
+	var spot := back + into * (_corridor_4_whirlpool.suction_radius + 0.5)
+	_corridor_4_whirlpool.global_position = Vector3(spot.x, floor_y, spot.z)
+	var reset := start - into * 1.5
+	_corridor_4_whirlpool.reset_to = Vector3(reset.x, floor_y, reset.z)
 
 func _on_whirlpool_warned() -> void:
-	$HUD/Controls.text = "Danger - a whirlpool lies just ahead!"
+	# The whirlpool shows its own "Danger: Whirlpool ahead" caption while
+	# the diver is within its warning radius (see whirlpool.gd).
+	pass
 
 func _on_diver_sucked_in(_d: Diver, amount: int) -> void:
 	$HUD/Controls.text = "You were sucked into the whirlpool! (-%d HP)" % amount
@@ -1154,6 +1461,56 @@ var _pitch := -0.16
 var _cam_dist := 6.5
 var _mouse_look := false
 
+# Puts the diver midway between two parallel walls (see _midpoint_between()).
+# Keeps the diver's spawn height from $DiverEntry.
+func _place_diver_between(wall_a: CSGBox3D, wall_b: CSGBox3D) -> void:
+	if _diver == null:
+		return
+	var spot := _midpoint_between(wall_a, wall_b)
+	spot.y = $DiverEntry.global_position.y
+	_diver.global_position = spot
+
+# The point midway between two parallel walls: halfway across the gap, and
+# centred on the stretch where the two walls overlap lengthwise. y is
+# wall_a's centre height.
+func _midpoint_between(wall_a: CSGBox3D, wall_b: CSGBox3D) -> Vector3:
+	var g_a: Dictionary = _wall_geometry(wall_a)
+	var g_b: Dictionary = _wall_geometry(wall_b)
+	var axis := g_a["long_axis"] as Vector3
+	var origin := g_a["center"] as Vector3
+	var a_lo := minf(((g_a["negative_end"] as Vector3) - origin).dot(axis), ((g_a["positive_end"] as Vector3) - origin).dot(axis))
+	var a_hi := maxf(((g_a["negative_end"] as Vector3) - origin).dot(axis), ((g_a["positive_end"] as Vector3) - origin).dot(axis))
+	var b_lo := minf(((g_b["negative_end"] as Vector3) - origin).dot(axis), ((g_b["positive_end"] as Vector3) - origin).dot(axis))
+	var b_hi := maxf(((g_b["negative_end"] as Vector3) - origin).dot(axis), ((g_b["positive_end"] as Vector3) - origin).dot(axis))
+	var along := (maxf(a_lo, b_lo) + minf(a_hi, b_hi)) * 0.5
+	var side := g_a["side_axis"] as Vector3
+	var across := ((g_b["center"] as Vector3) - origin).dot(side) * 0.5
+	return origin + axis * along + side * across
+
+# The two ends of the centreline running between two parallel walls, along
+# the stretch where they overlap lengthwise (where they actually face each
+# other). y is wall_a's centre height.
+func _overlap_ends_between(wall_a: CSGBox3D, wall_b: CSGBox3D) -> Array[Vector3]:
+	var g_a: Dictionary = _wall_geometry(wall_a)
+	var g_b: Dictionary = _wall_geometry(wall_b)
+	var axis := g_a["long_axis"] as Vector3
+	var origin := g_a["center"] as Vector3
+	var a1 := ((g_a["negative_end"] as Vector3) - origin).dot(axis)
+	var a2 := ((g_a["positive_end"] as Vector3) - origin).dot(axis)
+	var b1 := ((g_b["negative_end"] as Vector3) - origin).dot(axis)
+	var b2 := ((g_b["positive_end"] as Vector3) - origin).dot(axis)
+	var lo := maxf(minf(a1, a2), minf(b1, b2))
+	var hi := minf(maxf(a1, a2), maxf(b1, b2))
+	var side := g_a["side_axis"] as Vector3
+	var across := ((g_b["center"] as Vector3) - origin).dot(side) * 0.5
+	return [origin + axis * lo + side * across, origin + axis * hi + side * across]
+
+# Open width between two parallel walls' facing surfaces.
+func _gap_width_between(wall_a: CSGBox3D, wall_b: CSGBox3D) -> float:
+	var side := _wall_geometry(wall_a)["side_axis"] as Vector3
+	var separation := absf((wall_b.global_position - wall_a.global_position).dot(side))
+	return separation - (wall_a.size.z + wall_b.size.z) * 0.5
+
 func _spawn_test_diver() -> void:
 	_diver = Diver.new()
 	_diver.model_name = TEST_DIVER_MODEL
@@ -1196,6 +1553,7 @@ func _player_rise() -> float:
 const GOLDEN_ORB_FALL_SPEED := 1.5
 
 func _physics_process(dt: float) -> void:
+	_align_corridors_to_walls()
 	if _diver == null:
 		return
 	for orb in goldenOrbs:
@@ -1224,10 +1582,12 @@ func _unhandled_input(e: InputEvent) -> void:
 		var mm := e as InputEventMouseMotion
 		_yaw -= mm.relative.x * 0.004
 		_pitch = clampf(_pitch - mm.relative.y * 0.003, -1.1, 0.7)
-	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_L:
-		_rotate_left_currents_left()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_H:
 		_rotate_hallway_1_2()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_C:
+		_toggle_current_1_to_2()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_V:
+		_toggle_current_3_to_4()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
 		# MazeLevel is a standalone review scene, so World cannot forward its
 		# normal ability input here. Keep the final relic interaction on the
