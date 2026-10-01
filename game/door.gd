@@ -45,3 +45,9 @@ func open() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "position:y", position.y + span.y, 1.2)\
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+
+# Public state query for route-level regression checks.  KeyDoor is a
+# separate class; exposing this small existing contract prevents future
+# integrations from having to inspect this component's private collision node.
+func is_open() -> bool:
+	return _opened
