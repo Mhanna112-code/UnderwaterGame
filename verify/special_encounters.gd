@@ -10,15 +10,20 @@ func _check(ok: bool, message: String) -> void:
 		findings.append(message)
 
 func _enter_special(world: World, diver: Diver, item_id: String) -> Battle:
-	var guardian: ItemGuardian = null
-	for child in world.get_children():
-		if child is ItemGuardian and (child as ItemGuardian).item_id == item_id:
-			guardian = child as ItemGuardian
+	# No guardian node to find and trigger anymore - _offer_special_encounter()
+	# is the real entry point both a random-encounter roll
+	# (World._on_encounter_triggered()) and the special-playtest route use to
+	# open this now, so calling it directly exercises the same path a player
+	# actually takes. Site/reachability existence is verify/encounters.gd's
+	# job, not this lifecycle test's.
+	var enemy_id := "angler"
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		if String(entry.item) == item_id:
+			enemy_id = String(entry.get("enemy", "angler"))
 			break
-	_check(guardian != null, "guarded site was not built")
-	if guardian == null:
-		return null
-	guardian.triggered.emit(item_id)
+	world._pending_guardian_enemy_id = enemy_id
+	world._offer_special_encounter(item_id)
 	_check(world.special_encounter_prompt.visible, "chooser did not open")
 	world.special_encounter_prompt.diver_chosen.emit(diver.model_name)
 	await process_frame
@@ -31,6 +36,28 @@ func _run() -> void:
 	await process_frame
 	world.title_screen.new_game_chosen.emit(1)
 	await process_frame
+	# The very first special encounter of a real game skips this chooser
+	# entirely and forces Maxilani straight into battle instead (see World.
+	# _offer_special_encounter()) - verify/encounters.gd's own
+	# _check_first_special_encounter_skips_prompt() is what tests that path.
+	# Every check below is about the chooser/dispatcher's steady-state
+	# lifecycle (loss/win restores, the playtest route), so it forces past
+	# the one-time skip up front rather than tripping over it by accident.
+	world.player_first_special_encounter = false
+	# The chooser is a real player-facing entry point, so keep its embedded
+	# tutorial recording in a 16:9 frame.  A portrait slot made the video
+	# itself render as a tiny letterboxed strip even though the selector had
+	# plenty of horizontal space.
+	world.special_encounter_prompt._on_enter_pressed()
+	await process_frame
+	var media_frame := world.special_encounter_prompt._media_frame
+	_check(
+		is_equal_approx(media_frame.custom_minimum_size.x / media_frame.custom_minimum_size.y, 16.0 / 9.0),
+		"chooser tutorial-video frame is not 16:9"
+	)
+	var swap_crop: Variant = TutorialContent.SPECIAL_ENCOUNTER_VIDEO_CROPS.get("swap")
+	_check(swap_crop is Vector4 and (swap_crop as Vector4).z > 0.0 and (swap_crop as Vector4).w > 0.0, "padded Swap recording has no in-game crop")
+	world.special_encounter_prompt.close()
 
 	var diver := world.divers[0] as Diver
 	var entry_hp := diver.stats.hp - 3
@@ -54,8 +81,12 @@ func _run() -> void:
 	diver.stats.oxygen = 2.0
 	battle.finished.emit("won")
 	await process_frame
-	_check(diver.stats.hp == diver.stats.hp_max, "win did not fill HP")
-	_check(is_equal_approx(diver.stats.oxygen, diver.stats.oxygen_max), "win did not fill oxygen")
+	# MODIFIED (changed): a win used to fill HP/oxygen to max - now matches
+	# a loss's own restore, reverting to whatever the diver had on entering
+	# the encounter (entry_hp/entry_oxygen, captured by _enter_special()
+	# just above) rather than leaving a win in better shape than a loss.
+	_check(diver.stats.hp == entry_hp, "win did not restore entry HP")
+	_check(is_equal_approx(diver.stats.oxygen, entry_oxygen), "win did not restore entry oxygen")
 	_check(world.key_items.has("current_pearl"), "win did not grant the guarded item")
 
 	# The web-only review route must exercise the real chooser/dispatcher but

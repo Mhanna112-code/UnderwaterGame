@@ -17,9 +17,9 @@
 # right than incremental updates.
 #
 # Reached only through SavePointMenu now, never directly - back_pressed is
-# how it hands control back to the update submenu instead of just hiding
-# itself, so the player lands back on Equip/Learn/Back, not out of the
-# save-point flow entirely.
+# how it hands control back to the save-point menu's root instead of just
+# hiding itself, so the player lands back on Save/Learn Spells, not out of
+# the save-point flow entirely.
 #
 # THIS IS SCAFFOLDING, not the finished screen: no tree-line connectors
 # between prerequisite spells (columns just list every node in the branch

@@ -1,10 +1,19 @@
 # One place on the seabed, built so that arriving somewhere feels like it.
 #
-# A site is a bowl: a low berm ring you cross, broken columns round the rim,
-# and a plinth at the middle. The enclosure is not decoration. It narrows the
+# A site is marked by broken columns round the rim. Sites without guarded
+# items also have a low berm ring; item locations omit that ring so it does
+# not signpost either special or ordinary rewards. The enclosure narrows the
 # volume, which is the only thing that makes an encounter inside it mean
-# anything in three dimensions, where anything in open water can be swum
-# around.
+# anything in three dimensions, where anything in open water can be swum around.
+#
+# No plinth at the middle - a combat site's guarded item is discovered via
+# sonar/proximity, not walked up to (see item_guardian.gd's own comment on
+# the on-screen guardian having been removed already). A permanent stone
+# pedestal sitting at the exact item location from the moment the world
+# loads gave away every guarded item's whereabouts on sight, defeating that
+# discovery entirely - it was the one piece of the old "guardian standing on
+# its plinth" presentation that never got cleaned up when the guardian
+# itself did.
 class_name Site
 extends Node3D
 
@@ -18,18 +27,19 @@ func build(d: Dictionary) -> void:
 	position.y = 0.0
 	var r: float = float(d.radius)
 
-	# the berm: a low ring you cross to get in, so the edge of the place is
-	# a thing you physically pass rather than a coordinate
-	var berm := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = r - 0.9
-	torus.outer_radius = r + 0.9
-	torus.rings = 32
-	torus.ring_segments = 6
-	berm.mesh = torus
-	berm.material_override = _mat(BERM, 1.0)
-	berm.position.y = -0.35
-	add_child(berm)
+	# the berm: a low ring you cross to get in. Guarded item locations omit it
+	# so their positions aren't signposted before discovery.
+	if String(d.get("item", "")) == "":
+		var berm := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = r - 0.9
+		torus.outer_radius = r + 0.9
+		torus.rings = 32
+		torus.ring_segments = 6
+		berm.mesh = torus
+		berm.material_override = _mat(BERM, 1.0)
+		berm.position.y = -0.35
+		add_child(berm)
 
 	# broken columns round the rim, thinning towards the entrance so the way
 	# in reads without anybody drawing an arrow on it
@@ -53,8 +63,6 @@ func build(d: Dictionary) -> void:
 
 	if String(d.kind) == "anchor":
 		_descent_line()
-	else:
-		_plinth()
 
 # Where the descent chain stands, relative to the site's middle.
 #
@@ -70,7 +78,11 @@ func build(d: Dictionary) -> void:
 const DESCENT_AT := Vector3(3.6, 0.0, 3.6)
 
 # Where this site puts something solid enough to stand inside. Used by
-# verify/sites.gd to check nobody spawns in it.
+# verify/sites.gd to check nobody spawns in it. A combat site no longer
+# places anything solid at its own center (see build()'s removed plinth
+# call), but still reserves that point - narrow-but-empty is still worth
+# keeping a spawn off of, since it's the framing center every combat
+# encounter there is built around.
 func furniture_points() -> Array:
 	if String(data.get("kind", "")) == "anchor":
 		return [global_position + DESCENT_AT]
@@ -96,21 +108,6 @@ func _descent_line() -> void:
 	block.material_override = _mat(Color(0.22, 0.22, 0.24), 0.9)
 	block.position = DESCENT_AT + Vector3(0.0, 0.35, 0.0)
 	add_child(block)
-
-# what the salvage stands on, so the thing you came for is presented rather
-# than dropped on the floor
-func _plinth() -> void:
-	var p := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 1.15
-	cyl.bottom_radius = 1.45
-	cyl.height = 0.7
-	cyl.radial_segments = 12
-	p.mesh = cyl
-	p.material_override = _mat(STONE, 0.95)
-	p.position.y = 0.35
-	p.name = "Plinth"
-	add_child(p)
 
 func _mat(c: Color, rough: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()

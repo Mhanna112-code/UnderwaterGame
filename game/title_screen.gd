@@ -20,23 +20,18 @@ const COVER_ART: Texture2D = preload("res://docs/underwater-cover.png")
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
 signal boss_playtest_chosen
-signal guardian_playtest_chosen
 signal special_playtest_chosen
-signal onboarding_playtest_chosen
 signal spell_playtest_chosen
+signal skip_tutorial_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
 
 var _list: VBoxContainer
 var _boss_playtest_available := false
-var _guardian_playtest_available := false
-var _guardian_playtest_label := "Play Guardian Test"
 var _special_playtest_available := false
-var _onboarding_playtest_available := false
-# This is review-only plumbing like the boss/guardian/special/onboarding
-# entries above.  It never appears in a normal first-player title flow.
 var _spell_playtest_available := false
+var _skip_tutorial_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -131,15 +126,6 @@ func enable_boss_playtest() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
-# Like the boss route, this is query-only review infrastructure. It keeps the
-# normal first-player title surface untouched while letting Glassgoat inspect
-# the far artifact guardian without navigating through saves and encounters.
-func enable_guardian_playtest(label: String) -> void:
-	_guardian_playtest_available = true
-	_guardian_playtest_label = label
-	if visible and _mode == "main":
-		_refresh()
-
 # Like the boss route above, this is opt-in review plumbing rather than part
 # of the ordinary New/Load flow. It lets a reviewer reach the guardian chooser
 # and all three ability minigames without first navigating the full map.
@@ -148,20 +134,21 @@ func enable_special_playtest() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
-# A reviewer needs to inspect the post-tutorial world-control surface without
-# replaying the deliberately paced combat lesson. Like the existing query-only
-# boss/guardian/special routes, World enables this only for its review URL;
-# normal New/Load presentation never receives a dev button.
-func enable_onboarding_playtest() -> void:
-	_onboarding_playtest_available = true
+# Same opt-in review plumbing, for testing spells without the level/save-
+# point/key-item grind normally required to reach one. See World's own
+# _on_title_spell_playtest() for what this route actually sets up.
+func enable_spell_playtest() -> void:
+	_spell_playtest_available = true
 	if visible and _mode == "main":
 		_refresh()
 
-# Opens the actual save-point spell UI with temporary review resources.  The
-# World owns the no-save contract and resource setup; TitleScreen only makes
-# the opt-in route visible for ?spells=1 / --spell-playtest reviewers.
-func enable_spell_playtest() -> void:
-	_spell_playtest_available = true
+# Same opt-in review plumbing again - jumps straight into a fresh game
+# with World's own scripted first fight skipped entirely (see World.
+# skip_tutorial_for_test/_on_title_skip_tutorial()), for testing anything
+# past that fight without walking to the light beam and fighting through
+# it every single session.
+func enable_skip_tutorial() -> void:
+	_skip_tutorial_available = true
 	if visible and _mode == "main":
 		_refresh()
 
@@ -193,16 +180,6 @@ func _refresh_main() -> void:
 		boss_btn.pressed.connect(boss_playtest_chosen.emit)
 		_list.add_child(boss_btn)
 
-	if _guardian_playtest_available:
-		var guardian_btn := Button.new()
-		guardian_btn.text = _guardian_playtest_label
-		guardian_btn.tooltip_text = "Swordfish Duelist model, animation, and guardian battle validation"
-		guardian_btn.custom_minimum_size = Vector2(360, 46)
-		guardian_btn.add_theme_font_size_override("font_size", 17)
-		guardian_btn.add_theme_color_override("font_color", Color(0.68, 0.88, 1.0))
-		guardian_btn.pressed.connect(guardian_playtest_chosen.emit)
-		_list.add_child(guardian_btn)
-
 	if _special_playtest_available:
 		var special_btn := Button.new()
 		special_btn.text = "Play Special Encounter Test"
@@ -213,25 +190,25 @@ func _refresh_main() -> void:
 		special_btn.pressed.connect(special_playtest_chosen.emit)
 		_list.add_child(special_btn)
 
-	if _onboarding_playtest_available:
-		var onboarding_btn := Button.new()
-		onboarding_btn.text = "Review World Controls"
-		onboarding_btn.tooltip_text = "Inspect the post-tutorial controls walkthrough"
-		onboarding_btn.custom_minimum_size = Vector2(360, 46)
-		onboarding_btn.add_theme_font_size_override("font_size", 17)
-		onboarding_btn.add_theme_color_override("font_color", Color(0.62, 0.92, 0.82))
-		onboarding_btn.pressed.connect(onboarding_playtest_chosen.emit)
-		_list.add_child(onboarding_btn)
-
 	if _spell_playtest_available:
 		var spell_btn := Button.new()
 		spell_btn.text = "Play Spell Test"
-		spell_btn.tooltip_text = "Open the real spell interface with temporary spell points and every key item. This never writes a save."
+		spell_btn.tooltip_text = "Every diver starts with every available spell learned and equipped; press Esc to inspect Party Spells"
 		spell_btn.custom_minimum_size = Vector2(360, 46)
 		spell_btn.add_theme_font_size_override("font_size", 17)
 		spell_btn.add_theme_color_override("font_color", Color(0.75, 1.0, 0.75))
 		spell_btn.pressed.connect(spell_playtest_chosen.emit)
 		_list.add_child(spell_btn)
+
+	if _skip_tutorial_available:
+		var skip_btn := Button.new()
+		skip_btn.text = "New Game (Skip Tutorial)"
+		skip_btn.tooltip_text = "Starts a fresh game with the scripted first fight already marked complete"
+		skip_btn.custom_minimum_size = Vector2(360, 46)
+		skip_btn.add_theme_font_size_override("font_size", 17)
+		skip_btn.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6))
+		skip_btn.pressed.connect(skip_tutorial_chosen.emit)
+		_list.add_child(skip_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
 	# dead Load Game path (followed by three disabled slots) until a save

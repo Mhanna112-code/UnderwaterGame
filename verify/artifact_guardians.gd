@@ -9,9 +9,17 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var expected := {"current_pearl": "angler", "reef_plate": "swordfish_duelist"}
+	# current_pearl/reef_plate are the original key-item progression
+	# guardians this file was written for; attack_up/defense_up (the
+	# special-encounter reef/grotto sites - see content/sites.gd) reuse the
+	# exact same two enemy ids, so they fold into the same expectations
+	# rather than needing their own separate rig/actor assertions below.
+	var expected := {
+		"current_pearl": "angler", "reef_plate": "swordfish_duelist",
+		"attack_up": "angler", "defense_up": "swordfish_duelist",
+	}
 	var guarded := ItemGuardian.spots()
-	_expect(guarded.size() == 2, "ARTIFACT GUARDIANS: expected exactly two guarded items — guards against an art change deleting a progression location")
+	_expect(guarded.size() == 4, "ARTIFACT GUARDIANS: expected exactly four guarded items — guards against an art/site change deleting a progression or special-encounter location")
 	for spot_value in guarded:
 		var spot := spot_value as Dictionary
 		var item := String(spot.get("item", ""))
@@ -66,7 +74,7 @@ func _run() -> void:
 		await process_frame
 
 	if findings.is_empty():
-		print("ARTIFACT GUARDIANS: clean — current pearl Angler and reef plate Swordfish Duelist remain one-enemy guardian encounters")
+		print("ARTIFACT GUARDIANS: clean — all four guarded items keep their assigned enemy as one-enemy guardian encounters")
 		quit(0)
 		return
 	for finding in findings:
