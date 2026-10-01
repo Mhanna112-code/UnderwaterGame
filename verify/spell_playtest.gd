@@ -1,14 +1,13 @@
-# `spell playtest: every spell in every diver's tree becomes learnable
-# immediately, no leveling or key-item grind required`.
+# `spell playtest: title route provides learned spells — guards against empty
+# Party Spells`.
 #
 # Drives World._on_title_spell_playtest() directly (same pattern
 # verify/special_encounters.gd uses for its own playtest route) rather than
 # actually pressing the title button, then proves the thing the route
 # promises. Max spell points and every key item only remove the POINTS/ITEM
-# gates SpellTree.can_learn() checks - a spell with "requires_spells" still
-# needs that prerequisite actually learned first, same as real play, so this
-# walks each tree to completion (repeatedly learning whatever's newly
-# learnable) rather than expecting every node learnable in one pass.
+# gates SpellTree.can_learn() checks. This test deliberately does NOT call
+# SpellTree.learn() itself: doing so was hiding the real production defect
+# where the human-facing route supplied resources but no learned spells.
 #
 # Usage: godot --headless --path . --script verify/spell_playtest.gd
 extends SceneTree
@@ -30,28 +29,28 @@ func _run() -> void:
 
 	for d_value in world.divers:
 		var d := d_value as Diver
-		_expect(d.stats.spell_points >= 99,
-			"SPELL PLAYTEST: %s has %d spell points, expected at least 99" % [d.model_name, d.stats.spell_points])
 
 		var all_spell_ids: Array[String] = []
 		for branch in SpellTree.branches(d.model_name):
 			for spell_id in SpellTree.tree_for(d.model_name)[branch]:
 				all_spell_ids.append(String(spell_id))
 
-		var progressed := true
-		while progressed:
-			progressed = false
-			for branch in SpellTree.branches(d.model_name):
-				for spell_id in SpellTree.tree_for(d.model_name)[branch].keys():
-					if SpellTree.learn(d, branch, String(spell_id), world.key_items):
-						progressed = true
-
 		for spell_id in all_spell_ids:
 			_expect(d.known_spells.has(spell_id),
-				"SPELL PLAYTEST: %s never became learnable for %s even with max points and every key item" % [spell_id, d.model_name])
+				"SPELL PLAYTEST: %s is not learned for %s after selecting Spell Test" % [spell_id, d.model_name])
+			_expect(d.equipped_spells.has(spell_id),
+				"SPELL PLAYTEST: %s is learned but not equipped for %s" % [spell_id, d.model_name])
+
+	var visible_party_spells := 0
+	for d_value in world.divers:
+		visible_party_spells += world._inventory_spells_for(d_value as Diver).size()
+	_expect(visible_party_spells > 0,
+		"SPELL PLAYTEST: Party Spells has no usable support action after selecting Spell Test")
+	_expect(world._current_slot == -1,
+		"SPELL PLAYTEST: review route assigned a save slot")
 
 	if findings.is_empty():
-		print("spell playtest        every spell in every tree became learnable")
+		print("spell playtest        prepared roster is learned, equipped, and visible")
 		quit(0)
 		return
 	for finding in findings:
