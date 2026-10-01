@@ -30,9 +30,14 @@ const DOOR_SCENE := preload("res://game/Door.fbx")
 # passage.  This threshold is part of the public gameplay contract and is
 # covered by verify/key_door.gd.
 @export_range(0.0, 1.0, 0.05) var collision_release_progress := 0.8
+# Some delivered door assets include a secondary visual (the supplied FBX's
+# `Wheel`) which is not part of the Open shape key.  Let a placement name
+# those visuals so the doorway is visually clear exactly when physics clears.
+@export var hide_when_open_node_names: Array[StringName] = [&"Wheel"]
 
 var _door_frame: MeshInstance3D
 var _shape_index := -1
+var _hide_when_open_meshes: Array[MeshInstance3D] = []
 var _collision: CollisionShape3D
 var _prompt: Label3D
 var _world: World
@@ -131,7 +136,11 @@ func _finish_open() -> void:
 func _apply_open_progress() -> void:
 	if _door_frame != null and _shape_index >= 0:
 		_door_frame.set_blend_shape_value(_shape_index, lerpf(0.0, open_value, _open_progress))
-	if _collision != null and _open_progress >= collision_release_progress:
+	var doorway_is_clear := _open_progress >= collision_release_progress
+	for visual in _hide_when_open_meshes:
+		if is_instance_valid(visual):
+			visual.visible = not doorway_is_clear
+	if _collision != null and doorway_is_clear:
 		_collision.set_deferred("disabled", true)
 
 func _build_art_and_collision() -> void:
@@ -145,6 +154,7 @@ func _build_art_and_collision() -> void:
 		push_error("KeyDoor: Door.fbx is missing required shape key '%s'" % shape_key_name)
 		return
 	_shape_index = _blend_shape_index(_door_frame.mesh, shape_key_name)
+	_hide_when_open_meshes = _find_named_meshes(art, hide_when_open_node_names)
 	var raw_bounds := _subtree_bounds(art)
 	if raw_bounds.size.y <= 0.0001:
 		push_error("KeyDoor: Door.fbx has no usable vertical visual bounds")
@@ -221,6 +231,17 @@ func _find_shape_mesh(node: Node, wanted: StringName) -> MeshInstance3D:
 		if found != null:
 			return found
 	return null
+
+func _find_named_meshes(node: Node, wanted_names: Array[StringName]) -> Array[MeshInstance3D]:
+	var found: Array[MeshInstance3D] = []
+	_collect_named_meshes(node, wanted_names, found)
+	return found
+
+func _collect_named_meshes(node: Node, wanted_names: Array[StringName], found: Array[MeshInstance3D]) -> void:
+	if node is MeshInstance3D and wanted_names.has(node.name):
+		found.append(node as MeshInstance3D)
+	for child in node.get_children():
+		_collect_named_meshes(child, wanted_names, found)
 
 func _blend_shape_index(mesh: Mesh, wanted: StringName) -> int:
 	for i in range(mesh.get_blend_shape_count()):

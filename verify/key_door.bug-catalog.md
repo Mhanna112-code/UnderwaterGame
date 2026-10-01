@@ -37,6 +37,7 @@
 | 6 | The new key-door work changes the existing three lock-plate `Door` behavior. | High — current world gate regresses. | Both classes represent doors and could be confused during integration. | Regression characterization | characterized — passes |
 | 7 | The reviewer route loads the Door FBX but its initial placement is hidden in the party silhouette, so human review cannot tell whether the delivered model is there. | Medium — reviewers may approve a route they cannot actually inspect. | The third-person party starts in a compact formation and can occlude an object directly ahead. | Browser screenshot review | fixed — moved the review-only placement laterally and captured the FBX separately |
 | 8 | The centred FBX origin puts half of a placed Door below the floor, while its collision remains centred there too. | High — the door looks broken and its physical passage disagrees with level intent. | Imported artist assets commonly use a centre origin rather than a floor-contact origin. | Bounds-derived grounding invariant + rendered capture | fixed — floor-align art and collision from the same imported bounds |
+| 9 | A separate non-morph FBX mesh remains across an apparently open doorway after collision releases. | High — players see a blocker even though the passage is physically open. | The supplied Door FBX has a `Wheel` mesh outside the `Open` blend shape. | Timeline invariant + rendered capture | fixed — configured non-morph visuals hide at the collision-clear threshold |
 
 ## Test plan
 
@@ -94,6 +95,13 @@
   - Could this pass for wrong-but-stable output? No; it checks the existing route's public gate condition.
   - Could this fail under a behavior-preserving refactor? No; it does not depend on mesh type or node names.
 
+### Bug #9 — non-morph doorway visual
+
+- **Test type:** timeline invariant plus rendered capture.
+- **Description string:** `"key door: Wheel remains visible while locked/opening and hides only when the passage clears"`
+- **What it catches:** a separately imported decorative or mechanical mesh visually blocking the opening after its parent frame's morph has opened.
+- **Self-critique:** the test deliberately names the delivered asset's `Wheel` because that is the compatibility contract being protected; future assets can configure a different list through `hide_when_open_node_names`.
+
 ## Skipped
 
 - Exact maze placement and first key location — Marc has not chosen them; this component must remain placement-agnostic.
@@ -120,4 +128,9 @@
   the `Area3D`, wait for collision broad-phase updates, and then press `E` at
   the actual placed Door FBX. This was a verification gap, not a product
   defect.
+- **Bugs discovered during visual review:** the delivered `Wheel` is a separate
+  mesh rather than part of Door_Frame's `Open` shape key, so it remained in
+  the aperture even when collision was released. KeyDoor now exposes a
+  configurable list of secondary visuals and its timeline test verifies that
+  the supplied Wheel hides at the same visible-clear threshold as physics.
 - **Tests removed:** none.
