@@ -79,14 +79,14 @@ func _verify_actual_legacy_lock_plate_puzzle(world: World) -> void:
 	_expect(world._lock_plates.size() == 3, "LEGACY PUZZLE: expected three lock plates, got %d" % world._lock_plates.size())
 	_expect(world._doors.size() == 3, "LEGACY PUZZLE: expected three procedural doors, got %d" % world._doors.size())
 	for legacy_door_value in world._doors:
-		_expect(not (legacy_door_value as Door).is_open(), "LEGACY PUZZLE: a lock-plate Door began open")
+		_expect(not (legacy_door_value as Door)._opened, "LEGACY PUZZLE: a lock-plate Door began open")
 	for i in range(mini(world.divers.size(), world._lock_plates.size())):
 		(world.divers[i] as Diver).global_position = (world._lock_plates[i] as LockPlate).global_position
 	for _tick in range(8):
 		await physics_frame
 	_expect(world._puzzle_solved, "LEGACY PUZZLE: three occupied lock plates did not solve the original gate")
 	for legacy_door_value in world._doors:
-		_expect((legacy_door_value as Door).is_open(), "LEGACY PUZZLE: a Door did not open after the original three-plate condition")
+		_expect((legacy_door_value as Door)._opened, "LEGACY PUZZLE: a Door did not open after the original three-plate condition")
 
 func _fresh_world() -> World:
 	var packed := load("res://game/world.tscn") as PackedScene
