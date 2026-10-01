@@ -101,18 +101,17 @@ var aiming := false
 var target_selector: TargetSelector
 
 # P opens save_point_menu, but only while standing on a SavePoint (see
-# _save_points/_toggle_save_menu/_update_save_point_prompt) - spell
-# learning/equipping is deliberately unavailable anywhere else.
+# _save_points/_toggle_save_menu/_update_save_point_prompt). Spell learning
+# and equipping happen automatically after battles.
 var save_point_menu: SavePointMenu
 var _save_points: Array = []
 var _showing_save_prompt := false
+var _save_point_contact_active := false
+var _save_point_tutorial_seen := false
 
-# Party-wide, not per-diver - a key item (current_pearl/reef_plate) unlocks
-# a spell for whichever diver's tree gates on it, it isn't "held" by
-# whoever happened to win the guardian fight. Same array object gets handed
-# to save_point_menu.learn_ui in _ready() (see SpellTree.can_learn()'s
-# key_items param) rather than copied, so appending here is automatically
-# visible there without any extra sync step.
+# Party-wide, not per-diver - key items unlock spells in whichever diver's
+# tree requires them, they aren't "held" by whoever found one or won the
+# guardian fight.
 # The dive site as physical places from content/sites.gd. Built by
 # _build_dive_sites(); site_nodes is keyed by site id.
 var site_nodes: Dictionary = {}
@@ -120,6 +119,13 @@ var site_nodes: Dictionary = {}
 const SiteScript := preload("res://game/site.gd")
 
 var key_items: Array[String] = []
+const BLOCKADE_HEIGHT := 6.0
+const AIRBORNE_ROCK_HEIGHT := BLOCKADE_HEIGHT * 3.0
+const ROCK_KEY_ITEM_REWARDS := {
+	"rock_7": "abyssal_lens",
+	"rock_8": "sunken_core",
+}
+const ROCK_AMBUSH_IDS := ["rock_9", "rock_10"]
 
 # Which ItemGuardian.spots() item ids sonar has ever pinged (see
 # Diver.update_sonar()) - MiniMap draws a marker for anything in here
@@ -273,6 +279,7 @@ func _serialize_state() -> Dictionary:
 		"key_items": key_items.duplicate(),
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
+		"save_point_tutorial_seen": _save_point_tutorial_seen,
 		"divers": divers_data,
 	}
 
@@ -298,6 +305,8 @@ func _load_save() -> void:
 		d.position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
 		d.known_spells.assign((snap.get("known_spells", []) as Array).duplicate())
 		d.equipped_spells.assign((snap.get("equipped_spells", []) as Array).duplicate())
+		# Saves from before auto-equip can have learned-but-unequipped spells.
+		SpellTree.equip_all_known(d)
 		var sd: Dictionary = snap.get("stats", {})
 		var s: CombatantStats = d.stats
 		s.hp_max = int(sd.get("hp_max", s.hp_max))
@@ -327,6 +336,7 @@ func _load_save() -> void:
 	revealed_key_items.assign((data.get("revealed_key_items", []) as Array).duplicate())
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
+	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -644,7 +654,6 @@ func _ready() -> void:
 	save_point_menu = SavePointMenu.new()
 	save_point_menu.save_requested.connect(_on_save_requested)
 	$HUD.add_child(save_point_menu)
-	save_point_menu.learn_ui.key_items = key_items
 
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
@@ -832,6 +841,13 @@ func _build_boundary_walls() -> void:
 	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
 	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
 	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+	# Collision-only roof; its underside is exactly four blockade-heights
+	# above the floor. Airborne reward rocks at 3x height stay reachable.
+	const CEILING_THICKNESS := 2.0
+	_build_invisible_wall(
+		Vector3(0.0, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
+		Vector3(BOUND * 2.0, CEILING_THICKNESS, BOUND * 2.0)
+	)
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -843,15 +859,10 @@ func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	body.add_child(shape)
 	add_child(body)
 
-# A handful of small CrackedWalls scattered around the open world - unlike
-# the entrance blockade (a full-width gate), these are just optional side
-# pickups: break one with shockwave and it pops an ItemOrb instead of
-# handing out a fixed reward directly (see _on_breakable_rock_broken()) -
-# what actually comes out is rolled fresh per break (Items.random_drop():
-# mostly potions, some oxygen cells, an occasional spell shard), not always
-# the same thing. No invisible collision extension (collision_height/width
-# stay 0) since nothing needs to stop a diver going around one, only
-# breaking it matters.
+# CrackedWalls scattered around the open world. Ground-level rocks give a
+# random consumable; the four airborne rocks at 3x blockade height instead
+# hold two fixed spell keys and two enemy ambushes. No invisible collision
+# extension (collision_height/width stay 0) since only breaking them matters.
 #
 # Spread through open water away from every other placed thing - clear of
 # the anchor's own radius (Sites.ALL[0], r=6.5), both combat sites' radii
@@ -878,6 +889,14 @@ func _build_breakable_rocks() -> void:
 		Vector3(-15.0, 1.0, -20.0), Vector3(-3.0, 1.0, -30.0),
 		Vector3(-25.0, 1.0, 12.0), Vector3(10.0, 1.0, -15.0),
 		Vector3(8.0, 1.0, 22.0),
+		# These four rocks float three times the 6m blockade height above the
+		# seafloor. Two hold spell keys and two conceal encounter ambushes.
+		# All four stay at x < 15 (see the MODIFIED note above): the right-hand
+		# pair used to sit at x=38, behind the entrance blockade's invisible
+		# collision, so the Sunken Core and one ambush were unreachable until
+		# the gate was broken.
+		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, 22.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, -48.0),
+		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, -30.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, 46.0),
 	]
 	for i in range(SPOTS.size()):
 		var spot: Vector3 = SPOTS[i]
@@ -901,6 +920,16 @@ func _build_breakable_rocks() -> void:
 # `broken` signal stays ability/reward-agnostic. The stable id ties together
 # the consumed source and its pending reward across save/load.
 func _on_breakable_rock_broken(id: String, spot: Vector3) -> void:
+	if ROCK_KEY_ITEM_REWARDS.has(id):
+		var key_item := String(ROCK_KEY_ITEM_REWARDS[id])
+		if not key_items.has(key_item):
+			key_items.append(key_item)
+		var display := String(Items.ITEMS.get(key_item, {}).get("display", key_item))
+		_announce("Found the key item %s!" % display)
+		return
+	if id in ROCK_AMBUSH_IDS:
+		_start_battle("", false, "angler", [], false, false, "Some enemies were hiding in the rocks!")
+		return
 	var item_id := Items.random_drop()
 	var drop_position := spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
 	pending_world_drops[id] = {
@@ -1131,13 +1160,13 @@ func _build_highway() -> void:
 	const END_X := 45.0
 	const LANE_Z := 10.0
 	const LANE_HALF_WIDTH := 4.0
-	const WALL_HEIGHT := 6.0
+	const WALL_HEIGHT := BLOCKADE_HEIGHT
 
 	var length := END_X - START_X
 	var center_x := (START_X + END_X) * 0.5
 
 	# 0. A save point before the corridor even starts - the first place in
-	# the game spell learning/equipping becomes available at all (see
+	# the game save menu becomes available at all (see
 	# save_point.gd/SavePointMenu). Sits in the open dive site ahead of the
 	# entrance blockade, not inside the walled corridor, so it reads as
 	# "rest here before attempting the gate," not "partway through it."
@@ -1492,7 +1521,7 @@ func _toggle_save_menu() -> void:
 	if not _diver_on_save_point(divers[active]):
 		_announce("No save point nearby.")
 		return
-	save_point_menu.open_for(divers[active], _display_name(divers[active].model_name))
+	save_point_menu.open_for(divers[active])
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	mouse_look = false
 
@@ -1506,10 +1535,8 @@ func _diver_on_save_point(d: Diver) -> bool:
 # itself only ever emits the request, it doesn't know whether saving
 # "worked" since there's nothing real to fail yet (see save_point_menu.gd).
 #
-# Also the only way oxygen ever comes back now that there's no passive
-# regen - a save point is a real destination to swim for once you've spent
-# it down on abilities/sonar/spells, not just a spell-loadout menu. And now
-# a real save-file write (_write_save()) to whichever slot this run is
+# A save-point visit restores HP/O2 on contact; this handler writes a real
+# save file (_write_save()) to whichever slot this run is
 # playing into - a game over's "Restart from Save Point" (see
 # _show_game_over()/_on_game_over_restart()) reads back exactly this.
 #
@@ -1534,26 +1561,48 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 	_announce("Progress saved to Slot %d." % (slot + 1))
 	save_point_menu.close()
 
-# Shows "Save/Update Spells" while standing on a save point with the menu
+# Shows the save prompt while standing on a save point with the menu
 # closed, clears it the moment either stops being true. Tracked separately
 # from _announce()'s normal fade (_banner_timer stays 0 here) so the
 # prompt persists exactly as long as you're standing there, not for a
 # fixed few seconds - but that also means it only ever clears its own
 # text, never a real announcement's, via _showing_save_prompt.
 func _update_save_point_prompt() -> void:
+	var on_point := _diver_on_save_point(divers[active]) and _first_encounter_done
+	if on_point and not _save_point_contact_active:
+		_save_point_contact_active = true
+		_restore_party_at_save_point()
+	elif not on_point:
+		_save_point_contact_active = false
+
 	if save_point_menu.visible:
 		if _showing_save_prompt:
 			banner.text = ""
 			_showing_save_prompt = false
 		return
-	var on_point := _diver_on_save_point(divers[active]) and _first_encounter_done
 	if on_point and not _showing_save_prompt:
-		banner.text = "Save/Update Spells - Press P"
+		if not _save_point_tutorial_seen:
+			_save_point_tutorial_seen = true
+			var pages: Array[Dictionary] = [{
+				"title": "Save Points",
+				"body": "At Save Points you can write/overwrite your game progress to one of three save slots. Save points also revive any downed party members and fully replenish the party's health/O2 bars.",
+				"slot": null,
+			}]
+			(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
+		banner.text = "Save - Press P"
 		_banner_timer = 0.0
 		_showing_save_prompt = true
 	elif not on_point and _showing_save_prompt:
 		banner.text = ""
 		_showing_save_prompt = false
+
+func _restore_party_at_save_point() -> void:
+	for other in divers:
+		var s: CombatantStats = (other as Diver).stats
+		s.hp = s.hp_max
+		s.oxygen = s.oxygen_max
+	_update_hp_bar()
+	_update_oxygen_bar()
 
 func _fire_aimed_ability() -> void:
 	aiming = false
@@ -1991,18 +2040,15 @@ void fragment() {
 	light_beam.position.x = d.position.x + 10
 	add_child(light_beam)
 
-# Ordinary guarded-item locations use cyan rings. Special encounter sites
-# intentionally have no decorative grapple rings.
-const OTHER_ITEM_RING_COLOR := Color(0.2, 0.88, 0.95)
+# Ordinary guarded-item locations retain their grapple targets without a
+# visible ring. Special encounter sites have no item-location grapple target.
 func _build_item_grapple_anchors() -> void:
 	for entry_value in ItemGuardian.spots():
 		var entry := entry_value as Dictionary
 		if bool(entry.get("special", false)):
 			continue
 		var anchor := GrappleAnchor.new()
-		anchor.ring_color = OTHER_ITEM_RING_COLOR
-		anchor.ring_inner_radius = 0.95
-		anchor.ring_outer_radius = 1.25
+		anchor.show_ring = false
 		anchor.target_radius = 1.8
 		anchor.target_height = 3.2
 		anchor.position = entry.at as Vector3
@@ -2253,7 +2299,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "") -> void:
 	battling = true
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
@@ -2288,6 +2334,8 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_encounter = reward_item != "" and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.tutorial_encounter = tutorial
+	battle.reward_item_on_win = reward_item
+	battle.encounter_intro_override = intro_text
 	battle.finished.connect(_on_battle_finished)
 	add_child(battle)
 

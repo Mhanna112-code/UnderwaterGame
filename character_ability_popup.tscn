@@ -70,7 +70,7 @@ theme_override_constants/separation = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 180)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 8
 size_flags_vertical = 4
 
 [node name="PopupClose" type="Button" parent="UI/AbilityExplanationPanel/Margin/VBoxContainer"]

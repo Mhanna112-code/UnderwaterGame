@@ -33,6 +33,8 @@ var party_source: Array = []
 # _show_items()/_populate_item_menu()). Nothing else in this file touches
 # world at all.
 var world: World
+var reward_item_on_win := ""
+var encounter_intro_override := ""
 
 # Set by World for the dedicated Glassgoat validation route. Ordinary
 # random and guardian encounters still build Goblin grunts; this builds one
@@ -158,7 +160,7 @@ const DISPLAY_NAMES := Cast.DISPLAY_NAMES
 
 # Attack is a category, not a single action: pressing it opens a move list
 # instead of swinging right away. These base moves are always available -
-# on top of whichever spells that specific party member has equipped (see
+# on top of whichever spells that specific party member has learned (see
 # _moves_for()) - and now differ per diver instead of being one shared
 # list, so the base kit itself carries some identity too, not just the
 # spell tree layered on top of it. Glassgoat V2 moves use a `formula`
@@ -330,12 +332,11 @@ var _acting: Dictionary = {}
 var _pending_move: Dictionary = {}
 var _busy := false
 
-var log_label: Label
+var log_label: RichTextLabel
 var queue_row: HBoxContainer
 # HFlowContainer, not HBoxContainer - main_menu only ever has 2 buttons so
-# it never mattered, but move_menu can hold up to 3 base moves + 4 equipped
-# spells + Back (8 buttons at 150px each, wider than the whole viewport at
-# 1280px) and target_menu can hold one button per living enemy/ally. A
+# it never mattered, but move_menu holds a diver's base moves + every
+# learned spell + Back (more than one row's worth of 300px buttons) and target_menu can hold one button per living enemy/ally. A
 # plain HBoxContainer doesn't wrap - it would just run buttons off the
 # right edge instead of overflowing downward, the same "off-screen" bug
 # class as _bottom_panel not sizing to content (see _fit_panel_height()).
@@ -357,6 +358,16 @@ var back_btn: Button
 var item_back_btn: Button
 var target_back_btn: Button
 var move_buttons: Array = []
+# Move-menu scrolling. Learned spells are all auto-equipped with no cap, so
+# a diver can have more moves than fit. At most MOVE_MENU_SLOTS buttons show
+# at once (two rows of four); past that, the list pages with Up/Down,
+# keeping MOVE_MENU_VISIBLE_MOVES moves plus the Up/Down pair and Back.
+const MOVE_MENU_SLOTS := 8
+const MOVE_MENU_VISIBLE_MOVES := MOVE_MENU_SLOTS - 2
+var _move_scroll_box: VBoxContainer
+var _move_up_btn: Button
+var _move_down_btn: Button
+var _move_scroll_offset := 0
 var target_buttons: Array = []
 var item_buttons: Array = []
 
@@ -393,6 +404,8 @@ var _queue_bar: PanelContainer
 # "whose turn" marker needed over a grunt, the move log already says who's
 # attacking.
 var _turn_cursor: MeshInstance3D
+var _turn_cursor_target: Node3D
+var _turn_cursor_height := 0.0
 
 # Stored so _fit_panel_height() can resize it from anywhere menu visibility
 # changes (_show_moves(), _show_main(), _on_move_chosen(), etc.), not just
@@ -435,86 +448,109 @@ var _tutorial_awaiting_enter := false
 # tutorial, so turn flow cannot accidentally cancel instructional captions.
 var _skip_tutorial_requested := false
 
+# The subset of a spell def _register_stat_effects() reads, keyed by the
+# same display name _moves_for() gives the spell's move-menu entry.
+func _spell_preview_move(def: Dictionary, spell_id: String) -> Dictionary:
+	var mv := {"name": String(def.get("display", spell_id))}
+	for key in ["power", "acc_mod", "debuff", "amount", "effects"]:
+		if def.has(key):
+			mv[key] = def[key]
+	if String(mv.get("debuff", "")) == "":
+		mv.erase("debuff")
+	return mv
+
+# One move's entry in stat_effects - the per-stat deltas the stats panels
+# preview while hovering a target (see _show_stat_preview()).
+func _register_stat_effects(attack: Dictionary) -> void:
+	var attack_name: String = attack["name"]
+
+	if not stat_effects.has(attack_name):
+		stat_effects[attack_name] = {
+			"player": {},
+			"enemy": {}
+		}
+
+	# -------------------------
+	# Player's stat changes
+	# -------------------------
+	if "power" in attack:
+		stat_effects[attack_name]["player"]["power"] = attack["power"]
+
+	if "acc_mod" in attack:
+		stat_effects[attack_name]["player"]["accuracy"] = attack["acc_mod"]
+
+	# -------------------------
+	# Enemy stat changes
+	# -------------------------
+	if "debuff" in attack:
+		# Negated - _apply_debuff() actually subtracts `amount` from
+		# the stat (a "debuff" lowers it), so the stored delta has to
+		# be negative too, or _apply_stat_delta() would preview the
+		# target's stat rising (green) instead of the drop (red) the
+		# move actually causes.
+		stat_effects[attack_name]["enemy"][attack["debuff"]] = -int(attack["amount"])
+
+	# -------------------------
+	# CombatMoves effects
+	# -------------------------
+	if "effects" in attack:
+		for effect in attack["effects"]:
+			var kind: String = effect.get("kind", "")
+
+			match kind:
+
+				"reduce_evasion":
+					if "amount" in effect:
+						if "accuracy" in effect["amount"]:
+							# Negated - this is a reduction (see the
+							# "reduce_" in the effect's own name), so
+							# the preview reads as a decrease (red,
+							# "-1"), not a stat increase.
+							stat_effects[attack_name]["enemy"]["evasion"] = \
+								-int(effect["amount"]["accuracy"])
+
+				"status":
+					if "status" in effect:
+						var status_name: String = String(effect["status"])
+						if "level" in effect:
+							if "flat" in effect["level"]:
+								var lvl: int = int(effect["level"]["flat"])
+								stat_effects[attack_name]["enemy"][status_name] = lvl
+								# Blindness has no row of its own in the
+								# stats panel (see STAT_ROW_KEYS - only
+								# STR/DEF/ACC/EVA), so without this its
+								# preview would silently show nothing at
+								# all despite actually lowering Agility,
+								# Accuracy, AND Defense (see combatant_
+								# stats.gd's effective_accuracy()/
+								# effective_defense()). Negated same as
+								# every other reduction above - mirror
+								# onto the two of those three stats that
+								# DO have a row.
+								if status_name == "blindness":
+									stat_effects[attack_name]["enemy"]["accuracy"] = -lvl
+									stat_effects[attack_name]["enemy"]["defense"] = -lvl
+
+				"self_temporary":
+					if "accuracy" in effect:
+						stat_effects[attack_name]["player"]["accuracy"] = \
+							effect["accuracy"]
+
+					if "evasion" in effect:
+						stat_effects[attack_name]["player"]["evasion"] = \
+							effect["evasion"]
+
 func _ready() -> void:
 	for diver in BASE_MOVES:
 		for attack in BASE_MOVES[diver]:
-			var attack_name: String = attack["name"]
-
-			if not stat_effects.has(attack_name):
-				stat_effects[attack_name] = {
-					"player": {},
-					"enemy": {}
-				}
-
-			# -------------------------
-			# Player's stat changes
-			# -------------------------
-			if "power" in attack:
-				stat_effects[attack_name]["player"]["power"] = attack["power"]
-
-			if "acc_mod" in attack:
-				stat_effects[attack_name]["player"]["accuracy"] = attack["acc_mod"]
-
-			# -------------------------
-			# Enemy stat changes
-			# -------------------------
-			if "debuff" in attack:
-				# Negated - _apply_debuff() actually subtracts `amount` from
-				# the stat (a "debuff" lowers it), so the stored delta has to
-				# be negative too, or _apply_stat_delta() would preview the
-				# target's stat rising (green) instead of the drop (red) the
-				# move actually causes.
-				stat_effects[attack_name]["enemy"][attack["debuff"]] = -int(attack["amount"])
-
-			# -------------------------
-			# CombatMoves effects
-			# -------------------------
-			if "effects" in attack:
-				for effect in attack["effects"]:
-					var kind: String = effect.get("kind", "")
-
-					match kind:
-
-						"reduce_evasion":
-							if "amount" in effect:
-								if "accuracy" in effect["amount"]:
-									# Negated - this is a reduction (see the
-									# "reduce_" in the effect's own name), so
-									# the preview reads as a decrease (red,
-									# "-1"), not a stat increase.
-									stat_effects[attack_name]["enemy"]["evasion"] = \
-										-int(effect["amount"]["accuracy"])
-
-						"status":
-							if "status" in effect:
-								var status_name: String = String(effect["status"])
-								if "level" in effect:
-									if "flat" in effect["level"]:
-										var lvl: int = int(effect["level"]["flat"])
-										stat_effects[attack_name]["enemy"][status_name] = lvl
-										# Blindness has no row of its own in the
-										# stats panel (see STAT_ROW_KEYS - only
-										# STR/DEF/ACC/EVA), so without this its
-										# preview would silently show nothing at
-										# all despite actually lowering Agility,
-										# Accuracy, AND Defense (see combatant_
-										# stats.gd's effective_accuracy()/
-										# effective_defense()). Negated same as
-										# every other reduction above - mirror
-										# onto the two of those three stats that
-										# DO have a row.
-										if status_name == "blindness":
-											stat_effects[attack_name]["enemy"]["accuracy"] = -lvl
-											stat_effects[attack_name]["enemy"]["defense"] = -lvl
-
-						"self_temporary":
-							if "accuracy" in effect:
-								stat_effects[attack_name]["player"]["accuracy"] = \
-									effect["accuracy"]
-
-							if "evasion" in effect:
-								stat_effects[attack_name]["player"]["evasion"] = \
-									effect["evasion"]
+			_register_stat_effects(attack)
+	# Spell-tree moves too - they reach the move menu through _moves_for(),
+	# not BASE_MOVES, so without this a learned spell's own acc_mod/debuff
+	# (Tidal Burst's -4 ACC, Guard Break's -3 DEF) never previewed at all.
+	for model_name in SpellTree.SPELL_TREES:
+		for branch in SpellTree.SPELL_TREES[model_name]:
+			for spell_id in SpellTree.SPELL_TREES[model_name][branch]:
+				_register_stat_effects(_spell_preview_move(SpellTree.SPELL_TREES[model_name][branch][spell_id], String(spell_id)))
 
 	layer = 10
 	_build_party()
@@ -528,7 +564,7 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log(encounter_intro(enemies))
+		_log(encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies))
 		_advance_turn()
 
 static func encounter_intro(entries: Array) -> String:
@@ -948,6 +984,7 @@ func _build_party() -> void:
 			"kind": "party", "stats": dv.stats,
 			"model_name": dv.model_name, "display_name": _display(dv.model_name),
 			"equipped_spells": dv.equipped_spells, "ability_id": dv.ability_id,
+			"diver": dv,
 		})
 
 # A SubViewport with its own camera, light and fog: isolated from the dive
@@ -1443,9 +1480,11 @@ func _build_ui() -> void:
 	# it (col's first two rows) rather than the bottom of the whole panel.
 	_swap_demo_frame = PanelContainer.new()
 	_swap_demo_frame.visible = false
-	_swap_demo_frame.custom_minimum_size = Vector2(320, 180)
-	_swap_demo_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_swap_demo_frame.size_flags_stretch_ratio = 1.0
+	_swap_demo_frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
+	# Keep tutorial clips at the same fixed size as the other tutorial
+	# surfaces. Expanding this child shared the battle row's spare width and
+	# made its video frame wider than its 16:9 height could support.
+	_swap_demo_frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_swap_demo_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var demo_style := StyleBoxFlat.new()
 	demo_style.bg_color = Color(0.03, 0.09, 0.12)
@@ -1499,8 +1538,10 @@ func _build_ui() -> void:
 	for entry in enemies:
 		_build_overhead_bar(entry)
 
-	log_label = Label.new()
+	log_label = RichTextLabel.new()
 	log_label.custom_minimum_size = Vector2(0, 36)
+	log_label.scroll_active = false
+	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
@@ -1645,6 +1686,22 @@ func _build_ui() -> void:
 	move_menu.add_theme_constant_override("v_separation", 8)
 	move_menu.visible = false
 	col.add_child(move_menu)
+	# Up/Down stacked into one button-sized slot so they cost a single cell
+	# of the flow rather than two. Hidden unless the moves overflow.
+	_move_scroll_box = VBoxContainer.new()
+	_move_scroll_box.add_theme_constant_override("separation", 4)
+	_move_scroll_box.visible = false
+	move_menu.add_child(_move_scroll_box)
+	_move_up_btn = Button.new()
+	_move_up_btn.text = "▲ Up"
+	_move_up_btn.custom_minimum_size = Vector2(300, 24)
+	_move_up_btn.pressed.connect(_scroll_moves.bind(-1))
+	_move_scroll_box.add_child(_move_up_btn)
+	_move_down_btn = Button.new()
+	_move_down_btn.text = "▼ Down"
+	_move_down_btn.custom_minimum_size = Vector2(300, 24)
+	_move_down_btn.pressed.connect(_scroll_moves.bind(1))
+	_move_scroll_box.add_child(_move_down_btn)
 	back_btn = _menu_button("Back", "")
 	back_btn.pressed.connect(_show_main)
 	move_menu.add_child(back_btn)
@@ -2155,7 +2212,23 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	overlay.visible = true
 
 func _log(text: String) -> void:
-	log_label.text = text
+	log_label.clear()
+	log_label.add_text(text)
+
+func _current_log_text() -> String:
+	return log_label.get_parsed_text()
+
+func _log_grapple_wave(safe_is_yellow: bool, wave_index: int, total_waves: int) -> void:
+	log_label.clear()
+	log_label.add_text("Wave %d/%d: grapple " % [wave_index, total_waves])
+	log_label.push_color(Color(1.0, 0.9, 0.15) if safe_is_yellow else Color(0.15, 0.95, 0.35))
+	log_label.add_text("YELLOW" if safe_is_yellow else "GREEN")
+	log_label.pop()
+	log_label.add_text(", avoid ")
+	log_label.push_color(Color(0.15, 0.95, 0.35) if safe_is_yellow else Color(1.0, 0.9, 0.15))
+	log_label.add_text("GREEN" if safe_is_yellow else "YELLOW")
+	log_label.pop()
+	log_label.add_text(".")
 
 # A combat result belongs on the combatant it happened to, not only in the
 # fast-moving sentence at the bottom of the screen. Label3D keeps the proof
@@ -2205,11 +2278,11 @@ func _finish_actor_turn(entry: Dictionary) -> void:
 	var bleed_damage := int(tick.get("bleed_damage", 0))
 	if bleed_damage > 0:
 		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2))
-		_log("%s  •  %s bleeds for %d." % [log_label.text, String(entry.display_name), bleed_damage])
+		_log("%s  •  %s bleeds for %d." % [_current_log_text(), String(entry.display_name), bleed_damage])
 	var poison_damage := int(tick.get("poison_damage", 0))
 	if poison_damage > 0:
 		_show_floating_text(entry, "POISON -%d" % poison_damage, Color(0.55, 0.9, 0.28))
-		_log("%s  •  %s takes %d poison damage." % [log_label.text, String(entry.display_name), poison_damage])
+		_log("%s  •  %s takes %d poison damage." % [_current_log_text(), String(entry.display_name), poison_damage])
 	_refresh_bar(entry)
 	if (entry.stats as CombatantStats).hp <= 0 and entry.has("actor") and is_instance_valid(entry.actor):
 		if entry.actor is Diver:
@@ -2531,7 +2604,7 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 				_swap_demo_frame.visible = true
 				_refresh_swap_demo_media("grapple")
 				call_deferred("_fit_panel_height")
-				await _tutorial_show_step("Musashi's special encounter involves grappling the correctly-colored spheres before their wave reaches him. Move the mouse to aim your crosshair, then left-click to fire the grapple at the safe color - the wave clears once every safe-colored sphere has been hit, so watch which color is safe each round.")
+				await _tutorial_show_step("Musashi's special encounter involves grappling the correctly-colored spheres before their wave reaches him. Move the mouse to aim your crosshair, then left-click to fire the grapple at the safe color - the wave clears once every safe-colored sphere has been hit, so watch which color is safe each round in the bottom battle text where it mentions to grapple/avoid [color=#ffe626]YELLOW[/color] and [color=#26f259]GREEN[/color].")
 				for child in _swap_demo_frame.get_children():
 					child.queue_free()
 				_swap_demo_frame.visible = false
@@ -2722,12 +2795,22 @@ func _play_special_encounter_intro() -> void:
 # Only ever called with a party entry (see _advance_turn()'s kind check) -
 # actor.actor is always the Diver battle-stage instance built in
 # _build_stage(), never a Goblin, so no type check needed before the cast.
+func _process(_delta: float) -> void:
+	if not is_instance_valid(_turn_cursor) or not _turn_cursor.visible:
+		return
+	if not is_instance_valid(_turn_cursor_target):
+		_turn_cursor.visible = false
+		return
+	_turn_cursor.global_position = _turn_cursor_target.global_position + Vector3.UP * _turn_cursor_height
+
 func _show_turn_cursor_on(actor: Dictionary) -> void:
-	if not actor.has("actor") or not is_instance_valid(actor.actor):
+	if not actor.has("actor") or not is_instance_valid(actor.actor) or not is_instance_valid(_turn_cursor):
 		return
 	var d := actor.actor as Diver
+	_turn_cursor_target = d
+	_turn_cursor_height = d.height + 0.4
+	_turn_cursor.global_position = d.global_position + Vector3.UP * _turn_cursor_height
 	_turn_cursor.visible = true
-	_turn_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.4)
 
 # This diver's own BASE_MOVES plus whatever they currently have equipped,
 # translated from spell data into the same move shape battle resolution
@@ -2978,6 +3061,7 @@ func _apply_tutorial_move_gate() -> void:
 	var mv: Dictionary = moves[move_index]
 	var note := String(TutorialContent.FIRST_BATTLE_MOVE_NOTES.get(String(mv.name), ""))
 	var btn := move_buttons[move_index] as Button
+	_scroll_move_into_view(move_index)
 	_tutorial_flash_tween = create_tween()
 	_tutorial_flash_tween.set_loops()
 	_tutorial_flash_tween.tween_property(btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -3043,9 +3127,43 @@ func _populate_move_menu(actor: Dictionary) -> void:
 		b.pressed.connect(_on_move_chosen.bind(mv))
 		move_menu.add_child(b)
 		move_buttons.append(b)
-	# Not rebuilt with the move buttons above - keep it after the choices.
+	# Not rebuilt with the move buttons above - keep them after the choices.
+	move_menu.move_child(_move_scroll_box, move_menu.get_child_count() - 1)
 	move_menu.move_child(back_btn, move_menu.get_child_count() - 1)
 	_place_skip_tutorial_btn_last(move_menu)
+	_move_scroll_offset = 0
+	_apply_move_scroll()
+
+func _moves_overflow() -> bool:
+	return move_buttons.size() + 1 > MOVE_MENU_SLOTS
+
+# Shows only the current page of move buttons. The rest stay in
+# move_buttons (hidden), so index-based callers - the tutorial gate,
+# verify scripts - still see every move.
+func _apply_move_scroll() -> void:
+	if _move_scroll_box == null:
+		return
+	var overflow := _moves_overflow()
+	var max_offset := maxi(0, move_buttons.size() - MOVE_MENU_VISIBLE_MOVES)
+	_move_scroll_offset = clampi(_move_scroll_offset, 0, max_offset) if overflow else 0
+	for i in range(move_buttons.size()):
+		(move_buttons[i] as Button).visible = not overflow or (i >= _move_scroll_offset and i < _move_scroll_offset + MOVE_MENU_VISIBLE_MOVES)
+	_move_scroll_box.visible = overflow
+	_move_up_btn.disabled = _move_scroll_offset <= 0
+	_move_down_btn.disabled = _move_scroll_offset >= max_offset
+	call_deferred("_fit_panel_height")
+
+# Pages a full window at a time; the clamp in _apply_move_scroll() makes the
+# last page end exactly on the last move instead of showing a short page.
+func _scroll_moves(direction: int) -> void:
+	_move_scroll_offset += direction * MOVE_MENU_VISIBLE_MOVES
+	_apply_move_scroll()
+
+# Scrolls just enough that move_buttons[index] is on screen.
+func _scroll_move_into_view(index: int) -> void:
+	if index < _move_scroll_offset or index >= _move_scroll_offset + MOVE_MENU_VISIBLE_MOVES:
+		_move_scroll_offset = index
+		_apply_move_scroll()
 
 # Ready-to-assign tooltip text covering every explainable effect a move
 # carries, not just the first - Flash Blast carries both a "status" (its own
@@ -3997,7 +4115,7 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 	_log("%s for %d." % [text, int(r.damage)])
 	var effects := r.get("effects", []) as Array
 	if not effects.is_empty():
-		_log("%s  •  %s" % [log_label.text, ", ".join(effects)])
+		_log("%s  •  %s" % [_current_log_text(), ", ".join(effects)])
 
 # Swing first, resolve at the moment of impact. Returns once the hit is
 # supposed to land, leaving the rest of the clip to play out underneath the
@@ -4015,7 +4133,12 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor) or not (entry.actor is Diver):
 		return
 	var d := entry.actor as Diver
-	await _step_toward(entry, target)
+	# Heal/revive target an ally, and allies stand in a row ~2.9m apart:
+	# stepping to melee reach of a non-adjacent ally parked the caster right
+	# on top of the diver standing between them. Support casts turn to face
+	# the ally and cast from where they stand instead.
+	var in_place := String(mv.get("effect", "")) in ["heal", "revive"]
+	await _step_toward(entry, target, in_place)
 	var length: float = d.play_clip(Cast.ability(String(entry.model_name), String(mv.get("name", ""))))
 	if length <= 0.0:
 		_send_home(entry, 0.0)
@@ -4029,7 +4152,7 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 # distance short of the target rather than the target itself, because these
 # attacks have length: standing on top of somebody puts the swing through
 # them and out the other side.
-func _step_toward(entry: Dictionary, target: Dictionary) -> void:
+func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false) -> void:
 	var a: Node3D = entry.get("actor")
 	if a == null or not is_instance_valid(a):
 		return
@@ -4046,6 +4169,8 @@ func _step_toward(entry: Dictionary, target: Dictionary) -> void:
 		(a as Goblin).face_toward((target.actor as Node3D).global_position)
 	else:
 		a.rotation.y = atan2(-to.x, -to.z)
+	if face_only:
+		return
 	var target_radius := 0.0
 	var radius_value: Variant = (target.actor as Node3D).get("radius")
 	if radius_value != null:
@@ -4607,11 +4732,7 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _tar
 			minigame.request_abort()
 	)
 	minigame.wave_started.connect(func(safe_is_yellow: bool, wave_index: int, total_waves: int) -> void:
-		_log("Wave %d/%d: grapple %s, avoid %s." % [
-			wave_index, total_waves,
-			"YELLOW" if safe_is_yellow else "GREEN",
-			"GREEN" if safe_is_yellow else "YELLOW",
-		])
+		_log_grapple_wave(safe_is_yellow, wave_index, total_waves)
 	)
 	minigame.run()
 	var score: Array = await minigame.finished
@@ -4766,6 +4887,7 @@ func _win() -> void:
 	# XP. gain_xp() never runs here, so there's no level-up to log and no
 	# Spell Point block to build for this fight.
 	var levelup_blocks: Array[String] = []
+	var spell_unlock_announcements: Array[Dictionary] = []
 	if not tutorial_encounter:
 		var total_xp := 0
 		for e in enemies:
@@ -4783,6 +4905,21 @@ func _win() -> void:
 				await get_tree().create_timer(LOG_READ_DELAY).timeout
 			if not levels.is_empty():
 				levelup_blocks.append(_build_levelup_block(entry, levels))
+		var available_key_items: Array = world.key_items.duplicate() if world != null else []
+		# A guardian's key item is granted by World after this battle emits
+		# "won". Include it now so the win that earns it can unlock its spell.
+		if Items.is_key_item(reward_item_on_win) and not available_key_items.has(reward_item_on_win):
+			available_key_items.append(reward_item_on_win)
+		for entry in party:
+			if not entry.has("diver"):
+				continue
+			var diver := entry.diver as Diver
+			var unlocked: PackedStringArray = SpellTree.learn_all_available(diver, available_key_items)
+			if not unlocked.is_empty():
+				spell_unlock_announcements.append({
+					"display_name": String(entry.display_name),
+					"skills": unlocked,
+				})
 	# One combined block for every diver who leveled up this win, not a
 	# separate popup per diver - name, level reached, and Spell Points
 	# earned, in the same green used for a rising stat everywhere else in
@@ -4849,6 +4986,10 @@ func _win() -> void:
 		if not levelup_blocks.is_empty():
 			_levelup_caption.visible = false
 			call_deferred("_fit_panel_height")
+	for unlock in spell_unlock_announcements:
+		await _tutorial_show_step("%s unlocked %s." % [
+			String(unlock.display_name), ", ".join(unlock.skills)
+		])
 	_revert_temp_buffs()
 	finished.emit("won")
 
@@ -4957,6 +5098,12 @@ func _set_all_buttons(enabled: bool) -> void:
 	target_back_btn.disabled = not enabled
 	for b in move_buttons:
 		(b as Button).disabled = not enabled
+	if _move_up_btn != null:
+		if enabled:
+			_apply_move_scroll()
+		else:
+			_move_up_btn.disabled = true
+			_move_down_btn.disabled = true
 	for b in target_buttons:
 		(b as Button).disabled = not enabled
 	for b in item_buttons:

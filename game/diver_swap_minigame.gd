@@ -153,39 +153,52 @@ func _spawn_loop() -> void:
 # itself, not whichever rock happens to be "the" active one.
 var _live_rocks: Array[MeshInstance3D] = []
 var _rock_tweens: Dictionary = {}   # MeshInstance3D -> Tween, only while that rock is still in flight
-const PORTRAIT_PATHS := [
-	"res://portraits/portrait_01_normal.png",
-	"res://portraits/portrait_02_smile.png",
-	"res://portraits/portrait_03_eyes_closed.png",
-	"res://portraits/portrait_04_angry.png",
-	"res://portraits/portrait_05_grimace.png",
-	"res://portraits/portrait_06_surprised.png",
-	"res://portraits/portrait_07_sad.png",
-	"res://portraits/portrait_08_wink.png",
+# Three separate 8-portrait pools, one per character - kept as their own
+# arrays rather than merged so select_random_portraits() can pick a pool
+# first and draw both of a wave's portraits from just that one, never
+# mixing characters in the same wave.
+const MAXILANI_PORTRAIT_PATHS := [
+	"res://portraits/maxilani_pool/maxilani_01_normal.png",
+	"res://portraits/maxilani_pool/maxilani_02_smile.png",
+	"res://portraits/maxilani_pool/maxilani_03_eyes_closed.png",
+	"res://portraits/maxilani_pool/maxilani_04_smirk.png",
+	"res://portraits/maxilani_pool/maxilani_05_grimace.png",
+	"res://portraits/maxilani_pool/maxilani_06_surprised.png",
+	"res://portraits/maxilani_pool/maxilani_07_sad.png",
+	"res://portraits/maxilani_pool/maxilani_08_wink.png",
 ]
 
-# Second, separate 8-portrait pool (the "Cyclops" helmet set) - kept as its
-# own array rather than merged into PORTRAIT_PATHS so select_random_
-# portraits() can pick a pool first and draw both of a round's portraits
-# from just that one, never mixing an image from each set in the same
-# round.
-const CYCLOPS_PORTRAIT_PATHS := [
-	"res://portraits/helmet_pool/cyclops_01_calm.png",
-	"res://portraits/helmet_pool/cyclops_02_wavy.png",
-	"res://portraits/helmet_pool/cyclops_03_content.png",
-	"res://portraits/helmet_pool/cyclops_04_grin.png",
-	"res://portraits/helmet_pool/cyclops_05_angry.png",
-	"res://portraits/helmet_pool/cyclops_06_surprised.png",
-	"res://portraits/helmet_pool/cyclops_07_pout.png",
-	"res://portraits/helmet_pool/cyclops_08_mystery.png",
+const BUCKY_PORTRAIT_PATHS := [
+	"res://portraits/bucky_pool/bucky_01_calm.png",
+	"res://portraits/bucky_pool/bucky_02_grin.png",
+	"res://portraits/bucky_pool/bucky_03_love.png",
+	"res://portraits/bucky_pool/bucky_04_angry.png",
+	"res://portraits/bucky_pool/bucky_05_crying.png",
+	"res://portraits/bucky_pool/bucky_06_frown.png",
+	"res://portraits/bucky_pool/bucky_07_bored.png",
+	"res://portraits/bucky_pool/bucky_08_surprised.png",
 ]
+
+const MUSASHI_PORTRAIT_PATHS := [
+	"res://portraits/musashi_pool/cyclops_01_calm.png",
+	"res://portraits/musashi_pool/cyclops_02_wavy.png",
+	"res://portraits/musashi_pool/cyclops_03_content.png",
+	"res://portraits/musashi_pool/cyclops_04_grin.png",
+	"res://portraits/musashi_pool/cyclops_05_angry.png",
+	"res://portraits/musashi_pool/cyclops_06_surprised.png",
+	"res://portraits/musashi_pool/cyclops_07_pout.png",
+	"res://portraits/musashi_pool/cyclops_08_mystery.png",
+]
+
+const PORTRAIT_POOLS := [MAXILANI_PORTRAIT_PATHS, BUCKY_PORTRAIT_PATHS, MUSASHI_PORTRAIT_PATHS]
 
 func select_random_portraits() -> Array:
-	# MODIFIED (added): picks one of the two 8-portrait pools first, then
-	# draws both portraits from that same pool - duplicated before
-	# shuffling so this never mutates the shared const array in place, and
-	# so the other pool's own array is never touched by picking this one.
-	var pool: Array = (PORTRAIT_PATHS if randi() % 2 == 0 else CYCLOPS_PORTRAIT_PATHS).duplicate()
+	# Picks one of the three pools at random, then draws two different
+	# portraits from it - duplicated before shuffling so this never mutates
+	# the shared const array in place. Called once per wave
+	# (_select_correct_portraits()), so each wave re-rolls both the pool and
+	# the pair.
+	var pool: Array = (PORTRAIT_POOLS.pick_random() as Array).duplicate()
 	pool.shuffle()
 	var portraits: Array = [pool[0], pool[1]]
 	return portraits
@@ -297,7 +310,7 @@ func _confirm_swap() -> void:
 # this file already calls out for blast_rocks_minigame.gd's flight time.
 # _current_travel_time (below) now derives the actual duration from this
 # speed and this round's real distance instead.
-var portraitSpeed = 2.6
+var portraitSpeed = 3.5
 # This round's travel duration, computed in _select_correct_portraits()
 # from the actual enemy-to-player distance and portraitSpeed above - used
 # for both the tween itself and _spawn_loop()'s round-to-round pacing, so
@@ -309,6 +322,8 @@ const SLOT_NAMES := ["left", "middle", "right"]
 # math below uses the exact same number the sprite is actually built with,
 # instead of relying on the default staying 0.01 forever.
 const PORTRAIT_PIXEL_SIZE := 0.01
+const PORTRAIT_TARGET_SIZE := Vector2(410.0, 384.0)
+const PORTRAIT_LANE_GAP := 0.3
 
 signal portrait_hit(slot_name: String)
 
@@ -374,13 +389,41 @@ var right_image
 # for rocks/cursors elsewhere.
 func _make_portrait_sprite(texture: Texture2D, at_position: Vector3) -> Sprite3D:
 	var sprite := Sprite3D.new()
-	sprite.texture = texture
+	if texture != null:
+		sprite.texture = texture
 	sprite.pixel_size = PORTRAIT_PIXEL_SIZE
+	if texture != null:
+		sprite.scale = _portrait_scale(texture)
+	else:
+		# Keep a non-rendering arrival marker for the intentionally blank
+		# lane. Its tween/callback must still complete so every round reaches
+		# all three lane results, but there is no portrait to draw or scale.
+		sprite.visible = false
 	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.global_position = at_position
+	# Add to the tree BEFORE touching global_position: off-tree,
+	# set_global_position() reads get_global_transform(), which fails
+	# ("!is_inside_tree()") and returns an identity Transform3D - writing
+	# that back wiped the scale set above, so every portrait drew at its
+	# raw texture size instead of PORTRAIT_TARGET_SIZE.
 	stage_root.add_child(sprite)
+	sprite.global_position = at_position
 	_spawned_stage_nodes.append(sprite)
 	return sprite
+
+# AtlasTexture.get_size() can report a size that doesn't match the crop we
+# actually want to display. Read AtlasTexture.region explicitly so scaling
+# and lane spacing use the cropped frame dimensions, not the source atlas.
+func _portrait_texture_size(texture: Texture2D) -> Vector2:
+	if texture is AtlasTexture:
+		return (texture as AtlasTexture).region.size
+	return texture.get_size()
+
+# Stretch every portrait crop to exactly PORTRAIT_TARGET_SIZE pixels, so all
+# cards read as the same size regardless of crop or source pool. X and Y are
+# scaled independently, which does not preserve each crop's aspect ratio.
+func _portrait_scale(texture: Texture2D) -> Vector3:
+	var s := PORTRAIT_TARGET_SIZE / _portrait_texture_size(texture)
+	return Vector3(s.x, s.y, 1.0)
 
 func _select_correct_portraits() -> void:
 	var portraits: Array = select_random_portraits()
@@ -392,15 +435,14 @@ func _select_correct_portraits() -> void:
 	var right_image: Texture2D = load(portraits[1])
 
 	var gap := 2.0
-	# MODIFIED: was left_image.get_rect().size.x * left_image.scale.x -
-	# get_rect()/scale are Sprite2D/Control properties, not Texture2D ones
-	# (left_image here is the raw Texture2D select_random_portrait()
-	# returns), so this would have errored the first time it ran.
-	# Texture2D's own get_size() is the pixel dimensions; multiplying by
-	# the sprite's pixel_size converts that to the same world-unit scale
-	# the Sprite3D nodes below are actually built at.
-	var half_width: float = left_image.get_size().x * PORTRAIT_PIXEL_SIZE / 2.0
-	var spacing: float = half_width + gap  # extra breathing room beyond the sprite's own half-width
+	# Every portrait is scaled to PORTRAIT_TARGET_SIZE.x pixels wide
+	# (_portrait_scale()); multiplying by the sprite's pixel_size converts
+	# that to the world-unit width the Sprite3D nodes below are built at.
+	# Adjacent lane centers are one `spacing` apart (left-to-middle and
+	# middle-to-right), so use the full card width here, then add a small
+	# visible gap. Using the half-width made neighboring cards overlap.
+	var card_width: float = PORTRAIT_TARGET_SIZE.x * PORTRAIT_PIXEL_SIZE
+	var spacing: float = card_width + PORTRAIT_LANE_GAP
 
 	var forward = _player_anchor_forward
 	var right = _player_anchor_right
@@ -517,18 +559,30 @@ func _on_portrait_arrived(sprite: Sprite3D, target_slot: String) -> void:
 		# lanes can misfire per round, either way round.
 		portrait_landed.emit()
 	_round_resolved += 1
-	if _round_resolved >= SLOT_NAMES.size():
-		_clear_reference_sprites()
-		round_finished.emit()
+	var is_last_in_round := _round_resolved >= SLOT_NAMES.size()
 	_update_progress()
 
-	# MODIFIED: was a bare sprite.queue_free() right after the hit check -
-	# freed the sprite before flash_object's own await get_tree().
-	# create_timer() ever had a chance to finish, so the flash would never
-	# actually be seen. Awaiting it here first means queue_free() only runs
-	# once the flash has fully played out.
-	await flash_object(sprite, Color.GREEN if hit else Color.RED, 0.15)
+	# Only the player-side reference portrait in this lane flashes: red if
+	# it's in the wrong lane (doesn't match what just arrived), green if it
+	# matches. The incoming sprite lands exactly on top of the reference, so
+	# it's freed right away rather than flashed - otherwise it would cover
+	# the reference's flash. The diver's own lane has no reference, so it
+	# doesn't flash either way.
 	sprite.queue_free()
+	if reference != null and is_instance_valid(reference):
+		await flash_object(reference, Color.GREEN if hit else Color.RED, 0.15)
+	else:
+		# Same wait as a flash, so the last-in-round ordering below still
+		# holds no matter which lane resolves last.
+		await get_tree().create_timer(0.15).timeout
+
+	# References are cleared only AFTER this round's flashes - clearing on
+	# the third arrival (before awaiting) freed them mid-flash. All three
+	# lanes land in the same frame with the same flash duration, so the
+	# last arrival's timer is also the last to fire.
+	if is_last_in_round:
+		_clear_reference_sprites()
+		round_finished.emit()
 
 	# MODIFIED: _resolved's increment (and the _maybe_finish() check) used
 	# to happen BEFORE this sprite's own flash/free above, so the 9th
@@ -555,7 +609,8 @@ func flash_object(object: Sprite3D, flash_color: Color, duration: float) -> void
 	var original_color = object.modulate
 	object.modulate = flash_color
 	await get_tree().create_timer(duration).timeout
-	object.modulate = original_color
+	if is_instance_valid(object):
+		object.modulate = original_color
 
 # MODIFIED: was 1.5 - battle.gd widened the diver/enemy gap for special
 # encounters (roughly doubled), but this radius stayed the same, so a rock

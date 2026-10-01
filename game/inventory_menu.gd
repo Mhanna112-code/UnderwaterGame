@@ -21,7 +21,7 @@
 # reachable via the F1 keybind.
 #
 # Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
-# SpellEquipUI/SavePointMenu - nothing here is scene-file based, on purpose,
+# SavePointMenu - nothing here is scene-file based, on purpose,
 # matching the rest of this project.
 class_name InventoryMenu
 extends Control

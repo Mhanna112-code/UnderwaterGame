@@ -104,11 +104,10 @@ var ability_locked := false
 # just where a given id happens to live in the tree). See SpellTree.learn().
 var known_spells: Array[String] = []
 
-# Which known spells are actually active for battle - "known" and
-# "equipped" are deliberately separate lists (see SpellTree.equip()) so
-# buying a spell doesn't force it into the loadout, and the loadout stays
-# capped even as known_spells grows without bound.
-const MAX_EQUIPPED_SPELLS := 4
+# Which known spells are active for battle. SpellTree.learn() equips every
+# spell as it's learned, so this mirrors known_spells (kept as its own list
+# because battle.gd and older saves read it directly). No cap - battle.gd's
+# move menu scrolls when a diver has more moves than fit.
 var equipped_spells: Array[String] = []
 
 

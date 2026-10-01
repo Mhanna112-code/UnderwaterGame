@@ -17,16 +17,13 @@
 #     no longer exists, see combatant_stats.gd), so it's gone rather than
 #     left with nothing in it. Worth a real design pass, not assumed here:
 #     her whole "tank" identity was that branch; she has no replacement
-#     mechanic yet, and reef_plate (see items.gd) no longer unlocks
-#     anything now that bulwark_stance is gone with it.
+#     mechanic yet; its support path grows from world-found key items.
 #
 # Each branch is a small DAG, not a straight line: a spell's
 # "requires_spells" can point at any earlier node in its branch, so one
-# node can unlock several different follow-ups at once. "requires_items" is
-# the same idea for key items earned from NPC mini-quests later - not
-# wired to a real source yet (see find_def()'s caller sites), so any spell
-# gated behind one is intentionally unreachable for now, same as it's been
-# since this system was scaffolded.
+# node can unlock several different follow-ups at once. "requires_items"
+# gates specific spells behind key items found in the world or won from
+# guardians.
 #
 # Every spell doubles as a battle.gd move definition - "power"/"acc_mod"
 # work exactly like BASE_MOVES entries there. "effect" picks how the move
@@ -47,9 +44,8 @@
 # World._inventory_spells_for()/World.use_party_spell(), which only know
 # how to resolve those two effects (same restriction as battle.gd's
 # BASE_MOVES' own "inventory" tag). A known spell shows up there the moment
-# it's learned, whether or not it's actually equipped for battle - the
-# 4-slot equip cap (Diver.MAX_EQUIPPED_SPELLS) is a battle-loadout
-# restriction, not a "can this diver use it at all" one.
+# it's learned. Learning a spell also equips it for battle automatically
+# (see learn()) - there's no loadout cap or manual equip screen.
 class_name SpellTree
 extends RefCounted
 
@@ -65,14 +61,14 @@ const SPELL_TREES := {
 			},
 			"riptide_slash": {
 				"display": "Riptide Slash", "cost": 2,
-				"description": "A heavier cut carried on a current - more damage, less certain to land.",
-				"requires_spells": ["swift_strike"], "requires_items": [],
+				"description": "A heavier cut carried on a current - more damage, less certain to land. Requires an Abyssal Lens.",
+				"requires_spells": ["swift_strike"], "requires_items": ["abyssal_lens"],
 				"power": 10, "acc_mod": 1, "oxygen_cost": 16.0,
 				"hint": "Heavier, less certain", "text": "You carve a riptide slash",
 			},
 			"tidal_burst": {
 				"display": "Tidal Burst", "cost": 3,
-				"description": "A devastating burst of churning water. Real miss risk - the glass cannon's payoff move. Needs a current pearl to learn.",
+				"description": "A devastating burst of churning water. Real miss risk - the glass cannon's payoff move. Requires a Current Pearl.",
 				"requires_spells": ["riptide_slash"], "requires_items": ["current_pearl"],
 				"power": 17, "acc_mod": -4, "oxygen_cost": 24.0,
 				"hint": "Devastating, real miss risk", "text": "You unleash a churning tidal burst",
@@ -105,14 +101,14 @@ const SPELL_TREES := {
 	"Prototype_1(1910)": {
 		"debuff": {
 			"weaken": {
-				"display": "Weaken", "cost": 1,
+				"display": "Weaken Empowered", "cost": 1,
 				"description": "Strikes a nerve, lowering the target's defense.",
 				"requires_spells": [], "requires_items": [],
 				"debuff": "defense", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
 				"hint": "Lowers defense", "text": "You strike a nerve - defense drops",
 			},
 			"slow": {
-				"display": "Slow", "cost": 1,
+				"display": "Slow Empowered", "cost": 1,
 				"description": "Hobbles the target, lowering its agility.",
 				"requires_spells": [], "requires_items": [],
 				"debuff": "agility", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
@@ -120,15 +116,15 @@ const SPELL_TREES := {
 			},
 			"blinding_silt": {
 				"display": "Blinding Silt", "cost": 2,
-				"description": "Kicks up a cloud that lowers the target's accuracy - builds on the same opening Weaken creates.",
-				"requires_spells": ["weaken"], "requires_items": [],
+				"description": "Kicks up a cloud that lowers the target's accuracy - builds on the same opening Weaken Empowered creates. Requires a Sunken Core.",
+				"requires_spells": ["weaken"], "requires_items": ["sunken_core"],
 				"debuff": "accuracy", "amount": 3, "acc_mod": 1, "oxygen_cost": 16.0,
 				"hint": "Lowers accuracy", "text": "A cloud of silt blinds the target",
 			},
 			"exploit_opening": {
 				"display": "Exploit Opening", "cost": 3,
-				"description": "A precise strike into every weakness you've already opened up. Rarely misses.",
-				"requires_spells": ["blinding_silt"], "requires_items": [],
+				"description": "A precise strike into every weakness you've already opened up. Rarely misses. Requires an Abyssal Lens.",
+				"requires_spells": ["blinding_silt"], "requires_items": ["abyssal_lens"],
 				"power": 8, "acc_mod": 5, "oxygen_cost": 24.0,
 				"hint": "A precise strike, rarely misses", "text": "You exploit the opening",
 			},
@@ -156,8 +152,8 @@ const SPELL_TREES := {
 		"debuff": {
 			"guard_break": {
 				"display": "Guard Break", "cost": 2,
-				"description": "Batters through the target's guard, lowering its defense.",
-				"requires_spells": [], "requires_items": [],
+				"description": "Batters through the target's guard, lowering its defense. Requires a Sunken Core.",
+				"requires_spells": [], "requires_items": ["sunken_core"],
 				"debuff": "defense", "amount": 3, "acc_mod": 4, "oxygen_cost": 16.0,
 				"hint": "Cracks the target's defense", "text": "You batter through the target's guard",
 			},
@@ -178,8 +174,8 @@ const SPELL_TREES := {
 			},
 			"tidal_revival": {
 				"display": "Tidal Revival", "cost": 3,
-				"description": "Pulls a downed ally back up on a surge of current. The tank's other capstone - reviving an ally is worth more than any amount of raw defense.",
-				"requires_spells": ["mending_current"], "requires_items": [],
+				"description": "Pulls a downed ally back up on a surge of current. Requires a Reef Plate.",
+				"requires_spells": ["mending_current"], "requires_items": ["reef_plate"],
 				"effect": "revive", "amount": 12, "oxygen_cost": 28.0, "inventory": true,
 				"hint": "Revives a downed ally", "text": "A surge of current pulls an ally back up",
 			},
@@ -205,8 +201,7 @@ static func spell_def(model_name: String, branch: String, spell_id: String) -> D
 	return tree_for(model_name)[branch][spell_id]
 
 # Looks a spell id up without knowing which branch it's in - used by
-# SpellEquipUI (which only has known_spells, just ids) and by battle.gd
-# (which only has equipped_spells, also just ids).
+# battle.gd (which only has equipped_spells, just ids).
 static func find_def(model_name: String, spell_id: String) -> Dictionary:
 	var tree: Dictionary = tree_for(model_name)
 	for branch in tree:
@@ -240,26 +235,33 @@ static func learn(diver: Diver, branch: String, spell_id: String, key_items: Arr
 	var def: Dictionary = spell_def(diver.model_name, branch, spell_id)
 	diver.stats.spell_points -= int(def.cost)
 	diver.known_spells.append(spell_id)
-	return true
-
-static func can_equip(diver: Diver, spell_id: String) -> bool:
-	if not diver.known_spells.has(spell_id) or diver.equipped_spells.has(spell_id):
-		return false
-	return diver.equipped_spells.size() < Diver.MAX_EQUIPPED_SPELLS
-
-static func equip(diver: Diver, spell_id: String) -> bool:
-	if not can_equip(diver, spell_id):
-		return false
-	diver.equipped_spells.append(spell_id)
-	return true
-
-# Unlike learn(), unequipping is never actually invalid to attempt (a
-# spell already missing from the loadout is just a no-op) - this returns
-# whether anything changed, so callers know whether it's worth refreshing.
-# (Array.erase() returns void in GDScript, not whether it found anything -
-# the has() check is what actually answers that.)
-static func unequip(diver: Diver, spell_id: String) -> bool:
+	# Learned spells go straight into the battle loadout - there's no
+	# manual equip step anymore (see equip_all_known()).
 	if not diver.equipped_spells.has(spell_id):
-		return false
-	diver.equipped_spells.erase(spell_id)
+		diver.equipped_spells.append(spell_id)
 	return true
+
+# Brings an older save's loadout in line with the auto-equip rule: every
+# known spell equipped, in the order it was learned.
+static func equip_all_known(diver: Diver) -> void:
+	for spell_id in diver.known_spells:
+		if not diver.equipped_spells.has(spell_id):
+			diver.equipped_spells.append(spell_id)
+
+# Automatically spends every currently usable point after a battle. Repeat
+# until a full pass makes no progress so a newly learned prerequisite can
+# unlock its dependent spell immediately in the same victory.
+static func learn_all_available(diver: Diver, key_items: Array) -> PackedStringArray:
+	var learned := PackedStringArray()
+	var tree := tree_for(diver.model_name)
+	var made_progress := true
+	while made_progress:
+		made_progress = false
+		for branch in BRANCH_ORDER:
+			if not tree.has(branch):
+				continue
+			for spell_id in tree[branch]:
+				if learn(diver, String(branch), String(spell_id), key_items):
+					learned.append(String(spell_def(diver.model_name, String(branch), String(spell_id)).display))
+					made_progress = true
+	return learned

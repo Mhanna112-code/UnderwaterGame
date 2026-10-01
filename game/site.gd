@@ -1,9 +1,10 @@
 # One place on the seabed, built so that arriving somewhere feels like it.
 #
-# A site is a bowl: a low berm ring you cross, broken columns round the rim.
-# The enclosure is not decoration. It narrows the volume, which is the only
-# thing that makes an encounter inside it mean anything in three dimensions,
-# where anything in open water can be swum around.
+# A site is marked by broken columns round the rim. Sites without guarded
+# items also have a low berm ring; item locations omit that ring so it does
+# not signpost either special or ordinary rewards. The enclosure narrows the
+# volume, which is the only thing that makes an encounter inside it mean
+# anything in three dimensions, where anything in open water can be swum around.
 #
 # No plinth at the middle - a combat site's guarded item is discovered via
 # sonar/proximity, not walked up to (see item_guardian.gd's own comment on
@@ -26,18 +27,19 @@ func build(d: Dictionary) -> void:
 	position.y = 0.0
 	var r: float = float(d.radius)
 
-	# the berm: a low ring you cross to get in, so the edge of the place is
-	# a thing you physically pass rather than a coordinate
-	var berm := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = r - 0.9
-	torus.outer_radius = r + 0.9
-	torus.rings = 32
-	torus.ring_segments = 6
-	berm.mesh = torus
-	berm.material_override = _mat(BERM, 1.0)
-	berm.position.y = -0.35
-	add_child(berm)
+	# the berm: a low ring you cross to get in. Guarded item locations omit it
+	# so their positions aren't signposted before discovery.
+	if String(d.get("item", "")) == "":
+		var berm := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = r - 0.9
+		torus.outer_radius = r + 0.9
+		torus.rings = 32
+		torus.ring_segments = 6
+		berm.mesh = torus
+		berm.material_override = _mat(BERM, 1.0)
+		berm.position.y = -0.35
+		add_child(berm)
 
 	# broken columns round the rim, thinning towards the entrance so the way
 	# in reads without anybody drawing an arrow on it

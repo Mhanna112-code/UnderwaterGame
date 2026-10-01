@@ -7,11 +7,10 @@
 #     Diver's stats the instant they're picked up - see grant(). These
 #     are what ItemOrb hands out (see cracked_wall.gd's break handler in
 #     world.gd - a shockwaved rock pops one, chosen from RANDOM_DROP_TABLE).
-#   - Key items ("key") are the current_pearl/reef_plate spell_tree.gd
-#     already knows how to gate a capstone spell behind (see its
-#     requires_items) - they don't touch a Diver's stats at all, they go
+#   - Key items ("key") are party-wide spell requirements in spell_tree.gd
+#     (see each spell's requires_items) - they don't touch a Diver's stats at all, they go
 #     into World.key_items instead. grant() refuses these on purpose (see
-#     below); world.gd's item-guardian handler adds them to key_items
+#     below); world.gd adds them from guardian wins and fixed rock rewards
 #     directly, since that's party-wide state, not a single diver's.
 class_name Items
 extends RefCounted
@@ -35,7 +34,15 @@ const ITEMS := {
 	},
 	"reef_plate": {
 		"display": "Reef Plate", "kind": "key",
-		"description": "A key item. Unlocks Prototype_V(1922)'s Bulwark Stance.",
+		"description": "A key item. Unlocks Prototype_V(1922)'s Tidal Revival.",
+	},
+	"abyssal_lens": {
+		"display": "Abyssal Lens", "kind": "key",
+		"description": "A key item. Unlocks Prototype_1(1910)'s Exploit Opening and Staff_Diver's Riptide Slash.",
+	},
+	"sunken_core": {
+		"display": "Sunken Core", "kind": "key",
+		"description": "A key item. Unlocks Prototype_V(1922)'s Guard Break and Prototype_1(1910)'s Blinding Silt.",
 	},
 	# battle_only, same as the old Blast Rocks move used to be flagged -
 	# these raise strength/defense only for the fight they're used in.
@@ -61,9 +68,8 @@ const ITEMS := {
 # repetition (same trick Goblin.jitter_pct's callers use elsewhere: no
 # separate weight table, just how many times an id appears) so a break
 # usually pays out something small and reliable, occasionally something
-# better. Key items are deliberately absent - those only ever come from
-# winning a special encounter for a revealed guarded item (see world.gd's
-# _on_encounter_triggered()), never luck.
+# better. Key items are deliberately absent from the random table: two are
+# placed in specific airborne rocks and the others come from guardians.
 const RANDOM_DROP_TABLE := [
 	"potion", "potion", "potion", "potion",
 	"oxygen_cell", "oxygen_cell",

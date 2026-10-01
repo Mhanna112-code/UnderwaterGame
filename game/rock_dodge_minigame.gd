@@ -35,7 +35,7 @@ signal rock_landed
 const WAVE_COUNT := 10
 const MIN_WAVE_GAP := 1
 const MAX_WAVE_GAP := 2.5
-const TRAVEL_TIME := 0.74
+const TRAVEL_TIME := 0.64
 
 # Waves fire in randomly-sized clusters rather than always one at a time -
 # MIN_WAVE_GAP/MAX_WAVE_GAP above is the breather BETWEEN clusters; waves
@@ -124,12 +124,6 @@ func _ready() -> void:
 		set_anchors_preset(Control.PRESET_TOP_LEFT)
 		size = get_viewport_rect().size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only individual rocks/labels catch clicks, not the whole overlay
-
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.03, 0.05, 0.35)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
 
 	# MODIFIED (removed): the "DODGE THE ROCKS" title, the "Hold Left/Right
 	# to line up with the rock, E to shockwave it..." hint, and this
