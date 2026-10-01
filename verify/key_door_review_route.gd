@@ -23,6 +23,8 @@ func _run() -> void:
 		_expect(door.is_collision_blocking(), "REVIEW ROUTE: demo door starts physically open")
 	var key := world.get_node_or_null("KeyDoorReviewCurrentPearl") as Area3D
 	_expect(key != null, "REVIEW ROUTE: no physical Current Pearl pickup was placed")
+	var sign := world.get_node_or_null("KeyDoorReviewSign") as Label3D
+	_expect(sign != null and sign.text.contains("Requires: Current Pearl"), "REVIEW ROUTE: no readable sign identifies the temporary Door FBX")
 	if key != null and door != null:
 		# Exercise the actual Area3D pickup rather than merely asserting that a
 		# decorative test orb exists.  A reviewer must be able to acquire the

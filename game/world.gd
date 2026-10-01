@@ -523,6 +523,21 @@ func _open_key_door_playtest() -> void:
 	# The key sits off the direct line so both beats are visible.
 	door.position = Vector3(-15.6, 0.0, -6.0)
 	add_child(door)
+	# This sign belongs only to the direct human-review route. KeyDoor itself
+	# remains generic and only shows its in-range interaction prompt; the route
+	# sign makes the delivered asset immediately findable in a crowded party
+	# starting frame without sneaking level-specific UI into the component.
+	var review_sign := Label3D.new()
+	review_sign.name = "KeyDoorReviewSign"
+	review_sign.text = "REVIEW DOOR\nRequires: Current Pearl"
+	review_sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	review_sign.pixel_size = 0.007
+	review_sign.font_size = 42
+	review_sign.outline_size = 8
+	review_sign.no_depth_test = true
+	review_sign.modulate = Color(0.65, 0.95, 1.0)
+	review_sign.position = door.position + Vector3(0.0, door.visual_height + 0.5, 0.0)
+	add_child(review_sign)
 	_build_key_door_review_key(Vector3(-23.0, 0.45, -7.0))
 	_announce("Door review: the glowing Current Pearl opens the door. Approach it and press E.")
 	_update_hud()
