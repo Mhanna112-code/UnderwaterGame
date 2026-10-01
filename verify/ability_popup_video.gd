@@ -16,36 +16,49 @@ func _run() -> void:
 		return
 	var pages: Array[Dictionary] = [{
 		"title": "Video regression probe",
-		"body": "The player must remain inside MediaFrame.",
-		"media": "swap",
+		"body": "The Grapple player must remain inside MediaFrame exactly once.",
+		"media": "grapple",
 	}]
 	popup.call("open", pages)
 	await create_timer(1.5, true).timeout
 	var frame := popup.get_node_or_null("UI/AbilityExplanationPanel/Margin/VBoxContainer/ContentRow/MediaFrame") as Control
-	var player := _first_video_player(frame)
+	var players := _video_players_in(frame)
+	var player := players[0] if players.size() == 1 else null
 	if frame == null:
 		_failures.append("MediaFrame is missing")
+	elif players.size() != 1:
+		_failures.append("Grapple media created %d video players; expected exactly one" % players.size())
 	elif player == null:
-		_failures.append("Swap media did not create a VideoStreamPlayer")
+		_failures.append("Grapple media did not create a VideoStreamPlayer")
 	else:
 		if not player.expand:
 			_failures.append("VideoStreamPlayer.expand is false; source dimensions can expand the popup")
 		if player.get_stream_position() <= 0.1:
 			_failures.append("VideoStreamPlayer did not advance while the popup paused the game")
-		if frame.size.x > 200.0 or frame.size.y > 200.0:
-			_failures.append("MediaFrame expanded to %s instead of its small embedded size" % frame.size)
+		var expected_frame_size := TutorialContent.VIDEO_FRAME_SIZE
+		if frame.size.x > expected_frame_size.x + 2.0 or frame.size.y > expected_frame_size.y + 2.0:
+			_failures.append("MediaFrame expanded to %s instead of its %s embedded size" % [frame.size, expected_frame_size])
 		if player.size.x > frame.size.x + 2.0 or player.size.y > frame.size.y + 2.0:
 			_failures.append("Video player %s exceeds MediaFrame %s" % [player.size, frame.size])
+	# Rebuilding the same page must replace its prior player, not leave a
+	# second stream drawing over the first one.
+	popup.call("_refresh_media", "grapple")
+	await create_timer(0.2, true).timeout
+	var refreshed_players := _video_players_in(frame)
+	if refreshed_players.size() != 1:
+		_failures.append("Refreshing Grapple media left %d video players; expected one" % refreshed_players.size())
 	popup.call("_close")
 	_finish()
 
-func _first_video_player(node: Node) -> VideoStreamPlayer:
+func _video_players_in(node: Node) -> Array[VideoStreamPlayer]:
+	var result: Array[VideoStreamPlayer] = []
 	if node == null:
-		return null
+		return result
 	for child in node.get_children():
 		if child is VideoStreamPlayer:
-			return child as VideoStreamPlayer
-	return null
+			result.append(child as VideoStreamPlayer)
+		result.append_array(_video_players_in(child))
+	return result
 
 func _finish() -> void:
 	for failure in _failures:
