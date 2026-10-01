@@ -24,9 +24,10 @@ func _run() -> void:
 	print("key door                 collision bounds %s centered at %s, visual height %.2f" % [bounds, door._collision.position if door._collision != null else Vector3.ZERO, door.visual_height])
 	_expect(is_equal_approx(bounds.y, door.visual_height), "DOOR BOUNDS: collision height %s does not match configured visual height %.2f" % [bounds.y, door.visual_height])
 	_expect(is_zero_approx(door._collision.position.y - bounds.y * 0.5), "DOOR GROUNDING: collision bottom %.3f is not aligned to the placement floor" % (door._collision.position.y - bounds.y * 0.5))
-	_expect(door._hide_when_open_meshes.size() == 1, "DOOR CLEARANCE SETUP: expected one configured non-morph Wheel mesh, got %d" % door._hide_when_open_meshes.size())
-	if not door._hide_when_open_meshes.is_empty():
-		_expect(door._hide_when_open_meshes[0].visible, "DOOR CLEARANCE SETUP: Wheel began hidden before the Door opened")
+	_expect(door._door_inner_panel != null and is_instance_valid(door._door_inner_panel), "DOOR CLEARANCE SETUP: corrected Door_Frame did not isolate its central opening leaf")
+	var panel_rest_y := door._door_inner_panel.transform.origin.y if door._door_inner_panel != null else 0.0
+	if door._door_inner_panel != null:
+		_expect(door._door_inner_panel.visible, "DOOR CLEARANCE SETUP: central leaf began hidden while the Door was locked")
 
 	# key door: missing key retains collision and reports requirement — guards
 	# against locked-route bypass.
@@ -46,12 +47,13 @@ func _run() -> void:
 	await create_timer(0.15).timeout
 	_expect(door.open_progress() < door.collision_release_progress, "TIMELINE SETUP: sampled after collision threshold")
 	_expect(door.is_collision_blocking(), "THRESHOLD COLLISION: passage released before threshold")
-	for visual in door._hide_when_open_meshes:
-		_expect(visual.visible, "THRESHOLD CLEARANCE: non-morph doorway visual hid before passage release")
+	if door._door_inner_panel != null:
+		_expect(door._door_inner_panel.visible, "THRESHOLD CLEARANCE: central leaf hid before the physical passage released")
+		_expect(door._door_inner_panel.transform.origin.y > panel_rest_y, "THRESHOLD CLEARANCE: central leaf did not rise out of the doorway during opening")
 	await create_timer(1.2).timeout
 	_expect(not door.is_collision_blocking(), "OPEN COLLISION: passage still blocks after authored open completed")
-	for visual in door._hide_when_open_meshes:
-		_expect(not visual.visible, "OPEN CLEARANCE: non-morph doorway visual still blocks the open Door")
+	if door._door_inner_panel != null:
+		_expect(not door._door_inner_panel.visible, "OPEN CLEARANCE: central leaf still visibly blocks the open Door")
 
 	# key door: repeated keyed interaction opens once — guards against duplicate
 	# tween/persistence side effects.

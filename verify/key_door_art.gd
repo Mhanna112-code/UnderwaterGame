@@ -15,6 +15,10 @@ func _initialize() -> void:
 		return
 	var door_root := packed.instantiate()
 	root.add_child(door_root)
+	if _find_mesh_named(door_root, &"Wheel") != null:
+		findings.append("DOOR WHEEL: legacy in-aperture Wheel mesh is still present instead of the corrected exterior wheel")
+	if _find_mesh_named(door_root, &"Door_Frame_001") == null:
+		findings.append("DOOR WHEEL: corrected upright exterior wheel mesh Door_Frame_001 is missing")
 	var frame := _find_mesh_with_shape(door_root, &"Open")
 	if frame == null:
 		findings.append("DOOR SHAPE KEY: no imported mesh exposes the authored Open blend shape")
@@ -46,6 +50,15 @@ func _find_mesh_with_shape(node: Node, shape_name: StringName) -> MeshInstance3D
 			return mesh_node
 	for child in node.get_children():
 		var found := _find_mesh_with_shape(child, shape_name)
+		if found != null:
+			return found
+	return null
+
+func _find_mesh_named(node: Node, wanted_name: StringName) -> MeshInstance3D:
+	if node is MeshInstance3D and node.name == wanted_name:
+		return node as MeshInstance3D
+	for child in node.get_children():
+		var found := _find_mesh_named(child, wanted_name)
 		if found != null:
 			return found
 	return null

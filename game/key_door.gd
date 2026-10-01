@@ -30,14 +30,17 @@ const DOOR_SCENE := preload("res://game/Door.fbx")
 # passage.  This threshold is part of the public gameplay contract and is
 # covered by verify/key_door.gd.
 @export_range(0.0, 1.0, 0.05) var collision_release_progress := 0.8
-# Some delivered door assets include a secondary visual (the supplied FBX's
-# `Wheel`) which is not part of the Open shape key.  Let a placement name
-# those visuals so the doorway is visually clear exactly when physics clears.
-@export var hide_when_open_node_names: Array[StringName] = [&"Wheel"]
+# Optional secondary visuals that should disappear once the passage clears.
+# Glassgoat's corrected Door keeps its upright wheel visible, so this is empty
+# by default; placements can still opt in for a different asset.
+@export var hide_when_open_node_names: Array[StringName] = []
 
 var _door_frame: MeshInstance3D
 var _shape_index := -1
 var _hide_when_open_meshes: Array[MeshInstance3D] = []
+var _door_inner_panel: MeshInstance3D
+var _inner_panel_rest_transform := Transform3D.IDENTITY
+var _inner_panel_lift := 0.0
 var _collision: CollisionShape3D
 var _prompt: Label3D
 var _world: World
@@ -137,6 +140,12 @@ func _apply_open_progress() -> void:
 	if _door_frame != null and _shape_index >= 0:
 		_door_frame.set_blend_shape_value(_shape_index, lerpf(0.0, open_value, _open_progress))
 	var doorway_is_clear := _open_progress >= collision_release_progress
+	if _door_inner_panel != null and is_instance_valid(_door_inner_panel):
+		var lift_progress := clampf(_open_progress / collision_release_progress, 0.0, 1.0)
+		var lifted_transform := _inner_panel_rest_transform
+		lifted_transform.origin += _inner_panel_rest_transform.basis.y.normalized() * _inner_panel_lift * lift_progress * lift_progress
+		_door_inner_panel.transform = lifted_transform
+		_door_inner_panel.visible = not doorway_is_clear
 	for visual in _hide_when_open_meshes:
 		if is_instance_valid(visual):
 			visual.visible = not doorway_is_clear
@@ -155,6 +164,7 @@ func _build_art_and_collision() -> void:
 		return
 	_shape_index = _blend_shape_index(_door_frame.mesh, shape_key_name)
 	_hide_when_open_meshes = _find_named_meshes(art, hide_when_open_node_names)
+	_rebuild_opening_frame(_door_frame)
 	var raw_bounds := _subtree_bounds(art)
 	if raw_bounds.size.y <= 0.0001:
 		push_error("KeyDoor: Door.fbx has no usable vertical visual bounds")
@@ -242,6 +252,125 @@ func _collect_named_meshes(node: Node, wanted_names: Array[StringName], found: A
 		found.append(node as MeshInstance3D)
 	for child in node.get_children():
 		_collect_named_meshes(child, wanted_names, found)
+
+# Glassgoat's corrected asset places the wheel outside the aperture, but the
+# authored Open morph still leaves a disconnected central leaf behind. Split
+# that leaf from the source mesh at runtime: the outer frame keeps its real
+# imported shape-key animation while the leaf rises clear before collision is
+# released. This preserves the delivered closed pose and an actual doorway.
+func _rebuild_opening_frame(source: MeshInstance3D) -> void:
+	if source.mesh == null or source.mesh.get_surface_count() != 1:
+		push_error("KeyDoor: expected one-surface Door_Frame mesh")
+		return
+	var split := _split_door_frame_mesh(source.mesh)
+	if split.is_empty():
+		push_error("KeyDoor: could not isolate the Door_Frame inner panel")
+		return
+	var parent_node := source.get_parent()
+	if parent_node == null:
+		push_error("KeyDoor: Door_Frame has no parent")
+		return
+	var outer := _make_door_piece(source, split["outer"] as Mesh)
+	var inner := _make_door_piece(source, split["inner"] as Mesh)
+	parent_node.add_child(outer)
+	parent_node.add_child(inner)
+	source.visible = false
+	_door_frame = outer
+	_shape_index = _blend_shape_index(outer.mesh, shape_key_name)
+	_door_inner_panel = inner
+	_inner_panel_rest_transform = inner.transform
+	_inner_panel_lift = source.mesh.get_aabb().size.y * 1.35
+
+func _make_door_piece(source: MeshInstance3D, mesh: Mesh) -> MeshInstance3D:
+	var piece := MeshInstance3D.new()
+	piece.mesh = mesh
+	piece.transform = source.transform
+	piece.cast_shadow = source.cast_shadow
+	piece.gi_mode = source.gi_mode
+	return piece
+
+func _split_door_frame_mesh(source_mesh: Mesh) -> Dictionary:
+	var base_arrays := source_mesh.surface_get_arrays(0)
+	var blend_arrays := source_mesh.surface_get_blend_shape_arrays(0)
+	if blend_arrays.is_empty():
+		return {}
+	var vertices := base_arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array
+	var indices := base_arrays[Mesh.ARRAY_INDEX] as PackedInt32Array
+	var center_panel := _find_center_panel_vertices(vertices, indices)
+	if center_panel.is_empty():
+		return {}
+	var outer_indices := PackedInt32Array()
+	var inner_indices := PackedInt32Array()
+	for triangle_start in range(0, indices.size(), 3):
+		var triangle := PackedInt32Array([indices[triangle_start], indices[triangle_start + 1], indices[triangle_start + 2]])
+		if center_panel.has(triangle[0]) and center_panel.has(triangle[1]) and center_panel.has(triangle[2]):
+			inner_indices.append_array(triangle)
+		else:
+			outer_indices.append_array(triangle)
+	if inner_indices.is_empty() or outer_indices.is_empty():
+		return {}
+	var inner_arrays := base_arrays.duplicate(true)
+	inner_arrays[Mesh.ARRAY_INDEX] = inner_indices
+	var outer_arrays := base_arrays.duplicate(true)
+	outer_arrays[Mesh.ARRAY_INDEX] = outer_indices
+	var outer_blend_arrays: Array = []
+	for blend in blend_arrays:
+		var filtered_blend := (blend as Array).duplicate(true)
+		# Godot's blend-shape channels carry only vertex/normal/tangent data;
+		# they inherit the filtered base surface's index buffer.
+		filtered_blend[Mesh.ARRAY_INDEX] = null
+		outer_blend_arrays.append(filtered_blend)
+	var inner := ArrayMesh.new()
+	inner.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, inner_arrays)
+	inner.surface_set_material(0, source_mesh.surface_get_material(0))
+	var outer := ArrayMesh.new()
+	outer.blend_shape_mode = source_mesh.blend_shape_mode
+	for index in range(source_mesh.get_blend_shape_count()):
+		outer.add_blend_shape(source_mesh.get_blend_shape_name(index))
+	outer.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, outer_arrays, outer_blend_arrays)
+	outer.surface_set_material(0, source_mesh.surface_get_material(0))
+	return {"outer": outer, "inner": inner}
+
+func _find_center_panel_vertices(vertices: PackedVector3Array, indices: PackedInt32Array) -> Dictionary:
+	var parent: Array[int] = []
+	for vertex in range(vertices.size()):
+		parent.append(vertex)
+	for triangle_start in range(0, indices.size(), 3):
+		_union_vertices(parent, indices[triangle_start], indices[triangle_start + 1])
+		_union_vertices(parent, indices[triangle_start], indices[triangle_start + 2])
+	var groups: Dictionary = {}
+	for vertex in range(vertices.size()):
+		var root_index := _find_vertex_root(parent, vertex)
+		if not groups.has(root_index):
+			groups[root_index] = {}
+		(groups[root_index] as Dictionary)[vertex] = true
+	var all_bounds := AABB(vertices[0], Vector3.ZERO)
+	for vertex in vertices:
+		all_bounds = all_bounds.expand(vertex)
+	var best: Dictionary = {}
+	for group in groups.values():
+		var component := group as Dictionary
+		var first_vertex := int(component.keys()[0])
+		var bounds := AABB(vertices[first_vertex], Vector3.ZERO)
+		for vertex_value in component.keys():
+			bounds = bounds.expand(vertices[int(vertex_value)])
+		var centered := absf(bounds.get_center().x - all_bounds.get_center().x) <= all_bounds.size.x * 0.1
+		var tall := bounds.size.y >= all_bounds.size.y * 0.8
+		var narrower_than_frame := bounds.size.x <= all_bounds.size.x * 0.75
+		if centered and tall and narrower_than_frame and component.size() > best.size():
+			best = component
+	return best
+
+func _find_vertex_root(parent: Array[int], index: int) -> int:
+	if parent[index] != index:
+		parent[index] = _find_vertex_root(parent, parent[index])
+	return parent[index]
+
+func _union_vertices(parent: Array[int], left: int, right: int) -> void:
+	var root_left := _find_vertex_root(parent, left)
+	var root_right := _find_vertex_root(parent, right)
+	if root_left != root_right:
+		parent[root_right] = root_left
 
 func _blend_shape_index(mesh: Mesh, wanted: StringName) -> int:
 	for i in range(mesh.get_blend_shape_count()):
