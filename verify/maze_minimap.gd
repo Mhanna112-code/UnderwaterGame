@@ -131,9 +131,9 @@ func _run() -> void:
 			if maze._currents_by_corridor.has(corridor_3) or not maze._currents_by_corridor.has(corridor_4):
 				findings.append("V does not move Corridor3's current into Corridor4")
 			else:
-				var northbound := maze._currents_by_corridor[corridor_4] as WaterCurrent
-				if northbound.orientation.dot(Vector3(0, 0, 1)) < 0.999:
-					findings.append("Corridor4 current is not northbound after V")
+				var southbound := maze._currents_by_corridor[corridor_4] as WaterCurrent
+				if southbound.orientation.dot(Vector3(0, 0, -1)) < 0.999:
+					findings.append("Corridor4 current is not southbound (-Z) after V")
 			_assert_current_truth(minimap, maze, findings, "after V")
 
 			# MAP-ROTATE: the nearest rotatable set is selected, its walls blink,

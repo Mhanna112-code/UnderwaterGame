@@ -22,7 +22,7 @@ var wall_boxes: Array[CSGBox3D] = []
 
 @onready var corridors: Array[Area3D] = [
 	$WindCorridor1, $WindCorridor2, $WindCorridor3, $WindCorridor4,
-	$WindCorridor5, $WindCorridor6, $WindCorridor7, $WindCorridor8,
+	$WindCorridor5, $WindCorridor6,
 ]
 
 
@@ -43,6 +43,8 @@ func _ready() -> void:
 	_corridor_walls = {
 		$WindCorridor3: [$CSGBox3D6, $CSGBox3D7],
 		$WindCorridor4: [$CSGBox3D12, $CSGBox3D13],
+		$WindCorridor5: [$CSGBox3D8, $CSGBox3D9],
+		$WindCorridor6: [$CSGBox3D10, $CSGBox3D11],
 	}
 	_align_corridors_to_walls()
 	_setup_currents()
@@ -180,6 +182,7 @@ func _setup_walls():
 	_place_remaining_perimeter_walls_flush()
 	_place_box28_flush_to_box14()
 	_build_door_frame_between_box30_and_box32()
+	_build_strong_enemy_room_walls()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -437,6 +440,104 @@ func _place_remaining_perimeter_walls_flush() -> void:
 	_place_wall_flush_to_reference($CSGBox3D32, $CSGBox3D33, true)
 
 
+# --- Strong-enemy room ---------------------------------------------------
+# Bounded by RewardChamberWestWall (north), CSGBox3D28 (east), and two big
+# walls built here: RoomWallA runs south from RewardChamberWestWall's centre,
+# RoomWallB runs east from RoomWallA's far end to the top of CSGBox3D11, along
+# CSGBox3D14's line. Both match RewardChamberWestWall's height/thickness; their
+# lengths are whatever reaches those walls. CSGBox3D14 closes the rest of the
+# south side until J / E-on-the-map swings 14 and 15 open (see
+# _rotate_walls_14_15()), which is how you get in.
+const STRONG_ROOM_WARNING := "Warning: strong enemies detected nearby"
+var _room_wall_a: CSGBox3D
+var _room_wall_b: CSGBox3D
+var _room_warning: Label
+var _walls_14_15_open := false
+var _walls_14_15_home: Array = []   # [[wall, position, yaw], ...]
+
+func _build_strong_enemy_room_walls() -> void:
+	var west_wall := $RewardChamberWestWall as CSGBox3D
+	var box14 := $CSGBox3D14 as CSGBox3D
+	var box11 := $CSGBox3D11 as CSGBox3D
+	var height := west_wall.size.y
+	var thickness := west_wall.size.z
+	var bottom := west_wall.global_position.y - height * 0.5
+	var mid_y := bottom + height * 0.5
+	var north_face_z := west_wall.global_position.z - thickness * 0.5
+	var line_z := box14.global_position.z
+	# A: from RewardChamberWestWall's south face down past Box14's line.
+	var a_x := west_wall.global_position.x
+	var a_south := line_z - thickness * 0.5
+	var a_length := north_face_z - a_south
+	_room_wall_a = _spawn_wall("RoomWallA", Vector3(a_x, mid_y, (north_face_z + a_south) * 0.5), PI * 0.5, Vector3(a_length, height, thickness))
+	wall_boxes.append(_room_wall_a)
+	# B: from A's west face east to Box11's west face, on Box14's line.
+	var b_west := a_x - thickness * 0.5
+	var b_east := box11.global_position.x - box11.size.z * 0.5
+	_room_wall_b = _spawn_wall("RoomWallB", Vector3((b_west + b_east) * 0.5, mid_y, line_z), 0.0, Vector3(b_east - b_west, height, thickness))
+	wall_boxes.append(_room_wall_b)
+
+# Swings CSGBox3D14 and CSGBox3D15 90 degrees toward +Z about their east ends
+# (opening the strong-enemy room's south side), and back.
+func _rotate_walls_14_15() -> void:
+	if _walls_14_15_open:
+		for entry in _walls_14_15_home:
+			_tween_wall_to_transform_about_hinge(entry[0], entry[1], entry[2])
+		_walls_14_15_open = false
+		$HUD/Controls.text = "Walls 14/15 closing..."
+		return
+	_walls_14_15_home.clear()
+	for wall in [$CSGBox3D14, $CSGBox3D15]:
+		var w := wall as CSGBox3D
+		_walls_14_15_home.append([w, w.global_position, w.rotation.y])
+		var g: Dictionary = _wall_geometry(w)
+		var east_end: Vector3 = g["positive_end"] if (g["positive_end"] as Vector3).x > (g["negative_end"] as Vector3).x else g["negative_end"]
+		var target := east_end + Vector3(0, 0, w.size.x * 0.5)
+		target.y = w.global_position.y
+		_tween_wall_to_transform_about_hinge(w, target, w.rotation.y + PI * 0.5)
+	_walls_14_15_open = true
+	$HUD/Controls.text = "Walls 14/15 opening..."
+
+# The room's interior on the floor plan, between the facing sides of its
+# four walls.
+func _strong_room_rect() -> Rect2:
+	if _room_wall_a == null:
+		return Rect2()
+	var box28 := $CSGBox3D28 as CSGBox3D
+	var west_wall := $RewardChamberWestWall as CSGBox3D
+	var x0 := _room_wall_a.global_position.x + _room_wall_a.size.z * 0.5
+	var x1 := box28.global_position.x - box28.size.z * 0.5
+	var z0 := _room_wall_b.global_position.z + _room_wall_b.size.z * 0.5
+	var z1 := west_wall.global_position.z - west_wall.size.z * 0.5
+	return Rect2(Vector2(x0, z0), Vector2(x1 - x0, z1 - z0))
+
+func is_diver_in_strong_room() -> bool:
+	if _diver == null:
+		return false
+	return _strong_room_rect().has_point(Vector2(_diver.global_position.x, _diver.global_position.z))
+
+# Orange bottom-centre caption (same style as the whirlpool warning, one line
+# above it), shown for as long as the diver is inside the room.
+func _update_strong_room_warning() -> void:
+	var inside := is_diver_in_strong_room()
+	if _room_warning == null:
+		if not inside:
+			return
+		_room_warning = Label.new()
+		_room_warning.text = STRONG_ROOM_WARNING
+		_room_warning.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		_room_warning.offset_left = -320.0
+		_room_warning.offset_right = 320.0
+		_room_warning.offset_top = -250.0
+		_room_warning.offset_bottom = -212.0
+		_room_warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_room_warning.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		_room_warning.add_theme_font_size_override("font_size", 20)
+		_room_warning.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
+		_room_warning.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		$HUD.add_child(_room_warning)
+	_room_warning.visible = inside
+
 # Opening left between the two door-frame walls below: width x height,
 # matching Door's own default span (z = width across, y = height).
 const DOOR_OPENING := Vector2(2.3, 6.0)
@@ -587,9 +688,12 @@ func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: 
 	wall_17.rotation.y = wall_17.rotation.y + PI
 	var placed_axis: Vector3 = wall_17.global_transform.basis.x.normalized()
 	var center_sign := 1.0 if placed_axis.dot(Vector3.LEFT) > 0.0 else -1.0
-	wall_17.global_position = reference_outer_end + placed_axis * wall_17.size.x * 0.5
+	# Out of Box27's end (reference_outward_axis), not along Box17's own axis:
+	# after the flip above, Box17's basis.x points back INTO Box27, which
+	# left it overlapping Box27 instead of a door width beyond it.
+	wall_17.global_position = reference_outer_end + reference_outward_axis * wall_17.size.x * 0.5
 	const WIDTH := 2.3
-	wall_17.global_position += outer_axis * WIDTH
+	wall_17.global_position += reference_outward_axis * WIDTH
 
 	
 
@@ -638,7 +742,7 @@ func _build_minimap() -> void:
 # there.
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
-	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL opens the maze map (Left/Right: walls, Shift+Left/Right: currents); H swings CurrentWall1/2; C moves Corridor1's current to Corridor2; V moves Corridor3's current to Corridor4 (past the whirlpool) and back."
+	label.text = "Goal: press H, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nL opens the maze map (Left/Right: walls, Shift+Left/Right: currents); H swings CurrentWall1/2; C moves Corridor1's current to Corridor2; V moves Corridor3's current to Corridor4 (past the whirlpool); B moves Corridor5's current to Corridor6; J swings walls 14/15."
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -826,6 +930,10 @@ func rotatable_wall_sets() -> Array[Dictionary]:
 		"name": "CurrentWall1/2",
 		"walls": [$CurrentWall1, $CurrentWall2],
 		"rotate": _rotate_hallway_1_2,
+	}, {
+		"name": "CSGBox3D14/15",
+		"walls": [$CSGBox3D14, $CSGBox3D15],
+		"rotate": _rotate_walls_14_15,
 	}]
 
 func _rotate_hallway_1_2() -> void:
@@ -859,11 +967,17 @@ func _rotate_hallway_1_2() -> void:
 #       (+X), and back. WindCorridor2 has no current of its own.
 #   V - the current starts in WindCorridor3 pushing -Z (south), which blocks
 #       the way forward from Corridor2. V moves it into WindCorridor4, where
-#       it pushes +Z (north) - the only way past the whirlpool at the back of
+#       it pushes -Z (CORRIDOR_4_FLOW) - the only way past the whirlpool at the back of
 #       Corridor4 (see _setup_whirlpool()), but it then blocks Corridor3's
 #       route the other way until it's moved back. V again returns it.
+#   B - WindCorridor5's current (pushing -X) moves into WindCorridor6,
+#       pushing -Z, and back to Corridor5 (-X) again.
 var _current_1_in_2 := false
 var _current_3_in_4 := false
+var _current_5_in_6 := false
+# Which way the current flows once it's in WindCorridor4. The whirlpool sits
+# at that flow's downstream end so the current carries the diver through it.
+const CORRIDOR_4_FLOW := WaterCurrent.Direction.NEGATIVE_Z
 
 func _toggle_current_1_to_2() -> void:
 	if _current_1_in_2:
@@ -877,13 +991,21 @@ func _toggle_current_3_to_4() -> void:
 	if _current_3_in_4:
 		_move_current($WindCorridor4, $WindCorridor3, WaterCurrent.Direction.NEGATIVE_Z)
 	else:
-		_move_current($WindCorridor3, $WindCorridor4, WaterCurrent.Direction.POSITIVE_Z)
+		_move_current($WindCorridor3, $WindCorridor4, CORRIDOR_4_FLOW)
 	_current_3_in_4 = not _current_3_in_4
 	$HUD/Controls.text = "Current moved to WindCorridor4 - it can carry you past the whirlpool." if _current_3_in_4 else "Current moved back to WindCorridor3."
 
+func _toggle_current_5_to_6() -> void:
+	if _current_5_in_6:
+		_move_current($WindCorridor6, $WindCorridor5, WaterCurrent.Direction.NEGATIVE_X)
+	else:
+		_move_current($WindCorridor5, $WindCorridor6, WaterCurrent.Direction.NEGATIVE_Z)
+	_current_5_in_6 = not _current_5_in_6
+	$HUD/Controls.text = "Current moved to WindCorridor6." if _current_5_in_6 else "Current moved back to WindCorridor5."
+
 # R on the maze map: rotates whichever current is in `corridor` to its
-# paired corridor - Corridor1 <-> 2 (same as C) and Corridor3 <-> 4 (same
-# as V). Returns the corridor the current ended up in, or null if this
+# paired corridor - Corridor1 <-> 2 (C), Corridor3 <-> 4 (V) and
+# Corridor5 <-> 6 (B). Returns the corridor the current ended up in, or null if this
 # current has nowhere to rotate to.
 func rotate_current_in(corridor: Area3D) -> Area3D:
 	if corridor == $WindCorridor1 or corridor == $WindCorridor2:
@@ -892,6 +1014,9 @@ func rotate_current_in(corridor: Area3D) -> Area3D:
 	if corridor == $WindCorridor3 or corridor == $WindCorridor4:
 		_toggle_current_3_to_4()
 		return $WindCorridor4 if _current_3_in_4 else $WindCorridor3
+	if corridor == $WindCorridor5 or corridor == $WindCorridor6:
+		_toggle_current_5_to_6()
+		return $WindCorridor6 if _current_5_in_6 else $WindCorridor5
 	$HUD/Controls.text = "That current can't be rotated."
 	return null
 
@@ -996,7 +1121,7 @@ func _position_beyond_wall_end(reference_wall_outer_end: Vector3, reference_wall
 func _setup_currents() -> void:
 	_add_current($WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
 	_add_current($WindCorridor3, WaterCurrent.Direction.NEGATIVE_Z)
-	_add_current($WindCorridor6, WaterCurrent.Direction.NEGATIVE_Z)
+	_add_current($WindCorridor5, WaterCurrent.Direction.NEGATIVE_X)
 	
 # MODIFIED: both of these were calling rotate_corridors_right()/_left()
 # as if they were methods ON an Area3D (e.g. left_areas[0].
@@ -1043,47 +1168,6 @@ func _rotate_left_currents_left() -> void:
 	rotate_corridors_left($WindCorridor2, $WindCorridor1)
 	rotate_corridors_left($WindCorridor3, $WindCorridor2)
 	$HUD/Controls.text = "Currents rotated left."
-
-# The "right areas" pair - same two-current-window idea as the left group
-# above, but over WindCorridor4-8 with a gap of 2 between the pair
-# instead of 1, so it has three positions instead of two:
-# {4,6} <-> {5,7} <-> {6,8}. Every one of these four transitions moves
-# each current to a corridor the OTHER current isn't currently at (no
-# shared corridor between an old pair and the adjacent new pair anywhere
-# in this chain), so unlike the left group's {1,2}<->{2,3} shift, move
-# order never risks a collision here - both rotate_corridors_*() calls
-# in each block below are safe in either order.
-func _rotate_right_currents_left() -> void:
-	if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
-		$HUD/Controls.text = "Currents are already as far left as they can go."
-		return
-	if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
-		rotate_corridors_left($WindCorridor6, $WindCorridor5)
-		rotate_corridors_left($WindCorridor8, $WindCorridor7)
-		$HUD/Controls.text = "Currents rotated left."
-		return
-	if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
-		rotate_corridors_left($WindCorridor5, $WindCorridor4)
-		rotate_corridors_left($WindCorridor7, $WindCorridor6)
-		$HUD/Controls.text = "Currents rotated left."
-		return
-	push_warning("_rotate_right_currents_left: right-group currents aren't at a recognized position")
-
-func _rotate_right_currents_right() -> void:
-	if _currents_by_corridor.has($WindCorridor6) and _currents_by_corridor.has($WindCorridor8):
-		$HUD/Controls.text = "Currents are already as far right as they can go."
-		return
-	if _currents_by_corridor.has($WindCorridor4) and _currents_by_corridor.has($WindCorridor6):
-		rotate_corridors_right($WindCorridor4, $WindCorridor5)
-		rotate_corridors_right($WindCorridor6, $WindCorridor7)
-		$HUD/Controls.text = "Currents rotated right."
-		return
-	if _currents_by_corridor.has($WindCorridor5) and _currents_by_corridor.has($WindCorridor7):
-		rotate_corridors_right($WindCorridor5, $WindCorridor6)
-		rotate_corridors_right($WindCorridor7, $WindCorridor8)
-		$HUD/Controls.text = "Currents rotated right."
-		return
-	push_warning("_rotate_right_currents_right: right-group currents aren't at a recognized position")
 
 # Every corridor gets its own permanent WaterCurrent (unlike
 # rotate_currents.gd's RotateCurrents, which moves ONE current between
@@ -1198,6 +1282,7 @@ func _align_corridors_to_walls() -> void:
 		var shape_node := _corridor_shape(corridor as Area3D)
 		if shape_node == null:
 			continue
+		_turn_corridor_along_walls(shape_node, walls[0])
 		# Centred ACROSS the gap only - the corridor keeps its authored spot
 		# along the passage (Box6/Box7 run 80 units, so centring lengthwise
 		# would drag Corridor3 far from where it sits).
@@ -1209,6 +1294,31 @@ func _align_corridors_to_walls() -> void:
 			shape_node.global_position = target
 	_place_corridor_4_whirlpool()
 
+# Rotates a corridor's collision box about Y so its long axis runs along
+# `wall`'s long axis (either way along it), keeping its scale - so a
+# corridor follows its walls if they're turned.
+func _turn_corridor_along_walls(shape_node: CollisionShape3D, wall: CSGBox3D) -> void:
+	var box := shape_node.shape as BoxShape3D
+	var shape_basis := shape_node.global_transform.basis
+	var long_local := Vector3.RIGHT if box.size.x * shape_basis.x.length() >= box.size.z * shape_basis.z.length() else Vector3.BACK
+	var long_world := shape_basis * long_local
+	long_world.y = 0.0
+	var wall_axis := _wall_geometry(wall)["long_axis"] as Vector3
+	wall_axis.y = 0.0
+	if long_world.length_squared() < 0.0001 or wall_axis.length_squared() < 0.0001:
+		return
+	var angle := atan2(long_world.normalized().cross(wall_axis.normalized()).y, long_world.normalized().dot(wall_axis.normalized()))
+	# Either direction along the wall is fine - take the smaller turn.
+	if angle > PI * 0.5:
+		angle -= PI
+	elif angle < -PI * 0.5:
+		angle += PI
+	if absf(angle) < 0.001:
+		return
+	var xf := shape_node.global_transform
+	xf.basis = Basis(Vector3.UP, angle) * xf.basis
+	shape_node.global_transform = xf
+
 func _corridor_shape(corridor: Area3D) -> CollisionShape3D:
 	for child in corridor.get_children():
 		if child is CollisionShape3D:
@@ -1216,7 +1326,7 @@ func _corridor_shape(corridor: Area3D) -> CollisionShape3D:
 	return null
 
 # A whirlpool across the back of WindCorridor4: the north end of the stretch
-# where its two walls face each other (Corridor4 pushes +Z, so north is the
+# where its two walls face each other (downstream for CORRIDOR_4_FLOW is the
 # back). It swallows a diver and returns them to that stretch's south end -
 # unless WindCorridor4 holds the current (V / R on the map), which carries
 # the diver through it instead. Sized to the gap so it can't be swum around.
@@ -1238,8 +1348,10 @@ func _place_corridor_4_whirlpool() -> void:
 		return
 	var walls: Array = _corridor_walls[$WindCorridor4]
 	var ends := _overlap_ends_between(walls[0], walls[1])
-	var back: Vector3 = ends[0] if ends[0].z > ends[1].z else ends[1]
-	var start: Vector3 = ends[1] if ends[0].z > ends[1].z else ends[0]
+	# Downstream end for Corridor4's flow is the back; upstream is the start.
+	var flow := WaterCurrent.direction_to_vector(CORRIDOR_4_FLOW)
+	var back: Vector3 = ends[0] if (ends[0] - ends[1]).dot(flow) > 0.0 else ends[1]
+	var start: Vector3 = ends[1] if (ends[0] - ends[1]).dot(flow) > 0.0 else ends[0]
 	var into := (start - back).normalized()
 	var floor_y: float = ($DiverEntry as Node3D).global_position.y
 	var spot := back + into * (_corridor_4_whirlpool.suction_radius + 0.5)
@@ -1554,6 +1666,7 @@ const GOLDEN_ORB_FALL_SPEED := 1.5
 
 func _physics_process(dt: float) -> void:
 	_align_corridors_to_walls()
+	_update_strong_room_warning()
 	if _diver == null:
 		return
 	for orb in goldenOrbs:
@@ -1588,6 +1701,10 @@ func _unhandled_input(e: InputEvent) -> void:
 		_toggle_current_1_to_2()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_V:
 		_toggle_current_3_to_4()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_B:
+		_toggle_current_5_to_6()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_J:
+		_rotate_walls_14_15()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
 		# MazeLevel is a standalone review scene, so World cannot forward its
 		# normal ability input here. Keep the final relic interaction on the

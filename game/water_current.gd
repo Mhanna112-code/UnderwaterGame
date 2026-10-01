@@ -73,8 +73,33 @@ func _physics_process(_delta: float) -> void:
 			_apply_to_diver(body as Diver)
 
 func _apply_to_diver(diver: Diver) -> void:
-	diver.external_push = orientation * strength
+	diver.external_push = orientation * strength + _side_push(diver.global_position)
 	diver.current_axis = orientation
+
+# Width of the band along each side of the current (across the flow) that
+# pushes outwards, and how hard as a fraction of `strength`. A diver near
+# either side edge is eased sideways out of the current instead of being
+# carried along its edge into whatever wall it runs into.
+const SIDE_BAND := 1.5
+const SIDE_PUSH := 0.6
+
+func _side_push(at: Vector3) -> Vector3:
+	var shape_node := _find_box_shape()
+	if shape_node == null:
+		return Vector3.ZERO
+	var side := orientation.cross(Vector3.UP)
+	side.y = 0.0
+	if side.length_squared() < 0.0001:
+		return Vector3.ZERO
+	side = side.normalized()
+	var xf := shape_node.global_transform
+	var half := (shape_node.shape as BoxShape3D).size * 0.5
+	# Half-width across the flow, including any scale on the shape node.
+	var half_width := absf(xf.basis.x.dot(side)) * half.x + absf(xf.basis.y.dot(side)) * half.y + absf(xf.basis.z.dot(side)) * half.z
+	var offset := (at - xf.origin).dot(side)
+	if absf(offset) < half_width - SIDE_BAND:
+		return Vector3.ZERO
+	return side * signf(offset) * strength * SIDE_PUSH
 
 # Called right after add_child()-ing this node - wires this controller up
 # to whichever Area3D it should actually watch and which way it pushes.

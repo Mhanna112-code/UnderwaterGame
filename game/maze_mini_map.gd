@@ -561,6 +561,18 @@ func _draw() -> void:
 			var wall_width := 2.8 if hall_name == selectedHallName else 2.0
 			draw_multiline(points, wall_color, wall_width)
 
+	# While the big map is open (where E rotates them), the selected
+	# rotatable walls blink amber here too, drawn over their normal lines.
+	if main_map.visible and _rotatable_blink_on and not selected_rotatable_set.is_empty():
+		for box in selected_rotatable_set["walls"]:
+			if not is_instance_valid(box) or not _revealed_walls.has(box):
+				continue
+			var sel_seg := _box_segment(box)
+			var sel_clip: Array = _clip_to_circle(Vector2(sel_seg[0].x - center.x, sel_seg[0].z - center.z), Vector2(sel_seg[1].x - center.x, sel_seg[1].z - center.z), view_radius)
+			if sel_clip.is_empty():
+				continue
+			draw_line((sel_clip[0] as Vector2) * px_per_unit + mid, (sel_clip[1] as Vector2) * px_per_unit + mid, SELECTED_WALL_COLOR, 2.8)
+
 	# Revealed secret rooms: one closed box each, clipped edge by edge.
 	for i in _revealed_rooms:
 		var corners := _room_corners(i)
@@ -679,10 +691,11 @@ func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3
 		return
 	var start := (clipped[0] as Vector2) * px_per_unit + mid
 	var end := (clipped[1] as Vector2) * px_per_unit + mid
-	# Same blue wavy line + arrowhead as the big map; the selected current
-	# blinks bright/dim blue there too, rather than turning orange.
+	# Same blue wavy line + arrowhead as the big map. The selected current
+	# blinks bright/dim blue only while the big map is open (where R can
+	# rotate it); otherwise it's drawn like every other current.
 	var color := FLOW_COLOR
-	if corridor == selectedCurrentCorridor:
+	if corridor == selectedCurrentCorridor and main_map.visible:
 		color = BLINK_FLOW_COLOR if _rotatable_blink_on else DIM_FLOW_COLOR
 	_draw_wavy_flow_arrow(start, end, color, 2.0)
 
@@ -895,7 +908,7 @@ func _refresh_map_copy() -> void:
 		return
 	var objective := main_map.get_node_or_null("MazeMapObjective") as Label
 	if objective != null:
-		objective.text = "OBJECTIVE: Ride the northbound current past the whirlpool." if maze_level != null and maze_level._current_3_in_4 else "OBJECTIVE: [V] Move Corridor3's current into Corridor4\nso it carries you past the whirlpool."
+		objective.text = "OBJECTIVE: Ride Corridor4's current past the whirlpool." if maze_level != null and maze_level._current_3_in_4 else "OBJECTIVE: [V] Move Corridor3's current into Corridor4\nso it carries you past the whirlpool."
 	var legend := main_map.get_node_or_null("MazeMapLegend") as Label
 	if legend != null:
 		var selected: String = String(selected_rotatable_set.get("name", "none nearby"))
