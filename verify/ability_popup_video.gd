@@ -14,12 +14,18 @@ func _run() -> void:
 		_failures.append("CharacterAbilityPopup autoload is missing")
 		_finish()
 		return
-	var pages: Array[Dictionary] = [{
-		"title": "Video regression probe",
-		"body": "The Grapple player must remain inside MediaFrame exactly once.",
-		"media": "grapple",
-	}]
-	popup.call("open", pages)
+	# Drive the real post-tutorial walkthrough rather than manufacturing a
+	# test-only Grapple page. That catches a missing `media: "grapple"` entry
+	# in World's production page list.
+	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	world.skip_intro_for_test = true
+	root.add_child(world)
+	await process_frame
+	await process_frame
+	world.call("_show_ability_popups")
+	for page_index in range(3):
+		popup.call("_on_next_pressed")
+		await process_frame
 	await create_timer(1.5, true).timeout
 	var frame := popup.get_node_or_null("UI/AbilityExplanationPanel/Margin/VBoxContainer/ContentRow/MediaFrame") as Control
 	var players := _video_players_in(frame)
@@ -48,6 +54,7 @@ func _run() -> void:
 	if refreshed_players.size() != 1:
 		_failures.append("Refreshing Grapple media left %d video players; expected one" % refreshed_players.size())
 	popup.call("_close")
+	world.queue_free()
 	_finish()
 
 func _video_players_in(node: Node) -> Array[VideoStreamPlayer]:

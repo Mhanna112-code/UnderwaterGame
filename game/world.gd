@@ -2717,6 +2717,7 @@ func _show_ability_popups() -> void:
 			"slot": musashi,
 			"title": musashi.musashiAbilityTitle,
 			"body": musashi.musashiGrappleBody,
+			"media": "grapple",
 		})
 	if _diver_slots.size() > 2:
 		var bucky: Slot = _diver_slots[2]
@@ -2724,6 +2725,7 @@ func _show_ability_popups() -> void:
 			"slot": bucky,
 			"title": bucky.buckyAbilityTitle,
 			"body": bucky.buckyShockwaveBody,
+			"media": "shockwave",
 		})
 	# Keep this as the final page and omit "media" so it has no clip.
 	pages.append({
