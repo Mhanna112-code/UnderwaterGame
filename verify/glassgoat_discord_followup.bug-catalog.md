@@ -54,7 +54,7 @@
 ### PREVIEW-1 and DETAILS-1 - result-first move menu
 
 - **Test type:** differential UI integration and a two-state decision table.
-- **Description:** `Move menu: Scuba Stabbing shows 1 Damage and 2 Bleed by default, with authored calculation context on demand - guards against formula pollution or lost inspectability.`
+- **Description:** `Move menu: Scuba Stabbing shows Strength Damage and resolved Bleed by default, with authored calculation context on demand - guards against formula pollution or lost inspectability.`
 - **What it catches:** raw stat-symbol hints in the default menu, hard-coded previews that fail when actor stats change, a missing contextual calculation explanation, or a second formula-menu mode that makes the active combat turn look frozen.
 - **Self-critique:** It compares two actors with different stats, so wrong-but-stable hard-coded text fails. It inspects player-visible button meaning, not helper names or node order.
 

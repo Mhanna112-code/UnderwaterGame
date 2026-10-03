@@ -3321,6 +3321,14 @@ func _scroll_move_into_view(index: int) -> void:
 # entry.
 func _move_tooltip_text(mv: Dictionary, actor: Dictionary) -> String:
 	var sections: Array[String] = []
+	var target_scope := String(mv.get("target", ""))
+	var support_effect := String(mv.get("effect", ""))
+	if support_effect == "revive":
+		sections.append("Target\nOne downed ally.")
+	elif support_effect == "heal":
+		sections.append("Target\nOne living ally.")
+	elif target_scope in ["all", "all_enemies"]:
+		sections.append("Target\nAll enemies.")
 	var deals_damage := mv.has("formula") and not (mv.get("formula", {}) as Dictionary).is_empty()
 	if deals_damage:
 		var formula: Dictionary = mv.get("formula", {})

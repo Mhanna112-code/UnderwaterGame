@@ -31,7 +31,7 @@ durations, or balance; it explains the current rules as they exist.
 - **Input:** mouse hover exposes context; default visible copy remains enough
   to select a move without hover or a formula toggle.
 - **Rule variants:** formula move versus legacy move, damaging move versus
-  status-only move, persistent Bleed versus timed status, single target versus
+  status-only move, three-turn Bleed versus another timed status, single target versus
   all target.
 - **No persistence/network/randomness:** this slice only reads combat state;
   it must not mutate stats or save data.
@@ -78,7 +78,8 @@ checks cleanup removes it.
   public test seam because it defines the multi-target preview contract.
 - **Could it miss rule drift?** It does not re-prove every `CombatRules`
   calculation; Slice 5 owns full formula reconciliation. It does catch the
-  display-to-current-rule divide most likely in this UI port: persistent Bleed.
+  display-to-current-rule divide most likely in this UI port: Bleed's current
+  three-turn expiry and non-refreshing stacked damage.
 
 ## Skipped
 

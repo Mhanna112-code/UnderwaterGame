@@ -31,7 +31,8 @@ var evasion_current: int = 5
 var stat_floor: Dictionary = {}
 
 # Status entries are {level, turns}. A turns value of 0 means persistent for
-# the battle (Bleed); positive durations tick after this combatant's turn.
+# the battle; positive durations tick after this combatant's turn. Current
+# Bleed content supplies a three-turn duration.
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
