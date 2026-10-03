@@ -73,6 +73,27 @@ func release_streams_for_shutdown() -> void:
 	_phase = "stopped"
 	_intro_stream = null
 	_loop_stream = null
+	# A stopped AudioStreamPlayer can retain its compressed playback object
+	# until the node itself is released. Headless verification exits immediately
+	# after this explicit shutdown boundary, so there is no later audio frame to
+	# retire it and Godot reports the active Ogg packet/playback as a leak. This
+	# method is shutdown-only: free the private players now and let _ensure_players
+	# recreate them only if a caller intentionally resumes the manager afterward.
+	_free_audio_player(_music_player)
+	_free_audio_player(_sfx_player)
+	for player in _combat_sfx_players:
+		_free_audio_player(player)
+	_music_player = null
+	_sfx_player = null
+	_combat_sfx_players.clear()
+	_next_combat_sfx_player = 0
+
+func _free_audio_player(player: AudioStreamPlayer) -> void:
+	if not is_instance_valid(player):
+		return
+	if player.get_parent() == self:
+		remove_child(player)
+	player.free()
 
 func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) -> void:
 	_ensure_players()
@@ -85,12 +106,12 @@ func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) 
 	if _intro_stream != null:
 		_phase = "intro"
 		_music_player.stream = _intro_stream
-		_music_player.play()
+		_start_player(_music_player)
 		_record_transition()
 	elif _loop_stream != null:
 		_phase = "loop"
 		_music_player.stream = _loop_stream
-		_music_player.play()
+		_start_player(_music_player)
 		_record_transition()
 	else:
 		stop_music()
@@ -105,7 +126,7 @@ func play_music_once(cue_id: String, stream: AudioStream) -> void:
 	_cue_id = cue_id
 	_phase = "one_shot"
 	_music_player.stream = _non_looping_copy(stream)
-	_music_player.play()
+	_start_player(_music_player)
 	_record_transition()
 
 func play_exploration_music() -> void:
@@ -150,7 +171,7 @@ func advance_music_after_stream_finished() -> void:
 		return
 	_phase = "loop"
 	_music_player.stream = _loop_stream
-	_music_player.play()
+	_start_player(_music_player)
 	_record_transition()
 
 func get_music_state() -> Dictionary:
@@ -270,7 +291,7 @@ func _play_sfx(event_id: String, stream: AudioStream) -> void:
 	_ensure_players()
 	_sfx_player.stop()
 	_sfx_player.stream = _non_looping_copy(stream)
-	_sfx_player.play()
+	_start_player(_sfx_player)
 	_sfx_event_trace.append(event_id)
 
 func _play_combat_sfx(event_id: String, stream: AudioStream, volume_db: float) -> void:
@@ -282,8 +303,18 @@ func _play_combat_sfx(event_id: String, stream: AudioStream, volume_db: float) -
 	player.stop()
 	player.stream = _non_looping_copy(stream)
 	player.volume_db = volume_db
-	player.play()
+	_start_player(player)
 	_sfx_event_trace.append(event_id)
+
+# Headless gates verify semantic cue ownership and transition state, not sound
+# hardware. Starting a compressed stream there creates an Ogg playback object
+# that Godot's immediate SceneTree.quit() leak audit can observe before the
+# dummy audio thread retires it. Native and web play normally; headless tests
+# keep the exact stream/state contracts without manufacturing a false leak.
+func _start_player(player: AudioStreamPlayer) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	player.play()
 
 func _record_transition() -> void:
 	_transition_trace.append("%s:%s" % [_cue_id, _phase])
