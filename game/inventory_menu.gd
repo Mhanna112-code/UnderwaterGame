@@ -1,4 +1,4 @@
-# The Escape-key pause menu - three tabs. "Items" (potions and anything else
+# The Escape-key pause menu - four tabs. "Items" (potions and anything else
 # Items.ITEMS defines as a consumable) applies straight to whoever you're
 # currently steering, same as before. "Party Spells" is any known move/
 # spell tagged "inventory": true (see battle.gd's BASE_MOVES/spell_tree.gd's
@@ -22,11 +22,13 @@
 #
 # Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
 # SavePointMenu - nothing here is scene-file based, on purpose,
-# matching the rest of this project.
+# matching the rest of this project. "Audio" is the player-facing surface for
+# the global Music/SFX bus levels and mute state owned by GameAudio.
 class_name InventoryMenu
 extends Control
 
 var world: World
+var audio_manager: Node
 
 # "items" | "spells_root" | "spells_target" - spells_root lists every
 # living diver's inventory-tagged spells (one button per caster+spell
@@ -43,6 +45,7 @@ var _list: VBoxContainer
 var _items_tab: Button
 var _spells_tab: Button
 var _help_tab: Button
+var _audio_tab: Button
 
 func _ready() -> void:
 	visible = false
@@ -90,6 +93,12 @@ func _ready() -> void:
 	_help_tab.toggle_mode = true
 	_help_tab.pressed.connect(_switch_to.bind("help"))
 	tabs.add_child(_help_tab)
+	_audio_tab = Button.new()
+	_audio_tab.name = "AudioTab"
+	_audio_tab.text = "Audio"
+	_audio_tab.toggle_mode = true
+	_audio_tab.pressed.connect(_switch_to.bind("audio"))
+	tabs.add_child(_audio_tab)
 
 	_hint = Label.new()
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -139,6 +148,7 @@ func _switch_to(mode: String) -> void:
 	_items_tab.button_pressed = mode == "items"
 	_spells_tab.button_pressed = mode in ["spells_root", "spells_target"]
 	_help_tab.button_pressed = mode == "help"
+	_audio_tab.button_pressed = mode == "audio"
 	refresh()
 
 func refresh() -> void:
@@ -153,6 +163,105 @@ func refresh() -> void:
 			_refresh_spells_target()
 		"help":
 			_refresh_help()
+		"audio":
+			_refresh_audio()
+
+func _refresh_audio() -> void:
+	_hint.text = "Set music and sound effect levels. Changes are saved automatically."
+	var audio := _audio_owner()
+	if audio == null:
+		var unavailable := Label.new()
+		unavailable.text = "Audio settings are unavailable."
+		unavailable.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
+		_list.add_child(unavailable)
+		return
+	var settings: Dictionary = audio.call("get_audio_settings")
+	_add_audio_channel(
+		"Music",
+		"MusicVolumeSlider",
+		"MusicMuteToggle",
+		float(settings.get("music_volume", 1.0)),
+		bool(settings.get("music_muted", false)),
+		"music"
+	)
+	_add_audio_channel(
+		"Sound effects",
+		"SFXVolumeSlider",
+		"SFXMuteToggle",
+		float(settings.get("sfx_volume", 1.0)),
+		bool(settings.get("sfx_muted", false)),
+		"sfx"
+	)
+
+func _add_audio_channel(
+	label_text: String,
+	slider_name: String,
+	mute_name: String,
+	volume: float,
+	muted: bool,
+	channel: String
+) -> void:
+	var heading := Label.new()
+	heading.text = label_text
+	heading.add_theme_font_size_override("font_size", 18)
+	heading.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	_list.add_child(heading)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_list.add_child(row)
+	var slider := HSlider.new()
+	slider.name = slider_name
+	slider.min_value = 0.0
+	slider.max_value = 100.0
+	slider.step = 1.0
+	slider.value = clampf(volume, 0.0, 1.0) * 100.0
+	slider.custom_minimum_size = Vector2(340.0, 36.0)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.tooltip_text = "%s level" % label_text
+	row.add_child(slider)
+	var value_label := Label.new()
+	value_label.name = "%sValue" % slider_name
+	value_label.text = "%d%%" % int(round(slider.value))
+	value_label.custom_minimum_size = Vector2(56.0, 36.0)
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(value_label)
+	slider.value_changed.connect(_on_audio_volume_changed.bind(channel, value_label))
+
+	var mute := CheckButton.new()
+	mute.name = mute_name
+	mute.text = "Mute %s" % label_text.to_lower()
+	mute.button_pressed = muted
+	mute.custom_minimum_size = Vector2(180.0, 40.0)
+	mute.toggled.connect(_on_audio_mute_toggled.bind(channel))
+	_list.add_child(mute)
+
+func _on_audio_volume_changed(value: float, channel: String, value_label: Label) -> void:
+	value_label.text = "%d%%" % int(round(value))
+	var audio := _audio_owner()
+	if audio == null:
+		return
+	if channel == "music":
+		audio.call("set_music_volume", value / 100.0)
+	else:
+		audio.call("set_sfx_volume", value / 100.0)
+	audio.call("save_audio_settings")
+
+func _on_audio_mute_toggled(muted: bool, channel: String) -> void:
+	var audio := _audio_owner()
+	if audio == null:
+		return
+	if channel == "music":
+		audio.call("set_music_muted", muted)
+	else:
+		audio.call("set_sfx_muted", muted)
+	audio.call("save_audio_settings")
+
+func _audio_owner() -> Node:
+	if is_instance_valid(audio_manager):
+		return audio_manager
+	return get_node_or_null("/root/GameAudio")
 
 func _refresh_items() -> void:
 	_hint.text = "Using an item applies it to whoever you're currently steering."
