@@ -143,3 +143,46 @@ const FRILLED_SHARK := [
 
 static func frilled_shark_catalogue() -> Array:
 	return FRILLED_SHARK.duplicate(true)
+
+# Bomb Bot is the first authored laboratory-access blocker. Glassgoat supplied
+# the three animation takes but no numerical move sheet, so this is deliberately
+# a small, testable first-pass kit rather than invented final balance:
+#
+# - Lightning Blast is the readable party-pressure move.
+# - Sling Punch rewards its armoured body with one focused heavy hit.
+# - Sonic Bump is the control move, trading lower damage for a short Blindness
+#   debuff which immediately lowers Accuracy, Agility and Defense.
+#
+# The FBX itself misspells Lightning as `LightingBlast`; keep the typo only in
+# the importer-facing `clip` field while the player-facing move remains correct.
+# Weighting favours the single-target moves so the all-party blast is pressure,
+# not the dominant answer every round. The route balance and human playtest
+# gates own the final numbers.
+const BOMB_BOT := [
+	{
+		"id": "lightning_blast", "name": "Lightning Blast", "clip": "lightingblast",
+		"enabled": true, "target": "all", "roll_order": 0, "weight": 0.25,
+		"finisher_weight": 0.15, "verb": "electrifies",
+		"combat": {"formula": {"strength": 1}, "acc_mod": 1},
+	},
+	{
+		"id": "sling_punch", "name": "Sling Punch", "clip": "slingpunch",
+		"enabled": true, "target": "single", "roll_order": 1, "weight": 0.45,
+		"finisher_weight": 0.60, "verb": "slams",
+		"combat": {"formula": {"strength": 1, "defense": 1}, "acc_mod": 0},
+	},
+	{
+		"id": "sonic_bump", "name": "Sonic Bump", "clip": "sonic_bump",
+		"enabled": true, "target": "single", "roll_order": 2, "weight": 0.30,
+		"finisher_weight": 0.25, "verb": "disorients",
+		"combat": {
+			"formula": {"strength": 1}, "acc_mod": 1,
+			"effects": [
+				{"kind": "status", "status": "blindness", "level": {"flat": 1}, "duration": {"flat": 1}},
+			],
+		},
+	},
+]
+
+static func bomb_bot_catalogue() -> Array:
+	return BOMB_BOT.duplicate(true)

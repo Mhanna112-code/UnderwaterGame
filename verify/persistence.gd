@@ -66,7 +66,7 @@ func _test_pending_drop_round_trip(world: World) -> void:
 		findings.append("PENDING SETUP: breaking rock_0 did not create exactly one orb")
 		return
 	var item_id := pending.item_id
-	world._on_save_requested(world.divers[0])
+	world._on_save_requested(world.divers[0], TEST_SLOT)
 	world._on_game_over_restart()
 	for _i in range(4):
 		await process_frame
@@ -83,7 +83,7 @@ func _test_pending_drop_round_trip(world: World) -> void:
 
 	loaded_orb._on_body_entered(loaded.divers[0])
 	await process_frame
-	loaded._on_save_requested(loaded.divers[0])
+	loaded._on_save_requested(loaded.divers[0], TEST_SLOT)
 	loaded._on_game_over_restart()
 	for _i in range(4):
 		await process_frame

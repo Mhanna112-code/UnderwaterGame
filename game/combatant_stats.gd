@@ -31,7 +31,8 @@ var evasion_current: int = 5
 var stat_floor: Dictionary = {}
 
 # Status entries are {level, turns}. A turns value of 0 means persistent for
-# the battle (Bleed); positive durations tick after this combatant's turn.
+# the battle; positive durations tick after this combatant's turn. Current
+# Bleed content supplies a three-turn duration.
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
@@ -99,7 +100,7 @@ func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 
 func effective_evasion() -> int:
-	return maxi(0, evasion + int(temporary_modifiers.evasion))
+	return maxi(0, evasion - status_level("evasion_down") + int(temporary_modifiers.evasion))
 
 func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
@@ -147,6 +148,24 @@ func reduce_evasion(amount: int) -> int:
 	evasion = maxi(0, evasion - maxi(0, amount))
 	evasion_current = mini(evasion_current, effective_evasion())
 	return before - evasion
+
+func reduce_defense(amount: int) -> int:
+	var before := defense
+	defense = maxi(0, defense - maxi(0, amount))
+	return before - defense
+
+func is_stunned() -> bool:
+	return status_level("stun") > 0 and status_turns("stun") > 0
+
+func consume_status_turn(status: String) -> void:
+	if not statuses.has(status):
+		return
+	var entry := statuses[status] as Dictionary
+	var turns := int(entry.get("turns", 0))
+	if turns <= 1:
+		statuses.erase(status)
+	else:
+		entry.turns = turns - 1
 
 func add_temporary_modifier(stat: String, amount: int) -> void:
 	if not temporary_modifiers.has(stat):

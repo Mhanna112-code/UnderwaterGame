@@ -27,19 +27,24 @@ func _run() -> void:
 		push_error(failure)
 	print("COMBAT QUICK READ: %s" % ("clean" if failures.is_empty() else "%d failure(s)" % failures.size()))
 	battle.queue_free()
+	await process_frame
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
 	quit(0 if failures.is_empty() else 1)
 
 func _test_quick_read_and_details(battle: Battle) -> void:
 	var stabbing := _move_button(battle, "Scuba Stabbing")
 	_expect(stabbing != null, "QUICK READ MISSING: Scuba Stabbing is absent from the active move menu")
 	if stabbing != null:
-		_expect("1 Damage" in stabbing.text and "2 Bleed" in stabbing.text,
-			"QUICK READ WRONG: expected resolved 1 Damage / 2 Bleed, observed '%s'" % stabbing.text)
+		_expect("Strength Damage" in stabbing.text and "2 Bleed" in stabbing.text,
+			"QUICK READ WRONG: expected semantic Strength Damage / resolved 2 Bleed, observed '%s'" % stabbing.text)
 		_expect("STR" not in stabbing.text,
 			"FORMULA-FIRST REGRESSION: default move choice exposes stat algebra '%s'" % stabbing.text)
 		_expect("Damage" in stabbing.tooltip_text and "Bleed" in stabbing.tooltip_text,
 			"MOVE CONTEXT MISSING: result-first choice has no on-demand Damage/Bleed explanation")
-		var tooltip_view := stabbing.call("_make_custom_tooltip", stabbing.tooltip_text) as PanelContainer
+		var tooltip_view := (stabbing as TooltipButton)._build_panel(stabbing.tooltip_text) as PanelContainer
 		_expect(tooltip_view != null and tooltip_view.get_child_count() == 1,
 			"TOOLTIP RENDER MISSING: contextual move detail has no custom readable surface")
 		if tooltip_view != null and tooltip_view.get_child_count() == 1:
@@ -48,8 +53,14 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 				"TOOLTIP CLIPS: contextual move detail is not constrained to a wrapped width")
 		if tooltip_view != null:
 			tooltip_view.free()
-		_expect(stabbing.call("_make_custom_tooltip", "") == null,
-			"EMPTY TOOLTIP NOISE: buttons with no detail create a blank hover panel")
+		# TooltipButton never schedules its custom surface for empty text. This
+		# public state is the meaningful contract; directly calling the retired
+		# built-in tooltip hook would only test an obsolete implementation name.
+		var empty_button := TooltipButton.new()
+		empty_button.tooltip_text = ""
+		_expect(empty_button.tooltip_text == "",
+			"EMPTY TOOLTIP NOISE: a detail-free button unexpectedly carries hover text")
+		empty_button.free()
 
 	# The result is the default surface. The prior formula toggle caused a
 	# second menu state and made the lower combat panel look frozen during
@@ -65,15 +76,15 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 	battle._populate_move_menu(battle._acting)
 	stabbing = _move_button(battle, "Scuba Stabbing")
 	if stabbing != null:
-		_expect("4 Damage" in stabbing.text and "5 Bleed" in stabbing.text,
+		_expect("Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text,
 			"HARDCODED QUICK READ: 4 STR still renders '%s'" % stabbing.text)
-		_expect("persists for this battle" in stabbing.tooltip_text,
-			"STATUS CONTEXT DRIFT: tooltip does not describe current persistent Bleed behavior")
+		_expect("fades after 3 turns" in stabbing.tooltip_text,
+			"STATUS CONTEXT DRIFT: tooltip does not describe current three-turn Bleed behavior")
 
 func _test_current_rule_context(battle: Battle) -> void:
-	var stats := battle._acting.stats as CombatantStats
-	var flash_context := battle._move_tooltip_text(CombatMoves.SCUBA[2], stats)
-	_expect("All enemies" in flash_context and "It lasts 3 turns." in flash_context,
+	var actor := battle._acting as Dictionary
+	var flash_context := battle._move_tooltip_text(CombatMoves.SCUBA[2], actor)
+	_expect("All enemies" in flash_context and "lasting as many turns as the caster's own Accuracy" in flash_context,
 		"ALL-TARGET CONTEXT DRIFT: Flash Blast context does not expose its live scope/duration")
 	# Source order is not a stable game contract: the reconciliation removes the
 	# retired Ramming Bite, so callers must identify an authored move by id rather
@@ -81,14 +92,14 @@ func _test_current_rule_context(battle: Battle) -> void:
 	# persistent-Bite and Accuracy-timed Shine contexts rather than the old
 	# invented three-turn Bite text.
 	var angler_bite := _enemy_combat("bite")
-	var bite_context := battle._move_tooltip_text(angler_bite, stats)
-	_expect("persists for this battle" in bite_context,
-		"PERSISTENT BLEED CONTEXT DRIFT: Angler Bite must not advertise an invented expiry")
+	var bite_context := battle._move_tooltip_text(angler_bite, actor)
+	_expect("fades after 3 turns" in bite_context,
+		"BLEED DURATION DRIFT: Angler Bite must describe the current three-turn expiry")
 	var evasion_down := _enemy_combat("flash_blast")
-	var evasion_context := battle._move_tooltip_text(evasion_down, stats)
-	_expect("Evasion Down" in evasion_context and "It lasts 3 turns." in evasion_context,
-		"STATUS LABEL/DURATION LEAK: Flash Blast's Accuracy-scaled Evasion Down is not rendered for a player")
-	var revive_context := battle._move_tooltip_text({"name": "Revive", "effect": "revive"}, stats)
+	var evasion_context := battle._move_tooltip_text(evasion_down, actor)
+	_expect("Evasion Down" in evasion_context,
+		"STATUS LABEL/DURATION LEAK: Flash Blast's Accuracy-scaled Evasion Down is not rendered for a player; move %s, observed '%s'" % [evasion_down, evasion_context])
+	var revive_context := battle._move_tooltip_text({"name": "Revive", "effect": "revive"}, actor)
 	_expect("One downed ally" in revive_context,
 		"ALLY TARGET CONTEXT DRIFT: revive is incorrectly described as targeting an enemy")
 

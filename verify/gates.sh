@@ -8,6 +8,13 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 GODOT="${GODOT:-godot}"
+GATE_TIMEOUT_SECONDS="${GATE_TIMEOUT_SECONDS:-120}"
+TIMEOUT_BIN=""
+if command -v gtimeout >/dev/null 2>&1; then
+	TIMEOUT_BIN="$(command -v gtimeout)"
+elif command -v timeout >/dev/null 2>&1; then
+	TIMEOUT_BIN="$(command -v timeout)"
+fi
 # A review/export gate must be able to exercise the *exact* source export
 # before generated docs/ is refreshed. CI and final release can use docs/;
 # focused slices pass an isolated export directory through WEB_DIR instead.
@@ -27,12 +34,38 @@ run() {
 	shift
 	local gate_log
 	gate_log="$(mktemp "${TMPDIR:-/tmp}/underwater-gate.XXXXXX")"
-	"$@" 2>&1 | tee "$gate_log"
-	local command_status=${PIPESTATUS[0]}
+	if [ -n "$TIMEOUT_BIN" ] && [ "$(type -t "$1")" != "function" ]; then
+		"$TIMEOUT_BIN" "$GATE_TIMEOUT_SECONDS" "$@" >"$gate_log" 2>&1 &
+		local command_pid=$!
+		local stopped_on_script_error=0
+		while kill -0 "$command_pid" 2>/dev/null; do
+			if grep -q "SCRIPT ERROR:" "$gate_log"; then
+				# A SceneTree verifier can throw before reaching quit(), leaving
+				# Godot alive forever. Stop immediately instead of waiting out the
+				# full timeout; the captured error is already the useful evidence.
+				kill "$command_pid" 2>/dev/null || true
+				stopped_on_script_error=1
+				break
+			fi
+			sleep 0.2
+		done
+		wait "$command_pid" 2>/dev/null
+		local command_status=$?
+		if [ "$stopped_on_script_error" -eq 1 ]; then
+			command_status=1
+		fi
+	else
+		"$@" >"$gate_log" 2>&1
+		local command_status=$?
+	fi
+	cat "$gate_log"
 	local script_error=0
 	if grep -q "SCRIPT ERROR:" "$gate_log"; then
 		echo "GATE ERROR: Godot reported a script error even though the command may have exited successfully"
 		script_error=1
+	fi
+	if [ "$command_status" -eq 124 ]; then
+		echo "GATE ERROR: exceeded ${GATE_TIMEOUT_SECONDS}s timeout"
 	fi
 	rm -f "$gate_log"
 	if [ "$command_status" -eq 0 ] && [ "$script_error" -eq 0 ]; then
@@ -71,6 +104,15 @@ run "Glassgoat follow-up: do roster and result-first presentation match Discord"
 run "combat Quick Read: do result choices, context, and all-target previews agree" "$GODOT" --headless --path . --script verify/combat_quick_read.gd
 run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
+run "deep-zone assets: do selected FBXs import with visible geometry and authored clips" "$GODOT" --headless --path . --script verify/deep_zone_assets.gd
+run "lab door asset: is Glassgoat's separated door the exact visible entrance source" "$GODOT" --headless --path . --script verify/lab_door_asset.gd
+run "lab exterior: does the rock shell conceal the office while preserving the entrance" "$GODOT" --headless --path . --script verify/lab_exterior.gd
+run "deep-zone environment: are approved scenery sources visibly and safely placed" "$GODOT" --headless --path . --script verify/deep_zone_environment.gd
+run "deep-zone blockers: do authored blocker actors use their real models, moves, and clips" "$GODOT" --headless --path . --script verify/deep_zone_blockers.gd
+run "deep-zone blocker balance: are both mandatory fights approachable and meaningfully tactical" "$GODOT" --headless --path . --script verify/deep_zone_blocker_balance.gd
+run "audio assets: do canonical Phoenix tracks import with reviewed duration and digest" "$GODOT" --headless --path . --script verify/audio_assets.gd
+run "combat SFX assets: do reviewed derivatives import without raw reels" "$GODOT" --headless --path . --script verify/combat_sfx_assets.gd
+run "combat SFX playback: do production combat results trigger overlap-safe audible feedback" "$GODOT" --headless --path . --script verify/combat_sfx_playback.gd
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd
 run "balance: do casual and skilled policies clear the artifact route" "$GODOT" --headless --path . --script verify/balance.gd
@@ -80,26 +122,41 @@ run "encounters: does a fight start from anywhere"     "$GODOT" --headless --pat
 run "guardian zones: does the artifact encounter stay distinct" "$GODOT" --headless --path . --script verify/guardian_encounter_exclusion.gd
 run "guardian/item integration: do claimed sites stay retired after save/load" "$GODOT" --headless --path . --script verify/guardian_item_integration.gd
 run "intro beam: does entering its visible column start tutorial combat" "$GODOT" --headless --path . --script verify/intro_sequence.gd
+run "open water: can a diver pass beside the visible entrance rocks" "$GODOT" --headless --path . --script verify/open_water_blockade.gd
+run "legacy guidance: does the plate puzzle avoid competing with RouteState" "$GODOT" --headless --path . --script verify/legacy_highway_route_separation.gd
 run "tutorial QTE: does the first Angler swing show and accept the timing dodge" "$GODOT" --headless --path . --script verify/tutorial_qte.gd
 run "tutorial exit: does a completed lesson win and return to world" "$GODOT" --headless --path . --script verify/tutorial_exit.gd
 run "tutorial continue: can mouse users advance a live caption" "$GODOT" --headless --path . --script verify/tutorial_continue_button.gd
+run "input aliases: do Swap and narration accept additive controls without losing old keys" "$GODOT" --headless --path . --script verify/input_aliases.gd
 run "tutorial onboarding: does combat hand off world controls safely" "$GODOT" --headless --path . --script verify/tutorial_ability_onboarding.gd
 run "tutorial onboarding review route: can a reviewer inspect its actual UI" "$GODOT" --headless --path . --script verify/tutorial_onboarding_review_route.gd
 run "tutorial loss: can a player retry or safely exit to world" "$GODOT" --headless --path . --script verify/tutorial_loss_choice.gd
 run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --headless --path . --script verify/tutorial_skip.gd
 run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
+run "route state: does authored progression round-trip through its public contract" "$GODOT" --headless --path . --script verify/route_state.gd
+run "deep-zone route: is the expanded dark route physically supported and state-driven" "$GODOT" --headless --path . --script verify/deep_zone_route.gd
+run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip" "$GODOT" --headless --path . --script verify/lab_tethys_route.gd
+run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
+run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
+run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
+run "audio settings UI: can players independently persist music and SFX volume/mute" "$GODOT" --headless --path . --script verify/audio_settings_ui.gd
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
 run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd
+run "world grapple aim: is the first-person target unobstructed and safely restored" "$GODOT" --headless --path . --script verify/world_grapple_aim.gd
+run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze traversal: can the player cross the opened CSGBox3D6/7 passage" "$GODOT" --headless --path . --script verify/maze_traversal.gd
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze review route: does the direct playtest link enter MazeLevel cleanly" "$GODOT" --headless --path . --script verify/maze_review_route.gd -- --maze-playtest
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
+run "title audio: do Hover, Click, and Start Game match their exact menu interactions" "$GODOT" --headless --path . --script verify/title_audio.gd
+run "Octopus intake: is the deferred visible candidate structurally characterized" "$GODOT" --headless --path . --script verify/octopus_asset_intake.gd
+run "Octopus cutscene intake: is the deferred browser media candidate validated" "$GODOT" --headless --path . --script verify/octopus_cutscene_asset.gd
 run "ability popup video: are tutorial clips playing and contained" "$GODOT" --headless --path . --script verify/ability_popup_video.gd
 run "tutorial camera handoff: does the post-fight modal release mouse look" "$GODOT" --headless --path . --script verify/tutorial_camera_handoff.gd
 run "merge readiness: is defeat exclusive and identity consistent" "$GODOT" --headless --path . --script verify/pr54_merge_readiness.gd
@@ -110,9 +167,16 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
+	run "stage framing narrow: does responsive combat remain visible at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/stage_framing.gd
+	run "tutorial status layout wide: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_status_layout.gd
+	run "tutorial status layout narrow: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_status_layout.gd
+	run "Frilled Shark framing wide: do real mesh bounds clear the party" "$GODOT" --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
+	run "Frilled Shark framing narrow: does the long rig remain readable" "$GODOT" --path . --resolution 720x480 --script verify/frilled_shark_framing.gd
+	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd
+	run "lab composition narrow: is the Tethys arena still readable at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/lab_battle_composition.gd
 else
 	echo
-	echo "=== stage framing: skipped, needs a display ==="
+	echo "=== stage framing and lab composition: skipped, need a display ==="
 fi
 
 run "goblin: does the grunt load and size correctly"  "$GODOT" --headless --path . --script tools/test_goblin.gd
@@ -138,6 +202,7 @@ elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	skips=$((skips + 1))
 else
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
+	run "audio webcheck: does a trusted New Game click unlock browser audio" node verify/audio_webcheck.mjs "$WEB_DIR" /tmp/gate-audio.png
 	run "maze navigation webcheck: does ?maze=1 visibly update after H" node verify/maze_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-map-closed.png /tmp/gate-maze-map-open.png
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png

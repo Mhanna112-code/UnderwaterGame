@@ -57,6 +57,10 @@ var skip_intro_for_test := false
 # siblings above - never a persisted save value, so there is no way for a
 # real player to end up with it on by accident.
 var skip_tutorial_for_test := false
+# Focused route gates do not need to wait through Tethys's full authored swim
+# entrance before asserting World's handoff/result ownership. Production and
+# browser play keep the entrance enabled.
+var skip_boss_intro_for_test := false
 
 func _tutorial_skip_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--skip-tutorial"):
@@ -72,6 +76,8 @@ func _tutorial_skip_requested() -> bool:
 # freezes the dive while game/battle.gd runs it.
 var banner: Label
 var _banner_timer := 0.0
+var route_objective_panel: PanelContainer
+var route_objective_label: Label
 var battling := false
 var battle: Battle
 var yaw := 0.0
@@ -95,7 +101,7 @@ var _t := 0.0
 var aiming := false
 
 # Swap goes through TargetSelector instead of first-person aim: cycle
-# between allies with Left/Right, Enter confirms, Escape cancels. See
+# between allies with A/D or Left/Right, Space/Enter confirms, Escape cancels. See
 # target_selector.gd for the selection logic and _start_ability()/
 # _unhandled_input() below for how E and the arrow keys route into it.
 var target_selector: TargetSelector
@@ -117,6 +123,9 @@ var _save_point_tutorial_seen := false
 var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
+const DeepZoneLayoutScript := preload("res://content/deep_zone_layout.gd")
+const DeepZoneEnvironmentScript := preload("res://game/deep_zone_environment.gd")
+const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
 
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
@@ -243,6 +252,30 @@ var _special_playtest_active := false
 # same real file, and it all survives closing the game entirely.
 var _current_slot := -1
 
+# One public source of truth for authored progression beyond the existing
+# free-roam/tutorial state. RouteState owns JSON-safe data and its objective
+# signal; World only includes it in the same atomic checkpoint dictionary as
+# party, inventory, and mutable geometry.
+var route_state := RouteState.new()
+var deep_zone_layout := DeepZoneLayoutScript.new()
+var deep_zone_environment: DeepZoneEnvironment
+var _lab_video_cutscene: LabVideoCutscene
+const LAB_TRIGGER_RADIUS := 4.0
+const MAZE_TRANSITION_RADIUS := 5.0
+var _maze_transition_started := false
+
+# One-time authored blocker trigger ownership. `_inside_route_blocker_id` is a
+# re-entry latch: fleeing or losing while still inside the volume must not drop
+# the player straight back into the same battle on the next physics frame.
+const ROUTE_BLOCKER_TRIGGER_RADIUS := 4.0
+const ROUTE_BLOCKER_EXIT_RADIUS := 6.0
+const ROUTE_BLOCKER_TRIGGER_HALF_WIDTH := 10.0
+const ROUTE_BLOCKER_EXIT_HALF_WIDTH := 11.5
+var _active_route_blocker_id := ""
+var _inside_route_blocker_id := ""
+var _route_blocker_world_actors: Dictionary = {}
+var _route_blocker_gates: Dictionary = {}
+
 # Scene reload is the only honest way to roll mutable geometry back to a
 # checkpoint: _load_save() can remove objects a save says are consumed, but
 # it cannot recreate a CrackedWall already queue_free()'d after that save.
@@ -280,6 +313,7 @@ func _serialize_state() -> Dictionary:
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
 		"save_point_tutorial_seen": _save_point_tutorial_seen,
+		"route_state": route_state.to_save_data(),
 		"divers": divers_data,
 	}
 
@@ -337,6 +371,10 @@ func _load_save() -> void:
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
+	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
+	_normalize_loaded_route_state()
+	_sync_deep_zone_blocker_staging()
+	_sync_lab_staging()
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -359,17 +397,40 @@ func _load_save() -> void:
 	_update_hp_bar()
 	_update_oxygen_bar()
 
+func _normalize_loaded_route_state() -> void:
+	# A movie decoder or live Battle is not a serializable checkpoint. Older or
+	# interrupted saves that captured either transient state return to the safe
+	# laboratory entrance and can replay the authored handoff exactly once.
+	if route_state.lab_state in ["cutscene", "boss"] or route_state.tethys_state == "in_progress":
+		route_state.set_lab_state("available")
+		route_state.set_tethys_state("available")
+		route_state.set_objective("enter_lab")
+		route_state.set_encounter_source("random")
+	# The current maze is a separate deep-zone branch, not a reward for beating
+	# Tethys. Migrate older deep-zone saves that captured the former lab-gated
+	# `locked` state so they cannot remain permanently unable to use the branch.
+	if route_state.zone_id == "deep" and route_state.maze_door_state == "locked":
+		route_state.set_maze_door_state("available")
+
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
 # updates) just stops, and TitleScreen/GameOverScreen (both explicitly
 # ALWAYS, see their own _ready()) are the only things still receiving
 # input. Mirrors the pause Battle already puts the world into during a
 # fight, just triggered by a menu screen instead of battle.gd.
+func _audio_call(method: StringName) -> void:
+	var owner := get_node_or_null("/root/GameAudio")
+	if owner != null:
+		owner.call(method)
+
 func _show_title_screen() -> void:
 	# The title owns the entire cold-launch surface. Keeping it on a separate
 	# layer lets the world HUD disappear as one unit instead of maintaining a
 	# growing list of labels/bars/minimap nodes to hide individually.
 	$HUD.visible = false
+	# Cold title must remain silent until a trusted browser gesture. Any return
+	# from gameplay also retires the prior world/battle/result cue here.
+	_audio_call(&"stop_music")
 	get_tree().paused = true
 	title_screen.open()
 
@@ -390,6 +451,7 @@ func _on_title_new_game(slot: int) -> void:
 		await intro_crawl.finished
 	$HUD.visible = true
 	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
 	# Covers the plain --skip-tutorial/?skip_tutorial=1 route: skip_tutorial_
 	# for_test was already true before _ready() ever rendered the light beam
 	# (see the block right after _build_diver_slots()), so a player clicking
@@ -433,6 +495,7 @@ func _on_title_load_game(slot: int) -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -465,6 +528,7 @@ func _on_title_spell_playtest() -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
 	for item_id in Items.ITEMS:
 		if Items.is_key_item(String(item_id)) and not key_items.has(item_id):
 			key_items.append(item_id)
@@ -511,12 +575,21 @@ func _spell_playtest_requested() -> bool:
 		return String(search).contains("spell_playtest=1")
 	return false
 
+func _maze_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--maze-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("maze=1")
+	return false
+
 func _show_game_over() -> void:
 	# Defeat owns the whole screen just like cold launch. The controls, active
 	# diver label, bars, minimap and any announcement describe a playable world
 	# and become misleading noise once that world has been paused.
 	$HUD.visible = false
 	title_screen.close()
+	_audio_call(&"play_game_over_music")
 	get_tree().paused = true
 	game_over_screen.open()
 
@@ -644,6 +717,9 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
+	_build_route_objective_hud()
+	route_state.objective_changed.connect(_on_route_objective_changed)
+	_on_route_objective_changed(route_state.objective_id)
 
 	minimap = MiniMap.new()
 	minimap.world = self
@@ -654,6 +730,10 @@ func _ready() -> void:
 	minimap.offset_bottom = 166.0
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(minimap)
+	_layout_world_hud_for_size(get_viewport().get_visible_rect().size)
+	get_viewport().size_changed.connect(func() -> void:
+		_layout_world_hud_for_size(get_viewport().get_visible_rect().size)
+	)
 	_build_wall_sight_area()
 
 	save_point_menu = SavePointMenu.new()
@@ -774,12 +854,16 @@ func _ready() -> void:
 		_announce("You wake back at your last save.")
 	else:
 		_show_title_screen()
+	if _maze_playtest_requested():
+		call_deferred("_enter_maze_scene", true)
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
 func _build_site() -> void:
 	var floor_body := StaticBody3D.new()
+	floor_body.name = "ShallowsFloorBody"
 	var floor_mesh := MeshInstance3D.new()
+	floor_mesh.name = "ShallowsFloor"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(120, 120)
 	floor_mesh.mesh = plane
@@ -795,6 +879,46 @@ func _build_site() -> void:
 	fs.position.y = -0.2
 	floor_body.add_child(fs)
 	add_child(floor_body)
+
+	# The authored route continues east beyond the former x=62 collision rail.
+	# Keep this as its own darker surface so the boundary is visible rather
+	# than merely changing a zone id while the world looks identical.
+	var deep_body := StaticBody3D.new()
+	deep_body.name = "DeepZoneFloorBody"
+	var deep_mesh := MeshInstance3D.new()
+	deep_mesh.name = "DeepZoneFloor"
+	var deep_plane := PlaneMesh.new()
+	deep_plane.size = Vector2(
+		DeepZoneLayoutScript.WORLD_MAX_X - DeepZoneLayoutScript.DEEP_START_X,
+		DeepZoneLayoutScript.WORLD_HALF_Z * 2.0
+	)
+	deep_mesh.mesh = deep_plane
+	var deep_material := StandardMaterial3D.new()
+	deep_material.albedo_color = Color(0.025, 0.06, 0.09)
+	deep_material.roughness = 1.0
+	deep_mesh.material_override = deep_material
+	deep_body.position = Vector3(
+		(DeepZoneLayoutScript.DEEP_START_X + DeepZoneLayoutScript.WORLD_MAX_X) * 0.5,
+		0.0,
+		0.0
+	)
+	deep_body.add_child(deep_mesh)
+	var deep_shape := CollisionShape3D.new()
+	var deep_box := BoxShape3D.new()
+	deep_box.size = Vector3(
+		DeepZoneLayoutScript.WORLD_MAX_X - DeepZoneLayoutScript.DEEP_START_X,
+		0.4,
+		DeepZoneLayoutScript.WORLD_HALF_Z * 2.0
+	)
+	deep_shape.shape = deep_box
+	deep_shape.position.y = -0.2
+	deep_body.add_child(deep_shape)
+	add_child(deep_body)
+
+	deep_zone_environment = DeepZoneEnvironmentScript.new()
+	deep_zone_environment.name = "DeepZoneEnvironment"
+	add_child(deep_zone_environment)
+	_build_deep_zone_blocker_staging()
 
 	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
 	# was taking most of a minute to show its first frame and every node set up
@@ -834,25 +958,21 @@ func _build_site() -> void:
 	_build_boundary_walls()
 	_build_item_grapple_anchors()
 
-# Keep the playable space inside the visible 120-by-120 seafloor. These are
-# collision-only safety rails and intentionally do not appear on the minimap.
+# Keep the playable space inside the visible seafloor perimeter. These outer
+# safety rails intentionally do not appear on the minimap; unlike a ceiling,
+# they align with the readable end of the authored world rather than cutting
+# through ordinary open water.
 func _build_boundary_walls() -> void:
-	const BOUND := 60.0
 	const WALL_HEIGHT := 80.0
 	const WALL_Y := 30.0
 	const THICKNESS := 4.0
-	const SPAN := BOUND * 2.0 + THICKNESS * 2.0
-	_build_invisible_wall(Vector3(0.0, WALL_Y, BOUND + THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
-	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
-	# Collision-only roof; its underside is exactly four blockade-heights
-	# above the floor. Airborne reward rocks at 3x height stay reachable.
-	const CEILING_THICKNESS := 2.0
-	_build_invisible_wall(
-		Vector3(0.0, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
-		Vector3(BOUND * 2.0, CEILING_THICKNESS, BOUND * 2.0)
-	)
+	var span_x := DeepZoneLayoutScript.WORLD_MAX_X - DeepZoneLayoutScript.WORLD_MIN_X
+	var center_x := (DeepZoneLayoutScript.WORLD_MIN_X + DeepZoneLayoutScript.WORLD_MAX_X) * 0.5
+	var span_z := DeepZoneLayoutScript.WORLD_HALF_Z * 2.0
+	_build_invisible_wall(Vector3(center_x, WALL_Y, DeepZoneLayoutScript.WORLD_HALF_Z + THICKNESS * 0.5), Vector3(span_x + THICKNESS * 2.0, WALL_HEIGHT, THICKNESS))
+	_build_invisible_wall(Vector3(center_x, WALL_Y, -DeepZoneLayoutScript.WORLD_HALF_Z - THICKNESS * 0.5), Vector3(span_x + THICKNESS * 2.0, WALL_HEIGHT, THICKNESS))
+	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MAX_X + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
+	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MIN_X - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -873,16 +993,9 @@ func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 # the anchor's own radius (Sites.ALL[0], r=6.5), both combat sites' radii
 # (shallows r=9.5 at (-24,-12), trench r=10.0 at (12,-42)), and the gated
 # highway corridor.
-# MODIFIED (fixed): two of these (formerly (18,-18) and (30,-3)) sat past
-# x=15 - clear of the corridor's own visible lane (z 10 +/-4), which is all
-# the old version of this comment checked, but not of the entrance
-# blockade's own invisible collision (_build_highway()'s collision_width =
-# 60, collision_height = 40 on entrance_rocks - deliberately oversized so
-# nothing can swim around or over the gate). That box spans the full z
-# -20..40 at x 15..17, so anything past x=15 in that band was walled off
-# from the open dive site until the gate was actually broken, the same as
-# if it were on the far side of a real wall. Moved both back to x<15,
-# clear of that box regardless of z.
+# Two formerly misplaced rocks remain before the visible entrance formation,
+# keeping their rewards available without making the player cross that authored
+# gate first. The old 60 m invisible collision wing no longer exists.
 #
 # disguised_as_scenery_rock left at its default (false) on purpose - these
 # read as a rounded rock (sphere_shaped) recolored brown, so a player can
@@ -896,10 +1009,8 @@ func _build_breakable_rocks() -> void:
 		Vector3(8.0, 1.0, 22.0),
 		# These four rocks float three times the 6m blockade height above the
 		# seafloor. Two hold spell keys and two conceal encounter ambushes.
-		# All four stay at x < 15 (see the MODIFIED note above): the right-hand
-		# pair used to sit at x=38, behind the entrance blockade's invisible
-		# collision, so the Sunken Core and one ambush were unreachable until
-		# the gate was broken.
+		# All four stay before the visible entrance formation (see the note
+		# above), so the Sunken Core and ambushes remain available beforehand.
 		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, 22.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, -48.0),
 		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, -30.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, 46.0),
 	]
@@ -1200,11 +1311,11 @@ func _build_highway() -> void:
 	# (and accept, since going over a wall to cut a corner isn't the same
 	# problem as skipping a gate entirely).
 	entrance_rocks.collision_height = 40.0
-	# Also wider than the visible rocks - the corridor's own side walls
-	# don't cap their outer ends, so without this a diver could swim wide
-	# around the whole corridor from the open dive site and cut back in
-	# past the blockade entirely.
-	entrance_rocks.collision_width = 60.0
+	# Collision stays the same width as the visible formation. Extending it
+	# across open water prevents a bypass, but does so with an invisible wall
+	# that blocks ordinary travel far outside the authored corridor. The
+	# visible side walls and route staging must communicate/contain the gate;
+	# collision cannot silently reach beyond what the player can see.
 	entrance_rocks.position = Vector3(START_X + 1.0, WALL_HEIGHT * 0.5, LANE_Z)
 	add_child(entrance_rocks)
 	entrance_rocks.broken.connect(_on_world_object_consumed.bind("entrance_blockade"))
@@ -1241,7 +1352,11 @@ func _build_highway() -> void:
 	# far side - a staging point for Musashi on the approach, not itself
 	# a way across.
 	var near_anchor := GrappleAnchor.new()
-	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z)
+	# Leave enough swim room after the staging pull to move past this
+	# collider before aiming at the far anchor. At GAP_START_X - 1 the
+	# diver stopped inside the near anchor's generous target cylinder, so
+	# the next straight shot selected it again instead of crossing.
+	near_anchor.position = Vector3(GAP_START_X - 3.0, 2.0, LANE_Z)
 	add_child(near_anchor)
 
 	# 3. The anchor that unlocks Maxilani's swap - reaching it is the
@@ -1299,8 +1414,17 @@ func _check_gap_puzzle() -> void:
 	var cutscene := Cutscene.new()
 	add_child(cutscene)
 	cutscene.play_scroll_text("Welcome to the Deep Sea")
-	_puzzle_goal.visible = true
-	_announce("All three in place - the way ahead opens!")
+	# The old highway predates RouteState and used this cyan waypoint as its
+	# only guidance. PR #96 already owns a concrete next objective once the
+	# deep route begins; showing both produces two competing destinations,
+	# and the legacy marker itself has no action. Keep it only as the fallback
+	# for worlds with no actionable route objective.
+	var active_route_guidance := _route_objective_text(route_state.objective_id)
+	_puzzle_goal.visible = active_route_guidance.is_empty()
+	if active_route_guidance.is_empty():
+		_announce("All three in place. The way ahead opens!")
+	else:
+		_announce("All three in place. %s" % active_route_guidance)
 
 # One plain wall segment: a StaticBody3D box, solid (divers collide with
 # it via CharacterBody3D's own move_and_slide, same as the floor), centered
@@ -1374,21 +1498,21 @@ func _unhandled_input(e: InputEvent) -> void:
 			_cancel_aim()
 			return
 
-	# TargetSelector intercepts Left/Right/Enter the same way aim mode
+	# TargetSelector intercepts A/D/Left/Right/Space/Enter the same way aim mode
 	# intercepts clicks - before they'd otherwise turn the camera or do
 	# nothing at all (see _physics_process, which suppresses the normal
 	# arrow-key camera turn outright while target_selector.selecting).
 	if target_selector.selecting and e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var sk := (e as InputEventKey).keycode
-		if sk == KEY_RIGHT:
+		if sk == KEY_D or sk == KEY_RIGHT:
 			target_selector.select_next()
 			_update_hud()
 			return
-		elif sk == KEY_LEFT:
+		elif sk == KEY_A or sk == KEY_LEFT:
 			target_selector.select_previous()
 			_update_hud()
 			return
-		elif sk == KEY_ENTER or sk == KEY_KP_ENTER:
+		elif sk == KEY_SPACE or sk == KEY_ENTER or sk == KEY_KP_ENTER:
 			target_selector.confirm_selection()
 			return
 
@@ -1457,6 +1581,9 @@ func _start_ability() -> void:
 		_update_hud()
 	elif d.ability_needs_aim():
 		aiming = true
+		# Aim uses the active diver's eye line. Keep their own rig out of that
+		# first-person view so the body cannot cover the crosshair or target.
+		d.set_model_visible(false)
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		mouse_look = true
 		_update_hud()
@@ -1610,12 +1737,15 @@ func _restore_party_at_save_point() -> void:
 	_update_oxygen_bar()
 
 func _fire_aimed_ability() -> void:
+	var d: Diver = divers[active]
 	aiming = false
-	divers[active].use_ability(_aim_dir())
+	d.use_ability(_aim_dir())
+	d.set_model_visible(true)
 	_update_hud()
 
 func _cancel_aim() -> void:
 	aiming = false
+	divers[active].set_model_visible(true)
 	_update_hud()
 
 # TargetSelector confirmed a target (Enter, with a valid candidate
@@ -1676,6 +1806,302 @@ func _physics_process(dt: float) -> void:
 	_check_gap_puzzle()
 	_update_wall_visibility()
 	_update_intro_sequence()
+	_update_route_zone()
+	_update_deep_zone_blockers()
+	_update_lab_route()
+	_update_maze_transition()
+
+func _update_route_zone() -> void:
+	if not _first_encounter_done or divers.is_empty():
+		return
+	var physical_zone: String = deep_zone_layout.zone_for_position((divers[active] as Diver).global_position)
+	if physical_zone == route_state.zone_id:
+		return
+	route_state.set_zone(physical_zone)
+	if physical_zone == "deep":
+		# Independent branch: the maze transition is available on entering Deep
+		# even while the two lab blockers and Tethys remain untouched.
+		if route_state.maze_door_state == "locked":
+			route_state.set_maze_door_state("available")
+		if route_state.bomb_bot_state == "available":
+			route_state.set_objective("defeat_bomb_bot")
+
+# Checks the live diver's physical position, not a query-string route or a
+# test-only teleport. Sword Slayer joins this same table after its actor slice;
+# keeping Bomb Bot alone here prevents an unimplemented id falling back to an
+# Angler if a player swims ahead during this commit.
+func _update_deep_zone_blockers() -> void:
+	if battling or divers.is_empty() or not _first_encounter_done:
+		return
+	var diver := divers[active] as Diver
+	var points: Dictionary = deep_zone_layout.route_points()
+	if _inside_route_blocker_id != "":
+		var inside_point := points[_inside_route_blocker_id] as Vector3
+		if not _inside_route_blocker_volume(diver.global_position, inside_point, true):
+			_inside_route_blocker_id = ""
+		else:
+			return
+	for blocker_id in ["bomb_bot", "sword_slayer"]:
+		if blocker_id == "sword_slayer" and route_state.bomb_bot_state != "defeated":
+			continue
+		var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state
+		if not ["available", "in_progress"].has(state):
+			continue
+		var point := points[blocker_id] as Vector3
+		if _inside_route_blocker_volume(diver.global_position, point):
+			_inside_route_blocker_id = blocker_id
+			_start_deep_zone_blocker(blocker_id)
+			return
+
+func _inside_route_blocker_volume(position: Vector3, point: Vector3, exit_volume: bool = false) -> bool:
+	var x_radius := ROUTE_BLOCKER_EXIT_RADIUS if exit_volume else ROUTE_BLOCKER_TRIGGER_RADIUS
+	var z_radius := ROUTE_BLOCKER_EXIT_HALF_WIDTH if exit_volume else ROUTE_BLOCKER_TRIGGER_HALF_WIDTH
+	return absf(position.x - point.x) <= x_radius and absf(position.z - point.z) <= z_radius
+
+func _start_deep_zone_blocker(blocker_id: String) -> void:
+	if battling or not ["bomb_bot", "sword_slayer"].has(blocker_id):
+		return
+	if blocker_id == "sword_slayer" and route_state.bomb_bot_state != "defeated":
+		return
+	var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state
+	if not ["available", "in_progress"].has(state):
+		return
+	_active_route_blocker_id = blocker_id
+	route_state.set_blocker_state(blocker_id, "in_progress")
+	route_state.set_encounter_source("lab_blocker")
+	_sync_deep_zone_blocker_staging()
+	var intro := "Bomb Bot seals the laboratory approach." if blocker_id == "bomb_bot" else "Sword Slayer guards the laboratory entrance."
+	_start_battle("", false, blocker_id, [], false, false, intro, true)
+
+func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
+	if result == "won":
+		route_state.set_blocker_state(blocker_id, "defeated")
+		if blocker_id == "bomb_bot":
+			route_state.set_objective("defeat_sword_slayer")
+		elif blocker_id == "sword_slayer":
+			route_state.set_lab_state("available")
+			route_state.set_objective("enter_lab")
+	else:
+		route_state.set_blocker_state(blocker_id, "available")
+	route_state.set_encounter_source("random")
+	_active_route_blocker_id = ""
+	_sync_deep_zone_blocker_staging()
+	if result == "won":
+		_write_save()
+
+# LAB-TETHYS-001/010: the physical unlocked door is the one production entry
+# point. A state latch is more reliable than a one-frame Area signal and makes
+# remaining inside the radius harmless after the cutscene has started.
+func _update_lab_route() -> void:
+	if battling or divers.is_empty() or not _first_encounter_done:
+		return
+	if route_state.lab_state != "available":
+		return
+	if route_state.bomb_bot_state != "defeated" or route_state.sword_slayer_state != "defeated":
+		return
+	var lab_point := deep_zone_layout.route_points().lab as Vector3
+	var position := (divers[active] as Diver).global_position
+	if Vector2(position.x, position.z).distance_to(Vector2(lab_point.x, lab_point.z)) <= LAB_TRIGGER_RADIUS:
+		_start_lab_cutscene()
+
+func _start_lab_cutscene() -> void:
+	if route_state.lab_state != "available" or is_instance_valid(_lab_video_cutscene):
+		return
+	route_state.set_lab_state("cutscene")
+	route_state.set_tethys_state("available")
+	route_state.set_encounter_source("lab_boss")
+	route_state.set_objective("defeat_tethys")
+	_sync_lab_staging()
+	_audio_call(&"stop_music")
+	$HUD.visible = false
+	_lab_video_cutscene = LabVideoCutsceneScript.new()
+	_lab_video_cutscene.completed.connect(_on_lab_cutscene_completed)
+	add_child(_lab_video_cutscene)
+
+func _on_lab_cutscene_completed(_skipped: bool) -> void:
+	if route_state.lab_state != "cutscene" or battling:
+		return
+	_lab_video_cutscene = null
+	$HUD.visible = true
+	route_state.set_lab_state("boss")
+	route_state.set_tethys_state("in_progress")
+	route_state.set_encounter_source("lab_boss")
+	_sync_lab_staging()
+	_start_battle("", true)
+
+func _sync_lab_staging() -> void:
+	if is_instance_valid(deep_zone_environment):
+		deep_zone_environment.set_lab_phase(route_state.lab_state)
+
+# This transition targets the current, independently verified MazeLevel scene.
+# It does not import or wait for Marc's unfinished door/maze branch; the blue
+# landmark is the isolated boundary where a later maze revision can be swapped.
+func _update_maze_transition() -> void:
+	if _maze_transition_started or battling or divers.is_empty() or not _first_encounter_done:
+		return
+	if route_state.maze_door_state != "available":
+		return
+	var target := deep_zone_layout.route_points().maze_transition as Vector3
+	var position := (divers[active] as Diver).global_position
+	if Vector2(position.x, position.z).distance_to(Vector2(target.x, target.z)) <= MAZE_TRANSITION_RADIUS:
+		_maze_transition_started = true
+		call_deferred("_enter_maze_scene", false)
+
+func _enter_maze_scene(review_route: bool = false) -> void:
+	if not review_route:
+		if route_state.maze_door_state != "available":
+			_maze_transition_started = false
+			return
+		route_state.set_maze_door_state("entered")
+		route_state.set_zone("maze")
+		route_state.set_encounter_source("maze_door")
+		_write_save()
+	get_tree().paused = false
+	_audio_call(&"stop_music")
+	get_tree().change_scene_to_file("res://game/maze_level.tscn")
+
+func _build_deep_zone_blocker_staging() -> void:
+	var definitions := [
+		{"id": "bomb_bot", "actor": BombBot.new()},
+		{"id": "sword_slayer", "actor": SwordSlayer.new()},
+	]
+	var points: Dictionary = deep_zone_layout.route_points()
+	for definition_value in definitions:
+		var definition := definition_value as Dictionary
+		var blocker_id := String(definition.id)
+		var actor := definition.actor as Goblin
+		actor.name = "%sWorldActor" % blocker_id.to_pascal_case()
+		actor.add_to_group("deep_zone_blocker_staging")
+		actor.set_meta("blocker_id", blocker_id)
+		var point := points[blocker_id] as Vector3
+		# These are visible guardians, not waypoint icons. Their source rigs use
+		# large authored offsets, so a guessed Y value can put every rendered
+		# mesh below the seafloor even while the actor node itself looks valid.
+		# Place first, measure the real transformed meshes, then floor-align.
+		var presentation_scale := 1.5 if blocker_id == "bomb_bot" else 1.6
+		# Stand on the player's side of the field and slightly off the party's
+		# centre line. The field must not visually swallow the actor whose fight
+		# it represents.
+		actor.position = Vector3(point.x - 5.0, 0.0, point.z - 6.0)
+		actor.scale = Vector3.ONE * presentation_scale
+		add_child(actor)
+		actor.face_toward(Vector3(point.x - 10.0, 0.0, point.z))
+		actor.force_update_transform()
+		var actor_bounds := _route_actor_visible_bounds(actor)
+		if actor_bounds.size.length() > 0.01:
+			actor.position.y += 2.0 - actor_bounds.position.y
+			actor.force_update_transform()
+		_route_blocker_world_actors[blocker_id] = actor
+		_route_blocker_gates[blocker_id] = _build_route_blocker_gate(blocker_id, point)
+	_sync_deep_zone_blocker_staging()
+
+func _build_route_blocker_gate(blocker_id: String, point: Vector3) -> Dictionary:
+	var body := StaticBody3D.new()
+	body.name = "%sPressureField" % blocker_id.to_pascal_case()
+	body.position = Vector3(point.x, 7.0, point.z)
+	body.add_to_group("deep_zone_blocker_gate")
+	body.set_meta("blocker_id", blocker_id)
+
+	var collision := CollisionShape3D.new()
+	collision.name = "Collision"
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(2.0, 14.0, 20.0)
+	collision.shape = shape
+	body.add_child(collision)
+
+	# A sparse energy grid and bright edge pylons make the collision legible
+	# from both sides without tinting most of the screen. This is deliberately
+	# a wall, not another ring or waypoint: the guardian identifies the fight;
+	# the field explains why swimming around it is not possible.
+	var color := Color("ff9b55") if blocker_id == "bomb_bot" else Color("a879ff")
+
+	for z_offset in [-9.5, 9.5]:
+		var pylon := MeshInstance3D.new()
+		pylon.position = Vector3(0.0, -4.5, z_offset)
+		var pylon_mesh := CylinderMesh.new()
+		pylon_mesh.top_radius = 0.28
+		pylon_mesh.bottom_radius = 0.52
+		pylon_mesh.height = 5.0
+		pylon_mesh.radial_segments = 8
+		pylon.mesh = pylon_mesh
+		var pylon_material := StandardMaterial3D.new()
+		pylon_material.albedo_color = color.darkened(0.35)
+		pylon_material.metallic = 0.45
+		pylon_material.roughness = 0.28
+		pylon_material.emission_enabled = true
+		pylon_material.emission = color
+		pylon_material.emission_energy_multiplier = 1.2
+		pylon.material_override = pylon_material
+		body.add_child(pylon)
+
+	var field := MeshInstance3D.new()
+	field.name = "EnergyField"
+	field.rotation.y = PI * 0.5
+	var field_mesh := QuadMesh.new()
+	field_mesh.size = Vector2(19.0, 13.5)
+	field_mesh.orientation = PlaneMesh.FACE_Z
+	field.mesh = field_mesh
+	var field_shader := Shader.new()
+	field_shader.code = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, blend_add, depth_draw_never;
+
+uniform vec4 field_color : source_color;
+
+void fragment() {
+	vec2 centered = abs(UV - vec2(0.5));
+	float border = smoothstep(0.475, 0.5, max(centered.x, centered.y));
+	vec2 cell = abs(fract(UV * vec2(9.0, 6.0)) - vec2(0.5));
+	float grid_x = smoothstep(0.46, 0.495, cell.x);
+	float grid_y = smoothstep(0.46, 0.495, cell.y);
+	float grid = max(grid_x, grid_y);
+	float scan = 1.0 - smoothstep(0.0, 0.035, abs(fract(UV.y - TIME * 0.11) - 0.5));
+	float vertical_fade = smoothstep(0.0, 0.055, UV.y) * smoothstep(0.0, 0.055, 1.0 - UV.y);
+	float shimmer = 0.5 + 0.5 * sin(TIME * 2.1 + UV.y * 18.0 + UV.x * 5.0);
+	float alpha = (0.014 + grid * 0.12 + border * 0.48 + scan * 0.15 + shimmer * 0.012) * vertical_fade;
+	ALBEDO = field_color.rgb;
+	EMISSION = field_color.rgb * (0.35 + grid * 0.85 + border * 1.5 + scan * 1.1);
+	ALPHA = alpha;
+}
+"""
+	var field_material := ShaderMaterial.new()
+	field_material.shader = field_shader
+	field_material.set_shader_parameter("field_color", color)
+	field.material_override = field_material
+	body.add_child(field)
+
+	add_child(body)
+	return {"body": body, "collision": collision}
+
+func _route_actor_visible_bounds(node: Node) -> AABB:
+	var combined := AABB()
+	var first := true
+	if node is MeshInstance3D:
+		var mesh := node as MeshInstance3D
+		if mesh.mesh != null and mesh.visible:
+			combined = mesh.global_transform * mesh.get_aabb()
+			first = false
+	for child in node.get_children():
+		var child_bounds := _route_actor_visible_bounds(child)
+		if child_bounds.size.length() <= 0.01:
+			continue
+		combined = child_bounds if first else combined.merge(child_bounds)
+		first = false
+	return combined
+
+func _sync_deep_zone_blocker_staging() -> void:
+	if _route_blocker_world_actors.has("bomb_bot"):
+		(_route_blocker_world_actors.bomb_bot as Node3D).visible = route_state.bomb_bot_state == "available"
+	if _route_blocker_world_actors.has("sword_slayer"):
+		(_route_blocker_world_actors.sword_slayer as Node3D).visible = (
+			route_state.bomb_bot_state == "defeated" and route_state.sword_slayer_state == "available"
+		)
+	for blocker_id in _route_blocker_gates:
+		var gate := _route_blocker_gates[blocker_id] as Dictionary
+		var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state
+		var closed := state != "defeated"
+		(gate.body as Node3D).visible = closed
+		(gate.collision as CollisionShape3D).set_deferred("disabled", not closed)
 
 # Runs every physics frame from world load until the active diver reaches
 # the light beam: keeps the arrow aimed at it (the diver keeps moving, so a
@@ -2125,6 +2551,15 @@ func _aim_dir() -> Vector3:
 var _aim_marker: MeshInstance3D
 var _aim_marker_mat: StandardMaterial3D
 
+# The reticle is a world-space torus. At its authored size it reads well on a
+# distant Grapple target, but a ray that immediately hits a corridor wall can
+# put that same 64 cm marker only centimetres from the first-person camera and
+# turn it into a screen-filling gray polygon. Keep its apparent angular size
+# bounded near surfaces while preserving the full authored size on route-scale
+# targets. The small non-zero floor also keeps a close miss visible as feedback.
+func _aim_marker_scale_for_distance(distance: float) -> float:
+	return clampf(distance / 3.0, 0.04, 1.0)
+
 func _ensure_aim_marker() -> void:
 	if _aim_marker != null:
 		return
@@ -2167,6 +2602,7 @@ func _update_aim_marker() -> void:
 
 	_aim_marker.visible = true
 	_aim_marker.global_position = point
+	_aim_marker.scale = Vector3.ONE * _aim_marker_scale_for_distance(from.distance_to(point))
 	_aim_marker.look_at(from, Vector3.UP)
 	var c: Color = Color(0.35, 0.95, 0.4) if on_target else Color(0.75, 0.78, 0.8)
 	_aim_marker_mat.albedo_color = c
@@ -2228,6 +2664,8 @@ func _on_encounter_triggered(d: Diver) -> void:
 	if battling or d != divers[active] or _intro_active or not random_encounters_enabled:
 		return
 	if _try_trigger_item_site(d):
+		return
+	if deep_zone_layout.zone_for_position(d.global_position) == "deep" and not deep_zone_layout.allows_random_encounter(d.global_position):
 		return
 	_start_battle()
 
@@ -2304,8 +2742,12 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "") -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false) -> void:
 	battling = true
+	if boss_encounter:
+		_audio_call(&"play_tethys_music")
+	else:
+		_audio_call(&"play_battle_music")
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
@@ -2335,9 +2777,11 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
 	battle.boss_encounter = boss_encounter
+	battle.boss_intro_enabled = not skip_boss_intro_for_test
 	battle.special_encounter = special
-	battle.guardian_encounter = reward_item != "" and not boss_encounter
+	battle.guardian_encounter = (reward_item != "" or authored_enemy) and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
+	battle.encounter_source = route_state.encounter_source
 	battle.tutorial_encounter = tutorial
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text
@@ -2348,9 +2792,24 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
+	var route_blocker_id := _active_route_blocker_id
 	battle.queue_free()
 	battle = null
 	battling = false
+	# A result owns music before any playtest/title branch returns. The victory
+	# pair intentionally persists in the overworld until the next explicit
+	# state (another encounter, defeat, or title); its second file is authored
+	# as a loop. Soft tutorial/special losses and fleeing return to exploration,
+	# while a normal loss is replaced by _show_game_over() below.
+	match result:
+		"won":
+			_audio_call(&"play_victory_music")
+		"fled", "skipped":
+			_audio_call(&"play_exploration_music")
+		"lost":
+			if was_tutorial or was_special:
+				_audio_call(&"play_exploration_music")
 	if was_tutorial:
 		_first_encounter_done = true
 		# Guided the walk-over and held the camera during it - once the
@@ -2383,6 +2842,26 @@ func _on_battle_finished(result: String) -> void:
 		_announce("Special encounter test complete.")
 		call_deferred("_show_title_screen")
 		return
+	if route_blocker_id != "":
+		_resolve_deep_zone_blocker(route_blocker_id, result)
+	if was_lab_boss:
+		if result == "won":
+			route_state.set_lab_state("cleared")
+			route_state.set_tethys_state("defeated")
+			# The maze branch was already available on entering Deep. Point the
+			# player toward it after the lab victory without making Tethys its key.
+			route_state.set_objective("enter_maze")
+		else:
+			# The real checkpoint remains the one written before entering the
+			# laboratory. Keep the live state retryable too so a nonstandard test
+			# or future soft-loss flow cannot strand the route in `in_progress`.
+			route_state.set_lab_state("available")
+			route_state.set_tethys_state("available")
+			route_state.set_objective("enter_lab")
+		route_state.set_encounter_source("random")
+		_sync_lab_staging()
+		if result == "won":
+			_write_save()
 	match result:
 		"won":
 			if was_special and _special_encounter_diver != null:
@@ -2425,6 +2904,12 @@ func _on_battle_finished(result: String) -> void:
 				_grant_reward_item(_pending_reward_item)
 			elif was_tutorial:
 				_announce("You won! You can replay this fight any time from the Esc menu's Combat Help tab.")
+			elif was_lab_boss:
+				_announce("Tethys is defeated. The blue-lit maze passage is now your next route.")
+			elif route_blocker_id == "bomb_bot":
+				_announce("Bomb Bot powers down. The path to Sword Slayer is open.")
+			elif route_blocker_id == "sword_slayer":
+				_announce("Sword Slayer falls back. The laboratory entrance is open.")
 			else:
 				_announce("The enemy backs off into the dark.")
 			if was_tutorial:
@@ -2673,6 +3158,16 @@ func _build_diver_slots() -> void:
 		slot.set_diver(d as Diver)
 		_diver_slots.append(slot)
 
+# `_diver_slots` intentionally stays outside the scene tree until real icon art
+# exists, so tree teardown cannot free those Nodes for us. Explicit ownership
+# here prevents three hidden Control subtrees leaking on every restart/load.
+func _exit_tree() -> void:
+	for slot_value in _diver_slots:
+		var slot := slot_value as Slot
+		if is_instance_valid(slot) and not slot.is_inside_tree():
+			slot.free()
+	_diver_slots.clear()
+
 
 # Fired once, right after the tutorial fight's own battle screen closes and
 # control returns to the overworld (see _on_battle_finished()) - five fixed
@@ -2744,28 +3239,110 @@ func _show_ability_popups() -> void:
 	# is a runtime call, not a parse-time identifier, so it works either way.
 	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
 
+func _build_route_objective_hud() -> void:
+	route_objective_panel = PanelContainer.new()
+	route_objective_panel.name = "RouteObjectivePanel"
+	route_objective_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	route_objective_panel.offset_left = -285.0
+	route_objective_panel.offset_top = 70.0
+	route_objective_panel.offset_right = 285.0
+	route_objective_panel.offset_bottom = 114.0
+	route_objective_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.02, 0.11, 0.16, 0.92)
+	panel_style.border_color = Color(0.29, 0.78, 0.82, 0.9)
+	panel_style.set_border_width_all(1)
+	panel_style.set_corner_radius_all(8)
+	route_objective_panel.add_theme_stylebox_override("panel", panel_style)
+	$HUD.add_child(route_objective_panel)
+
+	route_objective_label = Label.new()
+	route_objective_label.name = "RouteObjective"
+	route_objective_label.add_to_group("route_objective_hud")
+	route_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	route_objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	route_objective_label.add_theme_font_size_override("font_size", 19)
+	route_objective_label.add_theme_color_override("font_color", Color(0.72, 0.96, 1.0))
+	route_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	route_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	route_objective_panel.add_child(route_objective_label)
+
+func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
+	# The top-right minimap owns 166 px. Keep both text surfaces out of that
+	# rectangle at narrow browser widths instead of letting readable text exist
+	# underneath an opaque navigation control.
+	var right_limit := maxf(304.0, viewport_size.x - 176.0)
+	hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	hud.offset_left = 16.0
+	hud.offset_top = 12.0
+	hud.offset_right = right_limit
+	hud.offset_bottom = 68.0
+	hud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hud.add_theme_font_size_override("font_size", 14 if viewport_size.x < 900.0 else 16)
+
+	if route_objective_panel == null:
+		return
+	var panel_width := minf(570.0, maxf(288.0, right_limit - 32.0))
+	var panel_left := clampf(
+		(viewport_size.x - panel_width) * 0.5,
+		16.0,
+		maxf(16.0, right_limit - panel_width)
+	)
+	route_objective_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	route_objective_panel.offset_left = panel_left
+	route_objective_panel.offset_top = 74.0
+	route_objective_panel.offset_right = panel_left + panel_width
+	route_objective_panel.offset_bottom = 118.0
+
+func _on_route_objective_changed(objective_id: String) -> void:
+	if route_objective_panel == null or route_objective_label == null:
+		return
+	var text := _route_objective_text(objective_id)
+	route_objective_label.text = text
+	route_objective_panel.visible = text != ""
+
+func _route_objective_text(objective_id: String) -> String:
+	match objective_id:
+		"defeat_bomb_bot":
+			return "Deep Zone: disable Bomb Bot."
+		"defeat_sword_slayer":
+			return "Deep Zone: defeat Sword Slayer."
+		"enter_lab":
+			return "Laboratory: enter the Broken Office."
+		"defeat_tethys":
+			return "Laboratory: confront Tethys."
+		"enter_maze":
+			return "Deep Zone: take the blue-lit passage to the maze."
+		_:
+			return ""
+
 func _update_hud() -> void:
 	if target_selector.selecting:
 		var t := target_selector.current_target()
 		if t != null and t is Diver:
-			hud.text = "Swap with %s?\nLeft/Right: cycle   ·   Enter: confirm   ·   Esc: cancel" % _display_name((t as Diver).model_name)
+			hud.text = "Swap with %s?\nA/D or Left/Right: cycle   ·   Space/Enter: confirm   ·   Esc: cancel" % _display_name((t as Diver).model_name)
 		else:
-			hud.text = "Left/Right: cycle   ·   Enter: confirm   ·   Esc: cancel"
+			hud.text = "A/D or Left/Right: cycle   ·   Space/Enter: confirm   ·   Esc: cancel"
 		return
 	if aiming:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
 		return
 	var d: Diver = divers[active]
-	var line := "%s\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % _display_name(d.model_name)
+	var narrow := get_viewport().get_visible_rect().size.x < 900.0
+	var line := ""
+	if narrow:
+		line = "%s · WASD swim · SPACE/SHIFT depth\nmouse/arrows look · TAB diver" % _display_name(d.model_name)
+	else:
+		line = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look · TAB diver" % _display_name(d.model_name)
 	if d.ability_id != "":
-		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+		line += (" · E:%s" if narrow else "  ·  E: %s") % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the E: hint above already follows for
 	# ability_id.
 	if d.passive_id == "sonar":
-		line += "  ·  Q: Sonar (%s)" % ("On" if d.sonar_active else "Off")
-	line += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
+		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
+	line += (" · R:Random %s" if narrow else "  ·  R: Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during

@@ -18,7 +18,14 @@
 class_name Battle
 extends CanvasLayer
 
+const BOSS_LAB_SCENE := preload("res://art/deep_zone/Broken_Office.fbx")
+
 signal finished(result: String)     # "won", "fled", or "lost"
+# Emitted after a party actor has stepped into range, faced the selected
+# target, and started its authored attack clip. Gameplay does not consume this;
+# the end-to-end fight gate uses the real selected target instead of guessing
+# from proximity when several enemies share the stage.
+signal player_swing_staged(attacker: Node3D, target: Node3D)
 
 # Set by world.gd before add_child - the real Diver nodes from the dive
 # site (world.divers), so .stats (shared by reference - a Resource, not
@@ -52,6 +59,10 @@ var guardian_encounter := false
 # packs roll their own Angler/Swordfish roster independently; this only pins
 # the one visible artifact defender, so exploration never randomizes a reward.
 var guardian_enemy_id := "angler"
+# Public provenance for review logs and route verification. Ordinary encounters
+# keep `random`; authored blockers and bosses are assigned by World before this
+# node enters the tree.
+var encounter_source := "random"
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -145,6 +156,7 @@ var diver_model_name := "Staff_Diver"
 const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
+const OPENING_TWO_ENEMY_CHANCE := 0.25
 
 # A fresh party can face one or two grunts. Three-grunt packs enter the roll
 # only after the party has earned its first level; this removes the observed
@@ -153,6 +165,48 @@ static func max_enemies_for_level(player_level: int, is_guardian: bool = false) 
 	if is_guardian:
 		return 1
 	return 2 if player_level <= 1 else MAX_ENEMIES
+
+# One shared roll policy for production and the balance gate. The opening
+# keeps a minority two-enemy challenge, level 2 consolidates the mixed roster
+# without introducing a three-pack, and level 3 unlocks all three formations.
+static func ordinary_enemy_count_for_roll(player_level: int, roll: float, is_guardian: bool = false) -> int:
+	if is_guardian:
+		return 1
+	var normalized := clampf(roll, 0.0, 0.999999)
+	if player_level <= 1:
+		return 2 if normalized < OPENING_TWO_ENEMY_CHANCE else 1
+	if player_level == 2:
+		return 1
+	if normalized < 1.0 / 3.0:
+		return 1
+	return 2 if normalized < 2.0 / 3.0 else 3
+
+# Authored enemy target scopes are content, not flavor text. `two` retains
+# the already-selected primary and deterministically adds one other living
+# diver; `all` preserves the live party order used by the HUD.
+static func enemy_targets_for_scope(primary: Dictionary, alive_party: Array, scope: String) -> Array:
+	if scope == "all":
+		return alive_party.duplicate()
+	var targets: Array = []
+	if not primary.is_empty():
+		targets.append(primary)
+	if scope == "two":
+		for candidate_value in alive_party:
+			var candidate := candidate_value as Dictionary
+			if candidate != primary:
+				targets.append(candidate)
+				break
+	return targets
+
+# Multi-hit formula moves consume the defender's current Evasion sequentially.
+# Self-costs belong to the move, so they are applied on the first impact only.
+static func resolve_formula_hits(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Array:
+	var results: Array = []
+	for hit_index in range(maxi(1, int(move.get("hits", 1)))):
+		if defender.hp <= 0:
+			break
+		results.append(CombatRules.resolve(attacker, defender, move, apply_self_effects and hit_index == 0))
+	return results
 
 # Compatibility alias for verification and any tools that enumerate the
 # roster here. Cast is the single identity source used by Battle and World.
@@ -386,12 +440,13 @@ var _stage_vp: SubViewport
 # height of the screen behind it. See _fit_panel_height().
 var _stage_container: SubViewportContainer
 var _stage_cam: Camera3D
-# Fixed 2D status stacks, not labels floating over each combatant in the
-# 3D stage - the party's own cards stack down the left edge, the enemies'
-# down the right (see _build_overhead_bar()). Static means no per-frame
-# 3D->screen projection or anti-overlap juggling is needed at all, unlike
-# the old head-tracking version this replaced.
-var _party_status_column: VBoxContainer
+# Fixed 2D status groups, not labels floating over each combatant in the
+# 3D stage - enemies stack down the right while the party normally stacks
+# down the left (see _build_overhead_bar()). The party uses a flow container
+# so a tall tutorial caption can widen that one group and wrap the three cards
+# into a short row without covering any of their numbers. This is still static
+# HUD layout: no per-frame 3D projection or actor-following labels.
+var _party_status_column: HFlowContainer
 var _enemy_status_column: VBoxContainer
 # The turn order, moved out of the bottom panel to the very top.
 var _queue_bar: PanelContainer
@@ -443,6 +498,7 @@ var _qte_success := false
 # lets the awaiting `while _tutorial_awaiting_enter` loop in that function
 # return.
 var _tutorial_awaiting_enter := false
+var _tutorial_continue_btn: Button
 # Separate from _busy, which remains true while an enemy action is in
 # progress. This flag is only set when the player explicitly skips the
 # tutorial, so turn flow cannot accidentally cancel instructional captions.
@@ -1050,12 +1106,17 @@ func _build_stage() -> void:
 	# Positioned by _frame_stage_camera() once the actors exist, not here.
 	# The hand-placed position this replaces was tuned against a full height
 	# stage and put every combatant behind the HUD once the HUD grew.
+	if boss_encounter:
+		_build_boss_lab_stage(vp)
 
 	# Party visuals, spread left-to-right so 1-3 divers don't overlap.
 	# Diver.rotation.y == 0 is the model's own rest-facing direction (-Z, see
 	# diver.gd), so leaving it untouched here is what puts its back to camera.
 	var is_swap_encounter := special_encounter and not party.is_empty() and String(party[0].get("ability_id", "")) == "swap"
-	var diver_z := 3.4 if is_swap_encounter else (2.2 if special_encounter else 1.0)
+	# Tethys is fought inside the Broken Office rather than in the open-water
+	# lanes. Keep the party wholly inside that room and compact enough that all
+	# four silhouettes remain legible in the supported 720px-wide browser.
+	var diver_z := -0.5 if boss_encounter else (3.4 if is_swap_encounter else (2.2 if special_encounter else 1.0))
 	# MODIFIED (changed): was -6.0 for a swap encounter - pushed a few more
 	# units back so the portraits (which spawn just in front of the enemy
 	# and fly to just in front of the diver - see diver_swap_minigame.gd's
@@ -1075,7 +1136,10 @@ func _build_stage() -> void:
 		# public foot_offset() says its feet sit below its centred origin. Ground
 		# only that boss formation after _ready() has measured the selected rig.
 		var floor_y := -actor.foot_offset() if boss_encounter else 0.0
-		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, floor_y, diver_z - _spread(i, pn, 0.7))
+		var party_spread := 1.3 if boss_encounter else 2.9
+		var party_depth_spread := 0.3 if boss_encounter else 0.7
+		var party_x_offset := -1.0 if boss_encounter else -0.4
+		actor.position = Vector3(_spread(i, pn, party_spread) + party_x_offset, floor_y, diver_z - _spread(i, pn, party_depth_spread))
 		party[i]["actor"] = actor
 		# Where this one stands when it is not swinging. Attacks step in
 		# toward whoever they are aimed at and come back here afterwards.
@@ -1113,13 +1177,16 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
 		# -2.7 z position, perspective made a four-metre creature read smaller
 		# on screen than the divers despite its measured native scale.
-		boss.position = Vector3(0.6, 0.0, -0.8)
+		# Keep Tethys on the opposite side of the room rather than directly
+		# behind Bucky. The old overlap hid her torso and most of the authored
+		# animation even though every actor technically fit inside the frame.
+		boss.position = Vector3(2.1, 0.0, -2.5)
 		vp.add_child(boss)
 		# Mermaid_Freak's authored front is local +Z (the humanoid/Goblin
 		# actors use -Z), so point that axis at the party's actual centre.
@@ -1149,12 +1216,34 @@ func _build_stage() -> void:
 		_frame_stage_camera()
 		return
 	for i in range(count):
-		var g: Goblin = _guardian_actor() if guardian_encounter else _ordinary_actor()
+		# The opening lesson explicitly teaches against the Angler. Drawing from
+		# the ordinary roster here made that contract random: a Frilled Shark or
+		# Swordfish could replace the named tutorial opponent even though every
+		# caption and QTE explanation still described an Angler. Special tutorial
+		# practice uses the same predictable onboarding opponent.
+		var g: Goblin = _actor_for_enemy_id("angler") if tutorial_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
 		# Special encounters use the deliberately deeper lane selected above.
 		# Grapple Intercept needs that depth to read as an incoming wave rather
 		# than a ring spinning near the player; swap encounters already use the
 		# same spacing principle for their incoming portraits.
-		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, enemy_z - _spread(i, count, 0.5))
+		# The authored lab blockers are single, broad-bodied set-piece actors.
+		# The ordinary centre lane visually interleaves them with the three-diver
+		# row from the production camera, making it unclear which side is which.
+		# Give only this encounter source a distinct enemy lane; random packs and
+		# special minigames keep their established composition.
+		var enemy_x := _spread(i, count, 2.3) + 0.6
+		# A solo Frilled Shark is still much longer than an Angler after its
+		# horizontal cap. The generic centre lane places that silhouette across
+		# Bucky from the production camera, so give this one-body formation the
+		# same clear opposing-side read as authored broad-bodied encounters.
+		if g is FrilledShark and count == 1:
+			enemy_x = 5.0
+		if encounter_source == "lab_blocker":
+			# Sword Slayer's pivot sits near its mid-body while the long bill and
+			# tail extend left across Bucky at the shared blocker lane. Give only
+			# that long silhouette extra separation; Bomb Bot already frames cleanly.
+			enemy_x = 6.2 if guardian_enemy_id == "sword_slayer" else 4.2
+		g.position = Vector3(enemy_x, 0.0, enemy_z - _spread(i, count, 0.5))
 		vp.add_child(g)
 		# Same hp<=0-skips-the-actor case as the boss branch above.
 		var party_centre := Vector3.ZERO
@@ -1203,6 +1292,149 @@ func _build_stage() -> void:
 
 	_frame_stage_camera()
 
+func _build_boss_lab_stage(viewport: SubViewport) -> void:
+	# The exterior deliberately hides this incomplete room inside a rock shell.
+	# The boss battle owns a separate 3D world, so it must instantiate the room
+	# here as well; merely revealing the overworld copy would leave combat in
+	# the generic empty-water stage.
+	var wrapper := Node3D.new()
+	wrapper.name = "BrokenOfficeBattleStage"
+	wrapper.add_to_group("boss_lab_stage")
+	viewport.add_child(wrapper)
+	var office := BOSS_LAB_SCENE.instantiate() as Node3D
+	wrapper.add_child(office)
+	_style_boss_lab_materials(office)
+	# At the imported room's old 0.31 scale, the front party row stood outside
+	# its footprint and the office read as a small detached diorama behind the
+	# fight. The larger authored arena encloses both rows while leaving the
+	# camera outside its open front.
+	wrapper.scale = Vector3.ONE * 0.47
+	wrapper.rotation_degrees.y = 180.0
+	wrapper.force_update_transform()
+	# Align the actual wall/floor shell, not the delivery's distant decorative
+	# lantern. The latter is outside the playable room and previously shifted
+	# the whole office right, leaving the party over empty water.
+	var bounds := _boss_lab_room_bounds(wrapper)
+	if bounds.size.length() > 0.01:
+		wrapper.global_position += Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z - 1.8)
+		bounds = _boss_lab_room_bounds(wrapper)
+		_add_boss_lab_light(
+			wrapper, "EmergencyLight", bounds,
+			Vector3(0.18, 0.68, 0.24), Color("ff4f63"))
+		_add_boss_lab_light(
+			wrapper, "ContainmentLight", bounds,
+			Vector3(0.82, 0.58, 0.28), Color("43d9e6"))
+
+# Broken Office's wall materials arrive at roughly 0.91 luminance. Under the
+# normal bright battle environment that turns the authored room into a white
+# test box and visually collapses its furniture into the party. Keep every
+# delivered texture, but color-grade the surfaces into a damaged underwater
+# laboratory with distinct shell, machinery, furniture, and warning props.
+func _style_boss_lab_materials(office: Node3D) -> void:
+	for mesh_value in _battle_set_meshes(office):
+		var mesh := mesh_value as MeshInstance3D
+		if mesh.name == "Staff_Lantern":
+			# This source outlier sits tens of metres outside the room and belongs
+			# to the asset-authoring scene, not the compact battle tableau.
+			mesh.visible = false
+			continue
+		var tint := Color("59727d")
+		match String(mesh.name):
+			"Wall_Broken":
+				tint = Color("17333f")
+			"Door_Frame":
+				tint = Color("6f4b35")
+			"Computer":
+				tint = Color("397d83")
+			"Cone", "Cone_001":
+				tint = Color("d46b3d")
+			"Table", "Cube", "Cube_002":
+				tint = Color("79503b")
+			_:
+				if String(mesh.name).begins_with("Cube_"):
+					tint = Color("784238")
+		if mesh.mesh == null:
+			continue
+		for surface_index in range(mesh.mesh.get_surface_count()):
+			var source := mesh.get_active_material(surface_index)
+			if not source is BaseMaterial3D:
+				continue
+			var styled := source.duplicate(true) as BaseMaterial3D
+			var original := (source as BaseMaterial3D).albedo_color
+			styled.albedo_color = Color(
+				original.r * tint.r,
+				original.g * tint.g,
+				original.b * tint.b,
+				original.a)
+			styled.roughness = maxf(0.68, styled.roughness)
+			mesh.set_surface_override_material(surface_index, styled)
+
+func _add_boss_lab_light(
+		wrapper: Node3D,
+		light_name: String,
+		bounds: AABB,
+		normalized_position: Vector3,
+		color: Color) -> void:
+	var position := bounds.position + bounds.size * normalized_position
+	var fixture := MeshInstance3D.new()
+	fixture.name = "%sFixture" % light_name
+	fixture.top_level = true
+	var fixture_mesh := BoxMesh.new()
+	fixture_mesh.size = Vector3(0.18, 0.85, 0.12)
+	fixture.mesh = fixture_mesh
+	var fixture_material := StandardMaterial3D.new()
+	fixture_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fixture_material.albedo_color = color
+	fixture_material.emission_enabled = true
+	fixture_material.emission = color
+	fixture_material.emission_energy_multiplier = 2.4
+	fixture.material_override = fixture_material
+	wrapper.add_child(fixture)
+	fixture.global_position = position
+
+	var light := OmniLight3D.new()
+	light.name = light_name
+	light.top_level = true
+	light.light_color = color
+	light.light_energy = 3.2
+	light.omni_range = maxf(6.0, bounds.size.length() * 0.42)
+	light.shadow_enabled = true
+	wrapper.add_child(light)
+	light.global_position = position + Vector3(0.0, -0.25, 0.45)
+
+func _battle_set_bounds(node: Node3D) -> AABB:
+	var combined := AABB()
+	var first := true
+	for mesh_value in _battle_set_meshes(node):
+		var mesh := mesh_value as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		var box := mesh.global_transform * mesh.get_aabb()
+		combined = box if first else combined.merge(box)
+		first = false
+	return combined
+
+# The Broken Office delivery contains one decorative Staff_Lantern far above
+# and left of the actual room. Aggregate bounds are still useful for asset
+# inspection, but not for placing or validating the playable floor: including
+# that outlier makes the wall/floor shell land several metres to the right of
+# the combatants. Use the authored room shell when it is present, with the
+# aggregate as a safe fallback if the asset is ever revised.
+func _boss_lab_room_bounds(node: Node3D) -> AABB:
+	for mesh_value in _battle_set_meshes(node):
+		var mesh := mesh_value as MeshInstance3D
+		if mesh.name == "Wall_Broken" and mesh.mesh != null:
+			return mesh.global_transform * mesh.get_aabb()
+	return _battle_set_bounds(node)
+
+func _battle_set_meshes(node: Node) -> Array:
+	var found: Array = []
+	if node is MeshInstance3D:
+		found.append(node)
+	for child in node.get_children():
+		found.append_array(_battle_set_meshes(child))
+	return found
+
 func _guardian_actor() -> Goblin:
 	return _actor_for_enemy_id(guardian_enemy_id)
 
@@ -1210,9 +1442,17 @@ func _ordinary_actor() -> Goblin:
 	return _actor_for_enemy_id(EnemyRoster.random_id())
 
 func _actor_for_enemy_id(enemy_id: String) -> Goblin:
-	if enemy_id == "swordfish_duelist":
-		return SwordDuelist.new()
-	return Goblin.new()
+	match enemy_id:
+		"swordfish_duelist":
+			return SwordDuelist.new()
+		"frilled_shark":
+			return FrilledShark.new()
+		"bomb_bot":
+			return BombBot.new()
+		"sword_slayer":
+			return SwordSlayer.new()
+		_:
+			return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
 # and body recoil read from a three-quarter angle and disappear into the
@@ -1243,6 +1483,19 @@ func _frame_stage_camera() -> void:
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
 		var a := e.actor as Node3D
+		# Imported enemies can be dramatically longer than their collision
+		# radius suggests (Frilled Shark is the concrete regression). When an
+		# actor exposes real world-space visual bounds, frame all eight mesh
+		# corners rather than synthesizing a narrow box from radius/height.
+		if a.has_method("visual_bounds"):
+			var visual_box := a.call("visual_bounds") as AABB
+			for corner in range(8):
+				pts.append(visual_box.get_endpoint(corner))
+			pts.append(
+				visual_box.position
+				+ Vector3(visual_box.size.x * 0.5, visual_box.size.y + OVERHEAD_LIFT + OVERHEAD_HEADROOM, visual_box.size.z * 0.5)
+			)
+			continue
 		var low: Vector3 = _bottom_of(a)
 		# Not the top of the model: the top of the model plus the health
 		# bar riding above it. Framing the bodies alone put every head hard
@@ -1264,7 +1517,10 @@ func _frame_stage_camera() -> void:
 		centre += p as Vector3
 	centre /= float(pts.size())
 
-	var dir: Vector3 = STAGE_CAMERA_DIR.normalized()
+	# The enclosed boss arena benefits from a more frontal authored view: less
+	# sideways foreshortening keeps the compact party formation and the office
+	# walls readable without changing ordinary/open-water fight framing.
+	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter else STAGE_CAMERA_DIR).normalized()
 	# Two axes across the view, so the group can be measured in the plane
 	# the camera actually sees rather than in world X and Y.
 	var right: Vector3 = dir.cross(Vector3.UP).normalized()
@@ -1292,8 +1548,9 @@ func _frame_stage_camera() -> void:
 	for p in pts:
 		var v: Vector3 = (p as Vector3) - centre
 		var w: float = v.dot(dir)
-		var need_w: float = absf(v.dot(right)) * STAGE_FRAMING_MARGIN / tan_h
-		var need_h: float = absf(v.dot(up)) * STAGE_FRAMING_MARGIN / tan_v
+		var margin := 1.02 if boss_encounter else STAGE_FRAMING_MARGIN
+		var need_w: float = absf(v.dot(right)) * margin / tan_h
+		var need_h: float = absf(v.dot(up)) * margin / tan_v
 		dist = maxf(dist, maxf(need_w, need_h) + w)
 
 	_stage_cam.global_position = centre + dir * dist
@@ -1372,13 +1629,14 @@ func _build_ui() -> void:
 	# Party's status cards stack down the left edge, enemies' down the
 	# right - added before the bottom panel/queue bar just so those still
 	# win in z-order if a stack ever ran long enough to reach them.
-	_party_status_column = VBoxContainer.new()
+	_party_status_column = HFlowContainer.new()
 	_party_status_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_party_status_column.offset_left = 12.0
 	_party_status_column.offset_top = 70.0
 	_party_status_column.offset_right = 12.0 + STATUS_COLUMN_WIDTH
 	_party_status_column.offset_bottom = 70.0 + 320.0
-	_party_status_column.add_theme_constant_override("separation", 8)
+	_party_status_column.add_theme_constant_override("h_separation", 8)
+	_party_status_column.add_theme_constant_override("v_separation", 8)
 	_party_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_party_status_column)
 
@@ -1429,10 +1687,11 @@ func _build_ui() -> void:
 	add_child(_bottom_panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 16)
+	var compact_battle_ui := get_viewport().get_visible_rect().size.y <= 500.0
+	margin.add_theme_constant_override("margin_left", 12 if compact_battle_ui else 16)
+	margin.add_theme_constant_override("margin_right", 12 if compact_battle_ui else 16)
+	margin.add_theme_constant_override("margin_top", 2 if compact_battle_ui else 10)
+	margin.add_theme_constant_override("margin_bottom", 4 if compact_battle_ui else 16)
 	# MODIFIED (added): _bottom_panel's own IGNORE (above) only ever applies
 	# to _bottom_panel itself - margin and col are separate nodes that each
 	# still defaulted to STOP independently, which is what was actually
@@ -1461,7 +1720,7 @@ func _build_ui() -> void:
 	margin.add_child(content_row)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", 4 if compact_battle_ui else 8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_stretch_ratio = 2.0
@@ -1539,7 +1798,7 @@ func _build_ui() -> void:
 		_build_overhead_bar(entry)
 
 	log_label = RichTextLabel.new()
-	log_label.custom_minimum_size = Vector2(0, 36)
+	log_label.custom_minimum_size = Vector2(0, 28 if compact_battle_ui else 36)
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1578,6 +1837,18 @@ func _build_ui() -> void:
 	# literal bracketed text - see pulse_text_effect.gd/_tutorial_show_step().
 	_tutorial_caption.install_effect(PulseTextEffect.new())
 	col.add_child(_tutorial_caption)
+
+	# Narration must not be keyboard-only. The same wait state accepts Enter
+	# and this visible action; both clear one shared flag so neither path can
+	# advance twice. Hidden captions release the layout space automatically.
+	_tutorial_continue_btn = Button.new()
+	_tutorial_continue_btn.name = "TutorialContinue"
+	_tutorial_continue_btn.text = "Continue"
+	_tutorial_continue_btn.custom_minimum_size = Vector2(180, 40)
+	_tutorial_continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_tutorial_continue_btn.visible = false
+	_tutorial_continue_btn.pressed.connect(_continue_tutorial_caption)
+	col.add_child(_tutorial_continue_btn)
 
 	# Unconditional, unlike _tutorial_caption above - a level-up can happen
 	# after ANY win, not just the tutorial fight. RichTextLabel for the same
@@ -1747,6 +2018,7 @@ func _build_ui() -> void:
 func _fit_panel_height() -> void:
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
+	_fit_party_status_cards_above_panel()
 	# Hand the rest of the screen to the stage. Both are anchored to the
 	# bottom edge, so the panel's own top offset is exactly where the stage
 	# has to stop. This is what makes the HUD's height self-correcting: a
@@ -1758,6 +2030,32 @@ func _fit_panel_height() -> void:
 		# rendered under an opaque bar is rendered where nobody can see it.
 		# The stage is now strictly the band between the two.
 		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
+
+# Party cards normally form the familiar left-side stack. A long tutorial
+# explanation can legitimately make the opaque bottom panel taller, though,
+# and at the browser review viewport that panel used to cover Bucky's HP/O2/
+# EVA rows while leaving only his name visible. Widen the party flow only for
+# those constrained states. Its right edge stops before the fixed enemy column,
+# so the cards can wrap horizontally without colliding with enemy information.
+#
+# This derives the would-be vertical stack height from each card's public
+# minimum size rather than its current position: Godot defers HFlow sorting, so
+# current card positions may still describe the previous caption for one frame.
+func _fit_party_status_cards_above_panel() -> void:
+	if _party_status_column == null or _bottom_panel == null:
+		return
+	var vertical_height := 0.0
+	var visible_cards := 0
+	for child in _party_status_column.get_children():
+		if child is Control and (child as Control).visible:
+			vertical_height += (child as Control).get_combined_minimum_size().y
+			visible_cards += 1
+	if visible_cards > 1:
+		vertical_height += float(visible_cards - 1) * 8.0
+	var panel_top := get_viewport().get_visible_rect().size.y + _bottom_panel.offset_top
+	var normal_right := 12.0 + STATUS_COLUMN_WIDTH
+	var expanded_right := maxf(normal_right, get_viewport().get_visible_rect().size.x - STATUS_COLUMN_WIDTH - 24.0)
+	_party_status_column.offset_right = expanded_right if _party_status_column.offset_top + vertical_height > panel_top else normal_right
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -1771,7 +2069,12 @@ func _menu_button(title: String, hint: String) -> Button:
 	# Four 300px choices plus their gaps fit in the 1248px-wide content area
 	# at the evidence/playtest resolution. The previous 210px width packed five
 	# across but visibly cut off both move names and result/formula summaries.
-	b.custom_minimum_size = Vector2(300, 52)
+	# Three primary actions must stay on one row at the supported 720px review
+	# width. At wide resolutions retain the larger formula-friendly buttons;
+	# on narrow screens, 205px still fits two text lines while preventing the
+	# extra wrapped row that used to collapse the 3D stage to 123px.
+	var viewport_width := get_viewport().get_visible_rect().size.x
+	b.custom_minimum_size = Vector2(205 if viewport_width < 900.0 else 300, 52)
 	b.clip_text = true
 	return b
 
@@ -1941,7 +2244,8 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	# own line only if it doesn't fit, the same as any other run of text.
 	# [font_size=22] against the caption's own default (~16) is what makes
 	# it read as its own callout rather than more body text to skim past.
-	_tutorial_caption.text = "%s\n[font_size=22][pulse]Press Enter to continue[/pulse][/font_size]" % text
+	_tutorial_caption.text = "%s\n[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]" % text
+	_tutorial_continue_btn.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
 	if on_layout_ready.is_valid():
@@ -1949,23 +2253,28 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	_tutorial_awaiting_enter = true
 	while _tutorial_awaiting_enter and not _skip_tutorial_requested:
 		await get_tree().process_frame
+	_tutorial_continue_btn.visible = false
 	# Skip Tutorial can be used during the special encounter's opening
 	# captions. Its handler releases this wait and sets _busy; don't let the
 	# interrupted narration start another caption afterward.
 	if _skip_tutorial_requested:
 		return
 
+func _continue_tutorial_caption() -> void:
+	if _tutorial_awaiting_enter:
+		_tutorial_awaiting_enter = false
+
 
 # Two independent gates share this one entry point, each guarded by its own
 # flag so a press meant for one can't be misread as resolving the other:
-# Enter/Numpad Enter dismisses a narration caption while _tutorial_awaiting_
+# Space/Enter/Numpad Enter dismisses a narration caption while _tutorial_awaiting_
 # enter is true (see _tutorial_show_step()), X resolves a QTE while
 # _qte_active is true (see below). Neither is ever true at the same moment
 # in practice (a QTE never runs while a caption's up), but checking each
 # flag independently rather than an if/elif on one shared state keeps that
 # an implementation detail instead of a hard requirement.
 func _unhandled_input(event: InputEvent) -> void:
-	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_ENTER, KEY_KP_ENTER]:
+	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		get_viewport().set_input_as_handled()
 		_tutorial_awaiting_enter = false
 		return
@@ -2215,6 +2524,17 @@ func _log(text: String) -> void:
 	log_label.clear()
 	log_label.add_text(text)
 
+func _audio_call(method: StringName, args: Array = []) -> void:
+	var owner := get_node_or_null("/root/GameAudio")
+	if owner != null and owner.has_method(method):
+		owner.callv(method, args)
+
+func _move_is_heavy(move: Dictionary) -> bool:
+	var power := int(move.get("power", 0))
+	var move_name := String(move.get("name", "")).to_lower()
+	return power >= 10 or move_name.contains("heavy") or move_name.contains("crushing") \
+		or move_name.contains("great") or move_name.contains("spinning")
+
 func _current_log_text() -> String:
 	return log_label.get_parsed_text()
 
@@ -2238,6 +2558,19 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 		return
 	var messages: Array[Dictionary] = []
 	var result_kind := String(result.get("debuff", ""))
+	# Keep audio attached to the same resolved result that owns floating text.
+	# Heals/revives are not impacts; misses, QTE dodges, and landed damage each
+	# have a distinct cue. A fifth-of-max-HP hit mirrors _react()'s existing
+	# heavy-reaction threshold, so the stronger sound has mechanical meaning.
+	if result_kind not in ["heal", "revive"]:
+		var hit := bool(result.get("hit", false))
+		var dodged := bool(result.get("dodged", false))
+		var damage := int(result.get("damage", 0))
+		if not hit or dodged or damage > 0:
+			var max_hp := 0
+			if entry.has("stats") and entry.stats is CombatantStats:
+				max_hp = (entry.stats as CombatantStats).hp_max
+			_audio_call(&"play_combat_result", [hit, dodged, max_hp > 0 and damage >= int(ceil(float(max_hp) * 0.2))])
 	if result_kind == "heal" or result_kind == "revive":
 		messages.append({"text": "+%d HP" % int(result.get("changed", 0)), "color": FEEDBACK_EFFECT_COLOR})
 	elif result_kind != "":
@@ -3184,6 +3517,14 @@ func _scroll_move_into_view(index: int) -> void:
 # entry.
 func _move_tooltip_text(mv: Dictionary, actor: Dictionary) -> String:
 	var sections: Array[String] = []
+	var target_scope := String(mv.get("target", ""))
+	var support_effect := String(mv.get("effect", ""))
+	if support_effect == "revive":
+		sections.append("Target\nOne downed ally.")
+	elif support_effect == "heal":
+		sections.append("Target\nOne living ally.")
+	elif target_scope in ["all", "all_enemies"]:
+		sections.append("Target\nAll enemies.")
 	var deals_damage := mv.has("formula") and not (mv.get("formula", {}) as Dictionary).is_empty()
 	if deals_damage:
 		var formula: Dictionary = mv.get("formula", {})
@@ -3933,7 +4274,25 @@ func _show_moves_or_items_from_target_menu() -> void:
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	if move.has("formula"):
-		return CombatRules.resolve(attacker, defender, move)
+		# Authored enemy moves use the shared formula resolver. They still need
+		# the same timing-dodge window as legacy power moves; returning directly
+		# here used to bypass the QTE entirely, including the forced first-lesson
+		# demonstration. Do not open a QTE for an attack that already lost the
+		# ACC/EVA comparison—CombatRules owns that miss and Evasion spend.
+		var formula_accuracy := attacker.effective_accuracy() + int(move.get("acc_mod", 0))
+		if formula_accuracy <= defender.evasion_current:
+			_tutorial_force_next_qte = false
+			return CombatRules.resolve(attacker, defender, move)
+		var formula_force_qte := _tutorial_force_next_qte
+		_tutorial_force_next_qte = false
+		var formula_dodge := false
+		if bool(move.get("quick_time_bool", false)) and (formula_force_qte or randf() < ENEMY_QTE_CHANCE):
+			if not formula_force_qte:
+				await _tutorial_show_step("The enemy's attack triggers a quick time event! Be prepared to time a dodge.")
+				_tutorial_caption.visible = false
+				call_deferred("_fit_panel_height")
+			formula_dodge = await _quick_time_event(_actor_for_stats(defender))
+		return CombatRules.resolve(attacker, defender, move, true, formula_dodge)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(effective_accuracy)
@@ -4143,6 +4502,9 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if length <= 0.0:
 		_send_home(entry, 0.0)
 		return
+	if target.has("actor") and is_instance_valid(target.actor) and target.actor is Node3D:
+		player_swing_staged.emit(d, target.actor as Node3D)
+	_audio_call(&"play_combat_swing", [_move_is_heavy(mv)])
 	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
 	# The rest of the clip plays while the caller gets on with the damage
 	# log, and the walk back starts when it finishes.
@@ -4185,14 +4547,18 @@ func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false
 # home rather than to wherever it happened to start, so an interrupted
 # swing cannot leave somebody drifting a metre further out every turn.
 func _send_home(entry: Dictionary, delay: float) -> void:
-	var a: Node3D = entry.get("actor")
-	if a == null or not is_instance_valid(a):
+	# Read through Variant first. Assigning a previously freed Object directly
+	# to a typed Node3D local throws before is_instance_valid() can protect us.
+	var actor_value: Variant = entry.get("actor")
+	if actor_value == null or not is_instance_valid(actor_value):
 		return
+	var a := actor_value as Node3D
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
-		a = entry.get("actor")
-		if a == null or not is_instance_valid(a):
+		actor_value = entry.get("actor")
+		if actor_value == null or not is_instance_valid(actor_value):
 			return
+		a = actor_value as Node3D
 	var back := a.create_tween()
 	back.tween_property(a, "position", entry.get("home_pos", a.position), SWING_STEP_TIME)
 	back.parallel().tween_property(a, "rotation:y", float(entry.get("home_rot", a.rotation.y)), SWING_STEP_TIME)
@@ -4385,6 +4751,7 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 	if to.length() > 0.05:
 		boss.face_toward((primary.actor as Node3D).global_position)
 	var length := boss.play_attack(move)
+	_audio_call(&"play_combat_swing", [_move_is_heavy(move)])
 	if length > 0.0:
 		await get_tree().create_timer(length * IMPACT_FRACTION).timeout
 
@@ -4462,6 +4829,17 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 
 	var enemy_actor := actor.actor as Goblin
 	var move := enemy_actor.choose_move(target_stats)
+	# The tutorial just named one defender and promised a timing dodge against
+	# this swing. An all-party move can resolve another diver first, consume the
+	# one-shot force flag on that unrelated result, and never show the promised
+	# QTE. Pick the first authored single-target move for this one teaching turn;
+	# every later AI choice remains weighted production behavior.
+	if _tutorial_force_next_qte:
+		for candidate_value in enemy_actor.available_moves():
+			var candidate := candidate_value as Dictionary
+			if String(candidate.get("target", "single")) == "single":
+				move = candidate
+				break
 	if move.is_empty():
 		_log("%s has no enabled attack." % String(actor.display_name))
 		_finish_actor_turn(actor)
@@ -4474,6 +4852,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	# frame. Previously play_move() ran before the walk and idle was restored
 	# about 0.18 seconds later, making a valid Bite look like no attack at all.
 	var attack_length := enemy_actor.play_move(move)
+	_audio_call(&"play_combat_swing", [_move_is_heavy(move.get("combat", {}) as Dictionary)])
 	if attack_length > 0.0:
 		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
 	var combat_move := move.combat as Dictionary
@@ -4493,20 +4872,43 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	if _tutorial_force_next_qte:
 		combat_move = combat_move.duplicate()
 		combat_move["quick_time_bool"] = true
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, combat_move)
+	var resolved_targets := enemy_targets_for_scope(target, alive_party, String(move.get("target", "single")))
+	var result_rows: Array[String] = []
+	var apply_self_effects := true
+	for target_value in resolved_targets:
+		var resolved_target := target_value as Dictionary
+		var results: Array
+		# A formula move normally takes the deterministic multi-hit helper. A
+		# QTE-capable formula move must instead pass through the async resolver
+		# so the visible timing window can decide whether this hit lands. Today
+		# that is the tutorial's forced Angler swing; keeping it data-driven also
+		# prevents a future authored timing move from silently bypassing input.
+		if combat_move.has("formula") and bool(combat_move.get("quick_time_bool", false)):
+			results = [await _resolve_attack(actor.stats, resolved_target.stats, combat_move)]
+		elif combat_move.has("formula"):
+			results = resolve_formula_hits(actor.stats as CombatantStats, resolved_target.stats as CombatantStats, combat_move, apply_self_effects)
+		else:
+			results = [await _resolve_attack(actor.stats, resolved_target.stats, combat_move)]
+		apply_self_effects = false
+		var target_results: Array[String] = []
+		for result_value in results:
+			var result := result_value as Dictionary
+			_refresh_bar(resolved_target)
+			_react(resolved_target, result)
+			_show_combat_feedback(resolved_target, result)
+			if bool(result.get("dodged", false)):
+				target_results.append("QTE dodge")
+			elif not bool(result.get("hit", false)):
+				target_results.append("evades")
+			elif int(result.get("damage", 0)) > 0:
+				target_results.append("-%d" % int(result.damage))
+			else:
+				target_results.append("affected")
+		if (resolved_target.stats as CombatantStats).hp <= 0 and resolved_target.has("actor") and resolved_target.actor is Diver:
+			(resolved_target.actor as Diver).play_death_fade()
+		result_rows.append("%s %s" % [String(resolved_target.display_name), "/".join(target_results)])
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
-	_refresh_bar(target)
-	_react(target, r)
-	_show_combat_feedback(target, r)
-	var verb := "%s %s %s" % [String(actor.display_name), String(move.get("verb", "attacks")), String(target.display_name)]
-	if bool(r.get("dodged", false)):
-		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
-	elif not r.hit:
-		_log("%s, but %s evades!" % [verb, String(target.display_name)])
-	else:
-		_log("%s for %d." % [verb, int(r.damage)])
-	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
-		(target.actor as Diver).play_death_fade()
+	_log("%s uses %s: %s." % [String(actor.display_name), String(move.get("name", "Attack")), "; ".join(result_rows)])
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_restore_enemy_idle(actor)
@@ -4753,6 +5155,7 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, _target_sta
 	# same parity reason - Bucky's minigame shouldn't be the one left
 	# without this while Maxilani's and Musashi's both have it.
 	_log("%s hurls rocks and walls at %s! Left/Right to move lanes, E to shockwave a rock when it arrives in your lane." % [String(actor.display_name), String(target.display_name)])
+	_audio_call(&"play_shockwave")
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_look_at_dodge_angle((target.actor as Node3D).global_position)
 	var minigame := RockDodgeMinigame.new()
