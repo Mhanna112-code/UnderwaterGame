@@ -19,6 +19,7 @@ func _run() -> void:
 	musashi.unlock_ability()
 	_check(musashi.ability_id == "grapple", "world_grapple_aim: fixture selects the aimed Grapple diver")
 	_check(musashi.model != null and musashi.model.visible, "world_grapple_aim: Musashi begins visible in third-person world play")
+	_check_whirlpool_visual(world)
 
 	world.call("_start_ability")
 	_check(world.aiming, "world_grapple_aim: Grapple enters first-person aim mode")
@@ -47,3 +48,26 @@ func _check(condition: bool, description: String) -> void:
 	else:
 		push_error("FAIL: %s" % description)
 		failures.append(description)
+
+func _check_whirlpool_visual(world: World) -> void:
+	var whirlpool: Whirlpool = null
+	for child in world.get_children():
+		if child is Whirlpool:
+			whirlpool = child as Whirlpool
+			break
+	_check(whirlpool != null, "world_grapple_aim: production route owns a Whirlpool hazard")
+	if whirlpool == null:
+		return
+	var visual: MeshInstance3D = null
+	for child in whirlpool.get_children():
+		if child is MeshInstance3D:
+			visual = child as MeshInstance3D
+			break
+	_check(visual != null, "world_grapple_aim: Whirlpool has a player-visible hazard surface")
+	if visual == null:
+		return
+	var transformed_bounds: AABB = visual.transform * visual.get_aabb()
+	_check(
+		transformed_bounds.size.y < transformed_bounds.size.x * 0.35,
+		"world_grapple_aim: Whirlpool visual stays floor-aligned instead of forming an opaque wall across the required target line"
+	)
