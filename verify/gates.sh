@@ -105,6 +105,8 @@ run "combat Quick Read: do result choices, context, and all-target previews agre
 run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
 run "deep-zone assets: do selected FBXs import with visible geometry and authored clips" "$GODOT" --headless --path . --script verify/deep_zone_assets.gd
+run "lab door asset: is Glassgoat's separated door the exact visible entrance source" "$GODOT" --headless --path . --script verify/lab_door_asset.gd
+run "lab exterior: does the rock shell conceal the office while preserving the entrance" "$GODOT" --headless --path . --script verify/lab_exterior.gd
 run "deep-zone environment: are approved scenery sources visibly and safely placed" "$GODOT" --headless --path . --script verify/deep_zone_environment.gd
 run "deep-zone blockers: do authored blocker actors use their real models, moves, and clips" "$GODOT" --headless --path . --script verify/deep_zone_blockers.gd
 run "deep-zone blocker balance: are both mandatory fights approachable and meaningfully tactical" "$GODOT" --headless --path . --script verify/deep_zone_blocker_balance.gd
@@ -134,6 +136,7 @@ run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completio
 run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
 run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
+run "audio settings UI: can players independently persist music and SFX volume/mute" "$GODOT" --headless --path . --script verify/audio_settings_ui.gd
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
@@ -147,6 +150,8 @@ run "maze minimap: do walls and live currents match the navigation overlay" "$GO
 run "maze review route: does the direct playtest link enter MazeLevel cleanly" "$GODOT" --headless --path . --script verify/maze_review_route.gd -- --maze-playtest
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
 run "title audio: do Hover, Click, and Start Game match their exact menu interactions" "$GODOT" --headless --path . --script verify/title_audio.gd
+run "Octopus intake: is the deferred visible candidate structurally characterized" "$GODOT" --headless --path . --script verify/octopus_asset_intake.gd
+run "Octopus cutscene intake: is the deferred browser media candidate validated" "$GODOT" --headless --path . --script verify/octopus_cutscene_asset.gd
 run "ability popup video: are tutorial clips playing and contained" "$GODOT" --headless --path . --script verify/ability_popup_video.gd
 run "tutorial camera handoff: does the post-fight modal release mouse look" "$GODOT" --headless --path . --script verify/tutorial_camera_handoff.gd
 run "merge readiness: is defeat exclusive and identity consistent" "$GODOT" --headless --path . --script verify/pr54_merge_readiness.gd
