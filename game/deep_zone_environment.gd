@@ -10,6 +10,10 @@ const CORRECTED_DOOR := preload("res://art/deep_zone/Corrected_Door.fbx")
 const BEACH_ASSETS := preload("res://art/deep_zone/Beach_assets1.fbx")
 const Layout := preload("res://content/deep_zone_layout.gd")
 
+var _lab_interior: Node3D
+var _lab_door: Node3D
+var _lab_door_backing: StaticBody3D
+
 func _ready() -> void:
 	_build_entry_threshold()
 	_build_route_scenery()
@@ -124,6 +128,7 @@ func _build_lab_landmark() -> void:
 	interior.name = "BrokenOfficeInterior"
 	interior.add_to_group("lab_interior")
 	interior.visible = false
+	_lab_interior = interior
 
 	var door := _add_asset(
 		landmark, CORRECTED_DOOR, Vector3(179.0, 0.0, 16.0),
@@ -131,6 +136,7 @@ func _build_lab_landmark() -> void:
 	)
 	door.name = "CorrectedLabDoor"
 	door.add_to_group("lab_exterior_door")
+	_lab_door = door
 
 	# An asymmetrical mountain silhouette wraps the hidden room. These are
 	# deliberately different scales/rotations from the route reef so the lab
@@ -143,7 +149,7 @@ func _build_lab_landmark() -> void:
 	# The visual rocks need an equally real physical shell. The center slab
 	# sits immediately behind the closed door; side slabs prevent swimming
 	# around the facade while leaving the declared LAB point reachable.
-	_add_lab_shell_body(landmark, "DoorBacking", Vector3(180.5, 4.0, 16.0), Vector3(2.0, 8.0, 6.0))
+	_lab_door_backing = _add_lab_shell_body(landmark, "DoorBacking", Vector3(180.5, 4.0, 16.0), Vector3(2.0, 8.0, 6.0))
 	_add_lab_shell_body(landmark, "NorthRockMass", Vector3(184.0, 5.0, 7.5), Vector3(8.0, 10.0, 11.0))
 	_add_lab_shell_body(landmark, "SouthRockMass", Vector3(184.0, 5.0, 24.5), Vector3(8.0, 10.0, 11.0))
 
@@ -188,7 +194,7 @@ func _add_asset(parent: Node3D, packed: PackedScene, position: Vector3, asset_sc
 		wrapper.position.y -= bounds.position.y
 	return wrapper
 
-func _add_lab_shell_body(parent: Node3D, body_name: String, position: Vector3, size: Vector3) -> void:
+func _add_lab_shell_body(parent: Node3D, body_name: String, position: Vector3, size: Vector3) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = body_name
 	body.position = position
@@ -199,6 +205,23 @@ func _add_lab_shell_body(parent: Node3D, body_name: String, position: Vector3, s
 	shape_node.shape = shape
 	body.add_child(shape_node)
 	parent.add_child(body)
+	return body
+
+# The exterior is intentionally opaque until the authored handoff owns the
+# screen. During the Mermaid scene and battle, open only the separated door
+# and its matching backing collider; the side rock shell continues to hide the
+# incomplete building from open-water sight lines.
+func set_lab_phase(phase: String) -> void:
+	var opened := phase in ["cutscene", "boss", "cleared"]
+	if is_instance_valid(_lab_door):
+		_lab_door.visible = not opened
+	if is_instance_valid(_lab_interior):
+		_lab_interior.visible = phase in ["boss", "cleared"]
+	if is_instance_valid(_lab_door_backing):
+		_lab_door_backing.process_mode = Node.PROCESS_MODE_DISABLED if opened else Node.PROCESS_MODE_INHERIT
+		for child in _lab_door_backing.get_children():
+			if child is CollisionShape3D:
+				(child as CollisionShape3D).set_deferred("disabled", opened)
 
 func _add_palm(parent: Node3D, palm_name: String, position: Vector3, palm_scale: float, yaw: float) -> Node3D:
 	var wrapper := Node3D.new()

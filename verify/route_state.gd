@@ -107,8 +107,16 @@ func _test_world_checkpoint_round_trip(expected: Dictionary) -> void:
 	restored.set("_current_slot", TEST_SLOT)
 	restored._load_save()
 	var restored_route: Variant = restored.get("route_state")
-	if restored_route == null or restored_route.to_save_data() != expected:
-		findings.append("WORLD CHECKPOINT: authored progression did not survive World save/load")
+	var expected_world := expected.duplicate(true)
+	# RouteState itself remains a lossless public data object, proven above.
+	# World cannot resume a video decoder or a live Battle, so its checkpoint
+	# boundary deliberately converts that transient state into a safe retry.
+	expected_world.lab_state = "available"
+	expected_world.tethys_state = "available"
+	expected_world.objective_id = "enter_lab"
+	expected_world.encounter_source = "random"
+	if restored_route == null or restored_route.to_save_data() != expected_world:
+		findings.append("WORLD CHECKPOINT: transient boss state did not normalize to a retryable laboratory entrance")
 	restored.queue_free()
 	await process_frame
 

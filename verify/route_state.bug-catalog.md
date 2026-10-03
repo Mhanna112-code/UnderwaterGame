@@ -14,6 +14,7 @@ and presentation are covered by later vertical slices.
 | ROUTE-STATE-002 | The HUD or another route consumer cannot react when the active objective changes. | Connect to `objective_changed`, change the objective through the public API, and assert one signal carrying the new id. | Covered by `verify/route_state.gd`. |
 | ROUTE-STATE-003 | A malformed save silently installs an impossible lifecycle value. | Load invalid lifecycle strings and verify documented safe defaults. | Covered by `verify/route_state.gd`. |
 | ROUTE-STATE-004 | A World checkpoint omits RouteState even though RouteState itself can serialize. | Real World + SaveManager save/load round trip. | Covered by `verify/route_state.gd`. |
+| ROUTE-STATE-005 | Loading while a movie or live boss battle was active strands the player in a state that cannot be reconstructed. | Save a transient lab/Tethys state through World and require normalization to the retryable lab entrance. | Covered by `verify/route_state.gd` and `verify/lab_tethys_route.gd`. |
 
 ## Test-design self-critique
 

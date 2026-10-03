@@ -18,6 +18,8 @@
 class_name Battle
 extends CanvasLayer
 
+const BOSS_LAB_SCENE := preload("res://art/deep_zone/Broken_Office.fbx")
+
 signal finished(result: String)     # "won", "fled", or "lost"
 
 # Set by world.gd before add_child - the real Diver nodes from the dive
@@ -1054,6 +1056,8 @@ func _build_stage() -> void:
 	# Positioned by _frame_stage_camera() once the actors exist, not here.
 	# The hand-placed position this replaces was tuned against a full height
 	# stage and put every combatant behind the HUD once the HUD grew.
+	if boss_encounter:
+		_build_boss_lab_stage(vp)
 
 	# Party visuals, spread left-to-right so 1-3 divers don't overlap.
 	# Diver.rotation.y == 0 is the model's own rest-facing direction (-Z, see
@@ -1217,6 +1221,44 @@ func _build_stage() -> void:
 		})
 
 	_frame_stage_camera()
+
+func _build_boss_lab_stage(viewport: SubViewport) -> void:
+	# The exterior deliberately hides this incomplete room inside a rock shell.
+	# The boss battle owns a separate 3D world, so it must instantiate the room
+	# here as well; merely revealing the overworld copy would leave combat in
+	# the generic empty-water stage.
+	var wrapper := Node3D.new()
+	wrapper.name = "BrokenOfficeBattleStage"
+	wrapper.add_to_group("boss_lab_stage")
+	viewport.add_child(wrapper)
+	var office := BOSS_LAB_SCENE.instantiate() as Node3D
+	wrapper.add_child(office)
+	wrapper.scale = Vector3.ONE * 0.31
+	wrapper.rotation_degrees.y = 180.0
+	wrapper.force_update_transform()
+	var bounds := _battle_set_bounds(wrapper)
+	if bounds.size.length() > 0.01:
+		wrapper.global_position += Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z - 1.8)
+
+func _battle_set_bounds(node: Node3D) -> AABB:
+	var combined := AABB()
+	var first := true
+	for mesh_value in _battle_set_meshes(node):
+		var mesh := mesh_value as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		var box := mesh.global_transform * mesh.get_aabb()
+		combined = box if first else combined.merge(box)
+		first = false
+	return combined
+
+func _battle_set_meshes(node: Node) -> Array:
+	var found: Array = []
+	if node is MeshInstance3D:
+		found.append(node)
+	for child in node.get_children():
+		found.append_array(_battle_set_meshes(child))
+	return found
 
 func _guardian_actor() -> Goblin:
 	return _actor_for_enemy_id(guardian_enemy_id)

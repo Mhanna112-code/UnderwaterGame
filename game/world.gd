@@ -57,6 +57,10 @@ var skip_intro_for_test := false
 # siblings above - never a persisted save value, so there is no way for a
 # real player to end up with it on by accident.
 var skip_tutorial_for_test := false
+# Focused route gates do not need to wait through Tethys's full authored swim
+# entrance before asserting World's handoff/result ownership. Production and
+# browser play keep the entrance enabled.
+var skip_boss_intro_for_test := false
 
 func _tutorial_skip_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--skip-tutorial"):
@@ -121,6 +125,7 @@ var site_nodes: Dictionary = {}
 const SiteScript := preload("res://game/site.gd")
 const DeepZoneLayoutScript := preload("res://content/deep_zone_layout.gd")
 const DeepZoneEnvironmentScript := preload("res://game/deep_zone_environment.gd")
+const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
 
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
@@ -253,6 +258,11 @@ var _current_slot := -1
 # party, inventory, and mutable geometry.
 var route_state := RouteState.new()
 var deep_zone_layout := DeepZoneLayoutScript.new()
+var deep_zone_environment: DeepZoneEnvironment
+var _lab_video_cutscene: LabVideoCutscene
+const LAB_TRIGGER_RADIUS := 4.0
+const MAZE_TRANSITION_RADIUS := 5.0
+var _maze_transition_started := false
 
 # One-time authored blocker trigger ownership. `_inside_route_blocker_id` is a
 # re-entry latch: fleeing or losing while still inside the volume must not drop
@@ -362,7 +372,9 @@ func _load_save() -> void:
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
+	_normalize_loaded_route_state()
 	_sync_deep_zone_blocker_staging()
+	_sync_lab_staging()
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -384,6 +396,16 @@ func _load_save() -> void:
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
+
+func _normalize_loaded_route_state() -> void:
+	# A movie decoder or live Battle is not a serializable checkpoint. Older or
+	# interrupted saves that captured either transient state return to the safe
+	# laboratory entrance and can replay the authored handoff exactly once.
+	if route_state.lab_state in ["cutscene", "boss"] or route_state.tethys_state == "in_progress":
+		route_state.set_lab_state("available")
+		route_state.set_tethys_state("available")
+		route_state.set_objective("enter_lab")
+		route_state.set_encounter_source("random")
 
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
@@ -546,6 +568,14 @@ func _spell_playtest_requested() -> bool:
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("spell_playtest=1")
+	return false
+
+func _maze_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--maze-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("maze=1")
 	return false
 
 func _show_game_over() -> void:
@@ -819,6 +849,8 @@ func _ready() -> void:
 		_announce("You wake back at your last save.")
 	else:
 		_show_title_screen()
+	if _maze_playtest_requested():
+		call_deferred("_enter_maze_scene", true)
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -878,9 +910,9 @@ func _build_site() -> void:
 	deep_body.add_child(deep_shape)
 	add_child(deep_body)
 
-	var deep_environment := DeepZoneEnvironmentScript.new()
-	deep_environment.name = "DeepZoneEnvironment"
-	add_child(deep_environment)
+	deep_zone_environment = DeepZoneEnvironmentScript.new()
+	deep_zone_environment.name = "DeepZoneEnvironment"
+	add_child(deep_zone_environment)
 	_build_deep_zone_blocker_staging()
 
 	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
@@ -1770,6 +1802,8 @@ func _physics_process(dt: float) -> void:
 	_update_intro_sequence()
 	_update_route_zone()
 	_update_deep_zone_blockers()
+	_update_lab_route()
+	_update_maze_transition()
 
 func _update_route_zone() -> void:
 	if not _first_encounter_done or divers.is_empty():
@@ -1843,6 +1877,77 @@ func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
 	_sync_deep_zone_blocker_staging()
 	if result == "won":
 		_write_save()
+
+# LAB-TETHYS-001/010: the physical unlocked door is the one production entry
+# point. A state latch is more reliable than a one-frame Area signal and makes
+# remaining inside the radius harmless after the cutscene has started.
+func _update_lab_route() -> void:
+	if battling or divers.is_empty() or not _first_encounter_done:
+		return
+	if route_state.lab_state != "available":
+		return
+	if route_state.bomb_bot_state != "defeated" or route_state.sword_slayer_state != "defeated":
+		return
+	var lab_point := deep_zone_layout.route_points().lab as Vector3
+	var position := (divers[active] as Diver).global_position
+	if Vector2(position.x, position.z).distance_to(Vector2(lab_point.x, lab_point.z)) <= LAB_TRIGGER_RADIUS:
+		_start_lab_cutscene()
+
+func _start_lab_cutscene() -> void:
+	if route_state.lab_state != "available" or is_instance_valid(_lab_video_cutscene):
+		return
+	route_state.set_lab_state("cutscene")
+	route_state.set_tethys_state("available")
+	route_state.set_encounter_source("lab_boss")
+	route_state.set_objective("defeat_tethys")
+	_sync_lab_staging()
+	_audio_call(&"stop_music")
+	$HUD.visible = false
+	_lab_video_cutscene = LabVideoCutsceneScript.new()
+	_lab_video_cutscene.completed.connect(_on_lab_cutscene_completed)
+	add_child(_lab_video_cutscene)
+
+func _on_lab_cutscene_completed(_skipped: bool) -> void:
+	if route_state.lab_state != "cutscene" or battling:
+		return
+	_lab_video_cutscene = null
+	$HUD.visible = true
+	route_state.set_lab_state("boss")
+	route_state.set_tethys_state("in_progress")
+	route_state.set_encounter_source("lab_boss")
+	_sync_lab_staging()
+	_start_battle("", true)
+
+func _sync_lab_staging() -> void:
+	if is_instance_valid(deep_zone_environment):
+		deep_zone_environment.set_lab_phase(route_state.lab_state)
+
+# This transition targets the current, independently verified MazeLevel scene.
+# It does not import or wait for Marc's unfinished door/maze branch; the blue
+# landmark is the isolated boundary where a later maze revision can be swapped.
+func _update_maze_transition() -> void:
+	if _maze_transition_started or battling or divers.is_empty() or not _first_encounter_done:
+		return
+	if route_state.maze_door_state != "available" or route_state.tethys_state != "defeated":
+		return
+	var target := deep_zone_layout.route_points().maze_transition as Vector3
+	var position := (divers[active] as Diver).global_position
+	if Vector2(position.x, position.z).distance_to(Vector2(target.x, target.z)) <= MAZE_TRANSITION_RADIUS:
+		_maze_transition_started = true
+		call_deferred("_enter_maze_scene", false)
+
+func _enter_maze_scene(review_route: bool = false) -> void:
+	if not review_route:
+		if route_state.maze_door_state != "available" or route_state.tethys_state != "defeated":
+			_maze_transition_started = false
+			return
+		route_state.set_maze_door_state("entered")
+		route_state.set_zone("maze")
+		route_state.set_encounter_source("maze_door")
+		_write_save()
+	get_tree().paused = false
+	_audio_call(&"stop_music")
+	get_tree().change_scene_to_file("res://game/maze_level.tscn")
 
 func _build_deep_zone_blocker_staging() -> void:
 	var definitions := [
@@ -2651,6 +2756,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
 	battle.boss_encounter = boss_encounter
+	battle.boss_intro_enabled = not skip_boss_intro_for_test
 	battle.special_encounter = special
 	battle.guardian_encounter = (reward_item != "" or authored_enemy) and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
@@ -2665,6 +2771,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
 	var route_blocker_id := _active_route_blocker_id
 	battle.queue_free()
 	battle = null
@@ -2716,6 +2823,23 @@ func _on_battle_finished(result: String) -> void:
 		return
 	if route_blocker_id != "":
 		_resolve_deep_zone_blocker(route_blocker_id, result)
+	if was_lab_boss:
+		if result == "won":
+			route_state.set_lab_state("cleared")
+			route_state.set_tethys_state("defeated")
+			route_state.set_maze_door_state("available")
+			route_state.set_objective("enter_maze")
+		else:
+			# The real checkpoint remains the one written before entering the
+			# laboratory. Keep the live state retryable too so a nonstandard test
+			# or future soft-loss flow cannot strand the route in `in_progress`.
+			route_state.set_lab_state("available")
+			route_state.set_tethys_state("available")
+			route_state.set_objective("enter_lab")
+		route_state.set_encounter_source("random")
+		_sync_lab_staging()
+		if result == "won":
+			_write_save()
 	match result:
 		"won":
 			if was_special and _special_encounter_diver != null:
@@ -2758,6 +2882,8 @@ func _on_battle_finished(result: String) -> void:
 				_grant_reward_item(_pending_reward_item)
 			elif was_tutorial:
 				_announce("You won! You can replay this fight any time from the Esc menu's Combat Help tab.")
+			elif was_lab_boss:
+				_announce("Tethys is defeated. The blue-lit maze passage is now your next route.")
 			elif route_blocker_id == "bomb_bot":
 				_announce("Bomb Bot powers down. The path to Sword Slayer is open.")
 			elif route_blocker_id == "sword_slayer":
