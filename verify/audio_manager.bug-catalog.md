@@ -17,6 +17,8 @@ state machine before any scene is allowed to trigger it.
 | AUDIO-004 | Replacing a cue leaves the old stream active or lets its finished handoff start the old loop. | Replace one sequence with another, then advance and require only the replacement loop. | Covered by `verify/audio_manager.gd`. |
 | AUDIO-005 | Music and SFX volume/mute settings disappear on restart or mutate the wrong bus. | Config round trip plus real bus assertions. | Covered by `verify/audio_manager.gd`. |
 | AUDIO-006 | Browser autoplay prevents music from ever starting, or scene transitions stack tracks after the first user gesture. | Fresh web export, browser console/audio-state probe, and human listening pass. | Planned integration verification. |
+| AUDIO-007 | A canonical Phoenix source is missing, corrupted, silently substituted, or imports with the wrong duration. | Pin every selected runtime digest and decoded duration. | Covered by `verify/audio_assets.gd`. |
+| AUDIO-008 | An ambiguous filename is treated as a proven Intro/Loop contract and an unreviewed join ships. | Manifest disposition plus named-cue integration test; only the explicit Battle pair is accepted without listening approval. | Characterized in `docs/audio-manifest.md`; browser listening pending. |
 
 ## Self-critique
 
@@ -25,6 +27,9 @@ state machine before any scene is allowed to trigger it.
   needs waveform inspection and a human listening pass in the exported build.
 - Headless Godot cannot establish real browser autoplay behavior. That remains
   a mandatory web verification boundary.
+- Runtime Ogg digests prove the reviewed transcodes are unchanged, not that
+  lossy compression preserved a musically seamless boundary. Listening is
+  still the deciding evidence.
 - Scene lifecycle ownership is deliberately outside the first test. World,
   battle, victory, and defeat will each receive focused behavioral coverage
   before they can call the manager.
