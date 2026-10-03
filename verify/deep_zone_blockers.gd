@@ -22,9 +22,128 @@ func _run() -> void:
 	_remove_test_save()
 	await _test_bomb_bot_actor()
 	await _test_sword_slayer_actor()
+	await _test_blockers_physically_gate_lab()
+	await _test_gate_width_dispatches_authored_fight()
 	await _test_bomb_bot_lifecycle()
 	_remove_test_save()
 	_finish()
+
+func _test_blockers_physically_gate_lab() -> void:
+	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	world.skip_intro_for_test = true
+	world.skip_tutorial_for_test = true
+	root.add_child(world)
+	await process_frame
+	world.title_screen.close()
+	paused = false
+	await physics_frame
+	await physics_frame
+
+	var points: Dictionary = world.deep_zone_layout.route_points()
+	var start := Vector3(94.0, 2.0, 16.0)
+	var lab := points.lab as Vector3
+	for elevation in [2.0, 20.0]:
+		_expect(not _physical_route_reachable(world, start, lab, elevation),
+			"DZ-BLOCK-010: the lab is physically reachable around Bomb Bot at swim elevation %.1f" % elevation)
+
+	world.route_state.set_blocker_state("bomb_bot", "defeated")
+	world.route_state.set_blocker_state("sword_slayer", "available")
+	world._sync_deep_zone_blocker_staging()
+	await physics_frame
+	for elevation in [2.0, 20.0]:
+		_expect(not _physical_route_reachable(world, start, lab, elevation),
+			"DZ-BLOCK-010: the lab is physically reachable around Sword Slayer at swim elevation %.1f" % elevation)
+
+	world.route_state.set_blocker_state("sword_slayer", "defeated")
+	world.route_state.set_lab_state("available")
+	world._sync_deep_zone_blocker_staging()
+	await physics_frame
+	_expect(_physical_route_reachable(world, start, lab, 2.0),
+		"DZ-BLOCK-010: defeating both blockers does not open the physical lab route")
+	_expect(not _physical_route_reachable(world, start, lab, 20.0),
+		"DZ-BLOCK-010: the laboratory cave can still be bypassed above its visible rock roof")
+
+	world.queue_free()
+	await process_frame
+	await process_frame
+
+func _physical_route_reachable(world: World, start: Vector3, goal: Vector3, elevation: float) -> bool:
+	# Flood the complete approach volume rather than checking only the authored
+	# centre line. This reproduces the real exploit: leave the route, swim around
+	# a four-metre encounter circle, then approach the lab from the side.
+	const STEP := 2.0
+	const MIN_X := 90.0
+	const MAX_X := 177.0
+	const MIN_Z := -58.0
+	const MAX_Z := 58.0
+	var width := int(floor((MAX_X - MIN_X) / STEP)) + 1
+	var depth := int(floor((MAX_Z - MIN_Z) / STEP)) + 1
+	var start_cell := Vector2i(
+		clampi(int(round((start.x - MIN_X) / STEP)), 0, width - 1),
+		clampi(int(round((start.z - MIN_Z) / STEP)), 0, depth - 1)
+	)
+	var goal_cell := Vector2i(
+		clampi(int(round((goal.x - MIN_X) / STEP)), 0, width - 1),
+		clampi(int(round((goal.z - MIN_Z) / STEP)), 0, depth - 1)
+	)
+	var sphere := SphereShape3D.new()
+	sphere.radius = 0.7
+	var excluded: Array[RID] = []
+	for diver_value in world.divers:
+		excluded.append((diver_value as CollisionObject3D).get_rid())
+	var queue: Array[Vector2i] = [start_cell]
+	var visited := {start_cell: true}
+	var passable_cache := {}
+	while not queue.is_empty():
+		var cell := queue.pop_front() as Vector2i
+		if cell == goal_cell:
+			return true
+		for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next_cell: Vector2i = cell + offset
+			if next_cell.x < 0 or next_cell.x >= width or next_cell.y < 0 or next_cell.y >= depth or visited.has(next_cell):
+				continue
+			visited[next_cell] = true
+			if not passable_cache.has(next_cell):
+				var position := Vector3(MIN_X + float(next_cell.x) * STEP, elevation, MIN_Z + float(next_cell.y) * STEP)
+				var query := PhysicsShapeQueryParameters3D.new()
+				query.shape = sphere
+				query.transform = Transform3D(Basis.IDENTITY, position)
+				query.exclude = excluded
+				query.collide_with_areas = false
+				passable_cache[next_cell] = world.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+			if bool(passable_cache[next_cell]):
+				queue.append(next_cell)
+	return false
+
+func _test_gate_width_dispatches_authored_fight() -> void:
+	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	world.skip_intro_for_test = true
+	world.skip_tutorial_for_test = true
+	root.add_child(world)
+	await process_frame
+	world.title_screen.close()
+	paused = false
+	world._first_encounter_done = true
+	var diver := world.divers[world.active] as Diver
+	var point := world.deep_zone_layout.route_points().bomb_bot as Vector3
+	for lane_z in [7.0, 16.0, 25.0]:
+		diver.global_position = Vector3(point.x - 3.0, 2.0, lane_z)
+		await physics_frame
+		await process_frame
+		_expect(world.battling and world.battle != null
+			and world.battle.guardian_enemy_id == "bomb_bot"
+			and world.battle.encounter_source == "lab_blocker",
+			"DZ-BLOCK-011: Bomb Bot field lane z=%.1f does not dispatch its authored fight" % lane_z)
+		if world.battle != null:
+			world._on_battle_finished("fled")
+			await process_frame
+			paused = false
+		diver.global_position = Vector3(point.x - 8.0, 2.0, point.z)
+		await physics_frame
+		await process_frame
+	world.queue_free()
+	await process_frame
+	await process_frame
 
 func _test_bomb_bot_actor() -> void:
 	var script := load("res://game/bomb_bot.gd")
@@ -172,6 +291,20 @@ func _test_bomb_bot_lifecycle() -> void:
 
 	var slayer_point := world.deep_zone_layout.route_points().sword_slayer as Vector3
 	var diver := world.divers[world.active] as Diver
+	var staged := _staged_blockers(world)
+	_expect(staged.has("bomb_bot") and staged.has("sword_slayer"),
+		"DZ-BLOCK-009: production world does not visibly stage both authored blocker models")
+	if staged.has("bomb_bot") and staged.has("sword_slayer"):
+		var bomb_stage := staged.bomb_bot as Node3D
+		var sword_stage := staged.sword_slayer as Node3D
+		_expect(bomb_stage.visible and not sword_stage.visible,
+			"DZ-BLOCK-009: initial world staging must show Bomb Bot and hold Sword Slayer until unlocked")
+		var authored_point := world.deep_zone_layout.route_points().bomb_bot as Vector3
+		_expect(Vector2(bomb_stage.global_position.x, bomb_stage.global_position.z).distance_to(Vector2(authored_point.x, authored_point.z)) <= 8.5,
+			"DZ-BLOCK-009: visible Bomb Bot is detached from its encounter trigger")
+		var bomb_world_bounds := _visible_bounds(bomb_stage)
+		_expect(bomb_world_bounds.size.y >= 1.5 and bomb_world_bounds.position.y >= -0.05,
+			"DZ-BLOCK-009: staged Bomb Bot is not visibly floor-aligned in the production world: %s" % bomb_world_bounds)
 	diver.global_position = slayer_point
 	world._update_route_zone()
 	world._update_deep_zone_blockers()
@@ -210,7 +343,7 @@ func _test_bomb_bot_lifecycle() -> void:
 	await process_frame
 	_expect(not world.battling,
 		"DZ-BLOCK-007: losing or fleeing retriggers the fight before the player exits its site")
-	diver.global_position = bomb_point + Vector3(0.0, 0.0, 8.0)
+	diver.global_position = bomb_point + Vector3(-8.0, 0.0, 0.0)
 	world._update_deep_zone_blockers()
 	diver.global_position = bomb_point
 	world._update_deep_zone_blockers()
@@ -227,6 +360,12 @@ func _test_bomb_bot_lifecycle() -> void:
 		"DZ-BLOCK-008: Bomb Bot victory did not unlock the Sword Slayer objective")
 	_expect(world.route_state.encounter_source == "random",
 		"DZ-BLOCK-008: Bomb Bot victory did not restore ordinary encounter policy")
+	if staged.has("bomb_bot") and staged.has("sword_slayer"):
+		_expect(not (staged.bomb_bot as Node3D).visible and (staged.sword_slayer as Node3D).visible,
+			"DZ-BLOCK-009: Bomb Bot victory did not replace its world actor with the unlocked Sword Slayer")
+		var sword_world_bounds := _visible_bounds(staged.sword_slayer as Node3D)
+		_expect(sword_world_bounds.size.y >= 1.5 and sword_world_bounds.position.y >= -0.05,
+			"DZ-BLOCK-009: staged Sword Slayer is not visibly floor-aligned in the production world: %s" % sword_world_bounds)
 
 	world._update_deep_zone_blockers()
 	await process_frame
@@ -253,7 +392,7 @@ func _test_bomb_bot_lifecycle() -> void:
 	await process_frame
 	_expect(not world.battling,
 		"DZ-BLOCK-007: fleeing Sword Slayer retriggered before exiting its site")
-	diver.global_position = slayer_point + Vector3(0.0, 0.0, 8.0)
+	diver.global_position = slayer_point + Vector3(-8.0, 0.0, 0.0)
 	world._update_deep_zone_blockers()
 	diver.global_position = slayer_point
 	world._update_deep_zone_blockers()
@@ -268,6 +407,9 @@ func _test_bomb_bot_lifecycle() -> void:
 		"DZ-BLOCK-008: Sword Slayer victory did not permanently retire it")
 	_expect(world.route_state.lab_state == "available" and world.route_state.objective_id == "enter_lab",
 		"DZ-BLOCK-008: Sword Slayer victory did not unlock the laboratory objective")
+	if staged.has("sword_slayer"):
+		_expect(not (staged.sword_slayer as Node3D).visible,
+			"DZ-BLOCK-009: defeated Sword Slayer remained staged in the world")
 	world._update_deep_zone_blockers()
 	await process_frame
 	_expect(not world.battling,
@@ -309,9 +451,10 @@ func _test_bomb_bot_lifecycle() -> void:
 	await process_frame
 	var audio_owner := root.get_node_or_null("GameAudio")
 	if audio_owner != null:
-		audio_owner.call("stop_music")
+		audio_owner.call("release_streams_for_shutdown")
 	await process_frame
 	await process_frame
+	await create_timer(0.15).timeout
 
 func _stats(hp: int, strength: int, defense: int, agility: int, evasion: int, accuracy: int) -> CombatantStats:
 	var stats := CombatantStats.new()
@@ -336,6 +479,14 @@ func _move_for_fragment(moves: Array, fragment: String) -> Dictionary:
 		if String(move.get("clip", "")).to_lower().contains(fragment):
 			return move
 	return {}
+
+func _staged_blockers(world: World) -> Dictionary:
+	var out := {}
+	for node_value in world.get_tree().get_nodes_in_group("deep_zone_blocker_staging"):
+		var node := node_value as Node3D
+		if node != null and world.is_ancestor_of(node):
+			out[String(node.get_meta("blocker_id", ""))] = node
+	return out
 
 func _skeleton_pose(node: Node) -> Transform3D:
 	var skeleton := _find_skeleton(node)

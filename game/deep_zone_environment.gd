@@ -44,10 +44,57 @@ func _build_route_scenery() -> void:
 	for placement_value in placements:
 		var placement := placement_value as Array
 		_add_asset(scenery, ROCKS, placement[0] as Vector3, placement[1] as Vector3, float(placement[2]))
+	_build_lab_approach_reef(scenery)
 	# Low guide lights read as authored wreckage power rather than a floating
 	# debug ring or an ordinary enemy used as a waypoint.
 	for x in [86.0, 111.0, 136.0, 159.0]:
 		_add_glow(scenery, Vector3(x, 0.75, 7.0), Color("4bb9b5"), 5.5, 0.22)
+
+func _build_lab_approach_reef(parent: Node3D) -> void:
+	# The authored fights cannot block an open ocean with a proximity circle.
+	# Continue the already-visible north/south rock spine into one honest,
+	# physical approach corridor. The colliders occupy the same silhouettes as
+	# these overlapping delivered rock clusters and reach the world ceiling, so
+	# there is no invisible gap to swim around or over. The maze branch stays
+	# outside the corridor at z=-34 and remains independently reachable.
+	var clusters := [
+		[Vector3(98.0, 0.0, 3.0), Vector3(2.4, 3.2, 2.2), 0.22],
+		[Vector3(120.0, 0.0, 3.0), Vector3(2.65, 3.5, 2.35), -0.48],
+		[Vector3(144.0, 0.0, 3.0), Vector3(2.45, 3.25, 2.45), 0.72],
+		[Vector3(168.0, 0.0, 3.0), Vector3(2.8, 3.7, 2.5), -0.18],
+		[Vector3(98.0, 0.0, 29.0), Vector3(2.5, 3.25, 2.35), -0.35],
+		[Vector3(121.0, 0.0, 29.0), Vector3(2.75, 3.55, 2.3), 0.58],
+		[Vector3(145.0, 0.0, 29.0), Vector3(2.4, 3.3, 2.5), -0.82],
+		[Vector3(169.0, 0.0, 29.0), Vector3(2.85, 3.65, 2.55), 0.28],
+	]
+	for cluster_value in clusters:
+		var cluster := cluster_value as Array
+		_add_asset(parent, ROCKS, cluster[0] as Vector3, cluster[1] as Vector3, float(cluster[2]))
+	# Three overlapping overhead clusters turn the laboratory branch into a
+	# short cave throat. The visible rock canopy owns the same volume as the
+	# physical roof below, so a player never meets a collision-only ceiling.
+	_add_asset(parent, ROCKS, Vector3(116.0, 13.6, 16.0), Vector3(3.4, 2.4, 3.5), 1.08, false)
+	_add_asset(parent, ROCKS, Vector3(142.0, 14.2, 16.0), Vector3(3.7, 2.5, 3.6), -0.72, false)
+	_add_asset(parent, ROCKS, Vector3(168.0, 13.8, 16.0), Vector3(3.5, 2.45, 3.7), 0.54, false)
+	# Begin at x=104 rather than the hub itself: the independent maze route
+	# peels south-west through x=100/z=0 and must remain clear of this lab corridor.
+	# The east end still meets the physical laboratory shell at x=181, so the
+	# shortened wall does not reopen a route around either blocker.
+	_add_reef_wall_body(parent, "NorthApproachReef", Vector3(142.5, 12.0, 3.0), Vector3(77.0, 24.0, 6.0))
+	_add_reef_wall_body(parent, "SouthApproachReef", Vector3(142.5, 12.0, 29.0), Vector3(77.0, 24.0, 6.0))
+	_add_reef_wall_body(parent, "LabApproachRoof", Vector3(142.5, 19.0, 16.0), Vector3(77.0, 10.0, 20.0))
+
+func _add_reef_wall_body(parent: Node3D, body_name: String, position: Vector3, size: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.name = body_name
+	body.position = position
+	body.add_to_group("lab_approach_reef")
+	var shape_node := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	shape_node.shape = shape
+	body.add_child(shape_node)
+	parent.add_child(body)
 
 func _build_palm_landmarks() -> void:
 	var palms := Node3D.new()

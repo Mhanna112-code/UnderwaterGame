@@ -42,6 +42,13 @@ func _run() -> void:
 	paused = false
 	await physics_frame
 	await physics_frame
+	world._layout_world_hud_for_size(Vector2(720.0, 480.0))
+	_expect(world.hud.offset_right <= 544.0,
+		"RESPONSIVE HUD: control help extends underneath the narrow-window minimap")
+	_expect(world.route_objective_panel.offset_right <= 544.0,
+		"RESPONSIVE HUD: route objective extends underneath the narrow-window minimap")
+	_expect(world.hud.offset_bottom <= world.route_objective_panel.offset_top,
+		"RESPONSIVE HUD: wrapped control help overlaps the route objective")
 
 	var shallow_floor := world.get_node_or_null("ShallowsFloorBody/ShallowsFloor") as MeshInstance3D
 	var deep_floor := world.get_node_or_null("DeepZoneFloorBody/DeepZoneFloor") as MeshInstance3D
@@ -61,9 +68,23 @@ func _run() -> void:
 	for id in points:
 		_expect(_has_floor(world, points[id] as Vector3, exclude), "FLOOR: %s has no physical floor support" % id)
 
-	await _expect_path_clear(world, layout.lab_route(), exclude, "LAB ROUTE")
+	# The lab route is intentionally closed until both authored blockers are
+	# defeated. Verify its geometry only after opening both public lifecycle
+	# states; an unconditional clear-path check would reward the exact bypass
+	# this route is required to prevent.
+	world.route_state.set_blocker_state("bomb_bot", "defeated")
+	world.route_state.set_blocker_state("sword_slayer", "defeated")
+	world.route_state.set_lab_state("available")
+	world._sync_deep_zone_blocker_staging()
+	await physics_frame
+	await _expect_path_clear(world, layout.lab_route(), exclude, "LAB ROUTE AFTER BOTH BLOCKERS")
 	await _expect_path_clear(world, layout.maze_route(), exclude, "MAZE ROUTE")
 	_expect_landmarks(world)
+	world.route_state.set_blocker_state("bomb_bot", "available")
+	world.route_state.set_blocker_state("sword_slayer", "available")
+	world.route_state.set_lab_state("locked")
+	world._sync_deep_zone_blocker_staging()
+	await physics_frame
 
 	var active := world.divers[world.active] as Diver
 	active.global_position = points.ability_exit
@@ -100,6 +121,11 @@ func _run() -> void:
 
 	world.queue_free()
 	await process_frame
+	var audio_owner := root.get_node_or_null("GameAudio")
+	if audio_owner != null:
+		audio_owner.call("release_streams_for_shutdown")
+	await process_frame
+	await create_timer(0.15).timeout
 	_finish()
 
 func _expect_landmarks(world: World) -> void:
@@ -144,7 +170,10 @@ func _meshes(node: Node) -> Array:
 	return found
 
 func _has_floor(world: World, point: Vector3, exclude: Array[RID]) -> bool:
-	var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 8.0, point + Vector3.DOWN * 4.0)
+	# Start below the laboratory cave roof. A floor-support probe that begins on
+	# the ceiling reports the roof as its first hit and falsely claims the actual
+	# seafloor disappeared.
+	var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 5.0, point + Vector3.DOWN * 4.0)
 	query.exclude = exclude
 	var hit := world.get_world_3d().direct_space_state.intersect_ray(query)
 	return not hit.is_empty() and float((hit.position as Vector3).y) <= 0.5

@@ -259,8 +259,12 @@ var deep_zone_layout := DeepZoneLayoutScript.new()
 # the player straight back into the same battle on the next physics frame.
 const ROUTE_BLOCKER_TRIGGER_RADIUS := 4.0
 const ROUTE_BLOCKER_EXIT_RADIUS := 6.0
+const ROUTE_BLOCKER_TRIGGER_HALF_WIDTH := 10.0
+const ROUTE_BLOCKER_EXIT_HALF_WIDTH := 11.5
 var _active_route_blocker_id := ""
 var _inside_route_blocker_id := ""
+var _route_blocker_world_actors: Dictionary = {}
+var _route_blocker_gates: Dictionary = {}
 
 # Scene reload is the only honest way to roll mutable geometry back to a
 # checkpoint: _load_save() can remove objects a save says are consumed, but
@@ -358,6 +362,7 @@ func _load_save() -> void:
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
+	_sync_deep_zone_blocker_staging()
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
@@ -690,6 +695,10 @@ func _ready() -> void:
 	minimap.offset_bottom = 166.0
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(minimap)
+	_layout_world_hud_for_size(get_viewport().get_visible_rect().size)
+	get_viewport().size_changed.connect(func() -> void:
+		_layout_world_hud_for_size(get_viewport().get_visible_rect().size)
+	)
 	_build_wall_sight_area()
 
 	save_point_menu = SavePointMenu.new()
@@ -872,6 +881,7 @@ func _build_site() -> void:
 	var deep_environment := DeepZoneEnvironmentScript.new()
 	deep_environment.name = "DeepZoneEnvironment"
 	add_child(deep_environment)
+	_build_deep_zone_blocker_staging()
 
 	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
 	# was taking most of a minute to show its first frame and every node set up
@@ -1782,8 +1792,7 @@ func _update_deep_zone_blockers() -> void:
 	var points: Dictionary = deep_zone_layout.route_points()
 	if _inside_route_blocker_id != "":
 		var inside_point := points[_inside_route_blocker_id] as Vector3
-		var inside_distance := Vector2(diver.global_position.x, diver.global_position.z).distance_to(Vector2(inside_point.x, inside_point.z))
-		if inside_distance > ROUTE_BLOCKER_EXIT_RADIUS:
+		if not _inside_route_blocker_volume(diver.global_position, inside_point, true):
 			_inside_route_blocker_id = ""
 		else:
 			return
@@ -1794,11 +1803,15 @@ func _update_deep_zone_blockers() -> void:
 		if not ["available", "in_progress"].has(state):
 			continue
 		var point := points[blocker_id] as Vector3
-		var distance := Vector2(diver.global_position.x, diver.global_position.z).distance_to(Vector2(point.x, point.z))
-		if distance <= ROUTE_BLOCKER_TRIGGER_RADIUS:
+		if _inside_route_blocker_volume(diver.global_position, point):
 			_inside_route_blocker_id = blocker_id
 			_start_deep_zone_blocker(blocker_id)
 			return
+
+func _inside_route_blocker_volume(position: Vector3, point: Vector3, exit_volume: bool = false) -> bool:
+	var x_radius := ROUTE_BLOCKER_EXIT_RADIUS if exit_volume else ROUTE_BLOCKER_TRIGGER_RADIUS
+	var z_radius := ROUTE_BLOCKER_EXIT_HALF_WIDTH if exit_volume else ROUTE_BLOCKER_TRIGGER_HALF_WIDTH
+	return absf(position.x - point.x) <= x_radius and absf(position.z - point.z) <= z_radius
 
 func _start_deep_zone_blocker(blocker_id: String) -> void:
 	if battling or not ["bomb_bot", "sword_slayer"].has(blocker_id):
@@ -1811,6 +1824,7 @@ func _start_deep_zone_blocker(blocker_id: String) -> void:
 	_active_route_blocker_id = blocker_id
 	route_state.set_blocker_state(blocker_id, "in_progress")
 	route_state.set_encounter_source("lab_blocker")
+	_sync_deep_zone_blocker_staging()
 	var intro := "Bomb Bot seals the laboratory approach." if blocker_id == "bomb_bot" else "Sword Slayer guards the laboratory entrance."
 	_start_battle("", false, blocker_id, [], false, false, intro, true)
 
@@ -1826,8 +1840,152 @@ func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
 		route_state.set_blocker_state(blocker_id, "available")
 	route_state.set_encounter_source("random")
 	_active_route_blocker_id = ""
+	_sync_deep_zone_blocker_staging()
 	if result == "won":
 		_write_save()
+
+func _build_deep_zone_blocker_staging() -> void:
+	var definitions := [
+		{"id": "bomb_bot", "actor": BombBot.new()},
+		{"id": "sword_slayer", "actor": SwordSlayer.new()},
+	]
+	var points: Dictionary = deep_zone_layout.route_points()
+	for definition_value in definitions:
+		var definition := definition_value as Dictionary
+		var blocker_id := String(definition.id)
+		var actor := definition.actor as Goblin
+		actor.name = "%sWorldActor" % blocker_id.to_pascal_case()
+		actor.add_to_group("deep_zone_blocker_staging")
+		actor.set_meta("blocker_id", blocker_id)
+		var point := points[blocker_id] as Vector3
+		# These are visible guardians, not waypoint icons. Their source rigs use
+		# large authored offsets, so a guessed Y value can put every rendered
+		# mesh below the seafloor even while the actor node itself looks valid.
+		# Place first, measure the real transformed meshes, then floor-align.
+		var presentation_scale := 1.5 if blocker_id == "bomb_bot" else 1.6
+		# Stand on the player's side of the field and slightly off the party's
+		# centre line. The field must not visually swallow the actor whose fight
+		# it represents.
+		actor.position = Vector3(point.x - 5.0, 0.0, point.z - 6.0)
+		actor.scale = Vector3.ONE * presentation_scale
+		add_child(actor)
+		actor.face_toward(Vector3(point.x - 10.0, 0.0, point.z))
+		actor.force_update_transform()
+		var actor_bounds := _route_actor_visible_bounds(actor)
+		if actor_bounds.size.length() > 0.01:
+			actor.position.y += 2.0 - actor_bounds.position.y
+			actor.force_update_transform()
+		_route_blocker_world_actors[blocker_id] = actor
+		_route_blocker_gates[blocker_id] = _build_route_blocker_gate(blocker_id, point)
+	_sync_deep_zone_blocker_staging()
+
+func _build_route_blocker_gate(blocker_id: String, point: Vector3) -> Dictionary:
+	var body := StaticBody3D.new()
+	body.name = "%sPressureField" % blocker_id.to_pascal_case()
+	body.position = Vector3(point.x, 7.0, point.z)
+	body.add_to_group("deep_zone_blocker_gate")
+	body.set_meta("blocker_id", blocker_id)
+
+	var collision := CollisionShape3D.new()
+	collision.name = "Collision"
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(2.0, 14.0, 20.0)
+	collision.shape = shape
+	body.add_child(collision)
+
+	# A sparse energy grid and bright edge pylons make the collision legible
+	# from both sides without tinting most of the screen. This is deliberately
+	# a wall, not another ring or waypoint: the guardian identifies the fight;
+	# the field explains why swimming around it is not possible.
+	var color := Color("ff9b55") if blocker_id == "bomb_bot" else Color("a879ff")
+
+	for z_offset in [-9.5, 9.5]:
+		var pylon := MeshInstance3D.new()
+		pylon.position = Vector3(0.0, -4.5, z_offset)
+		var pylon_mesh := CylinderMesh.new()
+		pylon_mesh.top_radius = 0.28
+		pylon_mesh.bottom_radius = 0.52
+		pylon_mesh.height = 5.0
+		pylon_mesh.radial_segments = 8
+		pylon.mesh = pylon_mesh
+		var pylon_material := StandardMaterial3D.new()
+		pylon_material.albedo_color = color.darkened(0.35)
+		pylon_material.metallic = 0.45
+		pylon_material.roughness = 0.28
+		pylon_material.emission_enabled = true
+		pylon_material.emission = color
+		pylon_material.emission_energy_multiplier = 1.2
+		pylon.material_override = pylon_material
+		body.add_child(pylon)
+
+	var field := MeshInstance3D.new()
+	field.name = "EnergyField"
+	field.rotation.y = PI * 0.5
+	var field_mesh := QuadMesh.new()
+	field_mesh.size = Vector2(19.0, 13.5)
+	field_mesh.orientation = PlaneMesh.FACE_Z
+	field.mesh = field_mesh
+	var field_shader := Shader.new()
+	field_shader.code = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, blend_add, depth_draw_never;
+
+uniform vec4 field_color : source_color;
+
+void fragment() {
+	vec2 centered = abs(UV - vec2(0.5));
+	float border = smoothstep(0.475, 0.5, max(centered.x, centered.y));
+	vec2 cell = abs(fract(UV * vec2(9.0, 6.0)) - vec2(0.5));
+	float grid_x = smoothstep(0.46, 0.495, cell.x);
+	float grid_y = smoothstep(0.46, 0.495, cell.y);
+	float grid = max(grid_x, grid_y);
+	float scan = 1.0 - smoothstep(0.0, 0.035, abs(fract(UV.y - TIME * 0.11) - 0.5));
+	float vertical_fade = smoothstep(0.0, 0.055, UV.y) * smoothstep(0.0, 0.055, 1.0 - UV.y);
+	float shimmer = 0.5 + 0.5 * sin(TIME * 2.1 + UV.y * 18.0 + UV.x * 5.0);
+	float alpha = (0.014 + grid * 0.12 + border * 0.48 + scan * 0.15 + shimmer * 0.012) * vertical_fade;
+	ALBEDO = field_color.rgb;
+	EMISSION = field_color.rgb * (0.35 + grid * 0.85 + border * 1.5 + scan * 1.1);
+	ALPHA = alpha;
+}
+"""
+	var field_material := ShaderMaterial.new()
+	field_material.shader = field_shader
+	field_material.set_shader_parameter("field_color", color)
+	field.material_override = field_material
+	body.add_child(field)
+
+	add_child(body)
+	return {"body": body, "collision": collision}
+
+func _route_actor_visible_bounds(node: Node) -> AABB:
+	var combined := AABB()
+	var first := true
+	if node is MeshInstance3D:
+		var mesh := node as MeshInstance3D
+		if mesh.mesh != null and mesh.visible:
+			combined = mesh.global_transform * mesh.get_aabb()
+			first = false
+	for child in node.get_children():
+		var child_bounds := _route_actor_visible_bounds(child)
+		if child_bounds.size.length() <= 0.01:
+			continue
+		combined = child_bounds if first else combined.merge(child_bounds)
+		first = false
+	return combined
+
+func _sync_deep_zone_blocker_staging() -> void:
+	if _route_blocker_world_actors.has("bomb_bot"):
+		(_route_blocker_world_actors.bomb_bot as Node3D).visible = route_state.bomb_bot_state == "available"
+	if _route_blocker_world_actors.has("sword_slayer"):
+		(_route_blocker_world_actors.sword_slayer as Node3D).visible = (
+			route_state.bomb_bot_state == "defeated" and route_state.sword_slayer_state == "available"
+		)
+	for blocker_id in _route_blocker_gates:
+		var gate := _route_blocker_gates[blocker_id] as Dictionary
+		var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state
+		var closed := state != "defeated"
+		(gate.body as Node3D).visible = closed
+		(gate.collision as CollisionShape3D).set_deferred("disabled", not closed)
 
 # Runs every physics frame from world load until the active diver reaches
 # the light beam: keeps the arrow aimed at it (the diver keeps moving, so a
@@ -2957,8 +3115,36 @@ func _build_route_objective_hud() -> void:
 	route_objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	route_objective_label.add_theme_font_size_override("font_size", 19)
 	route_objective_label.add_theme_color_override("font_color", Color(0.72, 0.96, 1.0))
+	route_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	route_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	route_objective_panel.add_child(route_objective_label)
+
+func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
+	# The top-right minimap owns 166 px. Keep both text surfaces out of that
+	# rectangle at narrow browser widths instead of letting readable text exist
+	# underneath an opaque navigation control.
+	var right_limit := maxf(304.0, viewport_size.x - 176.0)
+	hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	hud.offset_left = 16.0
+	hud.offset_top = 12.0
+	hud.offset_right = right_limit
+	hud.offset_bottom = 68.0
+	hud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hud.add_theme_font_size_override("font_size", 14 if viewport_size.x < 900.0 else 16)
+
+	if route_objective_panel == null:
+		return
+	var panel_width := minf(570.0, maxf(288.0, right_limit - 32.0))
+	var panel_left := clampf(
+		(viewport_size.x - panel_width) * 0.5,
+		16.0,
+		maxf(16.0, right_limit - panel_width)
+	)
+	route_objective_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	route_objective_panel.offset_left = panel_left
+	route_objective_panel.offset_top = 74.0
+	route_objective_panel.offset_right = panel_left + panel_width
+	route_objective_panel.offset_bottom = 118.0
 
 func _on_route_objective_changed(objective_id: String) -> void:
 	if route_objective_panel == null or route_objective_label == null:
@@ -2970,9 +3156,9 @@ func _on_route_objective_changed(objective_id: String) -> void:
 func _route_objective_text(objective_id: String) -> String:
 	match objective_id:
 		"defeat_bomb_bot":
-			return "Deep Zone: disable Bomb Bot guarding the lab."
+			return "Deep Zone: disable Bomb Bot."
 		"defeat_sword_slayer":
-			return "Deep Zone: defeat Sword Slayer at the lab approach."
+			return "Deep Zone: defeat Sword Slayer."
 		"enter_lab":
 			return "Laboratory: enter the Broken Office."
 		"defeat_tethys":
@@ -2994,16 +3180,21 @@ func _update_hud() -> void:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
 		return
 	var d: Diver = divers[active]
-	var line := "%s\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % _display_name(d.model_name)
+	var narrow := get_viewport().get_visible_rect().size.x < 900.0
+	var line := ""
+	if narrow:
+		line = "%s · WASD swim · SPACE/SHIFT depth\nmouse/arrows look · TAB diver" % _display_name(d.model_name)
+	else:
+		line = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look · TAB diver" % _display_name(d.model_name)
 	if d.ability_id != "":
-		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+		line += (" · E:%s" if narrow else "  ·  E: %s") % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the E: hint above already follows for
 	# ability_id.
 	if d.passive_id == "sonar":
-		line += "  ·  Q: Sonar (%s)" % ("On" if d.sonar_active else "Off")
-	line += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
+		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
+	line += (" · R:Random %s" if narrow else "  ·  R: Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during

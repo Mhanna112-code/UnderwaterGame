@@ -1158,7 +1158,18 @@ func _build_stage() -> void:
 		# Grapple Intercept needs that depth to read as an incoming wave rather
 		# than a ring spinning near the player; swap encounters already use the
 		# same spacing principle for their incoming portraits.
-		g.position = Vector3(_spread(i, count, 2.3) + 0.6, 0.0, enemy_z - _spread(i, count, 0.5))
+		# The authored lab blockers are single, broad-bodied set-piece actors.
+		# The ordinary centre lane visually interleaves them with the three-diver
+		# row from the production camera, making it unclear which side is which.
+		# Give only this encounter source a distinct enemy lane; random packs and
+		# special minigames keep their established composition.
+		var enemy_x := _spread(i, count, 2.3) + 0.6
+		if encounter_source == "lab_blocker":
+			# Sword Slayer's pivot sits near its mid-body while the long bill and
+			# tail extend left across Bucky at the shared blocker lane. Give only
+			# that long silhouette extra separation; Bomb Bot already frames cleanly.
+			enemy_x = 6.2 if guardian_enemy_id == "sword_slayer" else 4.2
+		g.position = Vector3(enemy_x, 0.0, enemy_z - _spread(i, count, 0.5))
 		vp.add_child(g)
 		# Same hp<=0-skips-the-actor case as the boss branch above.
 		var party_centre := Vector3.ZERO
