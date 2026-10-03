@@ -21,6 +21,7 @@ func _run() -> void:
 	_check(musashi.model != null and musashi.model.visible, "world_grapple_aim: Musashi begins visible in third-person world play")
 	_check_whirlpool_visual(world)
 	_check_lock_plate_visuals(world)
+	_check_near_surface_reticle(world)
 
 	world.call("_start_ability")
 	_check(world.aiming, "world_grapple_aim: Grapple enters first-person aim mode")
@@ -90,3 +91,21 @@ func _check_lock_plate_visuals(world: World) -> void:
 			transformed_bounds.size.y < transformed_bounds.size.x * 0.35,
 			"world_grapple_aim: pressure plate %d visual lies on its real floor trigger instead of standing upright on the wall" % (i + 1)
 		)
+
+func _check_near_surface_reticle(world: World) -> void:
+	_check(
+		world.has_method("_aim_marker_scale_for_distance"),
+		"world_grapple_aim: aim reticle owns distance-aware sizing — guards against a close wall filling the whole first-person view"
+	)
+	if not world.has_method("_aim_marker_scale_for_distance"):
+		return
+	var near_scale := float(world.call("_aim_marker_scale_for_distance", 0.1))
+	var route_scale := float(world.call("_aim_marker_scale_for_distance", 8.0))
+	_check(
+		near_scale <= 0.05,
+		"world_grapple_aim: a 10 cm ray hit keeps the gray miss reticle below 5% world scale"
+	)
+	_check(
+		is_equal_approx(route_scale, 1.0),
+		"world_grapple_aim: a normal route target retains the authored full-size reticle"
+	)

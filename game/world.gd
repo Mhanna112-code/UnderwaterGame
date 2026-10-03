@@ -2565,6 +2565,15 @@ func _aim_dir() -> Vector3:
 var _aim_marker: MeshInstance3D
 var _aim_marker_mat: StandardMaterial3D
 
+# The reticle is a world-space torus. At its authored size it reads well on a
+# distant Grapple target, but a ray that immediately hits a corridor wall can
+# put that same 64 cm marker only centimetres from the first-person camera and
+# turn it into a screen-filling gray polygon. Keep its apparent angular size
+# bounded near surfaces while preserving the full authored size on route-scale
+# targets. The small non-zero floor also keeps a close miss visible as feedback.
+func _aim_marker_scale_for_distance(distance: float) -> float:
+	return clampf(distance / 3.0, 0.04, 1.0)
+
 func _ensure_aim_marker() -> void:
 	if _aim_marker != null:
 		return
@@ -2607,6 +2616,7 @@ func _update_aim_marker() -> void:
 
 	_aim_marker.visible = true
 	_aim_marker.global_position = point
+	_aim_marker.scale = Vector3.ONE * _aim_marker_scale_for_distance(from.distance_to(point))
 	_aim_marker.look_at(from, Vector3.UP)
 	var c: Color = Color(0.35, 0.95, 0.4) if on_target else Color(0.75, 0.78, 0.8)
 	_aim_marker_mat.albedo_color = c
