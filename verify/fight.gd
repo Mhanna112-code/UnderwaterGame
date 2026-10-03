@@ -84,6 +84,12 @@ func _process(_dt: float) -> bool:
 	if frames == 2:
 		for d in world.divers:
 			party_names.append(String((d as Diver).model_name))
+		# World/title construction can legitimately consume the global RNG before
+		# this frame. Reseed at the boundary this gate actually owns so the enemy
+		# pack and combat decisions are stable in both a warm checkout and a fresh
+		# exact-head import/export directory.
+		seed(2)
+		EnemyRoster._rng.seed = 2
 		world._start_battle()
 		return false
 	if frames == 3 and world.battle != null:
@@ -155,14 +161,16 @@ func _on_player_swing_staged(attacker: Node3D, target: Node3D) -> void:
 		return
 	aim_samples += 1
 	var who: String = String((attacker as Diver).model_name) if attacker is Diver else String(attacker.name)
-	var gap: float = attacker.global_position.distance_to(target.global_position)
+	var offset := target.global_position - attacker.global_position
+	var gap: float = offset.length()
+	var horizontal_gap := Vector2(offset.x, offset.z).length()
 	var target_radius := 0.0
 	var radius_value: Variant = target.get("radius")
 	if radius_value != null:
 		target_radius = float(radius_value)
 	var surface_gap := gap - target_radius
 	if surface_gap > MAX_SURFACE_SWING_GAP:
-		_note(aim_findings, who, "swung from %.1f m outside the target surface, further than the %.1f m a swing reaches" % [surface_gap, MAX_SURFACE_SWING_GAP])
+		_note(aim_findings, who, "swung from %.1f m outside the target surface (%.1f m horizontal, %.1f m vertical), further than the %.1f m a swing reaches" % [surface_gap, horizontal_gap - target_radius, absf(offset.y), MAX_SURFACE_SWING_GAP])
 		return
 	var to: Vector3 = target.global_position - attacker.global_position
 	to.y = 0.0
