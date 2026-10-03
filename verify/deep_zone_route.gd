@@ -94,6 +94,8 @@ func _run() -> void:
 	await physics_frame
 	_expect(world.route_state.zone_id == "deep", "ZONE: physically crossing the deep entry did not update RouteState")
 	_expect(world.route_state.objective_id == "defeat_bomb_bot", "OBJECTIVE: first deep-zone objective is not the first authored blocker")
+	_expect(world.route_state.maze_door_state == "available",
+		"BRANCHING: entering Deep did not make the separate current-maze transition available")
 	var objective_labels := world.get_tree().get_nodes_in_group("route_objective_hud")
 	if objective_labels.size() != 1:
 		findings.append("OBJECTIVE HUD: deep objective has no single player-visible owner")

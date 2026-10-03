@@ -406,6 +406,11 @@ func _normalize_loaded_route_state() -> void:
 		route_state.set_tethys_state("available")
 		route_state.set_objective("enter_lab")
 		route_state.set_encounter_source("random")
+	# The current maze is a separate deep-zone branch, not a reward for beating
+	# Tethys. Migrate older deep-zone saves that captured the former lab-gated
+	# `locked` state so they cannot remain permanently unable to use the branch.
+	if route_state.zone_id == "deep" and route_state.maze_door_state == "locked":
+		route_state.set_maze_door_state("available")
 
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
@@ -1812,8 +1817,13 @@ func _update_route_zone() -> void:
 	if physical_zone == route_state.zone_id:
 		return
 	route_state.set_zone(physical_zone)
-	if physical_zone == "deep" and route_state.bomb_bot_state == "available":
-		route_state.set_objective("defeat_bomb_bot")
+	if physical_zone == "deep":
+		# Independent branch: the maze transition is available on entering Deep
+		# even while the two lab blockers and Tethys remain untouched.
+		if route_state.maze_door_state == "locked":
+			route_state.set_maze_door_state("available")
+		if route_state.bomb_bot_state == "available":
+			route_state.set_objective("defeat_bomb_bot")
 
 # Checks the live diver's physical position, not a query-string route or a
 # test-only teleport. Sword Slayer joins this same table after its actor slice;
@@ -1928,7 +1938,7 @@ func _sync_lab_staging() -> void:
 func _update_maze_transition() -> void:
 	if _maze_transition_started or battling or divers.is_empty() or not _first_encounter_done:
 		return
-	if route_state.maze_door_state != "available" or route_state.tethys_state != "defeated":
+	if route_state.maze_door_state != "available":
 		return
 	var target := deep_zone_layout.route_points().maze_transition as Vector3
 	var position := (divers[active] as Diver).global_position
@@ -1938,7 +1948,7 @@ func _update_maze_transition() -> void:
 
 func _enter_maze_scene(review_route: bool = false) -> void:
 	if not review_route:
-		if route_state.maze_door_state != "available" or route_state.tethys_state != "defeated":
+		if route_state.maze_door_state != "available":
 			_maze_transition_started = false
 			return
 		route_state.set_maze_door_state("entered")
@@ -2827,7 +2837,8 @@ func _on_battle_finished(result: String) -> void:
 		if result == "won":
 			route_state.set_lab_state("cleared")
 			route_state.set_tethys_state("defeated")
-			route_state.set_maze_door_state("available")
+			# The maze branch was already available on entering Deep. Point the
+			# player toward it after the lab victory without making Tethys its key.
 			route_state.set_objective("enter_maze")
 		else:
 			# The real checkpoint remains the one written before entering the

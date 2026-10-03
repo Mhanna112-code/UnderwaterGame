@@ -25,6 +25,9 @@ func _run() -> void:
 	world.route_state.set_blocker_state("sword_slayer", "defeated")
 	world.route_state.set_lab_state("available")
 	world.route_state.set_tethys_state("locked")
+	# The maze is an already-open independent Deep branch. Lab victory may
+	# guide the next objective there, but must not be what unlocks it.
+	world.route_state.set_maze_door_state("available")
 	world.route_state.set_objective("enter_lab")
 	world._sync_deep_zone_blocker_staging()
 	await physics_frame
@@ -73,7 +76,7 @@ func _run() -> void:
 					_expect(world.route_state.lab_state == "cleared" and world.route_state.tethys_state == "defeated",
 						"LAB-TETHYS-005: victory did not persist laboratory/Tethys completion")
 					_expect(world.route_state.maze_door_state == "available" and world.route_state.objective_id == "enter_maze",
-						"LAB-TETHYS-005: victory did not advance to the maze transition")
+						"LAB-TETHYS-005: victory did not preserve the separate maze branch and guide the next objective")
 
 	# LAB-TETHYS-004: neither a decoder nor a live battle can be restored.
 	for transient in [

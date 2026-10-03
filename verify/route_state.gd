@@ -61,6 +61,7 @@ func _run() -> void:
 
 	_test_invalid_save_falls_back(route_script)
 	await _test_world_checkpoint_round_trip(expected)
+	await _test_legacy_deep_maze_migration()
 	_finish()
 
 func _test_invalid_save_falls_back(route_script: Script) -> void:
@@ -117,6 +118,30 @@ func _test_world_checkpoint_round_trip(expected: Dictionary) -> void:
 	expected_world.encounter_source = "random"
 	if restored_route == null or restored_route.to_save_data() != expected_world:
 		findings.append("WORLD CHECKPOINT: transient boss state did not normalize to a retryable laboratory entrance")
+	restored.queue_free()
+	await process_frame
+
+func _test_legacy_deep_maze_migration() -> void:
+	var world := await _fresh_world()
+	var save_data := world._serialize_state()
+	var old_route := (world.route_state as RouteState).to_save_data()
+	old_route.zone_id = "deep"
+	old_route.objective_id = "defeat_bomb_bot"
+	old_route.maze_door_state = "locked"
+	old_route.lab_state = "locked"
+	old_route.tethys_state = "locked"
+	save_data.route_state = old_route
+	SaveManager.write_slot(TEST_SLOT, save_data)
+	world.queue_free()
+	await process_frame
+
+	var restored := await _fresh_world()
+	restored.set("_current_slot", TEST_SLOT)
+	restored._load_save()
+	if (restored.route_state.maze_door_state != "available"
+		or restored.route_state.tethys_state != "locked"
+		or restored.route_state.lab_state != "locked"):
+		findings.append("WORLD CHECKPOINT: old Deep save did not open only the independent maze branch")
 	restored.queue_free()
 	await process_frame
 

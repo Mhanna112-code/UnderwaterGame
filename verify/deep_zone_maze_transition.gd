@@ -1,5 +1,7 @@
-# Normal-play handoff from the deep-zone landmark to the current standalone maze.
-# Catches LAB-TETHYS-011 without depending on unfinished maze-door work.
+# Normal-play handoff from the separate deep-zone landmark to the current
+# standalone maze. This is explicitly independent of the laboratory blockers
+# and Tethys: the plan defines two branches after the blockade, not a maze
+# reward for clearing the lab.
 # Usage: godot --headless --path . --script verify/deep_zone_maze_transition.gd
 extends SceneTree
 
@@ -19,22 +21,22 @@ func _run() -> void:
 	paused = false
 	world._first_encounter_done = true
 	world.route_state.set_zone("deep")
-	world.route_state.set_blocker_state("bomb_bot", "defeated")
-	world.route_state.set_blocker_state("sword_slayer", "defeated")
-	world.route_state.set_lab_state("cleared")
-	world.route_state.set_tethys_state("defeated")
+	world.route_state.set_blocker_state("bomb_bot", "available")
+	world.route_state.set_blocker_state("sword_slayer", "available")
+	world.route_state.set_lab_state("locked")
+	world.route_state.set_tethys_state("locked")
 	world.route_state.set_maze_door_state("available")
-	world.route_state.set_objective("enter_maze")
+	world.route_state.set_objective("defeat_bomb_bot")
 	(world.divers[world.active] as Diver).global_position = world.deep_zone_layout.route_points().maze_transition
 	world._update_maze_transition()
 	for _frame in range(5):
 		await process_frame
 	_expect(current_scene is MazeLevel,
-		"LAB-TETHYS-011: entering the available blue landmark did not load MazeLevel")
+		"DZ-MAZE-001: separate maze branch incorrectly requires lab/Tethys completion")
 	if current_scene is MazeLevel:
 		var maze := current_scene as MazeLevel
 		_expect(maze.get_node_or_null("HUD") != null,
-			"LAB-TETHYS-011: maze handoff loaded a non-playable scene without its HUD")
+			"DZ-MAZE-001: maze handoff loaded a non-playable scene without its HUD")
 		maze.queue_free()
 	await process_frame
 	var audio_owner := root.get_node_or_null("GameAudio")
