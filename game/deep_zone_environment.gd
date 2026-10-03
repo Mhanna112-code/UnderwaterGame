@@ -6,6 +6,7 @@ extends Node3D
 # authored blockers are added by their own lifecycle owner later.
 const ROCKS := preload("res://art/deep_zone/Rocks.fbx")
 const BROKEN_OFFICE := preload("res://art/deep_zone/Broken_Office.fbx")
+const CORRECTED_DOOR := preload("res://art/deep_zone/Corrected_Door.fbx")
 const Layout := preload("res://content/deep_zone_layout.gd")
 
 func _ready() -> void:
@@ -49,16 +50,45 @@ func _build_route_scenery() -> void:
 func _build_lab_landmark() -> void:
 	var landmark := _landmark("lab")
 	landmark.name = "LabLandmark"
-	# LAB is the encounter threshold in front of the building; the room sits
-	# farther east so its facade fills the approach without swallowing the
-	# blocker trigger itself.
-	_add_asset(landmark, BROKEN_OFFICE, Vector3(182.0, 0.0, 16.0), Vector3(0.8, 0.8, 0.8), 0.0)
-	_add_asset(landmark, ROCKS, Vector3(177.0, 0.0, 4.0), Vector3(2.6, 2.8, 2.4), 0.45)
-	_add_asset(landmark, ROCKS, Vector3(177.0, 0.0, 28.0), Vector3(2.6, 2.6, 2.4), -0.45)
-	_add_crystal(landmark, Vector3(174.5, 2.2, 8.0), Color("ff785c"), 3.6, -0.14)
-	_add_crystal(landmark, Vector3(174.5, 2.2, 24.0), Color("ff785c"), 3.6, 0.14)
-	_add_glow(landmark, Vector3(176.0, 3.5, 7.0), Color("ff785c"), 9.0)
-	_add_glow(landmark, Vector3(176.0, 3.5, 25.0), Color("ff785c"), 9.0)
+	# Glassgoat's intended exterior is a separated door embedded in a large
+	# rock face. Broken Office is the concealed cutscene/boss staging set, not
+	# an open exterior building: keeping it hidden here prevents its missing
+	# walls from reading as a see-through lab while preserving its authored
+	# transform for the later interior transition.
+	var interior := _add_asset(
+		landmark, BROKEN_OFFICE, Vector3(194.0, 0.0, 16.0),
+		Vector3(0.58, 0.58, 0.58), 0.0
+	)
+	interior.name = "BrokenOfficeInterior"
+	interior.add_to_group("lab_interior")
+	interior.visible = false
+
+	var door := _add_asset(
+		landmark, CORRECTED_DOOR, Vector3(179.0, 0.0, 16.0),
+		Vector3.ONE * 1.1, -PI * 0.5
+	)
+	door.name = "CorrectedLabDoor"
+	door.add_to_group("lab_exterior_door")
+
+	# An asymmetrical mountain silhouette wraps the hidden room. These are
+	# deliberately different scales/rotations from the route reef so the lab
+	# reads as one authored rock mass rather than three repeated prop copies.
+	_add_asset(landmark, ROCKS, Vector3(184.0, 0.0, 5.5), Vector3(4.4, 4.6, 2.5), 0.32)
+	_add_asset(landmark, ROCKS, Vector3(184.0, 0.0, 26.5), Vector3(4.7, 4.3, 2.6), -0.48)
+	_add_asset(landmark, ROCKS, Vector3(187.0, 7.0, 16.0), Vector3(4.6, 2.5, 3.1), 0.12, false)
+	_add_asset(landmark, ROCKS, Vector3(194.0, 0.0, 16.0), Vector3(5.2, 4.7, 4.5), -0.2)
+
+	# The visual rocks need an equally real physical shell. The center slab
+	# sits immediately behind the closed door; side slabs prevent swimming
+	# around the facade while leaving the declared LAB point reachable.
+	_add_lab_shell_body(landmark, "DoorBacking", Vector3(180.5, 4.0, 16.0), Vector3(2.0, 8.0, 6.0))
+	_add_lab_shell_body(landmark, "NorthRockMass", Vector3(184.0, 5.0, 7.5), Vector3(8.0, 10.0, 11.0))
+	_add_lab_shell_body(landmark, "SouthRockMass", Vector3(184.0, 5.0, 24.5), Vector3(8.0, 10.0, 11.0))
+
+	_add_crystal(landmark, Vector3(176.5, 2.2, 9.0), Color("ff785c"), 3.6, -0.14)
+	_add_crystal(landmark, Vector3(176.5, 2.2, 23.0), Color("ff785c"), 3.6, 0.14)
+	_add_glow(landmark, Vector3(178.0, 3.5, 9.0), Color("ff785c"), 9.0)
+	_add_glow(landmark, Vector3(178.0, 3.5, 23.0), Color("ff785c"), 9.0)
 
 func _build_maze_landmark() -> void:
 	var landmark := _landmark("maze")
@@ -95,6 +125,18 @@ func _add_asset(parent: Node3D, packed: PackedScene, position: Vector3, asset_sc
 	if floor_align and bounds.size.length() > 0.01:
 		wrapper.position.y -= bounds.position.y
 	return wrapper
+
+func _add_lab_shell_body(parent: Node3D, body_name: String, position: Vector3, size: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.name = body_name
+	body.position = position
+	body.add_to_group("lab_rock_shell")
+	var shape_node := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	shape_node.shape = shape
+	body.add_child(shape_node)
+	parent.add_child(body)
 
 func _add_glow(parent: Node3D, position: Vector3, color: Color, light_range: float, radius: float = 0.32) -> void:
 	var marker := MeshInstance3D.new()
