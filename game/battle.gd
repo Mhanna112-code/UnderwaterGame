@@ -1210,9 +1210,13 @@ func _ordinary_actor() -> Goblin:
 	return _actor_for_enemy_id(EnemyRoster.random_id())
 
 func _actor_for_enemy_id(enemy_id: String) -> Goblin:
-	if enemy_id == "swordfish_duelist":
-		return SwordDuelist.new()
-	return Goblin.new()
+	match enemy_id:
+		"swordfish_duelist":
+			return SwordDuelist.new()
+		"bomb_bot":
+			return BombBot.new()
+		_:
+			return Goblin.new()
 
 # Glass_Goat authored the attacks for a 2D presentation, so the arm travel
 # and body recoil read from a three-quarter angle and disappear into the
