@@ -7,11 +7,13 @@ extends Node3D
 const ROCKS := preload("res://art/deep_zone/Rocks.fbx")
 const BROKEN_OFFICE := preload("res://art/deep_zone/Broken_Office.fbx")
 const CORRECTED_DOOR := preload("res://art/deep_zone/Corrected_Door.fbx")
+const BEACH_ASSETS := preload("res://art/deep_zone/Beach_assets1.fbx")
 const Layout := preload("res://content/deep_zone_layout.gd")
 
 func _ready() -> void:
 	_build_entry_threshold()
 	_build_route_scenery()
+	_build_palm_landmarks()
 	_build_lab_landmark()
 	_build_maze_landmark()
 
@@ -46,6 +48,19 @@ func _build_route_scenery() -> void:
 	# debug ring or an ordinary enemy used as a waypoint.
 	for x in [86.0, 111.0, 136.0, 159.0]:
 		_add_glow(scenery, Vector3(x, 0.75, 7.0), Color("4bb9b5"), 5.5, 0.22)
+
+func _build_palm_landmarks() -> void:
+	var palms := Node3D.new()
+	palms.name = "SunkenPalmLandmarks"
+	palms.add_to_group("deep_zone_scenery")
+	add_child(palms)
+	# The approved palms act as two restrained silhouette pairs: one announces
+	# the deep threshold, and one confirms the otherwise-open maze branch. They
+	# stay well outside both diver corridors and away from the industrial lab.
+	_add_palm(palms, "EntryPalmNorth", Vector3(72.0, 0.0, 0.0), 0.38, 0.18)
+	_add_palm(palms, "EntryPalmSouth", Vector3(82.0, 0.0, 27.0), 0.44, -0.62)
+	_add_palm(palms, "MazePalmOuter", Vector3(101.0, 0.0, -17.0), 0.35, 1.08)
+	_add_palm(palms, "MazePalmGate", Vector3(119.0, 0.0, -48.0), 0.41, -0.34)
 
 func _build_lab_landmark() -> void:
 	var landmark := _landmark("lab")
@@ -137,6 +152,28 @@ func _add_lab_shell_body(parent: Node3D, body_name: String, position: Vector3, s
 	shape_node.shape = shape
 	body.add_child(shape_node)
 	parent.add_child(body)
+
+func _add_palm(parent: Node3D, palm_name: String, position: Vector3, palm_scale: float, yaw: float) -> Node3D:
+	var wrapper := Node3D.new()
+	wrapper.name = palm_name
+	wrapper.add_to_group("deep_zone_tree")
+	parent.add_child(wrapper)
+	var instance := BEACH_ASSETS.instantiate() as Node3D
+	wrapper.add_child(instance)
+	# The delivery is a three-part environment study. Glassgoat approved its
+	# tree, not replacement world-sized sand and water planes.
+	for mesh_value in _meshes(instance):
+		var mesh := mesh_value as MeshInstance3D
+		mesh.visible = mesh.name == "Palm_Tree_1"
+	wrapper.scale = Vector3.ONE * palm_scale
+	wrapper.rotation.y = yaw
+	wrapper.position = position
+	wrapper.force_update_transform()
+	var bounds := _visible_bounds(wrapper)
+	if bounds.size.length() > 0.01:
+		wrapper.position.y -= bounds.position.y
+		wrapper.force_update_transform()
+	return wrapper
 
 func _add_glow(parent: Node3D, position: Vector3, color: Color, light_range: float, radius: float = 0.32) -> void:
 	var marker := MeshInstance3D.new()
