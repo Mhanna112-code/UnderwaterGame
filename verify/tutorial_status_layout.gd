@@ -1,7 +1,8 @@
 # `tutorial status layout: every combatant card remains above the long-caption
 # HUD - guards against Bucky stats being covered`.
 #
-# Run windowed at the narrow browser size where the defect was captured:
+# Run windowed at each release-review shape:
+#   godot --path . --resolution 1280x720 --script verify/tutorial_status_layout.gd
 #   godot --path . --resolution 803x893 --script verify/tutorial_status_layout.gd
 extends SceneTree
 
@@ -67,7 +68,12 @@ func _check_visible_cards(battle: Battle) -> void:
 		var card := entry.get("card") as Control
 		if card == null or not card.is_visible_in_tree():
 			continue
-		var rect := card.get_global_rect()
+		# PanelContainer can report only the allocation its parent granted it
+		# while labels/rows still draw past that allocation. The player sees the
+		# descendants, so union every visible Control rather than accepting a
+		# deceptively small parent rect (the wide hosted defect exposed exactly
+		# that mismatch).
+		var rect := _visible_control_bounds(card)
 		card_rects.append(rect)
 		var name := String(entry.get("display_name", "unknown combatant"))
 		if rect.position.y < viewport_rect.position.y - 0.5 or rect.end.y > viewport_rect.end.y + 0.5:
@@ -78,3 +84,14 @@ func _check_visible_cards(battle: Battle) -> void:
 		for right_index in range(left_index + 1, card_rects.size()):
 			if card_rects[left_index].intersects(card_rects[right_index], true):
 				findings.append("STATUS CARDS OVERLAP: %s and %s" % [str(card_rects[left_index]), str(card_rects[right_index])])
+
+func _visible_control_bounds(root_control: Control) -> Rect2:
+	var bounds := root_control.get_global_rect()
+	var pending: Array[Node] = [root_control]
+	while not pending.is_empty():
+		var current := pending.pop_back() as Node
+		for child in current.get_children():
+			if child is Control and (child as Control).is_visible_in_tree():
+				bounds = bounds.merge((child as Control).get_global_rect())
+			pending.append(child)
+	return bounds
