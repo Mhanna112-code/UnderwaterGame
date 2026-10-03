@@ -1200,7 +1200,12 @@ func _build_stage() -> void:
 		_frame_stage_camera()
 		return
 	for i in range(count):
-		var g: Goblin = _guardian_actor() if guardian_encounter else _ordinary_actor()
+		# The opening lesson explicitly teaches against the Angler. Drawing from
+		# the ordinary roster here made that contract random: a Frilled Shark or
+		# Swordfish could replace the named tutorial opponent even though every
+		# caption and QTE explanation still described an Angler. Special tutorial
+		# practice uses the same predictable onboarding opponent.
+		var g: Goblin = _actor_for_enemy_id("angler") if tutorial_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
 		# Special encounters use the deliberately deeper lane selected above.
 		# Grapple Intercept needs that depth to read as an incoming wave rather
 		# than a ring spinning near the player; swap encounters already use the
@@ -4065,7 +4070,25 @@ func _show_moves_or_items_from_target_menu() -> void:
 #  3. Defense subtracts flat from that raw amount - can floor a hit at 0.
 func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: Dictionary) -> Dictionary:
 	if move.has("formula"):
-		return CombatRules.resolve(attacker, defender, move)
+		# Authored enemy moves use the shared formula resolver. They still need
+		# the same timing-dodge window as legacy power moves; returning directly
+		# here used to bypass the QTE entirely, including the forced first-lesson
+		# demonstration. Do not open a QTE for an attack that already lost the
+		# ACC/EVA comparison—CombatRules owns that miss and Evasion spend.
+		var formula_accuracy := attacker.effective_accuracy() + int(move.get("acc_mod", 0))
+		if formula_accuracy <= defender.evasion_current:
+			_tutorial_force_next_qte = false
+			return CombatRules.resolve(attacker, defender, move)
+		var formula_force_qte := _tutorial_force_next_qte
+		_tutorial_force_next_qte = false
+		var formula_dodge := false
+		if bool(move.get("quick_time_bool", false)) and (formula_force_qte or randf() < ENEMY_QTE_CHANCE):
+			if not formula_force_qte:
+				await _tutorial_show_step("The enemy's attack triggers a quick time event! Be prepared to time a dodge.")
+				_tutorial_caption.visible = false
+				call_deferred("_fit_panel_height")
+			formula_dodge = await _quick_time_event(_actor_for_stats(defender))
+		return CombatRules.resolve(attacker, defender, move, true, formula_dodge)
 	var effective_accuracy: int = attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if effective_accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(effective_accuracy)
@@ -4318,14 +4341,18 @@ func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false
 # home rather than to wherever it happened to start, so an interrupted
 # swing cannot leave somebody drifting a metre further out every turn.
 func _send_home(entry: Dictionary, delay: float) -> void:
-	var a: Node3D = entry.get("actor")
-	if a == null or not is_instance_valid(a):
+	# Read through Variant first. Assigning a previously freed Object directly
+	# to a typed Node3D local throws before is_instance_valid() can protect us.
+	var actor_value: Variant = entry.get("actor")
+	if actor_value == null or not is_instance_valid(actor_value):
 		return
+	var a := actor_value as Node3D
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
-		a = entry.get("actor")
-		if a == null or not is_instance_valid(a):
+		actor_value = entry.get("actor")
+		if actor_value == null or not is_instance_valid(actor_value):
 			return
+		a = actor_value as Node3D
 	var back := a.create_tween()
 	back.tween_property(a, "position", entry.get("home_pos", a.position), SWING_STEP_TIME)
 	back.parallel().tween_property(a, "rotation:y", float(entry.get("home_rot", a.rotation.y)), SWING_STEP_TIME)
@@ -4634,7 +4661,14 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	for target_value in resolved_targets:
 		var resolved_target := target_value as Dictionary
 		var results: Array
-		if combat_move.has("formula"):
+		# A formula move normally takes the deterministic multi-hit helper. A
+		# QTE-capable formula move must instead pass through the async resolver
+		# so the visible timing window can decide whether this hit lands. Today
+		# that is the tutorial's forced Angler swing; keeping it data-driven also
+		# prevents a future authored timing move from silently bypassing input.
+		if combat_move.has("formula") and bool(combat_move.get("quick_time_bool", false)):
+			results = [await _resolve_attack(actor.stats, resolved_target.stats, combat_move)]
+		elif combat_move.has("formula"):
 			results = resolve_formula_hits(actor.stats as CombatantStats, resolved_target.stats as CombatantStats, combat_move, apply_self_effects)
 		else:
 			results = [await _resolve_attack(actor.stats, resolved_target.stats, combat_move)]

@@ -4,11 +4,28 @@ extends RefCounted
 # Resolves a Group_StatsV2 move without knowing whether its wielder is a
 # player or enemy. The UI, animations and AI choose a move; this class owns
 # the shared arithmetic and mutations.
-static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Dictionary:
+static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true, dodged: bool = false) -> Dictionary:
 	var accuracy := attacker.effective_accuracy() + int(move.get("acc_mod", 0))
 	if accuracy <= defender.evasion_current:
 		var spent := defender.spend_evasion(accuracy)
+		# Selecting the move commits its self cost even when the target's
+		# Evasion avoids the attack. Otherwise a risky move is paradoxically
+		# free only on failure and the button's advertised tradeoff is false.
+		if apply_self_effects:
+			_apply_self_effects(attacker, move)
 		return _result(false, 0, spent)
+
+	# A successful timing dodge happens after the attack has already beaten
+	# Evasion, but before any damage or target-side effect lands. The attacker
+	# still pays this move's self cost: they committed to the move even though
+	# the defender escaped it. Keeping this in the shared formula resolver makes
+	# authored enemy moves and player moves obey one result contract.
+	if dodged:
+		if apply_self_effects:
+			_apply_self_effects(attacker, move)
+		var dodged_result := _result(true, 0, 0)
+		dodged_result.dodged = true
+		return dodged_result
 
 	var had_bleed := defender.status_level("bleed") > 0
 	var raw := formula_value(attacker, move.get("formula", {}))
