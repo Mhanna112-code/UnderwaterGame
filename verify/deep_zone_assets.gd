@@ -24,6 +24,12 @@ const ASSETS := [
 		"clips": [],
 		"materials": true,
 	},
+	{
+		"id": "deep_rocks",
+		"path": "res://art/deep_zone/Rocks.fbx",
+		"clips": [],
+		"materials": true,
+	},
 ]
 
 var findings: Array[String] = []

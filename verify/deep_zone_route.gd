@@ -57,6 +57,7 @@ func _run() -> void:
 
 	await _expect_path_clear(world, layout.lab_route(), exclude, "LAB ROUTE")
 	await _expect_path_clear(world, layout.maze_route(), exclude, "MAZE ROUTE")
+	_expect_landmarks(world)
 
 	var active := world.divers[world.active] as Diver
 	active.global_position = points.ability_exit
@@ -66,10 +67,57 @@ func _run() -> void:
 	await physics_frame
 	_expect(world.route_state.zone_id == "deep", "ZONE: physically crossing the deep entry did not update RouteState")
 	_expect(world.route_state.objective_id == "defeat_bomb_bot", "OBJECTIVE: first deep-zone objective is not the first authored blocker")
+	var objective_labels := world.get_tree().get_nodes_in_group("route_objective_hud")
+	if objective_labels.size() != 1:
+		findings.append("OBJECTIVE HUD: deep objective has no single player-visible owner")
+	else:
+		var objective_label := objective_labels[0] as Label
+		_expect(objective_label != null and objective_label.visible and objective_label.text.contains("Bomb Bot"), "OBJECTIVE HUD: entering Deep does not visibly name the next blocker")
 
 	world.queue_free()
 	await process_frame
 	_finish()
+
+func _expect_landmarks(world: World) -> void:
+	var observed: Dictionary = {}
+	for node_value in world.get_tree().get_nodes_in_group("deep_zone_landmark"):
+		var node := node_value as Node3D
+		if node == null or not world.is_ancestor_of(node):
+			continue
+		var landmark_id := String(node.get_meta("route_landmark_id", ""))
+		if landmark_id != "":
+			observed[landmark_id] = _visible_bounds(node)
+	for required in ["entry", "lab", "maze"]:
+		if not observed.has(required):
+			findings.append("LANDMARK: production World has no visible %s landmark" % required)
+			continue
+		var bounds := observed[required] as AABB
+		_expect(bounds.size.length() > 1.0, "LANDMARK: %s has no renderable bounds" % required)
+	if observed.has("lab"):
+		var lab_bounds := observed.lab as AABB
+		_expect(lab_bounds.size.x >= 10.0 and lab_bounds.size.y >= 6.0, "LANDMARK: laboratory silhouette is too small to read from its approach")
+	if observed.has("maze"):
+		_expect((observed.maze as AABB).size.y >= 4.0, "LANDMARK: maze transition has no readable vertical silhouette")
+
+func _visible_bounds(node: Node3D) -> AABB:
+	var combined := AABB()
+	var first := true
+	for mesh_value in _meshes(node):
+		var mesh := mesh_value as MeshInstance3D
+		if not mesh.visible or mesh.mesh == null:
+			continue
+		var bounds := mesh.global_transform * mesh.get_aabb()
+		combined = bounds if first else combined.merge(bounds)
+		first = false
+	return combined
+
+func _meshes(node: Node) -> Array:
+	var found: Array = []
+	if node is MeshInstance3D:
+		found.append(node)
+	for child in node.get_children():
+		found.append_array(_meshes(child))
+	return found
 
 func _has_floor(world: World, point: Vector3, exclude: Array[RID]) -> bool:
 	var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 8.0, point + Vector3.DOWN * 4.0)

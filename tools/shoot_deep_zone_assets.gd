@@ -10,6 +10,7 @@ const ASSETS := [
 	{"id": "bomb-bot", "path": "res://art/deep_zone/Bomb_Bot.fbx"},
 	{"id": "sword-slayer", "path": "res://art/deep_zone/Sword_Slayer.fbx"},
 	{"id": "broken-office", "path": "res://art/deep_zone/Broken_Office.fbx"},
+	{"id": "deep-rocks", "path": "res://art/deep_zone/Rocks.fbx"},
 ]
 
 var outdir := "/tmp/deep-zone-assets"

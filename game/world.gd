@@ -72,6 +72,8 @@ func _tutorial_skip_requested() -> bool:
 # freezes the dive while game/battle.gd runs it.
 var banner: Label
 var _banner_timer := 0.0
+var route_objective_panel: PanelContainer
+var route_objective_label: Label
 var battling := false
 var battle: Battle
 var yaw := 0.0
@@ -118,6 +120,7 @@ var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
 const DeepZoneLayoutScript := preload("res://content/deep_zone_layout.gd")
+const DeepZoneEnvironmentScript := preload("res://game/deep_zone_environment.gd")
 
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
@@ -666,6 +669,9 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
+	_build_route_objective_hud()
+	route_state.objective_changed.connect(_on_route_objective_changed)
+	_on_route_objective_changed(route_state.objective_id)
 
 	minimap = MiniMap.new()
 	minimap.world = self
@@ -854,6 +860,10 @@ func _build_site() -> void:
 	deep_shape.position.y = -0.2
 	deep_body.add_child(deep_shape)
 	add_child(deep_body)
+
+	var deep_environment := DeepZoneEnvironmentScript.new()
+	deep_environment.name = "DeepZoneEnvironment"
+	add_child(deep_environment)
 
 	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
 	# was taking most of a minute to show its first frame and every node set up
@@ -2835,6 +2845,55 @@ func _show_ability_popups() -> void:
 	# with nothing left to run and no reachable quit(). The NodePath lookup
 	# is a runtime call, not a parse-time identifier, so it works either way.
 	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
+
+func _build_route_objective_hud() -> void:
+	route_objective_panel = PanelContainer.new()
+	route_objective_panel.name = "RouteObjectivePanel"
+	route_objective_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	route_objective_panel.offset_left = -285.0
+	route_objective_panel.offset_top = 70.0
+	route_objective_panel.offset_right = 285.0
+	route_objective_panel.offset_bottom = 114.0
+	route_objective_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.02, 0.11, 0.16, 0.92)
+	panel_style.border_color = Color(0.29, 0.78, 0.82, 0.9)
+	panel_style.set_border_width_all(1)
+	panel_style.set_corner_radius_all(8)
+	route_objective_panel.add_theme_stylebox_override("panel", panel_style)
+	$HUD.add_child(route_objective_panel)
+
+	route_objective_label = Label.new()
+	route_objective_label.name = "RouteObjective"
+	route_objective_label.add_to_group("route_objective_hud")
+	route_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	route_objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	route_objective_label.add_theme_font_size_override("font_size", 19)
+	route_objective_label.add_theme_color_override("font_color", Color(0.72, 0.96, 1.0))
+	route_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	route_objective_panel.add_child(route_objective_label)
+
+func _on_route_objective_changed(objective_id: String) -> void:
+	if route_objective_panel == null or route_objective_label == null:
+		return
+	var text := _route_objective_text(objective_id)
+	route_objective_label.text = text
+	route_objective_panel.visible = text != ""
+
+func _route_objective_text(objective_id: String) -> String:
+	match objective_id:
+		"defeat_bomb_bot":
+			return "Deep Zone: disable Bomb Bot guarding the lab."
+		"defeat_sword_slayer":
+			return "Deep Zone: defeat Sword Slayer at the lab approach."
+		"enter_lab":
+			return "Laboratory: enter the Broken Office."
+		"defeat_tethys":
+			return "Laboratory: confront Tethys."
+		"enter_maze":
+			return "Deep Zone: take the blue-lit passage to the maze."
+		_:
+			return ""
 
 func _update_hud() -> void:
 	if target_selector.selecting:
