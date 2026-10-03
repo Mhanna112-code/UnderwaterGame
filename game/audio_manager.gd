@@ -73,27 +73,6 @@ func release_streams_for_shutdown() -> void:
 	_phase = "stopped"
 	_intro_stream = null
 	_loop_stream = null
-	# A stopped AudioStreamPlayer can retain its compressed playback object
-	# until the node itself is released. Headless verification exits immediately
-	# after this explicit shutdown boundary, so there is no later audio frame to
-	# retire it and Godot reports the active Ogg packet/playback as a leak. This
-	# method is shutdown-only: free the private players now and let _ensure_players
-	# recreate them only if a caller intentionally resumes the manager afterward.
-	_free_audio_player(_music_player)
-	_free_audio_player(_sfx_player)
-	for player in _combat_sfx_players:
-		_free_audio_player(player)
-	_music_player = null
-	_sfx_player = null
-	_combat_sfx_players.clear()
-	_next_combat_sfx_player = 0
-
-func _free_audio_player(player: AudioStreamPlayer) -> void:
-	if not is_instance_valid(player):
-		return
-	if player.get_parent() == self:
-		remove_child(player)
-	player.free()
 
 func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) -> void:
 	_ensure_players()
