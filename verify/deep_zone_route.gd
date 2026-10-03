@@ -26,6 +26,12 @@ func _run() -> void:
 	_expect((points.bomb_bot as Vector3).distance_to(points.sword_slayer as Vector3) >= 16.0, "SPACING: blocker fights are compressed together")
 	_expect((points.sword_slayer as Vector3).distance_to(points.lab as Vector3) >= 16.0, "SPACING: Sword Slayer and lab are compressed together")
 	_expect(absf((points.maze_transition as Vector3).z - (points.lab as Vector3).z) >= 28.0, "BRANCHING: maze transition is not spatially separate from the lab route")
+	if not layout.has_method("allows_random_encounter"):
+		findings.append("ENCOUNTER POLICY: shared deep-zone layout has no random/protected-area decision")
+	else:
+		for protected_id in ["ability_exit", "deep_entry", "bomb_bot", "sword_slayer", "lab", "maze_transition"]:
+			_expect(not bool(layout.allows_random_encounter(points[protected_id] as Vector3)), "ENCOUNTER POLICY: %s allows a random fight" % protected_id)
+		_expect(bool(layout.allows_random_encounter(Vector3(98.0, 2.0, 45.0))), "ENCOUNTER POLICY: open deep water suppresses ordinary random fights")
 
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	world.skip_intro_for_test = true
@@ -73,6 +79,15 @@ func _run() -> void:
 	else:
 		var objective_label := objective_labels[0] as Label
 		_expect(objective_label != null and objective_label.visible and objective_label.text.contains("Bomb Bot"), "OBJECTIVE HUD: entering Deep does not visibly name the next blocker")
+	if layout.has_method("allows_random_encounter"):
+		active.global_position = points.bomb_bot
+		world._on_encounter_triggered(active)
+		await process_frame
+		_expect(not world.battling, "ENCOUNTER POLICY: production World started a random fight on Bomb Bot's authored site")
+		active.global_position = Vector3(98.0, 2.0, 45.0)
+		world._on_encounter_triggered(active)
+		await process_frame
+		_expect(world.battling, "ENCOUNTER POLICY: production World cannot start a random fight in open deep water")
 
 	world.queue_free()
 	await process_frame

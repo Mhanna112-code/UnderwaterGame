@@ -2314,6 +2314,8 @@ func _on_encounter_triggered(d: Diver) -> void:
 		return
 	if _try_trigger_item_site(d):
 		return
+	if deep_zone_layout.zone_for_position(d.global_position) == "deep" and not deep_zone_layout.allows_random_encounter(d.global_position):
+		return
 	_start_battle()
 
 # Skips the Enter/Not Now prompt and drops the player straight into the
