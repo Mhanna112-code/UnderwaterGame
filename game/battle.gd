@@ -1112,7 +1112,10 @@ func _build_stage() -> void:
 	# Diver.rotation.y == 0 is the model's own rest-facing direction (-Z, see
 	# diver.gd), so leaving it untouched here is what puts its back to camera.
 	var is_swap_encounter := special_encounter and not party.is_empty() and String(party[0].get("ability_id", "")) == "swap"
-	var diver_z := 3.4 if is_swap_encounter else (2.2 if special_encounter else 1.0)
+	# Tethys is fought inside the Broken Office rather than in the open-water
+	# lanes. Keep the party wholly inside that room and compact enough that all
+	# four silhouettes remain legible in the supported 720px-wide browser.
+	var diver_z := -0.5 if boss_encounter else (3.4 if is_swap_encounter else (2.2 if special_encounter else 1.0))
 	# MODIFIED (changed): was -6.0 for a swap encounter - pushed a few more
 	# units back so the portraits (which spawn just in front of the enemy
 	# and fly to just in front of the diver - see diver_swap_minigame.gd's
@@ -1132,7 +1135,10 @@ func _build_stage() -> void:
 		# public foot_offset() says its feet sit below its centred origin. Ground
 		# only that boss formation after _ready() has measured the selected rig.
 		var floor_y := -actor.foot_offset() if boss_encounter else 0.0
-		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, floor_y, diver_z - _spread(i, pn, 0.7))
+		var party_spread := 1.3 if boss_encounter else 2.9
+		var party_depth_spread := 0.3 if boss_encounter else 0.7
+		var party_x_offset := -1.0 if boss_encounter else -0.4
+		actor.position = Vector3(_spread(i, pn, party_spread) + party_x_offset, floor_y, diver_z - _spread(i, pn, party_depth_spread))
 		party[i]["actor"] = actor
 		# Where this one stands when it is not swinging. Attacks step in
 		# toward whoever they are aimed at and come back here afterwards.
@@ -1176,7 +1182,10 @@ func _build_stage() -> void:
 		# Keep the boss close to the party's depth plane. At the grunt row's
 		# -2.7 z position, perspective made a four-metre creature read smaller
 		# on screen than the divers despite its measured native scale.
-		boss.position = Vector3(0.6, 0.0, -0.8)
+		# Keep Tethys on the opposite side of the room rather than directly
+		# behind Bucky. The old overlap hid her torso and most of the authored
+		# animation even though every actor technically fit inside the frame.
+		boss.position = Vector3(2.1, 0.0, -2.5)
 		vp.add_child(boss)
 		# Mermaid_Freak's authored front is local +Z (the humanoid/Goblin
 		# actors use -Z), so point that axis at the party's actual centre.
@@ -1287,10 +1296,17 @@ func _build_boss_lab_stage(viewport: SubViewport) -> void:
 	viewport.add_child(wrapper)
 	var office := BOSS_LAB_SCENE.instantiate() as Node3D
 	wrapper.add_child(office)
-	wrapper.scale = Vector3.ONE * 0.31
+	# At the imported room's old 0.31 scale, the front party row stood outside
+	# its footprint and the office read as a small detached diorama behind the
+	# fight. The larger authored arena encloses both rows while leaving the
+	# camera outside its open front.
+	wrapper.scale = Vector3.ONE * 0.47
 	wrapper.rotation_degrees.y = 180.0
 	wrapper.force_update_transform()
-	var bounds := _battle_set_bounds(wrapper)
+	# Align the actual wall/floor shell, not the delivery's distant decorative
+	# lantern. The latter is outside the playable room and previously shifted
+	# the whole office right, leaving the party over empty water.
+	var bounds := _boss_lab_room_bounds(wrapper)
 	if bounds.size.length() > 0.01:
 		wrapper.global_position += Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z - 1.8)
 
@@ -1305,6 +1321,19 @@ func _battle_set_bounds(node: Node3D) -> AABB:
 		combined = box if first else combined.merge(box)
 		first = false
 	return combined
+
+# The Broken Office delivery contains one decorative Staff_Lantern far above
+# and left of the actual room. Aggregate bounds are still useful for asset
+# inspection, but not for placing or validating the playable floor: including
+# that outlier makes the wall/floor shell land several metres to the right of
+# the combatants. Use the authored room shell when it is present, with the
+# aggregate as a safe fallback if the asset is ever revised.
+func _boss_lab_room_bounds(node: Node3D) -> AABB:
+	for mesh_value in _battle_set_meshes(node):
+		var mesh := mesh_value as MeshInstance3D
+		if mesh.name == "Wall_Broken" and mesh.mesh != null:
+			return mesh.global_transform * mesh.get_aabb()
+	return _battle_set_bounds(node)
 
 func _battle_set_meshes(node: Node) -> Array:
 	var found: Array = []
@@ -1383,7 +1412,10 @@ func _frame_stage_camera() -> void:
 		centre += p as Vector3
 	centre /= float(pts.size())
 
-	var dir: Vector3 = STAGE_CAMERA_DIR.normalized()
+	# The enclosed boss arena benefits from a more frontal authored view: less
+	# sideways foreshortening keeps the compact party formation and the office
+	# walls readable without changing ordinary/open-water fight framing.
+	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter else STAGE_CAMERA_DIR).normalized()
 	# Two axes across the view, so the group can be measured in the plane
 	# the camera actually sees rather than in world X and Y.
 	var right: Vector3 = dir.cross(Vector3.UP).normalized()
@@ -1411,8 +1443,9 @@ func _frame_stage_camera() -> void:
 	for p in pts:
 		var v: Vector3 = (p as Vector3) - centre
 		var w: float = v.dot(dir)
-		var need_w: float = absf(v.dot(right)) * STAGE_FRAMING_MARGIN / tan_h
-		var need_h: float = absf(v.dot(up)) * STAGE_FRAMING_MARGIN / tan_v
+		var margin := 1.02 if boss_encounter else STAGE_FRAMING_MARGIN
+		var need_w: float = absf(v.dot(right)) * margin / tan_h
+		var need_h: float = absf(v.dot(up)) * margin / tan_v
 		dist = maxf(dist, maxf(need_w, need_h) + w)
 
 	_stage_cam.global_position = centre + dir * dist
@@ -1548,10 +1581,11 @@ func _build_ui() -> void:
 	add_child(_bottom_panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 16)
+	var compact_battle_ui := get_viewport().get_visible_rect().size.y <= 500.0
+	margin.add_theme_constant_override("margin_left", 12 if compact_battle_ui else 16)
+	margin.add_theme_constant_override("margin_right", 12 if compact_battle_ui else 16)
+	margin.add_theme_constant_override("margin_top", 2 if compact_battle_ui else 10)
+	margin.add_theme_constant_override("margin_bottom", 4 if compact_battle_ui else 16)
 	# MODIFIED (added): _bottom_panel's own IGNORE (above) only ever applies
 	# to _bottom_panel itself - margin and col are separate nodes that each
 	# still defaulted to STOP independently, which is what was actually
@@ -1580,7 +1614,7 @@ func _build_ui() -> void:
 	margin.add_child(content_row)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", 4 if compact_battle_ui else 8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_stretch_ratio = 2.0
@@ -1658,7 +1692,7 @@ func _build_ui() -> void:
 		_build_overhead_bar(entry)
 
 	log_label = RichTextLabel.new()
-	log_label.custom_minimum_size = Vector2(0, 36)
+	log_label.custom_minimum_size = Vector2(0, 28 if compact_battle_ui else 36)
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1902,7 +1936,12 @@ func _menu_button(title: String, hint: String) -> Button:
 	# Four 300px choices plus their gaps fit in the 1248px-wide content area
 	# at the evidence/playtest resolution. The previous 210px width packed five
 	# across but visibly cut off both move names and result/formula summaries.
-	b.custom_minimum_size = Vector2(300, 52)
+	# Three primary actions must stay on one row at the supported 720px review
+	# width. At wide resolutions retain the larger formula-friendly buttons;
+	# on narrow screens, 205px still fits two text lines while preventing the
+	# extra wrapped row that used to collapse the 3D stage to 123px.
+	var viewport_width := get_viewport().get_visible_rect().size.x
+	b.custom_minimum_size = Vector2(205 if viewport_width < 900.0 else 300, 52)
 	b.clip_text = true
 	return b
 

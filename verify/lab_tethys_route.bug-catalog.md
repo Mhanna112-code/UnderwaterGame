@@ -20,6 +20,11 @@ prove that a player can reach or leave the encounter in the campaign.
 | LAB-TETHYS-009 | Exploration, cutscene, boss, victory, or retry music overlaps or resumes in the wrong phase. | Assert the single audio owner's cue transitions along both victory and loss/retry paths. |
 | LAB-TETHYS-010 | The trigger repeats while the player remains inside it, creating duplicate modal/battle owners. | Keep the diver inside across several physics frames and count cutscene/Battle owners. |
 | LAB-TETHYS-011 | The blue maze landmark is only decoration: reaching it after Tethys never enters the current maze scene. | Complete the public route state, physically enter the maze-transition radius, and assert the scene tree replaces World with MazeLevel. |
+| LAB-TETHYS-012 | The Broken Office reads as a small detached prop behind the fight instead of the room containing the combatants. | Start the production three-diver Tethys battle and project the real office and actor bounds through its real camera; require the room to fill the stage and contain the actor tableau. |
+| LAB-TETHYS-013 | At 720x480 the content-sized battle HUD leaves such a short stage that Tethys, the party, and the room are too small to read or target. | Run the production battle windowed at 720x480 and require a usable stage height plus a minimum projected actor height. |
+| LAB-TETHYS-014 | The generic stage-framing gate reports green while never constructing a boss encounter or inspecting its environment. | Keep a distinct boss-composition gate in `gates.sh` at both supported review resolutions. |
+| LAB-TETHYS-015 | The office's remote lantern outlier distorts aggregate bounds, so the wall/floor room is placed to the right while the party stands over empty water. | Identify the authored `Wall_Broken` room shell, align and measure against that shell rather than every detached decoration, and require every actor footprint inside its floor. |
+| LAB-TETHYS-016 | Tethys is technically in frame but Bucky/furniture obscures most of her body, hiding the boss and her authored attacks. | Project each actor's production screen rect and reject substantial boss/party overlap; confirm the result visually at both target resolutions. |
 
 ## Skipped by headless automation
 
@@ -28,6 +33,9 @@ prove that a player can reach or leave the encounter in the campaign.
   visual/audio pass.
 - Final combat balance requires repeated browser playtests with normal-route
   party stats; a boot test cannot decide whether the boss is fun or fair.
+- The automated composition gate can prove size, containment, and clipping,
+  but not whether the authored camera angle and room dressing look polished.
+  Those remain mandatory screenshots in the visual-audit loop.
 
 ## Evaluation
 
