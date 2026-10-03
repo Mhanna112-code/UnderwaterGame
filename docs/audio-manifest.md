@@ -6,6 +6,9 @@ The ZIP's PCM WAVs are canonical. Long music is encoded to Ogg Vorbis for the
 web runtime; the three delivered menu sounds remain byte-identical WAVs.
 Dropbox-root copies and `__MACOSX` metadata are not runtime inputs.
 
+Decoded runtime edge measurements and their explicit human-listening boundary
+are recorded in [audio-edge-audit.md](audio-edge-audit.md).
+
 | Runtime path | Canonical ZIP member | Source SHA-256 | Runtime SHA-256 | Status |
 | --- | --- | --- | --- | --- |
 | `audio/music/exploration_loop.ogg` | `Underwater Exploration Ambience (LOOP).wav` | `7d535afb8929b12cfc8148479b6ebc2b900c57dbd8e87960777764ef26ba8543` | `5af14408aa0bb8c8dfc9290c87afef214b4d07fe4e765ae6641cdaf5859a42f8` | Production exploration loop. |
@@ -18,6 +21,8 @@ Dropbox-root copies and `__MACOSX` metadata are not runtime inputs.
 | `audio/music/victory_candidate_intro.ogg` | `Underwater Victory Fanfare and Victory Theme 1.wav` | `600c0e8ed037092a2c82a1f156a94199964c29047e329933a6b79fc78e6261bd` | `af53ff067c466697c9d3d7a197521bdc7711986bddbfaca81f3267ab874e04ca` | Production victory first segment; browser listening must approve its loop join. |
 | `audio/music/victory_loop.ogg` | `UnderwaterVictory Theme 2 (LOOP).wav` | `25ea80a4790447a36e2c95789348d47b127283930d77b52bb50b9f1b0875d8` | `d36bc5995d1d6b1937117cfa3cf1c7334689f5c45df6fcaa2e5e2c26a3197fdb` | Production victory loop. |
 | `audio/music/game_over.ogg` | `Underwater Game Over.wav` | `c0784b24b177f5a7b1f59faa15d28a08e2697f160780a16c69b3490807a8a5f1` | `fde8c2f09fa239a48c93e860979af6d46b94bf216ad05fd629c9a498e6e8872f` | Production game-over one-shot. |
+| — (deferred, not imported) | `Underwater Final Boss 1 (INTRO).wav` | `122544c04a6874ecc9d24468160950e02a70b2e7e5d933273e354efcc6d4dd91` | — | Canonical 22.588 s Octopus-route intro retained in Phoenix's ZIP; no runtime owner in this slice. |
+| — (deferred, not imported) | `Underwater Final Boss 2 (LOOP).wav` | `20020af1293e4fe1736078446b8b84447b127283930d77b52bb50b9f1b0875d8` | — | Canonical 90.353 s Octopus-route loop retained in Phoenix's ZIP; no runtime owner in this slice. |
 | `audio/sfx/ui/hover.wav` | `SFX/UIHOVER.wav` | `0a33872ad6512eac29043f86292019f28e00418702978f817c3495d02bca6778` | same | Main-menu hover only. |
 | `audio/sfx/ui/click.wav` | `SFX/UI CLICK.wav` | `fa4ba4bd62e94c085dc790c100d16cad6ce3dd72b5bf8ed530aedfc281bd4922` | same | Main-menu confirm/click only. |
 | `audio/sfx/ui/start_game.wav` | `SFX/UI START GAME.wav` | `e3bd6c7e8e5b8587b8be2ad318bed5518ce4bb84fbc6477253af13e626e5a5ab` | same | Successful run start only. |
@@ -40,8 +45,11 @@ bug catalog.
 | `audio/sfx/combat/heavy_hit.ogg` | `Heavy Sci-Fi Hit_HW 09.wav` | `b93255074207c4990dd103d176f67d93967530e09e2f8ab53164941c437b1477` | `f1d9f767c7191694875075142fc78684cb0138d59c8f25c6c44a654612241721` | Heavy impact or knockout candidate; 4.900 s. |
 | `audio/sfx/combat/shockwave_swirl.ogg` | `Swirl Whoosh_HW 42.wav` | `d81452bb2d2368f86d6875a54f75fba6aade3993bdfabf1a2ccaf836d92a0620` | `c21c07ae0fac261c4c5a60fc6be645c7ced2cb73c26323ab967f3c9690906dfc` | Sustained Shockwave candidate; 10.000 s. |
 
-These are prepared candidates, not event wiring. Their final ownership and
-mix balance must be proven against Phoenix's music in a browser listening pass.
-No delivered menu sound is repurposed as combat feedback. The Octopus final-
-boss music remains absent because the later route and boss gameplay are still
-out of scope, even though a visible model is now available.
+The runtime now uses these prepared derivatives for shared attack motion,
+ordinary/heavy impact, miss, dodge, and Shockwave feedback through one
+four-player overlap pool. Their final mix balance must still be approved
+against Phoenix's music in a browser listening pass. No delivered menu sound
+is repurposed as combat feedback. Phoenix's labelled Octopus Final Boss
+`INTRO`/`LOOP` pair exists in the canonical ZIP and is recorded above, but is
+deliberately absent from the runtime because the later route and boss gameplay
+are out of scope.
