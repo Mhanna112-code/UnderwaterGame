@@ -22,63 +22,45 @@ func _initialize() -> void:
 func _run() -> void:
 	var first := await _open_world(false)
 	var diver := first.divers[first.active] as Diver
-	# Both sites are deliberate spaces. A random-roll signal there must yield
-	# to the player's explicit guardian choice, while physical entry must
-	# preserve the site record's own enemy identity and a retry after loss.
+	# Ordinary key-item sites are proximity contracts now; the removed visible
+	# guardian/ring presentation must not be required. A distance-roll signal
+	# at either location is intercepted into exactly its mapped enemy/reward.
 	for spot_value in ItemGuardian.spots():
 		var spot := spot_value as Dictionary
+		if bool(spot.get("special", false)):
+			continue
 		var site_item := String(spot.item)
 		diver.global_position = spot.at as Vector3
+		first._inside_item_site_id = ""
 		diver.encounter_triggered.emit()
 		await process_frame
-		_expect(first.battle == null and not first.special_encounter_prompt.visible,
-			"guardian item integration: both unclaimed sites suppress ordinary rolls — guards against artifact/random encounter ambiguity (%s)" % site_item)
-		first.revealed_key_items.append(site_item)
-		first._update_item_guardian_visibility()
-		var site_guardian := _guardian_for(first, site_item)
-		_expect(site_guardian != null and site_guardian.visible,
-			"guardian item integration: revealed site exposes its physical guardian — guards against sonar/site drift (%s)" % site_item)
-		if site_guardian == null:
-			continue
-		site_guardian.body_entered.emit(diver)
-		await process_frame
-		_expect(first.special_encounter_prompt.visible,
-			"guardian item integration: physical entry opens the chooser — guards against a dead Area3D trigger (%s)" % site_item)
-		first.special_encounter_prompt.diver_chosen.emit(diver.model_name)
-		await process_frame
 		var site_battle := first.battle
-		_expect(site_battle != null and site_battle.special_encounter and site_battle.party.size() == 1,
-			"guardian item integration: revealed sites start their mapped one-diver fight — guards against guardian flow drift (%s)" % site_item)
+		_expect(site_battle != null and site_battle.guardian_encounter and site_battle.reward_item_on_win == site_item,
+			"guardian item integration: site starts its mapped reward fight — guards against guardian flow drift (%s)" % site_item)
 		if site_battle != null and not site_battle.enemies.is_empty():
 			var actor := (site_battle.enemies[0] as Dictionary).get("actor") as Goblin
 			_expect(actor != null and actor.enemy_id() == String(spot.enemy),
-				"guardian item integration: revealed sites start their mapped one-diver fight — guards against species drift (%s)" % site_item)
-			site_battle.finished.emit("lost")
+				"guardian item integration: site starts its mapped enemy — guards against species drift (%s)" % site_item)
+			site_battle.finished.emit("fled")
 			await process_frame
 			await process_frame
-			_expect(_guardian_for(first, site_item) != null and not first.key_items.has(site_item),
-				"guardian item integration: loss preserves a retryable site — guards against missable key rewards (%s)" % site_item)
+			_expect(not first.key_items.has(site_item),
+				"guardian item integration: leaving a site fight cannot grant its key reward (%s)" % site_item)
 
-	# A player who found the site with sonar must carry that discovery through
-	# the reward and into the save. This makes the old stale-guardian bug
-	# visibly reproducible, rather than merely checking a hidden node.
-	first._update_item_guardian_visibility()
-	var guardian := _guardian_for(first, ITEM_ID)
-	_expect(guardian != null and guardian.visible,
-		"guardian item integration: revealed item has a physical guardian before win — guards against discovery/site drift")
-	if guardian != null:
-		guardian.body_entered.emit(diver)
+	# Win current_pearl through the same normal-entry proximity path, then
+	# prove the claimed state survives a fresh World and cannot reopen the
+	# reward encounter.
+	var pearl_spot := Sites.by_id("shallows")
+	diver.global_position = pearl_spot.at as Vector3
+	first._inside_item_site_id = ""
+	diver.encounter_triggered.emit()
+	await process_frame
+	_expect(first.battle != null and first.battle.reward_item_on_win == ITEM_ID,
+		"guardian item integration: shallows does not start the current_pearl fight")
+	if first.battle != null:
+		first.battle.finished.emit("won")
 		await process_frame
-		_expect(first.special_encounter_prompt.visible,
-			"guardian item integration: physical entry opens the chooser — guards against a dead Area3D trigger")
-		first.special_encounter_prompt.diver_chosen.emit(diver.model_name)
 		await process_frame
-		_expect(first.battle != null and first.battle.special_encounter,
-			"guardian item integration: chooser starts a special battle — guards against rewardless guardian entry")
-		if first.battle != null:
-			first.battle.finished.emit("won")
-			await process_frame
-			await process_frame
 	_expect(first.key_items.has(ITEM_ID),
 		"guardian item integration: winning grants the key item — guards against reward loss before persistence")
 	first._write_save()
@@ -88,18 +70,19 @@ func _run() -> void:
 	var loaded := await _open_world(true)
 	_expect(loaded.key_items.has(ITEM_ID),
 		"guardian item integration: key item survives save/load — guards against dropped reward state")
-	var stale := _guardian_for(loaded, ITEM_ID)
-	_expect(stale == null,
-		"guardian item integration: claimed item reload has no live guardian — guards against stale post-save guardian fights")
-	if stale != null:
-		var loaded_diver := loaded.divers[loaded.active] as Diver
-		stale.body_entered.emit(loaded_diver)
-		await process_frame
-		_expect(not loaded.special_encounter_prompt.visible,
-			"guardian item integration: claimed guardian cannot reopen a special encounter — guards against repeatable site combat")
+	var loaded_diver := loaded.divers[loaded.active] as Diver
+	loaded_diver.global_position = pearl_spot.at as Vector3
+	loaded._inside_item_site_id = ""
+	var claimed_triggered := loaded._try_trigger_item_site(loaded_diver)
+	_expect(not claimed_triggered and loaded.battle == null,
+		"guardian item integration: claimed site reopened its reward encounter after load")
 	loaded.queue_free()
 	await process_frame
 	_restore_slot()
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
 	for finding in findings:
 		push_error(finding)
 	print("GUARDIAN ITEM INTEGRATION: clean" if findings.is_empty() else "GUARDIAN ITEM INTEGRATION: %d finding(s)" % findings.size())
@@ -119,12 +102,6 @@ func _open_world(load_existing: bool) -> World:
 	world._intro_active = false
 	world._first_encounter_done = true
 	return world
-
-func _guardian_for(world: World, item_id: String) -> ItemGuardian:
-	for child in world.get_children():
-		if child is ItemGuardian and (child as ItemGuardian).item_id == item_id:
-			return child as ItemGuardian
-	return null
 
 func _expect(ok: bool, message: String) -> void:
 	if not ok:
