@@ -1296,6 +1296,7 @@ func _build_boss_lab_stage(viewport: SubViewport) -> void:
 	viewport.add_child(wrapper)
 	var office := BOSS_LAB_SCENE.instantiate() as Node3D
 	wrapper.add_child(office)
+	_style_boss_lab_materials(office)
 	# At the imported room's old 0.31 scale, the front party row stood outside
 	# its footprint and the office read as a small detached diorama behind the
 	# fight. The larger authored arena encloses both rows while leaving the
@@ -1309,6 +1310,90 @@ func _build_boss_lab_stage(viewport: SubViewport) -> void:
 	var bounds := _boss_lab_room_bounds(wrapper)
 	if bounds.size.length() > 0.01:
 		wrapper.global_position += Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z - 1.8)
+		bounds = _boss_lab_room_bounds(wrapper)
+		_add_boss_lab_light(
+			wrapper, "EmergencyLight", bounds,
+			Vector3(0.18, 0.68, 0.24), Color("ff4f63"))
+		_add_boss_lab_light(
+			wrapper, "ContainmentLight", bounds,
+			Vector3(0.82, 0.58, 0.28), Color("43d9e6"))
+
+# Broken Office's wall materials arrive at roughly 0.91 luminance. Under the
+# normal bright battle environment that turns the authored room into a white
+# test box and visually collapses its furniture into the party. Keep every
+# delivered texture, but color-grade the surfaces into a damaged underwater
+# laboratory with distinct shell, machinery, furniture, and warning props.
+func _style_boss_lab_materials(office: Node3D) -> void:
+	for mesh_value in _battle_set_meshes(office):
+		var mesh := mesh_value as MeshInstance3D
+		if mesh.name == "Staff_Lantern":
+			# This source outlier sits tens of metres outside the room and belongs
+			# to the asset-authoring scene, not the compact battle tableau.
+			mesh.visible = false
+			continue
+		var tint := Color("59727d")
+		match String(mesh.name):
+			"Wall_Broken":
+				tint = Color("17333f")
+			"Door_Frame":
+				tint = Color("6f4b35")
+			"Computer":
+				tint = Color("397d83")
+			"Cone", "Cone_001":
+				tint = Color("d46b3d")
+			"Table", "Cube", "Cube_002":
+				tint = Color("79503b")
+			_:
+				if String(mesh.name).begins_with("Cube_"):
+					tint = Color("784238")
+		if mesh.mesh == null:
+			continue
+		for surface_index in range(mesh.mesh.get_surface_count()):
+			var source := mesh.get_active_material(surface_index)
+			if not source is BaseMaterial3D:
+				continue
+			var styled := source.duplicate(true) as BaseMaterial3D
+			var original := (source as BaseMaterial3D).albedo_color
+			styled.albedo_color = Color(
+				original.r * tint.r,
+				original.g * tint.g,
+				original.b * tint.b,
+				original.a)
+			styled.roughness = maxf(0.68, styled.roughness)
+			mesh.set_surface_override_material(surface_index, styled)
+
+func _add_boss_lab_light(
+		wrapper: Node3D,
+		light_name: String,
+		bounds: AABB,
+		normalized_position: Vector3,
+		color: Color) -> void:
+	var position := bounds.position + bounds.size * normalized_position
+	var fixture := MeshInstance3D.new()
+	fixture.name = "%sFixture" % light_name
+	fixture.top_level = true
+	var fixture_mesh := BoxMesh.new()
+	fixture_mesh.size = Vector3(0.18, 0.85, 0.12)
+	fixture.mesh = fixture_mesh
+	var fixture_material := StandardMaterial3D.new()
+	fixture_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fixture_material.albedo_color = color
+	fixture_material.emission_enabled = true
+	fixture_material.emission = color
+	fixture_material.emission_energy_multiplier = 2.4
+	fixture.material_override = fixture_material
+	wrapper.add_child(fixture)
+	fixture.global_position = position
+
+	var light := OmniLight3D.new()
+	light.name = light_name
+	light.top_level = true
+	light.light_color = color
+	light.light_energy = 3.2
+	light.omni_range = maxf(6.0, bounds.size.length() * 0.42)
+	light.shadow_enabled = true
+	wrapper.add_child(light)
+	light.global_position = position + Vector3(0.0, -0.25, 0.45)
 
 func _battle_set_bounds(node: Node3D) -> AABB:
 	var combined := AABB()

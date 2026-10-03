@@ -2,7 +2,7 @@
 # Office, and does it remain readable in the smallest supported playtest
 # window?
 #
-# Bug catalog: LAB-TETHYS-012 through LAB-TETHYS-014 in
+# Bug catalog: LAB-TETHYS-012 through LAB-TETHYS-017 in
 # verify/lab_tethys_route.bug-catalog.md.
 #
 # This deliberately measures the rendered production scene rather than scale
@@ -54,6 +54,15 @@ func _run() -> void:
 	var room_bounds: AABB = battle._boss_lab_room_bounds(lab)
 	var actor_rect := _actor_rect(battle)
 	var min_actor_height := _minimum_actor_height(battle)
+	var wall := _find_mesh(lab, "Wall_Broken")
+	_expect(wall != null, "LAB ART DIRECTION: Broken Office wall/floor shell is missing")
+	if wall != null:
+		var wall_color := _active_albedo(wall, 0)
+		_expect(wall_color.get_luminance() <= 0.48,
+			"LAB ART DIRECTION: wall/floor luminance %.2f leaves the boss room reading as a pale test box" % wall_color.get_luminance())
+	var authored_lights := _colored_lab_lights(lab)
+	_expect(authored_lights.size() >= 2,
+		"LAB ART DIRECTION: expected at least two contrasting authored lab lights, got %d" % authored_lights.size())
 
 	print("lab composition %dx%d: stage %.0fx%.0f, actors %.0fx%.0f, smallest actor %.0fpx" % [
 		int(screen.x), int(screen.y), stage.size.x, stage.size.y,
@@ -124,6 +133,28 @@ func _run() -> void:
 				"BOSS OCCLUDED BY %s: overlap covers %.0f%% of the smaller silhouette" % [
 					String(entry.display_name), 100.0 * overlap_area / maxf(1.0, smaller_area)])
 
+	# The previous gate checked only Tethys against each diver. The three party
+	# silhouettes could still collapse into the furniture pile and each other,
+	# leaving a technically contained but visually unfinished tableau.
+	for first_index in range(battle.party.size()):
+		var first_entry: Dictionary = battle.party[first_index]
+		if not first_entry.has("actor") or not is_instance_valid(first_entry.actor):
+			continue
+		var first_rect := _actor_screen_rect(battle, first_entry.actor as Node3D)
+		for second_index in range(first_index + 1, battle.party.size()):
+			var second_entry: Dictionary = battle.party[second_index]
+			if not second_entry.has("actor") or not is_instance_valid(second_entry.actor):
+				continue
+			var second_rect := _actor_screen_rect(battle, second_entry.actor as Node3D)
+			var overlap := first_rect.intersection(second_rect)
+			var overlap_area := overlap.size.x * overlap.size.y
+			var smaller_area := minf(first_rect.size.x * first_rect.size.y,
+				second_rect.size.x * second_rect.size.y)
+			_expect(overlap_area <= smaller_area * 0.30,
+				"PARTY SILHOUETTES MERGE: %s/%s overlap covers %.0f%% of the smaller silhouette" % [
+					String(first_entry.display_name), String(second_entry.display_name),
+					100.0 * overlap_area / maxf(1.0, smaller_area)])
+
 	battle.queue_free()
 	for diver in sources:
 		diver.queue_free()
@@ -165,6 +196,33 @@ func _minimum_actor_height(battle: Battle) -> float:
 		var bottom := _project(battle, battle._bottom_of(actor))
 		result = minf(result, top.distance_to(bottom))
 	return 0.0 if is_inf(result) else result
+
+func _find_mesh(node: Node, mesh_name: String) -> MeshInstance3D:
+	if node is MeshInstance3D and node.name == mesh_name:
+		return node as MeshInstance3D
+	for child in node.get_children():
+		var found := _find_mesh(child, mesh_name)
+		if found != null:
+			return found
+	return null
+
+func _active_albedo(mesh: MeshInstance3D, surface_index: int) -> Color:
+	var material := mesh.get_active_material(surface_index)
+	if material is BaseMaterial3D:
+		return (material as BaseMaterial3D).albedo_color
+	return Color.WHITE
+
+func _colored_lab_lights(node: Node) -> Array[OmniLight3D]:
+	var found: Array[OmniLight3D] = []
+	if node is OmniLight3D:
+		var light := node as OmniLight3D
+		var color_range := maxf(light.light_color.r, maxf(light.light_color.g, light.light_color.b)) \
+			- minf(light.light_color.r, minf(light.light_color.g, light.light_color.b))
+		if color_range >= 0.20 and light.light_energy > 0.0:
+			found.append(light)
+	for child in node.get_children():
+		found.append_array(_colored_lab_lights(child))
+	return found
 
 func _project(battle: Battle, point: Vector3) -> Vector2:
 	var stage := battle._stage_container as Control

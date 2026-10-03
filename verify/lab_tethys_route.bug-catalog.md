@@ -25,6 +25,7 @@ prove that a player can reach or leave the encounter in the campaign.
 | LAB-TETHYS-014 | The generic stage-framing gate reports green while never constructing a boss encounter or inspecting its environment. | Keep a distinct boss-composition gate in `gates.sh` at both supported review resolutions. |
 | LAB-TETHYS-015 | The office's remote lantern outlier distorts aggregate bounds, so the wall/floor room is placed to the right while the party stands over empty water. | Identify the authored `Wall_Broken` room shell, align and measure against that shell rather than every detached decoration, and require every actor footprint inside its floor. |
 | LAB-TETHYS-016 | Tethys is technically in frame but Bucky/furniture obscures most of her body, hiding the boss and her authored attacks. | Project each actor's production screen rect and reject substantial boss/party overlap; confirm the result visually at both target resolutions. |
+| LAB-TETHYS-017 | The room passes size/containment checks but still reads as a flat pale test box, with no authored lighting language and party silhouettes merging into the prop pile. | Inspect the production wall/floor material and authored colored lights, reject substantial party/party overlap, then review regenerated 1280x720 and 720x480 captures. |
 
 ## Skipped by headless automation
 
@@ -33,9 +34,10 @@ prove that a player can reach or leave the encounter in the campaign.
   visual/audio pass.
 - Final combat balance requires repeated browser playtests with normal-route
   party stats; a boot test cannot decide whether the boss is fun or fair.
-- The automated composition gate can prove size, containment, and clipping,
-  but not whether the authored camera angle and room dressing look polished.
-  Those remain mandatory screenshots in the visual-audit loop.
+- The automated composition gate now proves size, containment, clipping,
+  shell luminance, contrasting authored lights, and actor separation. It still
+  cannot decide whether the final camera angle and room dressing look
+  polished; those remain mandatory screenshots in the visual-audit loop.
 
 ## Evaluation
 
