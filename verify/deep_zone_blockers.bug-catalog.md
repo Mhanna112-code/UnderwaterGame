@@ -92,6 +92,33 @@ not previously ask whether the two encounters actually block the route.
   not the trigger shape or helper method. A different interaction volume can
   replace the current geometry without changing the test.
 
+### DZ-BLOCK-012 — construction tests miss a browser-only Bomb Bot crash
+
+- **Failure mode:** Bomb Bot imports and its battle can be constructed, but the
+  hosted web game crashes during a real enemy turn or victory handoff.
+- **Blast radius:** critical; the first mandatory laboratory blocker prevents
+  all later route progress.
+- **Cheapest strong test:** finish the production encounter through real battle
+  menu actions, require an authored attack animation, return to the World, and
+  then repeat attack turns in an exact HTML5 export while collecting browser
+  console errors. Covered by `verify/bomb_bot_battle.gd` and
+  `verify/bomb_bot_webcheck.mjs`.
+- **Self-critique:** the local exact export closes the engine/web boundary, but
+  the stable hosted PR URL must still be rebuilt from and replayed at the final
+  SHA before the original report is closed.
+
+### DZ-BLOCK-013 — a victory awards no usable progression
+
+- **Failure mode:** the level and spell helpers pass independently, but an
+  authored route victory never grants XP, a Spell Point, an auto-learned move,
+  or a usable move in the next fight.
+- **Blast radius:** high; combat progression exists in code but is invisible in
+  the playable campaign.
+- **Cheapest strong test:** place the real party one XP below level two, win the
+  production Bomb Bot battle, then require every diver to level, learn/equip a
+  move, and see that move returned by the next Sword Slayer battle's real move
+  menu source. Covered by `verify/deep_zone_progression.gd`.
+
 ## Skipped
 
 - Exact visual style of the route gates: semantic tests cannot judge whether a

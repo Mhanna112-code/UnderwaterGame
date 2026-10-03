@@ -51,6 +51,12 @@ func maze_route() -> PackedVector3Array:
 func zone_for_position(position: Vector3) -> String:
 	return "deep" if position.x >= DEEP_START_X else "shallows"
 
+# One shared 0..1 measure of how far the player has descended into the authored
+# deep-water route. World lighting/fog and verification both consume this
+# instead of maintaining unrelated visual thresholds.
+func depth_factor_for_position(position: Vector3) -> float:
+	return clampf(inverse_lerp(DEEP_START_X, LAB.x, position.x), 0.0, 1.0)
+
 func allows_random_encounter(position: Vector3) -> bool:
 	# Random enemies belong in explorable open water, not on top of the
 	# authored progression beats or inside either transition approach.

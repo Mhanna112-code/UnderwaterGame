@@ -24,7 +24,7 @@ func _run() -> void:
 	)
 
 	route.set_zone("deep")
-	route.set_objective("defeat_bomb_bot")
+	route.set_objective("find_lab")
 	route.set_blocker_state("bomb_bot", "defeated")
 	route.set_blocker_state("sword_slayer", "in_progress")
 	route.set_lab_state("available")
@@ -32,9 +32,10 @@ func _run() -> void:
 	route.set_maze_door_state("available")
 	route.set_octopus_state("unavailable")
 	route.set_encounter_source("lab_boss")
+	route.mark_deep_warning_seen()
 
-	if objective_events != ["defeat_bomb_bot"]:
-		findings.append("OBJECTIVE SIGNAL: expected one defeat_bomb_bot event, got %s" % [objective_events])
+	if objective_events != ["find_lab"]:
+		findings.append("OBJECTIVE SIGNAL: expected one find_lab event, got %s" % [objective_events])
 
 	var encoded: String = JSON.stringify(route.to_save_data())
 	var decoded: Variant = JSON.parse_string(encoded)
@@ -47,7 +48,7 @@ func _run() -> void:
 	restored.load_save_data(decoded as Dictionary)
 	var expected := {
 		"zone_id": "deep",
-		"objective_id": "defeat_bomb_bot",
+		"objective_id": "find_lab",
 		"bomb_bot_state": "defeated",
 		"sword_slayer_state": "in_progress",
 		"lab_state": "available",
@@ -55,6 +56,7 @@ func _run() -> void:
 		"maze_door_state": "available",
 		"octopus_state": "unavailable",
 		"encounter_source": "lab_boss",
+		"deep_warning_seen": true,
 	}
 	if restored.to_save_data() != expected:
 		findings.append("ROUND TRIP: expected %s, got %s" % [expected, restored.to_save_data()])
@@ -86,6 +88,7 @@ func _test_invalid_save_falls_back(route_script: Script) -> void:
 		"maze_door_state": "locked",
 		"octopus_state": "unavailable",
 		"encounter_source": "random",
+		"deep_warning_seen": false,
 	}
 	if restored.to_save_data() != expected_defaults:
 		findings.append("INVALID SAVE: impossible route values did not fall back to safe defaults")
@@ -114,7 +117,7 @@ func _test_world_checkpoint_round_trip(expected: Dictionary) -> void:
 	# boundary deliberately converts that transient state into a safe retry.
 	expected_world.lab_state = "available"
 	expected_world.tethys_state = "available"
-	expected_world.objective_id = "enter_lab"
+	expected_world.objective_id = "find_lab"
 	expected_world.encounter_source = "random"
 	if restored_route == null or restored_route.to_save_data() != expected_world:
 		findings.append("WORLD CHECKPOINT: transient boss state did not normalize to a retryable laboratory entrance")
@@ -140,7 +143,8 @@ func _test_legacy_deep_maze_migration() -> void:
 	restored._load_save()
 	if (restored.route_state.maze_door_state != "available"
 		or restored.route_state.tethys_state != "locked"
-		or restored.route_state.lab_state != "locked"):
+		or restored.route_state.lab_state != "locked"
+		or restored.route_state.objective_id != "find_lab"):
 		findings.append("WORLD CHECKPOINT: old Deep save did not open only the independent maze branch")
 	restored.queue_free()
 	await process_frame

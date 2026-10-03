@@ -23,6 +23,7 @@ signal boss_playtest_chosen
 signal special_playtest_chosen
 signal spell_playtest_chosen
 signal skip_tutorial_chosen
+signal blocker_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
@@ -32,6 +33,7 @@ var _boss_playtest_available := false
 var _special_playtest_available := false
 var _spell_playtest_available := false
 var _skip_tutorial_available := false
+var _blocker_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -152,6 +154,13 @@ func enable_skip_tutorial() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
+# Query-only Bomb Bot review entry. This is supplementary verification
+# plumbing; the production feature remains reachable through normal travel.
+func enable_blocker_playtest() -> void:
+	_blocker_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
@@ -170,6 +179,17 @@ func _refresh_main() -> void:
 	_wire_menu_button(new_btn)
 	_list.add_child(new_btn)
 	new_btn.grab_focus()
+
+	if _blocker_playtest_available:
+		var blocker_btn := Button.new()
+		blocker_btn.text = "Play Bomb Bot Test"
+		blocker_btn.tooltip_text = "Run the authored laboratory-blocker battle"
+		blocker_btn.custom_minimum_size = Vector2(360, 46)
+		blocker_btn.add_theme_font_size_override("font_size", 17)
+		blocker_btn.add_theme_color_override("font_color", Color(1.0, 0.68, 0.42))
+		blocker_btn.pressed.connect(blocker_playtest_chosen.emit)
+		_wire_menu_button(blocker_btn, &"play_ui_start_game")
+		_list.add_child(blocker_btn)
 
 	if _boss_playtest_available:
 		var boss_btn := Button.new()

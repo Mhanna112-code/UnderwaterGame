@@ -110,6 +110,8 @@ run "lab exterior: does the rock shell conceal the office while preserving the e
 run "deep-zone environment: are approved scenery sources visibly and safely placed" "$GODOT" --headless --path . --script verify/deep_zone_environment.gd
 run "deep-zone blockers: do authored blocker actors use their real models, moves, and clips" "$GODOT" --headless --path . --script verify/deep_zone_blockers.gd
 run "deep-zone blocker balance: are both mandatory fights approachable and meaningfully tactical" "$GODOT" --headless --path . --script verify/deep_zone_blocker_balance.gd
+run "deep-zone Bomb Bot: does the full production fight survive attacks, victory, and world return" "$GODOT" --headless --path . --script verify/bomb_bot_battle.gd
+run "deep-zone progression: does a real blocker victory level, learn, equip, and expose attacks" "$GODOT" --headless --path . --script verify/deep_zone_progression.gd
 run "audio assets: do canonical Phoenix tracks import with reviewed duration and digest" "$GODOT" --headless --path . --script verify/audio_assets.gd
 run "combat SFX assets: do reviewed derivatives import without raw reels" "$GODOT" --headless --path . --script verify/combat_sfx_assets.gd
 run "combat SFX playback: do production combat results trigger overlap-safe audible feedback" "$GODOT" --headless --path . --script verify/combat_sfx_playback.gd
@@ -136,6 +138,7 @@ run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --he
 run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
 run "route state: does authored progression round-trip through its public contract" "$GODOT" --headless --path . --script verify/route_state.gd
 run "deep-zone route: is the expanded dark route physically supported and state-driven" "$GODOT" --headless --path . --script verify/deep_zone_route.gd
+run "deep-zone guidance: does water deepen continuously while the lab remains the main objective" "$GODOT" --headless --path . --script verify/deep_zone_guidance.gd
 run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip" "$GODOT" --headless --path . --script verify/lab_tethys_route.gd
 run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd

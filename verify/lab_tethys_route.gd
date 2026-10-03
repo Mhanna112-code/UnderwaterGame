@@ -28,7 +28,7 @@ func _run() -> void:
 	# The maze is an already-open independent Deep branch. Lab victory may
 	# guide the next objective there, but must not be what unlocks it.
 	world.route_state.set_maze_door_state("available")
-	world.route_state.set_objective("enter_lab")
+	world.route_state.set_objective("find_lab")
 	world._sync_deep_zone_blocker_staging()
 	await physics_frame
 
@@ -89,7 +89,7 @@ func _run() -> void:
 		world._normalize_loaded_route_state()
 		_expect(world.route_state.lab_state == "available"
 			and world.route_state.tethys_state == "available"
-			and world.route_state.objective_id == "enter_lab"
+			and world.route_state.objective_id == "find_lab"
 			and world.route_state.encounter_source == "random",
 			"LAB-TETHYS-004: transient %s/%s save did not normalize to a retryable entrance" % [transient.lab, transient.tethys])
 

@@ -93,7 +93,7 @@ func _run() -> void:
 	active.global_position = points.deep_entry
 	await physics_frame
 	_expect(world.route_state.zone_id == "deep", "ZONE: physically crossing the deep entry did not update RouteState")
-	_expect(world.route_state.objective_id == "defeat_bomb_bot", "OBJECTIVE: first deep-zone objective is not the first authored blocker")
+	_expect(world.route_state.objective_id == "find_lab", "OBJECTIVE: entering Deep does not identify the laboratory as the route goal")
 	_expect(world.route_state.maze_door_state == "available",
 		"BRANCHING: entering Deep did not make the separate current-maze transition available")
 	var objective_labels := world.get_tree().get_nodes_in_group("route_objective_hud")
@@ -101,7 +101,7 @@ func _run() -> void:
 		findings.append("OBJECTIVE HUD: deep objective has no single player-visible owner")
 	else:
 		var objective_label := objective_labels[0] as Label
-		_expect(objective_label != null and objective_label.visible and objective_label.text.contains("Bomb Bot"), "OBJECTIVE HUD: entering Deep does not visibly name the next blocker")
+		_expect(objective_label != null and objective_label.visible and objective_label.text.contains("laboratory"), "OBJECTIVE HUD: entering Deep does not visibly name the laboratory goal")
 	if layout.has_method("allows_random_encounter"):
 		active.global_position = points.bomb_bot
 		world._on_encounter_triggered(active)

@@ -334,8 +334,8 @@ func _test_bomb_bot_lifecycle() -> void:
 	paused = false
 	_expect(world.route_state.bomb_bot_state == "available",
 		"DZ-BLOCK-007: losing Bomb Bot left the blocker consumed or stuck in progress")
-	_expect(world.route_state.objective_id == "defeat_bomb_bot",
-		"DZ-BLOCK-007: losing Bomb Bot falsely advanced the route objective")
+	_expect(world.route_state.objective_id == "find_lab",
+		"DZ-BLOCK-007: losing Bomb Bot replaced the laboratory route objective")
 	_expect(world.route_state.encounter_source == "random",
 		"DZ-BLOCK-007: finished blocker encounter leaked lab_blocker source into later battles")
 
@@ -356,8 +356,8 @@ func _test_bomb_bot_lifecycle() -> void:
 		paused = false
 	_expect(world.route_state.bomb_bot_state == "defeated",
 		"DZ-BLOCK-008: winning Bomb Bot did not permanently retire it")
-	_expect(world.route_state.objective_id == "defeat_sword_slayer",
-		"DZ-BLOCK-008: Bomb Bot victory did not unlock the Sword Slayer objective")
+	_expect(world.route_state.objective_id == "find_lab",
+		"DZ-BLOCK-008: Bomb Bot victory replaced the laboratory route objective")
 	_expect(world.route_state.encounter_source == "random",
 		"DZ-BLOCK-008: Bomb Bot victory did not restore ordinary encounter policy")
 	if staged.has("bomb_bot") and staged.has("sword_slayer"):
@@ -386,8 +386,8 @@ func _test_bomb_bot_lifecycle() -> void:
 		world._on_battle_finished("fled")
 		await process_frame
 	paused = false
-	_expect(world.route_state.sword_slayer_state == "available" and world.route_state.objective_id == "defeat_sword_slayer",
-		"DZ-BLOCK-007: fleeing Sword Slayer falsely consumed it or advanced the route")
+	_expect(world.route_state.sword_slayer_state == "available" and world.route_state.objective_id == "find_lab",
+		"DZ-BLOCK-007: fleeing Sword Slayer consumed it or replaced the laboratory objective")
 	world._update_deep_zone_blockers()
 	await process_frame
 	_expect(not world.battling,
@@ -405,8 +405,8 @@ func _test_bomb_bot_lifecycle() -> void:
 	paused = false
 	_expect(world.route_state.sword_slayer_state == "defeated",
 		"DZ-BLOCK-008: Sword Slayer victory did not permanently retire it")
-	_expect(world.route_state.lab_state == "available" and world.route_state.objective_id == "enter_lab",
-		"DZ-BLOCK-008: Sword Slayer victory did not unlock the laboratory objective")
+	_expect(world.route_state.lab_state == "available" and world.route_state.objective_id == "find_lab",
+		"DZ-BLOCK-008: Sword Slayer victory did not open the laboratory while preserving its objective")
 	if staged.has("sword_slayer"):
 		_expect(not (staged.sword_slayer as Node3D).visible,
 			"DZ-BLOCK-009: defeated Sword Slayer remained staged in the world")

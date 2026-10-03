@@ -404,13 +404,18 @@ func _normalize_loaded_route_state() -> void:
 	if route_state.lab_state in ["cutscene", "boss"] or route_state.tethys_state == "in_progress":
 		route_state.set_lab_state("available")
 		route_state.set_tethys_state("available")
-		route_state.set_objective("enter_lab")
+		route_state.set_objective("find_lab")
 		route_state.set_encounter_source("random")
 	# The current maze is a separate deep-zone branch, not a reward for beating
 	# Tethys. Migrate older deep-zone saves that captured the former lab-gated
 	# `locked` state so they cannot remain permanently unable to use the branch.
 	if route_state.zone_id == "deep" and route_state.maze_door_state == "locked":
 		route_state.set_maze_door_state("available")
+	# Migrate blocker-first objective copy from early PR #96 builds. The fight
+	# states still preserve exactly where the player is; only the HUD hierarchy
+	# changes so the laboratory remains the goal Marc described.
+	if route_state.zone_id == "deep" and route_state.objective_id in ["defeat_bomb_bot", "defeat_sword_slayer", "enter_lab"]:
+		route_state.set_objective("find_lab")
 
 # get_tree().paused freezes every node whose process_mode isn't ALWAYS -
 # the whole world (movement, physics, encounters, the HUD's own per-frame
@@ -538,6 +543,17 @@ func _on_title_spell_playtest() -> void:
 		SpellTree.learn_all_available(diver, key_items)
 	_announce("Spell test ready: spells are learned and equipped. Press Esc, then Party Spells.")
 
+func _on_title_blocker_playtest() -> void:
+	_current_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	_first_encounter_started = true
+	_first_encounter_done = true
+	route_state.set_zone("deep")
+	route_state.set_objective("find_lab")
+	_start_deep_zone_blocker("bomb_bot")
+
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
 		return true
@@ -552,6 +568,14 @@ func _special_playtest_requested() -> bool:
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
 		return String(search).contains("special=1")
+	return false
+
+func _blocker_playtest_requested() -> bool:
+	if OS.get_cmdline_user_args().has("--blocker-playtest"):
+		return true
+	if OS.has_feature("web"):
+		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
+		return String(search).contains("blocker=bomb_bot")
 	return false
 
 # For quickly iterating on tutorial_result_popup's own look/copy without
@@ -770,7 +794,7 @@ func _ready() -> void:
 	# reach a save point immediately, same reason it also grants max spell
 	# points/every key item - fighting through the scripted first battle
 	# first would defeat the point of a fast spell-testing loop.
-	if _tutorial_skip_requested() or _spell_playtest_requested():
+	if _tutorial_skip_requested() or _spell_playtest_requested() or _blocker_playtest_requested():
 		skip_tutorial_for_test = true
 	if skip_tutorial_for_test:
 		# Never spawn the beam/arrow at all, and mark the tutorial as already
@@ -806,6 +830,7 @@ func _ready() -> void:
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
 	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
 	title_screen.skip_tutorial_chosen.connect(_on_title_skip_tutorial)
+	title_screen.blocker_playtest_chosen.connect(_on_title_blocker_playtest)
 	title_layer.add_child(title_screen)
 	if _boss_playtest_requested():
 		title_screen.enable_boss_playtest()
@@ -815,6 +840,8 @@ func _ready() -> void:
 		title_screen.enable_spell_playtest()
 	if _tutorial_skip_requested():
 		title_screen.enable_skip_tutorial()
+	if _blocker_playtest_requested():
+		title_screen.enable_blocker_playtest()
 
 	special_encounter_prompt = SpecialEncounterPrompt.new()
 	special_encounter_prompt.diver_chosen.connect(_on_special_encounter_diver_chosen)
@@ -1807,6 +1834,7 @@ func _physics_process(dt: float) -> void:
 	_update_wall_visibility()
 	_update_intro_sequence()
 	_update_route_zone()
+	_update_deep_zone_visuals()
 	_update_deep_zone_blockers()
 	_update_lab_route()
 	_update_maze_transition()
@@ -1823,8 +1851,30 @@ func _update_route_zone() -> void:
 		# even while the two lab blockers and Tethys remain untouched.
 		if route_state.maze_door_state == "locked":
 			route_state.set_maze_door_state("available")
-		if route_state.bomb_bot_state == "available":
-			route_state.set_objective("defeat_bomb_bot")
+		if route_state.lab_state != "cleared" and route_state.tethys_state != "defeated":
+			route_state.set_objective("find_lab")
+		if not route_state.deep_warning_seen:
+			route_state.mark_deep_warning_seen()
+			_announce("You've entered deeper water. Stronger enemies may appear.")
+
+# Marc's review described Deep as a water-color gradient around the laboratory,
+# not a binary floor swap. Grade the actual world environment from the active
+# diver's physical x-position so every route through the region gets the same
+# continuous treatment. The battle viewport owns its own environment and is
+# intentionally unaffected.
+func _update_deep_zone_visuals() -> void:
+	if divers.is_empty():
+		return
+	var world_environment := get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if world_environment == null or world_environment.environment == null:
+		return
+	var factor := deep_zone_layout.depth_factor_for_position((divers[active] as Diver).global_position)
+	var environment := world_environment.environment
+	environment.background_color = Color(0.04, 0.12, 0.16).lerp(Color(0.012, 0.035, 0.06), factor)
+	environment.fog_light_color = Color(0.05, 0.16, 0.2).lerp(Color(0.015, 0.055, 0.085), factor)
+	environment.fog_density = lerpf(0.035, 0.065, factor)
+	environment.ambient_light_color = Color(0.32, 0.5, 0.56).lerp(Color(0.18, 0.3, 0.4), factor)
+	environment.ambient_light_energy = lerpf(1.1, 0.82, factor)
 
 # Checks the live diver's physical position, not a query-string route or a
 # test-only teleport. Sword Slayer joins this same table after its actor slice;
@@ -1877,10 +1927,10 @@ func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
 	if result == "won":
 		route_state.set_blocker_state(blocker_id, "defeated")
 		if blocker_id == "bomb_bot":
-			route_state.set_objective("defeat_sword_slayer")
+			route_state.set_objective("find_lab")
 		elif blocker_id == "sword_slayer":
 			route_state.set_lab_state("available")
-			route_state.set_objective("enter_lab")
+			route_state.set_objective("find_lab")
 	else:
 		route_state.set_blocker_state(blocker_id, "available")
 	route_state.set_encounter_source("random")
@@ -3305,6 +3355,8 @@ func _on_route_objective_changed(objective_id: String) -> void:
 
 func _route_objective_text(objective_id: String) -> String:
 	match objective_id:
+		"find_lab":
+			return "Deep Zone: find the laboratory."
 		"defeat_bomb_bot":
 			return "Deep Zone: disable Bomb Bot."
 		"defeat_sword_slayer":

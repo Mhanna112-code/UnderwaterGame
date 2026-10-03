@@ -29,6 +29,7 @@ var tethys_state := TETHYS_LOCKED
 var maze_door_state := MAZE_DOOR_LOCKED
 var octopus_state := OCTOPUS_UNAVAILABLE
 var encounter_source := ENCOUNTER_RANDOM
+var deep_warning_seen := false
 
 func set_zone(value: String) -> void:
 	zone_id = _allowed_or(value, ZONE_IDS, ZONE_SHALLOWS)
@@ -61,6 +62,9 @@ func set_octopus_state(value: String) -> void:
 func set_encounter_source(value: String) -> void:
 	encounter_source = _allowed_or(value, ENCOUNTER_SOURCES, ENCOUNTER_RANDOM)
 
+func mark_deep_warning_seen() -> void:
+	deep_warning_seen = true
+
 func _allowed_or(value: String, allowed: Array, fallback: String) -> String:
 	return value if allowed.has(value) else fallback
 
@@ -75,6 +79,7 @@ func to_save_data() -> Dictionary:
 		"maze_door_state": maze_door_state,
 		"octopus_state": octopus_state,
 		"encounter_source": encounter_source,
+		"deep_warning_seen": deep_warning_seen,
 	}
 
 func load_save_data(data: Dictionary) -> void:
@@ -87,3 +92,4 @@ func load_save_data(data: Dictionary) -> void:
 	set_maze_door_state(String(data.get("maze_door_state", MAZE_DOOR_LOCKED)))
 	set_octopus_state(String(data.get("octopus_state", OCTOPUS_UNAVAILABLE)))
 	set_encounter_source(String(data.get("encounter_source", ENCOUNTER_RANDOM)))
+	deep_warning_seen = data.get("deep_warning_seen", false) == true

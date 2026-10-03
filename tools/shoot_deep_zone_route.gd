@@ -63,13 +63,13 @@ func _process(_delta: float) -> bool:
 		var definition: Dictionary = VIEWS[view_id]
 		if view_id == "sword":
 			world.route_state.set_blocker_state("bomb_bot", "defeated")
-			world.route_state.set_objective("defeat_sword_slayer")
+			world.route_state.set_objective("find_lab")
 			world._sync_deep_zone_blocker_staging()
 		elif view_id in ["lab", "lab_close"]:
 			world.route_state.set_blocker_state("bomb_bot", "defeated")
 			world.route_state.set_blocker_state("sword_slayer", "defeated")
 			world.route_state.set_lab_state("available")
-			world.route_state.set_objective("enter_lab")
+			world.route_state.set_objective("find_lab")
 			world._sync_deep_zone_blocker_staging()
 		var active := world.divers[world.active] as Diver
 		active.global_position = definition.at as Vector3
