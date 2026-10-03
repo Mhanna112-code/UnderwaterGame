@@ -143,6 +143,7 @@ run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
 run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd
+run "world grapple aim: is the first-person target unobstructed and safely restored" "$GODOT" --headless --path . --script verify/world_grapple_aim.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze traversal: can the player cross the opened CSGBox3D6/7 passage" "$GODOT" --headless --path . --script verify/maze_traversal.gd
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd

@@ -1586,6 +1586,9 @@ func _start_ability() -> void:
 		_update_hud()
 	elif d.ability_needs_aim():
 		aiming = true
+		# Aim uses the active diver's eye line. Keep their own rig out of that
+		# first-person view so the body cannot cover the crosshair or target.
+		d.set_model_visible(false)
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		mouse_look = true
 		_update_hud()
@@ -1739,12 +1742,15 @@ func _restore_party_at_save_point() -> void:
 	_update_oxygen_bar()
 
 func _fire_aimed_ability() -> void:
+	var d: Diver = divers[active]
 	aiming = false
-	divers[active].use_ability(_aim_dir())
+	d.use_ability(_aim_dir())
+	d.set_model_visible(true)
 	_update_hud()
 
 func _cancel_aim() -> void:
 	aiming = false
+	divers[active].set_model_visible(true)
 	_update_hud()
 
 # TargetSelector confirmed a target (Enter, with a valid candidate
