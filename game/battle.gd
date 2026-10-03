@@ -1232,6 +1232,12 @@ func _build_stage() -> void:
 		# Give only this encounter source a distinct enemy lane; random packs and
 		# special minigames keep their established composition.
 		var enemy_x := _spread(i, count, 2.3) + 0.6
+		# A solo Frilled Shark is still much longer than an Angler after its
+		# horizontal cap. The generic centre lane places that silhouette across
+		# Bucky from the production camera, so give this one-body formation the
+		# same clear opposing-side read as authored broad-bodied encounters.
+		if g is FrilledShark and count == 1:
+			enemy_x = 5.0
 		if encounter_source == "lab_blocker":
 			# Sword Slayer's pivot sits near its mid-body while the long bill and
 			# tail extend left across Bucky at the shared blocker lane. Give only
@@ -1477,6 +1483,19 @@ func _frame_stage_camera() -> void:
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
 		var a := e.actor as Node3D
+		# Imported enemies can be dramatically longer than their collision
+		# radius suggests (Frilled Shark is the concrete regression). When an
+		# actor exposes real world-space visual bounds, frame all eight mesh
+		# corners rather than synthesizing a narrow box from radius/height.
+		if a.has_method("visual_bounds"):
+			var visual_box := a.call("visual_bounds") as AABB
+			for corner in range(8):
+				pts.append(visual_box.get_endpoint(corner))
+			pts.append(
+				visual_box.position
+				+ Vector3(visual_box.size.x * 0.5, visual_box.size.y + OVERHEAD_LIFT + OVERHEAD_HEADROOM, visual_box.size.z * 0.5)
+			)
+			continue
 		var low: Vector3 = _bottom_of(a)
 		# Not the top of the model: the top of the model plus the health
 		# bar riding above it. Framing the bodies alone put every head hard
@@ -2225,7 +2244,7 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	# own line only if it doesn't fit, the same as any other run of text.
 	# [font_size=22] against the caption's own default (~16) is what makes
 	# it read as its own callout rather than more body text to skim past.
-	_tutorial_caption.text = "%s\n[font_size=18][pulse]Press Enter or click Continue[/pulse][/font_size]" % text
+	_tutorial_caption.text = "%s\n[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]" % text
 	_tutorial_continue_btn.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
@@ -2248,14 +2267,14 @@ func _continue_tutorial_caption() -> void:
 
 # Two independent gates share this one entry point, each guarded by its own
 # flag so a press meant for one can't be misread as resolving the other:
-# Enter/Numpad Enter dismisses a narration caption while _tutorial_awaiting_
+# Space/Enter/Numpad Enter dismisses a narration caption while _tutorial_awaiting_
 # enter is true (see _tutorial_show_step()), X resolves a QTE while
 # _qte_active is true (see below). Neither is ever true at the same moment
 # in practice (a QTE never runs while a caption's up), but checking each
 # flag independently rather than an if/elif on one shared state keeps that
 # an implementation detail instead of a hard requirement.
 func _unhandled_input(event: InputEvent) -> void:
-	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_ENTER, KEY_KP_ENTER]:
+	if _tutorial_awaiting_enter and event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		get_viewport().set_input_as_handled()
 		_tutorial_awaiting_enter = false
 		return

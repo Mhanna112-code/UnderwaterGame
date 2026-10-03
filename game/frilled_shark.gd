@@ -58,3 +58,8 @@ func display_name() -> String:
 
 func primary_attack_clip() -> String:
 	return "attack)bite"
+
+# This rig is eel-long. A height-only fit makes it dominate the whole stage;
+# cap its largest horizontal mesh dimension while preserving its proportions.
+func max_visual_horizontal_span() -> float:
+	return 3.4

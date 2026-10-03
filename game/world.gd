@@ -101,7 +101,7 @@ var _t := 0.0
 var aiming := false
 
 # Swap goes through TargetSelector instead of first-person aim: cycle
-# between allies with Left/Right, Enter confirms, Escape cancels. See
+# between allies with A/D or Left/Right, Space/Enter confirms, Escape cancels. See
 # target_selector.gd for the selection logic and _start_ability()/
 # _unhandled_input() below for how E and the arrow keys route into it.
 var target_selector: TargetSelector
@@ -1325,11 +1325,11 @@ func _build_highway() -> void:
 	# (and accept, since going over a wall to cut a corner isn't the same
 	# problem as skipping a gate entirely).
 	entrance_rocks.collision_height = 40.0
-	# Also wider than the visible rocks - the corridor's own side walls
-	# don't cap their outer ends, so without this a diver could swim wide
-	# around the whole corridor from the open dive site and cut back in
-	# past the blockade entirely.
-	entrance_rocks.collision_width = 60.0
+	# Collision stays the same width as the visible formation. Extending it
+	# across open water prevents a bypass, but does so with an invisible wall
+	# that blocks ordinary travel far outside the authored corridor. The
+	# visible side walls and route staging must communicate/contain the gate;
+	# collision cannot silently reach beyond what the player can see.
 	entrance_rocks.position = Vector3(START_X + 1.0, WALL_HEIGHT * 0.5, LANE_Z)
 	add_child(entrance_rocks)
 	entrance_rocks.broken.connect(_on_world_object_consumed.bind("entrance_blockade"))
@@ -1428,8 +1428,17 @@ func _check_gap_puzzle() -> void:
 	var cutscene := Cutscene.new()
 	add_child(cutscene)
 	cutscene.play_scroll_text("Welcome to the Deep Sea")
-	_puzzle_goal.visible = true
-	_announce("All three in place - the way ahead opens!")
+	# The old highway predates RouteState and used this cyan waypoint as its
+	# only guidance. PR #96 already owns a concrete next objective once the
+	# deep route begins; showing both produces two competing destinations,
+	# and the legacy marker itself has no action. Keep it only as the fallback
+	# for worlds with no actionable route objective.
+	var active_route_guidance := _route_objective_text(route_state.objective_id)
+	_puzzle_goal.visible = active_route_guidance.is_empty()
+	if active_route_guidance.is_empty():
+		_announce("All three in place. The way ahead opens!")
+	else:
+		_announce("All three in place. %s" % active_route_guidance)
 
 # One plain wall segment: a StaticBody3D box, solid (divers collide with
 # it via CharacterBody3D's own move_and_slide, same as the floor), centered
@@ -1503,21 +1512,21 @@ func _unhandled_input(e: InputEvent) -> void:
 			_cancel_aim()
 			return
 
-	# TargetSelector intercepts Left/Right/Enter the same way aim mode
+	# TargetSelector intercepts A/D/Left/Right/Space/Enter the same way aim mode
 	# intercepts clicks - before they'd otherwise turn the camera or do
 	# nothing at all (see _physics_process, which suppresses the normal
 	# arrow-key camera turn outright while target_selector.selecting).
 	if target_selector.selecting and e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var sk := (e as InputEventKey).keycode
-		if sk == KEY_RIGHT:
+		if sk == KEY_D or sk == KEY_RIGHT:
 			target_selector.select_next()
 			_update_hud()
 			return
-		elif sk == KEY_LEFT:
+		elif sk == KEY_A or sk == KEY_LEFT:
 			target_selector.select_previous()
 			_update_hud()
 			return
-		elif sk == KEY_ENTER or sk == KEY_KP_ENTER:
+		elif sk == KEY_SPACE or sk == KEY_ENTER or sk == KEY_KP_ENTER:
 			target_selector.confirm_selection()
 			return
 
@@ -3315,9 +3324,9 @@ func _update_hud() -> void:
 	if target_selector.selecting:
 		var t := target_selector.current_target()
 		if t != null and t is Diver:
-			hud.text = "Swap with %s?\nLeft/Right: cycle   ·   Enter: confirm   ·   Esc: cancel" % _display_name((t as Diver).model_name)
+			hud.text = "Swap with %s?\nA/D or Left/Right: cycle   ·   Space/Enter: confirm   ·   Esc: cancel" % _display_name((t as Diver).model_name)
 		else:
-			hud.text = "Left/Right: cycle   ·   Enter: confirm   ·   Esc: cancel"
+			hud.text = "A/D or Left/Right: cycle   ·   Space/Enter: confirm   ·   Esc: cancel"
 		return
 	if aiming:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()

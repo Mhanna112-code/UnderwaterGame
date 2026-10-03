@@ -122,9 +122,12 @@ run "encounters: does a fight start from anywhere"     "$GODOT" --headless --pat
 run "guardian zones: does the artifact encounter stay distinct" "$GODOT" --headless --path . --script verify/guardian_encounter_exclusion.gd
 run "guardian/item integration: do claimed sites stay retired after save/load" "$GODOT" --headless --path . --script verify/guardian_item_integration.gd
 run "intro beam: does entering its visible column start tutorial combat" "$GODOT" --headless --path . --script verify/intro_sequence.gd
+run "open water: can a diver pass beside the visible entrance rocks" "$GODOT" --headless --path . --script verify/open_water_blockade.gd
+run "legacy guidance: does the plate puzzle avoid competing with RouteState" "$GODOT" --headless --path . --script verify/legacy_highway_route_separation.gd
 run "tutorial QTE: does the first Angler swing show and accept the timing dodge" "$GODOT" --headless --path . --script verify/tutorial_qte.gd
 run "tutorial exit: does a completed lesson win and return to world" "$GODOT" --headless --path . --script verify/tutorial_exit.gd
 run "tutorial continue: can mouse users advance a live caption" "$GODOT" --headless --path . --script verify/tutorial_continue_button.gd
+run "input aliases: do Swap and narration accept additive controls without losing old keys" "$GODOT" --headless --path . --script verify/input_aliases.gd
 run "tutorial onboarding: does combat hand off world controls safely" "$GODOT" --headless --path . --script verify/tutorial_ability_onboarding.gd
 run "tutorial onboarding review route: can a reviewer inspect its actual UI" "$GODOT" --headless --path . --script verify/tutorial_onboarding_review_route.gd
 run "tutorial loss: can a player retry or safely exit to world" "$GODOT" --headless --path . --script verify/tutorial_loss_choice.gd
@@ -144,6 +147,7 @@ run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --head
 run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd
 run "world grapple aim: is the first-person target unobstructed and safely restored" "$GODOT" --headless --path . --script verify/world_grapple_aim.gd
+run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze traversal: can the player cross the opened CSGBox3D6/7 passage" "$GODOT" --headless --path . --script verify/maze_traversal.gd
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
@@ -166,6 +170,8 @@ if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "stage framing narrow: does responsive combat remain visible at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/stage_framing.gd
 	run "tutorial status layout wide: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_status_layout.gd
 	run "tutorial status layout narrow: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_status_layout.gd
+	run "Frilled Shark framing wide: do real mesh bounds clear the party" "$GODOT" --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
+	run "Frilled Shark framing narrow: does the long rig remain readable" "$GODOT" --path . --resolution 720x480 --script verify/frilled_shark_framing.gd
 	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd
 	run "lab composition narrow: is the Tethys arena still readable at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/lab_battle_composition.gd
 else
