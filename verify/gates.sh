@@ -91,6 +91,7 @@ run "tutorial loss: can a player retry or safely exit to world" "$GODOT" --headl
 run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --headless --path . --script verify/tutorial_skip.gd
 run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
 run "route state: does authored progression round-trip through its public contract" "$GODOT" --headless --path . --script verify/route_state.gd
+run "deep-zone route: is the expanded dark route physically supported and state-driven" "$GODOT" --headless --path . --script verify/deep_zone_route.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
 run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd

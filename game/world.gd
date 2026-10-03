@@ -117,6 +117,7 @@ var _save_point_tutorial_seen := false
 var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
+const DeepZoneLayoutScript := preload("res://content/deep_zone_layout.gd")
 
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
@@ -248,6 +249,7 @@ var _current_slot := -1
 # signal; World only includes it in the same atomic checkpoint dictionary as
 # party, inventory, and mutable geometry.
 var route_state := RouteState.new()
+var deep_zone_layout := DeepZoneLayoutScript.new()
 
 # Scene reload is the only honest way to roll mutable geometry back to a
 # checkpoint: _load_save() can remove objects a save says are consumed, but
@@ -799,7 +801,9 @@ func _ready() -> void:
 # to move relative to, motion at this scale reads as standing still.
 func _build_site() -> void:
 	var floor_body := StaticBody3D.new()
+	floor_body.name = "ShallowsFloorBody"
 	var floor_mesh := MeshInstance3D.new()
+	floor_mesh.name = "ShallowsFloor"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(120, 120)
 	floor_mesh.mesh = plane
@@ -815,6 +819,41 @@ func _build_site() -> void:
 	fs.position.y = -0.2
 	floor_body.add_child(fs)
 	add_child(floor_body)
+
+	# The authored route continues east beyond the former x=62 collision rail.
+	# Keep this as its own darker surface so the boundary is visible rather
+	# than merely changing a zone id while the world looks identical.
+	var deep_body := StaticBody3D.new()
+	deep_body.name = "DeepZoneFloorBody"
+	var deep_mesh := MeshInstance3D.new()
+	deep_mesh.name = "DeepZoneFloor"
+	var deep_plane := PlaneMesh.new()
+	deep_plane.size = Vector2(
+		DeepZoneLayoutScript.WORLD_MAX_X - DeepZoneLayoutScript.DEEP_START_X,
+		DeepZoneLayoutScript.WORLD_HALF_Z * 2.0
+	)
+	deep_mesh.mesh = deep_plane
+	var deep_material := StandardMaterial3D.new()
+	deep_material.albedo_color = Color(0.025, 0.06, 0.09)
+	deep_material.roughness = 1.0
+	deep_mesh.material_override = deep_material
+	deep_body.position = Vector3(
+		(DeepZoneLayoutScript.DEEP_START_X + DeepZoneLayoutScript.WORLD_MAX_X) * 0.5,
+		0.0,
+		0.0
+	)
+	deep_body.add_child(deep_mesh)
+	var deep_shape := CollisionShape3D.new()
+	var deep_box := BoxShape3D.new()
+	deep_box.size = Vector3(
+		DeepZoneLayoutScript.WORLD_MAX_X - DeepZoneLayoutScript.DEEP_START_X,
+		0.4,
+		DeepZoneLayoutScript.WORLD_HALF_Z * 2.0
+	)
+	deep_shape.shape = deep_box
+	deep_shape.position.y = -0.2
+	deep_body.add_child(deep_shape)
+	add_child(deep_body)
 
 	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
 	# was taking most of a minute to show its first frame and every node set up
@@ -857,21 +896,22 @@ func _build_site() -> void:
 # Keep the playable space inside the visible 120-by-120 seafloor. These are
 # collision-only safety rails and intentionally do not appear on the minimap.
 func _build_boundary_walls() -> void:
-	const BOUND := 60.0
 	const WALL_HEIGHT := 80.0
 	const WALL_Y := 30.0
 	const THICKNESS := 4.0
-	const SPAN := BOUND * 2.0 + THICKNESS * 2.0
-	_build_invisible_wall(Vector3(0.0, WALL_Y, BOUND + THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
-	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+	var span_x := DeepZoneLayoutScript.WORLD_MAX_X - DeepZoneLayoutScript.WORLD_MIN_X
+	var center_x := (DeepZoneLayoutScript.WORLD_MIN_X + DeepZoneLayoutScript.WORLD_MAX_X) * 0.5
+	var span_z := DeepZoneLayoutScript.WORLD_HALF_Z * 2.0
+	_build_invisible_wall(Vector3(center_x, WALL_Y, DeepZoneLayoutScript.WORLD_HALF_Z + THICKNESS * 0.5), Vector3(span_x + THICKNESS * 2.0, WALL_HEIGHT, THICKNESS))
+	_build_invisible_wall(Vector3(center_x, WALL_Y, -DeepZoneLayoutScript.WORLD_HALF_Z - THICKNESS * 0.5), Vector3(span_x + THICKNESS * 2.0, WALL_HEIGHT, THICKNESS))
+	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MAX_X + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
+	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MIN_X - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
 	# Collision-only roof; its underside is exactly four blockade-heights
 	# above the floor. Airborne reward rocks at 3x height stay reachable.
 	const CEILING_THICKNESS := 2.0
 	_build_invisible_wall(
-		Vector3(0.0, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
-		Vector3(BOUND * 2.0, CEILING_THICKNESS, BOUND * 2.0)
+		Vector3(center_x, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
+		Vector3(span_x, CEILING_THICKNESS, span_z)
 	)
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
@@ -1700,6 +1740,17 @@ func _physics_process(dt: float) -> void:
 	_check_gap_puzzle()
 	_update_wall_visibility()
 	_update_intro_sequence()
+	_update_route_zone()
+
+func _update_route_zone() -> void:
+	if not _first_encounter_done or divers.is_empty():
+		return
+	var physical_zone: String = deep_zone_layout.zone_for_position((divers[active] as Diver).global_position)
+	if physical_zone == route_state.zone_id:
+		return
+	route_state.set_zone(physical_zone)
+	if physical_zone == "deep" and route_state.bomb_bot_state == "available":
+		route_state.set_objective("defeat_bomb_bot")
 
 # Runs every physics frame from world load until the active diver reaches
 # the light beam: keeps the arrow aimed at it (the diver keeps moving, so a
