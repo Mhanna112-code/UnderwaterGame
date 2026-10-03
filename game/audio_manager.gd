@@ -21,9 +21,18 @@ const GAME_OVER: AudioStream = preload("res://audio/music/game_over.ogg")
 const UI_HOVER: AudioStream = preload("res://audio/sfx/ui/hover.wav")
 const UI_CLICK: AudioStream = preload("res://audio/sfx/ui/click.wav")
 const UI_START_GAME: AudioStream = preload("res://audio/sfx/ui/start_game.wav")
+const COMBAT_ATTACK_SWIRL: AudioStream = preload("res://audio/sfx/combat/attack_swirl.ogg")
+const COMBAT_SWING: AudioStream = preload("res://audio/sfx/combat/fast_swish_01.ogg")
+const COMBAT_MISS: AudioStream = preload("res://audio/sfx/combat/swish_04.ogg")
+const COMBAT_DODGE: AudioStream = preload("res://audio/sfx/combat/fast_swish_03.ogg")
+const COMBAT_HEAVY_HIT: AudioStream = preload("res://audio/sfx/combat/heavy_hit.ogg")
+const COMBAT_SHOCKWAVE: AudioStream = preload("res://audio/sfx/combat/shockwave_swirl.ogg")
+const COMBAT_SFX_PLAYER_COUNT := 4
 
 var _music_player: AudioStreamPlayer
 var _sfx_player: AudioStreamPlayer
+var _combat_sfx_players: Array[AudioStreamPlayer] = []
+var _next_combat_sfx_player := 0
 var _cue_id := ""
 var _phase := "stopped"
 var _intro_stream: AudioStream
@@ -56,6 +65,10 @@ func release_streams_for_shutdown() -> void:
 	if is_instance_valid(_sfx_player):
 		_sfx_player.stop()
 		_sfx_player.stream = null
+	for player in _combat_sfx_players:
+		if is_instance_valid(player):
+			player.stop()
+			player.stream = null
 	_cue_id = ""
 	_phase = "stopped"
 	_intro_stream = null
@@ -160,6 +173,25 @@ func play_ui_click() -> void:
 func play_ui_start_game() -> void:
 	_play_sfx("ui_start_game", UI_START_GAME)
 
+# Combat uses a short round-robin pool instead of the UI player's
+# stop-and-replace policy. An attack swing and its impact are separate pieces
+# of feedback and must be able to overlap without either one cutting off.
+func play_combat_swing(heavy: bool = false) -> void:
+	_play_combat_sfx("combat_heavy_swing" if heavy else "combat_swing",
+		COMBAT_ATTACK_SWIRL if heavy else COMBAT_SWING, -3.0 if heavy else -5.0)
+
+func play_combat_result(hit: bool, dodged: bool = false, heavy: bool = false) -> void:
+	if hit and not dodged:
+		_play_combat_sfx("combat_heavy_hit" if heavy else "combat_hit", COMBAT_HEAVY_HIT,
+			-2.0 if heavy else -8.0)
+	elif dodged:
+		_play_combat_sfx("combat_dodge", COMBAT_DODGE, -4.0)
+	else:
+		_play_combat_sfx("combat_miss", COMBAT_MISS, -5.0)
+
+func play_shockwave() -> void:
+	_play_combat_sfx("shockwave", COMBAT_SHOCKWAVE, -7.0)
+
 func get_sfx_event_trace() -> Array[String]:
 	return _sfx_event_trace.duplicate()
 
@@ -220,6 +252,12 @@ func _ensure_players() -> void:
 	_sfx_player.name = "SFXPlayer"
 	_sfx_player.bus = "SFX"
 	add_child(_sfx_player)
+	for index in range(COMBAT_SFX_PLAYER_COUNT):
+		var player := AudioStreamPlayer.new()
+		player.name = "CombatSFX%d" % index
+		player.bus = "SFX"
+		add_child(player)
+		_combat_sfx_players.append(player)
 
 func _apply_bus_settings(bus_name: String, volume: float, muted: bool) -> void:
 	var index := AudioServer.get_bus_index(bus_name)
@@ -233,6 +271,18 @@ func _play_sfx(event_id: String, stream: AudioStream) -> void:
 	_sfx_player.stop()
 	_sfx_player.stream = _non_looping_copy(stream)
 	_sfx_player.play()
+	_sfx_event_trace.append(event_id)
+
+func _play_combat_sfx(event_id: String, stream: AudioStream, volume_db: float) -> void:
+	_ensure_players()
+	if _combat_sfx_players.is_empty() or stream == null:
+		return
+	var player := _combat_sfx_players[_next_combat_sfx_player]
+	_next_combat_sfx_player = (_next_combat_sfx_player + 1) % _combat_sfx_players.size()
+	player.stop()
+	player.stream = _non_looping_copy(stream)
+	player.volume_db = volume_db
+	player.play()
 	_sfx_event_trace.append(event_id)
 
 func _record_transition() -> void:

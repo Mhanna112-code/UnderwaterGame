@@ -2280,6 +2280,17 @@ func _log(text: String) -> void:
 	log_label.clear()
 	log_label.add_text(text)
 
+func _audio_call(method: StringName, args: Array = []) -> void:
+	var owner := get_node_or_null("/root/GameAudio")
+	if owner != null and owner.has_method(method):
+		owner.callv(method, args)
+
+func _move_is_heavy(move: Dictionary) -> bool:
+	var power := int(move.get("power", 0))
+	var move_name := String(move.get("name", "")).to_lower()
+	return power >= 10 or move_name.contains("heavy") or move_name.contains("crushing") \
+		or move_name.contains("great") or move_name.contains("spinning")
+
 func _current_log_text() -> String:
 	return log_label.get_parsed_text()
 
@@ -2303,6 +2314,19 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 		return
 	var messages: Array[Dictionary] = []
 	var result_kind := String(result.get("debuff", ""))
+	# Keep audio attached to the same resolved result that owns floating text.
+	# Heals/revives are not impacts; misses, QTE dodges, and landed damage each
+	# have a distinct cue. A fifth-of-max-HP hit mirrors _react()'s existing
+	# heavy-reaction threshold, so the stronger sound has mechanical meaning.
+	if result_kind not in ["heal", "revive"]:
+		var hit := bool(result.get("hit", false))
+		var dodged := bool(result.get("dodged", false))
+		var damage := int(result.get("damage", 0))
+		if not hit or dodged or damage > 0:
+			var max_hp := 0
+			if entry.has("stats") and entry.stats is CombatantStats:
+				max_hp = (entry.stats as CombatantStats).hp_max
+			_audio_call(&"play_combat_result", [hit, dodged, max_hp > 0 and damage >= int(ceil(float(max_hp) * 0.2))])
 	if result_kind == "heal" or result_kind == "revive":
 		messages.append({"text": "+%d HP" % int(result.get("changed", 0)), "color": FEEDBACK_EFFECT_COLOR})
 	elif result_kind != "":
@@ -4208,6 +4232,7 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if length <= 0.0:
 		_send_home(entry, 0.0)
 		return
+	_audio_call(&"play_combat_swing", [_move_is_heavy(mv)])
 	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
 	# The rest of the clip plays while the caller gets on with the damage
 	# log, and the walk back starts when it finishes.
@@ -4450,6 +4475,7 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 	if to.length() > 0.05:
 		boss.face_toward((primary.actor as Node3D).global_position)
 	var length := boss.play_attack(move)
+	_audio_call(&"play_combat_swing", [_move_is_heavy(move)])
 	if length > 0.0:
 		await get_tree().create_timer(length * IMPACT_FRACTION).timeout
 
@@ -4539,6 +4565,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	# frame. Previously play_move() ran before the walk and idle was restored
 	# about 0.18 seconds later, making a valid Bite look like no attack at all.
 	var attack_length := enemy_actor.play_move(move)
+	_audio_call(&"play_combat_swing", [_move_is_heavy(move.get("combat", {}) as Dictionary)])
 	if attack_length > 0.0:
 		await get_tree().create_timer(attack_length * IMPACT_FRACTION).timeout
 	var combat_move := move.combat as Dictionary
@@ -4818,6 +4845,7 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, _target_sta
 	# same parity reason - Bucky's minigame shouldn't be the one left
 	# without this while Maxilani's and Musashi's both have it.
 	_log("%s hurls rocks and walls at %s! Left/Right to move lanes, E to shockwave a rock when it arrives in your lane." % [String(actor.display_name), String(target.display_name)])
+	_audio_call(&"play_shockwave")
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_look_at_dodge_angle((target.actor as Node3D).global_position)
 	var minigame := RockDodgeMinigame.new()
