@@ -49,15 +49,22 @@ var _audio_tab: Button
 
 func _ready() -> void:
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Runtime Controls begin with zero-sized offsets. Reset anchors and offsets
+	# together so the menu actually owns the viewport under a CanvasLayer at
+	# every browser size; anchor-only sizing can leave a zero-width hit/backdrop
+	# rectangle even though descendants happen to draw outside it.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
+	bg.name = "Backdrop"
 	bg.color = Color(0.02, 0.05, 0.08, 0.92)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.name = "MenuContent"
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# MODIFIED (changed): offset_top was 50 - the world HUD's own diver-name/
 	# Match the HUD label's 12px left inset and sit shortly below its two
 	# lines, leaving enough room for the controls hint without a large gap.
@@ -115,6 +122,7 @@ func _ready() -> void:
 	# scroll within, rather than just growing to fit its content like any
 	# other container would.
 	var scroll := ScrollContainer.new()
+	scroll.name = "ContentScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# A floor, not the actual size - size_flags_vertical above still lets it
 	# grow to fill whatever's left in `root` at any given resolution. This
@@ -123,7 +131,9 @@ func _ready() -> void:
 	# scroll view quietly shrinking to a sliver just because Items/Party
 	# Spells (the other two tabs sharing this same _list/scroll) rarely have
 	# enough entries to make the difference visible there.
-	scroll.custom_minimum_size = Vector2(0, 460)
+	# Keep a useful reading window without forcing the VBox below the viewport
+	# at 720px or narrow/mobile heights. EXPAND_FILL owns the remaining space.
+	scroll.custom_minimum_size = Vector2(0, 240)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
 
@@ -371,6 +381,10 @@ func _on_replay_special_encounter_tutorial_pressed() -> void:
 # replays the scripted fight itself.
 func _on_replay_tutorial_guide_pressed() -> void:
 	if world != null:
+		# Do not stack two full-screen modal surfaces. Closing this menu restores
+		# the world for one instant; TutorialBook.open() immediately owns the
+		# pause again and presents the guide by itself.
+		close()
 		world.tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
 # One button per living diver x their inventory-tagged spells (see
