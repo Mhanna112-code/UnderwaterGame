@@ -958,8 +958,10 @@ func _build_site() -> void:
 	_build_boundary_walls()
 	_build_item_grapple_anchors()
 
-# Keep the playable space inside the visible 120-by-120 seafloor. These are
-# collision-only safety rails and intentionally do not appear on the minimap.
+# Keep the playable space inside the visible seafloor perimeter. These outer
+# safety rails intentionally do not appear on the minimap; unlike a ceiling,
+# they align with the readable end of the authored world rather than cutting
+# through ordinary open water.
 func _build_boundary_walls() -> void:
 	const WALL_HEIGHT := 80.0
 	const WALL_Y := 30.0
@@ -971,13 +973,6 @@ func _build_boundary_walls() -> void:
 	_build_invisible_wall(Vector3(center_x, WALL_Y, -DeepZoneLayoutScript.WORLD_HALF_Z - THICKNESS * 0.5), Vector3(span_x + THICKNESS * 2.0, WALL_HEIGHT, THICKNESS))
 	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MAX_X + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
 	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MIN_X - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
-	# Collision-only roof; its underside is exactly four blockade-heights
-	# above the floor. Airborne reward rocks at 3x height stay reachable.
-	const CEILING_THICKNESS := 2.0
-	_build_invisible_wall(
-		Vector3(center_x, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
-		Vector3(span_x, CEILING_THICKNESS, span_z)
-	)
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -998,16 +993,9 @@ func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 # the anchor's own radius (Sites.ALL[0], r=6.5), both combat sites' radii
 # (shallows r=9.5 at (-24,-12), trench r=10.0 at (12,-42)), and the gated
 # highway corridor.
-# MODIFIED (fixed): two of these (formerly (18,-18) and (30,-3)) sat past
-# x=15 - clear of the corridor's own visible lane (z 10 +/-4), which is all
-# the old version of this comment checked, but not of the entrance
-# blockade's own invisible collision (_build_highway()'s collision_width =
-# 60, collision_height = 40 on entrance_rocks - deliberately oversized so
-# nothing can swim around or over the gate). That box spans the full z
-# -20..40 at x 15..17, so anything past x=15 in that band was walled off
-# from the open dive site until the gate was actually broken, the same as
-# if it were on the far side of a real wall. Moved both back to x<15,
-# clear of that box regardless of z.
+# Two formerly misplaced rocks remain before the visible entrance formation,
+# keeping their rewards available without making the player cross that authored
+# gate first. The old 60 m invisible collision wing no longer exists.
 #
 # disguised_as_scenery_rock left at its default (false) on purpose - these
 # read as a rounded rock (sphere_shaped) recolored brown, so a player can
@@ -1021,10 +1009,8 @@ func _build_breakable_rocks() -> void:
 		Vector3(8.0, 1.0, 22.0),
 		# These four rocks float three times the 6m blockade height above the
 		# seafloor. Two hold spell keys and two conceal encounter ambushes.
-		# All four stay at x < 15 (see the MODIFIED note above): the right-hand
-		# pair used to sit at x=38, behind the entrance blockade's invisible
-		# collision, so the Sunken Core and one ambush were unreachable until
-		# the gate was broken.
+		# All four stay before the visible entrance formation (see the note
+		# above), so the Sunken Core and ambushes remain available beforehand.
 		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, 22.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, -48.0),
 		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, -30.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, 46.0),
 	]

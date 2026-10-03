@@ -24,6 +24,7 @@ route design, tutorial curriculum, or product decisions.
 | PR88-4 | An imported enemy's idle clip reaches its end and stops because the clip is non-looping and replay ignores a stopped same-name animation. | Animation time-boundary test | Idle is configured to loop, and requesting idle restarts it if it has stopped. |
 | PR88-5 | Swap's target selector ignores the game's normal A/D and Space controls. | Input decision table | A/D cycle, Space confirms, and the existing arrows/Enter controls still work. |
 | PR88-6 | Tutorial narration ignores Space even though Space is the common continue/action key. | Input decision table | Space, Enter, keypad Enter, and the visible Continue button all dismiss only the active narration wait. |
+| PR88-7 | A later PR #96 commit adds a collision-only ceiling across the whole world, recreating PR #88's hidden-collision traversal failure in the vertical axis. | Production-physics open-water sweep | At representative Shallows and Deep positions away from visible geometry, a real Diver has no invisible collision between y=2 and y=28. |
 
 ## Test design and self-critique
 
@@ -40,6 +41,13 @@ route design, tutorial curriculum, or product decisions.
   meaningless. It checks every real mesh-bound corner, not actor origins.
 - `input_aliases.gd` covers both new and retained key branches. It deliberately
   avoids tutorial content assertions.
+- `open_water_blockade.gd` also sweeps the real production physics space above
+  representative open-water points. It observes collision through the Diver's
+  `CharacterBody3D` rather than naming the ceiling node or pinning its height,
+  so a wrong-but-stable hidden roof fails while a behavior-preserving boundary
+  refactor passes. The deterministic point table spans both the original dive
+  site and the extended Deep region without turning local visible obstacles
+  into false positives.
 
 ## Skipped
 
@@ -50,3 +58,20 @@ route design, tutorial curriculum, or product decisions.
 - PR #88's exact route-trigger mask fix: PR #96 does not use that trigger type.
 - PR #88 tutorial layout/QTE/Quick Read fixes already independently present and
   green in PR #96 are not reimplemented.
+- Visible local gates, the intentional tall entrance blockade, and the outer
+  world-edge rails are not prohibited. PR88-7 is narrowly about unrendered
+  collision spanning ordinary open water where no player-readable boundary
+  exists.
+
+## Post-write evaluation: PR88-7
+
+- **Red:** the production-physics sweep hit one invisible roof at y=24 from all
+  five representative Shallows/Deep samples.
+- **Green:** after removing only that roof, horizontal traversal and every
+  vertical sample pass; adjacent route, blocker, lab, legacy-guidance, and swim
+  gates remain green.
+- **Mutation check:** restoring the roof makes all five vertical cases fail;
+  changing its node name or construction helper would not evade the test.
+- **Still intentionally skipped:** normal-entry hosted acceptance and aesthetic
+  review are separate release evidence; they do not weaken this collision
+  contract and are not claimed by the headless gate.

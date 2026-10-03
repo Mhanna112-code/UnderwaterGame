@@ -1,5 +1,6 @@
-# `open water: a diver can swim beside the visible entrance rocks — guards
-# against an invisible corridor-wide collision wing blocking traversal`.
+# `open water: a diver can swim beside the visible entrance rocks and rise
+# through unbounded water — guards against invisible world-spanning collision
+# wings or ceilings blocking traversal`.
 extends SceneTree
 
 var findings: Array[String] = []
@@ -30,10 +31,35 @@ func _run() -> void:
 			"INVISIBLE OPEN-WATER BLOCKADE: diver stopped at x=%.2f beside the visible entrance rocks" % diver.global_position.x
 		)
 
+	# A later PR #96 change reintroduced the same player-facing failure class
+	# vertically: one collision-only roof covered the original dive site and the
+	# entire Deep extension. Probe the production CharacterBody3D at stable open-
+	# water samples on both sides of the route. `test_only` keeps each sample
+	# independent while still querying the real world physics and Diver shape.
+	var vertical_samples := [
+		Vector3(-40.0, 2.0, 0.0),
+		Vector3(0.0, 2.0, 0.0),
+		Vector3(40.0, 2.0, 0.0),
+		Vector3(100.0, 2.0, 0.0),
+		Vector3(220.0, 2.0, 0.0),
+	]
+	for sample in vertical_samples:
+		diver.global_position = sample
+		diver.velocity = Vector3.ZERO
+		await physics_frame
+		var collision := diver.move_and_collide(Vector3.UP * 26.0, true)
+		if collision != null:
+			findings.append(
+				"INVISIBLE OPEN-WATER CEILING: upward path from %s hit collision at y=%.2f" % [
+					sample,
+					collision.get_position().y,
+				]
+			)
+
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
-		print("OPEN WATER: diver crossed the unblocked water beside the visible entrance rocks")
+		print("OPEN WATER: horizontal and vertical traversal are free of invisible world-spanning collision")
 	world.queue_free()
 	await process_frame
 	var audio := root.get_node_or_null("GameAudio")
