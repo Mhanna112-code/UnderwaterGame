@@ -8,6 +8,13 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 GODOT="${GODOT:-godot}"
+GATE_TIMEOUT_SECONDS="${GATE_TIMEOUT_SECONDS:-120}"
+TIMEOUT_BIN=""
+if command -v gtimeout >/dev/null 2>&1; then
+	TIMEOUT_BIN="$(command -v gtimeout)"
+elif command -v timeout >/dev/null 2>&1; then
+	TIMEOUT_BIN="$(command -v timeout)"
+fi
 # A review/export gate must be able to exercise the *exact* source export
 # before generated docs/ is refreshed. CI and final release can use docs/;
 # focused slices pass an isolated export directory through WEB_DIR instead.
@@ -27,12 +34,38 @@ run() {
 	shift
 	local gate_log
 	gate_log="$(mktemp "${TMPDIR:-/tmp}/underwater-gate.XXXXXX")"
-	"$@" 2>&1 | tee "$gate_log"
-	local command_status=${PIPESTATUS[0]}
+	if [ -n "$TIMEOUT_BIN" ] && [ "$(type -t "$1")" != "function" ]; then
+		"$TIMEOUT_BIN" "$GATE_TIMEOUT_SECONDS" "$@" >"$gate_log" 2>&1 &
+		local command_pid=$!
+		local stopped_on_script_error=0
+		while kill -0 "$command_pid" 2>/dev/null; do
+			if grep -q "SCRIPT ERROR:" "$gate_log"; then
+				# A SceneTree verifier can throw before reaching quit(), leaving
+				# Godot alive forever. Stop immediately instead of waiting out the
+				# full timeout; the captured error is already the useful evidence.
+				kill "$command_pid" 2>/dev/null || true
+				stopped_on_script_error=1
+				break
+			fi
+			sleep 0.2
+		done
+		wait "$command_pid" 2>/dev/null
+		local command_status=$?
+		if [ "$stopped_on_script_error" -eq 1 ]; then
+			command_status=1
+		fi
+	else
+		"$@" >"$gate_log" 2>&1
+		local command_status=$?
+	fi
+	cat "$gate_log"
 	local script_error=0
 	if grep -q "SCRIPT ERROR:" "$gate_log"; then
 		echo "GATE ERROR: Godot reported a script error even though the command may have exited successfully"
 		script_error=1
+	fi
+	if [ "$command_status" -eq 124 ]; then
+		echo "GATE ERROR: exceeded ${GATE_TIMEOUT_SECONDS}s timeout"
 	fi
 	rm -f "$gate_log"
 	if [ "$command_status" -eq 0 ] && [ "$script_error" -eq 0 ]; then
@@ -74,7 +107,10 @@ run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GOD
 run "deep-zone assets: do selected FBXs import with visible geometry and authored clips" "$GODOT" --headless --path . --script verify/deep_zone_assets.gd
 run "deep-zone environment: are approved scenery sources visibly and safely placed" "$GODOT" --headless --path . --script verify/deep_zone_environment.gd
 run "deep-zone blockers: do authored blocker actors use their real models, moves, and clips" "$GODOT" --headless --path . --script verify/deep_zone_blockers.gd
+run "deep-zone blocker balance: are both mandatory fights approachable and meaningfully tactical" "$GODOT" --headless --path . --script verify/deep_zone_blocker_balance.gd
 run "audio assets: do canonical Phoenix tracks import with reviewed duration and digest" "$GODOT" --headless --path . --script verify/audio_assets.gd
+run "combat SFX assets: do reviewed derivatives import without raw reels" "$GODOT" --headless --path . --script verify/combat_sfx_assets.gd
+run "combat SFX playback: do production combat results trigger overlap-safe audible feedback" "$GODOT" --headless --path . --script verify/combat_sfx_playback.gd
 run "combat feedback: are V2 results and target stats visible" "$GODOT" --headless --path . --script verify/combat_feedback.gd
 run "defeated overhead: does dead UI leave with its actor" "$GODOT" --headless --path . --script verify/defeated_overhead.gd
 run "balance: do casual and skilled policies clear the artifact route" "$GODOT" --headless --path . --script verify/balance.gd
@@ -94,6 +130,8 @@ run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --he
 run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
 run "route state: does authored progression round-trip through its public contract" "$GODOT" --headless --path . --script verify/route_state.gd
 run "deep-zone route: is the expanded dark route physically supported and state-driven" "$GODOT" --headless --path . --script verify/deep_zone_route.gd
+run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip" "$GODOT" --headless --path . --script verify/lab_tethys_route.gd
+run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
 run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
