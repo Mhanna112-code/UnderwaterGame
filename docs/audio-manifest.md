@@ -22,6 +22,26 @@ Dropbox-root copies and `__MACOSX` metadata are not runtime inputs.
 | `audio/sfx/ui/click.wav` | `SFX/UI CLICK.wav` | `fa4ba4bd62e94c085dc790c100d16cad6ce3dd72b5bf8ed530aedfc281bd4922` | same | Main-menu confirm/click only. |
 | `audio/sfx/ui/start_game.wav` | `SFX/UI START GAME.wav` | `e3bd6c7e8e5b8587b8be2ad318bed5518ce4bb84fbc6477253af13e626e5a5ab` | same | Successful run start only. |
 
-The Final Boss pair is deliberately absent from the runtime slice because the
-Octopus route remains blocked on a renderable model. No delivered menu sound
-is repurposed as combat feedback.
+## Glassgoat gameplay-SFX candidate pool
+
+Glassgoat's five delivered WAVs are exact matches for Mechanical Wave's
+“Hits Whoosh” collection in the official 2015 Sonniss GDC bundle. The sources
+are stereo 24-bit/96 kHz Broadcast WAVs. Runtime derivatives are trimmed,
+level-reduced, resampled to 48 kHz, and encoded as Ogg Vorbis so one gameplay
+event cannot accidentally play an entire multi-take reel. The bundle license
+allows use in games; provenance and license links are recorded in the intake
+bug catalog.
+
+| Runtime asset(s) | Canonical source | Source SHA-256 | Runtime SHA-256 | Candidate ownership |
+| --- | --- | --- | --- | --- |
+| `audio/sfx/combat/attack_swirl.ogg` | `Action Swirl Whoosh_HW 04.wav` | `4f164b427b5a5b692f2f5b57c9475125ff00735ae22caf03c7c7a0a670399c11` | `7d802259a99e41367af60d86c76c0ff18e85037781d0529360189eb7bb76f582` | Shared attack-motion candidate; 0.960 s. |
+| `audio/sfx/combat/swish_01.ogg` … `swish_06.ogg` | `Action Swish_HW 02.wav` | `1eb3e50adffabcc46ca3ed30f520eb19b234f9808acf4e760ec9ea8391e9b609` | Pinned individually by `verify/combat_sfx_assets.gd` | Six separated shared swish variants; 0.232–0.270 s. |
+| `audio/sfx/combat/fast_swish_01.ogg` … `fast_swish_05.ogg` | `Fast Action Swish_HW 05.wav` | `2ef515c463c04c2d518afb74d44336f51ed0912c46c9e00431a3ed13f927f87d` | Pinned individually by `verify/combat_sfx_assets.gd` | Five separated fast-attack variants; 0.221–0.316 s. |
+| `audio/sfx/combat/heavy_hit.ogg` | `Heavy Sci-Fi Hit_HW 09.wav` | `b93255074207c4990dd103d176f67d93967530e09e2f8ab53164941c437b1477` | `f1d9f767c7191694875075142fc78684cb0138d59c8f25c6c44a654612241721` | Heavy impact or knockout candidate; 4.900 s. |
+| `audio/sfx/combat/shockwave_swirl.ogg` | `Swirl Whoosh_HW 42.wav` | `d81452bb2d2368f86d6875a54f75fba6aade3993bdfabf1a2ccaf836d92a0620` | `c21c07ae0fac261c4c5a60fc6be645c7ced2cb73c26323ab967f3c9690906dfc` | Sustained Shockwave candidate; 10.000 s. |
+
+These are prepared candidates, not event wiring. Their final ownership and
+mix balance must be proven against Phoenix's music in a browser listening pass.
+No delivered menu sound is repurposed as combat feedback. The Octopus final-
+boss music remains absent because the later route and boss gameplay are still
+out of scope, even though a visible model is now available.
