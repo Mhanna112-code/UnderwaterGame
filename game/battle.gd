@@ -492,6 +492,7 @@ var _qte_success := false
 # lets the awaiting `while _tutorial_awaiting_enter` loop in that function
 # return.
 var _tutorial_awaiting_enter := false
+var _tutorial_continue_btn: Button
 # Separate from _busy, which remains true while an enemy action is in
 # progress. This flag is only set when the player explicitly skips the
 # tutorial, so turn flow cannot accidentally cancel instructional captions.
@@ -1692,6 +1693,18 @@ func _build_ui() -> void:
 	_tutorial_caption.install_effect(PulseTextEffect.new())
 	col.add_child(_tutorial_caption)
 
+	# Narration must not be keyboard-only. The same wait state accepts Enter
+	# and this visible action; both clear one shared flag so neither path can
+	# advance twice. Hidden captions release the layout space automatically.
+	_tutorial_continue_btn = Button.new()
+	_tutorial_continue_btn.name = "TutorialContinue"
+	_tutorial_continue_btn.text = "Continue"
+	_tutorial_continue_btn.custom_minimum_size = Vector2(180, 40)
+	_tutorial_continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_tutorial_continue_btn.visible = false
+	_tutorial_continue_btn.pressed.connect(_continue_tutorial_caption)
+	col.add_child(_tutorial_continue_btn)
+
 	# Unconditional, unlike _tutorial_caption above - a level-up can happen
 	# after ANY win, not just the tutorial fight. RichTextLabel for the same
 	# reason: _build_levelup_block()'s green "(+N)" per grown stat needs
@@ -2054,7 +2067,8 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	# own line only if it doesn't fit, the same as any other run of text.
 	# [font_size=22] against the caption's own default (~16) is what makes
 	# it read as its own callout rather than more body text to skim past.
-	_tutorial_caption.text = "%s\n[font_size=22][pulse]Press Enter to continue[/pulse][/font_size]" % text
+	_tutorial_caption.text = "%s\n[font_size=18][pulse]Press Enter or click Continue[/pulse][/font_size]" % text
+	_tutorial_continue_btn.visible = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
 	if on_layout_ready.is_valid():
@@ -2062,11 +2076,16 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	_tutorial_awaiting_enter = true
 	while _tutorial_awaiting_enter and not _skip_tutorial_requested:
 		await get_tree().process_frame
+	_tutorial_continue_btn.visible = false
 	# Skip Tutorial can be used during the special encounter's opening
 	# captions. Its handler releases this wait and sets _busy; don't let the
 	# interrupted narration start another caption afterward.
 	if _skip_tutorial_requested:
 		return
+
+func _continue_tutorial_caption() -> void:
+	if _tutorial_awaiting_enter:
+		_tutorial_awaiting_enter = false
 
 
 # Two independent gates share this one entry point, each guarded by its own
