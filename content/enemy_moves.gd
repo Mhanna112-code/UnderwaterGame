@@ -11,8 +11,9 @@ extends RefCounted
 # legacy Ramming Bite is not an authored attack and is intentionally absent.
 # The three delivered attacks use the same wielder-stat "formula"/"effects"
 # shape as content/combat_moves.gd's V2 player kit (see CombatRules.resolve),
-# so Bite's stacking Bleed, Headbutt's Strength-scaled Stun and Flash Blast's
-# timed Evasion drop all resolve from the enemy's own stats.
+# so Bite's stacking Bleed and Flash Blast's timed Evasion drop resolve from
+# the enemy's own stats. Headbutt keeps Strength-based damage, while its stun
+# is a deliberately fixed two-turn balance rule (see the source map).
 #
 # The relative selection weights predate this reconciliation and are a balance
 # policy, not a fourth attack. The route simulator remains the guardrail after
@@ -32,16 +33,19 @@ const ANGLER := [
 		},
 	},
 	{
-		# Headbutt's duration follows the Angler's own Strength exactly as the
-		# authored table specifies. A stunned actor loses that many whole turns;
-		# CombatantStats.consume_status_turn() owns the countdown.
+		# The source table described stun "by Strength," but the party-scaled
+		# starting Angler reliably produced a three-whole-turn lockout. The
+		# focused 2,400-route A/B showed fixed two turns improves both casual
+		# and skilled completion without changing Headbutt's Strength damage.
+		# A stunned actor loses whole turns; CombatantStats.consume_status_turn()
+		# owns the countdown.
 		"id": "headbutt", "name": "Headbutt", "clip": "attack)headbutt",
 		"enabled": true, "target": "single", "roll_order": 2, "weight": 8.0,
 		"finisher_weight": 0.0, "verb": "headbutts",
 		"combat": {
 			"formula": {"strength": 1}, "acc_mod": 1,
 			"effects": [
-				{"kind": "status", "status": "stun", "level": {"flat": 1}, "duration": {"strength": 1}},
+				{"kind": "status", "status": "stun", "level": {"flat": 1}, "duration": 2},
 			],
 		},
 	},
