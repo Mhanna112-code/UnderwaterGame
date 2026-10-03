@@ -144,6 +144,7 @@ elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	skips=$((skips + 1))
 else
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
+	run "audio webcheck: does a trusted New Game click unlock browser audio" node verify/audio_webcheck.mjs "$WEB_DIR" /tmp/gate-audio.png
 	run "maze navigation webcheck: does ?maze=1 visibly update after H" node verify/maze_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-map-closed.png /tmp/gate-maze-map-open.png
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
