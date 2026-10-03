@@ -54,6 +54,8 @@ func _run() -> void:
 
 	returning.queue_free()
 	await process_frame
+	audio.release_streams_for_shutdown()
+	await create_timer(0.15).timeout
 	_finish()
 
 func _fresh_title() -> TitleScreen:
@@ -105,6 +107,9 @@ func _restore_real_slots() -> void:
 
 func _finish() -> void:
 	_restore_real_slots()
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null:
+		audio.call("release_streams_for_shutdown")
 	for finding in findings:
 		print("FINDING  " + finding)
 	print("TITLE AUDIO: clean" if findings.is_empty() else "TITLE AUDIO: %d finding(s)" % findings.size())

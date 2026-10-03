@@ -50,6 +50,8 @@ func _run() -> void:
 
 	world.queue_free()
 	await process_frame
+	audio.release_streams_for_shutdown()
+	await create_timer(0.15).timeout
 	_remove_test_save()
 	_finish()
 

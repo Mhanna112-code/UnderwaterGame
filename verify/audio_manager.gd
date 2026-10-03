@@ -65,6 +65,7 @@ func _run() -> void:
 	manager.set_sfx_muted(false)
 	manager.save_audio_settings()
 
+	manager.release_streams_for_shutdown()
 	manager.queue_free()
 	await process_frame
 
@@ -102,8 +103,10 @@ func _run() -> void:
 	_expect(restored.get_music_state().cue_id == "game_over" and restored.get_music_state().phase == "one_shot", "CATALOG: game over did not start as a one-shot")
 	restored.advance_music_after_stream_finished()
 	_expect(restored.get_music_state().phase == "stopped", "ONE SHOT: game-over completion did not release music ownership")
+	restored.release_streams_for_shutdown()
 	restored.queue_free()
 	await process_frame
+	await create_timer(0.15).timeout
 	_remove_test_settings()
 	_finish()
 

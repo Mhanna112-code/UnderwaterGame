@@ -43,6 +43,24 @@ func _ready() -> void:
 	_ensure_players()
 	load_audio_settings()
 
+func _exit_tree() -> void:
+	# Release duplicated compressed streams before Godot performs its final
+	# ObjectDB/resource leak audit. This is also exercised by headless route
+	# verifiers, which create and destroy complete World sessions quickly.
+	release_streams_for_shutdown()
+
+func release_streams_for_shutdown() -> void:
+	if is_instance_valid(_music_player):
+		_music_player.stop()
+		_music_player.stream = null
+	if is_instance_valid(_sfx_player):
+		_sfx_player.stop()
+		_sfx_player.stream = null
+	_cue_id = ""
+	_phase = "stopped"
+	_intro_stream = null
+	_loop_stream = null
+
 func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) -> void:
 	_ensure_players()
 	if cue_id == _cue_id and _phase != "stopped":
