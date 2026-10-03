@@ -86,6 +86,22 @@ func _run() -> void:
 	if sfx_bus >= 0:
 		_expect(not AudioServer.is_bus_mute(sfx_bus), "SETTINGS: restored SFX mute was not applied to its bus")
 		_expect(is_equal_approx(db_to_linear(AudioServer.get_bus_volume_db(sfx_bus)), 0.73), "SETTINGS: restored SFX volume was not applied to its bus")
+
+	_expect(ProjectSettings.get_setting("autoload/GameAudio", "") == "*res://game/audio_manager.gd", "AUTOLOAD: project does not install the central GameAudio owner")
+	restored.play_exploration_music()
+	_expect(restored.get_music_state().cue_id == "exploration" and restored.get_music_state().phase == "loop", "CATALOG: exploration did not start its loop")
+	restored.play_battle_music()
+	_expect(restored.get_music_state().cue_id == "battle" and restored.get_music_state().phase == "intro", "CATALOG: battle did not start its authored intro")
+	restored.advance_music_after_stream_finished()
+	_expect(restored.get_music_state().cue_id == "battle" and restored.get_music_state().phase == "loop", "CATALOG: battle did not hand off to its authored loop")
+	restored.play_tethys_music()
+	_expect(restored.get_music_state().cue_id == "tethys" and restored.get_music_state().phase == "loop", "CATALOG: Tethys used an unapproved candidate intro instead of its proven loop")
+	restored.play_victory_music()
+	_expect(restored.get_music_state().cue_id == "victory" and restored.get_music_state().phase == "intro", "CATALOG: victory did not start with its fanfare")
+	restored.play_game_over_music()
+	_expect(restored.get_music_state().cue_id == "game_over" and restored.get_music_state().phase == "one_shot", "CATALOG: game over did not start as a one-shot")
+	restored.advance_music_after_stream_finished()
+	_expect(restored.get_music_state().phase == "stopped", "ONE SHOT: game-over completion did not release music ownership")
 	restored.queue_free()
 	await process_frame
 	_remove_test_settings()

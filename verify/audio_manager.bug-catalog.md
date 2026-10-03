@@ -19,6 +19,7 @@ state machine before any scene is allowed to trigger it.
 | AUDIO-006 | Browser autoplay prevents music from ever starting, or scene transitions stack tracks after the first user gesture. | Fresh web export, browser console/audio-state probe, and human listening pass. | Planned integration verification. |
 | AUDIO-007 | A canonical Phoenix source is missing, corrupted, silently substituted, or imports with the wrong duration. | Pin every selected runtime digest and decoded duration. | Covered by `verify/audio_assets.gd`. |
 | AUDIO-008 | An ambiguous filename is treated as a proven Intro/Loop contract and an unreviewed join ships. | Manifest disposition plus named-cue integration test; only the explicit Battle pair is accepted without listening approval. | Characterized in `docs/audio-manifest.md`; browser listening pending. |
+| AUDIO-009 | A scene chooses file paths itself, wires Tethys to the unapproved `verb tail`, or treats game-over as a loop. | Named product-cue contract on the autoload owner. | Covered by `verify/audio_manager.gd`. |
 
 ## Self-critique
 

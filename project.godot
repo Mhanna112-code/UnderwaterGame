@@ -21,6 +21,7 @@ config/features=PackedStringArray("4.4", "Forward Plus")
 [autoload]
 
 CharacterAbilityPopup="*res://character_ability_popup.tscn"
+GameAudio="*res://game/audio_manager.gd"
 
 [display]
 

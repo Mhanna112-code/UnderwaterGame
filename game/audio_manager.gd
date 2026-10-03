@@ -9,6 +9,16 @@ extends Node
 
 signal music_state_changed(cue_id: String, phase: String)
 
+const EXPLORATION_LOOP: AudioStream = preload("res://audio/music/exploration_loop.ogg")
+const BATTLE_INTRO: AudioStream = preload("res://audio/music/battle_intro.ogg")
+const BATTLE_LOOP: AudioStream = preload("res://audio/music/battle_loop.ogg")
+const TETHYS_LOOP: AudioStream = preload("res://audio/music/tethys_loop.ogg")
+const TITLE_CANDIDATE_INTRO: AudioStream = preload("res://audio/music/title_candidate_intro.ogg")
+const TITLE_LOOP: AudioStream = preload("res://audio/music/title_loop.ogg")
+const VICTORY_CANDIDATE_INTRO: AudioStream = preload("res://audio/music/victory_candidate_intro.ogg")
+const VICTORY_LOOP: AudioStream = preload("res://audio/music/victory_loop.ogg")
+const GAME_OVER: AudioStream = preload("res://audio/music/game_over.ogg")
+
 var _music_player: AudioStreamPlayer
 var _sfx_player: AudioStreamPlayer
 var _cue_id := ""
@@ -47,6 +57,41 @@ func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) 
 	else:
 		stop_music()
 
+func play_music_once(cue_id: String, stream: AudioStream) -> void:
+	_ensure_players()
+	if cue_id == _cue_id and _phase == "one_shot":
+		return
+	stop_music()
+	if stream == null:
+		return
+	_cue_id = cue_id
+	_phase = "one_shot"
+	_music_player.stream = _non_looping_copy(stream)
+	_music_player.play()
+	_record_transition()
+
+func play_exploration_music() -> void:
+	play_music_sequence("exploration", null, EXPLORATION_LOOP)
+
+func play_battle_music() -> void:
+	play_music_sequence("battle", BATTLE_INTRO, BATTLE_LOOP)
+
+func play_tethys_music() -> void:
+	# The delivered "verb tail" is not labelled INTRO and has not passed the
+	# browser listening audit. Use the explicitly authored seamless loop.
+	play_music_sequence("tethys", null, TETHYS_LOOP)
+
+func play_title_music() -> void:
+	# This pair remains candidate pending the binding listening audit. Keeping
+	# ownership here prevents TitleScreen from choosing raw files itself.
+	play_music_sequence("title", TITLE_CANDIDATE_INTRO, TITLE_LOOP)
+
+func play_victory_music() -> void:
+	play_music_sequence("victory", VICTORY_CANDIDATE_INTRO, VICTORY_LOOP)
+
+func play_game_over_music() -> void:
+	play_music_once("game_over", GAME_OVER)
+
 func stop_music() -> void:
 	_ensure_players()
 	_music_player.stop()
@@ -60,6 +105,9 @@ func stop_music() -> void:
 # AudioStreamPlayer's `finished` signal. Tests drive the same transition
 # without waiting through a full authored track.
 func advance_music_after_stream_finished() -> void:
+	if _phase == "one_shot":
+		stop_music()
+		return
 	if _phase != "intro" or _loop_stream == null:
 		return
 	_phase = "loop"
