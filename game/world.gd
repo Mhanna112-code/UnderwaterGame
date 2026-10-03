@@ -243,6 +243,12 @@ var _special_playtest_active := false
 # same real file, and it all survives closing the game entirely.
 var _current_slot := -1
 
+# One public source of truth for authored progression beyond the existing
+# free-roam/tutorial state. RouteState owns JSON-safe data and its objective
+# signal; World only includes it in the same atomic checkpoint dictionary as
+# party, inventory, and mutable geometry.
+var route_state := RouteState.new()
+
 # Scene reload is the only honest way to roll mutable geometry back to a
 # checkpoint: _load_save() can remove objects a save says are consumed, but
 # it cannot recreate a CrackedWall already queue_free()'d after that save.
@@ -280,6 +286,7 @@ func _serialize_state() -> Dictionary:
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
 		"save_point_tutorial_seen": _save_point_tutorial_seen,
+		"route_state": route_state.to_save_data(),
 		"divers": divers_data,
 	}
 
@@ -337,6 +344,7 @@ func _load_save() -> void:
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
+	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
 
 	# The world was already rebuilt pristine before this ever runs (see
 	# TitleScreen's New-Game/Load-Game flow, or the full scene reload

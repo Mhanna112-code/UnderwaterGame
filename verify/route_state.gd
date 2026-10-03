@@ -3,6 +3,8 @@
 # Usage: godot --headless --path . --script verify/route_state.gd
 extends SceneTree
 
+const TEST_SLOT := 918274
+
 var findings: Array[String] = []
 
 func _initialize() -> void:
@@ -57,9 +59,47 @@ func _run() -> void:
 	if restored.to_save_data() != expected:
 		findings.append("ROUND TRIP: expected %s, got %s" % [expected, restored.to_save_data()])
 
+	await _test_world_checkpoint_round_trip(expected)
 	_finish()
 
+func _test_world_checkpoint_round_trip(expected: Dictionary) -> void:
+	_remove_test_save()
+	var world := await _fresh_world()
+	var world_route: Variant = world.get("route_state")
+	if world_route == null:
+		findings.append("WORLD CONTRACT: World does not expose route_state")
+		world.queue_free()
+		await process_frame
+		return
+	world_route.load_save_data(expected)
+	SaveManager.write_slot(TEST_SLOT, world._serialize_state())
+	world.queue_free()
+	await process_frame
+
+	var restored := await _fresh_world()
+	restored.set("_current_slot", TEST_SLOT)
+	restored._load_save()
+	var restored_route: Variant = restored.get("route_state")
+	if restored_route == null or restored_route.to_save_data() != expected:
+		findings.append("WORLD CHECKPOINT: authored progression did not survive World save/load")
+	restored.queue_free()
+	await process_frame
+
+func _fresh_world() -> World:
+	var packed := load("res://game/world.tscn") as PackedScene
+	var world := packed.instantiate() as World
+	world.skip_intro_for_test = true
+	root.add_child(world)
+	await process_frame
+	return world
+
+func _remove_test_save() -> void:
+	var absolute := ProjectSettings.globalize_path(SaveManager.slot_path(TEST_SLOT))
+	if FileAccess.file_exists(absolute):
+		DirAccess.remove_absolute(absolute)
+
 func _finish() -> void:
+	_remove_test_save()
 	for finding in findings:
 		print("FINDING  " + finding)
 	print("ROUTE STATE: clean" if findings.is_empty() else "ROUTE STATE: %d finding(s)" % findings.size())
