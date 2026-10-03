@@ -1779,36 +1779,51 @@ func _update_deep_zone_blockers() -> void:
 	if battling or divers.is_empty() or not _first_encounter_done:
 		return
 	var diver := divers[active] as Diver
-	var point := deep_zone_layout.route_points().bomb_bot as Vector3
-	var distance := Vector2(diver.global_position.x, diver.global_position.z).distance_to(Vector2(point.x, point.z))
-	if _inside_route_blocker_id == "bomb_bot":
-		if distance > ROUTE_BLOCKER_EXIT_RADIUS:
+	var points: Dictionary = deep_zone_layout.route_points()
+	if _inside_route_blocker_id != "":
+		var inside_point := points[_inside_route_blocker_id] as Vector3
+		var inside_distance := Vector2(diver.global_position.x, diver.global_position.z).distance_to(Vector2(inside_point.x, inside_point.z))
+		if inside_distance > ROUTE_BLOCKER_EXIT_RADIUS:
 			_inside_route_blocker_id = ""
 		else:
 			return
-	# `in_progress` can legitimately come from a checkpoint/save made while an
-	# authored battle owned the route. There is no Battle node after loading,
-	# so physical re-entry resumes that exact blocker rather than soft-locking.
-	if ["available", "in_progress"].has(route_state.bomb_bot_state) and distance <= ROUTE_BLOCKER_TRIGGER_RADIUS:
-		_inside_route_blocker_id = "bomb_bot"
-		_start_deep_zone_blocker("bomb_bot")
+	for blocker_id in ["bomb_bot", "sword_slayer"]:
+		if blocker_id == "sword_slayer" and route_state.bomb_bot_state != "defeated":
+			continue
+		var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state
+		if not ["available", "in_progress"].has(state):
+			continue
+		var point := points[blocker_id] as Vector3
+		var distance := Vector2(diver.global_position.x, diver.global_position.z).distance_to(Vector2(point.x, point.z))
+		if distance <= ROUTE_BLOCKER_TRIGGER_RADIUS:
+			_inside_route_blocker_id = blocker_id
+			_start_deep_zone_blocker(blocker_id)
+			return
 
 func _start_deep_zone_blocker(blocker_id: String) -> void:
-	if battling or blocker_id != "bomb_bot" or not ["available", "in_progress"].has(route_state.bomb_bot_state):
+	if battling or not ["bomb_bot", "sword_slayer"].has(blocker_id):
+		return
+	if blocker_id == "sword_slayer" and route_state.bomb_bot_state != "defeated":
+		return
+	var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state
+	if not ["available", "in_progress"].has(state):
 		return
 	_active_route_blocker_id = blocker_id
 	route_state.set_blocker_state(blocker_id, "in_progress")
 	route_state.set_encounter_source("lab_blocker")
-	_start_battle("", false, blocker_id, [], false, false,
-		"Bomb Bot seals the laboratory approach.", true)
+	var intro := "Bomb Bot seals the laboratory approach." if blocker_id == "bomb_bot" else "Sword Slayer guards the laboratory entrance."
+	_start_battle("", false, blocker_id, [], false, false, intro, true)
 
 func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
-	if blocker_id == "bomb_bot":
-		if result == "won":
-			route_state.set_blocker_state(blocker_id, "defeated")
+	if result == "won":
+		route_state.set_blocker_state(blocker_id, "defeated")
+		if blocker_id == "bomb_bot":
 			route_state.set_objective("defeat_sword_slayer")
-		else:
-			route_state.set_blocker_state(blocker_id, "available")
+		elif blocker_id == "sword_slayer":
+			route_state.set_lab_state("available")
+			route_state.set_objective("enter_lab")
+	else:
+		route_state.set_blocker_state(blocker_id, "available")
 	route_state.set_encounter_source("random")
 	_active_route_blocker_id = ""
 	if result == "won":
@@ -2587,6 +2602,8 @@ func _on_battle_finished(result: String) -> void:
 				_announce("You won! You can replay this fight any time from the Esc menu's Combat Help tab.")
 			elif route_blocker_id == "bomb_bot":
 				_announce("Bomb Bot powers down. The path to Sword Slayer is open.")
+			elif route_blocker_id == "sword_slayer":
+				_announce("Sword Slayer falls back. The laboratory entrance is open.")
 			else:
 				_announce("The enemy backs off into the dark.")
 			if was_tutorial:

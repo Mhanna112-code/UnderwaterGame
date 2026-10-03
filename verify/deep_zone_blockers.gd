@@ -162,14 +162,23 @@ func _test_bomb_bot_lifecycle() -> void:
 	world.title_screen.close()
 	paused = false
 	world._first_encounter_done = true
+	_expect(not EnemyRoster.ORDINARY_IDS.has("bomb_bot") and not EnemyRoster.ORDINARY_IDS.has("sword_slayer"),
+		"DZ-BLOCK-005: authored laboratory blockers leaked into the ordinary random roster")
 	if not world.has_method("_update_deep_zone_blockers"):
 		findings.append("DZ-BLOCK-006: World has no production authored-blocker trigger")
 		world.queue_free()
 		await process_frame
 		return
 
-	var bomb_point := world.deep_zone_layout.route_points().bomb_bot as Vector3
+	var slayer_point := world.deep_zone_layout.route_points().sword_slayer as Vector3
 	var diver := world.divers[world.active] as Diver
+	diver.global_position = slayer_point
+	world._update_route_zone()
+	world._update_deep_zone_blockers()
+	await process_frame
+	_expect(not world.battling and world.route_state.sword_slayer_state == "available",
+		"DZ-BLOCK-006: Sword Slayer activated before Bomb Bot was defeated")
+	var bomb_point := world.deep_zone_layout.route_points().bomb_bot as Vector3
 	diver.global_position = bomb_point
 	world._update_route_zone()
 	world._update_deep_zone_blockers()
@@ -226,6 +235,43 @@ func _test_bomb_bot_lifecycle() -> void:
 	var victory_snapshot := world._serialize_state()
 	_expect(String((victory_snapshot.route_state as Dictionary).get("bomb_bot_state", "")) == "defeated",
 		"DZ-BLOCK-008: production save snapshot does not preserve Bomb Bot victory")
+
+	diver.global_position = slayer_point
+	world._update_deep_zone_blockers()
+	await process_frame
+	_expect(world.battling and world.battle != null and world.battle.guardian_enemy_id == "sword_slayer",
+		"DZ-BLOCK-006: entering the unlocked Sword Slayer site did not dispatch its exact authored fight")
+	_expect(world.route_state.sword_slayer_state == "in_progress" and world.route_state.encounter_source == "lab_blocker",
+		"DZ-BLOCK-006: Sword Slayer did not enter in_progress with source lab_blocker")
+	if world.battle != null:
+		world._on_battle_finished("fled")
+		await process_frame
+	paused = false
+	_expect(world.route_state.sword_slayer_state == "available" and world.route_state.objective_id == "defeat_sword_slayer",
+		"DZ-BLOCK-007: fleeing Sword Slayer falsely consumed it or advanced the route")
+	world._update_deep_zone_blockers()
+	await process_frame
+	_expect(not world.battling,
+		"DZ-BLOCK-007: fleeing Sword Slayer retriggered before exiting its site")
+	diver.global_position = slayer_point + Vector3(0.0, 0.0, 8.0)
+	world._update_deep_zone_blockers()
+	diver.global_position = slayer_point
+	world._update_deep_zone_blockers()
+	await process_frame
+	_expect(world.battling and world.battle != null,
+		"DZ-BLOCK-007: exiting and re-entering cannot retry Sword Slayer")
+	if world.battle != null:
+		world._on_battle_finished("won")
+		await process_frame
+	paused = false
+	_expect(world.route_state.sword_slayer_state == "defeated",
+		"DZ-BLOCK-008: Sword Slayer victory did not permanently retire it")
+	_expect(world.route_state.lab_state == "available" and world.route_state.objective_id == "enter_lab",
+		"DZ-BLOCK-008: Sword Slayer victory did not unlock the laboratory objective")
+	world._update_deep_zone_blockers()
+	await process_frame
+	_expect(not world.battling,
+		"DZ-BLOCK-008: defeated Sword Slayer immediately respawned")
 
 	# Simulate a future checkpoint/save arriving while the encounter is active.
 	# A fresh World has no Battle node to resume immediately, so physical re-entry
