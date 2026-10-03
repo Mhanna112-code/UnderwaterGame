@@ -21,8 +21,12 @@ func _ready() -> void:
 	ring.inner_radius = 0.9
 	ring.outer_radius = 1.2
 	var mesh := MeshInstance3D.new()
+	mesh.name = "PlateSurface"
 	mesh.mesh = ring
-	mesh.rotation_degrees.x = 90.0
+	# TorusMesh is already horizontal. Keep the cue on the corridor floor and
+	# centered under the trigger instead of rotating it upright on the wall,
+	# where it falsely advertises a different place to stand.
+	mesh.position.y = -1.92
 	_mat = StandardMaterial3D.new()
 	_mat.emission_enabled = true
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

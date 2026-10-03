@@ -20,6 +20,7 @@ func _run() -> void:
 	_check(musashi.ability_id == "grapple", "world_grapple_aim: fixture selects the aimed Grapple diver")
 	_check(musashi.model != null and musashi.model.visible, "world_grapple_aim: Musashi begins visible in third-person world play")
 	_check_whirlpool_visual(world)
+	_check_lock_plate_visuals(world)
 
 	world.call("_start_ability")
 	_check(world.aiming, "world_grapple_aim: Grapple enters first-person aim mode")
@@ -71,3 +72,21 @@ func _check_whirlpool_visual(world: World) -> void:
 		transformed_bounds.size.y < transformed_bounds.size.x * 0.35,
 		"world_grapple_aim: Whirlpool visual stays floor-aligned instead of forming an opaque wall across the required target line"
 	)
+
+func _check_lock_plate_visuals(world: World) -> void:
+	_check(world._lock_plates.size() == 3, "world_grapple_aim: production route owns three pressure plates")
+	for i in range(world._lock_plates.size()):
+		var plate := world._lock_plates[i] as LockPlate
+		var visual: MeshInstance3D = null
+		for child in plate.get_children():
+			if child is MeshInstance3D:
+				visual = child as MeshInstance3D
+				break
+		_check(visual != null, "world_grapple_aim: pressure plate %d has a visible surface" % (i + 1))
+		if visual == null:
+			continue
+		var transformed_bounds: AABB = visual.transform * visual.get_aabb()
+		_check(
+			transformed_bounds.size.y < transformed_bounds.size.x * 0.35,
+			"world_grapple_aim: pressure plate %d visual lies on its real floor trigger instead of standing upright on the wall" % (i + 1)
+		)
