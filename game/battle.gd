@@ -1219,6 +1219,8 @@ func _actor_for_enemy_id(enemy_id: String) -> Goblin:
 			return SwordDuelist.new()
 		"bomb_bot":
 			return BombBot.new()
+		"sword_slayer":
+			return SwordSlayer.new()
 		_:
 			return Goblin.new()
 

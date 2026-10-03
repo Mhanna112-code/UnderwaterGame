@@ -7,6 +7,10 @@ const EXPECTED_BOMB_STATS := {
 	"hp": 12, "strength": 3, "defense": 4, "agility": 1,
 	"evasion": 1, "accuracy": 3,
 }
+const EXPECTED_SLAYER_STATS := {
+	"hp": 14, "strength": 3, "defense": 2, "agility": 5,
+	"evasion": 3, "accuracy": 3,
+}
 const TEST_SLOT := 918279
 
 var findings: Array[String] = []
@@ -17,6 +21,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_remove_test_save()
 	await _test_bomb_bot_actor()
+	await _test_sword_slayer_actor()
 	await _test_bomb_bot_lifecycle()
 	_remove_test_save()
 	_finish()
@@ -97,6 +102,52 @@ func _test_bomb_bot_actor() -> void:
 	var mapped := battle._actor_for_enemy_id("bomb_bot")
 	_expect(mapped != null and mapped.enemy_id() == "bomb_bot",
 		"DZ-BLOCK-001: Battle actor factory still falls back to Angler for bomb_bot")
+	mapped.free()
+	battle.free()
+	actor.queue_free()
+	await process_frame
+
+func _test_sword_slayer_actor() -> void:
+	var script := load("res://game/sword_slayer.gd")
+	_expect(script != null, "DZ-BLOCK-001: production Sword Slayer actor is missing")
+	if script == null:
+		return
+	var actor := script.new() as Goblin
+	_expect(actor != null, "DZ-BLOCK-001: Sword Slayer does not implement the stable Goblin battle contract")
+	if actor == null:
+		return
+	root.add_child(actor)
+	await process_frame
+	await process_frame
+	_expect(actor.enemy_id() == "sword_slayer" and actor.display_name() == "Sword Slayer",
+		"DZ-BLOCK-001: Sword Slayer actor identity drifted")
+	var spawned := actor.make_stats(_stats(99, 9, 9, 9, 9, 9), 5)
+	_expect(_stat_block(spawned) == EXPECTED_SLAYER_STATS,
+		"DZ-BLOCK-001: Sword Slayer must use its fixed provisional 14/3/2/5/3/3 tuning block")
+	var moves := actor.available_moves()
+	_expect(moves.size() == 3,
+		"DZ-BLOCK-002: Sword Slayer must expose exactly Great Slash, Stabbing, and Spinning Drill")
+	for fragment in ["greatslash", "stabbing", "spinning_drill"]:
+		var move := _move_for_fragment(moves, fragment)
+		_expect(not move.is_empty() and actor.has_clip_fragment(String(move.get("clip", ""))),
+			"DZ-BLOCK-002: Sword Slayer cannot resolve delivered clip fragment %s" % fragment)
+		_expect(actor.play_move(move) > 0.0,
+			"DZ-BLOCK-003: Sword Slayer clip %s has no playable duration" % fragment)
+	var starting_pose := _skeleton_pose(actor)
+	var spinning := _move_for_fragment(moves, "spinning_drill")
+	actor.play_move(spinning)
+	actor.anim.advance(0.35)
+	_expect(not starting_pose.is_equal_approx(_skeleton_pose(actor)),
+		"DZ-BLOCK-003: Sword Slayer's Spinning Drill does not visibly move the rig")
+	var bounds := _visible_bounds(actor)
+	_expect(bounds.size.y >= 1.5 and bounds.size.y <= 1.7,
+		"DZ-BLOCK-004: normalized Sword Slayer height must remain near 1.6m, observed %s" % bounds.size.y)
+	_expect(bounds.size.x <= 4.5 and bounds.size.z <= 4.5,
+		"DZ-BLOCK-004: normalized Sword Slayer footprint is too large for battle staging: %s" % bounds.size)
+	var battle := Battle.new()
+	var mapped := battle._actor_for_enemy_id("sword_slayer")
+	_expect(mapped != null and mapped.enemy_id() == "sword_slayer",
+		"DZ-BLOCK-001: Battle actor factory still falls back to Angler for sword_slayer")
 	mapped.free()
 	battle.free()
 	actor.queue_free()
@@ -210,6 +261,11 @@ func _test_bomb_bot_lifecycle() -> void:
 	restored.queue_free()
 	await process_frame
 	await process_frame
+	var audio_owner := root.get_node_or_null("GameAudio")
+	if audio_owner != null:
+		audio_owner.call("stop_music")
+	await process_frame
+	await process_frame
 
 func _stats(hp: int, strength: int, defense: int, agility: int, evasion: int, accuracy: int) -> CombatantStats:
 	var stats := CombatantStats.new()
@@ -227,6 +283,13 @@ func _stat_block(stats: CombatantStats) -> Dictionary:
 		"hp": stats.hp_max, "strength": stats.strength, "defense": stats.defense,
 		"agility": stats.agility, "evasion": stats.evasion, "accuracy": stats.accuracy,
 	}
+
+func _move_for_fragment(moves: Array, fragment: String) -> Dictionary:
+	for move_value in moves:
+		var move := move_value as Dictionary
+		if String(move.get("clip", "")).to_lower().contains(fragment):
+			return move
+	return {}
 
 func _skeleton_pose(node: Node) -> Transform3D:
 	var skeleton := _find_skeleton(node)
