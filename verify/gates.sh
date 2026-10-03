@@ -92,6 +92,7 @@ run "tutorial skip: does explicit skip restore the playable world" "$GODOT" --he
 run "menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold" "$GODOT" --headless --path . --script verify/menus_spell_title.gd
 run "route state: does authored progression round-trip through its public contract" "$GODOT" --headless --path . --script verify/route_state.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
+run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd

@@ -373,11 +373,19 @@ func _load_save() -> void:
 # ALWAYS, see their own _ready()) are the only things still receiving
 # input. Mirrors the pause Battle already puts the world into during a
 # fight, just triggered by a menu screen instead of battle.gd.
+func _audio_call(method: StringName) -> void:
+	var owner := get_node_or_null("/root/GameAudio")
+	if owner != null:
+		owner.call(method)
+
 func _show_title_screen() -> void:
 	# The title owns the entire cold-launch surface. Keeping it on a separate
 	# layer lets the world HUD disappear as one unit instead of maintaining a
 	# growing list of labels/bars/minimap nodes to hide individually.
 	$HUD.visible = false
+	# Cold title must remain silent until a trusted browser gesture. Any return
+	# from gameplay also retires the prior world/battle/result cue here.
+	_audio_call(&"stop_music")
 	get_tree().paused = true
 	title_screen.open()
 
@@ -398,6 +406,7 @@ func _on_title_new_game(slot: int) -> void:
 		await intro_crawl.finished
 	$HUD.visible = true
 	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
 	# Covers the plain --skip-tutorial/?skip_tutorial=1 route: skip_tutorial_
 	# for_test was already true before _ready() ever rendered the light beam
 	# (see the block right after _build_diver_slots()), so a player clicking
@@ -441,6 +450,7 @@ func _on_title_load_game(slot: int) -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -473,6 +483,7 @@ func _on_title_spell_playtest() -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
 	for item_id in Items.ITEMS:
 		if Items.is_key_item(String(item_id)) and not key_items.has(item_id):
 			key_items.append(item_id)
@@ -525,6 +536,7 @@ func _show_game_over() -> void:
 	# and become misleading noise once that world has been paused.
 	$HUD.visible = false
 	title_screen.close()
+	_audio_call(&"play_game_over_music")
 	get_tree().paused = true
 	game_over_screen.open()
 
@@ -2314,6 +2326,10 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # unmodified fight with nothing riding on it, same as before this existed.
 func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "") -> void:
 	battling = true
+	if boss_encounter:
+		_audio_call(&"play_tethys_music")
+	else:
+		_audio_call(&"play_battle_music")
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
@@ -2359,6 +2375,19 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
+	# A result owns music before any playtest/title branch returns. The victory
+	# pair intentionally persists in the overworld until the next explicit
+	# state (another encounter, defeat, or title); its second file is authored
+	# as a loop. Soft tutorial/special losses and fleeing return to exploration,
+	# while a normal loss is replaced by _show_game_over() below.
+	match result:
+		"won":
+			_audio_call(&"play_victory_music")
+		"fled", "skipped":
+			_audio_call(&"play_exploration_music")
+		"lost":
+			if was_tutorial or was_special:
+				_audio_call(&"play_exploration_music")
 	if was_tutorial:
 		_first_encounter_done = true
 		# Guided the walk-over and held the camera during it - once the
