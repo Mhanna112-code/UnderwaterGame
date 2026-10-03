@@ -83,7 +83,16 @@ func _run() -> void:
 		active.global_position = points.bomb_bot
 		world._on_encounter_triggered(active)
 		await process_frame
-		_expect(not world.battling, "ENCOUNTER POLICY: production World started a random fight on Bomb Bot's authored site")
+		# The protected site now owns a real authored fight. The policy contract
+		# is that the direct random dispatch above cannot substitute an ordinary
+		# enemy there; a Bomb Bot battle started by the physics-frame authored
+		# trigger is the desired behavior.
+		_expect(world.battling and world.battle != null and world.battle.encounter_source == "lab_blocker" and world.battle.guardian_enemy_id == "bomb_bot",
+			"ENCOUNTER POLICY: Bomb Bot's protected site did not dispatch only its authored lab_blocker fight")
+		if world.battle != null:
+			world._on_battle_finished("fled")
+			await process_frame
+			paused = false
 		active.global_position = Vector3(98.0, 2.0, 45.0)
 		world._on_encounter_triggered(active)
 		await process_frame

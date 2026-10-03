@@ -52,6 +52,10 @@ var guardian_encounter := false
 # packs roll their own Angler/Swordfish roster independently; this only pins
 # the one visible artifact defender, so exploration never randomizes a reward.
 var guardian_enemy_id := "angler"
+# Public provenance for review logs and route verification. Ordinary encounters
+# keep `random`; authored blockers and bosses are assigned by World before this
+# node enters the tree.
+var encounter_source := "random"
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -

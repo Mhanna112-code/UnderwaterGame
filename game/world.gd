@@ -254,6 +254,14 @@ var _current_slot := -1
 var route_state := RouteState.new()
 var deep_zone_layout := DeepZoneLayoutScript.new()
 
+# One-time authored blocker trigger ownership. `_inside_route_blocker_id` is a
+# re-entry latch: fleeing or losing while still inside the volume must not drop
+# the player straight back into the same battle on the next physics frame.
+const ROUTE_BLOCKER_TRIGGER_RADIUS := 4.0
+const ROUTE_BLOCKER_EXIT_RADIUS := 6.0
+var _active_route_blocker_id := ""
+var _inside_route_blocker_id := ""
+
 # Scene reload is the only honest way to roll mutable geometry back to a
 # checkpoint: _load_save() can remove objects a save says are consumed, but
 # it cannot recreate a CrackedWall already queue_free()'d after that save.
@@ -1751,6 +1759,7 @@ func _physics_process(dt: float) -> void:
 	_update_wall_visibility()
 	_update_intro_sequence()
 	_update_route_zone()
+	_update_deep_zone_blockers()
 
 func _update_route_zone() -> void:
 	if not _first_encounter_done or divers.is_empty():
@@ -1761,6 +1770,49 @@ func _update_route_zone() -> void:
 	route_state.set_zone(physical_zone)
 	if physical_zone == "deep" and route_state.bomb_bot_state == "available":
 		route_state.set_objective("defeat_bomb_bot")
+
+# Checks the live diver's physical position, not a query-string route or a
+# test-only teleport. Sword Slayer joins this same table after its actor slice;
+# keeping Bomb Bot alone here prevents an unimplemented id falling back to an
+# Angler if a player swims ahead during this commit.
+func _update_deep_zone_blockers() -> void:
+	if battling or divers.is_empty() or not _first_encounter_done:
+		return
+	var diver := divers[active] as Diver
+	var point := deep_zone_layout.route_points().bomb_bot as Vector3
+	var distance := Vector2(diver.global_position.x, diver.global_position.z).distance_to(Vector2(point.x, point.z))
+	if _inside_route_blocker_id == "bomb_bot":
+		if distance > ROUTE_BLOCKER_EXIT_RADIUS:
+			_inside_route_blocker_id = ""
+		else:
+			return
+	# `in_progress` can legitimately come from a checkpoint/save made while an
+	# authored battle owned the route. There is no Battle node after loading,
+	# so physical re-entry resumes that exact blocker rather than soft-locking.
+	if ["available", "in_progress"].has(route_state.bomb_bot_state) and distance <= ROUTE_BLOCKER_TRIGGER_RADIUS:
+		_inside_route_blocker_id = "bomb_bot"
+		_start_deep_zone_blocker("bomb_bot")
+
+func _start_deep_zone_blocker(blocker_id: String) -> void:
+	if battling or blocker_id != "bomb_bot" or not ["available", "in_progress"].has(route_state.bomb_bot_state):
+		return
+	_active_route_blocker_id = blocker_id
+	route_state.set_blocker_state(blocker_id, "in_progress")
+	route_state.set_encounter_source("lab_blocker")
+	_start_battle("", false, blocker_id, [], false, false,
+		"Bomb Bot seals the laboratory approach.", true)
+
+func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
+	if blocker_id == "bomb_bot":
+		if result == "won":
+			route_state.set_blocker_state(blocker_id, "defeated")
+			route_state.set_objective("defeat_sword_slayer")
+		else:
+			route_state.set_blocker_state(blocker_id, "available")
+	route_state.set_encounter_source("random")
+	_active_route_blocker_id = ""
+	if result == "won":
+		_write_save()
 
 # Runs every physics frame from world load until the active diver reaches
 # the light beam: keeps the arrow aimed at it (the diver keeps moving, so a
@@ -2391,7 +2443,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "") -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false) -> void:
 	battling = true
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
@@ -2427,8 +2479,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.world = self
 	battle.boss_encounter = boss_encounter
 	battle.special_encounter = special
-	battle.guardian_encounter = reward_item != "" and not boss_encounter
+	battle.guardian_encounter = (reward_item != "" or authored_enemy) and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
+	battle.encounter_source = route_state.encounter_source
 	battle.tutorial_encounter = tutorial
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text
@@ -2439,6 +2492,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 func _on_battle_finished(result: String) -> void:
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	var route_blocker_id := _active_route_blocker_id
 	battle.queue_free()
 	battle = null
 	battling = false
@@ -2487,6 +2541,8 @@ func _on_battle_finished(result: String) -> void:
 		_announce("Special encounter test complete.")
 		call_deferred("_show_title_screen")
 		return
+	if route_blocker_id != "":
+		_resolve_deep_zone_blocker(route_blocker_id, result)
 	match result:
 		"won":
 			if was_special and _special_encounter_diver != null:
@@ -2529,6 +2585,8 @@ func _on_battle_finished(result: String) -> void:
 				_grant_reward_item(_pending_reward_item)
 			elif was_tutorial:
 				_announce("You won! You can replay this fight any time from the Esc menu's Combat Help tab.")
+			elif route_blocker_id == "bomb_bot":
+				_announce("Bomb Bot powers down. The path to Sword Slayer is open.")
 			else:
 				_announce("The enemy backs off into the dark.")
 			if was_tutorial:
@@ -2776,6 +2834,16 @@ func _build_diver_slots() -> void:
 		var slot: Slot = SLOT_SCENE.instantiate()
 		slot.set_diver(d as Diver)
 		_diver_slots.append(slot)
+
+# `_diver_slots` intentionally stays outside the scene tree until real icon art
+# exists, so tree teardown cannot free those Nodes for us. Explicit ownership
+# here prevents three hidden Control subtrees leaking on every restart/load.
+func _exit_tree() -> void:
+	for slot_value in _diver_slots:
+		var slot := slot_value as Slot
+		if is_instance_valid(slot) and not slot.is_inside_tree():
+			slot.free()
+	_diver_slots.clear()
 
 
 # Fired once, right after the tutorial fight's own battle screen closes and
