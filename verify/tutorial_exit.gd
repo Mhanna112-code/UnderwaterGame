@@ -24,9 +24,20 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	world.title_screen.new_game_chosen.emit(3)
-	await process_frame
-	world._start_battle("", false, "angler", world.divers, false, true)
-	await process_frame
+	# Enter the rendered beam through World's normal handoff so this test also
+	# observes the real retirement of beam/arrow guidance. Calling _start_battle
+	# directly would leave the pre-battle arrow visible by construction and
+	# create a false regression report.
+	var diver := world.divers[world.active] as Diver
+	diver.global_position = Vector3(
+		world.light_beam.global_position.x,
+		diver.global_position.y,
+		world.light_beam.global_position.z
+	)
+	diver.force_update_transform()
+	var start_deadline := Time.get_ticks_msec() + TIMEOUT_MS
+	while world.battle == null and Time.get_ticks_msec() < start_deadline:
+		await process_frame
 
 	var battle: Battle = world.battle
 	if battle == null:
@@ -61,6 +72,12 @@ func _run() -> void:
 			findings.append("WORLD HANDOFF: battling stayed true after tutorial completion")
 		if not world._first_encounter_done:
 			findings.append("WORLD HANDOFF: tutorial completion did not restore world progression")
+		if world.banner.text.contains("Swim over to the light beam"):
+			findings.append("WORLD HANDOFF: stale tutorial-beam guidance remained after the fight")
+		if is_instance_valid(world.light_beam):
+			findings.append("WORLD HANDOFF: completed tutorial left its light beam in the world")
+		if is_instance_valid(world._intro_arrow) and world._intro_arrow.visible:
+			findings.append("WORLD HANDOFF: completed tutorial left its intro arrow visible")
 
 	for finding in findings:
 		push_error(finding)

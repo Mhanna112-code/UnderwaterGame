@@ -122,6 +122,7 @@ run "encounters: does a fight start from anywhere"     "$GODOT" --headless --pat
 run "guardian zones: does the artifact encounter stay distinct" "$GODOT" --headless --path . --script verify/guardian_encounter_exclusion.gd
 run "guardian/item integration: do claimed sites stay retired after save/load" "$GODOT" --headless --path . --script verify/guardian_item_integration.gd
 run "intro beam: does entering its visible column start tutorial combat" "$GODOT" --headless --path . --script verify/intro_sequence.gd
+run "intro forward entry: does default forward swimming reach the visible tutorial target" "$GODOT" --headless --path . --script verify/tutorial_forward_entry.gd
 run "open water: can a diver pass beside the visible entrance rocks" "$GODOT" --headless --path . --script verify/open_water_blockade.gd
 run "legacy guidance: does the plate puzzle avoid competing with RouteState" "$GODOT" --headless --path . --script verify/legacy_highway_route_separation.gd
 run "tutorial QTE: does the first Angler swing show and accept the timing dodge" "$GODOT" --headless --path . --script verify/tutorial_qte.gd
@@ -170,6 +171,8 @@ if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "stage framing narrow: does responsive combat remain visible at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/stage_framing.gd
 	run "tutorial status layout wide: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_status_layout.gd
 	run "tutorial status layout narrow: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_status_layout.gd
+	run "tutorial QTE handoff wide: do success and miss retain stage and Continue" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_qte_handoff_layout.gd
+	run "tutorial QTE handoff narrow: do success and miss retain stage and Continue" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_qte_handoff_layout.gd
 	run "Frilled Shark framing wide: do real mesh bounds clear the party" "$GODOT" --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
 	run "Frilled Shark framing narrow: does the long rig remain readable" "$GODOT" --path . --resolution 720x480 --script verify/frilled_shark_framing.gd
 	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd

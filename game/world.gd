@@ -2463,12 +2463,14 @@ void fragment() {
 	# World center, base resting on the seafloor (y=0 - see _build_site()),
 	# rising straight up: CylinderMesh is centered on its own local origin,
 	# so lifting it by half its height puts the base exactly at y=0.
-	light_beam.position = Vector3(0, beam_height * 0.5, 0)
 	var d: Diver = divers[active]
 	# This runs during World._ready(), while its new Diver children may not
 	# yet be inside the scene tree. Their local position is already valid;
 	# querying global_position here emits an engine error in headless checks.
-	light_beam.position.x = d.position.x + 10
+	# Keep the first visible objective on the default W/forward swim axis. The
+	# prior lateral x+10 placement made an ordinary forward input miss the beam
+	# entirely, which PR #88 fixed and later branches accidentally dropped.
+	light_beam.position = d.position + Vector3(0.0, beam_height * 0.5, 10.0)
 	add_child(light_beam)
 
 # Ordinary guarded-item locations retain their grapple targets without a

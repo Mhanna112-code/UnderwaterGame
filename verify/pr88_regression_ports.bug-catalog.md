@@ -25,6 +25,7 @@ route design, tutorial curriculum, or product decisions.
 | PR88-5 | Swap's target selector ignores the game's normal A/D and Space controls. | Input decision table | A/D cycle, Space confirms, and the existing arrows/Enter controls still work. |
 | PR88-6 | Tutorial narration ignores Space even though Space is the common continue/action key. | Input decision table | Space, Enter, keypad Enter, and the visible Continue button all dismiss only the active narration wait. |
 | PR88-7 | A later PR #96 commit adds a collision-only ceiling across the whole world, recreating PR #88's hidden-collision traversal failure in the vertical axis. | Production-physics open-water sweep | At representative Shallows and Deep positions away from visible geometry, a real Diver has no invisible collision between y=2 and y=28. |
+| PR88-8 | The first tutorial beam is restored to a lateral x+10 offset, so a newcomer following the default forward control never reaches the visible first objective. | Production-movement entry test | From a normal new-game start, eight seconds of default forward swimming enters the rendered beam and starts the tutorial battle. |
 
 ## Test design and self-critique
 
@@ -41,6 +42,10 @@ route design, tutorial curriculum, or product decisions.
   meaningless. It checks every real mesh-bound corner, not actor origins.
 - `input_aliases.gd` covers both new and retained key branches. It deliberately
   avoids tutorial content assertions.
+- `tutorial_forward_entry.gd` drives the same production swim direction as a
+  default-yaw W press. It neither teleports the diver nor emits the trigger,
+  so a lateral or obstructed target fails while an internal movement refactor
+  preserving the player-facing route remains green.
 - `open_water_blockade.gd` also sweeps the real production physics space above
   representative open-water points. It observes collision through the Diver's
   `CharacterBody3D` rather than naming the ceiling node or pinning its height,
@@ -48,6 +53,30 @@ route design, tutorial curriculum, or product decisions.
   refactor passes. The deterministic point table spans both the original dive
   site and the extended Deep region without turning local visible obstacles
   into false positives.
+
+## Full PR #88 donor disposition
+
+This table records the complete behavior-fix audit against current PR #96. It
+does not reopen the separate review log's content or product decisions.
+
+| PR #88 behavior | Current PR #96 disposition | Proof |
+| --- | --- | --- |
+| Open-water entrance collider matches the visible blockade instead of extending 60 m sideways | Ported in `c6e1e76`; retained after later environment work | `open_water_blockade.gd` horizontal production-physics probe |
+| Completed legacy plate puzzle cannot expose an inert waypoint over the live route objective | Ported in `c6e1e76` | `legacy_highway_route_separation.gd` |
+| Frilled Shark uses real visual bounds for normalization/camera framing | Ported in `c6e1e76` | `frilled_shark_framing.gd` at 1280x720 and 720x480 |
+| Imported enemy idle clips loop and restart after stopping | Ported in `c6e1e76` | `imported_enemy_presentation.gd` time-boundary test |
+| Swap supports A/D + Space and narration supports Space without dropping arrows/Enter/click | Ported in `c6e1e76` | `input_aliases.gd` plus `tutorial_continue_button.gd` |
+| Default forward swim reaches the first visible tutorial objective | Missing on audit; ported as PR88-8 | Red/green `tutorial_forward_entry.gd` |
+| Resolved tutorial QTE leaves a visible stage, caption, and Continue action | Already satisfied by PR #96's current tutorial; no old storyboard code imported | `tutorial_qte_handoff_layout.gd`, success and timeout at 1280x720 and 803x893 |
+| Long tutorial captions do not cover status cards or collapse the combat presentation | Independently repaired in PR #96; no donor code needed | `tutorial_status_layout.gd` at both review shapes; `stage_framing.gd` |
+| Tutorial completion retires the beam, arrow, and stale beam instruction | Current normal-entry handoff already satisfies it; verifier strengthened only | `tutorial_exit.gd` now enters through the real beam and checks all three surfaces |
+| Quick Read is result-first, non-colour semantic, covers all targets, and never previews Electric Touch as zero/zero | Already present on PR #96 | `combat_quick_read.gd`, `glassgoat_combat.gd`, and current move-preview contracts |
+| Ordinary Angler/Frilled/Swordfish actors use authored stats and remain in the ordinary roster | Already present on PR #96 | `ordinary_roster.gd`, `glassgoat_combat.gd`, and enemy-content gates |
+| PR #88 route-beacon bodies, route cards, checkpoints, reef landmark, phase presentation, and route balance | Not portable: PR #96 deliberately owns a different `RouteState`/Deep/lab/maze implementation | Covered by PR #96's route-specific suite rather than copied from #88 |
+
+The audit also caught PR88-7, a PR #96-only collision roof that was not a donor
+commit but recreated the same player-facing class of invisible-world barrier.
+That fix remains separately proven by the vertical sweep.
 
 ## Skipped
 
@@ -57,7 +86,9 @@ route design, tutorial curriculum, or product decisions.
 - The active-diver halo/cone choice: visual language, not an unambiguous defect.
 - PR #88's exact route-trigger mask fix: PR #96 does not use that trigger type.
 - PR #88 tutorial layout/QTE/Quick Read fixes already independently present and
-  green in PR #96 are not reimplemented.
+  green in PR #96 are not reimplemented. The current-tutorial QTE handoff gate
+  exercises both success and timeout without importing PR #88's one-move
+  curriculum.
 - Visible local gates, the intentional tall entrance blockade, and the outer
   world-edge rails are not prohibited. PR88-7 is narrowly about unrendered
   collision spanning ordinary open water where no player-readable boundary
@@ -75,3 +106,12 @@ route design, tutorial curriculum, or product decisions.
 - **Still intentionally skipped:** normal-entry hosted acceptance and aesthetic
   review are separate release evidence; they do not weaken this collision
   contract and are not claimed by the headless gate.
+
+## Post-write evaluation: PR88-8
+
+- **Red:** eight seconds of production forward swimming from a fresh title
+  start never entered the beam while it was positioned ten metres laterally.
+- **Green:** the same unmodified movement probe reaches the visible beam and
+  opens the real tutorial battle after restoring PR #88's forward placement.
+- **Scope:** only the target position changes. PR #96 keeps its current
+  tutorial script, storyboards, route state, and post-tutorial progression.
