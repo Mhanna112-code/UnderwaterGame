@@ -10,14 +10,21 @@ extends Node
 signal music_state_changed(cue_id: String, phase: String)
 
 var _music_player: AudioStreamPlayer
+var _sfx_player: AudioStreamPlayer
 var _cue_id := ""
 var _phase := "stopped"
 var _intro_stream: AudioStream
 var _loop_stream: AudioStream
 var _transition_trace: Array[String] = []
+var settings_path := "user://audio.cfg"
+var _music_volume := 1.0
+var _music_muted := false
+var _sfx_volume := 1.0
+var _sfx_muted := false
 
 func _ready() -> void:
 	_ensure_players()
+	load_audio_settings()
 
 func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) -> void:
 	_ensure_players()
@@ -71,6 +78,48 @@ func get_music_state() -> Dictionary:
 func get_music_transition_trace() -> Array[String]:
 	return _transition_trace.duplicate()
 
+func set_music_volume(value: float) -> void:
+	_music_volume = clampf(value, 0.0, 1.0)
+	_apply_bus_settings("Music", _music_volume, _music_muted)
+
+func set_music_muted(value: bool) -> void:
+	_music_muted = value
+	_apply_bus_settings("Music", _music_volume, _music_muted)
+
+func set_sfx_volume(value: float) -> void:
+	_sfx_volume = clampf(value, 0.0, 1.0)
+	_apply_bus_settings("SFX", _sfx_volume, _sfx_muted)
+
+func set_sfx_muted(value: bool) -> void:
+	_sfx_muted = value
+	_apply_bus_settings("SFX", _sfx_volume, _sfx_muted)
+
+func get_audio_settings() -> Dictionary:
+	return {
+		"music_volume": _music_volume,
+		"music_muted": _music_muted,
+		"sfx_volume": _sfx_volume,
+		"sfx_muted": _sfx_muted,
+	}
+
+func save_audio_settings() -> Error:
+	var config := ConfigFile.new()
+	config.set_value("audio", "music_volume", _music_volume)
+	config.set_value("audio", "music_muted", _music_muted)
+	config.set_value("audio", "sfx_volume", _sfx_volume)
+	config.set_value("audio", "sfx_muted", _sfx_muted)
+	return config.save(settings_path)
+
+func load_audio_settings() -> void:
+	var config := ConfigFile.new()
+	if config.load(settings_path) == OK:
+		_music_volume = clampf(float(config.get_value("audio", "music_volume", 1.0)), 0.0, 1.0)
+		_music_muted = bool(config.get_value("audio", "music_muted", false))
+		_sfx_volume = clampf(float(config.get_value("audio", "sfx_volume", 1.0)), 0.0, 1.0)
+		_sfx_muted = bool(config.get_value("audio", "sfx_muted", false))
+	_apply_bus_settings("Music", _music_volume, _music_muted)
+	_apply_bus_settings("SFX", _sfx_volume, _sfx_muted)
+
 func _ensure_players() -> void:
 	if is_instance_valid(_music_player):
 		return
@@ -79,6 +128,17 @@ func _ensure_players() -> void:
 	_music_player.bus = "Music"
 	_music_player.finished.connect(advance_music_after_stream_finished)
 	add_child(_music_player)
+	_sfx_player = AudioStreamPlayer.new()
+	_sfx_player.name = "SFXPlayer"
+	_sfx_player.bus = "SFX"
+	add_child(_sfx_player)
+
+func _apply_bus_settings(bus_name: String, volume: float, muted: bool) -> void:
+	var index := AudioServer.get_bus_index(bus_name)
+	if index < 0:
+		return
+	AudioServer.set_bus_volume_db(index, linear_to_db(maxf(volume, 0.0001)))
+	AudioServer.set_bus_mute(index, muted)
 
 func _record_transition() -> void:
 	_transition_trace.append("%s:%s" % [_cue_id, _phase])

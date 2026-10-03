@@ -14,8 +14,8 @@ state machine before any scene is allowed to trigger it.
 | AUDIO-001 | Starting an intro/loop cue plays the loop at the same time, crossfades it, or leaves more than one music player active. | Start a two-part cue through the public manager API and require exactly one music player in the intro phase. | Covered by `verify/audio_manager.gd`. |
 | AUDIO-002 | Finishing an intro stops the cue, restarts the intro, or starts the loop more than once. | Advance the production finished-handler once and require one transition to the looping phase; advance again and require no restart. | Covered by `verify/audio_manager.gd`. |
 | AUDIO-003 | Re-requesting the active cue stacks playback or resets a playing intro/loop. | Request the same cue twice and require an idempotent state/transition trace. | Covered by `verify/audio_manager.gd`. |
-| AUDIO-004 | Replacing a cue leaves the old stream active or lets its late finished signal start the old loop. | Replace one sequence with another, then advance and require only the replacement loop. | Planned after the first contract is green. |
-| AUDIO-005 | Music and SFX volume/mute settings disappear on restart or mutate the wrong bus. | Config round trip plus real bus assertions. | Planned as a separate TDD increment. |
+| AUDIO-004 | Replacing a cue leaves the old stream active or lets its finished handoff start the old loop. | Replace one sequence with another, then advance and require only the replacement loop. | Covered by `verify/audio_manager.gd`. |
+| AUDIO-005 | Music and SFX volume/mute settings disappear on restart or mutate the wrong bus. | Config round trip plus real bus assertions. | Covered by `verify/audio_manager.gd`. |
 | AUDIO-006 | Browser autoplay prevents music from ever starting, or scene transitions stack tracks after the first user gesture. | Fresh web export, browser console/audio-state probe, and human listening pass. | Planned integration verification. |
 
 ## Self-critique
