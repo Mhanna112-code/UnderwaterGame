@@ -1261,7 +1261,11 @@ func _build_highway() -> void:
 	# far side - a staging point for Musashi on the approach, not itself
 	# a way across.
 	var near_anchor := GrappleAnchor.new()
-	near_anchor.position = Vector3(GAP_START_X - 1.0, 2.0, LANE_Z)
+	# Leave enough swim room after the staging pull to move past this
+	# collider before aiming at the far anchor. At GAP_START_X - 1 the
+	# diver stopped inside the near anchor's generous target cylinder, so
+	# the next straight shot selected it again instead of crossing.
+	near_anchor.position = Vector3(GAP_START_X - 3.0, 2.0, LANE_Z)
 	add_child(near_anchor)
 
 	# 3. The anchor that unlocks Maxilani's swap - reaching it is the
