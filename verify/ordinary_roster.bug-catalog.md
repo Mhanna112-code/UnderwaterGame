@@ -5,13 +5,13 @@
 
 ## What this file does
 
-It checks the player-visible enemy mix in ordinary Battles. Every individual ordinary enemy is selected from an even Angler/Swordfish roster, while dedicated artifact encounters continue to be selected by site content.
+It checks the player-visible enemy mix in ordinary Battles. Every individual ordinary enemy is selected from the Angler/Swordfish/Frilled-Shark roster, while dedicated artifact encounters continue to be selected by site content.
 
 ## Public interface and boundaries
 
 | Symbol | Type | Purpose |
 |---|---|---|
-| `EnemyRoster.id_for_roll()` | content contract | Maps a random roll to the 50/50 ordinary enemy identity. |
+| `EnemyRoster.id_for_roll()` | content contract | Maps a random roll to the three ordinary enemy identities. |
 | `Battle.enemies` | encounter result | Exposes the live visual enemies in a normal random battle. |
 | `Goblin.enemy_id()` | actor contract | Reports the identity the player encounters. |
 | `Battle.encounter_intro()` | UI contract | Announces a one-enemy encounter by its actual display name. |
@@ -27,6 +27,8 @@ It checks the player-visible enemy mix in ordinary Battles. Every individual ord
 | 1 | Every random encounter constructs the Angler default, so the Swordfish is only visible at a fixed artifact. | High — the new enemy is absent from ordinary gameplay. | The old Battle loop directly called `Goblin.new()`. | seeded integration sample | open |
 | 2 | A roster entry resolves to an unsupported/wrong actor identity. | High — battle presentation and move catalogue disagree. | Actor creation is a string-to-class dispatch boundary. | invariant + integration | open |
 | 3 | A lone Swordfish encounter still announces “An angler fish blocks the way.” | Medium — the combat UI contradicts the visible enemy. | The message was a fixed string. | UI contract pin | open |
+| 4 | The Frilled Shark roster id silently falls through to Goblin/Angler, so the model, moves, name, and stats never appear. | High — one third of nominal roster rolls lie about what was selected. | String-to-actor dispatch has no Frilled Shark case. | direct dispatch plus seeded integration | caught |
+| 5 | Frilled Shark inherits Angler's `make_stats()` despite declaring its own 5/2/2/1/2/2 block. | High — its armor/evasion identity and Glassgoat's tuning are absent even after dispatch is fixed. | The subclass exposes `floor_stats()` but the parent ignores that method. | actor stat contract | caught |
 
 ## Test plan
 
@@ -53,7 +55,7 @@ It checks the player-visible enemy mix in ordinary Battles. Every individual ord
 
 ## Skipped
 
-- Exact long-run frequency sampling: the roster's 50/50 mapping is directly checked at both sides of its boundary; Monte Carlo percentages would be slower and less precise.
+- Exact long-run frequency sampling: the roster's three-way mapping is directly checked at each boundary; Monte Carlo percentages would be slower and less precise.
 - Different Swordfish combat math: both enabled Swordfish moves intentionally carry the current ordinary-enemy balance contract. A later design stat split needs a separate balance ticket.
 - Guardian identity: `verify/artifact_guardians.gd` and `verify/encounters.gd` already pin Current Pearl/Angler and Reef Plate/Swordfish.
 

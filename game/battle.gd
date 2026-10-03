@@ -1270,6 +1270,8 @@ func _actor_for_enemy_id(enemy_id: String) -> Goblin:
 	match enemy_id:
 		"swordfish_duelist":
 			return SwordDuelist.new()
+		"frilled_shark":
+			return FrilledShark.new()
 		"bomb_bot":
 			return BombBot.new()
 		"sword_slayer":

@@ -22,6 +22,21 @@ const SHARK_FLOOR_STATS := {
 func floor_stats() -> Dictionary:
 	return SHARK_FLOOR_STATS
 
+# Glassgoat supplied this as a complete enemy block, not a lower bound under
+# Angler's random boost routine. Keep only the shared XP progression.
+func make_stats(_reference: CombatantStats, player_level: int = 1) -> CombatantStats:
+	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
+	var authored := floor_stats()
+	var stats := CombatantStats.new()
+	stats.hp_max = int(authored.hp)
+	stats.strength = int(authored.strength)
+	stats.defense = int(authored.defense)
+	stats.agility = int(authored.agility)
+	stats.evasion = int(authored.evasion)
+	stats.accuracy = int(authored.accuracy)
+	stats.fill()
+	return stats
+
 # No Angler-specific low-HP/Bite-streak state machine authored for this rig -
 # keep Battle's plain two-step flow (a target picked first, then choose_move()
 # asked independently which move to swing), the same override Swordfish
