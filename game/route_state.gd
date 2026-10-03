@@ -12,7 +12,7 @@ const MAZE_DOOR_LOCKED := "locked"
 const OCTOPUS_UNAVAILABLE := "unavailable"
 const ENCOUNTER_RANDOM := "random"
 
-const ZONE_IDS := ["shallows", "deep_zone", "lab", "maze"]
+const ZONE_IDS := ["shallows", "deep", "maze"]
 const BLOCKER_STATES := ["available", "in_progress", "defeated"]
 const LAB_STATES := ["locked", "available", "cutscene", "boss", "cleared"]
 const TETHYS_STATES := ["locked", "available", "in_progress", "defeated"]

@@ -23,7 +23,7 @@ func _run() -> void:
 		objective_events.append(objective_id)
 	)
 
-	route.set_zone("deep_zone")
+	route.set_zone("deep")
 	route.set_objective("defeat_bomb_bot")
 	route.set_blocker_state("bomb_bot", "defeated")
 	route.set_blocker_state("sword_slayer", "in_progress")
@@ -46,7 +46,7 @@ func _run() -> void:
 	var restored = route_script.new()
 	restored.load_save_data(decoded as Dictionary)
 	var expected := {
-		"zone_id": "deep_zone",
+		"zone_id": "deep",
 		"objective_id": "defeat_bomb_bot",
 		"bomb_bot_state": "defeated",
 		"sword_slayer_state": "in_progress",
