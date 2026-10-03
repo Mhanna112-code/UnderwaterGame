@@ -440,12 +440,13 @@ var _stage_vp: SubViewport
 # height of the screen behind it. See _fit_panel_height().
 var _stage_container: SubViewportContainer
 var _stage_cam: Camera3D
-# Fixed 2D status stacks, not labels floating over each combatant in the
-# 3D stage - the party's own cards stack down the left edge, the enemies'
-# down the right (see _build_overhead_bar()). Static means no per-frame
-# 3D->screen projection or anti-overlap juggling is needed at all, unlike
-# the old head-tracking version this replaced.
-var _party_status_column: VBoxContainer
+# Fixed 2D status groups, not labels floating over each combatant in the
+# 3D stage - enemies stack down the right while the party normally stacks
+# down the left (see _build_overhead_bar()). The party uses a flow container
+# so a tall tutorial caption can widen that one group and wrap the three cards
+# into a short row without covering any of their numbers. This is still static
+# HUD layout: no per-frame 3D projection or actor-following labels.
+var _party_status_column: HFlowContainer
 var _enemy_status_column: VBoxContainer
 # The turn order, moved out of the bottom panel to the very top.
 var _queue_bar: PanelContainer
@@ -1609,13 +1610,14 @@ func _build_ui() -> void:
 	# Party's status cards stack down the left edge, enemies' down the
 	# right - added before the bottom panel/queue bar just so those still
 	# win in z-order if a stack ever ran long enough to reach them.
-	_party_status_column = VBoxContainer.new()
+	_party_status_column = HFlowContainer.new()
 	_party_status_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_party_status_column.offset_left = 12.0
 	_party_status_column.offset_top = 70.0
 	_party_status_column.offset_right = 12.0 + STATUS_COLUMN_WIDTH
 	_party_status_column.offset_bottom = 70.0 + 320.0
-	_party_status_column.add_theme_constant_override("separation", 8)
+	_party_status_column.add_theme_constant_override("h_separation", 8)
+	_party_status_column.add_theme_constant_override("v_separation", 8)
 	_party_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_party_status_column)
 
@@ -1997,6 +1999,7 @@ func _build_ui() -> void:
 func _fit_panel_height() -> void:
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
+	_fit_party_status_cards_above_panel()
 	# Hand the rest of the screen to the stage. Both are anchored to the
 	# bottom edge, so the panel's own top offset is exactly where the stage
 	# has to stop. This is what makes the HUD's height self-correcting: a
@@ -2008,6 +2011,32 @@ func _fit_panel_height() -> void:
 		# rendered under an opaque bar is rendered where nobody can see it.
 		# The stage is now strictly the band between the two.
 		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
+
+# Party cards normally form the familiar left-side stack. A long tutorial
+# explanation can legitimately make the opaque bottom panel taller, though,
+# and at the browser review viewport that panel used to cover Bucky's HP/O2/
+# EVA rows while leaving only his name visible. Widen the party flow only for
+# those constrained states. Its right edge stops before the fixed enemy column,
+# so the cards can wrap horizontally without colliding with enemy information.
+#
+# This derives the would-be vertical stack height from each card's public
+# minimum size rather than its current position: Godot defers HFlow sorting, so
+# current card positions may still describe the previous caption for one frame.
+func _fit_party_status_cards_above_panel() -> void:
+	if _party_status_column == null or _bottom_panel == null:
+		return
+	var vertical_height := 0.0
+	var visible_cards := 0
+	for child in _party_status_column.get_children():
+		if child is Control and (child as Control).visible:
+			vertical_height += (child as Control).get_combined_minimum_size().y
+			visible_cards += 1
+	if visible_cards > 1:
+		vertical_height += float(visible_cards - 1) * 8.0
+	var panel_top := get_viewport().get_visible_rect().size.y + _bottom_panel.offset_top
+	var normal_right := 12.0 + STATUS_COLUMN_WIDTH
+	var expanded_right := maxf(normal_right, get_viewport().get_visible_rect().size.x - STATUS_COLUMN_WIDTH - 24.0)
+	_party_status_column.offset_right = expanded_right if _party_status_column.offset_top + vertical_height > panel_top else normal_right
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.

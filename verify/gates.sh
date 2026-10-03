@@ -164,6 +164,7 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
 	run "stage framing narrow: does responsive combat remain visible at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/stage_framing.gd
+	run "tutorial status layout narrow: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_status_layout.gd
 	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd
 	run "lab composition narrow: is the Tethys arena still readable at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/lab_battle_composition.gd
 else
