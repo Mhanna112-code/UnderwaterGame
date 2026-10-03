@@ -12,6 +12,14 @@ const MAZE_DOOR_LOCKED := "locked"
 const OCTOPUS_UNAVAILABLE := "unavailable"
 const ENCOUNTER_RANDOM := "random"
 
+const ZONE_IDS := ["shallows", "deep_zone", "lab", "maze"]
+const BLOCKER_STATES := ["available", "in_progress", "defeated"]
+const LAB_STATES := ["locked", "available", "cutscene", "boss", "cleared"]
+const TETHYS_STATES := ["locked", "available", "in_progress", "defeated"]
+const MAZE_DOOR_STATES := ["locked", "available", "entered"]
+const OCTOPUS_STATES := ["unavailable", "available", "in_progress", "defeated"]
+const ENCOUNTER_SOURCES := ["random", "lab_blocker", "lab_boss", "maze_door"]
+
 var zone_id := ZONE_SHALLOWS
 var objective_id := OBJECTIVE_TUTORIAL
 var bomb_bot_state := BLOCKER_AVAILABLE
@@ -23,7 +31,7 @@ var octopus_state := OCTOPUS_UNAVAILABLE
 var encounter_source := ENCOUNTER_RANDOM
 
 func set_zone(value: String) -> void:
-	zone_id = value
+	zone_id = _allowed_or(value, ZONE_IDS, ZONE_SHALLOWS)
 
 func set_objective(value: String) -> void:
 	if objective_id == value:
@@ -34,24 +42,27 @@ func set_objective(value: String) -> void:
 func set_blocker_state(blocker_id: String, value: String) -> void:
 	match blocker_id:
 		"bomb_bot":
-			bomb_bot_state = value
+			bomb_bot_state = _allowed_or(value, BLOCKER_STATES, BLOCKER_AVAILABLE)
 		"sword_slayer":
-			sword_slayer_state = value
+			sword_slayer_state = _allowed_or(value, BLOCKER_STATES, BLOCKER_AVAILABLE)
 
 func set_lab_state(value: String) -> void:
-	lab_state = value
+	lab_state = _allowed_or(value, LAB_STATES, LAB_LOCKED)
 
 func set_tethys_state(value: String) -> void:
-	tethys_state = value
+	tethys_state = _allowed_or(value, TETHYS_STATES, TETHYS_LOCKED)
 
 func set_maze_door_state(value: String) -> void:
-	maze_door_state = value
+	maze_door_state = _allowed_or(value, MAZE_DOOR_STATES, MAZE_DOOR_LOCKED)
 
 func set_octopus_state(value: String) -> void:
-	octopus_state = value
+	octopus_state = _allowed_or(value, OCTOPUS_STATES, OCTOPUS_UNAVAILABLE)
 
 func set_encounter_source(value: String) -> void:
-	encounter_source = value
+	encounter_source = _allowed_or(value, ENCOUNTER_SOURCES, ENCOUNTER_RANDOM)
+
+func _allowed_or(value: String, allowed: Array, fallback: String) -> String:
+	return value if allowed.has(value) else fallback
 
 func to_save_data() -> Dictionary:
 	return {

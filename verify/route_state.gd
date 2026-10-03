@@ -59,8 +59,35 @@ func _run() -> void:
 	if restored.to_save_data() != expected:
 		findings.append("ROUND TRIP: expected %s, got %s" % [expected, restored.to_save_data()])
 
+	_test_invalid_save_falls_back(route_script)
 	await _test_world_checkpoint_round_trip(expected)
 	_finish()
+
+func _test_invalid_save_falls_back(route_script: Script) -> void:
+	var restored = route_script.new()
+	restored.load_save_data({
+		"zone_id": "nowhere",
+		"bomb_bot_state": "respawning_forever",
+		"sword_slayer_state": "missing",
+		"lab_state": "half_open",
+		"tethys_state": "won_but_alive",
+		"maze_door_state": "teleporting",
+		"octopus_state": "playable",
+		"encounter_source": "query_string",
+	})
+	var expected_defaults := {
+		"zone_id": "shallows",
+		"objective_id": "tutorial",
+		"bomb_bot_state": "available",
+		"sword_slayer_state": "available",
+		"lab_state": "locked",
+		"tethys_state": "locked",
+		"maze_door_state": "locked",
+		"octopus_state": "unavailable",
+		"encounter_source": "random",
+	}
+	if restored.to_save_data() != expected_defaults:
+		findings.append("INVALID SAVE: impossible route values did not fall back to safe defaults")
 
 func _test_world_checkpoint_round_trip(expected: Dictionary) -> void:
 	_remove_test_save()
