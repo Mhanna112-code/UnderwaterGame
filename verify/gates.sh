@@ -105,6 +105,7 @@ run "maze completion: can a player reach and recover the final relic" "$GODOT" -
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze review route: does the direct playtest link enter MazeLevel cleanly" "$GODOT" --headless --path . --script verify/maze_review_route.gd -- --maze-playtest
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
+run "title audio: do Hover, Click, and Start Game match their exact menu interactions" "$GODOT" --headless --path . --script verify/title_audio.gd
 run "ability popup video: are tutorial clips playing and contained" "$GODOT" --headless --path . --script verify/ability_popup_video.gd
 run "tutorial camera handoff: does the post-fight modal release mouse look" "$GODOT" --headless --path . --script verify/tutorial_camera_handoff.gd
 run "merge readiness: is defeat exclusive and identity consistent" "$GODOT" --headless --path . --script verify/pr54_merge_readiness.gd

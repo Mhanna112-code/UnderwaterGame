@@ -21,6 +21,7 @@ state machine before any scene is allowed to trigger it.
 | AUDIO-008 | An ambiguous filename is treated as a proven Intro/Loop contract and an unreviewed join ships. | Manifest disposition plus named-cue integration test; only the explicit Battle pair is accepted without listening approval. | Characterized in `docs/audio-manifest.md`; browser listening pending. |
 | AUDIO-009 | A scene chooses file paths itself, wires Tethys to the unapproved `verb tail`, or treats game-over as a loop. | Named product-cue contract on the autoload owner. | Covered by `verify/audio_manager.gd`. |
 | AUDIO-010 | Cold title violates browser autoplay, or World/Battle transitions leave exploration, Battle, boss, victory, or defeat music stale/stacked. | Drive real World start, ordinary battle win, Tethys loss, game-over, and title return while asserting the public audio state. | Covered by `verify/audio_lifecycle.gd`. |
+| AUDIO-011 | Menu SFX are absent, doubled, or mapped to the wrong semantics; Start Game fires on navigation or Click replaces a real start. | Drive fresh New Game, returning-player slot navigation, run selection, and Back through real buttons while asserting the SFX event trace. | Covered by `verify/title_audio.gd`. |
 
 ## Self-critique
 

@@ -18,6 +18,9 @@ const TITLE_LOOP: AudioStream = preload("res://audio/music/title_loop.ogg")
 const VICTORY_CANDIDATE_INTRO: AudioStream = preload("res://audio/music/victory_candidate_intro.ogg")
 const VICTORY_LOOP: AudioStream = preload("res://audio/music/victory_loop.ogg")
 const GAME_OVER: AudioStream = preload("res://audio/music/game_over.ogg")
+const UI_HOVER: AudioStream = preload("res://audio/sfx/ui/hover.wav")
+const UI_CLICK: AudioStream = preload("res://audio/sfx/ui/click.wav")
+const UI_START_GAME: AudioStream = preload("res://audio/sfx/ui/start_game.wav")
 
 var _music_player: AudioStreamPlayer
 var _sfx_player: AudioStreamPlayer
@@ -26,6 +29,7 @@ var _phase := "stopped"
 var _intro_stream: AudioStream
 var _loop_stream: AudioStream
 var _transition_trace: Array[String] = []
+var _sfx_event_trace: Array[String] = []
 var settings_path := "user://audio.cfg"
 var _music_volume := 1.0
 var _music_muted := false
@@ -33,6 +37,9 @@ var _sfx_volume := 1.0
 var _sfx_muted := false
 
 func _ready() -> void:
+	# Title and game-over deliberately pause the SceneTree. Their audio is
+	# still a live UI surface, so the global owner must remain processable.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_players()
 	load_audio_settings()
 
@@ -126,6 +133,21 @@ func get_music_state() -> Dictionary:
 func get_music_transition_trace() -> Array[String]:
 	return _transition_trace.duplicate()
 
+func play_ui_hover() -> void:
+	_play_sfx("ui_hover", UI_HOVER)
+
+func play_ui_click() -> void:
+	_play_sfx("ui_click", UI_CLICK)
+
+func play_ui_start_game() -> void:
+	_play_sfx("ui_start_game", UI_START_GAME)
+
+func get_sfx_event_trace() -> Array[String]:
+	return _sfx_event_trace.duplicate()
+
+func clear_sfx_event_trace() -> void:
+	_sfx_event_trace.clear()
+
 func set_music_volume(value: float) -> void:
 	_music_volume = clampf(value, 0.0, 1.0)
 	_apply_bus_settings("Music", _music_volume, _music_muted)
@@ -187,6 +209,13 @@ func _apply_bus_settings(bus_name: String, volume: float, muted: bool) -> void:
 		return
 	AudioServer.set_bus_volume_db(index, linear_to_db(maxf(volume, 0.0001)))
 	AudioServer.set_bus_mute(index, muted)
+
+func _play_sfx(event_id: String, stream: AudioStream) -> void:
+	_ensure_players()
+	_sfx_player.stop()
+	_sfx_player.stream = _non_looping_copy(stream)
+	_sfx_player.play()
+	_sfx_event_trace.append(event_id)
 
 func _record_transition() -> void:
 	_transition_trace.append("%s:%s" % [_cue_id, _phase])
