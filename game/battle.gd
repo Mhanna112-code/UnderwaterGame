@@ -151,6 +151,7 @@ var diver_model_name := "Staff_Diver"
 const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
+const OPENING_TWO_ENEMY_CHANCE := 0.25
 
 # A fresh party can face one or two grunts. Three-grunt packs enter the roll
 # only after the party has earned its first level; this removes the observed
@@ -159,6 +160,48 @@ static func max_enemies_for_level(player_level: int, is_guardian: bool = false) 
 	if is_guardian:
 		return 1
 	return 2 if player_level <= 1 else MAX_ENEMIES
+
+# One shared roll policy for production and the balance gate. The opening
+# keeps a minority two-enemy challenge, level 2 consolidates the mixed roster
+# without introducing a three-pack, and level 3 unlocks all three formations.
+static func ordinary_enemy_count_for_roll(player_level: int, roll: float, is_guardian: bool = false) -> int:
+	if is_guardian:
+		return 1
+	var normalized := clampf(roll, 0.0, 0.999999)
+	if player_level <= 1:
+		return 2 if normalized < OPENING_TWO_ENEMY_CHANCE else 1
+	if player_level == 2:
+		return 1
+	if normalized < 1.0 / 3.0:
+		return 1
+	return 2 if normalized < 2.0 / 3.0 else 3
+
+# Authored enemy target scopes are content, not flavor text. `two` retains
+# the already-selected primary and deterministically adds one other living
+# diver; `all` preserves the live party order used by the HUD.
+static func enemy_targets_for_scope(primary: Dictionary, alive_party: Array, scope: String) -> Array:
+	if scope == "all":
+		return alive_party.duplicate()
+	var targets: Array = []
+	if not primary.is_empty():
+		targets.append(primary)
+	if scope == "two":
+		for candidate_value in alive_party:
+			var candidate := candidate_value as Dictionary
+			if candidate != primary:
+				targets.append(candidate)
+				break
+	return targets
+
+# Multi-hit formula moves consume the defender's current Evasion sequentially.
+# Self-costs belong to the move, so they are applied on the first impact only.
+static func resolve_formula_hits(attacker: CombatantStats, defender: CombatantStats, move: Dictionary, apply_self_effects: bool = true) -> Array:
+	var results: Array = []
+	for hit_index in range(maxi(1, int(move.get("hits", 1)))):
+		if defender.hp <= 0:
+			break
+		results.append(CombatRules.resolve(attacker, defender, move, apply_self_effects and hit_index == 0))
+	return results
 
 # Compatibility alias for verification and any tools that enumerate the
 # roster here. Cast is the single identity source used by Battle and World.
@@ -1121,7 +1164,7 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else randi_range(MIN_ENEMIES, max_enemies_for_level(lvl, guardian_encounter))
+	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -4585,20 +4628,36 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	if _tutorial_force_next_qte:
 		combat_move = combat_move.duplicate()
 		combat_move["quick_time_bool"] = true
-	var r: Dictionary = await _resolve_attack(actor.stats, target.stats, combat_move)
+	var resolved_targets := enemy_targets_for_scope(target, alive_party, String(move.get("target", "single")))
+	var result_rows: Array[String] = []
+	var apply_self_effects := true
+	for target_value in resolved_targets:
+		var resolved_target := target_value as Dictionary
+		var results: Array
+		if combat_move.has("formula"):
+			results = resolve_formula_hits(actor.stats as CombatantStats, resolved_target.stats as CombatantStats, combat_move, apply_self_effects)
+		else:
+			results = [await _resolve_attack(actor.stats, resolved_target.stats, combat_move)]
+		apply_self_effects = false
+		var target_results: Array[String] = []
+		for result_value in results:
+			var result := result_value as Dictionary
+			_refresh_bar(resolved_target)
+			_react(resolved_target, result)
+			_show_combat_feedback(resolved_target, result)
+			if bool(result.get("dodged", false)):
+				target_results.append("QTE dodge")
+			elif not bool(result.get("hit", false)):
+				target_results.append("evades")
+			elif int(result.get("damage", 0)) > 0:
+				target_results.append("-%d" % int(result.damage))
+			else:
+				target_results.append("affected")
+		if (resolved_target.stats as CombatantStats).hp <= 0 and resolved_target.has("actor") and resolved_target.actor is Diver:
+			(resolved_target.actor as Diver).play_death_fade()
+		result_rows.append("%s %s" % [String(resolved_target.display_name), "/".join(target_results)])
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
-	_refresh_bar(target)
-	_react(target, r)
-	_show_combat_feedback(target, r)
-	var verb := "%s %s %s" % [String(actor.display_name), String(move.get("verb", "attacks")), String(target.display_name)]
-	if bool(r.get("dodged", false)):
-		_log("%s - %s times it perfectly and dodges clear!" % [verb, String(target.display_name)])
-	elif not r.hit:
-		_log("%s, but %s evades!" % [verb, String(target.display_name)])
-	else:
-		_log("%s for %d." % [verb, int(r.damage)])
-	if (target.stats as CombatantStats).hp <= 0 and target.has("actor") and target.actor is Diver:
-		(target.actor as Diver).play_death_fade()
+	_log("%s uses %s: %s." % [String(actor.display_name), String(move.get("name", "Attack")), "; ".join(result_rows)])
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	_restore_enemy_idle(actor)

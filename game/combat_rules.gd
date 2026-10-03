@@ -31,6 +31,10 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 			var amount := formula_value(attacker, effect.get("amount", {}))
 			defender.reduce_evasion(amount)
 			applied.append("EVA -%d" % amount)
+		elif kind == "reduce_defense":
+			var amount := formula_value(attacker, effect.get("amount", {}))
+			var changed := defender.reduce_defense(amount)
+			applied.append("DEF -%d" % changed)
 		elif kind == "status":
 			var status := String(effect.get("status", ""))
 			var level := formula_value(attacker, effect.get("level", {}))

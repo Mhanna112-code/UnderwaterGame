@@ -36,6 +36,27 @@ not previously ask whether the two encounters actually block the route.
 
 ## Ranked bugs
 
+### DZ-BAL-001 through DZ-BAL-004 — provisional blocker stats lack measured bounds
+
+- **Failure mode:** the two one-time fights are individually or sequentially
+  unwinnable for a casual full party, strategy makes no meaningful difference,
+  or the sequence creates no pressure at all.
+- **Blast radius:** high; both fights are mandatory gates immediately before
+  the lab.
+- **Why plausible:** their models arrived without an authored stat sheet and
+  the first-pass values were explicitly provisional.
+- **Cheapest strong test:** a seeded production-rules policy simulation using
+  the exact actor stat blocks, move catalogues, target scopes, multi-hit rules,
+  base party kits, 30% post-victory recovery, and deterministic seeds. Require
+  each fight and the two-fight sequence to remain winnable while preserving a
+  strategy advantage in retained HP and measurable encounter pressure. A
+  mandatory blocker does not need to create arbitrary casual losses merely to
+  make a win-rate graph diverge.
+- **Self-critique:** this can reject mathematically broken tuning but cannot
+  judge whether the encounter *feels* fair or whether its animation timing
+  communicates danger. The final browser playtest remains the accepting human
+  boundary.
+
 ### DZ-BLOCK-010 — proximity-only encounters can be bypassed
 
 - **Failure mode:** the player swims around the small trigger radii and reaches
@@ -102,3 +123,8 @@ not previously ask whether the two encounters actually block the route.
   at the semantic boundary and in 1280x720/720x480 production captures. They
   remain unproven in a fresh hosted browser build until that candidate is
   committed, exported, deployed, and traversed from the ordinary title flow.
+- **Balance result:** the exact provisional actors and production move rules
+  produce 98.2% casual / 100% skilled two-blocker completion. Casual wins lose
+  15.0 party HP on average; skilled wins lose 9.1, a 5.9-HP strategy benefit.
+  The starting stat blocks therefore remain unchanged pending the required
+  human browser playtest.
