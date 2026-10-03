@@ -21,6 +21,11 @@ extends CanvasLayer
 const BOSS_LAB_SCENE := preload("res://art/deep_zone/Broken_Office.fbx")
 
 signal finished(result: String)     # "won", "fled", or "lost"
+# Emitted after a party actor has stepped into range, faced the selected
+# target, and started its authored attack clip. Gameplay does not consume this;
+# the end-to-end fight gate uses the real selected target instead of guessing
+# from proximity when several enemies share the stage.
+signal player_swing_staged(attacker: Node3D, target: Node3D)
 
 # Set by world.gd before add_child - the real Diver nodes from the dive
 # site (world.divers), so .stats (shared by reference - a Resource, not
@@ -4325,6 +4330,8 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	if length <= 0.0:
 		_send_home(entry, 0.0)
 		return
+	if target.has("actor") and is_instance_valid(target.actor) and target.actor is Node3D:
+		player_swing_staged.emit(d, target.actor as Node3D)
 	_audio_call(&"play_combat_swing", [_move_is_heavy(mv)])
 	await get_tree().create_timer(length * IMPACT_FRACTION).timeout
 	# The rest of the clip plays while the caller gets on with the damage
@@ -4650,6 +4657,17 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 
 	var enemy_actor := actor.actor as Goblin
 	var move := enemy_actor.choose_move(target_stats)
+	# The tutorial just named one defender and promised a timing dodge against
+	# this swing. An all-party move can resolve another diver first, consume the
+	# one-shot force flag on that unrelated result, and never show the promised
+	# QTE. Pick the first authored single-target move for this one teaching turn;
+	# every later AI choice remains weighted production behavior.
+	if _tutorial_force_next_qte:
+		for candidate_value in enemy_actor.available_moves():
+			var candidate := candidate_value as Dictionary
+			if String(candidate.get("target", "single")) == "single":
+				move = candidate
+				break
 	if move.is_empty():
 		_log("%s has no enabled attack." % String(actor.display_name))
 		_finish_actor_turn(actor)
