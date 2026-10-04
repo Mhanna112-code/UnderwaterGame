@@ -200,6 +200,8 @@ run "maze Cordys: does the campaign rematch use normal combat and admit a real l
 run "maze Cordys sigil: does real contact start Cordys and preserve independent completion through a snapshot" "$GODOT" --headless --path . --script verify/maze_cordys_trigger.gd -- --real-win
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
+run "maze portrait lanes: does a real two-lane rung carry the portrait without changing direction" "$GODOT" --headless --path . --script verify/maze_latest_switch.gd
+run "maze poster priority: does real E open the closer poster rather than the nearby switch" "$GODOT" --headless --path . --script verify/maze_latest_switch.gd -- --poster
 run "maze review route: does the direct playtest link enter MazeLevel cleanly" "$GODOT" --headless --path . --script verify/maze_review_route.gd -- --maze-playtest
 run "title: is cold launch readable and exclusive"     "$GODOT" --headless --path . --script verify/title_screen.gd
 run "title audio: do Hover, Click, and Start Game match their exact menu interactions" "$GODOT" --headless --path . --script verify/title_audio.gd

@@ -80,7 +80,7 @@ The inspected snapshots are:
 | Current main | f9ae00c | Includes the recent PR #86 Headbutt correction. |
 | PR #96 | 27a5b5253256a26733f8a320c3c6b4f97c64dece | Parent deep-zone, lab, environmental and asset work. |
 | PR #98 | c3da257d115385b423306ef61e0214ebf7416f0c | Reviewed opening branch, based on #96, not directly on current main. |
-| PR #97 | 55e851556c69e3745fdc38ddd2b381244e087b05 | Marc's Maze finalizations branch. |
+| PR #97 | 58c6ed07944676631002794e4649220d3c5bf264 | Refreshed October 4; initial 55e8515 plus portrait two-lane and switch/poster fixes integrated. |
 | Common ancestor | c15abb0bfb71fa80f3443a4c8ee55f7b39fe6620 | Old shared base; 136 main commits followed it at inspection. |
 
 Refresh this snapshot before implementation. An older file on #97 is not automatically an intentional new design decision. Compare changes since the common ancestor, not only two present-day files.

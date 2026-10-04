@@ -1,6 +1,9 @@
 # Maze and campaign runtime and asset manifest
 
-Status: local integration source identity, not a delivery manifest. Current baseline 493b1d8 includes current main and PR98. PR97 reconciliation is local; focused gate receipts record the uncommitted merge before its checkpoint commit. There is no combined hosted artifact.
+Status: feedback artifact delivered; final integration acceptance remains open.
+Initial baseline 493b1d8 includes current main and PR98. PR97's initial merge and
+its October 4 portrait/switch follow-ups are now reconciled. Current working
+source includes those follow-ups; the last verified hosted source is e7986ab.
 
 | Artifact | Identity | Verification |
 | --- | --- | --- |
@@ -8,10 +11,26 @@ Status: local integration source identity, not a delivery manifest. Current base
 | Starting main | f9ae00c38dae4e3f06ae250f5a3f880a46e4dd42 | Refreshed origin/main |
 | PR96 campaign parent | 27a5b5253256a26733f8a320c3c6b4f97c64dece | Remote PR head checked |
 | PR98 reviewed opening | c3da257d115385b423306ef61e0214ebf7416f0c | Remote PR head checked |
-| PR97 maze | 55e851556c69e3745fdc38ddd2b381244e087b05 | Remote PR head checked |
-| Combined web export | None | Not exported/deployed |
-| Windows package | None | Not exported/launch-tested/playtested |
-| Linux package | None | Not exported/launch-tested/playtested |
+| PR97 maze | 58c6ed07944676631002794e4649220d3c5bf264 | Refreshed October 4; initial 55e8515 plus d5bf893/58c6ed0 integrated deliberately |
+| Last verified combined web export | e7986ab4cd649b349c2a9e77871f05fab5a499bc | Stable feedback alias; normal title/real L-map and served-pack checksum pass |
+| Windows x86_64 | e7986ab4cd649b349c2a9e77871f05fab5a499bc | Exported without errors; PE32+ identified; not target-launched/playtested; refresh for latest source before packaging |
+| Linux x86_64 | e7986ab4cd649b349c2a9e77871f05fab5a499bc | Exported without errors; ELF x86_64 identified; not target-launched/playtested; refresh for latest source before packaging |
+
+Feedback alias: https://underwatergame-maze-campaign-review.vercel.app/
+Review guide: /review.html. Verified deployment dpl_GfZuuQsbDX2Vj4ZwTfVNPEWEFWb1,
+READY preview in immortaldemongods-projects/underwatergame. No public promotion.
+PCK 92,415,496 bytes, SHA256
+35775819bd9d2e244cf8923a1cc789cbd1ffc5f2f5eb5458ade106da27c74dea.
+Real browser requests completed against the same hashed endpoint; fresh contexts
+rendered normal title and current L-map controls without captured script errors.
+This is not normal-route/full-traversal/storage/audio acceptance.
+
+Engine/template 4.7.1.stable.official.a13da4feb. Official export-template archive
+SHA256 86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72
+matches the GitHub release asset digest. Only x86_64 release templates were
+extracted; Windows is unsigned. Native launchers select gl_compatibility.
+
+## Earlier checkpoints (historical, not current artifact status)
 
 Carry source hashes and provenance from audio-manifest.md, deep-zone-asset-manifest.md and opening-prologue-asset-manifest.md when imported. Record model/media source hashes, runtime derivatives, renderer, engine/templates, exact export source, archive and served-PCK checksums before delivery. Do not hand-merge generated PCKs or package developer saves.
 

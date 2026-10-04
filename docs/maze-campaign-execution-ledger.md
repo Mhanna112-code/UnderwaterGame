@@ -12,8 +12,13 @@ ownership. Full physical maze/resource progression, broader balance, browser
 durability and final polish are NOT accepted. Combined runtime 08d8d97 is exported:
 local served-pack checksum, completed browser downloads, rendered ordinary title
 and actual L-map controls pass after correcting the inspector-cache harness.
-Preview deployment and native packages are being prepared; main/public remain
-unchanged. Other worktree changes remain untouched.
+Verified e7986ab preview is delivered at
+https://underwatergame-maze-campaign-review.vercel.app/ (review.html gives starts
+and limits). Live served bytes/title/L-map checks pass; it is not merge-ready.
+Windows/Linux x86_64 exports succeeded, but packages/target launches remain open.
+Marc's new d5bf893/58c6ed0 changes are integrated locally; refresh the same alias
+and packages after focused verification. Main/public remain unchanged. Other
+worktree changes remain untouched.
 
 | Phase | State | Required next evidence |
 | --- | --- | --- |
@@ -23,7 +28,7 @@ unchanged. Other worktree changes remain untouched.
 | Maze route | In progress | First current channel passes actual Tab/W/mouse/L/E/R headless/native with collision and push active; full puzzles/keys/secret/finale route remains pending |
 | Puppet encounter | In progress | Both real waves, six resource-boundary cases and actual once-only maze-key/snapshot reward pass; normal kit reachability and interrupted recovery remain pending |
 | Cordys finale | In progress | Normal campaign turns and actual sigil win/snapshot pass; earned no-lab/both-order resource paths and loss/file recovery remain pending |
-| Audio and feedback delivery | In progress | Live exploration/Battle/Cordys/return cue ownership passes; audible joins/mix, exact export/served bytes and deployed checks remain pending |
+| Audio and feedback delivery | In progress | Live cue ownership and e7986ab export/served bytes/title/map pass; latest upstream refresh and audible joins/mix remain pending |
 | Windows/Linux | In progress | Matching 4.7.1 templates downloaded and upstream SHA256 verified; release presets/Compatibility launchers prepared; exported, launch-tested and playtested recorded separately |
 | Full regression/polish | Planned | Complete clean audit round on identified artifact |
 | Human approval | Pending | Collaborator review; no public promotion before approval |

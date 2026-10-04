@@ -1,5 +1,32 @@
 # Maze and campaign integration audit log
 
+## October 4 feedback artifact and Marc's new portrait/switch fixes
+
+Feedback runtime e7986ab exported with Godot 4.7.1 and published as a READY
+preview at https://underwatergame-maze-campaign-review.vercel.app/ . Main and
+the public game were not changed. Actual served pack checksum and completed
+browser requests match the manifest; ordinary title and real L-map render with
+no captured errors. Inspector-cache eviction/oversized-retention screenshot
+timeouts were harness defects, rejected and corrected with explicit streamed
+endpoint hashing plus isolated rendered browser checks. Full browser durability,
+physical progression and audible comfort remain unaccepted.
+
+Fresh remote check found PR97 advanced to 58c6ed0, main remains f9ae00c and PR98
+remains c3da257. d5bf893 adds directed lane-0-to-2 portrait rungs; 58c6ed0 reduces
+switch/poster reaches and gives real E and highlight to the nearer target.
+Both integrated as upstream-authored cherry-picks 0dd5230/8f10cbe, not replacement
+of our MazeLevel. Pre-patch tests reproduce adjacent-lane substitution and switch
+stealing poster input. Corrected consumer tests and actual native 1x views pass;
+input-policy regression remains clean. Timing/proximity/deferred-explainer
+fixture errors are excluded from production findings. Refresh the same preview
+and platform packages from the new identified commit next.
+
+Windows/Linux x86_64 exports of e7986ab completed without script/export errors;
+PE32+/ELF headers match the intended targets. Official 4.7.1 template digest was
+verified. No target-machine launch/playtest claim, and no unsigned package has
+been accepted as a final release. Current source will be re-exported before
+download packaging so web and native review artifacts share one commit.
+
 ## October 4 2026 foundation inspection
 
 Previous goal turn classification: progress. The saved plan was materially updated to include approved puppets and verification contracts. This continuation read the objective file and refreshed current sources; no previous integration process was live.
