@@ -9,12 +9,12 @@ metadata are never runtime inputs.
 | Role | Canonical source | SHA-256 | Runtime path/status | Owner and disposition |
 | --- | --- | --- | --- | --- |
 | Temporary opening master | `/Users/tomriddle1/Dropbox/Mermaid_Freak.mp4` | `e8233e3571f1a3ecbea7749155254ed6183935f3667a11c281d35215924a5ffb` | Existing `res://media/cutscenes/mermaid_freak.ogv`, SHA `964d941a17ce417d38b8eaa80a419d9210a7b3b2c314bf7154f1627e9887aeb2`, 10,005,448 bytes | Opening uses it temporarily; lab/Tethys retains its existing separate owner. Do not duplicate bytes. |
-| Cordys model | `/Users/tomriddle1/Dropbox/Octopus_Boss_V2.fbx` | `e51ac165292525291714505341661067dc56022b20dc52bb50b9f1b0875d8` | Existing `res://art/deep_zone/Octopus_Boss.fbx`, same SHA, 12,985,388 bytes | Prologue presentation owner only. Campaign Cordys remains deferred. Suppress/repair the bright-line primitive after visual proof. |
+| Cordys model | `/Users/tomriddle1/Dropbox/Octopus_Boss_V2.fbx` | `e51ac165292525291714505341661067dc56022b20dc52d7aa29ccdf2d491792` | Existing `res://art/deep_zone/Octopus_Boss.fbx`, same SHA, 12,985,388 bytes | Prologue presentation owner only. Campaign Cordys remains deferred. Suppress/repair the bright-line primitive after visual proof. |
 | Exploration ambience | Phoenix canonical ZIP member `Underwater Exploration Ambience (LOOP).wav` | `7d535afb8929b12cfc8148479b6ebc2b900c57dbd8e87960777764ef26ba8543` | Existing `res://audio/music/exploration_loop.ogg`, SHA `5af14408aa0bb8c8dfc9290c87afef214b4d07fe4e765ae6641cdaf5859a42f8` | Preserve ordinary PR #96 owner. Prologue applies authored gain only. |
 | Angler Battle intro | Phoenix canonical ZIP member `Underwater Battle Theme 1 (INTRO).wav` | `e08f5bdfce52fdf75006fc403ce449b72b7677c815d83fe26c563d03710eae08` | Existing `res://audio/music/battle_intro.ogg`, SHA `9e7dfbd99c85214233cbc47c499076f4622e8deec5a009e697461dd1e99857e4` | Existing normal Battle owner; prologue uses the same intro. |
 | Angler Battle loop | Phoenix canonical ZIP member `Underwater Battle Theme 2 (LOOP).wav` | `8acd24916c39782b02e804ef042f174dad175a71e38edc6e4a9ac12f5b308066` | Existing `res://audio/music/battle_loop.ogg`, SHA `545242b724a36055b5631df2fd89aad7a66ae66f71ca46060f954dea0245dadd` | Existing normal Battle owner; prologue applies a safe fallback trim if reached. |
-| Cordys music intro | Phoenix canonical ZIP member `Underwater Final Boss 1 (INTRO).wav` | `122544c04a6874ecc9d24468160950e02a70b2e7e5d933273e354efcc6d4dd91` | Derive one web OGG in Phase A; runtime SHA/size pending | Cordys leitmotif in prologue; future campaign fight reuses the canonical cue. Old DEMO MP3 is reference-only. |
-| Cordys music loop | Phoenix canonical ZIP member `Underwater Final Boss 2 (LOOP).wav` | `20020af1293e4fe1736078446b8b84447b127283930d77b52bb50b9f1b0875d8` | Derive one web OGG in Phase A; runtime SHA/size pending | Safe delayed-player fallback and future campaign fight. |
+| Cordys music intro | Phoenix canonical ZIP member `Underwater Final Boss 1 (INTRO).wav` | `122544c04a6874ecc9d24468160950e02a70b2e7e5d933273e354efcc6d4dd91` | `res://audio/music/final_boss_intro.ogg`, SHA `e00bd3d8601cffad0fd9d2232853ceefcaa974aa06b0d924a4208cdf8f9c675f`, 317,965 bytes | Cordys leitmotif in prologue; future campaign fight reuses the canonical cue. Old DEMO MP3 is reference-only. |
+| Cordys music loop | Phoenix canonical ZIP member `Underwater Final Boss 2 (LOOP).wav` | `20020af1293e4fe1736078446b8b84447b127283930d77b52bb50b9f1b0875d8` | `res://audio/music/final_boss_loop.ogg`, SHA `dfa5e61d103c53b9420dc58085079684a5dd2d25e2fde835ef37bba45f14eda4`, 2,022,093 bytes | Safe delayed-player fallback and future campaign fight. |
 | Finishing impact candidate | Glassgoat/Sonniss `Heavy Sci-Fi Hit_HW 09.wav` recorded in PR #96 manifest | `b93255074207c4990dd103d176f67d93967530e09e2f8ab53164941c437b1477` | Existing `res://audio/sfx/combat/heavy_hit.ogg`, SHA `f1d9f767c7191694875075142fc78684cb0138d59c8f25c6c44a654612241721`, 53,904 bytes | Candidate only until browser audition proves timing and mix. Do not add a duplicate. |
 
 ## Measured media boundary
@@ -29,10 +29,29 @@ metadata are never runtime inputs.
 | Final Boss source loop | 90.353 s | PCM WAV | -14.6 LUFS, -1.0 dBFS peak; runtime playback trim near -4.5 dB. |
 | Heavy-hit runtime OGG | 4.900 s | Ogg Vorbis one-shot | -26.3 LUFS, -10.0 dBFS peak. |
 
+## 2026-10-03 Glassgoat character deliveries
+
+The Dropbox files below are useful authored-animation sources, but are not
+safe whole-file replacements for the current runtime rigs. Their geometry and
+bounds match the corresponding existing character, while their clip sets are
+purposefully trimmed and would remove locomotion/reaction/win clips required
+by `Cast` if copied over unchanged.
+
+| Delivery | SHA-256 / size | Imported contents | Decision for this PR |
+| --- | --- | --- | --- |
+| `/Users/tomriddle1/Dropbox/Max.fbx` | `cee7fc9b79ad35531e9a78b0d2372b2dba9c53d0e09fe2e83f6839a974a5a977`, 10,790,044 bytes | Same 7-mesh/7-material Maxilani geometry; 13 clips, including new `Riptide Slash` and `Swift Slash`. Current runtime file has 60 clips. | Preserve as an animation-intake candidate. Do not replace `Scuba_Rigged.fbx` during the opening work. |
+| `/Users/tomriddle1/Dropbox/Musashi.fbx` | `f78fb38418032c421b4a826f874f9573e8d05c1d4f010f21bed695f21de887b7`, 17,245,964 bytes | Same 1-mesh/1-material Musashi geometry; 24 clips, including new `Precise Jab`, `Silt`, and `Exploit Opening`. Current runtime file has 59 clips. | Preserve as an animation-intake candidate. Do not replace `Prototype1_Rigged.fbx` during the opening work. |
+| `/Users/tomriddle1/Dropbox/Buxky.fbx` | `deadfbc96217f1fd5ae03cde371f9a39145d28cbb5fbda7ae84fb53623ce1afb`, 28,820,204 bytes | Same 1-mesh/1-material Bucky geometry; 42 clips, including new `Guard Break`, `Heavy Slam`, `Mending Current`, and `Tidal Revival`. Current runtime file has 55 clips. | Preserve as an animation-intake candidate. Do not replace `PrototypeV_Rigged.fbx` during the opening work. |
+
+If these moves are admitted later, extract or merge only the approved actions,
+then rerun the complete `Cast` clip, animation-motion, world-swim, and battle
+presentation gates. File replacement without that reconciliation is rejected.
+
 ## Required intake evidence before runtime ownership
 
 - Final Boss derivatives: canonical source digest, command/settings, duration,
-  runtime digest, package size, signal-edge analysis, and listening approval.
+  runtime digest, package size, and signal-edge analysis are recorded. Browser
+  listening approval remains required.
 - Octopus: mesh/material/skeleton/clip inventory, measured bounds, selected
   reveal/idle/hit/finish captures, authored-front evidence, and bright-line
   disposition.
@@ -46,6 +65,19 @@ metadata are never runtime inputs.
 - Original animation-only Octopus FBX: superseded reference.
 - Dropbox-root music duplicates when the canonical ZIP contains the same file.
 - Any second Mermaid OGV copied only to give the opening a different filename.
+- The 2026-10-03 Max/Musashi/Buxky FBXs as whole-file runtime replacements;
+  they are narrower action deliveries, not complete superseding rigs.
+
+## Final Boss derivative record
+
+The two canonical WAV members were extracted directly from Phoenix's ZIP and
+encoded with FFmpeg's native Vorbis encoder at 44.1 kHz stereo, quality 5:
+
+`ffmpeg -i <canonical-wav> -ar 44100 -ac 2 -c:a vorbis -strict -2 -q:a 5 <runtime-ogg>`
+
+No normalization, fade, crossfade, or source edit was applied. Decoded edge
+measurements are kept in `docs/audio-edge-audit.md`; authored playback gain is
+owned by `UnderwaterAudioManager`, independently of the player's Music slider.
 
 ## Credits and permission boundary
 

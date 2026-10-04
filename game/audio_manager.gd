@@ -18,6 +18,8 @@ const TITLE_LOOP: AudioStream = preload("res://audio/music/title_loop.ogg")
 const VICTORY_CANDIDATE_INTRO: AudioStream = preload("res://audio/music/victory_candidate_intro.ogg")
 const VICTORY_LOOP: AudioStream = preload("res://audio/music/victory_loop.ogg")
 const GAME_OVER: AudioStream = preload("res://audio/music/game_over.ogg")
+const FINAL_BOSS_INTRO: AudioStream = preload("res://audio/music/final_boss_intro.ogg")
+const FINAL_BOSS_LOOP: AudioStream = preload("res://audio/music/final_boss_loop.ogg")
 const UI_HOVER: AudioStream = preload("res://audio/sfx/ui/hover.wav")
 const UI_CLICK: AudioStream = preload("res://audio/sfx/ui/click.wav")
 const UI_START_GAME: AudioStream = preload("res://audio/sfx/ui/start_game.wav")
@@ -37,6 +39,9 @@ var _cue_id := ""
 var _phase := "stopped"
 var _intro_stream: AudioStream
 var _loop_stream: AudioStream
+var _intro_gain_db := 0.0
+var _loop_gain_db := 0.0
+var _active_gain_db := 0.0
 var _transition_trace: Array[String] = []
 var _sfx_event_trace: Array[String] = []
 var settings_path := "user://audio.cfg"
@@ -75,20 +80,35 @@ func release_streams_for_shutdown() -> void:
 	_loop_stream = null
 
 func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) -> void:
+	play_authored_music_sequence(cue_id, intro, loop, 0.0, 0.0)
+
+# The authored trim is local to a cue and composes with the player's Music bus
+# setting. It must never rewrite the persistent volume slider: the opening can
+# therefore be intentionally quieter without making the rest of the game quiet.
+func play_authored_music_sequence(
+		cue_id: String,
+		intro: AudioStream,
+		loop: AudioStream,
+		intro_gain_db: float,
+		loop_gain_db: float) -> void:
 	_ensure_players()
 	if cue_id == _cue_id and _phase != "stopped":
 		return
 	stop_music()
 	_cue_id = cue_id
+	_intro_gain_db = intro_gain_db
+	_loop_gain_db = loop_gain_db
 	_intro_stream = _non_looping_copy(intro)
 	_loop_stream = _looping_copy(loop)
 	if _intro_stream != null:
 		_phase = "intro"
+		_apply_active_music_gain(_intro_gain_db)
 		_music_player.stream = _intro_stream
 		_start_player(_music_player)
 		_record_transition()
 	elif _loop_stream != null:
 		_phase = "loop"
+		_apply_active_music_gain(_loop_gain_db)
 		_music_player.stream = _loop_stream
 		_start_player(_music_player)
 		_record_transition()
@@ -130,6 +150,15 @@ func play_victory_music() -> void:
 func play_game_over_music() -> void:
 	play_music_once("game_over", GAME_OVER)
 
+func play_prologue_exploration_music() -> void:
+	play_authored_music_sequence("prologue_exploration", null, EXPLORATION_LOOP, -7.0, -7.0)
+
+func play_prologue_battle_music() -> void:
+	play_authored_music_sequence("prologue_battle", BATTLE_INTRO, BATTLE_LOOP, 0.0, -7.0)
+
+func play_cordys_music() -> void:
+	play_authored_music_sequence("cordys", FINAL_BOSS_INTRO, FINAL_BOSS_LOOP, -1.0, -4.5)
+
 func stop_music() -> void:
 	_ensure_players()
 	_music_player.stop()
@@ -138,6 +167,9 @@ func stop_music() -> void:
 	_phase = "stopped"
 	_intro_stream = null
 	_loop_stream = null
+	_intro_gain_db = 0.0
+	_loop_gain_db = 0.0
+	_apply_active_music_gain(0.0)
 
 # Public because this is the semantic production callback connected to the
 # AudioStreamPlayer's `finished` signal. Tests drive the same transition
@@ -149,6 +181,7 @@ func advance_music_after_stream_finished() -> void:
 	if _phase != "intro" or _loop_stream == null:
 		return
 	_phase = "loop"
+	_apply_active_music_gain(_loop_gain_db)
 	_music_player.stream = _loop_stream
 	_start_player(_music_player)
 	_record_transition()
@@ -159,6 +192,13 @@ func get_music_state() -> Dictionary:
 		"phase": _phase,
 		"playing": _phase != "stopped",
 		"looping": _phase == "loop",
+	}
+
+func get_music_gain_state() -> Dictionary:
+	return {
+		"intro_db": _intro_gain_db,
+		"loop_db": _loop_gain_db,
+		"active_db": _active_gain_db,
 	}
 
 func get_music_transition_trace() -> Array[String]:
@@ -265,6 +305,11 @@ func _apply_bus_settings(bus_name: String, volume: float, muted: bool) -> void:
 		return
 	AudioServer.set_bus_volume_db(index, linear_to_db(maxf(volume, 0.0001)))
 	AudioServer.set_bus_mute(index, muted)
+
+func _apply_active_music_gain(value_db: float) -> void:
+	_active_gain_db = value_db
+	if is_instance_valid(_music_player):
+		_music_player.volume_db = value_db
 
 func _play_sfx(event_id: String, stream: AudioStream) -> void:
 	_ensure_players()
