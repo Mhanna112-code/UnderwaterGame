@@ -873,7 +873,7 @@ func _update_encounter_status(inside: bool) -> void:
 # room side. Standing next to it shows "Press E to interact"; E opens the
 # switch minigame modal (SwitchMinigameModal), and Shift+E is the developer
 # toggle for the room's random encounters.
-const SWITCH_REACH := 2.5
+const SWITCH_REACH := 2.0
 var _switch_node: StaticBody3D
 var _switch_prompt: Label
 
@@ -972,6 +972,8 @@ func _diver_near_switch() -> bool:
 # White "Press E to interact" just below the banner, while next to it.
 func _update_room_switch() -> void:
 	var poster := _poster_in_reach()
+	if not _poster_beats_switch(poster):
+		poster = null
 	for p in _posters:
 		p.set_highlight(p == poster)
 	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _secret_entrance_in_reach() or _vortex_chest_in_reach() or _split_rock_in_reach()
@@ -995,7 +997,7 @@ var _switch_modal: SwitchMinigameModal
 # the stretch north of Box13. Each shows a different random diver and has a
 # different number 1-3 (poster_clues). In reach: "Press E to interact" and
 # the poster lights up; E opens it as a PosterModal.
-const POSTER_REACH := 2.5
+const POSTER_REACH := 2.0
 const POSTER_CENTER_HEIGHT := 1.7   # above the diver's swim height
 var _posters: Array[MazePoster] = []
 var _poster_modal: PosterModal
@@ -1063,6 +1065,19 @@ func _poster_spot_on(wall: CSGBox3D, toward: Vector3, t: float) -> Array:
 	var pos := along + normal * (wall.size.z * 0.5 + 0.03)
 	pos.y = ($DiverEntry as Node3D).global_position.y + POSTER_CENTER_HEIGHT
 	return [pos, normal]
+
+# The poster beside the switch is close enough that both can be in reach:
+# whichever is nearer to the diver is the one E (and the highlight) goes to.
+func _poster_beats_switch(poster: MazePoster) -> bool:
+	if poster == null:
+		return false
+	if not _diver_near_switch() or _switch_puzzle_done():
+		return true
+	var to_poster := poster.global_position - _diver.global_position
+	var to_switch := _switch_node.global_position - _diver.global_position
+	to_poster.y = 0.0
+	to_switch.y = 0.0
+	return to_poster.length() < to_switch.length()
 
 # The poster the active diver is within reach of, in front of it; or null.
 func _poster_in_reach() -> MazePoster:
@@ -4220,7 +4235,7 @@ func _handle_e(e: InputEventKey) -> void:
 		_announce("This rock looks broken in half. I wonder if something could split it open...", 5.0)
 	elif _diver_near_switch() and (e as InputEventKey).shift_pressed:
 		_toggle_room_encounters()
-	elif _diver_near_switch() and not _switch_puzzle_done():
+	elif _diver_near_switch() and not _switch_puzzle_done() and not _poster_beats_switch(_poster_in_reach()):
 		_open_switch_minigame()
 	elif _poster_in_reach() != null:
 		_open_poster(_poster_in_reach())
