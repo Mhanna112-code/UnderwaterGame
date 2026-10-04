@@ -23,16 +23,26 @@ func _initialize() -> void:
 		_slot_backup = previous.get_buffer(previous.get_length())
 	world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	world.skip_intro_for_test = true
+	# Optional training is available after recovery, never before the prologue.
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = false
 	root.add_child(world)
 	started_at = Time.get_ticks_msec()
 
 func _process(_delta: float) -> bool:
 	if not moved_into_beam:
-		if world.title_screen == null or world.divers.is_empty() or world.light_beam == null:
+		if world.title_screen == null or world.divers.is_empty():
 			return false
 		# Use the same New Game signal a player invokes. skip_intro_for_test
 		# bypasses only the draft narration so this gate can reach the world.
-		world.title_screen.new_game_chosen.emit(2)
+		# Load the real recovered milestone to rebuild the voluntary column.
+		world.route_state.set_objective("")
+		SaveManager.write_slot(2, world._serialize_state())
+		world._on_title_load_game(2)
+		if world.light_beam == null:
+			findings.append("BEAM SOFTLOCK: recovered save has no optional column")
+			return _report()
 		var d: Diver = world.divers[world.active] as Diver
 		d.global_position = Vector3(
 			world.light_beam.global_position.x,
