@@ -1,5 +1,17 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: current exact recovery-design artifact
+
+Runtime `1fde43a` is hosted at the isolated `hhtn0tdt5` deployment. Downloaded
+game bytes/hash match the clean export. The first full browser run uses the
+new recovery card, genuine Continue, complete films and normal combat choices.
+Actual first control: 140.139 seconds raw / 120.454 engaged, with 19.685 seconds
+of deliberate idle/look excluded. Subsequent world screenshot/OCR adds 2.177
+seconds, recorded separately. The 120-second gate **fails**; it is not rounded
+away or hidden behind the successful visual/functional checks. No stable alias
+or public-main promotion yet. Full aggregate, fresh spatial renders and final
+recovery rechecks remain pending for this source.
+
 ## 2026-10-04: rejecting green fixture snapshots
 
 Full 0d0b9b0 aggregate: 127 gates, five failed. Route preview and roster factory

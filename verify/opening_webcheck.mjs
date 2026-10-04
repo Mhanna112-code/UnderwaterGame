@@ -110,13 +110,20 @@ const expectShallows = name => {
   if (!/Shallows.*stronger/i.test(text)) throw new Error('SHALLOW-001 normal recovered/loaded world lacks visible Shallows purpose: ' + text);
   console.log('SHALLOWS VIEW|' + name + '|' + text.replaceAll('\n', ' | '));
 };
+let recoveryCaptureAttempt = 0;
 const clickRecoveryAction = async (action, name) => {
   // REC-004: presentation may move the button. Click its real rendered label,
   // never a coordinate inherited from the old blank recovery screen.
-  await page.screenshot({ path: path.join(output, name + '.png') });
-  const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, name + '.png')], { encoding: 'utf8' }));
+  // A successful click can remove the card before its console event reaches
+  // this process. A retry must not overwrite the actual clicked-card evidence
+  // with that later blank transition. Retain every attempt and promote only
+  // the screenshot whose visible label supplied the actual mouse coordinate.
+  const captured = path.join(output, `${name}-attempt-${++recoveryCaptureAttempt}.png`);
+  await page.screenshot({ path: captured });
+  const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [captured], { encoding: 'utf8' }));
   const row = rows.find(value => value.text.trim() === action);
   if (!row) return false;
+  fs.copyFileSync(captured, path.join(output, name + '.png'));
   await page.mouse.click(row.x, row.y);
   return true;
 };

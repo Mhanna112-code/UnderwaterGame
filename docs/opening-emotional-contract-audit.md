@@ -76,6 +76,18 @@ automation cannot prove that a player feels hope, dread or determination.
 
 ## Execution ledger
 
+- Current exported runtime is `1fde43a818a1bf7b969798bf3c56678d4a40d68a`,
+  served by `underwatergame-hhtn0tdt5-immortaldemongods-projects.vercel.app`.
+  Downloaded `index.pck` matches 121,554,920 bytes / SHA-256
+  `afef8d00cf1494a1f407a4264dfa2e7b8d80951122e2c146db073dc0e8b9f942`.
+  PR #98 is a draft against PR #96, not main. The stable alias has not moved.
+  Its first corrected-observer full browser run reaches actual control in
+  140.139 seconds raw / 120.454 engaged, excluding 19.685 seconds of deliberate
+  idle/look. The subsequent 2.177-second world screenshot/OCR remains separately
+  recorded. This is a **timing failure**, not rounded into a pass. The new card
+  is readable and Continue releases normal play; final aggregate and subsequent
+  recovery checks are still running. Do not interpret earlier green evidence as
+  current whole-candidate acceptance.
 - Expanded 0d0b9b0 aggregate completed 127 native/rendered checks with five
   failed gates. Retained as a failed round, not called all green: one stale
   one-frame deep-water dispatch witness, one removed private roster factory,
