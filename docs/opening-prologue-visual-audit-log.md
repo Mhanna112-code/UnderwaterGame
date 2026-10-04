@@ -46,7 +46,8 @@ export, or attractive isolated screenshot cannot produce the final PASS.
    leak, correct Music control.
 4. Transition: no stacked audio, black hang, title flash, or world pop.
 5. Quiet spawn: exploration ambience restrained; controls and camera available.
-6. Trigger: swim in multiple directions and test idle fallback.
+6. Trigger: prolonged idle and camera-only input must stay free; then swim in
+   multiple directions and verify at least four seconds of actual movement.
 7. Angler: every visible attack, actor framing, readable UI, restrained audio,
    no rewards, no enemy-first damage.
 8. Interruption: no victory fanfare/world flicker; clear false-relief beat.

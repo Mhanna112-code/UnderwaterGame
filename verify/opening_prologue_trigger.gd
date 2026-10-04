@@ -1,58 +1,49 @@
-# Direction-independent opening encounter trigger.
-#
-# Bugs caught:
-# - OPEN-007/026: heading locks, premature interruption, vertical-only trigger,
-#   missing idle fallback, or duplicate encounters.
-#
-# Usage: godot --headless --path . --script verify/opening_prologue_trigger.gd
+# OPEN-007/026/035: no idle/blocked/passive trigger; four seconds of actual
+# requested swimming in any horizontal direction starts exactly one Angler.
 extends SceneTree
 
-const TRIGGER_PATH := "res://game/opening_prologue_trigger.gd"
-
+const Trigger := preload("res://game/opening_prologue_trigger.gd")
 var findings: Array[String] = []
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	if not FileAccess.file_exists(TRIGGER_PATH):
-		findings.append("OPEN-007 opening trigger owner is missing")
-		_finish()
-		return
-	var trigger_script := load(TRIGGER_PATH) as Script
+	# Heading/frame-rate/prior-idle property matrix. Expected outcomes describe
+	# usable control, not the trigger's internal elapsed fields.
 	for degrees in range(0, 360, 15):
-		var radians := deg_to_rad(float(degrees))
-		var direction := Vector3(cos(radians), 0.0, sin(radians))
-		var trigger = trigger_script.new()
-		trigger.reset(Vector3(8.0, 2.0, -3.0))
-		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 2.99, 0.1),
-			"OPEN-007 direction %d triggered below movement threshold" % degrees)
-		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 3.01, 0.1),
-			"OPEN-026 direction %d interrupted exploration at 0.2 seconds" % degrees)
-		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 8.0, 3.7),
-			"OPEN-026 direction %d interrupted exploration before four seconds" % degrees)
-		_expect(trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 3.01, 0.11),
-			"OPEN-007 direction %d failed above movement threshold" % degrees)
-		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 8.0, 10.0),
-			"OPEN-007 direction %d triggered more than once" % degrees)
+		for dt in [0.016, 0.033, 0.1, 0.2]:
+			for prior_idle in [0.0, 7.1, 60.0, 3600.0]:
+				var trigger := Trigger.new()
+				var origin := Vector3(8.0, 2.0, -3.0)
+				trigger.reset(origin)
+				_expect(not trigger.update(origin, prior_idle, false), "OPEN-035 idle time starts combat")
+				var radians := deg_to_rad(float(degrees))
+				var direction := Vector3(cos(radians), 0.0, sin(radians))
+				var seconds := 0.0
+				var fired := false
+				while seconds < 4.3 and not fired:
+					seconds += dt
+					fired = trigger.update(origin + direction * seconds * 5.0, dt, true)
+					if seconds < 3.99:
+						_expect(not fired, "OPEN-035 idle time consumed the four-second swimming window")
+				_expect(fired, "OPEN-007 requested swim did not trigger: heading=%d dt=%.3f idle=%.1f" % [degrees, dt, prior_idle])
+				_expect(not trigger.update(origin + direction * 40.0, 10.0, true), "OPEN-007 fired more than once")
 
-	var vertical = trigger_script.new()
-	vertical.reset(Vector3.ZERO)
-	_expect(not vertical.update(Vector3(0.0, 20.0, 0.0), 4.1),
-		"OPEN-007 vertical-only movement incorrectly counts as exploration")
+	var blocked := Trigger.new()
+	blocked.reset(Vector3.ZERO)
+	_expect(not blocked.update(Vector3.ZERO, 60.0, true), "OPEN-035 blocked input starts combat")
+	_expect(not blocked.update(Vector3(0.0, 20.0, 0.0), 60.0, true), "OPEN-007 vertical-only motion starts combat")
+	_expect(not blocked.update(Vector3(50.0, 0.0, 0.0), 60.0, false), "OPEN-035 passive movement starts combat")
+	_expect(not blocked.update(Vector3(51.0, 0.0, 0.0), 0.2, true), "OPEN-035 blocked/passive time banks the swimming window")
 
-	var short_swim = trigger_script.new()
+	var short_swim := Trigger.new()
 	short_swim.reset(Vector3.ZERO)
-	_expect(not short_swim.update(Vector3(2.99, 0.0, 0.0), 4.1),
-		"OPEN-007 minimum exploration time incorrectly replaces movement threshold")
-	_expect(short_swim.update(Vector3(3.01, 0.0, 0.0), 0.1),
-		"OPEN-007 meaningful movement after exploration window does not trigger")
-
-	var idle = trigger_script.new()
-	idle.reset(Vector3.ZERO)
-	_expect(not idle.update(Vector3.ZERO, 6.9), "OPEN-007 idle fallback fired too early")
-	_expect(idle.update(Vector3.ZERO, 0.2), "OPEN-007 idle fallback did not fire near 7 seconds")
-	_expect(not idle.update(Vector3.ZERO, 10.0), "OPEN-007 idle fallback fired twice")
+	for step in range(1, 51):
+		_expect(not short_swim.update(Vector3(step * 0.05, 0.0, 0.0), 0.1, true), "OPEN-007 below-three-metre swimming starts combat")
+	_expect(short_swim.update(Vector3(3.1, 0.0, 0.0), 0.1, true), "OPEN-007 sufficient swimming and displacement do not trigger")
+	short_swim.reset(Vector3(3.1, 0.0, 0.0))
+	_expect(not short_swim.update(Vector3(6.2, 0.0, 0.0), 0.1, true), "OPEN-035 reset retained previous swimming time")
 	_finish()
 
 func _expect(condition: bool, message: String) -> void:

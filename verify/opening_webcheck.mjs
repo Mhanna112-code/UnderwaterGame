@@ -91,7 +91,7 @@ try {
   await waitPhase('spawn_exploration');
   if (timestamps.spawn_exploration - timestamps.opening_video < 33000) throw new Error('Mermaid opening was shortened instead of completing playback');
   // Keep keydown adjacent to the real handoff. A screenshot readback here
-  // can consume several seconds and turn a movement test into idle fallback.
+  // can consume several seconds and hide the actual movement interval.
   await page.keyboard.down('w');
   freeSwimKeydown = Date.now();
   if (freeSwimKeydown - timestamps.spawn_exploration >= 4000) throw new Error('Harness sent movement only after the exploration window');
@@ -99,7 +99,7 @@ try {
   await page.keyboard.up('w');
   freeSwimMs = timestamps.angler - timestamps.spawn_exploration;
   if (freeSwimMs < 4000) throw new Error('Free-swim interval interrupts before four seconds');
-  // Wall time alone cannot identify movement vs idle under renderer slowdown.
+  // Wall time alone cannot prove displacement under renderer slowdown.
   // Native displacement plus the dedicated continuous browser recording prove
   // actual swimming; this complete-flow gate pins the minimum and two-minute cap.
   await page.waitForTimeout(700);

@@ -1,14 +1,14 @@
-// OPEN-026: normal hosted movie handoff and actual held W, recorded continuously.
-// Do not put blocking screenshots between control restoration and keydown:
-// GPU readback can consume the exploration interval and silently test idle instead.
-import { chromium } from 'playwright';
+// OPEN-026/035: normal full movie, prolonged idle/camera-only input, then
+// actual held W. Record continuously; never inject a phase or result.
+import { chromium, webkit } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const target = process.argv[2];
 const output = process.argv[3] || '/tmp/opening-free-swim-video';
 fs.mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({
+const browserEngine = process.env.OPENING_BROWSER_ENGINE || 'chromium';
+const browser = browserEngine === 'webkit' ? await webkit.launch() : await chromium.launch({
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
   args: ['--use-gl=angle', `--use-angle=${process.env.OPENING_BROWSER_GPU || (process.platform === 'darwin' ? 'metal' : 'swiftshader')}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 });
@@ -31,20 +31,31 @@ const waitPhase = async (phase, timeout = 45000) => {
   while (!timestamps[phase] && Date.now() < deadline) await page.waitForTimeout(20);
   if (!timestamps[phase]) throw new Error(`Missing ${phase}`);
 };
-let failure, keydownAt, recording;
+let failure, keydownAt, idleSeconds, swimmingSeconds, recording;
 try {
   await page.goto(target, { waitUntil: 'load' });
   await page.waitForTimeout(25000);
   await page.mouse.click(640, 367);
   await waitPhase('opening_video');
   await waitPhase('spawn_exploration');
+  await page.waitForTimeout(15000);
+  idleSeconds = (Date.now() - timestamps.spawn_exploration) / 1000;
+  await page.screenshot({ path: path.join(output, 'idle-world.png') });
+  if (timestamps.angler) throw new Error('OPEN-035 Angler started while stationary before any swimming');
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(800);
+  await page.keyboard.up('ArrowRight');
+  await page.keyboard.down('ArrowLeft');
+  await page.waitForTimeout(800);
+  await page.keyboard.up('ArrowLeft');
+  if (timestamps.angler) throw new Error('OPEN-035 camera-only input started the Angler');
   await page.keyboard.down('w');
   keydownAt = Date.now();
   await waitPhase('angler', 12000);
   await page.keyboard.up('w');
-  const seconds = (timestamps.angler - timestamps.spawn_exploration) / 1000;
-  if (keydownAt - timestamps.spawn_exploration >= 4000) throw new Error('Harness sent movement only after the exploration window');
-  if (seconds < 4 || seconds >= 7) throw new Error(`Movement interval ${seconds}s is premature or only proves idle fallback`);
+  swimmingSeconds = (timestamps.angler - keydownAt) / 1000;
+  if (swimmingSeconds < 4 || swimmingSeconds >= 10) throw new Error(`OPEN-035 actual swimming interval ${swimmingSeconds}s is premature or stalls`);
+  await page.screenshot({ path: path.join(output, 'after-swimming-angler.png') });
   if (errors.length) throw new Error(errors.join('\n'));
   await page.waitForTimeout(500);
 } catch (error) { failure = String(error); }
@@ -52,9 +63,9 @@ finally {
   await context.close();
   recording = await page.video().path();
   fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({
-    target, recording, recordingStarted, keydownAt, timestamps, errors, failure: failure || null,
+    target, browserEngine, recording, recordingStarted, keydownAt, idleSeconds, swimmingSeconds, timestamps, errors, failure: failure || null,
   }, null, 2));
   await browser.close();
 }
 if (failure) { console.error(failure); process.exit(1); }
-console.log('OPENING FREE SWIM WEB: immediate real key input and bounded movement-trigger interval clean; inspect continuous recording for visible displacement');
+console.log('OPENING FREE SWIM WEB: idle/camera-only stays free; late actual swimming starts one Angler after four seconds; inspect continuous recording for displacement');

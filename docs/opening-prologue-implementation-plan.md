@@ -41,7 +41,7 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | 0: clean child branch | complete | Remote PR #96 head `27a5b525…`; clean child worktree; initial diff contains only these four planning contracts. |
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
 | B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Browser EOF defect repaired in `b5b3e86`; ordinary full split-movie browser journey completes in 118.711 s with real mouse input. Wide/narrow/tall final candidate and listening acceptance remain. |
-| C: quiet spawn and Angler | in progress | Direction/idle matrix and protected World handoff green; all four displayed Maxilani attacks resolve through real buttons/target confirmation/animation and kill once; no rewards or normal victory. Public visual journey pending. |
+| C: quiet spawn and Angler | in progress | User's stationary-Angler report caught the old seven-second idle fallback. Current correction removes it and measures four seconds of requested, actual horizontal swimming; idle, camera-only, blocked input and passive motion cannot consume that window. Native real-input idle/look/swim and direction/frame-time matrix pass; exact hosted export pending. |
 | D: Cordys interruption | in progress | Same-Battle negligible-hit/defeat and split cinematic journey green. Idle-only framing rejected; fixed orthographic action-envelope view and selected Poison Breath now pass moving-skin projection at all three sizes. Cached envelope replaces a measured 3-second reveal scan. Complete final browser/mix review remains. |
 | E: recovery and optional training | in progress | Recovery/save and voluntary training Skip/Retry/Return gates pass; Octopus cinematic remainder precedes motivation. Native actual enemy death/Restart/Load, failed writes, invalid loads, cross-slot write denial, and healed training checkpoints pass. Web durability barrier passes rejected IndexedDB commit/Retry/cold Load. Hosted full opening (86.032 s), cold Load, two actual enemy-caused deaths, Restart and title Load pass without replay/errors; attrition fixture is documented, not campaign balance evidence. |
 | F: exact artifact and polish | in progress | Stable alias serves runtime `85e15cf`; unauthenticated metadata/PCK match the clean archive export. Rejected harness/bridge attempts and final browser proof are retained in checkpoint-regression evidence. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion and final zero-defect audit round remain. |
@@ -154,7 +154,7 @@ cover art (silent)
   -> temporary Mermaid Freak video (first completed viewing cannot skip)
   -> 250–500 ms transition space
   -> quiet free-swimming spawn with restrained exploration ambience
-  -> first meaningful movement, or idle fallback
+  -> at least four seconds of actual swimming, never an idle countdown
   -> one-Angler prologue battle
   -> one offensive player action defeats the Angler
   -> no victory fanfare; brief false-relief pause
@@ -275,8 +275,8 @@ recorded playtest finding, not ad hoc code edits.
 | Post-video space | 250–500 ms | Transition feels deliberate, not frozen. |
 | Prologue exploration trim | approximately `-7 dB` versus normal | Existing ambience remains present but feels quiet. |
 | Movement trigger | 2–4 m from recovery-safe spawn | Forward, backward, left, right, and diagonal movement all work. |
-| Minimum free-swim window | 4 s of active World time | Crossing the movement threshold cannot interrupt sooner; actual key input moves the diver. User review found the old distance-only trigger interrupted in under one second of swimming. |
-| Idle fallback | 6–8 s | A stationary player cannot stall the opening. |
+| Minimum free-swim window | 4 s of requested, actual horizontal swimming | Idle/camera-only time, passive drift and blocked input do not count. Crossing the distance threshold alone cannot interrupt sooner, including after a long wait. |
+| Idle behavior | wait indefinitely | A stationary player keeps control; no timed Angler fallback. This user correction supersedes the old seven-second fallback. |
 | Angler party/enemies | current party versus one Angler | Stage remains legible and resembles real combat. |
 | Angler actions | expose offensive actions only | Every visible choice lands and defeats it. |
 | Angler rewards | none | No progression data changes. |
@@ -287,7 +287,7 @@ recorded playtest finding, not ad hoc code edits.
 | Final Boss intro | approximately `0` to `-1 dB` | Cordys has a distinct musical identity without clipping. |
 | Final Boss loop | approximately `-4.5 dB` if reached | Intro-to-loop loudness remains perceptually stable. |
 | Post-impact silence | approximately 1 s | Defeat lands emotionally without reading as a hang. |
-| Total New Game to recovery | under 2 minutes | The hook does not become another opening barrier. |
+| Total New Game to recovery | under 2 minutes for an engaged run | The hook does not become another opening barrier. Deliberate player inactivity is not forcibly converted into combat. |
 
 ## Binding audio contract
 
@@ -375,7 +375,7 @@ Do not accept the prepared hull as a substitute for those moving-skin checks.
 | Boundary | Risk | Required proof |
 | --- | --- | --- |
 | Save files | Old save replay, new save ambiguity, transient state restore | Missing-field migration plus new-save and interrupted-state round trips. |
-| Time | Trigger never fires, timer fires twice, music reaches loud loop | Multi-direction/idle decision table with bounded waits. |
+| Time | Idle starts a fight, delayed swimming loses its window, trigger fires twice, music reaches loud loop | Multi-direction/frame-time/prior-idle matrix, actual idle/look/swim test and bounded engaged waits. |
 | Input | Video leaks movement, player cannot select the one action, beacon triggers accidentally | Real input at normal entry; spawn outside trigger volume. |
 | Scene ownership | Duplicate video/Battle/audio/UI or leaked objects | Owner counts through every transition and repeated teardown. |
 | Browser audio | Autoplay rejection, mute mismatch, stacked sources | Exact exported browser after New Game gesture at multiple settings. |
@@ -437,15 +437,17 @@ and does not change the lab video contract.
    tutorial arrow/camera capture.
 2. Suppress random encounters and progression triggers until the prologue is
    complete.
-3. Allow at least four seconds of controllable exploration before the
-   movement-distance trigger; retain a seven-second idle fallback and one-shot
-   guard. Measure actual key-driven displacement as well as phase timing.
+3. Require at least four seconds of actual requested horizontal swimming and
+   meaningful displacement before the one-shot trigger. Never start from idle
+   time. Looking around, blocked input and passive drift cannot bank that
+   window. Measure actual key-driven displacement as well as phase timing.
 4. Create an explicit prologue Angler configuration with offensive choices,
    guaranteed hit/lethal result, no enemy-first damage, and no rewards.
 5. Use Battle intro with a safe loop fallback. Suppress normal victory audio.
 
 **Stop gate:** real keys move the diver before combat, movement cannot trigger
-before the four-second window, all movement directions and idle work; every
+before four seconds of swimming, all horizontal directions work, and prolonged
+idle/camera-only input stays out of combat; every
 exposed action defeats the Angler; ordinary Anglers are unchanged; no
 reward/state leak or duplicate battle exists.
 
@@ -501,7 +503,7 @@ a zero-observed-defect round on the exact public artifact.
 | --- | --- | --- |
 | State/save | Round-trip and old/new/interrupted decision table | Reload at video, spawn, battle, defeat, recovery and completed boundaries. |
 | Video | Stream/digest/policy/owner/aspect lifecycle | Normal New Game playback at all target viewports with audio sync. |
-| Trigger | Direction/property invariant and idle fallback | Swim in visibly different directions without debug teleport. |
+| Trigger | Direction/frame-time/prior-idle invariant and real idle/look/late-swim negative path | Wait without moving, look around, then swim in visibly different directions without debug teleport. |
 | Angler | Differential prologue/ordinary behavior, no-reward invariant | Choose each visible offensive option and inspect staging/audio. |
 | Cordys | Mesh/skin/clip/facing/bounds and encounter-source gates | Inspect reveal, hit, finishing move, composite and bright-line behavior. |
 | Defeat/recovery | Special-result state and party restoration | Confirm the loss reads as authored, not broken or punitive. |
@@ -571,11 +573,13 @@ defects. Technical playback, layout, audio, and handoff defects still block.
 - Child PR is based on the confirmed PR #96 head with no unrelated changes.
 - Every admitted asset has provenance, digest, owner, runtime path, and web
   proof; no duplicate Mermaid or Final Boss source is packaged.
-- New Game to recovered control takes under two minutes.
+- An engaged New Game to recovered control takes under two minutes; idle time
+  does not force an encounter.
 - The old intro crawl and mandatory tutorial funnel are absent.
 - The temporary Mermaid opening is single-rendered, responsive, audible,
   volume-controlled, and correctly persisted.
-- Every direction and idle fallback reaches exactly one Angler encounter.
+- Four seconds of actual swimming in any horizontal direction reaches exactly
+  one Angler; standing still or looking around never starts it.
 - Every visible offensive choice defeats the prologue Angler; ordinary Angler
   behavior and all progression rewards remain unchanged.
 - Cordys visibly interrupts the victory, receives one registered negligible

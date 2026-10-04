@@ -98,8 +98,8 @@ run "Godot class cache: can direct gates resolve project scripts" prepare_godot_
 run "opening migration: do all durable milestones normalize interrupted phases" "$GODOT" --headless --path . --script verify/opening_prologue_state.gd
 run "opening video: are production and lab policies independent" "$GODOT" --headless --path . --script verify/opening_video.gd
 run "opening video persistence: do success and decoder failure restore safely" "$GODOT" --headless --path . --script verify/opening_video_world.gd
-run "opening trigger: does every horizontal direction and idle start once" "$GODOT" --headless --path . --script verify/opening_prologue_trigger.gd
-run "opening free swim: can real keyboard input explore before the Angler" "$GODOT" --headless --path . --script verify/opening_prologue_free_swim.gd
+run "opening trigger: does only actual horizontal swimming start once, without banking idle time" "$GODOT" --headless --path . --script verify/opening_prologue_trigger.gd
+run "opening free swim: do idle and camera-only stay free before four seconds of real swimming" "$GODOT" --headless --path . --script verify/opening_prologue_free_swim.gd
 run "opening world: are authored encounters protected and real-input reachable" "$GODOT" --headless --path . --script verify/opening_prologue_world.gd
 run "opening Angler: does every exposed move win without ordinary balance or rewards changing" "$GODOT" --headless --path . --script verify/prologue_angler.gd
 run "opening Cordys: does the skinned actor preserve authored poses and facing" "$GODOT" --headless --path . --script verify/prologue_octopus.gd

@@ -9,8 +9,16 @@ func _run() -> void:
 	root.add_child(world)
 	await process_frame
 	await world._on_title_new_game(918302)
-	world._update_prologue_trigger(0.4)
-	world._update_prologue_trigger(7.2)
+	var swim := InputEventKey.new()
+	swim.keycode = KEY_W
+	swim.physical_keycode = KEY_W
+	swim.pressed = true
+	Input.parse_input_event(swim)
+	var deadline := Time.get_ticks_msec() + 10000
+	while not world.battling and Time.get_ticks_msec() < deadline:
+		await physics_frame
+	swim.pressed = false
+	Input.parse_input_event(swim)
 	await process_frame
 	var fight := world.battle
 	await fight.reveal_prologue_octopus()

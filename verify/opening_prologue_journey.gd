@@ -45,8 +45,16 @@ func _run() -> void:
 		await process_frame
 	else:
 		await world._on_title_new_game(SLOT)
-	world.call("_update_prologue_trigger", 0.4)
-	world.call("_update_prologue_trigger", 7.2)
+	# Engage the actual swimming input, not the removed idle fallback or a
+	# private trigger/time jump. Keep the rest of this combat/save journey intact.
+	var swim := InputEventKey.new()
+	swim.keycode = KEY_W
+	swim.physical_keycode = KEY_W
+	swim.pressed = true
+	Input.parse_input_event(swim)
+	await _wait_phase(world, "angler", 10.0)
+	swim.pressed = false
+	Input.parse_input_event(swim)
 	await process_frame
 	if world.battle == null:
 		findings.append("OPEN-011 journey failed to start Angler")

@@ -613,7 +613,8 @@ func _update_prologue_trigger(dt: float) -> void:
 	if _prologue_spawn_delay > 0.0:
 		_prologue_spawn_delay = maxf(0.0, _prologue_spawn_delay - dt)
 		return
-	if _prologue_trigger.update((divers[active] as Diver).position, dt):
+	var swimming := _player_dir().length_squared() > 0.0 and not target_selector.selecting and not _transitioning_to_encounter
+	if _prologue_trigger.update((divers[active] as Diver).position, dt, swimming):
 		route_state.set_prologue_phase("angler")
 		route_state.set_encounter_source("prologue_angler")
 		_start_battle("", false, "angler", divers, false, false, "An Angler darts out of the murk.", true)

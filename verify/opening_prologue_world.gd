@@ -1,7 +1,7 @@
 # Quiet-spawn and protected-world integration.
 #
 # Bugs caught:
-# - OPEN-007: normal New Game never arms the movement/idle trigger or creates
+# - OPEN-007: normal New Game never arms the swimming trigger or creates
 #   duplicate prologue Battles.
 # - OPEN-008: the retired mandatory tutorial beam, random encounters, route
 #   systems, or camera capture compete before recovery.
@@ -39,10 +39,16 @@ func _run() -> void:
 	_expect(not world.battling, "OPEN-008 random encounter preempted incomplete prologue")
 
 	if world.has_method("_update_prologue_trigger"):
-		var diver := world.divers[world.active] as Diver
-		diver.position += Vector3(3.1, 0.0, 0.0)
-		world.call("_update_prologue_trigger", 0.4)
-		world.call("_update_prologue_trigger", 4.1)
+		var key := InputEventKey.new()
+		key.keycode = KEY_W
+		key.physical_keycode = KEY_W
+		key.pressed = true
+		Input.parse_input_event(key)
+		var deadline := Time.get_ticks_msec() + 10000
+		while not world.battling and Time.get_ticks_msec() < deadline:
+			await physics_frame
+		key.pressed = false
+		Input.parse_input_event(key)
 		await process_frame
 		_expect(world.battling and world.battle != null, "OPEN-007 movement did not start prologue Angler")
 		_expect(world.route_state.prologue_phase == "angler", "OPEN-007 Battle start did not publish Angler phase")
@@ -50,7 +56,8 @@ func _run() -> void:
 		if world.battle != null:
 			_expect(world.battle.prologue_angler_encounter, "OPEN-009 World started an ordinary Angler instead of prologue configuration")
 		var original_battle := world.battle
-		world.call("_update_prologue_trigger", 10.0)
+		await physics_frame
+		await physics_frame
 		_expect(world.battle == original_battle, "OPEN-007 repeated frames replaced/duplicated the prologue Battle")
 
 	world.queue_free()

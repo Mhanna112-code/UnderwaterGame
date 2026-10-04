@@ -3,30 +3,36 @@ extends RefCounted
 
 const MOVEMENT_DISTANCE := 3.0
 const MIN_EXPLORATION_SECONDS := 4.0
-const IDLE_SECONDS := 7.0
-
 var _origin := Vector3.ZERO
-var _elapsed := 0.0
+var _previous := Vector3.ZERO
+var _swimming_seconds := 0.0
 var _fired := false
 
 func reset(origin: Vector3) -> void:
 	_origin = origin
-	_elapsed = 0.0
+	_previous = origin
+	_swimming_seconds = 0.0
 	_fired = false
 
-func update(position: Vector3, delta: float) -> bool:
+func update(position: Vector3, delta: float, movement_requested: bool) -> bool:
 	if _fired:
 		return false
-	_elapsed += maxf(0.0, delta)
-	# Reaching three metres takes less than a second at normal swim speed.
-	# Preserve a usable exploration beat even when a key is already held as
-	# the video ends; distance alone must not immediately take control away.
-	if _elapsed < MIN_EXPLORATION_SECONDS:
+	var moved := Vector2(position.x, position.z).distance_to(
+		Vector2(_previous.x, _previous.z)
+	)
+	_previous = position
+	# Waiting, looking around, drifting, and pressing into a blocked collider
+	# must not spend the player's exploration beat. Count only requested swim
+	# input that actually changed the diver's horizontal position this frame.
+	if not movement_requested or moved <= 0.00001:
+		return false
+	_swimming_seconds += maxf(0.0, delta)
+	if _swimming_seconds < MIN_EXPLORATION_SECONDS:
 		return false
 	var horizontal_distance := Vector2(position.x, position.z).distance_to(
 		Vector2(_origin.x, _origin.z)
 	)
-	if horizontal_distance < MOVEMENT_DISTANCE and _elapsed < IDLE_SECONDS:
+	if horizontal_distance < MOVEMENT_DISTANCE:
 		return false
 	_fired = true
 	return true

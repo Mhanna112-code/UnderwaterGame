@@ -30,7 +30,7 @@ normal Game Over, and leaves the current tutorial available but optional.
 - File system: save-slot JSON and persisted audio settings.
 - Browser: trusted New Game gesture, WebAudio, Theora playback, canvas size,
   deployment/PCK retrieval.
-- Time: video completion, movement/idle trigger, tween/fade timing, intro/loop
+- Time: video completion, actual-swimming trigger, tween/fade timing, intro/loop
   handoff, deliberate recovery silence.
 - Input: world movement, attack selection, video policy, tutorial beacon,
   Retry/Return/Skip.
@@ -51,7 +51,7 @@ normal Game Over, and leaves the current tutorial available but optional.
 | OPEN-004 | Video is cropped, stretched, doubled, silent unexpectedly, or leaves world input live. | High: first player-visible surface looks broken. | Runtime-built CanvasLayer, viewport changes, separate audio player. | `opening_video.gd` structural invariant + `opening_video_world.gd` persistence + browser visual/input | green: owner/fallback/save; browser pending |
 | OPEN-005 | Video, exploration, Battle, victory, boss, or Game Over audio overlap or transition to the wrong cue. | High: recreates audiovisual overload. | Multiple async phase boundaries and a separate VideoStreamPlayer. | audio state trace + browser listening | Final Boss assets and authored intro/loop handoff green; complete journey/listening pending |
 | OPEN-006 | Saved Music/SFX settings are overwritten or do not affect the video independently. | High: user control is violated. | Authored cue gain and user bus gain can be conflated. | settings round-trip + differential mute table | local music trim vs persisted Music slider green; video mute table pending |
-| OPEN-007 | Swimming in one direction never triggers, idle stalls forever, or repeated frames start duplicate Anglers. | High: opening progression blocks. | Movement is camera-relative and checked every physics frame. | `opening_prologue_trigger.gd` direction matrix + `opening_prologue_world.gd` real owner | green; visual journey pending |
+| OPEN-007 | Swimming in one direction never triggers or repeated frames start duplicate Anglers. | High: opening progression blocks. | Movement is camera-relative and checked every physics frame. | `opening_prologue_trigger.gd` direction/frame-time/prior-idle matrix + `opening_prologue_world.gd` real owner | native green; OPEN-035 supersedes the old idle fallback |
 | OPEN-008 | Random encounter, save point, ability gate, or route event interrupts before recovery. | High: authored sequence is corrupted. | Existing World systems were gated by tutorial completion. | negative-path production-world gate | open |
 | OPEN-009 | A visible Angler option misses, deals zero, fails to kill, or allows the Angler to attack first. | High: promised one-action victory fails. | Real moves include non-damage/status choices and ACC/EVA. | decision table across every exposed move | open |
 | OPEN-010 | Prologue changes ordinary Angler stats/moves or grants XP/items/spells. | High: global balance/progression regression. | Reusing existing enemy/content tables invites shared mutation. | differential normal/prologue + no-reward invariant | open |
@@ -94,9 +94,9 @@ normal Game Over, and leaves the current tutorial available but optional.
 ### OPEN-007 — direction-independent one-shot trigger
 
 - **Type:** property/invariant.
-- **Description:** `opening trigger: any meaningful horizontal movement or idle fallback starts exactly one Angler — guards against direction lock and duplicate battles`
-- **Generator:** normalized horizontal vectors spanning the circle, distances below/above threshold, plus zero movement across fallback time.
-- **Assertion:** below threshold/no timeout starts zero; threshold or timeout starts exactly one; repeated frames remain one.
+- **Description:** `opening trigger: four seconds of actual requested horizontal swimming starts exactly one Angler; idle never does — guards against direction lock, stolen control and duplicate battles`
+- **Generator:** normalized horizontal vectors spanning the circle, four frame durations, four prior-idle durations, distances below/above threshold, and no-input/blocked/passive/vertical-only cases.
+- **Assertion:** idle/camera-only/blocked/passive input never starts combat or banks swimming time; enough actual swimming and displacement starts exactly one; repeated frames remain one.
 - **Self-critique:** it asserts public battle ownership/source, not a private distance helper, and therefore survives implementation changes.
 
 ### OPEN-008 — protected prologue
@@ -389,6 +389,51 @@ the seven-second idle fallback and the one-shot/direction-independent contract.
   inspected recording remain the decisive movement evidence.
 
 ## Approved split cinematic risks, 2026-10-03
+
+## User correction: no idle Angler, 2026-10-04
+
+OPEN-035: the opening Angler starts while the player is stationary, or starts
+almost immediately on their first swim after waiting. High blast radius: the
+promised playable exploration beat is consumed before the player tries input.
+Confirmed code cause: the trigger fires at seven elapsed seconds without any
+displacement; its four-second minimum also measures idle World time. Earlier
+tests deliberately required this fallback and therefore approved the reported
+behavior instead of guarding the user's intended freedom.
+
+Public interface: normal New Game, controllable spawn, movement/camera keys,
+public prologue phase and exactly one authored battle. Trigger owner accepts
+real position, frame duration and whether swim input is requested. IO boundaries:
+movie handoff, physics/input/time, actual collider-mediated movement. Branches:
+idle, camera-only, passive displacement, short movement, late first movement,
+obstructed input, active swimming in each horizontal direction, reset and fired.
+
+Test design: captured negative-path real-World test waits 15 seconds without
+swimming, turns the camera, then swims via real W input. Require no battle while
+idle/looking, at least four seconds of successful swimming before the Angler,
+actual displacement and exactly one authored encounter. Owner property matrix
+varies heading, frame duration and prior idle duration; no input or blocked
+input must not bank exploration time, while valid movement eventually fires.
+Self-critique: timer-only output fails both the idle and late-start assertions;
+flag-only 'movement' fails displacement. No actor teleport, forced result or
+private trigger call is used by the decisive real-World test. Owner tests pin
+semantics, not field names. Exported normal New Game repeats idle/look/swim
+with full movie playback and a continuous recording, then the complete web
+journey verifies the trigger change did not break save/restart integration.
+
+Skipped: vertical-only progression remains outside the existing horizontal
+trigger contract; post-opening random encounters and campaign balance are
+unchanged. Idle players are intentionally allowed to wait indefinitely. The
+two-minute opening target applies to an engaged run, not deliberate inactivity.
+
+Evaluation: native red reproduces Angler before any movement. The existing
+hosted `85e15cf` candidate independently starts it 7.804 seconds after spawn
+without any movement/camera input, with no runtime errors: captured browser red.
+Corrected native
+real-input test waits 15 seconds idle, turns the camera, then travels 19.333 m
+in 4.059 seconds of actual swimming before one Angler. The owner matrix passes.
+Exported-browser and full integration reruns remain pending. This current
+correction supersedes earlier OPEN-007/026 idle-fallback acceptance and timing
+rows in the plan; historical evidence is retained, not rewritten as a pass.
 
 ## Browser checkpoint boundary, 2026-10-04
 
