@@ -19,6 +19,8 @@ October 4, 2026: campaign/opening merged into current main at 493b1d8, retaining
 
 ## Next action
 
+Local merge checkpoint: 7a762ee135f198b6af38ca8191e96e8ed77cb94e. The map gate was rerun on this committed source and passed. No public branch, main merge or deployment was performed.
+
 Finish end-to-end reads of the maze, secret excursion, World/save/title dispatch and relevant party contracts. Extend the bug catalog with module summaries, then reproduce INT-01 through an actual distinctive-party handoff and repair it before adding further regression tests. The existing transition test checks only scene/HUD existence and cannot accept resource preservation.
 
 ## Local baseline evidence and limitations
