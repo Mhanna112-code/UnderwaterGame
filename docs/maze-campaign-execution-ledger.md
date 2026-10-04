@@ -9,7 +9,7 @@ October 4, 2026: campaign/opening merged into the local integration baseline at 
 | Foundation | Recorded | Initial plan/contracts committed at 2e701c9; later decisions remain subject to reconciliation |
 | Integrated baseline | In progress | Local reconciliation and INT-01 live entrance gate pass; remaining semantic integration still required |
 | State/recovery | In progress | Live entrance/secret return, native checkpoint cold Load/real death Restart, 12 World return/re-entry cases and four-size native checkpoint/menu checks pass; browser denied-storage and consumer/input integration still required |
-| Maze route | Planned | Normal entry, puzzles, keys, local encounter policy and return |
+| Maze route | In progress | First current channel passes actual Tab/W/mouse/L/E/R headless/native with collision and push active; full puzzles/keys/secret/finale route remains pending |
 | Puppet encounter | Planned | Both real waves, conserved resources, correct reward and recovery |
 | Cordys finale | Planned | Reachable no-lab normal-action win/loss and persisted closure |
 | Audio and feedback delivery | Planned | Exact export/served bytes and critical deployed checks |
@@ -25,7 +25,7 @@ INT-01 is committed at 96f6752, INT-02 at dc2e207 and INT-04 native checkpoints 
 
 World return at 529ba0d retains actual resource identity without rest, restores the outer-world approach outside the entrance radius and carries maze history through World saves. Twelve generated active/downed/lab-state cases and nine affected regressions pass. Rendered checkpoint/contact/slot-picker captures were inspected at 1280x720, 720x480, 720x900 and 360x640; real P/mouse input reaches unclipped slots without writing user saves. This is a limited presentation check, not full navigation, battle framing or a complete clean audit round. Full puzzle traversal/finale and browser durability remain unaccepted.
 
-The older `maze_completion` gate fails at its first straight-line waypoint. Its route still assumes the removed H behavior relocates currents and opens the CSG6/7 channel; Marc now separates wall/current manipulation and the normal entrance. It is NOT accepted as a complete traversal check. Record and replace this obsolete route with genuine current puzzle/input traversal in the maze-route phase; do not weaken its physical-collision oracle or claim the full route passed.
+The older `maze_completion` gate fails at its first straight-line waypoint. Its route still assumes the removed H behavior relocates currents and opens the CSG6/7 channel; Marc now separates wall/current manipulation and the normal entrance. It is NOT accepted as a complete traversal check. `maze_current_route` now passes genuine first-channel discovery, map wall/current manipulation and physical key-driven crossing. Leaving current3 in place correctly blocks it. The old local H traversal has been superseded in the runner; full completion/puzzle traversal remains open. Do not weaken its physical-collision oracle or claim the full route passed.
 
 ## Local baseline evidence and limitations
 

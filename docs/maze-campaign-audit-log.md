@@ -159,3 +159,24 @@ browser durability remain separate. Native spell captures expose dark +10 HP tex
 against water; recorded as open INT-08 feedback contrast rather than overlooked.
 No export/deployment/public update. Next: physical traversal with Marc's actual
 current/map controls, not the stale H-era completion route.
+
+## October 4 2026 first physical current channel
+
+Source: d0fe9ed. New current-route catalog precedes the physical test. The old H
+traversal expectations no longer match Marc's published controls. No maze geometry,
+current strength, collision or encounter policy was modified for this check.
+
+Normal scene spawn → actual Tab to Bucky → parsed W/mouse discovery → L/E to open
+walls → R to move current1 → physical outer approach → Shift-arrow/R to relocate
+current3 → physical channel crossing passes headless and native OpenGL. Trace
+must cross the current channel's interior, not a side/perimeter bypass. Production
+physics never stops; no diver position is written and no rotation helper is called.
+The deliberate leave-current3 negative variant fails at the live current edge
+with actual push, proving the driver cannot simply swim through an active block.
+
+Initial undiscovered-wall/far-end/whole-boundary-interior assumptions and a typed
+fixture parse warning were corrected and excluded from game-defect evidence. Two
+native captures were inspected: visible Bucky, unobscured wide-screen HUD and
+discovered map/control lines. This is one channel, not full puzzle/secret/finale
+traversal or four-size map presentation. Only the obsolete local H traversal gate
+is replaced; full legacy completion stays open. No preview/export/public change.
