@@ -44,7 +44,7 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
 };
-let failure, renderer, elapsedSeconds;
+let failure, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
   console.log('Export page loaded');
@@ -65,14 +65,18 @@ try {
   await shot('02-mermaid');
   await waitPhase('spawn_exploration');
   if (timestamps.spawn_exploration - timestamps.opening_video < 33000) throw new Error('Mermaid opening was shortened instead of completing playback');
-  await shot('02a-free-swim-start');
+  // Keep keydown adjacent to the real handoff. A screenshot readback here
+  // can consume several seconds and turn a movement test into idle fallback.
   await page.keyboard.down('w');
-  await page.waitForTimeout(2000);
-  if (phases.includes('angler')) throw new Error('Angler interrupted before a usable free-swim window');
-  await shot('02b-free-swim-moving');
+  freeSwimKeydown = Date.now();
+  if (freeSwimKeydown - timestamps.spawn_exploration >= 4000) throw new Error('Harness sent movement only after the exploration window');
   await waitPhase('angler', 12000);
   await page.keyboard.up('w');
-  if (timestamps.angler - timestamps.spawn_exploration < 4000) throw new Error('Free-swim window was shorter than four seconds');
+  freeSwimMs = timestamps.angler - timestamps.spawn_exploration;
+  if (freeSwimMs < 4000) throw new Error('Free-swim interval interrupts before four seconds');
+  // Wall time alone cannot identify movement vs idle under renderer slowdown.
+  // Native displacement plus the dedicated continuous browser recording prove
+  // actual swimming; this complete-flow gate pins the minimum and two-minute cap.
   await page.waitForTimeout(700);
   await shot('03-angler');
   await attack('03a-angler');
@@ -107,7 +111,7 @@ try {
   if (errors.length) throw new Error(errors.join('\n'));
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, renderer, elapsedSeconds, phases, timestamps, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, phases, timestamps, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }

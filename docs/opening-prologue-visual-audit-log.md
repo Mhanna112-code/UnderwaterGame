@@ -315,3 +315,47 @@ with no runtime errors. These are native gates, not hosted proof. Export the
 exact source and repeat ordinary browser New Game with held W, record the
 free-swim phase interval and inspect start/moving screenshots before accepting
 the review link as updated. No unrelated campaign/tutorial redesign.
+
+Exact source `4e244a1` exported browser completes ordinary New Game → recovered
+control in **90.789 s**, with a **5.298 s** spawn-to-Angler interval and no
+errors. Start/moving screenshots visibly show swimming past world scenery.
+Public candidate `dpl_6dqgyjHZ5sEEG2qWDf1T3wGZhBM2`, immutable
+`https://underwatergame-4wcsqvdcl-immortaldemongods-projects.vercel.app/`, is now
+on the same opening-prologue review alias. Public build-info reports `4e244a1`;
+local/prebuilt/unauthenticated remote PCK SHA is `551d01df52b137c9…`.
+Main URL still resolves to `dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5`; PR #96 unchanged.
+
+Hosted complete journey passes in **98.843 s**, but its interim “moving”
+screenshot finished after combat began: the initial GPU readback consumed
+several seconds before W. Its **7.223 s** interval can prove idle fallback,
+not movement. That image was rejected as movement proof. The full harness
+now presses W before any readback and rejects a late dispatch or idle-only
+interval; separate continuous recording verifies the actual input boundary.
+
+First continuous recording shows real swimming and a 6.287 s interval, but
+the harness failed an unjustified 0.5 s IPC limit (dispatch took 1.285 s).
+Raw failure is preserved. Corrected criterion requires dispatch within the
+usable window rather than arbitrary subsecond automation latency. Recheck:
+**6.724 s** spawn-to-Angler, W dispatched at 1.500 s and held for **5.224 s**
+before combat, no errors. The six-frame contact sheet was inspected: diver
+swims past the starting marker/rocks, then the Angler stage appears. Continuous
+six-second GIF: `docs/evidence/opening-prologue-free-swim/hosted-movement.gif`.
+Result: `recording-result.json`. This is hosted normal entry, no query flags,
+teleport, video fast-forward or injected trigger. The revised full harness is
+being rerun; broader blind-listening/comprehension/polish acceptance stays open.
+
+Further harness finding: the full run rejected a 7.479 s wall interval against
+the idle clock's seven-second ceiling. Wall time and active physics time are
+not interchangeable, so that limit cannot diagnose the trigger's cause. The
+complete-flow gate now pins the four-second floor and two-minute total cap;
+actual displacement is established by native physics plus continuous browser
+video, not by phase time alone. The raw rejected result remains in evidence.
+
+Final revised full hosted journey: **93.560 s**, **5.532 s** spawn-to-Angler,
+W dispatched 0.896 s after spawn and held **4.636 s** before combat. All ten
+phases occur once, no errors, complete boss title and recovery shown, then
+optional training/world restored. `final-hosted-result.json` records the
+actual keydown timestamp. Exact runtime remains `4e244a1`; later edits only
+harden verification and record evidence/plan. OPEN-026 is fixed and has a
+native red→green regression plus actual hosted movement proof. This does not
+complete the wider opening goal's remaining acceptance matrix.

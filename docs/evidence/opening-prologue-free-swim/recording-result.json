@@ -1,0 +1,13 @@
+{
+  "target": "https://underwatergame-opening-prologue-review.vercel.app/",
+  "recording": "/tmp/opening-hosted-free-swim-video-recheck/page@0306a0e9aee34be48b72ae61a7986d5a.webm",
+  "recordingStarted": 1791086636860,
+  "keydownAt": 1791086701329,
+  "timestamps": {
+    "opening_video": 1791086665058,
+    "spawn_exploration": 1791086699829,
+    "angler": 1791086706553
+  },
+  "errors": [],
+  "failure": null
+}

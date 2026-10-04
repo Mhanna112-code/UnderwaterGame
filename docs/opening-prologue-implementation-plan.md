@@ -435,15 +435,17 @@ and does not change the lab video contract.
    tutorial arrow/camera capture.
 2. Suppress random encounters and progression triggers until the prologue is
    complete.
-3. Trigger the encounter from movement distance with an idle fallback and a
-   one-shot guard.
+3. Allow at least four seconds of controllable exploration before the
+   movement-distance trigger; retain a seven-second idle fallback and one-shot
+   guard. Measure actual key-driven displacement as well as phase timing.
 4. Create an explicit prologue Angler configuration with offensive choices,
    guaranteed hit/lethal result, no enemy-first damage, and no rewards.
 5. Use Battle intro with a safe loop fallback. Suppress normal victory audio.
 
-**Stop gate:** all movement directions and idle work; every exposed action
-defeats the Angler; ordinary Anglers are unchanged; no reward/state leak or
-duplicate battle exists.
+**Stop gate:** real keys move the diver before combat, movement cannot trigger
+before the four-second window, all movement directions and idle work; every
+exposed action defeats the Angler; ordinary Anglers are unchanged; no
+reward/state leak or duplicate battle exists.
 
 ### Phase D — Cordys interruption
 

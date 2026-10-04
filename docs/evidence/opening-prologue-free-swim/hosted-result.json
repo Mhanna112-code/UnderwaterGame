@@ -1,0 +1,31 @@
+{
+  "target": "https://underwatergame-opening-prologue-review.vercel.app/",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "elapsedSeconds": 98.843,
+  "phases": [
+    "opening_video",
+    "spawn_exploration",
+    "angler",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery",
+    "complete"
+  ],
+  "timestamps": {
+    "opening_video": 1791086237826,
+    "spawn_exploration": 1791086273438,
+    "angler": 1791086280661,
+    "octopus_introduction": 1791086286401,
+    "octopus_reveal": 1791086312864,
+    "octopus_response": 1791086315031,
+    "scripted_defeat": 1791086320855,
+    "octopus_aftermath": 1791086325780,
+    "recovery": 1791086332214,
+    "complete": 1791086333763
+  },
+  "errors": [],
+  "failure": null
+}

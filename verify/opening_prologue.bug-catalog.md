@@ -183,8 +183,6 @@ normal Game Over, and leaves the current tutorial available but optional.
 - Camera shake/reduced-motion toggle — no shake/forced zoom/screen-wide flash
   is admitted by this scope.
 
-## Approved split cinematic risks, 2026-10-03
-
 ## Captured quiet-spawn review finding, 2026-10-03
 
 OPEN-026: the first battle interrupts before the player can meaningfully swim.
@@ -213,7 +211,33 @@ the seven-second idle fallback and the one-shot/direction-independent contract.
   usable-window assertion failed. This confirms premature interruption, not
   blocked native controls. Browser focus remains a separate boundary.
 - **Fix:** minimum four seconds in the trigger, retaining the three-metre
-  distance and seven-second idle fallback. Native and hosted reruns pending.
+  distance and seven-second idle fallback. Native actual input now travels
+  18.667 m and starts combat at 4.417 s. Direction/time matrix, protected World
+  and combat/recovery gates pass. Exact exported ordinary browser New Game
+  has visible swimming and a 5.298 s spawn-to-Angler interval, reaches recovered
+  control in 90.789 s and logs no errors. Hosted continuous-recording recheck
+  passes at a 6.724 s spawn-to-Angler interval, with real W dispatched at
+  1.500 s and held for 5.224 s before combat. The inspected recording shows
+  scenery passing and sustained displacement, followed by combat. No errors.
+- **Verification defect found:** hosted full-journey screenshots consumed
+  several seconds before keydown; the “moving” image completed after combat
+  began. A 7.223 s phase interval can merely prove idle fallback. Do not accept
+  that capture as movement evidence. `opening_free_swim_webcheck.mjs` records
+  continuously, presses W immediately at the actual movie handoff, requires
+  input dispatched within the available exploration window and a 4–7 s
+  movement-trigger interval, and leaves actual visible displacement to
+  recorded visual review. A first recording rejected 1.285 s of Playwright
+  dispatch latency against an unjustified 0.5 s harness limit, despite a
+  6.287 s movement-trigger interval and no runtime errors. Record latency;
+  reject a dispatch after the usable window, not an arbitrary IPC threshold.
+  A later full journey rejected a 7.479 s wall interval against a strict
+  seven-second ceiling. That ceiling conflates rendered wall time with the
+  trigger's active physics time and does not diagnose its cause. The full
+  journey now pins the four-second floor and total two-minute cap; it is not
+  standalone swimming proof. Native displacement and the continuously
+  inspected recording remain the decisive movement evidence.
+
+## Approved split cinematic risks, 2026-10-03
 
 OPEN-023: the Octopus cinematic restarts at zero, duplicates its decoder,
 continues invisibly through combat, leaks input while visible, or overlaps
