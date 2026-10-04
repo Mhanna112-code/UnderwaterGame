@@ -655,10 +655,27 @@ func _update_prologue_trigger(dt: float) -> void:
 		_start_battle("", false, "angler", divers, false, false, "An Angler darts out of the murk.", true)
 
 func _on_prologue_angler_defeated() -> void:
+	if route_state.prologue_phase != "angler" or not is_instance_valid(battle) or not battle.prologue_angler_encounter:
+		return
+	route_state.set_prologue_phase("angler_victory")
+	_audio_call(&"play_prologue_victory_music")
+	var bridge := preload("res://game/prologue_victory_bridge.gd").new()
+	bridge.battlefield_texture = battle.get_battlefield_texture()
+	bridge.beat_changed.connect(func(beat: String) -> void:
+		match beat:
+			"notice":
+				route_state.set_prologue_phase("octopus_notice")
+				_audio_call(&"fade_music_out")
+			"omen":
+				route_state.set_prologue_phase("octopus_omen")
+	)
+	title_layer.add_child(bridge)
+	await bridge.completed
+	# Music has already faded to silence during the notice. Retire its owner
+	# explicitly before the movie starts, even if a device's audio thread lags.
+	_audio_call(&"stop_music")
 	route_state.set_encounter_source("prologue_octopus")
 	route_state.set_prologue_phase("octopus_introduction")
-	_audio_call(&"fade_music_out")
-	await get_tree().create_timer(0.65).timeout
 	_prologue_cinematic = PrologueCinematicScript.new() as CanvasLayer
 	title_layer.add_child(_prologue_cinematic)
 	await _prologue_cinematic.introduction_finished

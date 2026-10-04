@@ -148,7 +148,7 @@ func _run() -> void:
 		_expect(diver.stats.xp == 0 and diver.stats.spell_points == 0 and diver.known_spells.is_empty(), "OPEN-010 prologue granted progression")
 	var save := SaveManager.read_slot(SLOT)
 	_expect((save.get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-016 recovery save milestone missing")
-	var expected_phases: Array[String] = ["spawn_exploration", "angler", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"]
+	var expected_phases: Array[String] = ["spawn_exploration", "angler", "angler_victory", "octopus_notice", "octopus_omen", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"]
 	if fallback_case or save_failure_case:
 		expected_phases.push_front("opening_video")
 	_expect(phases == expected_phases, "OPEN-002 public phases missing/duplicated: %s" % [phases])

@@ -149,7 +149,24 @@ try {
   }
   if (!nextTurnReady) throw new Error('ANGLE-003 nonlethal attack did not return usable next-turn controls');
   await attack('03d-second-angler-action');
-  await waitPhase('octopus_introduction', 15000);
+  await waitPhase('angler_victory', 12000);
+  await page.waitForTimeout(350);
+  await shot('03e-victory-beat');
+  let bridgeRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03e-victory-beat.png')], { encoding: 'utf8' }));
+  if (!bridgeRows.some(row => /^Victory$/i.test(row.text.trim())) || !bridgeRows.some(row => /Angler.*defeated/i.test(row.text))) throw new Error('VICT-001 real Angler kill has no readable victory beat');
+  await waitPhase('octopus_notice', 5000);
+  await page.waitForTimeout(350);
+  await shot('03f-victory-noticed');
+  bridgeRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03f-victory-noticed.png')], { encoding: 'utf8' }));
+  if (!bridgeRows.some(row => /victory.*not gone unnoticed/i.test(row.text))) throw new Error('VICT-002 victory-to-threat connection unreadable');
+  await waitPhase('octopus_omen', 5000);
+  await page.waitForTimeout(350);
+  await shot('03g-something-stirs');
+  bridgeRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03g-something-stirs.png')], { encoding: 'utf8' }));
+  if (!bridgeRows.some(row => /Something stirs in the deep/i.test(row.text))) throw new Error('VICT-002 suspense omen unreadable');
+  await waitPhase('octopus_introduction', 5000);
+  const bridgeMs = timestamps.octopus_introduction - timestamps.angler_victory;
+  if (bridgeMs < 5500 || bridgeMs > 7500 || timestamps.octopus_notice - timestamps.angler_victory < 2000 || timestamps.octopus_omen - timestamps.octopus_notice < 1700 || timestamps.octopus_introduction - timestamps.octopus_omen < 1700) throw new Error('VICT-002 victory/suspense bridge is abrupt or overlong: ' + bridgeMs);
   await page.waitForTimeout(6000);
   await shot('04-octopus-introduction');
   await waitPhase('octopus_response');
@@ -203,7 +220,7 @@ try {
   engagedSeconds = elapsedSeconds - deliberateIdleMs / 1000;
   console.log(`Normal browser New Game to control: ${elapsedSeconds}s; engaged=${engagedSeconds}s; deliberate idle/look=${deliberateIdleMs / 1000}s`);
   if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
-  const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'angler', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
+  const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'angler', 'angler_victory', 'octopus_notice', 'octopus_omen', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
   if (process.env.OPENING_ESCAPE_RECHECK === '1') {
     // ESC-001/002/005: natural swimming rolls, actual Run and actual R input.

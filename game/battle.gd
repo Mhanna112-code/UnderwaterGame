@@ -1128,6 +1128,10 @@ func _bottom_of(a: Node3D) -> Vector3:
 # camera/container to project through, or the point is behind the camera
 # (unproject_position() answers nonsense for a point behind it) - a rough
 # fallback spot beats a crash or an uninitialized (0, 0).
+func get_battlefield_texture() -> Texture2D:
+	# Read-only presentation for an interstitial; exclude stale combat controls.
+	return _stage_vp.get_texture() if is_instance_valid(_stage_vp) else null
+
 func _project_to_screen(point: Vector3) -> Vector2:
 	if _stage_cam == null or _stage_container == null or _stage_vp == null or _stage_cam.is_position_behind(point):
 		if _stage_container != null:

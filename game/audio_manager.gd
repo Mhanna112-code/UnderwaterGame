@@ -161,6 +161,11 @@ func play_prologue_exploration_music() -> void:
 func play_prologue_battle_music() -> void:
 	play_authored_music_sequence("prologue_battle", BATTLE_INTRO, BATTLE_LOOP, 0.0, -7.0)
 
+func play_prologue_victory_music() -> void:
+	# Brief confidence before the omen; keep Phoenix's pair intact and quiet.
+	# World fades this local cue out, never the player's persisted Music bus.
+	play_authored_music_sequence("prologue_victory", VICTORY_CANDIDATE_INTRO, VICTORY_LOOP, -9.0, -9.0)
+
 func play_cordys_music() -> void:
 	play_authored_music_sequence("cordys", FINAL_BOSS_INTRO, FINAL_BOSS_LOOP, -1.0, -4.5)
 
