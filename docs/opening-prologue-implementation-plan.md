@@ -70,7 +70,7 @@ that gives the player a reason to care before instruction:
 1. preserve the existing cover art;
 2. play Glassgoat's Mermaid Freak video as a temporary first-run opening;
 3. return control in a quiet free-swimming spawn;
-4. let one real offensive choice defeat a deliberately weak Angler;
+4. fight a modestly weaker Angler with ordinary stats, full moves and real turns;
 5. have Cordys interrupt the victory, receive one normal combat action, and
    decisively defeat the party;
 6. recover the party, establish the long-term goal, and save safely;
@@ -178,7 +178,7 @@ cover art (silent)
   -> quiet free-swimming spawn with restrained exploration ambience
   -> at least four seconds of actual swimming, never an idle countdown
   -> one-Angler prologue battle
-  -> one offensive player action defeats the Angler
+  -> ordinary combat actions defeat the 3-HP Angler (normal species HP is 5)
   -> no victory fanfare; brief false-relief pause
   -> first 25 seconds of the Octopus V3 cinematic, with its own audio only
   -> environment darkens and Cordys interrupts the same battle presentation
@@ -309,7 +309,7 @@ recorded playtest finding, not ad hoc code edits.
 | Minimum free-swim window | 4 s of requested, actual horizontal swimming | Idle/camera-only time, passive drift and blocked input do not count. Crossing the distance threshold alone cannot interrupt sooner, including after a long wait. |
 | Idle behavior | wait indefinitely | A stationary player keeps control; no timed Angler fallback. This user correction supersedes the old seven-second fallback. |
 | Angler party/enemies | current party versus one Angler | Stage remains legible and resembles real combat. |
-| Angler actions | expose offensive actions only | Every visible choice lands and defeats it. |
+| Angler actions | full ordinary move kit | HP alone is reduced to 3. Accuracy/evasion, utility, damage, costs, effects and enemy turns remain normal; weak/missed actions do not guarantee victory. |
 | Angler rewards | none | No progression data changes. |
 | Battle intro | existing 15.000 s intro at `0 dB` local trim | Good existing music remains; it does not dominate. |
 | Battle loop fallback | approximately `-7 dB` if reached | Waiting in the menu cannot cause a loud jump. |
@@ -407,7 +407,7 @@ Do not accept the prepared hull as a substitute for those moving-skin checks.
 | --- | --- | --- |
 | Save files | Old save replay, new save ambiguity, transient state restore | Missing-field migration plus new-save and interrupted-state round trips. |
 | Time | Idle starts a fight, delayed swimming loses its window, trigger fires twice, music reaches loud loop | Multi-direction/frame-time/prior-idle matrix, actual idle/look/swim test and bounded engaged waits. |
-| Input | Video leaks movement, player cannot select the one action, beacon triggers accidentally | Real input at normal entry; spawn outside trigger volume. |
+| Input | Video leaks movement, combat buttons stall after a nonlethal action, beacon triggers accidentally | Real input at normal entry; spawn outside trigger volume; exercise multiple real turns. |
 | Scene ownership | Duplicate video/Battle/audio/UI or leaked objects | Owner counts through every transition and repeated teardown. |
 | Browser audio | Autoplay rejection, mute mismatch, stacked sources | Exact exported browser after New Game gesture at multiple settings. |
 | Video decoder | Black screen, duplicate playback, bad aspect | Wide/narrow/tall captures, finish/failure lifecycle. |
@@ -472,14 +472,14 @@ and does not change the lab video contract.
    meaningful displacement before the one-shot trigger. Never start from idle
    time. Looking around, blocked input and passive drift cannot bank that
    window. Measure actual key-driven displacement as well as phase timing.
-4. Create an explicit prologue Angler configuration with offensive choices,
-   guaranteed hit/lethal result, no enemy-first damage, and no rewards.
+4. Reduce only this Angler's HP to 3 versus normal 5, retaining normal stats,
+   full moves, enemy turns and accuracy/evasion. No forced hit/kill or rewards.
 5. Use Battle intro with a safe loop fallback. Suppress normal victory audio.
 
 **Stop gate:** real keys move the diver before combat, movement cannot trigger
 before four seconds of swimming, all horizontal directions work, and prolonged
-idle/camera-only input stays out of combat; every
-exposed action defeats the Angler; ordinary Anglers are unchanged; no
+idle/camera-only input stays out of combat; weak, utility and missed actions
+behave normally and subsequent real actions can finish; ordinary Anglers are unchanged; no
 reward/state leak or duplicate battle exists.
 
 ### Phase D — Cordys interruption
@@ -572,7 +572,7 @@ tutorial is mandatory, or describes the opening as audiovisually overwhelming.
 2. Add public prologue/save/migration contract and red state tests.
 3. Import/characterize Final Boss audio and production Octopus actor adapter.
 4. Add opening video lifecycle and exact audio routing.
-5. Add quiet spawn and one-action Angler.
+5. Add quiet spawn and health-only weakened Angler using ordinary combat.
 6. Add Cordys interruption and scripted defeat.
 7. Add recovery and optional tutorial handoff.
 8. Add/repair focused verification one defect at a time.
@@ -617,8 +617,9 @@ defects. Technical playback, layout, audio, and handoff defects still block.
   volume-controlled, and correctly persisted.
 - Four seconds of actual swimming in any horizontal direction reaches exactly
   one Angler; standing still or looking around never starts it.
-- Every visible offensive choice defeats the prologue Angler; ordinary Angler
-  behavior and all progression rewards remain unchanged.
+- The prologue Angler changes HP only (3 versus normal 5). All moves, stats,
+  hit/miss rules, costs, effects and turns match normal combat. Actual defeat
+  interrupts once with no rewards. Campaign-wide balance is not claimed.
 - Cordys visibly interrupts the victory, receives one normal stat-based action
   (not a fixed damage result), and defeats the fresh party with one readable
   stat-based authored move. Status and cost choices remain real.

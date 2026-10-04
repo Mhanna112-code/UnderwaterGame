@@ -126,6 +126,22 @@ try {
   await page.waitForTimeout(700);
   await shot('03-angler');
   await attack('03a-angler');
+
+  // ANGLE-003: first real Electric Touch deals 1, not a guaranteed kill.
+  // Wait for an actual next-turn Attack menu, then use its ordinary move.
+  await page.waitForTimeout(1800);
+  await shot('03b-nonlethal-angler');
+  if (phases.includes('octopus_introduction')) throw new Error('ANGLE-003 Electric Touch still forced an opening one-shot');
+  const nextTurnDeadline = Date.now() + 18000;
+  let nextTurnReady = false;
+  while (!nextTurnReady && Date.now() < nextTurnDeadline) {
+    await shot('03c-next-turn');
+    const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03c-next-turn.png')], { encoding: 'utf8' }));
+    nextTurnReady = rows.some(row => /Pick a move/i.test(row.text));
+    if (!nextTurnReady) await page.waitForTimeout(500);
+  }
+  if (!nextTurnReady) throw new Error('ANGLE-003 nonlethal attack did not return usable next-turn controls');
+  await attack('03d-second-angler-action');
   await waitPhase('octopus_introduction', 15000);
   await page.waitForTimeout(6000);
   await shot('04-octopus-introduction');

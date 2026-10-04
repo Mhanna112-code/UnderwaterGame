@@ -1402,15 +1402,10 @@ func _build_stage() -> void:
 		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
 		if prologue_angler_encounter:
-			# Isolated one-action promise. Every exposed attack still resolves
-			# through normal target selection, animation and CombatRules, but this
-			# instance cannot evade, mitigate, survive, or win the first turn.
-			st.hp_max = 1
-			st.strength = 0
-			st.defense = 0
-			st.agility = 0
-			st.accuracy = 0
-			st.evasion = 0
+			# Shorter fight, not different combat. Preserve the species' actual
+			# offense, defense, turn order and evasion; weak/utility moves and
+			# inaccurate attacks must keep their ordinary consequences.
+			st.hp_max = 3
 			st.fill()
 		if tutorial_encounter:
 			# Five-plus real turns (every scripted move, then however many
@@ -3377,22 +3372,7 @@ func _moves_for(entry: Dictionary) -> Array:
 			"text": String(def.get("text", "You cast %s" % String(def.get("display", spell_id)))),
 			"oxygen_cost": float(def.get("oxygen_cost", 0.0)),
 		})
-	if prologue_angler_encounter:
-		var attacks: Array = []
-		for move_value in out:
-			var original := move_value as Dictionary
-			if not _move_deals_damage(original):
-				continue
-			var attack := original.duplicate(true)
-			attack.acc_mod = maxi(int(attack.get("acc_mod", 0)), 1 - (entry.stats as CombatantStats).effective_accuracy())
-			attacks.append(attack)
-		return attacks
 	return out
-
-static func _move_deals_damage(move: Dictionary) -> bool:
-	if move.has("formula"):
-		return not (move.get("formula", {}) as Dictionary).is_empty()
-	return int(move.get("power", 0)) > 0 and String(move.get("effect", "")) not in ["heal", "revive"]
 
 func _show_moves() -> void:
 	if _busy:

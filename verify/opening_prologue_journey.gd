@@ -65,7 +65,14 @@ func _run() -> void:
 		return
 	var original := world.battle
 	var campaign_state: String = world.route_state.octopus_state
-	await _attack(original)
+	# Genuine weak moves need not kill. Drive the real next-turn buttons,
+	# including enemy retaliation, until actual Angler defeat interrupts.
+	var angler_elapsed := 0.0
+	while world.route_state.prologue_phase == "angler" and angler_elapsed < 35.0:
+		if original.attack_btn.is_visible_in_tree() and not original.attack_btn.disabled:
+			await _attack(original)
+		await create_timer(0.1).timeout
+		angler_elapsed += 0.1
 	await _wait_phase(world, "octopus_introduction", 12.0)
 	var movie := await _wait_movie()
 	_expect(movie != null, "OPEN-023 Cordys introduction has no movie owner")

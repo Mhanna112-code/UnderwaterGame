@@ -12,8 +12,9 @@ assigns every party member's HP to zero, independent of stats.
 Load-bearing contract: overwhelming because of Cordys's HP/STR/ACC, not
 rewritten player moves or unconditional death. Formula and legacy-power moves
 must retain ACC/EVA, DEF, status, self-cost and Oxygen semantics. A non-damaging
-choice must not be silently discarded at Cordys. One-action Angler guarantees
-remain isolated to that encounter. IO: animation timers and legacy variance;
+choice must not be silently discarded at Cordys. The opening Angler's old
+one-action guarantee is superseded by ANGLE-001–004: lower HP only, normal
+moves/stats/turns. IO: animation timers and legacy variance;
 formula moves are deterministic. Branches: formula/power, one/all targets,
 hit/EVA miss, status/self-cost, living/dead after response.
 

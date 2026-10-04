@@ -53,7 +53,7 @@ normal Game Over, and leaves the current tutorial available but optional.
 | OPEN-006 | Saved Music/SFX settings are overwritten or do not affect the video independently. | High: user control is violated. | Authored cue gain and user bus gain can be conflated. | settings round-trip + differential mute table | local music trim vs persisted Music slider green; video mute table pending |
 | OPEN-007 | Swimming in one direction never triggers or repeated frames start duplicate Anglers. | High: opening progression blocks. | Movement is camera-relative and checked every physics frame. | `opening_prologue_trigger.gd` direction/frame-time/prior-idle matrix + `opening_prologue_world.gd` real owner | native green; OPEN-035 supersedes the old idle fallback |
 | OPEN-008 | Random encounter, save point, ability gate, or route event interrupts before recovery. | High: authored sequence is corrupted. | Existing World systems were gated by tutorial completion. | negative-path production-world gate | open |
-| OPEN-009 | A visible Angler option misses, deals zero, fails to kill, or allows the Angler to attack first. | High: promised one-action victory fails. | Real moves include non-damage/status choices and ACC/EVA. | decision table across every exposed move | open |
+| OPEN-009 | Historical one-action requirement superseded by ANGLE-001/002/003: opening must use ordinary combat, with lower HP only. | High: forced hits and hidden utility teach false rules. | Real moves include non-damage/status choices and ACC/EVA. | spawned stat/kit comparison and real button witnesses | see `prologue_angler.bug-catalog.md` |
 | OPEN-010 | Prologue changes ordinary Angler stats/moves or grants XP/items/spells. | High: global balance/progression regression. | Reusing existing enemy/content tables invites shared mutation. | differential normal/prologue + no-reward invariant | open |
 | OPEN-011 | Normal victory fanfare/world handoff occurs before Cordys. | Medium-high: interruption loses meaning or duplicates scenes. | Existing Battle win handler owns music/rewards/removal. | captured end-to-end state transition | open |
 | OPEN-012 | Cordys is invisible, static, backward, tiny, clipped, obstructed, or shows the bright-line artifact. | High: central hook visibly fails. | Delivered FBX has unusual composite bounds/front and known line surface. | import invariants + production projection + human visual | actor import/normalization/semantic poses/tint green; production Battle projection pending |
@@ -109,8 +109,8 @@ normal Game Over, and leaves the current tutorial available but optional.
 ### OPEN-009 / OPEN-010 — Angler decision table and isolation
 
 - **Type:** decision table plus differential invariant.
-- **Description:** `prologue Angler: every exposed offensive choice kills once without changing normal Anglers or progression — guards against false choice and shared-content mutation`
-- **Assertion:** enumerate visible options, resolve through public Battle input, require hit/death; compare ordinary Angler before/after; require unchanged XP, spells, items, level and campaign state.
+- **Description:** `prologue Angler: HP-only weakening with full ordinary combat and actual-defeat interruption — guards against false rules and shared-content mutation`
+- **Assertion:** compare normal/prologue stats and full kits; real buttons must preserve nonlethal, utility and miss outcomes; actual death interrupts once with unchanged progression. The earlier every-choice-one-shot assertion was incorrect and is superseded by ANGLE-001–004.
 - **Self-critique:** it does not restate damage math and survives a refactor that preserves outcomes.
 
 ### OPEN-011 / OPEN-013 / OPEN-015 — interruption and special defeat
