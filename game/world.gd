@@ -3096,7 +3096,9 @@ func _on_battle_finished(result: String) -> void:
 		if route_state.tutorial_complete and is_instance_valid(light_beam):
 			light_beam.queue_free()
 			light_beam = null
-		_write_save()
+		# Do not persist the damaged/dead training result. Win/Skip save only
+		# after the shared recovery below; loss keeps the prior checkpoint
+		# until Return heals/repositions the party.
 	if _boss_playtest_active:
 		var test_kind := "Tethys boss"
 		_boss_playtest_active = false
@@ -3267,6 +3269,7 @@ func _on_battle_finished(result: String) -> void:
 		# above still need to land first, and open() itself pauses the
 		# tree, which should only happen once this whole handler (and
 		# whatever signal dispatch got it here) has actually finished.
+		_write_save()
 		call_deferred("_show_ability_popups")
 
 # Heals the party and returns to the overworld - the same recovery a
@@ -3308,6 +3311,7 @@ func _on_tutorial_loss_exit() -> void:
 			light_beam.visible = true
 		else:
 			_build_optional_training()
+		_write_save()
 		call_deferred("_show_ability_popups")
 
 # --tutorial-loss-playtest's own entry point (see

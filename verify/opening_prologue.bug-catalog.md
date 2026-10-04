@@ -294,6 +294,17 @@ Two uniquely owned slots must prove that denied replacement preserves both
 prior files and the previous active slot, emits no success announcement, and
 permits a later successful retry to switch slots with completion intact.
 
+OPEN-031: optional-training loss saves the damaged/defeated party before Return
+heals it, then Return never persists restoration. Extend the existing real
+menu/recovery lifecycle's result-boundary loss fixture to assert the returned
+checkpoint's HP/Oxygen, not only live stats. Avoid writing a dead transient
+training checkpoint; persist the healthy returned state after repositioning.
+Skip/Win also wrote before their full-party recovery, so checkpoint writes now
+occur after shared recovery instead. Reapplying HP 1/Oxygen 40 after Retry and
+before Skip produces six native red findings on source `765a59e`; the repaired
+Return/Skip checkpoint assertions are green. This is result-boundary tutorial
+coverage; it is not proof of real tutorial loss/win combat.
+
 Self-critique: the real-death variant uses a low-HP party fixture to reach a
 deterministic ordinary loss cheaply (HP 1, DEF/EVA 0); it does not inject damage, HP zero, result,
 completion or reload state. It proves the death pipeline, not a normal-stat

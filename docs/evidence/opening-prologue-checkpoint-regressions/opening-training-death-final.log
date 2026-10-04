@@ -1,0 +1,27 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+DEATH ACTION|party=[1, 1, 0]|enemies=["Swordfish Duelist"]
+DEATH ACTION|party=[0, 1, 0]|enemies=["Swordfish Duelist"]
+REAL ORDINARY DEATH|actions=2|seconds=10.8
+RESTART SAVED|{ "bomb_bot_state": "available", "deep_warning_seen": false, "encounter_source": "random", "lab_state": "locked", "maze_door_state": "locked", "objective_id": "", "octopus_state": "unavailable", "opening_video_seen": true, "prologue_complete": true, "sword_slayer_state": "available", "tethys_state": "locked", "tutorial_complete": true, "zone_id": "shallows" }
+PROLOGUE_PHASE|complete
+RESTART LOADED|slot=918299|{ "zone_id": "shallows", "objective_id": "", "bomb_bot_state": "available", "sword_slayer_state": "available", "lab_state": "locked", "tethys_state": "locked", "maze_door_state": "locked", "octopus_state": "unavailable", "encounter_source": "random", "deep_warning_seen": false, "opening_video_seen": true, "prologue_complete": true, "tutorial_complete": true }
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[0, 1, 0]|enemies=["Angler"]
+REAL ORDINARY DEATH|actions=7|seconds=34.0000000000002
+PROLOGUE_PHASE|complete
+OPENING JOURNEY: clean

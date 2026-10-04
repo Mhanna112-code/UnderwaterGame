@@ -50,6 +50,11 @@ func _run() -> void:
 		await process_frame
 		_expect(world.battle != null and world.battle.tutorial_encounter, "OPEN-017 Retry does not restart training")
 		if world.battle != null:
+			# Retry heals the party. Reapply attrition for the second loss so
+			# its checkpoint assertion cannot pass on an untouched healthy party.
+			for value in world.divers:
+				(value as Diver).stats.hp = 1
+				(value as Diver).stats.oxygen = 40.0
 			world._on_battle_finished("lost")
 			await create_timer(0.3).timeout
 			world.tutorial_result_popup.call("_on_exit_pressed")
@@ -64,6 +69,11 @@ func _run() -> void:
 			for value in world.divers:
 				var stats := (value as Diver).stats
 				_expect(stats.hp == stats.hp_max and stats.oxygen >= stats.oxygen_max - 0.1, "OPEN-016 training Return did not restore party")
+			var returned_save := SaveManager.read_slot(SLOT)
+			for snapshot in returned_save.get("divers", []):
+				var saved_stats := (snapshot as Dictionary).get("stats", {}) as Dictionary
+				_expect(saved_stats.get("hp", 0) == saved_stats.get("hp_max", -1) and saved_stats.get("oxygen", 0.0) == saved_stats.get("oxygen_max", -1.0), "OPEN-031 training Return leaves an unrestored checkpoint")
+			_expect((returned_save.get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-031 training recovery loses opening completion")
 			diver = world.divers[world.active] as Diver
 			diver.global_position = Vector3(world.light_beam.global_position.x, 2.0, world.light_beam.global_position.z)
 			world._update_intro_sequence()
@@ -78,6 +88,9 @@ func _run() -> void:
 						world.battle._unhandled_input(enter)
 					await create_timer(0.1).timeout
 					elapsed += 0.1
+				for value in world.divers:
+					(value as Diver).stats.hp = 1
+					(value as Diver).stats.oxygen = 40.0
 				world.battle._on_skip_tutorial_pressed()
 				elapsed = 0.0
 				while world.battle != null and elapsed < 5.0:
@@ -89,6 +102,9 @@ func _run() -> void:
 				_expect(not paused and world.battle == null, "OPEN-017 Skip did not return world control")
 	var saved := SaveManager.read_slot(SLOT)
 	_expect((saved.get("route_state", {}) as Dictionary).get("tutorial_complete", false), "OPEN-017 training completion not persisted")
+	for snapshot in saved.get("divers", []):
+		var saved_stats := (snapshot as Dictionary).get("stats", {}) as Dictionary
+		_expect(saved_stats.get("hp", 0) == saved_stats.get("hp_max", -1) and saved_stats.get("oxygen", 0.0) == saved_stats.get("oxygen_max", -1.0), "OPEN-031 training Skip saves pre-recovery attrition")
 	world.queue_free()
 	await process_frame
 	paused = false

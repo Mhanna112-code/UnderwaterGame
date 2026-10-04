@@ -456,3 +456,23 @@ browser persistence-denial injection and the reported session's exact history
 remain unproven. The hosted alias is unchanged until an exact-source export is
 verified and published. Raw red/green logs and rendered screens are recorded
 under `docs/evidence/opening-prologue-checkpoint-regressions/`.
+
+Further OPEN-031 edge case: tutorial Return and Skip restored live HP/Oxygen,
+but saved before restoration. The initial extra assertion passed because Retry
+healed the party and the fixture's second loss did not reapply damage. That
+green result was rejected as missing the condition. Corrected fixtures apply
+HP 1/Oxygen 40 after Retry and before Skip; the exact pre-repair source
+`765a59e` produces six checkpoint findings. Tutorial loss now retains the
+healthy prior save while the recovery choice is pending, Return saves after
+healing/repositioning, and Win/Skip save after their shared recovery. The
+corrected Return/Skip assertions pass. Real tutorial-win combat remains a
+separate unproven boundary.
+
+Exact-source `765a59e` web export completes ordinary New Game, both movies,
+real mouse combat and recovery in **86.049 s**. Its actual IndexedDB checkpoint
+contains `opening_video_seen=true`, `prologue_complete=true` and training false;
+a cold page reload and real title Load restore phase `complete` without replay.
+No browser/runtime errors. This validates that atomic replacement works through
+the exported browser's normal persistence path, not its denied-write behavior.
+It predates OPEN-031, so a new exact-source export must supersede it before
+updating the review alias.
