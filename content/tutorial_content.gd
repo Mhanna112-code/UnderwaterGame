@@ -10,6 +10,10 @@
 class_name TutorialContent
 extends RefCounted
 
+# One landscape slot shared by every tutorial clip surface (ported with
+# character_ability_popup.gd from combat-tutorials).
+const VIDEO_FRAME_SIZE := Vector2(320, 180)
+
 const GENERAL_PAGES: Array[Dictionary] = [
 	{
 		"title": "Combat Basics",

@@ -18,6 +18,10 @@ config/name="UnderwaterGame"
 run/main_scene="res://game/world.tscn"
 config/features=PackedStringArray("4.4", "Forward Plus")
 
+[autoload]
+
+CharacterAbilityPopup="*res://character_ability_popup.tscn"
+
 [display]
 
 window/size/viewport_width=1280
