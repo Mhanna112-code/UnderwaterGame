@@ -82,3 +82,10 @@ the round.
 ## Rounds
 
 No implementation round has been run yet.
+
+Pre-audit automation note, 2026-10-03: `opening_video.gd`,
+`opening_video_world.gd`, `title_screen.gd`, `opening_prologue_state.gd`, and
+`audio_lifecycle.gd` pass for the isolated owner, independent lab skip policy,
+world pause/input ownership, -6 dB Music routing, decoder fallback, successful
+milestone persistence, failed-view replay, and completed-view non-replay. This
+is not a visual-audit round and does not approve browser framing or mix.

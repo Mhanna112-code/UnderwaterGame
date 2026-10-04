@@ -126,6 +126,7 @@ const SiteScript := preload("res://game/site.gd")
 const DeepZoneLayoutScript := preload("res://content/deep_zone_layout.gd")
 const DeepZoneEnvironmentScript := preload("res://game/deep_zone_environment.gd")
 const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
+const OpeningVideoScript := preload("res://game/opening_video.gd")
 
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
@@ -209,11 +210,11 @@ const SLOT_SCENE := preload("res://slot.tscn")
 # an autoload singleton (project.godot's [autoload] section), reached
 # directly by its global name in _show_ability_popups() below.
 var _diver_slots: Array = []
-# Shown once on a genuinely new save (_on_title_new_game()) instead of the
-# tutorial book auto-opening there - see IntroCrawl's own header comment.
-# The tutorial book itself is untouched: F1 (this file's own
-# _unhandled_input()) still reopens it any time, same as before.
-var intro_crawl: IntroCrawl
+# The first-run opening and the later lab cutscene deliberately have separate
+# owners and policies even while both temporarily point to the same Mermaid
+# media bytes. This reference exists so the normal title path and verification
+# can observe one active owner without searching the scene tree.
+var opening_video: CanvasLayer
 var _special_encounter_item := ""
 var _special_encounter_diver: Diver
 var _special_encounter_pre_hp := 0
@@ -448,15 +449,10 @@ func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
 	_write_save()
 	title_screen.close()
-	# This is the draft narration under review. It intentionally plays before
-	# the HUD/world are enabled, so Glassgoat can approve or replace it from
-	# the normal New Game path without a title/HUD overlap.
-	if not skip_intro_for_test:
-		intro_crawl.open()
-		await intro_crawl.finished
+	await _play_opening_if_needed()
 	$HUD.visible = true
 	get_tree().paused = false
-	_audio_call(&"play_exploration_music")
+	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
 	# Covers the plain --skip-tutorial/?skip_tutorial=1 route: skip_tutorial_
 	# for_test was already true before _ready() ever rendered the light beam
 	# (see the block right after _build_diver_slots()), so a player clicking
@@ -498,9 +494,35 @@ func _on_title_load_game(slot: int) -> void:
 	_current_slot = slot
 	_load_save()
 	title_screen.close()
+	await _play_opening_if_needed()
 	$HUD.visible = true
 	get_tree().paused = false
-	_audio_call(&"play_exploration_music")
+	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+
+# The opening owns no campaign state. World owns the durable milestone and
+# writes it only after actual playback completes. A decoder fallback continues
+# this session safely but intentionally leaves the milestone false, so a later
+# load can try the cinematic again instead of silently recording a viewing that
+# never happened.
+func _play_opening_if_needed() -> bool:
+	if route_state.opening_video_seen:
+		return true
+	if skip_intro_for_test:
+		route_state.opening_video_seen = true
+		route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_SPAWN_EXPLORATION)
+		_write_save()
+		return true
+	_audio_call(&"stop_music")
+	route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_OPENING_VIDEO)
+	opening_video = OpeningVideoScript.new() as CanvasLayer
+	title_layer.add_child(opening_video)
+	var successful: bool = await opening_video.completed
+	opening_video = null
+	if successful:
+		route_state.opening_video_seen = true
+	route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_SPAWN_EXPLORATION)
+	_write_save()
+	return successful
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -857,9 +879,6 @@ func _ready() -> void:
 	title_layer.add_child(tutorial_result_popup)
 	if _tutorial_loss_playtest_requested():
 		call_deferred("_show_tutorial_loss_playtest")
-
-	intro_crawl = IntroCrawl.new()
-	title_layer.add_child(intro_crawl)
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
