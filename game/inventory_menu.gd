@@ -9,19 +9,28 @@
 # World.inventory now (see world.gd's _on_item_orb_collected()/
 # _grant_reward_item()), and World.use_inventory_item()/use_party_spell()
 # (called from here) are the only places those effects actually resolve.
-# "Combat Help" is pure reference, no buttons that do anything - status
-# condition writeups (see content/tutorial_content.gd's STATUS_CONDITIONS)
-# for whoever wants the full Blindness/Stun numbers again outside of a
-# fight, since the tutorial battle only ever mentions this tab exists
-# rather than reprinting the whole thing itself.
+# "Combat Help" is mostly pure reference - a Stats glossary (content/
+# tutorial_content.gd's STAT_GLOSSARY), an Effects section (TutorialContent.
+# EFFECT_KIND_EXPLANATIONS - "Self Cost"/"Evasion Reduction", the parts of a
+# move that aren't a CombatantStats status), and status condition writeups
+# (STATUS_CONDITIONS) for whoever wants the full Blindness/Stun/Flash-Blast-
+# self-cost numbers again outside of a fight. Three real action buttons sit
+# above all of that: replaying the scripted first fight, replaying the
+# special-encounter tutorial, and reopening the paged walkthrough
+# (World.tutorial_book, TutorialContent.GENERAL_PAGES), previously only
+# reachable via the F1 keybind.
 #
 # Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
-# SpellEquipUI/SavePointMenu - nothing here is scene-file based, on purpose,
+# SavePointMenu - nothing here is scene-file based, on purpose,
 # matching the rest of this project.
 class_name InventoryMenu
 extends Control
 
-var world: World
+# World in the main game, MazeLevel in the maze - anything with `inventory`,
+# `divers`, `active`, use_inventory_item(), _inventory_spells_for(),
+# can_afford_party_spell(), use_party_spell() and _display_name(). The
+# Combat Help replay buttons only show where `world` has what they call.
+var world: Node
 
 # "items" | "spells_root" | "spells_target" - spells_root lists every
 # living diver's inventory-tagged spells (one button per caster+spell
@@ -50,8 +59,12 @@ func _ready() -> void:
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 50.0
-	root.offset_top = 50.0
+	# MODIFIED (changed): offset_top was 50 - the world HUD's own diver-name/
+	# Match the HUD label's 12px left inset and sit shortly below its two
+	# lines, leaving enough room for the controls hint without a large gap.
+	# SavePointMenu uses the same offsets so both menu surfaces line up.
+	root.offset_left = 12.0
+	root.offset_top = 75.0
 	root.offset_right = -50.0
 	root.offset_bottom = -50.0
 	root.add_theme_constant_override("separation", 18)
@@ -83,13 +96,37 @@ func _ready() -> void:
 	tabs.add_child(_help_tab)
 
 	_hint = Label.new()
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	root.add_child(_hint)
 
+	# ScrollContainer, not _list added straight to root - Combat Help's own
+	# content (Stats + Effects + Status Conditions + the Replay Tutorial
+	# Fight button) is tall enough to run past the bottom of the screen with
+	# nothing to scroll it into view, unlike Items/Party Spells which rarely
+	# have enough entries to hit this. size_flags_vertical on the scroll
+	# view (not _list itself) is what gives it a bounded height to actually
+	# scroll within, rather than just growing to fit its content like any
+	# other container would.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# A floor, not the actual size - size_flags_vertical above still lets it
+	# grow to fill whatever's left in `root` at any given resolution. This
+	# just guarantees a real reading window even if that "remaining space"
+	# calculation ever comes out smaller than expected, rather than the
+	# scroll view quietly shrinking to a sliver just because Items/Party
+	# Spells (the other two tabs sharing this same _list/scroll) rarely have
+	# enough entries to make the difference visible there.
+	scroll.custom_minimum_size = Vector2(0, 460)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+
 	_list = VBoxContainer.new()
-	_list.custom_minimum_size = Vector2(360, 0)
+	_list.custom_minimum_size = Vector2(0, 0)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 6)
-	root.add_child(_list)
+	scroll.add_child(_list)
 
 func open() -> void:
 	visible = true
@@ -125,7 +162,9 @@ func _refresh_items() -> void:
 	_hint.text = "Using an item applies it to whoever you're currently steering."
 	if world == null or world.inventory.is_empty():
 		var empty := Label.new()
-		empty.text = "No items yet - shockwave a rock or claim a guardian's reward."
+		empty.text = "No items yet"
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD
+		empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list.add_child(empty)
 		return
@@ -136,9 +175,33 @@ func _refresh_items() -> void:
 			continue
 		var def: Dictionary = Items.ITEMS.get(item_id, {})
 		var btn := Button.new()
-		btn.text = "Use %s (x%d)" % [String(def.get("display", item_id)), count]
+		# MODIFIED (changed): was "Use %s (x%d)" as the button's own text -
+		# the count now lives in its own tile at the button's right edge
+		# instead (see the plate/badge built below, same "opaque plate
+		# behind a number" convention battle.gd's _add_power_badge() uses
+		# for a move's power badge), so the button's text is just the
+		# item's name, left-aligned so it doesn't visually crowd the tile.
+		btn.text = String(def.get("display", item_id))
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.tooltip_text = String(def.get("description", ""))
 		btn.custom_minimum_size = Vector2(340, 40)
+		# MODIFIED (fixed): the count tile is correctly anchored inside this
+		# button's own rect (8px in from its true right edge), but Godot's
+		# default Button theme has no visible background in its normal
+		# (non-hover) state - against this menu's own dark panel background,
+		# that made the button read as invisible, so the tile looked like it
+		# was floating disconnected in empty space past "Potion" rather than
+		# sitting inside the same row. A real background/border ties them
+		# together as one visible row, same dark-bordered-panel look used
+		# elsewhere in this game (e.g. battle.gd's swap demo frame).
+		var btn_style := StyleBoxFlat.new()
+		btn_style.bg_color = Color(0.03, 0.09, 0.12)
+		btn_style.border_color = Color(0.18, 0.34, 0.4)
+		btn_style.set_border_width_all(1)
+		btn_style.set_corner_radius_all(4)
+		btn_style.set_content_margin_all(8)
+		btn.add_theme_stylebox_override("normal", btn_style)
+		btn.add_theme_stylebox_override("disabled", btn_style)
 		# Disabled rather than hidden when it wouldn't help the currently
 		# steered diver right now (full HP for a potion, full oxygen for a
 		# cell, etc.) - same "show what you can't use yet" convention
@@ -148,6 +211,34 @@ func _refresh_items() -> void:
 		if not world.divers.is_empty():
 			btn.disabled = not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
 		btn.pressed.connect(_on_use_item_pressed.bind(item_id))
+		# A black tile pinned to the button's own right edge, vertically
+		# centered - same "opaque plate behind a number" idea as battle.gd's
+		# _add_power_badge() (a move's power badge), just centered on this
+		# button's right edge instead of its top-right corner, since this
+		# button is a wide horizontal bar rather than a small square tile.
+		var count_tile := PanelContainer.new()
+		count_tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tile_style := StyleBoxFlat.new()
+		tile_style.bg_color = Color(0.0, 0.0, 0.0, 0.85)
+		tile_style.set_corner_radius_all(4)
+		tile_style.set_content_margin_all(2)
+		count_tile.add_theme_stylebox_override("panel", tile_style)
+		count_tile.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+		count_tile.offset_left = -32
+		count_tile.offset_right = -8
+		count_tile.offset_top = -12
+		count_tile.offset_bottom = 12
+		btn.add_child(count_tile)
+
+		var count_label := Label.new()
+		count_label.text = str(count)
+		count_label.add_theme_font_size_override("font_size", 16)
+		count_label.add_theme_color_override("font_color", Color.WHITE)
+		count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		count_tile.add_child(count_label)
+
 		_list.add_child(btn)
 
 func _on_use_item_pressed(item_id: String) -> void:
@@ -155,6 +246,27 @@ func _on_use_item_pressed(item_id: String) -> void:
 		return
 	world.use_inventory_item(item_id)
 	refresh()
+
+# _start_battle() (called via _replay_tutorial_battle()) closes this menu
+# itself, same as starting any other fight - nothing extra needed here.
+func _on_replay_tutorial_pressed() -> void:
+	if world != null:
+		world._replay_tutorial_battle()
+
+# Replay the first special-encounter lesson from Combat Help without needing
+# to discover a sonar site first. This is the Maxilani practice encounter;
+# its tutorial path never grants the guarded item.
+func _on_replay_special_encounter_tutorial_pressed() -> void:
+	if world != null:
+		world._replay_special_encounter_tutorial("attack_up", "angler")
+
+# The F1 walkthrough (world.gd's _unhandled_input(), TutorialContent.
+# GENERAL_PAGES) was only ever reachable by that keybind - this gives it a
+# discoverable, mouse-only way back in too, right next to the button that
+# replays the scripted fight itself.
+func _on_replay_tutorial_guide_pressed() -> void:
+	if world != null:
+		world.tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
 # One button per living diver x their inventory-tagged spells (see
 # World._inventory_spells_for()) - disabled rather than hidden when that
@@ -184,6 +296,8 @@ func _refresh_spells_root() -> void:
 	if not any:
 		var empty := Label.new()
 		empty.text = "No party spells known yet."
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD
+		empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		empty.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_list.add_child(empty)
 
@@ -228,12 +342,43 @@ func _on_target_chosen(target: Diver) -> void:
 	_mode = "spells_root"
 	refresh()
 
-# Plain reference text, no buttons - one title/body Label pair per
-# TutorialContent.STATUS_CONDITIONS entry, so a new status only ever needs
-# adding there, not here too.
+# Plain reference text, no buttons - one section heading plus a title/body
+# Label pair per entry, so a new stat/effect/status only ever needs adding
+# to its own TutorialContent table, not here too.
 func _refresh_help() -> void:
-	_hint.text = "Status conditions"
-	for entry in TutorialContent.STATUS_CONDITIONS:
+	_hint.text = "Stats, effects, and status conditions"
+	if world != null and world.has_method("_replay_tutorial_battle"):
+		var replay_btn := Button.new()
+		replay_btn.text = "Replay Tutorial Fight"
+		replay_btn.custom_minimum_size = Vector2(340, 40)
+		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
+		_list.add_child(replay_btn)
+	if world != null and world.has_method("_replay_special_encounter_tutorial"):
+		var replay_special_btn := Button.new()
+		replay_special_btn.text = "Replay Special Encounter Tutorial"
+		replay_special_btn.custom_minimum_size = Vector2(340, 40)
+		replay_special_btn.pressed.connect(_on_replay_special_encounter_tutorial_pressed)
+		_list.add_child(replay_special_btn)
+	if world != null and world.get("tutorial_book") != null:
+		var replay_guide_btn := Button.new()
+		replay_guide_btn.text = "Reopen Tutorial Guide"
+		replay_guide_btn.custom_minimum_size = Vector2(340, 40)
+		replay_guide_btn.pressed.connect(_on_replay_tutorial_guide_pressed)
+		_list.add_child(replay_guide_btn)
+	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
+	var effect_entries: Array[Dictionary] = []
+	for kind in TutorialContent.EFFECT_KIND_EXPLANATIONS:
+		effect_entries.append(TutorialContent.EFFECT_KIND_EXPLANATIONS[kind] as Dictionary)
+	_add_help_section("Effects", effect_entries)
+	_add_help_section("Status Conditions", TutorialContent.STATUS_CONDITIONS)
+
+func _add_help_section(heading: String, entries: Array[Dictionary]) -> void:
+	var heading_label := Label.new()
+	heading_label.text = heading
+	heading_label.add_theme_font_size_override("font_size", 15)
+	heading_label.add_theme_color_override("font_color", Color(0.5, 0.65, 0.7))
+	_list.add_child(heading_label)
+	for entry in entries:
 		var title := Label.new()
 		title.text = String(entry.get("title", ""))
 		title.add_theme_font_size_override("font_size", 18)
@@ -242,6 +387,6 @@ func _refresh_help() -> void:
 		var body := Label.new()
 		body.text = String(entry.get("body", ""))
 		body.autowrap_mode = TextServer.AUTOWRAP_WORD
-		body.custom_minimum_size = Vector2(360, 0)
+		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		body.add_theme_color_override("font_color", Color(0.8, 0.88, 0.9))
 		_list.add_child(body)

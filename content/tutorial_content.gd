@@ -109,3 +109,66 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 		"body": "A stunned combatant skips their turn entirely - the number attached to Stun is how many of their own upcoming turns get skipped, not a stat penalty the way Blindness's level is.",
 	},
 ]
+
+# --- Ported from main's tutorial_content.gd for the inventory menu's Combat
+# Help tab (inventory_menu.gd). ---
+
+const STAT_GLOSSARY: Array[Dictionary] = [
+	{
+		"title": "HP",
+		"body": "Health. A fight ends the instant either every party member or every enemy reaches 0.",
+	},
+	{
+		"title": "Strength (STR)",
+		"body": "Added to a move's base power for its raw damage number, before the target's Defense reduces it.",
+	},
+	{
+		"title": "Defense (DEF)",
+		"body": "Subtracted from an incoming hit's raw damage (base power plus the attacker's Strength) before it reaches HP.",
+	},
+	{
+		"title": "Agility (AGI)",
+		"body": "Decides turn order - whoever has the highest goes first each round, and the order updates immediately if a move changes it mid-round.",
+	},
+	{
+		"title": "Accuracy (ACC)",
+		"body": "A hit lands only if it's strictly greater than the defender's current Evasion.",
+	},
+	{
+		"title": "Evasion (EVA)",
+		"body": "A pool spent down by a successful dodge, by however much Accuracy it just beat. It only refills at the start of that combatant's own next turn.",
+	},
+]
+
+# Case-insensitive-by-construction lookup (titles here are always this
+# table's own literal strings) - battle.gd's _move_tooltip_text() uses this
+# to fold the Strength/Defense entries into any damage-dealing move's own
+# hover tooltip, rather than only being reachable through the Esc menu.
+static func stat_glossary_body(title: String) -> String:
+	for entry in STAT_GLOSSARY:
+		if String(entry.get("title", "")) == title:
+			return String(entry.get("body", ""))
+	return ""
+
+# reduce_evasion/self_temporary aren't CombatantStats statuses - nothing
+# calls add_status() for them, so they have no level/duration and no place
+# in STATUS_CONDITIONS above - but they're just as opaque to a new player as
+# a status effect is (a bare "EVA -3" doesn't say whether that's permanent
+# or whose Evasion actually drops). Keyed by the move data's own "kind"
+# string rather than a display title, since every move using a given kind
+# behaves identically - there's nothing move-specific to look up the way a
+# status name is. One title alongside each body, since the kind string
+# itself ("reduce_evasion") isn't fit for display.
+const EFFECT_KIND_EXPLANATIONS: Dictionary = {
+	"reduce_evasion": {
+		"title": "Evasion Reduction",
+		"body": "Permanently lowers the target's Evasion for the rest of the fight, unlike a status effect - it does not wear off on its own.",
+	},
+	"self_temporary": {
+		"title": "Self Cost",
+		"body": "A cost the caster pays on themselves, not the target. It wears off automatically at the caster's own next turn.",
+	},
+}
+
+static func effect_kind_explanation(kind: String) -> Dictionary:
+	return EFFECT_KIND_EXPLANATIONS.get(kind, {}) as Dictionary
