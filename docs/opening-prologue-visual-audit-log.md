@@ -298,6 +298,55 @@ returns HTTP 200 and the same source manifest. Persistent result:
 requested video edit/hosted-flow check, not the broader goal's blind listening,
 viewport matrix or final zero-defect acceptance.
 
+## Save/restart replay reported by user, 2026-10-03: OPEN, not final PASS
+
+The user confirms reaching motivation and Continue, entering ordinary encounters,
+dying, then repeating the full opening/Cordys sequence. Preserve this report;
+native green flags do not resolve it.
+
+Native real-button journey now includes ordinary loss, actual Restart from Save
+Point scene reload, another loss, Return to Title and public Load Game selection.
+The ordinary completed case passes. A newly probed decoder-fallback composition
+fails: completed recovery retains the honest `opening_video_seen=false`, but
+Load Game independently starts a movie despite `prologue_complete=true`. The
+minimal guard fix lets completion take precedence, preserving the independent
+viewing flag. Both native variants now pass; incomplete decoder failures still
+retry. This fixes a real subset, not the user's repeated Cordys fight.
+
+Exact hosted source `4e244a1` complete ordinary New Game → real mouse combat →
+recovery → cold page reload → actual Load Game/slot buttons passes independently
+in Chromium (87.067 s opening) and WebKit 26.5 (93.042 s opening). Each engine's
+actual persisted IndexedDB checkpoint contains both flags true; each fresh World
+reports only `complete` and shows controllable world/optional training. No
+browser/script errors. These tests ran against the existing deployment, before
+the fallback guard fix; they characterize the normal case, not prove a fix.
+
+Direct observation in the existing Safari tab at the same review alias:
+three occupied “Lv 1 party” slots. Slots 1 and 2 restore pre-prologue-complete
+movement-only controls; Slot 3 starts the Mermaid movie. No completed destination
+was observed. Diagnostic loads were interrupted by reload before recovery;
+no slot was created, overwritten, deleted, or marked complete. The slots are
+insufficiently distinguishable, but wrong selection alone cannot be claimed as
+the cause because none restores completed play.
+
+The user authorized enabling Safari developer tools. Through its console,
+read-only `/userfs` → `FILE_DATA` inspection confirms all three slots actually
+save `prologue_complete=false`. Slots 1/2 have watched-opening true; Slot 3
+has it false. All contain three valid starting-position diver snapshots, full
+starting HP/Oxygen, zero XP/spell points and tutorial incomplete. Thus neither
+a malformed diver count nor a saved completed flag ignored by the loader
+explains these particular snapshots. The loaded runtime's PCK size (92,096,636
+bytes) and fetched build metadata agree with deployed `4e244a1`.
+
+Do not bypass OS access controls or repair arbitrary early-game saves by falsely
+marking every prologue complete. Browser identity of the original completed
+session is being clarified: existing Safari data does not establish that it
+was the browser used during the reported playtest. Completion-write failure,
+later overwrite and a different browser/origin remain unproven explanations.
+The user's full replay remains OPEN pending its exact save/runtime diagnosis.
+Evidence: `docs/evidence/opening-prologue-save-recovery/`. Review alias remains
+the existing source at this point; no full-fix deployment is claimed.
+
 ## Free-swim interruption reported by user, 2026-10-03
 
 The user could not move anywhere before the first attack. OPEN-026 reproduces

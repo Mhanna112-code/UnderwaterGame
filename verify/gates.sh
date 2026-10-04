@@ -107,6 +107,7 @@ run "opening mix: do cue envelopes preserve user preferences" "$GODOT" --headles
 run "opening split video: is one decoder retained silently across combat" "$GODOT" --headless --path . --script verify/prologue_cinematic.gd
 run "opening cinematic edit: is the approved title ending retained without the monologue" "$GODOT" --headless --path . --script verify/prologue_cinematic_asset.gd
 run "opening journey: do real moves reach atomic recovery and ordinary encounters" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd
+run "opening fallback recovery: do death restart and title load preserve completed play without falsifying video viewing" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd -- --opening-fallback
 run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
 
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd

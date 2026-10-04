@@ -1,5 +1,5 @@
 // OPEN-004/014/020: exported ordinary entry, complete movies, real mouse input.
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +18,8 @@ const server = http.createServer((req, res) => {
 });
 if (!live) await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const gpuMode = process.env.OPENING_BROWSER_GPU || (process.platform === 'darwin' ? 'metal' : 'swiftshader');
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: ['--use-gl=angle', `--use-angle=${gpuMode}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browserEngine = process.env.OPENING_BROWSER_ENGINE || 'chromium';
+const browser = browserEngine === 'webkit' ? await webkit.launch() : await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: ['--use-gl=angle', `--use-angle=${gpuMode}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 console.log('Browser launched');
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const phases = [], errors = [], timestamps = {};
@@ -44,7 +45,7 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
 };
-let failure, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs;
+let failure, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, saveRecheck;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
   console.log('Export page loaded');
@@ -108,10 +109,59 @@ try {
   if (elapsedSeconds >= 120) throw new Error('Normal opening exceeds the two-minute acceptance limit');
   const expected = ['opening_video', 'spawn_exploration', 'angler', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
+  if (process.env.OPENING_SAVE_RECHECK === '1') {
+    // OPEN-027: inspect the browser's actual persisted checkpoint after the
+    // ordinary journey. This is our fresh test context, never player storage.
+    const readSaves = async () => page.evaluate(async () => {
+      const saves = [];
+      for (const info of await indexedDB.databases()) {
+        const db = await new Promise((resolve, reject) => {
+          const req = indexedDB.open(info.name);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        if (db.objectStoreNames.contains('FILE_DATA')) {
+          await new Promise((resolve, reject) => {
+            const request = db.transaction('FILE_DATA').objectStore('FILE_DATA').openCursor();
+            request.onsuccess = () => {
+              const cursor = request.result;
+              if (!cursor) { resolve(); return; }
+              if (String(cursor.key).includes('/saves/slot_')) {
+                saves.push({ database: info.name, key: cursor.key,
+                  data: JSON.parse(new TextDecoder().decode(cursor.value.contents)) });
+              }
+              cursor.continue();
+            };
+            request.onerror = () => reject(request.error);
+          });
+        }
+        db.close();
+      }
+      return saves;
+    });
+    await page.waitForTimeout(2000);
+    saveRecheck = { beforeReload: await readSaves() };
+    console.log('BROWSER CHECKPOINT|' + JSON.stringify(saveRecheck.beforeReload));
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForTimeout(20000);
+    await shot('10-reloaded-title');
+    // The real Load Game button and slot picker, not a prologue bypass flag.
+    await page.mouse.click(640, 405);
+    await page.waitForTimeout(700);
+    await shot('11-load-slots');
+    await page.mouse.click(640, 327);
+    await page.waitForTimeout(4000);
+    await shot('12-loaded-world');
+    saveRecheck.afterReload = await readSaves();
+    if (phases.slice(expected.length).includes('opening_video') || phases.slice(expected.length).includes('spawn_exploration')) {
+      throw new Error('OPEN-027 cold Load Game replayed the completed opening');
+    }
+    if (phases.slice(expected.length).join(',') !== 'complete') throw new Error('OPEN-027 Load Game did not restore completed normal play');
+  }
   if (errors.length) throw new Error(errors.join('\n'));
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, phases, timestamps, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, phases, timestamps, saveRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }

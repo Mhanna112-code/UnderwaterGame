@@ -522,11 +522,11 @@ func _on_title_load_game(slot: int) -> void:
 
 # The opening owns no campaign state. World owns the durable milestone and
 # writes it only after actual playback completes. A decoder fallback continues
-# this session safely but intentionally leaves the milestone false, so a later
-# load can try the cinematic again instead of silently recording a viewing that
-# never happened.
+# this session safely but intentionally leaves the viewing milestone false.
+# Retry that cinematic only while the playable prologue is still incomplete;
+# completed recovery takes precedence and must never rewind normal play.
 func _play_opening_if_needed() -> bool:
-	if route_state.opening_video_seen:
+	if route_state.prologue_complete or route_state.opening_video_seen:
 		return true
 	if skip_intro_for_test:
 		route_state.opening_video_seen = true

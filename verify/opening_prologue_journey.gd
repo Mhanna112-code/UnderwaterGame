@@ -11,13 +11,27 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
-	world.skip_intro_for_test = true
+	var fallback_case := OS.get_cmdline_user_args().has("--opening-fallback")
+	world.skip_intro_for_test = not fallback_case
 	root.add_child(world)
 	current_scene = world
 	await process_frame
 	await process_frame
 	world.route_state.phase_changed.connect(func(phase: String) -> void: phases.append(phase))
-	await world._on_title_new_game(SLOT)
+	if fallback_case:
+		# OPEN-027 cross-feature case: acknowledged decoder failure must not
+		# force a completed playable prologue to replay on a later death/load.
+		world._on_title_new_game(SLOT)
+		await process_frame
+		world.opening_video.call("fail_for_test")
+		var fallback_continue := _find_button(world.opening_video, "Continue")
+		_expect(fallback_continue != null, "OPEN-027 decoder fallback has no Continue")
+		if fallback_continue != null:
+			fallback_continue.emit_signal("pressed")
+		await process_frame
+		await process_frame
+	else:
+		await world._on_title_new_game(SLOT)
 	world.call("_update_prologue_trigger", 0.4)
 	world.call("_update_prologue_trigger", 7.2)
 	await process_frame
@@ -79,14 +93,73 @@ func _run() -> void:
 		_expect(diver.stats.xp == 0 and diver.stats.spell_points == 0 and diver.known_spells.is_empty(), "OPEN-010 prologue granted progression")
 	var save := SaveManager.read_slot(SLOT)
 	_expect((save.get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-016 recovery save milestone missing")
-	_expect(phases == ["spawn_exploration", "angler", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"], "OPEN-002 public phases missing/duplicated: %s" % [phases])
+	var expected_phases: Array[String] = ["spawn_exploration", "angler", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"]
+	if fallback_case:
+		expected_phases.push_front("opening_video")
+	_expect(phases == expected_phases, "OPEN-002 public phases missing/duplicated: %s" % [phases])
 	# OPEN-018: prove the actual recovered run, with training still incomplete,
 	# can start an ordinary encounter. A synthetic completed fixture alone
 	# would not prove that the opening handoff unlocked the production signal.
 	(world.divers[world.active] as Diver).encounter_triggered.emit()
 	await process_frame
 	_expect(world.battle != null and not world.battle.prologue_angler_encounter and not world.battle.prologue_octopus_encounter, "OPEN-018 ignoring training leaves ordinary encounters locked")
-	await _finish(world)
+	# OPEN-027: a later ordinary defeat must not rewind the completed opening.
+	# Inject only the public combat-result boundary; restart itself uses the
+	# actual visible button, disk checkpoint and SceneTree reload, not _load_save.
+	if world.battle == null:
+		await _finish(world)
+		return
+	world.battle.finished.emit("lost")
+	await process_frame
+	_expect(world.game_over_screen.is_visible_in_tree(), "OPEN-027 ordinary loss does not show Game Over")
+	var restart := _find_button(world, "Restart from Save Point")
+	_expect(restart != null, "OPEN-027 Game Over has no restart button")
+	print("RESTART SAVED|", SaveManager.read_slot(SLOT).get("route_state", {}))
+	if restart == null:
+		await _finish(world)
+		return
+	var old_instance := world.get_instance_id()
+	restart.emit_signal("pressed")
+	for _i in range(8):
+		await process_frame
+	var restored := current_scene as World
+	_expect(restored != null and restored.get_instance_id() != old_instance, "OPEN-027 restart did not rebuild the World")
+	if restored != null:
+		print("RESTART LOADED|slot=", restored._current_slot, "|", restored.route_state.to_save_data())
+		_expect(restored.route_state.prologue_complete, "OPEN-027 death restart lost the completed opening")
+		_expect(restored.route_state.opening_video_seen == not fallback_case, "OPEN-027 restart changed the successful-video milestone")
+		_expect(restored.route_state.prologue_phase == "complete", "OPEN-027 death restart enters the opening instead of normal play")
+		_expect(not paused and not restored.battling, "OPEN-027 restart does not restore controllable world")
+		_expect(get_nodes_in_group("opening_video").is_empty() and get_nodes_in_group("prologue_cinematic").is_empty(), "OPEN-027 restart created a prologue movie")
+		_expect(not restored.game_over_screen.is_visible_in_tree(), "OPEN-027 restart leaves Game Over visible")
+		_expect(restored._current_slot == SLOT, "OPEN-027 death restart selected a different slot")
+		for value in restored.divers:
+			var diver := value as Diver
+			_expect(diver.stats.hp == diver.stats.hp_max, "OPEN-027 restart loads a dead party")
+		# Exercise the independent title Load Game signal after another actual
+		# Game Over -> Return to Title reload. The test slot is deliberately
+		# outside the three player slots; emitting the public chosen-slot signal
+		# avoids overwriting a user's save just to use the picker.
+		(restored.divers[restored.active] as Diver).encounter_triggered.emit()
+		await process_frame
+		if restored.battle != null:
+			restored.battle.finished.emit("lost")
+			await process_frame
+			var title_button := _find_button(restored, "Return to Title")
+			_expect(title_button != null, "OPEN-027 Game Over has no Return to Title")
+			if title_button != null:
+				title_button.emit_signal("pressed")
+				for _i in range(8):
+					await process_frame
+				restored = current_scene as World
+				_expect(restored.title_screen.is_visible_in_tree(), "OPEN-027 Return to Title does not show title")
+				restored.title_screen.load_game_chosen.emit(SLOT)
+				for _i in range(8):
+					await process_frame
+				_expect(restored.route_state.prologue_complete and restored.route_state.prologue_phase == "complete", "OPEN-027 title Load Game replays completed prologue")
+				_expect(not paused and not restored.battling and not restored.title_screen.is_visible_in_tree(), "OPEN-027 title Load Game does not return normal control")
+				_expect(get_nodes_in_group("opening_video").is_empty() and get_nodes_in_group("prologue_cinematic").is_empty(), "OPEN-027 title Load Game creates a prologue movie")
+	await _finish(restored)
 
 func _attack(fight: Battle) -> void:
 	fight.attack_btn.emit_signal("pressed")
@@ -130,7 +203,8 @@ func _expect(condition: bool, message: String) -> void:
 		findings.append(message)
 
 func _finish(world: World) -> void:
-	world.queue_free()
+	if is_instance_valid(world):
+		world.queue_free()
 	await process_frame
 	paused = false
 	var audio := root.get_node_or_null("GameAudio")

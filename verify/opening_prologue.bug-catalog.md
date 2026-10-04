@@ -183,6 +183,74 @@ normal Game Over, and leaves the current tutorial available but optional.
 - Camera shake/reduced-motion toggle — no shake/forced zoom/screen-wide flash
   is admitted by this scope.
 
+## Reported death/restart replay, 2026-10-03
+
+OPEN-027: after finishing the opening and later dying, “Restart from Save
+Point” and title Load Game replay the opening movie and scripted Cordys defeat instead of
+restoring ordinary play. This is a high-impact continuity regression reported
+by the user. Existing save-field tests prove serialization, but the completed
+journey previously stopped before any death/restart scene reload.
+
+- **Public interface:** New Game, real attack/target buttons, recovery Continue,
+  ordinary encounter/loss signals, the visible Restart from Save Point button,
+  public prologue phase and persisted slot JSON. World reload reconstructs
+  mutable geometry, so replacing reload with an in-place flag patch is not a fix.
+- **Boundaries/branches:** recovery writes completion to the active slot;
+  Game Over carries that slot through scene reload; fresh World loads three
+  diver snapshots before its route milestones; missing/malformed slots may
+  currently fall through with fresh false flags; legacy saves migrate separately.
+- **Test:** extend `opening_prologue_journey.gd` past actual recovery to an
+  ordinary loss and click the real restart button. Inspect saved completion
+  before/after, fresh-world phase, absence of cinematic/Battle owners, and
+  restored control. Fast-forward native media only; actual web restart and
+  persistent reload remain independent boundaries to verify.
+- **Self-critique:** saved true flags alone cannot pass; the newly rebuilt
+  scene must actually be playable without any prologue owners. Internal
+  serialization/reload refactors remain valid if that outcome is preserved.
+- **Skipped:** campaign encounter difficulty and full tutorial redesign are
+  unrelated. Do not erase player saves to make the symptom disappear.
+- **Characterized:** normal native completed journey → ordinary loss → real
+  Restart button → fresh World passes. Hosted ordinary New Game also persists
+  both completion flags in IndexedDB and a cold page reload → real Load Game
+  and slot buttons returns directly to normal play. Neither result retracts
+  the user's report; its exact session/save condition is not reproduced yet.
+- **Suspect cross-feature branch:** an acknowledged opening decoder fallback
+  leaves `opening_video_seen=false`, correctly recording no successful viewing.
+  Completing Cordys subsequently sets `prologue_complete=true`. The current
+  Load Game path normalizes that save to complete, then independently creates
+  an opening movie because it checks only `opening_video_seen`. Add a journey
+  variant through the real fallback Continue, recovery, loss and Restart,
+  requiring normal control without falsifying the video-viewing milestone.
+  A retry is correct for an interrupted *incomplete* prologue, not after recovery.
+- **Caught and fixed subset:** fallback journey failed with three public
+  findings: restart entered opening, control remained paused, a movie existed.
+  Completion now takes precedence over the independent video-viewing flag.
+  Normal and fallback journeys both pass actual death/restart and Return to
+  Title → public Load Game signal. Incomplete fallback still retries its video.
+- **Hosted characterization:** exact deployed source `4e244a1`, Chromium and
+  WebKit 26.5 ordinary complete journeys both save true completion to IndexedDB
+  and cold reload → real Load Game/slot buttons enter normal control. Results
+  are in `docs/evidence/opening-prologue-save-recovery/`.
+- **Existing Safari-session observation:** Safari at the same stable review URL has
+  three occupied slots labelled identically “Lv 1 party.” Loading Slots 1 and 2
+  shows movement-only incomplete-prologue controls; Slot 3 starts Mermaid
+  playback. Each diagnostic replay was stopped by page reload before recovery;
+  no New Game, overwrite, deletion or repair was performed. This establishes
+  incomplete checkpoints in this browser, not why the reported completion was
+  lost. The user authorized enabling Safari developer tools. Read-only
+  IndexedDB inspection confirms all three slots have `prologue_complete=false`,
+  `tutorial_complete=false`, three valid diver snapshots, initial positions,
+  full starting HP/Oxygen and zero XP/spell points. Slots 1/2 have
+  `opening_video_seen=true`; Slot 3 has it false. Timestamps and exact flags are
+  recorded in `docs/evidence/opening-prologue-save-recovery/safari-inspection.json`.
+  The loaded runtime PCK size matches current deployment `4e244a1`; no malformed
+  diver-count restore or completed-but-ignored flag explains these snapshots.
+  Browser identity of the originally reported completed session still needs
+  confirmation; do not assume this Safari tab was the browser used for it.
+- **Status:** completed-fallback replay fixed locally; user's full opener/Cordys
+  replay remains open, exact checkpoint cause not established. No full-fix or
+  hosted updated-fix claim.
+
 ## Captured quiet-spawn review finding, 2026-10-03
 
 OPEN-026: the first battle interrupts before the player can meaningfully swim.
