@@ -27,6 +27,12 @@ Normal party stats and strict ACC > EVA remain unchanged. Removing the negative
 modifier permits an exhausted-Evasion payoff while retaining misses against an
 unprepared target. A known-spells assertion alone cannot catch this defect.
 
+The same invalid modifier also affects ordinary Crushing Haymaker. Its tutorial
+prose/comment still assumes an old Bucky Accuracy of 4; actual base is 1. Add
+real exhausted/unprepared-target cases before fixing the ordinary move and
+replace the false -3-ACC counter explanation with its actual Oxygen/EVA risk.
+The five-move lesson structure is preserved; no new onboarding is introduced.
+
 Harness correction: the first continuous-route attempt waited for automatic
 combat after the lab film. Production deliberately waits for its visible
 Continue button. That timeout is not a game failure; the test now presses the

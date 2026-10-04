@@ -262,7 +262,7 @@ const BASE_MOVES := {
 	"Prototype_V(1922)": [
 		{"name": "Guard Bash", "power": 6, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
 		{"name": "Heavy Kick", "power": 10, "acc_mod": 0, "hint": "Balanced, heavier", "text": "You drive a heavy kick home", "oxygen_cost": 10.0},
-		{"name": "Crushing Haymaker", "power": 15, "acc_mod": -3, "hint": "Very heavy, slow", "text": "You wind up and crush it", "oxygen_cost": 16.0},
+		{"name": "Crushing Haymaker", "power": 15, "acc_mod": 0, "hint": "Very heavy, exhaust enemy EVA first", "text": "You wind up and crush it", "oxygen_cost": 16.0},
 	],
 }
 
@@ -314,11 +314,10 @@ const TUTORIAL_ENEMY_MOVE := {"power": 1, "acc_mod": 1, "quick_time_bool": true}
 # Pinned onto the goblin's evasion_current right before Mech Pilot's
 # Crushing Haymaker (stage 2) and Maxilani's Flash Blast (stage 4) resolve -
 # see _explain_crushing_haymaker()/_explain_flash_blast(). Sits strictly
-# between the two moves' own effective accuracy (Mech Pilot's base 4,
-# minus Crushing Haymaker's own -3 acc_mod, is 1; Maxilani's base 3, Flash
-# Blast carries no acc_mod at all) so the Haymaker's own accuracy cost is
-# what makes IT miss while Flash Blast - identical target, same moment in
-# the fight, no acc_mod of its own - still lands. Both divers' accuracy is
+# between the two moves' own effective accuracy (Bucky's base is 1;
+# Maxilani's base is 3). Haymaker can land after Electric Touch exhausts
+# EVA, but misses the deliberately unprepared target here; Flash Blast
+# still lands. Both divers' accuracy is
 # fixed data (diver.gd's BASE_STATS), never randomized the way an enemy's
 # own stats are, so this is reliable regardless of which goblin variant
 # rolled for this fight.
@@ -4262,22 +4261,18 @@ func _explain_precise_tap(enemy: Dictionary) -> void:
 
 # Mech Pilot's own scripted turn (_tutorial_step == 2) - same hover-then-
 # explain shape as _explain_dodging()/_explain_precise_tap(), but Crushing
-# Haymaker's payoff runs the opposite direction from Precise Tap's: its
-# acc_mod (see BASE_MOVES) is a negative player-side accuracy delta, so
-# _show_stat_preview() (already fired by the hover) is already showing the
-# Mech Pilot's own ACC row red with a "(-3)" - this just boxes that row and
-# explains why a move can cost its own user accuracy, then calls out the
-# counter-play: pairing a heavy, less-accurate swing like this one with
-# something that lowers the TARGET's Evasion first (Electric Touch, which
-# _explain_evasion_reduction() already covered as a lasting-for-the-fight
-# reduction, not a one-turn dip) buys back the accuracy this move gives up.
+# Haymaker's payoff is a large hit at a large Oxygen cost. Bucky's low
+# Accuracy still requires exhausting target EVA; a negative modifier used
+# to make that counter-play impossible even against EVA 0. Highlight the
+# real target pool rather than inventing a -3 Accuracy cost that no longer
+# exists. Electric Touch's lasting reduction was covered in the first step.
 func _explain_crushing_haymaker(enemy: Dictionary) -> void:
 	for b in target_buttons:
 		(b as Button).disabled = true
 	target_back_btn.disabled = true
 	# See TUTORIAL_HAYMAKER_DODGE_EVASION's own comment - pinned here,
 	# before the player can even click, so the swing they're about to
-	# throw is guaranteed to whiff on its own accuracy penalty.
+	# throw misses the unprepared target's Evasion pool.
 	(enemy.stats as CombatantStats).evasion_current = TUTORIAL_HAYMAKER_DODGE_EVASION
 
 	var enemy_btn := target_buttons[0] as Button
@@ -4295,13 +4290,11 @@ func _explain_crushing_haymaker(enemy: Dictionary) -> void:
 	_stat_preview_frozen = true
 
 	await _tutorial_show_step(
-		"Crushing Haymaker trades away some of %s's own Accuracy for a much bigger hit - that's why its ACC number is shown in [color=%s]red[/color], with the white (-3) next to it showing the cost. Some attacks are simply too heavy to throw with your usual precision. Pair a swing like this with something that weakens the target first: Electric Touch, for one, lowers an enemy's Evasion for the rest of the fight, so a harder-to-land hit like this one still connects." % [
-			String(_acting.display_name), STAT_COLOR_DOWN.to_html(false),
-		],
+		"Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.",
 		func() -> void:
-			_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, true)
+			_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, true)
 	)
-	_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, false)
+	_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, false)
 	await _explain_click_to_attack(enemy)
 
 # Musashi's SECOND scripted turn (_tutorial_step == 3) - same hover-then-
@@ -4361,8 +4354,7 @@ func _explain_flash_blast(enemy: Dictionary) -> void:
 		(b as Button).disabled = true
 	target_back_btn.disabled = true
 	# Same pin as _explain_crushing_haymaker(), same value - low enough
-	# that Flash Blast's plain accuracy (no acc_mod of its own, unlike
-	# Crushing Haymaker) still beats it and lands for real. See
+	# that Flash Blast's caster Accuracy still beats it and lands for real. See
 	# TUTORIAL_HAYMAKER_DODGE_EVASION's own comment for the actual numbers.
 	(enemy.stats as CombatantStats).evasion_current = TUTORIAL_HAYMAKER_DODGE_EVASION
 

@@ -51,6 +51,8 @@ automation cannot prove that a player feels hope, dread or determination.
 | Training label / crystal hide player | Open OPEN-032/046; rendered wide/narrow/tall recovery and close approach must be readable. |
 | Opening exceeds two minutes | Open; profile real waits/render/input. Shorten redundant response dead time, not player decision time, attack feedback or approved films. |
 | Earned attack never works despite learning tests | Confirmed LAB-BAL-005: Bucky's Heavy Slam had effective Accuracy -2 even against EVA 0. Removed that invalid modifier; real earned menu attacks now land against exhausted EVA and can still miss/spend the pool against EVA 2, with actual Oxygen cost. No base-stat growth or general spell-tree redesign. |
+| Ordinary heavy attack/tutorial advice also impossible | Same -3 modifier affects Crushing Haymaker. Real EVA-0 and EVA-2 menu tests fail before repair and pass afterward. Tutorial commentary assumed old ACC 4; current Bucky is ACC 1. Explanation now teaches real Oxygen cost/EVA setup, preserving the five-move structure. |
+| Recovery looks like an empty debug screen | REC-001..004: static underwater-light background, restrained card, two-part unchanged motivation, focused styled action. No extra required time/text wall. Actual mouse and keyboard saving/retry/ready checks and wide/narrow/tall/mobile renders; durable save owner unchanged. |
 | Invisible puzzle-room traversal barrier | Rechecked actual horizontal swimming past the room and 26m vertical travel at five world positions. No invisible world-spanning collider in current source. |
 
 ## Verification contract

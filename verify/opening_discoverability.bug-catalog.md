@@ -37,3 +37,8 @@ Crystal shader distance fading was rejected visually in Compatibility despite
 valid property settings; explicit camera-distance opacity replaces it. A fixed
 pixel-separation test was corrected for viewport scale, with independent OCR and
 inspection retained. Exact hosted render/whole-opening checks remain separate.
+
+Adversarial harness check: a script-class filter in `find_children` could select
+zero SavePoints. The test now inspects the World's actual save-point owners and
+requires a nonzero near-camera witness. Earlier rendered evidence remains valid,
+but the formerly vacuous structural clause is not counted as proof.

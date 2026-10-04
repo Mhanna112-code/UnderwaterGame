@@ -1,5 +1,27 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: recovery design and adversarial plan recheck
+
+REC-001..004 replace the empty instruction/stock-button screen with a static
+underwater-light backdrop, restrained card and clear two-part unchanged
+motivation. Only extra copy is "YOU SURVIVED"; no extra gate, audio/video owner,
+timer, flash or gameplay change. Actual ready/error renders at 1280x720,
+720x480, 720x900 and 360x640 were inspected: copy, warning and action stay
+visible. Actual mouse and Enter inputs work in retry/ready and are ignored
+while Saving. Native denied-write/retry and two later deaths/Restart/Load pass.
+The first new shader-free background attempt had a GDScript type-inference
+compile failure; it was rejected locally, fixed and recaptured, never deployed.
+
+Crushing Haymaker shares Heavy Slam's impossible negative-Accuracy defect.
+Exhausted/unprepared-target baseline fails; repaired ordinary and earned menu
+attacks land only after EVA setup, spend their true Oxygen costs and retain
+misses. Optional tutorial wording no longer assumes old Bucky ACC 4 or promises
+a false -3-ACC counter. The actual five-move lesson/real victory/Continue/world
+swimming still succeeds. Angler ordinary-rule and Cordys differential matrices
+also pass. A formerly zero-object crystal probe now requires real nearby
+crystals and passes all three review viewports. New gates are wired into the
+aggregate runner; exact export, aggregate and final hosted round follow.
+
 ## 2026-10-04: emotional-contract repair audit
 
 Follow-up: exact clean `02efa8f` hosted full-flow and both later-death reloads

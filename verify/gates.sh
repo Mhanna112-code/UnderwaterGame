@@ -101,7 +101,7 @@ run "opening video persistence: do success and decoder failure restore safely" "
 run "opening trigger: does only actual horizontal swimming start once, without banking idle time" "$GODOT" --headless --path . --script verify/opening_prologue_trigger.gd
 run "opening free swim: do idle and camera-only stay free before four seconds of real swimming" "$GODOT" --headless --path . --script verify/opening_prologue_free_swim.gd
 run "opening world: are authored encounters protected and real-input reachable" "$GODOT" --headless --path . --script verify/opening_prologue_world.gd
-run "opening Angler: does every exposed move win without ordinary balance or rewards changing" "$GODOT" --headless --path . --script verify/prologue_angler.gd
+run "opening Angler: do normal damage/miss/utility choices and real defeat preserve ordinary rules and rewards" "$GODOT" --headless --path . --script verify/prologue_angler.gd
 run "opening Cordys: do actual stats, move effects and survivor outcomes remain real" "$GODOT" --headless --path . --script verify/prologue_combat.gd
 run "opening Cordys: does the skinned actor preserve authored poses and facing" "$GODOT" --headless --path . --script verify/prologue_octopus.gd
 run "opening mix: do cue envelopes preserve user preferences" "$GODOT" --headless --path . --script verify/prologue_audio_envelope.gd
@@ -130,6 +130,9 @@ run "Glassgoat follow-up: do roster and result-first presentation match Discord"
 run "combat Quick Read: do result choices, context, and all-target previews agree" "$GODOT" --headless --path . --script verify/combat_quick_read.gd
 run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
+run "heavy payoff: can normal and earned heavy moves hit exhausted EVA, still miss unprepared EVA and spend real Oxygen" "$GODOT" --headless --path . --script verify/earned_heavy_slam.gd
+GATE_TIMEOUT_SECONDS="${LAB_BALANCE_GATE_TIMEOUT_SECONDS:-600}" run "lab attainable victory: do three real earned-kit policies win through actual Battle outcomes" "$GODOT" --headless --path . --script verify/lab_boss_balance.gd
+run "lab live route: do real guard victories, full film, Continue and boss victory carry rewards to level 3" "$GODOT" --headless --path . --script verify/lab_route_live.gd
 run "deep-zone assets: do selected FBXs import with visible geometry and authored clips" "$GODOT" --headless --path . --script verify/deep_zone_assets.gd
 run "lab door asset: is Glassgoat's separated door the exact visible entrance source" "$GODOT" --headless --path . --script verify/lab_door_asset.gd
 run "lab exterior: does the rock shell conceal the office while preserving the entrance" "$GODOT" --headless --path . --script verify/lab_exterior.gd
@@ -197,6 +200,12 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	for shape in 1280x720 720x480 720x900; do
+		run "opening discoverability $shape: do real nearby crystals, training text and both guardians remain visible/usable" "$GODOT" --path . --resolution "$shape" --script verify/opening_discoverability.gd
+	done
+	for shape in 1280x720 720x480 720x900 360x640; do
+		run "recovery UI $shape: do actual saving/retry/Continue clicks and responsive copy remain correct" "$GODOT" --path . --resolution "$shape" --script verify/prologue_recovery_presentation.gd
+	done
 	run "Cordys narrow framing: do actual skinned vertices remain legible" "$GODOT" --path . --resolution 720x480 --script verify/prologue_stage_framing.gd
 	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
 	run "stage framing narrow: does responsive combat remain visible at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/stage_framing.gd
@@ -238,7 +247,7 @@ else
 	# This gate includes the complete opening, two cold boots and two actual
 	# enemy-caused defeats. Keep its process budget separate from the harness's
 	# unchanged 120-second opening acceptance limit.
-	GATE_TIMEOUT_SECONDS="${OPENING_DEATH_GATE_TIMEOUT_SECONDS:-420}" run "opening browser idle/death: does idle stay free, swimming start once, and real deaths/Restart/cold Load retain completion" env OPENING_IDLE_RECHECK=1 OPENING_SAVE_RECHECK=1 OPENING_DEATH_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-prologue
+	GATE_TIMEOUT_SECONDS="${OPENING_DEATH_GATE_TIMEOUT_SECONDS:-420}" run "opening browser idle/death: does idle stay free, swimming start once, and real deaths/Restart/cold Load retain completion" env OPENING_TIMING_ONLY=1 OPENING_IDLE_RECHECK=1 OPENING_SAVE_RECHECK=1 OPENING_DEATH_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-prologue
 	run "opening browser storage denial: does rejected IndexedDB completion block Continue and recover through Retry" env OPENING_STORAGE_FAILURE=1 OPENING_SAVE_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-storage-denial
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
 	run "audio webcheck: does a trusted New Game click unlock browser audio" node verify/audio_webcheck.mjs "$WEB_DIR" /tmp/gate-audio.png

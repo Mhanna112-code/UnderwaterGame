@@ -7,6 +7,28 @@ not current acceptance. Final whole-candidate and human acceptance remain open.
 
 **Prepared:** 2026-10-03
 
+## Current plan audit, 2026-10-04
+
+The current reconciliation is `docs/opening-emotional-contract-audit.md`;
+historical deployment entries below do not certify the latest candidate.
+
+| Contract | Current disposition |
+| --- | --- |
+| Cover -> complete temporary Mermaid film -> connecting handoff | Retained; normal browser EOF, source/asset checks and title/audio owner tests. No opening crawl or added instructional modal. |
+| Real freedom before Angler | Idle/look do not trigger; at least four seconds of actual requested horizontal swimming. No old idle fallback. |
+| Hope through real combat/victory | Reduced Angler HP only; normal move/hit/cost/status rules, genuine kill and readable Victory/notice/omen beats. Invalid Bucky heavy Accuracy modifiers found during adversarial audit are repaired rather than masked in the opener. |
+| Cordys overwhelms the party, not the combat rules | Three distinct single-target stat-resolved attacks, normal real choices between, high-stat survivors remain survivors. No AoE wipe, forced HP zero or guaranteed player damage. |
+| Films and restrained audio | Approved first 25 seconds and final boss-name ending retained. No monologue; no cue/decoder stacking; user Music/SFX preferences remain authoritative. Actual comfort/listening approval remains human. |
+| Recovery -> purpose -> durable freedom | Same motivation, independent completion milestones and atomic selected-slot save. Recovery is redesigned as a quiet second-chance card; no extra wait or gameplay change. Real saving/retry/Continue input and errors checked at 1280x720, 720x480, 720x900 and 360x640. |
+| Optional tutorial, normal PR96 game afterward | Beacon remains optional/readable; actual complete five-move lesson/Continue restores swimming. Haymaker explanation now matches real low Accuracy/EVA/Oxygen behavior without replacing the lesson. Sonar/random defaults, local hints and timed Run cue retained. |
+| A believable route to growth | Real normal-party guard/guard/lab-film/Continue/Tethys wins carry earned spells and reach level 3. Actual 48-fight earned-kit matrix, heavy-attack payoff/miss witnesses and rendered victories replace immortal/supplied-win evidence. Eventual campaign Cordys is still deferred, not falsely claimed beatable here. |
+| Honest regressions and repeatable gates | New boss/route/payoff/discoverability/recovery gates wired into `verify/gates.sh`; a zero-object crystal check strengthened. Initial render/parse/harness failures retained and rejected, not counted as gameplay proof. |
+| Exact public artifact and zero-defect loop | In progress. Rebuild after recovery/Haymaker changes, inspect final views, verify hosted bytes and real recovery/Load/death/denied-save behavior, run aggregate gates. An evidence-heavy 128.548s timing failure and identical lower-overhead 117.186s pass are both retained. A later 7.540s bridge overrun during overlapping verification is also a failed run, not rounded into a pass. |
+| Uncoached emotional response | Still requires a human: identify Cordys, understand intentional overwhelm, want to grow, recognize immediate freedom and optional training. No automated test certifies these feelings. |
+
+The final audit must name its exact runtime source and examined surfaces. A
+scoped native/rendered clean round is not a whole-PR or human-acceptance claim.
+
 **Parent:** PR #96, `feature/deep-zone-vertical-slice`, confirmed remote source
 head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 

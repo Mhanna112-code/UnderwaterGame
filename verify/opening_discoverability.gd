@@ -66,10 +66,15 @@ func _run() -> void:
 	world.pitch = -0.14
 	for _frame in range(20):
 		await process_frame
-	for node in world.find_children("*", "SavePoint", true, false):
+	# SavePoint is a script class, not a built-in get_class() name. Filtering
+	# find_children by it could silently inspect zero crystals and pass.
+	var near_crystals := 0
+	for node in world._save_points:
 		var point := node as SavePoint
 		if camera.global_position.distance_to(point._crystal.global_position) < 2.5:
+			near_crystals += 1
 			_expect(not point._crystal.visible, "OPEN-046 near-camera crystal still opaque")
+	_expect(near_crystals > 0, "OPEN-046 close-camera fixture did not actually test any crystal")
 	await _shot("close-save-point.png")
 	var save_point := world._save_points[0] as SavePoint
 	for member in world.divers:

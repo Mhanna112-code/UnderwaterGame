@@ -8,7 +8,10 @@ func _initialize() -> void:
 func _run() -> void:
 	root.size = Vector2i(1280, 720)
 	Engine.time_scale = 8.0
-	for evasion in [0, 2]:
+	for sample in [{"move": "Heavy Slam", "eva": 0}, {"move": "Heavy Slam", "eva": 2},
+		{"move": "Crushing Haymaker", "eva": 0}, {"move": "Crushing Haymaker", "eva": 2}]:
+		var evasion := int(sample.eva)
+		var move_name := String(sample.move)
 		var diver := Diver.new()
 		diver.model_name = "Prototype_V(1922)"
 		root.add_child(diver)
@@ -36,7 +39,7 @@ func _run() -> void:
 		var selected: Button
 		for value in battle.move_buttons:
 			var button := value as Button
-			if button.text.get_slice("\n", 0) == "Heavy Slam":
+			if button.text.get_slice("\n", 0) == move_name:
 				selected = button
 		if selected == null:
 			findings.append("LAB-BAL-005 earned Heavy Slam missing")
@@ -53,7 +56,8 @@ func _run() -> void:
 				await process_frame
 				(battle.target_buttons[0] as Button).pressed.emit()
 				# Read at resolution before the ordinary enemy can refill EVA.
-				while not battle._current_log_text().contains("heavy slam") and Time.get_ticks_msec() < deadline:
+				var result_text := "heavy slam" if move_name == "Heavy Slam" else "wind up and crush"
+				while not battle._current_log_text().contains(result_text) and Time.get_ticks_msec() < deadline:
 					await process_frame
 				var damage := hp_before - enemy.hp
 				var spent: int = evasion - enemy.evasion_current
@@ -63,7 +67,7 @@ func _run() -> void:
 					findings.append("LAB-BAL-005 unprepared target no longer evades/spends EVA")
 				if (battle.party[0].stats as CombatantStats).oxygen >= oxygen_before:
 					findings.append("LAB-BAL-005 attack skipped its actual Oxygen cost")
-				print("EARNED HEAVY SLAM|eva=%d|damage=%d|spent=%d|oxygen=%.1f" % [evasion, damage, spent, battle.party[0].stats.oxygen])
+				print("HEAVY PAYOFF|move=%s|eva=%d|damage=%d|spent=%d|oxygen=%.1f" % [move_name, evasion, damage, spent, battle.party[0].stats.oxygen])
 		battle.queue_free()
 		diver.queue_free()
 		await process_frame

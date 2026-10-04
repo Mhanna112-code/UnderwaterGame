@@ -104,6 +104,16 @@ const expectShallows = name => {
   if (!/Shallows.*stronger/i.test(text)) throw new Error('SHALLOW-001 normal recovered/loaded world lacks visible Shallows purpose: ' + text);
   console.log('SHALLOWS VIEW|' + name + '|' + text.replaceAll('\n', ' | '));
 };
+const clickRecoveryAction = async (action, name) => {
+  // REC-004: presentation may move the button. Click its real rendered label,
+  // never a coordinate inherited from the old blank recovery screen.
+  await page.screenshot({ path: path.join(output, name + '.png') });
+  const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, name + '.png')], { encoding: 'utf8' }));
+  const row = rows.find(value => value.text.trim() === action);
+  if (!row) return false;
+  await page.mouse.click(row.x, row.y);
+  return true;
+};
 const attack = async (name, moveY = 604) => {
   await page.mouse.click(160, 544);
   await page.waitForTimeout(400);
@@ -273,7 +283,7 @@ try {
     if (!checkpointFailureObserved) throw new Error('OPEN-033 durable browser write failed but recovery offered successful Continue');
     if (phases.includes('complete')) throw new Error('OPEN-033 storage failure released normal play');
     await page.evaluate(() => { window.rejectCompletedCheckpoint = false; });
-    await page.mouse.click(640, 417); // Centre of the visible Retry Save action.
+    if (!await clickRecoveryAction('Retry Save', '08c-visible-retry')) throw new Error('REC-004 visible Retry Save missing');
     await page.waitForTimeout(2500);
     await shot('08b-retry-save');
   }
@@ -283,7 +293,7 @@ try {
   // never synthesize a result or bypass the storage wait.
   const continueDeadline = Date.now() + 6000;
   while (!phases.includes('complete') && Date.now() < continueDeadline) {
-    await page.mouse.click(640, 393);
+    await clickRecoveryAction('Continue', '08d-visible-continue');
     await page.waitForTimeout(200);
   }
   await waitPhase('complete', 5000);
