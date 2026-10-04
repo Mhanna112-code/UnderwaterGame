@@ -8,9 +8,24 @@ new recovery card, genuine Continue, complete films and normal combat choices.
 Actual first control: 140.139 seconds raw / 120.454 engaged, with 19.685 seconds
 of deliberate idle/look excluded. Subsequent world screenshot/OCR adds 2.177
 seconds, recorded separately. The 120-second gate **fails**; it is not rounded
-away or hidden behind the successful visual/functional checks. No stable alias
-or public-main promotion yet. Full aggregate, fresh spatial renders and final
-recovery rechecks remain pending for this source.
+away or hidden behind the successful visual/functional checks.
+
+Final isolated run of the same exact runtime passes: actual control 133.608
+seconds raw / 114.798 engaged; deliberate idle/look and explicit no-input probes
+18.810 seconds, subsequent screenshot/OCR 1.680. Full films and real inputs,
+redesigned Continue, cold Load and two actual later enemy-caused deaths with
+Restart/title Load succeed; zero runtime errors. No threshold or movie changed.
+Current full aggregate passes 126 native/rendered checks; its web section is
+deliberately skipped and covered by separate hosted checks, not counted passed.
+Exact hosted storage denial/Retry/Continue/Load and fresh settled native
+wide/narrow/tall guard/rest views pass. Ready/error cards, world handoff and
+ground-level footprints were inspected with no new defect in those scopes.
+The existing review alias now serves `1fde43a`; public main remains the Oct 1
+deployment. Human listening/emotional acceptance remains open. Current packet:
+`docs/evidence/opening-emotional-audit/current-1fde43a/`.
+
+The dated entries below are historical point-in-time receipts; their earlier
+pending/failed status is retained, not presented as the current ledger.
 
 ## 2026-10-04: rejecting green fixture snapshots
 

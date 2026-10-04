@@ -23,7 +23,7 @@ historical deployment entries below do not certify the latest candidate.
 | Optional tutorial, normal PR96 game afterward | Beacon remains optional/readable; actual complete five-move lesson/Continue restores swimming. Haymaker explanation now matches real low Accuracy/EVA/Oxygen behavior without replacing the lesson. Sonar/random defaults, local hints and timed Run cue retained. |
 | A believable route to growth | Real normal-party guard/guard/lab-film/Continue/Tethys wins carry earned spells and reach level 3. Actual 48-fight earned-kit matrix, heavy-attack payoff/miss witnesses and rendered victories replace immortal/supplied-win evidence. Eventual campaign Cordys is still deferred, not falsely claimed beatable here. |
 | Honest regressions and repeatable gates | New boss/route/payoff/discoverability/recovery gates wired into `verify/gates.sh`; a zero-object crystal check strengthened. Initial render/parse/harness failures retained and rejected, not counted as gameplay proof. |
-| Exact public artifact and zero-defect loop | In progress. Rebuild after recovery/Haymaker changes, inspect final views, verify hosted bytes and real recovery/Load/death/denied-save behavior, run aggregate gates. An evidence-heavy 128.548s timing failure and identical lower-overhead 117.186s pass are both retained. A later 7.540s bridge overrun during overlapping verification is also a failed run, not rounded into a pass. |
+| Exact public artifact and zero-defect loop | Runtime `1fde43a`: hosted bytes verified; 126 native/rendered checks pass, with the aggregate's web section deliberately skipped and separately tested on the actual host. Fresh Compatibility wide/narrow/tall and hosted ready/error/world handoff views inspected. Final isolated full browser round passes at 114.798 engaged seconds, including real later deaths/Restart/title Load; denied storage/Retry also passes. Existing review alias updated, public main unchanged. First same-runtime 120.454-second failure and all earlier failed rounds remain recorded. Human listening/emotional approval is not automated. |
 | Uncoached emotional response | Still requires a human: identify Cordys, understand intentional overwhelm, want to grow, recognize immediate freedom and optional training. No automated test certifies these feelings. |
 
 The final audit must name its exact runtime source and examined surfaces. A
@@ -32,22 +32,32 @@ scoped native/rendered clean round is not a whole-PR or human-acceptance claim.
 **Parent:** PR #96, `feature/deep-zone-vertical-slice`, confirmed remote source
 head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 
-**Current child candidate:** clean worktree
+**Current child candidate:** dedicated worktree (user import metadata preserved)
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment before this audit's repairs:** runtime source
+**Current runtime:** `1fde43a818a1bf7b969798bf3c56678d4a40d68a`, isolated
+deployment `https://underwatergame-hhtn0tdt5-immortaldemongods-projects.vercel.app/`.
+PCK 121,554,920 bytes / SHA-256
+`afef8d00cf1494a1f407a4264dfa2e7b8d80951122e2c146db073dc0e8b9f942`.
+Draft PR #98 targets PR #96. Later proof/documentation/observer commits do not
+change this runtime. The existing stable alias
+`https://underwatergame-opening-prologue-review.vercel.app/` now resolves to this
+verified deployment; public main remains the Oct 1 deployment. Current packet:
+`docs/evidence/opening-emotional-audit/current-1fde43a/`.
+
+**Historical deployment before this audit's repairs:** runtime source
 `4c6ca744e528c3cd11f98815e97ce2afe341043c`:
 `https://underwatergame-cmop2s7of-immortaldemongods-projects.vercel.app/`.
 PCK SHA-256 `027740c15745e1acac7d5938b5dddafb9df9840d369c8d1480feecf103e6b5a8`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-The latest normal hosted full-movie, physical-swim, three-player-attack/three-
+At that historical stage, the normal hosted full-movie, physical-swim, three-player-attack/three-
 individual-death, recovery/cold Load run completed without runtime errors but
 FAILED timing at 127.713s total / 125.710s engaged. The earlier 117.371s packet
 does not supersede that failure. No query shortcut, injected completion or
 shortened movie. Native actual later enemy death/Restart/title Load also passes.
-This audit retunes dead time and verifies the exact fresh artifact before moving
-the review alias. The response uses distinct Octo Stab,
+That failed round drove dead-time repairs and the fresh artifact check before
+the review alias moved. The response uses distinct Octo Stab,
 Head Bash and Electric Shooting, normal stats, and actual menus between hits.
 Prior title/audio/idle, Shallows/Deep/defaults, victory bridge, escape cue,
 TAB hint and denied-storage evidence remain source-labelled in their original
@@ -55,8 +65,8 @@ packets. Sonar and encounters enable at recovery; idle never starts the Angler.
 This is a review candidate, not final acceptance. The inherited PR #96 alias
 remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
 
-**Child branch:** create a clean worktree from the confirmed PR #96 head and
-use `feature/opening-octopus-prologue`. Open its PR against PR #96 so the first
+**Child branch:** created from the confirmed PR #96 head as
+`feature/opening-octopus-prologue`. Draft PR #98 targets PR #96 so the first
 review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 `main` and re-run every acceptance gate.
 
@@ -77,11 +87,11 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | --- | --- | --- |
 | 0: clean child branch | complete | Remote PR #96 head `27a5b525…`; clean child worktree; initial diff contains only these four planning contracts. |
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
-| B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Latest title/reveal now joins the movie to control with credits/question and settled camera/HUD; real EOF/held input, 1280x720/720x480 title frames and normal hosted movie/title/idle/swim pass (`opening-title-handoff/`). Earlier full Cordys/recovery journey remains source-labeled. Tall/final whole-candidate listening/human acceptance remain. |
-| C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
-| D: Cordys interruption | in progress | SOLO-001–007 now preserve three actual player turns between distinct targeted 80/78/76 responses, without AoE or forced HP-zero. Native per-frame HP/input/SFX, high-HP/EVA/DEF witnesses and 15-case normal-rule matrix pass. Per-beat 61-sample framing repairs miniature/clipped poses; independent live skin/target-facing wide/narrow checks and rendered audit pass. Hosted real mouse choices and recovery/cold Load pass (`cordys-individual-turns/`). Final whole-game/human listening acceptance is not claimed. |
-| E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Latest deployed runtime `4c6ca74` fails timing (125.710s engaged), despite cold Load and functional opening completion. Current repair audit catches Tethys balance, guard visibility/centering, training text and save-crystal occlusion; rendered screenshots may reject otherwise-green geometry. Fresh export/browser, final visual round and human listening/comprehension remain required. Public main is unchanged. |
+| B: opening video lifecycle | in progress | Current `1fde43a` native lifecycle/policy/EOF and normal hosted complete Mermaid/title/Cordys split films pass. Connecting title/credits and settled-camera reveal retained. Technical implementation verified; final human listening/comprehension acceptance remains. |
+| C: quiet spawn and Angler | in progress | Current native direction/frame/idle matrix and hosted 15-second stationary/look probe pass. Actual W is held 4.172 seconds before Angler. Normal nonlethal Electric Touch and a separate real finisher preserve ordinary rules. No idle fallback. Final human freedom/hope acceptance remains. |
+| D: Cordys interruption | in progress | Current native normal-rule/survivor/per-frame/framing gates and hosted three real choices/individual 80/78/76 responses pass. Actual player damages are 1/3/9–11; zero-EVA feedback says unchanged. No AoE/forced deaths. Human intimidation/listening acceptance remains. |
+| E: recovery and optional training | in progress | Current native full five-move lesson/Continue/swimming, two real later deaths, slot failures/migration and four-size recovery input pass. Exact hosted redesigned Continue/cold Load/two later enemy-caused deaths/Restart/title Load pass, as does denied IndexedDB write/visible Retry/cold Load. Attrition fixtures are disclosed, not campaign balance proof. Human voluntary-training/clarity acceptance remains. |
+| F: exact artifact and polish | in progress | Current clean export hash verified; 126 native/rendered checks pass, web aggregate section separately handled. Fresh settled guard/rest screenshots at three sizes and hosted ready/retry/world handoff inspected without new visual defects in those scopes. Final isolated full browser journey/death/reload passes at 114.798 engaged seconds; storage denial/retry passes. First 120.454-second failure remains failed. Existing review alias updated; public main unchanged. Human listening/emotional acceptance remains. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence

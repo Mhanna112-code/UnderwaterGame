@@ -3,6 +3,12 @@
 Runtime repair candidate, **not final human emotional acceptance**.
 Binding rationale/status: `docs/opening-emotional-contract-audit.md`.
 
+**Current exact-source packet:** `current-1fde43a/`. This supersedes older
+packets as the current technical ledger: 126 native/rendered passes, separate
+hosted normal/denied-storage passes and scoped visual inspection; final normal
+timing 114.798 engaged seconds. Earlier timing and visual failures are retained.
+Human listening/emotional approval remains open.
+
 `browser-02efa8f/` records exact clean hosted source and both timings: the
 evidence-heavy 128.548s failure and lower-overhead 117.186s pass with unchanged
 gameplay/waits/movies/input oracles. Its death tests alter only the disposable

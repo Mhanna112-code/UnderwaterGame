@@ -80,15 +80,33 @@ automation cannot prove that a player feels hope, dread or determination.
   served by `underwatergame-hhtn0tdt5-immortaldemongods-projects.vercel.app`.
   Downloaded `index.pck` matches 121,554,920 bytes / SHA-256
   `afef8d00cf1494a1f407a4264dfa2e7b8d80951122e2c146db073dc0e8b9f942`.
-  PR #98 is a draft against PR #96, not main. The stable alias has not moved.
+  PR #98 is a draft against PR #96, not main. The existing stable review alias
+  now resolves to this exact deployment; public main still resolves to
+  `dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5` from Oct 1.
   Its first corrected-observer full browser run reaches actual control in
   140.139 seconds raw / 120.454 engaged, excluding 19.685 seconds of deliberate
   idle/look. The subsequent 2.177-second world screenshot/OCR remains separately
   recorded. This is a **timing failure**, not rounded into a pass. The new card
-  is readable and Continue releases normal play; final aggregate and subsequent
-  recovery checks are still running. Do not interpret earlier green evidence as
-  current whole-candidate acceptance.
-- Expanded 0d0b9b0 aggregate completed 127 native/rendered checks with five
+  is readable and Continue releases normal play.
+- Final isolated normal browser round on those same runtime bytes passes:
+  133.608 seconds raw to actual control / **114.798 engaged**, excluding 18.810
+  seconds of deliberate idle/look and two explicit no-input decision probes.
+  Post-control screenshot/OCR is separately retained at 1.680 seconds. Complete
+  movies, actual nonlethal Angler/finisher, three choices/individual deaths,
+  redesigned Continue, cold Load and two actual later enemy-caused deaths with
+  Restart/title Load all succeed; no runtime errors. No movies, checks or
+  acceptance limit changed between the timing failure and this isolated pass.
+- Full current-source aggregate passes **126 native/rendered checks**; its web
+  section is deliberately skipped, not counted as passed. Separate exact hosted
+  denied-write/visible Retry/Continue/cold Load passes. Fresh settled-camera
+  Compatibility views at wide/narrow/tall and hosted ready/error/world handoff
+  are inspected with no additional observed defects in those scopes. Human
+  listening/emotional acceptance and eventual campaign Cordys payoff remain
+  open; this is a technically verified repair candidate, not universal approval.
+
+### Historical investigation receipts (not the current acceptance ledger)
+
+- Expanded 0d0b9b0 aggregate recorded 127 headers, including one web skip, with five
   failed gates. Retained as a failed round, not called all green: one stale
   one-frame deep-water dispatch witness, one removed private roster factory,
   and three discoverability sizes. Captured source is preserved in the packet.
