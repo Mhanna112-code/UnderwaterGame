@@ -42,10 +42,9 @@ var party_source: Array = []
 # Battle entry contract used by independent combat/guardian fixtures.
 var ordinary_enemy_ids: Array[String] = []
 
-# Set by world.gd alongside party_source - the only reason battle.gd needs
-# this is to reach World.inventory for the Items menu below (see
-# _show_items()/_populate_item_menu()). Nothing else in this file touches
-# world at all.
+# World owns inventory and campaign spell-unlock relics for world fights.
+# Scene-independent owners supply both explicitly instead of mixing relics
+# with their consumable door-key collection.
 var world: World
 var reward_item_on_win := ""
 var encounter_intro_override := ""
@@ -53,6 +52,7 @@ var encounter_intro_override := ""
 # instead - MazeLevel hands over its own inventory dictionary, shared, so
 # what gets used here comes off the maze's count.
 var inventory_source: Dictionary = {}
+var campaign_key_items_source: Array[String] = []
 
 func _party_inventory() -> Dictionary:
 	return world.inventory if world != null else inventory_source
@@ -5608,7 +5608,7 @@ func _win() -> void:
 				await get_tree().create_timer(LOG_READ_DELAY).timeout
 			if not levels.is_empty():
 				levelup_blocks.append(_build_levelup_block(entry, levels))
-		var available_key_items: Array = world.key_items.duplicate() if world != null else []
+		var available_key_items: Array = world.key_items.duplicate() if world != null else campaign_key_items_source.duplicate()
 		# A guardian's key item is granted by World after this battle emits
 		# "won". Include it now so the win that earns it can unlock its spell.
 		if Items.is_key_item(reward_item_on_win) and not available_key_items.has(reward_item_on_win):

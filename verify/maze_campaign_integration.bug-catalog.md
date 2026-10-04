@@ -106,4 +106,9 @@ Bugs caught: INT-04 World return/history. First valid run found no campaign exit
 
 Bugs caught: INT-08 checkpoint UI scope. Old fixed-width menu clips all three slot buttons and Back at 360x640; actual native views also expose oversized labels and overlapping announcements/HUD. Four native real-P/mouse checks and twelve inspected entrance/contact/slot captures now fit and separate these surfaces without writing user slots. The old wide-screen menu passes after stabilizing the fixture; early missed clicks were test timing/global-position defects, retracted rather than counted as game failures. Sampled landmark visibility is not exhaustive camera-angle coverage.
 
-Remaining: INT-04 still requires browser denied-storage. INT-03, INT-05–07 and INT-09–14 are unaccepted; INT-08 is accepted only for this checkpoint/menu scope, not full route/battle art. Consumer spell-unlock relic access, full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. The old maze-completion gate still assumes H-driven current relocation and fails; current-route acceptance remains open.
+INT-03 consumer scope: eight actual maze wins now unlock/equip campaign-relic
+spells without consuming those relics or reading spendable maze keys. The same
+real victory reproduced Tidal Revival absence before repair, and actual Party
+Spells now offers it. Catalog/fixtures/limits: maze_relic_consumers.bug-catalog.md.
+
+Remaining: INT-04 still requires browser denied-storage. INT-05–07 and INT-09–14 are unaccepted; INT-08 is accepted only for checkpoint/menu scope, not full route/battle art. Full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. The old maze-completion gate still assumes H-driven current relocation and fails; current-route acceptance remains open.

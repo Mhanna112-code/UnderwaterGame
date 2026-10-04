@@ -705,13 +705,17 @@ func _update_announce(dt: float) -> void:
 		if node != null:
 			node.visible = captions_allowed and not _banner.visible
 
+var _responsive_captions: Array[Label] = []
+
 func _make_caption(top: float, bottom: float, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	label.offset_left = -320.0
 	label.offset_right = 320.0
 	_resize_caption(label)
-	get_viewport().size_changed.connect(_resize_caption.bind(label))
+	_responsive_captions.append(label)
+	if not get_viewport().size_changed.is_connected(_resize_captions):
+		get_viewport().size_changed.connect(_resize_captions)
 	label.offset_top = top
 	label.offset_bottom = bottom
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -723,6 +727,11 @@ func _make_caption(top: float, bottom: float, font_size: int, color: Color) -> L
 	label.visible = false
 	$HUD.add_child(label)
 	return label
+
+func _resize_captions() -> void:
+	for label in _responsive_captions:
+		if is_instance_valid(label):
+			_resize_caption(label)
 
 func _resize_caption(label: Label) -> void:
 	var half_width := minf(320.0, maxf(1.0, (get_viewport().get_visible_rect().size.x - 32.0) * 0.5))
@@ -773,6 +782,7 @@ func _start_battle(kind := "strong") -> void:
 			_announce("Strong enemies emerge from the murk!")
 	_battle.party_source = divers
 	_battle.inventory_source = inventory
+	_battle.campaign_key_items_source = campaign_key_items
 	_battle.finished.connect(_on_battle_finished)
 	add_child(_battle)
 	if kind == "strong" or kind == "ambush":

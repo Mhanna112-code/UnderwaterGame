@@ -79,3 +79,27 @@ The valid isolated old-menu reproduction clips all three slot buttons and Back a
 Repair removes menu hard width floors, wraps maze controls within minimap clearance, constrains captions to the viewport and gives recovery announcements exclusive ownership of the bottom reading area. Smaller landmark labels suppress partial edge/upper-HUD fragments. All four rendered tests pass; twelve final entrance/contact/slot images were inspected. Seven affected headless checks passed before the final label-visibility-only adjustment; checkpoint/map/World-return checks are rerun on the final increment. Label suppression is only checked at these sampled views, not every camera angle.
 
 This scoped UI evidence does not accept the full maze art, current-route traversal, actor/attack framing, browser storage, audio or the complete zero-defect audit loop. Next: campaign relic consumers and contextual input ownership. No export/deployment or public/main change.
+
+## October 4 2026 INT-03 actual relic consumers
+
+Source before change: e2d0024. Battle's victory path ignored all pre-owned relics
+when its owner was Maze rather than World. Actual strong-room victory with Reef
+Plate and five unspent points left Bucky without Tidal Revival. The same run
+exposed a repeated caption resize-signal connection error. Early harness API-name
+errors were corrected and excluded; they are not green runs or game defects.
+
+Battle now receives an explicit campaign-relic source, separate from Maze's key
+IDs/count. Eight bounded relic-present/absent cases use actual World entry, real
+door consumption and visible battle/move/target buttons. All finish won in three
+normal actions; all four independent gated spell expectations hold. XP preparation
+is an attainable-state fixture, not full-route grinding/balance proof. No HP/stat
+inflation, injected outcome, perfect timing dodge or save write occurs. The real
+Party Spells menu exposes learned Tidal Revival only in its eligible case.
+
+Captions now share one owning resize callback; multiple captions resize together
+at 360px without duplicate signal errors. Disconnecting only the relic handoff
+reproduces skill/menu loss cleanly; restoring it passes. Native checkpoint and
+menus/title regressions also pass. Receipts distinguish initial reproduction,
+clean disconnected-handoff mutation and repaired evidence. Full maze navigation,
+combat revival, contextual input, waves/finale, browser/audio and deployment remain
+open. Next: prevent map/save/swap surfaces from taking each other's inputs.
