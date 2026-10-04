@@ -109,6 +109,20 @@ func _run() -> void:
 			await process_frame
 			await process_frame
 			_expect(not cue.visible and world.random_encounters_enabled, "ESC-006 Load resurrects escape cue or changes saved setting")
+	# Separate public-component cases, not a fabricated World escape result.
+	# Already-Off and paused-menu expiry share the same absolute deadline.
+	var isolated := preload("res://game/encounter_escape_hint.gd").new()
+	root.add_child(isolated)
+	isolated.show_after_escape(false)
+	var steady: Color = isolated.get_theme_stylebox("panel").bg_color
+	await create_timer(0.3).timeout
+	_expect("Encounters (Off)" in isolated.setting_label.text and isolated.get_theme_stylebox("panel").bg_color == steady,
+		"ESC-005 already-Off cue pulses or invites encounters On")
+	paused = true
+	await create_timer(2.85).timeout
+	_expect(not isolated.visible, "ESC-002 paused menu makes cue persist forever")
+	paused = false
+	isolated.queue_free()
 	world.queue_free()
 	await process_frame
 	paused = false
