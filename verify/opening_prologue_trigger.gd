@@ -1,8 +1,8 @@
 # Direction-independent opening encounter trigger.
 #
 # Bugs caught:
-# - OPEN-007: the Angler only starts along one authored heading, starts from
-#   vertical movement, fails to start for an idle player, or starts twice.
+# - OPEN-007/026: heading locks, premature interruption, vertical-only trigger,
+#   missing idle fallback, or duplicate encounters.
 #
 # Usage: godot --headless --path . --script verify/opening_prologue_trigger.gd
 extends SceneTree
@@ -27,15 +27,26 @@ func _run() -> void:
 		trigger.reset(Vector3(8.0, 2.0, -3.0))
 		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 2.99, 0.1),
 			"OPEN-007 direction %d triggered below movement threshold" % degrees)
-		_expect(trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 3.01, 0.1),
+		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 3.01, 0.1),
+			"OPEN-026 direction %d interrupted exploration at 0.2 seconds" % degrees)
+		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 8.0, 3.7),
+			"OPEN-026 direction %d interrupted exploration before four seconds" % degrees)
+		_expect(trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 3.01, 0.11),
 			"OPEN-007 direction %d failed above movement threshold" % degrees)
 		_expect(not trigger.update(Vector3(8.0, 2.0, -3.0) + direction * 8.0, 10.0),
 			"OPEN-007 direction %d triggered more than once" % degrees)
 
 	var vertical = trigger_script.new()
 	vertical.reset(Vector3.ZERO)
-	_expect(not vertical.update(Vector3(0.0, 20.0, 0.0), 1.0),
+	_expect(not vertical.update(Vector3(0.0, 20.0, 0.0), 4.1),
 		"OPEN-007 vertical-only movement incorrectly counts as exploration")
+
+	var short_swim = trigger_script.new()
+	short_swim.reset(Vector3.ZERO)
+	_expect(not short_swim.update(Vector3(2.99, 0.0, 0.0), 4.1),
+		"OPEN-007 minimum exploration time incorrectly replaces movement threshold")
+	_expect(short_swim.update(Vector3(3.01, 0.0, 0.0), 0.1),
+		"OPEN-007 meaningful movement after exploration window does not trigger")
 
 	var idle = trigger_script.new()
 	idle.reset(Vector3.ZERO)

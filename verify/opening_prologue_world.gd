@@ -42,7 +42,7 @@ func _run() -> void:
 		var diver := world.divers[world.active] as Diver
 		diver.position += Vector3(3.1, 0.0, 0.0)
 		world.call("_update_prologue_trigger", 0.4)
-		world.call("_update_prologue_trigger", 0.1)
+		world.call("_update_prologue_trigger", 4.1)
 		await process_frame
 		_expect(world.battling and world.battle != null, "OPEN-007 movement did not start prologue Angler")
 		_expect(world.route_state.prologue_phase == "angler", "OPEN-007 Battle start did not publish Angler phase")

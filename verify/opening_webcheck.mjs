@@ -65,9 +65,14 @@ try {
   await shot('02-mermaid');
   await waitPhase('spawn_exploration');
   if (timestamps.spawn_exploration - timestamps.opening_video < 33000) throw new Error('Mermaid opening was shortened instead of completing playback');
+  await shot('02a-free-swim-start');
   await page.keyboard.down('w');
+  await page.waitForTimeout(2000);
+  if (phases.includes('angler')) throw new Error('Angler interrupted before a usable free-swim window');
+  await shot('02b-free-swim-moving');
   await waitPhase('angler', 12000);
   await page.keyboard.up('w');
+  if (timestamps.angler - timestamps.spawn_exploration < 4000) throw new Error('Free-swim window was shorter than four seconds');
   await page.waitForTimeout(700);
   await shot('03-angler');
   await attack('03a-angler');

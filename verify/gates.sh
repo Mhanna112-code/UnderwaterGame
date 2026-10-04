@@ -99,6 +99,7 @@ run "opening migration: do all durable milestones normalize interrupted phases" 
 run "opening video: are production and lab policies independent" "$GODOT" --headless --path . --script verify/opening_video.gd
 run "opening video persistence: do success and decoder failure restore safely" "$GODOT" --headless --path . --script verify/opening_video_world.gd
 run "opening trigger: does every horizontal direction and idle start once" "$GODOT" --headless --path . --script verify/opening_prologue_trigger.gd
+run "opening free swim: can real keyboard input explore before the Angler" "$GODOT" --headless --path . --script verify/opening_prologue_free_swim.gd
 run "opening world: are authored encounters protected and real-input reachable" "$GODOT" --headless --path . --script verify/opening_prologue_world.gd
 run "opening Angler: does every exposed move win without ordinary balance or rewards changing" "$GODOT" --headless --path . --script verify/prologue_angler.gd
 run "opening Cordys: does the skinned actor preserve authored poses and facing" "$GODOT" --headless --path . --script verify/prologue_octopus.gd

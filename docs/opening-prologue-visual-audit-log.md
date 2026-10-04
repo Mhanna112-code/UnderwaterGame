@@ -297,3 +297,21 @@ returns HTTP 200 and the same source manifest. Persistent result:
 `docs/evidence/opening-prologue-title/hosted-result.json`. This completes the
 requested video edit/hosted-flow check, not the broader goal's blind listening,
 viewport matrix or final zero-defect acceptance.
+
+## Free-swim interruption reported by user, 2026-10-03
+
+The user could not move anywhere before the first attack. OPEN-026 reproduces
+the timing defect through real World physics and physical W input, with only
+the movie fast-forwarded: 3.007 m travelled and Angler at 1.347 s after spawn,
+including a 0.5 s idle observation. Only 0.847 s of swimming was available.
+Native controls did move; this does not establish that the user's browser
+focus was correct. The old distance-only tests incorrectly accepted this beat.
+
+Added a minimum four-second exploration window, preserving three-metre
+meaningful displacement, seven-second idle fallback and one-shot ownership.
+Real-input rerun: **18.667 m travelled, encounter at 4.417 s**. The heading/time
+matrix, protected World handoff and actual combat/recovery journey also pass,
+with no runtime errors. These are native gates, not hosted proof. Export the
+exact source and repeat ordinary browser New Game with held W, record the
+free-swim phase interval and inspect start/moving screenshots before accepting
+the review link as updated. No unrelated campaign/tutorial redesign.

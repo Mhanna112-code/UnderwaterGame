@@ -273,6 +273,7 @@ recorded playtest finding, not ad hoc code edits.
 | Post-video space | 250–500 ms | Transition feels deliberate, not frozen. |
 | Prologue exploration trim | approximately `-7 dB` versus normal | Existing ambience remains present but feels quiet. |
 | Movement trigger | 2–4 m from recovery-safe spawn | Forward, backward, left, right, and diagonal movement all work. |
+| Minimum free-swim window | 4 s of active World time | Crossing the movement threshold cannot interrupt sooner; actual key input moves the diver. User review found the old distance-only trigger interrupted in under one second of swimming. |
 | Idle fallback | 6–8 s | A stationary player cannot stall the opening. |
 | Angler party/enemies | current party versus one Angler | Stage remains legible and resembles real combat. |
 | Angler actions | expose offensive actions only | Every visible choice lands and defeats it. |

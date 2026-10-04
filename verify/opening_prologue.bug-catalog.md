@@ -185,6 +185,36 @@ normal Game Over, and leaves the current tutorial available but optional.
 
 ## Approved split cinematic risks, 2026-10-03
 
+## Captured quiet-spawn review finding, 2026-10-03
+
+OPEN-026: the first battle interrupts before the player can meaningfully swim.
+The user reported being unable to move anywhere before the first attack. The
+trigger accepts 3 m of horizontal displacement without a minimum time; at the
+diver's 5 m/s speed this can start combat in under one second. Diagnose actual
+keyboard movement separately from timing; do not infer blocked controls solely
+from the report. The revised acceptance contract gives at least four seconds
+of controllable exploration before a movement-triggered encounter, preserving
+the seven-second idle fallback and the one-shot/direction-independent contract.
+
+- **Test:** `opening_prologue_free_swim.gd` drives physical W through the real
+  World physics path after the title action (only the movie is fast-forwarded).
+  It records actual displacement and phase time rather than teleporting or
+  calling the trigger. The pure trigger direction matrix independently covers
+  headings, the minimum time, idle expiry and duplicate suppression.
+- **Self-critique:** a working input flag with no displacement fails; a moving
+  diver interrupted before four seconds also fails. Internal helper renaming
+  does not alter the observable position/phase oracle.
+- **Skipped:** this native diagnostic does not certify browser focus or the
+  full movie-to-input handoff. Repeat the normal-entry exported browser journey
+  with real key events and a measured free-swim interval before claiming fixed.
+- **Red reproduction:** actual W input moved 3.007 m, but the Angler started
+  at 1.347 s after spawn, including the diagnostic's 0.5 s idle observation:
+  only 0.847 s of swimming. The displacement assertion passed; the four-second
+  usable-window assertion failed. This confirms premature interruption, not
+  blocked native controls. Browser focus remains a separate boundary.
+- **Fix:** minimum four seconds in the trigger, retaining the three-metre
+  distance and seven-second idle fallback. Native and hosted reruns pending.
+
 OPEN-023: the Octopus cinematic restarts at zero, duplicates its decoder,
 continues invisibly through combat, leaks input while visible, or overlaps
 boss music. A continuous first-25-seconds/pause/remainder owner must preserve
