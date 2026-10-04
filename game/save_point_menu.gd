@@ -30,7 +30,8 @@ var _pending_slot := -1
 
 func _ready() -> void:
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Explicitly normalize the backing surface before laying out the panels.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_root_panel = _build_root_panel()
 	add_child(_root_panel)
@@ -60,7 +61,7 @@ func _build_left_panel() -> Control:
 	col.offset_right = -50.0
 	col.offset_bottom = -50.0
 	col.add_theme_constant_override("separation", 14)
-	col.custom_minimum_size = Vector2(360, 0)
+	col.custom_minimum_size = Vector2.ZERO
 	bg.add_child(col)
 
 	return bg
@@ -80,7 +81,7 @@ func _build_root_panel() -> Control:
 
 	var save_btn := Button.new()
 	save_btn.text = "Save"
-	save_btn.custom_minimum_size = Vector2(360, 40)
+	save_btn.custom_minimum_size = Vector2(0, 40)
 	save_btn.pressed.connect(_show_slots)
 	col.add_child(save_btn)
 
@@ -109,7 +110,7 @@ func _build_slots_panel() -> Control:
 
 	var back_btn := Button.new()
 	back_btn.text = "< Back"
-	back_btn.custom_minimum_size = Vector2(360, 36)
+	back_btn.custom_minimum_size = Vector2(0, 36)
 	back_btn.pressed.connect(_show_root)
 	col.add_child(back_btn)
 
@@ -120,7 +121,7 @@ func _refresh_slots_list() -> void:
 		child.queue_free()
 	for slot in range(SaveManager.SLOT_COUNT):
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(360, 44)
+		btn.custom_minimum_size = Vector2(0, 44)
 		var data: Dictionary = SaveManager.read_slot(slot)
 		if data.is_empty():
 			btn.text = "Slot %d - Empty" % (slot + 1)
@@ -166,13 +167,15 @@ func _build_confirm_panel() -> Control:
 
 	var yes_btn := Button.new()
 	yes_btn.text = "Yes"
-	yes_btn.custom_minimum_size = Vector2(175, 40)
+	yes_btn.custom_minimum_size = Vector2(0, 40)
+	yes_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	yes_btn.pressed.connect(_on_confirm_overwrite_yes)
 	row.add_child(yes_btn)
 
 	var no_btn := Button.new()
 	no_btn.text = "No"
-	no_btn.custom_minimum_size = Vector2(175, 40)
+	no_btn.custom_minimum_size = Vector2(0, 40)
+	no_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	no_btn.pressed.connect(_on_confirm_overwrite_no)
 	row.add_child(no_btn)
 

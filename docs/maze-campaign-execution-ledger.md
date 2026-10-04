@@ -2,13 +2,13 @@
 
 ## Current authoritative status
 
-October 4, 2026: campaign/opening merged into current main at 493b1d8, retaining the current two-turn Headbutt rule. PR97's runtime conflicts are reconciled locally. INT-01 live entrance, INT-02 live secret return and INT-04 native maze checkpoint/real defeat recovery are reproduced and repaired. Existing opening worktree changes remain untouched. No combined export or deployment exists yet; world return/re-entry, browser durability, complete traversal and finale remain incomplete.
+October 4, 2026: campaign/opening merged into current main at 493b1d8, retaining the current two-turn Headbutt rule. PR97's runtime conflicts are reconciled locally. INT-01 live entrance, INT-02 live secret return and INT-04 native checkpoints/recovery and World return/history are committed through 529ba0d. Checkpoint UI repairs now pass native rendered checks at four sizes. Existing opening worktree changes remain untouched. No combined export or deployment exists yet; browser durability, complete traversal, puppet waves and finale remain incomplete.
 
 | Phase | State | Required next evidence |
 | --- | --- | --- |
 | Foundation | Recorded | Initial plan/contracts committed at 2e701c9; later decisions remain subject to reconciliation |
 | Integrated baseline | In progress | Local reconciliation and INT-01 live entrance gate pass; remaining semantic integration still required |
-| State/recovery | In progress | Live entrance/secret return, native checkpoint cold Load/real death Restart and 12 World return/re-entry cases pass; browser denied-storage/rendered usability and consumer/input integration still required |
+| State/recovery | In progress | Live entrance/secret return, native checkpoint cold Load/real death Restart, 12 World return/re-entry cases and four-size native checkpoint/menu checks pass; browser denied-storage and consumer/input integration still required |
 | Maze route | Planned | Normal entry, puzzles, keys, local encounter policy and return |
 | Puppet encounter | Planned | Both real waves, conserved resources, correct reward and recovery |
 | Cordys finale | Planned | Reachable no-lab normal-action win/loss and persisted closure |
@@ -21,9 +21,9 @@ October 4, 2026: campaign/opening merged into current main at 493b1d8, retaining
 
 Local merge checkpoint: 7a762ee135f198b6af38ca8191e96e8ed77cb94e. The map gate was rerun on this committed source and passed. No public branch, main merge or deployment was performed.
 
-INT-01 is committed at 96f6752 and INT-02 at dc2e207. INT-04 now supplies a real maze SavePoint, versioned validated checkpoint, cold Title Load, selected-slot recovery and actual enemy-caused Game Over/Restart. Failed native writes retain the previous bytes and show failure rather than acknowledging a save. Nine affected checks pass without script errors. Next: preserve live maze history across World return/re-entry and World checkpoints, then consumer relic access/contextual inputs and actual current-puzzle traversal. Browser IndexedDB denial and rendered checkpoint usability remain open; native checks do not accept those surfaces.
+INT-01 is committed at 96f6752, INT-02 at dc2e207 and INT-04 native checkpoints at a5c8f15. Failed native writes retain previous bytes rather than acknowledging a save. World return/history is committed at 529ba0d; the next increment repairs checkpoint presentation. Next: consumer relic access/contextual inputs and actual current-puzzle traversal. Browser IndexedDB denial remains open; native checks do not accept that surface.
 
-INT-04 native checkpoints are committed at a5c8f15. The next increment adds explicit E return at the maze entrance, retains actual resource identity without rest, restores the outer-world approach outside the entrance radius and carries maze history through World saves. Twelve generated active/downed/lab-state cases and nine affected regressions pass. Next: rendered entrance/checkpoint/menu inspection, campaign relic consumers and contextual input ownership. Full puzzle traversal/finale and browser durability remain unaccepted.
+World return at 529ba0d retains actual resource identity without rest, restores the outer-world approach outside the entrance radius and carries maze history through World saves. Twelve generated active/downed/lab-state cases and nine affected regressions pass. Rendered checkpoint/contact/slot-picker captures were inspected at 1280x720, 720x480, 720x900 and 360x640; real P/mouse input reaches unclipped slots without writing user saves. This is a limited presentation check, not full navigation, battle framing or a complete clean audit round. Full puzzle traversal/finale and browser durability remain unaccepted.
 
 The older `maze_completion` gate fails at its first straight-line waypoint. Its route still assumes the removed H behavior relocates currents and opens the CSG6/7 channel; Marc now separates wall/current manipulation and the normal entrance. It is NOT accepted as a complete traversal check. Record and replace this obsolete route with genuine current puzzle/input traversal in the maze-route phase; do not weaken its physical-collision oracle or claim the full route passed.
 

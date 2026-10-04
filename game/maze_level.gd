@@ -691,17 +691,27 @@ func _announce(text: String, seconds := 4.0) -> void:
 	_banner_timer = seconds
 
 func _update_announce(dt: float) -> void:
-	if _banner == null or _banner_timer <= 0.0:
+	if _banner == null:
 		return
-	_banner_timer -= dt
-	if _banner_timer <= 0.0:
-		_banner.visible = false
+	_banner_timer = maxf(_banner_timer - dt, 0.0)
+	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+	var map_open := map != null and map.main_map != null and map.main_map.visible
+	var captions_allowed := not any_modal_open() and not _battling and not map_open
+	_banner.visible = _banner_timer > 0.0 and captions_allowed
+	# Status/goal and an announcement share the bottom reading area. Give
+	# only one surface ownership rather than painting text on top of text.
+	for caption in ["Controls", "GoalLabel"]:
+		var node := get_node_or_null("HUD/" + caption) as CanvasItem
+		if node != null:
+			node.visible = captions_allowed and not _banner.visible
 
 func _make_caption(top: float, bottom: float, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	label.offset_left = -320.0
 	label.offset_right = 320.0
+	_resize_caption(label)
+	get_viewport().size_changed.connect(_resize_caption.bind(label))
 	label.offset_top = top
 	label.offset_bottom = bottom
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -713,6 +723,11 @@ func _make_caption(top: float, bottom: float, font_size: int, color: Color) -> L
 	label.visible = false
 	$HUD.add_child(label)
 	return label
+
+func _resize_caption(label: Label) -> void:
+	var half_width := minf(320.0, maxf(1.0, (get_viewport().get_visible_rect().size.x - 32.0) * 0.5))
+	label.offset_left = -half_width
+	label.offset_right = half_width
 
 # --- Random encounters (strong-enemy room only) ---------------------------
 # Every diver rolls for encounters as it swims (Diver.check_for_encounter());
@@ -2490,30 +2505,38 @@ var _tab_flash: Tween
 
 func _build_world_hud() -> void:
 	var status := $HUD/Controls as Label
-	status.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	status.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	status.offset_left = 16.0
-	status.offset_right = 900.0
-	status.offset_top = -94.0
-	status.offset_bottom = -66.0
+	status.offset_right = -16.0
+	status.offset_top = -158.0
+	status.offset_bottom = -106.0
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var column := VBoxContainer.new()
-	column.position = Vector2(16, 10)
+	column.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	column.offset_left = 16.0
+	column.offset_top = 10.0
+	column.offset_right = -180.0 # leave the minimap its existing space
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_theme_constant_override("separation", 0)
 	$HUD.add_child(column)
 	_world_hud_name = Label.new()
 	column.add_child(_world_hud_name)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 0)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 0)
 	column.add_child(row)
-	var before := Label.new()
-	before.text = WORLD_CONTROLS_BEFORE_TAB
-	row.add_child(before)
+	for text in ["WASD swim", "SPACE/SHIFT depth", "mouse/arrows look"]:
+		var hint := Label.new()
+		hint.text = text
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(hint)
 	_world_hud_tab = Label.new()
 	_world_hud_tab.text = WORLD_CONTROLS_TAB
 	row.add_child(_world_hud_tab)
 	_world_hud_after = Label.new()
-	row.add_child(_world_hud_after)
-	for l in [_world_hud_name, before, _world_hud_tab, _world_hud_after]:
+	_world_hud_after.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_world_hud_after)
+	for l in [_world_hud_name, _world_hud_tab, _world_hud_after]:
 		(l as Label).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _update_world_hud() -> void:
@@ -2762,12 +2785,13 @@ func _build_minimap() -> void:
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
 	label.name = "GoalLabel"
-	label.text = "Goal: open the hallway, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nWalls and currents only move from the maze map: L opens it; Left/Right picks a wall set and E rotates it; Shift+Left/Right picks a current and R moves it. Tab switches diver; E uses their ability (at the room switch: E interacts, Shift+E toggles room encounters)."
-	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	label.text = "Open the hallway. Follow the channel to the relic.\nL: map and wall/current controls. E: interact or use ability."
+	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_left = 16.0
-	label.offset_top = -64.0
-	label.offset_right = 560.0
+	label.offset_top = -100.0
+	label.offset_right = -16.0
 	label.offset_bottom = -16.0
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 	$HUD.add_child(label)
 
@@ -5212,6 +5236,7 @@ var _checkpoint_contact := false
 var _checkpoint_saving := false
 var _game_over: GameOverScreen
 var _campaign_exit: Node3D
+var _campaign_exit_prompt: Label3D
 var _campaign_exit_pending := false
 
 func _build_campaign_exit() -> void:
@@ -5226,14 +5251,33 @@ func _build_campaign_exit() -> void:
 	label.text = "Open Water\nE: Leave maze"
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.font_size = 38
-	label.pixel_size = 0.008
+	label.pixel_size = 0.002
 	label.position = Vector3(0, 3.2, 0)
 	_campaign_exit.add_child(label)
+	_campaign_exit_prompt = label
 
 func _campaign_exit_in_reach() -> bool:
 	if _campaign_exit == null or _diver == null:
 		return false
 	return _diver.global_position.distance_to(_campaign_exit.global_position) <= 3.0
+
+func _landmark_caption_clear(label: Label3D) -> bool:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null or camera.is_position_behind(label.global_position):
+		return false
+	# These short two-line landmark labels should disappear, not leave half
+	# a word at an edge or shine through the minimap/top controls. Contact
+	# feedback is screen-space and remains available independently.
+	var area := Rect2(camera.unproject_position(label.global_position) - Vector2(80, 24), Vector2(160, 48))
+	var viewport := Rect2(Vector2(8, 8), get_viewport().get_visible_rect().size - Vector2(16, 16))
+	if not viewport.encloses(area):
+		return false
+	var radar := get_node_or_null("HUD/MazeMiniMap") as Control
+	if radar != null and area.intersects(radar.get_global_rect()):
+		return false
+	if _world_hud_name != null and area.intersects((_world_hud_name.get_parent() as Control).get_global_rect()):
+		return false
+	return true
 
 func _return_to_campaign_world() -> void:
 	if _campaign_exit_pending or not can_capture_campaign_snapshot() \
@@ -5268,7 +5312,7 @@ func _build_campaign_checkpoint() -> void:
 	_checkpoint_prompt.text = "Maze Save Point\nRestores the party. P: save."
 	_checkpoint_prompt.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_checkpoint_prompt.font_size = 38
-	_checkpoint_prompt.pixel_size = 0.008
+	_checkpoint_prompt.pixel_size = 0.002
 	_checkpoint_prompt.position = Vector3(0, 3.2, 0)
 	_checkpoint.add_child(_checkpoint_prompt)
 	_save_menu = SavePointMenu.new()
@@ -5287,6 +5331,11 @@ func _update_campaign_checkpoint() -> void:
 	if _checkpoint == null or _diver == null or _battling:
 		return
 	var contact := _checkpoint.has_diver(_diver)
+	# Contact has a clear screen-space recovery caption. Do not also draw
+	# its floating label through the top HUD/minimap at close camera angles.
+	_checkpoint_prompt.visible = not contact and not any_modal_open() and not _battling and _landmark_caption_clear(_checkpoint_prompt)
+	if _campaign_exit_prompt != null:
+		_campaign_exit_prompt.visible = not any_modal_open() and not _battling and _landmark_caption_clear(_campaign_exit_prompt)
 	if contact and not _checkpoint_contact:
 		for diver in divers:
 			diver.stats.hp = diver.stats.hp_max

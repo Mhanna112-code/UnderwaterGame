@@ -206,6 +206,9 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	for shape in 1280x720 720x480 720x900 360x640; do
+		run "maze checkpoint presentation $shape: do real P/mouse input expose unclipped save slots without overlapping gameplay captions" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/maze_checkpoint_presentation.gd
+	done
 	for shape in 1280x720 720x480 720x900; do
 		run "opening discoverability $shape: do real nearby crystals, training text and both guardians remain visible/usable" "$GODOT" --path . --resolution "$shape" --script verify/opening_discoverability.gd
 	done

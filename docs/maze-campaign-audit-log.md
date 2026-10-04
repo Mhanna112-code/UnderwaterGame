@@ -69,3 +69,13 @@ Added an explicit E exit at the entrance, without changing Marc's puzzle geometr
 Actual proximity entry → public key-door interaction → physical E exit → World menu save → cold Title Load → proximity re-entry passes all 12 combinations (three active divers, living/downed companion, maze-first/lab-first flags). Checks require actual live resource identity, unchanged damaged/downed HP/Oxygen and earned kit before rest, no immediate entrance bounce, retained inventory/relic/preference and physical open door/spent key after cold reload. Lab-state setup is disclosed as a conservation fixture, not a real boss victory. Nine affected native regressions also pass, all exit 0 without script errors.
 
 Limits: exit label/menu presentation still needs rendered inspection; browser storage denial, full puzzle traversal and real independent-route wins remain open. No export/deployment performed. Next: inspect current entrance/checkpoint at actual viewports and continue consumer/input integration.
+
+## October 4 2026 INT-08 checkpoint presentation
+
+Source before change: 529ba0d. PR97/98 heads remain 55e8515/c3da257. Godot 4.7.1 Compatibility/OpenGL on the local macOS display rendered actual entrance, checkpoint contact and mouse-operated slot picker at 1280x720, 720x480, 720x900 and 360x640. No user slot was written. Native captures exposed oversized world labels, clipped narrow-screen HUD/menu controls and overlapping recovery/instruction text.
+
+The valid isolated old-menu reproduction clips all three slot buttons and Back at 360x640. A stabilized real mouse test at 1280x720 passes with the old menu: the earlier missed-click result was a test timing/global-position defect, not a game input bug. That diagnosis is explicitly retracted; it is not counted as red game evidence.
+
+Repair removes menu hard width floors, wraps maze controls within minimap clearance, constrains captions to the viewport and gives recovery announcements exclusive ownership of the bottom reading area. Smaller landmark labels suppress partial edge/upper-HUD fragments. All four rendered tests pass; twelve final entrance/contact/slot images were inspected. Seven affected headless checks passed before the final label-visibility-only adjustment; checkpoint/map/World-return checks are rerun on the final increment. Label suppression is only checked at these sampled views, not every camera angle.
+
+This scoped UI evidence does not accept the full maze art, current-route traversal, actor/attack framing, browser storage, audio or the complete zero-defect audit loop. Next: campaign relic consumers and contextual input ownership. No export/deployment or public/main change.
