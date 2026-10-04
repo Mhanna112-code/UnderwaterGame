@@ -52,9 +52,12 @@ presentation gates. File replacement without that reconciliation is rejected.
 - Final Boss derivatives: canonical source digest, command/settings, duration,
   runtime digest, package size, and signal-edge analysis are recorded. Browser
   listening approval remains required.
-- Octopus: mesh/material/skeleton/clip inventory, measured bounds, selected
-  reveal/idle/hit/finish captures, authored-front evidence, and bright-line
-  disposition.
+- Octopus: the canonical intake gate remains green; the prologue adapter
+  normalizes the animated actor to 4.00 m high with observed pose bounds near
+  5.88 × 4.00 × 8.54 m, exposes semantic reveal/idle/hurt/finish clips, uses
+  the authored +Z front, and tints the pale Swordfish bill to prevent the old
+  screen-spanning white-rod presentation. The four production-adapter gallery
+  captures are in `docs/evidence/opening-prologue-cordys/`.
 - Final opening replacement: source authority, digest, dimensions, duration,
   audio measurements, approval, browser transcode, and replacement proof.
 
@@ -78,6 +81,10 @@ encoded with FFmpeg's native Vorbis encoder at 44.1 kHz stereo, quality 5:
 No normalization, fade, crossfade, or source edit was applied. Decoded edge
 measurements are kept in `docs/audio-edge-audit.md`; authored playback gain is
 owned by `UnderwaterAudioManager`, independently of the player's Music slider.
+
+The two Ogg derivatives add 2,340,058 bytes before Godot package compression.
+The opening reuses the existing Mermaid and Octopus runtime assets, so this
+phase adds no duplicate video or FBX bytes.
 
 ## Credits and permission boundary
 

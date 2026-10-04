@@ -1,7 +1,6 @@
 # Cordys opening prologue — implementation plan
 
-**Status:** execution in progress; Phase 0 worktree and repository contracts
-created, with no production code changed yet.
+**Status:** execution in progress; Phases 0 and A complete.
 
 **Prepared:** 2026-10-03
 
@@ -34,7 +33,7 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | Phase | Status | Exit evidence |
 | --- | --- | --- |
 | 0: clean child branch | complete | Remote PR #96 head `27a5b525…`; clean child worktree; initial diff contains only these four planning contracts. |
-| A: contracts and asset intake | not started | State/migration gates, canonical manifests, usable Cordys gallery, Final Boss derivatives. |
+| A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
 | B: opening video lifecycle | not started | Normal-entry video, independent lab policy, audio/settings, failure and reload proof. |
 | C: quiet spawn and Angler | not started | Direction/idle matrix, one-action choices, isolation and no-reward proof. |
 | D: Cordys interruption | not started | Production actor presentation, real negligible hit, deterministic special defeat and audio proof. |

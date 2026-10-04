@@ -1,7 +1,7 @@
 # Octopus media intake manifest
 
-This is a verified asset intake, not a claim that the Octopus route or fight is
-implemented. The current vertical slice ends at the existing maze transition.
+This is a verified asset intake plus a prologue-only presentation owner. It is
+not a claim that the later Octopus route or campaign fight is implemented.
 
 ## Visible model
 
@@ -18,10 +18,11 @@ committed as a duplicate. The old `Octopus_Boss.fbx` delivery had animations
 but no renderable geometry and is not used.
 
 The replacement is a composite boss with Octopus, Sword Fish, Angler, Frilled
-Shark, Merfolk, and Bomb Bot corpse materials. That may be narrative intent,
-but it still requires Glassgoat's confirmation. Some attack poses expose a
-bright line primitive as long white rods. The future boss actor must suppress
-or repair that surface before gameplay can be approved.
+Shark, Merfolk, and Bomb Bot corpse materials. Glassgoat supplied the complete
+asset for project use. Some raw attack poses exposed the pale Swordfish bill as
+long white rods. `PrologueOctopus` preserves that mesh while applying a dark
+underwater material tint, and the opening gallery verifies the resulting
+reveal, idle, hurt, and finishing poses. Campaign ownership remains deferred.
 
 ## Revised cutscene
 
@@ -48,5 +49,10 @@ into progression.
 - `docs/evidence/octopus-intake/octopus-godot-poison-breath.png`
 - `docs/evidence/octopus-intake/octopus-godot-spinning-slay.png`
 - `docs/evidence/octopus-intake/octopus-v3-timed.jpg`
+- `docs/evidence/opening-prologue-cordys/cordys-reveal.png`
+- `docs/evidence/opening-prologue-cordys/cordys-idle.png`
+- `docs/evidence/opening-prologue-cordys/cordys-hurt.png`
+- `docs/evidence/opening-prologue-cordys/cordys-finish.png`
 - `verify/octopus_asset_intake.gd`
+- `verify/prologue_octopus.gd`
 - `verify/octopus_cutscene_asset.gd`
