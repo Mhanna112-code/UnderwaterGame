@@ -1,0 +1,5 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+FINDING  OPEN-036 Cordys declared defeat although a stat-based hit should leave survivors
+FINDING  OPEN-036 retaliation bypassed STR/DEF: expected 195, got 0
+PROLOGUE COMBAT: 2 findings

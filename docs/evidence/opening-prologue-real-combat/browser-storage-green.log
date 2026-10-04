@@ -1,0 +1,22 @@
+Browser launched
+Export page loaded
+Requested ANGLE backend: metal
+Observed WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_BREATH|strength=80|accuracy=30|Maxilani -80; Musashi -78; Bucky -76
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+INJECTED STORAGE FAILURE|Failed to save IDB file system: The transaction was aborted, so the request cannot be fulfilled.
+CHECKPOINT_SAVE_FAILED|slot=0|error=20
+PROLOGUE_PHASE|complete
+Normal browser New Game to control: 107.461s; engaged=107.461s; deliberate idle/look=0s
+BROWSER CHECKPOINT|[{"database":"/userfs","key":"/userfs/godot/app_userdata/UnderwaterGame/saves/slot_0.json","data":{"active":0,"consumed_world_ids":[],"divers":[{"equipped_spells":[],"known_spells":[],"position":[0,2,0],"stats":{"accuracy":3,"agility":3,"defense":0,"evasion":3,"hp":10,"hp_max":10,"level":1,"oxygen":100,"oxygen_max":100,"spell_points":0,"strength":1,"xp":0,"xp_to_next":30}},{"equipped_spells":[],"known_spells":[],"position":[-3.59999990463257,2.20000004768372,-3],"stats":{"accuracy":2,"agility":2,"defense":2,"evasion":2,"hp":10,"hp_max":10,"level":1,"oxygen":100,"oxygen_max":100,"spell_points":0,"strength":2,"xp":0,"xp_to_next":30}},{"equipped_spells":[],"known_spells":[],"position":[3.59999990463257,2.40000009536743,-3],"stats":{"accuracy":1,"agility":1,"defense":4,"evasion":0,"hp":10,"hp_max":10,"level":1,"oxygen":100,"oxygen_max":100,"spell_points":0,"strength":4,"xp":0,"xp_to_next":30}}],"inventory":{},"key_items":[],"pending_world_drops":{},"revealed_key_items":[],"route_state":{"bomb_bot_state":"available","deep_warning_seen":false,"encounter_source":"random","lab_state":"locked","maze_door_state":"locked","objective_id":"","octopus_state":"unavailable","opening_video_seen":true,"prologue_complete":true,"sword_slayer_state":"available","tethys_state":"locked","tutorial_complete":false,"zone_id":"shallows"},"save_point_tutorial_seen":false}}]
+PROLOGUE_PHASE|complete
+OPENING WEB: ordinary entry, full split movies, real mouse combat and recovered control clean; rejected browser persistence / Retry / cold Load clean

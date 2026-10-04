@@ -43,9 +43,9 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
 | B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Browser EOF defect repaired in `b5b3e86`; ordinary full split-movie browser journey completes in 118.711 s with real mouse input. Wide/narrow/tall final candidate and listening acceptance remain. |
 | C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
-| D: Cordys interruption | in progress | Same-Battle negligible-hit/defeat and split cinematic journey green. Idle-only framing rejected; fixed orthographic action-envelope view and selected Poison Breath now pass moving-skin projection at all three sizes. Cached envelope replaces a measured 3-second reveal scan. Complete final browser/mix review remains. |
+| D: Cordys interruption | in progress | OPEN-036/037 replace the forced HP-zero finisher and Angler-derived accuracy rewrite with normal player moves/effects and actual STR/DEF/ACC/EVA retaliation. Native 15-case button/differential matrix and three high-HP survivors pass. OPEN-038 duplicate impact cue was caught and repaired. Exact hosted normal-entry Axe Kick shows 4 damage, 996/1,000 boss HP, then 80/78/76 retaliation. Browser later-death/Restart/Load and denied-storage/Retry/cold-Load pass. Framing remains green; complete final listening/human audit remains. |
 | E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Stable alias serves runtime `296b1a5`; unauthenticated metadata/PCK match the 93,300,480-byte clean archive export. Current no-idle proof and inspected movement clip are retained in `docs/evidence/opening-prologue-no-idle/`. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion and final zero-defect audit round remain. |
+| F: exact artifact and polish | in progress | Stable alias now serves runtime `953b92f`; unauthenticated metadata/PCK match the 93,306,940-byte archive export. Current combat proof is retained in `docs/evidence/opening-prologue-real-combat/`; prior no-idle continuous movement proof remains in its original folder. Current browser confirms 15-second idle/look safety and 4.074-second actual swimming before Angler; engaged opening is 89.010 seconds. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion and final zero-defect audit round remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence
@@ -60,7 +60,7 @@ that gives the player a reason to care before instruction:
 2. play Glassgoat's Mermaid Freak video as a temporary first-run opening;
 3. return control in a quiet free-swimming spawn;
 4. let one real offensive choice defeat a deliberately weak Angler;
-5. have Cordys interrupt the victory, absorb one real but negligible hit, and
+5. have Cordys interrupt the victory, receive one normal combat action, and
    decisively defeat the party;
 6. recover the party, establish the long-term goal, and save safely;
 7. restore the existing combat tutorial as an optional nearby beacon;
@@ -162,7 +162,7 @@ cover art (silent)
   -> first 25 seconds of the Octopus V3 cinematic, with its own audio only
   -> environment darkens and Cordys interrupts the same battle presentation
   -> Phoenix Final Boss intro begins on the reveal
-  -> one real player attack connects for negligible damage
+  -> one real player action resolves normal damage/status/cost rules
   -> one authored Cordys finishing move defeats the party
   -> music ends; approximately one second of silence
   -> resume at the Cordys title ending from the edited movie's paused 25-second position
@@ -589,8 +589,9 @@ defects. Technical playback, layout, audio, and handoff defects still block.
   one Angler; standing still or looking around never starts it.
 - Every visible offensive choice defeats the prologue Angler; ordinary Angler
   behavior and all progression rewards remain unchanged.
-- Cordys visibly interrupts the victory, receives one registered negligible
-  hit, and defeats the party with one readable authored move.
+- Cordys visibly interrupts the victory, receives one normal stat-based action
+  (not a fixed damage result), and defeats the fresh party with one readable
+  stat-based authored move. Status and cost choices remain real.
 - No normal victory fanfare, Game Over screen/music, campaign Octopus state,
   or route progression is used for the scripted loss.
 - The party is restored, safely positioned, saved, and given the exact

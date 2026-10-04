@@ -649,3 +649,42 @@ Public main/default aliases remain their prior deployment; no user save, main
 merge or child PR push/open. This is the reported idle-control correction, not
 the overall goal's final zero-defect visual/audio/human acceptance. The existing
 OPEN-032 and acceptance gaps remain explicit.
+
+## Focused real-combat correction, 2026-10-04
+
+Runtime `953b92f1b93a50998954dabdec8ca06a4e6c384d`, parent PR #96
+`27a5b5253256a26733f8a320c3c6b4f97c64dece`. Immutable deployment
+`dpl_6im5qRUYSiA6e93VoVyG4u786UMH` at
+https://underwatergame-lxdvfaf8x-immortaldemongods-projects.vercel.app/.
+Stable review alias is unchanged. Local and independently downloaded review
+PCK match at 93,306,940 bytes and SHA-256
+`8327d0f440281d847485b4f559cad62a8fcbb36e1c4a55b195f997083f1baba2`.
+
+The reported identical damage was investigated, not assumed: baseline STR 1
+accounts for Electric Touch/Stabbing/Knee Combo's 1 damage; Axe Kick uses
+STR+ACC and does 4. The true forced-death shortcut and inappropriate
+Angler-derived move accuracy were repaired (OPEN-036). Normal status/self-cost
+and stat-dependent variation are verified (OPEN-037). The resulting duplicate
+impact audio was caught red and repaired before updating the alias (OPEN-038).
+
+Final native 15-case real-button/differential matrix passes; three diagnostic
+200-HP divers really survive at 120/122/124, with one heavy impact sound.
+Starting stats still lose to stat-resolved 80/78/76 damage. Angler, ordinary
+rules, Quick Read, SFX, trigger, rendered narrow framing and actual later
+death/restart/training/save-denial regressions remain green.
+
+Exact final browser New Game/movies/mouse input: inspected screenshot shows
+Axe Kick 4, Cordys 996/1,000 and the real EVA cost. Total 106.839 seconds,
+engaged 89.010 excluding explicitly deliberate idle/look. Swimming before
+Angler 4.074 seconds; idle does not trigger. Cold Load and two later actual
+enemy-caused deaths/Restart/title Load preserve completion. Separate browser
+checkpoint-denial/Retry/cold-Load run passes (107.461 seconds, including fault).
+No unexpected errors in either result; only the deliberate IndexedDB abort is
+exempt in the fault test. Proof is in
+`docs/evidence/opening-prologue-real-combat/`, excluded from runtime.
+
+Public main and project-default aliases independently still resolve to
+`dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5`. No user save changed, no main merge or
+child PR push/open. This is a focused correction, not final zero-defect
+acceptance: OPEN-032, blind comprehension and final viewport/listening matrix
+remain outstanding.
