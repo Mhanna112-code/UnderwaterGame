@@ -214,7 +214,9 @@ try {
   ];
   if (bossResponses.length !== 3 || expectedStrikes.some((expected, index) => !bossResponses[index].includes(expected))) throw new Error('SOLO-001/004 browser response failed individual STR/DEF deaths: ' + bossResponses.join(';'));
   if (bossResponseTimes.slice(1).some((time, index) => time - bossResponseTimes[index] < 1000)) throw new Error('SOLO-001 deaths too close to register');
-  if (combatHits.length !== 3 || !combatHits[1].includes('move=Precise Tap|damage=3|hit=true') || !combatHits[2].includes('move=Guard Bash|damage=10|hit=true')) throw new Error('SOLO-007 surviving divers did not land normal-stat attacks: ' + combatHits.join(';'));
+  // Bucky's ordinary legacy move retains its 0.85–1.15 power variance:
+  // (6 power + 4 STR) at zero DEF rounds to 9–11, not one fixed value.
+  if (combatHits.length !== 3 || !combatHits[1].includes('move=Precise Tap|damage=3|hit=true') || !/move=Guard Bash\|damage=(9|10|11)\|hit=true/.test(combatHits[2])) throw new Error('SOLO-007 surviving divers did not land normal-stat attacks: ' + combatHits.join(';'));
   await page.waitForTimeout(5000);
   await shot('07-aftermath');
   await waitPhase('recovery', 45000);
