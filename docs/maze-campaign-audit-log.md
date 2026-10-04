@@ -39,3 +39,13 @@ Repair: a single-use SceneHandoff transfers a CampaignSession; MazeLevel retains
 Verification: new six-case gate, existing deep_zone_maze_transition, maze_minimap and opening_prologue_state all exit 0 with no script errors. Godot import and diff whitespace check pass. Receipts saved under docs/evidence/maze-campaign-integration/.
 
 Limits: fixture deliberately begins near the entrance and skips onboarding; no normal-navigation or visual proof is claimed. This is a live handoff, not durable maze loading. Secret-room return still reconstructs state, Maze battles still contain placeholder Tethys dispatch and recovery, and campaign relic access in maze spell consumers remains to integrate. No web/native export or preview was published. Continue state/recovery before delivery.
+
+## October 4 2026 INT-02 secret continuity
+
+Source before change: 96f6752. Refreshed PR97/98 heads remain 55e8515/c3da257. Completed additional source reads for MazeMiniMap, ItemOrb, posters and interaction dependencies; catalog records the public contract. No unrelated workspace was modified.
+
+Valid reproduction found that `_build_secret_wall_entrance` was never called. After restoring it, actual E/Esc scene transitions exposed seven state losses: active diver refill, inventory/key reset, party damage/downed reset, reclosed door/collision, reset wall, missing pending reward and respawned consumed rock. An initial missing-node test error was repaired before the valid reproduction and is excluded from evidence.
+
+Repair carries CampaignSession through FlowField and records a plain-data maze snapshot: physical walls/currents, puzzle flags/home transforms, keys/doors, remaining rocks/pending pickups, poster permutations, levers, Sonar Vision, boss-trigger ownership and map discovery. A second meaningful failure showed that storing open transforms without rotation-home transforms left walls unable to close; now all three wall sets close to their real homes after return. Pickup construction options are applied before `_ready`. Pending puzzle/reward animation blocks transition; repeated scene entry is latched and scene-construction failure exposes retry.
+
+New continuity gate plus handoff, map and opening-state regressions exit 0 without script errors. Gate registered in accepting suite. The older maze_completion gate fails at the first H-era waypoint; its now-obsolete route/current assumptions are recorded, not weakened into a green claim. Full normal traversal remains open. No cold saves, battles, visual/audio acceptance or deployment is claimed. Next: INT-04 durable scene/checkpoint recovery. Disk now has about 3.2 GiB free; avoid unnecessary export copies.

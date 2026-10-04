@@ -70,8 +70,10 @@ var _arrow_label: Label3D
 var _arrow_blink: Tween
 var _minimap: Control
 var _leaving := false
+var campaign_session: CampaignSession
 
 func _ready() -> void:
+	campaign_session = SceneHandoff.take_campaign_session()
 	_measure_level()
 	init_maze_grid()
 	for i in cells.size():
@@ -211,6 +213,8 @@ func _spawn_diver() -> void:
 	diver = Diver.new()
 	diver.model_name = SceneHandoff.diver_model if SceneHandoff.diver_model != "" else "Staff_Diver"
 	add_child(diver)
+	if campaign_session != null:
+		diver.restore_campaign_member(campaign_session.party[campaign_session.active])
 	start_along = slab_thickness + 3.0
 	diver.global_position = uv_to_world(Vector2(start_along, level_gap * 0.5))
 	var cam := $Camera3D as Camera3D
@@ -344,5 +348,8 @@ func _leave() -> void:
 	if _leaving:
 		return
 	_leaving = true
+	if campaign_session != null:
+		campaign_session.party[campaign_session.active] = diver.campaign_member_state()
+		SceneHandoff.campaign_session = campaign_session
 	SceneHandoff.returning_from_secret_wall = true
 	get_tree().change_scene_to_file.call_deferred(MAZE_SCENE)

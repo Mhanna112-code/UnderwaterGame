@@ -12,6 +12,13 @@ var route_state: RouteState
 var random_encounters_enabled := true
 var selected_slot := -1
 var outer_world_checkpoint: Dictionary = {}
+var maze_snapshot: Dictionary = {}
+
+static func vector_data(value: Vector3) -> Array:
+	return [value.x, value.y, value.z]
+
+static func vector_from(value: Array) -> Vector3:
+	return Vector3(float(value[0]), float(value[1]), float(value[2]))
 
 func capture_party(divers: Array, selected: int) -> void:
 	party.clear()

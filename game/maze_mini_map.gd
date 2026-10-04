@@ -809,6 +809,61 @@ func _flow_path_for_corridor(corridor: Area3D, current: WaterCurrent) -> PackedV
 func _is_discovered_corridor(corridor: Area3D) -> bool:
 	return corridor != null and _discovered_corridors.has(corridor)
 
+# Rebind discovered geometry to fresh scene nodes. Instance IDs are not save
+# identities, and discovering the return panel must not erase earlier halls.
+func campaign_discovery() -> Dictionary:
+	var data := {"walls": [], "rooms": _revealed_rooms.keys(), "corridors": [],
+		"halls": [], "count": _hall_discovery_count, "pois": _found_poi_ids.keys()}
+	for wall in _revealed_walls:
+		if is_instance_valid(wall):
+			data.walls.append(String((wall as Node).name))
+	for corridor in _discovered_corridors:
+		if is_instance_valid(corridor):
+			data.corridors.append(String((corridor as Node).name))
+	for hall_name in _hall_walls:
+		var names: Array[String] = []
+		for wall in _hall_walls[hall_name]:
+			if is_instance_valid(wall):
+				names.append(String((wall as Node).name))
+		var corridor := _hall_corridors.get(hall_name) as Node
+		data.halls.append({"name": String(hall_name), "walls": names,
+			"corridor": String(corridor.name) if is_instance_valid(corridor) else ""})
+	return data
+
+func restore_campaign_discovery(data: Dictionary) -> void:
+	_revealed_walls.clear()
+	_revealed_rooms.clear()
+	_discovered_corridors.clear()
+	_hall_walls.clear()
+	_hall_corridors.clear()
+	_wall_to_hall.clear()
+	_found_poi_ids.clear()
+	for name_value in data.walls:
+		var wall := maze_level.get_node_or_null(String(name_value)) as CSGBox3D
+		if wall != null:
+			_revealed_walls[wall] = true
+			_wall_to_hall[wall] = ""
+	for room in data.rooms:
+		_revealed_rooms[int(room)] = true
+	for name_value in data.corridors:
+		var corridor := maze_level.get_node_or_null(String(name_value)) as Area3D
+		if corridor != null:
+			_discovered_corridors[corridor] = true
+	for spec in data.halls:
+		var walls: Array[CSGBox3D] = []
+		for name_value in spec.walls:
+			var wall := maze_level.get_node_or_null(String(name_value)) as CSGBox3D
+			if wall != null:
+				walls.append(wall)
+				_wall_to_hall[wall] = String(spec.name)
+		_hall_walls[String(spec.name)] = walls
+		_hall_corridors[String(spec.name)] = maze_level.get_node_or_null(String(spec.corridor))
+	_hall_discovery_count = int(data.count)
+	for id in data.pois:
+		_found_poi_ids[String(id)] = true
+	_main_map_bounds_computed = false
+	_corridor_wall_pairs_computed = false
+
 func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3, mid: Vector2, px_per_unit: float) -> void:
 	var path := _flow_path_for_corridor(corridor, current)
 	if path.size() < 2:

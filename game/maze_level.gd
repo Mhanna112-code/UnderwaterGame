@@ -113,11 +113,14 @@ func _ready() -> void:
 	_build_start_area_barriers()
 	_build_progress_gate()
 	_build_split_rock()
+	_build_secret_wall_entrance()
 	_build_wall_10_11_extras()
 	_build_hall_gauntlet()
 	_build_inventory_menu()
 	_add_wall_skirts()
 	$HUD/Controls.text = "Hallway: CLOSED. Open the map (L), pick the hallway walls and press E."
+	if campaign_session != null and not campaign_session.maze_snapshot.is_empty():
+		restore_campaign_snapshot(campaign_session.maze_snapshot)
 	if SceneHandoff.returning_from_secret_wall:
 		SceneHandoff.returning_from_secret_wall = false
 		_place_divers_at_secret_entrance()
@@ -1242,10 +1245,11 @@ func _try_open_door() -> bool:
 # A flashing panel on CSGBox3D27's passage side (the left wall walking north
 # between Box27 and Box16). E within reach takes the active diver into
 # left_maze_secret_wall.tscn; leaving that scene puts the party back here.
-# The maze is reloaded on the way back, so its walls/currents/levers reset.
+# Scene nodes are rebuilt on return, then restored from the campaign snapshot.
 const SECRET_WALL_SCENE := "res://game/left_maze_secret_wall.tscn"
 const SECRET_ENTRANCE_REACH := 2.5
 var _secret_entrance: MeshInstance3D
+var _secret_transition_pending := false
 
 func _build_secret_wall_entrance() -> void:
 	var w27 := $CSGBox3D27 as CSGBox3D
@@ -1283,8 +1287,28 @@ func _secret_entrance_in_reach() -> bool:
 	return offset.length() <= SECRET_ENTRANCE_REACH and offset.x * face > 0.0
 
 func _enter_secret_wall() -> void:
+	if _secret_transition_pending:
+		return
+	if not can_capture_campaign_snapshot():
+		_announce("Wait for the puzzle movement to finish.")
+		return
+	if campaign_session == null:
+		campaign_session = CampaignSession.new()
+		campaign_session.route_state = RouteState.new()
+	campaign_session.capture_party(divers, active)
+	campaign_session.inventory = inventory
+	campaign_session.maze_snapshot = campaign_snapshot()
+	SceneHandoff.campaign_session = campaign_session
 	SceneHandoff.diver_model = _diver.model_name
-	get_tree().change_scene_to_file.call_deferred(SECRET_WALL_SCENE)
+	_secret_transition_pending = true
+	_change_to_secret_wall.call_deferred()
+
+func _change_to_secret_wall() -> void:
+	var error := get_tree().change_scene_to_file(SECRET_WALL_SCENE)
+	if error != OK:
+		SceneHandoff.campaign_session = null
+		_secret_transition_pending = false
+		_announce("Could not enter the secret passage. Try again.")
 
 # Back from the secret scene: the diver who went in is active again, and the
 # party stands in the passage in front of the entrance.
@@ -1300,6 +1324,8 @@ func _place_divers_at_secret_entrance() -> void:
 	spot.y = ($DiverEntry as Node3D).global_position.y
 	var offsets := [0.0, -2.5, 2.5]
 	for i in divers.size():
+		if _lever_held_by(divers[i]) != null:
+			continue
 		var slot: int = (i - active + divers.size()) % divers.size()
 		divers[i].global_position = spot + Vector3(0, 0, float(offsets[slot]))
 		divers[i].velocity = Vector3.ZERO
@@ -1720,11 +1746,14 @@ func _on_secret_rock_broken(reward: String, spot: Vector3) -> void:
 		if not _battling and not any_modal_open():
 			_start_battle("ambush")
 		return
+	_spawn_secret_reward_orb(reward, spot)
+
+func _spawn_secret_reward_orb(reward: String, spot: Vector3, golden := true, grappleable := true, grapple_only := true) -> ItemOrb:
 	var orb := ItemOrb.new()
 	orb.item_id = reward
-	orb.golden = true
-	orb.grappleable = true
-	orb.grapple_only = true
+	orb.golden = golden
+	orb.grappleable = grappleable
+	orb.grapple_only = grapple_only
 	orb.position = spot
 	orb.collected.connect(_on_secret_orb_collected)
 	orb.needs_ability.connect(func(_d: Diver) -> void:
@@ -1732,6 +1761,7 @@ func _on_secret_rock_broken(reward: String, spot: Vector3) -> void:
 	add_child(orb)
 	if Items.is_key_item(reward):
 		key_pickups.append(orb)
+	return orb
 
 # Same as the main game's pickup: into the inventory with "Picked up a ...".
 # Key items go to key_items instead.
@@ -1768,6 +1798,7 @@ const CHEST_REACH := 2.4
 var _vortex_chest: Node3D
 var _vortex_chest_lid: Node3D
 var _vortex_chest_open := false
+var _chest_reward_pending := false
 
 func _build_vortex_chest() -> void:
 	if _swirl_room == null:
@@ -1822,6 +1853,7 @@ func _vortex_chest_in_reach() -> bool:
 
 func _open_vortex_chest() -> void:
 	_vortex_chest_open = true
+	_chest_reward_pending = true
 	var tw := create_tween()
 	tw.tween_property(_vortex_chest_lid, "rotation:x", -deg_to_rad(110.0), 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# The key rises out of it and is taken.
@@ -1833,7 +1865,8 @@ func _open_vortex_chest() -> void:
 	tw.tween_interval(0.4)
 	tw.tween_callback(func() -> void:
 		key.queue_free()
-		_gain_key("vortex_key"))
+		_gain_key("vortex_key")
+		_chest_reward_pending = false)
 
 func _make_key_mesh() -> Node3D:
 	var gold := StandardMaterial3D.new()
@@ -4803,6 +4836,7 @@ func _add_key_shine(key: Node3D) -> void:
 # The landed key: bobs and spins until a diver swims into it.
 func _spawn_key_pickup(key: Node3D) -> void:
 	key.process_mode = Node.PROCESS_MODE_INHERIT
+	key.set_meta("campaign_pickup_id", "split_rock_key")
 	key_pickups.append(key)
 	var area := Area3D.new()
 	area.collision_mask = 2
@@ -4834,7 +4868,7 @@ func map_points_of_interest() -> Array[Dictionary]:
 		out.append({"id": String(p.name), "kind": "poster", "pos": p.global_position, "radius": 7.0, "done": p.seen, "texture": p.portrait})
 	for k in key_pickups:
 		if is_instance_valid(k) and not k.is_queued_for_deletion():
-			out.append({"id": "key_%d" % k.get_instance_id(), "kind": "key", "pos": k.global_position, "radius": 9.0})
+			out.append({"id": "key_%s" % String(k.get_meta("campaign_pickup_id", "%.3f_%.3f_%.3f" % [k.global_position.x, k.global_position.y, k.global_position.z])), "kind": "key", "pos": k.global_position, "radius": 9.0})
 	for i in broken_rock_spots.size():
 		out.append({"id": "broken_rock_%d" % i, "kind": "broken_rock", "pos": broken_rock_spots[i], "radius": INF})
 	if _vortex_chest != null and is_instance_valid(_vortex_chest):
@@ -5142,3 +5176,192 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 
 func _display_name(model_name: String) -> String:
 	return Cast.display_name(model_name)
+
+# Campaign persistence contains plain data, not instance IDs, nodes or Tweens.
+# Only stable completed gameplay may be captured: an opened chest whose key
+# is still rising must not become a saved, empty chest with its reward lost.
+const CAMPAIGN_FLAGS := ["_completed", "_hallway_1_2_swung", "_walls_14_15_open",
+	"_walls_10_11_swung", "_path_opened", "_current_1_in_2", "_current_3_in_4",
+	"_current_5_in_6", "_current_7_in_8", "_gate_lowered", "_rock_split",
+	"_vortex_chest_open", "has_sonar_vision", "sonar_vision_equipped",
+	"room_encounters_enabled", "_strong_room_seen", "_switch_explained"]
+
+func can_capture_campaign_snapshot() -> bool:
+	return _moving_wall_sets.is_empty() and not _gate_cutscene and not _chest_reward_pending \
+		and not _battling and not get_tree().paused and not any_modal_open()
+
+func campaign_snapshot() -> Dictionary:
+	var data := {"version": 1, "flags": {}, "walls": {}, "currents": [],
+		"doors": [], "rocks": [], "orbs": [], "loose_keys": [], "posters": [],
+		"positions": [], "levers": [], "broken_rocks": [], "keys_held": keys_held,
+		"key_items": key_items.duplicate(), "boss_triggers": _boss_triggers.keys(),
+		"yaw": _yaw, "pitch": _pitch}
+	for flag in CAMPAIGN_FLAGS:
+		data.flags[flag] = bool(get(flag))
+	data.rotation_homes = {"hallway_a": CampaignSession.vector_data(_hallway_1_2_home_pos_a),
+		"hallway_b": CampaignSession.vector_data(_hallway_1_2_home_pos_b),
+		"hallway_yaw_a": _hallway_1_2_home_yaw_a, "hallway_yaw_b": _hallway_1_2_home_yaw_b,
+		"walls_14_15": _wall_home_data(_walls_14_15_home), "walls_10_11": _wall_home_data(_walls_10_11_home)}
+	for child in get_children():
+		if child is CSGBox3D:
+			var wall := child as CSGBox3D
+			data.walls[String(wall.name)] = {"position": CampaignSession.vector_data(wall.position),
+				"rotation": CampaignSession.vector_data(wall.rotation), "size": CampaignSession.vector_data(wall.size),
+				"visible": wall.visible, "collision": wall.use_collision}
+		elif child is CrackedWall and not child.is_queued_for_deletion():
+			data.rocks.append(CampaignSession.vector_data((child as Node3D).global_position))
+		elif child is ItemOrb and not child.is_queued_for_deletion():
+			var orb := child as ItemOrb
+			data.orbs.append({"item": orb.item_id, "position": CampaignSession.vector_data(orb.position),
+				"golden": orb.golden, "grappleable": orb.grappleable, "grapple_only": orb.grapple_only})
+	for area in _currents_by_corridor:
+		var current := _currents_by_corridor[area] as WaterCurrent
+		data.currents.append({"area": String((area as Node).name),
+			"orientation": CampaignSession.vector_data(current.orientation), "strength": current.strength})
+	for door in _maze_doors:
+		if is_instance_valid(door) and door.is_open():
+			data.doors.append(door.door_id)
+	for key in key_pickups:
+		if is_instance_valid(key) and not key.is_queued_for_deletion() and not key is ItemOrb:
+			data.loose_keys.append({"position": CampaignSession.vector_data(key.global_position)})
+	for poster in _posters:
+		data.posters.append({"diver": poster.diver_index, "number": poster.number, "seen": poster.seen,
+			"portrait": poster.portrait.resource_path, "seed": poster.scribble_seed})
+	for diver in divers:
+		data.positions.append(CampaignSession.vector_data(diver.position))
+	for lever in _lever_holders:
+		data.levers.append({"lever": _dome_levers.find(lever), "diver": divers.find(_lever_holders[lever])})
+	for spot in broken_rock_spots:
+		data.broken_rocks.append(CampaignSession.vector_data(spot))
+	var map := get_node("HUD/MazeMiniMap") as MazeMiniMap
+	data.map = map.campaign_discovery()
+	return data
+
+func _wall_home_data(homes: Array) -> Array:
+	var out: Array = []
+	for entry in homes:
+		out.append({"wall": String((entry[0] as Node).name),
+			"position": CampaignSession.vector_data(entry[1]), "yaw": entry[2]})
+	return out
+
+func _restore_wall_homes(homes: Array) -> Array:
+	var out: Array = []
+	for entry in homes:
+		out.append([get_node(String(entry.wall)), CampaignSession.vector_from(entry.position), float(entry.yaw)])
+	return out
+
+func restore_campaign_snapshot(data: Dictionary) -> void:
+	for flag in CAMPAIGN_FLAGS:
+		set(flag, bool(data.flags.get(flag, false)))
+	keys_held = int(data.keys_held)
+	key_items.assign(data.key_items)
+	_yaw = float(data.yaw)
+	_pitch = float(data.pitch)
+	var homes: Dictionary = data.rotation_homes
+	_hallway_1_2_home_pos_a = CampaignSession.vector_from(homes.hallway_a)
+	_hallway_1_2_home_pos_b = CampaignSession.vector_from(homes.hallway_b)
+	_hallway_1_2_home_yaw_a = float(homes.hallway_yaw_a)
+	_hallway_1_2_home_yaw_b = float(homes.hallway_yaw_b)
+	_walls_14_15_home = _restore_wall_homes(homes.walls_14_15)
+	_walls_10_11_home = _restore_wall_homes(homes.walls_10_11)
+	# Recreate only the two runtime path extensions; every other structural
+	# node must already exist in Marc's authored initialization.
+	for wall_name in data.walls:
+		var spec: Dictionary = data.walls[wall_name]
+		var wall := get_node_or_null(String(wall_name)) as CSGBox3D
+		if wall == null and wall_name in ["PathWallNorth", "PathWallSouth"]:
+			wall = _spawn_wall(String(wall_name), CampaignSession.vector_from(spec.position),
+				float(spec.rotation[1]), CampaignSession.vector_from(spec.size))
+			wall_boxes.append(wall)
+			_add_wall_skirt(wall)
+		if wall != null:
+			wall.position = CampaignSession.vector_from(spec.position)
+			wall.rotation = CampaignSession.vector_from(spec.rotation)
+			wall.size = CampaignSession.vector_from(spec.size)
+			wall.visible = bool(spec.visible)
+			wall.use_collision = bool(spec.collision)
+	for current in _currents_by_corridor.values():
+		(current as WaterCurrent).teardown()
+		(current as WaterCurrent).queue_free()
+	_currents_by_corridor.clear()
+	for spec in data.currents:
+		var area := get_node(String(spec.area)) as Area3D
+		var current := WaterCurrent.new()
+		add_child(current)
+		current.setup(area, CampaignSession.vector_from(spec.orientation), float(spec.strength), false)
+		_currents_by_corridor[area] = current
+	for door in _maze_doors:
+		if data.doors.has(door.door_id):
+			door.restore_open_state()
+	for child in get_children():
+		if child is CrackedWall:
+			var still_present := false
+			for spot in data.rocks:
+				still_present = still_present or (child as Node3D).global_position.distance_to(CampaignSession.vector_from(spot)) < 0.01
+			if not still_present:
+				child.queue_free()
+	for spec in data.orbs:
+		_spawn_secret_reward_orb(String(spec.item), CampaignSession.vector_from(spec.position),
+			bool(spec.golden), bool(spec.grappleable), bool(spec.grapple_only))
+	for spec in data.loose_keys:
+		var key := _make_key_mesh()
+		add_child(key)
+		key.global_position = CampaignSession.vector_from(spec.position)
+		key.scale = Vector3.ONE * 1.4
+		_add_key_shine(key)
+		_spawn_key_pickup(key)
+	broken_rock_spots.clear()
+	for spot in data.broken_rocks:
+		broken_rock_spots.append(CampaignSession.vector_from(spot))
+	poster_clues.clear()
+	for i in range(_posters.size()):
+		var poster := _posters[i]
+		var spec: Dictionary = data.posters[i]
+		poster.diver_index = int(spec.diver)
+		poster.number = int(spec.number)
+		poster.portrait = load(String(spec.portrait)) as Texture2D
+		poster.scribble_seed = int(spec.seed)
+		for child in poster.get_children():
+			if child is SubViewport:
+				for old_art in child.get_children():
+					old_art.queue_free()
+				child.add_child(MazePoster.build_art(Vector2(MazePoster.ART_PIXELS), poster.portrait, poster.scribble_seed))
+				(child as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+		if bool(spec.seen):
+			poster.mark_seen()
+		poster_clues.append({"diver": poster.diver_index, "number": poster.number})
+	for i in range(divers.size()):
+		divers[i].position = CampaignSession.vector_from(data.positions[i])
+	for holder in data.levers:
+		var index := int(holder.lever)
+		var lever := _dome_levers[index]
+		_lever_holders[lever] = divers[int(holder.diver)]
+		lever.pull()
+		_set_lever_light(index, true)
+	if _path_opened:
+		_path_button_blink.kill()
+		for child in _path_button.get_children():
+			(child as Node3D).visible = true
+		_set_path_button_color(Color(0.2, 1.0, 0.35))
+		_corridor_walls.erase($WindCorridor4)
+	if _gate_lowered:
+		_mark_switch_done()
+		_gate.visible = false
+		for child in _gate.get_children():
+			if child is CollisionShape3D:
+				(child as CollisionShape3D).set_deferred("disabled", true)
+	if _vortex_chest_open:
+		_vortex_chest_lid.rotation.x = -deg_to_rad(110.0)
+	if _rock_split and is_instance_valid(_split_rock):
+		_split_rock.queue_free()
+		_split_rock = null
+	if has_sonar_vision:
+		var pickup := get_node_or_null("SonarVisionPickup")
+		if pickup != null:
+			pickup.queue_free()
+	for kind in _boss_triggers.keys():
+		if not data.boss_triggers.has(kind):
+			_remove_boss_trigger(String(kind))
+	_update_state_barriers()
+	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
+	$HUD/Controls.text = "Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L)."

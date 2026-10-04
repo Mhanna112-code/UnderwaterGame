@@ -2,13 +2,13 @@
 
 ## Current authoritative status
 
-October 4, 2026: campaign/opening merged into current main at 493b1d8, retaining the current two-turn Headbutt rule. PR97's runtime conflicts are reconciled locally. INT-01 live World-to-maze state loss is reproduced and repaired: six normal-proximity entrance cases conserve party resources, downed state, earned kit, inventory, relics, active diver and campaign progress. Existing opening worktree changes remain untouched. No combined export or deployment exists yet; maze persistence, secret return and finale remain incomplete.
+October 4, 2026: campaign/opening merged into current main at 493b1d8, retaining the current two-turn Headbutt rule. PR97's runtime conflicts are reconciled locally. INT-01 live entrance and INT-02 live secret return are reproduced and repaired. Existing opening worktree changes remain untouched. No combined export or deployment exists yet; durable maze persistence, complete traversal and finale remain incomplete.
 
 | Phase | State | Required next evidence |
 | --- | --- | --- |
 | Foundation | Recorded | Initial plan/contracts committed at 2e701c9; later decisions remain subject to reconciliation |
 | Integrated baseline | In progress | Local reconciliation and INT-01 live entrance gate pass; remaining semantic integration still required |
-| State/recovery | In progress | Live entrance fixed; secret excursion, coherent maze saves, old/new/interruption/denied-write tests remain |
+| State/recovery | In progress | Live entrance/secret return fixed; coherent maze saves, old/new/interruption/denied-write tests remain |
 | Maze route | Planned | Normal entry, puzzles, keys, local encounter policy and return |
 | Puppet encounter | Planned | Both real waves, conserved resources, correct reward and recovery |
 | Cordys finale | Planned | Reachable no-lab normal-action win/loss and persisted closure |
@@ -21,7 +21,9 @@ October 4, 2026: campaign/opening merged into current main at 493b1d8, retaining
 
 Local merge checkpoint: 7a762ee135f198b6af38ca8191e96e8ed77cb94e. The map gate was rerun on this committed source and passed. No public branch, main merge or deployment was performed.
 
-Complete targeted source reads are recorded in the INT-01 module contract. The new handoff test failed with 166 state-loss findings, then passed all six cases after retaining the actual stats resources and inventory through a single-use campaign-session handoff. Existing normal-entry, maze-map and opening-state gates also pass with no script errors. Next: reproduce and repair INT-02 secret-room return without resetting maze puzzles or resources, then establish durable scene/checkpoint restore under INT-04. Do not treat a successful live entrance as cold-load acceptance.
+INT-01 is committed at 96f6752. INT-02 adds the missing secret-panel construction, conserves the actual party and rebuilds maze geometry/puzzle/reward/discovery state from plain data. The real E/Esc return test passes, including opening then closing all three wall sets, spent key/door collision and a pending rock reward. Handoff, map and opening-state regressions pass. Next: coherent durable checkpoints under INT-04; live snapshots are not disk-load acceptance.
+
+The older `maze_completion` gate fails at its first straight-line waypoint. Its route still assumes the removed H behavior relocates currents and opens the CSG6/7 channel; Marc now separates wall/current manipulation and the normal entrance. It is NOT accepted as a complete traversal check. Record and replace this obsolete route with genuine current puzzle/input traversal in the maze-route phase; do not weaken its physical-collision oracle or claim the full route passed.
 
 ## Local baseline evidence and limitations
 
