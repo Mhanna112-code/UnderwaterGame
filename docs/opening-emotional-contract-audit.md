@@ -50,6 +50,8 @@ automation cannot prove that a player feels hope, dread or determination.
 | Tethys effectively unkillable / leveling misleading | Confirmed. Tune the boss to real reachable 10-HP kits, without new stat growth. Verify actual combat victories, losses, earned spells and resource use; no inflated HP, completion injection or guaranteed QTE. |
 | Training label / crystal hide player | Open OPEN-032/046; rendered wide/narrow/tall recovery and close approach must be readable. |
 | Opening exceeds two minutes | Open; profile real waits/render/input. Shorten redundant response dead time, not player decision time, attack feedback or approved films. |
+| Earned attack never works despite learning tests | Confirmed LAB-BAL-005: Bucky's Heavy Slam had effective Accuracy -2 even against EVA 0. Removed that invalid modifier; real earned menu attacks now land against exhausted EVA and can still miss/spend the pool against EVA 2, with actual Oxygen cost. No base-stat growth or general spell-tree redesign. |
+| Invisible puzzle-room traversal barrier | Rechecked actual horizontal swimming past the room and 26m vertical travel at five world positions. No invisible world-spanning collider in current source. |
 
 ## Verification contract
 
@@ -98,6 +100,21 @@ automation cannot prove that a player feels hope, dread or determination.
   writes/retry; idle/swim; normal-rule Angler choices; separate Cordys impacts,
   real high-HP survivors; defaults, zone hints, random reveal and timed Run hint.
   Structural audio/gain/mute/settings gates also pass. Listening is not claimed.
+- Exact clean `02efa8f` hosted export: full films, idle/look negative path,
+  three actual choices/deaths, persisted cold Load, two later actual losses and
+  real Restart/title Load succeed with no runtime errors. Evidence-heavy run
+  still fails timing at 128.548 active seconds; retain it as a failed round.
+- Same immutable export, same waits/media/buttons and weak nonlethal Angler
+  path, redundant evidence-only images omitted: 119.189 total / 117.186 active
+  seconds. Every input/readability OCR image remains. No estimated overhead is
+  subtracted. These measurements expose instrumentation sensitivity; neither
+  guarantees that a human's deliberation fits two minutes.
+- Legacy rendered layout/QTE/Shark/lab-composition gates pass at real 1280x720.
+  Their initial headless attempts used a 64x64 viewport and are rejected, not
+  evidence of actual UI defects or green rendering. Open-water traversal passes.
+- LAB-BAL-005 earned Heavy Slam payoff/miss/Oxygen cases pass after the baseline
+  reproduction fails. Expanded actual boss matrix wins 48/48 across accessible,
+  skilled and earned-heavy counter policies, eight seeds each at levels 2/3.
 
 ## Rejected checks / lessons for the audit loop
 
@@ -123,6 +140,9 @@ automation cannot prove that a player feels hope, dread or determination.
   native/browser save has been changed during this audit.
 - Two guessed audio test filenames were invalid; those attempts are retained
   but rejected as evidence. Actual envelope/settings/manager gates were run.
+- Heavy Slam's first test had a parse error; its corrected baseline failed both
+  exhausted-EVA payoff and positive dodge-pool expenditure. The repaired real
+  menu test passes both. A learning-only assertion had hidden this defect.
 
 Current verdict remains **repair candidate, not final emotional acceptance**.
 The opening can supply motivation, but automation cannot prove hope/dread or

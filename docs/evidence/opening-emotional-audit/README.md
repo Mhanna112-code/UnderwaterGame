@@ -3,6 +3,16 @@
 Runtime repair candidate, **not final human emotional acceptance**.
 Binding rationale/status: `docs/opening-emotional-contract-audit.md`.
 
+`browser-02efa8f/` records exact clean hosted source and both timings: the
+evidence-heavy 128.548s failure and lower-overhead 117.186s pass with unchanged
+gameplay/waits/movies/input oracles. Its death tests alter only the disposable
+browser's copied checkpoint position/attrition stats to reach two real losses;
+completion, deaths, save/restart and Load outcomes are never injected. This is
+recovery proof, not normal campaign attrition/difficulty proof. Source `02efa8f`
+predates the separate Heavy Slam repair, which requires a fresh final export.
+The new earned spell test fails before that repair and passes afterward.
+Expanded real boss policies now win 48/48 (three policies/eight seeds/two levels).
+
 ## Independent checks
 
 - Real old Tethys: 0/32 wins at normal earned level-2/3 kits.

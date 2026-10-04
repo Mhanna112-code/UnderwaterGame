@@ -86,7 +86,18 @@ const waitPhase = async (phase, timeout = 45000) => {
   while (!phases.includes(phase) && Date.now() < deadline) await page.waitForTimeout(100);
   if (!phases.includes(phase)) throw new Error(`missing ${phase}; observed ${phases.join(',')}`);
 };
-const shot = async name => page.screenshot({ path: path.join(output, name + '.png') });
+// A timing probe retains every image used by an input/readability oracle but
+// omits redundant evidence-only screenshots. It changes no gameplay input,
+// wait, media or acceptance threshold; both wall-time results stay recorded.
+const timingOnly = process.env.OPENING_TIMING_ONLY === '1';
+const shot = async name => {
+  const oracleImage = name.endsWith('-move-menu') || name === '03c-next-turn'
+    || name.endsWith('-next-player-turn')
+    || ['09-optional-training', '03e-victory-beat', '03f-victory-noticed', '03g-something-stirs'].includes(name);
+  // Post-opening save/death/escape oracles are outside the timed interval.
+  if (!timingOnly || oracleImage || Number(name.slice(0, 2)) >= 10 || name === 'failure')
+    await page.screenshot({ path: path.join(output, name + '.png') });
+};
 const expectShallows = name => {
   const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, name + '.png')], { encoding: 'utf8' }));
   const text = rows.map(row => row.text).join('\n');
@@ -482,7 +493,7 @@ try {
   if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, sourcePresentationEvents, combatHits, bossResponses, bossResponseTimes, randomReveals, randomCombats, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, timingOnly, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, sourcePresentationEvents, combatHits, bossResponses, bossResponseTimes, randomReveals, randomCombats, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }

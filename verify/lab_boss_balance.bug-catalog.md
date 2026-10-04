@@ -20,6 +20,12 @@ the integration test; speeding the engine is disclosed, never changing stats.
 | LAB-BAL-002 | Earned spells/refills cannot produce an attainable boss victory; cosmetic level increases are mistaken for stat growth. | Actual buttons through real win/loss; seeded accessible and skilled policies; no keys/shards/HP boosts manufactured. | confirmed baseline |
 | LAB-BAL-003 | An animation-only immortal fixture or supplied `won` falsely claims campaign balance. | Separate real victory-rate evidence and rendered real-party victory; animation/route gates labeled honestly. | confirmed baseline |
 | LAB-BAL-004 | Fresh-party fixtures hide carried attrition, missed spell rewards or broken guard-to-lab dispatch. | Actual World positions dispatch Bomb Bot, Sword Slayer and Tethys; real menus/outcomes and ordinary rewards carry forward without heals or completion injection. | verification in progress |
+| LAB-BAL-005 | Earned Heavy Slam can never land: Bucky ACC 1 plus modifier -3 remains below even EVA 0, making the growth reward unusable. | Actual earned spell/menu/target input against an exhausted-Evasion target; require damage and Oxygen expenditure, then verify a high-Evasion target can still evade and spend its pool. | confirmed code defect; reproduction required |
+
+LAB-BAL-005 is a targeted invalid-content repair, not a spell-tree redesign.
+Normal party stats and strict ACC > EVA remain unchanged. Removing the negative
+modifier permits an exhausted-Evasion payoff while retaining misses against an
+unprepared target. A known-spells assertion alone cannot catch this defect.
 
 Harness correction: the first continuous-route attempt waited for automatic
 combat after the lab film. Production deliberately waits for its visible
@@ -62,3 +68,11 @@ and party resources. Level 2/spells arrive after the second guard, level 3 after
 Tethys. A disclosed completed-opening fixture sets the starting state only.
 
 Final human difficulty/readability and eventual campaign Cordys remain unproven.
+
+LAB-BAL-005 caught and repaired: actual earned/menu/target attacks initially
+dealt zero against EVA 0 and spent no EVA on a miss. With modifier 0, the real
+attack deals damage against exhausted EVA, spends 8 Oxygen, and an EVA-2 target
+still evades while spending 1 EVA. A third real-battle policy uses Blindness,
+Electric Touch and earned Heavy Slam: the expanded matrix wins 48/48 across
+three policies/eight seeds/levels 2 and 3 without HP inflation or timing dodges.
+This preserves the counter setup rather than granting guaranteed heavy hits.

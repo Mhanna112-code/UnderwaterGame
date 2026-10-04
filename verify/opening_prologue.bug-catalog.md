@@ -169,6 +169,16 @@ normal Game Over, and leaves the current tutorial available but optional.
 - **Assertion:** record answers to the five fixed questions without coaching.
 - **Self-critique:** subjective interpretation cannot be reduced to a headless proxy; fixed questions and raw answers prevent retrospective rationalization.
 
+## Exact-host timing recheck, 2026-10-04
+
+The `02efa8f` exact clean export passes full movies, real choices, idle/look,
+Cold Load and two actual later deaths/Restart/Load, but fails the active-time
+gate at 128.548s. This remains a failed acceptance round. Profile rather than
+hide it: a second ordinary-input probe omits only redundant evidence images,
+retaining every screenshot used by OCR/input/readability assertions. All waits,
+choices, media and the 120s threshold remain identical. Record both results;
+do not subtract estimated rendering/OCR time or count the failed run as green.
+
 ## Skipped
 
 - Exact pixel snapshots of the video or Cordys — wrong-but-stable images could
@@ -328,11 +338,19 @@ proven. Native migration, video-save, protected-world, free-swim and mutable
 world/drop persistence regressions are clean without runtime errors. The actual
 cause of the user's stored incomplete checkpoint remains unestablished.
 
-OPEN-032 (observed, not repaired in the checkpoint slice): the optional training
+OPEN-032 (historically observed, not repaired in the checkpoint slice): the optional training
 world label is partly covered by the player model in the default recovered
 camera view. Captured in the exact `2bf19ac` cold-loaded browser world. This
 blocks the full goal's final zero-defect visual round; checkpoint proof does
 not establish readable training guidance from every approach/view.
+
+2026-10-04 superseding repair: runtime `02efa8f` enlarges/elevates this label.
+Native wide/narrow/tall inspection and OCR read the full text after real Load;
+near-camera crystal occlusion OPEN-046 also repairs actual Compatibility output,
+while normal contact still restores/saves. Detailed catalog and rejected-green
+rounds: `verify/opening_discoverability.bug-catalog.md`. Hosted/human acceptance
+is separately documented in `docs/opening-emotional-contract-audit.md`; no
+whole-game PASS is inferred from this focused repair.
 
 ## Captured quiet-spawn review finding, 2026-10-03
 

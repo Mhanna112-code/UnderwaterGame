@@ -1,5 +1,38 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: emotional-contract repair audit
+
+Follow-up: exact clean `02efa8f` hosted full-flow and both later-death reloads
+work, but evidence-heavy capture exceeds timing at 128.548 active seconds.
+Same immutable build, identical gameplay/waits/films and input/readability
+oracles, redundant evidence-only images omitted: 117.186 active seconds.
+Both results are retained; the failed round is not relabeled PASS. Review of
+its hosted victory/actual hit/returned Musashi menu/recovery images found no
+additional presentation defect in those views. Rendered legacy UI/QTE/Shark/
+lab composition and real open-water collision checks pass. Human listening and
+motivation are not certified. A further earned-spell probe caught the inherited
+impossible Heavy Slam accuracy modifier; its real exhausted-EVA payoff and
+unprepared-target miss are now separately tested before a fresh export.
+
+Runtime repair source `02efa8f`; authoritative current mapping and rejected
+checks are in `docs/opening-emotional-contract-audit.md`. This is not final human
+emotional/listening acceptance. The audit caught real Tethys progression failure
+(0/32 actual fights), hidden/off-centre guards, training-text and crystal
+occlusion. A green centering test still hid the guard behind the player; shader
+fade still filled the foreground. Render inspection rejected both and drove
+further repairs. Wide/narrow/tall glyph OCR and actual save-point contact/write
+now pass. The real guard/guard/lab film/Continue/Tethys chain wins and earns
+level 3 without supplied victory/heals/stats.
+
+Fresh working-source local browser retains complete films, a weak nonlethal
+Angler move, real mouse choices and three distinct Cordys deaths: 120.597s total,
+118.591s engaged with two measured 1s decision-hold probes excluded; zero runtime
+errors. Native full lesson/world control, actual later deaths/Restart/title Load
+and rejected writes pass. Exact clean-commit hosted proof and the final repeated
+visual round remain separate gates; earlier deployment/status entries below are
+historical, not acceptance for this repair. Evidence packet:
+`docs/evidence/opening-emotional-audit/`.
+
 ## 2026-10-04: ordinary world-enemy reveal (REVEAL-01..06)
 
 Source `4c6ca74`: after recovery, the normal distance roll briefly presents its

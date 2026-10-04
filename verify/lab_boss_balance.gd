@@ -15,7 +15,7 @@ func _run() -> void:
 	root.size = Vector2i(1280, 720)
 	Engine.time_scale = 12.0 if output.is_empty() else 2.0
 	for level in [2, 3]:
-		for policy in ["accessible", "skilled"]:
+		for policy in ["accessible", "skilled", "earned_heavy"]:
 			var wins := 0
 			var count := SEEDS if output.is_empty() else 1
 			for index in range(count):
@@ -108,13 +108,17 @@ func _choice(battle: Battle, policy: String) -> String:
 	var model := String(entry.model_name)
 	var enemy := battle.enemies[0].stats as CombatantStats
 	if model == "Staff_Diver":
-		if policy == "skilled" and enemy.status_turns("blindness") <= 1:
+		if policy != "accessible" and enemy.status_turns("blindness") <= 1:
 			return "Flash Blast"
+		if policy == "earned_heavy" and enemy.evasion > 0:
+			return "Electric Touch"
 		return "Swift Strike" if entry.stats.oxygen >= 8.0 else "Axe Kick"
 	if model == "Prototype_1(1910)":
-		if policy == "skilled" and enemy.effective_defense() > 0 and entry.stats.oxygen >= 10.0:
+		if policy != "accessible" and enemy.effective_defense() > 0 and entry.stats.oxygen >= 10.0:
 			return "Weaken"
 		return "Precise Jab" if entry.stats.oxygen >= 8.0 else "Precise Tap"
+	if policy == "earned_heavy":
+		return "Heavy Slam" if entry.stats.oxygen >= 8.0 else "Guard Bash"
 	if policy == "skilled" and entry.equipped_spells.has("mending_current") and entry.stats.oxygen >= 8.0 and battle.party.any(func(ally: Dictionary) -> bool: return ally.stats.hp > 0 and ally.stats.hp <= 5):
 		return "Mending Current"
 	return "Guard Bash"
