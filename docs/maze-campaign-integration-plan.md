@@ -135,17 +135,19 @@ Current main's Headbutt stun is two turns. Our branch still carries the earlier 
 
 ## 4. Normal-world route and independent destinations
 
-The Bucky puzzle occupies the existing shallow corridor: break the wall, use the existing traversal/pressure-plate mechanics, and emerge toward Deep. The waypoint at its completion is visual guidance, not a scene-changing maze portal.
+October 4 clarification from Miguel supersedes the earlier separate-entrance-only interpretation: **the completed Bucky/grapple/three-plate puzzle exits directly into Marc's maze.** Swim through its opened doorway. The lab is a different destination and leads to Tethys; lab victory is not a maze prerequisite. Preserve the existing puzzle, not a new mandatory laboratory route.
 
 The inspected layout places Deep beyond approximately world X=60. Its hub leads to two destinations:
 
 - Laboratory route: Bomb Bot near X=120, Sword Slayer near X=145, and the laboratory/Tethys near X=175.
 
-- Maze branch: a separate blue-lit entrance around (125, 2, -34), entered by proximity after reaching Deep.
+- Primary maze route: complete the shallow puzzle, then enter its opened exit around (47, 2, 10). Clearly label the doorway and show a concise local entrance instruction. Approaching an unsolved exit must not open the maze.
+
+- The earlier blue-lit Deep entrance around (125, 2, -34) is retained only as an additional compatibility entrance for feedback saves; it is not the required route or the answer to finding the puzzle exit.
 
 These coordinates are implementation references, not instructions to make a human reviewer navigate by numbers.
 
-Our world already has a normal maze-entry scene change. It is independent of laboratory victory. Integrating Marc's scene upgrades the destination behind that path; it does not require making the laboratory the entrance or adding a new mandatory lab-clear gate.
+Persist shallow-puzzle completion so Load reopens its physical doors without replaying the completion beat. Persist the actual entry source so leaving the maze returns beyond that entrance's radius, with the same party, without an immediate scene-change bounce. Keep the independent laboratory and its blockers unchanged.
 
 Verify the actual entrance landmark, approach, trigger and arrival in normal gameplay. The existing trigger is planar and does not check depth; decide whether the vertical reach matches its visible entrance and fix an incorrect transition volume when implementation is authorized. Query flags may accelerate diagnostics but cannot prove normal reachability.
 

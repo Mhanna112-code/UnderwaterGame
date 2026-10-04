@@ -17,7 +17,7 @@ source includes those follow-ups; the last verified hosted runtime is 1ccf92f.
 | Linux x86_64 | 1ccf92ff0aa07bbf2b4a8612435ea5322968c0e9 | Exported, ELF x86_64 identified, ZIP integrity and published digest match; not target-launched/playtested |
 
 Feedback alias: https://underwatergame-maze-campaign-review.vercel.app/
-Review guide: /review.html. Verified deployment dpl_CVUze8BuPtuqKMXvPcJha87bpwHt,
+Review guide: /review.html. Documentation-refresh deployment dpl_HtzT3N5oXr2rd8usvjxEAV6FQuKv,
 READY preview in immortaldemongods-projects/underwatergame. No public promotion.
 PCK 92,415,960 bytes, SHA256
 5b225ace60c28d53c6cbe26e5aecdd0af59edffc81ca315e0dfef3b00c583164.

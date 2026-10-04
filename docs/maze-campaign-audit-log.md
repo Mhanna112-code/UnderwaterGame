@@ -1,5 +1,36 @@
 # Maze and campaign integration audit log
 
+## October 4 user-confirmed shallow-puzzle entrance correction
+
+User observed completing the shallow puzzle does not enter the maze and clarified
+the intended topology: puzzle exit → maze; independent lab → Tethys. Earlier
+plan section 4 mistakenly treated the puzzle as only an approach to Deep. Updated
+that section rather than treating the user's experience as a navigation mistake.
+
+PX-01 reproduced on 213f9af: real plate physics completed the puzzle and opened
+its doors, but actual exit movement stayed in World. Local repair activates the
+maze after crossing the solved doorway, labels it and gives concise local guidance.
+Saves retain completion and reopen actual doors; the entry source determines safe
+World return beyond that portal. Unsolved exit and malformed new saved fields are
+rejected. Existing Deep arch remains a compatibility entrance; Tethys/lab intact.
+
+Live and cold saved entry pass; actual Maze E return preserves state and does not
+bounce or replay the opener. Native 1x passage/sign/arrival inspected. Six handoff,
+12 old return/lab-order cases, opening state, local guidance, invalid Load and
+legacy guidance regressions pass without script errors. The new route fixtures
+place divers on real plates; they do not claim a complete grapple/Swap journey.
+An actual input spawn-to-Deep compatibility trip also passes without lab wins.
+
+Excluded test defects: fixed child name on dynamic collision node, subsequent
+Array-inference parse error and a sideways wall-clipped capture. Final consumer
+and directed native checks rerun clean. General chase-camera wall clipping remains
+an observed visual risk. Legacy guidance's unsafe slot-3 setup now uses a guarded
+owned slot. Receipts retain the failed production reproduction and rejected runs.
+
+Current published runtime is still 1ccf92f, docs deployment HtzT3N5oXr2rd8usvjxEAV6FQuKv
+with review documentation 213f9af. This correction must be exported and verified
+on the same stable alias before telling the user the hosted handoff is fixed.
+
 ## October 4 feedback artifact and Marc's new portrait/switch fixes
 
 Later artifact: runtime 1ccf92f includes both upstream fixes. READY preview

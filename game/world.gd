@@ -271,7 +271,10 @@ var deep_zone_environment: DeepZoneEnvironment
 var _lab_video_cutscene: LabVideoCutscene
 const LAB_TRIGGER_RADIUS := 4.0
 const MAZE_TRANSITION_RADIUS := 5.0
+const PUZZLE_MAZE_EXIT := Vector3(47.0, 2.0, 10.0)
+const PUZZLE_MAZE_EXIT_RADIUS := 2.5
 var _maze_transition_started := false
+var _maze_entry_source := "deep_landmark"
 
 # One-time authored blocker trigger ownership. `_inside_route_blocker_id` is a
 # re-entry latch: fleeing or losing while still inside the volume must not drop
@@ -319,6 +322,8 @@ func _serialize_world_state() -> Dictionary:
 		})
 	return {
 		"active": active,
+		"ability_puzzle_solved": _puzzle_solved,
+		"maze_entry_source": _maze_entry_source,
 		"random_encounters_enabled": random_encounters_enabled,
 		"inventory": inventory.duplicate(),
 		"pending_world_drops": pending_world_drops.duplicate(true),
@@ -373,6 +378,10 @@ func restore_checkpoint(data: Dictionary) -> bool:
 		return false
 	var raw_route := data.get("route_state", {}) as Dictionary
 	if data.has("random_encounters_enabled") and not data["random_encounters_enabled"] is bool:
+		return false
+	if data.has("ability_puzzle_solved") and not data.ability_puzzle_solved is bool:
+		return false
+	if data.get("maze_entry_source", "deep_landmark") not in ["deep_landmark", "puzzle_exit"]:
 		return false
 	for field in ["opening_video_seen", "prologue_complete", "tutorial_complete", "deep_warning_seen"]:
 		if raw_route.has(field) and not raw_route[field] is bool:
@@ -460,6 +469,9 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
 	random_encounters_enabled = data.get("random_encounters_enabled", true)
+	_puzzle_solved = data.get("ability_puzzle_solved", false)
+	_maze_entry_source = data.get("maze_entry_source", "deep_landmark")
+	_sync_puzzle_maze_exit()
 	for i in range(divers.size()):
 		var d := divers[i] as Diver
 		# Older completed checkpoints predate these settings. Migrate them
@@ -970,6 +982,7 @@ var _doors: Array = []
 var _puzzle_goal: Waypoint
 var _puzzle_solved := false
 var _puzzle_hint_bounds := AABB()
+var _puzzle_exit_label: Label3D
 
 # Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
 # revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
@@ -1228,7 +1241,10 @@ func _restore_campaign_return(session: CampaignSession) -> bool:
 	# The World entrance activates automatically inside its radius. A return
 	# places the party just outside it, in the protected open-water approach.
 	var spot := deep_zone_layout.route_points().maze_transition as Vector3
-	spot += Vector3(-(MAZE_TRANSITION_RADIUS + 3.0), 0, 0)
+	if session.outer_world_checkpoint.get("maze_entry_source", "deep_landmark") == "puzzle_exit":
+		spot = PUZZLE_MAZE_EXIT + Vector3(8.0, 0, 0)
+	else:
+		spot += Vector3(-(MAZE_TRANSITION_RADIUS + 3.0), 0, 0)
 	for i in range(3):
 		data.divers[i].position = CampaignSession.vector_data(spot + Vector3(0, 0, (i - session.active) * 2.5))
 	if not restore_checkpoint(data):
@@ -1789,6 +1805,17 @@ func _build_highway() -> void:
 	_puzzle_goal.position = Vector3(END_X + 2.0, 2.0, LANE_Z)
 	_puzzle_goal.visible = false
 	add_child(_puzzle_goal)
+	_puzzle_exit_label = Label3D.new()
+	_puzzle_exit_label.name = "PuzzleMazeEntranceLabel"
+	_puzzle_exit_label.text = "MAZE ENTRANCE"
+	_puzzle_exit_label.position = PUZZLE_MAZE_EXIT + Vector3(0, 2.8, 0)
+	_puzzle_exit_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_puzzle_exit_label.font_size = 48
+	_puzzle_exit_label.outline_size = 12
+	_puzzle_exit_label.modulate = Color("a9e8ff")
+	_puzzle_exit_label.pixel_size = 0.009
+	_puzzle_exit_label.visible = false
+	add_child(_puzzle_exit_label)
 
 func _on_whirlpool_warned() -> void:
 	# The whirlpool shows its own "Danger: Whirlpool ahead" caption while
@@ -1810,22 +1837,24 @@ func _check_gap_puzzle() -> void:
 		if not (p as LockPlate).is_occupied():
 			return
 	_puzzle_solved = true
-	for d in _doors:
-		(d as Door).open()
+	_sync_puzzle_maze_exit()
 	var cutscene := Cutscene.new()
 	add_child(cutscene)
-	cutscene.play_scroll_text("Welcome to the Deep Sea")
-	# The old highway predates RouteState and used this cyan waypoint as its
-	# only guidance. PR #96 already owns a concrete next objective once the
-	# deep route begins; showing both produces two competing destinations,
-	# and the legacy marker itself has no action. Keep it only as the fallback
-	# for worlds with no actionable route objective.
-	var active_route_guidance := _route_objective_text(route_state.objective_id)
-	_puzzle_goal.visible = active_route_guidance.is_empty()
-	if active_route_guidance.is_empty():
-		_announce("All three in place. The way ahead opens!")
-	else:
-		_announce("All three in place. %s" % active_route_guidance)
+	cutscene.play_scroll_text("The maze is open")
+	_announce("Maze entrance open. Swim through the doorway.")
+
+func _sync_puzzle_maze_exit() -> void:
+	if is_instance_valid(_puzzle_exit_label):
+		_puzzle_exit_label.visible = _puzzle_solved
+	if not _puzzle_solved:
+		return
+	for door in _doors:
+		(door as Door).open()
+	if route_state.maze_door_state == "locked":
+		route_state.set_maze_door_state("available")
+	# The old visual-only goal must not compete with the actual doorway.
+	if is_instance_valid(_puzzle_goal):
+		_puzzle_goal.visible = false
 
 # One plain wall segment: a StaticBody3D box, solid (divers collide with
 # it via CharacterBody3D's own move_and_slide, same as the floor), centered
@@ -2378,11 +2407,21 @@ func _sync_lab_staging() -> void:
 func _update_maze_transition() -> void:
 	if _maze_transition_started or battling or divers.is_empty() or not route_state.prologue_complete:
 		return
+	var position := (divers[active] as Diver).global_position
+	# Primary campaign route: a solved shallow puzzle's opened exit. Merely
+	# approaching/going over an unsolved gate never grants maze entry.
+	if _puzzle_solved and position.x >= 45.5 and absf(position.y - PUZZLE_MAZE_EXIT.y) <= 2.5 \
+			and Vector2(position.x, position.z).distance_to(Vector2(PUZZLE_MAZE_EXIT.x, PUZZLE_MAZE_EXIT.z)) <= PUZZLE_MAZE_EXIT_RADIUS:
+		_maze_entry_source = "puzzle_exit"
+		route_state.set_maze_door_state("available")
+		_maze_transition_started = true
+		call_deferred("_enter_maze_scene", false)
+		return
 	if route_state.maze_door_state != "available":
 		return
 	var target := deep_zone_layout.route_points().maze_transition as Vector3
-	var position := (divers[active] as Diver).global_position
 	if Vector2(position.x, position.z).distance_to(Vector2(target.x, target.z)) <= MAZE_TRANSITION_RADIUS:
+		_maze_entry_source = "deep_landmark"
 		_maze_transition_started = true
 		call_deferred("_enter_maze_scene", false)
 
@@ -3833,6 +3872,8 @@ func _refresh_world_guidance() -> void:
 		var position := (divers[active] as Diver).global_position
 		if deep_zone_layout.zone_for_position(position) == "deep":
 			text = _route_objective_text(route_state.objective_id)
+		elif _puzzle_solved and _puzzle_hint_bounds.has_point(position):
+			text = "Maze entrance open. Swim through the doorway."
 		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
 			text = "Use Bucky's Shockwave to break the wall. (TAB)"
 		else:

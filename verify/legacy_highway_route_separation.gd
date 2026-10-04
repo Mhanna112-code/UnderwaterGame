@@ -3,18 +3,23 @@
 extends SceneTree
 
 var findings: Array[String] = []
+const SLOT := 918350
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	if SaveManager.slot_exists(SLOT):
+		push_error("Legacy guidance fixture slot exists; refusing overwrite")
+		quit(1)
+		return
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	world.skip_intro_for_test = true
 	world.skip_tutorial_for_test = true
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(3)
+	world.title_screen.new_game_chosen.emit(SLOT)
 	await process_frame
 	world.set_physics_process(false)
 	world.route_state.set_objective("defeat_bomb_bot")
@@ -42,6 +47,7 @@ func _run() -> void:
 		print("LEGACY GUIDANCE: puzzle opened without competing with the active route objective")
 	world.queue_free()
 	await process_frame
+	DirAccess.remove_absolute(SaveManager.slot_path(SLOT))
 	var audio := root.get_node_or_null("GameAudio")
 	if audio != null and audio.has_method("release_streams_for_shutdown"):
 		audio.call("release_streams_for_shutdown")

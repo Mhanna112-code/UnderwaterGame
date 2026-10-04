@@ -174,6 +174,8 @@ run "local world guidance: do lab and Bucky wall hints follow location, active d
 run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip" "$GODOT" --headless --path . --script verify/lab_tethys_route.gd
 run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "maze campaign handoff: do six real entrance cases retain party, kit, inventory and progress" "$GODOT" --headless --path . --script verify/maze_campaign_handoff.gd
+run "puzzle maze exit: does real plate completion and normal swimming enter the maze and return safely without lab victory" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd
+run "puzzle maze saved exit: do saved solved doors reopen and normal exit movement reach the maze" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd -- --cold-load
 run "maze secret continuity: do real E/Esc transitions retain resources, doors, walls and pending rewards" "$GODOT" --headless --path . --script verify/maze_secret_continuity.gd
 run "maze checkpoint: do cold Load, failed writes and real defeat/Restart conserve saved puzzle and campaign state" "$GODOT" --headless --path . --script verify/maze_checkpoint.gd
 run "maze checkpoint IO: do generated saves round-trip and malformed saves return an actionable title without mutation" "$GODOT" --headless --path . --script verify/maze_checkpoint_io.gd
@@ -193,6 +195,7 @@ run "world grapple aim: is the first-person target unobstructed and safely resto
 run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze current route: do normal movement and actual L/E/R traverse the first channel without bypassing collision or currents" "$GODOT" --headless --path . --script verify/maze_current_route.gd
+run "world maze compatibility route: does actual spawn-to-Deep travel enter the maze with both lab guards undefeated" "$GODOT" --headless --path . --script verify/world_maze_route.gd
 run "maze puppet approach: does real proximity/confirmation start puppets instead of lab Tethys" "$GODOT" --headless --path . --script verify/maze_puppet_trigger.gd
 run "maze puppet waves: do real moves carry resources/effects into wave two with one final outcome and reward" "$GODOT" --headless --path . --script verify/maze_puppet_waves.gd
 run "maze puppet reward: does a real carried-party win give one maze key without changing lab progress or restarting music" "$GODOT" --headless --path . --script verify/maze_puppet_reward.gd

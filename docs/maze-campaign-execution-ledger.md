@@ -2,6 +2,13 @@
 
 ## Current authoritative status
 
+Latest local correction: user clarified the shallow puzzle's opened exit must
+enter the maze. Actual exit failed on 213f9af, now live/cold restore and safe return
+pass, with inspected native label/passage/arrival. Primary topology is puzzle →
+maze; independent lab → Tethys. Deep arch remains compatible with earlier saves.
+Export/host refresh for this correction is pending; current delivered runtime below
+does not yet include it. Full grapple/Swap route and broad polish remain open.
+
 October 4, 2026: campaign/opening and Marc's maze are reconciled locally. Earlier
 entrance, secret return, checkpoint, World-return, input and recovery increments
 are committed. Continuous puppets are committed at ebd14ed; campaign Cordys,
