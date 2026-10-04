@@ -602,6 +602,13 @@ func _play_opening_if_needed() -> bool:
 	_audio_call(&"stop_music")
 	route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_OPENING_VIDEO)
 	opening_video = OpeningVideoScript.new() as CanvasLayer
+	opening_video.show_opening_title = true
+	opening_video.handoff_started.connect(func() -> void:
+		route_state.set_prologue_phase("opening_handoff")
+		# Prepare the HUD behind the opaque title so the final reveal includes
+		# controls. World physics stays paused until completed below.
+		$HUD.visible = true
+	)
 	title_layer.add_child(opening_video)
 	var successful: bool = await opening_video.completed
 	opening_video = null

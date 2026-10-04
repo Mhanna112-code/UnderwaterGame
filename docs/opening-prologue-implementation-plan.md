@@ -159,7 +159,9 @@ timing acceptance. Re-run exact native/browser journeys and listening review.
 cover art (silent)
   -> New Game and slot selection
   -> temporary Mermaid Freak video (first completed viewing cannot skip)
-  -> 250–500 ms transition space
+  -> movie/audio fade to black (final 550 ms, no media edit)
+  -> brief title: UNDERWATER / Can you survive the deep? / art and music credits
+  -> fade into the visible world/controls (3.55 s total title/reveal)
   -> quiet free-swimming spawn with restrained exploration ambience
   -> at least four seconds of actual swimming, never an idle countdown
   -> one-Angler prologue battle
@@ -288,7 +290,7 @@ recorded playtest finding, not ad hoc code edits.
 | --- | ---: | --- |
 | Temporary video | full 33.877 s asset | Player remains engaged and understands playback is intentional. |
 | Video local trim | `-6 dB` | Dialogue/music is clear with safe headroom and no competing cue. |
-| Post-video space | 250–500 ms | Transition feels deliberate, not frozen. |
+| Post-video title/reveal | 3.55 s including fades | Brief connecting question and credits, no crawl; world stays paused until visible controls return. |
 | Prologue exploration trim | approximately `-7 dB` versus normal | Existing ambience remains present but feels quiet. |
 | Movement trigger | 2–4 m from recovery-safe spawn | Forward, backward, left, right, and diagonal movement all work. |
 | Minimum free-swim window | 4 s of requested, actual horizontal swimming | Idle/camera-only time, passive drift and blocked input do not count. Crossing the distance threshold alone cannot interrupt sooner, including after a long wait. |

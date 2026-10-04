@@ -8,12 +8,18 @@ extends CanvasLayer
 ## is non-skippable while the later lab scene remains skippable.
 
 signal completed(success: bool)
+signal handoff_started
 
 const DEFAULT_VIDEO := "res://media/cutscenes/mermaid_freak.ogv"
 const DECODER_WATCHDOG_SECONDS := 4.0
 
 @export_file("*.ogv") var video_path := DEFAULT_VIDEO
 @export var local_volume_db := -6.0
+# Only World's first-run Mermaid playback opts in. The inherited split Cordys
+# cinematic keeps its existing segment/completion policy.
+@export var show_opening_title := false
+
+const MOVIE_FADE_SECONDS := 0.55
 
 var _video: VideoStreamPlayer
 var _fallback: VBoxContainer
@@ -22,6 +28,7 @@ var _watchdog: Timer
 var _completed := false
 var _fallback_visible := false
 var _last_decoder_position := 0.0
+var _handing_off := false
 
 func _ready() -> void:
 	layer = 40
@@ -105,12 +112,18 @@ func _ready() -> void:
 		_watchdog.start()
 
 func _process(_dt: float) -> void:
-	if _completed or _fallback_visible or not is_instance_valid(_video) or _video.paused:
+	if _completed or _handing_off or _fallback_visible or not is_instance_valid(_video) or _video.paused:
 		return
 	# Web Theora can continue advancing its clock after EOF without emitting
 	# finished. Use the complete decoder-reported length, not a wall-clock
 	# timeout or hard-coded asset duration, so a future replacement is intact.
 	var duration := _video.get_stream_length()
+	if show_opening_title and duration > 0.0:
+		var remaining := duration - _video.stream_position
+		var opacity := clampf(remaining / MOVIE_FADE_SECONDS, 0.0, 1.0)
+		_video.modulate.a = opacity
+		# Fade only this movie, not the Music bus or the player's saved settings.
+		_video.volume_db = local_volume_db + linear_to_db(maxf(opacity, 0.001))
 	if duration > 0.0 and _video.stream_position >= duration:
 		_on_video_finished()
 
@@ -122,10 +135,59 @@ func _unhandled_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 func _on_video_finished() -> void:
-	_complete(true)
+	if _completed or _handing_off:
+		return
+	if show_opening_title:
+		_show_opening_title()
+	else:
+		_complete(true)
+
+func _show_opening_title() -> void:
+	_handing_off = true
+	_watchdog.stop()
+	_video.stop()
+	_video.visible = false
+	var shade := get_node("InputBlocker") as ColorRect
+	var center := CenterContainer.new()
+	center.name = "OpeningTitle"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.add_child(center)
+	var copy := VBoxContainer.new()
+	copy.add_theme_constant_override("separation", 18)
+	copy.custom_minimum_size.x = minf(640.0, get_viewport().get_visible_rect().size.x - 48.0)
+	center.add_child(copy)
+	var title := _title_label("UNDERWATER", 52, Color("d9f5fa"))
+	copy.add_child(title)
+	var question := _title_label("Can you survive the deep?", 26, Color("9bd9e6"))
+	copy.add_child(question)
+	var spacer := Control.new()
+	spacer.custom_minimum_size.y = 20.0
+	copy.add_child(spacer)
+	copy.add_child(_title_label("Art and cinematics: Glass_Goat\nMusic: Phoenix Down Music", 16, Color("97b2bd")))
+	get_viewport().size_changed.connect(func() -> void:
+		copy.custom_minimum_size.x = minf(640.0, get_viewport().get_visible_rect().size.x - 48.0)
+	)
+	center.modulate.a = 0.0
+	handoff_started.emit()
+	var transition := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	transition.tween_property(center, "modulate:a", 1.0, 0.5)
+	transition.tween_interval(2.2)
+	transition.tween_property(center, "modulate:a", 0.0, 0.3)
+	transition.tween_property(shade, "modulate:a", 0.0, 0.55)
+	transition.tween_callback(_complete.bind(true))
+
+func _title_label(text: String, font_size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	return label
 
 func _on_decoder_watchdog() -> void:
-	if _completed or _fallback_visible:
+	if _completed or _handing_off or _fallback_visible:
 		return
 	# A decoder can claim playing while never advancing, including a stall
 	# after a valid first frame. Observe progress for every grace interval,

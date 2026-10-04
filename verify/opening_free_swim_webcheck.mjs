@@ -1,5 +1,6 @@
 // OPEN-026/035: normal full movie, prolonged idle/camera-only input, then
-// actual held W. Record continuously; never inject a phase or result.
+// actual held W. TITLE-001/002: also observe the real movie/title/world reveal.
+// Record continuously; never inject a phase or result.
 import { chromium, webkit } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -37,7 +38,12 @@ try {
   await page.waitForTimeout(25000);
   await page.mouse.click(640, 367);
   await waitPhase('opening_video');
+  await waitPhase('opening_handoff');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: path.join(output, 'opening-title.png') });
   await waitPhase('spawn_exploration');
+  const handoffSeconds = (timestamps.spawn_exploration - timestamps.opening_handoff) / 1000;
+  if (handoffSeconds < 3.3 || handoffSeconds > 6) throw new Error(`TITLE-001 title handoff duration ${handoffSeconds}s is missing or stalled`);
   await page.waitForTimeout(15000);
   idleSeconds = (Date.now() - timestamps.spawn_exploration) / 1000;
   await page.screenshot({ path: path.join(output, 'idle-world.png') });

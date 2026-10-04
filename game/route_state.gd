@@ -30,6 +30,7 @@ const ENCOUNTER_SOURCES := [
 const PROLOGUE_PHASES := [
 	"title",
 	"opening_video",
+	"opening_handoff",
 	"spawn_exploration",
 	"angler",
 	"octopus_introduction",
