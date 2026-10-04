@@ -85,7 +85,7 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
 };
-let failure, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs = 0, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck;
+let failure, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs = 0, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck, escapeRecheck;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
   console.log('Export page loaded');
@@ -205,6 +205,47 @@ try {
   if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
   const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'angler', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
+  if (process.env.OPENING_ESCAPE_RECHECK === '1') {
+    // ESC-001/002/005: natural swimming rolls, actual Run and actual R input.
+    // No query route, seeded browser state, injected result or save fixture.
+    const rowsFor = async name => {
+      await shot(name);
+      return JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, name + '.png')], { encoding: 'utf8' }));
+    };
+    let runRow;
+    const encounterDeadline = Date.now() + 45000;
+    await page.keyboard.down('d');
+    while (!runRow && Date.now() < encounterDeadline) {
+      const rows = await rowsFor('18-swimming-to-encounter');
+      runRow = rows.find(row => row.text.trim() === 'Run' && row.y > 400);
+      if (!runRow) await page.waitForTimeout(400);
+    }
+    await page.keyboard.up('d');
+    if (!runRow) throw new Error('ESC-001 normal swimming did not produce a usable Run button');
+    let escaped = false, attempts = 0;
+    const runDeadline = Date.now() + 60000;
+    while (!escaped && Date.now() < runDeadline) {
+      const rows = await rowsFor('19-run-menu');
+      runRow = rows.find(row => row.text.trim() === 'Run' && row.y > 400);
+      if (!runRow) { await page.waitForTimeout(400); continue; }
+      attempts++;
+      await page.mouse.click(runRow.x, runRow.y);
+      await page.waitForTimeout(1850);
+      const outcome = await rowsFor('20-run-outcome');
+      escaped = outcome.some(row => /Turn encounters off while heading/i.test(row.text));
+    }
+    if (!escaped) throw new Error('ESC-001 real Run never returned a visible recovery cue');
+    await shot('21-escape-cue-on');
+    await page.keyboard.press('r');
+    await page.waitForTimeout(80);
+    const offRows = await rowsFor('22-escape-cue-off');
+    if (!offRows.some(row => /Random encounters off.*save point/i.test(row.text))) throw new Error('ESC-005 real R did not update Off cue');
+    await page.waitForTimeout(3300);
+    const expired = await rowsFor('23-escape-cue-expired');
+    if (expired.some(row => /heading to a save point|Head to a save point/i.test(row.text))) throw new Error('ESC-002 escape cue failed to expire');
+    escapeRecheck = { naturalEncounter: true, attempts, realRun: true, realR: true, expired: true };
+    console.log('BROWSER ESCAPE CUE|' + JSON.stringify(escapeRecheck));
+  }
   if (process.env.OPENING_SAVE_RECHECK === '1') {
     // OPEN-027: inspect the browser's actual persisted checkpoint after the
     // ordinary journey. This is our fresh test context, never player storage.
@@ -349,7 +390,7 @@ try {
   if (checkpointFailureObserved && !storageFault) throw new Error('Normal browser completion unexpectedly required Retry Save');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, saveRecheck, deathRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }
