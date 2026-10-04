@@ -7,8 +7,16 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	var sources: Array[Diver] = []
+	for model_name in ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]:
+		var diver := Diver.new()
+		diver.model_name = model_name
+		root.add_child(diver)
+		sources.append(diver)
+	await process_frame
 	var fight := Battle.new()
 	fight.prologue_angler_encounter = true
+	fight.party_source = sources
 	root.add_child(fight)
 	await process_frame
 	await process_frame
@@ -21,6 +29,8 @@ func _run() -> void:
 		stats.hp_max = 200
 		stats.hp = 200
 	var enemy := fight.enemies[0].stats as CombatantStats
+	var game_audio := root.get_node("GameAudio")
+	game_audio.clear_sfx_event_trace()
 	var strength := enemy.strength
 	var defenses: Array[int] = []
 	for entry in fight.party:
@@ -36,7 +46,11 @@ func _run() -> void:
 		var stats := fight.party[i].stats as CombatantStats
 		var expected := 200 - maxi(1, strength - defenses[i])
 		_expect(stats.hp == expected, "OPEN-036 retaliation bypassed STR/DEF: expected %d, got %d" % [expected, stats.hp])
+	_expect(game_audio.get_sfx_event_trace().count("combat_heavy_hit") == 1,
+		"OPEN-038 one Poison Breath stacks duplicate heavy-impact sounds")
 	fight.queue_free()
+	for diver in sources:
+		diver.queue_free()
 	await process_frame
 	if not OS.get_cmdline_user_args().has("--survivor-only"):
 		await _choice_matrix()

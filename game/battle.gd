@@ -1076,16 +1076,18 @@ func _resolve_prologue_finisher() -> void:
 	var length := float(cordys.call("play", "finish"))
 	await get_tree().create_timer(maxf(0.4, length * IMPACT_FRACTION)).timeout
 	_audio_call(&"duck_music", [-9.0, 0.4])
-	_audio_call(&"play_combat_result", [true, false, true])
 	var attacker := enemies[0].stats as CombatantStats
 	attacker.begin_turn()
 	var breath := {"name": "Poison Breath", "formula": {"strength": 1}, "effects": [
 		{"kind": "status", "status": "poison", "level": {"flat": 4}, "duration": 3},
 	]}
 	var summaries: Array[String] = []
+	var impact_played := false
 	for entry in _living(party):
 		var result := CombatRules.resolve(attacker, entry.stats as CombatantStats, breath)
-		_show_combat_feedback(entry, result)
+		var audible := bool(result.hit) and int(result.damage) > 0 and not impact_played
+		_show_combat_feedback(entry, result, audible)
+		impact_played = impact_played or audible
 		_react(entry, result)
 		summaries.append("%s %s" % [String(entry.display_name), "-%d" % int(result.damage) if result.hit else "evades"])
 		if (entry.stats as CombatantStats).hp <= 0:
@@ -2742,7 +2744,7 @@ func _log_grapple_wave(safe_is_yellow: bool, wave_index: int, total_waves: int) 
 # A combat result belongs on the combatant it happened to, not only in the
 # fast-moving sentence at the bottom of the screen. Label3D keeps the proof
 # next to the model inside Battle's isolated viewport.
-func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
+func _show_combat_feedback(entry: Dictionary, result: Dictionary, play_sound: bool = true) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
 	var messages: Array[Dictionary] = []
@@ -2751,7 +2753,7 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
 	# Heals/revives are not impacts; misses, QTE dodges, and landed damage each
 	# have a distinct cue. A fifth-of-max-HP hit mirrors _react()'s existing
 	# heavy-reaction threshold, so the stronger sound has mechanical meaning.
-	if result_kind not in ["heal", "revive"]:
+	if play_sound and result_kind not in ["heal", "revive"]:
 		var hit := bool(result.get("hit", false))
 		var dodged := bool(result.get("dodged", false))
 		var damage := int(result.get("damage", 0))

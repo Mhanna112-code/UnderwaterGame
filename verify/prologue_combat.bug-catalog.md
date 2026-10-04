@@ -21,6 +21,7 @@ hit/EVA miss, status/self-cost, living/dead after response.
 | --- | --- | --- |
 | OPEN-036 | Cordys kills a survivor by resetting HP, while player accuracy/choices are silently rewritten. | Public-button encounter: inflated-HP fixture must survive with damage derived from STR minus DEF; ordinary fresh party must lose. Original move data must remain intact. |
 | OPEN-037 | Player choices become cosmetic: all attacks deal 1, ignore stats, lose status/costs, or preview disagrees with impact. | Differential STR/ACC/DEF/EVA matrix, actual buttons, HP/status/O2 and log observations. Manual witnesses: Electric 1, Axe 4, Stabbing Bleed 2 at base stats. |
+| OPEN-038 | Switching the finisher to normal result feedback stacks the old explicit sound with every target's heavy-hit cue. | Public audio event trace after real button choice: one breath owns exactly one heavy impact. |
 
 Self-critique: a fixed HP reset fails the survivor fixture; a fixed damage
 result fails stat variation. Inputs use actual move/target buttons, not a test
@@ -39,6 +40,9 @@ Bleed is 2; higher STR gives Axe 9 vs Electric 5, and ACC/EVA ties miss. Six
 seeded generated shapes compare actual button resolution with ordinary shared
 rules. The prior claim of a fixed-one-damage clamp was retracted after reading
 the resolver and live stats; the actual defaults explain repeated 1s.
+OPEN-038 was caught during integration: the old explicit cue plus normal
+per-target feedback produced duplicate heavy impacts. One breath now owns one
+audible impact while each target retains its real damage/status feedback.
 
 Survivor fixture is diagnostic, not a claim that the starting party survives
 or that campaign balance is approved. Final exported proof is recorded in the
