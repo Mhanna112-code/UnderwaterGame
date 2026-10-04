@@ -80,6 +80,12 @@ func _run() -> void:
 	var save := SaveManager.read_slot(SLOT)
 	_expect((save.get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-016 recovery save milestone missing")
 	_expect(phases == ["spawn_exploration", "angler", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"], "OPEN-002 public phases missing/duplicated: %s" % [phases])
+	# OPEN-018: prove the actual recovered run, with training still incomplete,
+	# can start an ordinary encounter. A synthetic completed fixture alone
+	# would not prove that the opening handoff unlocked the production signal.
+	(world.divers[world.active] as Diver).encounter_triggered.emit()
+	await process_frame
+	_expect(world.battle != null and not world.battle.prologue_angler_encounter and not world.battle.prologue_octopus_encounter, "OPEN-018 ignoring training leaves ordinary encounters locked")
 	await _finish(world)
 
 func _attack(fight: Battle) -> void:

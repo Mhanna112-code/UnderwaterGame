@@ -150,6 +150,16 @@ camera centre (not vertex-density weighted), and a compact grounded party
 raise it to **76.7%** in the focused native stage, with no idle clipping.
 The complete journey and all action poses still require another review.
 
+OPEN-AUDIT-009: inherited aggregate (isolated user data, source `9048e12`)
+found ordinary encounter/guardian/zero-O2 fixtures still in an incomplete
+prologue, plus tutorial-exit expecting a mandatory beam. Those false states
+are intentionally protected by the new contract. Update fixtures to recovered
+milestones without weakening encounter/reward/collision/completion assertions.
+Separately prove an ordinary encounter can start after the **actual** opening
+handoff while training remains incomplete. Forward-entry intermittently meets
+a legitimate random encounter; isolate voluntary training with encounters off,
+as a player may do with R, rather than changing normal encounter design.
+
 Pre-audit automation note, 2026-10-03: `opening_video.gd`,
 `opening_video_world.gd`, `title_screen.gd`, `opening_prologue_state.gd`, and
 `audio_lifecycle.gd` pass for the isolated owner, independent lab skip policy,

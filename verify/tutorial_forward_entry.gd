@@ -25,6 +25,9 @@ func _run() -> void:
 	world.route_state.set_objective("")
 	SaveManager.write_slot(SLOT, world._serialize_state())
 	await world._on_title_load_game(SLOT)
+	# Random fights are legitimately available before optional training. This
+	# physical-entry test isolates that one destination, like the player's R.
+	world.random_encounters_enabled = false
 	await physics_frame
 
 	# A default-yaw W press maps to positive Z in World. Drive that same

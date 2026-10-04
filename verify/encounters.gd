@@ -31,6 +31,10 @@ var _finishing := false
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
 	world.skip_intro_for_test = true
+	# This gate exercises ordinary play after recovery, not protected prologue.
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = true
 	root.add_child(world)
 
 func _process(_d: float) -> bool:
