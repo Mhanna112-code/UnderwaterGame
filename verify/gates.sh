@@ -104,6 +104,7 @@ run "opening Angler: does every exposed move win without ordinary balance or rew
 run "opening Cordys: does the skinned actor preserve authored poses and facing" "$GODOT" --headless --path . --script verify/prologue_octopus.gd
 run "opening mix: do cue envelopes preserve user preferences" "$GODOT" --headless --path . --script verify/prologue_audio_envelope.gd
 run "opening split video: is one decoder retained silently across combat" "$GODOT" --headless --path . --script verify/prologue_cinematic.gd
+run "opening cinematic edit: is the approved title ending retained without the monologue" "$GODOT" --headless --path . --script verify/prologue_cinematic_asset.gd
 run "opening journey: do real moves reach atomic recovery and ordinary encounters" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd
 run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
 

@@ -109,6 +109,14 @@ func _capture(filename: String) -> void:
 	var filename_absolute := outdir.path_join(filename)
 	root.get_texture().get_image().save_png(filename_absolute)
 	print("shot       " + filename_absolute)
+	if filename == "11b-cordys-aftermath.png":
+		# Separate the decoder texture from the last submitted viewport image.
+		# A background native window can give a stale viewport capture while
+		# playback still advances; neither a clock nor a single screenshot proves it.
+		for owner in get_nodes_in_group("prologue_cinematic"):
+			var video := owner.get_node("InputBlocker/OpeningAspect/OpeningFrame/OpeningMedia") as VideoStreamPlayer
+			print("AFTERMATH MEDIA position ", video.stream_position)
+			video.get_video_texture().get_image().save_png(outdir.path_join("11c-cordys-decoder.png"))
 
 func _finish(code: int) -> void:
 	world.queue_free()

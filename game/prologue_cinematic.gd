@@ -1,6 +1,6 @@
 extends "res://game/opening_video.gd"
 
-## One decoder for both approved portions of Glass's delivered V3 movie.
+## One decoder for the approved introduction and Cordys title ending.
 ## Pausing retains the next frame and silences its embedded audio; no seeking,
 ## second media copy, or replacement of the later lab cutscene is involved.
 signal introduction_finished(success: bool)
@@ -9,7 +9,7 @@ const INTRODUCTION_SECONDS := 25.0
 var _segment := "introduction"
 
 func _ready() -> void:
-	video_path = "res://media/cutscenes/octopus_demon_v3.ogv"
+	video_path = "res://media/cutscenes/octopus_prologue.ogv"
 	super._ready()
 	add_to_group("prologue_cinematic")
 

@@ -120,9 +120,9 @@ reference and removes the repetition. It must not alter the lab cutscene.
 ### Approved cinematic pacing revision, 2026-10-03
 
 The original 0.65-second false-relief beat was judged potentially too abrupt.
-Use `octopus_demon_v3.ogv` as a **single continuous decoder**: play its first
+Use the approved edit `octopus_prologue.ogv` as a **single continuous decoder**: play its first
 25 seconds after the Angler falls, pause/hide it during Cordys combat, then
-resume the remainder after defeat and before recovery motivation. Do not seek,
+resume its boss-name ending after defeat and before recovery motivation. Do not seek,
 duplicate the video bytes, play exploration/boss music under its embedded
 audio, or return to the world between these beats. Video failure retains the
 concise Continue recovery path. The lab Mermaid owner is unchanged.
@@ -132,11 +132,15 @@ phases. Interrupted sessions still normalize to quiet spawn, with no new
 durable cinematic completion field. The prologue completion write remains
 after the aftermath, full restoration, safe placement and motivation.
 
-Miguel will discuss shortening the Octopus cinematic with Glass. Until a new
-approved edit arrives, use the delivered V3 and the exact 25-second split.
-Its two portions total 60.715 seconds. The actual ordinary-entry native wide
-journey measured 109.23 seconds with prompt player choices. Browser timing and
-human pacing remain unapproved; do not silently truncate media to meet target.
+Miguel explicitly approved removing the long “You arrived…” monologue while
+keeping the boss-name ending. Retain source [0,25) and [54⅓,EOF): frames
+0–749 and 1630–1820 at 30 fps, with matching audio intervals. The first
+“C” of Cordys and the complete “Mistress of the Puppets” ending survive.
+The edited footage is about 31.38 seconds. The original Dropbox MP4 and
+PR #96 archival OGV stay unchanged; exclude that unused full OGV from this
+child's web package. Only the edited derivative is live. Earlier 109–119 s
+journey measurements used the full V3 and are historical, not current-edit
+timing acceptance. Re-run exact native/browser journeys and listening review.
 
 ```text
 cover art (silent)
@@ -154,7 +158,7 @@ cover art (silent)
   -> one real player attack connects for negligible damage
   -> one authored Cordys finishing move defeats the party
   -> music ends; approximately one second of silence
-  -> resume the Octopus cinematic from its paused 25-second position
+  -> resume at the Cordys title ending from the edited movie's paused 25-second position
   -> recovery card: “Grow stronger. Find a way to defeat Cordys.”
   -> fully restored, saved, controllable normal PR #96 world
   -> optional Combat Training beacon nearby
@@ -311,7 +315,7 @@ the player's saved volume or the ordinary post-prologue mix.
 10. Briefly duck music for the registered player hit and finishing impact.
 11. Stop/fade Final Boss music immediately after the decisive hit.
 12. Hold deliberate silence through the recovery motivation.
-    Before that motivation, resume the remaining Octopus V3 footage with its
+    Before that motivation, resume the approved Cordys title ending with its
     embedded audio alone. Music/SFX preferences apply to both video portions.
 13. Fade ordinary PR #96 exploration back in exactly once.
 
@@ -456,7 +460,7 @@ viewport; audio has one owner and no loop jump.
 
 1. Stop boss audio, hold silence, restore all HP/Oxygen, place the party at a
    safe spawn, show the motivation, mark completion, and save.
-   Resume the cinematic remainder after silence and before the atomic recovery
+   Resume the edited boss-title ending after silence and before the atomic recovery
    write. Never expose motivation or save completion while it is still playing.
 2. Restore ordinary exploration exactly once.
 3. Spawn Optional Combat Training outside the party's activation radius.

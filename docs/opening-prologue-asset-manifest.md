@@ -21,17 +21,29 @@ metadata are never runtime inputs.
 
 ### Approved additional prologue cinematic owner, 2026-10-03
 
-Use the existing `res://media/cutscenes/octopus_demon_v3.ogv`, SHA-256
-`8cad2b4924837aedd38eac035ff9733231d550f3754b487f220fd97f2588033c`,
-from Glass's `Octopus_demonV3.mp4`, SHA-256
+Glass's canonical `Octopus_demonV3.mp4` remains untouched, SHA-256
 `138c4d3d4b720febae992e6cd8e8c30260513caaeb8e359a0240a8b69665226b`.
-Duration: 60.714667 seconds. `PrologueCinematic` owns one decoder, pausing at
-25 seconds for the fight and resuming the remainder before motivation. It
-uses Music at -6 dB local trim; GameAudio is silent during both portions.
-No new video derivative or duplicate full-file packaging is admitted.
-Miguel will discuss shortening with Glass; until then the delivered V3 and
-25-second boundary are authoritative. Native/web timing and listening remain
-required; text legibility findings must not be concealed by successful import.
+Miguel approved cutting the long “You arrived…” monologue, retaining the first
+25 seconds and the complete boss-name ending. The prologue now selects
+`res://media/cutscenes/octopus_prologue.ogv`; one decoder pauses at 25 seconds
+for combat, then resumes the retained title ending before motivation.
+It uses Music at -6 dB local trim; GameAudio is silent during both portions.
+The existing full `octopus_demon_v3.ogv` remains a PR #96 intake archive with
+its original digest, but is excluded from this child's web export to avoid
+packaging unused duplicate media. No campaign or lab owner changed.
+
+Regenerate with `bash tools/prepare_prologue_cinematic.sh <canonical-mp4>`.
+The script checks source identity, retains source frames 0–749 and 1630–1820
+at 30 fps, and cuts matching audio [0,25) + [54⅓,EOF), then concatenates
+before encoding one 1280×720 Theora/Vorbis 48 kHz stereo stream. No seeking,
+speed changes or extra title cards. Native/browser playback and listening
+remain required; media identity/duration alone do not prove visual acceptance.
+
+Reviewed edit: **31.381333 seconds**, **3,882,002 bytes**, SHA-256
+`8425b83d2905ae4403caf04fbe067e02264e20325cbbebc05e63f35995663f32`.
+The source has 1,821 video frames; the edit has 941 (750 introduction + 191
+title ending), retaining the source's last frame. `verify/prologue_cinematic_asset.gd`
+pins reviewed identity, actual decoder length, live owner and archive exclusion.
 
 | Asset | Duration | Video/format | Audio measurement |
 | --- | ---: | --- | --- |

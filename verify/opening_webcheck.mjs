@@ -86,6 +86,8 @@ try {
   await page.waitForTimeout(5000);
   await shot('07-aftermath');
   await waitPhase('recovery', 45000);
+  const endingMs = timestamps.recovery - timestamps.octopus_aftermath;
+  if (endingMs < 6000 || endingMs > 15000) throw new Error('Approved boss-title ending was skipped or the long monologue remains');
   await page.waitForTimeout(300);
   await shot('08-recovery');
   await page.mouse.click(640, 393);

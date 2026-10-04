@@ -238,3 +238,31 @@ Timing recheck: narrow repeat without another full-movie journey completes in
 no script/error output. The two-minute assertion passes. Concurrent native
 movies are not a reliable latency measurement; exact exported browser timing
 is still the decisive deployment check. No footage was shortened.
+
+## User-approved monologue removal, 2026-10-03
+
+This explicitly supersedes the earlier no-shortening instruction for the long
+“You arrived…” passage only. Original MP4 SHA `138c4d3…` and PR #96 full OGV
+SHA `8cad2b49…` remain unchanged. Edited prologue OGV: 31.381333 s,
+3,882,002 bytes, SHA `8425b83d…`. Retains [0,25) + [54⅓,EOF), beginning
+at the first “C” of Cordys and preserving the complete final tableau/title.
+One paused decoder remains; the unused full archive is excluded from web export.
+
+OPEN-025 red media test failed before the derivative existed. Production-path,
+actual decoder-length, digest, pause-boundary and archive-exclusion checks now
+pass; existing split-owner, real-input recovery/optional-training and original
+Octopus intake gates remain green. Independent 941-frame retained-source
+comparison: overall SSIM 0.990974 after Theora encoding. Boundary/end frames
+were visually inspected and contain no long monologue.
+
+Native normal-entry journey reaches recovery at 78.025 s and control at
+105.39 s. Its aftermath viewport capture unexpectedly showed only “C” at the
+expected end-card time, with a long wait before the next rendered capture.
+Do not accept that single viewport capture as proof of the full title. A
+standalone **production** owner (actual 25 s boundary, no seek/fast-forward)
+subsequently advances from 25.014 through 30.473 s with six distinct decoded
+images; the last image visibly shows **Cordys / Mistress of the Puppets** and
+the red boss tableau. This establishes decoder content, not yet the complete
+World composition. Instrument the normal journey with both decoder-texture
+and viewport captures, and verify the exact exported browser before release.
+Audio listening acceptance remains pending; no claim of a completed polish round.

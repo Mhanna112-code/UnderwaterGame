@@ -24,7 +24,7 @@ long white rods. `PrologueOctopus` preserves that mesh while applying a dark
 underwater material tint, and the opening gallery verifies the resulting
 reveal, idle, hurt, and finishing poses. Campaign ownership remains deferred.
 
-## Revised cutscene
+## Revised cutscene (unchanged full PR #96 intake archive)
 
 | Field | Value |
 | --- | --- |
@@ -39,8 +39,11 @@ V3 improves capitalization, pronouns, punctuation, and the final visible reveal
 of “Cordys, Mistress of the Puppets.” Its AAC source audio is byte-identical to
 V2; the revision is visual/textual. Red text on black remains low-contrast, and
 the sentence “I made your furnaces heat it from below to above all.” remains
-awkward. The file is admitted for later-route integration but is not yet wired
-into progression.
+awkward. This full derivative remains a later-route intake reference, not a
+live campaign owner. The opening child uses the separately approved short edit
+in `docs/opening-prologue-asset-manifest.md`: first 25 seconds plus the complete
+Cordys title ending, with the long monologue removed. The child web package
+excludes this unused full derivative; this archive's bytes/digest are unchanged.
 
 ## Evidence and automated contracts
 

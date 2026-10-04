@@ -199,6 +199,17 @@ phases. Existing durable milestone normalization remains the oracle.
 
 ## Post-write evaluation
 
+OPEN-025: the approved cinematic edit leaves any of the long “You arrived…”
+monologue, removes the Cordys title/last tableau, shortens the first 25 seconds,
+or silently keeps the full movie as the live owner. The narrow edit retains
+source video frames 0–749 and 1630–1820 (30 fps), with matching audio intervals
+[0,25) and [54.333333,EOF). Original Dropbox media is immutable. Verify the
+production path, derivative digest/duration and original archive exclusion;
+inspect the cut boundary and final title, then play the ordinary full opening
+in the actual export. Import success or total duration alone cannot prove that
+the right content survived. This supersedes the earlier no-shortening policy
+only for the user-requested monologue removal.
+
 Captured OPEN-004 browser failure: Theora playback advances beyond the
 33.877333-second Mermaid asset while still reporting playing, so no `finished`
 signal releases World. A progressing-clock watchdog misses this. Ordinary
