@@ -270,7 +270,15 @@ else
 	run "opening browser storage denial: does rejected IndexedDB completion block Continue and recover through Retry" env OPENING_STORAGE_FAILURE=1 OPENING_SAVE_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-storage-denial
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
 	run "audio webcheck: does a trusted New Game click unlock browser audio" node verify/audio_webcheck.mjs "$WEB_DIR" /tmp/gate-audio.png
-	run "maze navigation webcheck: does ?maze=1 visibly update after H" node verify/maze_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-map-closed.png /tmp/gate-maze-map-open.png
+	# The retained historical M/H canvas-difference check can pass on ambient
+	# animation despite doing nothing. Current L-map proof needs an identified
+	# export; don't silently accept a stale generated docs pack.
+	if [ -f "$WEB_DIR/build-info.json" ]; then
+		run "identified feedback export: do served checksum, ordinary title and real L-map agree" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback
+	else
+		echo "=== identified maze feedback webcheck: skipped, no build-info.json ==="
+		skips=$((skips + 1))
+	fi
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
 	run "special webcheck: does ?special=1 reach the chooser" node verify/special_webcheck.mjs "$WEB_DIR" /tmp/gate-special.png

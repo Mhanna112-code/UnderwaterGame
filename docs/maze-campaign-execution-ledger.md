@@ -12,12 +12,18 @@ ownership. Full physical maze/resource progression, broader balance, browser
 durability and final polish are NOT accepted. Combined runtime 08d8d97 is exported:
 local served-pack checksum, completed browser downloads, rendered ordinary title
 and actual L-map controls pass after correcting the inspector-cache harness.
-Verified e7986ab preview is delivered at
+Verified 1ccf92f preview is delivered at
 https://underwatergame-maze-campaign-review.vercel.app/ (review.html gives starts
 and limits). Live served bytes/title/L-map checks pass; it is not merge-ready.
-Windows/Linux x86_64 exports succeeded, but packages/target launches remain open.
-Marc's new d5bf893/58c6ed0 changes are integrated locally; refresh the same alias
-and packages after focused verification. Main/public remain unchanged. Other
+Windows/Linux x86_64 packages are downloadable; export, architecture, ZIP
+integrity and published checksums pass, but target launches remain unverified.
+Marc's new d5bf893/58c6ed0 changes are integrated and included in those artifacts.
+Full browser opening and cold Load preserve completion/settings, but the run
+failed its unchanged two-minute gate (125.044 engaged seconds). An isolated
+reduced-evidence probe retained the same input/readability oracles and passed
+at 118.025, with cold Load and settings preserved. Both runs remain recorded;
+the narrow timing margin is a human pacing risk, not a claimed game fix.
+Main/public remain unchanged. Other
 worktree changes remain untouched.
 
 | Phase | State | Required next evidence |
@@ -28,8 +34,8 @@ worktree changes remain untouched.
 | Maze route | In progress | First current channel passes actual Tab/W/mouse/L/E/R headless/native with collision and push active; full puzzles/keys/secret/finale route remains pending |
 | Puppet encounter | In progress | Both real waves, six resource-boundary cases and actual once-only maze-key/snapshot reward pass; normal kit reachability and interrupted recovery remain pending |
 | Cordys finale | In progress | Normal campaign turns and actual sigil win/snapshot pass; earned no-lab/both-order resource paths and loss/file recovery remain pending |
-| Audio and feedback delivery | In progress | Live cue ownership and e7986ab export/served bytes/title/map pass; latest upstream refresh and audible joins/mix remain pending |
-| Windows/Linux | In progress | Matching 4.7.1 templates downloaded and upstream SHA256 verified; release presets/Compatibility launchers prepared; exported, launch-tested and playtested recorded separately |
+| Audio and feedback delivery | In progress | Live cue ownership and 1ccf92f export/served bytes/title/map pass; audible joins/mix remain pending |
+| Windows/Linux | In progress | Matching-template 1ccf92f packages published as feedback prerelease with verified digests; neither target launch nor playtest accepted |
 | Full regression/polish | Planned | Complete clean audit round on identified artifact |
 | Human approval | Pending | Collaborator review; no public promotion before approval |
 

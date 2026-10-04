@@ -2,6 +2,29 @@
 
 ## October 4 feedback artifact and Marc's new portrait/switch fixes
 
+Later artifact: runtime 1ccf92f includes both upstream fixes. READY preview
+dpl_CVUze8BuPtuqKMXvPcJha87bpwHt is on the same stable alias; PCK SHA/size and
+real title/L map pass on that source. The first alias-refresh check caught old
+metadata with new pack bytes during propagation and was rejected. Subsequent
+alias/direct reads agree; the harness can require EXPECTED_SOURCE_SHA explicitly.
+The deprecated M/H canvas-animation test is replaced in the runner by identified
+L-map proof; missing build-info is an explicit skip, never a green source claim.
+
+PR100 is a draft. Matching Windows/Linux 1ccf92f packages are published as an
+unsigned feedback prerelease, not a latest/public-game release. ZIP integrity,
+PE/ELF architecture, upstream template digest, GitHub asset digests and anonymous
+download endpoints pass. Target-machine launch/playtest remains unverified.
+
+Complete browser opening/cold Load on the identified local export reached real
+recovery, four seconds of actual swimming, normal-stat player attacks and three
+individual Cordys strikes. IndexedDB completion and Sonar/encounters persist;
+cold Load restores Shallows and optional training without replay. Capture-heavy
+run failed unchanged 120s gate at 125.044 engaged seconds. Isolated reduced-
+evidence probe retained all gameplay/input/readability oracles and passed at
+118.025, without changing gameplay or subtracting guessed capture overhead.
+Actual recovery and loaded-world PNGs were inspected. Retain both receipts and
+the narrow pacing risk; no uncoached human comfort/emotional approval is claimed.
+
 Feedback runtime e7986ab exported with Godot 4.7.1 and published as a READY
 preview at https://underwatergame-maze-campaign-review.vercel.app/ . Main and
 the public game were not changed. Actual served pack checksum and completed

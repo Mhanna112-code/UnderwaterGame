@@ -3,7 +3,7 @@
 Status: feedback artifact delivered; final integration acceptance remains open.
 Initial baseline 493b1d8 includes current main and PR98. PR97's initial merge and
 its October 4 portrait/switch follow-ups are now reconciled. Current working
-source includes those follow-ups; the last verified hosted source is e7986ab.
+source includes those follow-ups; the last verified hosted runtime is 1ccf92f.
 
 | Artifact | Identity | Verification |
 | --- | --- | --- |
@@ -12,18 +12,28 @@ source includes those follow-ups; the last verified hosted source is e7986ab.
 | PR96 campaign parent | 27a5b5253256a26733f8a320c3c6b4f97c64dece | Remote PR head checked |
 | PR98 reviewed opening | c3da257d115385b423306ef61e0214ebf7416f0c | Remote PR head checked |
 | PR97 maze | 58c6ed07944676631002794e4649220d3c5bf264 | Refreshed October 4; initial 55e8515 plus d5bf893/58c6ed0 integrated deliberately |
-| Last verified combined web export | e7986ab4cd649b349c2a9e77871f05fab5a499bc | Stable feedback alias; normal title/real L-map and served-pack checksum pass |
-| Windows x86_64 | e7986ab4cd649b349c2a9e77871f05fab5a499bc | Exported without errors; PE32+ identified; not target-launched/playtested; refresh for latest source before packaging |
-| Linux x86_64 | e7986ab4cd649b349c2a9e77871f05fab5a499bc | Exported without errors; ELF x86_64 identified; not target-launched/playtested; refresh for latest source before packaging |
+| Last verified combined web export | 1ccf92ff0aa07bbf2b4a8612435ea5322968c0e9 | Stable feedback alias; normal title/real L-map and served-pack checksum pass |
+| Windows x86_64 | 1ccf92ff0aa07bbf2b4a8612435ea5322968c0e9 | Exported, PE32+ identified, ZIP integrity and published digest match; not target-launched/playtested |
+| Linux x86_64 | 1ccf92ff0aa07bbf2b4a8612435ea5322968c0e9 | Exported, ELF x86_64 identified, ZIP integrity and published digest match; not target-launched/playtested |
 
 Feedback alias: https://underwatergame-maze-campaign-review.vercel.app/
-Review guide: /review.html. Verified deployment dpl_GfZuuQsbDX2Vj4ZwTfVNPEWEFWb1,
+Review guide: /review.html. Verified deployment dpl_CVUze8BuPtuqKMXvPcJha87bpwHt,
 READY preview in immortaldemongods-projects/underwatergame. No public promotion.
-PCK 92,415,496 bytes, SHA256
-35775819bd9d2e244cf8923a1cc789cbd1ffc5f2f5eb5458ade106da27c74dea.
+PCK 92,415,960 bytes, SHA256
+5b225ace60c28d53c6cbe26e5aecdd0af59edffc81ca315e0dfef3b00c583164.
 Real browser requests completed against the same hashed endpoint; fresh contexts
 rendered normal title and current L-map controls without captured script errors.
 This is not normal-route/full-traversal/storage/audio acceptance.
+
+Draft PR https://github.com/Mhanna112-code/UnderwaterGame/pull/100 . Unsigned
+feedback packages: https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-1ccf92f .
+Windows ZIP 110,352,698 bytes, SHA256
+2b931562b224d34f0297de499ff39a6e29445db6457e4283c75fa1a24bcc2c0f.
+Linux ZIP 100,751,322 bytes, SHA256
+d3f59f6442172bb765cae443b87e0c313b460e2d995ef9e52ab208aa7cf77d34.
+GitHub's published asset digests match and anonymous download endpoints return
+200. Native executables/pack/launcher hashes are inside BUILD-INFO.json.
+No Docker daemon is available here, so no container Linux launch is claimed.
 
 Engine/template 4.7.1.stable.official.a13da4feb. Official export-template archive
 SHA256 86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72

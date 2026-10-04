@@ -30,6 +30,8 @@ const capture = async (page, name) => {
   return JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [file], { encoding: 'utf8' })).map(row => row.text).join('\n');
 };
 try {
+  if (process.env.EXPECTED_SOURCE_SHA && metadata.source_commit !== process.env.EXPECTED_SOURCE_SHA)
+    throw new Error('Deployment has not reached requested source: ' + metadata.source_commit);
   // Hash the actual served endpoint as a stream, outside Chromium's body cache.
   // Browser requests below must complete against this same identified URL.
   const packResponse = await fetch(new URL('index.pck', base));
