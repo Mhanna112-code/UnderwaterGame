@@ -13,6 +13,12 @@ extends Area3D
 signal collected(item_id: String, diver: Diver)
 
 @export var item_id := ""
+# Maze options: `golden` gives it a gold shimmer (pulsing glow, sparkles, a
+# little light) so it reads as "grab this"; `grappleable` lets Musashi's
+# grapple hit it - the grapple pulls the diver in and the orb comes the
+# rest of the way to them (handy for orbs left floating out of reach).
+@export var golden := false
+@export var grappleable := false
 
 var _mesh: MeshInstance3D
 var _mat: StandardMaterial3D
@@ -33,11 +39,19 @@ func _ready() -> void:
 	# only ever carry a consumable, so there's no "key item" color case to
 	# handle here at all, unlike Items.grant()'s match.
 	var c := Color(0.95, 0.85, 0.3) if item_id == "potion" else Color(0.4, 0.85, 0.95)
+	if golden:
+		c = Color(1.0, 0.78, 0.25)
 	_mat.albedo_color = c
 	_mat.emission = c
 	_mat.emission_energy_multiplier = 1.4
 	_mesh.material_override = _mat
 	add_child(_mesh)
+	if golden:
+		_add_golden_shimmer()
+	if grappleable:
+		var target := GrappleTarget.new()
+		target.orb = self
+		add_child(target)
 
 	var shape := CollisionShape3D.new()
 	var col := SphereShape3D.new()
@@ -58,5 +72,91 @@ func _process(dt: float) -> void:
 
 func _on_body_entered(body: Node3D) -> void:
 	if body is Diver:
-		collected.emit(item_id, body)
-		queue_free()
+		_collect(body as Diver)
+
+func _collect(diver: Diver) -> void:
+	if is_queued_for_deletion():
+		return
+	collected.emit(item_id, diver)
+	queue_free()
+
+# Pulsing glow, gold sparkles drifting up, and a soft gold light.
+func _add_golden_shimmer() -> void:
+	_mesh.scale = Vector3.ONE * 1.5
+	# Lit and metallic, so the pulsing glow and highlights actually show.
+	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	_mat.emission = Color(0.95, 0.68, 0.12)
+	_mat.emission_energy_multiplier = 0.5
+	_mat.metallic = 1.0
+	_mat.roughness = 0.2
+	_mat.rim_enabled = true
+	_mat.rim = 1.0
+	_mat.rim_tint = 0.2
+	var breathe := create_tween().set_loops()
+	breathe.tween_property(_mesh, "scale", Vector3.ONE * 1.7, 0.45).set_trans(Tween.TRANS_SINE)
+	breathe.tween_property(_mesh, "scale", Vector3.ONE * 1.4, 0.45).set_trans(Tween.TRANS_SINE)
+	var pulse := create_tween().set_loops()
+	pulse.tween_property(_mat, "emission_energy_multiplier", 1.1, 0.45).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(_mat, "emission_energy_multiplier", 0.25, 0.45).set_trans(Tween.TRANS_SINE)
+	var sparkles := CPUParticles3D.new()
+	sparkles.amount = 28
+	sparkles.lifetime = 1.2
+	sparkles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	sparkles.emission_sphere_radius = 0.45
+	sparkles.direction = Vector3.UP
+	sparkles.spread = 25.0
+	sparkles.gravity = Vector3(0, 0.6, 0)
+	sparkles.initial_velocity_min = 0.2
+	sparkles.initial_velocity_max = 0.5
+	sparkles.scale_amount_min = 0.5
+	sparkles.scale_amount_max = 1.0
+	var spark_mesh := SphereMesh.new()
+	spark_mesh.radius = 0.06
+	spark_mesh.height = 0.12
+	var spark_mat := StandardMaterial3D.new()
+	spark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	spark_mat.albedo_color = Color(1.0, 0.9, 0.5)
+	spark_mesh.material = spark_mat
+	sparkles.mesh = spark_mesh
+	add_child(sparkles)
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.8, 0.35)
+	light.light_energy = 2.0
+	light.omni_range = 3.0
+	add_child(light)
+
+# What the grapple's ray actually hits: a small body on its own collision
+# layer (5), so divers (which only collide with layer 1) never bump into it
+# and the camera's wall check ignores it, but the grapple's ray (all
+# layers) does. Grappled: once the pull brings the diver in, the orb comes
+# the rest of the way to the nearest diver and is collected.
+class GrappleTarget extends StaticBody3D:
+	var orb: ItemOrb
+
+	func _ready() -> void:
+		collision_layer = 1 << 4
+		collision_mask = 0
+		add_to_group("grapple_anchor")
+		var shape := CollisionShape3D.new()
+		var sphere := SphereShape3D.new()
+		sphere.radius = 0.6
+		shape.shape = sphere
+		add_child(shape)
+
+	func on_grappled_to() -> void:
+		if orb == null or not is_instance_valid(orb):
+			return
+		await orb.get_tree().create_timer(0.35).timeout
+		if not is_instance_valid(orb):
+			return
+		var nearest: Diver = null
+		for c in orb.get_parent().get_children():
+			if c is Diver and (nearest == null or (c as Diver).global_position.distance_to(orb.global_position) < nearest.global_position.distance_to(orb.global_position)):
+				nearest = c as Diver
+		if nearest == null:
+			return
+		var tw := orb.create_tween()
+		tw.tween_property(orb, "global_position", nearest.global_position, 0.3)
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(orb):
+				orb._collect(nearest))

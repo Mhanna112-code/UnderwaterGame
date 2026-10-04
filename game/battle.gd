@@ -33,6 +33,13 @@ var party_source: Array = []
 # _show_items()/_populate_item_menu()). Nothing else in this file touches
 # world at all.
 var world: World
+# Without a World (the standalone maze), the party's items come from here
+# instead - MazeLevel hands over its own inventory dictionary, shared, so
+# what gets used here comes off the maze's count.
+var inventory_source: Dictionary = {}
+
+func _party_inventory() -> Dictionary:
+	return world.inventory if world != null else inventory_source
 
 # Set by World for the dedicated Glassgoat validation route. Ordinary
 # random and guardian encounters still build Goblin grunts; this builds one
@@ -925,13 +932,17 @@ func _build_stage() -> void:
 	var enemy_z := -6.0 if is_swap_encounter else (-4.6 if special_encounter else -2.2)
 	var pn := party.size()
 	for i in range(pn):
-		if (party[i].stats as CombatantStats).hp <= 0:
-			continue
+		# Every party member gets a fighter on stage, so nothing that reads
+		# "where the party is" finds one missing. One that's knocked out
+		# starts hidden and sits the fight out (no turns - see
+		# _advance_turn()) unless revived.
 		var actor := Diver.new()
 		actor.model_name = String(party[i].model_name)
 		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, 0.0, diver_z - _spread(i, pn, 0.7))
 		vp.add_child(actor)
 		party[i]["actor"] = actor
+		if (party[i].stats as CombatantStats).hp <= 0:
+			actor.visible = false
 		# Where this one stands when it is not swinging. Attacks step in
 		# toward whoever they are aimed at and come back here afterwards.
 		party[i]["home_pos"] = actor.position
@@ -1900,6 +1911,8 @@ func _log(text: String) -> void:
 # fast-moving sentence at the bottom of the screen. Label3D keeps the proof
 # next to the model inside Battle's isolated viewport.
 func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
+	if String(result.get("debuff", "")) == "revive":
+		_return_to_stage(entry)
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
 	var messages: Array[Dictionary] = []
@@ -2529,9 +2542,10 @@ func _populate_item_menu() -> void:
 	for b in item_buttons:
 		(b as Button).queue_free()
 	item_buttons.clear()
-	if world != null:
-		for item_id in world.inventory.keys():
-			var count: int = int(world.inventory[item_id])
+	var inv := _party_inventory()
+	if not inv.is_empty():
+		for item_id in inv.keys():
+			var count: int = int(inv[item_id])
 			if count <= 0:
 				continue
 			var def: Dictionary = Items.ITEMS.get(item_id, {})
@@ -2558,8 +2572,10 @@ func _on_item_chosen(item_id: String) -> void:
 	if _busy:
 		return
 	item_menu.visible = false
-	var targets: Array = _living(party).filter(func(e: Dictionary) -> bool:
-		return Items.would_help(item_id, e.stats as CombatantStats))
+	var heals := String(Items.ITEMS.get(item_id, {}).get("kind", "")) == "heal"
+	var targets: Array = party.filter(func(e: Dictionary) -> bool:
+		var s := e.stats as CombatantStats
+		return (s.hp > 0 or heals) and Items.would_help(item_id, s))
 	if targets.is_empty():
 		item_menu.visible = true
 		call_deferred("_fit_panel_height")
@@ -2574,15 +2590,15 @@ func _on_item_chosen(item_id: String) -> void:
 # Mirrors _resolve_party_move()'s tail exactly (log, refresh bars, advance
 # turn) so an item-use turn reads identically to a move turn.
 func _resolve_item(item_id: String, target: Dictionary) -> void:
-	if world == null:
-		_advance_turn()
-		return
 	_busy = true
 	_set_all_buttons(false)
 	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 	var kind := String(Items.ITEMS.get(item_id, {}).get("kind", ""))
 	var amount := int(Items.ITEMS.get(item_id, {}).get("amount", 0))
+	var was_down := (target.stats as CombatantStats).hp <= 0
 	var msg := Items.grant(item_id, target.stats as CombatantStats)
+	if was_down and (target.stats as CombatantStats).hp > 0:
+		_return_to_stage(target)
 	# MODIFIED (added): attack_up/defense_up are battle_only and only
 	# supposed to last THIS fight - Items.grant() above already applied the
 	# raw stat increase (same as any other consumable), so this just
@@ -2594,10 +2610,11 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	var temp_field: String = {"attack_up": "strength", "defense_up": "defense"}.get(kind, "")
 	if temp_field != "":
 		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount})
-	var count: int = int(world.inventory.get(item_id, 0))
-	world.inventory[item_id] = count - 1
-	if world.inventory[item_id] <= 0:
-		world.inventory.erase(item_id)
+	var inv := _party_inventory()
+	var count: int = int(inv.get(item_id, 0))
+	inv[item_id] = count - 1
+	if inv[item_id] <= 0:
+		inv.erase(item_id)
 	_refresh_bar(target)
 	_log(msg if msg != "" else "%s - nothing happened." % display)
 	_finish_actor_turn(_acting)
@@ -3256,6 +3273,21 @@ func _apply_heal(target: CombatantStats, amount: int) -> Dictionary:
 # they had, since a downed target always has exactly 0. Capped at hp_max
 # same as a heal, in case amount was ever tuned above what a low-level
 # reviver's hp_max could actually hold.
+# A knocked-out party member back on their feet: a fresh fighter in their
+# spot (the old one was hidden, or faded out when they went down).
+func _return_to_stage(entry: Dictionary) -> void:
+	if String(entry.get("kind", "")) != "party" or _stage_vp == null:
+		return
+	var old: Node3D = entry.get("actor")
+	var actor := Diver.new()
+	actor.model_name = String(entry.model_name)
+	actor.position = entry.get("home_pos", old.position if old != null and is_instance_valid(old) else Vector3.ZERO)
+	actor.rotation.y = float(entry.get("home_rot", 0.0))
+	if old != null and is_instance_valid(old):
+		old.queue_free()
+	_stage_vp.add_child(actor)
+	entry["actor"] = actor
+
 func _apply_revive(target: CombatantStats, amount: int) -> Dictionary:
 	target.hp = mini(target.hp_max, amount)
 	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "revive", "changed": target.hp}
