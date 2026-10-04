@@ -3647,6 +3647,8 @@ func _refresh_world_guidance() -> void:
 			text = _route_objective_text(route_state.objective_id)
 		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
 			text = "Use Bucky's Shockwave to break the wall."
+		else:
+			text = "Shallows: fight to grow stronger."
 	route_objective_label.text = text
 	route_objective_panel.visible = text != ""
 

@@ -3,6 +3,7 @@ import { chromium, webkit } from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const target = process.argv[2];
 const output = process.argv[3] || '/tmp/opening-browser';
@@ -62,6 +63,12 @@ const waitPhase = async (phase, timeout = 45000) => {
   if (!phases.includes(phase)) throw new Error(`missing ${phase}; observed ${phases.join(',')}`);
 };
 const shot = async name => page.screenshot({ path: path.join(output, name + '.png') });
+const expectShallows = name => {
+  const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, name + '.png')], { encoding: 'utf8' }));
+  const text = rows.map(row => row.text).join('\n');
+  if (!/Shallows.*stronger/i.test(text)) throw new Error('SHALLOW-001 normal recovered/loaded world lacks visible Shallows purpose: ' + text);
+  console.log('SHALLOWS VIEW|' + name + '|' + text.replaceAll('\n', ' | '));
+};
 const attack = async (name, moveY = 604) => {
   await page.mouse.click(160, 544);
   await page.waitForTimeout(400);
@@ -168,11 +175,12 @@ try {
   await waitPhase('complete', 5000);
   await page.waitForTimeout(600);
   await shot('09-optional-training');
+  expectShallows('09-optional-training');
   elapsedSeconds = (Date.now() - started) / 1000;
   engagedSeconds = elapsedSeconds - deliberateIdleMs / 1000;
   console.log(`Normal browser New Game to control: ${elapsedSeconds}s; engaged=${engagedSeconds}s; deliberate idle/look=${deliberateIdleMs / 1000}s`);
   if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
-  const expected = ['opening_video', 'spawn_exploration', 'angler', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
+  const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'angler', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
   if (process.env.OPENING_SAVE_RECHECK === '1') {
     // OPEN-027: inspect the browser's actual persisted checkpoint after the
@@ -221,6 +229,7 @@ try {
     await page.mouse.click(640, 327);
     await page.waitForTimeout(4000);
     await shot('12-loaded-world');
+    expectShallows('12-loaded-world');
     saveRecheck.afterReload = await readSaves();
     const loadedExploration = saveRecheck.afterReload.find(save => String(save.key).endsWith('/slot_0.json'));
     if (!loadedExploration?.data.random_encounters_enabled || !loadedExploration.data.divers[0].sonar_active) {

@@ -4,7 +4,7 @@ Scope: World objective panel, physical zone updates, existing puzzle entrance
 blockade, consumed-world save/load and active-diver switching. No new route,
 collision, mandatory objective or ability balance.
 
-## Interfaces / IO / invariants
+## Interfaces / IO / invariants (original defect analysis)
 
 - Actual swimming updates the active diver's physical position. The existing
   shared DeepZoneLayout defines Deep at x >= 60. RouteState keeps progression
@@ -21,6 +21,17 @@ collision, mandatory objective or ability balance.
   from physical location and intact geometry, never persisted separately.
 - Existing deep-zone guidance, real Shockwave/collider and legacy plate gates
   cover related puzzle/progression mechanics.
+
+## Subsequent contract addition, 2026-10-04
+
+The user requested a short zone/purpose indication in ordinary Shallows water.
+After prologue completion, previously blank Shallows views now show
+`Shallows: fight to grow stronger.` The intact puzzle-contact hint still takes
+priority; Deep retains its lab instruction; unfinished opening remains blank.
+Native/browser checks now assert this replacement instead of an empty panel.
+This deliberately supersedes the original blank-panel expectations, not the
+location/state/active-diver invariants or the earlier source-labeled evidence.
+New bug catalog: `verify/shallows_guidance.bug-catalog.md`.
 
 ## Bugs and tests
 

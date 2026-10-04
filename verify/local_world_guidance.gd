@@ -33,7 +33,7 @@ func _run() -> void:
 	world.yaw = -PI * 0.5
 	await _hold(KEY_W, 0.6)
 	_expect((world.divers[0] as Diver).position.x < 60.0, "OPEN-043 fixture did not swim into Shallows")
-	_expect(not world.route_objective_panel.visible, "OPEN-043 lab instruction sticks after swimming into Shallows")
+	_expect_shallows("SHALLOW-002 leaving Deep must replace lab text with Shallows purpose")
 	await _capture("shallows")
 	_expect(world.route_state.objective_id == "find_lab", "OPEN-043 leaving Deep erases pending lab progression")
 	await _hold(KEY_S, 1.2)
@@ -54,7 +54,7 @@ func _puzzle() -> void:
 	# Leave without breaking it, then return; the hint is proximity, not a latch.
 	await _hold(KEY_S, 1.2)
 	_expect((world.divers[world.active] as Diver).position.x < 12.0, "OPEN-044 fixture did not leave puzzle proximity")
-	_expect(not world.route_objective_panel.visible, "OPEN-044 puzzle hint follows player into unrelated open water")
+	_expect_shallows("SHALLOW-003 leaving puzzle must restore Shallows purpose")
 	await _hold(KEY_W, 1.2)
 	_expect(world.route_objective_panel.visible, "OPEN-044 puzzle hint fails to return before wall is broken")
 	(world.divers[2] as Diver).position = Vector3(14.2, 2.0, 10.0)
@@ -63,13 +63,13 @@ func _puzzle() -> void:
 	await _tap(KEY_E) # real Bucky Shockwave; no injected broken signal
 	await create_timer(0.4).timeout
 	_expect(world.consumed_world_ids.has("entrance_blockade"), "OPEN-044 real Bucky Shockwave did not break entrance")
-	_expect(not world.route_objective_panel.visible, "OPEN-044 wall instruction remains after successful Shockwave")
+	_expect_shallows("SHALLOW-003 successful Shockwave must retire wall hint in favor of Shallows purpose")
 	await _capture("broken")
 	world.save_point_menu.save_requested.emit(world.divers[world.active], SLOT)
 	world.title_screen.load_game_chosen.emit(SLOT)
 	await process_frame
 	await process_frame
-	_expect(not world.route_objective_panel.visible, "OPEN-044 Load resurrects a consumed-wall hint")
+	_expect_shallows("SHALLOW-003 Load must preserve Shallows purpose instead of resurrecting consumed-wall hint")
 
 func _spatial_cases() -> void:
 	var diver := world.divers[0] as Diver
@@ -83,7 +83,10 @@ func _spatial_cases() -> void:
 		diver.velocity = Vector3.ZERO
 		await physics_frame
 		await process_frame
-		_expect(world.route_objective_panel.visible == case[1], "OPEN-045 room contact/altitude selection shows wrong guidance at %s" % diver.position)
+		if case[1]:
+			_expect(world.route_objective_panel.visible and "wall" in world.route_objective_label.text.to_lower(), "OPEN-045 room contact lacks wall guidance at %s" % diver.position)
+		else:
+			_expect_shallows("SHALLOW-003 altitude/unrelated water must show Shallows purpose at %s" % diver.position)
 	# Bounded position property: arbitrary clear-water Shallows points must
 	# never show the retained lab objective or room instruction.
 	var rng := RandomNumberGenerator.new()
@@ -93,13 +96,13 @@ func _spatial_cases() -> void:
 		diver.velocity = Vector3.ZERO
 		await physics_frame
 		await process_frame
-		_expect(not world.route_objective_panel.visible, "OPEN-043/045 unrelated Shallows water shows lab/puzzle instruction")
+		_expect_shallows("SHALLOW-002/003 clear Shallows water must show zone/purpose, not lab/puzzle")
 	# Proximity of an inactive diver must not guide the selected one.
 	diver.position = Vector3(14, 2, 10)
 	await physics_frame
 	await process_frame
 	await _tap(KEY_TAB)
-	_expect(not world.route_objective_panel.visible, "OPEN-045 inactive diver drives room hint")
+	_expect_shallows("SHALLOW-003 inactive diver must not replace selected diver's Shallows purpose with wall hint")
 	await _tap(KEY_TAB)
 	await _tap(KEY_TAB)
 	# Load a valid unfinished checkpoint through the public path, rather than
@@ -151,6 +154,10 @@ func _tap(code: Key) -> void:
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		findings.append(message)
+
+func _expect_shallows(message: String) -> void:
+	var text := world.route_objective_label.text.to_lower()
+	_expect(world.route_objective_panel.visible and "shallows" in text and "stronger" in text and not "laboratory" in text and not "wall" in text, message + ": " + text)
 
 func _finish() -> void:
 	world.queue_free()

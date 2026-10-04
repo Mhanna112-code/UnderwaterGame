@@ -76,17 +76,20 @@ try {
   expect(/find the laboratory/i.test(await observe('deep-loaded')), 'OPEN-043 Deep Load lacks visible lab instruction');
   await hold('ArrowRight', 800); // turn west
   await hold('w', 800);
-  expect(!/find the laboratory/i.test(await observe('shallows')), 'OPEN-043 lab instruction sticks in Shallows');
+  const shallows = await observe('shallows');
+  expect(/Shallows.*stronger/i.test(shallows) && !/find the laboratory/i.test(shallows), 'SHALLOW-002 boundary does not replace lab instruction with Shallows purpose');
   await hold('s', 1500);
   expect(/find the laboratory/i.test(await observe('deep-return')), 'OPEN-043 same-objective Deep return lacks instruction');
 
   await loadFixture('puzzle-approach', [11.4, 2, 10]);
-  expect(!/find the laboratory/i.test(await observe('puzzle-outside')), 'OPEN-043 Shallows Load shows sticky lab instruction');
+  const outside = await observe('puzzle-outside');
+  expect(/Shallows.*stronger/i.test(outside) && !/find the laboratory/i.test(outside), 'SHALLOW-001 Shallows Load lacks zone/purpose or retains lab text');
   await hold('ArrowLeft', 800); // turn east
   await hold('w', 600);
   expect(/Bucky.*Shockwave.*break the wall/i.test(await observe('puzzle-contact')), 'OPEN-044 actual contact lacks Bucky wall instruction');
   await hold('s', 1600);
-  expect(!/break the wall/i.test(await observe('puzzle-left')), 'OPEN-044 puzzle instruction follows into open water');
+  const left = await observe('puzzle-left');
+  expect(/Shallows.*stronger/i.test(left) && !/break the wall/i.test(left), 'SHALLOW-003 departed puzzle does not restore Shallows purpose');
   await hold('w', 1600);
   expect(/break the wall/i.test(await observe('puzzle-return')), 'OPEN-044 returning to intact wall loses hint');
   await page.keyboard.press('Tab');
@@ -95,7 +98,7 @@ try {
   await page.waitForTimeout(900);
   const broken = await observe('wall-broken');
   expect(/Bucky/i.test(broken), 'OPEN-044 Shockwave was not performed by Bucky');
-  expect(!/break the wall/i.test(broken), 'OPEN-044 wall hint survives real Shockwave');
+  expect(/Shallows.*stronger/i.test(broken) && !/break the wall/i.test(broken), 'SHALLOW-003 real Shockwave does not retire wall hint and restore Shallows purpose');
   expect(errors.length === 0, 'Runtime errors: ' + errors.join('\n'));
   console.log('LOCAL WORLD GUIDANCE WEB: clean');
 } catch (error) {
