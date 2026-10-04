@@ -1,6 +1,6 @@
-// Browser boundary for PR #50's opt-in review route. It proves that
-// ?special=1 exposes the one-click special-encounter action and that the
-// action reaches both the real guardian warning and diver carousel.
+// Browser boundary for the current opt-in special-encounter review route. It
+// proves that ?special=1 exposes the one-click action, enters the real first
+// Maxilani lesson, and accepts its player-facing Continue button.
 import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
@@ -58,23 +58,26 @@ const changed = (a, b) => {
 const title = await sample();
 await page.mouse.click(640, 405); // Play Special Encounter Test
 await page.waitForTimeout(1200);
-const warning = await sample();
-await page.mouse.click(640, 427); // Enter
-await page.waitForTimeout(3000);
-const carousel = await sample();
+const lesson = await sample();
+// The first caption's actual Continue button at 1280x720. This deliberately
+// uses browser pointer input rather than injecting Enter so a dead mouse path
+// cannot pass behind a keyboard-only shortcut.
+await page.mouse.click(105, 493);
+await page.waitForTimeout(1200);
+const advancedLesson = await sample();
 await page.screenshot({ path: out });
 
-const warningDelta = changed(title, warning);
-const carouselDelta = changed(warning, carousel);
-console.log(`special canvas {"warning_delta":${warningDelta},"carousel_delta":${carouselDelta}}`);
+const lessonDelta = changed(title, lesson);
+const continueDelta = changed(lesson, advancedLesson);
+console.log(`special canvas {"lesson_delta":${lessonDelta},"continue_delta":${continueDelta}}`);
 if (errors.length) console.log('console        ' + errors.slice(0, 8).join(' | '));
 await browser.close();
 if (!live) server.close();
 
-if (!title || !warning || !carousel) { console.log('SPECIAL WEB: no canvas element'); process.exit(1); }
+if (!title || !lesson || !advancedLesson) { console.log('SPECIAL WEB: no canvas element'); process.exit(1); }
 if (errors.length) { console.log('SPECIAL WEB: browser errors'); process.exit(1); }
-if (warningDelta < 250 || carouselDelta < 250) {
-  console.log('SPECIAL WEB: review action did not traverse title -> warning -> diver carousel');
+if (lessonDelta < 250 || continueDelta < 100) {
+  console.log('SPECIAL WEB: review action did not traverse title -> live lesson -> mouse Continue');
   process.exit(1);
 }
-console.log('SPECIAL WEB: ?special=1 reaches the guardian warning and diver carousel');
+console.log('SPECIAL WEB: ?special=1 reaches and advances the live special-encounter lesson');

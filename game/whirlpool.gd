@@ -62,18 +62,24 @@ func _ready() -> void:
 
 	_build_visual()
 
-# A dark, slowly spinning ring - distinct from the old flat "void" patch,
-# reads as something actively dangerous rather than just an empty patch
-# of floor.
+# A low, luminous current ring over the void. TorusMesh is already built in
+# the XZ plane; rotating it 90 degrees stood it upright like an opaque tire
+# across the corridor and hid the far Grapple target from the required aim
+# view. Keep it floor-aligned so it marks the suction area without becoming
+# a wall.
 func _build_visual() -> void:
 	var mesh_inst := MeshInstance3D.new()
+	mesh_inst.name = "WhirlpoolVisual"
 	var ring := TorusMesh.new()
 	ring.inner_radius = suction_radius * 0.3
 	ring.outer_radius = suction_radius * 0.95
 	mesh_inst.mesh = ring
-	mesh_inst.rotation_degrees.x = 90.0
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.05, 0.08, 0.12)
+	mat.albedo_color = Color(0.04, 0.32, 0.42, 0.72)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = Color(0.05, 0.42, 0.55)
+	mat.emission_energy_multiplier = 0.65
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_inst.material_override = mat
 	mesh_inst.position.y = 0.04

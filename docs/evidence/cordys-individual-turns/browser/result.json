@@ -1,0 +1,278 @@
+{
+  "target": "https://underwatergame-nl6ozcoml-immortaldemongods-projects.vercel.app/",
+  "browserEngine": "chromium",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "elapsedSeconds": 119.376,
+  "engagedSeconds": 117.37100000000001,
+  "deliberateIdleMs": 2005,
+  "freeSwimKeydown": 1791114443960,
+  "freeSwimMs": 4294,
+  "phases": [
+    "opening_video",
+    "opening_handoff",
+    "spawn_exploration",
+    "angler",
+    "angler_victory",
+    "octopus_notice",
+    "octopus_omen",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery",
+    "complete",
+    "complete"
+  ],
+  "timestamps": {
+    "opening_video": 1791114406178,
+    "opening_handoff": 1791114440117,
+    "spawn_exploration": 1791114443674,
+    "angler": 1791114448254,
+    "angler_victory": 1791114459204,
+    "octopus_notice": 1791114461638,
+    "octopus_omen": 1791114463704,
+    "octopus_introduction": 1791114465821,
+    "octopus_reveal": 1791114490877,
+    "octopus_response": 1791114492738,
+    "scripted_defeat": 1791114497138,
+    "octopus_aftermath": 1791114516604,
+    "recovery": 1791114522966,
+    "complete": 1791114549975
+  },
+  "combatHits": [
+    "PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[\"EVA -3\"]",
+    "PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]",
+    "PROLOGUE_HIT|move=Guard Bash|damage=11|hit=true|hp=985|effects=[]"
+  ],
+  "bossResponses": [
+    "PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2",
+    "PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1",
+    "PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0"
+  ],
+  "bossResponseTimes": [
+    1791114498186,
+    1791114506199,
+    1791114514217
+  ],
+  "saveRecheck": {
+    "beforeReload": [
+      {
+        "database": "/userfs",
+        "key": "/userfs/godot/app_userdata/UnderwaterGame/saves/slot_0.json",
+        "data": {
+          "active": 0,
+          "consumed_world_ids": [],
+          "divers": [
+            {
+              "equipped_spells": [],
+              "known_spells": [],
+              "position": [
+                0,
+                2,
+                0
+              ],
+              "sonar_active": true,
+              "stats": {
+                "accuracy": 3,
+                "agility": 3,
+                "defense": 0,
+                "evasion": 3,
+                "hp": 10,
+                "hp_max": 10,
+                "level": 1,
+                "oxygen": 100,
+                "oxygen_max": 100,
+                "spell_points": 0,
+                "strength": 1,
+                "xp": 0,
+                "xp_to_next": 30
+              }
+            },
+            {
+              "equipped_spells": [],
+              "known_spells": [],
+              "position": [
+                -3.59999990463257,
+                2.20000004768372,
+                -3
+              ],
+              "sonar_active": false,
+              "stats": {
+                "accuracy": 2,
+                "agility": 2,
+                "defense": 2,
+                "evasion": 2,
+                "hp": 10,
+                "hp_max": 10,
+                "level": 1,
+                "oxygen": 100,
+                "oxygen_max": 100,
+                "spell_points": 0,
+                "strength": 2,
+                "xp": 0,
+                "xp_to_next": 30
+              }
+            },
+            {
+              "equipped_spells": [],
+              "known_spells": [],
+              "position": [
+                3.59999990463257,
+                2.40000009536743,
+                -3
+              ],
+              "sonar_active": false,
+              "stats": {
+                "accuracy": 1,
+                "agility": 1,
+                "defense": 4,
+                "evasion": 0,
+                "hp": 10,
+                "hp_max": 10,
+                "level": 1,
+                "oxygen": 100,
+                "oxygen_max": 100,
+                "spell_points": 0,
+                "strength": 4,
+                "xp": 0,
+                "xp_to_next": 30
+              }
+            }
+          ],
+          "inventory": {},
+          "key_items": [],
+          "pending_world_drops": {},
+          "random_encounters_enabled": true,
+          "revealed_key_items": [],
+          "route_state": {
+            "bomb_bot_state": "available",
+            "deep_warning_seen": false,
+            "encounter_source": "random",
+            "lab_state": "locked",
+            "maze_door_state": "locked",
+            "objective_id": "",
+            "octopus_state": "unavailable",
+            "opening_video_seen": true,
+            "prologue_complete": true,
+            "sword_slayer_state": "available",
+            "tethys_state": "locked",
+            "tutorial_complete": false,
+            "zone_id": "shallows"
+          },
+          "save_point_tutorial_seen": false
+        }
+      }
+    ],
+    "afterReload": [
+      {
+        "database": "/userfs",
+        "key": "/userfs/godot/app_userdata/UnderwaterGame/saves/slot_0.json",
+        "data": {
+          "active": 0,
+          "consumed_world_ids": [],
+          "divers": [
+            {
+              "equipped_spells": [],
+              "known_spells": [],
+              "position": [
+                0,
+                2,
+                0
+              ],
+              "sonar_active": true,
+              "stats": {
+                "accuracy": 3,
+                "agility": 3,
+                "defense": 0,
+                "evasion": 3,
+                "hp": 10,
+                "hp_max": 10,
+                "level": 1,
+                "oxygen": 100,
+                "oxygen_max": 100,
+                "spell_points": 0,
+                "strength": 1,
+                "xp": 0,
+                "xp_to_next": 30
+              }
+            },
+            {
+              "equipped_spells": [],
+              "known_spells": [],
+              "position": [
+                -3.59999990463257,
+                2.20000004768372,
+                -3
+              ],
+              "sonar_active": false,
+              "stats": {
+                "accuracy": 2,
+                "agility": 2,
+                "defense": 2,
+                "evasion": 2,
+                "hp": 10,
+                "hp_max": 10,
+                "level": 1,
+                "oxygen": 100,
+                "oxygen_max": 100,
+                "spell_points": 0,
+                "strength": 2,
+                "xp": 0,
+                "xp_to_next": 30
+              }
+            },
+            {
+              "equipped_spells": [],
+              "known_spells": [],
+              "position": [
+                3.59999990463257,
+                2.40000009536743,
+                -3
+              ],
+              "sonar_active": false,
+              "stats": {
+                "accuracy": 1,
+                "agility": 1,
+                "defense": 4,
+                "evasion": 0,
+                "hp": 10,
+                "hp_max": 10,
+                "level": 1,
+                "oxygen": 100,
+                "oxygen_max": 100,
+                "spell_points": 0,
+                "strength": 4,
+                "xp": 0,
+                "xp_to_next": 30
+              }
+            }
+          ],
+          "inventory": {},
+          "key_items": [],
+          "pending_world_drops": {},
+          "random_encounters_enabled": true,
+          "revealed_key_items": [],
+          "route_state": {
+            "bomb_bot_state": "available",
+            "deep_warning_seen": false,
+            "encounter_source": "random",
+            "lab_state": "locked",
+            "maze_door_state": "locked",
+            "objective_id": "",
+            "octopus_state": "unavailable",
+            "opening_video_seen": true,
+            "prologue_complete": true,
+            "sword_slayer_state": "available",
+            "tethys_state": "locked",
+            "tutorial_complete": false,
+            "zone_id": "shallows"
+          },
+          "save_point_tutorial_seen": false
+        }
+      }
+    ]
+  },
+  "errors": [],
+  "failure": null
+}

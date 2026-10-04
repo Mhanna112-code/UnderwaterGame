@@ -16,6 +16,7 @@ const SPAWN_CLEARANCE := 2.5
 var world: Node3D
 var findings: Array = []
 var frames := 0
+var _finishing := false
 
 func _initialize() -> void:
 	_check_graph()
@@ -64,10 +65,10 @@ func _check_clearings() -> void:
 				blocked.append("its rim")
 				break
 		if not blocked.is_empty():
-			findings.append("NO ROOM: '%s' has level geometry through %s" % [String(d.id), ", ".join(blocked)])
+			findings.append("NO ROOM: '%s' has level geometry through %s (%s)" % [String(d.id), ", ".join(blocked), _blocker_summary(space, at)])
 		if String(d.id) == String(Sites.start().id):
 			continue
-		if not space.intersect_ray(PhysicsRayQueryParameters3D.create(anchor, at, 1)).is_empty():
+		if not _first_environment_hit(space, anchor, at).is_empty():
 			findings.append("WALLED OFF: nothing can swim straight from the anchor to '%s'" % String(d.id))
 
 func _clear(space: PhysicsDirectSpaceState3D, at: Vector3) -> bool:
@@ -77,7 +78,40 @@ func _clear(space: PhysicsDirectSpaceState3D, at: Vector3) -> bool:
 	q.shape = sph
 	q.transform = Transform3D(Basis(), Vector3(at.x, 2.6, at.z))
 	q.collision_mask = 1
-	return space.intersect_shape(q, 1).is_empty()
+	for hit_value in space.intersect_shape(q, 8):
+		var collider := (hit_value as Dictionary).get("collider") as Node
+		# Ordinary guarded sites intentionally place an invisible grapple target
+		# at their centre. It is an interaction affordance, not level geometry
+		# that blocks a diver-sized clearing.
+		if collider == null or not collider.is_in_group("grapple_anchor"):
+			return false
+	return true
+
+func _first_environment_hit(space: PhysicsDirectSpaceState3D, from: Vector3, to: Vector3) -> Dictionary:
+	var excluded: Array[RID] = []
+	for node_value in get_nodes_in_group("grapple_anchor"):
+		var node := node_value as CollisionObject3D
+		if node != null:
+			excluded.append(node.get_rid())
+	var ray := PhysicsRayQueryParameters3D.create(from, to, 1)
+	ray.exclude = excluded
+	return space.intersect_ray(ray)
+
+func _blocker_summary(space: PhysicsDirectSpaceState3D, at: Vector3) -> String:
+	var q := PhysicsShapeQueryParameters3D.new()
+	var sph := SphereShape3D.new()
+	sph.radius = 1.6
+	q.shape = sph
+	q.transform = Transform3D(Basis(), Vector3(at.x, 2.6, at.z))
+	q.collision_mask = 1
+	var labels: Array[String] = []
+	for hit_value in space.intersect_shape(q, 8):
+		var hit := hit_value as Dictionary
+		var collider := hit.get("collider") as Node
+		if collider != null and collider.is_in_group("grapple_anchor"):
+			continue
+		labels.append("%s@%s" % [collider.name if collider != null else "unknown", collider.global_position if collider is Node3D else Vector3.ZERO])
+	return ", ".join(labels)
 
 # Does anybody start the game inside the scenery?
 #
@@ -123,6 +157,8 @@ func _check_spawns() -> void:
 # ---- build the real world and inspect it --------------------------------
 
 func _process(_dt: float) -> bool:
+	if _finishing:
+		return false
 	frames += 1
 	if frames == 1:
 		world.title_screen.new_game_chosen.emit(1)
@@ -136,8 +172,18 @@ func _process(_dt: float) -> bool:
 	return _report()
 
 func _report() -> bool:
+	_finishing = true
 	for f in findings:
 		print("FINDING  " + f)
 	print("SITES: clean" if findings.is_empty() else "SITES: %d finding(s)" % findings.size())
-	quit(0 if findings.is_empty() else 1)
+	world.queue_free()
+	call_deferred("_finish_report")
 	return true
+
+func _finish_report() -> void:
+	await process_frame
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
+	quit(0 if findings.is_empty() else 1)

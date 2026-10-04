@@ -88,6 +88,15 @@ func _ready() -> void:
 	var raw_height: float = maxf(box.size.y, 0.05)
 	model.scale *= TARGET_HEIGHT / raw_height
 	box = _world_aabb(model)
+	# Some delivered creatures are much longer than they are tall. Height-only
+	# normalization makes those rigs technically 1.6 m high but wide enough to
+	# leave the battle stage or cover the party. Subclasses can declare a real
+	# presentation cap without changing ordinary Angler sizing.
+	var horizontal_span := maxf(box.size.x, box.size.z)
+	var horizontal_cap := max_visual_horizontal_span()
+	if horizontal_cap < INF and horizontal_span > horizontal_cap:
+		model.scale *= horizontal_cap / horizontal_span
+		box = _world_aabb(model)
 	height = box.size.y
 	radius = maxf(0.3, minf(box.size.x, box.size.z) * 0.5)
 	model.position.y -= box.position.y
@@ -98,6 +107,9 @@ func _ready() -> void:
 			var lower := String(a).to_lower()
 			if "idle" in lower:
 				_idle_anim = a
+				var idle_animation := anim.get_animation(a)
+				if idle_animation != null:
+					idle_animation.loop_mode = Animation.LOOP_LINEAR
 			elif "swimming" in lower and "mid" in lower:
 				_swim_anim = a
 			elif "damaged" in lower:
@@ -124,6 +136,18 @@ func display_name() -> String:
 
 func primary_attack_clip() -> String:
 	return "attack)bite"
+
+# Height normalization is sufficient for most rigs. Long-bodied subclasses
+# can override this to keep their largest horizontal visual dimension within
+# a camera-friendly span.
+func max_visual_horizontal_span() -> float:
+	return INF
+
+# Battle framing must measure the imported mesh, not infer its footprint from
+# a generic collision radius. Returned in world space so the stage camera can
+# use every actual corner regardless of the actor's rotation or FBX hierarchy.
+func visual_bounds() -> AABB:
+	return _world_aabb(self)
 
 # This one stands its model's feet on its own origin (see _ready()'s
 # model.position.y line), which is the opposite of what diver.gd does. Both
@@ -195,7 +219,7 @@ func play(substr: String) -> void:
 			want = _death_anim
 	if want == "" and not anim.get_animation_list().is_empty():
 		want = anim.get_animation_list()[0]
-	if want != "" and anim.current_animation != want:
+	if want != "" and (anim.current_animation != want or not anim.is_playing()):
 		anim.play(want)
 
 # A fresh deep copy makes it safe for Battle/UI code to attach per-turn data

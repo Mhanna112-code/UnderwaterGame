@@ -1,0 +1,6 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+FINDING  OPEN-030 denied save selects the old target checkpoint
+FINDING  OPEN-030 denied save falsely announces success
+CHECKPOINT SLOT SWITCH: 2 finding(s)

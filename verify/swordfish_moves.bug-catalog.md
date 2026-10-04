@@ -90,9 +90,10 @@ The focused GREENs are:
 - `godot --headless --path . --script verify/swordfish_moves.gd`
 - `godot --headless --path . --script verify/enemy_moves.gd`
 
-The full route gate remains deliberately **red** on PR #73, so this packet does
-not claim merge readiness. On the integrated Swordfish slice it records `28.8%`
-casual and `61.2%` skilled route completion, below the existing `50%` / `80%`
-acceptance bands. The focused Swordfish implementation is green; the remaining
-route-balance repair belongs in the same PR only if its author/team expands this
-contribution beyond the requested Swordfish implementation.
+The PR #96 audit caught a later regression: the catalogue and actor remained,
+but Battle no longer exposed or called the two-target and sequential-hit
+helpers, so Arc Slash and Triple Combo both resolved as single-hit,
+single-target attacks. The production helpers and dispatch are restored. The
+focused Swordfish, Glassgoat combat, ordinary-roster, opening-pack, and seeded
+balance gates are green; the current route result is 91.2% casual / 100%
+skilled rather than the former PR #73 red.

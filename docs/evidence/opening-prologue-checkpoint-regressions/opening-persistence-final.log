@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|spawn_exploration
+restart rollback       inventory + rock restored atomically
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|spawn_exploration
+pending reward         source -> orb -> inventory exactly once
+PERSISTENCE: clean

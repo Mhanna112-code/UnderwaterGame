@@ -163,6 +163,11 @@ func _run() -> void:
 	var battle_boss := battle.enemies[0].actor as TethysBoss
 	var party_centre := _party_centre(battle.party)
 	var toward_party := (party_centre - battle_boss.global_position).normalized()
+	# face_toward intentionally keeps the boss level on the stage; compare in
+	# that same horizontal plane. Including the party's vertical offset caps a
+	# perfectly aligned horizontal actor at ~0.903 and falsely labels it backward.
+	toward_party.y = 0.0
+	toward_party = toward_party.normalized()
 	# Tethys: her imported face points along local +Z, unlike the humanoid
 	# actors. At encounter start her visible front must face the party.
 	_expect(battle_boss.basis.z.normalized().dot(toward_party) > 0.95,
@@ -251,6 +256,8 @@ func _best_party_facing_dot(actor: Node3D, entries: Array) -> float:
 	var best := -1.0
 	for entry in entries:
 		var toward := ((entry.actor as Node3D).global_position - actor.global_position).normalized()
+		toward.y = 0.0
+		toward = toward.normalized()
 		best = maxf(best, actor.basis.z.normalized().dot(toward))
 	return best
 

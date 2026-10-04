@@ -1,0 +1,9 @@
+Browser launched
+Export page loaded
+Requested ANGLE backend: metal
+Observed WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+Error: missing octopus_introduction; observed opening_video,opening_handoff,spawn_exploration,angler

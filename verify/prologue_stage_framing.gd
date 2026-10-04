@@ -1,0 +1,83 @@
+# OPEN-012 / OPEN-AUDIT-008: valid imported bounds can still make the boss
+# unreadably small in the real short battle stage. Run at 720x480 and wide.
+extends SceneTree
+
+var findings: Array[String] = []
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+func _run() -> void:
+	if DisplayServer.get_name() == "headless":
+		root.size = Vector2i(1280, 720)
+	# Focused production-stage fixture. Physical entry is verified separately
+	# by the full journey; it should not make a geometry gate focus-dependent.
+	var sources: Array[Diver] = []
+	for model in ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]:
+		var diver := Diver.new()
+		diver.model_name = model
+		root.add_child(diver)
+		sources.append(diver)
+	var fight := Battle.new()
+	fight.party_source = sources
+	fight.prologue_angler_encounter = true
+	root.add_child(fight)
+	await process_frame
+	await process_frame
+	await fight.reveal_prologue_octopus()
+	await create_timer(0.1).timeout
+	var actor := fight.enemies[0].actor as PrologueOctopus
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for vertex in actor.current_pose_points():
+		var point := fight._stage_cam.unproject_position(vertex)
+		low = low.min(point)
+		high = high.max(point)
+	var size := Vector2(fight._stage_vp.size)
+	print("Observed viewport: ", root.get_visible_rect().size, " stage: ", size)
+	var fraction := (high.y - low.y) / size.y
+	print("Cordys projected stage-height fraction: %.3f" % fraction)
+	if size.y < 500.0 and fraction < 0.45:
+		findings.append("OPEN-012 narrow-stage boss reads miniature (below 45% stage height)")
+	# A tall view is width-limited; filling 45% of its height would crop the
+	# action horizontally. Retain a concrete readable pixel floor there.
+	if high.y - low.y < 90.0:
+		findings.append("OPEN-012 boss reads miniature (below 90 visible pixels)")
+	if low.x < 0.0 or high.x > size.x or low.y < 0.0 or high.y > size.y:
+		findings.append("OPEN-012 boss framing clips the idle silhouette")
+	# Idle bounds alone cannot prove the authored finishing pose fits. Sample
+	# the actual moving skin against each fixed production beat camera. Repeat
+	# for all target facings, not only the initial party-centre orientation.
+	for target in fight.party:
+		actor.face_toward((target.actor as Node3D).global_position)
+		_check_attack_views(actor, fight, size)
+	fight.queue_free()
+	for diver in sources:
+		diver.queue_free()
+	await process_frame
+	paused = false
+	root.get_node("GameAudio").release_streams_for_shutdown()
+	for finding in findings:
+		print("FINDING  " + finding)
+	quit(0 if findings.is_empty() else 1)
+
+func _check_attack_views(actor: PrologueOctopus, fight: Battle, size: Vector2) -> void:
+	for key in ["idle", "reveal", "hurt", "octo_stab", "head_bash", "electric_shooting"]:
+		actor.set_framing_clip(key)
+		fight._frame_stage_camera()
+		var length := actor.play(key)
+		for sample in range(21):
+			var fraction_value := float(sample) / 20.0
+			actor.anim.seek(length * fraction_value, true)
+			var pose_low := Vector2(INF, INF)
+			var pose_high := Vector2(-INF, -INF)
+			for vertex in actor.current_pose_points():
+				if fight._stage_cam.is_position_behind(vertex):
+					findings.append("OPEN-012 %s passes behind the camera" % key)
+					break
+				var point := fight._stage_cam.unproject_position(vertex)
+				pose_low = pose_low.min(point)
+				pose_high = pose_high.max(point)
+			print("Cordys pose %s %.1f screen bounds %s %s" % [key, fraction_value, pose_low, pose_high])
+			if pose_low.x < 0.0 or pose_high.x > size.x or pose_low.y < 0.0 or pose_high.y > size.y:
+				findings.append("OPEN-012 %s %.1f clips the moving silhouette" % [key, fraction_value])

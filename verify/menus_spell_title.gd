@@ -1,4 +1,4 @@
-# Slice 3 regression contract for raw #72 menu, spell, and title extraction.
+# Current menu, tutorial replay, spell-review, and title-route contract.
 # Usage: godot --headless --path . --script verify/menus_spell_title.gd
 extends SceneTree
 
@@ -13,88 +13,41 @@ func _run() -> void:
 	root.add_child(world)
 	await process_frame
 	await process_frame
-
-	# This represents the normal post-tutorial campaign state: world controls
-	# are live and the onboarding was already completed, so a voluntary replay
-	# must not hand the player another modal or turn practice into a reset.
 	world.title_screen.close()
 	world.get_node("HUD").visible = true
 	paused = false
 	world._first_encounter_done = true
-	world._ability_onboarding_shown = true
+
 	await _test_combat_help_surface(world)
 	await _test_inventory_item_surface(world)
-	_seed_campaign_state(world)
-	var before := _campaign_state(world)
-
-	if not world.has_method("_replay_tutorial_battle"):
-		failures.append("MENU-REPLAY-1: Combat Help cannot replay the tutorial without a campaign-mutating workaround")
-		_finish(world)
-		return
-
-	world.inventory_menu.open()
-	world.call("_replay_tutorial_battle")
-	await process_frame
-	_expect(world.battling and world.battle != null and world.battle.tutorial_encounter,
-		"MENU-REPLAY-1: replay did not enter the actual tutorial battle")
-	_expect(not world.inventory_menu.visible,
-		"MENU-REPLAY-1: practice battle left the pause menu on screen")
-
-	# Simulate the effects that a genuine tutorial victory has on party state:
-	# battle XP, refill/recovery, temporary effects, and evasion. The World
-	# completion handler must restore the campaign snapshot afterward.
-	for diver_value in world.divers:
-		var stats := (diver_value as Diver).stats
-		stats.hp = stats.hp_max
-		stats.oxygen = stats.oxygen_max
-		stats.level += 1
-		stats.xp += 17
-		stats.spell_points += 1
-		stats.statuses.clear()
-		stats.temporary_modifiers = {"accuracy": 0, "evasion": 0}
-		stats.evasion_current = stats.evasion
-	world._on_battle_finished("won")
-	await process_frame
-
-	_expect(_campaign_state(world) == before,
-		"MENU-REPLAY-1: finishing practice changed real HP/O2/XP/level/status/evasion state")
-	_expect(not world.battling and world.battle == null,
-		"MENU-REPLAY-1: practice did not return cleanly to the world")
+	await _test_tutorial_replay(world)
 	await _test_spell_review_route(world)
 	await _test_title_review_route_composition(world)
-	_finish(world)
-
-func _seed_campaign_state(world: World) -> void:
-	for index in range(world.divers.size()):
-		var stats := (world.divers[index] as Diver).stats
-		stats.hp = maxi(1, stats.hp_max - (index + 1))
-		stats.oxygen = maxf(1.0, stats.oxygen_max - float((index + 1) * 7))
-		stats.xp = index + 3
-		stats.spell_points = index
-		stats.evasion_current = maxi(0, stats.evasion - index)
-		stats.statuses = {"bleed": {"level": index + 1, "turns": 0}}
-		stats.temporary_modifiers = {"accuracy": -index, "evasion": -index}
+	await _finish(world)
 
 func _test_combat_help_surface(world: World) -> void:
 	world.inventory_menu.open()
 	world.inventory_menu.call("_switch_to", "help")
 	await process_frame
 	var scroll := world.inventory_menu.find_child("ContentScroll", true, false) as ScrollContainer
-	_expect(scroll != null and scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and scroll.custom_minimum_size.y >= 300.0,
-		"MENU-HELP-2: Combat Help has no vertical reading surface for stats, effects, and statuses")
-	_expect(_button_named(world.inventory_menu, "Replay Tutorial Fight") != null,
-		"MENU-HELP-2: Combat Help does not expose the safe tutorial replay action")
-	_expect(_label_named(world.inventory_menu, "Stats") != null and _label_named(world.inventory_menu, "Effects") != null and _label_named(world.inventory_menu, "Status Conditions") != null,
-		"MENU-HELP-2: Combat Help does not separate stats, effects, and statuses")
-	_expect(world.inventory_menu.get_parent() == world.title_layer,
-		"MENU-OVERLAY-8: Inventory/Combat Help shares the lower HUD canvas instead of the modal layer")
-	_expect(_fills_viewport(world.inventory_menu, world),
-		"MENU-OVERLAY-8: Inventory/Combat Help backdrop does not cover the viewport")
+	_expect(scroll != null and scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED,
+		"MENU-HELP-2: Combat Help has no scrollable reading surface")
+	for action in [
+		"Replay Tutorial Fight",
+		"Replay Special Encounter Tutorial",
+		"Reopen Tutorial Guide",
+	]:
+		_expect(_button_named(world.inventory_menu, action) != null,
+			"MENU-HELP-2: Combat Help is missing action: %s" % action)
+	for heading in ["Stats", "Effects", "Status Conditions"]:
+		_expect(_label_named(world.inventory_menu, heading) != null,
+			"MENU-HELP-2: Combat Help is missing reference section: %s" % heading)
+	_expect(world.inventory_menu.get_parent() == world.get_node("HUD"),
+		"MENU-OVERLAY-8: Inventory moved out of the established HUD menu layer")
+	_expect(world.inventory_menu.size.x >= world.get_viewport().get_visible_rect().size.x * 0.98,
+		"MENU-OVERLAY-8: Inventory backdrop does not cover the viewport width")
 	world.inventory_menu.close()
 
-# The menu is the public boundary for consumables: a player should see the
-# usable item, choose it once, receive precisely its documented effect, and
-# never lose a second copy through a refresh or stale button signal.
 func _test_inventory_item_surface(world: World) -> void:
 	var diver := world.divers[world.active] as Diver
 	diver.stats.hp = maxi(1, diver.stats.hp_max - 13)
@@ -102,25 +55,74 @@ func _test_inventory_item_surface(world: World) -> void:
 	world.inventory = {"potion": 1}
 	world.inventory_menu.open()
 	await process_frame
-	var potion_button := _button_with_prefix(world.inventory_menu, "Use Potion")
+	var potion_button := _button_named(world.inventory_menu, "Potion")
 	_expect(potion_button != null and not potion_button.disabled,
-		"MENU-ITEM-6: a documented usable potion is not selectable from Inventory")
+		"MENU-ITEM-7: a usable Potion is not selectable from Inventory")
 	if potion_button != null:
 		potion_button.pressed.emit()
 		await process_frame
 	_expect(diver.stats.hp == mini(diver.stats.hp_max, before_hp + 10),
-		"MENU-ITEM-6: Inventory did not apply exactly Potion's documented 10 HP effect")
+		"MENU-ITEM-7: Potion did not apply exactly its documented 10 HP")
 	_expect(not world.inventory.has("potion"),
-		"MENU-ITEM-6: one Inventory click did not consume exactly one item")
+		"MENU-ITEM-7: one Potion click did not consume exactly one copy")
 	_expect(world.inventory_menu.visible,
-		"MENU-ITEM-6: applying an item unexpectedly closes or softlocks Inventory")
+		"MENU-ITEM-7: applying an item unexpectedly closed Inventory")
 	world.inventory_menu.close()
 
+func _test_tutorial_replay(world: World) -> void:
+	var growth_before: Array[Dictionary] = []
+	for index in range(world.divers.size()):
+		var stats := (world.divers[index] as Diver).stats
+		stats.hp = maxi(1, stats.hp_max - index - 2)
+		stats.oxygen = maxf(1.0, stats.oxygen_max - float((index + 1) * 7))
+		growth_before.append({
+			"level": stats.level,
+			"xp": stats.xp,
+			"spell_points": stats.spell_points,
+			"known_spells": (world.divers[index] as Diver).known_spells.duplicate(),
+			"equipped_spells": (world.divers[index] as Diver).equipped_spells.duplicate(),
+		})
+	var inventory_before := world.inventory.duplicate(true)
+	var keys_before := world.key_items.duplicate()
+
+	world.inventory_menu.open()
+	world._replay_tutorial_battle()
+	await process_frame
+	_expect(world.battling and world.battle != null and world.battle.tutorial_encounter,
+		"MENU-REPLAY-1: replay did not enter the actual tutorial battle")
+	_expect(not world.inventory_menu.visible,
+		"MENU-REPLAY-1: practice battle left Inventory on screen")
+	for diver_value in world.divers:
+		var stats := (diver_value as Diver).stats
+		_expect(stats.hp == stats.hp_max and is_equal_approx(stats.oxygen, stats.oxygen_max),
+			"MENU-REPLAY-1: tutorial replay did not begin from a fair restored party")
+
+	# Exercise the real World completion boundary. Battle's tutorial branch is
+	# responsible for granting no XP; World returns a fair party to free roam
+	# without granting items or keys.
+	world._on_battle_finished("won")
+	await process_frame
+	for index in range(world.divers.size()):
+		var stats := (world.divers[index] as Diver).stats
+		var before := growth_before[index]
+		_expect(stats.hp == stats.hp_max and is_equal_approx(stats.oxygen, stats.oxygen_max),
+			"MENU-REPLAY-1: practice did not return a fully restored party")
+		_expect(stats.level == int(before.level) and stats.xp == int(before.xp)
+			and stats.spell_points == int(before.spell_points)
+			and (world.divers[index] as Diver).known_spells == before.known_spells
+			and (world.divers[index] as Diver).equipped_spells == before.equipped_spells,
+			"MENU-REPLAY-1: practice changed real growth or spells")
+	_expect(world.inventory == inventory_before and world.key_items == keys_before,
+		"MENU-REPLAY-1: practice granted or consumed campaign rewards")
+	_expect(not world.battling and world.battle == null,
+		"MENU-REPLAY-1: practice did not return cleanly to the world")
+	await process_frame
+	var popup := root.get_node_or_null("CharacterAbilityPopup")
+	if popup != null and popup.has_method("close"):
+		popup.call("close")
+	paused = false
+
 func _test_spell_review_route(world: World) -> void:
-	if not world.has_method("_on_title_spell_playtest") or not world.title_screen.has_method("enable_spell_playtest"):
-		failures.append("MENU-SPELL-3: title has no direct spell review route")
-		return
-	# No review flag means no developer action leaks into the ordinary title.
 	world.title_screen.open()
 	await process_frame
 	_expect(_button_named(world.title_screen, "Play Spell Test") == null,
@@ -134,58 +136,50 @@ func _test_spell_review_route(world: World) -> void:
 		return
 	spell_button.pressed.emit()
 	await process_frame
-	_expect(world._current_slot < 0 and not world.title_screen.visible and not world.get_node("HUD").visible and not paused,
-		"MENU-SPELL-3: spell review did not hide world HUD behind its save-free modal UI")
-	_expect(world.save_point_menu.visible,
-		"MENU-SPELL-3: spell review does not open the actual spell interface")
-	_expect(world.save_point_menu.get_parent() == world.title_layer,
-		"MENU-OVERLAY-8: Save/Update/Learn Spells shares the lower HUD canvas instead of the modal layer")
-	_expect(_fills_viewport(world.save_point_menu, world) and _fills_viewport(world.save_point_menu.learn_ui, world),
-		"MENU-OVERLAY-8: Save/Update/Learn spell backdrops do not cover the viewport")
+	_expect(world._current_slot < 0 and not world.title_screen.visible
+		and world.get_node("HUD").visible and not paused,
+		"MENU-SPELL-3: spell review did not enter save-free free roam")
 	for item_id in Items.ITEMS:
 		if Items.is_key_item(String(item_id)):
 			_expect(world.key_items.has(String(item_id)),
 				"MENU-SPELL-3: spell review omitted key item %s" % item_id)
 	for diver_value in world.divers:
 		var diver := diver_value as Diver
-		_expect(diver.stats.spell_points >= 99,
-			"MENU-SPELL-3: %s lacks review spell points" % diver.model_name)
-		var learned_any := true
-		while learned_any:
-			learned_any = false
-			for branch in SpellTree.branches(diver.model_name):
-				for spell_id in SpellTree.tree_for(diver.model_name)[branch]:
-					if SpellTree.learn(diver, branch, String(spell_id), world.key_items):
-						learned_any = true
+		var expected_count := 0
 		for branch in SpellTree.branches(diver.model_name):
 			for spell_id in SpellTree.tree_for(diver.model_name)[branch]:
+				expected_count += 1
 				_expect(diver.known_spells.has(String(spell_id)),
-					"MENU-SPELL-3: %s is not learnable in review mode for %s" % [spell_id, diver.model_name])
+					"MENU-SPELL-3: %s is not learned for %s" % [spell_id, diver.model_name])
+		_expect(diver.known_spells.size() == expected_count,
+			"MENU-SPELL-3: %s spell review has an incomplete or duplicate learned set" % diver.model_name)
+		_expect(diver.stats.spell_points < 99,
+			"MENU-SPELL-3: spell review did not pay real spell costs")
 	var guard_break := SpellTree.spell_def("Prototype_V(1922)", "debuff", "guard_break")
-	_expect(int(guard_break.get("acc_mod", 999)) == 0,
-		"MENU-SPELL-3: menu extraction changed Guard Break accuracy instead of preserving combat reconciliation for Slice 5")
+	_expect(int(guard_break.get("acc_mod", 999)) == 4,
+		"MENU-SPELL-3: Guard Break no longer matches the approved current move table")
+
+	world.inventory_menu.open()
+	world.inventory_menu.call("_switch_to", "spells_root")
+	await process_frame
+	_expect(_button_containing(world.inventory_menu, "Mending Current") != null,
+		"MENU-SPELL-3: learned inventory spells are absent from Party Spells")
+	_expect(_label_named(world.inventory_menu, "No party spells known yet.") == null,
+		"MENU-SPELL-3: Party Spells incorrectly reports an empty learned roster")
+	world.inventory_menu.close()
 
 func _test_title_review_route_composition(world: World) -> void:
-	world.save_point_menu.close()
-	_expect(world.get_node("HUD").visible,
-		"MENU-OVERLAY-8: closing the full-screen spell menu did not restore normal HUD visibility")
 	world.title_screen.open()
-	# Guardian is intentionally enabled while the title is already live. This
-	# catches a stale screen even when later feature flags happen to rebuild it.
-	world.title_screen.enable_guardian_playtest("Play Guardian Test")
-	await process_frame
-	_expect(_button_named(world.title_screen, "Play Guardian Test") != null,
-		"MENU-TITLE-4: a live guardian-review flag did not refresh the title")
 	world.title_screen.enable_boss_playtest()
 	world.title_screen.enable_special_playtest()
-	world.title_screen.enable_onboarding_playtest()
-	# Spell was enabled by the real signal route above. Every action must still
-	# render together after a live title refresh, rather than one flag replacing
-	# a previous review surface as raw #72 did.
+	world.title_screen.enable_spell_playtest()
+	world.title_screen.enable_skip_tutorial()
 	await process_frame
 	for label in [
-		"Play Tethys Boss Test", "Play Guardian Test", "Play Special Encounter Test",
-		"Review World Controls", "Play Spell Test",
+		"Play Tethys Boss Test",
+		"Play Special Encounter Test",
+		"Play Spell Test",
+		"New Game (Skip Tutorial)",
 	]:
 		_expect(_button_named(world.title_screen, label) != null,
 			"MENU-TITLE-4: review route disappeared after composition: %s" % label)
@@ -200,18 +194,14 @@ func _button_named(node: Node, text_value: String) -> Button:
 			return nested
 	return null
 
-func _button_with_prefix(node: Node, prefix: String) -> Button:
+func _button_containing(node: Node, text_value: String) -> Button:
 	for child in node.get_children():
-		if child is Button and (child as Button).text.begins_with(prefix):
+		if child is Button and (child as Button).text.contains(text_value):
 			return child as Button
-		var nested := _button_with_prefix(child, prefix)
+		var nested := _button_containing(child, text_value)
 		if nested != null:
 			return nested
 	return null
-
-func _fills_viewport(surface: Control, world: World) -> bool:
-	var viewport := world.get_viewport().get_visible_rect().size
-	return surface.size.x >= viewport.x * 0.98 and surface.size.y >= viewport.y * 0.98
 
 func _label_named(node: Node, text_value: String) -> Label:
 	for child in node.get_children():
@@ -222,25 +212,16 @@ func _label_named(node: Node, text_value: String) -> Label:
 			return nested
 	return null
 
-func _campaign_state(world: World) -> Array:
-	var snapshot: Array = []
-	for diver_value in world.divers:
-		var stats := (diver_value as Diver).stats
-		snapshot.append({
-			"hp": stats.hp, "oxygen": stats.oxygen, "level": stats.level,
-			"xp": stats.xp, "spell_points": stats.spell_points,
-			"evasion_current": stats.evasion_current,
-			"statuses": stats.statuses.duplicate(true),
-			"temporary_modifiers": stats.temporary_modifiers.duplicate(true),
-		})
-	return snapshot
-
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
 
 func _finish(world: World) -> void:
 	world.queue_free()
+	await process_frame
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
 	for failure in failures:
 		push_error(failure)
 	print("MENUS / SPELLS / TITLE: %s" % ("clean" if failures.is_empty() else "%d failure(s)" % failures.size()))

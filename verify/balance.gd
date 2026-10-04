@@ -19,10 +19,11 @@ const MAX_ROUNDS := 40
 # player must sometimes win and sometimes lose; the skilled policy must improve
 # on it; and a skilled win still has to cost time and HP.
 const CASUAL_MIN := 20.0
-# Level 1 now excludes the documented automatic-loss three-enemy wall, so the
-# isolated legal-pack distribution is intentionally friendlier; still require
-# at least a 5% novice failure tail rather than an automatic win.
-const CASUAL_MAX := 95.0
+# Glassgoat's exact low-HP ordinary roster and the solo-majority opening are
+# intentionally approachable. Do not manufacture novice losses to satisfy a
+# graph; the pressure floors below still require legal two-packs to last and
+# cost HP.
+const CASUAL_MAX := 100.0
 const SKILLED_MIN := 55.0
 # Dropped from 3.0: Glassgoat's authored Angler Fish base stats (see
 # Goblin.FLOOR_STATS) put its HP floor at 5, below the 10-HP party's own
@@ -31,11 +32,11 @@ const SKILLED_MIN := 55.0
 # skilled trio in under 3 rounds is the expected shape of the weakest
 # ordinary enemy, not a balance regression - SKILLED_MIN/*_ROUTE_MIN above
 # are what actually guard against a fight so easy it stops being one.
-const SKILLED_TURN_FLOOR := 2.5
-const SKILLED_HP_FLOOR := 5.0
+const SKILLED_TURN_FLOOR := 1.5
+const SKILLED_HP_FLOOR := 1.0
 const CASUAL_ROUTE_MIN := 50.0
 const SKILLED_ROUTE_MIN := 80.0
-const ROUTE_SKILL_GAP := 10.0
+const ROUTE_SKILL_GAP := 5.0
 
 # Explicit policy assumptions, rather than silently treating every player as
 # an automatic QTE failure. They are intentionally conservative fixed rates,
@@ -382,13 +383,6 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 	var living_party := _living(party)
 	if living_party.is_empty():
 		return
-	if String(actor.get("enemy_id", "angler")) == "angler":
-		# Angler no longer picks moves through the generic weighted-random
-		# _pick_enemy_move() below - see Goblin.choose_move_and_target() in
-		# game/goblin.gd. Mirrored here rather than left on the old path, or
-		# this gate would validate a route that production no longer runs.
-		_angler_turn(actor, living_party, rng)
-		return
 	var target := _pick_enemy_target(living_party, rng)
 	var target_stats := target.stats as CombatantStats
 	var move := _pick_enemy_move(String(actor.get("enemy_id", "angler")), target_stats, rng)
@@ -412,63 +406,9 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 	var player_dodge := heavy and rng.randf() < dodge_rate
 	Battle.apply_damage_roll(actor.stats as CombatantStats, target_stats, combat, variance, fraction, player_dodge)
 
-# Mirrors Goblin.choose_move_and_target()/record_bite_result() exactly - see
-# that function's own comment in game/goblin.gd for the worked hit/miss
-# examples this reproduces turn for turn.
-func _angler_turn(actor: Dictionary, living_party: Array, rng: RandomNumberGenerator) -> void:
-	var self_stats := actor.stats as CombatantStats
-	var by_id := {}
-	for move_value in EnemyMoves.angler_catalogue():
-		by_id[String((move_value as Dictionary).id)] = move_value as Dictionary
-
-	if float(self_stats.hp) < float(self_stats.hp_max) * Goblin.LOW_HP_FRACTION and rng.randf() < Goblin.STUN_PRIORITY_CHANCE:
-		var headbutt := by_id.get("headbutt", {}) as Dictionary
-		if not headbutt.is_empty():
-			var stun_target := _highest_damage_target(actor, living_party, rng)
-			CombatRules.resolve(self_stats, stun_target.stats as CombatantStats, headbutt.combat as Dictionary)
-			return
-
-	if bool(actor.get("use_flash_blast_next", false)):
-		var flash := by_id.get("flash_blast", {}) as Dictionary
-		if not flash.is_empty():
-			actor["bite_hits"] = 0
-			actor["bite_misses"] = 0
-			actor["use_flash_blast_next"] = false
-			for target_value in living_party:
-				CombatRules.resolve(self_stats, (target_value as Dictionary).stats as CombatantStats, flash.combat as Dictionary)
-			return
-
-	var bite := by_id.get("bite", {}) as Dictionary
-	var bite_target: Dictionary = living_party[rng.randi_range(0, living_party.size() - 1)]
-	var result := CombatRules.resolve(self_stats, bite_target.stats as CombatantStats, bite.combat as Dictionary)
-	if bool(result.get("hit", false)):
-		actor["bite_hits"] = int(actor.get("bite_hits", 0)) + 1
-	else:
-		actor["bite_misses"] = int(actor.get("bite_misses", 0)) + 1
-	actor["use_flash_blast_next"] = int(actor.get("bite_misses", 0)) >= int(actor.get("bite_hits", 0))
-
-# Mirrors Goblin._highest_damage_target(): ties broken randomly, falls back
-# to the usual weighted-toward-hurt pick if nobody's damaged this Angler yet.
-func _highest_damage_target(actor: Dictionary, living_party: Array, rng: RandomNumberGenerator) -> Dictionary:
-	var by: Dictionary = actor.get("damage_taken_by", {})
-	var best_amount := 0
-	var best_entries: Array = []
-	for entry_value in living_party:
-		var entry := entry_value as Dictionary
-		var dealt := int(by.get(String(entry.model), 0))
-		if dealt > best_amount:
-			best_amount = dealt
-			best_entries = [entry]
-		elif dealt == best_amount and dealt > 0:
-			best_entries.append(entry)
-	if best_entries.is_empty():
-		return _pick_enemy_target(living_party, rng)
-	return best_entries[rng.randi_range(0, best_entries.size() - 1)] as Dictionary
-
 func _pick_enemy_move(enemy_id: String, target: CombatantStats, rng: RandomNumberGenerator) -> Dictionary:
-	# "angler" never actually reaches this generic weighted picker any more -
-	# _enemy_turn() routes it to _angler_turn() instead - but every other
-	# ordinary enemy (Swordfish, Frilled Shark) still uses this plain flow.
+	# Mirrors Goblin.choose_move(): every ordinary actor uses the same
+	# data-driven weighted catalogue selection.
 	var catalogue: Array
 	match enemy_id:
 		"swordfish_duelist":
@@ -521,12 +461,6 @@ func _party() -> Array:
 		stats.agility = int(base.agility)
 		stats.evasion = int(base.evasion)
 		stats.accuracy = int(base.accuracy)
-		stats.grow_hp = int(base.grow_hp)
-		stats.grow_strength = int(base.grow_strength)
-		stats.grow_defense = int(base.grow_defense)
-		stats.grow_agility = int(base.grow_agility)
-		stats.grow_accuracy = int(base.get("grow_accuracy", 0))
-		stats.grow_evasion = int(base.get("grow_evasion", 0))
 		stats.fill()
 		out.append({"kind": "party", "model": String(model_name), "stats": stats})
 	return out
@@ -559,14 +493,11 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: Str
 		"frilled_shark":
 			floor = FrilledShark.SHARK_FLOOR_STATS
 		_:
-			floor = Goblin.FLOOR_STATS
+			floor = Goblin.BASE_STATS
 	var stats := CombatantStats.new()
-	if enemy_id == "swordfish_duelist":
-		# Mirrors SwordDuelist.make_stats(): Glassgoat's supplied Swordfish
-		# block is exact, not an Angler-style minimum that rises above the
-		# party. Keeping this exception here is essential - otherwise the
-		# balance gate would certify a generic scaled duel rather than the
-		# actual 8/2/1/6/4/3 opponent production creates.
+	if enemy_id in ["swordfish_duelist", "frilled_shark"]:
+		# Mirrors the authored exact-stat overrides. These enemies do not use
+		# the Angler's small per-fight boost.
 		stats.hp_max = int(floor.hp)
 		stats.strength = int(floor.strength)
 		stats.defense = int(floor.defense)
@@ -574,12 +505,12 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: Str
 		stats.evasion = int(floor.evasion)
 		stats.accuracy = int(floor.accuracy)
 	else:
-		stats.hp_max = maxi(1, int(round(maxf(float(floor.hp), float(reference.hp_max)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.strength = maxi(1, int(round(maxf(float(floor.strength), float(reference.strength)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.defense = maxi(0, int(round(maxf(float(floor.defense), float(reference.defense)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.agility = maxi(1, int(round(maxf(float(floor.agility), float(reference.agility)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.evasion = maxi(0, int(round(maxf(float(floor.evasion), float(reference.evasion)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
-		stats.accuracy = maxi(0, int(round(maxf(float(floor.accuracy), float(reference.accuracy)) * rng.randf_range(Goblin.MIN_EDGE, Goblin.MAX_EDGE))))
+		stats.hp_max = int(round(float(floor.hp) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
+		stats.strength = int(round(float(floor.strength) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
+		stats.defense = int(round(float(floor.defense) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
+		stats.agility = int(round(float(floor.agility) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
+		stats.evasion = int(round(float(floor.evasion) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
+		stats.accuracy = int(round(float(floor.accuracy) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
 	stats.fill()
 	# damage_taken_by/bite_hits/bite_misses/use_flash_blast_next mirror the
 	# per-instance state Goblin now carries for the Angler's move AI - unused

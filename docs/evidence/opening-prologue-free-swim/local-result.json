@@ -1,0 +1,31 @@
+{
+  "target": "/tmp/underwater-opening-free-swim.R7mT0W/docs",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "elapsedSeconds": 90.789,
+  "phases": [
+    "opening_video",
+    "spawn_exploration",
+    "angler",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery",
+    "complete"
+  ],
+  "timestamps": {
+    "opening_video": 1791086020373,
+    "spawn_exploration": 1791086054886,
+    "angler": 1791086060184,
+    "octopus_introduction": 1791086065307,
+    "octopus_reveal": 1791086091266,
+    "octopus_response": 1791086093255,
+    "scripted_defeat": 1791086097970,
+    "octopus_aftermath": 1791086102452,
+    "recovery": 1791086109057,
+    "complete": 1791086109511
+  },
+  "errors": [],
+  "failure": null
+}

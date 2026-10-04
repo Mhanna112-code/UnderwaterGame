@@ -1,0 +1,31 @@
+{
+  "target": "/tmp/underwater-opening-checkpoints.rhlwq5/.vercel/output/static",
+  "browserEngine": "chromium",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "freeSwimKeydown": 1791092730416,
+  "freeSwimMs": 5232,
+  "phases": [
+    "opening_video",
+    "spawn_exploration",
+    "angler",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery"
+  ],
+  "timestamps": {
+    "opening_video": 1791092695361,
+    "spawn_exploration": 1791092729645,
+    "angler": 1791092734877,
+    "octopus_introduction": 1791092740596,
+    "octopus_reveal": 1791092766296,
+    "octopus_response": 1791092768110,
+    "scripted_defeat": 1791092771861,
+    "octopus_aftermath": 1791092776263,
+    "recovery": 1791092782872
+  },
+  "errors": [],
+  "failure": "Error: OPEN-033 durable browser write failed but recovery offered successful Continue"
+}

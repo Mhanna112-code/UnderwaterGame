@@ -23,15 +23,18 @@ signal boss_playtest_chosen
 signal special_playtest_chosen
 signal spell_playtest_chosen
 signal skip_tutorial_chosen
+signal blocker_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
+var _load_error := ""
 
 var _list: VBoxContainer
 var _boss_playtest_available := false
 var _special_playtest_available := false
 var _spell_playtest_available := false
 var _skip_tutorial_available := false
+var _blocker_playtest_available := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -109,6 +112,7 @@ func _ready() -> void:
 	col.add_child(_list)
 
 func open() -> void:
+	_load_error = ""
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mode = "main"
@@ -116,6 +120,13 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+
+func show_load_error(message: String) -> void:
+	_load_error = message
+	visible = true
+	_mode = "main"
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_refresh()
 
 # Kept out of the ordinary title flow. World enables this only for the
 # dedicated ?boss=1 review URL (or the matching command-line test flag), so
@@ -152,9 +163,23 @@ func enable_skip_tutorial() -> void:
 	if visible and _mode == "main":
 		_refresh()
 
+# Query-only Bomb Bot review entry. This is supplementary verification
+# plumbing; the production feature remains reachable through normal travel.
+func enable_blocker_playtest() -> void:
+	_blocker_playtest_available = true
+	if visible and _mode == "main":
+		_refresh()
+
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
+	if not _load_error.is_empty():
+		var error_label := Label.new()
+		error_label.text = _load_error
+		error_label.custom_minimum_size.x = 360
+		error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		error_label.add_theme_color_override("font_color", Color("ffce93"))
+		_list.add_child(error_label)
 	if _mode == "main":
 		_refresh_main()
 	else:
@@ -167,8 +192,20 @@ func _refresh_main() -> void:
 	new_btn.add_theme_font_size_override("font_size", 21)
 	new_btn.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
 	new_btn.pressed.connect(_on_new_game_pressed)
+	_wire_menu_button(new_btn)
 	_list.add_child(new_btn)
 	new_btn.grab_focus()
+
+	if _blocker_playtest_available:
+		var blocker_btn := Button.new()
+		blocker_btn.text = "Play Bomb Bot Test"
+		blocker_btn.tooltip_text = "Run the authored laboratory-blocker battle"
+		blocker_btn.custom_minimum_size = Vector2(360, 46)
+		blocker_btn.add_theme_font_size_override("font_size", 17)
+		blocker_btn.add_theme_color_override("font_color", Color(1.0, 0.68, 0.42))
+		blocker_btn.pressed.connect(blocker_playtest_chosen.emit)
+		_wire_menu_button(blocker_btn, &"play_ui_start_game")
+		_list.add_child(blocker_btn)
 
 	if _boss_playtest_available:
 		var boss_btn := Button.new()
@@ -178,6 +215,7 @@ func _refresh_main() -> void:
 		boss_btn.add_theme_font_size_override("font_size", 17)
 		boss_btn.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
 		boss_btn.pressed.connect(boss_playtest_chosen.emit)
+		_wire_menu_button(boss_btn, &"play_ui_start_game")
 		_list.add_child(boss_btn)
 
 	if _special_playtest_available:
@@ -188,6 +226,7 @@ func _refresh_main() -> void:
 		special_btn.add_theme_font_size_override("font_size", 17)
 		special_btn.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
 		special_btn.pressed.connect(special_playtest_chosen.emit)
+		_wire_menu_button(special_btn, &"play_ui_start_game")
 		_list.add_child(special_btn)
 
 	if _spell_playtest_available:
@@ -198,6 +237,7 @@ func _refresh_main() -> void:
 		spell_btn.add_theme_font_size_override("font_size", 17)
 		spell_btn.add_theme_color_override("font_color", Color(0.75, 1.0, 0.75))
 		spell_btn.pressed.connect(spell_playtest_chosen.emit)
+		_wire_menu_button(spell_btn, &"play_ui_start_game")
 		_list.add_child(spell_btn)
 
 	if _skip_tutorial_available:
@@ -208,6 +248,7 @@ func _refresh_main() -> void:
 		skip_btn.add_theme_font_size_override("font_size", 17)
 		skip_btn.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6))
 		skip_btn.pressed.connect(skip_tutorial_chosen.emit)
+		_wire_menu_button(skip_btn, &"play_ui_start_game")
 		_list.add_child(skip_btn)
 
 	# A first-time player has exactly one meaningful action. Do not present a
@@ -221,6 +262,7 @@ func _refresh_main() -> void:
 	load_btn.add_theme_font_size_override("font_size", 16)
 	load_btn.modulate = Color(0.78, 0.82, 0.85)
 	load_btn.pressed.connect(_open_slots.bind("load"))
+	_wire_menu_button(load_btn, &"play_ui_click")
 	_list.add_child(load_btn)
 
 func _on_new_game_pressed() -> void:
@@ -228,8 +270,10 @@ func _on_new_game_pressed() -> void:
 	# slots. One click starts in slot 0; once saves exist, the slot picker is
 	# retained so players can choose an empty slot or intentionally overwrite.
 	if not _has_any_save():
+		_audio_call(&"play_ui_start_game")
 		new_game_chosen.emit(0)
 		return
+	_audio_call(&"play_ui_click")
 	_open_slots("new")
 
 func _has_any_save() -> bool:
@@ -272,13 +316,29 @@ func _refresh_slots() -> void:
 				" (overwrite)" if _pending_action == "new" else "",
 			]
 		btn.pressed.connect(_on_slot_pressed.bind(slot))
+		_wire_menu_button(btn, &"play_ui_start_game")
 		_list.add_child(btn)
 
 	var back := Button.new()
 	back.text = "< Back"
 	back.custom_minimum_size = Vector2(360, 36)
 	back.pressed.connect(_back_to_main)
+	_wire_menu_button(back, &"play_ui_click")
 	_list.add_child(back)
+
+func _wire_menu_button(button: Button, press_sound: StringName = &"") -> void:
+	button.mouse_entered.connect(_on_menu_button_hover.bind(button))
+	if not press_sound.is_empty():
+		button.pressed.connect(_audio_call.bind(press_sound))
+
+func _on_menu_button_hover(button: Button) -> void:
+	if not button.disabled:
+		_audio_call(&"play_ui_hover")
+
+func _audio_call(method: StringName) -> void:
+	var owner := get_node_or_null("/root/GameAudio")
+	if owner != null:
+		owner.call(method)
 
 # A one-line readout of a save's party, just enough to tell slots apart at
 # a glance - the diver order matches World.CAST, so index 0 is always

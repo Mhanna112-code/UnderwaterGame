@@ -37,12 +37,14 @@ func _run() -> void:
 				findings.append("SKIP DID NOT FULLY RESTORE PARTY")
 				break
 		# Skip is an exit from the combat lesson, not from learning the world
-		# controls. The onboarding is allowed to pause the world while visible,
-		# but it must be dismissible back to the same playable state.
-		if not world.ability_onboarding.visible:
+		# controls. The current handoff is the CharacterAbilityPopup autoload,
+		# and it must dismiss back to the same playable state.
+		var popup := root.get_node_or_null("CharacterAbilityPopup")
+		var panel := popup.find_child("AbilityExplanationPanel", true, false) as Control if popup != null else null
+		if panel == null or not panel.visible:
 			findings.append("SKIP DID NOT OPEN WORLD-CONTROL HANDOFF")
 		else:
-			world.ability_onboarding.call("dismiss")
+			popup.call("_close")
 			await process_frame
 			if paused:
 				findings.append("SKIP HANDOFF LEFT THE TREE PAUSED AFTER DISMISS")
@@ -52,4 +54,9 @@ func _run() -> void:
 	if findings.is_empty():
 		print("tutorial skip          returned to the world clean")
 	world.queue_free()
+	await process_frame
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
 	quit(0 if findings.is_empty() else 1)

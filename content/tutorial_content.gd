@@ -205,6 +205,10 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 		"body": "Skips the combatant's turn entirely. Its number is how many turns get skipped, not a stat penalty.",
 	},
 	{
+		"title": "Evasion Down",
+		"body": "Temporarily subtracts its level from Evasion. Flash Blast sets both its level and duration from the caster's Accuracy.",
+	},
+	{
 		"title": "Bleed",
 		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, then fades after 3 turns. Another Bleed hit only adds to that damage stack - it does not restart the 3-turn clock, so a bleed about to expire won't get more time from a fresh hit, just a harder tick before it does. Scuba Stabbing applies 1 plus the caster's Strength.",
 	},
@@ -220,8 +224,9 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 # (not a crash/placeholder body) for a name with no entry, so a caller can
 # just skip attaching a tooltip rather than showing an empty one.
 static func status_condition_body(status_name: String) -> String:
+	var normalized := status_name.replace("_", " ").to_lower()
 	for entry in STATUS_CONDITIONS:
-		if String(entry.get("title", "")).to_lower() == status_name.to_lower():
+		if String(entry.get("title", "")).to_lower() == normalized:
 			return String(entry.get("body", ""))
 	return ""
 

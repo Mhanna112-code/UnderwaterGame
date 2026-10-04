@@ -1,0 +1,17 @@
+{
+  "target": "https://underwatergame-ots4hs7op-immortaldemongods-projects.vercel.app/",
+  "browserEngine": "chromium",
+  "recording": "/Users/tomriddle1/underwatergame-opening-prologue/docs/evidence/opening-title-handoff/browser/page@63682a3804b0d35ad6b6decd451b2a8a.webm",
+  "recordingStarted": 1791105605410,
+  "keydownAt": 1791105691013,
+  "idleSeconds": 15.345,
+  "swimmingSeconds": 4.156,
+  "timestamps": {
+    "opening_video": 1791105631964,
+    "opening_handoff": 1791105666133,
+    "spawn_exploration": 1791105669612,
+    "angler": 1791105695169
+  },
+  "errors": [],
+  "failure": null
+}

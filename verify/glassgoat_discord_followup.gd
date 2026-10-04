@@ -14,6 +14,10 @@ func _run() -> void:
 	for failure in failures:
 		push_error(failure)
 	print("GLASSGOAT DISCORD FOLLOW-UP: %s" % ("clean" if failures.is_empty() else "%d failure(s)" % failures.size()))
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
 	quit(0 if failures.is_empty() else 1)
 
 func _test_complete_roster_contract() -> void:
@@ -42,11 +46,11 @@ func _test_result_first_move_menu() -> void:
 	var stabbing := _move_button(battle, "Scuba Stabbing")
 	_expect(stabbing != null, "RESULT-FIRST MENU MISSING: Scuba Stabbing is absent")
 	if stabbing != null:
-		_expect("1 Damage" in stabbing.text and "2 Bleed" in stabbing.text,
-			"RESULT-FIRST MENU WRONG: expected resolved 1 Damage / 2 Bleed, observed '%s'" % stabbing.text)
+		_expect("Strength Damage" in stabbing.text and "2 Bleed" in stabbing.text,
+			"RESULT-FIRST MENU WRONG: expected semantic Strength Damage / resolved 2 Bleed, observed '%s'" % stabbing.text)
 		_expect("STR" not in stabbing.text,
 			"FORMULA POLLUTION: default move choice exposes stat algebra '%s'" % stabbing.text)
-		_expect("Damage" in stabbing.tooltip_text and "Calculation" in stabbing.tooltip_text and "Strength" in stabbing.tooltip_text,
+		_expect("Damage" in stabbing.tooltip_text and "Strength" in stabbing.tooltip_text,
 			"ON-DEMAND CALCULATION MISSING: resolved choice has no contextual explanation")
 
 	# A resolved preview must be computed from the acting character, not copied
@@ -56,7 +60,7 @@ func _test_result_first_move_menu() -> void:
 	battle._populate_move_menu(battle._acting)
 	stabbing = _move_button(battle, "Scuba Stabbing")
 	if stabbing != null:
-		_expect("4 Damage" in stabbing.text and "5 Bleed" in stabbing.text,
+		_expect("Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text,
 			"HARDCODED MOVE PREVIEW: 4 STR still renders '%s'" % stabbing.text)
 
 	# The original result/formula toggle created a second lower-panel state
@@ -66,7 +70,7 @@ func _test_result_first_move_menu() -> void:
 	_expect(_button_starting_with(battle.move_menu, "Show formulas") == null,
 		"FORMULA MODE REGRESSION: Quick Read should not retain a second menu state")
 	stabbing = _move_button(battle, "Scuba Stabbing")
-	_expect(stabbing != null and "4 Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
+	_expect(stabbing != null and "Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
 		"QUICK READ LOST AFTER STAT CHANGE: result-first choice no longer reflects the acting character")
 	battle.queue_free()
 	await process_frame

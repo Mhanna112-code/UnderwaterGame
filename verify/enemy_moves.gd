@@ -120,6 +120,10 @@ func _run() -> void:
 
 	angler.queue_free()
 	await process_frame
+	var game_audio := root.get_node_or_null("GameAudio")
+	if game_audio != null:
+		game_audio.release_streams_for_shutdown()
+		await create_timer(0.2).timeout
 	if findings.is_empty():
 		print("ENEMY MOVES: clean — delivered clips catalogue independently; enabled moves play through the reusable actor API")
 		quit(0)

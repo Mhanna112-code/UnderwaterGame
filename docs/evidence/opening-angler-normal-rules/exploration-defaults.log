@@ -1,0 +1,22 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=1
+PROLOGUE_PHASE|spawn_exploration
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+PROLOGUE_PHASE|complete
+OPENING EXPLORATION DEFAULTS: clean

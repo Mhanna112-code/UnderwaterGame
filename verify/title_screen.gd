@@ -21,20 +21,22 @@ func _run() -> void:
 	else:
 		(fresh_buttons[0] as Button).pressed.emit()
 		await process_frame
-		if not fresh.intro_crawl.visible:
-			findings.append("INTRO MISSING (one-click New Game)")
+		if fresh.opening_video == null or not fresh.opening_video.visible:
+			findings.append("OPENING VIDEO MISSING (one-click New Game)")
 		if fresh.get_node("HUD").visible:
-			findings.append("HUD LEAK (intro crawl)")
+			findings.append("HUD LEAK (opening video)")
 		if not paused:
-			findings.append("WORLD UNPAUSED (intro crawl)")
-		# Skip through the same input contract a reviewer/player has, then
-		# prove the game becomes playable only after the crawl finishes.
-		var skip := InputEventKey.new()
-		skip.pressed = true
-		skip.keycode = KEY_E
-		fresh.intro_crawl._unhandled_input(skip)
+			findings.append("WORLD UNPAUSED (opening video)")
+		# Production input cannot skip the first viewing. Verification advances
+		# through the owner's explicit seam, then proves play starts only after
+		# the completed signal commits the durable milestone.
+		if fresh.opening_video != null:
+			fresh.opening_video.finish_for_test()
+		await process_frame
 		await process_frame
 		_check_world_started(fresh, "one-click New Game")
+		if not fresh.route_state.opening_video_seen:
+			findings.append("OPENING MILESTONE: successful viewing was not recorded")
 	fresh.queue_free()
 	await process_frame
 	paused = false

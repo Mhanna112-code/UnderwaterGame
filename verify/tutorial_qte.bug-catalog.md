@@ -33,7 +33,7 @@ one attack.
 |---|---|---|---|---|---|
 | 1 | The tutorial sets its force flag, but the selected normal Angler Bite remains QTE-ineligible so no timing widget ever appears. | High — the promised first QTE silently never teaches its mechanic. | Formula-backed Angler moves returned from `_resolve_attack()` before its legacy QTE branch. | captured contract | fixed |
 | 2 | A visible tutorial QTE accepts X outside its live red zone or still applies damage after a correct in-zone X press. | High — the first timing lesson reads as broken or unfair. | The preview temporarily reparents the same widget before the actual attack and the tween/input resolution are asynchronous. | captured contract | fixed |
-| 3 | The tutorial's forced target still lets Angler's normal AI choose all-target Flash Blast. The force flag then never reaches the one-target QTE resolver. | High — the narrated lesson sometimes has no QTE, depending on a random move selection. | `choose_move_and_target(..., forced)` previously used the weighted catalogue instead of an authored single-target lesson move. | repeated tutorial lifecycle | fixed |
+| 3 | The tutorial's forced target still lets Angler's normal AI choose all-target Flash Blast. Its target list can resolve an unrelated diver first and consume the force flag on that miss, so the narrated defender never gets a QTE. | High — the promised timing lesson sometimes never appears. | The weighted catalogue remains correct for normal AI, but a one-target lesson cannot safely use an all-target roll. | repeated tutorial lifecycle | fixed |
 | 4 | The QTE test launches a direct Battle while the map's new-game beam can launch its own tutorial Battle on the next world update. | Medium/high — a race can make a clean QTE look failed or let a second battle change the shared party's HP. | The test intentionally uses a real `World`/party, but did not stop its unrelated map handoff before yielding. | isolated scene-lifecycle pin | fixed |
 | 5 | A tutorial encounter selects the ordinary random roster, so it can introduce Swordfish's three-hit combo or Frilled Shark instead of the narrated Angler Bite. A successful first dodge is then followed by extra, unattended QTEs or damage. | High — the first lesson contradicts its own enemy/one-dodge explanation and can punish a correct input. | `guardian_enemy_id` is only consulted for guardian encounters; the tutorial branch still called `_ordinary_actor()`. A red stress run captured Swordfish follow-up resolves after a successful forced dodge. | roster identity plus one-window lifecycle | fixed |
 
@@ -73,10 +73,12 @@ appeared. `Battle._resolve_attack()` now performs the live QTE before handing
 formula arithmetic to `CombatRules.resolve()`, and the latter records a
 successful dodge without applying target effects.
 
-The subsequent exact-export suite exposed two more failures. The forced
-tutorial target still let Angler randomly choose Flash Blast, whose `all`
-scope bypassed the one-target QTE hand-off; forced tutorial turns now use the
-artist-authored single-target Bite. The test also suppressed the map's own
+The subsequent full-suite audit exposed two more failures. The forced tutorial
+target still let Angler randomly choose Flash Blast. Its `all` scope could
+resolve another diver first, clear the one-shot force flag on a formula miss,
+and never open the promised QTE. The one teaching turn now selects the first
+enabled artist-authored single-target Angler move; every later AI choice keeps
+its weighted catalogue behavior. The test also suppressed the map's own
 beam-triggered battle before making its direct Battle, and it now samples
 that the real indicator begins moving before placing it in the visible zone
 for the production X handler. This removes scheduler-dependent sampling of a
