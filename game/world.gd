@@ -291,6 +291,7 @@ var _route_blocker_gates: Dictionary = {}
 # This one-shot handoff survives reload_current_scene(), then the fresh World
 # consumes and clears it at the end of _ready().
 static var _restart_slot := -1
+var _loaded_maze_session: CampaignSession
 
 # Full state: per-diver position/stats/spells plus the world-level
 # inventory/key_items/active - everything _write_save()'s caller (a save
@@ -339,7 +340,13 @@ func _write_save() -> Error:
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
 func _load_save() -> bool:
+	_loaded_maze_session = null
 	var data: Dictionary = SaveManager.read_slot(_current_slot)
+	var maze_session: CampaignSession
+	if data.has("campaign_scene") or data.has("campaign_checkpoint"):
+		maze_session = CampaignCheckpoint.decode(data)
+		if maze_session == null:
+			return false
 	var raw_divers: Variant = data.get("divers", [])
 	if not raw_divers is Array or raw_divers.size() != divers.size():
 		return false
@@ -390,6 +397,7 @@ func _load_save() -> bool:
 			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
 				return false
 	var divers_data := raw_divers as Array
+	_loaded_maze_session = maze_session
 	_cancel_random_encounter_reveal()
 	if is_instance_valid(escape_encounter_hint):
 		escape_encounter_hint.dismiss()
@@ -471,6 +479,11 @@ func _load_save() -> bool:
 	return true
 
 func _normalize_loaded_route_state() -> void:
+	# Flat legacy/entry saves contain the outer-world checkpoint, not maze
+	# geometry. Returning there must leave the independent entrance usable.
+	if _loaded_maze_session == null and route_state.zone_id == "maze":
+		route_state.set_zone("deep")
+		route_state.set_maze_door_state("available")
 	# A movie decoder or live Battle is not a serializable checkpoint. Older or
 	# interrupted saves that captured either transient state return to the safe
 	# laboratory entrance and can replay the authored handoff exactly once.
@@ -586,6 +599,20 @@ func _on_title_load_game(slot: int) -> bool:
 		print("CHECKPOINT_LOAD_FAILED|slot=", slot)
 		return false
 	title_screen.close()
+	if _loaded_maze_session != null:
+		_loaded_maze_session.selected_slot = slot
+		SceneHandoff.campaign_session = _loaded_maze_session
+		_loaded_maze_session = null
+		get_tree().paused = false
+		_audio_call(&"stop_music")
+		var error := get_tree().change_scene_to_file("res://game/maze_level.tscn")
+		if error != OK:
+			SceneHandoff.campaign_session = null
+			get_tree().paused = true
+			title_screen.open()
+			title_screen.show_load_error("Could not open the saved maze. Please retry.")
+			return false
+		return true
 	await _play_opening_if_needed()
 	_begin_quiet_spawn_if_needed()
 	$HUD.visible = true
@@ -1158,6 +1185,9 @@ func _ready() -> void:
 			_announce("You wake back at your last save.")
 	else:
 		_show_title_screen()
+		if not SceneHandoff.checkpoint_load_error.is_empty():
+			title_screen.show_load_error(SceneHandoff.checkpoint_load_error)
+			SceneHandoff.checkpoint_load_error = ""
 	if _maze_playtest_requested():
 		call_deferred("_enter_maze_scene", true)
 

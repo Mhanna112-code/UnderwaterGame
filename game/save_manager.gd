@@ -24,6 +24,19 @@ static func slot_exists(slot: int) -> bool:
 # already exists, so this is safe to call before every write rather than
 # needing a one-time setup step anywhere.
 static func write_slot(slot: int, data: Dictionary) -> Error:
+	return _write_bytes(slot, JSON.stringify(data).to_utf8_buffer())
+
+# A web durable-sync rejection must roll the RAM filesystem back too. Keep
+# exact previous bytes, including a previously corrupt file; never delete an
+# existing slot simply because JSON parsing returned an empty dictionary.
+static func rollback_slot(slot: int, existed: bool, previous: PackedByteArray) -> Error:
+	if existed:
+		return _write_bytes(slot, previous)
+	if slot_exists(slot):
+		return DirAccess.remove_absolute(slot_path(slot))
+	return OK
+
+static func _write_bytes(slot: int, serialized: PackedByteArray) -> Error:
 	var directory_error := DirAccess.make_dir_recursive_absolute(SAVE_DIR)
 	if directory_error != OK:
 		return directory_error
@@ -33,17 +46,16 @@ static func write_slot(slot: int, data: Dictionary) -> Error:
 	# only a complete, flushed candidate may replace the selected slot.
 	var destination := slot_path(slot)
 	var pending := destination + ".pending"
-	var serialized := JSON.stringify(data)
 	var f := FileAccess.open(pending, FileAccess.WRITE)
 	if f == null:
 		return FileAccess.get_open_error()
-	f.store_string(serialized)
+	f.store_buffer(serialized)
 	f.flush()
 	var write_error := f.get_error()
 	f.close()
 	if write_error != OK:
 		return write_error
-	if FileAccess.get_file_as_string(pending) != serialized:
+	if FileAccess.get_file_as_bytes(pending) != serialized:
 		return ERR_FILE_CORRUPT
 	return DirAccess.rename_absolute(pending, destination)
 

@@ -174,6 +174,8 @@ run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completio
 run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "maze campaign handoff: do six real entrance cases retain party, kit, inventory and progress" "$GODOT" --headless --path . --script verify/maze_campaign_handoff.gd
 run "maze secret continuity: do real E/Esc transitions retain resources, doors, walls and pending rewards" "$GODOT" --headless --path . --script verify/maze_secret_continuity.gd
+run "maze checkpoint: do cold Load, failed writes and real defeat/Restart conserve saved puzzle and campaign state" "$GODOT" --headless --path . --script verify/maze_checkpoint.gd
+run "maze checkpoint IO: do generated saves round-trip and malformed saves return an actionable title without mutation" "$GODOT" --headless --path . --script verify/maze_checkpoint_io.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
 run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
 run "audio settings UI: can players independently persist music and SFX volume/mute" "$GODOT" --headless --path . --script verify/audio_settings_ui.gd

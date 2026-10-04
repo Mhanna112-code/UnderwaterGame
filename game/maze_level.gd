@@ -117,9 +117,14 @@ func _ready() -> void:
 	_build_wall_10_11_extras()
 	_build_hall_gauntlet()
 	_build_inventory_menu()
+	_build_campaign_checkpoint()
 	_add_wall_skirts()
 	$HUD/Controls.text = "Hallway: CLOSED. Open the map (L), pick the hallway walls and press E."
 	if campaign_session != null and not campaign_session.maze_snapshot.is_empty():
+		if not snapshot_matches_runtime(campaign_session.maze_snapshot):
+			SceneHandoff.checkpoint_load_error = "Could not load the maze checkpoint. Choose another save or start a new game."
+			get_tree().change_scene_to_file.call_deferred("res://game/world.tscn")
+			return
 		restore_campaign_snapshot(campaign_session.maze_snapshot)
 	if SceneHandoff.returning_from_secret_wall:
 		SceneHandoff.returning_from_secret_wall = false
@@ -797,13 +802,7 @@ func _on_battle_finished(result: String) -> void:
 		"fled":
 			_announce("You escaped.")
 		_:
-			# No game-over screen in this standalone level: the party is
-			# restored and sent back to the maze entrance.
-			for d in divers:
-				d.stats.hp = d.stats.hp_max
-				d.stats.oxygen = d.stats.oxygen_max
-			_place_diver_between($CSGBox3D, $CurrentWall3)
-			_announce("The party was overwhelmed and swam back to the entrance.")
+			_show_campaign_game_over()
 
 func _remove_boss_trigger(kind: String) -> void:
 	var trigger: Node = _boss_triggers.get(kind, null)
@@ -1032,7 +1031,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
+	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -3951,6 +3950,7 @@ const GOLDEN_ORB_FALL_SPEED := 1.5
 func _physics_process(dt: float) -> void:
 	_align_corridors_to_walls()
 	_update_strong_room_warning()
+	_update_campaign_checkpoint()
 	if _diver == null:
 		return
 	for orb in goldenOrbs:
@@ -4064,6 +4064,18 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
+		if _save_menu != null and _save_menu.visible and (e as InputEventKey).keycode in [KEY_P, KEY_ESCAPE]:
+			_save_menu.close()
+			get_viewport().set_input_as_handled()
+			return
+		if (e as InputEventKey).keycode == KEY_P and not _battling and not any_modal_open() \
+			and _checkpoint != null and _checkpoint.has_diver(_diver):
+			_save_menu.open_for(_diver)
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			_mouse_look = false
+			get_viewport().set_input_as_handled()
+			return
 	# Esc opens / closes the inventory (as in the main game).
 	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_ESCAPE:
 		if inventory_menu != null and inventory_menu.visible:
@@ -5190,6 +5202,116 @@ func can_capture_campaign_snapshot() -> bool:
 	return _moving_wall_sets.is_empty() and not _gate_cutscene and not _chest_reward_pending \
 		and not _battling and not get_tree().paused and not any_modal_open()
 
+var _checkpoint: SavePoint
+var _save_menu: SavePointMenu
+var _checkpoint_prompt: Label3D
+var _checkpoint_contact := false
+var _checkpoint_saving := false
+var _game_over: GameOverScreen
+
+func _build_campaign_checkpoint() -> void:
+	_checkpoint = SavePoint.new()
+	_checkpoint.name = "MazeCheckpoint"
+	var spot := _midpoint_between($CSGBox3D, $CurrentWall3)
+	spot.y = _floor_top_y
+	_checkpoint.position = spot
+	# Keep entry itself distinct from deliberate checkpoint contact.
+	_checkpoint.position += _wall_geometry($CSGBox3D)["long_axis"] * 3.5
+	add_child(_checkpoint)
+	_checkpoint_prompt = Label3D.new()
+	_checkpoint_prompt.text = "Maze Save Point\nRestores the party. P: save."
+	_checkpoint_prompt.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_checkpoint_prompt.font_size = 38
+	_checkpoint_prompt.pixel_size = 0.008
+	_checkpoint_prompt.position = Vector3(0, 3.2, 0)
+	_checkpoint.add_child(_checkpoint_prompt)
+	_save_menu = SavePointMenu.new()
+	_save_menu.save_requested.connect(_on_campaign_save_requested)
+	$HUD.add_child(_save_menu)
+	var layer := CanvasLayer.new()
+	layer.name = "MazeRecoveryLayer"
+	layer.layer = 20
+	add_child(layer)
+	_game_over = GameOverScreen.new()
+	_game_over.restart_chosen.connect(_restart_campaign_checkpoint)
+	_game_over.title_chosen.connect(_return_campaign_title)
+	layer.add_child(_game_over)
+
+func _update_campaign_checkpoint() -> void:
+	if _checkpoint == null or _diver == null or _battling:
+		return
+	var contact := _checkpoint.has_diver(_diver)
+	if contact and not _checkpoint_contact:
+		for diver in divers:
+			diver.stats.hp = diver.stats.hp_max
+			diver.stats.oxygen = diver.stats.oxygen_max
+		_announce("Party restored. P: save your maze progress.")
+	_checkpoint_contact = contact
+
+func _on_campaign_save_requested(_actor: Diver, slot: int) -> void:
+	if _checkpoint_saving:
+		return
+	# The Save menu is the active input owner, not a gameplay modal that should
+	# prevent its own request. Close it before checking stable puzzle state.
+	_save_menu.close()
+	if not can_capture_campaign_snapshot():
+		_announce("Wait for the puzzle movement to finish, then save.")
+		return
+	if campaign_session == null:
+		campaign_session = CampaignSession.new()
+		campaign_session.route_state = RouteState.new()
+		campaign_session.route_state.prologue_complete = true
+		campaign_session.route_state.opening_video_seen = true
+		campaign_session.route_state.set_zone("maze")
+		campaign_session.campaign_key_items.assign(campaign_key_items)
+		campaign_session.random_encounters_enabled = random_encounters_enabled
+	for diver in divers:
+		diver.stats.hp = diver.stats.hp_max
+		diver.stats.oxygen = diver.stats.oxygen_max
+	campaign_session.capture_party(divers, active)
+	campaign_session.inventory = inventory
+	campaign_session.maze_snapshot = campaign_snapshot()
+	_checkpoint_saving = true
+	var existed := SaveManager.slot_exists(slot)
+	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
+	var error := SaveManager.write_slot(slot, CampaignCheckpoint.encode(campaign_session))
+	var candidate_written := error == OK
+	if error == OK:
+		error = await BrowserCheckpoint.confirm_slot(slot)
+	_checkpoint_saving = false
+	if error != OK:
+		# A rejected IndexedDB sync must not leave a newer in-memory save
+		# available to Restart. Native write failure already retained the old
+		# file; restoring its exact bytes also repairs the web RAM view.
+		if candidate_written and SaveManager.rollback_slot(slot, existed, previous) != OK:
+			_announce("Saving failed and recovery could not be confirmed. Please retry before leaving.")
+			return
+		_announce("Could not save. Your last checkpoint is unchanged. Please retry.")
+		return
+	campaign_session.selected_slot = slot
+	_announce("Maze progress saved to Slot %d." % (slot + 1))
+
+func _show_campaign_game_over() -> void:
+	$HUD.visible = false
+	get_tree().paused = true
+	_mouse_look = false
+	var audio := get_node_or_null("/root/GameAudio")
+	if audio != null:
+		audio.call("play_game_over_music")
+	_game_over.open()
+
+func _restart_campaign_checkpoint() -> void:
+	World._restart_slot = campaign_session.selected_slot if campaign_session != null else -1
+	if World._restart_slot < 0:
+		SceneHandoff.checkpoint_load_error = "No checkpoint exists yet. Choose a saved game or start a new game."
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://game/world.tscn")
+
+func _return_campaign_title() -> void:
+	World._restart_slot = -1
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://game/world.tscn")
+
 func campaign_snapshot() -> Dictionary:
 	var data := {"version": 1, "flags": {}, "walls": {}, "currents": [],
 		"doors": [], "rocks": [], "orbs": [], "loose_keys": [], "posters": [],
@@ -5365,3 +5487,43 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 	_update_state_barriers()
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = "Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L)."
+
+# All names are resolved against the freshly authored scene before applying
+# any puzzle mutations. Corrupt IO may not reach get_node/indexing halfway
+# through a restore. The two path walls are the only runtime extensions.
+func snapshot_matches_runtime(data: Dictionary) -> bool:
+	if not CampaignCheckpoint.valid_maze(data):
+		return false
+	for wall_name in data.walls:
+		if wall_name not in ["PathWallNorth", "PathWallSouth"] and not get_node_or_null(String(wall_name)) is CSGBox3D:
+			return false
+	for current in data.currents:
+		if not get_node_or_null(String(current.area)) is Area3D:
+			return false
+	var door_ids: Array = []
+	for door in _maze_doors:
+		door_ids.append(door.door_id)
+	for id in data.doors:
+		if not door_ids.has(id):
+			return false
+	for kind in data.boss_triggers:
+		if kind not in ["main_boss", "secret_boss"]:
+			return false
+	for field in ["walls_14_15", "walls_10_11"]:
+		for home in data.rotation_homes[field]:
+			if not get_node_or_null(String(home.wall)) is CSGBox3D:
+				return false
+	var map: Dictionary = data.map
+	for wall_name in map.walls:
+		if not data.walls.has(wall_name):
+			return false
+	for corridor_name in map.corridors:
+		if not get_node_or_null(String(corridor_name)) is Area3D:
+			return false
+	for hall in map.halls:
+		for wall_name in hall.walls:
+			if not data.walls.has(wall_name):
+				return false
+		if not String(hall.corridor).is_empty() and not get_node_or_null(String(hall.corridor)) is Area3D:
+			return false
+	return true
