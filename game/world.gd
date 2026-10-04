@@ -38,6 +38,15 @@ var _transitioning_to_encounter := false
 # until then, same reasoning as gating TAB/random encounters: nothing about
 # the tutorial should be skippable by ducking into a menu mid-walk-over.
 var _first_encounter_done := false
+
+const OBJECTIVE_TEXT := "OBJECTIVE: Explore the mysterious blockade path"
+var _objective_label: Label
+
+# The objective shows once the opening tutorial fight is over, and stays
+# out of the way of a battle.
+func _update_objective() -> void:
+	if _objective_label != null:
+		_objective_label.visible = _first_encounter_done and not battling
 # Set right before tutorial_result_popup.open() in _on_battle_finished()'s
 # "lost" branch, read by _on_tutorial_loss_exit() - the popup itself carries
 # no memory of which tutorial fight opened it (special encounter vs. the
@@ -639,6 +648,24 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
+
+	# Top-centre objective, shown once the opening tutorial fight is done
+	# (see _update_objective()).
+	_objective_label = Label.new()
+	_objective_label.text = OBJECTIVE_TEXT
+	_objective_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_objective_label.offset_left = -360.0
+	_objective_label.offset_right = 360.0
+	_objective_label.offset_top = 14.0
+	_objective_label.offset_bottom = 44.0
+	_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_objective_label.add_theme_font_size_override("font_size", 20)
+	_objective_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.40))
+	_objective_label.add_theme_color_override("font_outline_color", Color(0.01, 0.04, 0.07, 0.95))
+	_objective_label.add_theme_constant_override("outline_size", 6)
+	_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_objective_label.visible = false
+	$HUD.add_child(_objective_label)
 
 	minimap = MiniMap.new()
 	minimap.world = self
@@ -1626,6 +1653,7 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	_update_objective()
 	if battling or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
