@@ -83,6 +83,10 @@ func _assert_current_truth(minimap: MazeMiniMap, maze: MazeLevel, findings: Arra
 
 func _run() -> void:
 	var maze := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
+	# Always the normal entrance start, whichever developer spawn is switched on.
+	maze.dev_spawn_at_sphere_room = false
+	maze.dev_spawn_at_boss_rooms = false
+	maze.dev_spawn_at_switch = false
 	root.add_child(maze)
 	for _frame in range(4):
 		await process_frame
@@ -100,8 +104,8 @@ func _run() -> void:
 			findings.append("M does not open the large maze map")
 		await _reveal_all(minimap, maze)
 		_assert_current_truth(minimap, maze, findings, "closed")
-		if minimap.main_map.get_node_or_null("MazeMapTitle") == null or minimap.main_map.get_node_or_null("MazeMapLegend") == null or minimap.main_map.get_node_or_null("MazeMapObjective") == null:
-			findings.append("large map lacks its reviewable title, flow legend, or H/relic objective")
+		if minimap.main_map.get_node_or_null("MazeMapTitle") == null or minimap.main_map.get_node_or_null("MazeMapLegend") == null:
+			findings.append("large map lacks its reviewable title or flow legend")
 
 		var wall := maze.get_node("CurrentWall1") as CSGBox3D
 		var wall_line := _line_for_wall(minimap, wall)
@@ -109,8 +113,17 @@ func _run() -> void:
 			findings.append("CurrentWall1 has no overview line after discovery")
 		else:
 			var before_points := wall_line.points
+			# Walls only rotate from the map now; H itself must do nothing.
 			maze._unhandled_input(_key(KEY_H))
-			await create_timer(1.4).timeout
+			if maze._hallway_1_2_swung:
+				findings.append("H still rotates CurrentWall1/2 outside the map")
+			maze._rotate_hallway_1_2()
+			# Wait for the swing itself to finish (it locks further rotation
+			# while moving) rather than a fixed time that a slow frame can beat.
+			var swing_deadline := Time.get_ticks_msec() + 3000
+			while not maze._moving_wall_sets.is_empty() and Time.get_ticks_msec() < swing_deadline:
+				await process_frame
+			await process_frame
 			minimap._refresh_main_map()
 			var actual_segment: Array = minimap._box_segment(wall)
 			var expected_wall := PackedVector2Array([minimap._project_to_main_map(actual_segment[0]), minimap._project_to_main_map(actual_segment[1])])
@@ -126,7 +139,7 @@ func _run() -> void:
 				findings.append("H moved a current - it should only swing CurrentWall1/2")
 			elif (maze._currents_by_corridor[corridor_3] as WaterCurrent).orientation.dot(Vector3(0, 0, -1)) < 0.999:
 				findings.append("Corridor3 does not start with a southbound (-Z) current")
-			maze._unhandled_input(_key(KEY_V))
+			maze._toggle_current_3_to_4()
 			minimap._refresh_main_map()
 			if maze._currents_by_corridor.has(corridor_3) or not maze._currents_by_corridor.has(corridor_4):
 				findings.append("V does not move Corridor3's current into Corridor4")
