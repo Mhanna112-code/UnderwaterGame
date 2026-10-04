@@ -18,7 +18,9 @@ extends Node
 signal confirmed(target: Node3D)
 signal cancelled
 
-var world: World
+# World in the main game; MazeLevel in the maze. Anything with
+# focus_camera_on(target) and return_camera_to_player().
+var world: Node
 
 # The full roster - every character that could ever be a target for some
 # ability, not just "current candidates for the ability in progress."
