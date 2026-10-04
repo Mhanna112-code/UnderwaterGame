@@ -292,13 +292,14 @@ var _route_blocker_gates: Dictionary = {}
 # consumes and clears it at the end of _ready().
 static var _restart_slot := -1
 var _loaded_maze_session: CampaignSession
+var _campaign_session: CampaignSession
 
 # Full state: per-diver position/stats/spells plus the world-level
 # inventory/key_items/active - everything _write_save()'s caller (a save
 # point) or the initial New Game write needs to reproduce the run exactly.
 # Vector3 isn't JSON-serializable, so position goes in as a plain [x,y,z]
 # array (see _load_save()'s reverse conversion).
-func _serialize_state() -> Dictionary:
+func _serialize_world_state() -> Dictionary:
 	var divers_data: Array = []
 	for d in divers:
 		var s: CombatantStats = d.stats
@@ -329,6 +330,18 @@ func _serialize_state() -> Dictionary:
 		"divers": divers_data,
 	}
 
+func _serialize_state() -> Dictionary:
+	var data := _serialize_world_state()
+	if _campaign_session == null or _campaign_session.maze_snapshot.is_empty():
+		return data
+	_campaign_session.capture_party(divers, active)
+	_campaign_session.inventory = inventory
+	_campaign_session.campaign_key_items.assign(key_items)
+	_campaign_session.route_state = route_state
+	_campaign_session.random_encounters_enabled = random_encounters_enabled
+	_campaign_session.outer_world_checkpoint = data
+	return CampaignCheckpoint.encode(_campaign_session, "world")
+
 func _write_save() -> Error:
 	if _current_slot < 0:
 		return ERR_UNCONFIGURED
@@ -340,8 +353,12 @@ func _write_save() -> Error:
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
 func _load_save() -> bool:
+	return restore_checkpoint(SaveManager.read_slot(_current_slot))
+
+# Shared validated restore used by disk Load and a live campaign return.
+# Neither consumer needs to write a temporary save or discard live stats.
+func restore_checkpoint(data: Dictionary) -> bool:
 	_loaded_maze_session = null
-	var data: Dictionary = SaveManager.read_slot(_current_slot)
 	var maze_session: CampaignSession
 	if data.has("campaign_scene") or data.has("campaign_checkpoint"):
 		maze_session = CampaignCheckpoint.decode(data)
@@ -397,7 +414,8 @@ func _load_save() -> bool:
 			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
 				return false
 	var divers_data := raw_divers as Array
-	_loaded_maze_session = maze_session
+	_loaded_maze_session = maze_session if data.get("campaign_scene") == "maze" else null
+	_campaign_session = maze_session if data.get("campaign_scene") == "world" else null
 	_cancel_random_encounter_reveal()
 	if is_instance_valid(escape_encounter_hint):
 		escape_encounter_hint.dismiss()
@@ -473,6 +491,9 @@ func _load_save() -> bool:
 			_spawn_world_drop(String(id), String(drop.get("item", "")), Vector3(
 				float(saved_position[0]), float(saved_position[1]), float(saved_position[2])))
 
+	if _campaign_session != null:
+		_campaign_session.restore_party(divers)
+		_campaign_session.route_state = route_state
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
@@ -1178,7 +1199,13 @@ func _ready() -> void:
 	# A game-over restart must rebuild the scene before applying its save so
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
 	# still opens the title screen exactly as before.
-	if _restart_slot >= 0:
+	if SceneHandoff.returning_to_world:
+		SceneHandoff.returning_to_world = false
+		var returned := SceneHandoff.take_campaign_session()
+		if not _restore_campaign_return(returned):
+			_show_title_screen()
+			title_screen.show_load_error("Could not restore the open-water route. Choose a saved game.")
+	elif _restart_slot >= 0:
 		var restart_slot := _restart_slot
 		_restart_slot = -1
 		if await _on_title_load_game(restart_slot):
@@ -1190,6 +1217,34 @@ func _ready() -> void:
 			SceneHandoff.checkpoint_load_error = ""
 	if _maze_playtest_requested():
 		call_deferred("_enter_maze_scene", true)
+
+func _restore_campaign_return(session: CampaignSession) -> bool:
+	if session == null or session.outer_world_checkpoint.is_empty():
+		return false
+	session.route_state.set_zone("deep")
+	session.route_state.set_maze_door_state("available")
+	session.route_state.set_encounter_source("random")
+	var data := CampaignCheckpoint.encode(session, "world")
+	# The World entrance activates automatically inside its radius. A return
+	# places the party just outside it, in the protected open-water approach.
+	var spot := deep_zone_layout.route_points().maze_transition as Vector3
+	spot += Vector3(-(MAZE_TRANSITION_RADIUS + 3.0), 0, 0)
+	for i in range(3):
+		data.divers[i].position = CampaignSession.vector_data(spot + Vector3(0, 0, (i - session.active) * 2.5))
+	if not restore_checkpoint(data):
+		return false
+	# Disk Load builds new resources; a live return must retain their identity.
+	session.restore_party(divers)
+	session.route_state = route_state
+	_campaign_session = session
+	_current_slot = session.selected_slot
+	_restart_slot = -1
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
+	_update_hud()
+	return true
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -2340,14 +2395,14 @@ func _enter_maze_scene(review_route: bool = false) -> void:
 		route_state.set_zone("maze")
 		route_state.set_encounter_source("maze_door")
 		_write_save()
-	var session := CampaignSession.new()
+	var session := _campaign_session if _campaign_session != null else CampaignSession.new()
 	session.capture_party(divers, active)
 	session.inventory = inventory
 	session.campaign_key_items.assign(key_items)
 	session.route_state = route_state
 	session.random_encounters_enabled = random_encounters_enabled
 	session.selected_slot = _current_slot
-	session.outer_world_checkpoint = _serialize_state()
+	session.outer_world_checkpoint = _serialize_world_state()
 	SceneHandoff.campaign_session = session
 	get_tree().paused = false
 	_audio_call(&"stop_music")

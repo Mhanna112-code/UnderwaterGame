@@ -9,8 +9,12 @@ const STAT_INTS := ["hp_max", "strength", "defense", "agility", "accuracy", "eva
 const STAT_DICTS := ["statuses", "temporary_modifiers", "stat_floor"]
 const MODELS := ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]
 
-static func encode(session: CampaignSession) -> Dictionary:
+static func encode(session: CampaignSession, scene := "maze") -> Dictionary:
 	var data := session.outer_world_checkpoint.duplicate(true)
+	# A World checkpoint can retain maze history. Never nest its previous
+	# checkpoint envelope recursively on repeated branch visits.
+	data.erase("campaign_checkpoint")
+	data.erase("campaign_scene")
 	var members: Array = []
 	for member in session.party:
 		var plain := member.duplicate(true)
@@ -20,7 +24,7 @@ static func encode(session: CampaignSession) -> Dictionary:
 			numbers[field] = stats.get(field)
 		plain.stats = numbers.duplicate(true)
 		members.append(plain)
-	data.campaign_scene = "maze"
+	data.campaign_scene = scene
 	data.campaign_checkpoint = {"version": 1, "party": members, "maze": session.maze_snapshot.duplicate(true)}
 	data.active = session.active
 	data.inventory = session.inventory.duplicate(true)
@@ -42,7 +46,7 @@ static func encode(session: CampaignSession) -> Dictionary:
 	return data
 
 static func decode(data: Dictionary) -> CampaignSession:
-	if data.get("campaign_scene") != "maze" or not data.get("campaign_checkpoint") is Dictionary:
+	if data.get("campaign_scene") not in ["world", "maze"] or not data.get("campaign_checkpoint") is Dictionary:
 		return null
 	if not data.get("route_state") is Dictionary or data.route_state.get("prologue_complete") != true:
 		return null

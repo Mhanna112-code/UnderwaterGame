@@ -118,6 +118,7 @@ func _ready() -> void:
 	_build_hall_gauntlet()
 	_build_inventory_menu()
 	_build_campaign_checkpoint()
+	_build_campaign_exit()
 	_add_wall_skirts()
 	$HUD/Controls.text = "Hallway: CLOSED. Open the map (L), pick the hallway walls and press E."
 	if campaign_session != null and not campaign_session.maze_snapshot.is_empty():
@@ -4146,7 +4147,9 @@ func _unhandled_input(e: InputEvent) -> void:
 # What E does where the diver is: the nearest thing to interact with, or
 # else the active diver's ability.
 func _handle_e(e: InputEventKey) -> void:
-	if _lever_e_pressed():
+	if _campaign_exit_in_reach():
+		_return_to_campaign_world()
+	elif _lever_e_pressed():
 		pass
 	elif _path_button_in_reach():
 		_press_path_button()
@@ -5208,6 +5211,49 @@ var _checkpoint_prompt: Label3D
 var _checkpoint_contact := false
 var _checkpoint_saving := false
 var _game_over: GameOverScreen
+var _campaign_exit: Node3D
+var _campaign_exit_pending := false
+
+func _build_campaign_exit() -> void:
+	if campaign_session == null or campaign_session.outer_world_checkpoint.is_empty():
+		return
+	_campaign_exit = Node3D.new()
+	_campaign_exit.name = "CampaignExit"
+	_campaign_exit.position = _midpoint_between($CSGBox3D, $CurrentWall3)
+	_campaign_exit.position.y = _floor_top_y
+	add_child(_campaign_exit)
+	var label := Label3D.new()
+	label.text = "Open Water\nE: Leave maze"
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 38
+	label.pixel_size = 0.008
+	label.position = Vector3(0, 3.2, 0)
+	_campaign_exit.add_child(label)
+
+func _campaign_exit_in_reach() -> bool:
+	if _campaign_exit == null or _diver == null:
+		return false
+	return _diver.global_position.distance_to(_campaign_exit.global_position) <= 3.0
+
+func _return_to_campaign_world() -> void:
+	if _campaign_exit_pending or not can_capture_campaign_snapshot() \
+		or (target_selector != null and target_selector.selecting):
+		return
+	var minimap := get_node("HUD/MazeMiniMap") as MazeMiniMap
+	if minimap.main_map.visible:
+		return
+	campaign_session.capture_party(divers, active)
+	campaign_session.inventory = inventory
+	campaign_session.maze_snapshot = campaign_snapshot()
+	_campaign_exit_pending = true
+	SceneHandoff.campaign_session = campaign_session
+	SceneHandoff.returning_to_world = true
+	var error := get_tree().change_scene_to_file("res://game/world.tscn")
+	if error != OK:
+		SceneHandoff.campaign_session = null
+		SceneHandoff.returning_to_world = false
+		_campaign_exit_pending = false
+		_announce("Open water could not load. Please retry.")
 
 func _build_campaign_checkpoint() -> void:
 	_checkpoint = SavePoint.new()

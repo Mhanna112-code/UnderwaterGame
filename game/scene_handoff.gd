@@ -9,6 +9,7 @@ extends RefCounted
 static var diver_model := ""
 static var returning_from_secret_wall := false
 static var checkpoint_load_error := ""
+static var returning_to_world := false
 
 # Single-use ownership transfer. The receiving scene owns this session after
 # taking it; no stale static copy can contaminate a standalone maze review.
