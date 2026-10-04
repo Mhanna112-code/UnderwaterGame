@@ -130,6 +130,7 @@ run "Glassgoat follow-up: do roster and result-first presentation match Discord"
 run "combat Quick Read: do result choices, context, and all-target previews agree" "$GODOT" --headless --path . --script verify/combat_quick_read.gd
 run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
+run "effect feedback: report actual EVA changes without inventing progress at zero or on a miss" "$GODOT" --headless --path . --script verify/combat_effect_feedback.gd
 run "heavy payoff: can normal and earned heavy moves hit exhausted EVA, still miss unprepared EVA and spend real Oxygen" "$GODOT" --headless --path . --script verify/earned_heavy_slam.gd
 GATE_TIMEOUT_SECONDS="${LAB_BALANCE_GATE_TIMEOUT_SECONDS:-600}" run "lab attainable victory: do three real earned-kit policies win through actual Battle outcomes" "$GODOT" --headless --path . --script verify/lab_boss_balance.gd
 run "lab live route: do real guard victories, full film, Continue and boss victory carry rewards to level 3" "$GODOT" --headless --path . --script verify/lab_route_live.gd
