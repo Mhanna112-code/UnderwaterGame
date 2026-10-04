@@ -460,9 +460,15 @@ reward/state leak or duplicate battle exists.
 2. Instantiate the prologue-only Octopus actor with selected reveal/idle/hit/
    finishing clips, correct facing, material, scale, and framing.
 3. Start the Final Boss motif on reveal.
-4. Allow one real player hit whose feedback proves the system worked while its
-   effect remains negligible.
-5. Resolve one decisive authored attack into `scripted_defeat`.
+4. Offer the normal move kit with unchanged accuracy, damage, status, self-cost
+   and Oxygen rules. Damage is small relative to 1,000 HP, never clamped to 1.
+   Base Maxilani witnesses: Electric Touch 1, Axe Kick 4, Stabbing 1 plus Bleed
+   2; Flash Blast applies Blindness even though it deals no damage.
+5. Resolve Poison Breath through shared combat rules using opening-only STR
+   80 and ACC 30 against each diver's real DEF/EVA. No direct HP reset. These
+   stats defeat the fresh party; high-stat diagnostic survivors remain alive
+   and can act again rather than being declared defeated. Preserve the special
+   defeat/recovery presentation and campaign-boss isolation.
 
 **Stop gate:** no normal victory, Game Over, campaign Octopus state, reward,
 or balance mutation occurs; Cordys is readable and animated at every target

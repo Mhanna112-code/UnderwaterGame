@@ -102,6 +102,7 @@ run "opening trigger: does only actual horizontal swimming start once, without b
 run "opening free swim: do idle and camera-only stay free before four seconds of real swimming" "$GODOT" --headless --path . --script verify/opening_prologue_free_swim.gd
 run "opening world: are authored encounters protected and real-input reachable" "$GODOT" --headless --path . --script verify/opening_prologue_world.gd
 run "opening Angler: does every exposed move win without ordinary balance or rewards changing" "$GODOT" --headless --path . --script verify/prologue_angler.gd
+run "opening Cordys: do actual stats, move effects and survivor outcomes remain real" "$GODOT" --headless --path . --script verify/prologue_combat.gd
 run "opening Cordys: does the skinned actor preserve authored poses and facing" "$GODOT" --headless --path . --script verify/prologue_octopus.gd
 run "opening mix: do cue envelopes preserve user preferences" "$GODOT" --headless --path . --script verify/prologue_audio_envelope.gd
 run "opening split video: is one decoder retained silently across combat" "$GODOT" --headless --path . --script verify/prologue_cinematic.gd

@@ -127,11 +127,11 @@ normal Game Over, and leaves the current tutorial available but optional.
 - **Assertion:** nonempty visible bounds, meshes driven by skeleton, selected clips deform, authored front dot faces party, projected bounds meet minimum/maximum size and avoid HUD/party overlap, forbidden line surface absent/hidden.
 - **Self-critique:** projection metrics can pass an ugly image, so exact wide/narrow/tall frames require human rejection authority.
 
-### OPEN-014 — registered negligible player response
+### OPEN-014 — registered normal player response, small relative to boss HP
 
 - **Type:** public-input integration and bounded-effect invariant.
 - **Description:** `Cordys response: a real selected attack visibly resolves but cannot materially change the scripted outcome — guards against ignored input and fake normal combat`
-- **Assertion:** real button/target path produces animation, impact feedback and bounded HP change; then Cordys retains the deterministic next action.
+- **Assertion:** real button/target path produces animation and actual combat-rule damage/effects; then Cordys acts. OPEN-036/037 in `prologue_combat.bug-catalog.md` supersede any interpretation that damage must always be 1 or party HP can be directly zeroed.
 - **Self-critique:** does not pin a literal damage number; it pins player-visible registration and negligible fraction.
 
 ### OPEN-016 — atomic recovery

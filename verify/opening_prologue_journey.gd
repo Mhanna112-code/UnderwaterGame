@@ -1,5 +1,5 @@
 # OPEN-011/013/014/015/016: real combat-button journey must interrupt victory,
-# register a negligible hit, defeat and recover without campaign/reward leaks.
+# register normal stat-based damage, defeat and recover without campaign/reward leaks.
 extends SceneTree
 
 const SLOT := 918299

@@ -41,11 +41,13 @@ if (storageFault) await page.addInitScript(() => {
     return result;
   };
 });
-const phases = [], errors = [], timestamps = {};
+const phases = [], errors = [], timestamps = {}, combatHits = [], bossResponses = [];
 let checkpointFailureObserved = false;
 const deaths = [];
 page.on('console', msg => {
   const line = msg.text();
+  if (line.startsWith('PROLOGUE_HIT|')) { combatHits.push(line); console.log(line); }
+  if (line.startsWith('PROLOGUE_BREATH|')) { bossResponses.push(line); console.log(line); }
   const match = line.match(/PROLOGUE_PHASE\|([a-z_]+)/);
   if (match) { phases.push(match[1]); timestamps[match[1]] = Date.now(); console.log(line); }
   if (line.includes('CHECKPOINT_SAVE_FAILED|')) { checkpointFailureObserved = true; console.log(line); }
@@ -124,11 +126,18 @@ try {
   if (timestamps.octopus_reveal - timestamps.octopus_introduction < 25000) throw new Error('Introduction did not play the full 25 seconds');
   await page.waitForTimeout(300);
   await shot('05-cordys');
-  await attack('05a-cordys', 544);
+  const axe = process.env.OPENING_CORDYS_MOVE === 'axe';
+  await attack('05a-cordys', axe ? 604 : 544);
+  const hitDeadline = Date.now() + 10000;
+  while (!combatHits.length && Date.now() < hitDeadline) await page.waitForTimeout(50);
+  const expectedHit = axe ? 'move=Axe Kick|damage=4|hit=true|hp=996' : 'move=Electric Touch|damage=1|hit=true|hp=999';
+  if (combatHits.length !== 1 || !combatHits[0].includes(expectedHit)) throw new Error('OPEN-037 real browser move failed normal stat-based damage: ' + combatHits.join(';'));
+  await shot('05b-real-impact');
   await waitPhase('scripted_defeat', 15000);
   await page.waitForTimeout(600);
   await shot('06-finisher');
   await waitPhase('octopus_aftermath', 15000);
+  if (bossResponses.length !== 1 || !bossResponses[0].includes('Maxilani -80; Musashi -78; Bucky -76')) throw new Error('OPEN-036 browser boss response did not resolve actual STR/DEF: ' + bossResponses.join(';'));
   await page.waitForTimeout(5000);
   await shot('07-aftermath');
   await waitPhase('recovery', 45000);
@@ -300,7 +309,7 @@ try {
   if (checkpointFailureObserved && !storageFault) throw new Error('Normal browser completion unexpectedly required Retry Save');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, saveRecheck, deathRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, saveRecheck, deathRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }

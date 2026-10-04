@@ -1015,6 +1015,11 @@ func reveal_prologue_octopus() -> void:
 		entry.home_rot = (entry.actor as Diver).rotation.y
 	var stats := CombatantStats.new()
 	stats.hp_max = 1000
+	# Opening-only numbers: the normal low-level kit can hurt Cordys, but
+	# cannot defeat him. No player damage clamp or invulnerability modifier.
+	stats.strength = 80
+	stats.accuracy = 30
+	stats.agility = 20
 	stats.evasion = 0
 	stats.defense = 0
 	stats.fill()
@@ -1063,7 +1068,8 @@ func _resolve_prologue_finisher() -> void:
 	_selected_move_panel.visible = false
 	(_player_stats_ui.panel as Control).visible = false
 	(_enemy_stats_ui.panel as Control).visible = false
-	await get_tree().create_timer(0.55).timeout
+	# Let the real damage/status result remain readable before the response.
+	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	prologue_phase_changed.emit("scripted_defeat")
 	var cordys := enemies[0].actor as Node3D
 	_log("Cordys unleashes Poison Breath.")
@@ -1071,14 +1077,32 @@ func _resolve_prologue_finisher() -> void:
 	await get_tree().create_timer(maxf(0.4, length * IMPACT_FRACTION)).timeout
 	_audio_call(&"duck_music", [-9.0, 0.4])
 	_audio_call(&"play_combat_result", [true, false, true])
-	for entry in party:
-		var stats := entry.stats as CombatantStats
-		var damage := stats.hp
-		stats.hp = 0
-		_show_floating_text(entry, "-%d" % damage, FEEDBACK_DAMAGE_COLOR)
-		(entry.actor as Diver).play_death_fade()
+	var attacker := enemies[0].stats as CombatantStats
+	attacker.begin_turn()
+	var breath := {"name": "Poison Breath", "formula": {"strength": 1}, "effects": [
+		{"kind": "status", "status": "poison", "level": {"flat": 4}, "duration": 3},
+	]}
+	var summaries: Array[String] = []
+	for entry in _living(party):
+		var result := CombatRules.resolve(attacker, entry.stats as CombatantStats, breath)
+		_show_combat_feedback(entry, result)
+		_react(entry, result)
+		summaries.append("%s %s" % [String(entry.display_name), "-%d" % int(result.damage) if result.hit else "evades"])
+		if (entry.stats as CombatantStats).hp <= 0:
+			(entry.actor as Diver).play_death_fade()
+	_log("Cordys uses Poison Breath: %s." % "; ".join(summaries))
+	print("PROLOGUE_BREATH|strength=%d|accuracy=%d|%s" % [attacker.strength, attacker.effective_accuracy(), "; ".join(summaries)])
+	_finish_actor_turn(enemies[0])
 	_refresh_all_bars()
 	await get_tree().create_timer(maxf(0.8, length * (1.0 - IMPACT_FRACTION))).timeout
+	if not _living(party).is_empty():
+		# Diagnostic/high-stat survivors are real survivors, not silently
+		# overwritten to preserve the scene. Another normal choice is legal.
+		_prologue_response_resolved = false
+		cordys.call("play", "idle")
+		_acting = _living(party)[0]
+		_start_party_turn(_acting)
+		return
 	_audio_call(&"stop_music")
 	finished.emit("prologue_defeat")
 
@@ -3351,7 +3375,7 @@ func _moves_for(entry: Dictionary) -> Array:
 			"text": String(def.get("text", "You cast %s" % String(def.get("display", spell_id)))),
 			"oxygen_cost": float(def.get("oxygen_cost", 0.0)),
 		})
-	if prologue_angler_encounter or prologue_octopus_encounter:
+	if prologue_angler_encounter:
 		var attacks: Array = []
 		for move_value in out:
 			var original := move_value as Dictionary
@@ -4835,6 +4859,7 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	_refresh_player_stats_panel()
 	_log_player_result(_acting, target, mv, r)
 	if prologue_octopus_encounter:
+		print("PROLOGUE_HIT|move=%s|damage=%d|hit=%s|hp=%d|effects=%s" % [String(mv.name), int(r.damage), str(r.hit), (target.stats as CombatantStats).hp, str(r.get("effects", []))])
 		_audio_call(&"duck_music", [-7.0, 0.25])
 		_finish_actor_turn(_acting)
 		await _resolve_prologue_finisher()
@@ -4886,6 +4911,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 		if (target.stats as CombatantStats).hp <= 0:
 			continue
 		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
+		if prologue_octopus_encounter:
+			print("PROLOGUE_HIT|move=%s|damage=%d|hit=%s|hp=%d|effects=%s" % [String(mv.name), int(result.damage), str(result.hit), (target.stats as CombatantStats).hp, str(result.get("effects", []))])
 		first = false
 		changed_agility = changed_agility or (result.get("effects", []) as Array).any(
 			func(effect: Variant) -> bool: return String(effect).begins_with("Blindness"))
