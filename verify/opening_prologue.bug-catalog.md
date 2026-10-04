@@ -45,8 +45,8 @@ normal Game Over, and leaves the current tutorial available but optional.
 
 | ID | Observable failure | Blast radius | Why plausible | Cheapest decisive test type | Status |
 | --- | --- | --- | --- | --- | --- |
-| OPEN-001 | Old PR #96 saves replay the new opening or become trapped in it. | High: existing players lose continuity. | Missing save fields can look identical to new false values. | captured migration + round-trip | open |
-| OPEN-002 | Quitting during video/Battle/recovery reloads a black screen or half-owned fight. | High: save soft-lock. | Video and Battle are transient async owners. | decision table + round-trip | open |
+| OPEN-001 | Old PR #96 saves replay the new opening or become trapped in it. | High: existing players lose continuity. | Missing save fields can look identical to new false values. | captured migration + round-trip | caught and fixed in state contract; World journey pending |
+| OPEN-002 | Quitting during video/Battle/recovery reloads a black screen or half-owned fight. | High: save soft-lock. | Video and Battle are transient async owners. | decision table + round-trip | safe-state decision table green; live journey pending |
 | OPEN-003 | Opening policy makes the lab video unskippable, or the first-run opening skippable. | High: inherited route regression or broken product decision. | Both surfaces reuse one stream but require different policy. | differential integration | open |
 | OPEN-004 | Video is cropped, stretched, doubled, silent unexpectedly, or leaves world input live. | High: first player-visible surface looks broken. | Runtime-built CanvasLayer, viewport changes, separate audio player. | structural invariant + browser visual/input | open |
 | OPEN-005 | Video, exploration, Battle, victory, boss, or Game Over audio overlap or transition to the wrong cue. | High: recreates audiovisual overload. | Multiple async phase boundaries and a separate VideoStreamPlayer. | audio state trace + browser listening | open |
@@ -57,7 +57,7 @@ normal Game Over, and leaves the current tutorial available but optional.
 | OPEN-010 | Prologue changes ordinary Angler stats/moves or grants XP/items/spells. | High: global balance/progression regression. | Reusing existing enemy/content tables invites shared mutation. | differential normal/prologue + no-reward invariant | open |
 | OPEN-011 | Normal victory fanfare/world handoff occurs before Cordys. | Medium-high: interruption loses meaning or duplicates scenes. | Existing Battle win handler owns music/rewards/removal. | captured end-to-end state transition | open |
 | OPEN-012 | Cordys is invisible, static, backward, tiny, clipped, obstructed, or shows the bright-line artifact. | High: central hook visibly fails. | Delivered FBX has unusual composite bounds/front and known line surface. | import invariants + production projection + human visual | open |
-| OPEN-013 | Prologue mutates campaign Octopus route state or adopts final campaign balance/rewards. | High: future route becomes impossible or pre-completed. | Same character/media name serves two distinct owners. | state differential/invariant | open |
+| OPEN-013 | Prologue mutates campaign Octopus route state or adopts final campaign balance/rewards. | High: future route becomes impossible or pre-completed. | Same character/media name serves two distinct owners. | state differential/invariant | encounter-source/state invariant green; combat pending |
 | OPEN-014 | Player's Cordys attack is ignored by input or falsely appears to deal meaningful damage. | Medium-high: defeat reads as broken/rigged rather than hopeless. | Scripted control can bypass real Battle resolution. | public-input integration + bounded-damage invariant | open |
 | OPEN-015 | Cordys finishing move leaves a survivor, opens normal Game Over, or replays the prologue. | High: narrative handoff fails. | Normal loss handler is load-bearing existing behavior. | captured special-result integration | open |
 | OPEN-016 | Recovery returns a dead/damaged/misplaced party, omits the motivation, or saves too early/late. | High: player cannot continue or loses context. | Several state/visual/save operations cross an async boundary. | postcondition invariant + save round-trip | open |
@@ -187,9 +187,17 @@ normal Game Over, and leaves the current tutorial available but optional.
 
 Fill after each test is written and run, one at a time:
 
-- **Bugs caught:** pending.
-- **Bugs characterized:** pending.
-- **Bugs discovered during writing:** pending.
+- **Bugs caught:** OPEN-001. The parent has no durable opening fields, so an
+  implementation that defaulted missing data to false would replay the new
+  prologue for every existing PR #96 save. The red gate produced 14 findings
+  before the explicit old-save/new-save distinction was added.
+- **Bugs characterized:** OPEN-002's three safe durable restore milestones;
+  OPEN-013's semantic sources do not change campaign Octopus state.
+- **Bugs discovered during writing:** a fresh worktree's inherited
+  `verify/route_state.gd` printed `ROUTE STATE: clean` and exited 0 while
+  incomplete FBX imports produced runtime errors. Project import is now a
+  prerequisite and execution wrappers reject any `SCRIPT ERROR`/`ERROR:` line
+  even when a legacy script exits 0.
 - **Tests removed after self-critique:** pending.
 - **Pass-plus-suspect items investigated:** pending.
 
