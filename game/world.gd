@@ -32,6 +32,7 @@ var _intro_active := false
 const INTRO_ARRIVAL_DIST := 2.5
 var _first_encounter_started := false
 var _transitioning_to_encounter := false
+var random_encounter_reveal: RandomEncounterReveal
 # Set once the choreographed tutorial fight (see battle.gd's
 # tutorial_encounter) actually finishes - _on_battle_finished() flips this.
 # Gates the save point (_toggle_save_menu()/_update_save_point_prompt())
@@ -389,6 +390,7 @@ func _load_save() -> bool:
 			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
 				return false
 	var divers_data := raw_divers as Array
+	_cancel_random_encounter_reveal()
 	if is_instance_valid(escape_encounter_hint):
 		escape_encounter_hint.dismiss()
 	for i in range(divers.size()):
@@ -500,6 +502,7 @@ func _audio_call(method: StringName) -> void:
 		owner.call(method)
 
 func _show_title_screen() -> void:
+	_cancel_random_encounter_reveal()
 	if is_instance_valid(escape_encounter_hint):
 		escape_encounter_hint.dismiss()
 	# The title owns the entire cold-launch surface. Keeping it on a separate
@@ -573,6 +576,7 @@ func _on_title_skip_tutorial(slot: int = 0) -> void:
 	await _on_title_new_game(slot)
 
 func _on_title_load_game(slot: int) -> bool:
+	_cancel_random_encounter_reveal()
 	_current_slot = slot
 	if not _load_save():
 		_current_slot = -1
@@ -1786,7 +1790,7 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 		})
 
 func _unhandled_input(e: InputEvent) -> void:
-	if battling:
+	if battling or _transitioning_to_encounter:
 		return
 
 	# Aim mode intercepts clicks before the normal "first click captures
@@ -2073,7 +2077,7 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
-	if battling or inventory_menu.visible:
+	if battling or _transitioning_to_encounter or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
 	# browser, and a build nobody can steer is a build nobody plays.
@@ -2100,6 +2104,11 @@ func _physics_process(dt: float) -> void:
 		# it for the diver's actual position.
 		if i == active and not target_selector.selecting and not _transitioning_to_encounter:
 			d.swim(_player_dir(), _player_rise(), dt)
+			# The distance roll can pause the tree inside swim(). Do not continue
+			# this already-running frame and move the camera or trigger a second
+			# route encounter after the preview has measured its placement.
+			if is_instance_valid(random_encounter_reveal):
+				return
 		else:
 			# Zero input, not skipped entirely - swim() still drains
 			# velocity to a stop and keeps bob/bubble animation ticking,
@@ -3004,13 +3013,47 @@ func _try_trigger_item_site(d: Diver) -> bool:
 # _physics_process() and here, since a movement roll may land on the same
 # frame the active diver crosses a site boundary.
 func _on_encounter_triggered(d: Diver) -> void:
-	if not route_state.prologue_complete or battling or d != divers[active] or _intro_active or not random_encounters_enabled:
+	if not route_state.prologue_complete or battling or _transitioning_to_encounter or d != divers[active] or _intro_active or not random_encounters_enabled:
 		return
 	if _try_trigger_item_site(d):
 		return
 	if deep_zone_layout.zone_for_position(d.global_position) == "deep" and not deep_zone_layout.allows_random_encounter(d.global_position):
 		return
-	_start_battle()
+	_begin_random_encounter_reveal()
+
+func _begin_random_encounter_reveal() -> void:
+	var selected := Battle.select_ordinary_enemies((divers[0] as Diver).stats.level)
+	_transitioning_to_encounter = true
+	if aiming:
+		_cancel_aim()
+	if target_selector.selecting:
+		target_selector.cancel_selection()
+	random_encounter_reveal = RandomEncounterReveal.new()
+	var reveal := random_encounter_reveal
+	reveal.enemy_ids = selected
+	reveal.camera = cam
+	# Freeze world physics/status timers, not just movement input. Preview
+	# animations run ALWAYS; no HP/O2, preference or checkpoint is modified.
+	get_tree().paused = true
+	reveal.finished.connect(func() -> void:
+		if random_encounter_reveal != reveal:
+			return
+		_cancel_random_encounter_reveal()
+		route_state.set_encounter_source("random")
+		_start_battle("", false, "angler", [], false, false, "", false, selected)
+		print("RANDOM_COMBAT|enemies=", ",".join(selected))
+	, CONNECT_ONE_SHOT)
+	add_child(reveal)
+
+func _cancel_random_encounter_reveal() -> void:
+	if not is_instance_valid(random_encounter_reveal):
+		return
+	random_encounter_reveal.set_process(false)
+	random_encounter_reveal.restore_camera()
+	random_encounter_reveal.queue_free()
+	random_encounter_reveal = null
+	_transitioning_to_encounter = false
+	get_tree().paused = false
 
 # Skips the Enter/Not Now prompt and drops the player straight into the
 # minigame as Maxilani, narrated by battle.gd's own _first_fight_prompt()
@@ -3085,7 +3128,8 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = []) -> void:
+	_cancel_random_encounter_reveal()
 	escape_encounter_hint.dismiss()
 	battling = true
 	if boss_encounter:
@@ -3118,8 +3162,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		# the fight even started.
 		_announce("Defeat the enemy to gain a special reward item!")
 	else:
-		_announce("An angler fish emerges from the murk!")
+		_announce("Enemies emerge from the murk!" if revealed_enemy_ids.size() > 1 else "An enemy emerges from the murk!")
 	battle = Battle.new()
+	battle.ordinary_enemy_ids = revealed_enemy_ids.duplicate()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
 	battle.boss_encounter = boss_encounter
@@ -3531,6 +3576,7 @@ func _build_diver_slots() -> void:
 # exists, so tree teardown cannot free those Nodes for us. Explicit ownership
 # here prevents three hidden Control subtrees leaking on every restart/load.
 func _exit_tree() -> void:
+	_cancel_random_encounter_reveal()
 	for slot_value in _diver_slots:
 		var slot := slot_value as Slot
 		if is_instance_valid(slot) and not slot.is_inside_tree():

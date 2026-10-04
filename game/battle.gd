@@ -38,6 +38,9 @@ signal player_swing_staged(attacker: Node3D, target: Node3D)
 # reading those three fields - they stay right where they are in the dive
 # site the whole fight, frozen like everything else while battling.
 var party_source: Array = []
+# Selected once by World before its in-water reveal. Empty retains the direct
+# Battle entry contract used by independent combat/guardian fixtures.
+var ordinary_enemy_ids: Array[String] = []
 
 # Set by world.gd alongside party_source - the only reason battle.gd needs
 # this is to reach World.inventory for the Items menu below (see
@@ -194,6 +197,12 @@ static func ordinary_enemy_count_for_roll(player_level: int, roll: float, is_gua
 	if normalized < 1.0 / 3.0:
 		return 1
 	return 2 if normalized < 2.0 / 3.0 else 3
+
+static func select_ordinary_enemies(player_level: int) -> Array[String]:
+	var selected: Array[String] = []
+	for index in range(ordinary_enemy_count_for_roll(player_level, randf())):
+		selected.append(EnemyRoster.random_id())
+	return selected
 
 # Authored enemy target scopes are content, not flavor text. `two` retains
 # the already-selected primary and deterministically adds one other living
@@ -1351,7 +1360,12 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter or prologue_angler_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
+	var use_revealed_roster := not ordinary_enemy_ids.is_empty() and not (boss_encounter or special_encounter or tutorial_encounter or prologue_angler_encounter or guardian_encounter)
+	var count := 1
+	if use_revealed_roster:
+		count = ordinary_enemy_ids.size()
+	elif not (boss_encounter or special_encounter or tutorial_encounter or prologue_angler_encounter):
+		count = ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -1395,7 +1409,11 @@ func _build_stage() -> void:
 		# Swordfish could replace the named tutorial opponent even though every
 		# caption and QTE explanation still described an Angler. Special tutorial
 		# practice uses the same predictable onboarding opponent.
-		var g: Goblin = _actor_for_enemy_id("angler") if tutorial_encounter or prologue_angler_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
+		var g: Goblin
+		if use_revealed_roster:
+			g = actor_for_enemy_id(ordinary_enemy_ids[i])
+		else:
+			g = actor_for_enemy_id("angler") if tutorial_encounter or prologue_angler_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
 		# Special encounters use the deliberately deeper lane selected above.
 		# Grapple Intercept needs that depth to read as an incoming wave rather
 		# than a ring spinning near the player; swap encounters already use the
@@ -1616,12 +1634,12 @@ func _battle_set_meshes(node: Node) -> Array:
 	return found
 
 func _guardian_actor() -> Goblin:
-	return _actor_for_enemy_id(guardian_enemy_id)
+	return actor_for_enemy_id(guardian_enemy_id)
 
 func _ordinary_actor() -> Goblin:
-	return _actor_for_enemy_id(EnemyRoster.random_id())
+	return actor_for_enemy_id(EnemyRoster.random_id())
 
-func _actor_for_enemy_id(enemy_id: String) -> Goblin:
+static func actor_for_enemy_id(enemy_id: String) -> Goblin:
 	match enemy_id:
 		"swordfish_duelist":
 			return SwordDuelist.new()

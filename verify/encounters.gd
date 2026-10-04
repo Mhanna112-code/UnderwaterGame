@@ -63,6 +63,10 @@ func _process(_d: float) -> bool:
 		return false
 
 	if at >= 0:
+		# Ordinary rolls now reveal their real enemies in the exploration world
+		# before constructing Battle. Site dispatch remains immediate/chooser.
+		if world._transitioning_to_encounter:
+			return false
 		_check_result()
 	at += 1
 	if at >= cases.size():

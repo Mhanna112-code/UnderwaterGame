@@ -46,8 +46,16 @@ const phases = [], errors = [], timestamps = {}, combatHits = [], bossResponses 
 const bossResponseTimes = [];
 let checkpointFailureObserved = false;
 const deaths = [];
+const randomReveals = [], randomCombats = [];
 page.on('console', msg => {
   const line = msg.text();
+  if (line.startsWith('RANDOM_REVEAL|')) {
+    randomReveals.push({ line, time: Date.now() });
+    // Capture the real render while ordinary swimming is still held down.
+    page.screenshot({ path: path.join(output, `random-world-${randomReveals.length}.png`) }).catch(error => errors.push(String(error)));
+    console.log(line);
+  }
+  if (line.startsWith('RANDOM_COMBAT|')) { randomCombats.push({ line, time: Date.now() }); console.log(line); }
   if (line.startsWith('PROLOGUE_HIT|')) { combatHits.push(line); console.log(line); }
   if (line.startsWith('PROLOGUE_STRIKE|')) { bossResponses.push(line); bossResponseTimes.push(Date.now()); console.log(line); }
   const match = line.match(/PROLOGUE_PHASE\|([a-z_]+)/);
@@ -275,6 +283,12 @@ try {
     }
     await page.keyboard.up('d');
     if (!runRow) throw new Error('ESC-001 normal swimming did not produce a usable Run button');
+    if (!randomReveals.length || randomCombats.length !== randomReveals.length) throw new Error('REVEAL-01 natural swimming bypassed world reveal');
+    for (let index = 0; index < randomReveals.length; index++) {
+      const shown = randomReveals[index], fight = randomCombats[index];
+      if (shown.line.split('|')[1] !== fight.line.split('|')[1]) throw new Error('REVEAL-02 browser reveal and fight roster differ');
+      if (fight.time - shown.time < 1300 || fight.time - shown.time > 4000) throw new Error('REVEAL-01 reveal not briefly readable: ' + (fight.time - shown.time));
+    }
     let escaped = false, attempts = 0;
     const runDeadline = Date.now() + 60000;
     while (!escaped && Date.now() < runDeadline) {
@@ -444,7 +458,7 @@ try {
   if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, bossResponseTimes, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, bossResponseTimes, randomReveals, randomCombats, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }
