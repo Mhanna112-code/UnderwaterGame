@@ -315,24 +315,32 @@ func finish_lines_drawing() -> void:
 	var to := _line_near(end)
 	var from_y := start.y
 	var to_y := end.y
-	if from == -1 or to == -1 or absi(from - to) != 1:
-		# Not neatly from one line to the next (overshooting both, or
-		# reaching across more than one gap): if it's long enough to mean
-		# something, its centre decides - straight across between whichever
-		# two neighbouring lines have their middle closest to it.
+	if from == -1 or to == -1 or from == to:
+		# Not neatly from one line to another (overshooting, or an end in
+		# between lines): if it's long enough to mean something, each end goes
+		# to its nearest line - which can be two lanes apart. Too short to
+		# reach two different lines, its centre decides instead: straight
+		# across between whichever two neighbouring lines have their middle
+		# closest to it.
 		var centre := (start + end) * 0.5
 		var gap := line_xs[1] - line_xs[0]
 		if absf(end.x - start.x) < gap * 0.6 or centre.y < LINE_TOP or centre.y > _line_bottom():
 			clear_drawing_line()
 			return
-		var best := 0
-		for k in line_xs.size() - 1:
-			var mid := (line_xs[k] + line_xs[k + 1]) * 0.5
-			if absf(centre.x - mid) < absf(centre.x - (line_xs[best] + line_xs[best + 1]) * 0.5):
-				best = k
-		# Started on the left = leads right, and the other way round.
-		from = best if start.x <= end.x else best + 1
-		to = best + 1 if start.x <= end.x else best
+		var near_start := _nearest_lane(start.x)
+		var near_end := _nearest_lane(end.x)
+		if near_start != near_end:
+			from = near_start   # the end the drawing started on
+			to = near_end
+		else:
+			var best := 0
+			for k in line_xs.size() - 1:
+				var mid := (line_xs[k] + line_xs[k + 1]) * 0.5
+				if absf(centre.x - mid) < absf(centre.x - (line_xs[best] + line_xs[best + 1]) * 0.5):
+					best = k
+			# Started on the left = leads right, and the other way round.
+			from = best if start.x <= end.x else best + 1
+			to = best + 1 if start.x <= end.x else best
 		from_y = centre.y
 		to_y = centre.y
 	var a := Vector2(line_xs[from], from_y)
@@ -351,7 +359,7 @@ func finish_lines_drawing() -> void:
 	head.polygon = PackedVector2Array([tip, tip - dir * 16.0 + Vector2(-dir.y, dir.x) * 9.0, tip - dir * 16.0 - Vector2(-dir.y, dir.x) * 9.0])
 	_drawing_line.add_child(head)
 	rungs.append({"node": _drawing_line, "from": from, "to": to, "from_y": from_y, "to_y": to_y})
-	_drawing_line = null   # kept on the panel as a rung
+	_drawing_line = null  
 
 # A new rung may not end within MIN_RUNG_GAP of another rung's end on the
 # same line, nor cross another rung.
@@ -395,6 +403,14 @@ func clear_drawing_line() -> void:
 
 # Index of the vertical line `p` (panel space) is on: within SNAP_DISTANCE
 # of its centre and between its top and bottom. -1 if none.
+# The line whose x is closest to `x`.
+func _nearest_lane(x: float) -> int:
+	var best := 0
+	for i in line_xs.size():
+		if absf(x - line_xs[i]) < absf(x - line_xs[best]):
+			best = i
+	return best
+
 func _line_near(p: Vector2) -> int:
 	if p.y < LINE_TOP or p.y > _line_bottom():
 		return -1
