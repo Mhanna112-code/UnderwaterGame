@@ -518,8 +518,15 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log(encounter_intro(enemies))
+		if guardian_encounter:
+			_intro_hold = ITEM_CARRIER_INTRO
+		_log(ITEM_CARRIER_INTRO if guardian_encounter else encounter_intro(enemies))
 		_advance_turn()
+
+# The opening combat text for an enemy guarding an item. Kept above the
+# first "X's turn." line (which would otherwise replace it at once).
+const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
+var _intro_hold := ""
 
 static func encounter_intro(entries: Array) -> String:
 	if entries.size() != 1:
@@ -1332,7 +1339,11 @@ func _build_ui() -> void:
 		_build_overhead_bar(entry)
 
 	log_label = Label.new()
-	log_label.custom_minimum_size = Vector2(0, 36)
+	# Always room for two lines (e.g. "This enemy is carrying an item!..."
+	# above "X's turn."), and it grows for more - the panel refits around it
+	# (see _log()), moving the buttons down instead of covering the text.
+	log_label.custom_minimum_size = Vector2(0, LOG_MIN_HEIGHT)
+	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(log_label)
 
@@ -1904,8 +1915,11 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	overlay.size.x = ((after - before) / max_value) * OVERHEAD_BAR_WIDTH
 	overlay.visible = true
 
+const LOG_MIN_HEIGHT := 56.0   # two lines of combat text
+
 func _log(text: String) -> void:
 	log_label.text = text
+	call_deferred("_fit_panel_height")
 
 # A combat result belongs on the combatant it happened to, not only in the
 # fast-moving sentence at the bottom of the screen. Label3D keeps the proof
@@ -2297,7 +2311,12 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
 	_show_turn_cursor_on(actor)
-	_log("%s's turn." % String(actor.display_name))
+	var turn_text := "%s's turn." % String(actor.display_name)
+	if _intro_hold != "":
+		turn_text = "%s
+%s" % [_intro_hold, turn_text]
+		_intro_hold = ""
+	_log(turn_text)
 	_set_all_buttons(true)
 	# Skip straight past Attack/Items/Run ONLY on the scripted diver's own
 	# turn - the tutorial's whole point there is choosing between moves,
