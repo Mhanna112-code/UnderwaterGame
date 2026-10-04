@@ -24,10 +24,14 @@ func _run() -> void:
 		await create_timer(1.1).timeout
 		_expect(paused and not world.battling and diver.position.is_equal_approx(origin), "TITLE-002 world moves/fights beneath title")
 		_key(KEY_W, false)
+		var revealed_camera := world.cam.global_transform
 		while world.route_state.prologue_phase == "opening_handoff" and Time.get_ticks_msec() < deadline:
 			await process_frame
 		_expect(not paused and world.get_node("HUD").visible, "TITLE-002 title does not restore visible controls and world input")
 		_expect(world.route_state.opening_video_seen and not world.route_state.prologue_complete, "TITLE-006 title corrupts durable milestones")
+		for frame in range(3):
+			await physics_frame
+		_expect(revealed_camera.origin.distance_to(world.cam.global_position) < 0.03 and revealed_camera.basis.is_equal_approx(world.cam.global_basis), "TITLE-007 camera zooms/reorients after the title reveal")
 		await create_timer(1.0).timeout
 		_expect(not world.battling, "TITLE-002 input time during title banks premature combat")
 		var started := Time.get_ticks_msec()

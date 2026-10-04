@@ -16,6 +16,7 @@ must leave those other owners alone, and must not bank world swimming time.
 | TITLE-004 | New credits/title also appear in Cordys/lab, or decoder failure traps the player. | Opt-in default off, unchanged independent lab skip and Cordys segment gates; fallback Continue remains immediate and does not claim successful viewing. |
 | TITLE-005 | Credits crop on small screens or dominate the opener; fade ignores Music settings. | Real 1280x720 and 720x480 captures; bus remains Music, only local video amplitude fades, no settings writes. |
 | TITLE-006 | Completed opener is replayed on load, or deployed bytes are stale. | Existing isolated World/save gate plus exact hosted commit/PCK identity and normal browser New Game. |
+| TITLE-007 | Revealing the paused world exposes an unset camera/HUD, which visibly zooms or pops when control returns. | Camera position/orientation during title must match first idle physics frames after reveal; inspect continuous browser transition. |
 
 Tests use decoder EOF and public signals rather than a fake win or phase
 injection. Fast lifecycle tests are not proof of a polished transition: rendered

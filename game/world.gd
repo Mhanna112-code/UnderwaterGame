@@ -607,6 +607,14 @@ func _play_opening_if_needed() -> bool:
 		route_state.set_prologue_phase("opening_handoff")
 		# Prepare the HUD behind the opaque title so the final reveal includes
 		# controls. World physics stays paused until completed below.
+		_camera_look_override = null
+		return_camera_to_player()
+		# Settle the existing chase framing before revealing it, not on the
+		# first unpaused frame (which otherwise visibly zooms after the fade).
+		_move_camera(1.0)
+		_update_hp_bar()
+		_update_oxygen_bar()
+		_update_active_cursor()
 		$HUD.visible = true
 	)
 	title_layer.add_child(opening_video)
