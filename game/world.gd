@@ -2317,13 +2317,12 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		# hang on screen through the whole fight and after.
 		banner.text = ""
 		_banner_timer = 0.0
-	elif reward_item != "" and not special:
-		# The plain (non-special) guarded fights - shallows/trench's key
-		# items. A special encounter doesn't need this: its own Enter/Not
-		# Now prompt (or, for the very first one, battle.gd's own tutorial
-		# caption) already told the player what they're walking into before
-		# the fight even started.
-		_announce("Defeat the enemy to gain a special reward item!")
+	elif reward_item != "":
+		# An enemy carrying an item (guarded fights, special or not): no
+		# banner - battle.gd's combat text opens with "This enemy is
+		# carrying an item! Defeat the enemy and win the item." instead.
+		banner.text = ""
+		_banner_timer = 0.0
 	else:
 		_announce("An angler fish emerges from the murk!")
 	battle = Battle.new()

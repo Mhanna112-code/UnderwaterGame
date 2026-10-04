@@ -564,8 +564,62 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log(encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies))
+		var intro := encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies)
+		if guardian_encounter:
+			intro = ITEM_CARRIER_INTRO
+			_intro_hold = intro
+		_log(intro)
 		_advance_turn()
+
+# The opening combat text for an enemy guarding an item. Kept above the
+# first "X's turn." line (which would otherwise replace it at once).
+const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
+var _intro_hold := ""
+
+# The opening combat text for an enemy guarding an item. Kept above the
+# first "X's turn." line (which would otherwise replace it at once).
+const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
+var _intro_hold := ""
+
+# Enemies get a little stronger as the party unlocks its spells: every
+# scaled stat (not evasion, which is never scaled) gains another 1% while
+# fewer than half of the party's spells are unlocked, 2.5% from half, and
+# 5% once every one is - on top of the enemy's own boost. Not in the
+# tutorial fight.
+const UNLOCK_BONUS_SOME := 0.01
+const UNLOCK_BONUS_HALF := 0.025
+const UNLOCK_BONUS_ALL := 0.05
+
+func _unlock_bonus() -> float:
+	var known := 0
+	var total := 0
+	for d in party_source:
+		var diver := d as Diver
+		if diver == null:
+			continue
+		var tree: Dictionary = SpellTree.tree_for(diver.model_name)
+		for branch in tree:
+			total += (tree[branch] as Dictionary).size()
+		known += diver.known_spells.size()
+	if total == 0:
+		return 0.0
+	if known >= total:
+		return UNLOCK_BONUS_ALL
+	if known * 2 >= total:
+		return UNLOCK_BONUS_HALF
+	return UNLOCK_BONUS_SOME
+
+func _with_unlock_bonus(s: CombatantStats) -> CombatantStats:
+	if tutorial_encounter or s == null:
+		return s
+	var k := 1.0 + _unlock_bonus()
+	s.hp_max = int(round(float(s.hp_max) * k))
+	s.strength = int(round(float(s.strength) * k))
+	s.defense = int(round(float(s.defense) * k))
+	s.agility = int(round(float(s.agility) * k))
+	s.accuracy = int(round(float(s.accuracy) * k))
+	s.fill()
+	return s
 
 static func encounter_intro(entries: Array) -> String:
 	if entries.size() != 1:
@@ -2731,7 +2785,12 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
 	_show_turn_cursor_on(actor)
-	_log("%s's turn." % String(actor.display_name))
+	var turn_text := "%s's turn." % String(actor.display_name)
+	if _intro_hold != "":
+		turn_text = "%s
+%s" % [_intro_hold, turn_text]
+		_intro_hold = ""
+	_log(turn_text)
 	_set_all_buttons(true)
 	# Run stays off for the entire tutorial fight, not just its scripted
 	# steps - _set_all_buttons(true) just re-enabled it above like every
