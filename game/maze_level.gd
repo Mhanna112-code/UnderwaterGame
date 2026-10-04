@@ -2513,6 +2513,8 @@ func _update_world_hud() -> void:
 	if target_selector != null and target_selector.selecting:
 		var t := target_selector.current_target() as Diver
 		_world_hud_name.text = "Swap with %s?   Left/Right: cycle  ·  Enter: confirm  ·  Esc: cancel" % (Cast.display_name(t.model_name) if t != null else "...")
+	elif _aiming:
+		_world_hud_name.text = "Aiming Grapple   Left click: fire  ·  Right click: cancel"
 	var after := ""
 	if _diver.ability_id != "":
 		after += "  ·  E: %s" % String(_diver.ability_id).capitalize()
@@ -3047,16 +3049,38 @@ func _nearest_clear_spot(d: Diver, pos: Vector3) -> Vector3:
 				return at
 	return pos
 
-# Would a diver at `pos` overlap any maze wall other than `except`?
+# Would a diver at `pos` overlap anything solid other than `except` and the
+# walls still moving? Maze walls by their boxes, plus a real physics overlap
+# test for everything that isn't one - the split rock, the potion rock, the
+# end caps and barriers built in code - so a diver is never shoved into, or
+# set down inside, one of those.
 func _diver_spot_blocked(d: Diver, pos: Vector3, except: CSGBox3D) -> bool:
 	var r := d.radius + SWEEP_MARGIN
+	var ignore: Array = [except]
+	for set_name in _moving_wall_nodes:
+		ignore.append_array(_moving_wall_nodes[set_name])
 	for w in wall_boxes:
-		if w == except or not is_instance_valid(w) or not w.visible:
+		if ignore.has(w) or not is_instance_valid(w) or not w.visible:
 			continue
 		var local := w.global_transform.affine_inverse() * pos
 		var half := w.size * 0.5
 		if absf(local.x) < half.x + r and absf(local.z) < half.z + r and absf(local.y) < half.y + d.height * 0.5:
 			return true
+	# The diver's own capsule, its bottom lifted a little so resting on the
+	# floor doesn't count as blocked.
+	var cap := CapsuleShape3D.new()
+	cap.radius = r
+	cap.height = maxf(d.height - 0.2, r * 2.0 + 0.1)
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = cap
+	q.transform = Transform3D(Basis.IDENTITY, pos + Vector3(0, 0.1, 0))
+	q.collision_mask = 1
+	q.exclude = [d.get_rid()]
+	for hit in get_world_3d().direct_space_state.intersect_shape(q, 16):
+		var collider: Object = hit.get("collider")
+		if collider == null or ignore.has(collider):
+			continue
+		return true
 	return false
 
 func _rotate_hallway_1_2() -> void:
@@ -4008,7 +4032,10 @@ func _physics_process(dt: float) -> void:
 	_update_save_point_prompt()
 	_update_announce(dt)
 	_check_split_rock()
+	if _aiming and (_battling or any_modal_open() or _gate_cutscene or not _moving_wall_sets.is_empty() or _free_map_open):
+		_cancel_aim()
 	_move_camera(dt)
+	_update_aim_marker()
 
 # Wall-rotation "cutscene": while any walls are rotating the camera pans up
 # and over to look down on them, and frames them until they stop, then eases
@@ -4072,9 +4099,17 @@ func _move_camera(dt: float) -> void:
 		_cutscene_return = CUTSCENE_RETURN_TIME
 		return
 	_cutscene_dir = Vector3.ZERO
+	var dir := _aim_dir()
+	if _aiming:
+		# The diver's own eye line - the height _grapple() fires from - so
+		# what you see is what the raycast checks.
+		var eye: Vector3 = _diver.global_position + Vector3(0, _diver.height * 0.4, 0)
+		cam.global_position = cam.global_position.lerp(eye, clampf(dt * 14.0, 0.0, 1.0))
+		_cam_look = eye + dir * 10.0
+		cam.look_at(_cam_look, Vector3.UP)
+		return
 	var returning := _cutscene_return > 0.0
 	_cutscene_return = maxf(_cutscene_return - dt, 0.0)
-	var dir := Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
 	var subject: Diver = _diver
 	if _camera_focus_target is Diver and is_instance_valid(_camera_focus_target):
 		subject = _camera_focus_target as Diver
@@ -4109,6 +4144,10 @@ func _unhandled_input(e: InputEvent) -> void:
 			return
 	# Esc opens / closes the inventory (as in the main game).
 	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_ESCAPE:
+		if _aiming:
+			_cancel_aim()
+			get_viewport().set_input_as_handled()
+			return
 		if inventory_menu != null and inventory_menu.visible:
 			inventory_menu.close()
 			get_viewport().set_input_as_handled()
@@ -4121,6 +4160,22 @@ func _unhandled_input(e: InputEvent) -> void:
 			return
 	if _battling or any_modal_open():
 		return
+	# Grapple aim: left click fires, right click backs out. Tab and E wait
+	# until the aim is fired or cancelled.
+	if _aiming:
+		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+			match (e as InputEventMouseButton).button_index:
+				MOUSE_BUTTON_LEFT:
+					_fire_aim()
+					get_viewport().set_input_as_handled()
+					return
+				MOUSE_BUTTON_RIGHT:
+					_cancel_aim()
+					get_viewport().set_input_as_handled()
+					return
+		elif e is InputEventKey and (e as InputEventKey).keycode in [KEY_TAB, KEY_E]:
+			get_viewport().set_input_as_handled()
+			return
 	# While choosing a swap target (the main game's TargetSelector): Left/
 	# Right cycle, Enter confirms, Esc cancels.
 	if target_selector != null and target_selector.selecting and e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
@@ -4205,14 +4260,81 @@ func _handle_e(e: InputEventKey) -> void:
 func _use_active_ability() -> void:
 	match _diver.ability_id:
 		"grapple":
-			var cam := $Camera3D as Camera3D
-			_diver.use_ability(-cam.global_transform.basis.z)
+			# Like the main game: E goes into first-person aim, left click
+			# fires, right click / Esc backs out (see _start_aim()).
+			if _diver.can_use_ability():
+				_start_aim()
 		"swap":
 			# Same as the main game: pick who to swap with first.
 			if not target_selector.selecting and _diver.can_use_ability():
 				target_selector.start_selection(_diver)
 		_:
 			_diver.use_ability()
+
+# --- Grapple aim (World's first-person aim mode) ------------------------------
+# E with the grapple diver cuts the camera to their eye line and hides their
+# model (it would fill the view); a ring shows where the shot would land,
+# green on a grapple anchor. Left click fires, right click / Esc cancels.
+var _aiming := false
+var _aiming_diver: Diver
+var _aim_marker: MeshInstance3D
+var _aim_marker_mat: StandardMaterial3D
+
+# Where the camera looks, from yaw/pitch - also where the grapple fires.
+func _aim_dir() -> Vector3:
+	return Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
+
+func _start_aim() -> void:
+	_aiming = true
+	_aiming_diver = _diver
+	_aiming_diver.visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_mouse_look = true
+
+func _fire_aim() -> void:
+	var d := _aiming_diver
+	_cancel_aim()
+	if d != null and is_instance_valid(d):
+		d.use_ability(_aim_dir())
+
+func _cancel_aim() -> void:
+	_aiming = false
+	if _aiming_diver != null and is_instance_valid(_aiming_diver):
+		_aiming_diver.visible = true
+	_aiming_diver = null
+
+# The same raycast the grapple will fire, every frame while aiming - a
+# preview of where the shot lands, not a hitbox.
+func _update_aim_marker() -> void:
+	if not _aiming:
+		if _aim_marker != null:
+			_aim_marker.visible = false
+		return
+	if _aim_marker == null:
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.22
+		ring.outer_radius = 0.32
+		_aim_marker = MeshInstance3D.new()
+		_aim_marker.mesh = ring
+		_aim_marker_mat = StandardMaterial3D.new()
+		_aim_marker_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_aim_marker_mat.emission_enabled = true
+		_aim_marker.material_override = _aim_marker_mat
+		add_child(_aim_marker)
+	var from: Vector3 = _diver.global_position + Vector3(0, _diver.height * 0.4, 0)
+	var to: Vector3 = from + _aim_dir() * Diver.GRAPPLE_RANGE
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [_diver.get_rid()]
+	var result := get_world_3d().direct_space_state.intersect_ray(query)
+	var point: Vector3 = to if result.is_empty() else (result.position as Vector3)
+	var on_target: bool = not result.is_empty() and (result.collider as Node).is_in_group("grapple_anchor")
+	_aim_marker.visible = true
+	_aim_marker.global_position = point
+	_aim_marker.look_at(from, Vector3.UP)
+	var c: Color = Color(0.35, 0.95, 0.4) if on_target else Color(0.75, 0.78, 0.8)
+	_aim_marker_mat.albedo_color = c
+	_aim_marker_mat.emission = c
+	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
 
 # --- Keys ---------------------------------------------------------------------
 # Keys aren't tied to doors: each key opens any one door (KeyDoor spends it),

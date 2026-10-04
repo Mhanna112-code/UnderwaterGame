@@ -1125,10 +1125,18 @@ func _build_map_help() -> void:
 	_map_help_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_help_label.add_theme_font_size_override("normal_font_size", 16)
 	_map_help_label.add_theme_color_override("default_color", Color(0.92, 0.97, 1.0))
-	_map_help_label.text = "%s / %s  choose a selected hallway   ·   %s  rotate it\n%s + %s / %s  choose a selected current   ·   %s  rotate it" % [
-		Slot._badge("←"), Slot._badge("→"), Slot._badge("E"),
-		Slot._badge("⇧"), Slot._badge("←"), Slot._badge("→"), Slot._badge("R"),
+	# A table so the two rows' keys, actions and rotate keys line up in
+	# columns, left-aligned, whatever width the Shift key adds to row two.
+	var cell := "[cell padding=0,3,18,3]%s[/cell]"
+	var rows := [
+		["%s / %s" % [Slot._badge("←"), Slot._badge("→")], "choose a selected hallway", Slot._badge("E"), "rotate it"],
+		["%s + %s / %s" % [Slot._badge("Shift ⇧"), Slot._badge("←"), Slot._badge("→")], "choose a selected current", Slot._badge("R"), "rotate it"],
 	]
+	var table := "[table=4]"
+	for row in rows:
+		for text in row:
+			table += cell % text
+	_map_help_label.text = table + "[/table]"
 	_map_help.add_child(_map_help_label)
 	main_map.get_parent().add_child(_map_help)
 	_map_help.visible = false
