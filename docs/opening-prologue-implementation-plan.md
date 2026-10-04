@@ -35,7 +35,7 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | 0: clean child branch | complete | Remote PR #96 head `27a5b525…`; clean child worktree; initial diff contains only these four planning contracts. |
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
 | B: opening video lifecycle | in progress | Owner, independent lab policy, Music routing, decoder fallback, successful/failed save and reload paths are green; browser wide/narrow/tall playback remains. |
-| C: quiet spawn and Angler | not started | Direction/idle matrix, one-action choices, isolation and no-reward proof. |
+| C: quiet spawn and Angler | in progress | Direction/idle matrix and protected World handoff green; all four displayed Maxilani attacks resolve through real buttons/target confirmation/animation and kill once; no rewards or normal victory. Public visual journey pending. |
 | D: Cordys interruption | not started | Production actor presentation, real negligible hit, deterministic special defeat and audio proof. |
 | E: recovery and optional training | not started | Atomic save/recovery plus both public post-recovery journeys. |
 | F: exact artifact and polish | not started | Public exact deployment, blind test, listening matrix and zero-defect audit round. |

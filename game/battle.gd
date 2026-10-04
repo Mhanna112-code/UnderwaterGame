@@ -21,6 +21,7 @@ extends CanvasLayer
 const BOSS_LAB_SCENE := preload("res://art/deep_zone/Broken_Office.fbx")
 
 signal finished(result: String)     # "won", "fled", or "lost"
+signal prologue_angler_defeated
 # Emitted after a party actor has stepped into range, faced the selected
 # target, and started its authored attack clip. Gameplay does not consume this;
 # the end-to-end fight gate uses the real selected target instead of guessing
@@ -63,6 +64,13 @@ var guardian_enemy_id := "angler"
 # keep `random`; authored blockers and bosses are assigned by World before this
 # node enters the tree.
 var encounter_source := "random"
+
+# Dedicated first-run configuration. This is not the long combat tutorial and
+# never mutates Angler's shared species tuning: it filters this one Battle's
+# visible choices to real attacks, builds one intentionally fragile opponent,
+# and pauses at defeat so World can reveal Cordys in the same sequence.
+var prologue_angler_encounter := false
+var _prologue_angler_interrupted := false
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -1177,7 +1185,7 @@ func _build_stage() -> void:
 	# turn()'s special_encounter branch), not a real multi-enemy fight. The
 	# tutorial fight is solo for the same reason: one diver, one grunt, no
 	# random pack size to complicate a first-ever fight.
-	var count := 1 if boss_encounter or special_encounter or tutorial_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
+	var count := 1 if boss_encounter or special_encounter or tutorial_encounter or prologue_angler_encounter else ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
 		# Keep the boss close to the party's depth plane. At the grunt row's
@@ -1221,7 +1229,7 @@ func _build_stage() -> void:
 		# Swordfish could replace the named tutorial opponent even though every
 		# caption and QTE explanation still described an Angler. Special tutorial
 		# practice uses the same predictable onboarding opponent.
-		var g: Goblin = _actor_for_enemy_id("angler") if tutorial_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
+		var g: Goblin = _actor_for_enemy_id("angler") if tutorial_encounter or prologue_angler_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
 		# Special encounters use the deliberately deeper lane selected above.
 		# Grapple Intercept needs that depth to read as an incoming wave rather
 		# than a ring spinning near the player; swap encounters already use the
@@ -1256,6 +1264,17 @@ func _build_stage() -> void:
 		party_centre /= maxf(1.0, float(party_actor_count))
 		g.face_toward(party_centre)
 		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		if prologue_angler_encounter:
+			# Isolated one-action promise. Every exposed attack still resolves
+			# through normal target selection, animation and CombatRules, but this
+			# instance cannot evade, mitigate, survive, or win the first turn.
+			st.hp_max = 1
+			st.strength = 0
+			st.defense = 0
+			st.agility = 0
+			st.accuracy = 0
+			st.evasion = 0
+			st.fill()
 		if tutorial_encounter:
 			# Five-plus real turns (every scripted move, then however many
 			# more real ones it actually takes to win or lose once
@@ -2805,6 +2824,18 @@ func _advance_turn() -> void:
 		_tutorial_caption.visible = false
 		call_deferred("_fit_panel_height")
 	if _living(enemies).is_empty():
+		if prologue_angler_encounter:
+			if not _prologue_angler_interrupted:
+				_prologue_angler_interrupted = true
+				_busy = true
+				_set_all_buttons(false)
+				main_menu.visible = false
+				move_menu.visible = false
+				item_menu.visible = false
+				target_menu.visible = false
+				_log("The Angler falls. The water goes still.")
+				prologue_angler_defeated.emit()
+			return
 		_win()
 		return
 	if _living(party).is_empty():
@@ -3070,6 +3101,9 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
+	if prologue_angler_encounter:
+		run_btn.visible = false
+		items_btn.visible = false
 	# Run stays off for the entire tutorial fight, not just its scripted
 	# steps - _set_all_buttons(true) just re-enabled it above like every
 	# other button, and this fight is supposed to read as risk-free
@@ -3169,7 +3203,22 @@ func _moves_for(entry: Dictionary) -> Array:
 			"text": String(def.get("text", "You cast %s" % String(def.get("display", spell_id)))),
 			"oxygen_cost": float(def.get("oxygen_cost", 0.0)),
 		})
+	if prologue_angler_encounter:
+		var attacks: Array = []
+		for move_value in out:
+			var original := move_value as Dictionary
+			if not _move_deals_damage(original):
+				continue
+			var attack := original.duplicate(true)
+			attack.acc_mod = maxi(int(attack.get("acc_mod", 0)), 1 - (entry.stats as CombatantStats).effective_accuracy())
+			attacks.append(attack)
+		return attacks
 	return out
+
+static func _move_deals_damage(move: Dictionary) -> bool:
+	if move.has("formula"):
+		return not (move.get("formula", {}) as Dictionary).is_empty()
+	return int(move.get("power", 0)) > 0 and String(move.get("effect", "")) not in ["heal", "revive"]
 
 func _show_moves() -> void:
 	if _busy:
