@@ -2,7 +2,15 @@
 
 ## Current authoritative status
 
-October 4, 2026: campaign/opening merged into the local integration baseline at 493b1d8, retaining the current two-turn Headbutt rule. PR97's runtime conflicts are reconciled locally. INT-01 live entrance, INT-02 live secret return and INT-04 native checkpoints/recovery and World return/history are committed through 529ba0d. Checkpoint UI repairs pass native rendered checks at four sizes at e2d0024; relic consumers pass eight actual battles at c58b26f. Map/save/swap input ownership and Marc's forced-room policy now pass generated real-input checks. Existing opening worktree changes remain untouched. No combined export or deployment exists yet; browser durability, complete traversal, puppet waves and finale remain incomplete. Main/public build has not been changed by this integration.
+October 4, 2026: campaign/opening and Marc's maze are reconciled locally. Earlier
+entrance, secret return, checkpoint, World-return, input and recovery increments
+are committed. Continuous puppets are committed at ebd14ed; campaign Cordys,
+live maze music and exploration-clock ownership now pass the checks below.
+Actual Maze-owned puppet/final fights win with legal level-5 consumer kits and
+normal 10-HP divers; completion snapshots preserve independent guardian/boss
+ownership. Full physical maze/resource progression, broader balance, browser
+durability and final polish are NOT accepted. No combined export/deployment yet;
+main/public remain unchanged. Other worktree changes remain untouched.
 
 | Phase | State | Required next evidence |
 | --- | --- | --- |
@@ -11,13 +19,36 @@ October 4, 2026: campaign/opening merged into the local integration baseline at 
 | State/recovery | In progress | Live entrance/secret return, native checkpoint cold Load/real death Restart, 12 World return/re-entry cases and four-size native checkpoint/menu checks pass; browser denied-storage and consumer/input integration still required |
 | Maze route | In progress | First current channel passes actual Tab/W/mouse/L/E/R headless/native with collision and push active; full puzzles/keys/secret/finale route remains pending |
 | Puppet encounter | In progress | Both real waves and six resource-boundary cases pass; normal kit reachability, once-only maze-key reward and interrupted recovery remain pending |
-| Cordys finale | Planned | Reachable no-lab normal-action win/loss and persisted closure |
-| Audio and feedback delivery | Planned | Exact export/served bytes and critical deployed checks |
+| Cordys finale | In progress | Normal campaign turns and actual sigil win/snapshot pass; earned no-lab/both-order resource paths and loss/file recovery remain pending |
+| Audio and feedback delivery | In progress | Live exploration/Battle/Cordys/return cue ownership passes; audible joins/mix, exact export/served bytes and deployed checks remain pending |
 | Windows/Linux | Planned | Exported, launch-tested and playtested recorded separately |
 | Full regression/polish | Planned | Complete clean audit round on identified artifact |
 | Human approval | Pending | Collaborator review; no public promotion before approval |
 
-## Current puppet checkpoint
+## Current finale and live-owner checkpoint
+
+Cordys uses a new campaign profile, shared normal turn/damage/status resolution,
+four delivered attack clips and independent progression. Legal consumer wins in
+12 actions; actual Maze sigil win in 13. Trigger snapshot stays completed after
+restore, campaign Octopus state is defeated, and lab/secret progress stays intact.
+Native 1x inspection repaired card/silhouette overlap, death-camera drift and
+retained extreme attack framing between turns. This is limited visual evidence,
+not a clean whole-game audit or complete attack-envelope acceptance.
+
+Real entry was silent: Maze now owns exploration, ordinary/puppet Battle INTRO,
+Cordys INTRO and result return without wave-one restart. Carried-party testing
+also reproduced Sonar billing shared O2 during combat. World/Maze suspend only
+exploration clocks during fights and resume their previous Sonar setting/tick.
+Actual puppet Maze win gives one key, retains only main_boss, leaves lab progress
+unchanged, and its snapshot restores that reward/trigger state. Clearing threats
+before second-wave healing wins in 12 actions; repeatedly healing during the
+first wave lost to stacked Bleed. No enemy stats were changed for that policy.
+
+Checkpoint, 12 World-return cases, opening state, environmental oxygen, audio
+manager and Tethys animation/attack regressions pass. Preparing the feedback
+export next; no main/public promotion is authorized by preview delivery.
+
+## Earlier puppet checkpoint
 
 The actual secret proximity/confirmation starts Cordys's puppets, not Tethys.
 Wave one clears through five real menu actions, carries exact shared state into

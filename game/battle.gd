@@ -666,6 +666,8 @@ func _ready() -> void:
 		_log("Tethys rises from the deep.")
 		if boss_intro_enabled:
 			_begin_boss_encounter()
+	elif encounter_source == "maze_cordys":
+		_begin_campaign_cordys()
 	else:
 		_log(encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies))
 		_advance_turn()
@@ -1010,6 +1012,16 @@ func _begin_boss_encounter() -> void:
 	await get_tree().create_timer(0.45).timeout
 	_advance_turn()
 
+func _begin_campaign_cordys() -> void:
+	_busy = true
+	_set_all_buttons(false)
+	_log("Cordys. This time, you can fight back.")
+	var actor := enemies[0].actor as CampaignCordys
+	var length := actor.play("reveal")
+	await get_tree().create_timer(maxf(0.8, length)).timeout
+	actor.play("idle")
+	_advance_turn()
+
 # The existing stage, party actors and combat UI survive the interruption.
 # Only the fallen enemy and its status card are replaced; no world/result
 # surface appears between the player's victory and the new threat.
@@ -1351,10 +1363,14 @@ func _build_stage() -> void:
 		var party_spread := 1.3 if boss_encounter else 2.9
 		var party_depth_spread := 0.3 if boss_encounter else 0.7
 		var party_x_offset := -1.0 if boss_encounter else -0.4
-		if encounter_source == "maze_puppets":
+		if encounter_source == "maze_puppets" or encounter_source == "maze_cordys":
 			party_spread = 2.1
 			party_depth_spread = 0.3
 			party_x_offset = -2.6
+		if encounter_source == "maze_cordys":
+			# Keep Maxilani's silhouette to the right of the stacked status cards.
+			party_spread = 1.6
+			party_x_offset = -1.4
 		actor.position = Vector3(_spread(i, pn, party_spread) + party_x_offset, floor_y, diver_z - _spread(i, pn, party_depth_spread))
 		party[i]["actor"] = actor
 		if (party[i].stats as CombatantStats).hp <= 0:
@@ -1371,6 +1387,24 @@ func _build_stage() -> void:
 	# make_stats()) rather than an independent level curve.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
+	if encounter_source == "maze_cordys":
+		var cordys := CampaignCordys.new()
+		cordys.position = Vector3(4.5, 0.0, -1.0)
+		vp.add_child(cordys)
+		var centre := Vector3.ZERO
+		for entry in party:
+			centre += (entry.actor as Node3D).position
+		centre /= float(maxi(1, party.size()))
+		cordys.face_toward(centre)
+		for entry in party:
+			(entry.actor as Diver).look_at(cordys.position, Vector3.UP)
+			entry.home_rot = (entry.actor as Diver).rotation.y
+		enemies.append({"kind": "enemy", "stats": cordys.make_stats(),
+			"display_name": "Cordys", "actor": cordys,
+			"home_pos": cordys.position, "home_rot": cordys.rotation.y,
+			"xp_reward": CampaignCordys.XP_REWARD, "boss": true})
+		_frame_stage_camera()
+		return
 	# MODIFIED (added): make_stats() below scales the grunt to be a
 	# credible threat against `ref_stats` regardless of context - in a
 	# normal fight that reference is a full party's average, worn down by
@@ -1805,7 +1839,7 @@ func _frame_stage_camera() -> void:
 	for p in pts:
 		centre += p as Vector3
 	centre /= float(pts.size())
-	if prologue_octopus_encounter:
+	if prologue_octopus_encounter or encounter_source == "maze_cordys":
 		# A mesh point cloud has many more points than a diver's small box;
 		# its vertex density must not drag the camera away from the party.
 		var enclosing := AABB(pts[0] as Vector3, Vector3.ZERO)
@@ -1816,12 +1850,12 @@ func _frame_stage_camera() -> void:
 	# The enclosed boss arena benefits from a more frontal authored view: less
 	# sideways foreshortening keeps the compact party formation and the office
 	# walls readable without changing ordinary/open-water fight framing.
-	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter or prologue_octopus_encounter or encounter_source == "maze_puppets" else STAGE_CAMERA_DIR).normalized()
+	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter or prologue_octopus_encounter or encounter_source in ["maze_puppets", "maze_cordys"] else STAGE_CAMERA_DIR).normalized()
 	# Two axes across the view, so the group can be measured in the plane
 	# the camera actually sees rather than in world X and Y.
 	var right: Vector3 = dir.cross(Vector3.UP).normalized()
 	var up: Vector3 = right.cross(dir).normalized()
-	if prologue_octopus_encounter:
+	if prologue_octopus_encounter or encounter_source == "maze_cordys":
 		# The composite's corpse/tentacle actions have considerable depth.
 		# Perspective fit either clips them or shrinks idle into a miniature.
 		# An authored orthographic stage keeps silhouettes consistently readable
@@ -4961,6 +4995,8 @@ func _react(entry: Dictionary, r: Dictionary) -> void:
 		(entry.actor as Diver).play_hit_reaction(heavy)
 	elif entry.actor is TethysBoss:
 		(entry.actor as TethysBoss).play_hit_reaction(heavy)
+	elif entry.actor is CampaignCordys:
+		(entry.actor as CampaignCordys).play_hit_reaction(heavy)
 	elif prologue_octopus_encounter and entry.actor.has_method("play"):
 		entry.actor.call("play", "hurt")
 
@@ -4971,6 +5007,8 @@ func _play_enemy_death(entry: Dictionary) -> void:
 		(entry.actor as Goblin).play_death_fade()
 	elif entry.actor is TethysBoss:
 		(entry.actor as TethysBoss).play_death()
+	elif entry.actor is CampaignCordys:
+		(entry.actor as CampaignCordys).play_death()
 
 func _play_enemy_hit(entry: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
@@ -4987,7 +5025,7 @@ func _restore_enemy_idle(entry: Dictionary) -> void:
 		(entry.actor as Goblin).play("idle")
 	elif entry.actor is TethysBoss:
 		(entry.actor as TethysBoss).play("idle")
-	elif prologue_octopus_encounter and entry.actor.has_method("play"):
+	elif (prologue_octopus_encounter or encounter_source == "maze_cordys") and entry.actor.has_method("play"):
 		entry.actor.call("play", "idle")
 
 func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
@@ -5131,8 +5169,8 @@ func _pick_enemy_target(alive_party: Array) -> Dictionary:
 	return alive_party[alive_party.size() - 1]
 
 func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
-	var boss := actor.actor as TethysBoss
-	var move := boss.next_move()
+	var boss := actor.actor as Node3D
+	var move := boss.call("next_move") as Dictionary
 	var primary: Dictionary = _pick_enemy_target(alive_party)
 	var targets: Array = alive_party if String(move.get("target", "single")) == "all" else [primary]
 
@@ -5142,8 +5180,13 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 	var to: Vector3 = (primary.actor as Node3D).position - boss.position
 	to.y = 0.0
 	if to.length() > 0.05:
-		boss.face_toward((primary.actor as Node3D).global_position)
-	var length := boss.play_attack(move)
+		boss.call("face_toward", (primary.actor as Node3D).global_position)
+	if boss is CampaignCordys:
+		(boss as CampaignCordys).set_framing_clip(String(move.clip))
+		_frame_stage_camera()
+		_log("Cordys prepares %s." % String(move.name))
+		await get_tree().create_timer(0.65).timeout
+	var length := float(boss.call("play_attack", move))
 	_audio_call(&"play_combat_swing", [_move_is_heavy(move)])
 	if length > 0.0:
 		await get_tree().create_timer(length * IMPACT_FRACTION).timeout
@@ -5178,11 +5221,14 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 			(target.actor as Diver).play_death_fade()
 		summaries.append("%s %s" % [String(target.display_name), "/".join(hit_summaries)])
 
-	_log("Tethys uses %s: %s." % [String(move.name), "; ".join(summaries)])
+	_log("%s uses %s: %s." % [String(actor.display_name), String(move.name), "; ".join(summaries)])
 	_finish_actor_turn(actor)
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
 	if is_instance_valid(boss):
-		boss.play("idle")
+		boss.call("play", "idle")
+		if boss is CampaignCordys:
+			(boss as CampaignCordys).set_framing_clip("")
+			_frame_stage_camera()
 	_advance_turn()
 
 func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
@@ -5199,7 +5245,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	if alive_party.is_empty():
 		_advance_turn()
 		return
-	if actor.actor is TethysBoss:
+	if actor.actor is TethysBoss or actor.actor is CampaignCordys:
 		await _do_boss_turn(actor, alive_party)
 		return
 	# forced_target comes from _tutorial_prep_enemy_turn() picking (and
@@ -5684,7 +5730,7 @@ func _win() -> void:
 	_selected_move_panel.visible = false
 	(_player_stats_ui.panel as Control).visible = false
 	(_enemy_stats_ui.panel as Control).visible = false
-	_log("Tethys sinks back into the dark, beaten." if boss_encounter else "The enemies back off, beaten.")
+	_log("Cordys falls. You have defeated the creature that broke you." if encounter_source == "maze_cordys" else ("Tethys sinks back into the dark, beaten." if boss_encounter else "The enemies back off, beaten."))
 	# Whoever is still standing celebrates. The clip loops, so it holds for
 	# as long as the XP lines take to read.
 	for entry in _living(party):

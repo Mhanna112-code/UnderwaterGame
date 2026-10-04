@@ -1,0 +1,6 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+CORDYS SIGIL|source=maze_cordys|actor=Cordys
+CORDYS MAZE WIN|actions=13|outcomes=["won"]|remaining=["secret_boss"]
+FINDING INT-15 real Cordys win did not update independent campaign boss state
+MAZE CORDYS TRIGGER: 1 findings

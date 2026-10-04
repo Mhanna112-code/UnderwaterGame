@@ -22,6 +22,10 @@ extends CharacterBody3D
 # only the active one counts.
 signal encounter_triggered
 
+# Exploration clocks have no work in a battle. Preserve Sonar's enabled state
+# and remaining tick, but don't bill it against the shared combat resource.
+var exploration_paused := false
+
 # Fired by _swap() once a swap actually lands, target being who this diver
 # just traded places with. world.gd listens for this to do a confirmation
 # camera pan toward the traded-to position - purely a presentation hook,
@@ -571,6 +575,8 @@ func restore_campaign_member(data: Dictionary) -> void:
 	ability_locked = bool(data.ability_locked)
 
 func _physics_process(delta: float) -> void:
+	if exploration_paused:
+		return
 	if passive_id == "sonar" and sonar_active:
 		_sonar_drain_timer -= delta
 		if _sonar_drain_timer <= 0.0:

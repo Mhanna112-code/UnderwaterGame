@@ -3238,6 +3238,8 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
 func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = []) -> void:
+	for diver in divers:
+		diver.exploration_paused = true
 	_cancel_random_encounter_reveal()
 	escape_encounter_hint.dismiss()
 	battling = true
@@ -3294,6 +3296,8 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 
 
 func _on_battle_finished(result: String) -> void:
+	for diver in divers:
+		diver.exploration_paused = false
 	if result == "prologue_defeat" and battle.encounter_source == "prologue_octopus":
 		_recover_from_prologue()
 		return

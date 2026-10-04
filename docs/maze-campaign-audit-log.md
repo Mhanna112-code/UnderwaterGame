@@ -228,3 +228,39 @@ input ownership and combat feedback checks pass. Eight relic consumers pass an
 isolated rerun; a prior one-frame resize finding under concurrent load is retained
 as unresolved timing evidence. A missing-script exit 0 is excluded, not accepted.
 No export/deployment/public change. Next: defeatable campaign Cordys.
+
+## October 4 2026 campaign Cordys and live maze owners
+
+New campaign Cordys profile: HP75/STR2/DEF1/AGI2/EVA2/ACC3, fixed independently
+of spell levels. Octo Stab is single-target Strength damage with +1 accuracy;
+Head Bash is a single-target power3 timing-dodge attack; Electric Shooting is
+party-wide Strength damage; Poison Breath uses the delivered 'finish' framing
+key, no direct damage, +1 accuracy and 10%-max-HP poison for two turns. All use
+normal turn/Accuracy/Evasion/Defense/status resolution, not prologue defeat.
+These are first-pass rematch roles/tuning, not final global balance.
+
+Consumer win: 12 real menu actions, maxHP10, no injected damage/win/perfect QTE;
+actual Maze-owned sigil win: 13 actions. Snapshot restores final trigger absence
+without clearing the secret guardian; route boss state becomes defeated without
+touching lab blockers/Tethys. Runtime errors from the initial Poison Breath
+framing-key mismatch were rejected despite its apparent win and repaired.
+Native 1x reveal/action/final inspection repaired status overlap, corpse-driven
+camera drift and oversized attack framing retained into player turns. Other
+viewports, complete poses, loss/escape and actual persisted-file closure remain
+open. No uncoached emotional/difficulty approval is claimed.
+
+Live music owners now select exploration at entry, Battle for puppets/ordinary
+fights, Final Boss for Cordys and exploration after resolved fights. The real
+puppet handoff trace proves no intermediate intro restart; no audible seam/mix
+acceptance is inferred. Actual Q/contact/no-action timing reproduced exploration
+Sonar billing during combat. World/Maze now pause exploration clocks for fights
+without resetting Sonar preferences/ticks; actual puppet win resumes them.
+
+Carried legal-kit puppet win: 12 actions, one maze key, independent lab state,
+completed secret trigger and snapshot conservation. Early healing instead of
+clearing threats lost to stacked Bleed; that policy diagnostic did not justify
+stat rewrites. One-frame parsed Yes delivery and test indentation errors were
+fixture defects, not production fixes. Opening-state, environmental-oxygen,
+audio-manager, native checkpoint, 12 World-return and Tethys regressions clean.
+Feedback export is next. Full traversal/resource paths/browser durability and
+repeated final polish loop are still required; no public/main change.

@@ -11,6 +11,16 @@ func _run() -> void:
 	root.add_child(maze)
 	current_scene = maze
 	await process_frame
+	var audio := root.get_node("GameAudio") as UnderwaterAudioManager
+	_expect(String(audio.get_music_state().cue_id) == "exploration",
+		"INT-16 real maze entry has no exploration music owner")
+	var sonar := InputEventKey.new()
+	sonar.keycode = KEY_Q
+	sonar.pressed = true
+	Input.parse_input_event(sonar)
+	await process_frame
+	await process_frame
+	_expect(maze.divers[0].sonar_active, "INT-12 real Q did not enable sonar before fight")
 	var guard := maze._boss_triggers.get("secret_boss") as Node3D
 	if guard == null:
 		findings.append("INT-11 secret approach has no guard")
@@ -59,6 +69,12 @@ func _run() -> void:
 			_expect(battle.encounter_source == "maze_puppets" and roster == ["angler", "swordfish_duelist", "frilled_shark"],
 				"INT-11 actual secret confirmation dispatched wrong encounter: " + battle.encounter_source + str(roster))
 			print("PUPPET APPROACH|source=", battle.encounter_source, "|roster=", roster)
+			_expect(String(audio.get_music_state().cue_id) == "battle" and String(audio.get_music_state().phase) == "intro",
+				"INT-16 real puppet start did not select Battle INTRO")
+			var oxygen_before := maze.divers[0].stats.oxygen
+			await create_timer(3.4).timeout
+			_expect(maze.divers[0].stats.oxygen == oxygen_before,
+				"INT-12 exploration sonar continues draining shared oxygen during combat")
 	maze.queue_free()
 	await process_frame
 	root.get_node("GameAudio").release_streams_for_shutdown()

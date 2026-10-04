@@ -195,6 +195,9 @@ run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --he
 run "maze current route: do normal movement and actual L/E/R traverse the first channel without bypassing collision or currents" "$GODOT" --headless --path . --script verify/maze_current_route.gd
 run "maze puppet approach: does real proximity/confirmation start puppets instead of lab Tethys" "$GODOT" --headless --path . --script verify/maze_puppet_trigger.gd
 run "maze puppet waves: do real moves carry resources/effects into wave two with one final outcome and reward" "$GODOT" --headless --path . --script verify/maze_puppet_waves.gd
+run "maze puppet reward: does a real carried-party win give one maze key without changing lab progress or restarting music" "$GODOT" --headless --path . --script verify/maze_puppet_reward.gd
+run "maze Cordys: does the campaign rematch use normal combat and admit a real legal-kit win" "$GODOT" --headless --path . --script verify/maze_cordys.gd
+run "maze Cordys sigil: does real contact start Cordys and preserve independent completion through a snapshot" "$GODOT" --headless --path . --script verify/maze_cordys_trigger.gd -- --real-win
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze review route: does the direct playtest link enter MazeLevel cleanly" "$GODOT" --headless --path . --script verify/maze_review_route.gd -- --maze-playtest

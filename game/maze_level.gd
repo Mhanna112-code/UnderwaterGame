@@ -130,6 +130,14 @@ func _ready() -> void:
 	if SceneHandoff.returning_from_secret_wall:
 		SceneHandoff.returning_from_secret_wall = false
 		_place_divers_at_secret_entrance()
+	if route_state != null:
+		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
+	_play_maze_music(&"play_exploration_music")
+
+func _play_maze_music(method: StringName) -> void:
+	var audio := get_node_or_null("/root/GameAudio")
+	if audio != null:
+		audio.call(method)
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -764,8 +772,10 @@ func _on_diver_encounter(d: Diver) -> void:
 func _start_battle(kind := "strong") -> void:
 	_battling = true
 	_battle_kind = kind
+	_play_maze_music(&"play_cordys_music" if kind == "main_boss" else &"play_battle_music")
 	for d in divers:
 		d.velocity = Vector3.ZERO
+		d.exploration_paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mouse_look = false
 	_battle = Battle.new()
@@ -773,10 +783,15 @@ func _start_battle(kind := "strong") -> void:
 		"secret_boss":
 			_announce("Cordys's puppets guard the way.")
 			_battle.encounter_source = "maze_puppets"
+			if route_state != null:
+				route_state.set_encounter_source("maze_puppets")
 			_battle.encounter_intro_override = "Break their hold. Face their master."
 		"main_boss":
-			_announce("Tethys rises from the deep!")
-			_battle.boss_encounter = true
+			_announce("Cordys waits for you.")
+			_battle.encounter_source = "maze_cordys"
+			if route_state != null:
+				route_state.set_octopus_state("in_progress")
+				route_state.set_encounter_source("maze_cordys")
 		"ambush":
 			_announce("Something was hiding in the rock!")
 		_:
@@ -808,6 +823,8 @@ func _boost_enemies(battle: Battle, boost_min := ENEMY_BOOST_MIN, boost_max := E
 	battle._refresh_all_bars()
 
 func _on_battle_finished(result: String) -> void:
+	for diver in divers:
+		diver.exploration_paused = false
 	_battle.queue_free()
 	_battle = null
 	_battling = false
@@ -815,13 +832,17 @@ func _on_battle_finished(result: String) -> void:
 	# out later fights until a potion or a revive brings them back.
 	var kind := _battle_kind
 	_battle_kind = "strong"
+	if kind == "main_boss" and route_state != null:
+		route_state.set_octopus_state("defeated" if result == "won" else "available")
+	if result in ["won", "fled", "skipped"]:
+		_play_maze_music(&"play_exploration_music")
 	if result == "won" and kind == "secret_boss":
 		_remove_boss_trigger("secret_boss")
 		_gain_key("abyss_key", "Their hold is broken. You've obtained a maze key.")
 		return
 	if result == "won" and kind == "main_boss":
 		_remove_boss_trigger("main_boss")
-		_announce("Tethys is defeated!", 6.0)
+		_announce("Cordys is defeated. You have overcome the creature that broke you.", 8.0)
 		return
 	match result:
 		"won":
@@ -1661,7 +1682,7 @@ func _build_boss_triggers() -> void:
 	var south := get_node_or_null("MainBossRoomSouth") as CSGBox3D
 	if north != null and south != null:
 		var main_spot := Vector3(north.global_position.x, 0, (north.global_position.z + south.global_position.z) * 0.5)
-		_boss_triggers["main_boss"] = _make_boss_sigil(main_spot, Color(0.65, 0.25, 1.0), "Something vast waits in the deep...", "main_boss")
+		_boss_triggers["main_boss"] = _make_boss_sigil(main_spot, Color(0.65, 0.25, 1.0), "Cordys waits. Face your old enemy.", "main_boss")
 
 func _make_boss_sigil(spot: Vector3, color: Color, caption: String, kind: String) -> Area3D:
 	var area := Area3D.new()
@@ -5591,6 +5612,8 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 	for kind in _boss_triggers.keys():
 		if not data.boss_triggers.has(kind):
 			_remove_boss_trigger(String(kind))
+	if route_state != null:
+		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
 	_update_state_barriers()
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = "Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L)."
