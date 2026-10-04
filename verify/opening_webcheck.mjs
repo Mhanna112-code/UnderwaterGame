@@ -135,7 +135,15 @@ try {
     await page.waitForTimeout(2500);
     await shot('08b-retry-save');
   }
-  await page.mouse.click(640, 393);
+  // Recovery now starts with a visibly disabled Saving checkpoint action.
+  // A click before its real durable acknowledgement must be ignored, not
+  // treated as a failed Continue. Retry ordinary mouse input once enabled;
+  // never synthesize a result or bypass the storage wait.
+  const continueDeadline = Date.now() + 6000;
+  while (!phases.includes('complete') && Date.now() < continueDeadline) {
+    await page.mouse.click(640, 393);
+    await page.waitForTimeout(200);
+  }
   await waitPhase('complete', 5000);
   await page.waitForTimeout(600);
   await shot('09-optional-training');
@@ -203,7 +211,9 @@ try {
         const snapshot = structuredClone(stored.data);
         snapshot.active = 0;
         snapshot.divers.forEach((diver, index) => {
-          diver.position = [12 + index * 3, 2.6, -30];
+          // World's default camera-forward W maps to +Z. Approach the
+          // trench (-42 Z) from its SOUTH edge, not away from its north edge.
+          diver.position = [12 + index * 3, 2.6, -54];
           Object.assign(diver.stats, { hp: 1, defense: 0, evasion: 0, strength: 0, accuracy: 0 });
         });
         const db = await new Promise((resolve, reject) => {
@@ -240,7 +250,10 @@ try {
         await page.keyboard.up('w');
         const deadline = Date.now() + 75000;
         while (deaths.length < expectedDeaths && Date.now() < deadline) {
-          await page.mouse.click(165, 544); // Attack or first move.
+          await page.mouse.click(165, 544); // Attack in the root action menu.
+          await page.waitForTimeout(100);
+          await page.mouse.click(165, 604); // First move (below the stats panel).
+          await page.waitForTimeout(100);
           await page.mouse.click(165, 666); // Actual enemy target.
           await page.waitForTimeout(500); // Let enemy damage/QTE timeouts resolve.
         }
@@ -271,6 +284,7 @@ try {
     }
   }
   if (errors.length) throw new Error(errors.join('\n'));
+  if (checkpointFailureObserved && !storageFault) throw new Error('Normal browser completion unexpectedly required Retry Save');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
   fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, phases, timestamps, saveRecheck, deathRecheck, errors, failure: failure || null }, null, 2));

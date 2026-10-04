@@ -11,11 +11,13 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment:** public child review candidate from runtime source
-`e78e876d5dc6580dfe14a69c723107432533c422`:
-`https://underwatergame-5s8dreh6s-immortaldemongods-projects.vercel.app/`.
+**Current deployment:** checkpoint candidate from runtime source
+`85e15cf845c4ffccb51d85607e0375f99e32a039`:
+`https://underwatergame-gchsmf8yb-immortaldemongods-projects.vercel.app/`.
+PCK SHA-256 `3742539758b4ed13382700ce8a06eec4da89474eb47275b89803bfb7b0d6dfb2`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-PCK SHA-256 `52b7d6bd7093c75d08467dc3ed7c6be1c7aadc74694073e1083ce1264d6950a0`.
+The stable alias now serves that candidate after hosted actual enemy-caused
+death / Restart / second death / title Load verification passed on 2026-10-04.
 This is a review candidate, not final acceptance. The inherited PR #96 alias
 remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
 
@@ -41,8 +43,8 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Browser EOF defect repaired in `b5b3e86`; ordinary full split-movie browser journey completes in 118.711 s with real mouse input. Wide/narrow/tall final candidate and listening acceptance remain. |
 | C: quiet spawn and Angler | in progress | Direction/idle matrix and protected World handoff green; all four displayed Maxilani attacks resolve through real buttons/target confirmation/animation and kill once; no rewards or normal victory. Public visual journey pending. |
 | D: Cordys interruption | in progress | Same-Battle negligible-hit/defeat and split cinematic journey green. Idle-only framing rejected; fixed orthographic action-envelope view and selected Poison Breath now pass moving-skin projection at all three sizes. Cached envelope replaces a measured 3-second reveal scan. Complete final browser/mix review remains. |
-| E: recovery and optional training | in progress | Recovery/save and voluntary training Skip/Retry/Return gates pass; Octopus cinematic remainder now precedes motivation. |
-| F: exact artifact and polish | in progress | Public candidate `e78e876`, unauthenticated build-info/PCK verified against local export. Local ordinary browser journey 93.359 s; hosted ordinary journey 94.409 s, complete title visually captured, no errors. Blind test, listening matrix, remaining viewport checks and final zero-defect audit round remain. |
+| E: recovery and optional training | in progress | Recovery/save and voluntary training Skip/Retry/Return gates pass; Octopus cinematic remainder precedes motivation. Native actual enemy death/Restart/Load, failed writes, invalid loads, cross-slot write denial, and healed training checkpoints pass. Web durability barrier passes rejected IndexedDB commit/Retry/cold Load. Hosted full opening (86.032 s), cold Load, two actual enemy-caused deaths, Restart and title Load pass without replay/errors; attrition fixture is documented, not campaign balance evidence. |
+| F: exact artifact and polish | in progress | Stable alias serves runtime `85e15cf`; unauthenticated metadata/PCK match the clean archive export. Rejected harness/bridge attempts and final browser proof are retained in checkpoint-regression evidence. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion and final zero-defect audit round remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence

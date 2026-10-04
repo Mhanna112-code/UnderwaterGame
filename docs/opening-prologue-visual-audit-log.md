@@ -538,3 +538,57 @@ opening polish loop; this checkpoint repair slice is **not** a final zero-defect
 round. The earlier user's particular incomplete checkpoint cause remains open.
 Final browser JSON, raw failed attempt, main-alias inspection and package
 metadata/digest are stored with the checkpoint regression evidence.
+
+## Browser durability and actual-death follow-up, 2026-10-04
+
+This supersedes the earlier checkpoint candidate `2bf19ac` and the preceding
+"browser durability unproven" statement for prologue recovery only.
+
+Confirmed OPEN-033: deliberately aborting the real completed-checkpoint
+IndexedDB transaction left the initial save durable while the old build still
+offered Continue. Fixed recovery waits for an exact-byte readback from the
+canonical slot after a completed readonly transaction; missing/unavailable/
+failed/late persistence shows Retry Save and does not release ordinary play.
+Native writes remain checked atomic replacements. Local exported WebKit's
+denial → Retry Save → cold Load passes; the intentionally injected storage
+error is identified explicitly, not hidden among accepted runtime errors.
+
+Runtime source **`85e15cf845c4ffccb51d85607e0375f99e32a039`**;
+exact clean export **93,082,756 bytes**, PCK SHA-256
+**`3742539758b4ed13382700ce8a06eec4da89474eb47275b89803bfb7b0d6dfb2`**.
+Hosted immutable candidate:
+`https://underwatergame-gchsmf8yb-immortaldemongods-projects.vercel.app/`.
+Deployment **`dpl_8WCb8nFsv24mJfzZVroJ8KbY9ghc`** now serves the existing
+`https://underwatergame-opening-prologue-review.vercel.app/` alias.
+
+Hosted ordinary entry completes the full movies, real mouse combat, recovery
+and control in **86.032 seconds**. Real IndexedDB contains completed prologue
+and uncompleted optional training. A cold page reload / title Load preserves
+those milestones. Supplemental attrition testing copies that actual checkpoint
+in a fresh owned browser profile, changes HP/DEF/EVA/STR/ACC and outside-site
+positions only, physically enters the normal Swordfish guardian, and lets real
+enemy attacks/QTE timeouts cause two ordinary losses. Visible Restart and then
+Return to Title / Load both restore phase `complete`; no movie/spawn phase
+returns, completion is not rewritten, and there are no runtime errors.
+
+Actual Game Over, restarted world and title-loaded world screenshots were
+inspected at 1280×720: correct actionable death menu and ordinary world, not a
+new opening. HP 1 after reload belongs to the documented saved attrition
+fixture; this is not a healthy-checkpoint or campaign-difficulty visual proof.
+The native real-death and recovery gates separately verify healthy checkpoints.
+
+Rejected attempts remain in the same evidence directory: unsupported JS
+object return through eval, premature click on disabled Saving, wrong-side
+site approach, and wrong move-button Y coordinate. None is counted as a pass.
+Correcting those harness defects did not alter the game's battle result.
+The full two-death process gets a 420-second budget; the opening itself must
+still finish in under 120 seconds. Final evidence:
+`docs/evidence/opening-prologue-checkpoint-regressions/browser-durability/`.
+
+This is a scoped checkpoint-repair acceptance, not the final overall visual
+polish round. OPEN-032, the audio/listening matrix, viewport acceptance and
+human comprehension remain open. Other save-point/autosave durable
+acknowledgements and browser cross-slot commit denial are not covered by this
+barrier. The historical cause of the user's incomplete slot is still unknown;
+no user save was changed and no completion was inferred retroactively.
+No child PR push/open, PR #96 merge, or public-main promotion is claimed.

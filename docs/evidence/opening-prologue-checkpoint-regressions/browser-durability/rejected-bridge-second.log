@@ -1,0 +1,18 @@
+Browser launched
+Export page loaded
+Requested ANGLE backend: metal
+Observed WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+CHECKPOINT_SAVE_FAILED|slot=0|error=2
+INJECTED STORAGE FAILURE|Failed to save IDB file system: The transaction was aborted, so the request cannot be fulfilled.
+CHECKPOINT_SAVE_FAILED|slot=0|error=2
+CHECKPOINT_SAVE_FAILED|slot=0|error=2
+Error: missing complete; observed opening_video,spawn_exploration,angler,octopus_introduction,octopus_reveal,octopus_response,scripted_defeat,octopus_aftermath,recovery

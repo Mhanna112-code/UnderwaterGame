@@ -433,8 +433,31 @@ the explicitly injected storage error excluded from runtime-error acceptance.
 Two rejected intermediate implementations remain recorded: unsupported JS
 object return through eval made the first acknowledgement interface unavailable;
 the supported get_interface bridge now handles it. No intermediate repair was
-deployed to the review alias. OPEN-034 hosted-browser actual-death proof is
-pending; native real enemy-damage / Restart / title Load passes.
+deployed to the review alias. OPEN-034 hosted-browser actual-death proof now
+passes on runtime `85e15cf`: the full opening completed in 86.032 seconds,
+real cold Load restored completion, actual enemy attacks caused two deaths,
+and the visible Restart / Return to Title / Load actions restored normal play
+without movies or runtime errors. JSON and screenshots are retained under
+`docs/evidence/opening-prologue-checkpoint-regressions/browser-durability/`.
+The attrition fixture changes only party position/stats in a disposable profile
+after reading the real completed checkpoint; it never manufactures completion,
+damage or a battle result. HP 1 on restart is the explicit saved fixture, not
+proof that ordinary checkpoints heal; native recovery tests separately pin that.
+
+Verification defects were rejected and repaired: an early Continue click hit
+the deliberately disabled Saving action; the first approach swam away from
+the guardian; the first ordinary-combat loop clicked above the move row.
+Final input uses the observed buttons and actual movement direction. Retain
+the rejected logs rather than counting them as product passes. The browser
+death gate's process budget is 420 seconds because it includes multiple boots
+and two genuine defeats; the two-minute opening limit remains unchanged.
+
+Coverage boundary: the new IndexedDB acknowledgement is a prologue-recovery
+barrier, not a claim that every later autosave/save-point write is acknowledged.
+Cross-slot filesystem denial is tested natively; cross-slot browser commit
+denial remains a follow-up negative path. Existing user slots containing an
+incomplete milestone are not retroactively changed based on guessed history.
+The cause of the user's historical incomplete checkpoint remains unproven.
 
 OPEN-023: the Octopus cinematic restarts at zero, duplicates its decoder,
 continues invisibly through combat, leaks input while visible, or overlaps
