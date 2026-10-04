@@ -91,6 +91,7 @@ var mouse_look := false
 # dev/test-only flag): on by default, so ordinary play is unaffected unless
 # someone actually presses R.
 var random_encounters_enabled := true
+var escape_encounter_hint: PanelContainer
 var _t := 0.0
 
 # First-person aim mode for aimed abilities (grapple): E enters it instead
@@ -388,6 +389,8 @@ func _load_save() -> bool:
 			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
 				return false
 	var divers_data := raw_divers as Array
+	if is_instance_valid(escape_encounter_hint):
+		escape_encounter_hint.dismiss()
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
 		var snap: Dictionary = divers_data[i]
@@ -497,6 +500,8 @@ func _audio_call(method: StringName) -> void:
 		owner.call(method)
 
 func _show_title_screen() -> void:
+	if is_instance_valid(escape_encounter_hint):
+		escape_encounter_hint.dismiss()
 	# The title owns the entire cold-launch surface. Keeping it on a separate
 	# layer lets the world HUD disappear as one unit instead of maintaining a
 	# growing list of labels/bars/minimap nodes to hide individually.
@@ -861,6 +866,7 @@ func _maze_playtest_requested() -> bool:
 	return false
 
 func _show_game_over() -> void:
+	escape_encounter_hint.dismiss()
 	print("CHECKPOINT_GAME_OVER|slot=", _current_slot, "|complete=", route_state.prologue_complete)
 	# Defeat owns the whole screen just like cold launch. The controls, active
 	# diver label, bars, minimap and any announcement describe a playable world
@@ -1000,6 +1006,8 @@ func _ready() -> void:
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
 	_build_route_objective_hud()
+	escape_encounter_hint = preload("res://game/encounter_escape_hint.gd").new()
+	$HUD.add_child(escape_encounter_hint)
 	route_state.objective_changed.connect(_on_route_objective_changed)
 	_on_route_objective_changed(route_state.objective_id)
 
@@ -1910,6 +1918,7 @@ func _toggle_sonar() -> void:
 # tutorial fight as after it.
 func _toggle_random_encounters() -> void:
 	random_encounters_enabled = not random_encounters_enabled
+	escape_encounter_hint.set_encounters_enabled(random_encounters_enabled)
 	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
 	_update_hud()   # refreshes the "R: Encounters (On/Off)" hint immediately
 
@@ -2014,6 +2023,7 @@ func _update_save_point_prompt() -> void:
 		_showing_save_prompt = false
 
 func _restore_party_at_save_point() -> void:
+	escape_encounter_hint.dismiss()
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
@@ -3059,6 +3069,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
 func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false) -> void:
+	escape_encounter_hint.dismiss()
 	battling = true
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
@@ -3266,6 +3277,7 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 		"fled":
 			_announce("You successfully ran away.")
+			escape_encounter_hint.show_after_escape(random_encounters_enabled)
 		"skipped":
 			# The "Skip Tutorial" in-battle menu option (see battle.gd's
 			# _on_skip_tutorial_pressed()) - Run itself stays disabled for the
