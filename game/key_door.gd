@@ -114,7 +114,16 @@ func interact(actor: Diver) -> bool:
 func is_in_range(actor: Diver) -> bool:
 	if actor == null or not is_instance_valid(actor):
 		return false
-	return actor.global_position.distance_to(global_position) <= interaction_radius
+	# From the nearest point on the door itself, not its base: a diver up by
+	# the top of the door, or off along its width, is just as close to it as
+	# one level with the bottom. (Out from the door's surface, so a bit
+	# less than the old centre-based radius.)
+	if _collision == null or not (_collision.shape is BoxShape3D):
+		return actor.global_position.distance_to(global_position) <= interaction_radius
+	var half := (_collision.shape as BoxShape3D).size * 0.5
+	var local := _collision.global_transform.affine_inverse() * actor.global_position
+	var nearest := local.clamp(-half, half)
+	return (_collision.global_transform * nearest).distance_to(actor.global_position) <= interaction_radius * 0.8
 
 func is_open() -> bool:
 	return _opened

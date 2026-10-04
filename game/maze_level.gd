@@ -108,6 +108,7 @@ func _ready() -> void:
 	_build_inventory_menu()
 	_build_special_encounters()
 	_build_visible_floors()
+	_carve_hall_whirlpool_holes()
 	_build_save_points()
 	_add_wall_skirts()
 	if dev_all_keys_gate_open or OS.get_cmdline_user_args().has("--dev"):
@@ -1334,8 +1335,9 @@ func _place_divers_at_secret_entrance() -> void:
 # in the room behind the Box30/32 door, toggled with Q) shows them in 3D
 # while the active diver is inside the sphere room.
 var _swirl_room: SwirlRoom
+# Once picked up it's always equipped: it works whenever Maxilani's sonar is
+# on - no separate toggle.
 var has_sonar_vision := false
-var sonar_vision_equipped := false   # G, once you have it
 
 func _build_sphere_room() -> void:
 	var back := get_node_or_null("Room16Back") as CSGBox3D
@@ -1410,13 +1412,12 @@ func _build_sonar_vision_pickup() -> void:
 	pickup.body_entered.connect(func(body: Node3D) -> void:
 		if body is Diver and not has_sonar_vision:
 			has_sonar_vision = true
-			sonar_vision_equipped = true
-			_announce("Sonar Vision acquired (equipped). To see invisible objects: Sonar Vision equipped (G) and Maxilani's sonar on (Q).", 8.0)
+			_announce("Sonar Vision acquired. Switch on Maxilani's sonar (Q) to see invisible objects.", 8.0)
 			var popup := get_node_or_null("/root/CharacterAbilityPopup")
 			if popup != null:
 				var pages: Array[Dictionary] = [{
 					"title": "Sonar Vision",
-					"body": "A key item that lets you see invisible objects. To see them you need to have sonar on and the Sonar Vision equipped: play as Maxilani and switch her sonar on with Q, and keep Sonar Vision equipped (G equips or unequips it). It's equipped now.",
+					"body": "A key item that lets you see invisible objects. It works automatically whenever sonar is on: play as Maxilani and switch her sonar on with Q.",
 					"slot": null,
 				}]
 				popup.call("open", pages)
@@ -1689,7 +1690,7 @@ func _make_boss_sigil(spot: Vector3, color: Color, caption: String, kind: String
 const SECRET_ITEM_ROCKS := {
 	"ItemRock2": "sphere_room_key",
 	"ItemRock3": "attack_up",
-	"Marker3D2": "defense_up",
+	"Marker3D2": "ambush",
 	"Marker3D4": "spell_shard",
 	"Marker3D5": "ambush",
 	"Marker3D7": "ambush",
@@ -1733,7 +1734,10 @@ func _build_secret_item_rocks() -> void:
 		var reward: String = SECRET_ITEM_ROCKS[marker_name]
 		rock.broken.connect(_on_secret_rock_broken.bind(reward, marker.global_position))
 		add_child(rock)
-		_secret_room_rocks.append(rock)
+		# Fake rocks (enemies hiding in them) look the same but don't show on
+		# Maxilani's sonar - only rocks with something real inside do.
+		if reward != "ambush":
+			_secret_room_rocks.append(rock)
 
 # A broken rock either springs an ambush or leaves a golden item orb (the
 # main game's ItemOrb) floating where it was - grapple it in, or swim into it.
@@ -1923,7 +1927,7 @@ func _update_sonar_vision() -> void:
 # equipped, and the diver being played has the sonar passive (Maxilani) with
 # her sonar switched on.
 func sonar_vision_active() -> bool:
-	return has_sonar_vision and sonar_vision_equipped and _diver != null and _diver.passive_id == "sonar" and _diver.sonar_active
+	return has_sonar_vision and _diver != null and _diver.passive_id == "sonar" and _diver.sonar_active
 
 # Hidden things the minimap tracks as red circles.
 # The secret item room's rocks that haven't been broken yet, within
@@ -2521,8 +2525,6 @@ func _update_world_hud() -> void:
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
 	after += "  ·  L: Map"
-	if has_sonar_vision:
-		after += "  ·  G: Sonar Vision (%s)" % ("Equipped" if sonar_vision_equipped else "Off")
 	_world_hud_after.text = after
 	var flash := _tab_should_flash()
 	if flash and _tab_flash == null:
@@ -4212,9 +4214,6 @@ func _unhandled_input(e: InputEvent) -> void:
 			_announce("Sonar %s." % ("on" if _diver.toggle_sonar() else "off"))
 		else:
 			_announce("Only Maxilani has sonar.")
-	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_G and has_sonar_vision:
-		sonar_vision_equipped = not sonar_vision_equipped
-		_announce("Sonar Vision %s." % ("equipped" if sonar_vision_equipped else "unequipped"))
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_TAB:
 		_switch_diver()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
@@ -5061,7 +5060,7 @@ func map_points_of_interest() -> Array[Dictionary]:
 	var item_room := _secret_item_room_rect()
 	if item_room.size != Vector2.ZERO:
 		var c := item_room.get_center()
-		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret Item Room"})
+		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret\nItem Room"})
 	return out
 
 # One half of a broken rock: a lumpy, faceted dome (+Y) over a rough,
@@ -5181,7 +5180,8 @@ func _note_broken_rock(spot: Vector3) -> void:
 # Between the secret boss room's door and the main boss room's: 8 evenly
 # spaced rows of tall rock columns across the hall, alternating two columns
 # (a gap in the middle) and one (in the middle), so the way through weaves.
-# In the gaps between rows, potion rocks and small whirlpools take turns -
+# In the gaps between rows, rocks (tucked behind a column - half potions,
+# half fakes with enemies in them) and small whirlpools take turns -
 # a whirlpool drags you in, spins you down, hurts, and drops you back at the
 # hall's entrance: "You were sucked to the ocean deep..".
 const HALL_ROWS := 8
@@ -5214,8 +5214,10 @@ func _build_hall_gauntlet() -> void:
 		xs.append(lerpf(hall.position.x + margin, hall.end.x - margin, float(i) / float(HALL_ROWS - 1)))
 	var z_mid := hall.get_center().y
 	var quarter := hall.size.y * 0.25
+	var row_zs: Array = []
 	for i in HALL_ROWS:
 		var zs: Array = [z_mid - quarter, z_mid + quarter] if i % 2 == 0 else [z_mid]
+		row_zs.append(zs)
 		for z in zs:
 			_build_rock_column(Vector3(xs[i], 0, float(z)), rng)
 	# The hall's way in, at its north-west corner - where a whirlpool drops you.
@@ -5226,12 +5228,19 @@ func _build_hall_gauntlet() -> void:
 		var side := 1.0 if rng.randf() < 0.5 else -1.0
 		var z := z_mid + side * hall.size.y * rng.randf_range(0.3, 0.4)
 		if g % 2 == 0:
-			var spot := Vector3(x, _floor_top_y + 0.55, z)
+			# Tucked in right behind one of this row's columns, on the side
+			# away from the hall's entrance (west): coming in, the column hides
+			# it - you have to swing the camera round to spot it.
+			var col_zs: Array = row_zs[g]
+			var col_z := float(col_zs[rng.randi() % col_zs.size()])
+			var spot := Vector3(xs[g] + HALL_COLUMN_RADIUS * 1.3 + 0.55, _floor_top_y + 0.55, col_z)
 			var rock := CrackedWall.new()
 			rock.span = Vector3(1.1, 1.1, 1.1)
 			rock.disguised_as_scenery_rock = true
 			rock.position = spot
-			rock.broken.connect(_on_secret_rock_broken.bind("potion", spot + Vector3(0, 0.6, 0)))
+			# Every other one is a fake: enemies hiding in it, not a potion.
+			var reward := "ambush" if g % 4 == 2 else "potion"
+			rock.broken.connect(_on_secret_rock_broken.bind(reward, spot + Vector3(0, 0.6, 0)))
 			add_child(rock)
 		else:
 			var w := Whirlpool.new()
@@ -5243,10 +5252,29 @@ func _build_hall_gauntlet() -> void:
 			w.damage_min = 3
 			w.damage_max = 6
 			w.reset_to = entrance
+			# Down into the deep: an open shaft under it, no floor, with the
+			# current pouring down it (_carve_hall_whirlpool_holes() cuts the
+			# floor once it's built).
+			w.deep_hole_radius = w.suction_radius + 0.1
 			w.diver_sucked_in.connect(_on_deep_whirlpool)
 			add_child(w)
-			w.global_position = Vector3(x, ($DiverEntry as Node3D).global_position.y, z)
+			w.global_position = Vector3(x, _floor_top_y + FLOOR_THICKNESS_VISUAL + 0.01, z)
 			_hall_whirlpools.append(w)
+
+# A round hole through the hall's visible floor under each deep whirlpool
+# (the invisible slab stays - the whirlpool catches anyone that close first).
+func _carve_hall_whirlpool_holes() -> void:
+	var floor_box := get_node_or_null("Floor_BossHall") as CSGBox3D
+	if floor_box == null:
+		return
+	for w in _hall_whirlpools:
+		var hole := CSGCylinder3D.new()
+		hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+		hole.radius = w.deep_hole_radius
+		hole.height = FLOOR_THICKNESS_VISUAL * 4.0
+		hole.sides = 24
+		floor_box.add_child(hole)
+		hole.global_position = Vector3(w.global_position.x, floor_box.global_position.y, w.global_position.z)
 
 func _on_deep_whirlpool(_d: Diver, amount: int) -> void:
 	_announce("You were sucked to the ocean deep.. (-%d HP)" % amount)

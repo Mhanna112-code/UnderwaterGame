@@ -1550,7 +1550,13 @@ func _draw_poi(ci: CanvasItem, p: Vector2, poi: Dictionary, k: float) -> void:
 		"room_label":
 			var font := ThemeDB.fallback_font
 			var size := int(12 * k)
-			var text := String(poi.get("label", ""))
-			var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-			ci.draw_string_outline(font, p + Vector2(-w * 0.5, size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 3, Color(0.01, 0.04, 0.07, 0.95))
-			ci.draw_string(font, p + Vector2(-w * 0.5, size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ROOM_COLOR)
+			# "\n" in a label stacks it, each line centred, the block centred
+			# on the room - so a long name fits inside a narrow room's box.
+			var lines := String(poi.get("label", "")).split("\n")
+			var line_h := font.get_height(size)
+			var top := -line_h * (lines.size() - 1) * 0.5
+			for i in lines.size():
+				var w := font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+				var at := p + Vector2(-w * 0.5, top + line_h * i + size * 0.35)
+				ci.draw_string_outline(font, at, lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, 3, Color(0.01, 0.04, 0.07, 0.95))
+				ci.draw_string(font, at, lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, ROOM_COLOR)

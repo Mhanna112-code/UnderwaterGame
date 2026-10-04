@@ -41,6 +41,11 @@ signal diver_sucked_in(d: Diver, amount: int)
 @export var spin_turns := 2.0
 @export var sink_depth := 2.2
 @export var vanish_duration := 0.35
+# > 0: a whirlpool down into the deep - an open shaft this wide drops away
+# below it (the level cuts the matching hole in its floor) and the water
+# visibly swirls down into it. Place the whirlpool at floor level.
+@export var deep_hole_radius := 0.0
+const DEEP_SHAFT_DEPTH := 9.0
 
 var armed := true
 
@@ -112,6 +117,82 @@ func _build_visual() -> void:
 
 	var tw := create_tween().set_loops()
 	tw.tween_property(mesh_inst, "rotation:y", TAU, 4.0).from(0.0)
+	if deep_hole_radius > 0.0:
+		# The ring becomes the lip of the hole, spinning faster.
+		ring.inner_radius = deep_hole_radius * 0.92
+		ring.outer_radius = deep_hole_radius * 1.12
+		mesh_inst.rotation_degrees.x = 0.0
+		mesh_inst.position.y = 0.03
+		tw.set_speed_scale(2.0)
+		_build_deep_shaft()
+		_build_down_current()
+
+# The pit under a deep whirlpool: an open-topped dark tube dropping away out
+# of sight, inside faces drawn so you look down into it.
+func _build_deep_shaft() -> void:
+	var tube := CylinderMesh.new()
+	tube.top_radius = deep_hole_radius
+	tube.bottom_radius = deep_hole_radius * 0.7
+	tube.height = DEEP_SHAFT_DEPTH
+	tube.cap_top = false
+	tube.radial_segments = 24
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.02, 0.06, 0.11)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var shaft := MeshInstance3D.new()
+	shaft.mesh = tube
+	shaft.material_override = mat
+	shaft.position.y = -DEEP_SHAFT_DEPTH * 0.5
+	add_child(shaft)
+
+# The current: pale streaks circling in from just around the hole and
+# pouring down into it, spiralling as they go.
+func _build_down_current() -> void:
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3.UP
+	pm.emission_ring_radius = deep_hole_radius * 1.8
+	pm.emission_ring_inner_radius = deep_hole_radius * 0.6
+	pm.emission_ring_height = 1.6
+	pm.direction = Vector3.DOWN
+	pm.spread = 8.0
+	pm.initial_velocity_min = 1.2
+	pm.initial_velocity_max = 2.2
+	pm.gravity = Vector3(0, -4.0, 0)
+	pm.radial_accel_min = -2.5   # drawn in toward the middle
+	pm.radial_accel_max = -1.5
+	pm.tangential_accel_min = 3.0   # and around it
+	pm.tangential_accel_max = 4.5
+	pm.particle_flag_align_y = true
+	pm.scale_min = 0.7
+	pm.scale_max = 1.2
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.75, 0.92, 1.0, 0.0))
+	fade.set_color(1, Color(0.75, 0.92, 1.0, 0.0))
+	fade.add_point(0.15, Color(0.75, 0.92, 1.0, 0.75))
+	fade.add_point(0.75, Color(0.55, 0.8, 1.0, 0.5))
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = fade
+	pm.color_ramp = ramp
+
+	var streak := BoxMesh.new()
+	streak.size = Vector3(0.035, 0.45, 0.035)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	streak.material = mat
+
+	var current := GPUParticles3D.new()
+	current.amount = 90
+	current.lifetime = 1.8
+	current.preprocess = 2.0
+	current.process_material = pm
+	current.draw_pass_1 = streak
+	current.position.y = 0.9
+	current.visibility_aabb = AABB(Vector3(-4, -DEEP_SHAFT_DEPTH - 1.0, -4), Vector3(8, DEEP_SHAFT_DEPTH + 4.0, 8))
+	add_child(current)
 
 func _on_warning_entered(body: Node3D) -> void:
 	if not (body is Diver):
@@ -174,6 +255,8 @@ func _physics_process(dt: float) -> void:
 		var d := body as Diver
 		if d == null or not is_instance_valid(d) or d.is_grappling() or d.is_suction_locked():
 			continue
+		if not _in_open_water_with(d):
+			continue
 		var to_centre := global_position - d.global_position
 		to_centre.y = 0.0
 		var dist := to_centre.length()
@@ -193,7 +276,20 @@ func _on_suction_entered(body: Node3D) -> void:
 		return
 	if bypass.is_valid() and bool(bypass.call()):
 		return
+	if not _in_open_water_with(d):
+		return
 	_pull_in(d)
+
+# The warning/pull/suction zones are plain spheres and cylinders, so in the
+# maze they reach through walls into the next passage over. Only a diver with
+# nothing solid between them and the centre (at the diver's own height, so
+# the floor doesn't count) is dragged or caught - a whirlpool never pulls
+# anyone through a wall.
+func _in_open_water_with(d: Diver) -> bool:
+	var centre := Vector3(global_position.x, d.global_position.y, global_position.z)
+	var q := PhysicsRayQueryParameters3D.create(d.global_position, centre, 1)
+	q.exclude = [d.get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()
 
 # Three visible beats, not one instant swap: pulled in (physically, the
 # whole approach), vanish at the center (caught), then reappear at

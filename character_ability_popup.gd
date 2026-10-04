@@ -151,12 +151,19 @@ func _style_panel() -> void:
 	media_style.set_border_width_all(1)
 	(%MediaFrame as PanelContainer).add_theme_stylebox_override("panel", media_style)
 
+var _mouse_mode_before := Input.MOUSE_MODE_VISIBLE
+
 # `pages` entries: {"slot": Slot (or null), "title": String, "body": String}.
 func open(pages: Array[Dictionary]) -> void:
 	if pages.is_empty():
 		return
 	_pages = pages
 	_index = 0
+	# A free cursor to click Next/Close with; whatever mouse mode play was in
+	# (usually captured mouse-look) comes back when it closes.
+	if not (%AbilityExplanationPanel as PanelContainer).visible:
+		_mouse_mode_before = Input.mouse_mode
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = true
 	_refresh()
 	(%AbilityExplanationPanel as PanelContainer).show()
@@ -439,4 +446,7 @@ func _close() -> void:
 			slot.set_highlighted(false)
 	(%AbilityExplanationPanel as PanelContainer).hide()
 	get_tree().paused = false
+	# Before `closed`, so a listener that opens another modal can still free
+	# the mouse again for it.
+	Input.mouse_mode = _mouse_mode_before
 	closed.emit()
