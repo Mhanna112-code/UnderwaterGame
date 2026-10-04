@@ -1654,6 +1654,7 @@ func _on_swap_target_cancelled() -> void:
 func _physics_process(dt: float) -> void:
 	_t += dt
 	_update_objective()
+	_update_blockade_arrow()
 	if battling or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
@@ -2106,7 +2107,13 @@ func intro_arrow() -> void:
 	if _intro_arrow != null or light_beam == null:
 		return
 	var d: Diver = divers[active]
+	_intro_arrow = _make_arrow()
+	_intro_arrow.position = Vector3(0, d.height * 0.6, -1.0)
+	d.add_child(_intro_arrow)
+	_point_arrow_at(light_beam.global_position)
 
+# The light-blue waypoint arrow mesh (intro_arrow() and the blockade arrow).
+func _make_arrow() -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Tip along local -Z (the axis look_at() aims at a target) with the base
@@ -2122,12 +2129,44 @@ func intro_arrow() -> void:
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	st.set_material(material)
 
-	_intro_arrow = MeshInstance3D.new()
-	_intro_arrow.mesh = st.commit()
-	_intro_arrow.scale = Vector3.ONE * 0.6
-	_intro_arrow.position = Vector3(0, d.height * 0.6, -1.0)
-	d.add_child(_intro_arrow)
-	_point_arrow_at(light_beam.global_position)
+	var arrow := MeshInstance3D.new()
+	arrow.mesh = st.commit()
+	arrow.scale = Vector3.ONE * 0.6
+	return arrow
+
+# After the tutorial fight, the same arrow points the way to the entrance
+# blockade - on whichever diver is active, hidden during battles and once
+# they're up close, and gone for good once the blockade is broken.
+const BLOCKADE_ARROW_HIDE_DIST := 6.0
+var _blockade_arrow: MeshInstance3D
+
+func _update_blockade_arrow() -> void:
+	var wall := _cracked_walls.get("entrance_blockade") as Node3D
+	if not is_instance_valid(wall):
+		if is_instance_valid(_blockade_arrow):
+			_blockade_arrow.queue_free()
+		_blockade_arrow = null
+		return
+	if not _first_encounter_done or divers.is_empty():
+		return
+	var d: Diver = divers[active]
+	if not is_instance_valid(_blockade_arrow):
+		_blockade_arrow = _make_arrow()
+	if _blockade_arrow.get_parent() != d:
+		if _blockade_arrow.get_parent() != null:
+			_blockade_arrow.get_parent().remove_child(_blockade_arrow)
+		_blockade_arrow.position = Vector3(0, d.height * 0.6, -1.0)
+		d.add_child(_blockade_arrow)
+	var near := Vector2(d.global_position.x, d.global_position.z).distance_to(
+		Vector2(wall.global_position.x, wall.global_position.z)) <= BLOCKADE_ARROW_HIDE_DIST
+	_blockade_arrow.visible = not battling and not near
+	if _blockade_arrow.visible:
+		var target := wall.global_position
+		var to_target := target - _blockade_arrow.global_position
+		var up := Vector3.UP
+		if absf(to_target.normalized().dot(Vector3.UP)) > 0.999:
+			up = Vector3.FORWARD
+		_blockade_arrow.look_at(target, up)
 
 
 # Pairs with intro_arrow() - called at the same moment (world _ready()) so
