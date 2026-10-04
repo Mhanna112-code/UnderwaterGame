@@ -171,6 +171,17 @@ normal Game Over, and leaves the current tutorial available but optional.
 
 ## Exact-host timing recheck, 2026-10-04
 
+HARNESS-TIME-01: the named New Game-to-control measurement included subsequent
+world screenshot/OCR and overwrote its completion timestamp on later Load.
+The 0d0b9b0 hosted run still reports 123.957 raw engaged seconds as a failed
+historical round; it is not retroactively passed. The repaired observer preserves
+first completion and reads the actual in-browser phase timestamp. It separately
+retains raw verification elapsed, post-control observation time and deliberate
+no-input probes. All real films/input/OCR oracles and the 120-second limit remain.
+No estimated overhead subtraction or game pacing change is used. A fresh run
+must prove the corrected boundary; this does not guarantee any human's decision
+time or make slow pre-control rendering disappear.
+
 The `02efa8f` exact clean export passes full movies, real choices, idle/look,
 Cold Load and two actual later deaths/Restart/Load, but fails the active-time
 gate at 128.548s. This remains a failed acceptance round. Profile rather than

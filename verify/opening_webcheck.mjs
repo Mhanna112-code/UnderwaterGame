@@ -74,7 +74,13 @@ page.on('console', msg => {
   if (line.startsWith('PROLOGUE_HIT|')) { combatHits.push(line); console.log(line); }
   if (line.startsWith('PROLOGUE_STRIKE|')) { bossResponses.push(line); bossResponseTimes.push(Date.now()); console.log(line); }
   const match = line.match(/PROLOGUE_PHASE\|([a-z_]+)/);
-  if (match) { phases.push(match[1]); timestamps[match[1]] = Date.now(); console.log(line); }
+  if (match) {
+    phases.push(match[1]);
+    // A later Load emits complete again. Preserve the first handoff timestamp,
+    // otherwise recovery diagnostics accidentally measure a subsequent death.
+    timestamps[match[1]] ??= Date.now();
+    console.log(line);
+  }
   if (line.includes('CHECKPOINT_SAVE_FAILED|')) { checkpointFailureObserved = true; console.log(line); }
   if (line.includes('CHECKPOINT_GAME_OVER|')) { deaths.push(line); console.log(line); }
   if (storageFault && line.includes('Failed to save IDB file system:')) { console.log('INJECTED STORAGE FAILURE|' + line); return; }
@@ -132,7 +138,7 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
 };
-let failure, renderer, elapsedSeconds, engagedSeconds, sourcePresentationEvents, deliberateIdleMs = 0, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck, escapeRecheck;
+let failure, renderer, elapsedSeconds, engagedSeconds, controlReturnedSeconds, engagedControlSeconds, postControlVerificationSeconds, sourcePresentationEvents, deliberateIdleMs = 0, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck, escapeRecheck;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
   console.log('Export page loaded');
@@ -297,12 +303,21 @@ try {
     await page.waitForTimeout(200);
   }
   await waitPhase('complete', 5000);
+  sourcePresentationEvents = await page.evaluate(() => window.underwaterPresentationEvents);
+  const firstComplete = sourcePresentationEvents.find(event => event.line === 'PROLOGUE_PHASE|complete');
+  if (!firstComplete) throw new Error('Missing actual browser-source control handoff timestamp');
+  // Measure the real user-facing boundary, not subsequent screenshot readback
+  // and OCR. No estimated overhead is subtracted; those durations are retained
+  // separately below, along with every existing input/readability assertion.
+  controlReturnedSeconds = (firstComplete.time - started) / 1000;
+  engagedControlSeconds = controlReturnedSeconds - deliberateIdleMs / 1000;
   await page.waitForTimeout(600);
   await shot('09-optional-training');
   expectShallows('09-optional-training');
   elapsedSeconds = (Date.now() - started) / 1000;
   engagedSeconds = elapsedSeconds - deliberateIdleMs / 1000;
-  console.log(`Normal browser New Game to control: ${elapsedSeconds}s; engaged=${engagedSeconds}s; deliberate idle/look=${deliberateIdleMs / 1000}s`);
+  postControlVerificationSeconds = elapsedSeconds - controlReturnedSeconds;
+  console.log(`Normal browser New Game to control: ${controlReturnedSeconds}s; engaged=${engagedControlSeconds}s; deliberate idle/look=${deliberateIdleMs / 1000}s; post-control screenshot/OCR=${postControlVerificationSeconds}s; raw through verification=${elapsedSeconds}s`);
   const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'angler', 'angler_victory', 'octopus_notice', 'octopus_omen', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
   if (process.env.OPENING_ESCAPE_RECHECK === '1') {
@@ -500,10 +515,10 @@ try {
   }
   if (errors.length) throw new Error(errors.join('\n'));
   if (checkpointFailureObserved && !storageFault) throw new Error('Normal browser completion unexpectedly required Retry Save');
-  if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
+  if (!storageFault && engagedControlSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, timingOnly, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, sourcePresentationEvents, combatHits, bossResponses, bossResponseTimes, randomReveals, randomCombats, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, timingOnly, browserEngine, renderer, elapsedSeconds, engagedSeconds, controlReturnedSeconds, engagedControlSeconds, postControlVerificationSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, sourcePresentationEvents, combatHits, bossResponses, bossResponseTimes, randomReveals, randomCombats, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }
