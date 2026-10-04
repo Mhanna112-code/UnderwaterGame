@@ -10,22 +10,18 @@
 class_name TutorialContent
 extends RefCounted
 
-# One landscape slot shared by every tutorial clip surface (ported with
-# character_ability_popup.gd from combat-tutorials).
+# One landscape slot shared by every tutorial clip surface: the post-combat
+# ability modal, the special-encounter chooser, and the in-fight tutorial.
 const VIDEO_FRAME_SIZE := Vector2(320, 180)
 
 const GENERAL_PAGES: Array[Dictionary] = [
 	{
 		"title": "Combat Basics",
-		"body": "A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've equipped), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order; the log above your menu says what just happened.",
+		"body": "A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order; the log above your menu says what just happened.",
 	},
 	{
 		"title": "Dodging: Accuracy vs. Evasion",
 		"body": "A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.",
-	},
-	{
-		"title": "Damage: Attack vs. Defense",
-		"body": "Hits do move power + your Strength (STR in the left stats panel) minus the target's Defense (DEF in the right stats panel), straight off the target's HP. In this case, the attacker's strength equals the target's defense so the attack will only deal its base (1) power.",
 	},
 	{
 		"title": "Every Other Stat",
@@ -54,65 +50,16 @@ static func page_body(title: String) -> String:
 			return String(page.body)
 	return ""
 
-# One line per special-encounter ability, read on the "Choose who goes"
-# carousel next to whichever diver is currently selected - kept here
-# rather than duplicated in special_encounter_prompt.gd so the wording
-# only has to be right in one place.
-const ABILITY_BLURBS := {
-	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
-	"grapple": "In the encounter: click to capture the mouse, aim at the glowing weak spot, and left-click to grapple it. Each incoming rock needs two weak-spot hits before impact.",
-	"shockwave": "In the encounter: three lanes come in at once - one rock, two solid walls. Hold Left/Right to lean into that lane (let go to snap back to middle) and line up with the rock, then E to shockwave it before it lands. Standing in a wall's lane gets you hit.",
-}
-
-# Read out in the choreographed first encounter (see battle.gd's
-# tutorial_encounter) while that move's button is flashing and every other
-# button is disabled - one at a time, forcing the player to actually use
-# each of Maxilani's five starting SCUBA moves once before the fight ends.
-# Every number/effect here matches content/combat_moves.gd's SCUBA array
-# exactly, same "never describe a mechanic wrong" rule as GENERAL_PAGES above.
-const FIRST_BATTLE_MOVE_NOTES := {
-	"Electric Touch": "ATTACK move - 1x Strength damage, and it also strips the target's Evasion by your Accuracy. A good opener: everything you throw after this lands more easily.",
-	"Scuba Stabbing": "ATTACK move - 1x Strength damage plus Bleed (1 + Strength) that keeps ticking after the hit. Use it when you want damage spread over several turns instead of one big number.",
-	"Flash Blast": "UTILITY move - no damage at all. Hits every enemy with Blindness 2 (lowers Agility, Accuracy, AND Defense) for as many turns as your own Accuracy. For making a whole group easier to dodge, not for ending a fight.",
-	"Multiple Knee Combo": "ATTACK move - 1x Strength damage to every enemy, but -1 Accuracy/Evasion on yourself until your next turn. Worth it against several weak targets; riskier against one hard hitter.",
-	"Axe Kick": "ATTACK move - your hardest single hit (Strength + Accuracy damage), but it drops your own Evasion by 3 until your next turn, so you're an easier target right after. Use it when you can afford that trade.",
-}
-
-# Where a short demo clip/image for each ability lives, once one exists.
-# The carousel (special_encounter_prompt.gd) checks ResourceLoader.exists()
-# and falls back to a plain placeholder frame if the file isn't there yet -
-# these paths can be filled in one ability at a time with no other code
-# changes needed. .ogv plays as video (Godot's built-in VideoStreamPlayer
-# format); anything else is loaded as a still image.
-const ABILITY_MEDIA := {
-	"swap": "res://media/tutorials/swap_demo.ogv",
-	"grapple": "res://media/tutorials/grapple_demo.ogv",
-	"shockwave": "res://media/tutorials/shockwave_demo.ogv",
-}
-
-# One entry per status condition a move can apply - shared by the Combat
-# Help tab (game/inventory_menu.gd's Esc-menu pause screen) and battle.gd's
-# tutorial captions, so the numbers only ever have to be right in one
-# place. Blindness's numbers were read straight out of the code that
-# applies them (combatant_stats.gd's effective_accuracy()/effective_
-# agility()/effective_defense(), all three reading status_level("blindness")
-# the same way) - Stun has no move that inflicts it yet, so its entry
-# describes the intended design rather than something presently reachable
-# in a fight.
-const STATUS_CONDITIONS: Array[Dictionary] = [
-	{
-		"title": "Blindness",
-		"body": "Five levels, 1 through 5. Each level lowers Agility, Accuracy, and Defense by that same number - Blindness 1 takes 1 off all three stats, Blindness 5 takes 5 off all three. Flash Blast is the current source of it, applying level 2 to every enemy for as many turns as the caster's own Accuracy.",
-	},
-	{
-		"title": "Stun",
-		"body": "A stunned combatant skips their turn entirely - the number attached to Stun is how many of their own upcoming turns get skipped, not a stat penalty the way Blindness's level is.",
-	},
-]
-
-# --- Ported from main's tutorial_content.gd for the inventory menu's Combat
-# Help tab (inventory_menu.gd). ---
-
+# One entry per combat stat - shown as its own "Stats" section in the
+# Combat Help tab (game/inventory_menu.gd's Esc-menu pause screen), and
+# (see battle.gd's _move_tooltip_text()) folded into the hover tooltip of
+# any move whose formula deals damage, since every damaging hit is reduced
+# by the target's Defense the same way regardless of which of the
+# attacker's own stats fed its raw number. Used to live as prose inside
+# GENERAL_PAGES's own "Damage: Attack vs. Defense"/"Dodging: Accuracy vs.
+# Evasion" pages, duplicating whatever a status-effect tooltip or the F1
+# book already said - one glossary entry per stat instead, so a definition
+# only ever has to be right in one place.
 const STAT_GLOSSARY: Array[Dictionary] = [
 	{
 		"title": "HP",
@@ -147,6 +94,134 @@ const STAT_GLOSSARY: Array[Dictionary] = [
 static func stat_glossary_body(title: String) -> String:
 	for entry in STAT_GLOSSARY:
 		if String(entry.get("title", "")) == title:
+			return String(entry.get("body", ""))
+	return ""
+
+# One line per special-encounter ability, read on the "Choose who goes"
+# carousel next to whichever diver is currently selected - kept here
+# rather than duplicated in special_encounter_prompt.gd so the wording
+# only has to be right in one place.
+# One line per world ability/passive - shown in CharacterAbilityPopup
+# (character_ability_popup.gd) right after the tutorial fight, one per
+# diver, when world.gd's _show_ability_popups() first walks the party.
+# Distinct from ABILITY_BLURBS below: that one describes the special-
+# encounter minigame's own reflex-test version of an ability, this one
+# describes what pressing E (or Q, for the sonar passive) actually does
+# while exploring - a different context with a different payoff, read
+# straight out of diver.gd's _grapple()/_shockwave()/_swap()/sonar handling
+# rather than guessed at (same "never describe a mechanic wrong" rule as
+# GENERAL_PAGES above).
+const WORLD_ABILITY_BLURBS := {
+	"swap": "Instantly trades places with another party member - press E, cycle who with Left/Right, confirm with Enter. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
+	"grapple": "Press E to aim, then click to fire a beam in that direction. Pulls you to wherever it connects, but only if that point is actually a grapple anchor - firing at open water or a wall does nothing.",
+	"shockwave": "Press E to fire instantly in every direction at once - no aiming needed. Breaks any nearby obstacle that's built to be shockwaved open.",
+	"sonar": "Toggled with Q, not E - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
+}
+
+const ABILITY_BLURBS := {
+	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
+	"grapple": "In the encounter: click to capture the mouse, aim at the glowing weak spot, and left-click to grapple it. Each incoming rock needs two weak-spot hits before impact.",
+	"shockwave": "In the encounter: three lanes come in at once - one rock, two solid walls. Hold Left/Right to lean into that lane (let go to snap back to middle) and line up with the rock, then E to shockwave it before it lands. Standing in a wall's lane gets you hit.",
+}
+
+# Read out in the choreographed first encounter (see battle.gd's
+# tutorial_encounter) while that move's button is flashing and every other
+# button is disabled - one at a time, forcing the player to actually use
+# each of Maxilani's five starting SCUBA moves once before the fight ends.
+# Every number/effect here matches content/combat_moves.gd's SCUBA array
+# exactly, same "never describe a mechanic wrong" rule as GENERAL_PAGES above.
+const FIRST_BATTLE_MOVE_NOTES := {
+	"Electric Touch": "ATTACK move - 1x Strength damage, and it also strips the target's Evasion by your Accuracy. A good opener: everything you throw after this lands more easily.",
+	"Scuba Stabbing": "ATTACK move - 1x Strength damage plus Bleed (1 + Strength) that keeps ticking after the hit. Use it when you want damage spread over several turns instead of one big number.",
+	"Flash Blast": "UTILITY move - no damage at all. Hits every enemy with Blindness 2 (lowers Agility, Accuracy, AND Defense) for as many turns as your own Accuracy. For making a whole group easier to dodge, not for ending a fight.",
+	"Multiple Knee Combo": "ATTACK move - 1x Strength damage to every enemy, but -1 Accuracy/Evasion on yourself until your next turn. Worth it against several weak targets; riskier against one hard hitter.",
+	"Axe Kick": "ATTACK move - your hardest single hit (Strength + Accuracy damage), but it drops your own Evasion by 3 until your next turn, so you're an easier target right after. Use it when you can afford that trade.",
+}
+
+# Where a short demo clip/image for each ability lives, once one exists.
+# character_ability_popup.gd's own Esc-menu reference carousel (every
+# ability, in or out of combat) checks ResourceLoader.exists() and falls
+# back to a plain placeholder frame if the file isn't there yet - these
+# paths can be filled in one ability at a time with no other code changes
+# needed. .ogv plays as video (Godot's built-in VideoStreamPlayer format);
+# anything else is loaded as a still image.
+# MODIFIED (changed): this used to be one shared ABILITY_MEDIA table, its
+# "swap"/"grapple"/"shockwave" entries pointed to by special_encounter_
+# prompt.gd's own diver-choice carousel and battle.gd's in-fight tutorial
+# demo frame too - the same clip playing in three different contexts (a
+# general reference page, a pre-fight choice screen, and mid-battle) made
+# it unclear which folder's own file a change was even supposed to affect.
+# Split into this table (character_ability_popups/) and SPECIAL_ENCOUNTER_
+# MEDIA below (special_encounters/) - each side now owns its own copy of
+# a clip even where the content starts out identical (e.g. both still have
+# their own "swap"), so replacing one never silently changes the other.
+const ABILITY_MEDIA := {
+	"world": "res://media/tutorials/character_ability_popups/WorldMap.ogv",
+	"swap": "res://media/tutorials/character_ability_popups/swap_demo.ogv",
+	"sonar": "res://media/tutorials/character_ability_popups/sonar_demo.ogv",
+	"grapple": "res://media/tutorials/character_ability_popups/grapple_demo.ogv",
+	"shockwave": "res://media/tutorials/character_ability_popups/shockwave_demo.ogv",
+}
+
+# special_encounter_prompt.gd's diver-choice carousel (shown before a real
+# special encounter starts) and battle.gd's own in-fight demo frame (shown
+# by the special-encounter tutorial while explaining each diver's minigame)
+# - see ABILITY_MEDIA's own comment for why this is a separate table now
+# rather than the same one. Only the three diver minigames apply here;
+# "world" (the world map) and "sonar" (an out-of-combat passive) have
+# nothing to do with a special encounter, so neither has an entry.
+const SPECIAL_ENCOUNTER_MEDIA := {
+	"swap": "res://media/tutorials/special_encounters/swap_demo.ogv",
+	"grapple": "res://media/tutorials/special_encounters/grapple_demo.ogv",
+	"shockwave": "res://media/tutorials/special_encounters/shockwave_demo.ogv",
+}
+
+# The supplied Swap recording is a 1920x1080 capture with its actual 16:9
+# game view centered inside a large black canvas.  Keep the delivered file
+# intact, but sample its useful 384x216 region when it is shown in-game so
+# the chooser presents the instruction instead of the recording's padding.
+# Other clips are already framed correctly and intentionally have no entry.
+const SPECIAL_ENCOUNTER_VIDEO_CROPS := {
+	"swap": Vector4(732.0 / 1920.0, 384.0 / 1080.0, 384.0 / 1920.0, 216.0 / 1080.0),
+}
+
+# One entry per status condition a move can apply - shared by the Combat
+# Help tab (game/inventory_menu.gd's Esc-menu pause screen), the hover
+# tooltip _populate_move_menu() attaches to any move whose hint says "Status
+# Effect" (see battle.gd), and battle.gd's own tutorial captions, so the
+# numbers only ever have to be right in one place. Blindness's numbers were
+# read straight out of the code that applies them (combatant_stats.gd's
+# effective_accuracy()/effective_agility()/effective_defense(), all three
+# reading status_level("blindness") the same way) - Stun has no move that
+# inflicts it yet, so its entry describes the intended design rather than
+# something presently reachable in a fight.
+const STATUS_CONDITIONS: Array[Dictionary] = [
+	{
+		"title": "Blindness",
+		"body": "Flash Blast subtracts 2 from an enemy's Agility, Accuracy, and Defense, lasting as many turns as the caster's own Accuracy. Unlike Bleed, it does not stack: recasting it while already active does not add to the penalty, only refreshes the remaining turns if the new cast would last longer.",
+	},
+	{
+		"title": "Stun",
+		"body": "Skips the combatant's turn entirely. Its number is how many turns get skipped, not a stat penalty.",
+	},
+	{
+		"title": "Bleed",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, then fades after 3 turns. Another Bleed hit only adds to that damage stack - it does not restart the 3-turn clock, so a bleed about to expire won't get more time from a fresh hit, just a harder tick before it does. Scuba Stabbing applies 1 plus the caster's Strength.",
+	},
+	{
+		"title": "Poison",
+		"body": "Deals its level as damage when the poisoned character's turn ends, then fades after its duration. Poison Breath applies 15% of max HP to the whole party for 3 turns.",
+	},
+]
+
+# Case-insensitive lookup by title - status names travel as lowercase
+# CombatantStats keys ("blindness", "bleed", ...) everywhere except this
+# table's own "title" field, which is capitalized for display. Empty string
+# (not a crash/placeholder body) for a name with no entry, so a caller can
+# just skip attaching a tooltip rather than showing an empty one.
+static func status_condition_body(status_name: String) -> String:
+	for entry in STATUS_CONDITIONS:
+		if String(entry.get("title", "")).to_lower() == status_name.to_lower():
 			return String(entry.get("body", ""))
 	return ""
 

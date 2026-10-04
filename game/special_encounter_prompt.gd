@@ -1,6 +1,6 @@
-# Shown by World when a diver enters a visible artifact guardian
-# (see world.gd's _on_item_guardian_triggered()/_offer_special_encounter())
-# - two screens, only one visible at a time:
+# Shown by World when a random encounter rolls into a special encounter for
+# a revealed key item (see world.gd's _on_encounter_triggered()/
+# _offer_special_encounter()) - two screens, only one visible at a time:
 #   confirm: explains the stakes (special ability needed, a timed
 #     challenge, real treasure, no permadeath) with Enter/Not Now.
 #   select: a rotating carousel of the three divers - 3D model preview,
@@ -15,10 +15,13 @@ extends Control
 signal diver_chosen(model_name: String)
 signal cancelled
 
-# MODIFIED: the blurb text and the demo-media paths both moved to
-# content/tutorial_content.gd (ABILITY_BLURBS/ABILITY_MEDIA) so the
-# general tutorial book and this carousel can't drift apart from each
-# other by each keeping their own copy.
+# MODIFIED: the blurb text moved to content/tutorial_content.gd
+# (ABILITY_BLURBS), shared with the general Esc-menu reference carousel so
+# the wording can't drift apart between the two. The demo-media paths used
+# to be shared the same way (ABILITY_MEDIA), but this carousel now reads
+# its own SPECIAL_ENCOUNTER_MEDIA table instead - same idea as battle.gd's
+# in-fight tutorial demo frame, which reads that same table (see content/
+# tutorial_content.gd's own comment on why the two were split apart).
 const ROSTER := ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]
 
 var _mode := "confirm"
@@ -184,7 +187,7 @@ func _build_select_panel() -> Control:
 	# _refresh_carousel(), since which ability (and so which clip) is
 	# showing changes with _carousel_index.
 	_media_frame = PanelContainer.new()
-	_media_frame.custom_minimum_size = Vector2(220, 260)
+	_media_frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
 	var media_bg := StyleBoxFlat.new()
 	media_bg.bg_color = Color(0.03, 0.08, 0.11)
 	media_bg.set_border_width_all(1)
@@ -270,22 +273,46 @@ func _refresh_carousel() -> void:
 # Swaps in whatever demo clip/image exists for `ability_id` - a still image
 # loads straight into a TextureRect; a .ogv loads into a VideoStreamPlayer
 # and loops by replaying on `finished` rather than relying on any built-in
-# loop flag. Neither file exists yet for any ability (see
-# TutorialContent.ABILITY_MEDIA's own comment), so today this always falls
-# through to the placeholder - that fallback is the point, not a bug: it
-# reserves the spot so dropping in a real clip later needs no code changes.
+# loop flag.
+# MODIFIED (fixed): this never got the same fix character_ability_popup.gd's
+# own copy of this same loading logic did (see its "Fix tutorial clip aspect
+# ratio and oversized media frame" commit) - expand was never set true (a
+# VideoStreamPlayer with expand false renders at the source video's native
+# resolution, ignoring the PRESET_FULL_RECT anchors entirely, which is what
+# actually blew the whole carousel out to fill most of the screen the moment
+# a real swap_demo.ogv existed to test this against) and there was no
+# AspectRatioContainer, so a 16:9 source stretched to whatever raw shape
+# _media_frame happened to be. Also: `player.stream = load(path)` reused
+# Godot's cached VideoStreamTheora resource across every _refresh_media()
+# call this carousel makes (Left/Right cycling calls it once per diver, and
+# switching back to the same diver again re-hits the cache) - a fresh
+# VideoStreamTheora.new() per call is what character_ability_popup.gd's own
+# version does instead, avoiding one decoder's playback state leaking
+# between players that all point at the same cached resource.
 func _refresh_media(ability_id: String) -> void:
 	for child in _media_frame.get_children():
 		child.queue_free()
-	var path := String(TutorialContent.ABILITY_MEDIA.get(ability_id, ""))
+	var path := String(TutorialContent.SPECIAL_ENCOUNTER_MEDIA.get(ability_id, ""))
 	if path != "" and ResourceLoader.exists(path):
 		if path.get_extension() == "ogv":
 			var player := VideoStreamPlayer.new()
-			player.stream = load(path)
-			player.autoplay = true
+			var video_stream := VideoStreamTheora.new()
+			video_stream.file = path
+			player.stream = video_stream
+			player.expand = true
+			var aspect := AspectRatioContainer.new()
+			aspect.ratio = 16.0 / 9.0
+			aspect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			aspect.add_child(player)
 			player.finished.connect(player.play)
-			_media_frame.add_child(player)
+			_media_frame.add_child(aspect)
+			# Deferred, not autoplay=true - same reasoning as character_
+			# ability_popup.gd's own player: starting Theora decode the
+			# instant this frame's still mid-build (or the tree's mid-pause
+			# transition from world.gd opening this popup) risks contending
+			# with that instead of showing a small clip cleanly.
+			player.call_deferred("play")
 			return
 		var tex := load(path) as Texture2D
 		if tex != null:

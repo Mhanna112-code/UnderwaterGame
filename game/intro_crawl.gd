@@ -12,8 +12,16 @@ extends Control
 
 signal finished
 
-const SCROLL_DURATION := 30.0
 const TEXT_WIDTH := 560.0
+# A player needs enough time to read a complete line without tracking it at
+# speed. The old fixed 30-second scroll kept a line in a 720px browser window
+# for only about 18 seconds, which is why the reviewed crawl ended before its
+# narrative could be read. Keep a deliberate lower bound for ordinary screens
+# and extend the whole crawl on short viewports, where the same speed would
+# otherwise shorten the readable window again.
+const MIN_SCROLL_DURATION := 55.0
+const MIN_LINE_VISIBLE_SECONDS := 30.0
+const SCROLL_EXIT_PADDING := 40.0
 
 const STORY_TEXT := "Three strangers, one dive site.\n\nA drifter who grew up more at home in open water than on land. A boy who ran out of reasons to stay on the surface. A soldier with nothing left topside worth defending.\n\nNone of them chose each other. Each of them had already lost everything a normal life was supposed to give - and each had heard the same rumor: that somewhere in the drowned dark below, there was treasure enough to buy it all back.\n\nThe ocean does not care what brought you to it. It only asks what you're willing to lose to leave with something.\n\nThey went down anyway."
 
@@ -95,14 +103,25 @@ func _start_scroll() -> void:
 	var text_height: float = _text_label.get_combined_minimum_size().y
 	_text_label.offset_top = vp_height
 	_text_label.offset_bottom = vp_height + text_height
-	var target_top: float = -text_height - 40.0
+	var target_top: float = -text_height - SCROLL_EXIT_PADDING
+	var scroll_duration := readable_scroll_duration(vp_height, text_height)
 
 	_tween = create_tween()
 	_tween.set_parallel(true)
-	_tween.tween_property(_text_label, "offset_top", target_top, SCROLL_DURATION)
-	_tween.tween_property(_text_label, "offset_bottom", target_top + text_height, SCROLL_DURATION)
+	_tween.tween_property(_text_label, "offset_top", target_top, scroll_duration)
+	_tween.tween_property(_text_label, "offset_bottom", target_top + text_height, scroll_duration)
 	_tween.set_parallel(false)
 	_tween.tween_callback(_finish)
+
+# Public reading contract used by verification. A line remains within the
+# viewport for viewport_height / pixels_per_second, so the duration must grow
+# with the total travel distance on short screens rather than stay at a fixed
+# cinematic time.
+static func readable_scroll_duration(viewport_height: float, text_height: float) -> float:
+	var safe_viewport := maxf(1.0, viewport_height)
+	var total_distance := safe_viewport + maxf(0.0, text_height) + SCROLL_EXIT_PADDING
+	var duration_for_line_window := MIN_LINE_VISIBLE_SECONDS * total_distance / safe_viewport
+	return maxf(MIN_SCROLL_DURATION, duration_for_line_window)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or _done:

@@ -11,22 +11,29 @@ extends StaticBody3D
 # traversal target with no side effect - only the gap sequence's anchor
 # sets this (to "Staff_Diver").
 @export var unlocks_diver_ability_for: String = ""
+@export var ring_color := Color(0.95, 0.85, 0.3)
+@export var ring_inner_radius := 0.32
+@export var ring_outer_radius := 0.5
+@export var show_ring := true
+@export var target_radius := 0.8
+@export var target_height := 2.5
 
 func _ready() -> void:
 	add_to_group("grapple_anchor")
 
-	var ring := TorusMesh.new()
-	ring.inner_radius = 0.32
-	ring.outer_radius = 0.5
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = ring
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.95, 0.85, 0.3)
-	mat.emission_enabled = true
-	mat.emission = Color(0.95, 0.85, 0.3)
-	mat.emission_energy_multiplier = 1.5
-	mesh.material_override = mat
-	add_child(mesh)
+	if show_ring:
+		var ring := TorusMesh.new()
+		ring.inner_radius = ring_inner_radius
+		ring.outer_radius = ring_outer_radius
+		var mesh := MeshInstance3D.new()
+		mesh.mesh = ring
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = ring_color
+		mat.emission_enabled = true
+		mat.emission = ring_color
+		mat.emission_energy_multiplier = 1.5
+		mesh.material_override = mat
+		add_child(mesh)
 
 	# Generous relative to the ring's own size - a raycast is a single line,
 	# so a collision shape this size is what keeps "roughly facing it" close
@@ -37,8 +44,8 @@ func _ready() -> void:
 	# short collision shape made that miss even when clearly "aimed at."
 	var shape := CollisionShape3D.new()
 	var col := CylinderShape3D.new()
-	col.radius = 0.8
-	col.height = 2.5
+	col.radius = target_radius
+	col.height = target_height
 	shape.shape = col
 	add_child(shape)
 

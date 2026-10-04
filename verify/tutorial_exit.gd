@@ -6,7 +6,11 @@
 # QTE as complete, and observes only player-visible completion state.
 extends SceneTree
 
-const TIMEOUT_MS := 3000
+# The "Defeat the enemy!" prompt now hands off to the real _win() flow
+# (celebration + per-level-gained log line each carry their own
+# LOG_READ_DELAY timer, ~1.6s apiece) instead of an immediate force-win, so
+# this needs real wall-clock room rather than the old flow's single timer.
+const TIMEOUT_MS := 8000
 
 var findings: Array[String] = []
 
@@ -30,7 +34,13 @@ func _run() -> void:
 	else:
 		# The combat lesson has already taught every scripted move and shown
 		# its required QTE.  This is the contract boundary under test, not a
-		# second combat bot.
+		# second combat bot. The "Defeat the enemy!" prompt now hands the
+		# fight back for a real turn-by-turn finish instead of auto-winning
+		# (see battle.gd's _advance_turn()), so this also has to actually
+		# down the enemy - otherwise the fight would just keep going and
+		# world.battle would never clear within TIMEOUT_MS.
+		for enemy_entry in battle.enemies:
+			(enemy_entry.stats as CombatantStats).hp = 0
 		battle._tutorial_step = battle._TUTORIAL_SCRIPT.size()
 		battle._tutorial_enemy_turns = 1
 		battle._tutorial_finale_shown = false

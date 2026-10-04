@@ -33,7 +33,7 @@ if (!live) await new Promise(r => server.listen(8765, r));
 // headless Chromium ships without WebGL2, and Godot's web build needs it.
 // SwiftShader gives us a real GL2 context in software so this gate tests the
 // build rather than the browser's default flags.
-const browser = await chromium.launch({ args: [
+const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
 ] });

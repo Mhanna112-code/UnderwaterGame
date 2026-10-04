@@ -5390,7 +5390,7 @@ func _display_name(model_name: String) -> String:
 	return Cast.display_name(model_name)
 
 # --- Special encounters (the world's guarded items) ------------------------------
-# The same thing the dive site has: a guarded item (ItemGuardian) with its
+# The same thing the dive site has: a guarded item (MazeItemGuardian) with its
 # guardian standing beside it, hidden until Maxilani's sonar finds it.
 # Swimming into it brings up "choose who goes" (SpecialEncounterPrompt); the
 # chosen diver alone fights the guardian in a special-encounter battle (their
@@ -5413,8 +5413,8 @@ const SPECIAL_CLEARANCE := 2.2   # room kept around a spot (guardian + its guard
 const SPECIAL_SONAR_RADIUS := 14.0
 
 var special_encounter_prompt: SpecialEncounterPrompt
-var _special_spots: Array[ItemGuardian] = []
-var _special_spot: ItemGuardian
+var _special_spots: Array[MazeItemGuardian] = []
+var _special_spot: MazeItemGuardian
 var _special_diver: Diver
 var _special_pre_hp := 0
 var _special_pre_oxygen := 0.0
@@ -5439,12 +5439,12 @@ func _build_special_encounters() -> void:
 				continue
 			entry = entry.duplicate()
 			entry["at"] = between.pop_front()
-		var guardian := ItemGuardian.new()
+		var guardian := MazeItemGuardian.new()
 		guardian.item_id = String(entry["item"])
 		guardian.look = String(entry["look"])
 		add_child(guardian)
 		var at: Vector3 = entry["at"]
-		guardian.global_position = Vector3(at.x, _floor_top_y + float(ItemGuardian.LIFT.get(guardian.look, 0.9)), at.z)
+		guardian.global_position = Vector3(at.x, _floor_top_y + float(MazeItemGuardian.LIFT.get(guardian.look, 0.9)), at.z)
 		var decoy: Node3D = SwordDuelist.new() if String(entry["enemy"]) == "swordfish_duelist" else Goblin.new()
 		add_child(decoy)
 		decoy.global_position = Vector3(at.x - 1.8, _floor_top_y, at.z + 0.6)   # west side, clear of the strong room's wall
@@ -5491,7 +5491,7 @@ func _special_spot_clear(p: Vector3) -> bool:
 	q.collision_mask = 1
 	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
 
-func _set_special_revealed(guardian: ItemGuardian, on: bool) -> void:
+func _set_special_revealed(guardian: MazeItemGuardian, on: bool) -> void:
 	guardian.visible = on
 	guardian.set_deferred("monitoring", on)
 	var decoy: Node3D = guardian.get_meta("decoy")
@@ -5508,7 +5508,7 @@ func _update_special_reveal() -> void:
 			_set_special_revealed(g, true)
 			_announce("Sonar found something guarded nearby.")
 
-func _on_special_triggered(_item_id: String, guardian: ItemGuardian) -> void:
+func _on_special_triggered(_item_id: String, guardian: MazeItemGuardian) -> void:
 	if _battling or any_modal_open() or not bool(guardian.get_meta("revealed", false)):
 		return
 	_special_spot = guardian
@@ -5677,7 +5677,6 @@ func _build_save_points() -> void:
 	save_point_menu = SavePointMenu.new()
 	save_point_menu.save_requested.connect(_on_save_requested)
 	$HUD.add_child(save_point_menu)
-	save_point_menu.learn_ui.key_items = key_items
 	var spots: Array[Vector3] = []
 	# 1. In front of the maze, by its entrance: just out past the start
 	#    corridor's open west end.
@@ -5731,7 +5730,7 @@ func _toggle_save_menu() -> void:
 	if not _diver_on_save_point(_diver):
 		_announce("No save point nearby.")
 		return
-	save_point_menu.open_for(_diver, _display_name(_diver.model_name))
+	save_point_menu.open_for(_diver)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mouse_look = false
 
@@ -5754,7 +5753,7 @@ func _update_save_point_prompt() -> void:
 			_banner.visible = false
 		_showing_save_prompt = false
 
-func _on_save_requested(_d: Diver) -> void:
+func _on_save_requested(_d: Diver, _slot: int = 0) -> void:
 	for other in divers:
 		other.stats.hp = other.stats.hp_max
 		other.stats.oxygen = other.stats.oxygen_max

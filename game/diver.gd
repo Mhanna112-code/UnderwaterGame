@@ -63,29 +63,20 @@ var SONAR_INTERVAL := 0.2
 # hitter. The earlier mixed 10/26/42 scale made Scuba strictly worse than
 # the two characters whose V2 blocks had not yet been ported.
 #
-# grow_* remains this game's level progression layer. It starts from the
-# authored level-one contract below instead of silently replacing that
-# contract with the older prototype numbers.
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
 		"evasion": 3, "accuracy": 3,
-		"grow_hp": 4, "grow_strength": 1, "grow_defense": 1, "grow_agility": 1,
-		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "swap", "passive": "sonar"
 	},
 	"Prototype_1(1910)": {
 		"hp": 10, "strength": 2, "defense": 2, "agility": 2,
 		"evasion": 2, "accuracy": 2,
-		"grow_hp": 2, "grow_strength": 2, "grow_defense": 0, "grow_agility": 2,
-		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "grapple",
 	},
 	"Prototype_V(1922)": {
 		"hp": 10, "strength": 4, "defense": 4, "agility": 1,
 		"evasion": 0, "accuracy": 1,
-		"grow_hp": 6, "grow_strength": 1, "grow_defense": 2, "grow_agility": 0,
-		"grow_accuracy": 1, "grow_evasion": 1,
 		"ability": "shockwave",
 	},
 }
@@ -113,11 +104,10 @@ var ability_locked := false
 # just where a given id happens to live in the tree). See SpellTree.learn().
 var known_spells: Array[String] = []
 
-# Which known spells are actually active for battle - "known" and
-# "equipped" are deliberately separate lists (see SpellTree.equip()) so
-# buying a spell doesn't force it into the loadout, and the loadout stays
-# capped even as known_spells grows without bound.
-const MAX_EQUIPPED_SPELLS := 4
+# Which known spells are active for battle. SpellTree.learn() equips every
+# spell as it's learned, so this mirrors known_spells (kept as its own list
+# because battle.gd and older saves read it directly). No cap - battle.gd's
+# move menu scrolls when a diver has more moves than fit.
 var equipped_spells: Array[String] = []
 
 
@@ -370,12 +360,6 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
-	stats.grow_hp = int(base.grow_hp)
-	stats.grow_strength = int(base.grow_strength)
-	stats.grow_defense = int(base.grow_defense)
-	stats.grow_agility = int(base.grow_agility)
-	stats.grow_accuracy = int(base.get("grow_accuracy", 0))
-	stats.grow_evasion = int(base.get("grow_evasion", 0))
 	stats.fill()
 
 	# Not a CombatantStats field - an ability isn't part of the damage
@@ -653,7 +637,20 @@ func update_sonar() -> void:
 		# used to carry a "radius" of their own for this; it is gone, along
 		# with the guaranteed-encounter rule that was the only thing that
 		# ever read it.
-		if position.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
+		#
+		# MODIFIED (fixed): checked against `position` - this diver's OWN
+		# position - which only reads right if she also happens to be the
+		# one the player is currently swimming. She isn't always: switching
+		# to another diver (Tab) leaves her parked wherever she was left
+		# (see world.gd's own swim() loop - an inactive diver gets zero
+		# input, not skipped), while this still runs every SONAR_INTERVAL
+		# regardless of which diver is active (gated on passive_id/sonar_
+		# active, not on being the active diver). Sonar being "on" should
+		# mean "reveals whatever's near wherever you actually are right
+		# now," not "near wherever Maxilani happens to be standing" -
+		# checked against the actually-active diver's position instead.
+		var scan_pos: Vector3 = (world.divers[world.active] as Diver).position
+		if scan_pos.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
 
 
@@ -1299,7 +1296,43 @@ func play_death_fade() -> void:
 	tw.tween_property(self, "position:y", position.y - 0.6, 0.9)
 	tw.tween_property(self, "scale", scale * 0.7, 0.9)
 	tw.set_parallel(false)
-	tw.tween_callback(queue_free)
+	# Unlike goblin.gd's version, this never queue_free()s the actor - a
+	# downed party member can come back from a revive spell (Tidal
+	# Revival), which needs the real actor node still standing on the stage
+	# to un-fade (see play_revive() below). Only an enemy's defeat is
+	# actually permanent for the fight.
+
+# Reverses play_death_fade() - a revive spell brought this diver back (see
+# battle.gd's "revive" handling in _resolve_party_move()), so the actor that
+# faded, sank, and shrank needs to visibly return the same way it left,
+# rather than just standing back up mid-fade with the old death pose/alpha
+# still applied. Clears the override materials play_death_fade() installed
+# once the fade-in finishes rather than leaving them sitting at alpha 1
+# forever - visually identical either way, just not carrying dead weight
+# for the rest of the fight.
+func play_revive() -> void:
+	var overrides: Array = []
+	var tw := create_tween()
+	tw.set_parallel(true)
+	for m in _all_meshes(model):
+		var mesh_instance := m as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		for surface in range(mesh_instance.mesh.get_surface_count()):
+			var mat := mesh_instance.get_surface_override_material(surface)
+			if mat == null or not (mat is BaseMaterial3D):
+				continue
+			overrides.append([mesh_instance, surface])
+			tw.tween_property(mat, "albedo_color:a", 1.0, 0.6)
+	tw.tween_property(self, "position:y", position.y + 0.6, 0.6)
+	tw.tween_property(self, "scale", scale / 0.7, 0.6)
+	tw.set_parallel(false)
+	tw.tween_callback(func() -> void:
+		for pair in overrides:
+			(pair[0] as MeshInstance3D).set_surface_override_material(int(pair[1]), null)
+		_hold = ""
+		play_motion("idle")
+	)
 
 func _all_meshes(n: Node) -> Array:
 	var out: Array = []

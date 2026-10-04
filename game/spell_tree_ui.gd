@@ -17,9 +17,9 @@
 # right than incremental updates.
 #
 # Reached only through SavePointMenu now, never directly - back_pressed is
-# how it hands control back to the update submenu instead of just hiding
-# itself, so the player lands back on Equip/Learn/Back, not out of the
-# save-point flow entirely.
+# how it hands control back to the save-point menu's root instead of just
+# hiding itself, so the player lands back on Save/Learn Spells, not out of
+# the save-point flow entirely.
 #
 # THIS IS SCAFFOLDING, not the finished screen: no tree-line connectors
 # between prerequisite spells (columns just list every node in the branch
@@ -46,15 +46,21 @@ var _branch_columns: Dictionary = {}   # branch name -> VBoxContainer
 
 func _ready() -> void:
 	visible = false
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# The spell tree is a full-screen decision surface, so it intentionally
+	# hides world HUD text instead of allowing it to overlap the tree header.
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
+	# The opaque backdrop provides contrast only; it must not consume the
+	# clicks intended for the actual spell buttons above it.
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 50.0
 	root.offset_top = 50.0
 	root.offset_right = -50.0
@@ -84,6 +90,7 @@ func _ready() -> void:
 	root.add_child(hint)
 
 	_columns_box = HBoxContainer.new()
+	_columns_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_columns_box.add_theme_constant_override("separation", 40)
 	root.add_child(_columns_box)
 

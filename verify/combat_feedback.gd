@@ -30,8 +30,16 @@ func _process(_delta: float) -> bool:
 
 	battle._on_move_chosen(CombatMoves.SCUBA[0])
 	var target_text := (battle.target_buttons[0] as Button).text
-	_expect("DEF" in target_text and "EVA" in target_text and "ACC" in target_text,
-		"TARGET STATS HIDDEN: selecting a target must reveal DEF, current/max EVA and ACC")
+	# MODIFIED (changed): an enemy target's hint used to spell out DEF/EVA/
+	# ACC alongside HP - simplified to just EVA (current/max) and HP, EVA
+	# first. DEF/ACC stayed available via the hover stat-preview panel,
+	# just not doubled up here too.
+	_expect("EVA" in target_text and "HP" in target_text,
+		"TARGET STATS HIDDEN: selecting a target must reveal current/max EVA and HP")
+	_expect("DEF" not in target_text and "ACC" not in target_text,
+		"TARGET STATS CLUTTERED: an enemy target's hint should show only EVA and HP, not DEF/ACC")
+	_expect(target_text.find("EVA") < target_text.find("HP"),
+		"WRONG ORDER: EVA should read to the left of HP in an enemy target's hint")
 	battle._show_moves_or_items_from_target_menu()
 	battle._on_move_chosen(CombatMoves.SCUBA[2])
 	_expect((battle.target_buttons[0] as Button).text.begins_with("All enemies"),

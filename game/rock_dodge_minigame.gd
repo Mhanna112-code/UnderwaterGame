@@ -35,7 +35,7 @@ signal rock_landed
 const WAVE_COUNT := 10
 const MIN_WAVE_GAP := 1
 const MAX_WAVE_GAP := 2.5
-const TRAVEL_TIME := 0.74
+const TRAVEL_TIME := 0.64
 
 # Waves fire in randomly-sized clusters rather than always one at a time -
 # MIN_WAVE_GAP/MAX_WAVE_GAP above is the breather BETWEEN clusters; waves
@@ -70,8 +70,6 @@ var target_actor: Node3D
 
 var _hits := 0
 var _resolved := 0
-var _title_label: Label
-var _progress_label: Label
 
 # Computed once in run() - the shared world-space "sideways" axis both
 # enemy_positions and player_positions below are built from. MUST be the
@@ -113,52 +111,27 @@ var _current_wave: Dictionary = {}
 var _did_finish := false
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# MODIFIED (fixed): same missing Control-ancestor fallback as diver_swap_
+	# minigame.gd's own _ready() (see its comment) - this one was never
+	# actually reported broken, but it has the exact same bug for the exact
+	# same reason (added directly under Battle, a CanvasLayer, via
+	# _do_rock_dodge_encounter()'s add_child(minigame)), so "DODGE THE ROCKS"
+	# and this minigame's own hint/progress labels would collapse to the
+	# top-left corner too, the moment anyone actually looked for it.
+	if get_parent() is Control:
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	else:
+		set_anchors_preset(Control.PRESET_TOP_LEFT)
+		size = get_viewport_rect().size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only individual rocks/labels catch clicks, not the whole overlay
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.03, 0.05, 0.35)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
-
-	_title_label = Label.new()
-	_title_label.text = "DODGE THE ROCKS"
-	_title_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_title_label.offset_top = 40.0
-	_title_label.offset_left = -160.0
-	_title_label.offset_right = 160.0
-	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title_label.add_theme_font_size_override("font_size", 30)
-	_title_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3))
-	add_child(_title_label)
-
-	var hint := Label.new()
-	hint.text = "Hold Left/Right to line up with the rock, E to shockwave it - the other two lanes are solid walls"
-	hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	hint.offset_top = 90.0
-	hint.offset_left = -260.0
-	hint.offset_right = 260.0
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
-	hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
-	add_child(hint)
-
-	_progress_label = Label.new()
-	_progress_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_progress_label.offset_top = 130.0
-	_progress_label.offset_left = -80.0
-	_progress_label.offset_right = 80.0
-	_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_progress_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.85))
-	_progress_label.visible = false
-	add_child(_progress_label)
-
-# Held on screen alone for a beat (the "popup" - see battle.gd's own
-# _log() call right before this runs, which is the in-fiction lead-in;
-# this is the visual one) before waves start - a barrage that begins the
-# instant the screen appears would read as starting mid-warning.
-const TITLE_HOLD := 1.1
+	# MODIFIED (removed): the "DODGE THE ROCKS" title, the "Hold Left/Right
+	# to line up with the rock, E to shockwave it..." hint, and this
+	# progress readout all used to render here as floating Control text
+	# over the minigame - per direct request, every one of them is gone
+	# now, same as diver_swap_minigame.gd's own matching removal. The
+	# controls explanation already lives in the battle log instead (see
+	# battle.gd's _do_rock_dodge_encounter()).
 
 func run() -> void:
 	if target_actor != null:
@@ -183,14 +156,14 @@ func run() -> void:
 		# correctly matching what's on screen.
 		_right = Vector3.UP.cross(forward).normalized()
 
-	await get_tree().create_timer(TITLE_HOLD).timeout
-	_title_label.visible = false
-	_progress_label.visible = true
-	_update_progress()
 	_wave_loop()
 
+# MODIFIED (changed): used to write into _progress_label, now removed (see
+# _ready()'s own comment) - kept as a no-op rather than deleted outright so
+# every call site that reports a hit doesn't need its own edit just to drop
+# a call to a function that used to matter.
 func _update_progress() -> void:
-	_progress_label.text = "%d / %d" % [_hits, WAVE_COUNT]
+	pass
 
 # Polls held-key state every frame rather than reacting to individual
 # press/release events - "what's held right now" is exactly the rule that
@@ -225,16 +198,24 @@ func _snap_to_lane(index: int) -> void:
 # a fixed beat, same reasoning as the old per-rock stream this replaced:
 # the player should be reacting to each wave, not counting a rhythm out in
 # advance.
+# MODIFIED (fixed): same bug as diver_swap_minigame.gd's own _spawn_loop()
+# fix - this checked is_instance_valid(self) but never _did_finish, and
+# request_abort()/_finish() neither frees self nor bumps _resolved up to
+# WAVE_COUNT, just emits `finished` and starts target_actor's own swim-back
+# tween. On an early abort (died mid-barrage) this kept going and threw
+# another wave at an already-dead diver, re-parking her in a dodge lane and
+# undoing the swim-back - exactly why the camera kept reading as still
+# mid-encounter after death.
 func _wave_loop() -> void:
-	while _resolved < WAVE_COUNT:
+	while _resolved < WAVE_COUNT and not _did_finish:
 		await get_tree().create_timer(randf_range(MIN_WAVE_GAP, MAX_WAVE_GAP)).timeout
-		if not is_instance_valid(self):
+		if not is_instance_valid(self) or _did_finish:
 			return
 		var remaining := WAVE_COUNT - _resolved
 		var batch_size: int = mini(randi_range(MIN_WAVE_BATCH, MAX_WAVE_BATCH), remaining)
 		for i in range(batch_size):
 			await _run_one_wave()
-			if not is_instance_valid(self) or _resolved >= WAVE_COUNT:
+			if not is_instance_valid(self) or _resolved >= WAVE_COUNT or _did_finish:
 				return
 
 func _run_one_wave() -> void:
