@@ -1589,7 +1589,11 @@ func _build_ui() -> void:
 		_build_overhead_bar(entry)
 
 	log_label = RichTextLabel.new()
-	log_label.custom_minimum_size = Vector2(0, 36)
+	# Always room for two lines (e.g. "This enemy is carrying an item!..."
+	# above "X's turn."), and it grows for more - the panel refits around it
+	# (see _log()), moving the buttons down instead of covering the text.
+	log_label.custom_minimum_size = Vector2(0, LOG_MIN_HEIGHT)
+	log_label.fit_content = true
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2261,9 +2265,12 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	overlay.size.x = ((after - before) / max_value) * OVERHEAD_BAR_WIDTH
 	overlay.visible = true
 
+const LOG_MIN_HEIGHT := 56.0   # two lines of combat text
+
 func _log(text: String) -> void:
 	log_label.clear()
 	log_label.add_text(text)
+	call_deferred("_fit_panel_height")
 
 func _current_log_text() -> String:
 	return log_label.get_parsed_text()
