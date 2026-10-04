@@ -59,5 +59,9 @@ cases run production input. No direct broken/finished signals prove destruction.
   real return input and a valid unfinished checkpoint through actual Load.
   A simultaneous owned-slot run safely refused to overwrite the other test;
   final runs are sequential. These are not claimed as additional game bugs.
-- Browser boundary and exact hosted build evidence pending; no claim of a
-  full clean visual/audio audit for the overall opening.
+- Exact hosted browser boundary passes eight rendered observations with real
+  W/S/arrow/Tab/E input and zero runtime errors. Checkpoint positions are
+  explicit fixtures in a disposable profile, based on an actual recovered
+  opening save. No victory or wall-consumption signals are injected.
+  Served PCK SHA/size match the committed runtime export. No claim of a full
+  clean visual/audio audit for the overall opening.

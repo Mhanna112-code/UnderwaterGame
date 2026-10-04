@@ -11,14 +11,16 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment:** checkpoint candidate from runtime source
-`296b1a562ef68727fb8b5d40f73d07aadc0b91a0`:
-`https://underwatergame-fjglkxxsd-immortaldemongods-projects.vercel.app/`.
-PCK SHA-256 `845a691e700582c9abf1e60e15ac94f68e2bacc54ac6e9cbc52b624a6dae4d2a`.
+**Current deployment:** location-guidance candidate from runtime source
+`cb13f072357a2aa1fdf26664df0b25087b33eefe`:
+`https://underwatergame-daq5wkuqg-immortaldemongods-projects.vercel.app/`.
+PCK SHA-256 `772fca491dae831f32d597198c0726dd42a5855ad5373168239a3406b8cb908c`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-The stable alias serves that candidate after hosted idle/look/late-swim,
-complete opening, real deaths / Restart / title Load, and browser storage-denial
-/ Retry verification passed on 2026-10-04. There is no idle fallback.
+The stable alias serves that candidate after focused hosted Load, physical
+Deep/Shallows crossings and puzzle-contact/real-Shockwave verification.
+Earlier opening/free-swim/restart/storage evidence remains in its original
+packets; it is not mislabeled as a new whole-opening run for this hint fix.
+There is no idle fallback. Sonar and encounters enable at opening recovery.
 This is a review candidate, not final acceptance. The inherited PR #96 alias
 remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
 
@@ -45,7 +47,7 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
 | D: Cordys interruption | in progress | OPEN-036/037 replace the forced HP-zero finisher and Angler-derived accuracy rewrite with normal player moves/effects and actual STR/DEF/ACC/EVA retaliation. Native 15-case button/differential matrix and three high-HP survivors pass. OPEN-038 duplicate impact cue was caught and repaired. Exact hosted normal-entry Axe Kick shows 4 damage, 996/1,000 boss HP, then 80/78/76 retaliation. Browser later-death/Restart/Load and denied-storage/Retry/cold-Load pass. Framing remains green; complete final listening/human audit remains. |
 | E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Stable alias now serves runtime `953b92f`; unauthenticated metadata/PCK match the 93,306,940-byte archive export. Current combat proof is retained in `docs/evidence/opening-prologue-real-combat/`; prior no-idle continuous movement proof remains in its original folder. Current browser confirms 15-second idle/look safety and 4.074-second actual swimming before Angler; engaged opening is 89.010 seconds. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion and final zero-defect audit round remain. |
+| F: exact artifact and polish | in progress | Stable alias serves runtime `cb13f07`; unauthenticated metadata/PCK match the 93,326,920-byte archive export. Latest focused native/browser guidance proof is in `docs/evidence/local-world-guidance/`. Earlier opening/combat/save/defaults journeys remain in their source-labeled packets, not claimed as new whole-opening runs. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final zero-defect audit round remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence
@@ -109,8 +111,11 @@ and that Combat Training is optional.
 
 ## Reconciliation with PR #96
 
-This plan deliberately changes three PR #96 dispositions and preserves every
-other one.
+This plan changes the three original PR #96 dispositions below. Later
+explicit user corrections also enable Sonar/encounters at recovery and scope
+world guidance by location: lab prompts only in Deep, short Bucky Shockwave
+prompt near the intact puzzle entrance, retired on destruction/consumed Load.
+They do not redesign later progression, encounters, puzzle/maze or abilities.
 
 | PR #96 decision | Opening-prologue decision |
 | --- | --- |

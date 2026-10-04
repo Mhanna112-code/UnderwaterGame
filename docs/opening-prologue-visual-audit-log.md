@@ -17,9 +17,21 @@ altitude, unfinished Load, actual E Shockwave and consumed Save/Load. Text
 views inspected: no clipping or minimap overlap. Existing exploration
 defaults, Deep guidance, legacy puzzle and open-water collision gates green.
 Verification-only coasting/unfinished-fixture defects are recorded honestly
-in the packet, not counted as gameplay fixes. Browser/export verification
-pending. Evidence: `docs/evidence/local-world-guidance/`.
+in the packet, not counted as gameplay fixes. Exact hosted browser check now
+passes eight rendered observations with real Load/W/S/arrows/Tab/E and zero
+errors. Explicit position fixtures are recorded; Sonar remains On. Runtime
+`cb13f07`, PCK 93,326,920 bytes, SHA-256
+`772fca491dae831f32d597198c0726dd42a5855ad5373168239a3406b8cb908c`,
+deployment `dpl_FP6DgA1SZzFBvW7hRVz4F5yr8nua`. Served bytes match; same
+review alias refreshed, main and its secondary alias unchanged.
+Evidence: `docs/evidence/local-world-guidance/`.
 This focused fix does not close the larger final visual/audio audit.
+
+OPEN-046 (broader visual audit, still open): the existing large save-crystal
+geometry can occlude the diver in the close puzzle-entrance chase-camera
+view. See browser puzzle-contact/wall-broken screenshots. Guidance text is
+readable at both sizes; no save-point geometry or camera change is part of
+this location-hint fix. Do not report the overall world as visually clean.
 
 ## 2026-10-04: automatic exploration defaults (OPEN-040/041/042)
 
