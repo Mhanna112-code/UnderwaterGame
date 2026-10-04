@@ -833,3 +833,33 @@ rendered bounds or real victory/save checks. Packet:
 OPEN-039 fixed. This does not revise the curriculum, campaign tuning, or
 opening story. Overall goal remains unfinished; this focused replay is not
 a PASS for the full final visual/audio matrix.
+
+## 2026-10-04: Shallows have no visible zone/purpose (SHALLOW-001)
+
+The existing local HUD intentionally removes the Deep lab instruction in the
+Shallows, but supplied no replacement. Reproduced red through completed title
+Load. A two-line fallback now shows `Shallows: fight to grow stronger.` only
+after prologue completion. The physical Deep boundary and nearby intact-wall
+Bucky instruction retain priority; departing/breaking the wall restores the
+Shallows purpose without erasing lab progression. No mandatory grind/balance
+or tutorial/encounter changes.
+
+Native boundary W/S, six contact/altitude cases, 24 clear-water positions,
+inactive-diver/unfinished guards, real Tab/Tab/E Shockwave and consumed-wall
+save/load pass. Deep and eight Sonar/encounter settings round trips pass. Real
+1280x720 and 720x480 frames inspected: readable, clear of controls/minimap.
+
+Clean runtime `4836d0198aa4a3468f570df31782a0cedb36eb92` exports 93,827,780
+bytes, SHA-256 `ea5ef3c1d7e879c41392d7ed85ad62b5f63b9536189e74d3e5ab3fe08d714e8e`.
+Unauthenticated download matches. Eight rendered hosted boundary/puzzle views
+with real input pass; positions are documented fixtures. Separate normal New
+Game/full movies/combat/recovery takes 94.215s and displays the prompt with
+Sonar/encounters On; cold normal Load restores it without opener replay. Zero
+browser errors. Normal recovered/loaded and boundary frames inspected.
+
+Harness correction: normal journey phase expectation was stale from before
+the existing title handoff. It now includes `opening_handoff`; rendered OCR
+also checks Shallows purpose after recovery and Load. No assertion was relaxed
+to excuse a gameplay defect. Same review alias updated, public main unchanged.
+Packet: `docs/evidence/shallows-guidance/README.md`.
+OPEN-032/046 remain; this is not final whole-project zero-defect acceptance.

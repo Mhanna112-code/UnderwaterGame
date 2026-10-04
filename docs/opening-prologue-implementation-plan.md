@@ -11,20 +11,24 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment:** opening-title handoff candidate from runtime source
-`44ae14bab08f744ec6ac9019509c19b94cce72ac`:
-`https://underwatergame-pow6qnuoo-immortaldemongods-projects.vercel.app/`.
-PCK SHA-256 `9aae479107c184063dba78c0ea09ed25f0db12813cdfd39f61876aa94b54375e`.
+**Current deployment:** Shallows guidance candidate from runtime source
+`4836d0198aa4a3468f570df31782a0cedb36eb92`:
+`https://underwatergame-opk53hlsh-immortaldemongods-projects.vercel.app/`.
+PCK SHA-256 `ea5ef3c1d7e879c41392d7ed85ad62b5f63b9536189e74d3e5ab3fe08d714e8e`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-The stable alias serves that candidate after actual hosted full movie,
-title/reveal, idle/look and swimming. No injected completion or review flag.
+The stable alias serves that candidate after actual hosted full movies,
+title/reveal, swimming, combat, recovery and cold Load (94.215s to control).
+Shallows visibly says `Shallows: fight to grow stronger.`; Deep and local
+puzzle hints retain their location/priority. No injected completion or review
+flag in the full opening run; geography fixtures are explicit in the separate
+eight-observation boundary/puzzle run. Evidence: `docs/evidence/shallows-guidance/`.
 The movie now closes with a brief question/credits/title and fades into control;
 native held-input isolation and save/load gates pass. Its hover remains quieter,
 filtered/faded, 180ms and rate-limited (prior source-labeled WebAudio proof).
-Prior focused Deep/Shallows/puzzle proof remains in the source-labeled packet.
+Native wide/narrow Shallows frames and existing Deep/defaults gates also pass.
 Earlier opening/free-swim/restart/storage evidence remains in its original
-packets; it is not mislabeled as a new full Cordys/recovery/restart run for this
-opening-title fix. Focused evidence: `docs/evidence/opening-title-handoff/`.
+packets; this is not a new actual later-death/Restart or storage-fault run.
+Prior title/held-input/idle proof: `docs/evidence/opening-title-handoff/`.
 There is no idle fallback. Sonar and encounters enable at opening recovery.
 This is a review candidate, not final acceptance. The inherited PR #96 alias
 remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
@@ -52,7 +56,7 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
 | D: Cordys interruption | in progress | OPEN-036/037 replace the forced HP-zero finisher and Angler-derived accuracy rewrite with normal player moves/effects and actual STR/DEF/ACC/EVA retaliation. Native 15-case button/differential matrix and three high-HP survivors pass. OPEN-038 duplicate impact cue was caught and repaired. Exact hosted normal-entry Axe Kick shows 4 damage, 996/1,000 boss HP, then 80/78/76 retaliation. Browser later-death/Restart/Load and denied-storage/Retry/cold-Load pass. Framing remains green; complete final listening/human audit remains. |
 | E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Stable alias serves runtime `44ae14b`; unauthenticated metadata/PCK match the 93,348,868-byte archive export. Latest packet `docs/evidence/opening-title-handoff/` retains the initial camera/HUD defect and corrected actual browser replay/GIF. Prior menu-audio/guidance/combat/save/defaults evidence stays source-labeled, not claimed as new whole-opening proof. Blind test, user listening acceptance, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final zero-defect audit round remain. |
+| F: exact artifact and polish | in progress | Stable alias serves runtime `4836d01`; unauthenticated metadata/PCK match the 93,827,780-byte archive export. Latest `shallows-guidance/` packet: full normal opening/recovery/cold Load, eight rendered geographic observations, wide/narrow native guidance and unchanged Deep/defaults gates. Prior title packet retains initial camera/HUD defect and corrected replay/GIF; prior menu-audio/combat/death/storage proofs remain source-labeled. Blind test, user listening acceptance, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final zero-defect audit round remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence
@@ -120,6 +124,11 @@ This plan changes the three original PR #96 dispositions below. Later
 explicit user corrections also enable Sonar/encounters at recovery and scope
 world guidance by location: lab prompts only in Deep, short Bucky Shockwave
 prompt near the intact puzzle entrance, retired on destruction/consumed Load.
+After opening completion, clear Shallows show `Shallows: fight to grow stronger.`
+in the same single HUD panel. The intact-wall hint takes priority there;
+physical entry into Deep replaces it with the lab instruction, and returning
+restores the Shallows prompt without erasing `find_lab` progression. This is
+orientation and purpose, not a compulsory grinding quota or balance change.
 They do not redesign later progression, encounters, puzzle/maze or abilities.
 
 | PR #96 decision | Opening-prologue decision |

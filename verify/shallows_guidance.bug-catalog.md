@@ -44,4 +44,11 @@ clear-water positions independently of the room bounds helper.
 
 ## Evaluation
 
-Pending red/green, rendered and exact-hosted evidence.
+SHALLOW-001 reproduced red against the prior World; the two-line fallback
+passes. Native actual boundary/input/puzzle/consumed save/unfinished/active-diver
+cases and 24 clear-water positions pass. Wide/narrow rendering is readable.
+Exact exported runtime `4836d01` passes eight hosted rendered boundary/puzzle
+observations with real W/S/Tab/E. Normal New Game/full movies/actual combat/
+recovery takes 94.215s, shows the Shallows prompt with Sonar/encounters On,
+then cold Load shows it again without replay. No browser errors.
+Evidence and fixture boundaries: `docs/evidence/shallows-guidance/README.md`.
