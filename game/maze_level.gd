@@ -20,6 +20,10 @@ enum WallEnd {
 # Developer mode: start the party in the passage in front of the sphere
 # room's door (wall 16), facing it. Takes priority over the other dev spawns.
 @export var dev_spawn_at_sphere_room := true
+# Developer mode: start with every key and the switch gate already down. The
+# secret room's rocks (and everything else) can still be collected as usual.
+# Also on when launched with "-- --dev" on the command line.
+@export var dev_all_keys_gate_open := false
 
 var markers: Array[Marker3D] = []
 
@@ -102,7 +106,12 @@ func _ready() -> void:
 	_build_wall_10_11_extras()
 	_build_hall_gauntlet()
 	_build_inventory_menu()
+	_build_special_encounters()
+	_build_visible_floors()
+	_build_save_points()
 	_add_wall_skirts()
+	if dev_all_keys_gate_open or OS.get_cmdline_user_args().has("--dev"):
+		_apply_dev_unlocks()
 	$HUD/Controls.text = "Hallway: CLOSED — open the map (L), pick the hallway walls and press E."
 	if SceneHandoff.returning_from_secret_wall:
 		SceneHandoff.returning_from_secret_wall = false
@@ -731,9 +740,18 @@ func _start_battle(kind := "strong") -> void:
 			_battle.boss_encounter = true
 		"ambush":
 			_announce("Something was hiding in the rock!")
+		"special":
+			pass   # no banner - the combat text says the enemy is carrying an item
 		_:
 			_announce("Strong enemies emerge from the murk!")
 	_battle.party_source = divers
+	if kind == "special" and _special_spot != null:
+		# The world's special encounter: just the chosen diver, against the
+		# spot's guardian, playing that diver's special-encounter minigame.
+		_battle.party_source = [_special_diver]
+		_battle.special_encounter = true
+		_battle.guardian_encounter = true
+		_battle.guardian_enemy_id = String(_special_spot.get_meta("enemy"))
 	_battle.inventory_source = inventory
 	_battle.finished.connect(_on_battle_finished)
 	add_child(_battle)
@@ -766,6 +784,9 @@ func _on_battle_finished(result: String) -> void:
 	# out later fights until a potion or a revive brings them back.
 	var kind := _battle_kind
 	_battle_kind = "strong"
+	if kind == "special":
+		_finish_special_encounter(result)
+		return
 	if result == "won" and kind == "secret_boss":
 		_remove_boss_trigger("secret_boss")
 		_gain_key("abyss_key", "Tethys is driven off! You've obtained a key")
@@ -1030,7 +1051,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
+	return (save_point_menu != null and save_point_menu.visible) or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -1329,6 +1350,7 @@ func _build_sphere_room() -> void:
 	var z_a := minf(north.global_position.z, south.global_position.z) + t * 0.5
 	var z_b := maxf(north.global_position.z, south.global_position.z) - t * 0.5
 	var interior := Rect2(Vector2(minf(x_a, x_b), z_a), Vector2(absf(x_b - x_a), z_b - z_a))
+	_sphere_room_interior = interior
 	_swirl_room = SwirlRoom.new()
 	_swirl_room.name = "SphereRoom"
 	# Full swimmable height: the floor and ceiling sit one clearance below and
@@ -2993,10 +3015,49 @@ func _sweep_divers_with_moving_walls() -> void:
 					side = signf(local.z) if local.z != 0.0 else 1.0
 				var pushed := Vector3(local.x, local.y, side * (half.z + r))
 				var target := xf * pushed
-				d.global_position = Vector3(target.x, d.global_position.y, target.z)
+				target.y = d.global_position.y
+				# No room ahead (it'd be crushed into another wall - e.g. Box13,
+				# or the end cap as 11 lands): the diver rides along with this
+				# wall, ignoring the other walls, until it stops.
+				if not _wall_riders.has(d) and _diver_spot_blocked(d, target, wall):
+					_wall_riders[d] = wall
+				d.global_position = target
 	_wall_last_xf.clear()
 	for wall in still_moving:
 		_wall_last_xf[wall] = (wall as CSGBox3D).global_transform
+	# Riders whose wall has stopped get set down in the nearest clear spot.
+	for d in _wall_riders.keys():
+		if not still_moving.has(_wall_riders[d]):
+			_wall_riders.erase(d)
+			if is_instance_valid(d):
+				d.global_position = _nearest_clear_spot(d, d.global_position)
+				d.velocity = Vector3.ZERO
+
+var _wall_riders: Dictionary = {}   # diver -> the moving wall carrying it
+
+# `pos`, or the closest spot around it where the diver touches no wall.
+func _nearest_clear_spot(d: Diver, pos: Vector3) -> Vector3:
+	if not _diver_spot_blocked(d, pos, null):
+		return pos
+	for ring in range(1, 21):
+		var dist := ring * 0.25
+		for k in 24:
+			var at := pos + Vector3.FORWARD.rotated(Vector3.UP, TAU * k / 24.0) * dist
+			if not _diver_spot_blocked(d, at, null):
+				return at
+	return pos
+
+# Would a diver at `pos` overlap any maze wall other than `except`?
+func _diver_spot_blocked(d: Diver, pos: Vector3, except: CSGBox3D) -> bool:
+	var r := d.radius + SWEEP_MARGIN
+	for w in wall_boxes:
+		if w == except or not is_instance_valid(w) or not w.visible:
+			continue
+		var local := w.global_transform.affine_inverse() * pos
+		var half := w.size * 0.5
+		if absf(local.x) < half.x + r and absf(local.z) < half.z + r and absf(local.y) < half.y + d.height * 0.5:
+			return true
+	return false
 
 func _rotate_hallway_1_2() -> void:
 	if _wall_set_moving("CurrentWall1/2"):
@@ -3927,6 +3988,10 @@ func _physics_process(dt: float) -> void:
 		_swirl_room.hit_divers(divers, dt)
 	if not _battling and not any_modal_open():
 		for d in divers:
+			# Being carried by a moving wall (see _sweep_divers_with_moving_
+			# walls()): no physics of its own, so other walls don't stop it.
+			if _wall_riders.has(d):
+				continue
 			# Inactive divers still run swim() with no input, so currents and
 			# drag keep acting on them (World does the same).
 			# No steering while any walls are mid-rotation (_moving_wall_sets).
@@ -3939,6 +4004,8 @@ func _physics_process(dt: float) -> void:
 	_update_world_hud()
 	_update_sonar_vision()
 	_update_tethys_patrol(dt)
+	_update_special_reveal()
+	_update_save_point_prompt()
 	_update_announce(dt)
 	_check_split_rock()
 	_move_camera(dt)
@@ -4030,6 +4097,16 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
+		var key := (e as InputEventKey).keycode
+		if save_point_menu != null and save_point_menu.visible and key in [KEY_P, KEY_ESCAPE]:
+			save_point_menu.close()
+			get_viewport().set_input_as_handled()
+			return
+		if key == KEY_P and not _battling and not any_modal_open():
+			_toggle_save_menu()
+			get_viewport().set_input_as_handled()
+			return
 	# Esc opens / closes the inventory (as in the main game).
 	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_ESCAPE:
 		if inventory_menu != null and inventory_menu.visible:
@@ -4417,6 +4494,23 @@ func _build_progress_gate() -> void:
 	if along.dot(toward_switch) < 0.0:
 		along = -along
 	_gate_view_spot = Vector3(centre.x, _floor_top_y + 3.2, centre.z) + along * 9.0
+
+const DEV_KEYS := ["sphere_room_key", "vortex_key", "split_rock_key", "abyss_key"]
+
+func _apply_dev_unlocks() -> void:
+	for id in DEV_KEYS:
+		if not key_items.has(id):
+			key_items.append(id)
+	keys_held = DEV_KEYS.size()
+	# The gate, down with no cutscene.
+	if _gate != null and not _gate_lowered:
+		_gate_lowered = true
+		_mark_switch_done()
+		_gate.visible = false
+		for c in _gate.get_children():
+			if c is CollisionShape3D:
+				(c as CollisionShape3D).disabled = true
+	print("DEV MODE: all keys, gate open")
 
 func _lower_gate() -> void:
 	if _gate == null or _gate_lowered:
@@ -5078,6 +5172,9 @@ var inventory_menu: InventoryMenu
 func _build_inventory_menu() -> void:
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
+	# Always in front - over the maze map (z 4) and its controls too, which
+	# stay open but paused behind it (the map ignores keys while it's up).
+	inventory_menu.z_index = 100
 	$HUD.add_child(inventory_menu)
 
 func use_inventory_item(item_id: String) -> void:
@@ -5141,3 +5238,415 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 
 func _display_name(model_name: String) -> String:
 	return Cast.display_name(model_name)
+
+# --- Special encounters (the world's guarded items) ------------------------------
+# The same thing the dive site has: a guarded item (ItemGuardian) with its
+# guardian standing beside it, hidden until Maxilani's sonar finds it.
+# Swimming into it brings up "choose who goes" (SpecialEncounterPrompt); the
+# chosen diver alone fights the guardian in a special-encounter battle (their
+# ability's minigame and all). Win: the item, and that diver is restored to
+# full; lose: they're put back as they were, and the guardian stays for
+# another try. One is in the secret item room; three are in the open water
+# between RewardChamberWestWall and wall 9 (reached once walls 10/11 swing):
+# about 20 m east of the BreakRock current's line, give or take, and 10-20 m
+# apart from wall 9's side towards RewardChamberWestWall - each one checked
+# clear of walls and invisible barriers, and picked again if not.
+const SPECIAL_SPOTS := [
+	{"at": Vector3(64.0, 0, 52.0), "item": "spell_shard", "enemy": "swordfish_duelist", "look": "salvage"},
+	{"at": null, "item": "attack_up", "enemy": "angler", "look": "urchin"},
+	{"at": null, "item": "defense_up", "enemy": "swordfish_duelist", "look": "salvage"},
+	{"at": null, "item": "oxygen_cell", "enemy": "angler", "look": "urchin"},
+]
+const SPECIAL_EAST_OF_BREAK_ROCK := 20.0
+const SPECIAL_SPACING := Vector2(10.0, 20.0)
+const SPECIAL_CLEARANCE := 2.2   # room kept around a spot (guardian + its guard)
+const SPECIAL_SONAR_RADIUS := 14.0
+
+var special_encounter_prompt: SpecialEncounterPrompt
+var _special_spots: Array[ItemGuardian] = []
+var _special_spot: ItemGuardian
+var _special_diver: Diver
+var _special_pre_hp := 0
+var _special_pre_oxygen := 0.0
+
+func _build_special_encounters() -> void:
+	special_encounter_prompt = SpecialEncounterPrompt.new()
+	special_encounter_prompt.diver_chosen.connect(_on_special_diver_chosen)
+	special_encounter_prompt.cancelled.connect(_on_special_cancelled)
+	var layer := CanvasLayer.new()
+	layer.layer = 95
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	layer.add_child(special_encounter_prompt)
+	# The walls' collision (CSG) only exists after a physics frame or two -
+	# the spots are checked against it, so wait for it.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var between := _special_spots_between()
+	for entry in SPECIAL_SPOTS:
+		if entry["at"] == null:
+			if between.is_empty():
+				continue
+			entry = entry.duplicate()
+			entry["at"] = between.pop_front()
+		var guardian := ItemGuardian.new()
+		guardian.item_id = String(entry["item"])
+		guardian.look = String(entry["look"])
+		add_child(guardian)
+		var at: Vector3 = entry["at"]
+		guardian.global_position = Vector3(at.x, _floor_top_y + float(ItemGuardian.LIFT.get(guardian.look, 0.9)), at.z)
+		var decoy: Node3D = SwordDuelist.new() if String(entry["enemy"]) == "swordfish_duelist" else Goblin.new()
+		add_child(decoy)
+		decoy.global_position = Vector3(at.x - 1.8, _floor_top_y, at.z + 0.6)   # west side, clear of the strong room's wall
+		guardian.set_meta("enemy", String(entry["enemy"]))
+		guardian.set_meta("decoy", decoy)
+		guardian.triggered.connect(_on_special_triggered.bind(guardian))
+		_set_special_revealed(guardian, false)
+		_special_spots.append(guardian)
+
+# Spots for the three between RewardChamberWestWall and wall 9.
+func _special_spots_between() -> Array:
+	var out: Array = []
+	var break_rock := get_node_or_null("WindCorridorBreakRock") as Area3D
+	var reward := get_node_or_null("RewardChamberWestWall") as CSGBox3D
+	var stub := get_node_or_null("CSGBox3DConnectorStub") as CSGBox3D
+	if break_rock == null or reward == null or stub == null:
+		return out
+	var line_x := _corridor_shape(break_rock).global_position.x
+	var z_min := stub.global_position.z + 1.5 + SPECIAL_CLEARANCE    # past the barrier on the stub's line
+	var z_max := reward.global_position.z - 0.5 - SPECIAL_CLEARANCE  # short of RewardChamberWestWall
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	for attempt in 40:
+		out.clear()
+		var z := z_min + rng.randf_range(0.0, 3.0)
+		for i in 3:
+			var x := line_x + SPECIAL_EAST_OF_BREAK_ROCK + rng.randf_range(-6.0, 0.0)
+			var p := Vector3(x, 0.0, z)
+			if z > z_max or not _special_spot_clear(p):
+				break
+			out.append(p)
+			z += rng.randf_range(SPECIAL_SPACING.x, SPECIAL_SPACING.y)
+		if out.size() == 3:
+			return out
+	return out
+
+# Nothing solid (walls, invisible barriers, rocks) within SPECIAL_CLEARANCE.
+func _special_spot_clear(p: Vector3) -> bool:
+	var q := PhysicsShapeQueryParameters3D.new()
+	var shape := SphereShape3D.new()
+	shape.radius = SPECIAL_CLEARANCE
+	q.shape = shape
+	q.transform = Transform3D(Basis.IDENTITY, Vector3(p.x, _floor_top_y + SPECIAL_CLEARANCE + 0.1, p.z))
+	q.collision_mask = 1
+	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+func _set_special_revealed(guardian: ItemGuardian, on: bool) -> void:
+	guardian.visible = on
+	guardian.set_deferred("monitoring", on)
+	var decoy: Node3D = guardian.get_meta("decoy")
+	if is_instance_valid(decoy):
+		decoy.visible = on
+	guardian.set_meta("revealed", on)
+
+# Sonar on, near enough: the spot shows (and stays shown).
+func _update_special_reveal() -> void:
+	if _diver == null or _diver.passive_id != "sonar" or not _diver.sonar_active:
+		return
+	for g in _special_spots:
+		if is_instance_valid(g) and not bool(g.get_meta("revealed", false)) and g.global_position.distance_to(_diver.global_position) <= SPECIAL_SONAR_RADIUS:
+			_set_special_revealed(g, true)
+			_announce("Sonar found something guarded nearby.")
+
+func _on_special_triggered(_item_id: String, guardian: ItemGuardian) -> void:
+	if _battling or any_modal_open() or not bool(guardian.get_meta("revealed", false)):
+		return
+	_special_spot = guardian
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_mouse_look = false
+	get_tree().paused = true
+	special_encounter_prompt.open()
+
+func _on_special_diver_chosen(model_name: String) -> void:
+	special_encounter_prompt.close()
+	get_tree().paused = false
+	_special_diver = null
+	for d in divers:
+		if d.model_name == model_name:
+			_special_diver = d
+	if _special_diver == null or _special_spot == null:
+		_on_special_cancelled()
+		return
+	_special_pre_hp = _special_diver.stats.hp
+	_special_pre_oxygen = _special_diver.stats.oxygen
+	_start_battle("special")
+
+func _on_special_cancelled() -> void:
+	special_encounter_prompt.close()
+	get_tree().paused = false
+	_special_spot = null
+
+func _finish_special_encounter(result: String) -> void:
+	var spot := _special_spot
+	var diver := _special_diver
+	_special_spot = null
+	_special_diver = null
+	if diver == null or spot == null:
+		return
+	if result == "won":
+		diver.stats.hp = diver.stats.hp_max
+		diver.stats.oxygen = diver.stats.oxygen_max
+		var item_id := spot.item_id
+		var decoy: Node3D = spot.get_meta("decoy")
+		if is_instance_valid(decoy):
+			decoy.queue_free()
+		_special_spots.erase(spot)
+		spot.queue_free()
+		_on_secret_orb_collected(item_id, diver)   # "Picked up a ..."
+	else:
+		diver.stats.hp = _special_pre_hp
+		diver.stats.oxygen = _special_pre_oxygen
+		_announce("The guardian holds its ground. Come back and try again.")
+
+# --- Visible floors ------------------------------------------------------------
+# The floor that stops divers is an invisible slab; these are what you see.
+# A CSGBox strip under every hallway - as wide as the gap between its two
+# walls, as long as they run side by side - and one bigger box under each
+# room. Halls whose walls rotate get a strip under both of their positions.
+# Visual only (no collision): they sit just on top of the invisible slab.
+const HALLWAY_PAIRS := [
+	["CSGBox3D", "CurrentWall3"],
+	["CSGBox3D6", "CSGBox3D7"],
+	["CSGBox3D12", "CSGBox3D13"],
+	["CSGBox3D8", "CSGBox3D9"],
+	["CSGBox3D18", "CSGBox3D19"],
+	["CSGBox3D20", "CSGBox3D21"],
+	["CSGBox3D23", "CSGBox3D20"],
+	["CSGBox3D16", "CSGBox3D27"],
+]
+const FLOOR_THICKNESS_VISUAL := 0.12
+var _sphere_room_interior := Rect2()
+
+func _build_visible_floors() -> void:
+	var n := 0
+	# Hallways between walls that stay put.
+	for pair in HALLWAY_PAIRS:
+		var a := get_node_or_null(String(pair[0])) as CSGBox3D
+		var b := get_node_or_null(String(pair[1])) as CSGBox3D
+		if a != null and b != null:
+			n += int(_hallway_floor("Floor_%s_%s" % [pair[0], pair[1]], _footprint(a), _footprint(b)))
+	# Rotating halls: where their walls start, and where they swing to.
+	var w1 := $CurrentWall1 as CSGBox3D
+	var w2 := $CurrentWall2 as CSGBox3D
+	n += int(_hallway_floor("Floor_Hallway12", _footprint(w1), _footprint(w2)))
+	var c1: Dictionary = _nearest_wall_continuation(w1, $CSGBox3D)
+	var c2: Dictionary = _nearest_wall_continuation(w2, $CurrentWall3)
+	n += int(_hallway_floor("Floor_Hallway12Swung", {"centre": c1.position, "yaw": float(c1.yaw), "length": w1.size.x}, {"centre": c2.position, "yaw": float(c2.yaw), "length": w2.size.x}))
+	var w10 := $CSGBox3D10 as CSGBox3D
+	var w11 := $CSGBox3D11 as CSGBox3D
+	n += int(_hallway_floor("Floor_10_11", _footprint(w10), _footprint(w11)))
+	var t1011 := _walls_10_11_targets()
+	n += int(_hallway_floor("Floor_10_11Swung", {"centre": t1011[0][1], "yaw": float(t1011[0][2]), "length": w11.size.x}, {"centre": t1011[1][1], "yaw": float(t1011[1][2]), "length": w10.size.x}))
+	if _walls_14_15_rest.size() == 2:
+		var w14 := _walls_14_15_rest[0][0] as CSGBox3D
+		var w15 := _walls_14_15_rest[1][0] as CSGBox3D
+		n += int(_hallway_floor("Floor_14_15", {"centre": _walls_14_15_rest[0][1], "yaw": float(_walls_14_15_rest[0][2]), "length": w14.size.x}, {"centre": _walls_14_15_rest[1][1], "yaw": float(_walls_14_15_rest[1][2]), "length": w15.size.x}))
+		n += int(_hallway_floor("Floor_14_15Swung", {"centre": Vector3(_wall_11_joint.x, 0, _wall_11_joint.z + w14.size.x * 0.5), "yaw": -PI * 0.5, "length": w14.size.x}, {"centre": Vector3(_wall_10_joint.x, 0, _wall_10_joint.z + w15.size.x * 0.5), "yaw": -PI * 0.5, "length": w15.size.x}))
+	# Rooms: one box each.
+	var main_boss := Rect2()
+	var mn := get_node_or_null("MainBossRoomNorth") as CSGBox3D
+	var ms := get_node_or_null("MainBossRoomSouth") as CSGBox3D
+	var me := get_node_or_null("MainBossRoomEast") as CSGBox3D
+	if mn != null and ms != null and me != null:
+		var x0 := mn.global_position.x - mn.size.x * 0.5
+		main_boss = Rect2(x0, ms.global_position.z, me.global_position.x - x0, mn.global_position.z - ms.global_position.z)
+	for room in [
+		["Floor_SecretItemRoom", _secret_item_room_rect()],
+		["Floor_StrongRoom", _strong_room_rect()],
+		["Floor_SecretBossRoom", _secret_boss_room_rect(false)],
+		["Floor_BossHall", _hall_rect()],
+		["Floor_MainBossRoom", main_boss],
+		["Floor_SphereRoom", _sphere_room_interior],
+	]:
+		var r: Rect2 = room[1]
+		if r.size.x > 0.5 and r.size.y > 0.5:
+			_floor_box(String(room[0]), Vector3(r.get_center().x, 0, r.get_center().y), 0.0, Vector2(r.size.x + 1.0, r.size.y + 1.0))
+			n += 1
+
+# A wall's footprint: centre, yaw and length.
+func _footprint(w: CSGBox3D) -> Dictionary:
+	return {"centre": w.global_position, "yaw": w.rotation.y, "length": w.size.x}
+
+# The strip between two parallel wall footprints, where they overlap.
+# false if they don't overlap enough (or aren't side by side).
+func _hallway_floor(floor_name: String, a: Dictionary, b: Dictionary) -> bool:
+	var axis := Basis(Vector3.UP, float(a["yaw"])).x
+	axis.y = 0.0
+	axis = axis.normalized()
+	var side := Vector3(-axis.z, 0, axis.x)
+	var ca: Vector3 = a["centre"]
+	var cb: Vector3 = b["centre"]
+	var ha := float(a["length"]) * 0.5
+	var hb := float(b["length"]) * 0.5
+	var b_along := (cb - ca).dot(axis)
+	var lo := maxf(-ha, b_along - hb)
+	var hi := minf(ha, b_along + hb)
+	if hi - lo < 1.0:
+		return false
+	var gap := (cb - ca).dot(side)
+	if absf(gap) < 1.5:
+		return false
+	var centre := ca + axis * (lo + hi) * 0.5 + side * gap * 0.5
+	# As wide as the gap, reaching under both walls (1 m thick).
+	_floor_box(floor_name, centre, atan2(-axis.z, axis.x), Vector2(hi - lo, absf(gap) + 1.0))
+	return true
+
+func _floor_box(floor_name: String, centre: Vector3, yaw: float, footprint: Vector2) -> void:
+	var box := CSGBox3D.new()
+	box.name = floor_name
+	box.size = Vector3(footprint.x, FLOOR_THICKNESS_VISUAL, footprint.y)
+	# No material: the same default look as the maze's walls.
+	box.use_collision = false
+	add_child(box)
+	box.rotation.y = yaw
+	box.global_position = Vector3(centre.x, _floor_top_y + FLOOR_THICKNESS_VISUAL * 0.5 + 0.01, centre.z)
+
+# --- Save points (as in the main game) -------------------------------------------
+# The world's SavePoint crystal and SavePointMenu: standing on one shows
+# "Save/Update Spells - Press P"; P opens the menu - Save restores the whole
+# party and writes the run (party, items, keys) to MAZE_SAVE_PATH, Update
+# Spells learns / equips spells. Three of them: just outside the maze's
+# entrance, in the corner where walls 11 and 14 meet, and just inside the way
+# into the block with the secret boss room.
+const MAZE_SAVE_PATH := "user://maze_save.json"
+var save_point_menu: SavePointMenu
+var _save_points: Array[SavePoint] = []
+var _showing_save_prompt := false
+
+func _build_save_points() -> void:
+	save_point_menu = SavePointMenu.new()
+	save_point_menu.save_requested.connect(_on_save_requested)
+	$HUD.add_child(save_point_menu)
+	save_point_menu.learn_ui.key_items = key_items
+	var spots: Array[Vector3] = []
+	# 1. In front of the maze, by its entrance: just out past the start
+	#    corridor's open west end.
+	var start := _wall_geometry($CSGBox3D as CSGBox3D)
+	var start_west: Vector3 = start["negative_end"] if (start["negative_end"] as Vector3).x < (start["positive_end"] as Vector3).x else start["positive_end"]
+	var w3 := $CurrentWall3 as CSGBox3D
+	spots.append(Vector3(start_west.x - 3.0, 0, (start_west.z + w3.global_position.z) * 0.5))
+	# 2. The inside corner where wall 11 meets wall 14.
+	var w11 := $CSGBox3D11 as CSGBox3D
+	var w10 := $CSGBox3D10 as CSGBox3D
+	var into := signf(w10.global_position.x - w11.global_position.x)
+	spots.append(Vector3(_wall_11_joint.x + into * 2.4, 0, _wall_11_joint.z - 2.2))
+	# 3. Just inside the way into the boss block (its north-west corner).
+	var hall := _hall_rect()
+	if hall.size != Vector2.ZERO:
+		spots.append(Vector3(hall.position.x + 2.0, 0, hall.position.y + 2.2))
+	for p in spots:
+		var sp := SavePoint.new()
+		add_child(sp)
+		# No visible floor here (e.g. out in front of the entrance): give it a
+		# pad of its own to stand on.
+		if _visible_floor_top_at(p) <= _floor_top_y:
+			_floor_box("Floor_SavePoint%d" % _save_points.size(), p, 0.0, Vector2(4.0, 4.0))
+		sp.global_position = Vector3(p.x, _visible_floor_top_at(p), p.z)
+		_save_points.append(sp)
+
+# The top of the visible floor box under `p` (see _build_visible_floors()),
+# or the invisible slab's top where there isn't one - so a save point stands
+# on the floor you can see instead of sinking into it.
+func _visible_floor_top_at(p: Vector3) -> float:
+	var top := _floor_top_y
+	for child in get_children():
+		var box := child as CSGBox3D
+		if box == null or not String(box.name).begins_with("Floor_"):
+			continue
+		var local := box.global_transform.affine_inverse() * Vector3(p.x, box.global_position.y, p.z)
+		if absf(local.x) <= box.size.x * 0.5 and absf(local.z) <= box.size.z * 0.5:
+			top = maxf(top, box.global_position.y + box.size.y * 0.5)
+	return top
+
+func _diver_on_save_point(d: Diver) -> bool:
+	for sp in _save_points:
+		if sp.has_diver(d):
+			return true
+	return false
+
+func _toggle_save_menu() -> void:
+	if save_point_menu.visible:
+		save_point_menu.close()
+		return
+	if not _diver_on_save_point(_diver):
+		_announce("No save point nearby.")
+		return
+	save_point_menu.open_for(_diver, _display_name(_diver.model_name))
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_mouse_look = false
+
+# The prompt stays up exactly while standing on one (not on the usual
+# timer), and only ever clears its own text, never a real announcement.
+func _update_save_point_prompt() -> void:
+	if _diver == null or save_point_menu == null:
+		return
+	if _banner == null:
+		_announce("")
+	var on_point := _diver_on_save_point(_diver) and not save_point_menu.visible
+	# Waits for any orange message (e.g. "Progress saved.") to finish first.
+	if on_point and not _showing_save_prompt and _banner_timer <= 0.0:
+		_banner.text = "Save/Update Spells - Press P"
+		_banner.visible = true
+		_banner_timer = 0.0
+		_showing_save_prompt = true
+	elif not on_point and _showing_save_prompt:
+		if _banner.text == "Save/Update Spells - Press P":
+			_banner.visible = false
+		_showing_save_prompt = false
+
+func _on_save_requested(_d: Diver) -> void:
+	for other in divers:
+		other.stats.hp = other.stats.hp_max
+		other.stats.oxygen = other.stats.oxygen_max
+	_write_maze_save()
+	save_point_menu.close()
+	_showing_save_prompt = false
+	_announce("Progress saved.")
+
+# The run as it stands: each diver's stats and spells, the items, the keys.
+func _write_maze_save() -> void:
+	var party := []
+	for d in divers:
+		party.append({
+			"model": d.model_name,
+			"hp": d.stats.hp, "hp_max": d.stats.hp_max,
+			"oxygen": d.stats.oxygen, "oxygen_max": d.stats.oxygen_max,
+			"known_spells": d.known_spells, "equipped_spells": d.equipped_spells,
+		})
+	var data := {
+		"party": party,
+		"inventory": inventory,
+		"key_items": key_items,
+		"keys_held": keys_held,
+		"saved_at": [_diver.global_position.x, _diver.global_position.y, _diver.global_position.z],
+	}
+	var f := FileAccess.open(MAZE_SAVE_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(data, "\t"))
+
+# --- First look at the maze map ---------------------------------------------------
+var _map_intro_shown := false
+
+func show_map_intro_once() -> void:
+	if _map_intro_shown:
+		return
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup == null:
+		return
+	_map_intro_shown = true
+	var pages: Array[Dictionary] = [{
+		"title": "Maze Navigation",
+		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with R to new areas and halls. Previously visited locations are marked on the map.",
+		"slot": null,
+	}]
+	popup.call("open", pages)

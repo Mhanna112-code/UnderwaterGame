@@ -54,6 +54,7 @@ const REVEAL_GROUPS := [
 	["CSGBox3D20", "CSGBox3D21"],
 	["CSGBox3D22"],
 	["CSGBox3D23"],
+	["Wall11EndCap", "Wall10Closer"],     # the Break Room's walls
 ]
 
 # Secret rooms reveal the same way, but draw as one closed box spanning
@@ -79,6 +80,14 @@ var _main_map_room_lines: Dictionary = {}   # SECRET_ROOMS index -> Line2D
 const SELECTED_FLOW_COLOR := Color(1.0, 0.68, 0.28, 1.0)
 const HIDDEN_MARKER_COLOR := Color(1.0, 0.18, 0.18)   # hidden objects (sphere room)
 const STRONG_ZONE_COLOR := Color(1.0, 0.15, 0.15)   # the strong encounter zone, flashing
+const MAP_CONTROL_COLOR := Color(1.0, 0.82, 0.32)   # the Map Control room (where the switch is)
+
+# The room the portrait puzzle's switch is in, once the switch has been
+# found (Rect2() until then).
+func _map_control_room() -> Rect2:
+	if maze_level == null or not _found_poi_ids.has("room_switch"):
+		return Rect2()
+	return maze_level._strong_room_rect()
 
 # 0..1, pulsing - how bright the strong encounter zone is right now.
 func _zone_alpha() -> float:
@@ -717,7 +726,25 @@ func _draw() -> void:
 		var cc := _corridor_center(corridor)
 		var crel := Vector2(cc.x - center.x, cc.z - center.z)
 		if crel.length() <= view_radius - 2.0:
-			_draw_corridor_tag(self, crel * px_per_unit + mid, corridor, 10)
+			# Pulled in from the rim far enough that the whole tag fits
+			# inside the circle (Break Room is a long one).
+			var q := crel * px_per_unit
+			var fit := r - 4.0 - _corridor_tag_width(corridor, 10) * 0.5
+			if q.length() > fit:
+				q = q.normalized() * maxf(fit, 0.0)
+			_draw_corridor_tag(self, q + mid, corridor, 10)
+	var control_room := _map_control_room()
+	if control_room.size != Vector2.ZERO:
+		var local := PackedVector2Array()
+		for c in [control_room.position, Vector2(control_room.end.x, control_room.position.y), control_room.end, Vector2(control_room.position.x, control_room.end.y)]:
+			local.append((c - Vector2(center.x, center.z)) * px_per_unit + mid)
+		var circle := PackedVector2Array()
+		for k in 32:
+			circle.append(mid + Vector2.from_angle(TAU * k / 32.0) * (r - 2.0))
+		for piece in Geometry2D.intersect_polygons(local, circle):
+			var outline := piece.duplicate()
+			outline.append(piece[0])
+			draw_polyline(outline, MAP_CONTROL_COLOR, 1.5)
 	for poi in _found_pois():
 		var prel := Vector2((poi["pos"] as Vector3).x - center.x, (poi["pos"] as Vector3).z - center.z)
 		if prel.length() <= view_radius - 2.0:
@@ -1077,8 +1104,9 @@ func _build_map_help() -> void:
 	_map_help = PanelContainer.new()
 	_map_help.name = "MazeMapHelp"
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.02, 0.06, 0.1, 1.0)
-	style.border_color = Color(0.45, 0.7, 0.85)
+	# Light enough that the dark key tiles stand out against it.
+	style.bg_color = Color(0.26, 0.38, 0.48, 1.0)
+	style.border_color = Color(0.6, 0.82, 0.95)
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(6)
 	style.set_content_margin_all(10)
@@ -1098,8 +1126,8 @@ func _build_map_help() -> void:
 	_map_help_label.add_theme_font_size_override("normal_font_size", 16)
 	_map_help_label.add_theme_color_override("default_color", Color(0.92, 0.97, 1.0))
 	_map_help_label.text = "%s / %s  choose a selected hallway   ·   %s  rotate it\n%s + %s / %s  choose a selected current   ·   %s  rotate it" % [
-		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"),
-		Slot._badge("Shift"), Slot._badge("Left"), Slot._badge("Right"), Slot._badge("R"),
+		Slot._badge("←"), Slot._badge("→"), Slot._badge("E"),
+		Slot._badge("⇧"), Slot._badge("←"), Slot._badge("→"), Slot._badge("R"),
 	]
 	_map_help.add_child(_map_help_label)
 	main_map.get_parent().add_child(_map_help)
@@ -1109,6 +1137,8 @@ func _build_map_help() -> void:
 func _refresh_map_copy() -> void:
 	if main_map == null:
 		return
+	if main_map.visible and maze_level != null:
+		maze_level.show_map_intro_once()
 	var title := main_map.get_node_or_null("MazeMapTitle") as Label
 	if title != null:
 		title.text = "MAZE NAVIGATION   " + (maze_level.lever_map_close_hint() if maze_level != null and maze_level.levers_map_mode() else "[L] Close")
@@ -1392,7 +1422,15 @@ func _on_main_map_overlay_draw() -> void:
 			_main_map_overlay.draw_rect(Rect2(p0, p1 - p0), Color(STRONG_ZONE_COLOR, 0.5 + 0.5 * a), false, 2.0)
 		for corridor in maze_level.corridors:
 			if _is_discovered_corridor(corridor):
-				_draw_corridor_tag(_main_map_overlay, _project_to_main_map(_corridor_center(corridor)), corridor, 11)
+				var at := _project_to_main_map(_corridor_center(corridor))
+				var half_w := _corridor_tag_width(corridor, 11) * 0.5 + 4.0
+				at.x = clampf(at.x, half_w, _main_map_overlay.size.x - half_w)
+				_draw_corridor_tag(_main_map_overlay, at, corridor, 11)
+		var control_room := _map_control_room()
+		if control_room.size != Vector2.ZERO:
+			var c0 := _project_to_main_map(Vector3(control_room.position.x, 0, control_room.position.y))
+			var c1 := _project_to_main_map(Vector3(control_room.end.x, 0, control_room.end.y))
+			_main_map_overlay.draw_rect(Rect2(c0, c1 - c0), MAP_CONTROL_COLOR, false, 2.0)
 		for poi in _found_pois():
 			_draw_poi(_main_map_overlay, _project_to_main_map(poi["pos"] as Vector3), poi, 1.0)
 	# _main_map_diver_pos is already an absolute panel-space point (see
@@ -1441,10 +1479,16 @@ func _found_pois() -> Array[Dictionary]:
 			out.append(poi)
 	return out
 
-# "C1", "C2", ... (or "BR" for WindCorridorBreakRock) at a corridor's centre.
-func _draw_corridor_tag(ci: CanvasItem, p: Vector2, corridor: Area3D, font_size: int) -> void:
+# "C1", "C2", ... (or "Break Room" for WindCorridorBreakRock) at a corridor's centre.
+func _corridor_tag(corridor: Area3D) -> String:
 	var tag := String(corridor.name).replace("WindCorridor", "")
-	tag = "BR" if tag == "BreakRock" else "C" + tag
+	return "Break Room" if tag == "BreakRock" else "C" + tag
+
+func _corridor_tag_width(corridor: Area3D, font_size: int) -> float:
+	return ThemeDB.fallback_font.get_string_size(_corridor_tag(corridor), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+func _draw_corridor_tag(ci: CanvasItem, p: Vector2, corridor: Area3D, font_size: int) -> void:
+	var tag := _corridor_tag(corridor)
 	var font := ThemeDB.fallback_font
 	var w := font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	ci.draw_string_outline(font, p + Vector2(-w * 0.5, font_size * 0.35), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(0.01, 0.04, 0.07, 0.95))
@@ -1474,6 +1518,13 @@ func _draw_poi(ci: CanvasItem, p: Vector2, poi: Dictionary, k: float) -> void:
 			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.05, 0.05, 0.05))
 			ci.draw_circle(p, 2.2 * k, Color(0.25, 1.0, 0.4) if done else Color(1.0, 0.2, 0.2))
 			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.7, 0.7, 0.7), false, 1.0)
+			# The portrait puzzle's switch is the Map Control.
+			var font := ThemeDB.fallback_font
+			var size := int(11 * k)
+			var w := font.get_string_size("Map Control", HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			var at := p + Vector2(-w * 0.5, -sz.y * 0.5 - 4.0 * k)
+			ci.draw_string_outline(font, at, "Map Control", HORIZONTAL_ALIGNMENT_LEFT, -1, size, 3, Color(0.01, 0.04, 0.07, 0.95))
+			ci.draw_string(font, at, "Map Control", HORIZONTAL_ALIGNMENT_LEFT, -1, size, MAP_CONTROL_COLOR)
 		"key":
 			var gold := Color(1.0, 0.82, 0.25)
 			ci.draw_arc(p + Vector2(-3, 0) * k, 2.6 * k, 0.0, TAU, 12, gold, 1.8)

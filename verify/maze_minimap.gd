@@ -87,6 +87,7 @@ func _run() -> void:
 	maze.dev_spawn_at_sphere_room = false
 	maze.dev_spawn_at_boss_rooms = false
 	maze.dev_spawn_at_switch = false
+	maze._map_intro_shown = true   # the first-open explainer pauses the game; not what this tests
 	root.add_child(maze)
 	for _frame in range(4):
 		await process_frame
