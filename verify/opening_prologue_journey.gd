@@ -45,6 +45,9 @@ func _run() -> void:
 		await process_frame
 	else:
 		await world._on_title_new_game(SLOT)
+	# OPEN-040: even if the player disabled encounters during the opening,
+	# completed recovery must deliberately enable ordinary exploration.
+	world.random_encounters_enabled = false
 	# Engage the actual swimming input, not the removed idle fallback or a
 	# private trigger/time jump. Keep the rest of this combat/save journey intact.
 	var swim := InputEventKey.new()
@@ -113,6 +116,11 @@ func _run() -> void:
 			continue_button = _find_button(world, "Continue")
 	_expect(continue_button != null, "OPEN-016 recovery motivation has no Continue action")
 	_expect((SaveManager.read_slot(SLOT).get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-027 motivation appeared before its completed checkpoint was durable")
+	var recovery_save := SaveManager.read_slot(SLOT)
+	_expect(world.random_encounters_enabled, "OPEN-040 opening recovery leaves random encounters Off")
+	_expect((world.divers[0] as Diver).sonar_active and world.minimap._sonar_currently_active(), "OPEN-040 opening recovery leaves Sonar/minimap Off")
+	_expect(recovery_save.get("random_encounters_enabled", false) == true, "OPEN-041 recovery checkpoint omits enabled encounters")
+	_expect((recovery_save.divers[0] as Dictionary).get("sonar_active", false) == true, "OPEN-041 recovery checkpoint omits enabled Sonar")
 	if continue_button != null:
 		continue_button.emit_signal("pressed")
 	await process_frame
@@ -121,6 +129,11 @@ func _run() -> void:
 	_expect(not world.route_state.tutorial_complete, "OPEN-017 prologue falsely completed optional training")
 	_expect(world.route_state.octopus_state == campaign_state, "OPEN-013 prologue mutated campaign Octopus state")
 	_expect(not paused and not world.battling, "OPEN-016 recovery did not return world control")
+	_expect(("Sonar (On)" in world.hud.text or "Q:Sonar On" in world.hud.text) and ("Encounters (On)" in world.hud.text or "R:Random On" in world.hud.text), "OPEN-040 recovery HUD does not show both systems On")
+	if OS.get_cmdline_user_args().has("--capture-recovery"):
+		await process_frame
+		await process_frame
+		root.get_texture().get_image().save_png("/tmp/opening-exploration-on.png")
 	_expect(not world.game_over_screen.visible, "OPEN-015 scripted defeat showed normal Game Over")
 	for value in world.divers:
 		var diver := value as Diver
@@ -171,6 +184,7 @@ func _run() -> void:
 		_expect(restored.route_state.opening_video_seen == not fallback_case, "OPEN-027 restart changed the successful-video milestone")
 		_expect(restored.route_state.prologue_phase == "complete", "OPEN-027 death restart enters the opening instead of normal play")
 		_expect(not paused and not restored.battling, "OPEN-027 restart does not restore controllable world")
+		_expect(restored.random_encounters_enabled and (restored.divers[0] as Diver).sonar_active, "OPEN-041 death restart loses enabled exploration systems")
 		_expect(get_nodes_in_group("opening_video").is_empty() and get_nodes_in_group("prologue_cinematic").is_empty(), "OPEN-027 restart created a prologue movie")
 		_expect(not restored.game_over_screen.is_visible_in_tree(), "OPEN-027 restart leaves Game Over visible")
 		_expect(restored._current_slot == SLOT, "OPEN-027 death restart selected a different slot")

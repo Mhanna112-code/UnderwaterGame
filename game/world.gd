@@ -301,6 +301,7 @@ func _serialize_state() -> Dictionary:
 		var s: CombatantStats = d.stats
 		divers_data.append({
 			"position": [d.position.x, d.position.y, d.position.z],
+			"sonar_active": d.sonar_active,
 			"known_spells": (d.known_spells as Array).duplicate(),
 			"equipped_spells": (d.equipped_spells as Array).duplicate(),
 			"stats": {
@@ -314,6 +315,7 @@ func _serialize_state() -> Dictionary:
 		})
 	return {
 		"active": active,
+		"random_encounters_enabled": random_encounters_enabled,
 		"inventory": inventory.duplicate(),
 		"pending_world_drops": pending_world_drops.duplicate(true),
 		"key_items": key_items.duplicate(),
@@ -344,6 +346,8 @@ func _load_save() -> bool:
 	if not data.get("route_state", {}) is Dictionary:
 		return false
 	var raw_route := data.get("route_state", {}) as Dictionary
+	if data.has("random_encounters_enabled") and not data["random_encounters_enabled"] is bool:
+		return false
 	for field in ["opening_video_seen", "prologue_complete", "tutorial_complete", "deep_warning_seen"]:
 		if raw_route.has(field) and not raw_route[field] is bool:
 			return false
@@ -368,6 +372,8 @@ func _load_save() -> bool:
 		if not snap_value is Dictionary:
 			return false
 		var snap := snap_value as Dictionary
+		if snap.has("sonar_active") and not snap["sonar_active"] is bool:
+			return false
 		var position_value: Variant = snap.get("position", [0, 2, 0])
 		if not position_value is Array or position_value.size() != 3 or position_value.any(func(value: Variant) -> bool: return not typeof(value) in [TYPE_INT, TYPE_FLOAT]):
 			return false
@@ -422,6 +428,15 @@ func _load_save() -> bool:
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
+	random_encounters_enabled = data.get("random_encounters_enabled", true)
+	for i in range(divers.size()):
+		var d := divers[i] as Diver
+		# Older completed checkpoints predate these settings. Migrate them
+		# to the new exploration default; explicit later Off choices survive.
+		var sonar_on: bool = divers_data[i].get("sonar_active", route_state.prologue_complete and d.passive_id == "sonar")
+		sonar_on = sonar_on and d.passive_id == "sonar" and d.stats.oxygen > 0.0
+		if d.sonar_active != sonar_on:
+			d.toggle_sonar() # initializes the drain clock and refuses empty O2
 	_first_encounter_done = route_state.prologue_complete
 	_first_encounter_started = route_state.tutorial_complete
 	_normalize_loaded_route_state()
@@ -657,6 +672,8 @@ func _recover_from_prologue() -> void:
 		diver.position = CAST[i].at as Vector3
 		diver.velocity = Vector3.ZERO
 		diver.stats.fill()
+		if diver.passive_id == "sonar" and not diver.sonar_active:
+			diver.toggle_sonar()
 	active = 0
 	yaw = 0.0
 	pitch = -0.16
@@ -666,6 +683,7 @@ func _recover_from_prologue() -> void:
 	_first_encounter_started = false
 	route_state.prologue_complete = true
 	route_state.set_encounter_source("random")
+	random_encounters_enabled = true
 	route_state.set_objective("")
 	banner.text = ""
 	_banner_timer = 0.0

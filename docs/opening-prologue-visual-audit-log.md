@@ -1,5 +1,19 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: automatic exploration defaults (OPEN-040/041/042)
+
+Requested: Sonar and random encounters On after the full opening/cutscene
+flow. Real recovery journey initially failed both live/HUD and durable
+checkpoint assertions. Enable both before the recovery save, initialize
+Sonar through its existing oxygen-aware toggle, persist manual choices and
+migrate older completed saves to On. Retain all oxygen cost/range/rates.
+Actual opening/combat/recovery/Continue/death/restart/title Load green;
+rendered 1280×720 HUD inspected showing both On. Eight preference round-trips,
+legacy/unfinished migration, invalid boolean rejection, empty-O2 honesty,
+existing invalid-load and optional-training gates green without engine errors.
+Evidence: `docs/evidence/opening-exploration-defaults/`.
+Hosted export check pending; overall final visual/audio audit remains open.
+
 This log is part of the release contract. A green test suite, successful
 export, or attractive isolated screenshot cannot produce the final PASS.
 

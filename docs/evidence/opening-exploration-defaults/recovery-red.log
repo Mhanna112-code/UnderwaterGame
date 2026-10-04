@@ -1,0 +1,20 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_BREATH|strength=80|accuracy=30|Maxilani -80; Musashi -78; Bucky -76
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+FINDING  OPEN-040 opening recovery leaves random encounters Off
+FINDING  OPEN-040 opening recovery leaves Sonar/minimap Off
+FINDING  OPEN-041 recovery checkpoint omits enabled encounters
+FINDING  OPEN-041 recovery checkpoint omits enabled Sonar
+FINDING  OPEN-040 recovery HUD does not show both systems On
+FINDING  OPEN-018 ignoring training leaves ordinary encounters locked
+OPENING JOURNEY: 6 finding(s)

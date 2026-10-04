@@ -264,6 +264,15 @@ The beacon:
 Normal TAB switching, random encounters, save points, abilities, and route
 progression gate on `prologue_complete`, not `tutorial_complete`.
 
+At opening recovery, enable Sonar on Maxilani and random encounters before
+writing the healthy completed checkpoint. Both must show On when Continue
+returns control, without requiring the optional tutorial. Keep the existing
+Sonar oxygen drain and Q/R toggles; later saved Off choices survive Load.
+Older completed saves without these fields adopt the On defaults. An
+unfinished opening must not gain Sonar prematurely, and empty oxygen cannot
+restore an inert On flag. Verification: `opening_exploration_defaults.gd`,
+the actual opening journey, and rendered/hosted HUD checks.
+
 ## Starting tuning hypotheses
 
 These values are implementation starting points. They change only through a
