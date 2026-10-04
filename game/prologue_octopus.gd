@@ -6,6 +6,7 @@ class_name PrologueOctopus
 extends Node3D
 
 const SOURCE := preload("res://art/deep_zone/Octopus_Boss.fbx")
+const FRAMING := preload("res://art/deep_zone/octopus_prologue_frame.tres")
 const TARGET_HEIGHT := 4.0
 const DISPLAY_NAME := "Cordys"
 const SWORDFISH_TINT := Color(0.12, 0.18, 0.22, 1.0)
@@ -14,7 +15,7 @@ const CLIP_FRAGMENTS := {
 	"reveal": "angry_pose",
 	"idle": "idle)(normal",
 	"hurt": "damaged)1",
-	"finish": "spinning_slay",
+	"finish": "poison_breath",
 	"head_bash": "head_bash",
 	"poison_breath": "poison_breath",
 }
@@ -48,15 +49,18 @@ func _ready() -> void:
 	radius = maxf(0.8, maxf(bounds.size.x, bounds.size.z) * 0.5)
 
 	# Imported get_aabb() is the unskinned bind pose, not what the player sees.
-	# Frame the measured idle silhouette. Whole-clip root motion envelopes
-	# include empty travel and make the entire party miniature; action poses
-	# are reviewed separately in the real stage without camera pumping.
+	# Normalize from idle, then frame the actual surface envelope of every
+	# used clip. Battle uses a fixed authored view, never per-frame zooming.
 	_presentation_bounds = bounds
-	for point in _posed_points(_model):
-		_presentation_points.append(to_local(point))
+	# Derived offline from this exact skin and the used clips. Scanning every
+	# action during _ready() caused a measured three-second first-reveal hitch.
+	# The projection gate still samples the live skin independently.
+	for point in FRAMING.get_meta("points") as PackedVector3Array:
+		_presentation_points.append(point)
 	_set_loop("idle")
 	_subdue_swordfish_bill()
 	play("idle")
+	anim.seek(0.0, true)
 
 func display_name() -> String:
 	return DISPLAY_NAME

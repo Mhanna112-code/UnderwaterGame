@@ -1066,7 +1066,7 @@ func _resolve_prologue_finisher() -> void:
 	await get_tree().create_timer(0.55).timeout
 	prologue_phase_changed.emit("scripted_defeat")
 	var cordys := enemies[0].actor as Node3D
-	_log("Cordys unleashes Spinning Slay.")
+	_log("Cordys unleashes Poison Breath.")
 	var length := float(cordys.call("play", "finish"))
 	await get_tree().create_timer(maxf(0.4, length * IMPACT_FRACTION)).timeout
 	_audio_call(&"duck_music", [-9.0, 0.4])
@@ -1667,6 +1667,29 @@ func _frame_stage_camera() -> void:
 	# the camera actually sees rather than in world X and Y.
 	var right: Vector3 = dir.cross(Vector3.UP).normalized()
 	var up: Vector3 = right.cross(dir).normalized()
+	if prologue_octopus_encounter:
+		# The composite's corpse/tentacle actions have considerable depth.
+		# Perspective fit either clips them or shrinks idle into a miniature.
+		# An authored orthographic stage keeps silhouettes consistently readable
+		# and contains the full sampled action envelope without camera pumping.
+		var projected_low := Vector2(INF, INF)
+		var projected_high := Vector2(-INF, -INF)
+		var nearest_depth := 0.0
+		for point in pts:
+			var delta: Vector3 = (point as Vector3) - centre
+			var projected := Vector2(delta.dot(right), delta.dot(up))
+			projected_low = projected_low.min(projected)
+			projected_high = projected_high.max(projected)
+			nearest_depth = maxf(nearest_depth, delta.dot(dir))
+		var view_centre := (projected_low + projected_high) * 0.5
+		centre += right * view_centre.x + up * view_centre.y
+		var stage_aspect := _stage_container.size.x / maxf(1.0, _stage_container.size.y)
+		var envelope := projected_high - projected_low
+		_stage_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+		_stage_cam.size = maxf(envelope.y, envelope.x / stage_aspect) * 1.10
+		_stage_cam.global_position = centre + dir * (nearest_depth + 10.0)
+		_stage_cam.look_at(centre, Vector3.UP)
+		return
 
 	# fov is the vertical angle (Camera3D defaults to KEEP_HEIGHT), so a
 	# wide short stage is limited by its height and a narrow tall one by its

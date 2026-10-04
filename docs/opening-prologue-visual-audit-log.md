@@ -176,3 +176,65 @@ past EOF. This is a product defect, not dismissed as a harness timeout.
 Use the decoder's reported complete stream length as an additional completion
 boundary, never a wall-clock skip or shortened asset; preserve pause/resume.
 Repeat ordinary browser entry through both full movies and recovered control.
+
+OPEN-AUDIT-011 / OPEN-012: compact full tall journey still clips the outer
+finishing tentacle at the right edge (`/tmp/opening-compact-full-tall/11-finisher.png`).
+Idle-only projection passed but did not prove action poses. Extend the gate to
+sample reveal/hurt/finish skins against the unchanged camera at all viewports;
+repair fixed framing without a forced zoom, then rerun the complete journey.
+
+Browser input diagnostic after OPEN-AUDIT-010: actual Attack opens the move
+menu correctly. The verifier then clicks the old Angler move coordinate on
+Cordys's shorter menu, hitting **Back**, not Electric Touch. Menu screenshots
+prove this separately; real GUI input through the paused/hidden movie owner
+also passes. Correct the verified menu coordinate and retain intermediate
+menu captures. Do not classify this as a product click failure.
+
+OPEN-AUDIT-010 browser repair evidence: exact exported source `b5b3e86`,
+ordinary New Game, Chromium requested ANGLE Metal, actual mouse Attack/move/
+target input, both full movies, recovery Continue and control complete in
+118.711 seconds. `/tmp/opening-browser-metal/result.json` records the complete
+public phase trace and no console errors. This is not the final visual candidate;
+it retains the subsequently rejected Spinning Slay framing.
+
+OPEN-AUDIT-011 repair iteration: full moving-pose sampling rejected the first
+perspective-envelope/Head Bash attempt because it made the boss miniature.
+Selected authored Poison Breath plus a fixed orthographic view contains the
+actual surface envelope without zooming during animation. 21 samples of each
+idle/reveal/hurt/finish clip pass at 1280×720, 720×480 and native tall 900×959, including
+behind-camera checks. Uncommitted wide normal-entry capture in
+`/tmp/opening-ortho-full-wide/` completes in 112.08 seconds; response/finisher
+were visually inspected. Cached-framing tall journey completes in 108.26 seconds
+at `/tmp/opening-cached-full-tall/`. Final browser export/review remains.
+
+OPEN-AUDIT-012 / OPEN-020: deriving the action envelope inside actor `_ready()`
+took 3,020–3,062 ms, a real first-reveal hitch. Move it to an offline generated,
+source/clip-pinned framing resource. Cached actor creation measures 52 ms;
+independent live skin projection remains green. Final exported browser timing
+still required; do not claim native timing proves browser smoothness.
+
+Verification-tool repair: an initial generator indentation error appended a
+point inside the vertex loop rather than once per direction. It was stopped,
+the partial generated resource was replaced, and a strict 1,976-point guard
+now rejects an incorrectly sized derivative. No such generated resource was
+committed or exported. Successful derivative: 67,693 bytes, source/clip metadata
+and explicit point count checked; production must never run this generator.
+
+Viewport evidence correction: native `--resolution 900x1400` is constrained by
+the macOS display to **900×959**. PNG dimensions were probed before acceptance;
+do not label the captures as 900×1400 proof. The verifier now prints its actual
+viewport and retains a 90-pixel readability floor in width-limited tall stages.
+
+Timing investigation: two simultaneously running native movie journeys gave
+108.26 s (tall) but **209.05 s (narrow)**. That is not a passing timing result.
+Possible background rendering/contention is not established as the cause yet.
+Repeat the narrow journey alone with real per-phase wall-clock timestamps and
+an explicit two-minute failure assertion; do not accept a script's old exit-0
+as proof that its printed timing meets the contract.
+
+Timing recheck: narrow repeat without another full-movie journey completes in
+**108.77 s**, with `recovery` at 108.282 s and `complete` at 108.405 s.
+`/tmp/opening-cached-full-narrow-single.log` records every phase wall-clock;
+no script/error output. The two-minute assertion passes. Concurrent native
+movies are not a reliable latency measurement; exact exported browser timing
+is still the decisive deployment check. No footage was shortened.

@@ -47,7 +47,29 @@ func _run() -> void:
 		var duration := float(actor.call("play", key)) if actor.has_method("play") else 0.0
 		_expect(duration > 0.0, "OPEN-012: semantic %s clip is missing or static" % key)
 		if duration > 0.0:
-			await process_frame
+			(actor.anim as AnimationPlayer).seek(0.0, true)
+			var before: Array[Vector3] = actor.current_pose_points()
+			(actor.anim as AnimationPlayer).seek(duration * 0.45, true)
+			var after: Array[Vector3] = actor.current_pose_points()
+			if key != "reveal": # Angry Pose is an authored held reveal.
+				var low := Vector3(INF, INF, INF)
+				var high := Vector3(-INF, -INF, -INF)
+				for index in range(mini(before.size(), after.size())):
+					var displacement := after[index] - before[index]
+					low = low.min(displacement)
+					high = high.max(displacement)
+				_expect((high - low).length() > 0.02,
+					"OPEN-012: %s is a rigid/static mesh rather than a visibly deforming skin" % key)
+
+	# A fast first reveal relies on the prepared hull belonging to the exact
+	# admitted model/clip set, not a stale bound from a different FBX.
+	var hull := load("res://art/deep_zone/octopus_prologue_frame.tres") as Resource
+	_expect(hull.get_meta("source_sha256") == FileAccess.get_sha256("res://art/deep_zone/Octopus_Boss.fbx"),
+		"OPEN-020: prepared frame belongs to a different Octopus delivery")
+	var selected := hull.get_meta("clips") as Dictionary
+	for key in ["idle", "reveal", "hurt", "finish"]:
+		_expect(selected.get(key) == actor.clip_name(key),
+			"OPEN-020: prepared frame omits the currently selected %s animation" % key)
 
 	actor.queue_free()
 	await process_frame

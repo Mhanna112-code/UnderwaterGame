@@ -205,6 +205,20 @@ signal releases World. A progressing-clock watchdog misses this. Ordinary
 exported input is the red oracle; require successful release only after the
 decoder's full stream length, and preserve the same decoder across V3's split.
 
+Captured OPEN-012 moving-pose failure: idle-only projection passed while late
+Spinning Slay tentacles/corpses left the frame, including behind-camera poses.
+Full perspective-envelope fitting then made idle miniature. The gate now
+independently samples 21 actual skin poses per used clip, rejects clipping and
+behind-camera geometry, and retains the short-stage readability floor. Fixed
+orthographic composition plus selected authored Poison Breath passes wide,
+narrow and tall; final complete rendered/web review remains mandatory.
+
+Captured OPEN-020 first-reveal hitch: runtime sampling of every used clip takes
+about three seconds synchronously. A source/clip-pinned offline derivative
+reduces native actor ready to 52 ms. The model gate also asserts non-rigid skin
+motion for idle/hurt/finish, not just non-zero clip duration. Exact browser
+first-reveal observation is still required; no headless timing proxy approves it.
+
 Fill after each test is written and run, one at a time:
 
 - **Bugs caught:** OPEN-001. The parent has no durable opening fields, so an

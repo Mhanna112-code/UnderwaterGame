@@ -63,6 +63,17 @@ presentation gates. File replacement without that reconciliation is rejected.
 
 ## Required intake evidence before runtime ownership
 
+Prepared Cordys frame: `res://art/deep_zone/octopus_prologue_frame.tres`,
+67,693 bytes, SHA-256 `736f8126c9ad1199318e049296589b98e918d843ac38b2bfca2cc65ba305cb1a`.
+This is a mechanical derivative of canonical FBX `e51ac165…`, normalized to
+4 m. It records the exact idle/Angry Pose/Damaged 1/Poison Breath clip names,
+19 samples per clip and 1,976 actual surface-extreme points. Regenerate with
+`godot --headless --path . --script tools/derive_cordys_framing.gd` if the model,
+normalization or clip selection changes. It removes a measured 3,062 ms runtime
+scan (cached actor ready: 52 ms). The actor/manifest gate checks source and clip
+identity; real moving-skin projection and browser first-reveal review remain
+independent rejection gates. No source mesh, material or animation bytes changed.
+
 - Final Boss derivatives: canonical source digest, command/settings, duration,
   runtime digest, package size, and signal-edge analysis are recorded. Browser
   listening approval remains required.

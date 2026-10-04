@@ -2,7 +2,7 @@
 # Usage: godot --path . --resolution 1280x720 --script tools/shoot_opening_prologue.gd -- /tmp/opening-wide
 extends SceneTree
 
-const SLOT := 918301
+var slot := 918301
 var outdir := "/tmp/opening-wide"
 var world: World
 var started_ms := 0
@@ -11,6 +11,8 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty():
 		outdir = args[0]
+	if args.size() > 1:
+		slot = int(args[1])
 	DirAccess.make_dir_recursive_absolute(outdir)
 	call_deferred("_run")
 
@@ -20,7 +22,9 @@ func _run() -> void:
 	await _settle()
 	_capture("01-title.png")
 	started_ms = Time.get_ticks_msec()
-	world.title_screen.new_game_chosen.emit(SLOT)
+	world.route_state.phase_changed.connect(func(phase: String) -> void:
+		print("TIMING|%s|%.3f" % [phase, (Time.get_ticks_msec() - started_ms) / 1000.0]))
+	world.title_screen.new_game_chosen.emit(slot)
 	await create_timer(8.0).timeout
 	_capture("02-video.png")
 	await _wait_phase("spawn_exploration", 40.0)
@@ -65,8 +69,9 @@ func _run() -> void:
 	button.emit_signal("pressed")
 	await _settle()
 	_capture("13-optional-training.png")
-	print("Normal entry to recovered control: %.2f seconds" % ((Time.get_ticks_msec() - started_ms) / 1000.0))
-	await _finish(0)
+	var elapsed := (Time.get_ticks_msec() - started_ms) / 1000.0
+	print("Normal entry to recovered control: %.2f seconds" % elapsed)
+	await _finish(0 if elapsed < 120.0 else 1)
 
 func _attack(move_shot: String, target_shot: String) -> void:
 	world.battle.attack_btn.emit_signal("pressed")
@@ -110,6 +115,6 @@ func _finish(code: int) -> void:
 	await process_frame
 	paused = false
 	root.get_node("GameAudio").release_streams_for_shutdown()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveManager.slot_path(SLOT)))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveManager.slot_path(slot)))
 	await create_timer(0.2).timeout
 	quit(code)
