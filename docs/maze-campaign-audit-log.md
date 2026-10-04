@@ -27,3 +27,15 @@ Godot import exited 0 with no script/parse errors. Generated missing-UID warning
 Focused existing gates: maze_minimap, enemy_moves, opening_prologue_state, deep_zone_maze_transition and ability_popup_video all exited 0 with no script errors; complete short receipts are saved alongside this audit. These are narrow baseline checks, not integrated campaign acceptance. The transition gate checks scene/HUD presence only; a fresh party still passes it. No real puppet/Cordys victory, coherent maze checkpoint, normal traversal, listening round, web export or native package is proven.
 
 Next action: read the state consumers completely, write the INT-01 conservation reproduction, and repair the actual World-to-maze party/inventory boundary. Do not move to delivery with this known state-loss risk unresolved.
+
+## October 4 2026 INT-01 live campaign handoff
+
+Source before change: 2e19f29. Read World, MazeLevel, secret excursion, Diver, CombatantStats, RouteState, SaveManager, SceneHandoff, TitleScreen and relevant spell types completely; module contract saved in the bug catalog.
+
+Reproduction: new accepting gate `maze_campaign_handoff` constructs six bounded valid party configurations (every active diver, with/without a downed companion). It uses actual SpellTree learning and the normal physics proximity entrance, not the private transition method. Expected stats, effects, kit, inventory, relics and campaign flags are independently recorded before scene replacement. All six failed, with 166 loss findings and no script errors. An initial invalid SpellTree fixture was corrected before reproduction and is not game-failure evidence.
+
+Repair: a single-use SceneHandoff transfers a CampaignSession; MazeLevel retains the real CombatantStats resources and inventory and applies saved earned kit, ability lock and Sonar clock to its replacement nodes. Campaign relics remain separate from Marc's door-key list. Global encounter preference is retained without overriding the strong room's forced-encounter policy. The outer checkpoint/selected slot are retained by the session for subsequent persistence work. Failed scene construction releases the pending handoff and exposes retry rather than leaving stale state for another review.
+
+Verification: new six-case gate, existing deep_zone_maze_transition, maze_minimap and opening_prologue_state all exit 0 with no script errors. Godot import and diff whitespace check pass. Receipts saved under docs/evidence/maze-campaign-integration/.
+
+Limits: fixture deliberately begins near the entrance and skips onboarding; no normal-navigation or visual proof is claimed. This is a live handoff, not durable maze loading. Secret-room return still reconstructs state, Maze battles still contain placeholder Tethys dispatch and recovery, and campaign relic access in maze spell consumers remains to integrate. No web/native export or preview was published. Continue state/recovery before delivery.

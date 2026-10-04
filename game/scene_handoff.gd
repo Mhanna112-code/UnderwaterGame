@@ -8,3 +8,12 @@ extends RefCounted
 
 static var diver_model := ""
 static var returning_from_secret_wall := false
+
+# Single-use ownership transfer. The receiving scene owns this session after
+# taking it; no stale static copy can contaminate a standalone maze review.
+static var campaign_session: CampaignSession
+
+static func take_campaign_session() -> CampaignSession:
+	var session := campaign_session
+	campaign_session = null
+	return session

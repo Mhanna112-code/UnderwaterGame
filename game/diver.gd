@@ -551,6 +551,25 @@ func toggle_sonar() -> bool:
 		_sonar_drain_timer = SONAR_DRAIN_INTERVAL
 	return sonar_active
 
+# Scene handoffs retain the resource consumed by combat rather than rebuilding
+# or filling baseline stats. Preserve the Sonar billing clock as well: resetting
+# it on entry must neither charge immediately nor buy a free new interval.
+func campaign_member_state() -> Dictionary:
+	return {"model": model_name, "stats": stats,
+		"known_spells": known_spells.duplicate(), "equipped_spells": equipped_spells.duplicate(),
+		"sonar_active": sonar_active, "sonar_drain_timer": _sonar_drain_timer,
+		"sonar_timer": sonar_timer, "ability_locked": ability_locked}
+
+func restore_campaign_member(data: Dictionary) -> void:
+	assert(String(data.model) == model_name, "Campaign diver identity mismatch")
+	stats = data.stats as CombatantStats
+	known_spells.assign(data.known_spells)
+	equipped_spells.assign(data.equipped_spells)
+	sonar_active = bool(data.sonar_active)
+	_sonar_drain_timer = float(data.sonar_drain_timer)
+	sonar_timer = float(data.sonar_timer)
+	ability_locked = bool(data.ability_locked)
+
 func _physics_process(delta: float) -> void:
 	if passive_id == "sonar" and sonar_active:
 		_sonar_drain_timer -= delta

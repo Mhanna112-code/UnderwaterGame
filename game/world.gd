@@ -2289,9 +2289,7 @@ func _sync_lab_staging() -> void:
 	if is_instance_valid(deep_zone_environment):
 		deep_zone_environment.set_lab_phase(route_state.lab_state)
 
-# This transition targets the current, independently verified MazeLevel scene.
-# It does not import or wait for Marc's unfinished door/maze branch; the blue
-# landmark is the isolated boundary where a later maze revision can be swapped.
+# Independent world-to-maze branch. Lab victory is not a prerequisite.
 func _update_maze_transition() -> void:
 	if _maze_transition_started or battling or divers.is_empty() or not route_state.prologue_complete:
 		return
@@ -2312,9 +2310,24 @@ func _enter_maze_scene(review_route: bool = false) -> void:
 		route_state.set_zone("maze")
 		route_state.set_encounter_source("maze_door")
 		_write_save()
+	var session := CampaignSession.new()
+	session.capture_party(divers, active)
+	session.inventory = inventory
+	session.campaign_key_items.assign(key_items)
+	session.route_state = route_state
+	session.random_encounters_enabled = random_encounters_enabled
+	session.selected_slot = _current_slot
+	session.outer_world_checkpoint = _serialize_state()
+	SceneHandoff.campaign_session = session
 	get_tree().paused = false
 	_audio_call(&"stop_music")
-	get_tree().change_scene_to_file("res://game/maze_level.tscn")
+	var transition_error := get_tree().change_scene_to_file("res://game/maze_level.tscn")
+	if transition_error != OK:
+		SceneHandoff.campaign_session = null
+		_maze_transition_started = false
+		route_state.set_maze_door_state("available")
+		route_state.set_zone("deep")
+		_announce("The maze could not open. Try again.")
 
 func _build_deep_zone_blocker_staging() -> void:
 	var definitions := [

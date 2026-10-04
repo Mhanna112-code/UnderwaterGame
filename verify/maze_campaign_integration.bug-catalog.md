@@ -8,6 +8,15 @@ The production surface is world entrance, scene return, battle outcomes, public 
 
 ## Ranked risks and accepting tests
 
+### INT-01 module contract (complete source reads)
+
+1. Public interface: World owns live divers, inventory, relics, RouteState and the selected save slot. Its normal proximity entrance changes scenes. MazeLevel owns the new playable divers and its real InventoryMenu; SceneHandoff currently carries only an active model for the secret excursion.
+2. Comments versus implementation: saving before entry does not transfer state. Maze `_spawn_divers` builds baseline stats and empty spell lists, and maze inventory starts empty. A scene/HUD existence test cannot detect this.
+3. IO/dependencies: scene replacement destroys World/Diver nodes; CombatantStats resources can survive through a retained owner. SaveManager writes an atomic JSON world checkpoint. Cold Load currently constructs World, not Maze: that separate INT-04 contract is not accepted by this test.
+4. Branches: normal proximity entry requires completed prologue and an available maze door, independently of Tethys; explicit review entry bypasses this. Standalone maze review must still work without campaign state. All three active slots and living/downed party combinations matter.
+5. Data and strings: fixed ordered model IDs identify party members; learned/equipped spell IDs, inventory counts and spell-unlock relics must be conserved. Maze consumable keys must remain separate from campaign relics. Stats include HP/Oxygen, level/XP/spell points, depleted EVA, statuses and temporary modifiers.
+6. Existing tests: `deep_zone_maze_transition` checks scene/HUD only using a private trigger; opening-state and persistence gates characterize existing World behavior. New `maze_campaign_handoff` uses the normal physics proximity path and six bounded party cases with independent expected values. It deliberately places the fixture near the entrance: it does not prove navigation, cold maze loads or secret return.
+
 | ID | Failure to catch | Cheapest meaningful oracle |
 | --- | --- | --- |
 | INT-01 | Fresh maze divers erase the real party. | Transition with distinctive HP/Oxygen, downed state, earned kit and inventory; compare actual consumers after arrival. |
@@ -45,4 +54,6 @@ Each test must name the catalog bug it catches. Write one test at a time, run it
 
 ## Post write evaluation
 
-Bugs caught: none yet. Bugs characterized: none yet. Reproduction, script tests and deployed/native evidence remain pending. Do not promote risk entries to verified fixes without evidence.
+Bugs caught: INT-01. `maze_campaign_handoff` failed with 166 state-loss findings across all six generated active-diver/downed-state combinations. Its first setup draft used a nonexistent SpellTree API; that harness parse failure was corrected and is not counted as game reproduction. The valid reproduction had no script errors. After the live campaign-session repair, the same six-case conservation oracle passes. Existing normal-entry, map and opening-state checks also pass.
+
+Remaining: INT-02–14 have not been accepted. Cold maze Load, secret return, selected-slot persistence, consumer spell-unlock relic access, real combat/finale, rendered inspection and deployed/native evidence remain pending. This live resource owner is not yet a JSON checkpoint schema.

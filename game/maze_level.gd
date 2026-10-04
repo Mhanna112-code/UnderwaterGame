@@ -23,6 +23,13 @@ enum WallEnd {
 
 var markers: Array[Marker3D] = []
 
+var campaign_session: CampaignSession
+var campaign_key_items: Array[String] = []
+var route_state: RouteState
+# Retain the world preference. Marc's strong room still forces its encounters;
+# this preference is not an override of that authored local policy.
+var random_encounters_enabled := true
+
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
 # frame rather than baked into fixed [start, end] segments the way
 # World._build_wall() does for _wall_segments - CurrentWall1/CurrentWall2
@@ -48,6 +55,13 @@ func _collect_corridors() -> Array[Area3D]:
 
 
 func _ready() -> void:
+	campaign_session = SceneHandoff.take_campaign_session()
+	if campaign_session != null:
+		active = campaign_session.active
+		inventory = campaign_session.inventory
+		campaign_key_items = campaign_session.campaign_key_items
+		route_state = campaign_session.route_state
+		random_encounters_enabled = campaign_session.random_encounters_enabled
 	_clear_dome_site()
 	for child in get_children():
 		if child is Marker3D:
@@ -3857,6 +3871,8 @@ func _spawn_divers() -> void:
 		add_child(d)
 		d.encounter_triggered.connect(_on_diver_encounter.bind(d))
 		divers.append(d)
+	if campaign_session != null:
+		campaign_session.restore_party(divers)
 	_diver = divers[active]
 
 # Tab: control the next diver (World's same cycle order).

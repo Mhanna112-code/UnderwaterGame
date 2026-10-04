@@ -1,0 +1,193 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FINDING  INT-01 active=0 downed=false: inventory reset
+FINDING  INT-01 active=0 downed=false: campaign relics lost/mixed with door keys
+FINDING  INT-01 active=0 downed=false: global encounter preference lost
+FINDING  INT-01 active=0 downed=false: independent campaign progress lost
+FINDING  INT-01 active=0 downed=false: diver 0 evasion_current reset
+FINDING  INT-01 active=0 downed=false: diver 0 level reset
+FINDING  INT-01 active=0 downed=false: diver 0 xp reset
+FINDING  INT-01 active=0 downed=false: diver 0 hp reset
+FINDING  INT-01 active=0 downed=false: Oxygen reset
+FINDING  INT-01 active=0 downed=false: active effects erased
+FINDING  INT-01 active=0 downed=false: earned kit erased
+FINDING  INT-01 active=0 downed=false: Sonar preference lost
+FINDING  INT-01 active=0 downed=false: diver 1 evasion_current reset
+FINDING  INT-01 active=0 downed=false: diver 1 level reset
+FINDING  INT-01 active=0 downed=false: diver 1 xp reset
+FINDING  INT-01 active=0 downed=false: diver 1 hp reset
+FINDING  INT-01 active=0 downed=false: Oxygen reset
+FINDING  INT-01 active=0 downed=false: active effects erased
+FINDING  INT-01 active=0 downed=false: earned kit erased
+FINDING  INT-01 active=0 downed=false: diver 2 evasion_current reset
+FINDING  INT-01 active=0 downed=false: diver 2 level reset
+FINDING  INT-01 active=0 downed=false: diver 2 xp reset
+FINDING  INT-01 active=0 downed=false: diver 2 spell_points reset
+FINDING  INT-01 active=0 downed=false: diver 2 hp reset
+FINDING  INT-01 active=0 downed=false: Oxygen reset
+FINDING  INT-01 active=0 downed=false: active effects erased
+FINDING  INT-01 active=0 downed=false: earned kit erased
+FINDING  INT-01 active=0 downed=true: inventory reset
+FINDING  INT-01 active=0 downed=true: campaign relics lost/mixed with door keys
+FINDING  INT-01 active=0 downed=true: global encounter preference lost
+FINDING  INT-01 active=0 downed=true: independent campaign progress lost
+FINDING  INT-01 active=0 downed=true: diver 0 evasion_current reset
+FINDING  INT-01 active=0 downed=true: diver 0 level reset
+FINDING  INT-01 active=0 downed=true: diver 0 xp reset
+FINDING  INT-01 active=0 downed=true: diver 0 hp reset
+FINDING  INT-01 active=0 downed=true: Oxygen reset
+FINDING  INT-01 active=0 downed=true: active effects erased
+FINDING  INT-01 active=0 downed=true: earned kit erased
+FINDING  INT-01 active=0 downed=true: Sonar preference lost
+FINDING  INT-01 active=0 downed=true: diver 1 evasion_current reset
+FINDING  INT-01 active=0 downed=true: diver 1 level reset
+FINDING  INT-01 active=0 downed=true: diver 1 xp reset
+FINDING  INT-01 active=0 downed=true: diver 1 hp reset
+FINDING  INT-01 active=0 downed=true: Oxygen reset
+FINDING  INT-01 active=0 downed=true: active effects erased
+FINDING  INT-01 active=0 downed=true: earned kit erased
+FINDING  INT-01 active=0 downed=true: diver 2 evasion_current reset
+FINDING  INT-01 active=0 downed=true: diver 2 level reset
+FINDING  INT-01 active=0 downed=true: diver 2 xp reset
+FINDING  INT-01 active=0 downed=true: diver 2 spell_points reset
+FINDING  INT-01 active=0 downed=true: diver 2 hp reset
+FINDING  INT-01 active=0 downed=true: Oxygen reset
+FINDING  INT-01 active=0 downed=true: active effects erased
+FINDING  INT-01 active=0 downed=true: earned kit erased
+FINDING  INT-01 active=1 downed=false: selected diver reset
+FINDING  INT-01 active=1 downed=false: inventory reset
+FINDING  INT-01 active=1 downed=false: campaign relics lost/mixed with door keys
+FINDING  INT-01 active=1 downed=false: global encounter preference lost
+FINDING  INT-01 active=1 downed=false: independent campaign progress lost
+FINDING  INT-01 active=1 downed=false: diver 0 evasion_current reset
+FINDING  INT-01 active=1 downed=false: diver 0 level reset
+FINDING  INT-01 active=1 downed=false: diver 0 xp reset
+FINDING  INT-01 active=1 downed=false: diver 0 hp reset
+FINDING  INT-01 active=1 downed=false: Oxygen reset
+FINDING  INT-01 active=1 downed=false: active effects erased
+FINDING  INT-01 active=1 downed=false: earned kit erased
+FINDING  INT-01 active=1 downed=false: Sonar preference lost
+FINDING  INT-01 active=1 downed=false: diver 1 evasion_current reset
+FINDING  INT-01 active=1 downed=false: diver 1 level reset
+FINDING  INT-01 active=1 downed=false: diver 1 xp reset
+FINDING  INT-01 active=1 downed=false: diver 1 hp reset
+FINDING  INT-01 active=1 downed=false: Oxygen reset
+FINDING  INT-01 active=1 downed=false: active effects erased
+FINDING  INT-01 active=1 downed=false: earned kit erased
+FINDING  INT-01 active=1 downed=false: diver 2 evasion_current reset
+FINDING  INT-01 active=1 downed=false: diver 2 level reset
+FINDING  INT-01 active=1 downed=false: diver 2 xp reset
+FINDING  INT-01 active=1 downed=false: diver 2 spell_points reset
+FINDING  INT-01 active=1 downed=false: diver 2 hp reset
+FINDING  INT-01 active=1 downed=false: Oxygen reset
+FINDING  INT-01 active=1 downed=false: active effects erased
+FINDING  INT-01 active=1 downed=false: earned kit erased
+FINDING  INT-01 active=1 downed=true: selected diver reset
+FINDING  INT-01 active=1 downed=true: inventory reset
+FINDING  INT-01 active=1 downed=true: campaign relics lost/mixed with door keys
+FINDING  INT-01 active=1 downed=true: global encounter preference lost
+FINDING  INT-01 active=1 downed=true: independent campaign progress lost
+FINDING  INT-01 active=1 downed=true: diver 0 evasion_current reset
+FINDING  INT-01 active=1 downed=true: diver 0 level reset
+FINDING  INT-01 active=1 downed=true: diver 0 xp reset
+FINDING  INT-01 active=1 downed=true: diver 0 hp reset
+FINDING  INT-01 active=1 downed=true: Oxygen reset
+FINDING  INT-01 active=1 downed=true: active effects erased
+FINDING  INT-01 active=1 downed=true: earned kit erased
+FINDING  INT-01 active=1 downed=true: Sonar preference lost
+FINDING  INT-01 active=1 downed=true: diver 1 evasion_current reset
+FINDING  INT-01 active=1 downed=true: diver 1 level reset
+FINDING  INT-01 active=1 downed=true: diver 1 xp reset
+FINDING  INT-01 active=1 downed=true: diver 1 hp reset
+FINDING  INT-01 active=1 downed=true: Oxygen reset
+FINDING  INT-01 active=1 downed=true: active effects erased
+FINDING  INT-01 active=1 downed=true: earned kit erased
+FINDING  INT-01 active=1 downed=true: diver 2 evasion_current reset
+FINDING  INT-01 active=1 downed=true: diver 2 level reset
+FINDING  INT-01 active=1 downed=true: diver 2 xp reset
+FINDING  INT-01 active=1 downed=true: diver 2 spell_points reset
+FINDING  INT-01 active=1 downed=true: diver 2 hp reset
+FINDING  INT-01 active=1 downed=true: Oxygen reset
+FINDING  INT-01 active=1 downed=true: active effects erased
+FINDING  INT-01 active=1 downed=true: earned kit erased
+FINDING  INT-01 active=2 downed=false: selected diver reset
+FINDING  INT-01 active=2 downed=false: inventory reset
+FINDING  INT-01 active=2 downed=false: campaign relics lost/mixed with door keys
+FINDING  INT-01 active=2 downed=false: global encounter preference lost
+FINDING  INT-01 active=2 downed=false: independent campaign progress lost
+FINDING  INT-01 active=2 downed=false: diver 0 evasion_current reset
+FINDING  INT-01 active=2 downed=false: diver 0 level reset
+FINDING  INT-01 active=2 downed=false: diver 0 xp reset
+FINDING  INT-01 active=2 downed=false: diver 0 hp reset
+FINDING  INT-01 active=2 downed=false: Oxygen reset
+FINDING  INT-01 active=2 downed=false: active effects erased
+FINDING  INT-01 active=2 downed=false: earned kit erased
+FINDING  INT-01 active=2 downed=false: Sonar preference lost
+FINDING  INT-01 active=2 downed=false: diver 1 evasion_current reset
+FINDING  INT-01 active=2 downed=false: diver 1 level reset
+FINDING  INT-01 active=2 downed=false: diver 1 xp reset
+FINDING  INT-01 active=2 downed=false: diver 1 hp reset
+FINDING  INT-01 active=2 downed=false: Oxygen reset
+FINDING  INT-01 active=2 downed=false: active effects erased
+FINDING  INT-01 active=2 downed=false: earned kit erased
+FINDING  INT-01 active=2 downed=false: diver 2 evasion_current reset
+FINDING  INT-01 active=2 downed=false: diver 2 level reset
+FINDING  INT-01 active=2 downed=false: diver 2 xp reset
+FINDING  INT-01 active=2 downed=false: diver 2 spell_points reset
+FINDING  INT-01 active=2 downed=false: diver 2 hp reset
+FINDING  INT-01 active=2 downed=false: Oxygen reset
+FINDING  INT-01 active=2 downed=false: active effects erased
+FINDING  INT-01 active=2 downed=false: earned kit erased
+FINDING  INT-01 active=2 downed=true: selected diver reset
+FINDING  INT-01 active=2 downed=true: inventory reset
+FINDING  INT-01 active=2 downed=true: campaign relics lost/mixed with door keys
+FINDING  INT-01 active=2 downed=true: global encounter preference lost
+FINDING  INT-01 active=2 downed=true: independent campaign progress lost
+FINDING  INT-01 active=2 downed=true: diver 0 evasion_current reset
+FINDING  INT-01 active=2 downed=true: diver 0 level reset
+FINDING  INT-01 active=2 downed=true: diver 0 xp reset
+FINDING  INT-01 active=2 downed=true: diver 0 hp reset
+FINDING  INT-01 active=2 downed=true: Oxygen reset
+FINDING  INT-01 active=2 downed=true: active effects erased
+FINDING  INT-01 active=2 downed=true: earned kit erased
+FINDING  INT-01 active=2 downed=true: Sonar preference lost
+FINDING  INT-01 active=2 downed=true: diver 1 evasion_current reset
+FINDING  INT-01 active=2 downed=true: diver 1 level reset
+FINDING  INT-01 active=2 downed=true: diver 1 xp reset
+FINDING  INT-01 active=2 downed=true: diver 1 hp reset
+FINDING  INT-01 active=2 downed=true: Oxygen reset
+FINDING  INT-01 active=2 downed=true: active effects erased
+FINDING  INT-01 active=2 downed=true: earned kit erased
+FINDING  INT-01 active=2 downed=true: diver 2 evasion_current reset
+FINDING  INT-01 active=2 downed=true: diver 2 level reset
+FINDING  INT-01 active=2 downed=true: diver 2 xp reset
+FINDING  INT-01 active=2 downed=true: diver 2 spell_points reset
+FINDING  INT-01 active=2 downed=true: diver 2 hp reset
+FINDING  INT-01 active=2 downed=true: Oxygen reset
+FINDING  INT-01 active=2 downed=true: active effects erased
+FINDING  INT-01 active=2 downed=true: earned kit erased
+MAZE CAMPAIGN HANDOFF: 166 finding(s)
