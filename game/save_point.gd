@@ -10,6 +10,8 @@ extends Area3D
 
 var occupants: Array[Diver] = []
 var _mat: StandardMaterial3D
+var _crystal: MeshInstance3D
+var _crystal_material: StandardMaterial3D
 var disabled = false
 
 func _ready() -> void:
@@ -32,7 +34,13 @@ func _ready() -> void:
 		_mat.emission = Color(0.3, 0.75, 0.95)
 		_mat.emission_energy_multiplier = 1.4
 		_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mesh.material_override = _mat
+		# A solid foreground crystal can completely hide the chase-camera diver.
+		# Fade just this decorative crystal near the camera, not the ground ring
+		# or rest/save contact volume. The landmark remains opaque at distance.
+		_crystal = mesh
+		_crystal_material = _mat.duplicate() as StandardMaterial3D
+		_crystal_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mesh.material_override = _crystal_material
 		add_child(mesh)
 
 		var ring := TorusMesh.new()
@@ -54,6 +62,21 @@ func _ready() -> void:
 
 		var tw := create_tween().set_loops()
 		tw.tween_property(mesh, "rotation:y", TAU, 6.0).from(0.0)
+
+func _process(_delta: float) -> void:
+	if not is_instance_valid(_crystal):
+		return
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	# Explicit opacity also works in the Compatibility/web renderer, where
+	# shader distance fading did not remove the near-camera foreground prism.
+	var distance := camera.global_position.distance_to(_crystal.global_position)
+	var opacity := clampf((distance - 2.5) / 2.5, 0.0, 1.0)
+	_crystal.visible = opacity > 0.01
+	var color := _crystal_material.albedo_color
+	color.a = opacity
+	_crystal_material.albedo_color = color
 
 func _on_body_entered(body: Node3D) -> void:
 	if body is Diver and not occupants.has(body):

@@ -774,11 +774,14 @@ func _build_optional_training() -> void:
 	label.name = "OptionalTrainingLabel"
 	label.text = "Optional Combat Training"
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.font_size = 44
+	label.font_size = 72
 	label.pixel_size = 0.01
 	label.modulate = Color("a6e6ff")
-	label.outline_size = 10
-	label.position = Vector3(0.0, -2.0, 0.0)
+	label.outline_size = 8
+	# The old y=4 label projected directly through Maxilani's head after
+	# recovery/Load. Put the optional affordance above the swimming silhouette.
+	label.position = Vector3(0.0, 1.2, 0.0)
+	label.no_depth_test = true
 	light_beam.add_child(label)
 
 func _on_title_boss_playtest() -> void:
@@ -2325,19 +2328,24 @@ func _build_deep_zone_blocker_staging() -> void:
 		# These are visible guardians, not waypoint icons. Their source rigs use
 		# large authored offsets, so a guessed Y value can put every rendered
 		# mesh below the seafloor even while the actor node itself looks valid.
-		# Place first, measure the real transformed meshes, then floor-align.
+		# Place first, measure the real transformed meshes, then hover above the
+		# floor and the approaching diver's silhouette.
 		var presentation_scale := 1.5 if blocker_id == "bomb_bot" else 1.6
-		# Stand on the player's side of the field and slightly off the party's
-		# centre line. The field must not visually swallow the actor whose fight
-		# it represents.
-		actor.position = Vector3(point.x - 5.0, 0.0, point.z - 6.0)
+		# Stand on the player's side of the field, centered on its opening.
+		# Imported roots are offset: center actual bounds after facing, not just
+		# the Node3D, otherwise both guardians still look pushed to the left.
+		actor.position = Vector3(point.x - 5.0, 0.0, point.z)
 		actor.scale = Vector3.ONE * presentation_scale
 		add_child(actor)
 		actor.face_toward(Vector3(point.x - 10.0, 0.0, point.z))
 		actor.force_update_transform()
 		var actor_bounds := _route_actor_visible_bounds(actor)
 		if actor_bounds.size.length() > 0.01:
-			actor.position.y += 2.0 - actor_bounds.position.y
+			actor.position.x += point.x - 5.0 - actor_bounds.get_center().x
+			actor.position.z += point.z - actor_bounds.get_center().z
+			# Hover above the chase-camera diver's silhouette. Horizontal mesh
+			# centering alone hid the entire guard behind the player on approach.
+			actor.position.y += 3.5 - actor_bounds.position.y
 			actor.force_update_transform()
 		_route_blocker_world_actors[blocker_id] = actor
 		_route_blocker_gates[blocker_id] = _build_route_blocker_gate(blocker_id, point)
@@ -2441,9 +2449,7 @@ func _sync_deep_zone_blocker_staging() -> void:
 	if _route_blocker_world_actors.has("bomb_bot"):
 		(_route_blocker_world_actors.bomb_bot as Node3D).visible = route_state.bomb_bot_state == "available"
 	if _route_blocker_world_actors.has("sword_slayer"):
-		(_route_blocker_world_actors.sword_slayer as Node3D).visible = (
-			route_state.bomb_bot_state == "defeated" and route_state.sword_slayer_state == "available"
-		)
+		(_route_blocker_world_actors.sword_slayer as Node3D).visible = route_state.sword_slayer_state == "available"
 	for blocker_id in _route_blocker_gates:
 		var gate := _route_blocker_gates[blocker_id] as Dictionary
 		var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state

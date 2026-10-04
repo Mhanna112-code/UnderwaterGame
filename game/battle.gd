@@ -994,7 +994,9 @@ func reveal_prologue_octopus() -> void:
 		return
 	_busy = true
 	_audio_call(&"fade_music_out", [0.15])
-	await get_tree().create_timer(0.65).timeout
+	# The preceding film already supplied the anticipation. Avoid another
+	# empty hold before the visible reveal; preserve the complete reveal clip.
+	await get_tree().create_timer(0.25).timeout
 	prologue_angler_encounter = false
 	prologue_octopus_encounter = true
 	encounter_source = "prologue_octopus"
@@ -1081,7 +1083,7 @@ func _resolve_prologue_finisher() -> void:
 	(_enemy_stats_ui.panel as Control).visible = false
 	var entry := _acting
 	# Let the real damage/status result remain readable before the response.
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(0.75).timeout
 	prologue_phase_changed.emit("scripted_defeat")
 	var cordys := enemies[0].actor as PrologueOctopus
 	var attacker := enemies[0].stats as CombatantStats
@@ -1104,7 +1106,8 @@ func _resolve_prologue_finisher() -> void:
 	cordys.set_framing_clip(String(move.clip))
 	_frame_stage_camera()
 	_log("Cordys uses %s on %s." % [move.name, target_name])
-	var length := cordys.play(String(move.clip), 1.65)
+	# A decisive, readable response, not a long idle tail after each choice.
+	var length := cordys.play(String(move.clip), 2.2)
 	_audio_call(&"play_combat_swing", [true])
 	await get_tree().create_timer(maxf(0.35, length * IMPACT_FRACTION)).timeout
 	var result := CombatRules.resolve(attacker, entry.stats as CombatantStats, move)
@@ -1118,11 +1121,11 @@ func _resolve_prologue_finisher() -> void:
 	_log("%s: %s %s.%s" % [move.name, target_name, summary, " %s falls." % target_name if (entry.stats as CombatantStats).hp <= 0 else ""])
 	print("PROLOGUE_STRIKE|move=%s|target=%s|damage=%d|hit=%s|hp=%d|living=%d" % [move.name, target_name, result.damage, str(result.hit), (entry.stats as CombatantStats).hp, _living(party).size()])
 	prologue_strike_resolved.emit(String(move.name), target_name, result.duplicate(true))
-	await get_tree().create_timer(maxf(0.9, length * (1.0 - IMPACT_FRACTION))).timeout
+	await get_tree().create_timer(maxf(0.75, length * (1.0 - IMPACT_FRACTION))).timeout
 	cordys.play("idle")
 	_finish_actor_turn(enemies[0])
 	_refresh_all_bars()
-	await get_tree().create_timer(0.4).timeout
+	await get_tree().create_timer(0.15).timeout
 	if not _living(party).is_empty():
 		# Diagnostic/high-stat survivors are real survivors, not silently
 		# overwritten to preserve the scene. Another normal choice is legal.

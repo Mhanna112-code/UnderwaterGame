@@ -1,6 +1,9 @@
 # Cordys opening prologue — implementation plan
 
-**Status:** execution in progress; Phases 0 and A complete.
+**Status:** execution in progress; emotional-contract repair audit underway.
+Current findings and evidence are reconciled in
+`docs/opening-emotional-contract-audit.md`; earlier green packets are historical,
+not current acceptance. Final whole-candidate and human acceptance remain open.
 
 **Prepared:** 2026-10-03
 
@@ -11,17 +14,18 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment:** individual Cordys turns from runtime source
-`ff078ba2c8e7a01e391cfbb72b10a5f2802a38a3`:
-`https://underwatergame-nl6ozcoml-immortaldemongods-projects.vercel.app/`.
-PCK SHA-256 `8bdeb24e859b57c36bd0949d6cf2dfe42aa68a4b46c32ddef9b530de5feb6d6c`.
+**Current deployment before this audit's repairs:** runtime source
+`4c6ca744e528c3cd11f98815e97ce2afe341043c`:
+`https://underwatergame-cmop2s7of-immortaldemongods-projects.vercel.app/`.
+PCK SHA-256 `027740c15745e1acac7d5938b5dddafb9df9840d369c8d1480feecf103e6b5a8`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-The stable alias serves this candidate after a normal hosted full-movie,
-physical-swim, three-player-attack/three-individual-death, recovery and cold Load
-run: 119.376s total, 117.371s engaged, zero errors. No query shortcut, injected
-completion or shortened movie. Native actual later enemy death/Restart/title Load
-also passes; no new storage-fault run is claimed. Packet:
-`docs/evidence/cordys-individual-turns/`. The response uses distinct Octo Stab,
+The latest normal hosted full-movie, physical-swim, three-player-attack/three-
+individual-death, recovery/cold Load run completed without runtime errors but
+FAILED timing at 127.713s total / 125.710s engaged. The earlier 117.371s packet
+does not supersede that failure. No query shortcut, injected completion or
+shortened movie. Native actual later enemy death/Restart/title Load also passes.
+This audit retunes dead time and verifies the exact fresh artifact before moving
+the review alias. The response uses distinct Octo Stab,
 Head Bash and Electric Shooting, normal stats, and actual menus between hits.
 Prior title/audio/idle, Shallows/Deep/defaults, victory bridge, escape cue,
 TAB hint and denied-storage evidence remain source-labelled in their original
@@ -39,6 +43,9 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 - `docs/opening-prologue-asset-manifest.md`
 - `verify/opening_prologue.bug-catalog.md`
 - `docs/opening-prologue-visual-audit-log.md`
+- `docs/opening-emotional-contract-audit.md`
+- `verify/lab_boss_balance.bug-catalog.md`
+- `verify/opening_discoverability.bug-catalog.md`
 - PR #96's `IMPLEMENTATION_PLAN.md`, `INVENTORY.md`, audio manifest, Octopus
   manifest, and existing verification catalogs remain inherited evidence.
 
@@ -52,7 +59,7 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
 | D: Cordys interruption | in progress | SOLO-001–007 now preserve three actual player turns between distinct targeted 80/78/76 responses, without AoE or forced HP-zero. Native per-frame HP/input/SFX, high-HP/EVA/DEF witnesses and 15-case normal-rule matrix pass. Per-beat 61-sample framing repairs miniature/clipped poses; independent live skin/target-facing wide/narrow checks and rendered audit pass. Hosted real mouse choices and recovery/cold Load pass (`cordys-individual-turns/`). Final whole-game/human listening acceptance is not claimed. |
 | E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Current source `ff078ba`, 104,602,252-byte PCK and exact hosted SHA match. Normal full entry with all three player attacks/recovery/cold Load passes (119.376s total, 117.371s engaged, zero errors); existing review alias only, public main unchanged. Earlier packets remain historical source-labelled evidence. Campaign balance, human listening/acceptance, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final whole-game zero-defect audit remain. |
+| F: exact artifact and polish | in progress | Latest deployed runtime `4c6ca74` fails timing (125.710s engaged), despite cold Load and functional opening completion. Current repair audit catches Tethys balance, guard visibility/centering, training text and save-crystal occlusion; rendered screenshots may reject otherwise-green geometry. Fresh export/browser, final visual round and human listening/comprehension remain required. Public main is unchanged. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence
@@ -314,6 +321,7 @@ recorded playtest finding, not ad hoc code edits.
 | Cordys response | one real action from each remaining diver | Normal damage/effects/costs; the next hit waits indefinitely for player input. |
 | Cordys attacks | Octo Stab, Head Bash, Electric Shooting, one target each | Three separate stat-based one-shots against the fresh party, not forced HP-zero or a party-wide wipe. |
 | Final Boss intro | approximately `0` to `-1 dB` | Cordys has a distinct musical identity without clipping. |
+| Cordys response pacing | 0.75s result read, 2.2x attack clip, 0.15s settled tail | Keep every impact legible and distinct, all real player choices, and no automatic next hit; trim dead time, not approved films or rules. |
 | Final Boss loop | approximately `-4.5 dB` if reached | Intro-to-loop loudness remains perceptually stable. |
 | Post-impact silence | approximately 1 s | Defeat lands emotionally without reading as a hang. |
 | Total New Game to recovery | under 2 minutes for an engaged run | The hook does not become another opening barrier. Deliberate player inactivity is not forcibly converted into combat. |
@@ -628,6 +636,8 @@ defects. Technical playback, layout, audio, and handoff defects still block.
   menu never causes an automatic follow-up attack.
 - No normal victory fanfare, Game Over screen/music, campaign Octopus state,
   or route progression is used for the scripted loss.
+  This excludes the loss, not the separately approved quiet Angler victory
+  fanfare/notice/omen bridge. That small success must be allowed to register.
 - The party is restored, safely positioned, saved, and given the exact
   long-term motivation before normal control.
 - Optional Combat Training is clearly optional, cannot trigger accidentally,

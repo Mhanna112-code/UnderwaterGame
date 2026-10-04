@@ -1,0 +1,43 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LAB REAL FIGHT|level=2|policy=accessible|seed=62000|result=lost|actions=2|boss_hp=170
+LAB REAL FIGHT|level=2|policy=accessible|seed=62001|result=lost|actions=2|boss_hp=174
+LAB REAL FIGHT|level=2|policy=accessible|seed=62002|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=2|policy=accessible|seed=62003|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=2|policy=accessible|seed=62004|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=2|policy=accessible|seed=62005|result=lost|actions=2|boss_hp=170
+LAB REAL FIGHT|level=2|policy=accessible|seed=62006|result=lost|actions=2|boss_hp=173
+LAB REAL FIGHT|level=2|policy=accessible|seed=62007|result=lost|actions=2|boss_hp=170
+LAB REAL BALANCE|level=2|policy=accessible|wins=0/8
+LAB REAL FIGHT|level=2|policy=skilled|seed=62000|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=2|policy=skilled|seed=62001|result=lost|actions=4|boss_hp=168
+LAB REAL FIGHT|level=2|policy=skilled|seed=62002|result=lost|actions=2|boss_hp=172
+LAB REAL FIGHT|level=2|policy=skilled|seed=62003|result=lost|actions=3|boss_hp=167
+LAB REAL FIGHT|level=2|policy=skilled|seed=62004|result=lost|actions=2|boss_hp=172
+LAB REAL FIGHT|level=2|policy=skilled|seed=62005|result=lost|actions=3|boss_hp=166
+LAB REAL FIGHT|level=2|policy=skilled|seed=62006|result=lost|actions=4|boss_hp=167
+LAB REAL FIGHT|level=2|policy=skilled|seed=62007|result=lost|actions=2|boss_hp=171
+LAB REAL BALANCE|level=2|policy=skilled|wins=0/8
+LAB REAL FIGHT|level=3|policy=accessible|seed=62000|result=lost|actions=2|boss_hp=170
+LAB REAL FIGHT|level=3|policy=accessible|seed=62001|result=lost|actions=2|boss_hp=174
+LAB REAL FIGHT|level=3|policy=accessible|seed=62002|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=3|policy=accessible|seed=62003|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=3|policy=accessible|seed=62004|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=3|policy=accessible|seed=62005|result=lost|actions=2|boss_hp=170
+LAB REAL FIGHT|level=3|policy=accessible|seed=62006|result=lost|actions=2|boss_hp=173
+LAB REAL FIGHT|level=3|policy=accessible|seed=62007|result=lost|actions=2|boss_hp=170
+LAB REAL BALANCE|level=3|policy=accessible|wins=0/8
+LAB REAL FIGHT|level=3|policy=skilled|seed=62000|result=lost|actions=2|boss_hp=171
+LAB REAL FIGHT|level=3|policy=skilled|seed=62001|result=lost|actions=4|boss_hp=168
+LAB REAL FIGHT|level=3|policy=skilled|seed=62002|result=lost|actions=2|boss_hp=172
+LAB REAL FIGHT|level=3|policy=skilled|seed=62003|result=lost|actions=3|boss_hp=167
+LAB REAL FIGHT|level=3|policy=skilled|seed=62004|result=lost|actions=2|boss_hp=172
+LAB REAL FIGHT|level=3|policy=skilled|seed=62005|result=lost|actions=3|boss_hp=166
+LAB REAL FIGHT|level=3|policy=skilled|seed=62006|result=lost|actions=4|boss_hp=167
+LAB REAL FIGHT|level=3|policy=skilled|seed=62007|result=lost|actions=2|boss_hp=171
+LAB REAL BALANCE|level=3|policy=skilled|wins=0/8
+FINDING LAB-BAL-002 level 2 accessible real wins 0/8 below attainable-victory band
+FINDING LAB-BAL-002 level 2 skilled real wins 0/8 below attainable-victory band
+FINDING LAB-BAL-002 level 3 accessible real wins 0/8 below attainable-victory band
+FINDING LAB-BAL-002 level 3 skilled real wins 0/8 below attainable-victory band
+LAB REAL BALANCE: 4 findings

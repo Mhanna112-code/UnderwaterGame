@@ -217,12 +217,10 @@ func _test_bomb_bot_actor() -> void:
 	_expect(bounds.position.y >= -0.05,
 		"DZ-BLOCK-004: Bomb Bot is sunk below its actor origin: %s" % bounds.position.y)
 
-	var battle := Battle.new()
-	var mapped := battle._actor_for_enemy_id("bomb_bot")
+	var mapped: Goblin = Battle.actor_for_enemy_id("bomb_bot")
 	_expect(mapped != null and mapped.enemy_id() == "bomb_bot",
 		"DZ-BLOCK-001: Battle actor factory still falls back to Angler for bomb_bot")
 	mapped.free()
-	battle.free()
 	actor.queue_free()
 	await process_frame
 
@@ -263,12 +261,10 @@ func _test_sword_slayer_actor() -> void:
 		"DZ-BLOCK-004: normalized Sword Slayer height must remain near 1.6m, observed %s" % bounds.size.y)
 	_expect(bounds.size.x <= 4.5 and bounds.size.z <= 4.5,
 		"DZ-BLOCK-004: normalized Sword Slayer footprint is too large for battle staging: %s" % bounds.size)
-	var battle := Battle.new()
-	var mapped := battle._actor_for_enemy_id("sword_slayer")
+	var mapped: Goblin = Battle.actor_for_enemy_id("sword_slayer")
 	_expect(mapped != null and mapped.enemy_id() == "sword_slayer",
 		"DZ-BLOCK-001: Battle actor factory still falls back to Angler for sword_slayer")
 	mapped.free()
-	battle.free()
 	actor.queue_free()
 	await process_frame
 
@@ -297,8 +293,8 @@ func _test_bomb_bot_lifecycle() -> void:
 	if staged.has("bomb_bot") and staged.has("sword_slayer"):
 		var bomb_stage := staged.bomb_bot as Node3D
 		var sword_stage := staged.sword_slayer as Node3D
-		_expect(bomb_stage.visible and not sword_stage.visible,
-			"DZ-BLOCK-009: initial world staging must show Bomb Bot and hold Sword Slayer until unlocked")
+		_expect(bomb_stage.visible and sword_stage.visible,
+			"DZ-BLOCK-009: both undefeated guardians must be visible at their own gates")
 		var authored_point := world.deep_zone_layout.route_points().bomb_bot as Vector3
 		_expect(Vector2(bomb_stage.global_position.x, bomb_stage.global_position.z).distance_to(Vector2(authored_point.x, authored_point.z)) <= 8.5,
 			"DZ-BLOCK-009: visible Bomb Bot is detached from its encounter trigger")

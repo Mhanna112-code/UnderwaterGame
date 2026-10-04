@@ -41,7 +41,7 @@ func _run() -> void:
 	Input.parse_input_event(forward)
 	await _settle()
 	_capture("04-angler.png")
-	await _attack("05-angler-move.png", "06-angler-target.png")
+	await _attack("05-angler-move.png", "06-angler-target.png", "Axe Kick")
 	await _wait_phase("octopus_introduction", 10.0)
 	await create_timer(8.0).timeout
 	_capture("06b-cordys-introduction.png")
@@ -55,6 +55,17 @@ func _run() -> void:
 	await _wait_phase("scripted_defeat", 15.0)
 	await create_timer(0.6).timeout
 	_capture("11-finisher.png")
+	# Keep the actual three returned player menus: the historical tool only
+	# made one choice and then incorrectly waited for an automatic party wipe.
+	for index in range(2):
+		var deadline := Time.get_ticks_msec() + 12000
+		while world.battle.attack_btn.disabled or not world.battle.main_menu.is_visible_in_tree():
+			if Time.get_ticks_msec() >= deadline:
+				push_error("Next living diver never received a usable attack menu")
+				await _finish(1)
+				return
+			await process_frame
+		await _attack("11d-%d-move.png" % index, "11e-%d-target.png" % index)
 	await _wait_phase("octopus_aftermath", 15.0)
 	await create_timer(5.0).timeout
 	_capture("11b-cordys-aftermath.png")
@@ -73,11 +84,16 @@ func _run() -> void:
 	print("Normal entry to recovered control: %.2f seconds" % elapsed)
 	await _finish(0 if elapsed < 120.0 else 1)
 
-func _attack(move_shot: String, target_shot: String) -> void:
+func _attack(move_shot: String, target_shot: String, name: String = "") -> void:
 	world.battle.attack_btn.emit_signal("pressed")
 	await _settle()
 	_capture(move_shot)
-	(world.battle.move_buttons[0] as Button).emit_signal("pressed")
+	var selected := world.battle.move_buttons[0] as Button
+	if not name.is_empty():
+		for value in world.battle.move_buttons:
+			if (value as Button).text.get_slice("\n", 0) == name:
+				selected = value as Button
+	selected.emit_signal("pressed")
 	await _settle()
 	_capture(target_shot)
 	(world.battle.target_buttons[0] as Button).emit_signal("pressed")

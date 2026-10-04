@@ -72,7 +72,7 @@ func _ready() -> void:
 	layout.add_child(_action_button)
 
 	var hint := Label.new()
-	hint.text = "Escape skips. The fight begins when the scene ends."
+	hint.text = "Escape skips. Press Continue when the scene ends."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", Color("b8cbd2"))
 	layout.add_child(hint)

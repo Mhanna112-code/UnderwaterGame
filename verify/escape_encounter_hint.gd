@@ -27,9 +27,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	(world.divers[world.active] as Diver).encounter_triggered.emit()
-	await process_frame
-	await process_frame
-	var fight := world.battle
+	var fight := await _wait_for_encounter(world)
 	_expect(fight != null, "ESC-001 ordinary encounter did not boot")
 	if fight != null:
 		await _wait_for_run(fight)
@@ -60,9 +58,7 @@ func _run() -> void:
 			# Failed Run is the actual battle button with a probability fixture,
 			# not a fabricated result signal. AI counterattack stays unchanged.
 			(world.divers[world.active] as Diver).encounter_triggered.emit()
-			await process_frame
-			await process_frame
-			fight = world.battle
+			fight = await _wait_for_encounter(world)
 			await _wait_for_run(fight)
 			seed(_run_seed(false))
 			fight.run_btn.pressed.emit()
@@ -87,16 +83,14 @@ func _run() -> void:
 			# Repeated escape uses one node. A next battle must retire it at once.
 			await _key(KEY_R)
 			(world.divers[world.active] as Diver).encounter_triggered.emit()
-			await process_frame
-			await process_frame
-			fight = world.battle
+			fight = await _wait_for_encounter(world)
 			await _wait_for_run(fight)
 			seed(_run_seed(true))
 			fight.run_btn.pressed.emit()
 			await create_timer(1.8).timeout
 			_expect(cue.visible, "ESC-006 repeated escape lost single cue owner")
 			(world.divers[world.active] as Diver).encounter_triggered.emit()
-			await process_frame
+			fight = await _wait_for_encounter(world)
 			_expect(world.battling and not cue.visible, "ESC-006 old cue leaks into new battle")
 			# Retire the real battle before exercising the public Load lifecycle.
 			await process_frame
@@ -142,6 +136,14 @@ func _wait_for_run(fight: Battle) -> void:
 		await create_timer(0.1).timeout
 		elapsed += 0.1
 	_expect(fight.main_menu.is_visible_in_tree() and not fight.run_btn.disabled, "ESC-001 actual Run unavailable")
+
+func _wait_for_encounter(world: World) -> Battle:
+	# Ordinary combat now deliberately follows a 1.5-second in-water reveal.
+	# Waiting two frames falsely rejected that valid player-visible transition.
+	var deadline := Time.get_ticks_msec() + 5000
+	while world.battle == null and Time.get_ticks_msec() < deadline:
+		await process_frame
+	return world.battle
 
 func _run_seed(success: bool) -> int:
 	for candidate in range(1000):
