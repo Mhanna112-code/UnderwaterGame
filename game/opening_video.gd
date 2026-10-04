@@ -104,6 +104,16 @@ func _ready() -> void:
 		_video.play()
 		_watchdog.start()
 
+func _process(_dt: float) -> void:
+	if _completed or _fallback_visible or not is_instance_valid(_video) or _video.paused:
+		return
+	# Web Theora can continue advancing its clock after EOF without emitting
+	# finished. Use the complete decoder-reported length, not a wall-clock
+	# timeout or hard-coded asset duration, so a future replacement is intact.
+	var duration := _video.get_stream_length()
+	if duration > 0.0 and _video.stream_position >= duration:
+		_on_video_finished()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if _completed or not event.is_pressed():
 		return

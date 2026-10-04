@@ -199,6 +199,12 @@ phases. Existing durable milestone normalization remains the oracle.
 
 ## Post-write evaluation
 
+Captured OPEN-004 browser failure: Theora playback advances beyond the
+33.877333-second Mermaid asset while still reporting playing, so no `finished`
+signal releases World. A progressing-clock watchdog misses this. Ordinary
+exported input is the red oracle; require successful release only after the
+decoder's full stream length, and preserve the same decoder across V3's split.
+
 Fill after each test is written and run, one at a time:
 
 - **Bugs caught:** OPEN-001. The parent has no durable opening fields, so an

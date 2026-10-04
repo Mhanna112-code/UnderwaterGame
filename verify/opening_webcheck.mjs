@@ -18,6 +18,7 @@ const server = http.createServer((req, res) => {
 });
 if (!live) await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+console.log('Browser launched');
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const phases = [], errors = [], timestamps = {};
 page.on('console', msg => {
@@ -43,6 +44,7 @@ const attack = async () => {
 let failure;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
+  console.log('Export page loaded');
   await page.waitForTimeout(25000);
   await shot('01-title');
   const started = Date.now();
@@ -51,6 +53,7 @@ try {
   await page.waitForTimeout(5000);
   await shot('02-mermaid');
   await waitPhase('spawn_exploration');
+  if (timestamps.spawn_exploration - timestamps.opening_video < 33000) throw new Error('Mermaid opening was shortened instead of completing playback');
   await page.keyboard.down('w');
   await waitPhase('angler', 12000);
   await page.keyboard.up('w');

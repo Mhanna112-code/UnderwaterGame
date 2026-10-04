@@ -14,6 +14,9 @@ func _ready() -> void:
 	add_to_group("prologue_cinematic")
 
 func _process(_dt: float) -> void:
+	super._process(_dt)
+	if _completed:
+		return
 	if _segment == "introduction" and not _fallback_visible and _video.stream_position >= INTRODUCTION_SECONDS:
 		_pause_introduction()
 

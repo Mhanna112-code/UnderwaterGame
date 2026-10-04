@@ -166,3 +166,13 @@ Pre-audit automation note, 2026-10-03: `opening_video.gd`,
 world pause/input ownership, -6 dB Music routing, decoder fallback, successful
 milestone persistence, failed-view replay, and completed-view non-replay. This
 is not a visual-audit round and does not approve browser framing or mix.
+
+OPEN-AUDIT-010 / OPEN-004: ordinary exported New Game on Chromium reproduces
+a black lock after Mermaid playback. No console error; public phase remains
+`opening_video`. Diagnostic export observes decoder positions 35.917 through
+59.927 seconds while `is_playing=true`; the independently probed media ends at
+33.877333 seconds. The progress watchdog cannot detect a clock that advances
+past EOF. This is a product defect, not dismissed as a harness timeout.
+Use the decoder's reported complete stream length as an additional completion
+boundary, never a wall-clock skip or shortened asset; preserve pause/resume.
+Repeat ordinary browser entry through both full movies and recovered control.
