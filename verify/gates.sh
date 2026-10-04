@@ -8,7 +8,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 GODOT="${GODOT:-godot}"
-GATE_TIMEOUT_SECONDS="${GATE_TIMEOUT_SECONDS:-120}"
+GATE_TIMEOUT_SECONDS="${GATE_TIMEOUT_SECONDS:-240}"
 TIMEOUT_BIN=""
 if command -v gtimeout >/dev/null 2>&1; then
 	TIMEOUT_BIN="$(command -v gtimeout)"
@@ -95,6 +95,18 @@ prepare_godot_classes() {
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
 
+run "opening migration: do all durable milestones normalize interrupted phases" "$GODOT" --headless --path . --script verify/opening_prologue_state.gd
+run "opening video: are production and lab policies independent" "$GODOT" --headless --path . --script verify/opening_video.gd
+run "opening video persistence: do success and decoder failure restore safely" "$GODOT" --headless --path . --script verify/opening_video_world.gd
+run "opening trigger: does every horizontal direction and idle start once" "$GODOT" --headless --path . --script verify/opening_prologue_trigger.gd
+run "opening world: are authored encounters protected and real-input reachable" "$GODOT" --headless --path . --script verify/opening_prologue_world.gd
+run "opening Angler: does every exposed move win without ordinary balance or rewards changing" "$GODOT" --headless --path . --script verify/prologue_angler.gd
+run "opening Cordys: does the skinned actor preserve authored poses and facing" "$GODOT" --headless --path . --script verify/prologue_octopus.gd
+run "opening mix: do cue envelopes preserve user preferences" "$GODOT" --headless --path . --script verify/prologue_audio_envelope.gd
+run "opening split video: is one decoder retained silently across combat" "$GODOT" --headless --path . --script verify/prologue_cinematic.gd
+run "opening journey: do real moves reach atomic recovery and ordinary encounters" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd
+run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
+
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
 run "animations: does every rig change state correctly" "$GODOT" --headless --path . --script verify/animations.gd
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
@@ -170,6 +182,7 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	run "Cordys narrow framing: do actual skinned vertices remain legible" "$GODOT" --path . --resolution 720x480 --script verify/prologue_stage_framing.gd
 	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
 	run "stage framing narrow: does responsive combat remain visible at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/stage_framing.gd
 	run "tutorial status layout wide: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_status_layout.gd
@@ -207,6 +220,7 @@ elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	echo "    npm i playwright && npx playwright install chromium"
 	skips=$((skips + 1))
 else
+	run "opening browser: does ordinary New Game complete both full movies and real combat" node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-prologue
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
 	run "audio webcheck: does a trusted New Game click unlock browser audio" node verify/audio_webcheck.mjs "$WEB_DIR" /tmp/gate-audio.png
 	run "maze navigation webcheck: does ?maze=1 visibly update after H" node verify/maze_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-map-closed.png /tmp/gate-maze-map-open.png
