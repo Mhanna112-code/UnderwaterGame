@@ -266,3 +266,34 @@ the red boss tableau. This establishes decoder content, not yet the complete
 World composition. Instrument the normal journey with both decoder-texture
 and viewport captures, and verify the exact exported browser before release.
 Audio listening acceptance remains pending; no claim of a completed polish round.
+
+Exact source `e78e876` ordinary exported browser journey (real New Game, mouse
+attack/move/target clicks, both video beats, recovery Continue, world control)
+passes in **93.359 s**. Actual renderer: ANGLE Metal Apple M1. All ten public
+phases occur once; no console/script errors. The aftermath is **6.638 s**.
+Unlike the suspect native viewport capture, the actual browser screenshot
+visibly contains the full **Cordys / Mistress of the Puppets** title over the
+red boss tableau, then a separate recovery card. Evidence:
+`docs/evidence/opening-prologue-title/title-web.png` and `title-native.png`;
+result `/tmp/opening-browser-short-title/result.json`. Native background-window
+capture discrepancy remains recorded, not relabelled as a diagnosed harness
+defect; standalone decoder and browser observations independently pass.
+
+Public prebuilt review candidate (no public-main promotion):
+`https://underwatergame-5s8dreh6s-immortaldemongods-projects.vercel.app/`.
+Unauthenticated build-info returns HTTP 200 with source `e78e876`; remote PCK
+matches local SHA `52b7d6bd…`. A separate empty-project loader confirms the
+edited movie's exact SHA is inside the PCK and the full archive is absent.
+Main URL still resolves to Oct 1 deployment `dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5`;
+PR #96 remains open at `27a5b525…`. Hosted full journey is being verified;
+blind comprehension, actual listening and final zero-defect round remain open.
+
+Hosted repeat now passes in **94.409 s** through ordinary New Game, actual
+mouse combat, full retained intro/title ending and recovered world control.
+No browser/script errors; all ten phases occur once; actual renderer ANGLE
+Metal Apple M1. Hosted aftermath screenshot independently inspected: complete
+boss name/subtitle and red tableau, followed by recovery. Stable review alias
+returns HTTP 200 and the same source manifest. Persistent result:
+`docs/evidence/opening-prologue-title/hosted-result.json`. This completes the
+requested video edit/hosted-flow check, not the broader goal's blind listening,
+viewport matrix or final zero-defect acceptance.

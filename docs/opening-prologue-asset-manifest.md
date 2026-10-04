@@ -41,8 +41,10 @@ remain required; media identity/duration alone do not prove visual acceptance.
 
 Reviewed edit: **31.381333 seconds**, **3,882,002 bytes**, SHA-256
 `8425b83d2905ae4403caf04fbe067e02264e20325cbbebc05e63f35995663f32`.
-The source has 1,821 video frames; the edit has 941 (750 introduction + 191
-title ending), retaining the source's last frame. `verify/prologue_cinematic_asset.gd`
+The source has 1,821 video frames; the edit retains 941 presentation frames
+(750 introduction + 191 title ending), including the source's last frame.
+Theora omits redundant coded pictures; this is not a decoded-packet count.
+`verify/prologue_cinematic_asset.gd`
 pins reviewed identity, actual decoder length, live owner and archive exclusion.
 
 | Asset | Duration | Video/format | Audio measurement |

@@ -11,9 +11,13 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment:** no child deployment. The inherited parent review alias
-is `https://underwatergame-pr96-deep-zone.vercel.app/`; it is baseline
-evidence only and must not be presented as proof of the new opening.
+**Current deployment:** public child review candidate from runtime source
+`e78e876d5dc6580dfe14a69c723107432533c422`:
+`https://underwatergame-5s8dreh6s-immortaldemongods-projects.vercel.app/`.
+Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
+PCK SHA-256 `52b7d6bd7093c75d08467dc3ed7c6be1c7aadc74694073e1083ce1264d6950a0`.
+This is a review candidate, not final acceptance. The inherited PR #96 alias
+remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
 
 **Child branch:** create a clean worktree from the confirmed PR #96 head and
 use `feature/opening-octopus-prologue`. Open its PR against PR #96 so the first
@@ -38,7 +42,7 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | C: quiet spawn and Angler | in progress | Direction/idle matrix and protected World handoff green; all four displayed Maxilani attacks resolve through real buttons/target confirmation/animation and kill once; no rewards or normal victory. Public visual journey pending. |
 | D: Cordys interruption | in progress | Same-Battle negligible-hit/defeat and split cinematic journey green. Idle-only framing rejected; fixed orthographic action-envelope view and selected Poison Breath now pass moving-skin projection at all three sizes. Cached envelope replaces a measured 3-second reveal scan. Complete final browser/mix review remains. |
 | E: recovery and optional training | in progress | Recovery/save and voluntary training Skip/Retry/Return gates pass; Octopus cinematic remainder now precedes motivation. |
-| F: exact artifact and polish | not started | Public exact deployment, blind test, listening matrix and zero-defect audit round. |
+| F: exact artifact and polish | in progress | Public candidate `e78e876`, unauthenticated build-info/PCK verified against local export. Local ordinary browser journey 93.359 s; hosted ordinary journey 94.409 s, complete title visually captured, no errors. Blind test, listening matrix, remaining viewport checks and final zero-defect audit round remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence
