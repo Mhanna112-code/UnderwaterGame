@@ -22,7 +22,9 @@ func _ready() -> void:
 		var actor := Battle.actor_for_enemy_id(enemy_ids[index])
 		add_child(actor)
 		actors.append(actor)
-		actor.rotation.y = atan2(camera.global_basis.z.x, camera.global_basis.z.z) - 0.2
+		# Three-quarter approach exposes the long rigs' body/bill as well as
+		# their face; straight-on Shark reads as a small floating head.
+		actor.rotation.y = atan2(camera.global_basis.z.x, camera.global_basis.z.z) - 0.6
 		_place_actor(actor, index)
 		actor.play("swim")
 		_starts.append(actor.global_position)

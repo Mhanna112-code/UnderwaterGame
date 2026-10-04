@@ -2077,7 +2077,7 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
-	if battling or _transitioning_to_encounter or inventory_menu.visible:
+	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
 	# browser, and a build nobody can steer is a build nobody plays.
