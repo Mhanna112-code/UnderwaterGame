@@ -56,6 +56,10 @@ cases run production input. No direct broken/finished signals prove destruction.
 
 ## Evaluation
 
+- OPEN-049 reproduced red after real puzzle contact with Maxilani. Appending
+  `(TAB)` fixes the case; rendered 720x480 / 1280x720 and hosted OCR confirm the
+  key fits. Existing real Tab/E wall destruction still retires the hint. See
+  `docs/evidence/bucky-tab-hint/README.md`.
 - OPEN-043 reproduced red by actual W movement across the Deep boundary:
   `zone-red.log`. Same crossing, reverse crossing and preserved objective
   green after fix (`zone-green.log`).
