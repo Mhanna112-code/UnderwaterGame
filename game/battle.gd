@@ -576,11 +576,6 @@ func _ready() -> void:
 const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
 var _intro_hold := ""
 
-# The opening combat text for an enemy guarding an item. Kept above the
-# first "X's turn." line (which would otherwise replace it at once).
-const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
-var _intro_hold := ""
-
 # Enemies get a little stronger as the party unlocks its spells: every
 # scaled stat (not evasion, which is never scaled) gains another 1% while
 # fewer than half of the party's spells are unlocked, 2.5% from half, and
@@ -1186,7 +1181,7 @@ func _build_stage() -> void:
 			party_actor_count += 1
 		party_centre /= maxf(1.0, float(party_actor_count))
 		boss.face_toward(party_centre)
-		var boss_stats := boss.make_stats(ref_stats, lvl)
+		var boss_stats := _with_unlock_bonus(boss.make_stats(ref_stats, lvl))
 		enemies.append({
 			"kind": "enemy", "stats": boss_stats,
 			"display_name": TethysBoss.DISPLAY_NAME,
@@ -1216,7 +1211,7 @@ func _build_stage() -> void:
 			party_actor_count += 1
 		party_centre /= maxf(1.0, float(party_actor_count))
 		g.face_toward(party_centre)
-		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		var st: CombatantStats = _with_unlock_bonus(g.make_stats(ref_stats, lvl))
 		if tutorial_encounter:
 			# Five-plus real turns (every scripted move, then however many
 			# more real ones it actually takes to win or lose once
