@@ -1,5 +1,26 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: harsh menu hover (OPEN-047/048; OPEN-049 preferences)
+
+User reported the opening-menu pointer sounds extremely harsh. Native title
+output captured the original 4.039s hover at -10.06dBFS. Preserve Phoenix's
+original and select a 180ms filtered/faded -15dB derivative. Add a monotonic
+250ms hover/confirmation guard, independent of the paused tree. Actual native
+output is -26.16dBFS, half SFX halves amplitude, mute/zero stays silent;
+confirmation, combat and music tests unchanged/green. Isolated title test
+does not touch player saves. Final test measures output, not a private player.
+
+Hosted ordinary-title real pointer capture passes, peak -27.44dBFS and about
+149ms longest audible pulse; 20 rapid pointer passes yield five cues, zero
+errors. Initial pre-fader/native and concatenated audible/silent WebAudio
+capture defects are retained and corrected in the packet, not presented as
+game fixes. Runtime `ceb049c`, 93,339,592-byte PCK SHA-256
+`01fb064cdee83cce3b6193e601e7ec40e62a679436d5a18a736746d19c64fbc1`,
+deployment `dpl_EF8cE4rEotSS8KdAvceHT57uJ84k`. Served PCK/metadata match;
+same review alias refreshed, main unchanged. Evidence:
+`docs/evidence/menu-audio-comfort/`. User comfort on their own audio hardware
+is still a listening judgment. This is not final overall polish acceptance.
+
 ## 2026-10-04: location-scoped world guidance (OPEN-043/044/045)
 
 User request: short Bucky/wall instruction near the puzzle room, and no lab

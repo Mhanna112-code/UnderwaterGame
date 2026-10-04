@@ -56,5 +56,18 @@ player internals but must preserve the public audible contract.
   Initial pre-fader SFX-bus capture could not observe downstream settings;
   this verifier defect is preserved in `pre-fader-harness.log`, not claimed
   as a gameplay mute bug. Capture now measures downstream Master.
-- Existing asset/combat/prologue gain checks green. Isolated title/audio
-  sequencing and hosted pointer/audio checks pending.
+- Existing asset/combat/prologue gain checks and isolated title/audio
+  sequencing pass. Title's save-slot fixtures run with a temporary isolated
+  application data directory, not the player's actual saves.
+- Hosted ordinary-title real mouse input passes: actual audible GainNode
+  output peak -27.44dBFS, longest detected pulse about 149ms, 20 rapid pointer
+  passes rate-limited to five cues, zero runtime errors. Initial capture
+  concatenated the audible GainNode and separate silent AudioWorkletNode and
+  stretched measured time; `browser-capture-first.*` preserves that verifier
+  defect. Per-node capture now separates them and rejects ambiguous outputs.
+- Final native test observes actual Master-output duration instead of a
+  private named player. Half/mute/zero behavior remains green. Asset duration
+  is 180ms; its faded audible span above the measurement threshold is 148ms.
+- Exact served export matches runtime source `ceb049c`; same review alias
+  refreshed, public main unchanged. User comfort at their own output volume
+  remains a subjective review, not proven by digital measurements.

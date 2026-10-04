@@ -28,16 +28,15 @@ func _run() -> void:
 	await process_frame
 	var button := _button(title, "New Game")
 	button.mouse_entered.emit()
-	var player := audio.get_node("SFXPlayer") as AudioStreamPlayer
-	_expect(player.stream != null and player.stream.get_length() <= 0.25,
-		"OPEN-047 hover is a long sound instead of a brief <=250ms cue")
 	var samples := await _samples(0.45)
 	var peak := _peak(samples)
+	var span := _audible_span(samples)
 	if DisplayServer.get_name() != "headless":
+		_expect(span > 0.04 and span <= 0.25, "OPEN-047 actual hover is absent or longer than a brief <=250ms cue")
 		_expect(peak > 0.0003 and peak <= db_to_linear(-24.0),
 			"OPEN-047 actual full-volume hover peak is absent or harsh: %.2f dBFS" % linear_to_db(maxf(peak, 0.000001)))
 		_save_wave(samples, "/tmp/menu-hover-full.wav")
-	print("MENU HOVER MEASURE|duration=%.3f|peak_db=%.2f|samples=%d" % [player.stream.get_length(), linear_to_db(maxf(peak, 0.000001)), samples.size()])
+	print("MENU HOVER MEASURE|audible_span=%.3f|peak_db=%.2f|samples=%d" % [span, linear_to_db(maxf(peak, 0.000001)), samples.size()])
 	if OS.get_cmdline_user_args().has("--interaction"):
 		# Paused title is the real production setting; wall-clock cooldown
 		# must still expire. Bounded burst guards against every re-entry restart.
@@ -90,6 +89,16 @@ func _peak(samples: PackedVector2Array) -> float:
 	for frame in samples:
 		result = maxf(result, maxf(absf(frame.x), absf(frame.y)))
 	return result
+
+func _audible_span(samples: PackedVector2Array) -> float:
+	var first := -1
+	var last := -1
+	for i in range(samples.size()):
+		if maxf(absf(samples[i].x), absf(samples[i].y)) > 0.0001:
+			if first < 0:
+				first = i
+			last = i
+	return float(last - first) / AudioServer.get_mix_rate() if first >= 0 else 0.0
 
 func _save_wave(samples: PackedVector2Array, path: String) -> void:
 	var bytes := PackedByteArray()

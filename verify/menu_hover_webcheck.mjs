@@ -14,19 +14,21 @@ const errors = [];
 page.on('console', msg => { if (msg.type() === 'error' || /SCRIPT ERROR:|^ERROR:|Infinite loop detected/.test(msg.text())) errors.push(msg.text()); });
 page.on('pageerror', error => errors.push(String(error)));
 await page.addInitScript(() => {
-  window.menuCapture = { active: false, blocks: [], sampleRate: 0 };
+  window.menuCapture = { active: false, taps: [], sampleRate: 0 };
   const connect = AudioNode.prototype.connect;
   AudioNode.prototype.connect = function(destination, ...rest) {
     const result = connect.call(this, destination, ...rest);
     if (destination instanceof AudioDestinationNode && !this.__menuCaptureConnected) {
       this.__menuCaptureConnected = true;
+      const tap = { type: this.constructor.name, blocks: [] };
+      window.menuCapture.taps.push(tap);
       const processor = this.context.createScriptProcessor(1024, 2, 2);
       const silent = this.context.createGain();
       silent.gain.value = 0;
       processor.onaudioprocess = event => {
         if (!window.menuCapture.active) return;
         window.menuCapture.sampleRate = event.inputBuffer.sampleRate;
-        window.menuCapture.blocks.push(Array.from(event.inputBuffer.getChannelData(0)));
+        tap.blocks.push(Array.from(event.inputBuffer.getChannelData(0)));
       };
       connect.call(this, processor);
       connect.call(processor, silent);
@@ -49,7 +51,7 @@ try {
   await page.mouse.click(100, 680);
   await page.mouse.move(100, 680);
   await page.waitForTimeout(500);
-  await page.evaluate(() => { window.menuCapture.active = true; window.menuCapture.blocks = []; });
+  await page.evaluate(() => { window.menuCapture.active = true; window.menuCapture.taps.forEach(tap => { tap.blocks = []; }); });
   for (let index = 0; index < 20; index++) {
     await page.mouse.move(button.x, button.y);
     await page.waitForTimeout(12);
@@ -59,8 +61,14 @@ try {
   await page.waitForTimeout(600);
   const recording = await page.evaluate(() => {
     window.menuCapture.active = false;
-    return { sampleRate: window.menuCapture.sampleRate, samples: window.menuCapture.blocks.flat() };
+    return { sampleRate: window.menuCapture.sampleRate, taps: window.menuCapture.taps.map(tap => ({ type: tap.type, samples: tap.blocks.flat() })) };
   });
+  const tapStats = recording.taps.map(tap => ({ type: tap.type, frames: tap.samples.length,
+    peak: tap.samples.reduce((peak, value) => Math.max(peak, Math.abs(value)), 0) }));
+  console.log('AUDIO TAPS|' + JSON.stringify(tapStats));
+  const audible = recording.taps.filter((tap, index) => tapStats[index].peak > 0.0001);
+  if (audible.length !== 1) throw new Error('Capture boundary needs one isolated audible title output, got ' + audible.length);
+  recording.samples = audible[0].samples;
   if (!recording.samples.length || !recording.sampleRate) throw new Error('No real browser audio was captured');
   let peak = 0;
   const pulses = [];
@@ -73,7 +81,7 @@ try {
     pulses[pulses.length - 1].end = i / recording.sampleRate;
     lastActive = i;
   }
-  measurement = { peakDb: 20 * Math.log10(Math.max(peak, 1e-8)), pulses, sampleRate: recording.sampleRate };
+  measurement = { peakDb: 20 * Math.log10(Math.max(peak, 1e-8)), pulses, sampleRate: recording.sampleRate, tapStats };
   const bytes = Buffer.alloc(44 + recording.samples.length * 2);
   bytes.write('RIFF'); bytes.writeUInt32LE(bytes.length - 8, 4); bytes.write('WAVEfmt ', 8);
   bytes.writeUInt32LE(16, 16); bytes.writeUInt16LE(1, 20); bytes.writeUInt16LE(1, 22);

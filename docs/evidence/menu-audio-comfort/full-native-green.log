@@ -1,7 +1,7 @@
 Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
 Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
 
-MENU HOVER MEASURE|duration=0.180|peak_db=-26.16|samples=18432
+MENU HOVER MEASURE|audible_span=0.148|peak_db=-26.16|samples=16384
 MENU HOVER PREFERENCE|volume=0.5|muted=false|peak=0.024598
 MENU HOVER PREFERENCE|volume=1.0|muted=true|peak=0.000000
 MENU HOVER PREFERENCE|volume=0.0|muted=false|peak=0.000005
