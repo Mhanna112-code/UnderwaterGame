@@ -1,0 +1,568 @@
+# Cordys opening prologue — implementation plan
+
+**Status:** execution in progress; Phase 0 worktree and repository contracts
+created, with no production code changed yet.
+
+**Prepared:** 2026-10-03
+
+**Parent:** PR #96, `feature/deep-zone-vertical-slice`, confirmed remote source
+head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
+
+**Current child candidate:** clean worktree
+`/Users/tomriddle1/underwatergame-opening-prologue` on
+`feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
+
+**Current deployment:** no child deployment. The inherited parent review alias
+is `https://underwatergame-pr96-deep-zone.vercel.app/`; it is baseline
+evidence only and must not be presented as proof of the new opening.
+
+**Child branch:** create a clean worktree from the confirmed PR #96 head and
+use `feature/opening-octopus-prologue`. Open its PR against PR #96 so the first
+review shows only the opening delta. After PR #96 merges, retarget/rebase onto
+`main` and re-run every acceptance gate.
+
+**Companion contracts:**
+
+- `OPENING_PROLOGUE_ASSET_MANIFEST.md`
+- `OPENING_PROLOGUE_VERIFICATION_BUG_CATALOG.md`
+- `OPENING_PROLOGUE_VISUAL_AUDIT_LOG.md`
+- PR #96's `IMPLEMENTATION_PLAN.md`, `INVENTORY.md`, audio manifest, Octopus
+  manifest, and existing verification catalogs remain inherited evidence.
+
+## Execution progress
+
+| Phase | Status | Exit evidence |
+| --- | --- | --- |
+| 0: clean child branch | complete | Remote PR #96 head `27a5b525…`; clean child worktree; initial diff contains only these four planning contracts. |
+| A: contracts and asset intake | not started | State/migration gates, canonical manifests, usable Cordys gallery, Final Boss derivatives. |
+| B: opening video lifecycle | not started | Normal-entry video, independent lab policy, audio/settings, failure and reload proof. |
+| C: quiet spawn and Angler | not started | Direction/idle matrix, one-action choices, isolation and no-reward proof. |
+| D: Cordys interruption | not started | Production actor presentation, real negligible hit, deterministic special defeat and audio proof. |
+| E: recovery and optional training | not started | Atomic save/recovery plus both public post-recovery journeys. |
+| F: exact artifact and polish | not started | Public exact deployment, blind test, listening matrix and zero-defect audit round. |
+
+Update this table whenever a phase changes state. A phase may be `in progress`
+or `complete` only when its stated stop gate and evidence exist; code presence
+alone is not completion.
+
+## Goal
+
+Replace the mandatory intro-crawl/tutorial funnel with a short authored hook
+that gives the player a reason to care before instruction:
+
+1. preserve the existing cover art;
+2. play Glassgoat's Mermaid Freak video as a temporary first-run opening;
+3. return control in a quiet free-swimming spawn;
+4. let one real offensive choice defeat a deliberately weak Angler;
+5. have Cordys interrupt the victory, absorb one real but negligible hit, and
+   decisively defeat the party;
+6. recover the party, establish the long-term goal, and save safely;
+7. restore the existing combat tutorial as an optional nearby beacon;
+8. continue into the existing PR #96 game without redesigning its later route.
+
+The opening succeeds when a context-free player understands who defeated the
+party, that the defeat was intentional, what they hope to accomplish later,
+and that Combat Training is optional.
+
+## Binding scope
+
+### Included
+
+- New Game title-to-opening handoff.
+- Temporary opening playback of the existing Mermaid Freak media.
+- A public prologue state contract and backward-compatible save migration.
+- A direction-independent quiet-spawn encounter trigger.
+- A dedicated prologue Angler configuration that cannot alter ordinary
+  Angler balance.
+- A visible, production-framed `PrologueOctopus` presentation using the
+  delivered Octopus FBX and selected authored clips.
+- A scripted defeat result distinct from normal Game Over.
+- The recovery message: `Grow stronger. Find a way to defeat Cordys.`
+- Independent `opening_video_seen`, `prologue_complete`, and
+  `tutorial_complete` state.
+- The existing tutorial as optional training, with its current content,
+  Retry, Return to World, Skip, Combat Help, and replay paths preserved.
+- A prologue-specific audio mix that preserves PR #96's exploration and
+  battle music and introduces Phoenix's Final Boss motif for Cordys.
+- Automated, real-window, exact-export, hosted-browser, listening, and blind
+  playtest evidence.
+
+### Explicitly not included
+
+- Redesigning PR #96 after the recovery handoff.
+- Rewriting the existing tutorial curriculum, storyboards, ability onboarding,
+  Combat Help, Shallows, Deep route, Tethys lab, maze, or random encounters.
+- Implementing or balancing the eventual campaign Cordys fight.
+- Marking campaign Octopus route state available, in progress, or defeated.
+- Adding rewards, XP, Spell Points, key items, or level progression to either
+  prologue encounter.
+- Replacing the eventual maze-door Octopus route.
+- Camera shake, forced zoom punches, or screen-wide flashes. These are blocked
+  on reduced-motion support and are unnecessary for this slice.
+- Claiming the temporary Mermaid video is Glassgoat's final opening.
+
+## Reconciliation with PR #96
+
+This plan deliberately changes three PR #96 dispositions and preserves every
+other one.
+
+| PR #96 decision | Opening-prologue decision |
+| --- | --- |
+| Octopus has verified media but no runtime gameplay owner. | The asset gains a **prologue-only presentation owner**. Campaign Octopus progression and balance remain deferred. |
+| Phoenix's Final Boss INTRO/LOOP pair is reserved for a later route. | The prologue uses the beginning as Cordys's leitmotif. The later campaign fight retains ownership of the complete presentation. |
+| Mermaid Freak video is the skippable Tethys/lab cutscene. | The same runtime OGV is temporarily reused as the first-run opening without duplicating bytes. The lab copy stays skippable and unchanged. |
+
+The temporary repeated Mermaid video is an explicit product decision, not an
+unnoticed defect. Glassgoat's final opening replaces only the opening asset
+reference and removes the repetition. It must not alter the lab cutscene.
+
+## Exact player-facing sequence
+
+```text
+cover art (silent)
+  -> New Game and slot selection
+  -> temporary Mermaid Freak video (first completed viewing cannot skip)
+  -> 250–500 ms transition space
+  -> quiet free-swimming spawn with restrained exploration ambience
+  -> first meaningful movement, or idle fallback
+  -> one-Angler prologue battle
+  -> one offensive player action defeats the Angler
+  -> no victory fanfare; brief false-relief pause
+  -> environment darkens and Cordys interrupts the same battle presentation
+  -> Phoenix Final Boss intro begins on the reveal
+  -> one real player attack connects for negligible damage
+  -> one authored Cordys finishing move defeats the party
+  -> music ends; approximately one second of silence
+  -> recovery card: “Grow stronger. Find a way to defeat Cordys.”
+  -> fully restored, saved, controllable normal PR #96 world
+  -> optional Combat Training beacon nearby
+```
+
+No user-facing copy introduced by this slice may contain an em dash.
+
+## Public state contract
+
+### Durable saved fields
+
+| Field | New save | Old save with field absent | Meaning |
+| --- | --- | --- | --- |
+| `opening_video_seen` | `false` | `true` | The temporary/final first-run opening completed successfully. |
+| `prologue_complete` | `false` | `true` | The scripted Cordys defeat and recovery completed. |
+| `tutorial_complete` | `false` | infer from existing completed/skipped tutorial state, otherwise `true` for an old save | Optional Combat Training is retired. |
+
+The initial New Game save must explicitly contain `false`; field absence is
+reserved for migration of existing PR #96 saves. This prevents old saves from
+being indistinguishable from a newly-created pre-opening save.
+
+### Observable runtime phase
+
+Expose one public phase and a `phase_changed` signal:
+
+- `title`
+- `opening_video`
+- `spawn_exploration`
+- `angler`
+- `octopus_reveal`
+- `octopus_response`
+- `scripted_defeat`
+- `recovery`
+- `complete`
+
+The HUD, audio owner, verifier, and transition controller consume this public
+contract. Tests must not depend on private helper order.
+
+### Encounter source
+
+Add two semantic sources:
+
+- `prologue_angler`
+- `prologue_octopus`
+
+They must never be treated as `random`, `lab_blocker`, `lab_boss`,
+`maze_door`, guardian, tutorial, or campaign Octopus encounters.
+
+### Campaign Octopus state
+
+The prologue never changes `RouteState.octopus_state`. That state remains
+`unavailable` until the future maze-door route explicitly owns it.
+
+## Save and interruption normalization
+
+Transient video, Battle, tween, timer, audio-player, modal, and actor nodes are
+never serialized.
+
+| Interrupted state | Next load |
+| --- | --- |
+| Before or during the opening video | Replay the opening video. |
+| Video completed, before movement | Start at quiet spawn; do not replay the video. |
+| During the Angler | Normalize to quiet spawn and restart the trigger. |
+| During Cordys reveal/response/defeat | Normalize to quiet spawn and restart the playable prologue; do not replay the video. |
+| During recovery after state write | Restore a healthy party in normal play; do not repeat Cordys. |
+| Old PR #96 save | Enter normal PR #96 play with the prologue treated as complete. |
+| Missing/failed video decoder | Show a concise `Continue` recovery action; never leave a black soft-lock. Record the failure. |
+
+Write `opening_video_seen = true` immediately after successful playback.
+Write `prologue_complete = true` only after party recovery and the long-term
+motivation have been committed. Save again before control returns.
+
+## Opening and tutorial independence
+
+Completing the prologue unlocks normal play. It does not complete or start the
+tutorial.
+
+After recovery, spawn the existing tutorial beacon outside its activation
+radius with a clear path and the label `Optional Combat Training`.
+
+The beacon:
+
+- is not the active route objective;
+- does not capture the camera;
+- has no compulsory off-screen arrow;
+- remains available after a tutorial loss followed by Return to World;
+- retires after completion or an explicit in-battle Skip;
+- launches the current PR #96 tutorial unchanged;
+- triggers the current post-tutorial ability onboarding only when the player
+  chooses the training path under its existing rules;
+- remains replayable from Combat Help under the current menu contract.
+
+Normal TAB switching, random encounters, save points, abilities, and route
+progression gate on `prologue_complete`, not `tutorial_complete`.
+
+## Starting tuning hypotheses
+
+These values are implementation starting points. They change only through a
+recorded playtest finding, not ad hoc code edits.
+
+| Variable | Initial value | Required observation |
+| --- | ---: | --- |
+| Temporary video | full 33.877 s asset | Player remains engaged and understands playback is intentional. |
+| Video local trim | `-6 dB` | Dialogue/music is clear with safe headroom and no competing cue. |
+| Post-video space | 250–500 ms | Transition feels deliberate, not frozen. |
+| Prologue exploration trim | approximately `-7 dB` versus normal | Existing ambience remains present but feels quiet. |
+| Movement trigger | 2–4 m from recovery-safe spawn | Forward, backward, left, right, and diagonal movement all work. |
+| Idle fallback | 6–8 s | A stationary player cannot stall the opening. |
+| Angler party/enemies | current party versus one Angler | Stage remains legible and resembles real combat. |
+| Angler actions | expose offensive actions only | Every visible choice lands and defeats it. |
+| Angler rewards | none | No progression data changes. |
+| Battle intro | existing 15.000 s intro at `0 dB` local trim | Good existing music remains; it does not dominate. |
+| Battle loop fallback | approximately `-7 dB` if reached | Waiting in the menu cannot cause a loud jump. |
+| Cordys response | one player action | Attack visibly connects but changes the outcome negligibly. |
+| Cordys attack | one selected authored finishing move | Full party defeat is decisive and obviously scripted. |
+| Final Boss intro | approximately `0` to `-1 dB` | Cordys has a distinct musical identity without clipping. |
+| Final Boss loop | approximately `-4.5 dB` if reached | Intro-to-loop loudness remains perceptually stable. |
+| Post-impact silence | approximately 1 s | Defeat lands emotionally without reading as a hang. |
+| Total New Game to recovery | under 2 minutes | The hook does not become another opening barrier. |
+
+## Binding audio contract
+
+The tracks are good. The prologue changes cue timing and authored gain, not
+the player's saved volume or the ordinary post-prologue mix.
+
+### Measured source boundary
+
+| Cue | Integrated loudness | Peak | Prologue disposition |
+| --- | ---: | ---: | --- |
+| Mermaid video audio | -13.3 LUFS | +1.5 dBFS | Sole video cue, Music bus, start at `-6 dB`. |
+| Exploration loop | -13.9 LUFS | +0.1 dBFS | Preserve; prologue-only trim near `-7 dB`. |
+| Battle intro | -26.9 LUFS | -9.6 dBFS | Preserve at `0 dB`; normally ends after the Angler does. |
+| Battle loop | -13.7 LUFS | -0.3 dBFS | Prologue fallback trim near `-7 dB`; no 21.65 dB edge jump. |
+| Final Boss intro | -19.0 LUFS | -3.6 dBFS | Cordys reveal cue, approximately `0` to `-1 dB`. |
+| Final Boss loop | -14.6 LUFS | -1.0 dBFS | Trim near `-4.5 dB` if the prologue reaches it. |
+| Heavy hit | -26.3 LUFS | -10.0 dBFS | Candidate finishing impact; audition against the boss cue. |
+
+### Cue sequence
+
+1. Cover remains silent; existing restrained UI SFX may play.
+2. New Game supplies the trusted browser gesture.
+3. Stop `GameAudio` music before the Mermaid video starts.
+4. Route video audio to the Music bus. Never layer exploration beneath it.
+5. After playback, leave transition space and fade in trimmed exploration.
+6. Angler replaces exploration with the existing Battle intro.
+7. Suppress the normal victory fanfare.
+8. Duck/stop Battle music for the false-relief beat.
+9. Start Phoenix's Final Boss intro exactly on Cordys's visible reveal.
+10. Briefly duck music for the registered player hit and finishing impact.
+11. Stop/fade Final Boss music immediately after the decisive hit.
+12. Hold deliberate silence through the recovery motivation.
+13. Fade ordinary PR #96 exploration back in exactly once.
+
+### Audio-manager boundary
+
+Keep one semantic audio owner. Extend it to support:
+
+- intro gain and loop gain;
+- short fade-out before replacing a cue;
+- temporary ducking for a major impact;
+- idempotent restoration after the prologue.
+
+Authored gain is additive to the player's existing Music setting. Never write
+a different Music/SFX slider value to make the prologue quieter. The Mermaid
+video uses the Music bus so saved volume and mute apply to video, exploration,
+Battle, and Cordys. Music mute and SFX mute remain independent.
+
+Phoenix's INTRO-to-LOOP pairs still transition immediately without a
+crossfade. Cue-to-cue fades are allowed because they are separate states.
+
+## Visual and motion contract
+
+- The video uses responsive 16:9 FIT sizing with letterboxing as necessary;
+  never stretch, crop, or double-render it.
+- Cordys is framed from measured visible bounds, presents the authored front
+  toward the party, remains floor/stage-aligned, and cannot obscure the HUD or
+  party.
+- Character and boss silhouettes remain readable at 1280×720, 720×480, and
+  the existing tall review viewport.
+- Inspect every selected Octopus pose for the known bright-line primitive;
+  suppress or repair the artifact without hiding legitimate meshes.
+- The composite/corpse presentation is accepted for this delivered model, but
+  it must read intentionally in production framing.
+- Use animation, lighting, restrained fades, cue timing, and model entrance.
+  Do not add camera shake, forced zoom, or screen-wide flashes.
+- The recovery card and optional-beacon label must remain readable without
+  covering character names, party status, or controls.
+
+## IO boundaries and risky branches
+
+| Boundary | Risk | Required proof |
+| --- | --- | --- |
+| Save files | Old save replay, new save ambiguity, transient state restore | Missing-field migration plus new-save and interrupted-state round trips. |
+| Time | Trigger never fires, timer fires twice, music reaches loud loop | Multi-direction/idle decision table with bounded waits. |
+| Input | Video leaks movement, player cannot select the one action, beacon triggers accidentally | Real input at normal entry; spawn outside trigger volume. |
+| Scene ownership | Duplicate video/Battle/audio/UI or leaked objects | Owner counts through every transition and repeated teardown. |
+| Browser audio | Autoplay rejection, mute mismatch, stacked sources | Exact exported browser after New Game gesture at multiple settings. |
+| Video decoder | Black screen, duplicate playback, bad aspect | Wide/narrow/tall captures, finish/failure lifecycle. |
+| FBX import | Invisible, static, tiny, backward, bright-line actor | Structural mesh/skin/clip gate plus production-camera review. |
+| Combat dispatch | Prologue rules contaminate normal Angler or campaign boss | Differential normal-versus-prologue encounter tests. |
+| Web package | Duplicate media, stale deployment, first-reveal hitch | Manifest/digest/size comparison, exact PCK hash, runtime load observation. |
+| Existing PR #96 | New opening breaks Tethys, maze, tutorial, audio, or save flow | Existing aggregate suite plus both post-recovery journeys. |
+
+## Implementation phases and stop gates
+
+### Phase 0 — clean child branch
+
+1. Reconfirm PR #96 remote head and compare it with `27a5b52`.
+2. Create a clean worktree/branch from that exact head. Do not carry generated
+   `.import`/`.uid` churn from the existing checkout.
+3. Copy these planning artifacts into the child branch under `docs/` and
+   `verify/` before functional changes.
+4. Record the actual base SHA in this plan.
+
+**Stop gate:** branch diff contains planning artifacts only and no unrelated
+PR #96 changes.
+
+### Phase A — contracts and asset intake
+
+1. Add public prologue phase, signals, encounter sources, durable fields, and
+   migration rules before changing New Game.
+2. Update the asset/audio/Octopus manifests with canonical digests, runtime
+   ownership, web derivative, package-size delta, and replacement seam.
+3. Derive web OGG files for Phoenix's canonical Final Boss INTRO/LOOP pair;
+   never import the old DEMO MP3 or Dropbox duplicates.
+4. Build a temporary Octopus gallery using the production importer and record
+   measured bounds, visible meshes/materials, skeleton, clips, facing, selected
+   poses, and bright-line disposition.
+5. Create the bug catalog tests in highest-blast-radius order. Each test must
+   first prove red or characterize current behavior before implementation.
+
+**Stop gate:** state round-trip/migration gates are meaningful; every admitted
+asset has one source, runtime owner, digest, and evidence; the Octopus is
+visually usable before a battle depends on it.
+
+### Phase B — opening video lifecycle
+
+1. Replace the normal intro crawl with a generic opening-video owner selected
+   from one configurable asset reference.
+2. Preserve the existing lab owner and its skippable policy.
+3. Route opening video audio through Music at the authored trim.
+4. Save `opening_video_seen` on successful completion.
+5. Provide a visible failure fallback, debug fast-forward, and clean control
+   restoration.
+
+**Stop gate:** normal New Game shows one correctly-sized video, blocks world
+input, respects volume/mute, survives decoder failure, persists completion,
+and does not change the lab video contract.
+
+### Phase C — quiet spawn and Angler
+
+1. Enter `spawn_exploration` with trimmed existing ambience and no mandatory
+   tutorial arrow/camera capture.
+2. Suppress random encounters and progression triggers until the prologue is
+   complete.
+3. Trigger the encounter from movement distance with an idle fallback and a
+   one-shot guard.
+4. Create an explicit prologue Angler configuration with offensive choices,
+   guaranteed hit/lethal result, no enemy-first damage, and no rewards.
+5. Use Battle intro with a safe loop fallback. Suppress normal victory audio.
+
+**Stop gate:** all movement directions and idle work; every exposed action
+defeats the Angler; ordinary Anglers are unchanged; no reward/state leak or
+duplicate battle exists.
+
+### Phase D — Cordys interruption
+
+1. Transition inside the combat presentation without an overworld flicker.
+2. Instantiate the prologue-only Octopus actor with selected reveal/idle/hit/
+   finishing clips, correct facing, material, scale, and framing.
+3. Start the Final Boss motif on reveal.
+4. Allow one real player hit whose feedback proves the system worked while its
+   effect remains negligible.
+5. Resolve one decisive authored attack into `scripted_defeat`.
+
+**Stop gate:** no normal victory, Game Over, campaign Octopus state, reward,
+or balance mutation occurs; Cordys is readable and animated at every target
+viewport; audio has one owner and no loop jump.
+
+### Phase E — recovery and optional training
+
+1. Stop boss audio, hold silence, restore all HP/Oxygen, place the party at a
+   safe spawn, show the motivation, mark completion, and save.
+2. Restore ordinary exploration exactly once.
+3. Spawn Optional Combat Training outside the party's activation radius.
+4. Decouple world progression from tutorial completion.
+5. Verify completion, Skip, Retry, Return to World, ignore, save/load, and
+   Combat Help replay behavior.
+
+**Stop gate:** both public journeys succeed from normal entry:
+
+- recovery → ignore training → continue normal PR #96;
+- recovery → enter training → complete/skip/retry/return → continue PR #96.
+
+### Phase F — exact artifact, blind test, and zero-defect audit
+
+1. Run focused gates after every repair and the inherited aggregate suite.
+2. Export from an exact clean commit; compare local and served PCK byte count
+   and SHA-256.
+3. Deploy one immutable URL and the stable child-PR alias with no auth.
+4. Play the normal entry at 1280×720, 720×480, and the tall review viewport.
+5. Conduct the audio matrix and a context-free comprehension playtest.
+6. Repeat the audit loop until an entire round reports no observed defect.
+
+**Stop gate:** every done condition below is met and the final audit log records
+a zero-observed-defect round on the exact public artifact.
+
+## Evidence matrix
+
+| Surface | Automated proof | Human proof that can reject green tests |
+| --- | --- | --- |
+| State/save | Round-trip and old/new/interrupted decision table | Reload at video, spawn, battle, defeat, recovery and completed boundaries. |
+| Video | Stream/digest/policy/owner/aspect lifecycle | Normal New Game playback at all target viewports with audio sync. |
+| Trigger | Direction/property invariant and idle fallback | Swim in visibly different directions without debug teleport. |
+| Angler | Differential prologue/ordinary behavior, no-reward invariant | Choose each visible offensive option and inspect staging/audio. |
+| Cordys | Mesh/skin/clip/facing/bounds and encounter-source gates | Inspect reveal, hit, finishing move, composite and bright-line behavior. |
+| Defeat/recovery | Special-result state and party restoration | Confirm the loss reads as authored, not broken or punitive. |
+| Optional training | Ignore/complete/skip/retry/return decision table | Play both post-recovery branches through controllable normal world. |
+| Audio | One-owner state trace, gain/loop/mute/persistence gates | Listen at 100%, 50%, Music mute, SFX mute, laptop speakers and headphones. |
+| Regression | Existing PR #96 gates | Reach ordinary post-opening world, optional tutorial, Deep, lab/Tethys and maze as affected. |
+| Artifact | Fresh export plus local/served digest and console gate | Use ordinary public URL; query routes are supplementary only. |
+
+Screenshots and GIFs are evidence only when paired with semantic proof. A
+stable screenshot cannot prove input, state, audio, or recovery behavior.
+
+## Context-free acceptance questions
+
+After the opening, without prior explanation, ask the tester:
+
+1. Who defeated the party?
+2. Did the defeat look intentional or like a balance/technical failure?
+3. What do you expect to accomplish eventually?
+4. What can you do immediately?
+5. Is Combat Training required or optional?
+
+The opening fails comprehension acceptance if the tester cannot identify
+Cordys/Octopus as the long-term threat, thinks the game ended, believes the
+tutorial is mandatory, or describes the opening as audiovisually overwhelming.
+
+## Commit plan
+
+1. Add binding plan, asset manifest, bug catalog, and audit log.
+2. Add public prologue/save/migration contract and red state tests.
+3. Import/characterize Final Boss audio and production Octopus actor adapter.
+4. Add opening video lifecycle and exact audio routing.
+5. Add quiet spawn and one-action Angler.
+6. Add Cordys interruption and scripted defeat.
+7. Add recovery and optional tutorial handoff.
+8. Add/repair focused verification one defect at a time.
+9. Complete visual/audio polish and evidence.
+10. Export, deploy, and record exact artifact proof.
+
+Do not bundle generated web output into an earlier behavioral commit. Never
+hand-merge `docs/index.pck`; regenerate from the accepted source commit.
+
+## Final visual/audio polish loop
+
+Repeat until one complete round reports no observed defect:
+
+1. Export the exact candidate commit and verify its PCK digest.
+2. Start from the ordinary title; never substitute query-only routes for the
+   complete journey.
+3. Review every opening phase and both post-recovery branches at every target
+   viewport.
+4. Check missing/tiny/floating/clipped assets, collision, camera, facing,
+   duplicated/cropped video, unreadable UI, wrong animation, stale state,
+   blocked controls, audio overlap/jumps/silence, load hitch, leaks, and all
+   browser/Godot errors.
+5. Record each defect with exact commit/deployment, reproduction, expected,
+   observed, evidence, and affected journey.
+6. Fix it, run its focused gate, rebuild/redeploy, and replay the whole affected
+   journey rather than only the exposing screenshot.
+7. Record PASS only when no scoped defect or unexplained deferral remains.
+
+The temporary Mermaid repetition and pending final opening replacement are
+explicit product decisions and therefore do not masquerade as undiscovered
+defects. Technical playback, layout, audio, and handoff defects still block.
+
+## Done conditions
+
+- Child PR is based on the confirmed PR #96 head with no unrelated changes.
+- Every admitted asset has provenance, digest, owner, runtime path, and web
+  proof; no duplicate Mermaid or Final Boss source is packaged.
+- New Game to recovered control takes under two minutes.
+- The old intro crawl and mandatory tutorial funnel are absent.
+- The temporary Mermaid opening is single-rendered, responsive, audible,
+  volume-controlled, and correctly persisted.
+- Every direction and idle fallback reaches exactly one Angler encounter.
+- Every visible offensive choice defeats the prologue Angler; ordinary Angler
+  behavior and all progression rewards remain unchanged.
+- Cordys visibly interrupts the victory, receives one registered negligible
+  hit, and defeats the party with one readable authored move.
+- No normal victory fanfare, Game Over screen/music, campaign Octopus state,
+  or route progression is used for the scripted loss.
+- The party is restored, safely positioned, saved, and given the exact
+  long-term motivation before normal control.
+- Optional Combat Training is clearly optional, cannot trigger accidentally,
+  and all existing completion/Skip/Retry/Return/replay paths work.
+- Ignoring training permits normal PR #96 progression.
+- Old saves do not replay the prologue; interrupted new saves normalize safely.
+- Music/SFX settings remain independent and persistent; per-cue trims never
+  rewrite the player's sliders.
+- Video, exploration, Angler, Cordys, silence, and restored exploration each
+  have exactly one correct audio owner and transition.
+- No load hitch, object/RID leak, stale modal, dangling timer/tween, or browser/
+  Godot error remains.
+- Existing relevant PR #96 gates pass.
+- Local export, immutable deployment, and stable alias serve the same PCK.
+- Context-free testers answer the five comprehension questions correctly.
+- The final audit log contains one complete zero-observed-defect round.
+
+## Final-video replacement contract
+
+When Glassgoat supplies the final opening:
+
+1. intake and visually audit the source;
+2. record provenance, digest, dimensions, duration, audio measurements and
+   approval status;
+3. transcode once to the supported web format;
+4. replace the single configurable opening reference;
+5. keep the Mermaid lab reference unchanged;
+6. repeat video/audio/state/browser and full affected-journey verification;
+7. update the manifest and remove the temporary-opening disposition.
+
+No prologue state, combat, save, tutorial, or campaign-route code should need
+to change for that replacement.
+
+## Blocking decisions
+
+None. Timing, gains, trigger distance, camera composition, and animation choice
+are bounded implementation hypotheses to be tuned through the recorded audit
+loop. The temporary repeated Mermaid media, Cordys naming, optional tutorial,
+scripted defeat, and restricted campaign scope are binding decisions.
