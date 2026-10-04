@@ -193,6 +193,8 @@ run "world grapple aim: is the first-person target unobstructed and safely resto
 run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze current route: do normal movement and actual L/E/R traverse the first channel without bypassing collision or currents" "$GODOT" --headless --path . --script verify/maze_current_route.gd
+run "maze puppet approach: does real proximity/confirmation start puppets instead of lab Tethys" "$GODOT" --headless --path . --script verify/maze_puppet_trigger.gd
+run "maze puppet waves: do real moves carry resources/effects into wave two with one final outcome and reward" "$GODOT" --headless --path . --script verify/maze_puppet_waves.gd
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze review route: does the direct playtest link enter MazeLevel cleanly" "$GODOT" --headless --path . --script verify/maze_review_route.gd -- --maze-playtest

@@ -206,3 +206,25 @@ and does not lengthen production feedback to accommodate the harness. Hammer
 attack framing, newly downed recovery and whole battle-art acceptance remain open.
 Disk recovered to about 6.6 GiB before this checkpoint; no assets were deleted by
 this work. No export/deployment/public change. Next: real puppet-wave dispatch.
+
+## October 4 2026 continuous puppet encounter
+
+Real guard proximity/Yes starts the authored three-enemy wave; actual moves clear
+it into Bomb Bot/Sword Slayer without Battle reconstruction, XP, refill or final
+outcome. Six O2/potion cases conserve exact party/actor identities and HP/O2,
+statuses, evasion, temporary costs, inventory and progression. The legal level-5
+baseline with 10-HP divers wins in 14 actions and awards both waves' 92 XP once.
+This is a consumer fixture, not an earned-kit/full-maze playthrough claim.
+
+Native 1x inspection exposed and repaired overlap, a grey wave-handoff stage gap
+and stale NOW/Next/cursor at victory. Wave1/2/final and guard approach/confirmation
+were visually inspected at 1280x720. Wrong-camera fixture was corrected via actual
+mouse aim; no production camera change was made to accommodate it. Native and
+headless receipts are saved alongside the PNGs. Reward/save/loss/escape, full
+attack framing, other viewports and listening remain open.
+
+Affected prologue, tutorial handoff, initially downed recovery, secret continuity,
+input ownership and combat feedback checks pass. Eight relic consumers pass an
+isolated rerun; a prior one-frame resize finding under concurrent load is retained
+as unresolved timing evidence. A missing-script exit 0 is excluded, not accepted.
+No export/deployment/public change. Next: defeatable campaign Cordys.

@@ -30,6 +30,10 @@ signal prologue_strike_resolved(move_name: String, target_name: String, result: 
 # the end-to-end fight gate uses the real selected target instead of guessing
 # from proximity when several enemies share the stage.
 signal player_swing_staged(attacker: Node3D, target: Node3D)
+# Resolved-turn boundaries for authored continuous encounters. Consumers can
+# observe conservation without manufacturing a result or inspecting animations.
+signal encounter_wave_cleared(wave: int, total: int)
+signal encounter_wave_started(wave: int, total: int)
 
 # Set by world.gd before add_child - the real Diver nodes from the dive
 # site (world.divers), so .stats (shared by reference - a Resource, not
@@ -77,6 +81,16 @@ var guardian_enemy_id := "angler"
 # keep `random`; authored blockers and bosses are assigned by World before this
 # node enters the tree.
 var encounter_source := "random"
+
+# This authored maze encounter uses existing species and one Battle owner.
+# Species tuning remains shared with ordinary enemies and lab blockers; only
+# the roster and continuous-wave contract belong to this source.
+const PUPPET_WAVES := [
+	["angler", "swordfish_duelist", "frilled_shark"],
+	["bomb_bot", "sword_slayer"],
+]
+var _puppet_wave := 0
+var _puppet_completed_xp := 0
 
 # Dedicated first-run configuration. This is not the long combat tutorial and
 # never mutates Angler's shared species tuning: it filters this one Battle's
@@ -638,12 +652,16 @@ func _ready() -> void:
 				_register_stat_effects(_spell_preview_move(SpellTree.SPELL_TREES[model_name][branch][spell_id], String(spell_id)))
 
 	layer = 10
+	if encounter_source == "maze_puppets":
+		ordinary_enemy_ids.assign(PUPPET_WAVES[0])
 	_build_party()
 	_build_stage()
 	_build_ui()
 	_build_quick_time_ui()
 	_refresh_all_bars()
 	_rebuild_queue()
+	if encounter_source == "maze_puppets":
+		encounter_wave_started.emit(1, PUPPET_WAVES.size())
 	if boss_encounter:
 		_log("Tethys rises from the deep.")
 		if boss_intro_enabled:
@@ -1333,6 +1351,10 @@ func _build_stage() -> void:
 		var party_spread := 1.3 if boss_encounter else 2.9
 		var party_depth_spread := 0.3 if boss_encounter else 0.7
 		var party_x_offset := -1.0 if boss_encounter else -0.4
+		if encounter_source == "maze_puppets":
+			party_spread = 2.1
+			party_depth_spread = 0.3
+			party_x_offset = -2.6
 		actor.position = Vector3(_spread(i, pn, party_spread) + party_x_offset, floor_y, diver_z - _spread(i, pn, party_depth_spread))
 		party[i]["actor"] = actor
 		if (party[i].stats as CombatantStats).hp <= 0:
@@ -1416,6 +1438,9 @@ func _build_stage() -> void:
 		})
 		_frame_stage_camera()
 		return
+	_build_ordinary_enemy_wave(vp, enemy_z, lvl, ref_stats, use_revealed_roster, count)
+
+func _build_ordinary_enemy_wave(vp: SubViewport, enemy_z: float, lvl: int, ref_stats: CombatantStats, use_revealed_roster: bool, count: int) -> void:
 	for i in range(count):
 		# The opening lesson explicitly teaches against the Angler. Drawing from
 		# the ordinary roster here made that contract random: a Frilled Shark or
@@ -1448,6 +1473,10 @@ func _build_stage() -> void:
 			# tail extend left across Bucky at the shared blocker lane. Give only
 			# that long silhouette extra separation; Bomb Bot already frames cleanly.
 			enemy_x = 6.2 if guardian_enemy_id == "sword_slayer" else 4.2
+		if encounter_source == "maze_puppets":
+			# Mixed imported silhouettes need their own opposing row; do not
+			# put the long Shark/Slayer across the party's ordinary centre lane.
+			enemy_x = 2.6 + float(i) * 3.6 if count == 3 else 3.5 + float(i) * 4.2
 		g.position = Vector3(enemy_x, 0.0, enemy_z - _spread(i, count, 0.5))
 		vp.add_child(g)
 		# Same hp<=0-skips-the-actor case as the boss branch above.
@@ -1494,7 +1523,7 @@ func _build_stage() -> void:
 				st.agility = maxi(1, ref_stats.agility - 1)
 		enemies.append({
 			"kind": "enemy", "stats": st,
-			"display_name": g.display_name() if count == 1 else "%s %d" % [g.display_name(), i + 1],
+			"display_name": g.display_name() if count == 1 or encounter_source == "maze_puppets" else "%s %d" % [g.display_name(), i + 1],
 			"actor": g,
 			"home_pos": g.position,
 			"home_rot": g.rotation.y,
@@ -1502,6 +1531,50 @@ func _build_stage() -> void:
 		})
 
 	_frame_stage_camera()
+
+func _start_next_puppet_wave() -> void:
+	_busy = true
+	_set_all_buttons(false)
+	main_menu.visible = false
+	move_menu.visible = false
+	item_menu.visible = false
+	target_menu.visible = false
+	_selected_move_panel.visible = false
+	(_player_stats_ui.panel as Control).visible = false
+	_clear_all_stat_preview()
+	# Retain living players who have not acted in this round. New enemies join
+	# that pending queue; already-acted players wait for the next normal round.
+	var pending_party := _queue.filter(func(entry: Dictionary) -> bool:
+		return String(entry.kind) == "party" and (entry.stats as CombatantStats).hp > 0)
+	_queue.clear()
+	_acting = {}
+	_turn_cursor.visible = false
+	for old_enemy in enemies:
+		_puppet_completed_xp += int(old_enemy.get("xp_reward", 0))
+		for field in ["actor", "card"]:
+			var old_value: Variant = old_enemy.get(field)
+			if is_instance_valid(old_value):
+				(old_value as Node).queue_free()
+	enemies.clear()
+	for button in target_buttons:
+		if is_instance_valid(button):
+			(button as Node).queue_free()
+	target_buttons.clear()
+	_puppet_wave += 1
+	ordinary_enemy_ids.assign(PUPPET_WAVES[_puppet_wave])
+	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
+	_build_ordinary_enemy_wave(_stage_vp, -2.2, lvl, _party_average_stats(), true, ordinary_enemy_ids.size())
+	for enemy in enemies:
+		_build_overhead_bar(enemy)
+	_refresh_all_bars()
+	_queue = pending_party + _living(enemies)
+	_queue.sort_custom(_by_agility)
+	_refresh_queue_row()
+	_log("Their hold breaks. More of Cordys's puppets approach.")
+	encounter_wave_started.emit(_puppet_wave + 1, PUPPET_WAVES.size())
+	# One brief readable arrival, no celebration, XP, recovery or music restart.
+	await get_tree().create_timer(0.9).timeout
+	_advance_turn()
 
 func _build_boss_lab_stage(viewport: SubViewport) -> void:
 	# The exterior deliberately hides this incomplete room inside a rock shell.
@@ -1743,7 +1816,7 @@ func _frame_stage_camera() -> void:
 	# The enclosed boss arena benefits from a more frontal authored view: less
 	# sideways foreshortening keeps the compact party formation and the office
 	# walls readable without changing ordinary/open-water fight framing.
-	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter or prologue_octopus_encounter else STAGE_CAMERA_DIR).normalized()
+	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter or prologue_octopus_encounter or encounter_source == "maze_puppets" else STAGE_CAMERA_DIR).normalized()
 	# Two axes across the view, so the group can be measured in the plane
 	# the camera actually sees rather than in world X and Y.
 	var right: Vector3 = dir.cross(Vector3.UP).normalized()
@@ -2007,6 +2080,9 @@ func _build_ui() -> void:
 	# piece that has nowhere on the stage to live.
 	_queue_bar = PanelContainer.new()
 	_queue_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	# The authored handoff has no NOW chip for a moment. Its shorter turn
+	# strip must still meet the stage, rather than reveal the root clear color.
+	_queue_bar.resized.connect(func() -> void: call_deferred("_fit_panel_height"))
 	# MODIFIED (added): same reasoning as _bottom_panel's own mouse_filter
 	# fix just above - this strip spans the full width of the TOP of the
 	# screen and holds no interactive controls at all (just the turn-order
@@ -2926,6 +3002,12 @@ func _refresh_queue_row() -> void:
 	# bigger than that.
 	for i in range(mini(_queue.size(), MAX_QUEUE_SLOTS)):
 		queue_row.add_child(_build_queue_chip(_queue[i], i))
+	if encounter_source == "maze_puppets":
+		var wave := Label.new()
+		wave.text = "Puppets %d/%d" % [_puppet_wave + 1, PUPPET_WAVES.size()]
+		wave.add_theme_font_size_override("font_size", 13)
+		wave.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
+		queue_row.add_child(wave)
 	# MODIFIED (added): rebuilt fresh every turn, so a one-time IGNORE at
 	# setup can't reach chips that don't exist yet - nothing in the turn
 	# queue is ever meant to be clickable, so sweeping the whole row after
@@ -3070,6 +3152,15 @@ func _advance_turn() -> void:
 				_log("The Angler falls. The water goes still.")
 				prologue_angler_defeated.emit()
 			return
+		if encounter_source == "maze_puppets":
+			# A mutual knockout is not permission to progress/reward a wave.
+			if _living(party).is_empty():
+				_lose()
+				return
+			encounter_wave_cleared.emit(_puppet_wave + 1, PUPPET_WAVES.size())
+			if _puppet_wave + 1 < PUPPET_WAVES.size():
+				_start_next_puppet_wave()
+				return
 		_win()
 		return
 	if _living(party).is_empty():
@@ -5565,6 +5656,19 @@ func _build_levelup_block(entry: Dictionary, levels: Array) -> String:
 
 func _win() -> void:
 	_set_all_buttons(false)
+	# Resolved combat has no active turn or pending opponent. Keeping the
+	# final NOW/cursor made a real victory look like an unfinished action.
+	_acting = {}
+	_queue.clear()
+	_turn_cursor_target = null
+	_turn_cursor.visible = false
+	for chip in queue_row.get_children():
+		chip.queue_free()
+	var victory := Label.new()
+	victory.text = "Victory"
+	victory.add_theme_font_size_override("font_size", 18)
+	victory.add_theme_color_override("font_color", Color(0.6, 0.9, 0.8))
+	queue_row.add_child(victory)
 	main_menu.visible = false
 	move_menu.visible = false
 	item_menu.visible = false
@@ -5594,7 +5698,7 @@ func _win() -> void:
 	var levelup_blocks: Array[String] = []
 	var spell_unlock_announcements: Array[Dictionary] = []
 	if not tutorial_encounter:
-		var total_xp := 0
+		var total_xp := _puppet_completed_xp
 		for e in enemies:
 			total_xp += int(e.get("xp_reward", 0))
 		if special_encounter:

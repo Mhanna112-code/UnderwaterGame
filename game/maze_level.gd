@@ -771,8 +771,9 @@ func _start_battle(kind := "strong") -> void:
 	_battle = Battle.new()
 	match kind:
 		"secret_boss":
-			_announce("Tethys turns toward you!")
-			_battle.boss_encounter = true
+			_announce("Cordys's puppets guard the way.")
+			_battle.encounter_source = "maze_puppets"
+			_battle.encounter_intro_override = "Break their hold. Face their master."
 		"main_boss":
 			_announce("Tethys rises from the deep!")
 			_battle.boss_encounter = true
@@ -816,7 +817,7 @@ func _on_battle_finished(result: String) -> void:
 	_battle_kind = "strong"
 	if result == "won" and kind == "secret_boss":
 		_remove_boss_trigger("secret_boss")
-		_gain_key("abyss_key", "Tethys is driven off! You've obtained a key")
+		_gain_key("abyss_key", "Their hold is broken. You've obtained a maze key.")
 		return
 	if result == "won" and kind == "main_boss":
 		_remove_boss_trigger("main_boss")
@@ -1057,7 +1058,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
+	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt))
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -1522,35 +1523,24 @@ func _build_main_boss_room() -> void:
 	]:
 		wall_boxes.append(_spawn_wall(spec[0], spec[1], spec[2], spec[3]))
 
-# --- Patrolling Tethys (the secret boss) ---------------------------------------
-# Tethys swims a loop around the secret boss room. Between corners it plays
-# its swim loop; at each corner it stops and plays one of its other clips
-# (idle and its attacks, in turn). Swimming into it asks "A great danger is
-# detected here. Are you sure you would like to proceed?" - Yes starts the
-# Tethys fight, No pushes the diver back out.
-#
-# Room for it, measured from its skeleton over every clip at its native
-# scale: up to 4.6 above its feet (Double Scratch), 0.76 below them
-# (Spinning Death), and up to 4.4 out to the side (Tongue Slayer). So it
-# hovers TETHYS_HOVER off the floor, its loop keeps TETHYS_REACH + a margin
-# from the walls, and the ceiling over this room is raised to clear its top
-# with TETHYS_HEADROOM to spare (see _raised_ceiling_regions()). The room's
-# walls are 14 tall, so the raised ceiling stays sealed.
-const TETHYS_HOVER := 1.0
-const TETHYS_TOP := 4.6
-const TETHYS_REACH := 4.4
-const TETHYS_HEADROOM := 1.5
-const TETHYS_SPEED := 2.2
-const TETHYS_PROMPT_RADIUS := 2.8
-const TETHYS_SHOWCASE := ["idle", "tail_sweep", "poison_breath", "spinning_death", "double_cratch", "tongue_slayer"]
-const TETHYS_PROMPT_TEXT := "A great danger is detected here. Are you sure you would like to proceed?"
-var _tethys: TethysBoss
-var _tethys_route: Array[Vector3] = []
-var _tethys_target := 0
-var _tethys_pause := 0.0
-var _tethys_showcase_i := 0
-var _tethys_prompt: ConfirmPromptModal
-var _tethys_prompt_cooldown := 0.0
+# --- Cordys's patrolling puppets ----------------------------------------------
+# Keep Marc's room, approach/confirmation and patrol footprint. The old Tethys
+# placeholder is replaced by recognizable wave-one guards, not another lab boss.
+# Existing raised ceiling dimensions are retained; no puzzle geometry changes.
+const PUPPET_HOVER := 1.0
+const PUPPET_TOP := 4.6
+const PUPPET_REACH := 4.4
+const PUPPET_HEADROOM := 1.5
+const PUPPET_SPEED := 2.2
+const PUPPET_PROMPT_RADIUS := 3.8
+const PUPPET_PROMPT_TEXT := "Cordys's puppets guard the way. Break their hold and face their master?"
+var _puppet_patrol: Node3D
+var _puppet_guard_actors: Array[Goblin] = []
+var _puppet_route: Array[Vector3] = []
+var _puppet_target := 0
+var _puppet_pause := 0.0
+var _puppet_prompt: ConfirmPromptModal
+var _puppet_prompt_cooldown := 0.0
 
 func _maze_floor_top() -> float:
 	var w := $CSGBox3D16 as CSGBox3D
@@ -1573,87 +1563,100 @@ func _secret_boss_room_rect(inside: bool) -> Rect2:
 	var z1 := maxf(box30.global_position.z, box32.global_position.z) + grow * t * 0.5
 	return Rect2(x0, z0, x1 - x0, z1 - z0)
 
-func _build_tethys_patrol() -> void:
+func _build_puppet_patrol() -> void:
 	var room := _secret_boss_room_rect(true)
 	if room.size == Vector2.ZERO:
 		return
-	var inset := TETHYS_REACH + 0.6
-	var y := _maze_floor_top() + TETHYS_HOVER
+	var inset := PUPPET_REACH + 0.6
+	var y := _maze_floor_top() + PUPPET_HOVER
 	var a := room.position + Vector2(inset, inset)
 	var b := room.end - Vector2(inset, inset)
-	_tethys_route = [Vector3(a.x, y, a.y), Vector3(b.x, y, a.y), Vector3(b.x, y, b.y), Vector3(a.x, y, b.y)]
-	_tethys = TethysBoss.new()
-	_tethys.name = "PatrollingTethys"
-	add_child(_tethys)
-	_tethys.global_position = _tethys_route[0]
-	_tethys_target = 1
-	_tethys.play("swim_loop")
+	_puppet_route = [Vector3(a.x, y, a.y), Vector3(b.x, y, a.y), Vector3(b.x, y, b.y), Vector3(a.x, y, b.y)]
+	_puppet_patrol = Node3D.new()
+	_puppet_patrol.name = "PatrollingPuppets"
+	add_child(_puppet_patrol)
+	_puppet_patrol.global_position = _puppet_route[0]
+	_puppet_target = 1
+	for index in range(Battle.PUPPET_WAVES[0].size()):
+		var actor := Battle.actor_for_enemy_id(String(Battle.PUPPET_WAVES[0][index]))
+		_puppet_patrol.add_child(actor)
+		actor.position = Vector3(float(index - 1) * 2.0, 0.0, float(index % 2))
+		actor.play("swim")
+		_puppet_guard_actors.append(actor)
+	var label := Label3D.new()
+	label.text = "Cordys's puppets"
+	label.font_size = 32
+	label.outline_size = 4
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.position.y = 2.6
+	_puppet_patrol.add_child(label)
 	var area := Area3D.new()
 	area.collision_mask = 2   # divers
 	var shape := CollisionShape3D.new()
 	var cyl := CylinderShape3D.new()
-	cyl.radius = TETHYS_PROMPT_RADIUS
-	cyl.height = TETHYS_TOP + 2.0
+	cyl.radius = PUPPET_PROMPT_RADIUS
+	cyl.height = PUPPET_TOP + 2.0
 	shape.shape = cyl
 	shape.position = Vector3(0, cyl.height * 0.5 - 1.0, 0)
 	area.add_child(shape)
-	_tethys.add_child(area)
+	_puppet_patrol.add_child(area)
 	area.body_entered.connect(func(body: Node3D) -> void:
-		if body == _diver and not _battling and not any_modal_open() and _tethys_prompt_cooldown <= 0.0:
-			_open_tethys_prompt())
-	_boss_triggers["secret_boss"] = _tethys
+		if body == _diver and not _battling and not any_modal_open() and _puppet_prompt_cooldown <= 0.0:
+			_open_puppet_prompt())
+	_boss_triggers["secret_boss"] = _puppet_patrol
 
-func _update_tethys_patrol(dt: float) -> void:
-	if _tethys == null or not is_instance_valid(_tethys):
+func _update_puppet_patrol(dt: float) -> void:
+	if _puppet_patrol == null or not is_instance_valid(_puppet_patrol):
 		return
-	_tethys_prompt_cooldown = maxf(0.0, _tethys_prompt_cooldown - dt)
+	_puppet_prompt_cooldown = maxf(0.0, _puppet_prompt_cooldown - dt)
 	if _battling or any_modal_open():
 		return
-	if _tethys_pause > 0.0:
-		_tethys_pause -= dt
-		if _tethys_pause <= 0.0:
-			_tethys.play("swim_loop")
+	if _puppet_pause > 0.0:
+		_puppet_pause -= dt
+		if _puppet_pause <= 0.0:
+			for actor in _puppet_guard_actors:
+				actor.play("swim")
 		return
-	var target := _tethys_route[_tethys_target]
-	var to := target - _tethys.global_position
+	var target := _puppet_route[_puppet_target]
+	var to := target - _puppet_patrol.global_position
 	to.y = 0.0
 	if to.length() < 0.05:
-		# Corner: stop and show off one of its other animations.
-		_tethys_target = (_tethys_target + 1) % _tethys_route.size()
-		var clip: String = TETHYS_SHOWCASE[_tethys_showcase_i % TETHYS_SHOWCASE.size()]
-		_tethys_showcase_i += 1
-		_tethys.face_toward(_tethys_route[_tethys_target])
-		_tethys_pause = maxf(1.5, _tethys.play(clip))
+		_puppet_target = (_puppet_target + 1) % _puppet_route.size()
+		for actor in _puppet_guard_actors:
+			actor.face_toward(_puppet_route[_puppet_target])
+			actor.play("idle")
+		_puppet_pause = 1.5
 		return
-	_tethys.face_toward(target)
-	_tethys.global_position += to.normalized() * minf(TETHYS_SPEED * dt, to.length())
+	for actor in _puppet_guard_actors:
+		actor.face_toward(target)
+	_puppet_patrol.global_position += to.normalized() * minf(PUPPET_SPEED * dt, to.length())
 
-func _open_tethys_prompt() -> void:
+func _open_puppet_prompt() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mouse_look = false
 	_diver.velocity = Vector3.ZERO
-	_tethys_prompt = ConfirmPromptModal.new(TETHYS_PROMPT_TEXT)
-	_tethys_prompt.answered.connect(func(yes: bool) -> void:
-		_tethys_prompt = null
+	_puppet_prompt = ConfirmPromptModal.new(PUPPET_PROMPT_TEXT)
+	_puppet_prompt.answered.connect(func(yes: bool) -> void:
+		_puppet_prompt = null
 		if yes:
 			_start_battle("secret_boss")
 			return
 		# Back off: out of its reach, and no asking again for a moment.
-		var away := _diver.global_position - _tethys.global_position
+		var away := _diver.global_position - _puppet_patrol.global_position
 		away.y = 0.0
 		away = away.normalized() if away.length() > 0.01 else Vector3(1, 0, 0)
-		var spot := _tethys.global_position + away * (TETHYS_PROMPT_RADIUS + 1.5)
+		var spot := _puppet_patrol.global_position + away * (PUPPET_PROMPT_RADIUS + 1.5)
 		spot.y = _diver.global_position.y
 		_diver.global_position = spot
 		_diver.velocity = Vector3.ZERO
-		_tethys_prompt_cooldown = 2.0)
-	add_child(_tethys_prompt)
+		_puppet_prompt_cooldown = 2.0)
+	add_child(_puppet_prompt)
 
 # The two sigils that start the boss fights when the active diver swims onto them.
 func _build_boss_triggers() -> void:
 	var box30 := $CSGBox3D30 as CSGBox3D
 	var box32 := $CSGBox3D32 as CSGBox3D
-	_build_tethys_patrol()
+	_build_puppet_patrol()
 	var north := get_node_or_null("MainBossRoomNorth") as CSGBox3D
 	var south := get_node_or_null("MainBossRoomSouth") as CSGBox3D
 	if north != null and south != null:
@@ -3838,7 +3841,7 @@ func _raised_ceiling_regions() -> Array:
 		out.append([Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0), PLINTH_TOP_Y + DOME_HEIGHT + 0.5])
 	var room := _secret_boss_room_rect(false)
 	if room.size != Vector2.ZERO:
-		out.append([room, _maze_floor_top() + TETHYS_HOVER + TETHYS_TOP + TETHYS_HEADROOM])
+		out.append([room, _maze_floor_top() + PUPPET_HOVER + PUPPET_TOP + PUPPET_HEADROOM])
 	var item_room := _secret_item_room_rect()
 	if item_room.size != Vector2.ZERO:
 		var highest := _maze_floor_top()
@@ -4007,7 +4010,7 @@ func _physics_process(dt: float) -> void:
 	_update_lever_ui()
 	_update_world_hud()
 	_update_sonar_vision()
-	_update_tethys_patrol(dt)
+	_update_puppet_patrol(dt)
 	_update_announce(dt)
 	_check_split_rock()
 	_move_camera(dt)

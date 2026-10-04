@@ -10,14 +10,25 @@ October 4, 2026: campaign/opening merged into the local integration baseline at 
 | Integrated baseline | In progress | Local reconciliation and INT-01 live entrance gate pass; remaining semantic integration still required |
 | State/recovery | In progress | Live entrance/secret return, native checkpoint cold Load/real death Restart, 12 World return/re-entry cases and four-size native checkpoint/menu checks pass; browser denied-storage and consumer/input integration still required |
 | Maze route | In progress | First current channel passes actual Tab/W/mouse/L/E/R headless/native with collision and push active; full puzzles/keys/secret/finale route remains pending |
-| Puppet encounter | Planned | Both real waves, conserved resources, correct reward and recovery |
+| Puppet encounter | In progress | Both real waves and six resource-boundary cases pass; normal kit reachability, once-only maze-key reward and interrupted recovery remain pending |
 | Cordys finale | Planned | Reachable no-lab normal-action win/loss and persisted closure |
 | Audio and feedback delivery | Planned | Exact export/served bytes and critical deployed checks |
 | Windows/Linux | Planned | Exported, launch-tested and playtested recorded separately |
 | Full regression/polish | Planned | Complete clean audit round on identified artifact |
 | Human approval | Pending | Collaborator review; no public promotion before approval |
 
-## Next action
+## Current puppet checkpoint
+
+The actual secret proximity/confirmation starts Cordys's puppets, not Tethys.
+Wave one clears through five real menu actions, carries exact shared state into
+Bomb Bot/Sword Slayer, then the baseline wins after 14 total actions. Both waves'
+XP is awarded once. Native 1x inspection repaired silhouette overlap, a handoff
+layout gap and stale victory turn UI. This is consumer/limited visual evidence;
+complete maze traversal, reward persistence, full finale and audio remain open.
+No combined export, deployment or public/main change exists. Next: campaign
+Cordys dispatch, then route/reward/recovery acceptance and feedback delivery.
+
+## Earlier integration checkpoints
 
 Local merge checkpoint: 7a762ee135f198b6af38ca8191e96e8ed77cb94e. The map gate was rerun on this committed source and passed. No public branch, main merge or deployment was performed.
 
