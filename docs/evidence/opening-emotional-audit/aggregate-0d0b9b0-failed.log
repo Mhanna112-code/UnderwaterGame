@@ -1,0 +1,1794 @@
+
+=== Godot class cache: can direct gates resolve project scripts ===
+
+=== opening migration: do all durable milestones normalize interrupted phases ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING PROLOGUE STATE: clean
+
+=== opening video: are production and lab policies independent ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING VIDEO: clean
+
+=== opening video persistence: do success and decoder failure restore safely ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+OPENING VIDEO WORLD: clean
+
+=== opening trigger: does only actual horizontal swimming start once, without banking idle time ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING TRIGGER: clean
+
+=== opening free swim: do idle and camera-only stay free before four seconds of real swimming ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+FREE_SWIM|prior_idle_seconds=15|swimming_seconds=4.081|distance_m=19.333|phase=angler
+OPENING FREE SWIM: clean
+
+=== opening world: are authored encounters protected and real-input reachable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+OPENING PROLOGUE WORLD: clean
+
+=== opening Angler: do normal damage/miss/utility choices and real defeat preserve ordinary rules and rewards ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Scuba Stabbing", 1, 2]|HP=2|log=Scuba Stabbing opens a wound for 1.  •  Bleed 2 (3 turns)
+ANGLER BUTTON|["Staff_Diver", "Flash Blast", 0, 0]|HP=3|log=Flash Blast: Angler affected.
+ANGLER BUTTON|["Staff_Diver", "Multiple Knee Combo", 1, 0]|HP=2|log=Multiple Knee Combo: Angler -1.
+ANGLER BUTTON|["Staff_Diver", "Axe Kick", 3, 0]|HP=0|log=The Angler falls. The water goes still.
+ANGLER BUTTON|["Prototype_1(1910)", "Precise Tap", 3, 0]|HP=0|log=The Angler falls. The water goes still.
+ANGLER BUTTON|["Prototype_1(1910)", "Weaken", 0, 0]|HP=3|log=This enemy's Defense can't be lowered any further!
+ANGLER BUTTON|["Prototype_1(1910)", "Slow", 0, 0]|HP=3|log=This enemy's Agility can't be lowered any further!
+ANGLER BUTTON|["Prototype_V(1922)", "Guard Bash", 3, 0]|HP=0|log=The Angler falls. The water goes still.
+ANGLER BUTTON|["Prototype_V(1922)", "Heavy Kick", 0, 0]|HP=3|log=You drive a heavy kick home - Angler evades!
+ANGLER BUTTON|["Prototype_V(1922)", "Crushing Haymaker", 0, 0]|HP=3|log=You wind up and crush it - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 0]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 3]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 2, 9]|HP=3|log=Electric Touch shocks the target for 0.  •  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 0]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 3]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 5, 9]|HP=3|log=Electric Touch shocks the target for 0.  •  EVA -1
+PROLOGUE ANGLER: clean
+
+=== opening Cordys: do actual stats, move effects and survivor outcomes remain real ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=120|living=3
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=122|living=3
+PROLOGUE_HIT|move=Guard Bash|damage=9|hit=true|hp=987|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=124|living=3
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=false|hp=10|living=1
+RETALIATION WITNESS|evasion|[{ "hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 30, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=true|hp=10|living=1
+RETALIATION WITNESS|defense|[{ "hit": true, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 0, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=4|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 4, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=1|hit=true|hp=999|effects=["Bleed 2 (3 turns)"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 2, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=["Blindness 2 (3 turns)"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 2, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=9|hit=true|hp=991|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 9, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=5|hit=true|hp=995|effects=["EVA unchanged"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 5, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=0|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=7|ACC=3|DEF=0|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=3|hit=true|hp=997|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=12|ACC=1|DEF=10|EVA=0|[{ "damage": 3, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=3|ACC=0|DEF=10|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=12|ACC=0|DEF=7|EVA=5|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=["Blindness 2 (6 turns)"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=9|ACC=6|DEF=5|EVA=1|[{ "damage": 0, "bleed": 0, "blindness": 2, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=10|hit=true|hp=990|effects=["EVA -5"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=12|ACC=6|DEF=2|EVA=5|[{ "damage": 10, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=2|hit=true|hp=998|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=2|EVA=0|[{ "damage": 2, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE COMBAT: clean
+
+=== opening Cordys: does the skinned actor preserve authored poses and facing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE OCTOPUS: clean
+
+=== opening mix: do cue envelopes preserve user preferences ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE ENVELOPE: clean
+
+=== opening split video: is one decoder retained silently across combat ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SPLIT CINEMATIC: clean
+
+=== opening cinematic edit: is the approved title ending retained without the monologue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE CINEMATIC ASSET: clean
+
+=== opening journey: do real moves reach atomic recovery and ordinary encounters ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+RESTART SAVED|{ "bomb_bot_state": "available", "deep_warning_seen": false, "encounter_source": "random", "lab_state": "locked", "maze_door_state": "locked", "objective_id": "", "octopus_state": "unavailable", "opening_video_seen": true, "prologue_complete": true, "sword_slayer_state": "available", "tethys_state": "locked", "tutorial_complete": false, "zone_id": "shallows" }
+PROLOGUE_PHASE|complete
+RESTART LOADED|slot=918299|{ "zone_id": "shallows", "objective_id": "", "bomb_bot_state": "available", "sword_slayer_state": "available", "lab_state": "locked", "tethys_state": "locked", "maze_door_state": "locked", "octopus_state": "unavailable", "encounter_source": "random", "deep_warning_seen": false, "opening_video_seen": true, "prologue_complete": true, "tutorial_complete": false }
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+PROLOGUE_PHASE|complete
+OPENING JOURNEY: clean
+
+=== opening fallback recovery: do death restart and title load preserve completed play without falsifying video viewing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+RESTART SAVED|{ "bomb_bot_state": "available", "deep_warning_seen": false, "encounter_source": "random", "lab_state": "locked", "maze_door_state": "locked", "objective_id": "", "octopus_state": "unavailable", "opening_video_seen": false, "prologue_complete": true, "sword_slayer_state": "available", "tethys_state": "locked", "tutorial_complete": false, "zone_id": "shallows" }
+PROLOGUE_PHASE|complete
+RESTART LOADED|slot=918299|{ "zone_id": "shallows", "objective_id": "", "bomb_bot_state": "available", "sword_slayer_state": "available", "lab_state": "locked", "tethys_state": "locked", "maze_door_state": "locked", "octopus_state": "unavailable", "encounter_source": "random", "deep_warning_seen": false, "opening_video_seen": false, "prologue_complete": true, "tutorial_complete": false }
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+PROLOGUE_PHASE|complete
+OPENING JOURNEY: clean
+
+=== opening real death: do enemy attacks and actual defeat preserve completed play across Restart and Load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=11|hit=true|hp=985|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=angler|duration=1.5
+RANDOM_COMBAT|enemies=angler
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[0, 1, 0]|enemies=["Angler"]
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+REAL ORDINARY DEATH|actions=7|seconds=33.8000000000002
+RESTART SAVED|{ "bomb_bot_state": "available", "deep_warning_seen": false, "encounter_source": "random", "lab_state": "locked", "maze_door_state": "locked", "objective_id": "", "octopus_state": "unavailable", "opening_video_seen": true, "prologue_complete": true, "sword_slayer_state": "available", "tethys_state": "locked", "tutorial_complete": false, "zone_id": "shallows" }
+PROLOGUE_PHASE|complete
+RESTART LOADED|slot=918299|{ "zone_id": "shallows", "objective_id": "", "bomb_bot_state": "available", "sword_slayer_state": "available", "lab_state": "locked", "tethys_state": "locked", "maze_door_state": "locked", "octopus_state": "unavailable", "encounter_source": "random", "deep_warning_seen": false, "opening_video_seen": true, "prologue_complete": true, "tutorial_complete": false }
+RANDOM_REVEAL|enemies=angler|duration=1.5
+RANDOM_COMBAT|enemies=angler
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 1]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[1, 1, 0]|enemies=["Angler"]
+DEATH ACTION|party=[0, 1, 0]|enemies=["Angler"]
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+REAL ORDINARY DEATH|actions=7|seconds=34.0000000000002
+PROLOGUE_PHASE|complete
+OPENING JOURNEY: clean
+
+=== opening training continuity: does voluntary Skip preserve completion through actual later death ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=9|hit=true|hp=987|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=frilled_shark,angler|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark,angler
+DEATH ACTION|party=[1, 1, 1]|enemies=["Frilled Shark 1", "Angler 2"]
+DEATH ACTION|party=[0, 1, 1]|enemies=["Frilled Shark 1", "Angler 2"]
+DEATH ACTION|party=[0, 0, 1]|enemies=["Frilled Shark 1", "Angler 2"]
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+REAL ORDINARY DEATH|actions=3|seconds=14.7
+RESTART SAVED|{ "bomb_bot_state": "available", "deep_warning_seen": false, "encounter_source": "random", "lab_state": "locked", "maze_door_state": "locked", "objective_id": "", "octopus_state": "unavailable", "opening_video_seen": true, "prologue_complete": true, "sword_slayer_state": "available", "tethys_state": "locked", "tutorial_complete": true, "zone_id": "shallows" }
+PROLOGUE_PHASE|complete
+RESTART LOADED|slot=918299|{ "zone_id": "shallows", "objective_id": "", "bomb_bot_state": "available", "sword_slayer_state": "available", "lab_state": "locked", "tethys_state": "locked", "maze_door_state": "locked", "octopus_state": "unavailable", "encounter_source": "random", "deep_warning_seen": false, "opening_video_seen": true, "prologue_complete": true, "tutorial_complete": true }
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist
+DEATH ACTION|party=[0, 1, 1]|enemies=["Swordfish Duelist"]
+DEATH ACTION|party=[0, 0, 1]|enemies=["Swordfish Duelist"]
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+REAL ORDINARY DEATH|actions=2|seconds=11.1
+PROLOGUE_PHASE|complete
+OPENING JOURNEY: clean
+
+=== opening save denial: does failed recovery retain the previous checkpoint and allow Retry Save ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+CHECKPOINT_SAVE_FAILED|slot=918299|error=12
+FAILED CHECKPOINT|{ "bomb_bot_state": "available", "deep_warning_seen": false, "encounter_source": "random", "lab_state": "locked", "maze_door_state": "locked", "objective_id": "tutorial", "octopus_state": "unavailable", "opening_video_seen": false, "prologue_complete": false, "sword_slayer_state": "available", "tethys_state": "locked", "tutorial_complete": false, "zone_id": "shallows" }
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=angler|duration=1.5
+RANDOM_COMBAT|enemies=angler
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+RESTART SAVED|{ "bomb_bot_state": "available", "deep_warning_seen": false, "encounter_source": "random", "lab_state": "locked", "maze_door_state": "locked", "objective_id": "", "octopus_state": "unavailable", "opening_video_seen": true, "prologue_complete": true, "sword_slayer_state": "available", "tethys_state": "locked", "tutorial_complete": false, "zone_id": "shallows" }
+PROLOGUE_PHASE|complete
+RESTART LOADED|slot=918299|{ "zone_id": "shallows", "objective_id": "", "bomb_bot_state": "available", "sword_slayer_state": "available", "lab_state": "locked", "tethys_state": "locked", "maze_door_state": "locked", "octopus_state": "unavailable", "encounter_source": "random", "deep_warning_seen": false, "opening_video_seen": true, "prologue_complete": true, "tutorial_complete": false }
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark
+CHECKPOINT_GAME_OVER|slot=918299|complete=true
+PROLOGUE_PHASE|complete
+OPENING JOURNEY: clean
+
+=== checkpoint invalid load: do missing and malformed saves retain an actionable title instead of replaying opening ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+PROLOGUE_PHASE|complete
+CHECKPOINT LOAD FAILURES: clean
+
+=== checkpoint slot switch: does denied replacement retain the active save and retry correctly ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+CHECKPOINT SLOT SWITCH: clean
+
+=== optional training: do ignore, Retry, Return and Skip retain normal control ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+OPTIONAL TRAINING: clean
+
+=== opening exploration: do Sonar/encounters enable at recovery and saved manual choices survive Load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=1
+PROLOGUE_PHASE|spawn_exploration
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+PROLOGUE_PHASE|complete
+OPENING EXPLORATION DEFAULTS: clean
+
+=== menu audio comfort: is hover brief, rate-limited and subordinate to confirmations ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MENU HOVER MEASURE|audible_span=0.000|peak_db=-120.00|samples=20480
+MENU HOVER PREFERENCE|volume=0.5|muted=false|peak=0.000000
+MENU HOVER PREFERENCE|volume=1.0|muted=true|peak=0.000000
+MENU HOVER PREFERENCE|volume=0.0|muted=false|peak=0.000000
+MENU AUDIO COMFORT: clean
+
+=== tutorial actual win: does menu replacement remain error-free and victory expose Continue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+WIN_PROBE|log=The enemies back off, beaten.|caption=You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|await=true|paused=false
+TUTORIAL WIN HANDOFF: clean
+
+=== tutorial full lesson: do all five real guided moves and a real victory finish without infinite tweens ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order; the log above your menu says what just happened. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|0|Maxilani's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|0|Maxilani's turn.|A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|Electric Touch's own power is 0. This raw power number is shown in yellow at the top-right of its attack menu button before any stats are added. Add Maxilani's Strength, then subtract Angler's Defense (1-1 = 0), and this attack will deal 1 damage.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Click the highlighted Angler to attack.|false
+LESSON|0|Electric Touch shocks the target for 1.  •  EVA -1|HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Electric Touch shocks the target for 1.  •  EVA -1|HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|1|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|1|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|1|Musashi's turn.|Precise Tap temporarily boosts Musashi's Accuracy stat for this one turn, making the attack much harder to dodge - that's why its ACC number is shown in [color=66e666]green[/color], with the white (+X) next to it showing the increase.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|2|You land a precise tap for 3.|Click the highlighted Angler to attack.|false
+LESSON|2|Bucky's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|2|Bucky's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|2|Bucky's turn.|Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|2|Bucky's turn.|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Angler uses Bite: Musashi -1.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|3|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|3|Musashi's turn.|Weaken deals no damage at all - its power is 0, so there's nothing to subtract from Angler's HP. What it does instead is lower their Defense, which is why its DEF number is shown in [color=e65959]red[/color], with the white (-2) next to it. Some moves only ever affect an enemy's stats like this, with no damage of their own, but they're worth using to weaken enemies for greater party hits.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|3|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|4|This enemy's Defense can't be lowered any further!  •  Musashi bleeds for 2.|Click the highlighted Angler to attack.|false
+LESSON|4|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|4|Maxilani's turn.|Hover over the highlighted button to see what Flash Blast does.|false
+LESSON|4|Maxilani's turn.|Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, which lowers Agility, Accuracy, and Defense all by the same amount at once. That's why the enemy's ACC and DEF numbers are both shown in [color=e65959]red[/color] here: lower Accuracy means their own attacks miss more, and lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three, for as many turns as Maxilani's own Accuracy. Blindness is only one of several status conditions moves can inflict - hover over any attack that names one on its own button (like Scuba Stabbing's Bleed) to see exactly what it does, or find full details on all of them, including ones not shown in this fight, from the Combat Help tab of the Esc menu out in the world.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|4|Maxilani's turn.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats - instead, you earn Spell Points, which can be used to gain new abilities by defeating enemies in battles. More on Spell Points and spell trees later.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Flash Blast: Angler affected.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Bucky's turn.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 9.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 9.|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|5|You bash it with your guard for 9.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Angler uses Bite: Musashi QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Maxilani's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Electric Touch shocks the target for 1.  •  EVA unchanged|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Musashi's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|You land a precise tap for 3.  •  Musashi bleeds for 2.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+FULL_LESSON_RESULT|["won"]
+
+=== tutorial world win: does actual optional beacon entry and victory restore movement and persist both milestones ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+TRAINING_ENTRY|position=(0.0, 2.0, 6.0)|beam=(0.0, 6.0, 10.0)
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order; the log above your menu says what just happened. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|0|Maxilani's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|0|Maxilani's turn.|A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|Electric Touch's own power is 0. This raw power number is shown in yellow at the top-right of its attack menu button before any stats are added. Add Maxilani's Strength, then subtract Angler's Defense (1-1 = 0), and this attack will deal 1 damage.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Click the highlighted Angler to attack.|false
+LESSON|0|Electric Touch shocks the target for 1.  •  EVA -1|HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Electric Touch shocks the target for 1.  •  EVA -1|HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|1|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|1|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|1|Musashi's turn.|Precise Tap temporarily boosts Musashi's Accuracy stat for this one turn, making the attack much harder to dodge - that's why its ACC number is shown in [color=66e666]green[/color], with the white (+X) next to it showing the increase.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|2|You land a precise tap for 3.|Click the highlighted Angler to attack.|false
+LESSON|2|Bucky's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|2|Bucky's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|2|Bucky's turn.|Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|2|Bucky's turn.|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Angler uses Bite: Maxilani QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|3|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|3|Musashi's turn.|Weaken deals no damage at all - its power is 0, so there's nothing to subtract from Angler's HP. What it does instead is lower their Defense, which is why its DEF number is shown in [color=e65959]red[/color], with the white (-2) next to it. Some moves only ever affect an enemy's stats like this, with no damage of their own, but they're worth using to weaken enemies for greater party hits.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|3|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|4|This enemy's Defense can't be lowered any further!|Click the highlighted Angler to attack.|false
+LESSON|4|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|4|Maxilani's turn.|Hover over the highlighted button to see what Flash Blast does.|false
+LESSON|4|Maxilani's turn.|Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, which lowers Agility, Accuracy, and Defense all by the same amount at once. That's why the enemy's ACC and DEF numbers are both shown in [color=e65959]red[/color] here: lower Accuracy means their own attacks miss more, and lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three, for as many turns as Maxilani's own Accuracy. Blindness is only one of several status conditions moves can inflict - hover over any attack that names one on its own button (like Scuba Stabbing's Bleed) to see exactly what it does, or find full details on all of them, including ones not shown in this fight, from the Combat Help tab of the Esc menu out in the world.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|4|Maxilani's turn.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats - instead, you earn Spell Points, which can be used to gain new abilities by defeating enemies in battles. More on Spell Points and spell trees later.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Flash Blast: Angler affected.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Bucky's turn.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 11.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 11.|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|5|You bash it with your guard for 11.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Angler uses Bite: Bucky QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Maxilani's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Electric Touch shocks the target for 1.  •  EVA unchanged|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Musashi's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|You land a precise tap for 3.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+FULL_LESSON_RESULT|["won"]
+
+=== clips: does every clip the game asks for exist ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+Staff_Diver          Scuba_Rigged.fbx                         59 clips
+   motion idle    Scuba_(Idle)1(Loop)                1.65s
+   motion swim    Scuba_(Swimming1)(Mid)(Loop)       0.98s
+   motion swim_start Scuba_(Swimming1)(Start)           0.65s
+   motion swim_end Scuba_(Swimming1)(End)             0.98s
+   motion hurt    Scuba_(Damaged1)Weak_Hit           1.65s
+   motion hurt_bad Scuba_(Damaged2)Heavy_Hit          1.48s
+   motion down    Scuba_(Faint)(Mid)(Loop)           0.98s
+   motion down_start Scuba_(Faint)(Start)               1.32s
+   motion win     Scuba_(Win)(Mid2)(Loop)            2.17s
+   move Electric Touch Scuba_(Attack)Eletric1             1.98s
+   move Scuba Stabbing Scuba_(Attack)Stab1                1.15s
+   move Flash Blast Scuba_(Attack)Flash1               1.65s
+   move Multiple Knee Combo Scuba_(Attack)Double_Knee1         1.48s
+   move Axe Kick  Scuba_(Attack)Axe_Kick1            1.72s
+Prototype_1(1910)    Prototype1_Rigged.fbx                    59 clips
+   motion idle    Proto1_(Idle1)                     0.82s
+   motion swim    Proto1_(Swimming1)(Mid)(Loop)      0.73s
+   motion swim_start Proto1_(Swimming1)(Start)          0.32s
+   motion swim_end Proto1_(Swimming1)(End)            1.32s
+   motion hurt    Proto1_(Damaged1)Weak_Hit          0.65s
+   motion hurt_bad Proto1_(Damaged2)Heavy_Hit         2.32s
+   motion down    Proto1_(Faint)(Mid)(Loop)          0.98s
+   motion down_start Proto1_(Faint)(Start)              1.32s
+   motion win     Proto1_(Win)(Mid)(Loop)            0.98s
+   move Precise Tap Proto1_(Attack)Palm_Strike         1.40s
+   move Weaken    Proto1_(Attack)DualPalm            1.65s
+   move Slow      Proto1_(Attack)Axe_Kick            1.98s
+Prototype_V(1922)    PrototypeV_Rigged.fbx                    59 clips
+   motion idle    Proto5_(Idle)(Loop)                1.65s
+   motion swim    Proto5_(Swimming1)(Mid)(Loop)      0.98s
+   motion swim_start Proto5_(Swimming1)(Start)          0.48s
+   motion swim_end Proto5_(Swimming1)(End)            0.98s
+   motion hurt    Proto5_(Damaged1)Weak_Hit          0.32s
+   motion hurt_bad Proto5_(Damaged2)Strong_Hit        0.98s
+   motion down    Proto5_(Faint)(Mid)(Loop)          0.65s
+   motion down_start Proto5_(Faint)(Start)              1.98s
+   motion win     Proto5_(Thumbs_P)(Mid)(Loop)       0.65s
+   move Guard Bash Proto5_(Attack)BodyPress           2.15s
+   move Heavy Kick Proto5_(Attack)Slam                1.98s
+   move Crushing Haymaker Proto5_(Attack)Hammer              2.32s
+CLIPS: clean
+
+=== animations: does every rig change state correctly ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+Staff_Diver          idle -> start -> loop -> end -> idle; light + heavy reactions
+Prototype_1(1910)    idle -> start -> loop -> end -> idle; light + heavy reactions
+Prototype_V(1922)    idle -> start -> loop -> end -> idle; light + heavy reactions
+ANIMATIONS: clean
+
+=== swim: do they move, and animate while moving ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+mouse look           yaw changed 0.60 rad, camera orbited 3.77 m
+Staff_Diver          moved  2.78 m, now at (1.3, 2.9, -2.3), pitch +0.21 rad  (active)
+                     playing rig|Scuba_(Swimming1)(Mid)(Loop)
+Prototype_1(1910)    moved  0.00 m, now at (-3.6, 2.2, -3.0), pitch +0.00 rad  (should hold still)
+                     playing rig_001|Proto1_(Idle1)
+Prototype_V(1922)    moved  0.00 m, now at (3.6, 2.4, -3.0), pitch +0.00 rad  (should hold still)
+                     playing rig_002|Proto5_(Idle)(Loop)
+camera               6.61 m from the player
+clips played, in order:
+   Scuba_(Idle)1(Loop)
+   Scuba_(Swimming1)(Start)
+   Scuba_(Swimming1)(Mid)(Loop)
+   Scuba_(Swimming1)(End)
+   Scuba_(Idle)1(Loop)
+SWIM: clean
+
+=== current: can full upstream input cross the flow ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+CURRENT BARRIER: max upstream z -2.500, final z -4.437
+CURRENT BARRIER: clean
+
+=== Glassgoat combat: do the authored V2 rules hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+GLASSGOAT COMBAT: clean
+
+=== Glassgoat follow-up: do roster and result-first presentation match Discord ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+GLASSGOAT DISCORD FOLLOW-UP: clean
+
+=== combat Quick Read: do result choices, context, and all-target previews agree ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT QUICK READ: clean
+
+=== combat content: do timing and actor lifetime contracts hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT CONTENT RECONCILIATION: clean
+
+=== Tethys boss: does Glassgoat's final boss import and fight separately ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TETHYS BOSS: clean — 13 distinct character motions deform a 311-bone skinned rig; six attacks production-called; four base/helper takes excluded
+
+=== effect feedback: report actual EVA changes without inventing progress at zero or on a miss ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT EFFECT FEEDBACK: 20 actual-pool cases clean
+
+=== heavy payoff: can normal and earned heavy moves hit exhausted EVA, still miss unprepared EVA and spend real Oxygen ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+HEAVY PAYOFF|move=Heavy Slam|eva=0|damage=5|spent=0|oxygen=92.0
+HEAVY PAYOFF|move=Heavy Slam|eva=2|damage=0|spent=1|oxygen=92.0
+HEAVY PAYOFF|move=Crushing Haymaker|eva=0|damage=6|spent=0|oxygen=84.0
+HEAVY PAYOFF|move=Crushing Haymaker|eva=2|damage=0|spent=1|oxygen=84.0
+
+=== lab attainable victory: do three real earned-kit policies win through actual Battle outcomes ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LAB REAL FIGHT|level=2|policy=accessible|seed=62000|result=won|actions=11|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62001|result=won|actions=12|boss_hp=0|min_party_hp=13|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62002|result=won|actions=11|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62003|result=won|actions=11|boss_hp=0|min_party_hp=17|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62004|result=won|actions=12|boss_hp=0|min_party_hp=12|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62005|result=won|actions=11|boss_hp=0|min_party_hp=17|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62006|result=won|actions=11|boss_hp=0|min_party_hp=17|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62007|result=won|actions=12|boss_hp=0|min_party_hp=12|min_living=3|min_oxygen=68.0
+LAB REAL BALANCE|level=2|policy=accessible|wins=8/8
+LAB REAL FIGHT|level=2|policy=skilled|seed=62000|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62001|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62002|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62003|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62004|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62005|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62006|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62007|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL BALANCE|level=2|policy=skilled|wins=8/8
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62000|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62001|result=won|actions=10|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=76.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62002|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62003|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62004|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62005|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62006|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62007|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL BALANCE|level=2|policy=earned_heavy|wins=8/8
+LAB REAL FIGHT|level=3|policy=accessible|seed=62000|result=won|actions=11|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62001|result=won|actions=12|boss_hp=0|min_party_hp=13|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62002|result=won|actions=11|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62003|result=won|actions=11|boss_hp=0|min_party_hp=17|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62004|result=won|actions=12|boss_hp=0|min_party_hp=12|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62005|result=won|actions=11|boss_hp=0|min_party_hp=17|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62006|result=won|actions=11|boss_hp=0|min_party_hp=17|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62007|result=won|actions=12|boss_hp=0|min_party_hp=12|min_living=3|min_oxygen=68.0
+LAB REAL BALANCE|level=3|policy=accessible|wins=8/8
+LAB REAL FIGHT|level=3|policy=skilled|seed=62000|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62001|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62002|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62003|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62004|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62005|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62006|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62007|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL BALANCE|level=3|policy=skilled|wins=8/8
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62000|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62001|result=won|actions=10|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=76.0
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62002|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62003|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62004|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62005|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62006|result=won|actions=12|boss_hp=0|min_party_hp=25|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62007|result=won|actions=11|boss_hp=0|min_party_hp=27|min_living=3|min_oxygen=68.0
+LAB REAL BALANCE|level=3|policy=earned_heavy|wins=8/8
+LAB REAL BALANCE: clean
+
+=== lab live route: do real guard victories, full film, Continue and boss victory carry rewards to level 3 ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+LAB LIVE ROUTE|fight=bomb_bot|result=won|actions=6
+LAB CARRIED PARTY|after=bomb_bot|name=Staff_Diver|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB CARRIED PARTY|after=bomb_bot|name=Prototype_1(1910)|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB CARRIED PARTY|after=bomb_bot|name=Prototype_V(1922)|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB LIVE ROUTE|fight=sword_slayer|result=won|actions=5
+LAB CARRIED PARTY|after=sword_slayer|name=Staff_Diver|level=2|xp=2|hp=10|o2=100.0|spells=["swift_strike"]
+LAB CARRIED PARTY|after=sword_slayer|name=Prototype_1(1910)|level=2|xp=2|hp=10|o2=100.0|spells=["precise_jab"]
+LAB CARRIED PARTY|after=sword_slayer|name=Prototype_V(1922)|level=2|xp=2|hp=10|o2=100.0|spells=["heavy_slam"]
+LAB LIVE ROUTE|fight=lab|result=won|actions=11
+LAB CARRIED PARTY|after=lab|name=Staff_Diver|level=3|xp=4|hp=10|o2=100.0|spells=["swift_strike", "current_snare"]
+LAB CARRIED PARTY|after=lab|name=Prototype_1(1910)|level=3|xp=4|hp=10|o2=100.0|spells=["precise_jab", "weaken"]
+LAB CARRIED PARTY|after=lab|name=Prototype_V(1922)|level=3|xp=4|hp=10|o2=100.0|spells=["heavy_slam", "mending_current"]
+LAB LIVE ROUTE: clean
+
+=== deep-zone assets: do selected FBXs import with visible geometry and authored clips ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+bomb_bot       meshes=1 materials=1 bounds=(11.46958, 3.923139, 3.439871) clips=9
+sword_slayer   meshes=1 materials=1 bounds=(2.039622, 2.400931, 5.853566) clips=10
+broken_office  meshes=15 materials=16 bounds=(32.59685, 26.45547, 18.99701) clips=0
+deep_rocks     meshes=6 materials=6 bounds=(4.645249, 2.441653, 4.75434) clips=0
+DEEP ZONE ASSETS: clean
+
+=== lab door asset: is Glassgoat's separated door the exact visible entrance source ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LAB DOOR ASSET: clean
+
+=== lab exterior: does the rock shell conceal the office while preserving the entrance ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+lab door bounds  position=(176.8636, 0.0, 13.84894) size=(3.093933, 7.607401, 4.302129)
+LAB EXTERIOR: clean
+
+=== deep-zone environment: are approved scenery sources visibly and safely placed ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+beach palm source bounds  position=(-0.060026, -0.063503, -0.01) size=(0.120052, 0.127005, 0.18119)
+PROLOGUE_PHASE|complete
+production palm EntryPalmNorth  position=(69.32386, 0.0, -2.782476) size=(5.352287, 6.885221, 5.564953)
+production palm EntryPalmSouth  position=(78.22695, 0.0, 23.19134) size=(7.546097, 7.972361, 7.617331)
+production palm HubPalmNorth  position=(89.30299, 0.0, -6.706974) size=(5.394028, 5.616891, 5.413949)
+production palm HubPalmSouth  position=(96.05273, 0.0, 31.07847) size=(5.894554, 6.160461, 5.843065)
+production palm MazePalmOuter  position=(98.04955, 0.0, -19.90048) size=(5.900909, 6.341651, 5.80096)
+production palm MazePalmGate  position=(115.8116, 0.0, -51.2753) size=(6.376892, 7.428791, 6.550591)
+DEEP ZONE ENVIRONMENT: clean
+
+=== deep-zone blockers: do authored blocker actors use their real models, moves, and clips ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+PROLOGUE_PHASE|complete
+PROLOGUE_PHASE|complete
+CHECKPOINT_GAME_OVER|slot=-1|complete=true
+PROLOGUE_PHASE|complete
+DEEP ZONE BLOCKERS: clean
+
+=== deep-zone blocker balance: are both mandatory fights approachable and meaningfully tactical ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+casual:bomb_bot          100.0% wins   2.2 rounds   4.0 HP lost
+casual:sword_slayer       98.8% wins   2.1 rounds   9.1 HP lost
+casual:sequence           99.2% wins   4.3 rounds  13.1 HP lost
+skilled:bomb_bot         100.0% wins   1.0 rounds   0.0 HP lost
+skilled:sword_slayer     100.0% wins   1.0 rounds   4.5 HP lost
+skilled:sequence         100.0% wins   2.0 rounds   4.4 HP lost
+DEEP ZONE BLOCKER BALANCE: clean
+
+=== deep-zone Bomb Bot: does the full production fight survive attacks, victory, and world return ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+Bomb Bot result=won presses=18 enemy_turn_frames=512 attacks=["slingpunch"] all_animations=["rig|Bombot(Damaged)", "rig|Bombot(Idle)(Loop)", "rig|Bombot(Attack)SlingPunch", "rig|Bombot(Death)"]
+BOMB BOT BATTLE: clean
+
+=== deep-zone progression: does a real blocker victory level, learn, equip, and expose attacks ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+DEEP ZONE PROGRESSION: clean
+
+=== audio assets: do canonical Phoenix tracks import with reviewed duration and digest ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+AUDIO ASSETS: clean
+
+=== combat SFX assets: do reviewed derivatives import without raw reels ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT SFX INTAKE: clean
+
+=== combat SFX playback: do production combat results trigger overlap-safe audible feedback ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT SFX PLAYBACK: clean
+
+=== combat feedback: are V2 results and target stats visible ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT FEEDBACK: clean
+
+=== defeated overhead: does dead UI leave with its actor ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+DEFEATED OVERHEAD: clean
+
+=== balance: do casual and skilled policies clear the artifact route ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+casual   98.3% wins,  1.8 rounds,  4.1 HP lost  (1 enemy 93/93, 1.5 r, 2 enemy 25/27, 3.2 r, 3 enemy 0/0, 0.0 r)
+skilled 100.0% wins,  1.2 rounds,  1.7 HP lost  (1 enemy 93/93, 1.0 r, 2 enemy 27/27, 1.9 r, 3 enemy 0/0, 0.0 r)
+casual  route  92.1% reach trench | 1.9 random + 1.9 guardian fights/run | 4.2 enemies/run | successes: 3.9 battles, 28.4 HP, level 1.9
+casual  route terminal stages: guardian:trench:swordfish_duelist=6, random:shallows:angler+swordfish_duelist=1, random:shallows:swordfish_duelist+swordfish_duelist=4, random:trench:angler+swordfish_duelist=2, random:trench:frilled_shark+swordfish_duelist=1, random:trench:swordfish_duelist=3, random:trench:swordfish_duelist+swordfish_duelist=2, success=221
+skilled route 100.0% reach trench | 2.0 random + 2.0 guardian fights/run | 4.3 enemies/run | successes: 4.0 battles, 29.5 HP, level 1.9
+skilled route terminal stages: success=240
+BALANCE: clean
+
+=== opening packs: are first-route formation probabilities intentional ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+opening pack tuning  solo-majority opening and level-3 three-pack clean
+
+=== sites: are item locations unmarked and physically reachable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+SITES: clean
+
+=== encounters: does a fight start from anywhere ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+encounter rate: a check every 12 m on average, 50% of them bite, so a fight every 24 m
+current_pearl  at (-24.0, 2.6, -12.0): 0 overlap(s), approach clear
+reef_plate     at (12.0, 2.6, -42.0): 0 overlap(s), approach clear
+attack_up      at (-45.0, 2.6, 15.0): 0 overlap(s), approach clear
+defense_up     at (-15.0, 2.6, -44.0): 0 overlap(s), approach clear
+RANDOM_REVEAL|enemies=angler|duration=1.5
+RANDOM_COMBAT|enemies=angler
+open water                   1 battle(s), reward none
+the current_pearl guardian   1 battle(s), reward current_pearl
+the reef_plate guardian      1 battle(s), reward reef_plate
+the attack_up guardian       1 battle(s), reward attack_up
+the defense_up guardian      1 battle(s), reward defense_up
+ENCOUNTERS: clean
+
+=== guardian zones: does the artifact encounter stay distinct ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+guardian encounter exclusion  random rolls yield to the real guardian
+
+=== guardian/item integration: do claimed sites stay retired after save/load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+GUARDIAN ITEM INTEGRATION: clean
+
+=== intro beam: does entering its visible column start tutorial combat ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+intro beam           visible column started one tutorial battle
+
+=== intro forward entry: does default forward swimming reach the visible tutorial target ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+tutorial forward entry  production forward swim reached the visible tutorial beam
+
+=== open water: can a diver pass beside the visible entrance rocks ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+OPEN WATER: horizontal and vertical traversal are free of invisible world-spanning collision
+
+=== legacy guidance: does the plate puzzle avoid competing with RouteState ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+LEGACY GUIDANCE: puzzle opened without competing with the active route objective
+
+=== tutorial QTE: does the first Angler swing show and accept the timing dodge ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial qte          forced Angler bite showed and accepted the live timing dodge
+
+=== tutorial exit: does a completed lesson win and return to world ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+tutorial exit         completed lesson returned to the world clean
+
+=== tutorial continue: can mouse users advance a live caption ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial continue button   mouse click advanced the live caption wait state
+
+=== input aliases: do Swap and narration accept additive controls without losing old keys ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+INPUT ALIASES: Swap and tutorial accept additive controls without dropping legacy keys
+
+=== tutorial onboarding: does combat hand off world controls safely ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial ability onboarding  completed lesson opened and dismissed the real ability carousel
+
+=== tutorial onboarding review route: can a reviewer inspect its actual UI ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial onboarding route  Combat Help opens the guide without stacked overlays
+
+=== tutorial loss: can a player retry or safely exit to world ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial loss choice   retry and exit both behave correctly
+
+=== tutorial skip: does explicit skip restore the playable world ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial skip          returned to the world clean
+
+=== menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MENUS / SPELLS / TITLE: clean
+
+=== route state: does authored progression round-trip through its public contract ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_video
+ROUTE STATE: clean
+
+=== deep-zone route: is the expanded dark route physically supported and state-driven ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+FINDING  ENCOUNTER POLICY: production World cannot start a random fight in open deep water
+DEEP ZONE ROUTE: 1 finding(s)
+
+=== deep-zone guidance: does water deepen continuously while the lab remains the main objective ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+DEEP ZONE GUIDANCE: clean
+
+=== local world guidance: do lab and Bucky wall hints follow location, active diver and real wall destruction ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|complete
+LOCAL WORLD GUIDANCE: clean
+
+=== lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+LAB TETHYS ROUTE: clean
+
+=== deep-zone maze entry: does normal progression reach the current maze without a query flag ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+DEEP ZONE MAZE TRANSITION: clean
+
+=== audio manager: does paired music hand off without overlap or stacking ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+AUDIO MANAGER: clean
+
+=== audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+CHECKPOINT_GAME_OVER|slot=918281|complete=false
+AUDIO LIFECYCLE: clean
+
+=== audio settings UI: can players independently persist music and SFX volume/mute ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+AUDIO SETTINGS UI: clean
+
+=== persistence: do inventory and world rewards round-trip through a save ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|spawn_exploration
+restart rollback       inventory + rock restored atomically
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|spawn_exploration
+pending reward         source -> orb -> inventory exactly once
+PERSISTENCE: clean
+
+=== environmental oxygen: can an empty tank still complete the route ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+environmental oxygen  zero-O2 abilities and real puzzle completion clean
+
+=== special encounters: do solo loss/win contracts hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+SPECIAL ENCOUNTERS: clean
+
+=== special dispatch: do swap and shockwave launch and restore ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SPECIAL DISPATCH: clean
+
+=== grapple intercept: can aimed shots clear every projectile ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+GRAPPLE INTERCEPT: [6, 6], impacts 0
+GRAPPLE INTERCEPT: clean
+
+=== grapple battle: do HP, camera, and actor contracts hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+GRAPPLE BATTLE: result [4, 6], wave 4=true, stage depth=true, moves toward diver=true, targets aimable=true, widest radius 1.75, closest wave 3.74, timeout impacts 1, timeout damage 4, HP 10 -> 6, camera true, actor visible true
+GRAPPLE BATTLE: clean
+
+=== world grapple aim: is the first-person target unobstructed and safely restored ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+PASS: world_grapple_aim: fixture selects the aimed Grapple diver
+PASS: world_grapple_aim: Musashi begins visible in third-person world play
+PASS: world_grapple_aim: production route owns a Whirlpool hazard
+PASS: world_grapple_aim: Whirlpool has a player-visible hazard surface
+PASS: world_grapple_aim: Whirlpool visual stays floor-aligned instead of forming an opaque wall across the required target line
+PASS: world_grapple_aim: production route owns three pressure plates
+PASS: world_grapple_aim: pressure plate 1 has a visible surface
+PASS: world_grapple_aim: pressure plate 1 visual lies on its real floor trigger instead of standing upright on the wall
+PASS: world_grapple_aim: pressure plate 2 has a visible surface
+PASS: world_grapple_aim: pressure plate 2 visual lies on its real floor trigger instead of standing upright on the wall
+PASS: world_grapple_aim: pressure plate 3 has a visible surface
+PASS: world_grapple_aim: pressure plate 3 visual lies on its real floor trigger instead of standing upright on the wall
+PASS: world_grapple_aim: aim reticle owns distance-aware sizing — guards against a close wall filling the whole first-person view
+PASS: world_grapple_aim: a 10 cm ray hit keeps the gray miss reticle below 5% world scale
+PASS: world_grapple_aim: a normal route target retains the authored full-size reticle
+PASS: world_grapple_aim: Grapple enters first-person aim mode
+PASS: world_grapple_aim: entering aim hides the active diver mesh — guards against the body covering the crosshair and far anchor
+PASS: world_grapple_aim: cancel exits aim mode
+PASS: world_grapple_aim: cancel restores the active diver mesh — guards against an invisible player after backing out
+PASS: world_grapple_aim: firing exits aim mode
+PASS: world_grapple_aim: firing restores the active diver mesh — guards against an invisible player after a grapple attempt
+WORLD GRAPPLE AIM: clean
+
+=== imported enemy presentation: are bounds and idle behavior durable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+IMPORTED ENEMY PRESENTATION: bounded geometry and durable idle are clean
+
+=== maze: do both walls rotate 90 degrees and meet their targets ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+mid-swing pivot radius errors 0.0000 / 0.0000, turns 44.58 / 44.58
+turns 90.00 / 90.00, endpoint gaps 0.0000 / 0.0000, parallel 1.00000 / 1.00000
+CSGBox3D6 physical gaps outer 0.0000 / CSGBox3D-side 18.4080
+CSGBox3D6/7 axis 1.00000, longitudinal stagger 0.0000, clear lane 6.2005
+MAZE ROTATION: clean
+
+=== maze traversal: can the player cross the opened CSGBox3D6/7 passage ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE TRAVERSAL: clean
+
+=== maze completion: can a player reach and recover the final relic ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE COMPLETION: clean
+
+=== maze minimap: do walls and live currents match the navigation overlay ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE MINIMAP: clean
+
+=== maze review route: does the direct playtest link enter MazeLevel cleanly ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE REVIEW ROUTE: clean
+
+=== title: is cold launch readable and exclusive ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+title flow            first-run, main, new slots, and load slots clean
+
+=== title audio: do Hover, Click, and Start Game match their exact menu interactions ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TITLE AUDIO: clean
+
+=== Octopus intake: is the deferred visible candidate structurally characterized ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OCTOPUS ASSET INTAKE: clean
+
+=== Octopus cutscene intake: is the deferred browser media candidate validated ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OCTOPUS CUTSCENE INTAKE: clean
+
+=== ability popup video: are tutorial clips playing and contained ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+VIDEO-POPUP: clean
+
+=== tutorial camera handoff: does the post-fight modal release mouse look ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+TUTORIAL CAMERA HANDOFF: clean
+
+=== merge readiness: is defeat exclusive and identity consistent ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+CHECKPOINT_GAME_OVER|slot=-1|complete=false
+PR54 merge readiness  defeat and identities clean
+
+=== fight: play one to the end and come back ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|spawn_exploration
+result       won after 7 party turns, 22 button presses, 27s wall clock
+back in the world: yes
+Staff_Diver          1 attack clip(s), 0 hit reaction(s): rig|Scuba_(Attack)Eletric1
+Prototype_1(1910)    1 attack clip(s), 0 hit reaction(s): rig_001|Proto1_(Attack)Palm_Strike
+Prototype_V(1922)    1 attack clip(s), 1 hit reaction(s): rig_002|Proto5_(Attack)BodyPress
+backed out of the move menu: yes, out of the target picker: yes
+aim: 6 swing samples checked
+names on screen: Maxilani, Musashi, Bucky, Frilled Shark 1, Swordfish Duelist 2
+FIGHT: clean
+
+=== opening discoverability 1280x720: do real nearby crystals, training text and both guardians remain visible/usable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|complete
+FINDING OPEN-046 close-camera fixture did not actually test any crystal
+OPENING DISCOVERABILITY: 1 findings
+
+=== opening discoverability 720x480: do real nearby crystals, training text and both guardians remain visible/usable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|complete
+FINDING GUARD-03 sword_slayer silhouette hidden behind diver on centreline approach
+FINDING OPEN-046 close-camera fixture did not actually test any crystal
+OPENING DISCOVERABILITY: 2 findings
+
+=== opening discoverability 720x900: do real nearby crystals, training text and both guardians remain visible/usable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|complete
+FINDING OPEN-046 close-camera fixture did not actually test any crystal
+OPENING DISCOVERABILITY: 1 findings
+
+=== recovery UI 1280x720: do actual saving/retry/Continue clicks and responsive copy remain correct ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+RECOVERY UI|saving|viewport=(1280.0, 720.0)|button=[P: (528.0, 422.0), S: (224.0, 52.0)]|clicks=0
+RECOVERY UI|retry|viewport=(1280.0, 720.0)|button=[P: (528.0, 455.0), S: (224.0, 52.0)]|clicks=1
+RECOVERY UI|ready|viewport=(1280.0, 720.0)|button=[P: (528.0, 422.0), S: (224.0, 52.0)]|clicks=1
+
+=== recovery UI 720x480: do actual saving/retry/Continue clicks and responsive copy remain correct ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+RECOVERY UI|saving|viewport=(720.0, 480.0)|button=[P: (248.0, 302.0), S: (224.0, 52.0)]|clicks=0
+RECOVERY UI|retry|viewport=(720.0, 480.0)|button=[P: (248.0, 335.0), S: (224.0, 52.0)]|clicks=1
+RECOVERY UI|ready|viewport=(720.0, 480.0)|button=[P: (248.0, 302.0), S: (224.0, 52.0)]|clicks=1
+
+=== recovery UI 720x900: do actual saving/retry/Continue clicks and responsive copy remain correct ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+RECOVERY UI|saving|viewport=(720.0, 900.0)|button=[P: (248.0, 512.0), S: (224.0, 52.0)]|clicks=0
+RECOVERY UI|retry|viewport=(720.0, 900.0)|button=[P: (248.0, 545.0), S: (224.0, 52.0)]|clicks=1
+RECOVERY UI|ready|viewport=(720.0, 900.0)|button=[P: (248.0, 512.0), S: (224.0, 52.0)]|clicks=1
+
+=== recovery UI 360x640: do actual saving/retry/Continue clicks and responsive copy remain correct ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+RECOVERY UI|saving|viewport=(360.0, 640.0)|button=[P: (68.0, 393.0), S: (224.0, 52.0)]|clicks=0
+RECOVERY UI|retry|viewport=(360.0, 640.0)|button=[P: (68.0, 440.0), S: (224.0, 52.0)]|clicks=1
+RECOVERY UI|ready|viewport=(360.0, 640.0)|button=[P: (68.0, 393.0), S: (224.0, 52.0)]|clicks=1
+
+=== Cordys narrow framing: do actual skinned vertices remain legible ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+Observed viewport: (720.0, 480.0) stage: (720.0, 205.0)
+Cordys projected stage-height fraction: 0.544
+Cordys pose idle 0.0 screen bounds (265.8002, 19.89903) (495.4271, 125.9095)
+Cordys pose idle 0.1 screen bounds (258.987, 15.14626) (497.6308, 131.5941)
+Cordys pose idle 0.1 screen bounds (256.0774, 14.60723) (499.3293, 134.6588)
+Cordys pose idle 0.1 screen bounds (256.5387, 14.89155) (499.0969, 134.2328)
+Cordys pose idle 0.2 screen bounds (258.9002, 13.46021) (495.084, 132.3238)
+Cordys pose idle 0.2 screen bounds (265.6243, 15.45822) (485.6977, 162.4909)
+Cordys pose idle 0.3 screen bounds (266.0918, 15.58837) (486.5498, 168.5616)
+Cordys pose idle 0.3 screen bounds (266.0737, 16.36065) (485.4216, 167.5956)
+Cordys pose idle 0.4 screen bounds (266.0584, 18.12808) (491.4053, 162.1145)
+Cordys pose idle 0.5 screen bounds (268.8585, 20.73515) (518.7034, 168.3318)
+Cordys pose idle 0.5 screen bounds (270.6239, 9.318185) (512.7269, 180.4948)
+Cordys pose idle 0.6 screen bounds (270.2791, 10.39155) (513.8084, 178.8371)
+Cordys pose idle 0.6 screen bounds (269.833, 19.24826) (525.3174, 172.1078)
+Cordys pose idle 0.7 screen bounds (262.1948, 24.96051) (505.5804, 190.5652)
+Cordys pose idle 0.7 screen bounds (259.2086, 32.49944) (485.9268, 195.4935)
+Cordys pose idle 0.8 screen bounds (259.422, 32.42133) (489.4937, 195.547)
+Cordys pose idle 0.8 screen bounds (260.5802, 29.69527) (494.6112, 194.3461)
+Cordys pose idle 0.8 screen bounds (265.8402, 14.92724) (520.3368, 146.5399)
+Cordys pose idle 0.9 screen bounds (265.8915, 22.52316) (489.6031, 125.9095)
+Cordys pose idle 0.9 screen bounds (265.8478, 21.85768) (490.8856, 125.9095)
+Cordys pose idle 1.0 screen bounds (265.8002, 19.89903) (495.4271, 125.9095)
+Cordys pose reveal 0.0 screen bounds (242.9659, 49.49876) (535.6025, 185.5056)
+Cordys pose reveal 0.1 screen bounds (240.5605, 49.19905) (539.5733, 182.519)
+Cordys pose reveal 0.1 screen bounds (238.8468, 48.88408) (542.7253, 179.883)
+Cordys pose reveal 0.1 screen bounds (237.851, 48.57525) (545.0157, 177.6382)
+Cordys pose reveal 0.2 screen bounds (237.571, 48.27308) (546.416, 175.254)
+Cordys pose reveal 0.2 screen bounds (237.9768, 47.97763) (546.9126, 172.7355)
+Cordys pose reveal 0.3 screen bounds (239.0128, 47.68897) (546.5064, 170.0881)
+Cordys pose reveal 0.3 screen bounds (240.6, 47.40714) (545.2137, 167.3173)
+Cordys pose reveal 0.4 screen bounds (242.6405, 47.13221) (543.0652, 164.4292)
+Cordys pose reveal 0.5 screen bounds (245.0218, 46.86426) (540.1054, 161.43)
+Cordys pose reveal 0.5 screen bounds (247.622, 46.47284) (536.3919, 158.3262)
+Cordys pose reveal 0.6 screen bounds (250.3155, 41.32657) (531.9943, 155.1245)
+Cordys pose reveal 0.6 screen bounds (252.979, 38.06101) (527.0363, 151.832)
+Cordys pose reveal 0.7 screen bounds (255.497, 36.71693) (521.6392, 148.456)
+Cordys pose reveal 0.7 screen bounds (257.7671, 33.81194) (515.8612, 145.0038)
+Cordys pose reveal 0.8 screen bounds (259.7052, 29.44592) (509.8632, 141.5876)
+Cordys pose reveal 0.8 screen bounds (261.2495, 25.26683) (506.3224, 138.1207)
+Cordys pose reveal 0.8 screen bounds (262.3638, 22.57063) (503.8599, 134.6005)
+Cordys pose reveal 0.9 screen bounds (263.0396, 21.75158) (501.2046, 131.0345)
+Cordys pose reveal 0.9 screen bounds (263.2973, 20.38122) (498.3813, 127.4306)
+Cordys pose reveal 1.0 screen bounds (263.186, 19.89907) (495.427, 125.9095)
+Cordys pose hurt 0.0 screen bounds (265.8002, 19.89903) (495.4271, 125.9095)
+Cordys pose hurt 0.1 screen bounds (265.772, 20.62603) (495.6158, 125.9095)
+Cordys pose hurt 0.1 screen bounds (266.2155, 24.83554) (496.3867, 128.519)
+Cordys pose hurt 0.1 screen bounds (267.9402, 24.11713) (498.6476, 132.8758)
+Cordys pose hurt 0.2 screen bounds (271.2891, 22.54457) (502.7335, 136.7659)
+Cordys pose hurt 0.2 screen bounds (275.966, 21.54567) (509.7454, 138.2682)
+Cordys pose hurt 0.3 screen bounds (285.4279, 25.21628) (535.7598, 136.2787)
+Cordys pose hurt 0.3 screen bounds (336.8173, 38.77583) (521.6768, 179.367)
+Cordys pose hurt 0.4 screen bounds (356.3598, 19.20752) (516.7909, 186.0646)
+Cordys pose hurt 0.5 screen bounds (335.1582, 34.59381) (512.0797, 186.885)
+Cordys pose hurt 0.5 screen bounds (285.0031, 34.35652) (533.178, 166.33)
+Cordys pose hurt 0.6 screen bounds (250.9754, 33.26414) (547.232, 152.1781)
+Cordys pose hurt 0.6 screen bounds (244.5593, 35.13827) (517.7851, 154.418)
+Cordys pose hurt 0.7 screen bounds (250.8396, 34.32188) (482.3714, 160.1413)
+Cordys pose hurt 0.7 screen bounds (254.0425, 33.50439) (471.8508, 161.9548)
+Cordys pose hurt 0.8 screen bounds (253.3184, 31.4264) (471.9814, 159.3351)
+Cordys pose hurt 0.8 screen bounds (251.817, 25.65119) (476.171, 153.3723)
+Cordys pose hurt 0.8 screen bounds (251.769, 21.50977) (482.3381, 147.0749)
+Cordys pose hurt 0.9 screen bounds (255.664, 20.33001) (488.5838, 138.1407)
+Cordys pose hurt 0.9 screen bounds (262.14, 19.72425) (493.4344, 128.2992)
+Cordys pose hurt 1.0 screen bounds (265.8002, 19.89903) (495.4271, 125.9095)
+Cordys pose octo_stab 0.0 screen bounds (309.6228, 93.37283) (443.27, 155.073)
+Cordys pose octo_stab 0.1 screen bounds (309.4965, 93.41502) (444.9936, 155.7536)
+Cordys pose octo_stab 0.1 screen bounds (310.1483, 94.49461) (448.2631, 156.0832)
+Cordys pose octo_stab 0.1 screen bounds (311.5492, 97.31804) (452.1027, 155.073)
+Cordys pose octo_stab 0.2 screen bounds (312.9577, 101.2532) (458.5869, 155.073)
+Cordys pose octo_stab 0.2 screen bounds (313.7043, 101.0493) (466.8518, 155.073)
+Cordys pose octo_stab 0.3 screen bounds (313.4153, 98.01568) (471.3146, 155.073)
+Cordys pose octo_stab 0.3 screen bounds (312.2939, 91.02675) (472.221, 155.073)
+Cordys pose octo_stab 0.4 screen bounds (289.0674, 9.318172) (443.6619, 155.073)
+Cordys pose octo_stab 0.5 screen bounds (246.023, 67.58655) (455.6245, 168.707)
+Cordys pose octo_stab 0.5 screen bounds (262.8193, 37.364) (447.6878, 155.073)
+Cordys pose octo_stab 0.6 screen bounds (284.0408, 33.96002) (442.2072, 155.073)
+Cordys pose octo_stab 0.6 screen bounds (298.3824, 72.28036) (444.4116, 155.073)
+Cordys pose octo_stab 0.7 screen bounds (307.8222, 91.12402) (444.0274, 155.073)
+Cordys pose octo_stab 0.7 screen bounds (313.4758, 93.67932) (440.4466, 155.7468)
+Cordys pose octo_stab 0.8 screen bounds (315.0714, 96.36018) (438.7652, 156.7833)
+Cordys pose octo_stab 0.8 screen bounds (314.5812, 98.96171) (439.5605, 156.8318)
+Cordys pose octo_stab 0.8 screen bounds (313.4788, 98.03528) (439.8672, 156.2194)
+Cordys pose octo_stab 0.9 screen bounds (312.0954, 96.00102) (441.4136, 155.2999)
+Cordys pose octo_stab 0.9 screen bounds (310.5101, 94.26008) (442.6956, 155.073)
+Cordys pose octo_stab 1.0 screen bounds (309.6228, 93.37283) (443.27, 155.073)
+Cordys pose head_bash 0.0 screen bounds (349.6327, 17.90833) (536.0571, 103.9738)
+Cordys pose head_bash 0.1 screen bounds (355.2302, 15.95232) (557.8685, 154.4633)
+Cordys pose head_bash 0.1 screen bounds (343.9025, 20.48656) (534.6839, 173.9438)
+Cordys pose head_bash 0.1 screen bounds (364.9471, 27.86616) (524.725, 154.9809)
+Cordys pose head_bash 0.2 screen bounds (362.4689, 31.70987) (536.5501, 176.9564)
+Cordys pose head_bash 0.2 screen bounds (380.083, 29.21836) (542.1909, 181.3284)
+Cordys pose head_bash 0.3 screen bounds (366.7884, 25.57982) (497.2631, 175.6263)
+Cordys pose head_bash 0.3 screen bounds (348.3197, 29.36964) (530.4332, 180.3669)
+Cordys pose head_bash 0.4 screen bounds (296.7687, 22.69648) (449.0738, 171.6226)
+Cordys pose head_bash 0.5 screen bounds (146.6414, 35.28883) (335.444, 184.3853)
+Cordys pose head_bash 0.5 screen bounds (193.6152, 28.75255) (351.888, 157.197)
+Cordys pose head_bash 0.6 screen bounds (232.4962, 28.29614) (406.6073, 142.0994)
+Cordys pose head_bash 0.6 screen bounds (273.142, 39.00145) (485.0978, 165.4207)
+Cordys pose head_bash 0.7 screen bounds (288.1299, 38.71271) (474.6652, 192.2669)
+Cordys pose head_bash 0.7 screen bounds (316.8888, 38.30719) (481.1156, 194.3825)
+Cordys pose head_bash 0.8 screen bounds (329.3045, 37.77335) (498.2235, 194.7336)
+Cordys pose head_bash 0.8 screen bounds (339.0214, 37.14305) (519.0895, 189.8425)
+Cordys pose head_bash 0.8 screen bounds (360.6918, 18.62556) (562.8202, 157.5608)
+Cordys pose head_bash 0.9 screen bounds (366.4885, 28.45228) (561.6826, 131.1121)
+Cordys pose head_bash 0.9 screen bounds (349.4739, 18.06573) (535.9813, 104.2534)
+Cordys pose head_bash 1.0 screen bounds (349.6327, 17.90833) (536.0571, 103.9738)
+Cordys pose electric_shooting 0.0 screen bounds (292.819, 82.26096) (440.9818, 150.6624)
+Cordys pose electric_shooting 0.1 screen bounds (292.9746, 82.50752) (442.4741, 150.6624)
+Cordys pose electric_shooting 0.1 screen bounds (293.8609, 83.54995) (445.4891, 151.5302)
+Cordys pose electric_shooting 0.1 screen bounds (295.4268, 69.33349) (450.1476, 151.2276)
+Cordys pose electric_shooting 0.2 screen bounds (297.1619, 17.35205) (455.723, 150.6624)
+Cordys pose electric_shooting 0.2 screen bounds (298.5133, 19.93264) (462.4327, 150.6624)
+Cordys pose electric_shooting 0.3 screen bounds (284.7129, 72.80636) (468.2263, 150.6624)
+Cordys pose electric_shooting 0.3 screen bounds (286.0036, 74.20694) (473.8571, 150.6624)
+Cordys pose electric_shooting 0.4 screen bounds (286.6251, 74.27321) (478.4464, 150.6624)
+Cordys pose electric_shooting 0.5 screen bounds (286.1565, 74.33945) (482.1756, 150.6624)
+Cordys pose electric_shooting 0.5 screen bounds (288.2454, 74.40569) (484.9955, 150.6624)
+Cordys pose electric_shooting 0.6 screen bounds (291.7682, 74.47192) (486.8289, 158.7831)
+Cordys pose electric_shooting 0.6 screen bounds (289.4763, 74.53819) (487.6857, 165.5218)
+Cordys pose electric_shooting 0.7 screen bounds (285.6447, 74.6044) (487.7845, 169.0819)
+Cordys pose electric_shooting 0.7 screen bounds (289.0323, 72.77782) (486.7674, 170.7864)
+Cordys pose electric_shooting 0.8 screen bounds (293.4463, 65.78843) (482.5469, 171.7553)
+Cordys pose electric_shooting 0.8 screen bounds (291.5231, 44.54528) (471.1248, 173.1338)
+Cordys pose electric_shooting 0.8 screen bounds (288.5859, 54.08224) (456.6417, 170.3871)
+Cordys pose electric_shooting 0.9 screen bounds (288.0199, 69.28493) (448.2154, 161.9761)
+Cordys pose electric_shooting 0.9 screen bounds (290.6578, 80.23181) (443.1336, 153.1889)
+Cordys pose electric_shooting 1.0 screen bounds (292.819, 82.26096) (440.9818, 150.6624)
+Cordys pose idle 0.0 screen bounds (267.7921, 19.7983) (493.7029, 126.2082)
+Cordys pose idle 0.1 screen bounds (263.3131, 15.17069) (492.1405, 134.0594)
+Cordys pose idle 0.1 screen bounds (260.6734, 13.39809) (493.0565, 137.0957)
+Cordys pose idle 0.1 screen bounds (261.0994, 13.71807) (492.9077, 136.6851)
+Cordys pose idle 0.2 screen bounds (263.386, 13.30927) (489.081, 134.7606)
+Cordys pose idle 0.2 screen bounds (268.89, 14.27936) (490.2366, 163.9465)
+Cordys pose idle 0.3 screen bounds (268.2167, 14.38334) (498.1245, 170.1624)
+Cordys pose idle 0.3 screen bounds (268.4767, 15.1561) (496.7652, 169.1698)
+Cordys pose idle 0.4 screen bounds (268.5596, 16.49574) (494.9149, 163.489)
+Cordys pose idle 0.5 screen bounds (270.6927, 20.75445) (518.7941, 165.8289)
+Cordys pose idle 0.5 screen bounds (272.4413, 9.318179) (514.9845, 178.0808)
+Cordys pose idle 0.6 screen bounds (272.0839, 10.42734) (515.7845, 176.3927)
+Cordys pose idle 0.6 screen bounds (271.6793, 19.11692) (526.6022, 169.955)
+Cordys pose idle 0.7 screen bounds (263.5178, 25.6177) (500.1702, 190.762)
+Cordys pose idle 0.7 screen bounds (261.1601, 33.44389) (489.4595, 195.0996)
+Cordys pose idle 0.8 screen bounds (261.2404, 33.39532) (489.8083, 195.509)
+Cordys pose idle 0.8 screen bounds (262.402, 30.18412) (490.4681, 194.7009)
+Cordys pose idle 0.8 screen bounds (268.5996, 14.99199) (516.9302, 148.4316)
+Cordys pose idle 0.9 screen bounds (267.3569, 22.40402) (487.6028, 125.3797)
+Cordys pose idle 0.9 screen bounds (267.4732, 21.75325) (488.7073, 125.3797)
+Cordys pose idle 1.0 screen bounds (267.7921, 19.7983) (493.7029, 126.2082)
+Cordys pose reveal 0.0 screen bounds (243.3528, 48.7959) (530.6508, 186.8967)
+Cordys pose reveal 0.1 screen bounds (239.7083, 48.49242) (534.5249, 184.0462)
+Cordys pose reveal 0.1 screen bounds (236.8882, 48.19556) (537.6385, 181.0108)
+Cordys pose reveal 0.1 screen bounds (234.9525, 47.90537) (539.9495, 178.7317)
+Cordys pose reveal 0.2 screen bounds (233.9259, 47.62195) (541.4285, 176.4226)
+Cordys pose reveal 0.2 screen bounds (233.7981, 47.34535) (542.0602, 173.9782)
+Cordys pose reveal 0.3 screen bounds (234.5244, 47.0756) (541.8436, 171.4037)
+Cordys pose reveal 0.3 screen bounds (236.0284, 46.81277) (540.7911, 168.7046)
+Cordys pose reveal 0.4 screen bounds (238.2058, 46.53496) (538.9294, 165.8867)
+Cordys pose reveal 0.5 screen bounds (240.9294, 46.23093) (536.2981, 162.956)
+Cordys pose reveal 0.5 screen bounds (244.0544, 45.89334) (532.97, 159.919)
+Cordys pose reveal 0.6 screen bounds (247.4256, 45.54445) (529.0082, 156.7823)
+Cordys pose reveal 0.6 screen bounds (250.8837, 43.56137) (524.4702, 153.5528)
+Cordys pose reveal 0.7 screen bounds (254.2729, 38.00898) (519.459, 150.2376)
+Cordys pose reveal 0.7 screen bounds (257.4477, 33.7049) (514.1166, 146.8439)
+Cordys pose reveal 0.8 screen bounds (260.2792, 29.70305) (508.5318, 143.4264)
+Cordys pose reveal 0.8 screen bounds (262.6613, 25.4613) (504.0626, 140.0122)
+Cordys pose reveal 0.8 screen bounds (264.5155, 22.65856) (501.3706, 136.5421)
+Cordys pose reveal 0.9 screen bounds (265.795, 21.69284) (498.9576, 133.0236)
+Cordys pose reveal 0.9 screen bounds (266.4868, 20.24599) (496.3974, 129.4646)
+Cordys pose reveal 1.0 screen bounds (266.6134, 19.79831) (493.7029, 126.2082)
+Cordys pose hurt 0.0 screen bounds (267.7921, 19.7983) (493.7029, 126.2082)
+Cordys pose hurt 0.1 screen bounds (268.1971, 20.82692) (493.8832, 127.1979)
+Cordys pose hurt 0.1 screen bounds (269.6888, 24.7813) (494.6188, 130.9002)
+Cordys pose hurt 0.1 screen bounds (272.819, 23.70252) (496.7541, 135.4939)
+Cordys pose hurt 0.2 screen bounds (277.5621, 22.17818) (500.6395, 139.4733)
+Cordys pose hurt 0.2 screen bounds (283.305, 21.24681) (509.603, 140.9113)
+Cordys pose hurt 0.3 screen bounds (293.3401, 24.87644) (534.9419, 138.7549)
+Cordys pose hurt 0.3 screen bounds (344.0921, 40.1837) (520.2504, 174.8278)
+Cordys pose hurt 0.4 screen bounds (355.4239, 21.47822) (506.4955, 182.8569)
+Cordys pose hurt 0.5 screen bounds (341.8631, 37.77791) (505.1159, 183.0433)
+Cordys pose hurt 0.5 screen bounds (291.0216, 34.99828) (531.2549, 161.5206)
+Cordys pose hurt 0.6 screen bounds (253.4772, 34.53273) (543.9747, 153.2995)
+Cordys pose hurt 0.6 screen bounds (241.7617, 36.83414) (514.1067, 156.1667)
+Cordys pose hurt 0.7 screen bounds (243.7528, 32.87948) (478.847, 162.136)
+Cordys pose hurt 0.7 screen bounds (245.6016, 32.77142) (468.625, 163.8982)
+Cordys pose hurt 0.8 screen bounds (245.7462, 31.90646) (468.9652, 161.375)
+Cordys pose hurt 0.8 screen bounds (246.2933, 26.05404) (473.4077, 155.3601)
+Cordys pose hurt 0.8 screen bounds (248.9374, 21.73962) (479.9171, 148.7225)
+Cordys pose hurt 0.9 screen bounds (255.3538, 20.91385) (486.5673, 140.0713)
+Cordys pose hurt 0.9 screen bounds (263.5123, 19.82092) (491.6258, 130.3753)
+Cordys pose hurt 1.0 screen bounds (267.7921, 19.7983) (493.7029, 126.2082)
+Cordys pose octo_stab 0.0 screen bounds (309.5357, 92.9526) (441.4847, 155.104)
+Cordys pose octo_stab 0.1 screen bounds (309.4485, 92.89703) (443.1599, 156.6247)
+Cordys pose octo_stab 0.1 screen bounds (310.1531, 93.7361) (446.319, 156.7913)
+Cordys pose octo_stab 0.1 screen bounds (311.5313, 96.25179) (450.511, 154.6201)
+Cordys pose octo_stab 0.2 screen bounds (312.7622, 99.90618) (457.1928, 154.6201)
+Cordys pose octo_stab 0.2 screen bounds (313.2084, 99.94234) (465.8458, 154.6201)
+Cordys pose octo_stab 0.3 screen bounds (312.6815, 96.96306) (470.2043, 154.6201)
+Cordys pose octo_stab 0.3 screen bounds (311.4543, 90.19172) (471.0071, 154.6201)
+Cordys pose octo_stab 0.4 screen bounds (287.3606, 9.318192) (440.7765, 154.6201)
+Cordys pose octo_stab 0.5 screen bounds (247.4808, 68.63223) (452.503, 171.7487)
+Cordys pose octo_stab 0.5 screen bounds (261.8994, 38.89457) (444.7094, 157.1548)
+Cordys pose octo_stab 0.6 screen bounds (282.4259, 34.89075) (439.3365, 154.6201)
+Cordys pose octo_stab 0.6 screen bounds (297.3675, 71.51833) (441.7269, 154.6201)
+Cordys pose octo_stab 0.7 screen bounds (307.5763, 90.38695) (442.1741, 154.6201)
+Cordys pose octo_stab 0.7 screen bounds (313.7643, 92.86655) (438.7616, 156.7509)
+Cordys pose octo_stab 0.8 screen bounds (315.5804, 95.47058) (437.1344, 157.7767)
+Cordys pose octo_stab 0.8 screen bounds (315.101, 98.13654) (437.9058, 157.831)
+Cordys pose octo_stab 0.8 screen bounds (313.8446, 97.39359) (438.1957, 157.2285)
+Cordys pose octo_stab 0.9 screen bounds (312.2565, 95.45106) (439.7012, 156.2965)
+Cordys pose octo_stab 0.9 screen bounds (310.5037, 93.80581) (440.9396, 155.4389)
+Cordys pose octo_stab 1.0 screen bounds (309.5357, 92.9526) (441.4847, 155.104)
+Cordys pose head_bash 0.0 screen bounds (349.6348, 17.85776) (533.7146, 104.5641)
+Cordys pose head_bash 0.1 screen bounds (350.4471, 20.62132) (551.0099, 152.9412)
+Cordys pose head_bash 0.1 screen bounds (335.3193, 20.20489) (527.3015, 172.1017)
+Cordys pose head_bash 0.1 screen bounds (367.098, 28.66758) (522.3035, 158.3345)
+Cordys pose head_bash 0.2 screen bounds (366.701, 29.97706) (534.0983, 177.4718)
+Cordys pose head_bash 0.2 screen bounds (369.4933, 30.1666) (543.4434, 181.6495)
+Cordys pose head_bash 0.3 screen bounds (367.7571, 26.81528) (495.0483, 178.8092)
+Cordys pose head_bash 0.3 screen bounds (338.8981, 30.64352) (534.6838, 181.2738)
+Cordys pose head_bash 0.4 screen bounds (302.7747, 24.13624) (448.2445, 174.796)
+Cordys pose head_bash 0.5 screen bounds (142.9896, 42.92668) (345.159, 192.0539)
+Cordys pose head_bash 0.5 screen bounds (200.3871, 35.50353) (353.9677, 166.4024)
+Cordys pose head_bash 0.6 screen bounds (237.9639, 33.01009) (407.3903, 148.1361)
+Cordys pose head_bash 0.6 screen bounds (277.7096, 41.43537) (482.6976, 169.3422)
+Cordys pose head_bash 0.7 screen bounds (281.0402, 40.04563) (469.4666, 192.449)
+Cordys pose head_bash 0.7 screen bounds (308.0054, 38.80093) (477.4941, 194.0644)
+Cordys pose head_bash 0.8 screen bounds (320.0124, 37.65343) (494.2094, 193.9194)
+Cordys pose head_bash 0.8 screen bounds (330.5928, 36.5991) (513.8328, 188.5933)
+Cordys pose head_bash 0.8 screen bounds (358.1723, 23.04915) (556.5667, 158.4915)
+Cordys pose head_bash 0.9 screen bounds (370.7621, 28.51978) (559.1592, 132.8646)
+Cordys pose head_bash 0.9 screen bounds (349.6516, 18.02563) (533.6276, 105.4857)
+Cordys pose head_bash 1.0 screen bounds (349.6348, 17.85776) (533.7146, 104.5641)
+Cordys pose electric_shooting 0.0 screen bounds (294.7318, 81.32928) (441.6102, 150.5128)
+Cordys pose electric_shooting 0.1 screen bounds (294.8828, 81.50254) (443.0765, 151.3967)
+Cordys pose electric_shooting 0.1 screen bounds (295.7464, 82.35464) (446.0268, 152.1024)
+Cordys pose electric_shooting 0.1 screen bounds (297.2198, 66.89975) (450.572, 151.6662)
+Cordys pose electric_shooting 0.2 screen bounds (298.7722, 16.4211) (456.5698, 149.9742)
+Cordys pose electric_shooting 0.2 screen bounds (299.903, 21.72025) (463.1346, 149.9742)
+Cordys pose electric_shooting 0.3 screen bounds (288.5519, 73.56732) (469.8332, 149.9742)
+Cordys pose electric_shooting 0.3 screen bounds (290.1689, 74.96952) (475.2393, 149.9742)
+Cordys pose electric_shooting 0.4 screen bounds (290.3196, 75.03158) (479.2959, 149.9742)
+Cordys pose electric_shooting 0.5 screen bounds (288.1837, 75.09362) (482.3085, 149.9742)
+Cordys pose electric_shooting 0.5 screen bounds (290.4323, 75.15566) (484.5118, 149.9742)
+Cordys pose electric_shooting 0.6 screen bounds (291.7574, 75.2177) (485.972, 158.0216)
+Cordys pose electric_shooting 0.6 screen bounds (289.0855, 75.27976) (486.6795, 164.7516)
+Cordys pose electric_shooting 0.7 screen bounds (287.7303, 75.34178) (486.751, 168.2932)
+Cordys pose electric_shooting 0.7 screen bounds (288.4199, 73.5068) (485.6127, 170.0509)
+Cordys pose electric_shooting 0.8 screen bounds (288.04, 68.18096) (481.1381, 171.3531)
+Cordys pose electric_shooting 0.8 screen bounds (287.1497, 45.85046) (469.9837, 172.4465)
+Cordys pose electric_shooting 0.8 screen bounds (286.3346, 54.02966) (456.1706, 170.3477)
+Cordys pose electric_shooting 0.9 screen bounds (288.0665, 68.75024) (448.1797, 162.5115)
+Cordys pose electric_shooting 0.9 screen bounds (292.1271, 79.38457) (443.5532, 154.0634)
+Cordys pose electric_shooting 1.0 screen bounds (294.7318, 81.32928) (441.6102, 150.5128)
+Cordys pose idle 0.0 screen bounds (267.9343, 19.78677) (493.6263, 126.2753)
+Cordys pose idle 0.1 screen bounds (263.5538, 15.12575) (491.9124, 134.1563)
+Cordys pose idle 0.1 screen bounds (260.9261, 13.34865) (492.7906, 137.191)
+Cordys pose idle 0.1 screen bounds (261.3506, 13.66983) (492.6483, 136.7811)
+Cordys pose idle 0.2 screen bounds (263.6334, 13.2628) (488.8302, 134.8562)
+Cordys pose idle 0.2 screen bounds (269.085, 14.22965) (490.654, 163.9988)
+Cordys pose idle 0.3 screen bounds (268.3643, 14.33195) (498.606, 170.2224)
+Cordys pose idle 0.3 screen bounds (268.6358, 15.1048) (497.2341, 169.2284)
+Cordys pose idle 0.4 screen bounds (268.7228, 16.42616) (495.39, 163.538)
+Cordys pose idle 0.5 screen bounds (270.8276, 20.75824) (518.7861, 165.7152)
+Cordys pose idle 0.5 screen bounds (272.575, 9.318167) (515.0688, 177.9723)
+Cordys pose idle 0.6 screen bounds (272.2171, 10.42924) (515.8558, 176.2827)
+Cordys pose idle 0.6 screen bounds (271.8144, 19.11409) (526.6416, 169.8558)
+Cordys pose idle 0.7 screen bounds (263.6334, 25.64368) (499.9383, 190.7653)
+Cordys pose idle 0.7 screen bounds (261.3026, 33.48243) (489.6521, 195.08)
+Cordys pose idle 0.8 screen bounds (261.3772, 33.43529) (489.9999, 195.5053)
+Cordys pose idle 0.8 screen bounds (262.5387, 30.20238) (490.6768, 194.7124)
+Cordys pose idle 0.8 screen bounds (268.7736, 14.98475) (516.7769, 148.5015)
+Cordys pose idle 0.9 screen bounds (267.4773, 22.3932) (487.5173, 125.3565)
+Cordys pose idle 0.9 screen bounds (267.6003, 21.74292) (488.6143, 125.3565)
+Cordys pose idle 1.0 screen bounds (267.9343, 19.78677) (493.6263, 126.2753)
+Cordys pose reveal 0.0 screen bounds (243.4351, 48.76241) (530.4294, 186.9527)
+Cordys pose reveal 0.1 screen bounds (239.74, 48.45967) (534.2983, 184.1076)
+Cordys pose reveal 0.1 screen bounds (236.8747, 48.16357) (537.4095, 181.0773)
+Cordys pose reveal 0.1 screen bounds (234.9004, 47.87415) (539.7206, 178.7706)
+Cordys pose reveal 0.2 screen bounds (233.843, 47.59148) (541.2025, 176.4643)
+Cordys pose reveal 0.2 screen bounds (233.693, 47.31564) (541.8397, 174.0228)
+Cordys pose reveal 0.3 screen bounds (234.4061, 47.04667) (541.631, 171.451)
+Cordys pose reveal 0.3 screen bounds (235.9062, 46.78462) (540.5888, 168.7547)
+Cordys pose reveal 0.4 screen bounds (238.0887, 46.50206) (538.7396, 165.9395)
+Cordys pose reveal 0.5 screen bounds (240.8258, 46.19881) (536.1227, 163.0114)
+Cordys pose reveal 0.5 screen bounds (243.9718, 45.85611) (532.8137, 159.977)
+Cordys pose reveal 0.6 screen bounds (247.3702, 45.50805) (528.8693, 156.8428)
+Cordys pose reveal 0.6 screen bounds (250.8605, 43.56199) (524.3498, 153.6157)
+Cordys pose reveal 0.7 screen bounds (254.2851, 38.00841) (519.3561, 150.3028)
+Cordys pose reveal 0.7 screen bounds (257.4966, 33.70231) (514.0334, 146.9114)
+Cordys pose reveal 0.8 screen bounds (260.3645, 29.71563) (508.4685, 143.4938)
+Cordys pose reveal 0.8 screen bounds (262.7808, 25.47055) (503.9665, 140.0817)
+Cordys pose reveal 0.8 screen bounds (264.6653, 22.66245) (501.26, 136.6135)
+Cordys pose reveal 0.9 screen bounds (265.9695, 21.68975) (498.8615, 133.0969)
+Cordys pose reveal 0.9 screen bounds (266.6793, 20.23261) (496.311, 129.5397)
+Cordys pose reveal 1.0 screen bounds (266.8157, 19.78678) (493.6263, 126.2753)
+Cordys pose hurt 0.0 screen bounds (267.9343, 19.78677) (493.6263, 126.2753)
+Cordys pose hurt 0.1 screen bounds (268.3573, 20.82885) (493.8062, 127.2788)
+Cordys pose hurt 0.1 screen bounds (269.8922, 24.76081) (494.5405, 130.9906)
+Cordys pose hurt 0.1 screen bounds (273.08, 23.68341) (496.6721, 135.5961)
+Cordys pose hurt 0.2 screen bounds (277.8799, 22.1616) (500.5455, 139.5798)
+Cordys pose hurt 0.2 screen bounds (283.6655, 21.23396) (509.5894, 141.016)
+Cordys pose hurt 0.3 screen bounds (293.7217, 24.86353) (534.8914, 138.8529)
+Cordys pose hurt 0.3 screen bounds (344.4327, 40.24099) (520.1846, 174.639)
+Cordys pose hurt 0.4 screen bounds (355.4193, 21.56182) (506.0584, 182.7237)
+Cordys pose hurt 0.5 screen bounds (342.1806, 37.89988) (504.9913, 182.8837)
+Cordys pose hurt 0.5 screen bounds (291.325, 35.02346) (531.1594, 161.3205)
+Cordys pose hurt 0.6 screen bounds (253.6448, 34.5851) (543.82, 153.3382)
+Cordys pose hurt 0.6 screen bounds (241.7119, 36.90528) (513.9429, 156.2326)
+Cordys pose hurt 0.7 screen bounds (243.5238, 32.81571) (478.6996, 162.2168)
+Cordys pose hurt 0.7 screen bounds (245.3156, 32.73671) (468.4976, 163.9767)
+Cordys pose hurt 0.8 screen bounds (245.4963, 31.92883) (468.8418, 161.4576)
+Cordys pose hurt 0.8 screen bounds (246.1287, 26.07225) (473.2935, 155.4351)
+Cordys pose hurt 0.8 screen bounds (248.8841, 21.74949) (479.82, 148.7817)
+Cordys pose hurt 0.9 screen bounds (255.4037, 20.93055) (486.4806, 140.1422)
+Cordys pose hurt 0.9 screen bounds (263.6299, 19.81802) (491.5463, 130.4521)
+Cordys pose hurt 1.0 screen bounds (267.9343, 19.78677) (493.6263, 126.2753)
+Cordys pose octo_stab 0.0 screen bounds (309.5481, 92.93423) (441.3842, 155.1385)
+Cordys pose octo_stab 0.1 screen bounds (309.4626, 92.87499) (443.0572, 156.6572)
+Cordys pose octo_stab 0.1 screen bounds (310.1692, 93.70403) (446.2123, 156.8174)
+Cordys pose octo_stab 0.1 screen bounds (311.5459, 96.20574) (450.4158, 154.6019)
+Cordys pose octo_stab 0.2 screen bounds (312.769, 99.84928) (457.1277, 154.6019)
+Cordys pose octo_stab 0.2 screen bounds (313.2026, 99.89661) (465.7701, 154.6019)
+Cordys pose octo_stab 0.3 screen bounds (312.6659, 96.91971) (470.1228, 154.6019)
+Cordys pose octo_stab 0.3 screen bounds (311.4346, 90.15806) (470.9211, 154.6019)
+Cordys pose octo_stab 0.4 screen bounds (287.3123, 9.318192) (440.6302, 154.6019)
+Cordys pose octo_stab 0.5 screen bounds (247.5775, 68.67554) (452.3481, 171.8738)
+Cordys pose octo_stab 0.5 screen bounds (261.8921, 38.95844) (444.5626, 157.261)
+Cordys pose octo_stab 0.6 screen bounds (282.383, 34.92955) (439.1948, 154.6019)
+Cordys pose octo_stab 0.6 screen bounds (297.3449, 71.48629) (441.5887, 154.6019)
+Cordys pose octo_stab 0.7 screen bounds (307.5827, 90.35785) (442.0705, 154.6019)
+Cordys pose octo_stab 0.7 screen bounds (313.791, 92.83419) (438.6682, 156.7888)
+Cordys pose octo_stab 0.8 screen bounds (315.6158, 95.43488) (437.0417, 157.8142)
+Cordys pose octo_stab 0.8 screen bounds (315.137, 98.09762) (437.8119, 157.8688)
+Cordys pose octo_stab 0.8 screen bounds (313.8746, 97.36651) (438.1037, 157.2666)
+Cordys pose octo_stab 0.9 screen bounds (312.2784, 95.42796) (439.6057, 156.3353)
+Cordys pose octo_stab 0.9 screen bounds (310.5192, 93.78551) (440.8407, 155.473)
+Cordys pose octo_stab 1.0 screen bounds (309.5481, 92.93423) (441.3842, 155.1385)
+Cordys pose head_bash 0.0 screen bounds (349.7532, 17.84979) (533.6859, 104.6349)
+Cordys pose head_bash 0.1 screen bounds (350.3653, 20.81421) (550.7877, 152.8716)
+Cordys pose head_bash 0.1 screen bounds (335.0827, 20.18959) (527.0709, 172.0225)
+Cordys pose head_bash 0.1 screen bounds (367.3016, 28.70069) (522.283, 158.4746)
+Cordys pose head_bash 0.2 screen bounds (366.9917, 29.90122) (534.0649, 177.4915)
+Cordys pose head_bash 0.2 screen bounds (369.1636, 30.20248) (543.5653, 181.6674)
+Cordys pose head_bash 0.3 screen bounds (367.9111, 26.86523) (495.0402, 178.9442)
+Cordys pose head_bash 0.3 screen bounds (338.6255, 30.69285) (534.9313, 181.3159)
+Cordys pose head_bash 0.4 screen bounds (303.1568, 24.1904) (448.3031, 174.925)
+Cordys pose head_bash 0.5 screen bounds (143.0106, 43.23891) (345.7167, 192.3753)
+Cordys pose head_bash 0.5 screen bounds (200.8285, 35.7823) (354.1788, 166.7839)
+Cordys pose head_bash 0.6 screen bounds (238.3408, 33.20458) (407.5259, 148.3817)
+Cordys pose head_bash 0.6 screen bounds (278.0381, 41.53306) (482.6806, 169.5022)
+Cordys pose head_bash 0.7 screen bounds (280.8805, 40.09786) (469.3681, 192.4546)
+Cordys pose head_bash 0.7 screen bounds (307.7635, 38.81853) (477.4285, 194.0524)
+Cordys pose head_bash 0.8 screen bounds (319.7502, 37.64568) (494.1238, 193.886)
+Cordys pose head_bash 0.8 screen bounds (330.3639, 36.57382) (513.6981, 188.5399)
+Cordys pose head_bash 0.8 screen bounds (358.1831, 23.23019) (556.3683, 158.5282)
+Cordys pose head_bash 0.9 screen bounds (371.0535, 28.5248) (559.116, 132.933)
+Cordys pose head_bash 0.9 screen bounds (349.7775, 18.01804) (533.5984, 105.5569)
+Cordys pose head_bash 1.0 screen bounds (349.7532, 17.84979) (533.6859, 104.6349)
+Cordys pose electric_shooting 0.0 screen bounds (294.8539, 81.28838) (441.6328, 150.5432)
+Cordys pose electric_shooting 0.1 screen bounds (295.0046, 81.45909) (443.0976, 151.4275)
+Cordys pose electric_shooting 0.1 screen bounds (295.867, 82.30195) (446.0449, 152.1214)
+Cordys pose electric_shooting 0.1 screen bounds (297.3361, 66.79952) (450.5849, 151.6801)
+Cordys pose electric_shooting 0.2 screen bounds (298.8803, 16.38232) (456.597, 149.9457)
+Cordys pose electric_shooting 0.2 screen bounds (300.0015, 21.79433) (463.1536, 149.9457)
+Cordys pose electric_shooting 0.3 screen bounds (288.7567, 73.6011) (469.8893, 149.9457)
+Cordys pose electric_shooting 0.3 screen bounds (290.3869, 75.00331) (475.2832, 149.9457)
+Cordys pose electric_shooting 0.4 screen bounds (290.5178, 75.06521) (479.3162, 149.9457)
+Cordys pose electric_shooting 0.5 screen bounds (288.3126, 75.12706) (482.2988, 149.9457)
+Cordys pose electric_shooting 0.5 screen bounds (290.5656, 75.18893) (484.4745, 149.9457)
+Cordys pose electric_shooting 0.6 screen bounds (291.5948, 75.25078) (485.9186, 157.9848)
+Cordys pose electric_shooting 0.6 screen bounds (288.8996, 75.31266) (486.6195, 164.7147)
+Cordys pose electric_shooting 0.7 screen bounds (287.8617, 75.37449) (486.6899, 168.2563)
+Cordys pose electric_shooting 0.7 screen bounds (288.2356, 73.53925) (485.5469, 170.0154)
+Cordys pose electric_shooting 0.8 screen bounds (287.8569, 68.28101) (481.063, 171.3314)
+Cordys pose electric_shooting 0.8 screen bounds (287.0103, 45.90636) (469.9232, 172.4124)
+Cordys pose electric_shooting 0.8 screen bounds (286.2844, 54.02047) (456.1426, 170.3403)
+Cordys pose electric_shooting 0.9 screen bounds (288.1123, 68.7293) (448.1724, 162.5285)
+Cordys pose electric_shooting 0.9 screen bounds (292.2314, 79.35043) (443.568, 154.0947)
+Cordys pose electric_shooting 1.0 screen bounds (294.8539, 81.28838) (441.6328, 150.5432)
+
+=== stage framing: can you see the fight past the HUD ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+fight 1: 3 party vs 2 enemies, stage 405px of 720, HUD 255px
+fight 2: 3 party vs 1 enemies, stage 405px of 720, HUD 255px
+fight 3: 3 party vs 1 enemies, stage 467px of 720, HUD 193px
+fight 4: 3 party vs 1 enemies, stage 405px of 720, HUD 255px
+fight 5: 3 party vs 1 enemies, stage 405px of 720, HUD 255px
+fight 6: 3 party vs 1 enemies, stage 467px of 720, HUD 193px
+fight 7: 3 party vs 2 enemies, stage 405px of 720, HUD 255px
+fight 8: 3 party vs 1 enemies, stage 405px of 720, HUD 255px
+STAGE FRAMING: clean over 8 fights
+
+=== stage framing narrow: does responsive combat remain visible at 720x480 ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+fight 1: 3 party vs 2 enemies, stage 263px of 480, HUD 157px
+fight 2: 3 party vs 2 enemies, stage 263px of 480, HUD 157px
+fight 3: 3 party vs 1 enemies, stage 205px of 480, HUD 215px
+fight 4: 3 party vs 2 enemies, stage 205px of 480, HUD 215px
+fight 5: 3 party vs 1 enemies, stage 205px of 480, HUD 215px
+fight 6: 3 party vs 1 enemies, stage 205px of 480, HUD 215px
+fight 7: 3 party vs 1 enemies, stage 263px of 480, HUD 157px
+fight 8: 3 party vs 1 enemies, stage 205px of 480, HUD 215px
+STAGE FRAMING: clean over 8 fights
+
+=== tutorial status layout wide: do all status cards remain readable above long captions ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial status layout   every combatant card remains above the long-caption HUD
+
+=== tutorial status layout narrow: do all status cards remain readable above long captions ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+tutorial status layout   every combatant card remains above the long-caption HUD
+
+=== tutorial QTE handoff wide: do success and miss retain stage and Continue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|spawn_exploration
+tutorial QTE handoff layout  success and miss remain visible
+
+=== tutorial QTE handoff narrow: do success and miss retain stage and Continue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|spawn_exploration
+tutorial QTE handoff layout  success and miss remain visible
+
+=== Frilled Shark framing wide: do real mesh bounds clear the party ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+Frilled mesh rect [P: (735.5527, 220.3639), S: (497.0397, 163.1503)]; stage [P: (0.0, 60.0), S: (1280.0, 405.0)]
+  Maxilani rect [P: (197.7715, 201.4996), S: (197.2845, 151.9276)]; overlap 0.0%
+  Musashi rect [P: (339.1857, 199.6157), S: (196.2606, 202.0009)]; overlap 0.0%
+  Bucky rect [P: (560.4763, 187.317), S: (185.6816, 294.0826)]; overlap 3.2%
+FRILLED SHARK FRAMING: real bounds are visible and separated from the party
+
+=== Frilled Shark framing narrow: does the long rig remain readable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+PROLOGUE_PHASE|spawn_exploration
+Frilled mesh rect [P: (411.1781, 140.3879), S: (282.1552, 89.63933)]; stage [P: (0.0, 60.0), S: (720.0, 205.0)]
+  Maxilani rect [P: (124.0987, 130.3318), S: (106.7491, 80.66141)]; overlap 0.0%
+  Musashi rect [P: (197.5848, 129.105), S: (106.9515, 108.3609)]; overlap 0.0%
+  Bucky rect [P: (316.1671, 122.1501), S: (101.4974, 160.0112)]; overlap 3.6%
+FRILLED SHARK FRAMING: real bounds are visible and separated from the party
+
+=== lab composition wide: does the Broken Office contain a readable Tethys fight ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+lab composition 1280x720: stage 1280x423, actors 468x342, smallest actor 139px
+LAB BATTLE COMPOSITION: clean
+
+=== lab composition narrow: is the Tethys arena still readable at 720x480 ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M1 (Apple7)
+
+lab composition 720x480: stage 720x223, actors 247x180, smallest actor 73px
+LAB BATTLE COMPOSITION: clean
+
+=== goblin: does the grunt load and size correctly ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+instantiating Goblin...
+Goblin added to tree
+GOBLIN OK  height=1.60 radius=0.80 anim=AnimationPlayer:<AnimationPlayer#71840040827>
+
+=== angler grunt: is Glassgoat's replacement textured and animation-mapped ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ANGLER GRUNT: clean — textured 19-bone Angler, stage-sized, with idle/swim/bite/hurt/death mappings
+
+=== enemy moves: are Angler attacks reusable data and playable clips ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ENEMY MOVES: clean — delivered clips catalogue independently; enabled moves play through the reusable actor API
+
+=== Swordfish moves: does the authored three-move kit resolve as specified ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SWORDFISH MOVES: clean
+
+=== artifact guardians: do both models persist from map to one-enemy battle ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ARTIFACT GUARDIANS: clean — all four guarded items keep their assigned enemy as one-enemy guardian encounters
+
+=== ordinary roster: do random encounters use both delivered enemies ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SCRIPT ERROR: Parse Error: Cannot infer the type of "shark" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://verify/ordinary_roster.gd:21)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "shark_stats" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://verify/ordinary_roster.gd:24)
+ERROR: Failed to load script "res://verify/ordinary_roster.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+GATE ERROR: Godot reported a script error or a release-blocking infinite tween loop despite the exit status
+
+=== battle: does the fight screen build ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+instantiating Battle...
+Battle added to tree
+battle camera 45 deg off the party-to-enemy axis, 4.6 m out
+BATTLE OK  party_hp=10 enemy_hp=[6]
+
+=== webcheck: skipped, no /tmp/opening-native-gates-without-web/index.wasm to serve ===
+
+GATES: 5 failed

@@ -45,8 +45,7 @@ func _run() -> void:
 		world.yaw = PI * 0.5
 		world.pitch = -0.14
 		world._inside_route_blocker_id = id
-		for _frame in range(30):
-			await process_frame
+		await _settle_camera()
 		var actor := world._route_blocker_world_actors[id] as Node3D
 		var bounds := world._route_actor_visible_bounds(actor)
 		var guard_top := camera.unproject_position(bounds.get_center() + Vector3.UP * bounds.size.y * 0.5)
@@ -56,22 +55,27 @@ func _run() -> void:
 		# A separate three-quarter human camera shows the actual silhouette,
 		# not only the root-centering oracle. Keep the encounter/guard unchanged.
 		world.yaw += 0.2
-		for _frame in range(20):
-			await process_frame
+		await _settle_camera()
 		await _shot(id + "-quarter-approach.png")
 	# OPEN-046: camera foreground at the real save point, plus normal contact.
 	diver.position = Vector3(13.0, 2.0, 10.0)
 	diver.velocity = Vector3.ZERO
 	world.yaw = PI * 0.5
 	world.pitch = -0.14
-	for _frame in range(20):
-		await process_frame
+	await _settle_camera()
 	# SavePoint is a script class, not a built-in get_class() name. Filtering
 	# find_children by it could silently inspect zero crystals and pass.
 	var near_crystals := 0
 	for node in world._save_points:
 		var point := node as SavePoint
-		if camera.global_position.distance_to(point._crystal.global_position) < 2.5:
+		for child in point.get_children():
+			if child is MeshInstance3D and child.mesh is TorusMesh:
+				var ring_bounds: AABB = child.global_transform * child.get_aabb()
+				_expect(ring_bounds.size.y < 0.5,
+					"OPEN-046b rest ring is upright and still hides the diver after crystal fade")
+				_expect(ring_bounds.end.y < diver.global_position.y - 0.5,
+					"OPEN-046b flat rest ring still lies across the approaching diver's torso")
+		if camera.global_position.distance_to(point._crystal.global_position) < 5.0:
 			near_crystals += 1
 			_expect(not point._crystal.visible, "OPEN-046 near-camera crystal still opaque")
 	_expect(near_crystals > 0, "OPEN-046 close-camera fixture did not actually test any crystal")
@@ -110,6 +114,15 @@ func _shot(name: String) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(output.path_join(name))
+
+func _settle_camera() -> void:
+	# Teleported setup is not physical swimming. Let the normal chase camera
+	# reach the disclosed fixture before evaluating occlusion. Counting 20–30
+	# render frames gave different poses at 60/120 Hz and when screenshots added
+	# a GPU readback; a no-output aggregate falsely missed the crystal entirely.
+	await create_timer(1.0).timeout
+	for _frame in range(8):
+		await process_frame
 
 func _expect(condition: bool, message: String) -> void:
 	if not condition:

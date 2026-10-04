@@ -1,5 +1,29 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: rejecting green fixture snapshots
+
+Full 0d0b9b0 aggregate: 127 gates, five failed. Route preview and roster factory
+checks were stale; three real discoverability viewports also failed. Earlier
+captures used 20–30 frames after a teleport, so screenshot readback/frame rate
+changed the chase-camera pose. Settled inspection confirmed genuine occlusion.
+Raise guard bottoms to 5 m and fade the prism within 5 m. Then a green crystal
+check still showed a blue shaft hiding the diver: the rest ring was upright.
+The first horizontal ring still crossed the torso because its owner/contact
+area is 2 m above the floor. Finally keep a flat footprint at floor height,
+leaving the swimming-height save/contact volume unchanged. The narrow final
+render shows the full diver with the ground ring beneath; both guards are
+visible above the approaching head. Wide/tall, no-output aggregate and fresh
+hosted rechecks remain required for this new source. None of the rejected
+crystal/guard snapshots are called final no-defect evidence.
+
+Exact hosted 0d0b9b0 full journey/reload passed functionality but failed the
+then-labelled timing at 123.957 engaged seconds. Correct the observer's actual
+first control boundary, retain raw/post-control screenshot/OCR time and every
+existing oracle. No estimated subtraction or changed 120s limit. Denied browser
+write/visible Retry/cold Load passed on that source; screenshots confirm the
+redesigned error card and actual EVA unchanged feedback. New spatial fixes still
+require a fresh candidate round. Human emotional/listening acceptance is open.
+
 ## 2026-10-04: recovery design and adversarial plan recheck
 
 REC-001..004 replace the empty instruction/stock-button screen with a static

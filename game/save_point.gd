@@ -13,6 +13,7 @@ var _mat: StandardMaterial3D
 var _crystal: MeshInstance3D
 var _crystal_material: StandardMaterial3D
 var disabled = false
+@export var footprint_offset_y := 0.05
 
 func _ready() -> void:
 	if not disabled:
@@ -48,8 +49,9 @@ func _ready() -> void:
 		ring.outer_radius = 1.4
 		var ring_mesh := MeshInstance3D.new()
 		ring_mesh.mesh = ring
-		ring_mesh.rotation_degrees.x = 90.0
-		ring_mesh.position.y = 0.05
+		# TorusMesh already lies in XZ. Rotating it 90 degrees makes an upright
+		# opaque ring whose edge hides the diver even after the prism fades.
+		ring_mesh.position.y = footprint_offset_y
 		ring_mesh.material_override = _mat
 		add_child(ring_mesh)
 
@@ -72,7 +74,7 @@ func _process(_delta: float) -> void:
 	# Explicit opacity also works in the Compatibility/web renderer, where
 	# shader distance fading did not remove the near-camera foreground prism.
 	var distance := camera.global_position.distance_to(_crystal.global_position)
-	var opacity := clampf((distance - 2.5) / 2.5, 0.0, 1.0)
+	var opacity := clampf((distance - 5.0) / 3.0, 0.0, 1.0)
 	_crystal.visible = opacity > 0.01
 	var color := _crystal_material.albedo_color
 	color.a = opacity

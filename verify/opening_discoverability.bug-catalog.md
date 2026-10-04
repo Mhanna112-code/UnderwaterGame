@@ -42,3 +42,30 @@ Adversarial harness check: a script-class filter in `find_children` could select
 zero SavePoints. The test now inspects the World's actual save-point owners and
 requires a nonzero near-camera witness. Earlier rendered evidence remains valid,
 but the formerly vacuous structural clause is not counted as proof.
+
+HARNESS-FRAME-01: a no-output aggregate found no close crystal and a hidden
+Sword Slayer despite prior captured views. The teleport fixture waited 20–30
+render frames, not elapsed camera-settling time; screenshot readback slowed the
+captured fixture and masked that dependence. Wait one real second through the
+normal camera update before evaluating the unchanged nonzero-crystal and
+occlusion oracles. Recheck both captured and no-output cases; do not move the
+production guards or camera based on a still-travelling fixture.
+
+The corrected settled fixture **still fails** and its screenshots confirm real
+occlusion. The first harness explanation was incomplete: prior captures during
+camera travel were not valid settled-view evidence. Raise guard visible bottoms
+to 5 m and remove the foreground prism within 5 m (fade 5–8 m). Keep the same
+25-pixel guard oracle and nonzero crystal witness, plus save/contact assertions.
+No gate/trigger size, mesh identity, player camera or gameplay policy is changed.
+
+OPEN-046b: even the repaired crystal clause passed while a blue vertical shaft
+still hid the diver in the screenshot. It was the rest ring: TorusMesh already
+lies in XZ, but a 90-degree rotation stood it upright. Remove that rotation and
+require the actual transformed ring's vertical span below 0.5 m. Retain its
+visibility, rest/contact volume and real saving; inspect the final camera view
+again rather than treating prism invisibility as whole-view proof.
+
+The first horizontal-ring render still covers the torso: the contact area is
+centred at swimming height (2 m), which also elevated its footprint. World now
+supplies a -1.8 m visual footprint offset without moving the contact volume or
+prism. Add the actual ring-top-below-approaching-body invariant and inspect again.

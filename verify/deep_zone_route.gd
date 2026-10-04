@@ -118,8 +118,15 @@ func _run() -> void:
 			paused = false
 		active.global_position = Vector3(98.0, 2.0, 45.0)
 		world._on_encounter_triggered(active)
-		await process_frame
-		_expect(world.battling, "ENCOUNTER POLICY: production World cannot start a random fight in open deep water")
+		# Ordinary encounters deliberately show the selected world actors for
+		# 1.5 seconds first. One frame tests the preview, not combat dispatch.
+		_expect(world.random_encounter_reveal != null,
+			"ENCOUNTER POLICY: open deep water cannot start an ordinary world preview")
+		var deadline := Time.get_ticks_msec() + 4000
+		while world.battle == null and Time.get_ticks_msec() < deadline:
+			await process_frame
+		_expect(world.battling and world.battle != null and world.battle.encounter_source == "random" and not world.battle.guardian_encounter,
+			"ENCOUNTER POLICY: ordinary deep-water preview never hands off to a random fight")
 
 	world.queue_free()
 	await process_frame

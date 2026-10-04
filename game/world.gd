@@ -1599,6 +1599,9 @@ func _build_highway() -> void:
 	# "rest here before attempting the gate," not "partway through it."
 	var save_point := SavePoint.new()
 	save_point.position = Vector3(START_X - 5.0, 2.0, LANE_Z)
+	# Contact volume is centred at swimming height; its visual footprint belongs
+	# on the floor, not across the player's torso at that same two-metre height.
+	save_point.footprint_offset_y = -1.8
 	add_child(save_point)
 	_save_points.append(save_point)
 
@@ -2345,7 +2348,7 @@ func _build_deep_zone_blocker_staging() -> void:
 			actor.position.z += point.z - actor_bounds.get_center().z
 			# Hover above the chase-camera diver's silhouette. Horizontal mesh
 			# centering alone hid the entire guard behind the player on approach.
-			actor.position.y += 3.5 - actor_bounds.position.y
+			actor.position.y += 5.0 - actor_bounds.position.y
 			actor.force_update_transform()
 		_route_blocker_world_actors[blocker_id] = actor
 		_route_blocker_gates[blocker_id] = _build_route_blocker_gate(blocker_id, point)

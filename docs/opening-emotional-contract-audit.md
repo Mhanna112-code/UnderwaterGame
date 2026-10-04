@@ -76,6 +76,29 @@ automation cannot prove that a player feels hope, dread or determination.
 
 ## Execution ledger
 
+- Expanded 0d0b9b0 aggregate completed 127 native/rendered checks with five
+  failed gates. Retained as a failed round, not called all green: one stale
+  one-frame deep-water dispatch witness, one removed private roster factory,
+  and three discoverability sizes. Captured source is preserved in the packet.
+- Settling the actual chase camera rather than counting render frames confirmed
+  real guard/crystal occlusion. Guards now hover with measured bottoms at 5 m;
+  prism disappears within 5 m and fades to 8 m. Its separate upright rest ring
+  still hid the player after a green prism test; inspection rejected that round.
+  Ring is now horizontal and its footprint is placed at floor height while the
+  rest/contact volume stays at swimming height. New ring-span/body-clearance
+  assertions plus actual rest/save proof accompany captured final views.
+- The exact 0d0b9b0 browser passed actual full films/choices, two real later
+  deaths/Restart/title Load, durable completion and zero runtime errors, but
+  failed its then-labelled time-to-control at 123.957 engaged seconds. Keep it
+  failed. A verifier defect counted post-control world screenshot/OCR and
+  overwrote complete timestamps on later Load. Fresh measurements preserve
+  actual first in-browser phase time, separately retain raw/observation time
+  and keep the 120-second limit. No guessed overhead is subtracted.
+- A separate exact hosted denied IndexedDB write/Retry/Continue/cold Load
+  succeeds with clear redesigned error/action views. Injected fault duration is
+  not an opening timing pass. Subsequent spatial changes require fresh export,
+  full aggregate and hosted inspection before the stable alias is updated.
+
 - Baseline source: `3dc3d37`, runtime review `4c6ca74`.
 - Baseline result: FAIL (Tethys progression, >120s timing, OPEN-032/046, guard
   staging; human acceptance and recurring selected-slot replay unresolved).
