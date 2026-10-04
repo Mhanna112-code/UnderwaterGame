@@ -22,11 +22,35 @@ const browserEngine = process.env.OPENING_BROWSER_ENGINE || 'chromium';
 const browser = browserEngine === 'webkit' ? await webkit.launch() : await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: ['--use-gl=angle', `--use-angle=${gpuMode}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 console.log('Browser launched');
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const storageFault = process.env.OPENING_STORAGE_FAILURE === '1';
+if (storageFault) await page.addInitScript(() => {
+  // Fault only our disposable context's completed saves. Initial checkpoints
+  // remain writable; no player's IndexedDB or game state is ever touched.
+  window.rejectCompletedCheckpoint = true;
+  window.rejectedCheckpointWrites = 0;
+  const put = IDBObjectStore.prototype.put;
+  IDBObjectStore.prototype.put = function(value, key) {
+    const result = put.call(this, value, key);
+    if (window.rejectCompletedCheckpoint && String(key).endsWith('/saves/slot_0.json')) {
+      const snapshot = JSON.parse(new TextDecoder().decode(value.contents));
+      if (snapshot.route_state?.prologue_complete) {
+        window.rejectedCheckpointWrites++;
+        this.transaction.abort();
+      }
+    }
+    return result;
+  };
+});
 const phases = [], errors = [], timestamps = {};
+let checkpointFailureObserved = false;
+const deaths = [];
 page.on('console', msg => {
   const line = msg.text();
   const match = line.match(/PROLOGUE_PHASE\|([a-z_]+)/);
   if (match) { phases.push(match[1]); timestamps[match[1]] = Date.now(); console.log(line); }
+  if (line.includes('CHECKPOINT_SAVE_FAILED|')) { checkpointFailureObserved = true; console.log(line); }
+  if (line.includes('CHECKPOINT_GAME_OVER|')) { deaths.push(line); console.log(line); }
+  if (storageFault && line.includes('Failed to save IDB file system:')) { console.log('INJECTED STORAGE FAILURE|' + line); return; }
   if (msg.type() === 'error' || /SCRIPT ERROR:|^ERROR:/.test(line)) errors.push(line);
 });
 page.on('pageerror', error => errors.push(String(error)));
@@ -45,7 +69,7 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
 };
-let failure, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, saveRecheck;
+let failure, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
   console.log('Export page loaded');
@@ -100,13 +124,24 @@ try {
   if (endingMs < 6000 || endingMs > 15000) throw new Error('Approved boss-title ending was skipped or the long monologue remains');
   await page.waitForTimeout(300);
   await shot('08-recovery');
+  if (storageFault) {
+    await page.waitForTimeout(7000);
+    await shot('08a-storage-failure');
+    if (!await page.evaluate(() => window.rejectedCheckpointWrites > 0)) throw new Error('OPEN-033 storage fault was not exercised');
+    if (!checkpointFailureObserved) throw new Error('OPEN-033 durable browser write failed but recovery offered successful Continue');
+    if (phases.includes('complete')) throw new Error('OPEN-033 storage failure released normal play');
+    await page.evaluate(() => { window.rejectCompletedCheckpoint = false; });
+    await page.mouse.click(640, 417); // Centre of the visible Retry Save action.
+    await page.waitForTimeout(2500);
+    await shot('08b-retry-save');
+  }
   await page.mouse.click(640, 393);
   await waitPhase('complete', 5000);
   await page.waitForTimeout(600);
   await shot('09-optional-training');
   elapsedSeconds = (Date.now() - started) / 1000;
   console.log(`Normal browser New Game to control: ${elapsedSeconds}s`);
-  if (elapsedSeconds >= 120) throw new Error('Normal opening exceeds the two-minute acceptance limit');
+  if (!storageFault && elapsedSeconds >= 120) throw new Error('Normal opening exceeds the two-minute acceptance limit');
   const expected = ['opening_video', 'spawn_exploration', 'angler', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
   if (process.env.OPENING_SAVE_RECHECK === '1') {
@@ -157,13 +192,90 @@ try {
       throw new Error('OPEN-027 cold Load Game replayed the completed opening');
     }
     if (phases.slice(expected.length).join(',') !== 'complete') throw new Error('OPEN-027 Load Game did not restore completed normal play');
+    if (process.env.OPENING_DEATH_RECHECK === '1') {
+      const stored = saveRecheck.afterReload.find(save => String(save.key).endsWith('/slot_0.json'));
+      if (!stored?.data.route_state.prologue_complete) throw new Error('OPEN-034 real completed checkpoint missing before attrition fixture');
+      deathRecheck = { completionBeforeFixture: stored.data.route_state, deaths };
+      // Explicit attrition fixture in this test profile only. Never manufacture
+      // completion, a battle result, damage, or dead actors. Place the diver
+      // OUTSIDE the normal Swordfish guardian so real W input enters the site.
+      await page.evaluate(async stored => {
+        const snapshot = structuredClone(stored.data);
+        snapshot.active = 0;
+        snapshot.divers.forEach((diver, index) => {
+          diver.position = [12 + index * 3, 2.6, -30];
+          Object.assign(diver.stats, { hp: 1, defense: 0, evasion: 0, strength: 0, accuracy: 0 });
+        });
+        const db = await new Promise((resolve, reject) => {
+          const request = indexedDB.open(stored.database);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        await new Promise((resolve, reject) => {
+          const transaction = db.transaction('FILE_DATA', 'readwrite');
+          const store = transaction.objectStore('FILE_DATA');
+          const request = store.get(stored.key);
+          request.onsuccess = () => {
+            const value = request.result;
+            value.contents = new TextEncoder().encode(JSON.stringify(snapshot));
+            value.timestamp = new Date();
+            store.put(value, stored.key);
+          };
+          transaction.oncomplete = resolve;
+          transaction.onabort = transaction.onerror = () => reject(transaction.error);
+        });
+        db.close();
+      }, stored);
+      const coldLoad = async () => {
+        await page.reload({ waitUntil: 'load' });
+        await page.waitForTimeout(20000);
+        await page.mouse.click(640, 405);
+        await page.waitForTimeout(700);
+        await page.mouse.click(640, 327);
+        await page.waitForTimeout(1500);
+      };
+      const loseNormally = async expectedDeaths => {
+        await page.keyboard.down('w');
+        await page.waitForTimeout(1200);
+        await page.keyboard.up('w');
+        const deadline = Date.now() + 75000;
+        while (deaths.length < expectedDeaths && Date.now() < deadline) {
+          await page.mouse.click(165, 544); // Attack or first move.
+          await page.mouse.click(165, 666); // Actual enemy target.
+          await page.waitForTimeout(500); // Let enemy damage/QTE timeouts resolve.
+        }
+        if (deaths.length !== expectedDeaths) throw new Error('OPEN-034 real enemy combat did not reach Game Over');
+      };
+      await coldLoad();
+      await loseNormally(1);
+      await shot('13-actual-ordinary-death');
+      await page.mouse.click(640, 356); // Visible Restart from Save Point.
+      await page.waitForTimeout(3000);
+      await shot('14-actual-restarted-world');
+      if (phases.at(-1) !== 'complete' || phases.filter(p => p === 'complete').length !== 4) throw new Error('OPEN-034 death-screen Restart did not restore completed world');
+      await loseNormally(2);
+      await shot('15-second-actual-death');
+      await page.mouse.click(640, 414); // Visible Return to Title.
+      await page.waitForTimeout(2000);
+      await shot('16-death-returned-title');
+      await page.mouse.click(640, 405);
+      await page.waitForTimeout(700);
+      await page.mouse.click(640, 327);
+      await page.waitForTimeout(2000);
+      await shot('17-death-title-loaded-world');
+      deathRecheck.afterDeaths = await readSaves();
+      const finalCheckpoint = deathRecheck.afterDeaths.find(save => String(save.key).endsWith('/slot_0.json'));
+      if (!finalCheckpoint?.data.route_state.prologue_complete || finalCheckpoint.data.route_state.tutorial_complete) throw new Error('OPEN-034 actual deaths changed the durable completion/training milestones');
+      if (phases.slice(expected.length).some(p => p !== 'complete') || phases.filter(p => p === 'complete').length !== 5) throw new Error('OPEN-034 later death/title Load replayed or failed to restore completed world');
+      if (deaths.some(line => !line.includes('slot=0|complete=true'))) throw new Error('OPEN-034 actual death lost its selected completed checkpoint');
+    }
   }
   if (errors.length) throw new Error(errors.join('\n'));
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, phases, timestamps, saveRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, phases, timestamps, saveRecheck, deathRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }
 if (failure) { console.error(failure); process.exit(1); }
-console.log('OPENING WEB: ordinary entry, full split movies, real mouse combat and recovered control clean');
+console.log('OPENING WEB: ordinary entry, full split movies, real mouse combat and recovered control clean' + (deathRecheck ? '; actual ordinary deaths / Restart / title Load clean' : '') + (storageFault ? '; rejected browser persistence / Retry / cold Load clean' : ''));

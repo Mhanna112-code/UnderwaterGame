@@ -668,7 +668,10 @@ func _recover_from_prologue() -> void:
 	route_state.set_objective("")
 	banner.text = ""
 	_banner_timer = 0.0
+	recovery.show_saving()
 	var checkpoint_error := _write_save()
+	if checkpoint_error == OK:
+		checkpoint_error = await BrowserCheckpoint.confirm_slot(_current_slot)
 	while checkpoint_error != OK:
 		# Ordinary play must never be released on a false checkpoint promise.
 		# Retain this restored session, explain the failure and retry the exact
@@ -676,7 +679,10 @@ func _recover_from_prologue() -> void:
 		recovery.show_save_failure()
 		print("CHECKPOINT_SAVE_FAILED|slot=", _current_slot, "|error=", checkpoint_error)
 		await recovery.continued
+		recovery.show_saving()
 		checkpoint_error = _write_save()
+		if checkpoint_error == OK:
+			checkpoint_error = await BrowserCheckpoint.confirm_slot(_current_slot)
 	recovery.clear_save_failure()
 	# The save is already safe if the player closes while reading motivation.
 	await recovery.continued
@@ -821,6 +827,7 @@ func _maze_playtest_requested() -> bool:
 	return false
 
 func _show_game_over() -> void:
+	print("CHECKPOINT_GAME_OVER|slot=", _current_slot, "|complete=", route_state.prologue_complete)
 	# Defeat owns the whole screen just like cold launch. The controls, active
 	# diver label, bars, minimap and any announcement describe a playable world
 	# and become misleading noise once that world has been paused.

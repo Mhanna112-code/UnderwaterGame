@@ -228,7 +228,8 @@ elif ! node -e "import('playwright')" >/dev/null 2>&1; then
 	echo "    npm i playwright && npx playwright install chromium"
 	skips=$((skips + 1))
 else
-	run "opening browser: does ordinary New Game complete both full movies and real combat" node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-prologue
+	run "opening browser death: do real enemy deaths, Restart and cold Load retain completed play" env OPENING_SAVE_RECHECK=1 OPENING_DEATH_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-prologue
+	run "opening browser storage denial: does rejected IndexedDB completion block Continue and recover through Retry" env OPENING_STORAGE_FAILURE=1 OPENING_SAVE_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-storage-denial
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
 	run "audio webcheck: does a trusted New Game click unlock browser audio" node verify/audio_webcheck.mjs "$WEB_DIR" /tmp/gate-audio.png
 	run "maze navigation webcheck: does ?maze=1 visibly update after H" node verify/maze_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-map-closed.png /tmp/gate-maze-map-open.png

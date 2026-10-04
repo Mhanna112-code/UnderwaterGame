@@ -390,6 +390,52 @@ the seven-second idle fallback and the one-shot/direction-independent contract.
 
 ## Approved split cinematic risks, 2026-10-03
 
+## Browser checkpoint boundary, 2026-10-04
+
+OPEN-033: Godot reports a successful memory-filesystem write while IndexedDB
+rejects the durable commit. Recovery offers Continue and releases normal play;
+cold Load then reads the earlier incomplete checkpoint and repeats the opener.
+The native atomic-write tests cannot catch this separate IO boundary.
+
+Public interfaces: New Game, the complete ordinary opening, recovery Continue /
+Retry Save, and title Load. IO: Godot's user filesystem and the browser's real
+FILE_DATA transaction. Branches: native versus web, unavailable persistence,
+write failure, delayed commit, retry, and completion acknowledged only after a
+matching durable checkpoint. Fault injection must abort only this fresh test
+profile's completed-checkpoint writes, preserving the initial save.
+
+Test: exported-browser negative-path round trip. Complete the real movies and
+combat with mouse input, reject completed-checkpoint commits, require the
+visible recovery to remain locked, release the storage fault and retry, then
+cold Load the actual stored file without replay. The oracle is persisted JSON
+and public phase transitions, not an injected completion flag. Stable-but-wrong
+Continue fails; owner refactoring does not change the contract.
+
+OPEN-034: native death/restart tests pass but the exported ordinary death screen
+or title Load rebuilds an incomplete run. Extend the same browser journey with
+an explicitly documented low-HP saved-party fixture in a disposable profile,
+real world movement / encounter, enemy damage, and visible Restart / Return to
+Title buttons. Never emit a battle result or change durable completion flags.
+This is supplementary attrition testing, not an unmodified campaign playtest.
+
+Skipped: repairing the player's existing incomplete slots by guessing which
+one they finished; altering tutorial or post-opening design; generic browser
+storage administration. Those do not establish this save/restart contract.
+
+OPEN-033 evaluation: the ordinary exported journey rejected a completed
+FILE_DATA transaction while retaining the initial checkpoint; source 2bf19ac
+still offered Continue (captured red). Recovery now waits for exact canonical
+bytes in a completed readonly IndexedDB transaction. Failed/unavailable/late
+persistence keeps the restored session paused with Retry Save. Native atomic
+write behavior is unchanged. Final local WebKit storage-denial → Retry → cold
+Load passed in `/tmp/opening-browser-durable-green3/result.json`, with only
+the explicitly injected storage error excluded from runtime-error acceptance.
+Two rejected intermediate implementations remain recorded: unsupported JS
+object return through eval made the first acknowledgement interface unavailable;
+the supported get_interface bridge now handles it. No intermediate repair was
+deployed to the review alias. OPEN-034 hosted-browser actual-death proof is
+pending; native real enemy-damage / Restart / title Load passes.
+
 OPEN-023: the Octopus cinematic restarts at zero, duplicates its decoder,
 continues invisibly through combat, leaks input while visible, or overlaps
 boss music. A continuous first-25-seconds/pause/remainder owner must preserve

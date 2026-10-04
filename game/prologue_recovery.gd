@@ -53,8 +53,15 @@ func _ready() -> void:
 func show_save_failure() -> void:
 	_save_status.visible = true
 	_continue_button.text = "Retry Save"
+	_continue_button.disabled = false
 	_continue_button.grab_focus()
+
+func show_saving() -> void:
+	_save_status.visible = false
+	_continue_button.text = "Saving checkpoint..."
+	_continue_button.disabled = true
 
 func clear_save_failure() -> void:
 	_save_status.visible = false
 	_continue_button.text = "Continue"
+	_continue_button.disabled = false

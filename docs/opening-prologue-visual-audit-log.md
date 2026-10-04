@@ -81,6 +81,35 @@ the round.
 
 ## Rounds
 
+### Checkpoint persistence follow-up, 2026-10-04 (focused audit, not final PASS)
+
+The previous web gate covered cold Load but omitted actual exported ordinary
+combat death. Native write denial and browser persistence are separate IO
+boundaries; a green FileAccess return is not a browser-durability promise.
+
+OPEN-033 red: the unmodified complete opening on source 2bf19ac, with only this
+disposable profile's completed IndexedDB transaction rejected, reached recovery
+and offered successful Continue. `/tmp/opening-browser-durable-red/` and log
+retain that failure. Repair waits for the browser's canonical exact bytes,
+disables Continue while saving, and retains visible Retry Save on failure.
+The canonical database is only read by the acknowledgement owner; Godot still
+owns writes and sync. The player's stored checkpoints were never modified.
+
+Intermediate candidates were rejected: the initial JS bridge used eval as an
+object-return API, which returns no arbitrary object in this Godot export.
+Both failed browser rounds were retained and the interface corrected before
+any deployment. Final local WebKit denial / Retry / cold Load passes at
+96.786 seconds (including the intentional storage denial and retry wait), with
+no runtime errors apart from the precisely injected transaction abort.
+`08a-storage-failure.png` and `08b-retry-save.png` confirm readable Retry and
+Continue surfaces. Native real-death, invalid Load, optional training and
+denied slot-switch regressions also pass. Hosted OPEN-034 proof remains pending.
+
+This confirms real replay-causing failure paths, not which storage failure
+occurred in Miguel's earlier session. The old observed slots contained initial
+milestones. We must not silently fabricate completion for those slots or claim
+that the source repair reconstructs progress already absent from the save.
+
 ### Local diagnostic round 1, 2026-10-03: FAIL
 
 Uncommitted D/E candidate based on `1f30164`; Godot 4.7.1 Compatibility,
