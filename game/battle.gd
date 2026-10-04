@@ -4933,12 +4933,13 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# itself is the reaction. _play_enemy_death()/_play_enemy_hit() only ever
 	# act on a Goblin/TethysBoss actor (silent no-ops against a Diver
 	# target), so a revive's own visual - the one case here that targets a
-	# Diver - gets its own branch below instead.
+	# Diver - rebuilds the stage actor just as potion recovery does. Reversing
+	# a death fade is unsafe when the diver entered this battle already down.
 	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
 	if target_died:
 		_play_enemy_death(target)
 	elif r.hit and String(r.debuff) == "revive" and target.has("actor") and target.actor is Diver:
-		(target.actor as Diver).play_revive()
+		_return_to_stage(target)
 	elif r.hit and String(r.debuff) == "":
 		_play_enemy_hit(target)
 	_finish_actor_turn(_acting)

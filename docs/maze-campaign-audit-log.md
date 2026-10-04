@@ -136,3 +136,26 @@ Label rectangles against the viewport instead of a private caption registry.
 Current placement finds the real CollisionShape3D rather than depending on child
 index order. The same eight real relic wins and all generated input/policy cases
 pass after this behavior-preserving fixture change, with no runtime errors.
+
+## October 4 2026 INT-07 initially downed combat recovery
+
+Source before change: 50b3b0a. A real earned Tidal Revival restored HP/card and
+actual turn, but enlarged an initially downed actor by reversing a shrink it never
+underwent and lifted it above its home. An initial captured-scalar fixture error
+falsely reported no usable turn; corrected observation storage cleanly isolated
+the two real scale/home findings. That contaminated run is not counted as proof.
+
+Spell revival now uses the existing potion stage rebuild, retaining the source
+resource and discarding old hidden/faded visual state. Five supported identity ×
+method cases pass actual visible Attack/Items/target actions, exact payment,
+normal HP maximum, actor/card restoration and a genuine next-turn attack. Native
+OpenGL runs also pass; all five captures were inspected. Three affected checks
+(combat lifetime, eight relic-consumer wins, menus/title) pass with no engine/script
+errors. Receipts and the six-section catalog disclose direct Battle/XP fixtures.
+
+This is recovery consumer evidence, not normal-route resource attainment or full
+battle polish. Newly downed combat, downed world steering/caster eligibility and
+browser durability remain separate. Native spell captures expose dark +10 HP text
+against water; recorded as open INT-08 feedback contrast rather than overlooked.
+No export/deployment/public update. Next: physical traversal with Marc's actual
+current/map controls, not the stale H-era completion route.

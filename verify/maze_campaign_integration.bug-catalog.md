@@ -116,4 +116,10 @@ nine strong-room policy cases and actual E/R geometry. Map/checkpoint stacking w
 reproduced before repair. Public selector and placement fixtures are disclosed in
 maze_input_ownership.bug-catalog.md; this does not prove full human navigation.
 
-Remaining: INT-04 still requires browser denied-storage. INT-05, INT-07 and INT-09–14 are unaccepted; INT-08 is accepted only for checkpoint/menu scope, not full route/battle art. Full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. The old maze-completion gate still assumes H-driven current relocation and fails; current-route acceptance remains open.
+INT-07 initially downed combat consumer passes five actual potion/spell cases and
+native actor/card observations. The valid red was oversized/lifted spell revival,
+not lost turn or invisible actor. See combat_initially_downed.bug-catalog.md.
+Downed exploration steering/caster eligibility and newly downed combat remain
+separate checks; a dark transient healing-text observation remains open in INT-08.
+
+Remaining: INT-04 still requires browser denied-storage. INT-05 and INT-09–14 are unaccepted; INT-08 is accepted only for checkpoint/menu scope, not full route/battle art. Full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. The old maze-completion gate still assumes H-driven current relocation and fails; current-route acceptance remains open.
