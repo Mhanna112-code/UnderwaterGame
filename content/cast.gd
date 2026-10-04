@@ -124,6 +124,11 @@ const ABILITY_CLIPS := {
 	"Guard Bash": "Proto5_(Attack)BodyPress",
 	"Heavy Kick": "Proto5_(Attack)Slam",
 	"Crushing Haymaker": "Proto5_(Attack)Hammer",
+	# Support casts face an ally in place. The fallback Hammer telescopes
+	# across that row and obscures the recipient. Use the delivered positive
+	# gesture's one-shot start, not the shared looping victory resource.
+	"Mending Current": "Proto5_(Thumbs_P)(Start)",
+	"Tidal Revival": "Proto5_(Thumbs_P)(Start)",
 }
 
 const FALLBACK_ATTACK := {

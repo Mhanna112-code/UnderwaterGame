@@ -180,3 +180,29 @@ native captures were inspected: visible Bucky, unobscured wide-screen HUD and
 discovered map/control lines. This is one channel, not full puzzle/secret/finale
 traversal or four-size map presentation. Only the obsolete local H traversal gate
 is replaced; full legacy completion stays open. No preview/export/public change.
+
+## October 4 2026 recovery feedback and support gesture
+
+Source: df4fdf2 plus the recorded INT-07 visual follow-up. Real Tidal Revival
+casts produced a valid red in both recipient cases: glyph opacity faded while
+the separate black outline remained opaque. Repair holds readable text briefly,
+then fades glyph and outline together over the unchanged total lifetime. The
+existing feedback handler already restored the actor; its redundant late rebuild
+was removed so that restoration has one owner.
+
+Production-speed native captures exposed a second defect: Bucky's fallback Hammer
+arms obscured the healed recipient. Runtime inspection confirmed the delivered
+1.15-second Proto5 thumbs-up Start gesture. Only Mending Current and Tidal Revival
+use it; actual attack mappings remain unchanged. The before pictures are retained.
+Both new hold pictures and all five later potion/spell pictures were inspected:
+normal actor scale/home, visible recipients and readable cyan healing text during
+its hold, followed by a clean fade. Five actual recovery cases pass headless and
+native 1x; clip inventory, three-rig animation, eight actual relic battles, combat
+content and 20 effect-pool cases are clean without script errors.
+
+An 8x native PNG/readback run exhausted the one-second label lifetime and produced
+an invalid missing-label finding. It is excluded; native capture now runs at 1x
+and does not lengthen production feedback to accommodate the harness. Hammer
+attack framing, newly downed recovery and whole battle-art acceptance remain open.
+Disk recovered to about 6.6 GiB before this checkpoint; no assets were deleted by
+this work. No export/deployment/public change. Next: real puppet-wave dispatch.

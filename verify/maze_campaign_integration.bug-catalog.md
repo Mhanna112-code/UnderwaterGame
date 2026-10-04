@@ -120,6 +120,8 @@ INT-07 initially downed combat consumer passes five actual potion/spell cases an
 native actor/card observations. The valid red was oversized/lifted spell revival,
 not lost turn or invisible actor. See combat_initially_downed.bug-catalog.md.
 Downed exploration steering/caster eligibility and newly downed combat remain
-separate checks; a dark transient healing-text observation remains open in INT-08.
+separate checks. The dark transient healing-text observation and support Hammer
+obscuration have now been reproduced and repaired with actual-cast/native 1x
+evidence. This accepts that recovery-feedback scope only, not all battle art.
 
-Remaining: INT-04 still requires browser denied-storage. INT-05 and INT-09–14 are unaccepted; INT-08 is accepted only for checkpoint/menu scope, not full route/battle art. Full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. The old maze-completion gate still assumes H-driven current relocation and fails; current-route acceptance remains open.
+Remaining: INT-04 still requires browser denied-storage. INT-05 and INT-09–14 are unaccepted; INT-08 is accepted only for checkpoint/menu and recovery-feedback scope, not full route/battle art. Full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. First physical current-channel traversal passes with real input and push/collision active; the old maze-completion gate still assumes H-driven relocation and fails. Full current/puzzle route acceptance remains open.

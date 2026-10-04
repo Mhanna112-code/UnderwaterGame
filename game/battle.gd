@@ -2801,6 +2801,8 @@ func _log_grapple_wave(safe_is_yellow: bool, wave_index: int, total_waves: int) 
 # next to the model inside Battle's isolated viewport.
 func _show_combat_feedback(entry: Dictionary, result: Dictionary, play_sound: bool = true) -> void:
 	if String(result.get("debuff", "")) == "revive":
+		# One restoration owner for the real resolved result. This also handles
+		# actors that entered the battle down, without reversing a nonexistent fade.
 		_return_to_stage(entry)
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
@@ -2841,8 +2843,8 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_in
 	var label := Label3D.new()
 	label.text = text
 	label.modulate = color
-	label.font_size = 42
-	label.outline_size = 10
+	label.font_size = 48
+	label.outline_size = 4
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.position = _top_of(actor) - actor.global_position + actor.position + Vector3(0.0, 0.35 + float(stack_index) * 0.32, 0.0)
@@ -2850,7 +2852,10 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_in
 	var tween := label.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(label, "position:y", label.position.y + 0.65, 1.1)
-	tween.tween_property(label, "modulate:a", 0.0, 1.1)
+	# Label3D colors the glyph and outline separately. Hold the result long
+	# enough to read, then fade both; an opaque outline alone is a black ghost.
+	tween.tween_property(label, "modulate:a", 0.0, 0.65).set_delay(0.45)
+	tween.tween_property(label, "outline_modulate:a", 0.0, 0.65).set_delay(0.45)
 	tween.set_parallel(false)
 	tween.tween_callback(label.queue_free)
 
@@ -4930,16 +4935,12 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 
 	# A killing blow gets the fade instead of the usual walk/idle reaction -
 	# a dying grunt shouldn't play a normal hit-react animation, the fade
-	# itself is the reaction. _play_enemy_death()/_play_enemy_hit() only ever
-	# act on a Goblin/TethysBoss actor (silent no-ops against a Diver
-	# target), so a revive's own visual - the one case here that targets a
-	# Diver - rebuilds the stage actor just as potion recovery does. Reversing
-	# a death fade is unsafe when the diver entered this battle already down.
+	# itself is the reaction. These enemy reactions are no-ops against a Diver;
+	# a revive's actor was already restored by _show_combat_feedback(). Do not
+	# rebuild it again or reverse a death fade the fresh actor never underwent.
 	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
 	if target_died:
 		_play_enemy_death(target)
-	elif r.hit and String(r.debuff) == "revive" and target.has("actor") and target.actor is Diver:
-		_return_to_stage(target)
 	elif r.hit and String(r.debuff) == "":
 		_play_enemy_hit(target)
 	_finish_actor_turn(_acting)

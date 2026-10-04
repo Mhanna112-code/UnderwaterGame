@@ -7,7 +7,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	root.size = Vector2i(1280, 720)
-	Engine.time_scale = 8.0
+	# Native screenshots use production timing; PNG/readback overhead must
+	# not consume a one-second text lifetime at accelerated game time.
+	Engine.time_scale = 1.0 if "--capture-revival" in OS.get_cmdline_user_args() else 8.0
 	for downed in range(3):
 		await _case(downed, "potion")
 		if downed != 2:
@@ -55,7 +57,7 @@ func _case(downed: int, method: String) -> void:
 			observations.swing = true)
 	var spent := false
 	var actions := 0
-	var deadline := Time.get_ticks_msec() + 25000
+	var deadline := Time.get_ticks_msec() + (60000 if "--capture-revival" in OS.get_cmdline_user_args() else 25000)
 	var before_oxygen := bucky.stats.oxygen
 	while not observations.swing and outcomes.is_empty() and Time.get_ticks_msec() < deadline and actions < 15:
 		if battle._tutorial_awaiting_enter:
@@ -64,6 +66,11 @@ func _case(downed: int, method: String) -> void:
 			event.pressed = true
 			Input.parse_input_event(event)
 		if spent and resource.hp > 0 and not restored:
+			if method == "spell" and "--capture-revival" in OS.get_cmdline_user_args():
+				await RenderingServer.frame_post_draw
+				var hold_path := "res://docs/evidence/maze-campaign-integration/revive-feedback-hold-%d.png" % downed
+				_expect(root.get_texture().get_image().save_png(hold_path) == OK,
+					"INT-08 could not capture actual healing text during readable hold")
 			await create_timer(0.8).timeout
 			var actor := entry.actor as Diver
 			_expect(actor.is_visible_in_tree(), "INT-07 recovery restored HP but initially hidden actor stayed invisible")
@@ -76,12 +83,20 @@ func _case(downed: int, method: String) -> void:
 			if method == "spell":
 				_expect(absf(bucky.stats.oxygen - (before_oxygen - 28.0)) < 0.05,
 					"INT-07 actual revival did not pay 28 Oxygen")
+				var feedback_found := false
+				for node in actor.get_parent().get_children():
+					if node is Label3D and (node as Label3D).text == "+10 HP":
+						var feedback := node as Label3D
+						feedback_found = true
+						_expect(absf(feedback.modulate.a-feedback.outline_modulate.a) < 0.05,
+							"INT-08 healing text leaves an opaque outline while its colored fill fades")
+				_expect(feedback_found, "INT-08 actual revival has no observable floating HP result")
 			else:
 				_expect(int(inventory.get("potion", 0)) == 1, "INT-07 potion restoration did not spend exactly one item")
 			restored = true
 			if "--capture-revival" in OS.get_cmdline_user_args():
 				await RenderingServer.frame_post_draw
-				var path := "res://docs/evidence/maze-campaign-integration/revive-%d-%s.png" % [downed, method]
+				var path := "res://docs/evidence/maze-campaign-integration/revive-feedback-%d-%s.png" % [downed, method]
 				_expect(root.get_texture().get_image().save_png(path) == OK,
 					"INT-07 could not capture native revival presentation")
 		if battle.main_menu.is_visible_in_tree() and not battle.attack_btn.disabled and not battle._busy and battle._acting.has("model_name"):
