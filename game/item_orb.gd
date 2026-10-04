@@ -19,6 +19,10 @@ signal collected(item_id: String, diver: Diver)
 # rest of the way to them (handy for orbs left floating out of reach).
 @export var golden := false
 @export var grappleable := false
+# Only a grapple picks this one up; swimming into it just says so (the
+# `needs_ability` signal - MazeLevel shows the message).
+@export var grapple_only := false
+signal needs_ability(diver: Diver)
 
 var _mesh: MeshInstance3D
 var _mat: StandardMaterial3D
@@ -72,6 +76,9 @@ func _process(dt: float) -> void:
 
 func _on_body_entered(body: Node3D) -> void:
 	if body is Diver:
+		if grapple_only:
+			needs_ability.emit(body as Diver)
+			return
 		_collect(body as Diver)
 
 func _collect(diver: Diver) -> void:

@@ -101,6 +101,7 @@ func _ready() -> void:
 	_build_split_rock()
 	_build_wall_10_11_extras()
 	_build_hall_gauntlet()
+	_build_inventory_menu()
 	_add_wall_skirts()
 	$HUD/Controls.text = "Hallway: CLOSED — open the map (L), pick the hallway walls and press E."
 	if SceneHandoff.returning_from_secret_wall:
@@ -1014,7 +1015,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
+	return (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -1709,8 +1710,11 @@ func _on_secret_rock_broken(reward: String, spot: Vector3) -> void:
 	orb.item_id = reward
 	orb.golden = true
 	orb.grappleable = true
+	orb.grapple_only = true
 	orb.position = spot
 	orb.collected.connect(_on_secret_orb_collected)
+	orb.needs_ability.connect(func(_d: Diver) -> void:
+		_announce("This item seems to require a special ability to pick it up."))
 	add_child(orb)
 	if Items.is_key_item(reward):
 		key_pickups.append(orb)
@@ -4011,6 +4015,18 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	# Esc opens / closes the inventory (as in the main game).
+	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_ESCAPE:
+		if inventory_menu != null and inventory_menu.visible:
+			inventory_menu.close()
+			get_viewport().set_input_as_handled()
+			return
+		if not _battling and not any_modal_open() and inventory_menu != null and not (target_selector != null and target_selector.selecting):
+			inventory_menu.open()
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			_mouse_look = false
+			get_viewport().set_input_as_handled()
+			return
 	if _battling or any_modal_open():
 		return
 	# While choosing a swap target (the main game's TargetSelector): Left/
@@ -5037,3 +5053,76 @@ func _build_rock_column(at: Vector3, rng: RandomNumberGenerator) -> void:
 		boulder.rotation = Vector3(rng.randf_range(-0.4, 0.4), rng.randf() * TAU, rng.randf_range(-0.4, 0.4))
 		column.add_child(boulder)
 		y += mesh.height * 0.8
+
+# --- Inventory (ported from the main game) -------------------------------------
+# Esc opens main's InventoryMenu: Items (use on whoever you're steering),
+# Party Spells (inventory-tagged heal/revive moves) and Combat Help. These
+# are the World functions it calls, done the same way here.
+var inventory_menu: InventoryMenu
+
+func _build_inventory_menu() -> void:
+	inventory_menu = InventoryMenu.new()
+	inventory_menu.world = self
+	$HUD.add_child(inventory_menu)
+
+func use_inventory_item(item_id: String) -> void:
+	var count: int = int(inventory.get(item_id, 0))
+	if count <= 0 or divers.is_empty():
+		return
+	var diver: Diver = divers[active]
+	if bool(Items.ITEMS.get(item_id, {}).get("battle_only", false)):
+		_announce("This item can only be used during a battle.")
+		return
+	if not Items.would_help(item_id, diver.stats):
+		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
+		_announce("%s wouldn't do anything right now." % display)
+		return
+	var msg := Items.grant(item_id, diver.stats)
+	if msg != "":
+		_announce(msg)
+	inventory[item_id] = count - 1
+	if inventory[item_id] <= 0:
+		inventory.erase(item_id)
+
+func _inventory_spells_for(d: Diver) -> Array:
+	var out: Array = []
+	for mv in Battle.BASE_MOVES.get(d.model_name, []):
+		if bool((mv as Dictionary).get("inventory", false)):
+			out.append(mv)
+	for spell_id in d.known_spells:
+		var def: Dictionary = SpellTree.find_def(d.model_name, spell_id)
+		if bool(def.get("inventory", false)):
+			out.append(def)
+	return out
+
+func _party_spell_label(spell: Dictionary) -> String:
+	return String(spell.get("display", spell.get("name", "")))
+
+func can_afford_party_spell(spell: Dictionary, caster: Diver) -> bool:
+	return caster.stats.oxygen >= float(spell.get("oxygen_cost", 0.0))
+
+func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
+	if not can_afford_party_spell(spell, caster):
+		return
+	caster.stats.oxygen -= float(spell.get("oxygen_cost", 0.0))
+	var s := target.stats
+	var amount := int(spell.get("amount", 0))
+	var label := _party_spell_label(spell)
+	match String(spell.get("effect", "")):
+		"heal":
+			var before := s.hp
+			s.hp = mini(s.hp_max, s.hp + amount)
+			var changed := s.hp - before
+			if changed > 0:
+				_announce("%s - %s recovers %d HP." % [label, _display_name(target.model_name), changed])
+			else:
+				_announce("%s - %s is already at full health." % [label, _display_name(target.model_name)])
+		"revive":
+			if s.hp > 0:
+				_announce("%s isn't down." % _display_name(target.model_name))
+				return
+			s.hp = mini(s.hp_max, amount)
+			_announce("%s - %s is back up!" % [label, _display_name(target.model_name)])
+
+func _display_name(model_name: String) -> String:
+	return Cast.display_name(model_name)
