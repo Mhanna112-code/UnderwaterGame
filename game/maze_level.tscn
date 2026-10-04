@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://cnfeba7nakmbl"]
+[gd_scene load_steps=8 format=3 uid="uid://cnfeba7nakmbl"]
 
 [ext_resource type="Script" uid="uid://bkhkydekr0wub" path="res://game/maze_level.gd" id="1_be2ma"]
 
@@ -13,7 +13,7 @@ fog_light_color = Color(0.05, 0.16, 0.2, 1)
 fog_density = 0.035
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_be2ma"]
-size = Vector3(6.5101, 3.07703, 9.3894)
+size = Vector3(6.5101, 3.07703, 36.1632)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_xwv3d"]
 size = Vector3(6.43193, 3.07703, 16.0659)
@@ -23,12 +23,6 @@ size = Vector3(7.36589, 3.07703, 19.4571)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ptij5"]
 size = Vector3(17.3402, 3.07703, 7.70207)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_co87i"]
-size = Vector3(38.7672, 3.07703, 7.70207)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_6r0tu"]
-size = Vector3(38.7672, 3.07703, 11.268)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_h3fen"]
 size = Vector3(8.76662, 3.07703, 17.8137)
@@ -115,7 +109,7 @@ use_collision = true
 size = Vector3(17.8135, 4.058, 1)
 
 [node name="CSGBox3D12" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 31.3579, 1.52881, -18.6907)
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 31.3579, 1.52881, -18.6907)
 use_collision = true
 size = Vector3(18.079, 4.05762, 1)
 
@@ -169,24 +163,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.2428, 6.5, 56.9336)
 use_collision = true
 size = Vector3(10.3286, 14, 1)
 
-[node name="CSGBox3D28" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 80.1238, 6.5, 23.4772)
-use_collision = true
-size = Vector3(22.3219, 14, 1)
-
-[node name="CSGBox3D26" type="CSGBox3D" parent="." groups=["Wall"]]
-# The former single south chamber wall sealed the only authored reward room
-# completely. Its two segments preserve the room boundary and leave a centered
-# 4.3m doorway aligned with ItemRock at x=48.03, wide enough for the real
-# diver capsule to enter without clipping either jamb.
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 57.2278, 6.5, 35.4766)
-use_collision = true
-size = Vector3(14.0556, 14, 1)
-
 [node name="RewardChamberWestWall" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.4143, 6.5, 35.4766)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.665, 6.5, 35.4766)
 use_collision = true
-size = Vector3(2.9714, 14, 1)
+size = Vector3(28, 14, 1)
 
 [node name="CSGBox3D15" type="CSGBox3D" parent="." groups=["Wall"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83.3195, 1.52881, 5.53757)
@@ -224,7 +204,7 @@ use_collision = true
 size = Vector3(11.1818, 4.05762, 1)
 
 [node name="CSGBox3D11" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(0.00399679, 0, -0.999992, 0, 1, 0, 0.999992, 0, 0.00399679, 63.0805, 1.42021, -3.55556)
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 63.0805, 1.42021, -3.55556)
 use_collision = true
 size = Vector3(31.9193, 4.05762, 1)
 
@@ -239,14 +219,14 @@ shape = SubResource("BoxShape3D_be2ma")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.51392, 0, 3.46203)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridor3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.703, 1.03851, 4.32754)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 2.44155, 19.703, 1.03851, 4.32754)
 shape = SubResource("BoxShape3D_xwv3d")
 
 [node name="WindCorridor4" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.4426, 5.05936, -17.3961)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridor4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.8503, -3.53334, -1.05663)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1.59262, 9.8503, -3.53334, 4.00813)
 shape = SubResource("BoxShape3D_bmovs")
 
 [node name="WindCorridor5" type="Area3D" parent="."]
@@ -262,27 +242,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.4426, 5.05936, -17.3961)
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridor6"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 42.6219, -4.12257, 20.2591)
 shape = SubResource("BoxShape3D_ptij5")
-
-[node name="WindCorridor7" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.4426, 5.05936, -17.3961)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridor7"]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 68.4241, -3.69958, 42.2625)
-shape = SubResource("BoxShape3D_co87i")
-
-[node name="WindCorridor8" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.4426, 5.05936, -17.3961)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridor8"]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 45.4787, -4.12257, 71.6786)
-shape = SubResource("BoxShape3D_co87i")
-
-[node name="WindCorridor9" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.4426, 5.05936, -17.3961)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridor9"]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 34.1856, -4.12257, 71.6786)
-shape = SubResource("BoxShape3D_6r0tu")
 
 [node name="WindCorridor2" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.4426, 5.05936, -17.3961)
@@ -341,11 +300,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5333, 6.5, 105.56)
 use_collision = true
 size = Vector3(46.3055, 14, 1)
 
-[node name="CSGBox3D31" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.795692, 6.5, 95.6095)
-use_collision = true
-size = Vector3(20.9814, 14, 1)
-
 [node name="CSGBox3D34" type="CSGBox3D" parent="." groups=["Wall"]]
 transform = Transform3D(0.00918025, 0, 0.999958, 0, 1, 0, -0.999958, 0, 0.00918025, -33.0347, 3.05762, -27.8205)
 use_collision = true
@@ -360,3 +314,23 @@ size = Vector3(19.9204, 4.05762, 1)
 transform = Transform3D(0.00918025, 0, 0.999958, 0, 1, 0, -0.999958, 0, 0.00918025, -12.358, 3.05762, -27.8205)
 use_collision = true
 size = Vector3(18.079, 4.05762, 1)
+
+[node name="WindCorridor7" type="Area3D" parent="."]
+transform = Transform3D(1.48493, 0, 0, 0, 1, 0, 0, 0, 1, 68.123, 6.09787, 46.2097)
+
+[node name="WindCorridorReward" type="CollisionShape3D" parent="WindCorridor7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.651325, -5.05936, -5.5732)
+shape = SubResource("BoxShape3D_be2ma")
+
+[node name="WindCorridor8" type="Area3D" parent="."]
+transform = Transform3D(2.20503, 0, 0, 0, 1, 0, 0, 0, 1, 160.469, 7.13638, 109.816)
+
+[node name="WindCorridorReward2" type="CollisionShape3D" parent="WindCorridor8"]
+transform = Transform3D(0.67343, 0, 0, 0, 1, 0, 0, 0, 1, -45.8761, -6.09787, -46.2097)
+shape = SubResource("BoxShape3D_be2ma")
+
+[node name="WindCorridorBreakRock" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WindCorridorBreakRock"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.550236, 34.62, 2.07702, 11.3261)
+shape = SubResource("BoxShape3D_be2ma")

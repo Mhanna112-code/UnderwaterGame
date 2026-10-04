@@ -28,16 +28,71 @@ extends Control
 var maze_level: MazeLevel
 
 @export var view_radius := 22.0
+# How close the diver has to get to a wall (nearest point) to reveal its
+# group - "running into" it, not merely having it inside the radar circle.
+@export var reveal_distance := 5.0
 
 const WALL_COLOR := Color(0.6, 0.64, 0.68, 0.9)
 const SELECTED_WALL_COLOR := Color(1.0, 0.82, 0.32, 1.0)
 const FLOW_COLOR := Color(0.28, 0.82, 1.0, 0.95)
+const ROOM_COLOR := Color(0.78, 0.66, 0.95, 0.95)
+
+# Walls that reveal together: the moment the diver is within view_radius of
+# ANY wall in a group, every wall in that group appears on both maps. Any
+# wall in wall_boxes not named here (or in SECRET_ROOMS) reveals on its own.
+const REVEAL_GROUPS := [
+	["CSGBox3D", "CurrentWall3"],
+	["CurrentWall1", "CurrentWall2"],
+	["CSGBox3D6", "CSGBox3D7"],
+	["CSGBox3D12", "CSGBox3D13"],
+	["CSGBox3D8", "CSGBox3D9"],
+	["CSGBox3D10", "CSGBox3D11"],
+	["CSGBox3D14", "CSGBox3D15"],
+	["CSGBox3D16", "CSGBox3D16North"],   # one wall, door in the middle
+	["CSGBox3D27"],                      # the wall between 14 and 19
+	["CSGBox3D18", "CSGBox3D19"],
+	["CSGBox3D20", "CSGBox3D21"],
+	["CSGBox3D22"],
+	["CSGBox3D23"],
+]
+
+# Secret rooms reveal the same way, but draw as one closed box spanning
+# their walls' extent rather than as the individual walls.
+const SECRET_ROOMS := [
+	["CSGBox3D24", "CSGBox3D25", "RewardChamberWestWall"],
+	# 29, 33, 30, 32 and the door wall between 30 and 32: the whole block
+	# (the secret boss room plus the hall in front of it).
+	["CSGBox3D29", "CSGBox3D33", "CSGBox3D33North", "CSGBox3D30", "CSGBox3D32", "Box30DoorWallA", "Box30DoorWallB", "SecretBossRoomBack"],
+	# The secret boss room.
+	["CSGBox3D30", "Box30DoorWallA", "Box30DoorWallB", "SecretBossRoomBack"],
+	# The main boss room.
+	["MainBossRoomNorth", "MainBossRoomSouth", "MainBossRoomEast"],
+]
+
+var _reveal_groups_built := false
+var _wall_groups: Array = []          # Array of Array[CSGBox3D]
+var _room_walls: Array = []           # Array of Array[CSGBox3D], one per SECRET_ROOMS entry
+var _room_wall_set: Dictionary = {}   # CSGBox3D -> true; drawn only as part of its room box
+var _revealed_walls: Dictionary = {}  # CSGBox3D -> true
+var _revealed_rooms: Dictionary = {}  # SECRET_ROOMS index -> true
+var _main_map_room_lines: Dictionary = {}   # SECRET_ROOMS index -> Line2D
 const SELECTED_FLOW_COLOR := Color(1.0, 0.68, 0.28, 1.0)
+const HIDDEN_MARKER_COLOR := Color(1.0, 0.18, 0.18)   # hidden objects (sphere room)
+const STRONG_ZONE_COLOR := Color(1.0, 0.15, 0.15)   # the strong encounter zone, flashing
+
+# 0..1, pulsing - how bright the strong encounter zone is right now.
+func _zone_alpha() -> float:
+	return 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * 1.2)
+
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(150, 150)
 	clip_contents = true
 	_build_main_map()
+	var blink := create_tween()
+	blink.set_loops()
+	blink.tween_callback(func() -> void: _rotatable_blink_on = not _rotatable_blink_on)
+	blink.tween_interval(ROTATABLE_BLINK_INTERVAL)
 
 # The world-space endpoints of `box`'s own centerline, right now - the
 # longer of its two horizontal dimensions is treated as its length (a
@@ -53,6 +108,18 @@ func _box_segment(box: CSGBox3D) -> Array:
 
 func _process(_dt: float) -> void:
 	_update_revealed()
+	# While the map is closed the selection keeps tracking whatever wall set
+	# and current are nearest, so that's what's selected when L opens it.
+	# While it's open the player's arrow-key choice stands.
+	# Unless the player has picked something themselves on the open map,
+	# whatever wall set and current are nearest stay selected - map open or
+	# not (the lever-dome map stays open while the levers are held).
+	if not main_map.visible:
+		_selection_manual = false
+	if main_map.visible and _selection_manual:
+		_validate_selection()
+	else:
+		_update_selected_rotatable_set()
 	queue_redraw()
 	if main_map.visible:
 		_refresh_main_map()
@@ -79,6 +146,15 @@ func _process(_dt: float) -> void:
 var _corridor_wall_pairs: Dictionary = {}   # Area3D -> Array[CSGBox3D], size 2
 var _corridor_wall_pairs_computed := false
 
+# A corridor's real centre is its CollisionShape3D's, not the Area3D's own
+# origin - the Area3D nodes sit away from the volumes they actually cover,
+# which paired every corridor past the first with the same far-off walls.
+func _corridor_center(corridor: Area3D) -> Vector3:
+	for child in corridor.get_children():
+		if child is CollisionShape3D:
+			return (child as CollisionShape3D).global_transform.origin
+	return corridor.global_position
+
 func _compute_corridor_wall_pairs() -> void:
 	if maze_level == null:
 		return
@@ -86,7 +162,7 @@ func _compute_corridor_wall_pairs() -> void:
 	for corridor in maze_level.corridors:
 		if not is_instance_valid(corridor):
 			continue
-		var center: Vector3 = corridor.global_position
+		var center: Vector3 = _corridor_center(corridor)
 		var center2 := Vector2(center.x, center.z)
 		var ranked: Array = []
 		for box in maze_level.wall_boxes:
@@ -146,6 +222,17 @@ var selectedHallName := ""
 # wall selection.
 var selectedCurrentCorridor: Area3D
 
+# The selected rotatable wall set (one entry of MazeLevel.rotatable_wall_sets()),
+# or {}. While the map is closed it tracks the set nearest the diver (and
+# selectedCurrentCorridor the nearest current); once L opens the map,
+# Left/Right steps through revealed sets and Shift+Left/Right through
+# currents. The map blinks both; E rotates the set, R the current.
+var selected_rotatable_set: Dictionary = {}
+var _rotatable_blink_on := true
+const ROTATABLE_BLINK_INTERVAL := 0.4
+const BLINK_FLOW_COLOR := Color(0.62, 0.96, 1.0, 1.0)
+const DIM_FLOW_COLOR := Color(0.28, 0.82, 1.0, 0.3)
+
 # Blink clock for selectedHall's highlight on the SMALL RADAR's _draw()
 # only - the main map's own blink is separate (see _restart_main_map_blink()
 # down by _main_map_hall_lines), since it tweens real Line2D nodes
@@ -188,15 +275,24 @@ func _update_revealed() -> void:
 	if not _corridor_wall_pairs_computed:
 		_compute_corridor_wall_pairs()
 	var diver_pos: Vector3 = maze_level._diver.global_position
+	_update_revealed_groups(diver_pos)
+	_update_found_pois(diver_pos)
+	# A corridor - and so the current running through it - becomes visible
+	# once a wall enclosing it has been revealed.
 	for corridor in maze_level.corridors:
-		if is_instance_valid(corridor) and corridor.global_position.distance_to(diver_pos) <= view_radius:
+		if not is_instance_valid(corridor) or _discovered_corridors.has(corridor):
+			continue
+		var pair: Array = _corridor_wall_pairs.get(corridor, [])
+		# Or once the diver is actually in it - a wide corridor's walls can
+		# sit just past reveal_distance from its middle.
+		if pair.any(func(box) -> bool: return _revealed_walls.has(box)) or corridor.overlaps_body(maze_level._diver) or diver_pos.distance_to(_corridor_center(corridor)) <= reveal_distance:
 			_discovered_corridors[corridor] = true
+	# Hall naming/selection now follows reveal instead of doing its own
+	# distance check, and secret-room walls never join a hall.
 	for box in maze_level.wall_boxes:
 		if not is_instance_valid(box) or _wall_to_hall.has(box):
 			continue
-		var seg := _box_segment(box)
-		var wall_mid: Vector3 = (seg[0] + seg[1]) * 0.5
-		if wall_mid.distance_to(diver_pos) > view_radius:
+		if not _revealed_walls.has(box) or _room_wall_set.has(box):
 			continue
 		var corridor := _corridor_for_wall(box)
 		if corridor == null:
@@ -209,11 +305,264 @@ func _update_revealed() -> void:
 		_hall_corridors[hall_name] = corridor
 		for wall in walls:
 			_wall_to_hall[wall] = hall_name
-		# Every newly found hall becomes the selection, not just the first
-		# one - discovering a new hall is the player's cue that this is the
-		# one to look at right now. _select_next_hall()/_select_previous_hall()
-		# below are what let them move off it again afterward.
-		_select_rotatable_hall(hall_name)
+		# Halls no longer become the selection on discovery - selection is
+		# the nearest rotatable wall set (_update_selected_rotatable_set()).
+
+# True once the player has chosen a wall set or current themselves (arrow
+# keys, or R moving a current) on the open map; closing the map hands
+# selection back to "nearest".
+var _selection_manual := false
+# How near a rotatable wall set has to be for it to be picked automatically.
+const AUTO_SELECT_RADIUS_SCALE := 2.0   # x view_radius
+
+# Picks the rotatable set nearest the diver: at least one of its walls must
+# already be revealed, and the diver within AUTO_SELECT_RADIUS_SCALE x
+# view_radius of one of them.
+func _update_selected_rotatable_set() -> void:
+	selected_rotatable_set = {}
+	if maze_level == null or maze_level._diver == null or not is_instance_valid(maze_level._diver):
+		return
+	var diver_pos: Vector3 = maze_level._diver.global_position
+	var diver2 := Vector2(diver_pos.x, diver_pos.z)
+	var best_dist := INF
+	for wall_set in maze_level.rotatable_wall_sets():
+		var nearest := INF
+		var any_revealed := false
+		for box in wall_set["walls"]:
+			if not is_instance_valid(box):
+				continue
+			any_revealed = any_revealed or _revealed_walls.has(box)
+			var seg := _box_segment(box)
+			nearest = minf(nearest, _point_to_segment_dist(diver2, Vector2(seg[0].x, seg[0].z), Vector2(seg[1].x, seg[1].z)))
+		if any_revealed and nearest <= view_radius * AUTO_SELECT_RADIUS_SCALE and nearest < best_dist:
+			best_dist = nearest
+			selected_rotatable_set = wall_set
+	selectedCurrentCorridor = _nearest_current(diver_pos)
+
+# The active, discovered current whose corridor centre is nearest `at`.
+func _nearest_current(at: Vector3) -> Area3D:
+	var best: Area3D = null
+	var best_dist := INF
+	for corridor in maze_level._currents_by_corridor:
+		if not is_instance_valid(corridor) or not _is_discovered_corridor(corridor as Area3D):
+			continue
+		var dist := _distance_to_corridor(corridor as Area3D, at)
+		if dist < best_dist:
+			best_dist = dist
+			best = corridor as Area3D
+	return best
+
+# How far `at` is from the nearest point of a corridor's push zone (0 inside
+# it) - fairer than its centre, since some corridors are long.
+func _distance_to_corridor(corridor: Area3D, at: Vector3) -> float:
+	for child in corridor.get_children():
+		var shape_node := child as CollisionShape3D
+		if shape_node != null and shape_node.shape is BoxShape3D:
+			var half := (shape_node.shape as BoxShape3D).size * 0.5
+			var local := shape_node.global_transform.affine_inverse() * at
+			var inside := local.clamp(-half, half)
+			return (shape_node.global_transform * inside).distance_to(at)
+	return _corridor_center(corridor).distance_to(at)
+
+# Drops a selection that no longer exists or is no longer discovered.
+func _validate_selection() -> void:
+	if selectedCurrentCorridor != null and (not is_instance_valid(selectedCurrentCorridor) or not maze_level._currents_by_corridor.has(selectedCurrentCorridor) or not _is_discovered_corridor(selectedCurrentCorridor)):
+		selectedCurrentCorridor = null
+
+# Left/Right on the open map: step through the rotatable wall sets the diver
+# has revealed (at least one wall seen), the way Shift+Left/Right steps
+# through currents.
+func _cycle_selected_set(direction: int) -> void:
+	var sets: Array = []
+	for wall_set in maze_level.rotatable_wall_sets():
+		for box in wall_set["walls"]:
+			if is_instance_valid(box) and _revealed_walls.has(box):
+				sets.append(wall_set)
+				break
+	if sets.is_empty():
+		return
+	var index := -1
+	for i in sets.size():
+		if sets[i]["name"] == selected_rotatable_set.get("name", ""):
+			index = i
+	if index == -1:
+		index = 0 if direction > 0 else sets.size() - 1
+	else:
+		index = wrapi(index + direction, 0, sets.size())
+	selected_rotatable_set = sets[index]
+	_selection_manual = true
+
+# The active current running between a set's walls right now: the current
+# corridor nearest the middle of the set, if it sits inside the gap between
+# the walls. Read live, so after a rotation it follows wherever the walls
+# and currents actually ended up (or is null if no current runs there).
+func _current_between(wall_set: Dictionary) -> Area3D:
+	var centres: Array[Vector2] = []
+	for box in wall_set.get("walls", []):
+		if is_instance_valid(box):
+			centres.append(Vector2((box as CSGBox3D).global_position.x, (box as CSGBox3D).global_position.z))
+	if centres.size() < 2:
+		return null
+	var mid := (centres[0] + centres[1]) * 0.5
+	var half_gap := centres[0].distance_to(centres[1]) * 0.5
+	var best: Area3D = null
+	var best_dist := half_gap
+	for corridor in maze_level._currents_by_corridor:
+		var area := corridor as Area3D
+		if area == null or not is_instance_valid(area):
+			continue
+		var area_center := _corridor_center(area)
+		var d := Vector2(area_center.x, area_center.z).distance_to(mid)
+		if d < best_dist:
+			best_dist = d
+			best = area
+	return best
+
+func _main_map_line_for(box: CSGBox3D) -> Line2D:
+	var hall_name: String = _wall_to_hall.get(box, "")
+	if hall_name == "":
+		return _main_map_lone_lines.get(box, null) as Line2D
+	if not _main_map_hall_lines.has(hall_name) or not _hall_walls.has(hall_name):
+		return null
+	var index := (_hall_walls[hall_name] as Array[CSGBox3D]).find(box)
+	var lines: Array[Line2D] = _main_map_hall_lines[hall_name]
+	return lines[index] if index >= 0 and index < lines.size() else null
+
+# Resets every wall/current line to normal, then blinks the selected set's
+# walls (amber <-> normal) and the current between them (bright <-> dim).
+# Walls blink by colour rather than visibility so a selected wall never
+# looks like an open gap.
+func _apply_rotatable_highlight() -> void:
+	for hall_name in _main_map_hall_lines:
+		for line in (_main_map_hall_lines[hall_name] as Array[Line2D]):
+			line.visible = true
+			line.default_color = WALL_COLOR
+			line.width = 2.0
+	for box in _main_map_lone_lines:
+		var lone := _main_map_lone_lines[box] as Line2D
+		lone.default_color = WALL_COLOR
+		lone.width = 2.0
+	for corridor in _main_map_current_lines:
+		(_main_map_current_lines[corridor] as Line2D).default_color = FLOW_COLOR
+		(_main_map_current_lines[corridor] as Line2D).width = 2.2
+		if _main_map_current_heads.has(corridor):
+			(_main_map_current_heads[corridor] as Polygon2D).color = FLOW_COLOR
+	if not selected_rotatable_set.is_empty():
+		for box in selected_rotatable_set["walls"]:
+			var line := _main_map_line_for(box as CSGBox3D)
+			if line != null:
+				line.default_color = SELECTED_WALL_COLOR if _rotatable_blink_on else WALL_COLOR
+				line.width = 3.2
+	var current := selectedCurrentCorridor
+	if current != null and _main_map_current_lines.has(current):
+		var flow_color := BLINK_FLOW_COLOR if _rotatable_blink_on else DIM_FLOW_COLOR
+		(_main_map_current_lines[current] as Line2D).default_color = flow_color
+		(_main_map_current_lines[current] as Line2D).width = 3.4
+		if _main_map_current_heads.has(current):
+			(_main_map_current_heads[current] as Polygon2D).color = flow_color
+
+# R: rotate the selected current to its paired corridor, and keep it
+# selected in its new place (that corridor counts as discovered - the
+# player just sent a current into it).
+func _rotate_selected_current() -> void:
+	if selectedCurrentCorridor == null:
+		return
+	var moved_to: Area3D = maze_level.rotate_current_in(selectedCurrentCorridor)
+	if moved_to != null:
+		_discovered_corridors[moved_to] = true
+		selectedCurrentCorridor = moved_to
+		_selection_manual = true   # keep following the current just moved
+
+func _rotate_selected_set() -> void:
+	if selected_rotatable_set.is_empty():
+		return
+	(selected_rotatable_set["rotate"] as Callable).call()
+
+# Resolves REVEAL_GROUPS/SECRET_ROOMS node names once, then gives every
+# remaining wall its own single-wall group.
+func _build_reveal_groups() -> void:
+	var grouped: Dictionary = {}
+	for names in REVEAL_GROUPS:
+		var group: Array[CSGBox3D] = []
+		for wall_name in names:
+			var box := maze_level.get_node_or_null(String(wall_name)) as CSGBox3D
+			if box != null:
+				group.append(box)
+				grouped[box] = true
+		if not group.is_empty():
+			_wall_groups.append(group)
+	for names in SECRET_ROOMS:
+		var room: Array[CSGBox3D] = []
+		for wall_name in names:
+			var box := maze_level.get_node_or_null(String(wall_name)) as CSGBox3D
+			if box != null:
+				room.append(box)
+				grouped[box] = true
+				_room_wall_set[box] = true
+		_room_walls.append(room)
+	for box in maze_level.wall_boxes:
+		if is_instance_valid(box) and not grouped.has(box):
+			var single: Array[CSGBox3D] = [box]
+			_wall_groups.append(single)
+	_reveal_groups_built = true
+
+# Within reveal_distance of the wall's nearest point (not its midpoint), so
+# a long wall reveals as soon as you reach any part of it.
+func _wall_in_reach(box: CSGBox3D, diver_pos: Vector3) -> bool:
+	if not is_instance_valid(box):
+		return false
+	var seg := _box_segment(box)
+	return _point_to_segment_dist(Vector2(diver_pos.x, diver_pos.z), Vector2(seg[0].x, seg[0].z), Vector2(seg[1].x, seg[1].z)) <= reveal_distance
+
+func _any_wall_in_reach(walls: Array, diver_pos: Vector3) -> bool:
+	for box in walls:
+		if _wall_in_reach(box as CSGBox3D, diver_pos):
+			return true
+	return false
+
+func _update_revealed_groups(diver_pos: Vector3) -> void:
+	if not _reveal_groups_built:
+		_build_reveal_groups()
+	for group in _wall_groups:
+		if _revealed_walls.has(group[0]):
+			continue
+		if _any_wall_in_reach(group, diver_pos):
+			for box in group:
+				_revealed_walls[box] = true
+	for i in range(_room_walls.size()):
+		if _revealed_rooms.has(i) or (_room_walls[i] as Array).is_empty():
+			continue
+		if _any_wall_in_reach(_room_walls[i], diver_pos):
+			_revealed_rooms[i] = true
+
+# Corners of the axis-aligned box spanning a secret room's walls, in world
+# space (y unused), in draw order.
+func _room_corners(i: int) -> Array[Vector3]:
+	var rect := Rect2()
+	var first := true
+	if maze_level != null and i < SECRET_ROOMS.size():
+		var real: Rect2 = maze_level.map_room_rect(SECRET_ROOMS[i])
+		if real.size != Vector2.ZERO:
+			rect = real
+			first = false
+			return [
+				Vector3(rect.position.x, 0.0, rect.position.y), Vector3(rect.end.x, 0.0, rect.position.y),
+				Vector3(rect.end.x, 0.0, rect.end.y), Vector3(rect.position.x, 0.0, rect.end.y),
+			]
+	for box in _room_walls[i]:
+		if not is_instance_valid(box):
+			continue
+		for p in _box_segment(box):
+			var p2 := Vector2((p as Vector3).x, (p as Vector3).z)
+			if first:
+				rect = Rect2(p2, Vector2.ZERO)
+				first = false
+			else:
+				rect = rect.expand(p2)
+	return [
+		Vector3(rect.position.x, 0.0, rect.position.y), Vector3(rect.end.x, 0.0, rect.position.y),
+		Vector3(rect.end.x, 0.0, rect.end.y), Vector3(rect.position.x, 0.0, rect.end.y),
+	]
 
 # Points selectedHall at `hall_name`'s own wall pair. Called the moment a
 # new hall is first discovered (see _update_revealed()) so there's always
@@ -269,7 +618,7 @@ func _draw() -> void:
 	# as its own independent line.
 	var hall_points: Dictionary = {}
 	for box in maze_level.wall_boxes:
-		if not is_instance_valid(box) or not _wall_to_hall.has(box):
+		if not is_instance_valid(box) or not _revealed_walls.has(box) or _room_wall_set.has(box):
 			continue
 		var seg := _box_segment(box)
 		var rel_a: Vector2 = Vector2(seg[0].x, seg[0].z) - Vector2(center.x, center.z)
@@ -279,14 +628,17 @@ func _draw() -> void:
 			continue
 		var p_a: Vector2 = (clipped[0] as Vector2) * px_per_unit + mid
 		var p_b: Vector2 = (clipped[1] as Vector2) * px_per_unit + mid
-		var hall_name: String = _wall_to_hall[box]
+		var hall_name: String = _wall_to_hall.get(box, "")
 		if hall_name == "":
 			draw_line(p_a, p_b, Color(0.6, 0.64, 0.68, 0.9), 2.0)
 			continue
-		if not hall_points.has(hall_name):
-			hall_points[hall_name] = PackedVector2Array()
-		(hall_points[hall_name] as PackedVector2Array).append(p_a)
-		(hall_points[hall_name] as PackedVector2Array).append(p_b)
+		# PackedVector2Array is copied when read out of a Dictionary, so
+		# appending in place left every hall's list empty and hall walls
+		# (e.g. CurrentWall1/2) never drew on the radar. Write it back.
+		var hall_list: PackedVector2Array = hall_points.get(hall_name, PackedVector2Array())
+		hall_list.append(p_a)
+		hall_list.append(p_b)
+		hall_points[hall_name] = hall_list
 	_radar_hall_points = hall_points
 	for hall_name in hall_points:
 		var points := hall_points[hall_name] as PackedVector2Array
@@ -298,6 +650,31 @@ func _draw() -> void:
 			var wall_width := 2.8 if hall_name == selectedHallName else 2.0
 			draw_multiline(points, wall_color, wall_width)
 
+	# While the big map is open (where E rotates them), the selected
+	# rotatable walls blink amber here too, drawn over their normal lines.
+	if main_map.visible and _rotatable_blink_on and not selected_rotatable_set.is_empty():
+		for box in selected_rotatable_set["walls"]:
+			if not is_instance_valid(box) or not _revealed_walls.has(box):
+				continue
+			var sel_seg := _box_segment(box)
+			var sel_clip: Array = _clip_to_circle(Vector2(sel_seg[0].x - center.x, sel_seg[0].z - center.z), Vector2(sel_seg[1].x - center.x, sel_seg[1].z - center.z), view_radius)
+			if sel_clip.is_empty():
+				continue
+			draw_line((sel_clip[0] as Vector2) * px_per_unit + mid, (sel_clip[1] as Vector2) * px_per_unit + mid, SELECTED_WALL_COLOR, 2.8)
+
+	# Revealed secret rooms: one closed box each, clipped edge by edge.
+	for i in _revealed_rooms:
+		var corners := _room_corners(i)
+		for k in range(4):
+			var c_a: Vector3 = corners[k]
+			var c_b: Vector3 = corners[(k + 1) % 4]
+			var rel_ra := Vector2(c_a.x - center.x, c_a.z - center.z)
+			var rel_rb := Vector2(c_b.x - center.x, c_b.z - center.z)
+			var edge: Array = _clip_to_circle(rel_ra, rel_rb, view_radius)
+			if edge.is_empty():
+				continue
+			draw_line((edge[0] as Vector2) * px_per_unit + mid, (edge[1] as Vector2) * px_per_unit + mid, ROOM_COLOR, 2.0)
+
 	# Current arrows are derived from the live controller dictionary, not from
 	# whatever two walls happened to be closest when a hall was discovered.
 	# A current therefore disappears from Corridor 1 and reappears in Corridor
@@ -306,6 +683,46 @@ func _draw() -> void:
 		if not _is_discovered_corridor(corridor as Area3D):
 			continue
 		_draw_current_flow(corridor as Area3D, maze_level._currents_by_corridor[corridor] as WaterCurrent, center, mid, px_per_unit)
+
+	# Hidden objects (the sphere room's spheres) as red circles.
+	for p in maze_level.hidden_marker_positions():
+		var rel := Vector2(p.x - center.x, p.z - center.z)
+		if rel.length() <= view_radius:
+			draw_circle(rel * px_per_unit + mid, 2.0, HIDDEN_MARKER_COLOR)
+	# Sonar: the secret item room's unbroken rocks.
+	for p in maze_level.sonar_rock_positions():
+		var rel := Vector2(p.x - center.x, p.z - center.z)
+		if rel.length() <= view_radius:
+			draw_circle(rel * px_per_unit + mid, 3.5, HIDDEN_MARKER_COLOR)
+
+	# The strong encounter zone, flashing red (clipped to the radar circle).
+	var zone := maze_level.strong_zone_for_map(_revealed_walls)
+	if zone.size != Vector2.ZERO:
+		var local := PackedVector2Array()
+		for c in [zone.position, Vector2(zone.end.x, zone.position.y), zone.end, Vector2(zone.position.x, zone.end.y)]:
+			local.append((c - Vector2(center.x, center.z)) * px_per_unit + mid)
+		var circle := PackedVector2Array()
+		for k in 32:
+			circle.append(mid + Vector2.from_angle(TAU * k / 32.0) * (r - 2.0))
+		var a := _zone_alpha()
+		for piece in Geometry2D.intersect_polygons(local, circle):
+			draw_colored_polygon(piece, Color(STRONG_ZONE_COLOR, 0.12 + 0.28 * a))
+			var outline := piece.duplicate()
+			outline.append(piece[0])
+			draw_polyline(outline, Color(STRONG_ZONE_COLOR, 0.5 + 0.5 * a), 1.5)
+
+	# Corridor numbers and the things found so far.
+	for corridor in maze_level.corridors:
+		if not _is_discovered_corridor(corridor):
+			continue
+		var cc := _corridor_center(corridor)
+		var crel := Vector2(cc.x - center.x, cc.z - center.z)
+		if crel.length() <= view_radius - 2.0:
+			_draw_corridor_tag(self, crel * px_per_unit + mid, corridor, 10)
+	for poi in _found_pois():
+		var prel := Vector2((poi["pos"] as Vector3).x - center.x, (poi["pos"] as Vector3).z - center.z)
+		if prel.length() <= view_radius - 2.0:
+			_draw_poi(self, prel * px_per_unit + mid, poi, 0.8)
 
 	var fwd: Vector3 = -maze_level._diver.global_transform.basis.z
 	_draw_arrow(mid, Vector2(fwd.x, fwd.z))
@@ -403,8 +820,23 @@ func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3
 		return
 	var start := (clipped[0] as Vector2) * px_per_unit + mid
 	var end := (clipped[1] as Vector2) * px_per_unit + mid
-	var color := SELECTED_FLOW_COLOR if corridor == selectedCurrentCorridor else FLOW_COLOR
-	_draw_flow_arrow(start, end, color, 2.2)
+	# Same blue wavy line + arrowhead as the big map. The selected current
+	# blinks bright/dim blue only while the big map is open (where R can
+	# rotate it); otherwise it's drawn like every other current.
+	var color := FLOW_COLOR
+	if corridor == selectedCurrentCorridor and main_map.visible:
+		color = BLINK_FLOW_COLOR if _rotatable_blink_on else DIM_FLOW_COLOR
+	_draw_wavy_flow_arrow(start, end, color, 2.0)
+
+func _draw_wavy_flow_arrow(start: Vector2, end: Vector2, color: Color, width: float) -> void:
+	var facing := end - start
+	if facing.length() < 0.01:
+		return
+	facing = facing.normalized()
+	var base := end - facing * 7.0
+	draw_polyline(_wavy_points(start, base, end), color, width)
+	var side := Vector2(-facing.y, facing.x)
+	draw_polygon(PackedVector2Array([end, base + side * 3.6, base - side * 3.6]), PackedColorArray([color]))
 
 func _draw_flow_arrow(start: Vector2, end: Vector2, color: Color, width: float) -> void:
 	var facing := end - start
@@ -430,6 +862,10 @@ const MAIN_MAP_SIZE := 500.0
 # maze's outer boundary would draw right at pixel 0, half-clipped by the
 # panel edge/border.
 const MAIN_MAP_MARGIN := 14.0
+# Room kept clear at the top for the title and at the bottom for the legend,
+# so the whole maze is drawn between them.
+const MAIN_MAP_HEADER := 44.0
+const MAIN_MAP_FOOTER := 30.0
 var main_map: Control
 var _main_map_px_per_unit := 1.0
 var _main_map_origin := Vector2.ZERO
@@ -535,8 +971,9 @@ func _compute_main_map_bounds() -> void:
 	_main_map_origin = Vector2(min_pt.x, min_pt.z)
 	var span_x: float = maxf(max_pt.x - min_pt.x, 1.0)
 	var span_z: float = maxf(max_pt.z - min_pt.z, 1.0)
-	var usable: float = MAIN_MAP_SIZE - MAIN_MAP_MARGIN * 2.0
-	_main_map_px_per_unit = minf(usable / span_x, usable / span_z)
+	var usable_w: float = MAIN_MAP_SIZE - MAIN_MAP_MARGIN * 2.0
+	var usable_h: float = MAIN_MAP_SIZE - MAIN_MAP_HEADER - MAIN_MAP_FOOTER
+	_main_map_px_per_unit = minf(usable_w / span_x, usable_h / span_z)
 	_main_map_bounds_computed = true
 
 func _build_main_map() -> void:
@@ -548,7 +985,7 @@ func _build_main_map() -> void:
 	main_map.clip_contents = true
 	main_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	main_map.z_index = 4
-	# Starts closed - M toggles it (see _unhandled_input()).
+	# Starts closed - L toggles it (see _unhandled_input()).
 	main_map.visible = false
 	main_map.draw.connect(_on_main_map_draw)
 	# NOT add_child(main_map) on `self` - this Control is only 150x150 AND
@@ -589,49 +1026,138 @@ func _make_map_label(node_name: String, text: String, position: Vector2, label_s
 	return label
 
 func _build_main_map_copy() -> void:
-	_make_map_label("MazeMapTitle", "MAZE NAVIGATION   [M] Close", Vector2(16, 10), Vector2(468, 28), 19, Color(0.86, 0.94, 1.0))
-	# Deliberately author the closed-route objective as two short lines instead
-	# of trusting a narrow browser to wrap one long sentence. The map is a
-	# playtest surface as well as a HUD: the first instruction must be readable
-	# at 653px wide, not merely fit on a desktop editor capture.
-	_make_map_label("MazeMapObjective", "OBJECTIVE: [H] Open the route\nThen follow the northbound current to the relic.", Vector2(16, 38), Vector2(468, 40), 14, Color(1.0, 0.84, 0.40))
-	# Plain key names intentionally avoid font-dependent arrow glyphs in the
-	# web export. The old arrows rendered as empty boxes in the browser, which
-	# turned a discoverable map control into an unexplained symbol.
-	_make_map_label("MazeMapLegend", "White: walls   Cyan: current   Amber: selected   Green: you\nLeft/Right: walls   Shift+Left/Right: current", Vector2(16, MAIN_MAP_SIZE - 52), Vector2(468, 42), 12, Color(0.73, 0.87, 0.96))
+	_make_map_label("MazeMapTitle", "MAZE NAVIGATION   [L] Close", Vector2(16, 10), Vector2(468, 28), 19, Color(0.86, 0.94, 1.0))
+	# The legend: each map symbol drawn as it appears on the map, with what
+	# it means to its right.
+	var legend := Control.new()
+	legend.name = "MazeMapLegend"
+	legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	legend.z_index = 3
+	legend.position = Vector2(16, MAIN_MAP_SIZE - 26)
+	legend.size = Vector2(468, 22)
+	legend.draw.connect(_draw_legend.bind(legend))
+	main_map.add_child(legend)
+	_build_map_help()
+
+const LEGEND_TEXT_COLOR := Color(0.73, 0.87, 0.96)
+const LEGEND_FONT_SIZE := 13
+
+func _draw_legend(legend: Control) -> void:
+	var font := ThemeDB.fallback_font
+	var mid_y := legend.size.y * 0.5
+	var x := 0.0
+	for entry in [["wall", "walls"], ["current", "current"], ["you", "you"], ["room", "visited room"]]:
+		var icon_w := 22.0
+		match String(entry[0]):
+			"wall":
+				legend.draw_line(Vector2(x, mid_y), Vector2(x + icon_w, mid_y), WALL_COLOR, 2.0)
+			"current":
+				var pts := PackedVector2Array()
+				for k in 9:
+					var u := k / 8.0
+					pts.append(Vector2(x + u * (icon_w - 6.0), mid_y + sin(u * TAU * 1.5) * 2.5))
+				legend.draw_polyline(pts, FLOW_COLOR, 2.0)
+				var tip := Vector2(x + icon_w, mid_y)
+				legend.draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-6, -4), tip + Vector2(-6, 4)]), FLOW_COLOR)
+			"you":
+				var c := Vector2(x + icon_w * 0.5, mid_y)
+				legend.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -7), c + Vector2(-5.5, 5), c + Vector2(5.5, 5)]), Color(0.35, 0.95, 0.55))
+			"room":
+				legend.draw_rect(Rect2(x + 2, mid_y - 6, icon_w - 4, 12), ROOM_COLOR, false, 2.0)
+		x += icon_w + 6.0
+		var label := String(entry[1])
+		legend.draw_string(font, Vector2(x, mid_y + LEGEND_FONT_SIZE * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_FONT_SIZE, LEGEND_TEXT_COLOR)
+		x += font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_FONT_SIZE).x + 18.0
+
+# The controls, big and clear, in a panel right under the map: walls and
+# currents only move from here.
+var _map_help: PanelContainer
+var _map_help_label: RichTextLabel
+
+func _build_map_help() -> void:
+	_map_help = PanelContainer.new()
+	_map_help.name = "MazeMapHelp"
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.02, 0.06, 0.1, 1.0)
+	style.border_color = Color(0.45, 0.7, 0.85)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(10)
+	_map_help.add_theme_stylebox_override("panel", style)
+	_map_help.position = main_map.position + Vector2(0, MAIN_MAP_SIZE + 6)
+	_map_help.custom_minimum_size = Vector2(MAIN_MAP_SIZE, 0)
+	_map_help.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_help.z_index = 4
+	# The keys drawn as the same dark key badges as the ability popup
+	# (Slot._badge()).
+	_map_help_label = RichTextLabel.new()
+	_map_help_label.bbcode_enabled = true
+	_map_help_label.fit_content = true
+	_map_help_label.scroll_active = false
+	_map_help_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_map_help_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_help_label.add_theme_font_size_override("normal_font_size", 16)
+	_map_help_label.add_theme_color_override("default_color", Color(0.92, 0.97, 1.0))
+	_map_help_label.text = "%s / %s  choose a selected hallway   ·   %s  rotate it\n%s + %s / %s  choose a selected current   ·   %s  rotate it" % [
+		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"),
+		Slot._badge("Shift"), Slot._badge("Left"), Slot._badge("Right"), Slot._badge("R"),
+	]
+	_map_help.add_child(_map_help_label)
+	main_map.get_parent().add_child(_map_help)
+	_map_help.visible = false
+	main_map.visibility_changed.connect(_refresh_map_copy)
 
 func _refresh_map_copy() -> void:
 	if main_map == null:
 		return
-	var objective := main_map.get_node_or_null("MazeMapObjective") as Label
-	if objective != null:
-		objective.text = "OBJECTIVE: Follow the northbound current to the relic." if maze_level != null and maze_level._hallway_1_2_swung else "OBJECTIVE: [H] Open the route\nThen follow the northbound current to the relic."
-	var legend := main_map.get_node_or_null("MazeMapLegend") as Label
+	var title := main_map.get_node_or_null("MazeMapTitle") as Label
+	if title != null:
+		title.text = "MAZE NAVIGATION   " + (maze_level.lever_map_close_hint() if maze_level != null and maze_level.levers_map_mode() else "[L] Close")
+	var legend := main_map.get_node_or_null("MazeMapLegend") as Control
 	if legend != null:
-		var selected: String = selectedCurrentCorridor.name if selectedCurrentCorridor != null and is_instance_valid(selectedCurrentCorridor) else "none"
-		legend.text = "White: walls   Cyan: current   Amber: selected   Green: you\nLeft/Right: walls   Shift+Left/Right: current [%s]" % selected
+		legend.visible = maze_level == null or not maze_level.levers_map_mode()
+		if _map_help != null:
+			# The lever map has its own controls list under the map instead.
+			_map_help.visible = main_map.visible and legend.visible
+			# The bottom-left HUD captions sit where the help panel goes.
+			for caption in ["Controls", "GoalLabel"]:
+				var node := get_parent().get_node_or_null(caption) as CanvasItem
+				if node != null:
+					node.visible = not _map_help.visible
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
 		return
+	if maze_level != null and (maze_level._battling or maze_level.any_modal_open()):
+		return
 	var key_event := event as InputEventKey
 	var keycode: Key = key_event.keycode
-	if keycode == KEY_M:
+	# While both dome levers are held, MazeLevel decides what opens/closes
+	# the map and which keys are off-limits (see handle_lever_map_key());
+	# the map's own select/rotate keys below still apply.
+	if maze_level != null and maze_level.handle_lever_map_key(keycode):
+		get_viewport().set_input_as_handled()
+		return
+	if keycode == KEY_L:
 		main_map.visible = not main_map.visible
+		_selection_manual = false
 		if main_map.visible:
+			_update_selected_rotatable_set()
 			main_map.queue_redraw()
 		get_viewport().set_input_as_handled()
-	elif keycode == KEY_RIGHT and key_event.shift_pressed:
-		_cycle_selected_current(1)
+	elif main_map.visible and keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
+		# Confirm: rotate the blinking set. Handled here so E doesn't also
+		# reach MazeLevel's relic interaction while the map is open.
+		_rotate_selected_set()
 		get_viewport().set_input_as_handled()
-	elif keycode == KEY_LEFT and key_event.shift_pressed:
-		_cycle_selected_current(-1)
+	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT] and key_event.shift_pressed:
+		_cycle_selected_current(1 if keycode == KEY_RIGHT else -1)
 		get_viewport().set_input_as_handled()
-	elif keycode == KEY_RIGHT:
-		_select_next_hall()
+	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT]:
+		_cycle_selected_set(1 if keycode == KEY_RIGHT else -1)
 		get_viewport().set_input_as_handled()
-	elif keycode == KEY_LEFT:
-		_select_previous_hall()
+	elif main_map.visible and keycode == KEY_R:
+		_rotate_selected_current()
 		get_viewport().set_input_as_handled()
 
 # Absolute panel-space projection - MAIN_MAP_MARGIN + (world offset from
@@ -640,7 +1166,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # room), not centered on the panel the way the small radar centers on the
 # diver.
 func _project_to_main_map(pos: Vector3) -> Vector2:
-	return Vector2(MAIN_MAP_MARGIN, MAIN_MAP_MARGIN) + (Vector2(pos.x, pos.z) - _main_map_origin) * _main_map_px_per_unit
+	return Vector2(MAIN_MAP_MARGIN, MAIN_MAP_HEADER) + (Vector2(pos.x, pos.z) - _main_map_origin) * _main_map_px_per_unit
 
 # Keeps every resolved wall's Line2D up to date, projected through the
 # fixed origin instead of the small radar's diver-relative one - only
@@ -658,17 +1184,29 @@ func _refresh_main_map() -> void:
 		if not _main_map_bounds_computed:
 			return
 	for box in maze_level.wall_boxes:
-		if not is_instance_valid(box) or not _wall_to_hall.has(box):
+		if not is_instance_valid(box) or not _revealed_walls.has(box) or _room_wall_set.has(box):
 			continue
 		var seg := _box_segment(box)
 		var p_a := _project_to_main_map(seg[0])
 		var p_b := _project_to_main_map(seg[1])
-		var hall_name: String = _wall_to_hall[box]
+		var hall_name: String = _wall_to_hall.get(box, "")
 		if hall_name == "":
 			_update_main_map_lone_line(box, p_a, p_b)
 		else:
 			_update_main_map_hall_line(hall_name, box, p_a, p_b)
+	for i in _revealed_rooms:
+		if not _main_map_room_lines.has(i):
+			var room_line := _make_main_map_line()
+			room_line.default_color = ROOM_COLOR
+			room_line.closed = true
+			_main_map_room_lines[i] = room_line
+		var room_points := PackedVector2Array()
+		for corner in _room_corners(i):
+			room_points.append(_project_to_main_map(corner))
+		(_main_map_room_lines[i] as Line2D).points = room_points
 	_refresh_current_lines()
+	_apply_rotatable_highlight()
+	_refresh_map_copy()
 	if maze_level._diver != null and is_instance_valid(maze_level._diver):
 		_main_map_diver_pos = _project_to_main_map(maze_level._diver.global_position)
 	main_map.queue_redraw()
@@ -694,9 +1232,6 @@ func _refresh_current_lines() -> void:
 		if _main_map_current_heads.has(stale):
 			(_main_map_current_heads[stale] as Polygon2D).queue_free()
 			_main_map_current_heads.erase(stale)
-	if selectedCurrentCorridor == null or not _main_map_current_lines.has(selectedCurrentCorridor):
-		var available := _main_map_current_lines.keys()
-		selectedCurrentCorridor = available[0] as Area3D if not available.is_empty() else null
 	_refresh_current_highlight()
 
 func _update_main_map_current_line(corridor: Area3D, current: WaterCurrent) -> void:
@@ -716,22 +1251,50 @@ func _update_main_map_current_line(corridor: Area3D, current: WaterCurrent) -> v
 		head.color = FLOW_COLOR
 		main_map.add_child(head)
 		_main_map_current_heads[corridor] = head
-	(_main_map_current_lines[corridor] as Line2D).points = PackedVector2Array([start, end])
 	var facing := end - start
 	if facing.length() < 0.01:
+		(_main_map_current_lines[corridor] as Line2D).points = PackedVector2Array([start, end])
 		return
 	facing = facing.normalized()
+	(_main_map_current_lines[corridor] as Line2D).points = _wavy_points(start, end - facing * 10.0, end)
 	var side := Vector2(-facing.y, facing.x)
 	var base := end - facing * 10.0
 	(_main_map_current_heads[corridor] as Polygon2D).polygon = PackedVector2Array([end, base + side * 4.8, base - side * 4.8])
 
+# A sine wave from `start` to `wave_end`, then straight into `end` (the
+# arrow tip), so the current reads as moving water. First/last points stay
+# exactly start/end, so the line still spans the live flow area.
+func _wavy_points(start: Vector2, wave_end: Vector2, end: Vector2) -> PackedVector2Array:
+	const WAVELENGTH := 14.0
+	const AMPLITUDE := 3.0
+	var points := PackedVector2Array()
+	var run := wave_end - start
+	var length := run.length()
+	if length < 1.0:
+		return PackedVector2Array([start, end])
+	var along := run / length
+	var side := Vector2(-along.y, along.x)
+	var steps := maxi(2, int(length / 2.0))
+	for i in range(steps + 1):
+		var t := float(i) / float(steps)
+		var dist := length * t
+		var offset := sin(dist / WAVELENGTH * TAU) * AMPLITUDE * (1.0 if i < steps else 0.0)
+		points.append(start + along * dist + side * offset)
+	points.append(end)
+	return points
+
 func _cycle_selected_current(direction: int) -> void:
-	var corridors := _main_map_current_lines.keys()
+	var corridors: Array = []
+	for corridor in maze_level._currents_by_corridor:
+		if _is_discovered_corridor(corridor as Area3D):
+			corridors.append(corridor)
+	corridors.sort_custom(func(a, b) -> bool: return String((a as Node).name) < String((b as Node).name))
 	if corridors.is_empty():
 		return
 	var index := corridors.find(selectedCurrentCorridor)
 	index = wrapi((0 if index == -1 else index) + direction, 0, corridors.size())
 	selectedCurrentCorridor = corridors[index] as Area3D
+	_selection_manual = true
 	_refresh_current_highlight()
 
 # One persistent Line2D per standalone wall - created the first time this
@@ -816,6 +1379,23 @@ func _on_main_map_overlay_draw() -> void:
 		fwd = Vector2(0, -1)
 	fwd = fwd.normalized()
 	var side := Vector2(-fwd.y, fwd.x)
+	if maze_level != null:
+		for hp in maze_level.hidden_marker_positions():
+			_main_map_overlay.draw_circle(_project_to_main_map(hp), 2.0, HIDDEN_MARKER_COLOR)
+		for rp in maze_level.sonar_rock_positions():
+			_main_map_overlay.draw_circle(_project_to_main_map(rp), 3.5, HIDDEN_MARKER_COLOR)
+		var zone := maze_level.strong_zone_for_map(_revealed_walls)
+		if zone.size != Vector2.ZERO:
+			var p0 := _project_to_main_map(Vector3(zone.position.x, 0, zone.position.y))
+			var p1 := _project_to_main_map(Vector3(zone.end.x, 0, zone.end.y))
+			var a := _zone_alpha()
+			_main_map_overlay.draw_rect(Rect2(p0, p1 - p0), Color(STRONG_ZONE_COLOR, 0.12 + 0.28 * a))
+			_main_map_overlay.draw_rect(Rect2(p0, p1 - p0), Color(STRONG_ZONE_COLOR, 0.5 + 0.5 * a), false, 2.0)
+		for corridor in maze_level.corridors:
+			if _is_discovered_corridor(corridor):
+				_draw_corridor_tag(_main_map_overlay, _project_to_main_map(_corridor_center(corridor)), corridor, 11)
+		for poi in _found_pois():
+			_draw_poi(_main_map_overlay, _project_to_main_map(poi["pos"] as Vector3), poi, 1.0)
 	# _main_map_diver_pos is already an absolute panel-space point (see
 	# _project_to_main_map()), not relative to panel center.
 	var p := _main_map_diver_pos
@@ -830,3 +1410,89 @@ func _on_main_map_overlay_draw() -> void:
 	# than under them - filled=false makes this an outline, not a filled
 	# rect over the whole panel.
 	_main_map_overlay.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.3, 0.55, 0.95), false, 3.0)
+
+# --- Points of interest -----------------------------------------------------------
+# Things the diver has come across (MazeLevel.map_points_of_interest()):
+# each appears on both maps once the diver has been within its radius (or
+# inside its rect), and stays.
+var _found_poi_ids: Dictionary = {}
+
+func _update_found_pois(diver_pos: Vector3) -> void:
+	if not maze_level.has_method("map_points_of_interest"):
+		return
+	var d2 := Vector2(diver_pos.x, diver_pos.z)
+	for poi in maze_level.map_points_of_interest():
+		var id := String(poi["id"])
+		if _found_poi_ids.has(id):
+			continue
+		if poi.has("rect"):
+			if (poi["rect"] as Rect2).has_point(d2):
+				_found_poi_ids[id] = true
+		else:
+			var p := poi["pos"] as Vector3
+			if is_inf(float(poi["radius"])) or d2.distance_to(Vector2(p.x, p.z)) <= float(poi["radius"]):
+				_found_poi_ids[id] = true
+
+func _found_pois() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if maze_level == null or not maze_level.has_method("map_points_of_interest"):
+		return out
+	for poi in maze_level.map_points_of_interest():
+		if _found_poi_ids.has(String(poi["id"])):
+			out.append(poi)
+	return out
+
+# "C1", "C2", ... (or "BR" for WindCorridorBreakRock) at a corridor's centre.
+func _draw_corridor_tag(ci: CanvasItem, p: Vector2, corridor: Area3D, font_size: int) -> void:
+	var tag := String(corridor.name).replace("WindCorridor", "")
+	tag = "BR" if tag == "BreakRock" else "C" + tag
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	ci.draw_string_outline(font, p + Vector2(-w * 0.5, font_size * 0.35), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color(0.01, 0.04, 0.07, 0.95))
+	ci.draw_string(font, p + Vector2(-w * 0.5, font_size * 0.35), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.55, 0.85, 1.0))
+
+func _draw_poi(ci: CanvasItem, p: Vector2, poi: Dictionary, k: float) -> void:
+	var done := bool(poi.get("done", false))
+	match String(poi["kind"]):
+		"poster":
+			# A little sheet of paper with a portrait square; green once read.
+			var sz := Vector2(14, 17) * k
+			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.55, 0.95, 0.55) if done else Color(0.92, 0.87, 0.74))
+			var pic := Rect2(p - Vector2(5.5, 7.0) * k, Vector2(11, 11) * k)
+			if poi.get("texture") is Texture2D:
+				ci.draw_texture_rect(poi["texture"], pic, false)
+			else:
+				ci.draw_rect(pic, Color(0.18, 0.15, 0.12))
+			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.1, 0.1, 0.1), false, 1.0)
+		"chest":
+			var sz := Vector2(12, 8) * k
+			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.5, 0.3, 0.12))
+			ci.draw_rect(Rect2(p - Vector2(sz.x * 0.5, 1.0 * k), Vector2(sz.x, 2.0 * k)), Color(1.0, 0.8, 0.25))
+			ci.draw_rect(Rect2(p - Vector2(1.2, 1.6) * k, Vector2(2.4, 3.2) * k), Color(1.0, 0.85, 0.3) if not done else Color(0.3, 0.3, 0.3))
+			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.1, 0.06, 0.02), false, 1.0)
+		"switch":
+			var sz := Vector2(8, 8) * k
+			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.05, 0.05, 0.05))
+			ci.draw_circle(p, 2.2 * k, Color(0.25, 1.0, 0.4) if done else Color(1.0, 0.2, 0.2))
+			ci.draw_rect(Rect2(p - sz * 0.5, sz), Color(0.7, 0.7, 0.7), false, 1.0)
+		"key":
+			var gold := Color(1.0, 0.82, 0.25)
+			ci.draw_arc(p + Vector2(-3, 0) * k, 2.6 * k, 0.0, TAU, 12, gold, 1.8)
+			ci.draw_line(p + Vector2(-0.4, 0) * k, p + Vector2(5.5, 0) * k, gold, 1.8)
+			ci.draw_line(p + Vector2(3.6, 0) * k, p + Vector2(3.6, 2.6) * k, gold, 1.6)
+			ci.draw_line(p + Vector2(5.3, 0) * k, p + Vector2(5.3, 2.2) * k, gold, 1.6)
+		"broken_rock":
+			var blue := Color(0.12, 0.22, 0.7)
+			var a := 3.5 * k
+			ci.draw_line(p + Vector2(-a, -a), p + Vector2(a, a), blue, 2.2)
+			ci.draw_line(p + Vector2(-a, a), p + Vector2(a, -a), blue, 2.2)
+		"rock":
+			ci.draw_circle(p, 5.0 * k, Color(0.45, 0.42, 0.38))
+			ci.draw_line(p + Vector2(-1, -5) * k, p + Vector2(1, 5) * k, Color(0.08, 0.08, 0.08), 1.5)
+		"room_label":
+			var font := ThemeDB.fallback_font
+			var size := int(12 * k)
+			var text := String(poi.get("label", ""))
+			var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			ci.draw_string_outline(font, p + Vector2(-w * 0.5, size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 3, Color(0.01, 0.04, 0.07, 0.95))
+			ci.draw_string(font, p + Vector2(-w * 0.5, size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ROOM_COLOR)

@@ -73,8 +73,76 @@ func _physics_process(_delta: float) -> void:
 			_apply_to_diver(body as Diver)
 
 func _apply_to_diver(diver: Diver) -> void:
-	diver.external_push = orientation * strength
+	if _only_present and not _carried.has(diver):
+		_repel(diver)
+		return
+	diver.external_push = orientation * strength + _side_push(diver.global_position)
 	diver.current_axis = orientation
+
+# "Carry only present divers" mode: the current carries only the divers who
+# were already inside its area when the mode was switched on; any diver who
+# swims in afterwards is shoved back out through the nearest edge, harder
+# than they can swim, and keeps full steering so they can leave.
+const REPEL_STRENGTH := 1.6   # x strength
+var _only_present := false
+var _carried: Dictionary = {}   # Diver -> true
+
+func carry_only_present_divers() -> void:
+	_only_present = true
+	_carried.clear()
+	if area == null:
+		return
+	for body in area.get_overlapping_bodies():
+		if body is Diver:
+			_carried[body] = true
+
+func carry_all_divers() -> void:
+	_only_present = false
+	_carried.clear()
+
+func _repel(diver: Diver) -> void:
+	var shape_node := _find_box_shape()
+	var outward := Vector3.ZERO
+	if shape_node != null:
+		var xf := shape_node.global_transform
+		var half := (shape_node.shape as BoxShape3D).size * 0.5
+		var local := xf.affine_inverse() * diver.global_position
+		# Push out through whichever horizontal face the diver is closest to.
+		# Gaps in world units (the shape node may be scaled).
+		var gap_x := (half.x - absf(local.x)) * xf.basis.x.length()
+		var gap_z := (half.z - absf(local.z)) * xf.basis.z.length()
+		var local_out := Vector3(signf(local.x), 0, 0) if gap_x < gap_z else Vector3(0, 0, signf(local.z))
+		outward = (xf.basis * local_out)
+		outward.y = 0.0
+	if outward.length_squared() < 0.0001:
+		outward = -orientation
+	diver.external_push = outward.normalized() * strength * REPEL_STRENGTH
+	diver.current_axis = Vector3.ZERO
+
+# Width of the band along each side of the current (across the flow) that
+# pushes outwards, and how hard as a fraction of `strength`. A diver near
+# either side edge is eased sideways out of the current instead of being
+# carried along its edge into whatever wall it runs into.
+const SIDE_BAND := 1.5
+const SIDE_PUSH := 0.6
+
+func _side_push(at: Vector3) -> Vector3:
+	var shape_node := _find_box_shape()
+	if shape_node == null:
+		return Vector3.ZERO
+	var side := orientation.cross(Vector3.UP)
+	side.y = 0.0
+	if side.length_squared() < 0.0001:
+		return Vector3.ZERO
+	side = side.normalized()
+	var xf := shape_node.global_transform
+	var half := (shape_node.shape as BoxShape3D).size * 0.5
+	# Half-width across the flow, including any scale on the shape node.
+	var half_width := absf(xf.basis.x.dot(side)) * half.x + absf(xf.basis.y.dot(side)) * half.y + absf(xf.basis.z.dot(side)) * half.z
+	var offset := (at - xf.origin).dot(side)
+	if absf(offset) < half_width - SIDE_BAND:
+		return Vector3.ZERO
+	return side * signf(offset) * strength * SIDE_PUSH
 
 # Called right after add_child()-ing this node - wires this controller up
 # to whichever Area3D it should actually watch and which way it pushes.
@@ -156,6 +224,9 @@ func _on_entered(body: Node3D) -> void:
 	if not (body is Diver) or orientation == Vector3.ZERO:
 		return
 	var d := body as Diver
+	if _only_present and not _carried.has(d):
+		_repel(d)
+		return
 	_apply_to_diver(d)
 	var vel_flat := Vector3(d.velocity.x, 0.0, d.velocity.z)
 	if vel_flat.length() > 0.05 and absf(vel_flat.normalized().dot(orientation)) < ENTRY_ALIGNMENT_MIN:
@@ -171,6 +242,7 @@ func _on_entered(body: Node3D) -> void:
 
 func _on_exited(body: Node3D) -> void:
 	if body is Diver:
+		_carried.erase(body)
 		(body as Diver).external_push = Vector3.ZERO
 		(body as Diver).current_axis = Vector3.ZERO
 

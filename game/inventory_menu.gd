@@ -27,7 +27,9 @@
 class_name InventoryMenu
 extends Control
 
-var world: World
+# World or MazeLevel: both expose the party/inventory operations used below.
+# Tutorial replay actions are offered only when the owning scene supports them.
+var world: Node
 var audio_manager: Node
 
 # "items" | "spells_root" | "spells_target" - spells_root lists every
@@ -466,17 +468,19 @@ func _on_target_chosen(target: Diver) -> void:
 # to its own TutorialContent table, not here too.
 func _refresh_help() -> void:
 	_hint.text = "Stats, effects, and status conditions"
-	if world != null:
+	if world != null and world.has_method("_replay_tutorial_battle"):
 		var replay_btn := Button.new()
 		replay_btn.text = "Replay Tutorial Fight"
 		replay_btn.custom_minimum_size = Vector2(340, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
+	if world != null and world.has_method("_replay_special_encounter_tutorial"):
 		var replay_special_btn := Button.new()
 		replay_special_btn.text = "Replay Special Encounter Tutorial"
 		replay_special_btn.custom_minimum_size = Vector2(340, 40)
 		replay_special_btn.pressed.connect(_on_replay_special_encounter_tutorial_pressed)
 		_list.add_child(replay_special_btn)
+	if world != null and world.get("tutorial_book") != null:
 		var replay_guide_btn := Button.new()
 		replay_guide_btn.text = "Reopen Tutorial Guide"
 		replay_guide_btn.custom_minimum_size = Vector2(340, 40)

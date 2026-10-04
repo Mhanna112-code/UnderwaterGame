@@ -39,6 +39,11 @@ func _ready() -> void:
 	# click-to-skip events while the panel is hidden. The panel and its child
 	# buttons still receive input when the modal is open.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The modal's own CanvasLayer defaults to layer 1 - the same as a scene's
+	# HUD layer - and the HUD is added after this autoload, so HUD captions
+	# (e.g. the maze's orange warnings) drew on top of the open modal. Put
+	# the modal above every HUD layer.
+	($UI as CanvasLayer).layer = 100
 	(%PopupClose as Button).pressed.connect(_on_next_pressed)
 	_style_panel()
 	_build_close_button()
@@ -173,8 +178,23 @@ func _refresh() -> void:
 	# can't tell those two pages apart on its own. Falls back to that same
 	# ability_id-derived lookup for a diver with only one page (Musashi,
 	# Bucky), so they don't need to pass it explicitly.
+	# "media_control": a Callable returning a Control to show in the media
+	# frame instead of a clip file (e.g. a live-drawn demo animation).
+	if page.get("media_control") is Callable:
+		_show_media_control((page["media_control"] as Callable).call())
+		return
 	var media_key: String = String(page.get("media", page_slot.diver.ability_id if page_slot != null else ""))
 	_refresh_media(media_key)
+
+func _show_media_control(media: Control) -> void:
+	var frame := %MediaFrame as PanelContainer
+	frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	for child in frame.get_children():
+		child.queue_free()
+	frame.show()
+	media.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(media)
 
 # Rebuilds %Paragraph's one RichTextLabel from scratch every call. The
 # inline [E]/[Q]/[Tab] badges are BBCode baked straight into the body string

@@ -1706,7 +1706,9 @@ func _build_highway() -> void:
 	add_child(_puzzle_goal)
 
 func _on_whirlpool_warned() -> void:
-	_announce("Danger - a whirlpool lies just ahead!")
+	# The whirlpool shows its own "Danger: Whirlpool ahead" caption while
+	# the diver is within its warning radius (see whirlpool.gd).
+	pass
 
 func _on_diver_sucked_in(d: Diver, amount: int) -> void:
 	_announce("You were sucked into the whirlpool! (-%d HP)" % amount)

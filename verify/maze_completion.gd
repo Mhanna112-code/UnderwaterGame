@@ -109,13 +109,17 @@ func _find_route(diver: Diver, goal: Vector3, minimum_z: float) -> Array[Vector3
 
 func _run() -> void:
 	var maze := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
+	# Always the normal entrance start, whichever developer spawn is switched on.
+	maze.dev_spawn_at_sphere_room = false
+	maze.dev_spawn_at_boss_rooms = false
+	maze.dev_spawn_at_switch = false
 	root.add_child(maze)
 	for _frame in range(10):
 		await physics_frame
 
 	# This is the player-visible H interaction. The existing traversal test
 	# already proves the local passage; this contract continues to the reward.
-	_press(maze, KEY_H)
+	maze._rotate_hallway_1_2()   # walls only move from the map now (L, then E)
 	await create_timer(1.4).timeout
 	for _frame in range(3):
 		await physics_frame
@@ -173,8 +177,9 @@ func _run() -> void:
 			await physics_frame
 		if not maze.has_method("is_completed") or not bool(maze.call("is_completed")):
 			findings.append("breaking ItemRock does not mark the maze complete")
-		var completion_label := maze.get_node_or_null("HUD/MazeComplete") as Label
-		if completion_label == null or not completion_label.visible:
+		# Told the same way as every other secret-room find: the orange text.
+		var banner: Label = maze.get("_banner")
+		if banner == null or not banner.visible or not banner.text.contains("Relic"):
 			findings.append("completion is not visibly communicated to the player")
 
 	for finding in findings:
