@@ -60,8 +60,8 @@ run() {
 	fi
 	cat "$gate_log"
 	local script_error=0
-	if grep -q "SCRIPT ERROR:" "$gate_log"; then
-		echo "GATE ERROR: Godot reported a script error even though the command may have exited successfully"
+	if rg -q 'SCRIPT ERROR:|Infinite loop detected' "$gate_log"; then
+		echo "GATE ERROR: Godot reported a script error or a release-blocking infinite tween loop despite the exit status"
 		script_error=1
 	fi
 	if [ "$command_status" -eq 124 ]; then
@@ -115,6 +115,9 @@ run "opening save denial: does failed recovery retain the previous checkpoint an
 run "checkpoint invalid load: do missing and malformed saves retain an actionable title instead of replaying opening" "$GODOT" --headless --path . --script verify/checkpoint_load_failures.gd
 run "checkpoint slot switch: does denied replacement retain the active save and retry correctly" "$GODOT" --headless --path . --script verify/checkpoint_slot_switch.gd
 run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
+run "tutorial actual win: does menu replacement remain error-free and victory expose Continue" "$GODOT" --headless --path . --script verify/tutorial_win_handoff.gd
+run "tutorial full lesson: do all five real guided moves and a real victory finish without infinite tweens" "$GODOT" --headless --path . --script verify/tutorial_win_handoff.gd -- --full-lesson
+run "tutorial world win: does actual optional beacon entry and victory restore movement and persist both milestones" "$GODOT" --headless --path . --script verify/tutorial_win_handoff.gd -- --world-lesson
 
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
 run "animations: does every rig change state correctly" "$GODOT" --headless --path . --script verify/animations.gd

@@ -688,3 +688,16 @@ Public main and project-default aliases independently still resolve to
 child PR push/open. This is a focused correction, not final zero-defect
 acceptance: OPEN-032, blind comprehension and final viewport/listening matrix
 remain outstanding.
+## 2026-10-04: reported optional tutorial victory freeze (OPEN-039)
+
+Player screenshot: Angler gone, Bucky active, victory log, no Continue. Found
+an infinite guided-move highlight tween whose Button targets were freed by
+menu regeneration. Native debug reported `Infinite loop detected`, but the
+old verifier still printed clean and exited zero; release browser instead
+became unresponsive in the guided-to-free transition with a 100%-CPU renderer.
+
+Focused repair kills that tween before freeing buttons. Native red/green
+captured; full tutorial/world win and narrow/wide Continue checks added.
+Engine infinite-loop errors now fail the gate. Exact exported browser
+verification and review-alias refresh are pending. This does not revise the
+curriculum, campaign tuning, or opening story. Overall goal remains unfinished.

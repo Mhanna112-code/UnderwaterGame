@@ -3663,6 +3663,13 @@ func _add_power_badge(btn: Button, power: int) -> void:
 	plate.add_child(badge)
 
 func _populate_move_menu(actor: Dictionary) -> void:
+	# The guided button belongs to this menu generation. An infinite tween
+	# whose property targets have all been freed becomes a zero-duration
+	# loop: debug Godot reports an error, but the release web build can hang.
+	# Stop it BEFORE freeing buttons, including the final guided-to-free turn.
+	if _tutorial_flash_tween != null and _tutorial_flash_tween.is_valid():
+		_tutorial_flash_tween.kill()
+	_tutorial_flash_tween = null
 	for b in move_buttons:
 		(b as Button).queue_free()
 	move_buttons.clear()

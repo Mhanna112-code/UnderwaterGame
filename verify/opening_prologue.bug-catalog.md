@@ -596,3 +596,11 @@ Fill after each test is written and run, one at a time:
 If no test initially catches a real defect, probe at least cross-feature
 composition, missing-field migration, video-policy contamination, and audio
 owner overlap before accepting a zero-caught result.
+# OPEN-039: optional tutorial can freeze after its guided moves / Angler victory
+
+An infinite Battle-owned button-highlight tween survives removal of its
+generated move button. Debug Godot reports an infinite-loop error while
+release web can hang. Stop the tween before menu regeneration. Coverage:
+`tutorial_win_handoff.gd` real killing button, full curriculum, actual beacon
+entry/world recovery/save; exported browser mouse/keyboard traversal. Gates
+must reject `Infinite loop detected`, even with a zero process exit.
