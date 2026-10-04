@@ -9,8 +9,11 @@ live maze music and exploration-clock ownership now pass the checks below.
 Actual Maze-owned puppet/final fights win with legal level-5 consumer kits and
 normal 10-HP divers; completion snapshots preserve independent guardian/boss
 ownership. Full physical maze/resource progression, broader balance, browser
-durability and final polish are NOT accepted. No combined export/deployment yet;
-main/public remain unchanged. Other worktree changes remain untouched.
+durability and final polish are NOT accepted. Combined runtime 08d8d97 is exported:
+local served-pack checksum, completed browser downloads, rendered ordinary title
+and actual L-map controls pass after correcting the inspector-cache harness.
+Preview deployment and native packages are being prepared; main/public remain
+unchanged. Other worktree changes remain untouched.
 
 | Phase | State | Required next evidence |
 | --- | --- | --- |
@@ -18,10 +21,10 @@ main/public remain unchanged. Other worktree changes remain untouched.
 | Integrated baseline | In progress | Local reconciliation and INT-01 live entrance gate pass; remaining semantic integration still required |
 | State/recovery | In progress | Live entrance/secret return, native checkpoint cold Load/real death Restart, 12 World return/re-entry cases and four-size native checkpoint/menu checks pass; browser denied-storage and consumer/input integration still required |
 | Maze route | In progress | First current channel passes actual Tab/W/mouse/L/E/R headless/native with collision and push active; full puzzles/keys/secret/finale route remains pending |
-| Puppet encounter | In progress | Both real waves and six resource-boundary cases pass; normal kit reachability, once-only maze-key reward and interrupted recovery remain pending |
+| Puppet encounter | In progress | Both real waves, six resource-boundary cases and actual once-only maze-key/snapshot reward pass; normal kit reachability and interrupted recovery remain pending |
 | Cordys finale | In progress | Normal campaign turns and actual sigil win/snapshot pass; earned no-lab/both-order resource paths and loss/file recovery remain pending |
 | Audio and feedback delivery | In progress | Live exploration/Battle/Cordys/return cue ownership passes; audible joins/mix, exact export/served bytes and deployed checks remain pending |
-| Windows/Linux | Planned | Exported, launch-tested and playtested recorded separately |
+| Windows/Linux | In progress | Matching 4.7.1 templates downloaded and upstream SHA256 verified; release presets/Compatibility launchers prepared; exported, launch-tested and playtested recorded separately |
 | Full regression/polish | Planned | Complete clean audit round on identified artifact |
 | Human approval | Pending | Collaborator review; no public promotion before approval |
 

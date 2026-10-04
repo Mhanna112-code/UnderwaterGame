@@ -1,0 +1,12 @@
+{
+  "source_commit": "08d8d977b31e5e9f5cb2b36fcc1058d77fada477",
+  "downloads": [
+    {
+      "bytes": 92415496,
+      "sha256": "1ca695124a1b9760c7a189cdbae4e76821e718021e6445b6d2ccf3630872aa41",
+      "endpoint": "http://127.0.0.1:62062/index.pck"
+    }
+  ],
+  "findings": [],
+  "scope": "served pack checksum, completed browser pack requests, rendered ordinary title and real direct-maze L controls only"
+}
