@@ -38,6 +38,7 @@ func _run() -> void:
 
 	audio.clear_sfx_event_trace()
 	var slot := _first_slot_button(returning)
+	await create_timer(0.3).timeout # deliberate hover after navigation acknowledgement
 	slot.mouse_entered.emit()
 	slot.pressed.emit()
 	_expect(audio.get_sfx_event_trace() == ["ui_hover", "ui_start_game"], "SLOT: choosing a run did not use Hover then Start Game")
@@ -48,6 +49,7 @@ func _run() -> void:
 	await process_frame
 	audio.clear_sfx_event_trace()
 	var back := _find_button(returning, "< Back")
+	await create_timer(0.3).timeout
 	back.mouse_entered.emit()
 	back.pressed.emit()
 	_expect(audio.get_sfx_event_trace() == ["ui_hover", "ui_click"], "BACK: menu navigation did not use Hover then Click")
@@ -64,6 +66,7 @@ func _fresh_title() -> TitleScreen:
 	await process_frame
 	title.open()
 	await process_frame
+	await create_timer(0.3).timeout
 	return title
 
 func _find_button(node: Node, text: String) -> Button:

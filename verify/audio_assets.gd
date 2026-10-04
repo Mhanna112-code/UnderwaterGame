@@ -19,6 +19,7 @@ const ASSETS := [
 	["res://audio/music/final_boss_intro.ogg", 22.589, "e00bd3d8601cffad0fd9d2232853ceefcaa974aa06b0d924a4208cdf8f9c675f"],
 	["res://audio/music/final_boss_loop.ogg", 90.353, "dfa5e61d103c53b9420dc58085079684a5dd2d25e2fde835ef37bba45f14eda4"],
 	["res://audio/sfx/ui/hover.wav", 4.039, "0a33872ad6512eac29043f86292019f28e00418702978f817c3495d02bca6778"],
+	["res://audio/sfx/ui/hover_soft.wav", 0.180, "fa711f542b102bd57ae2399fa017863ff393dfaa407ba4d15ad2346c1def89f3"],
 	["res://audio/sfx/ui/click.wav", 4.039, "fa4ba4bd62e94c085dc790c100d16cad6ce3dd72b5bf8ed530aedfc281bd4922"],
 	["res://audio/sfx/ui/start_game.wav", 7.295, "e3bd6c7e8e5b8587b8be2ad318bed5518ce4bb84fbc6477253af13e626e5a5ab"],
 ]

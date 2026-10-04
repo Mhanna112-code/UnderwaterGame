@@ -116,6 +116,7 @@ run "checkpoint invalid load: do missing and malformed saves retain an actionabl
 run "checkpoint slot switch: does denied replacement retain the active save and retry correctly" "$GODOT" --headless --path . --script verify/checkpoint_slot_switch.gd
 run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
 run "opening exploration: do Sonar/encounters enable at recovery and saved manual choices survive Load" "$GODOT" --headless --path . --script verify/opening_exploration_defaults.gd
+run "menu audio comfort: is hover brief, rate-limited and subordinate to confirmations" "$GODOT" --headless --path . --script verify/menu_audio_comfort.gd -- --interaction --preferences
 run "tutorial actual win: does menu replacement remain error-free and victory expose Continue" "$GODOT" --headless --path . --script verify/tutorial_win_handoff.gd
 run "tutorial full lesson: do all five real guided moves and a real victory finish without infinite tweens" "$GODOT" --headless --path . --script verify/tutorial_win_handoff.gd -- --full-lesson
 run "tutorial world win: does actual optional beacon entry and victory restore movement and persist both milestones" "$GODOT" --headless --path . --script verify/tutorial_win_handoff.gd -- --world-lesson

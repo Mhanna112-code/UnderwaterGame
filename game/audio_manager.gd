@@ -20,7 +20,8 @@ const VICTORY_LOOP: AudioStream = preload("res://audio/music/victory_loop.ogg")
 const GAME_OVER: AudioStream = preload("res://audio/music/game_over.ogg")
 const FINAL_BOSS_INTRO: AudioStream = preload("res://audio/music/final_boss_intro.ogg")
 const FINAL_BOSS_LOOP: AudioStream = preload("res://audio/music/final_boss_loop.ogg")
-const UI_HOVER: AudioStream = preload("res://audio/sfx/ui/hover.wav")
+# Short, filtered/faded derivative; canonical Phoenix source is preserved.
+const UI_HOVER: AudioStream = preload("res://audio/sfx/ui/hover_soft.wav")
 const UI_CLICK: AudioStream = preload("res://audio/sfx/ui/click.wav")
 const UI_START_GAME: AudioStream = preload("res://audio/sfx/ui/start_game.wav")
 const COMBAT_ATTACK_SWIRL: AudioStream = preload("res://audio/sfx/combat/attack_swirl.ogg")
@@ -45,6 +46,8 @@ var _active_gain_db := 0.0
 var _gain_envelope: Tween
 var _transition_trace: Array[String] = []
 var _sfx_event_trace: Array[String] = []
+var _last_ui_hover_msec := -1000
+var _ui_confirm_until_msec := 0
 var settings_path := "user://audio.cfg"
 var _music_volume := 1.0
 var _music_muted := false
@@ -243,6 +246,12 @@ func _cancel_gain_envelope() -> void:
 	_gain_envelope = null
 
 func play_ui_hover() -> void:
+	# Title runs while paused. Use monotonic real time, not a gameplay timer,
+	# and protect the start of explicit confirmation from stray pointer entry.
+	var now := Time.get_ticks_msec()
+	if now - _last_ui_hover_msec < 250 or now < _ui_confirm_until_msec:
+		return
+	_last_ui_hover_msec = now
 	_play_sfx("ui_hover", UI_HOVER)
 
 func play_ui_click() -> void:
@@ -351,6 +360,8 @@ func _apply_active_music_gain(value_db: float) -> void:
 
 func _play_sfx(event_id: String, stream: AudioStream) -> void:
 	_ensure_players()
+	if event_id != "ui_hover":
+		_ui_confirm_until_msec = Time.get_ticks_msec() + 250
 	_sfx_player.stop()
 	_sfx_player.stream = _non_looping_copy(stream)
 	_start_player(_sfx_player)
