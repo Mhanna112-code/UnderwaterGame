@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="620" viewBox="0 0 1280 620" role="img" aria-labelledby="title description">
+  <title id="title">PR 70 aligned CSGBox3D6 and CSGBox3D7 maze passage</title>
+  <desc id="description">Top-down geometric evidence showing CSGBox3D6 and CSGBox3D7 beginning at the same entrance cross-line while retaining a 6.2005 metre clear lane.</desc>
+  <rect width="1280" height="620" fill="#082631"/>
+  <text x="70" y="70" fill="#f3f8fa" font-family="Arial, sans-serif" font-size="34" font-weight="700">CSGBox3D6 / CSGBox3D7 passage alignment</text>
+  <text x="70" y="108" fill="#b7cbd3" font-family="Arial, sans-serif" font-size="20">Top-down final geometry from the real PR #70 maze scene</text>
+
+  <rect x="422" y="162" width="82" height="342" rx="5" fill="#6e98aa"/>
+  <rect x="776" y="162" width="82" height="342" rx="5" fill="#6e98aa"/>
+  <text x="463" y="145" text-anchor="middle" fill="#f3f8fa" font-family="Arial, sans-serif" font-size="22" font-weight="700">CSGBox3D6</text>
+  <text x="817" y="145" text-anchor="middle" fill="#f3f8fa" font-family="Arial, sans-serif" font-size="22" font-weight="700">CSGBox3D7</text>
+
+  <rect x="504" y="162" width="272" height="342" fill="#103946"/>
+  <path d="M 504 504 L 776 504" stroke="#63f088" stroke-width="7"/>
+  <path d="M 504 504 L 504 538 M 776 504 L 776 538" stroke="#63f088" stroke-width="3"/>
+  <text x="640" y="570" text-anchor="middle" fill="#63f088" font-family="Arial, sans-serif" font-size="23" font-weight="700">shared entrance cross-line · 0.0000 m stagger</text>
+
+  <path d="M 504 310 L 776 310" stroke="#ffd166" stroke-width="3" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="640" y="290" text-anchor="middle" fill="#ffd166" font-family="Arial, sans-serif" font-size="21">6.2005 m clear swimmable lane</text>
+  <text x="640" y="338" text-anchor="middle" fill="#b7cbd3" font-family="Arial, sans-serif" font-size="18">7.2005 m wall-centre separation · parallel axes = 1.00000</text>
+
+  <path d="M 640 470 L 640 386" stroke="#69ddf5" stroke-width="10" stroke-linecap="round" marker-end="url(#blueArrow)"/>
+  <text x="664" y="449" fill="#69ddf5" font-family="Arial, sans-serif" font-size="18">verified diver route north</text>
+
+  <rect x="70" y="170" width="265" height="184" rx="10" fill="#0d3542" stroke="#315a68" stroke-width="2"/>
+  <text x="96" y="210" fill="#f3f8fa" font-family="Arial, sans-serif" font-size="20" font-weight="700">Regression proof</text>
+  <text x="96" y="248" fill="#b7cbd3" font-family="Arial, sans-serif" font-size="18">Before: 3.0121 m stagger</text>
+  <text x="96" y="280" fill="#b7cbd3" font-family="Arial, sans-serif" font-size="18">After: 0.0000 m stagger</text>
+  <text x="96" y="320" fill="#b7cbd3" font-family="Arial, sans-serif" font-size="18">Real diver: entry → far side</text>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd166"/></marker>
+    <marker id="blueArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#69ddf5"/></marker>
+  </defs>
+</svg>

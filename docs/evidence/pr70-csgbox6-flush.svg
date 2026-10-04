@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">PR 70 CSGBox3D6 hallway join: before and after</title>
+  <desc id="desc">The old static world-X offset leaves a 2.175 metre gap after CurrentWall1 rotates. The endpoint-based placement joins CSGBox3D6 to CurrentWall1 with zero measured positional error.</desc>
+  <style>
+    text { font-family: ui-sans-serif, system-ui, sans-serif; fill: #dceeff; }
+    .small { font-size: 20px; } .label { font-size: 24px; font-weight: 700; }
+    .wall { fill: #6b8798; } .moving { fill: #f0a64b; } .fixed { fill: #58c8be; }
+  </style>
+  <rect width="1200" height="520" fill="#082632"/>
+  <text x="48" y="55" font-size="30" font-weight="700">CSGBox3D6 ↔ CurrentWall1 after the H-key hallway rotation</text>
+  <text x="48" y="90" class="small">Captured regression: old placement missed the rotated endpoint by 2.175 m. The new endpoint-based placement measures 0.000 m error.</text>
+
+  <g transform="translate(50 130)">
+    <text x="0" y="0" class="label" fill="#ff9c9c">Before — perpendicular, but detached</text>
+    <rect class="moving" x="80" y="95" width="300" height="28" rx="3"/>
+    <rect class="fixed" x="440" y="185" width="28" height="205" rx="3"/>
+    <line x1="380" y1="109" x2="440" y2="109" stroke="#ff5d5d" stroke-width="4" stroke-dasharray="10 8"/>
+    <path d="M380 109 l14 -8 v16 z M440 109 l-14 -8 v16 z" fill="#ff5d5d"/>
+    <text x="254" y="155" class="small" fill="#ff9c9c">2.175 m gap</text>
+    <text x="80" y="80" class="small">CurrentWall1 (rotated)</text>
+    <text x="430" y="425" class="small">CSGBox3D6</text>
+  </g>
+
+  <g transform="translate(650 130)">
+    <text x="0" y="0" class="label" fill="#8df0d2">After — flush and perpendicular</text>
+    <rect class="moving" x="80" y="95" width="360" height="28" rx="3"/>
+    <rect class="fixed" x="440" y="109" width="28" height="281" rx="3"/>
+    <circle cx="440" cy="109" r="10" fill="#8df0d2"/>
+    <text x="298" y="155" class="small" fill="#8df0d2">0.000 m join</text>
+    <text x="80" y="80" class="small">CurrentWall1 (rotated)</text>
+    <text x="430" y="425" class="small">CSGBox3D6</text>
+  </g>
+</svg>

@@ -35,12 +35,11 @@ const MOVES := [
 	{
 		"id": "poison_breath", "name": "Poison Breath",
 		"clip": "poison_breath", "target": "all", "hits": 1,
-		# A flat "poison": 2 never scaled with anything - trivial once a
-		# party's HP pool grows past its starting 10, unlike Bleed (already
-		# Strength-scaled). Percentage-of-max-HP keeps Poison Breath a real
-		# threat at any HP total, the same way "heavy"'s heavy_min/heavy_max
-		# already scale off the defender's own max HP instead of a flat
-		# number - see _do_boss_turn()'s own application of this field.
+		# Unlike ordinary fixed-level poison, this attack must remain threatening
+		# once a party has grown beyond its opening 10 HP. The raw #72 contract
+		# is 15% of each struck target's own maximum HP, rounded with a one-point
+		# floor by Battle._do_boss_turn(). It deliberately does not borrow the
+		# boss's Strength: this is an encounter-scale pressure effect.
 		"power": 3, "acc_mod": 4, "poison_fraction": 0.15, "poison_turns": 3,
 		"intent": "Party-wide pressure that continues for three turns",
 	},

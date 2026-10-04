@@ -340,24 +340,9 @@ func _refresh_media(ability_id: String) -> void:
 			var video_stream := VideoStreamTheora.new()
 			video_stream.file = path
 			player.stream = video_stream
-			if ability_id == "grapple":
-				# The Grapple recording has pillarbox bars encoded into the video
-				# itself. VideoStreamPlayer.expand scales the full source frame,
-				# including those black margins, so crop the unused sides before
-				# drawing it into MediaFrame.
-				var crop_shader := Shader.new()
-				crop_shader.code = """
-				shader_type canvas_item;
-				uniform float side_crop = 0.18;
-				void fragment() {
-					vec2 source_uv = UV;
-					source_uv.x = mix(side_crop, 1.0 - side_crop, UV.x);
-					COLOR = texture(TEXTURE, source_uv) * COLOR;
-				}
-				"""
-				var crop_material := ShaderMaterial.new()
-				crop_material.shader = crop_shader
-				player.material = crop_material
+			# The Grapple clip is a clean 16:9 excerpt. Keep its original
+			# framing: the old side-crop magnified a damaged long recording and
+			# made the late, obstructed frames look like a second image.
 			# expand=true scales the video to fill whatever rect it's given,
 			# with no aspect-ratio awareness at all (unlike TextureRect, which
 			# has STRETCH_KEEP_ASPECT_CENTERED below) - filling %MediaFrame's

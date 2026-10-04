@@ -19,14 +19,27 @@ func _run() -> void:
 	viewport.add_child(enemy)
 	enemy.global_position = Vector3(0.0, 1.5, -8.0)
 
+	# Match battle.gd's split layout: the 3D SubViewport only owns the upper
+	# playfield while combat controls sit below it. This guards the browser
+	# regression where full-window UI coordinates and 3D aim coordinates drifted
+	# apart after a layout change.
+	var stage_frame := Control.new()
+	stage_frame.position = Vector2(0.0, 58.0)
+	stage_frame.size = Vector2(1280.0, 410.0)
+	root.add_child(stage_frame)
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = viewport
 	minigame.stage_camera = camera
 	minigame.target_actor = diver
 	minigame.enemy_actor = enemy
 	minigame.source_position = enemy.global_position
+	minigame.stage_rect = Rect2(stage_frame.position, stage_frame.size)
+	# Battle keeps the overlay in its HUD layer, not as a child of the 3D
+	# stage frame. Keeping it a sibling makes stage_rect a global UI rectangle.
 	root.add_child(minigame)
 	minigame.run()
+	await process_frame
+	_check(minigame.get_global_rect().is_equal_approx(Rect2(Vector2(0.0, 58.0), Vector2(1280.0, 410.0))), "grapple_mouse_input: overlay exactly follows the battle stage rectangle — guards against full-window aim/UI drift")
 
 	var deadline := Time.get_ticks_msec() + 4000
 	while not minigame._vortex_active and Time.get_ticks_msec() < deadline:
@@ -35,8 +48,23 @@ func _run() -> void:
 	if not minigame._vortex_active:
 		_finish()
 		return
+	var expected_instruction := "YELLOW" if minigame._vortex_safe_is_yellow else "GREEN"
+	_check(minigame.wave_instruction == expected_instruction, "grapple_mouse_input: central prompt names this wave's safe color — guards against log-only or mismatched instructions")
+	_check(minigame._wave_callout.visible and minigame._wave_callout.text == "GRAPPLE", "grapple_mouse_input: first central callout is GRAPPLE — guards against forcing players to scan the battle log")
+	var callout_rect := minigame._wave_callout.get_global_rect()
+	var stage_center := minigame.get_global_rect().get_center()
+	_check(absf(callout_rect.get_center().x - stage_center.x) < 1.0 and absf(callout_rect.get_center().y - stage_center.y) < 1.0, "grapple_mouse_input: instruction is centered over the playable stage — guards against lower-HUD eye travel")
+	await create_timer(GrappleInterceptMinigame.WAVE_CALLOUT_GRAPPLE_TIME + 0.04).timeout
+	_check(minigame._wave_callout.visible and minigame._wave_callout.text == expected_instruction, "grapple_mouse_input: central callout advances to the required color word — guards against ambiguous color-only cues")
 	await physics_frame
 	_check(minigame.vortex_targets_are_aimable(), "grapple_mouse_input: generated target fits bounded mouse look — guards against off-cone targets")
+	var web_safe := _first_target(minigame, true)
+	_check(web_safe != null, "grapple_mouse_input: safe target exists for web direct-click ray — guards against empty browser objective")
+	if web_safe != null:
+		var web_safe_id := web_safe.get_instance_id()
+		await _web_point_and_click(minigame, web_safe)
+		_check(not _contains_target_id(minigame, web_safe_id), "grapple_mouse_input: rendered web point resolves its safe sphere — guards against stage-to-ray coordinate drift")
+		_check(minigame._hits == 1, "grapple_mouse_input: rendered web point increments the safe-hit score — guards against visual-only browser clicks")
 
 	var wrong := _first_target(minigame, false)
 	_check(wrong != null, "grapple_mouse_input: wrong-color target exists — guards against invalid wave composition")
@@ -120,6 +148,20 @@ func _aim_and_click(minigame: GrappleInterceptMinigame, target: Area3D) -> void:
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	Input.parse_input_event(click)
+	await physics_frame
+
+func _web_point_and_click(minigame: GrappleInterceptMinigame, target: Area3D) -> void:
+	# Reconstruct the exact pointer coordinate a browser user sees, then call
+	# the production web handler. This is the inverse stage-rect transform in
+	# _grapple_at_web_pointer(), and catches a visual target that is not actually
+	# raycastable because the SubViewport has been stretched or repositioned.
+	var projected := minigame.stage_camera.unproject_position(target.global_position)
+	var rect := minigame.stage_rect
+	var pointer := rect.position + Vector2(
+		projected.x / minigame.stage_root.size.x * rect.size.x,
+		projected.y / minigame.stage_root.size.y * rect.size.y
+	)
+	minigame._grapple_at_web_pointer(pointer)
 	await physics_frame
 
 func _check(condition: bool, description: String) -> void:

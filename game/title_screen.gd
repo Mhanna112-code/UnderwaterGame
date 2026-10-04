@@ -193,7 +193,7 @@ func _refresh_main() -> void:
 	if _spell_playtest_available:
 		var spell_btn := Button.new()
 		spell_btn.text = "Play Spell Test"
-		spell_btn.tooltip_text = "Every diver starts with max spell points and every key item, so any spell is learnable right away"
+		spell_btn.tooltip_text = "Every diver starts with every available spell learned and equipped; press Esc to inspect Party Spells"
 		spell_btn.custom_minimum_size = Vector2(360, 46)
 		spell_btn.add_theme_font_size_override("font_size", 17)
 		spell_btn.add_theme_color_override("font_color", Color(0.75, 1.0, 0.75))

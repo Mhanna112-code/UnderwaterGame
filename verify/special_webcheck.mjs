@@ -25,7 +25,7 @@ const server = http.createServer((req, res) => {
 });
 if (!live) await new Promise(r => server.listen(8767, r));
 
-const browser = await chromium.launch({ args: [
+const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   '--ignore-gpu-blocklist', '--enable-gpu-rasterization',
 ] });

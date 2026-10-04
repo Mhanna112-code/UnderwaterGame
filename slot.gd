@@ -24,15 +24,15 @@ const WASD_MARKER := "{{WASD}}"
 
 var worldExplanation := "In the world map, divers can freely swim around encountering enemies, finding items and progressing to new areas. Use %s and move the camera around with the mouse to swim and look around. Use %s to switch between active divers. Divers also have special abilities they can use to interact with the world." % [WASD_MARKER, _badge("Tab")]
 
-var maxilaniSwapTitle := "Maxilani — Swap"
+var maxilaniSwapTitle := "Maxilani: Swap"
 var maxilaniSwapBody := "Press %s while Maxilani is the active diver to swap positions with other divers, then use the left and right arrow keys to switch to the diver you want to swap with and press Enter to confirm and swap. You can first swap to the other divers with %s and favorably position them to strategically set up their positions to solve puzzles and other mechanics you encounter while swimming around, then swap back to Maxilani and activate her swap abiity." % [_badge("E"), _badge("Tab")]
-var maxilaniSonarTitle := "Maxilani — Sonar"
+var maxilaniSonarTitle := "Maxilani: Sonar"
 var maxilaniSonarBody := "Maxilani has a built in sonar she can use to find hidden items in the world that appear as red circles in the minimap on the top-right of the screen. Toggle Sonar On/Off with %s to consume 3 oxygen after every 3 seconds which will reveal hidden items on the minimap as you swim around. Swim close enough to the red circles to trigger random encounters with enemies who hold the hidden items." % _badge("Q")
 
-var musashiAbilityTitle := "Musashi — Grapple"
+var musashiAbilityTitle := "Musashi: Grapple"
 var musashiGrappleBody:= "Press %s while Musashi is the active diver to switch into a first person Grapple mode where you can aim at golden objects then left click to grapple them (flashing them green on successful grapples) to launch Musashi towards the grapple points." % _badge("E")
 
-var buckyAbilityTitle := "Bucky — Shockwave"
+var buckyAbilityTitle := "Bucky: Shockwave"
 var buckyShockwaveBody:= "Press %s while Bucky is the active diver to send out a shockwave that can break any brown colored objects (rocks, doors, etc.). In some cases, breaking these objects will reveal items or other objects underneath them." % _badge("E")
 
 

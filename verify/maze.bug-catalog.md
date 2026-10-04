@@ -1,0 +1,142 @@
+# Bug Catalog: `verify/maze.gd`
+
+**Updated with /design-tests on 2026-09-16**
+**Scope:** `game/maze_level.gd` and its standalone maze verification entry
+point.
+
+## What this file does
+
+`MazeLevel` builds the standalone swimmable puzzle maze. Its public gameplay
+control is the H-key hallway toggle: two `CSGBox3D` walls move while the paired
+water currents move between corridors. `verify/maze.gd` now validates both the
+finished geometry and the in-motion geometry that a player sees.
+
+## Public interface
+
+| Symbol | Type | Purpose |
+|---|---|---|
+| `MazeLevel._rotate_hallway_1_2()` | gameplay action | Toggle the two-wall hallway and its currents. |
+| `MazeLevel._wall_flush_target()` | geometry query | Compute a wall's finished 90-degree continuation transform. |
+| `verify/maze.gd` | headless SceneTree | Verify the maze's observable completed and in-motion geometry. |
+
+## IO boundaries
+
+- Scene loading: `res://game/maze_level.tscn`
+- Time: Godot tweens and timers drive the 1.2-second hallway motion.
+- Input: the gameplay route calls the same toggle from the H key.
+- No network, file writes, or randomness are involved in wall placement.
+
+## Bug catalog
+
+| # | Bug | Blast radius | Plausibility | Test type | Status |
+|---|---|---|---|---|---|
+| 1 | A wall linearly interpolates between correct endpoints instead of rotating around its attachment pivot, cutting visibly through the neighbouring corridor mid-swing. | High — the player sees the broken maze shown in Marc's screenshot and can collide with transient geometry. | `_tween_wall_to()` independently tweened position and yaw. | Captured bug + motion invariant | fixed |
+| 2 | A future wall change loses the final CSGBox3D6/CurrentWall1 join while changing sizes or rotation. | High — it reopens a maze boundary or creates a visible gap. | The maze mixes static and future transforms. | Completed-state geometry invariant | characterized |
+| 3 | Open then close accumulates transform drift. | Medium — repeated puzzle use eventually misaligns walls/currents. | State is retained across two separate tweens. | Round-trip transform invariant | fixed |
+| 4 | A wall follows an arc but lands at a different final transform from the designed flush target. | High — an animation-only repair regresses the static layout. | Arc motion derives a pivot from start/target transforms. | Differential final-state invariant | fixed |
+| 5 | CSGBox3D6 is corrected to the future hallway endpoint while CSGBox3D7 retains its old longitudinal coordinate, producing a staggered corridor mouth. | High — the two passage boundaries do not begin on one cross-line, so the player sees a crooked opening and later map pieces cannot connect predictably. | `_place_csgbox6_at_hallway_target()` intentionally mutates only Box6. | Captured review bug + completed-state geometry invariant | fixed |
+| 6 | A caller must infer a wall's local-axis sign from a screenshot and pass anonymous booleans to attach it, so a new hallway can silently be built off the wrong end. | High — later maze work recreates the same inaccessible or crooked route with no readable code review trail. | `_wall_endpoint(wall, true)` and `_flush_position(..., true, false)` expose local-coordinate signs instead of named spatial choices. | Geometry-query contract | fixed |
+
+## Test plan
+
+### Bug #1 — diagonal hallway translation
+
+- **Test type:** captured bug + motion invariant.
+- **Description string:**
+  > `maze: moving walls preserve their derived attachment pivot — guards against diagonal corridor crossing`
+- **What it catches:** a midpoint position whose radius from the pivot shrinks,
+  as happens under linear position interpolation.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; it samples the in-progress
+    transform and checks the geometric invariant of a hinge rotation.
+  - Could this fail under a behavior-preserving refactor? No; any animation
+    implementation that rotates about the same pivot passes.
+
+### Bug #2 — static outer wall join
+
+- **Test type:** completed-state geometry invariant.
+- **Description string:**
+  > `maze: CSGBox3D6 meets CurrentWall1's rotated outer join — guards against static-frame gap`
+- **What it catches:** a misplaced barrier at the completed H state.
+- **Self-critique:**
+  - It measures the named physical join rather than restating the placement
+    helper's decision.
+
+### Bug #3 — toggle drift
+
+- **Test type:** round-trip invariant.
+- **Description string:**
+  > `maze: H open-close restores both hallway wall transforms — guards against toggle drift`
+- **What it catches:** a close operation that does not return exact home
+  transforms.
+
+### Bug #4 — arc misses final target
+
+- **Test type:** differential final-state invariant.
+- **Description string:**
+  > `maze: arc motion ends at the precomputed flush transforms — guards against correct animation ending in wrong geometry`
+- **What it catches:** an arc with a wrong pivot/direction that looks smoother
+  but lands away from the intended layout.
+
+### Bug #5 — staggered CSGBox3D6/7 passage mouth
+
+- **Test type:** captured review bug + completed-state geometry invariant.
+- **Description string:**
+  > `maze: CSGBox3D6/7 share an entrance cross-line while retaining a swimmable lane — guards against staggered boundary`
+- **What it catches:** a change that flushes Box6 to the rotating hallway
+  but leaves Box7 several metres forward or behind it. The test requires the
+  center-to-center vector to have no longitudinal component, preserves a lane
+  wider than the real diver, and checks that both walls remain parallel.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; a fixed but staggered
+    placement has a non-zero component along the wall axis and fails.
+  - Could this fail under a behavior-preserving refactor? No; it observes the
+    final physical walls, not a helper or a hard-coded coordinate.
+
+### Bug #6 — anonymous local-axis wall ends
+
+- **Test type:** geometry-query contract.
+- **Description string:**
+  > `maze: named continuation query selects the physically nearest target end — guards against screenshot-derived boolean placement`
+- **What it catches:** a helper that either exposes `true`/`false` local-axis
+  choices to a caller or picks the opposite target continuation after a layout
+  changes. The test derives both legal physical continuations independently,
+  verifies the helper names the selected target end, and verifies it picks the
+  nearer one without the caller making an axis/sign decision.
+- **Self-critique:**
+  - Could this pass for wrong-but-stable output? No; it compares the reported
+    placement with both physically valid candidates and the moving wall's
+    actual centre, rather than a hard-coded coordinate.
+  - Could this fail under a behavior-preserving refactor? No; different
+    internal transform math is acceptable so long as the named nearest
+    continuation contract stays true.
+
+## Skipped
+
+- Full diver collision traversal during the moving wall — deferred: the
+  headless harness proves geometry but does not synthesize physics-player
+  navigation reliably.
+- Visual styling of walls and camera framing — cosmetic; covered by
+  player-camera review evidence rather than a geometry test.
+- Current relocation behavior — out of this wall-motion repair; existing
+  current gates need their own focused tests.
+
+## Post-write evaluation
+
+- **Bugs caught:** Bug #1. Before this repair, the midpoint pivot-radius
+  errors were 2.5491 m / 3.9432 m. After it, both are 0.0000 m.
+- **Bugs characterized:** CSGBox3D6's completed outer join is already correct
+  in the captured build; its physical gap measures 0.0000 m.
+- **Bugs discovered during writing:** the earlier final-state-only test did
+  not sample the motion shown in Marc's screenshot.
+- **Bugs caught after re-evaluation:** Bug #5. The new contract failed first
+  on the prior head with a `3.0121 m` longitudinal stagger. Projecting
+  Box7's authored offset onto Box6's side axis fixes the offset without
+  changing the `6.2005 m` clear lane; the real-diver traversal test remains
+  clean.
+- **Bugs caught after this refactor:** Bug #6. The new verifier failed first
+  because `_nearest_wall_continuation()` did not exist. The replacement
+  geometry query reports both physical candidates by name and selects the
+  nearer one; it now passes for both rotating hallway walls while the existing
+  completion and motion contracts remain clean.
+- **Tests removed:** none.

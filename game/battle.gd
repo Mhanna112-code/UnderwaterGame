@@ -1092,7 +1092,6 @@ func _build_stage() -> void:
 	light.rotation_degrees = Vector3(-45, -25, 0)
 	light.light_color = Color(0.75, 0.9, 1.0)
 	vp.add_child(light)
-
 	var cam := Camera3D.new()
 	cam.fov = 70.0
 	vp.add_child(cam)
@@ -1119,8 +1118,13 @@ func _build_stage() -> void:
 			continue
 		var actor := Diver.new()
 		actor.model_name = String(party[i].model_name)
-		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, 0.0, diver_z - _spread(i, pn, 0.7))
 		vp.add_child(actor)
+		# Open-water fights deliberately use the actors' normal centred depth.
+		# Tethys's enclosed lab has a visible floor at y=0, however, and Diver's
+		# public foot_offset() says its feet sit below its centred origin. Ground
+		# only that boss formation after _ready() has measured the selected rig.
+		var floor_y := -actor.foot_offset() if boss_encounter else 0.0
+		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, floor_y, diver_z - _spread(i, pn, 0.7))
 		party[i]["actor"] = actor
 		# Where this one stands when it is not swinging. Attacks step in
 		# toward whoever they are aimed at and come back here afterwards.

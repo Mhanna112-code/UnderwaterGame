@@ -44,6 +44,20 @@ func _run() -> void:
 	# lifecycle (loss/win restores, the playtest route), so it forces past
 	# the one-time skip up front rather than tripping over it by accident.
 	world.player_first_special_encounter = false
+	# The chooser is a real player-facing entry point, so keep its embedded
+	# tutorial recording in a 16:9 frame.  A portrait slot made the video
+	# itself render as a tiny letterboxed strip even though the selector had
+	# plenty of horizontal space.
+	world.special_encounter_prompt._on_enter_pressed()
+	await process_frame
+	var media_frame := world.special_encounter_prompt._media_frame
+	_check(
+		is_equal_approx(media_frame.custom_minimum_size.x / media_frame.custom_minimum_size.y, 16.0 / 9.0),
+		"chooser tutorial-video frame is not 16:9"
+	)
+	var swap_crop: Variant = TutorialContent.SPECIAL_ENCOUNTER_VIDEO_CROPS.get("swap")
+	_check(swap_crop is Vector4 and (swap_crop as Vector4).z > 0.0 and (swap_crop as Vector4).w > 0.0, "padded Swap recording has no in-game crop")
+	world.special_encounter_prompt.close()
 
 	var diver := world.divers[0] as Diver
 	var entry_hp := diver.stats.hp - 3

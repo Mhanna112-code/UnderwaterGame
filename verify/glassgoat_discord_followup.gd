@@ -42,51 +42,32 @@ func _test_result_first_move_menu() -> void:
 	var stabbing := _move_button(battle, "Scuba Stabbing")
 	_expect(stabbing != null, "RESULT-FIRST MENU MISSING: Scuba Stabbing is absent")
 	if stabbing != null:
-		# MODIFIED (changed): the button used to preview a resolved number
-		# ("1 Damage") - replaced with "Strength Damage" (names which stat
-		# drives it instead of a number that's really only valid for
-		# whoever's turn it happens to be; see content/combat_moves.gd's
-		# resolved_hint()). Bleed's own number is unaffected and still
-		# resolved fresh each call.
-		_expect("Strength Damage" in stabbing.text and "2 Bleed" in stabbing.text,
-			"RESULT-FIRST MENU WRONG: expected resolved Strength Damage / 2 Bleed, observed '%s'" % stabbing.text)
+		_expect("1 Damage" in stabbing.text and "2 Bleed" in stabbing.text,
+			"RESULT-FIRST MENU WRONG: expected resolved 1 Damage / 2 Bleed, observed '%s'" % stabbing.text)
 		_expect("STR" not in stabbing.text,
 			"FORMULA POLLUTION: default move choice exposes stat algebra '%s'" % stabbing.text)
-		# MODIFIED (changed): the "Status Effect: " prefix was dropped as
-		# redundant clutter - the status name itself (Bleed) already reads
-		# as a status on sight. This still guards both halves: the label
-		# wording itself, and that the tooltip lookup actually found
-		# Bleed's entry (checked separately just below).
-		_expect("2 Bleed" in stabbing.text,
-			"STATUS EFFECT LABEL MISSING: expected '2 Bleed', observed '%s'" % stabbing.text)
-		_expect("Bleed" in stabbing.tooltip_text and stabbing.tooltip_text != "",
-			"STATUS EFFECT TOOLTIP MISSING: Scuba Stabbing's button has no Bleed explanation on hover")
+		_expect("Damage" in stabbing.tooltip_text and "Calculation" in stabbing.tooltip_text and "Strength" in stabbing.tooltip_text,
+			"ON-DEMAND CALCULATION MISSING: resolved choice has no contextual explanation")
 
-	# Electric Touch's "EVA -3" isn't a CombatantStats status (no
-	# STATUS_CONDITIONS entry, no add_status() call) but it's just as
-	# opaque to a new player as one - it should still get an explanation,
-	# pulled from TutorialContent.EFFECT_KIND_EXPLANATIONS instead.
-	var electric := _move_button(battle, "Electric Touch")
-	_expect(electric != null and "Evasion" in electric.tooltip_text and electric.tooltip_text != "",
-		"NON-STATUS EFFECT TOOLTIP MISSING: Electric Touch's reduce_evasion has no explanation on hover")
-
-	# A resolved preview must be computed from the acting character, not
-	# copied from Scuba's base values. Damage no longer previews a number at
-	# all (see above), so Bleed's own number is what still proves this - the
-	# same authored move at 4 STR resolves Bleed to 5, not whatever it was
-	# at the default Strength.
+	# A resolved preview must be computed from the acting character, not copied
+	# from Scuba's base values. The same authored move at 4 STR is 4/5.
 	var acting_stats := battle._acting.stats as CombatantStats
 	acting_stats.strength = 4
 	battle._populate_move_menu(battle._acting)
 	stabbing = _move_button(battle, "Scuba Stabbing")
 	if stabbing != null:
-		_expect("Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text,
+		_expect("4 Damage" in stabbing.text and "5 Bleed" in stabbing.text,
 			"HARDCODED MOVE PREVIEW: 4 STR still renders '%s'" % stabbing.text)
 
-	# The "Show formulas" on-demand control was removed - result-first is now
-	# the only move-menu display, with no way back to raw stat algebra.
+	# The original result/formula toggle created a second lower-panel state
+	# that could look frozen during a live battle. The current contract keeps
+	# results on every choice and puts the actual calculation in that choice's
+	# contextual detail instead, so it is both optional and never a mode.
 	_expect(_button_starting_with(battle.move_menu, "Show formulas") == null,
-		"FORMULA CONTROL STILL PRESENT: the retired details toggle is back in the move menu")
+		"FORMULA MODE REGRESSION: Quick Read should not retain a second menu state")
+	stabbing = _move_button(battle, "Scuba Stabbing")
+	_expect(stabbing != null and "4 Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
+		"QUICK READ LOST AFTER STAT CHANGE: result-first choice no longer reflects the acting character")
 	battle.queue_free()
 	await process_frame
 

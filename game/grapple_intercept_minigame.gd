@@ -8,16 +8,9 @@ extends Control
 
 signal finished(hits: int, total: int)
 signal object_hit
-# MODIFIED (added): battle.gd listens for this and logs it (see
-# _do_grapple_intercept_encounter()) - the "grapple YELLOW, avoid GREEN"
-# per-wave callout used to be this script's own floating _hint Label,
-# removed along with the title/static hint/progress readout per direct
-# request (no more Control-based text overlaying the minigame). Which
-# color is safe changes every wave and isn't otherwise conveyed anywhere
-# (the spheres themselves are colored, but nothing on screen says which
-# color is safe THIS wave without it), so that one piece has to keep
-# reaching the player somehow - real battle-log body text now, instead of
-# an overlay.
+# battle.gd also logs this as a durable record. The minigame itself gives
+# the immediate instruction with a short central callout, so the player does
+# not have to look down to the battle log before identifying the targets.
 signal wave_started(safe_is_yellow: bool, wave_index: int, total_waves: int)
 
 # MODIFIED: was 5 (one hit per thrown rock, all in a single wave) - now
@@ -32,6 +25,9 @@ const TARGET_COUNT := 2
 # as the other special encounters' own fixed round counts.
 const TOTAL_VORTEX_WAVES := 3
 const TITLE_HOLD := 0.8
+const WAVE_CALLOUT_GRAPPLE_TIME := 0.16
+const WAVE_CALLOUT_COLOR_TIME := 0.42
+const WAVE_CALLOUT_NOW_TIME := 0.16
 
 const FLIGHT_TIME := 6
 const HIT_ANGLE := deg_to_rad(7.0)
@@ -142,6 +138,13 @@ var _base_forward := Vector3.FORWARD
 var _old_mouse_mode := Input.MOUSE_MODE_VISIBLE
 var _target_was_visible := true
 var _start_button: Button
+var _crosshair: Label
+var _wave_callout: Label
+var _wave_callout_tween: Tween
+# Public enough for the regression harness to prove that the central prompt
+# names the same safe color the hit resolver expects this wave.
+var wave_instruction := ""
+var _wave_callout_generation := 0
 var _grapple_controls_active := false
 
 func _ready() -> void:
@@ -159,38 +162,53 @@ func _ready() -> void:
 	else:
 		set_anchors_preset(Control.PRESET_TOP_LEFT)
 		size = get_viewport_rect().size
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The visible web start button is a child of this overlay. A parent with
+	# IGNORE silently prevents its children from receiving pointer events, so
+	# use PASS until the button has started the minigame. Gameplay itself is
+	# still consumed by _input() below, then the overlay returns to IGNORE.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 
-	# MODIFIED (removed): the "GRAPPLE INTERCEPT" title, the static
-	# "Grapple the glowing weak spot..." hint, and this progress readout all
-	# used to render here as floating Control text over the minigame - per
-	# direct request, every one of them is gone now, same as diver_swap_
-	# minigame.gd's/rock_dodge_minigame.gd's own matching removals. The
-	# per-wave "which color is safe" callout that used to live in this same
-	# _hint Label (see the old launch_vortex()) is real gameplay information,
-	# not flavor text, so it moved to wave_started (see this script's own
-	# signal declaration) instead of just disappearing - battle.gd logs it.
+	# Keep the stage visually clean between waves. The one piece of information
+	# players need immediately is shown only as a short center-stage sequence
+	# when a wave begins: GRAPPLE -> [required color] -> NOW.
+	_wave_callout = Label.new()
+	_wave_callout.set_anchors_preset(Control.PRESET_CENTER)
+	_wave_callout.offset_left = -250.0
+	_wave_callout.offset_top = -54.0
+	_wave_callout.offset_right = 250.0
+	_wave_callout.offset_bottom = 54.0
+	_wave_callout.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_wave_callout.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_wave_callout.add_theme_font_size_override("font_size", 44)
+	_wave_callout.add_theme_color_override("font_outline_color", Color(0.0, 0.04, 0.08, 1.0))
+	_wave_callout.add_theme_constant_override("outline_size", 9)
+	_wave_callout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wave_callout.z_index = 4096
+	_wave_callout.z_as_relative = false
+	_wave_callout.pivot_offset = Vector2(250.0, 54.0)
+	_wave_callout.visible = false
+	add_child(_wave_callout)
 
-	var crosshair := Label.new()
-	crosshair.text = "+"
-	crosshair.set_anchors_preset(Control.PRESET_CENTER)
-	crosshair.offset_left = -22.0
-	crosshair.offset_top = -30.0
-	crosshair.offset_right = 22.0
-	crosshair.offset_bottom = 30.0
-	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	crosshair.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	crosshair.add_theme_font_size_override("font_size", 42)
-	crosshair.add_theme_color_override("font_color", Color(1.0, 0.95, 0.25))
-	crosshair.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 1.0))
-	crosshair.add_theme_constant_override("outline_size", 4)
-	crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_crosshair = Label.new()
+	_crosshair.text = "+"
+	_crosshair.set_anchors_preset(Control.PRESET_CENTER)
+	_crosshair.offset_left = -22.0
+	_crosshair.offset_top = -30.0
+	_crosshair.offset_right = 22.0
+	_crosshair.offset_bottom = 30.0
+	_crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_crosshair.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_crosshair.add_theme_font_size_override("font_size", 42)
+	_crosshair.add_theme_color_override("font_color", Color(1.0, 0.95, 0.25))
+	_crosshair.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 1.0))
+	_crosshair.add_theme_constant_override("outline_size", 4)
+	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Battle is a CanvasLayer with other HUD controls. Draw the aiming mark
 	# at the top of that canvas so the SubViewport and status panels cannot
 	# cover it during the grapple minigame.
-	crosshair.z_index = 4096
-	crosshair.z_as_relative = false
-	add_child(crosshair)
+	_crosshair.z_index = 4095
+	_crosshair.z_as_relative = false
+	add_child(_crosshair)
 
 	_start_button = Button.new()
 	_start_button.text = "CLICK TO START PLAYTEST"
@@ -213,14 +231,19 @@ func run() -> void:
 		finished.emit(0, TARGET_COUNT * TOTAL_VORTEX_WAVES)
 		return
 	_old_mouse_mode = Input.mouse_mode
-	# Browsers reject pointer lock unless it is requested from a user gesture.
-	# The dedicated web playtest therefore waits on a real click; desktop keeps
-	# the immediate start used by automated/local playtests.
+	# The web build waits for a real click so the instructional overlay cannot
+	# start moving targets beneath a player who has not opted in. It keeps the
+	# cursor visible: every target is generated inside a compact reachable cone,
+	# so normal bounded browser mouse motion is sufficient and we avoid making
+	# playability depend on the Pointer Lock API.
 	if OS.has_feature("web"):
 		_start_button.visible = true
 		await _start_button.pressed
 		_start_button.visible = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		_crosshair.visible = false # the visible browser pointer is the web reticle
+	else:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_target_was_visible = target_actor.visible
 	target_actor.visible = false
 	var eye := target_actor.global_position + Vector3(0.0, (target_actor as Diver).height * 0.4, 0.0)
@@ -294,9 +317,13 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		_yaw = clampf(_yaw - motion.relative.x * LOOK_SENSITIVITY, -MAX_YAW, MAX_YAW)
-		_pitch = clampf(_pitch - motion.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
-		_update_camera()
+		if not OS.has_feature("web"):
+			_yaw = clampf(_yaw - motion.relative.x * LOOK_SENSITIVITY, -MAX_YAW, MAX_YAW)
+			_pitch = clampf(_pitch - motion.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
+			_update_camera()
+		# Web play uses the visible cursor as the grapple reticle. Do not turn
+		# normal mouse movement into camera rotation there; the click handler
+		# below casts through the exact rendered stage coordinate instead.
 		# Capture the event before battle HUD Controls can consume it. Grapple
 		# aim is active only during this minigame, so it cannot steal normal UI
 		# input outside this state.
@@ -305,7 +332,27 @@ func _input(event: InputEvent) -> void:
 		# A click that misses a sphere still belongs to the minigame; it must
 		# not activate any control behind the full-screen grapple overlay.
 		get_viewport().set_input_as_handled()
-		_grapple()
+		if OS.has_feature("web"):
+			_grapple_at_web_pointer((event as InputEventMouseButton).position)
+		else:
+			_grapple()
+
+func _grapple_at_web_pointer(pointer_position: Vector2) -> void:
+	var rect := stage_rect
+	if rect.size == Vector2.ZERO:
+		rect = get_global_rect()
+	if not rect.has_point(pointer_position) or stage_root == null:
+		return
+	# `stage_root` renders at its own internal resolution before the
+	# SubViewportContainer stretches it into rect. Convert the browser's
+	# visible stage coordinate back into that render space before asking the
+	# Camera for a ray; this is the inverse of the on-screen presentation.
+	var local := pointer_position - rect.position
+	var viewport_point := Vector2(
+		local.x / rect.size.x * stage_root.size.x,
+		local.y / rect.size.y * stage_root.size.y
+	)
+	_grapple_with_ray(stage_camera.project_ray_origin(viewport_point), stage_camera.project_ray_normal(viewport_point))
 
 func _update_camera() -> void:
 	var forward := _base_forward.rotated(Vector3.UP, _yaw)
@@ -477,8 +524,11 @@ func _start_weak_spot_timeout(spot: Area3D) -> void:
 func _grapple() -> void:
 	if not is_instance_valid(stage_camera):
 		return
-	var from: Vector3 = stage_camera.global_position
-	var dir: Vector3 = -stage_camera.global_transform.basis.z.normalized()
+	_grapple_with_ray(stage_camera.global_position, -stage_camera.global_transform.basis.z.normalized())
+
+func _grapple_with_ray(from: Vector3, dir: Vector3) -> void:
+	if not is_instance_valid(stage_camera):
+		return
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	# Only target Areas participate in the click ray. The default mask also
@@ -598,6 +648,7 @@ func _finish_now() -> void:
 		return
 	_did_finish = true
 	_grapple_controls_active = false
+	_hide_wave_callout()
 	Input.mouse_mode = _old_mouse_mode
 	if target_actor != null and is_instance_valid(target_actor):
 		target_actor.visible = _target_was_visible
@@ -771,6 +822,8 @@ func launch_vortex() -> void:
 	_vortex_right = _base_forward.cross(Vector3.UP).normalized()
 	_vortex_up = _vortex_right.cross(_base_forward).normalized()
 	_vortex_safe_is_yellow = randf() < 0.5
+	wave_instruction = "YELLOW" if _vortex_safe_is_yellow else "GREEN"
+	_show_wave_callout(_vortex_safe_is_yellow)
 	wave_started.emit(_vortex_safe_is_yellow, vortex_count, TOTAL_VORTEX_WAVES)
 
 	_clear_vortex()
@@ -806,6 +859,50 @@ func launch_vortex() -> void:
 	_vortex_travel_tween = create_tween()
 	_vortex_travel_tween.tween_property(self, "_vortex_center", end, VORTEX_TRAVEL_TIME)
 	_vortex_travel_tween.finished.connect(_on_vortex_reached_player)
+
+# The combat log preserves this information after the fact, but it is too far
+# from the incoming targets to be the primary cue. Present the action and the
+# required color serially in the center of the actual stage so a player can
+# understand the wave in under a second, then clear the view before the wave
+# reaches its close-range phase. The color name is always text as well as tint,
+# so this is not color-only communication.
+func _show_wave_callout(safe_is_yellow: bool) -> void:
+	_wave_callout_generation += 1
+	var generation := _wave_callout_generation
+	_show_wave_callout_word("GRAPPLE", Color(0.55, 0.9, 1.0))
+	await get_tree().create_timer(WAVE_CALLOUT_GRAPPLE_TIME).timeout
+	if generation != _wave_callout_generation or not is_instance_valid(_wave_callout):
+		return
+	var color := VORTEX_SAFE_COLOR if safe_is_yellow else VORTEX_DANGER_COLOR
+	_show_wave_callout_word(wave_instruction, color)
+	await get_tree().create_timer(WAVE_CALLOUT_COLOR_TIME).timeout
+	if generation != _wave_callout_generation or not is_instance_valid(_wave_callout):
+		return
+	_show_wave_callout_word("NOW", Color(0.92, 0.98, 1.0))
+	await get_tree().create_timer(WAVE_CALLOUT_NOW_TIME).timeout
+	if generation == _wave_callout_generation and is_instance_valid(_wave_callout):
+		_wave_callout.visible = false
+
+func _show_wave_callout_word(word: String, color: Color) -> void:
+	if _wave_callout_tween != null and _wave_callout_tween.is_valid():
+		_wave_callout_tween.kill()
+	_wave_callout.text = word
+	_wave_callout.add_theme_color_override("font_color", color)
+	_wave_callout.modulate = Color.WHITE
+	_wave_callout.scale = Vector2(0.76, 0.76)
+	_wave_callout.visible = true
+	_wave_callout_tween = create_tween()
+	_wave_callout_tween.set_trans(Tween.TRANS_BACK)
+	_wave_callout_tween.set_ease(Tween.EASE_OUT)
+	_wave_callout_tween.tween_property(_wave_callout, "scale", Vector2(1.08, 1.08), 0.11)
+	_wave_callout_tween.tween_property(_wave_callout, "scale", Vector2.ONE, 0.08)
+
+func _hide_wave_callout() -> void:
+	_wave_callout_generation += 1
+	if _wave_callout_tween != null and _wave_callout_tween.is_valid():
+		_wave_callout_tween.kill()
+	if is_instance_valid(_wave_callout):
+		_wave_callout.visible = false
 
 # The four quarter-circle directions - spaced a quarter turn (90
 # degrees/PI*0.5 radians) apart, not a fraction of the radius. East,

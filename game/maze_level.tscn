@@ -175,9 +175,18 @@ use_collision = true
 size = Vector3(22.3219, 14, 1)
 
 [node name="CSGBox3D26" type="CSGBox3D" parent="." groups=["Wall"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.5921, 6.5, 35.4766)
+# The former single south chamber wall sealed the only authored reward room
+# completely. Its two segments preserve the room boundary and leave a centered
+# 4.3m doorway aligned with ItemRock at x=48.03, wide enough for the real
+# diver capsule to enter without clipping either jamb.
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 57.2278, 6.5, 35.4766)
 use_collision = true
-size = Vector3(21.327, 14, 1)
+size = Vector3(14.0556, 14, 1)
+
+[node name="RewardChamberWestWall" type="CSGBox3D" parent="." groups=["Wall"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.4143, 6.5, 35.4766)
+use_collision = true
+size = Vector3(2.9714, 14, 1)
 
 [node name="CSGBox3D15" type="CSGBox3D" parent="." groups=["Wall"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 83.3195, 1.52881, 5.53757)

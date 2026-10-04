@@ -461,12 +461,14 @@ func _on_title_special_playtest() -> void:
 
 # Drops straight into ordinary free-roam (no battle, no tutorial - see
 # _ready()'s own use of _spell_playtest_requested() to also set
-# skip_tutorial_for_test) with every diver already holding max spell points
-# and every key item, so any spell in any tree is learnable the moment you
-# reach a save point - normally gated behind leveling up (spell_points only
-# come from CombatantStats.gain_xp()) and, for a couple of spells, a
-# guardian-fight key item. Never writes a save, same as every other
-# playtest route here.
+# skip_tutorial_for_test) with a fully learned/equipped temporary roster.
+# This branch's normal progression automatically learns every currently
+# affordable spell after a real victory (Battle._win()), so a review route
+# that merely hands out points and keys but leaves `known_spells` empty is
+# not a usable substitute: Party Spells says there is nothing to review.
+# Learn through the same SpellTree rule instead of assigning arrays by hand,
+# so prerequisites, key-item gates, and auto-equip remain real. Never writes
+# a save, same as every other playtest route here.
 func _on_title_spell_playtest() -> void:
 	_current_slot = -1
 	title_screen.close()
@@ -476,7 +478,10 @@ func _on_title_spell_playtest() -> void:
 		if Items.is_key_item(String(item_id)) and not key_items.has(item_id):
 			key_items.append(item_id)
 	for d in divers:
-		(d as Diver).stats.spell_points = 99
+		var diver := d as Diver
+		diver.stats.spell_points = 99
+		SpellTree.learn_all_available(diver, key_items)
+	_announce("Spell test ready: spells are learned and equipped. Press Esc, then Party Spells.")
 
 func _boss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--boss-playtest"):
@@ -2778,6 +2783,7 @@ func _show_ability_popups() -> void:
 			"slot": musashi,
 			"title": musashi.musashiAbilityTitle,
 			"body": musashi.musashiGrappleBody,
+			"media": "grapple",
 		})
 	if _diver_slots.size() > 2:
 		var bucky: Slot = _diver_slots[2]
@@ -2785,6 +2791,7 @@ func _show_ability_popups() -> void:
 			"slot": bucky,
 			"title": bucky.buckyAbilityTitle,
 			"body": bucky.buckyShockwaveBody,
+			"media": "shockwave",
 		})
 	# Keep this as the final page and omit "media" so it has no clip.
 	pages.append({
