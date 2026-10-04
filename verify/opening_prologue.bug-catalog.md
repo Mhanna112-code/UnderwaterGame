@@ -270,8 +270,8 @@ a result-boundary characterization, not a reproduction of actual combat death.
 
 OPEN-028: recovery silently ignores a failed checkpoint write and allows
 normal play, so later death/Load restores the still-readable pre-prologue
-checkpoint and repeats the opener. `SaveManager.write_slot()` currently returns
-void and silently exits when FileAccess.open fails; World cannot distinguish
+checkpoint and repeats the opener. Before repair, `SaveManager.write_slot()` returned
+void and silently exited when FileAccess.open failed; World could not distinguish
 success from failure. Disk-space exhaustion was previously reported in this
 workspace, but it is **not established** as the user's cause. Use a uniquely
 owned test slot, deny its initial checkpoint and atomic staging candidate,
@@ -280,8 +280,8 @@ Restore permissions/clean only that test slot. This fault test must fail on
 the current silent handoff before any product repair.
 
 OPEN-029: Load silently treats an unreadable/missing/malformed checkpoint as
-a fresh World and launches the opening. `_load_save()` currently returns void
-on a wrong diver count, while its caller always closes the title and starts
+a fresh World and launches the opening. Before repair, `_load_save()` returned void
+on a wrong diver count, while its caller always closed the title and started
 the prologue. A failed/partial prior write can therefore look like a deliberate
 New Game. Add `checkpoint_load_failures.gd`: bounded generated invalid counts
 plus captured truncated JSON/nested-shape cases must retain the title, show a
@@ -327,6 +327,12 @@ by ordinary death and repeated failures across browser IndexedDB are not yet
 proven. Native migration, video-save, protected-world, free-swim and mutable
 world/drop persistence regressions are clean without runtime errors. The actual
 cause of the user's stored incomplete checkpoint remains unestablished.
+
+OPEN-032 (observed, not repaired in the checkpoint slice): the optional training
+world label is partly covered by the player model in the default recovered
+camera view. Captured in the exact `2bf19ac` cold-loaded browser world. This
+blocks the full goal's final zero-defect visual round; checkpoint proof does
+not establish readable training guidance from every approach/view.
 
 ## Captured quiet-spawn review finding, 2026-10-03
 

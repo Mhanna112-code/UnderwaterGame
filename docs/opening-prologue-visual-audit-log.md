@@ -476,3 +476,36 @@ No browser/runtime errors. This validates that atomic replacement works through
 the exported browser's normal persistence path, not its denied-write behavior.
 It predates OPEN-031, so a new exact-source export must supersede it before
 updating the review alias.
+
+Final checkpoint candidate is **`2bf19acb86f1727f9ed199e669658bcb010ac036`**.
+Exact clean archive export: **92,951,692 bytes**, digest
+**`b56c773115f36905bc18a3b226778635456fdb24d88a1829edd4902098f0cffb`**.
+Native real ordinary
+death after voluntary training Skip and corrected Return/Skip persistence
+assertions are green. Exact final browser runs both complete ordinary opening
+and persist completion through a cold page reload/real Load:
+
+- Chromium local exact export: **104.245 s**, no errors.
+- WebKit hosted immutable exact export, serial run: **89.320 s**, no errors.
+
+The concurrent WebKit attempt is retained as a failed verification run: its
+keyboard action completed **12.682 s** after the spawn-phase notification and
+the harness rejected the late dispatch. It contains no game/runtime error and
+proves neither product success nor a Safari-specific save failure. No timeout
+or acceptance criterion was relaxed; serial hosted replay passes.
+
+Ready unauthenticated deployment **`dpl_12wKPV7Qg8x8mGbVcLhcnxGfyPFD`**, immutable
+`https://underwatergame-a85nxr641-immortaldemongods-projects.vercel.app/`, now serves
+the existing `https://underwatergame-opening-prologue-review.vercel.app/` alias.
+Unauthenticated metadata reports the final source; served PCK matches the local
+digest exactly. `https://underwatergame.vercel.app/` still resolves to
+`dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5`; no main/PR #96 merge or public-main promotion.
+User saves remain untouched. No child PR is opened/pushed before the goal's
+complete acceptance matrix, as required by the execution contract.
+
+Visual review of the cold-loaded world exposes OPEN-032: the training label is
+partly occluded by the diver in the default view. Record it for the ongoing
+opening polish loop; this checkpoint repair slice is **not** a final zero-defect
+round. The earlier user's particular incomplete checkpoint cause remains open.
+Final browser JSON, raw failed attempt, main-alias inspection and package
+metadata/digest are stored with the checkpoint regression evidence.
