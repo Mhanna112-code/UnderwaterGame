@@ -948,3 +948,21 @@ Same review alias now points to `dpl_HLde6GiW2TgP7zsePDRcmGjPYVLe`.
 Public main and secondary aliases remain `dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5`.
 Packet: `docs/evidence/cordys-individual-turns/README.md`. Local commits and review
 deployment are not a claim of a GitHub push, main merge or final goal completion.
+
+## Recurring Load Game replay report, 2026-10-04
+
+Current hosted ordinary journey → persisted recovery → cold reload → real
+Load/slot button returned directly to normal Shallows with both completion
+flags retained. No extra opening/spawn phase; no browser/script errors.
+Whole-opening timing still fails separately at 125.710 engaged seconds.
+The old native save/load journey stopped before testing Load because its
+instant-ordinary-combat assumption predates the world reveal. Bounded actual
+Battle wait repaired this coverage; restart and title Load now pass.
+
+Read-only Safari inspection confirms correct origin but an already-running
+older 104,161,224-byte TAB-hint build, compared with the served 111,641,396-byte
+current build. Player slots 1 and 3 are completed; older slot 2 is incomplete.
+Neither fact is asserted as the cause without knowing the selected slot/movie.
+No user save or live run was reloaded, overwritten or retroactively repaired.
+Report stays open; proof and precise boundaries:
+`docs/evidence/load-replay-recheck/README.md`.

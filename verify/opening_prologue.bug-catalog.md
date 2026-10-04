@@ -518,6 +518,22 @@ denial remains a follow-up negative path. Existing user slots containing an
 incomplete milestone are not retroactively changed based on guessed history.
 The cause of the user's historical incomplete checkpoint remains unproven.
 
+### 2026-10-04 recurring Load Game replay investigation
+
+Reported: title Load Game plays the opening on a saved run. Do not infer
+completion from level, tutorial completion or the mere existence of a file;
+inspect the stored milestones and exercise the real selected-slot load.
+`opening_prologue_journey.gd` must reach both death restart and title Load after
+the actual recovered journey. Its one-frame ordinary-encounter assumption
+became stale when the 1.5-second world reveal was added: the current test
+failed OPEN-018 and returned before either load assertion. Replace that wait
+with a bounded observable Battle wait, not injected completion or bypassing
+the reveal. Wrong-but-stable missing battles still fail after five seconds;
+refactoring a presentation's private timer does not invalidate the test.
+This is a captured verification defect, not yet the cause of the player's
+reported replay. The hosted cold-reload/real-title-button test independently
+checks persisted IndexedDB state. Opening timing overruns remain separate.
+
 OPEN-023: the Octopus cinematic restarts at zero, duplicates its decoder,
 continues invisibly through combat, leaks input while visible, or overlaps
 boss music. A continuous first-25-seconds/pause/remainder owner must preserve

@@ -163,7 +163,7 @@ func _run() -> void:
 	# can start an ordinary encounter. A synthetic completed fixture alone
 	# would not prove that the opening handoff unlocked the production signal.
 	(world.divers[world.active] as Diver).encounter_triggered.emit()
-	await process_frame
+	await _wait_ordinary_battle(world)
 	_expect(world.battle != null and not world.battle.prologue_angler_encounter and not world.battle.prologue_octopus_encounter, "OPEN-018 ignoring training leaves ordinary encounters locked")
 	# OPEN-027: a later ordinary defeat must not rewind the completed opening.
 	# The fast characterization emits the result boundary; --opening-real-loss
@@ -208,7 +208,7 @@ func _run() -> void:
 		# outside the three player slots; emitting the public chosen-slot signal
 		# avoids overwriting a user's save just to use the picker.
 		(restored.divers[restored.active] as Diver).encounter_triggered.emit()
-		await process_frame
+		await _wait_ordinary_battle(restored)
 		if restored.battle != null:
 			if real_loss_case:
 				await _lose_through_real_combat(restored)
@@ -320,6 +320,15 @@ func _wait_phase(world: World, phase: String, limit: float) -> void:
 	while world.route_state.prologue_phase != phase and elapsed < limit:
 		await create_timer(0.1).timeout
 		elapsed += 0.1
+
+# OPEN-027: ordinary encounters now have a real timed world reveal. Waiting
+# one frame falsely fails before either death/restart or title Load is tested.
+# Wait for observable Battle ownership, without skipping the presentation or
+# manufacturing a result. A broken reveal/handoff must still fail by deadline.
+func _wait_ordinary_battle(world: World) -> void:
+	var deadline := Time.get_ticks_msec() + 5000
+	while world.battle == null and Time.get_ticks_msec() < deadline:
+		await process_frame
 
 func _wait_movie() -> CanvasLayer:
 	for _i in range(30):
