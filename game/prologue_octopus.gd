@@ -24,23 +24,36 @@ var height := TARGET_HEIGHT
 var radius := 1.0
 var _model: Node3D
 var _clips: Dictionary = {}
+var _presentation_bounds := AABB()
+var _presentation_points: Array[Vector3] = []
 
 func _ready() -> void:
 	_model = SOURCE.instantiate() as Node3D
 	_model.name = "Model"
 	add_child(_model)
+	anim = _find_animation_player(_model)
+	_index_clips()
+	play("idle")
+	anim.advance(0.0)
 
-	var bounds := _world_bounds(_model)
+	var bounds := _posed_bounds(_model)
 	var source_height := maxf(0.01, bounds.size.y)
 	_model.scale *= TARGET_HEIGHT / source_height
-	bounds = _world_bounds(_model)
+	bounds = _posed_bounds(_model)
+	_model.position.x -= bounds.get_center().x - global_position.x
+	_model.position.z -= bounds.get_center().z - global_position.z
 	_model.position.y -= bounds.position.y
-	bounds = _world_bounds(_model)
+	bounds = _posed_bounds(_model)
 	height = bounds.size.y
 	radius = maxf(0.8, maxf(bounds.size.x, bounds.size.z) * 0.5)
 
-	anim = _find_animation_player(_model)
-	_index_clips()
+	# Imported get_aabb() is the unskinned bind pose, not what the player sees.
+	# Frame the measured idle silhouette. Whole-clip root motion envelopes
+	# include empty travel and make the entire party miniature; action poses
+	# are reviewed separately in the real stage without camera pumping.
+	_presentation_bounds = bounds
+	for point in _posed_points(_model):
+		_presentation_points.append(to_local(point))
 	_set_loop("idle")
 	_subdue_swordfish_bill()
 	play("idle")
@@ -55,7 +68,19 @@ func foot_offset() -> float:
 	return 0.0
 
 func visual_bounds() -> AABB:
-	return _world_bounds(self)
+	return global_transform * _presentation_bounds
+
+func current_pose_bounds() -> AABB:
+	return _posed_bounds(_model)
+
+func current_pose_points() -> Array[Vector3]:
+	return _posed_points(_model)
+
+func framing_points() -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for point in _presentation_points:
+		points.append(global_transform * point)
+	return points
 
 # The visible composite was authored with its face/front along local +Z.
 func face_toward(world_target: Vector3) -> void:
@@ -118,8 +143,7 @@ func _subdue_swordfish_bill() -> void:
 			if material == null or material.resource_name != "Sword_Fish_Corpse":
 				continue
 			if material is BaseMaterial3D:
-				var tint := StandardMaterial3D.new()
-				tint.resource_name = material.resource_name
+				var tint := material.duplicate() as BaseMaterial3D
 				tint.albedo_color = SWORDFISH_TINT
 				tint.roughness = 0.82
 				mesh.set_surface_override_material(surface, tint)
@@ -151,4 +175,44 @@ func _world_bounds(node: Node) -> AABB:
 		var box := mesh.global_transform * mesh.get_aabb()
 		out = box if first else out.merge(box)
 		first = false
+	return out
+
+func _posed_bounds(node: Node) -> AABB:
+	var out := AABB()
+	var first := true
+	for point in _posed_points(node):
+		out = AABB(point, Vector3.ZERO) if first else out.expand(point)
+		first = false
+	return out
+
+func _posed_points(node: Node) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for mesh in _meshes(node):
+		var skeleton := mesh.get_node_or_null(mesh.skeleton) as Skeleton3D
+		if skeleton == null or mesh.skin == null:
+			var box := mesh.global_transform * mesh.get_aabb()
+			for index in range(8):
+				out.append(box.get_endpoint(index))
+			continue
+		skeleton.force_update_all_bone_transforms()
+		var binds: Array[Transform3D] = []
+		for index in range(mesh.skin.get_bind_count()):
+			var bone := mesh.skin.get_bind_bone(index)
+			if bone < 0:
+				bone = skeleton.find_bone(mesh.skin.get_bind_name(index))
+			binds.append(skeleton.get_bone_global_pose(bone) * mesh.skin.get_bind_pose(index) if bone >= 0 else Transform3D.IDENTITY)
+		for surface in range(mesh.mesh.get_surface_count()):
+			var arrays := mesh.mesh.surface_get_arrays(surface)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+			var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+			var influences := bones.size() / maxi(1, vertices.size())
+			for index in range(vertices.size()):
+				var point := Vector3.ZERO
+				for influence in range(influences):
+					var offset := index * influences + influence
+					if weights[offset] > 0.0:
+						point += (binds[bones[offset]] * vertices[index]) * weights[offset]
+				point = skeleton.global_transform * point
+				out.append(point)
 	return out

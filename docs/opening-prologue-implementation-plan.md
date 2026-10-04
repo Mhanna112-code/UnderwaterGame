@@ -20,11 +20,11 @@ use `feature/opening-octopus-prologue`. Open its PR against PR #96 so the first
 review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 `main` and re-run every acceptance gate.
 
-**Companion contracts:**
+**Companion contracts (repository copies are binding):**
 
-- `OPENING_PROLOGUE_ASSET_MANIFEST.md`
-- `OPENING_PROLOGUE_VERIFICATION_BUG_CATALOG.md`
-- `OPENING_PROLOGUE_VISUAL_AUDIT_LOG.md`
+- `docs/opening-prologue-asset-manifest.md`
+- `verify/opening_prologue.bug-catalog.md`
+- `docs/opening-prologue-visual-audit-log.md`
 - PR #96's `IMPLEMENTATION_PLAN.md`, `INVENTORY.md`, audio manifest, Octopus
   manifest, and existing verification catalogs remain inherited evidence.
 
@@ -36,8 +36,8 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
 | B: opening video lifecycle | in progress | Owner, independent lab policy, Music routing, decoder fallback, successful/failed save and reload paths are green; browser wide/narrow/tall playback remains. |
 | C: quiet spawn and Angler | in progress | Direction/idle matrix and protected World handoff green; all four displayed Maxilani attacks resolve through real buttons/target confirmation/animation and kill once; no rewards or normal victory. Public visual journey pending. |
-| D: Cordys interruption | not started | Production actor presentation, real negligible hit, deterministic special defeat and audio proof. |
-| E: recovery and optional training | not started | Atomic save/recovery plus both public post-recovery journeys. |
+| D: Cordys interruption | in progress | Same-Battle negligible-hit/defeat journey passes; rendered audit repaired miniature framing. User-approved 25-second Octopus cinematic introduction now required. |
+| E: recovery and optional training | in progress | Recovery/save and voluntary training Skip/Retry/Return gates pass; Octopus cinematic remainder now precedes motivation. |
 | F: exact artifact and polish | not started | Public exact deployment, blind test, listening matrix and zero-defect audit round. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
@@ -117,6 +117,27 @@ reference and removes the repetition. It must not alter the lab cutscene.
 
 ## Exact player-facing sequence
 
+### Approved cinematic pacing revision, 2026-10-03
+
+The original 0.65-second false-relief beat was judged potentially too abrupt.
+Use `octopus_demon_v3.ogv` as a **single continuous decoder**: play its first
+25 seconds after the Angler falls, pause/hide it during Cordys combat, then
+resume the remainder after defeat and before recovery motivation. Do not seek,
+duplicate the video bytes, play exploration/boss music under its embedded
+audio, or return to the world between these beats. Video failure retains the
+concise Continue recovery path. The lab Mermaid owner is unchanged.
+
+Expose `octopus_introduction` and `octopus_aftermath` as transient public
+phases. Interrupted sessions still normalize to quiet spawn, with no new
+durable cinematic completion field. The prologue completion write remains
+after the aftermath, full restoration, safe placement and motivation.
+
+Miguel will discuss shortening the Octopus cinematic with Glass. Until a new
+approved edit arrives, use the delivered V3 and the exact 25-second split.
+Its two portions total 60.715 seconds. The actual ordinary-entry native wide
+journey measured 109.23 seconds with prompt player choices. Browser timing and
+human pacing remain unapproved; do not silently truncate media to meet target.
+
 ```text
 cover art (silent)
   -> New Game and slot selection
@@ -127,11 +148,13 @@ cover art (silent)
   -> one-Angler prologue battle
   -> one offensive player action defeats the Angler
   -> no victory fanfare; brief false-relief pause
+  -> first 25 seconds of the Octopus V3 cinematic, with its own audio only
   -> environment darkens and Cordys interrupts the same battle presentation
   -> Phoenix Final Boss intro begins on the reveal
   -> one real player attack connects for negligible damage
   -> one authored Cordys finishing move defeats the party
   -> music ends; approximately one second of silence
+  -> resume the Octopus cinematic from its paused 25-second position
   -> recovery card: “Grow stronger. Find a way to defeat Cordys.”
   -> fully restored, saved, controllable normal PR #96 world
   -> optional Combat Training beacon nearby
@@ -161,9 +184,11 @@ Expose one public phase and a `phase_changed` signal:
 - `opening_video`
 - `spawn_exploration`
 - `angler`
+- `octopus_introduction`
 - `octopus_reveal`
 - `octopus_response`
 - `scripted_defeat`
+- `octopus_aftermath`
 - `recovery`
 - `complete`
 
@@ -195,6 +220,7 @@ never serialized.
 | Before or during the opening video | Replay the opening video. |
 | Video completed, before movement | Start at quiet spawn; do not replay the video. |
 | During the Angler | Normalize to quiet spawn and restart the trigger. |
+| During either Octopus cinematic portion | Normalize to quiet spawn and restart the playable prologue; no decoder position is serialized. |
 | During Cordys reveal/response/defeat | Normalize to quiet spawn and restart the playable prologue; do not replay the video. |
 | During recovery after state write | Restore a healthy party in normal play; do not repeat Cordys. |
 | Old PR #96 save | Enter normal PR #96 play with the prologue treated as complete. |
@@ -279,10 +305,14 @@ the player's saved volume or the ordinary post-prologue mix.
 6. Angler replaces exploration with the existing Battle intro.
 7. Suppress the normal victory fanfare.
 8. Duck/stop Battle music for the false-relief beat.
+   Play the first 25 seconds of Octopus V3 with its embedded audio alone,
+   then pause both playback and embedded audio for combat.
 9. Start Phoenix's Final Boss intro exactly on Cordys's visible reveal.
 10. Briefly duck music for the registered player hit and finishing impact.
 11. Stop/fade Final Boss music immediately after the decisive hit.
 12. Hold deliberate silence through the recovery motivation.
+    Before that motivation, resume the remaining Octopus V3 footage with its
+    embedded audio alone. Music/SFX preferences apply to both video portions.
 13. Fade ordinary PR #96 exploration back in exactly once.
 
 ### Audio-manager boundary
@@ -400,6 +430,8 @@ duplicate battle exists.
 ### Phase D — Cordys interruption
 
 1. Transition inside the combat presentation without an overworld flicker.
+   Insert the approved first 25 seconds of Octopus V3, retaining one paused
+   decoder for the aftermath. Verify actual pause position and silent combat.
 2. Instantiate the prologue-only Octopus actor with selected reveal/idle/hit/
    finishing clips, correct facing, material, scale, and framing.
 3. Start the Final Boss motif on reveal.
@@ -415,6 +447,8 @@ viewport; audio has one owner and no loop jump.
 
 1. Stop boss audio, hold silence, restore all HP/Oxygen, place the party at a
    safe spawn, show the motivation, mark completion, and save.
+   Resume the cinematic remainder after silence and before the atomic recovery
+   write. Never expose motivation or save completion while it is still playing.
 2. Restore ordinary exploration exactly once.
 3. Spawn Optional Combat Training outside the party's activation radius.
 4. Decouple world progression from tutorial completion.

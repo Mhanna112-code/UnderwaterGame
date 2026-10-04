@@ -128,6 +128,8 @@ const DeepZoneEnvironmentScript := preload("res://game/deep_zone_environment.gd"
 const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
 const OpeningVideoScript := preload("res://game/opening_video.gd")
 const OpeningTriggerScript := preload("res://game/opening_prologue_trigger.gd")
+const PrologueRecoveryScript := preload("res://game/prologue_recovery.gd")
+const PrologueCinematicScript := preload("res://game/prologue_cinematic.gd")
 
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
@@ -261,6 +263,7 @@ var _current_slot := -1
 var route_state := RouteState.new()
 var _prologue_trigger := OpeningTriggerScript.new()
 var _prologue_spawn_delay := 0.0
+var _prologue_cinematic: CanvasLayer
 var deep_zone_layout := DeepZoneLayoutScript.new()
 var deep_zone_environment: DeepZoneEnvironment
 var _lab_video_cutscene: LabVideoCutscene
@@ -376,6 +379,8 @@ func _load_save() -> void:
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
+	_first_encounter_done = route_state.prologue_complete
+	_first_encounter_started = route_state.tutorial_complete
 	_normalize_loaded_route_state()
 	_sync_deep_zone_blocker_staging()
 	_sync_lab_staging()
@@ -457,6 +462,9 @@ func _on_title_new_game(slot: int) -> void:
 	$HUD.visible = true
 	get_tree().paused = false
 	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+	var audio := get_node_or_null("/root/GameAudio")
+	if audio != null:
+		audio.fade_music_in(0.35)
 	# Covers the plain --skip-tutorial/?skip_tutorial=1 route: skip_tutorial_
 	# for_test was already true before _ready() ever rendered the light beam
 	# (see the block right after _build_diver_slots()), so a player clicking
@@ -477,6 +485,12 @@ func _on_title_new_game(slot: int) -> void:
 # save/intro-crawl/HUD handling.
 func _on_title_skip_tutorial(slot: int = 0) -> void:
 	skip_tutorial_for_test = true
+	# This dedicated review entry bypasses the opening too. Normal New Game
+	# never calls it; do not confuse its skip with completing optional training.
+	route_state.opening_video_seen = true
+	route_state.prologue_complete = true
+	route_state.tutorial_complete = true
+	route_state.set_prologue_phase("complete")
 	# Otherwise _on_title_new_game() below still plays the full intro-crawl
 	# narrative cutscene first, same as an ordinary New Game - every other
 	# playtest button (Boss/Guardian/Special/Spell) jumps straight into
@@ -503,6 +517,8 @@ func _on_title_load_game(slot: int) -> void:
 	$HUD.visible = true
 	get_tree().paused = false
 	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+	if route_state.prologue_complete:
+		_build_optional_training()
 
 # The opening owns no campaign state. World owns the durable milestone and
 # writes it only after actual playback completes. A decoder fallback continues
@@ -552,7 +568,89 @@ func _update_prologue_trigger(dt: float) -> void:
 		_start_battle("", false, "angler", divers, false, false, "An Angler darts out of the murk.", true)
 
 func _on_prologue_angler_defeated() -> void:
+	route_state.set_encounter_source("prologue_octopus")
+	route_state.set_prologue_phase("octopus_introduction")
+	_audio_call(&"fade_music_out")
+	await get_tree().create_timer(0.65).timeout
+	_prologue_cinematic = PrologueCinematicScript.new() as CanvasLayer
+	title_layer.add_child(_prologue_cinematic)
+	await _prologue_cinematic.introduction_finished
+	get_tree().paused = false
 	route_state.set_prologue_phase("octopus_reveal")
+	battle.reveal_prologue_octopus()
+
+func _on_prologue_phase_changed(phase: String) -> void:
+	route_state.set_prologue_phase(phase)
+
+func _recover_from_prologue() -> void:
+	_audio_call(&"stop_music")
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	mouse_look = false
+	# Hold deliberate silence while the defeated formation remains visible.
+	await get_tree().create_timer(1.0).timeout
+	if is_instance_valid(_prologue_cinematic) and not _prologue_cinematic.is_queued_for_deletion():
+		route_state.set_prologue_phase("octopus_aftermath")
+		_prologue_cinematic.resume_aftermath()
+		await _prologue_cinematic.completed
+	_prologue_cinematic = null
+	route_state.set_prologue_phase("recovery")
+	var recovery := PrologueRecoveryScript.new() as CanvasLayer
+	title_layer.add_child(recovery)
+	for i in range(divers.size()):
+		var diver := divers[i] as Diver
+		diver.position = CAST[i].at as Vector3
+		diver.velocity = Vector3.ZERO
+		diver.stats.fill()
+	active = 0
+	yaw = 0.0
+	pitch = -0.16
+	_camera_look_override = null
+	_intro_active = false
+	_first_encounter_done = true
+	_first_encounter_started = false
+	route_state.prologue_complete = true
+	route_state.set_encounter_source("random")
+	route_state.set_objective("")
+	banner.text = ""
+	_banner_timer = 0.0
+	_write_save()
+	# The save is already safe if the player closes while reading motivation.
+	await recovery.continued
+	recovery.queue_free()
+	if is_instance_valid(battle):
+		battle.queue_free()
+	battle = null
+	battling = false
+	route_state.set_prologue_phase("complete")
+	_build_optional_training()
+	_update_hud()
+	_update_hp_bar()
+	_update_oxygen_bar()
+	$HUD.visible = true
+	get_tree().paused = false
+	_audio_call(&"play_exploration_music")
+	var audio := get_node_or_null("/root/GameAudio")
+	if audio != null:
+		audio.fade_music_in(0.35)
+
+func _build_optional_training() -> void:
+	if not route_state.prologue_complete or route_state.tutorial_complete or is_instance_valid(light_beam):
+		return
+	# Use the existing training beam at its original clear-water position,
+	# ten metres from recovery spawn, with no compulsory arrow/camera lock.
+	render_light_beam()
+	light_beam.position = Vector3(0.0, 6.0, 10.0)
+	var label := Label3D.new()
+	label.name = "OptionalTrainingLabel"
+	label.text = "Optional Combat Training"
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 44
+	label.pixel_size = 0.01
+	label.modulate = Color("a6e6ff")
+	label.outline_size = 10
+	label.position = Vector3(0.0, -2.0, 0.0)
+	light_beam.add_child(label)
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -914,12 +1012,9 @@ func _ready() -> void:
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
 	# still opens the title screen exactly as before.
 	if _restart_slot >= 0:
-		_current_slot = _restart_slot
+		var restart_slot := _restart_slot
 		_restart_slot = -1
-		_load_save()
-		title_screen.close()
-		$HUD.visible = true
-		get_tree().paused = false
+		await _on_title_load_game(restart_slot)
 		_announce("You wake back at your last save.")
 	else:
 		_show_title_screen()
@@ -2221,9 +2316,9 @@ func _point_arrow_at(target_pos: Vector3) -> void:
 	_intro_arrow.look_at(target_pos, up)
 
 func _update_intro_sequence() -> void:
-	if not _intro_active or _first_encounter_started:
+	if not route_state.prologue_complete or route_state.tutorial_complete or _first_encounter_started:
 		return
-	if not is_instance_valid(light_beam) or not is_instance_valid(_intro_arrow):
+	if not is_instance_valid(light_beam):
 		_intro_active = false
 		return
 	_point_arrow_at(light_beam.global_position)
@@ -2236,13 +2331,15 @@ func _update_intro_sequence() -> void:
 		Vector2(light_beam.global_position.x, light_beam.global_position.z)
 	)
 	if horizontal_distance <= INTRO_ARRIVAL_DIST:
-		_intro_arrow.visible = false
+		if is_instance_valid(_intro_arrow):
+			_intro_arrow.visible = false
 		_start_first_encounter(d)
 
 func _start_first_encounter(d: Diver) -> void:
 	if _first_encounter_started:
 		return
 	_first_encounter_started = true
+	light_beam.visible = false
 	_transitioning_to_encounter = true
 	var target_pos := Vector3(light_beam.global_position.x, d.global_position.y, light_beam.global_position.z)
 	var tw := create_tween()
@@ -2884,6 +2981,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.prologue_angler_encounter = route_state.encounter_source == "prologue_angler"
 	if battle.prologue_angler_encounter:
 		battle.prologue_angler_defeated.connect(_on_prologue_angler_defeated)
+		battle.prologue_phase_changed.connect(_on_prologue_phase_changed)
 	battle.tutorial_encounter = tutorial
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text
@@ -2892,6 +2990,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 
 
 func _on_battle_finished(result: String) -> void:
+	if result == "prologue_defeat" and battle.encounter_source == "prologue_octopus":
+		_recover_from_prologue()
+		return
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
 	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
@@ -2912,14 +3013,18 @@ func _on_battle_finished(result: String) -> void:
 		"lost":
 			if was_tutorial or was_special:
 				_audio_call(&"play_exploration_music")
-	if was_tutorial:
+	if was_tutorial and not was_special:
 		_first_encounter_done = true
+		if result in ["won", "skipped"]:
+			route_state.tutorial_complete = true
 		# Guided the walk-over and held the camera during it - once the
 		# tutorial fight is actually over (win or the softened loss), it's
 		# done its job and would just sit there as a permanent beam of light
 		# in the overworld otherwise.
-		if is_instance_valid(light_beam):
+		if route_state.tutorial_complete and is_instance_valid(light_beam):
 			light_beam.queue_free()
+			light_beam = null
+		_write_save()
 	if _boss_playtest_active:
 		var test_kind := "Tethys boss"
 		_boss_playtest_active = false
@@ -3124,6 +3229,13 @@ func _on_tutorial_loss_exit() -> void:
 	# a lost-and-exited first special encounter was opening this onboarding
 	# carousel again too.
 	if not _tutorial_loss_was_special:
+		_first_encounter_started = false
+		for i in range(divers.size()):
+			(divers[i] as Diver).position = CAST[i].at as Vector3
+		if is_instance_valid(light_beam):
+			light_beam.visible = true
+		else:
+			_build_optional_training()
 		call_deferred("_show_ability_popups")
 
 # --tutorial-loss-playtest's own entry point (see
@@ -3432,6 +3544,9 @@ func _update_hud() -> void:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
 		return
 	var d: Diver = divers[active]
+	if not route_state.prologue_complete:
+		hud.text = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look" % _display_name(d.model_name)
+		return
 	var narrow := get_viewport().get_visible_rect().size.x < 900.0
 	var line := ""
 	if narrow:

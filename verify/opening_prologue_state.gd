@@ -23,7 +23,29 @@ func _run() -> void:
 	_test_encounter_sources(route)
 	_test_old_save_migration()
 	_test_interrupted_state_normalization()
+	_test_all_milestone_phase_round_trips()
 	_finish()
+
+# OPEN-002/024: live cinematic position/phase must never turn a persisted run
+# into a half-owned scene. Cover every milestone combination at every phase.
+func _test_all_milestone_phase_round_trips() -> void:
+	var expected := ["opening_video", "spawn_exploration", "complete", "complete", "opening_video", "spawn_exploration", "complete", "complete"]
+	for flags in range(8):
+		for phase_value in RouteState.PROLOGUE_PHASES:
+			var state := RouteState.new()
+			state.opening_video_seen = (flags & 1) != 0
+			state.prologue_complete = (flags & 2) != 0
+			state.tutorial_complete = (flags & 4) != 0
+			state.set_prologue_phase(String(phase_value))
+			var serialized := state.to_save_data()
+			if serialized.has("prologue_phase"):
+				findings.append("OPEN-024 live cinematic phase was serialized")
+			var restored := RouteState.new()
+			restored.load_save_data(serialized)
+			if restored.prologue_phase != expected[flags]:
+				findings.append("OPEN-024 flags %d interrupted at %s restores unsafe %s" % [flags, phase_value, restored.prologue_phase])
+			if restored.opening_video_seen != state.opening_video_seen or restored.prologue_complete != state.prologue_complete or restored.tutorial_complete != state.tutorial_complete:
+				findings.append("OPEN-001 phase interruption lost independent milestones")
 
 func _test_new_save_contract(route: RouteState) -> void:
 	var data := route.to_save_data()

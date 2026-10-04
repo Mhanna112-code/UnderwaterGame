@@ -24,7 +24,9 @@ func _run() -> void:
 	_expect(actor.has_method("face_toward"), "OPEN-012: actor exposes no authored-front contract")
 	_expect(actor.has_method("play"), "OPEN-012: actor exposes no semantic animation contract")
 	if actor.has_method("visual_bounds"):
-		var bounds := actor.call("visual_bounds") as AABB
+		actor.call("play", "idle")
+		(actor.anim as AnimationPlayer).seek(0.0, true)
+		var bounds := actor.call("current_pose_bounds") as AABB
 		_expect(bounds.size.y >= 3.8 and bounds.size.y <= 4.2,
 			"OPEN-012: Cordys is not normalized to the intended 4m presentation height: %s" % bounds)
 		_expect(bounds.position.y >= -0.02 and bounds.position.y <= 0.02,

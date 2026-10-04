@@ -1,6 +1,6 @@
 # Cordys opening prologue — asset manifest
 
-**Status:** pre-implementation source contract, 2026-10-03.
+**Status:** implementation manifest, 2026-10-03; hosted/listening acceptance pending.
 
 Every runtime asset in the child PR must have one canonical source, one
 semantic owner, and one web verification path. Dropbox duplicates and archive
@@ -18,6 +18,20 @@ metadata are never runtime inputs.
 | Finishing impact candidate | Glassgoat/Sonniss `Heavy Sci-Fi Hit_HW 09.wav` recorded in PR #96 manifest | `b93255074207c4990dd103d176f67d93967530e09e2f8ab53164941c437b1477` | Existing `res://audio/sfx/combat/heavy_hit.ogg`, SHA `f1d9f767c7191694875075142fc78684cb0138d59c8f25c6c44a654612241721`, 53,904 bytes | Candidate only until browser audition proves timing and mix. Do not add a duplicate. |
 
 ## Measured media boundary
+
+### Approved additional prologue cinematic owner, 2026-10-03
+
+Use the existing `res://media/cutscenes/octopus_demon_v3.ogv`, SHA-256
+`8cad2b4924837aedd38eac035ff9733231d550f3754b487f220fd97f2588033c`,
+from Glass's `Octopus_demonV3.mp4`, SHA-256
+`138c4d3d4b720febae992e6cd8e8c30260513caaeb8e359a0240a8b69665226b`.
+Duration: 60.714667 seconds. `PrologueCinematic` owns one decoder, pausing at
+25 seconds for the fight and resuming the remainder before motivation. It
+uses Music at -6 dB local trim; GameAudio is silent during both portions.
+No new video derivative or duplicate full-file packaging is admitted.
+Miguel will discuss shortening with Glass; until then the delivered V3 and
+25-second boundary are authoritative. Native/web timing and listening remain
+required; text legibility findings must not be concealed by successful import.
 
 | Asset | Duration | Video/format | Audio measurement |
 | --- | ---: | --- | --- |

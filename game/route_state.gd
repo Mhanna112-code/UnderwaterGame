@@ -32,9 +32,11 @@ const PROLOGUE_PHASES := [
 	"opening_video",
 	"spawn_exploration",
 	"angler",
+	"octopus_introduction",
 	"octopus_reveal",
 	"octopus_response",
 	"scripted_defeat",
+	"octopus_aftermath",
 	"recovery",
 	"complete",
 ]

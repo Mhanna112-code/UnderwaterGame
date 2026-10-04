@@ -42,6 +42,7 @@ var _loop_stream: AudioStream
 var _intro_gain_db := 0.0
 var _loop_gain_db := 0.0
 var _active_gain_db := 0.0
+var _gain_envelope: Tween
 var _transition_trace: Array[String] = []
 var _sfx_event_trace: Array[String] = []
 var settings_path := "user://audio.cfg"
@@ -64,6 +65,7 @@ func _exit_tree() -> void:
 	release_streams_for_shutdown()
 
 func release_streams_for_shutdown() -> void:
+	_cancel_gain_envelope()
 	if is_instance_valid(_music_player):
 		_music_player.stop()
 		_music_player.stream = null
@@ -161,6 +163,7 @@ func play_cordys_music() -> void:
 
 func stop_music() -> void:
 	_ensure_players()
+	_cancel_gain_envelope()
 	_music_player.stop()
 	_music_player.stream = null
 	_cue_id = ""
@@ -180,6 +183,7 @@ func advance_music_after_stream_finished() -> void:
 		return
 	if _phase != "intro" or _loop_stream == null:
 		return
+	_cancel_gain_envelope()
 	_phase = "loop"
 	_apply_active_music_gain(_loop_gain_db)
 	_music_player.stream = _loop_stream
@@ -203,6 +207,40 @@ func get_music_gain_state() -> Dictionary:
 
 func get_music_transition_trace() -> Array[String]:
 	return _transition_trace.duplicate()
+
+# One cue player's local gain, never the persisted Music bus. Cue replacement
+# cancels the envelope so an old hit cannot alter a new cue or revive silence.
+func duck_music(trim_db: float = -7.0, hold_seconds: float = 0.25) -> void:
+	if _phase == "stopped":
+		return
+	_cancel_gain_envelope()
+	var target := _loop_gain_db if _phase == "loop" else _intro_gain_db
+	_gain_envelope = create_tween()
+	_gain_envelope.tween_method(_apply_active_music_gain, _active_gain_db, target + minf(0.0, trim_db), 0.06)
+	_gain_envelope.tween_interval(maxf(0.0, hold_seconds))
+	_gain_envelope.tween_method(_apply_active_music_gain, target + minf(0.0, trim_db), target, 0.16)
+
+func fade_music_in(seconds: float = 0.3) -> void:
+	if _phase == "stopped":
+		return
+	_cancel_gain_envelope()
+	var target := _loop_gain_db if _phase == "loop" else _intro_gain_db
+	_apply_active_music_gain(-60.0)
+	_gain_envelope = create_tween()
+	_gain_envelope.tween_method(_apply_active_music_gain, -60.0, target, maxf(0.01, seconds))
+
+func fade_music_out(seconds: float = 0.15) -> void:
+	if _phase == "stopped":
+		return
+	_cancel_gain_envelope()
+	_gain_envelope = create_tween()
+	_gain_envelope.tween_method(_apply_active_music_gain, _active_gain_db, -60.0, maxf(0.01, seconds))
+	_gain_envelope.tween_callback(stop_music)
+
+func _cancel_gain_envelope() -> void:
+	if _gain_envelope != null and _gain_envelope.is_valid():
+		_gain_envelope.kill()
+	_gain_envelope = null
 
 func play_ui_hover() -> void:
 	_play_sfx("ui_hover", UI_HOVER)

@@ -21,6 +21,7 @@ var _continue_button: Button
 var _watchdog: Timer
 var _completed := false
 var _fallback_visible := false
+var _last_decoder_position := 0.0
 
 func _ready() -> void:
 	layer = 40
@@ -90,7 +91,7 @@ func _ready() -> void:
 
 	_watchdog = Timer.new()
 	_watchdog.name = "DecoderWatchdog"
-	_watchdog.one_shot = true
+	_watchdog.one_shot = false
 	_watchdog.wait_time = DECODER_WATCHDOG_SECONDS
 	_watchdog.timeout.connect(_on_decoder_watchdog)
 	add_child(_watchdog)
@@ -116,10 +117,14 @@ func _on_video_finished() -> void:
 func _on_decoder_watchdog() -> void:
 	if _completed or _fallback_visible:
 		return
-	# A valid stream can take time to begin on web. Only fall back when it has
-	# neither advanced nor remained in a playing state after the grace period.
-	if not _video.is_playing() and _video.stream_position <= 0.01:
+	# A decoder can claim playing while never advancing, including a stall
+	# after a valid first frame. Observe progress for every grace interval,
+	# not just the initial playing flag, to prevent a permanent black lock.
+	var position_now := _video.stream_position
+	if position_now <= _last_decoder_position + 0.01:
 		_show_decoder_fallback()
+	else:
+		_last_decoder_position = position_now
 
 func _show_decoder_fallback() -> void:
 	if _completed or _fallback_visible:

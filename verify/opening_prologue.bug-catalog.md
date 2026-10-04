@@ -183,6 +183,20 @@ normal Game Over, and leaves the current tutorial available but optional.
 - Camera shake/reduced-motion toggle — no shake/forced zoom/screen-wide flash
   is admitted by this scope.
 
+## Approved split cinematic risks, 2026-10-03
+
+OPEN-023: the Octopus cinematic restarts at zero, duplicates its decoder,
+continues invisibly through combat, leaks input while visible, or overlaps
+boss music. A continuous first-25-seconds/pause/remainder owner must preserve
+its actual playback position; tests exercise public pause/resume, one-player
+ownership and signal order, then real rendered/web playback verifies the
+boundary without injected seeking. Decoder failure must release either wait.
+
+OPEN-024: recovery is saved before the cinematic remainder/motivation, or
+interrupted cinematic state is loaded as a half-owned battle. Extend the real
+journey and old/new/transient save decision table with introduction/aftermath
+phases. Existing durable milestone normalization remains the oracle.
+
 ## Post-write evaluation
 
 Fill after each test is written and run, one at a time:
@@ -199,6 +213,20 @@ Fill after each test is written and run, one at a time:
   prerequisite and execution wrappers reject any `SCRIPT ERROR`/`ERROR:` line
   even when a legacy script exits 0.
 - **Tests removed after self-critique:** pending.
+- **Additional captured defects:** OPEN-014 hidden player/selected-move panels
+  failed the real journey before restoration on party turns. OPEN-012 bind-pose
+  bounds made the production boss miniature; an AABB projection also falsely
+  passed, so the decisive narrow-stage test now projects actual skinned vertices.
+  It failed at 36.0% stage height before exact-silhouette framing/compact staging.
+  OPEN-023 split owner test failed before implementation and now preserves one
+  paused decoder. OPEN-024 journey proves aftermath precedes recovery/save;
+  all eight milestone combinations at all live phases round-trip safely.
+- **Current integration evidence:** `opening_prologue_journey.gd` and
+  `optional_training.gd` pass for real attack/target input, same Battle,
+  negligible hit, scripted defeat, full recovery, no rewards/campaign mutation,
+  optional label/arrival, Skip/Retry/Return and saved completion. Native ordinary
+  full movies measure 109.23/109.18/109.22 seconds at wide/narrow/tall. Narrow
+  framing was rejected and repaired; full revised review remains required.
 - **Pass-plus-suspect items investigated:** pending.
 
 If no test initially catches a real defect, probe at least cross-feature

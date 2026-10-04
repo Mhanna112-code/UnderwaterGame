@@ -19,9 +19,11 @@ class_name Battle
 extends CanvasLayer
 
 const BOSS_LAB_SCENE := preload("res://art/deep_zone/Broken_Office.fbx")
+const PrologueOctopusScript := preload("res://game/prologue_octopus.gd")
 
 signal finished(result: String)     # "won", "fled", or "lost"
 signal prologue_angler_defeated
+signal prologue_phase_changed(phase: String)
 # Emitted after a party actor has stepped into range, faced the selected
 # target, and started its authored attack clip. Gameplay does not consume this;
 # the end-to-end fight gate uses the real selected target instead of guessing
@@ -71,6 +73,8 @@ var encounter_source := "random"
 # and pauses at defeat so World can reveal Cordys in the same sequence.
 var prologue_angler_encounter := false
 var _prologue_angler_interrupted := false
+var prologue_octopus_encounter := false
+var _prologue_response_resolved := false
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -971,6 +975,113 @@ func _begin_boss_encounter() -> void:
 	await get_tree().create_timer(0.45).timeout
 	_advance_turn()
 
+# The existing stage, party actors and combat UI survive the interruption.
+# Only the fallen enemy and its status card are replaced; no world/result
+# surface appears between the player's victory and the new threat.
+func reveal_prologue_octopus() -> void:
+	if prologue_octopus_encounter:
+		return
+	_busy = true
+	_audio_call(&"fade_music_out", [0.15])
+	await get_tree().create_timer(0.65).timeout
+	prologue_angler_encounter = false
+	prologue_octopus_encounter = true
+	encounter_source = "prologue_octopus"
+	for old_enemy in enemies:
+		if old_enemy.has("actor") and is_instance_valid(old_enemy.actor):
+			(old_enemy.actor as Node).queue_free()
+		if old_enemy.has("card") and is_instance_valid(old_enemy.card):
+			(old_enemy.card as Control).queue_free()
+	enemies.clear()
+	_clear_all_stat_preview()
+	_selected_move_panel.visible = false
+	(_player_stats_ui.panel as Control).visible = false
+	var cordys := PrologueOctopusScript.new() as Node3D
+	_stage_vp.add_child(cordys)
+	cordys.position = Vector3(3.6, 0.0, -0.6)
+	var party_center := Vector3.ZERO
+	for index in range(party.size()):
+		var entry := party[index] as Dictionary
+		var actor := entry.actor as Diver
+		# A compact, grounded formation keeps a four-metre threat readable in
+		# the short laptop stage. This changes only the prologue presentation.
+		actor.position = Vector3(-2.8 + 1.4 * index, -actor.foot_offset(), 0.5 + 0.4 * (index % 2))
+		entry.home_pos = actor.position
+		party_center += (entry.actor as Node3D).position
+	party_center /= float(maxi(1, party.size()))
+	cordys.call("face_toward", party_center)
+	for entry in party:
+		(entry.actor as Diver).look_at(cordys.position, Vector3.UP)
+		entry.home_rot = (entry.actor as Diver).rotation.y
+	var stats := CombatantStats.new()
+	stats.hp_max = 1000
+	stats.evasion = 0
+	stats.defense = 0
+	stats.fill()
+	var enemy := {
+		"kind": "enemy", "stats": stats, "display_name": "Cordys",
+		"actor": cordys, "home_pos": cordys.position,
+		"home_rot": cordys.rotation.y, "xp_reward": 0,
+	}
+	enemies.append(enemy)
+	_build_overhead_bar(enemy)
+	_refresh_all_bars()
+	for child in _stage_vp.get_children():
+		if child is WorldEnvironment:
+			var environment := (child as WorldEnvironment).environment
+			environment.background_color = Color("06151f")
+			environment.fog_light_color = Color("092332")
+			environment.fog_density = 0.028
+	var rim := DirectionalLight3D.new()
+	rim.rotation_degrees = Vector3(-25.0, 150.0, 0.0)
+	rim.light_color = Color("9cbfff")
+	rim.light_energy = 1.35
+	_stage_vp.add_child(rim)
+	_audio_call(&"play_cordys_music")
+	_log("Cordys.")
+	_frame_stage_camera()
+	var reveal_length := float(cordys.call("play", "reveal"))
+	await get_tree().create_timer(maxf(1.1, reveal_length)).timeout
+	cordys.call("play", "idle")
+	prologue_phase_changed.emit("octopus_response")
+	_queue.clear()
+	_queue.append(enemy)
+	_acting = party[0]
+	_refresh_queue_row()
+	_start_party_turn(_acting)
+
+func _resolve_prologue_finisher() -> void:
+	if _prologue_response_resolved:
+		return
+	_prologue_response_resolved = true
+	_busy = true
+	_set_all_buttons(false)
+	main_menu.visible = false
+	move_menu.visible = false
+	item_menu.visible = false
+	target_menu.visible = false
+	_selected_move_panel.visible = false
+	(_player_stats_ui.panel as Control).visible = false
+	(_enemy_stats_ui.panel as Control).visible = false
+	await get_tree().create_timer(0.55).timeout
+	prologue_phase_changed.emit("scripted_defeat")
+	var cordys := enemies[0].actor as Node3D
+	_log("Cordys unleashes Spinning Slay.")
+	var length := float(cordys.call("play", "finish"))
+	await get_tree().create_timer(maxf(0.4, length * IMPACT_FRACTION)).timeout
+	_audio_call(&"duck_music", [-9.0, 0.4])
+	_audio_call(&"play_combat_result", [true, false, true])
+	for entry in party:
+		var stats := entry.stats as CombatantStats
+		var damage := stats.hp
+		stats.hp = 0
+		_show_floating_text(entry, "-%d" % damage, FEEDBACK_DAMAGE_COLOR)
+		(entry.actor as Diver).play_death_fade()
+	_refresh_all_bars()
+	await get_tree().create_timer(maxf(0.8, length * (1.0 - IMPACT_FRACTION))).timeout
+	_audio_call(&"stop_music")
+	finished.emit("prologue_defeat")
+
 # The top and bottom of a combatant in world space. Diver and Goblin put
 # their models at different heights relative to their own origin, so this
 # asks them (head_offset/foot_offset) instead of adding `height` and being
@@ -1502,6 +1613,11 @@ func _frame_stage_camera() -> void:
 		if not e.has("actor") or not is_instance_valid(e.actor):
 			continue
 		var a := e.actor as Node3D
+		if a.has_method("framing_points"):
+			# Actual skinned silhouette, not rotated world-AABB empty corners.
+			# Those corners shrank the entire prologue despite valid mesh bounds.
+			pts.append_array(a.call("framing_points"))
+			continue
 		# Imported enemies can be dramatically longer than their collision
 		# radius suggests (Frilled Shark is the concrete regression). When an
 		# actor exposes real world-space visual bounds, frame all eight mesh
@@ -1535,11 +1651,18 @@ func _frame_stage_camera() -> void:
 	for p in pts:
 		centre += p as Vector3
 	centre /= float(pts.size())
+	if prologue_octopus_encounter:
+		# A mesh point cloud has many more points than a diver's small box;
+		# its vertex density must not drag the camera away from the party.
+		var enclosing := AABB(pts[0] as Vector3, Vector3.ZERO)
+		for point in pts:
+			enclosing = enclosing.expand(point as Vector3)
+		centre = enclosing.get_center()
 
 	# The enclosed boss arena benefits from a more frontal authored view: less
 	# sideways foreshortening keeps the compact party formation and the office
 	# walls readable without changing ordinary/open-water fight framing.
-	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter else STAGE_CAMERA_DIR).normalized()
+	var dir: Vector3 = (Vector3(0.4, 1.8, 6.0) if boss_encounter or prologue_octopus_encounter else STAGE_CAMERA_DIR).normalized()
 	# Two axes across the view, so the group can be measured in the plane
 	# the camera actually sees rather than in world X and Y.
 	var right: Vector3 = dir.cross(Vector3.UP).normalized()
@@ -1567,7 +1690,7 @@ func _frame_stage_camera() -> void:
 	for p in pts:
 		var v: Vector3 = (p as Vector3) - centre
 		var w: float = v.dot(dir)
-		var margin := 1.02 if boss_encounter else STAGE_FRAMING_MARGIN
+		var margin := 1.02 if boss_encounter or prologue_octopus_encounter else STAGE_FRAMING_MARGIN
 		var need_w: float = absf(v.dot(right)) * margin / tan_h
 		var need_h: float = absf(v.dot(up)) * margin / tan_v
 		dist = maxf(dist, maxf(need_w, need_h) + w)
@@ -3095,13 +3218,15 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_place_skip_tutorial_btn_last(main_menu)
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
+	_selected_move_panel.visible = true
+	(_player_stats_ui.panel as Control).visible = true
 	call_deferred("_fit_panel_height")
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
 	_show_turn_cursor_on(actor)
 	_log("%s's turn." % String(actor.display_name))
 	_set_all_buttons(true)
-	if prologue_angler_encounter:
+	if prologue_angler_encounter or prologue_octopus_encounter:
 		run_btn.visible = false
 		items_btn.visible = false
 	# Run stays off for the entire tutorial fight, not just its scripted
@@ -3203,7 +3328,7 @@ func _moves_for(entry: Dictionary) -> Array:
 			"text": String(def.get("text", "You cast %s" % String(def.get("display", spell_id)))),
 			"oxygen_cost": float(def.get("oxygen_cost", 0.0)),
 		})
-	if prologue_angler_encounter:
+	if prologue_angler_encounter or prologue_octopus_encounter:
 		var attacks: Array = []
 		for move_value in out:
 			var original := move_value as Dictionary
@@ -4630,6 +4755,8 @@ func _react(entry: Dictionary, r: Dictionary) -> void:
 		(entry.actor as Diver).play_hit_reaction(heavy)
 	elif entry.actor is TethysBoss:
 		(entry.actor as TethysBoss).play_hit_reaction(heavy)
+	elif prologue_octopus_encounter and entry.actor.has_method("play"):
+		entry.actor.call("play", "hurt")
 
 func _play_enemy_death(entry: Dictionary) -> void:
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
@@ -4654,6 +4781,8 @@ func _restore_enemy_idle(entry: Dictionary) -> void:
 		(entry.actor as Goblin).play("idle")
 	elif entry.actor is TethysBoss:
 		(entry.actor as TethysBoss).play("idle")
+	elif prologue_octopus_encounter and entry.actor.has_method("play"):
+		entry.actor.call("play", "idle")
 
 func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	if target.is_empty():
@@ -4682,6 +4811,11 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# back off, so it never had a frame where a player could actually see it.
 	_refresh_player_stats_panel()
 	_log_player_result(_acting, target, mv, r)
+	if prologue_octopus_encounter:
+		_audio_call(&"duck_music", [-7.0, 0.25])
+		_finish_actor_turn(_acting)
+		await _resolve_prologue_finisher()
+		return
 
 	# A killing blow gets the fade instead of the usual walk/idle reaction -
 	# a dying grunt shouldn't play a normal hit-react animation, the fade
@@ -4752,6 +4886,10 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	# Combo carries the exact same kind of cost Axe Kick does.
 	_refresh_player_stats_panel()
 	_finish_actor_turn(_acting)
+	if prologue_octopus_encounter:
+		_audio_call(&"duck_music", [-7.0, 0.25])
+		await _resolve_prologue_finisher()
+		return
 	# Same guard as _resolve_party_move()'s own copy of this - see its
 	# comment for why _is_tutorial_scripted_turn() matters here and
 	# tutorial_encounter alone doesn't.
