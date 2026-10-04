@@ -698,6 +698,27 @@ became unresponsive in the guided-to-free transition with a 100%-CPU renderer.
 
 Focused repair kills that tween before freeing buttons. Native red/green
 captured; full tutorial/world win and narrow/wide Continue checks added.
-Engine infinite-loop errors now fail the gate. Exact exported browser
-verification and review-alias refresh are pending. This does not revise the
-curriculum, campaign tuning, or opening story. Overall goal remains unfinished.
+Engine infinite-loop errors now fail the gate. Exact export `9778296`,
+93,314,720 bytes, served SHA-256
+`47a95ad07a9ba7ed63d3cbb63e415d94270aa2fc14209b2522099a2818fb261c`.
+Deployment `dpl_7BbTfkDs93dYzZb3R3cVJdM53n67`; existing opening-prologue
+review alias refreshed and checked unauthenticated. Public main unchanged.
+
+Rendered/native gates: narrow Continue bounds, actual killing attack,
+full five-move lesson, actual World beacon entry, restore/save/movement,
+existing optional loss/Skip branches, status/QTE layout — green without
+script/infinite-loop errors. Exported Chromium, 1004×847: actual Load from a
+real recovered-opening snapshot in a disposable profile, swim into optional
+beacon, five real guided moves, actual victory, visible clickable Continue,
+all onboarding pages dismissed, unobstructed world and W swimming. Both
+milestones persisted; zero browser errors. Victory/world screenshots inspected.
+
+Harness findings: dummy headless viewport is not rendered bounds evidence;
+Angler preview header is not its target button; final onboarding uses Close;
+HUD behind a modal does not prove free control. Corrected without weakening
+rendered bounds or real victory/save checks. Packet:
+`docs/evidence/tutorial-win-handoff/README.md`.
+
+OPEN-039 fixed. This does not revise the curriculum, campaign tuning, or
+opening story. Overall goal remains unfinished; this focused replay is not
+a PASS for the full final visual/audio matrix.

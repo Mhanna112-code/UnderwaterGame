@@ -42,4 +42,20 @@ error even though the old verifier's exit status was zero.
 
 The fix stops and releases the old tween before destroying its targets. The
 gate now rejects the engine error instead of accepting a success message or
-zero exit status. Green rendered/native/exported verification pending.
+zero exit status.
+
+Green: rendered real win/Continue, narrow layout, all five lessons, actual
+World beacon entry and victory/restoration/save/movement, existing optional
+loss/Skip branches, status/QTE layout. No script or infinite-loop errors.
+Exported Chromium at 1004×847 completed all five guided moves using actual
+mouse/keyboard input, killed the Angler, clicked visible Continue, dismissed
+all onboarding pages, returned to unobstructed swimming, and read persisted
+`tutorial_complete=true` and `prologue_complete=true`. Zero browser errors.
+Evidence: `docs/evidence/tutorial-win-handoff/README.md`.
+
+Harness defects were corrected, not treated as game passes: headless dummy
+viewport bounds, preview-header versus target-button OCR, final Close button,
+and controls visible behind a blocking onboarding modal. Rendered bounds and
+actual victory/save checks remain required. Fix verified on runtime `9778296`;
+existing review alias refreshed, main unchanged. OPEN-039 is fixed; the larger
+opening goal still requires its final full visual/audio audit.

@@ -90,7 +90,11 @@ func _run() -> void:
 		for _i in range(5):
 			await process_frame
 		var button := fight._tutorial_continue_btn as Button
-		if not root.get_visible_rect().encloses(button.get_global_rect()) or button.disabled:
+		# Dummy headless rendering reports a tiny viewport; it can verify the
+		# action/result but not browser-resolution layout. Rendered wide/narrow
+		# runs and the real web input gate retain the bounds assertion.
+		var clipped := DisplayServer.get_name() != "headless" and not root.get_visible_rect().encloses(button.get_global_rect())
+		if clipped or button.disabled:
 			findings.append("OPEN-039 victory Continue is clipped or disabled")
 		button.emit_signal("pressed")
 		await process_frame

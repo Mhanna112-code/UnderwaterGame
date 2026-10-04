@@ -43,10 +43,14 @@ if(process.env.TUTORIAL_AUTOMATIC === '1') {
       await page.screenshot({path:file,timeout:8000});
       const rows=JSON.parse(execFileSync('/tmp/underwater-screen-ocr',[file],{encoding:'utf8'}));
       const text=rows.map(r=>r.text).join('\n');
-      const find=(label,minY=340)=>rows.find(r=>r.text===label&&r.y>minY);
+      // The target preview also says "Angler"; only the bottom-most match
+      // is the actual clickable target button, not the preview's header.
+      const find=(label,minY=340)=>rows.filter(r=>r.text===label&&r.y>minY).sort((a,b)=>b.y-a.y)[0];
       const click=async(row,kind)=>{steps.push({kind,label:row.text,x:row.x,y:row.y});console.log('INPUT|'+kind+'|'+row.text);await page.mouse.click(row.x,row.y);};
       if(text.includes('The enemies back off')) victorySeen=true;
-      if(victoryContinued&&/WASD swim|SHIFT down/.test(text)) {worldSeen=true;break;}
+      const onboardingAction=find('Next')||find('Close')||find('×',0)||find('x',0);
+      // World controls can be visible BEHIND a blocking onboarding modal.
+      if(victoryContinued&&/WASD swim|SHIFT down/.test(text)&&!onboardingAction) {worldSeen=true;break;}
       const continuation=find('Continue');
       if(continuation) {
         if(victorySeen){await page.screenshot({path:output+'/victory-continue.png'});victoryContinued=true;}
@@ -66,14 +70,15 @@ if(process.env.TUTORIAL_AUTOMATIC === '1') {
         await click(find('Guard Bash',500)||find('Precise Tap',500)||find('Electric Touch',500),'normal-move');
       } else if(find('Angler',550)||find('All enemies',550)) {
         await click(find('Angler',550)||find('All enemies',550),'normal-target');
-      } else if(find('Next')||find('×')||find('x')) {
-        await click(find('×')||find('x')||find('Next'),'onboarding');
+      } else if(victoryContinued&&onboardingAction) {
+        await click(find('×',0)||find('x',0)||find('Close')||find('Next'),'onboarding');
       } else if(/Press Enter to continue|Press Space, Enter/.test(text)) {
         steps.push({kind:'keyboard-caption'});await page.keyboard.press('Enter');
       }
       await page.waitForTimeout(900);
     }
-    if(!victorySeen||!victoryContinued||!worldSeen) throw new Error('OPEN-039 tutorial victory/Continue/world handoff timed out');
+    if(guided!==5||!victorySeen||!victoryContinued||!worldSeen) throw new Error('OPEN-039 full tutorial victory/Continue/unobstructed world handoff timed out');
+    await page.keyboard.down('w');await page.waitForTimeout(500);await page.keyboard.up('w');
     await page.waitForTimeout(1500);
     await page.screenshot({path:output+'/returned-world.png'});
     const checkpoint=await page.evaluate(async stored=>{

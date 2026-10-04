@@ -604,3 +604,7 @@ release web can hang. Stop the tween before menu regeneration. Coverage:
 `tutorial_win_handoff.gd` real killing button, full curriculum, actual beacon
 entry/world recovery/save; exported browser mouse/keyboard traversal. Gates
 must reject `Infinite loop detected`, even with a zero process exit.
+Fixed in runtime `9778296`. Full native lesson/World save and movement gates
+and exported browser mouse/keyboard five-lesson victory → visible Continue →
+onboarding dismissal → world passed. Both milestones persisted; zero errors.
+Proof and harness limitations: `docs/evidence/tutorial-win-handoff/README.md`.
