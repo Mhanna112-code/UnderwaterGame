@@ -1,0 +1,16 @@
+{
+  "target": "https://underwatergame-fjglkxxsd-immortaldemongods-projects.vercel.app/",
+  "browserEngine": "webkit",
+  "recording": "/tmp/opening-no-idle-browser-green/page@c07b09c293aa50fe159bbb27196f08d5.webm",
+  "recordingStarted": 1791096011883,
+  "keydownAt": 1791096088947,
+  "idleSeconds": 15.007,
+  "swimmingSeconds": 4.001,
+  "timestamps": {
+    "opening_video": 1791096038136,
+    "spawn_exploration": 1791096072027,
+    "angler": 1791096092948
+  },
+  "errors": [],
+  "failure": null
+}

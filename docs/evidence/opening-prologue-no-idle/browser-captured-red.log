@@ -1,0 +1,4 @@
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+Error: OPEN-035 Angler started while stationary before any swimming

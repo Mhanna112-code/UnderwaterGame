@@ -69,7 +69,7 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
 };
-let failure, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck;
+let failure, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs = 0, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
   console.log('Export page loaded');
@@ -90,15 +90,27 @@ try {
   await shot('02-mermaid');
   await waitPhase('spawn_exploration');
   if (timestamps.spawn_exploration - timestamps.opening_video < 33000) throw new Error('Mermaid opening was shortened instead of completing playback');
+  if (process.env.OPENING_IDLE_RECHECK === '1') {
+    await page.waitForTimeout(15000);
+    await shot('02a-idle-world');
+    if (phases.includes('angler')) throw new Error('OPEN-035 Angler started before any swimming');
+    for (const key of ['ArrowRight', 'ArrowLeft']) {
+      await page.keyboard.down(key);
+      await page.waitForTimeout(800);
+      await page.keyboard.up(key);
+    }
+    if (phases.includes('angler')) throw new Error('OPEN-035 looking around started the Angler');
+    deliberateIdleMs = Date.now() - timestamps.spawn_exploration;
+  }
   // Keep keydown adjacent to the real handoff. A screenshot readback here
   // can consume several seconds and hide the actual movement interval.
   await page.keyboard.down('w');
   freeSwimKeydown = Date.now();
-  if (freeSwimKeydown - timestamps.spawn_exploration >= 4000) throw new Error('Harness sent movement only after the exploration window');
+  if (phases.includes('angler')) throw new Error('OPEN-035 encounter started before swimming input');
   await waitPhase('angler', 12000);
   await page.keyboard.up('w');
-  freeSwimMs = timestamps.angler - timestamps.spawn_exploration;
-  if (freeSwimMs < 4000) throw new Error('Free-swim interval interrupts before four seconds');
+  freeSwimMs = timestamps.angler - freeSwimKeydown;
+  if (freeSwimMs < 4000) throw new Error('OPEN-035 actual swimming interrupts before four seconds');
   // Wall time alone cannot prove displacement under renderer slowdown.
   // Native displacement plus the dedicated continuous browser recording prove
   // actual swimming; this complete-flow gate pins the minimum and two-minute cap.
@@ -148,8 +160,9 @@ try {
   await page.waitForTimeout(600);
   await shot('09-optional-training');
   elapsedSeconds = (Date.now() - started) / 1000;
-  console.log(`Normal browser New Game to control: ${elapsedSeconds}s`);
-  if (!storageFault && elapsedSeconds >= 120) throw new Error('Normal opening exceeds the two-minute acceptance limit');
+  engagedSeconds = elapsedSeconds - deliberateIdleMs / 1000;
+  console.log(`Normal browser New Game to control: ${elapsedSeconds}s; engaged=${engagedSeconds}s; deliberate idle/look=${deliberateIdleMs / 1000}s`);
+  if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
   const expected = ['opening_video', 'spawn_exploration', 'angler', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
   if (process.env.OPENING_SAVE_RECHECK === '1') {
@@ -287,7 +300,7 @@ try {
   if (checkpointFailureObserved && !storageFault) throw new Error('Normal browser completion unexpectedly required Retry Save');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, freeSwimKeydown, freeSwimMs, phases, timestamps, saveRecheck, deathRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, saveRecheck, deathRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }

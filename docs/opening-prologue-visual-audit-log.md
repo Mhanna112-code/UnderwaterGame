@@ -593,3 +593,59 @@ acknowledgements and browser cross-slot commit denial are not covered by this
 barrier. The historical cause of the user's incomplete slot is still unknown;
 no user save was changed and no completion was inferred retroactively.
 No child PR push/open, PR #96 merge, or public-main promotion is claimed.
+
+## Stationary Angler correction, 2026-10-04
+
+User reported the Angler starting without moving. Confirmed OPEN-035 in the
+production trigger: seven elapsed seconds bypassed movement, and four elapsed
+World seconds included idle time. The older tests intentionally approved this
+fallback. Native red and the existing hosted `85e15cf` candidate both reproduce
+it; hosted Angler started **7.804 seconds** after spawn without movement input.
+
+Removed the idle trigger. Count only requested, actual horizontal swimming;
+camera-only input, idle, blocked input and passive displacement do not spend
+the four-second window. Preserve the displacement threshold and one-shot
+ownership. Update binding plan and all trigger-dependent journey/framing
+fixtures; they now swim with real keys instead of jumping an idle timer.
+
+Current runtime **`296b1a562ef68727fb8b5d40f73d07aadc0b91a0`**, clean archive
+PCK **93,300,480 bytes**, SHA-256
+**`845a691e700582c9abf1e60e15ac94f68e2bacc54ac6e9cbc52b624a6dae4d2a`**.
+Deployment **`dpl_5UAEQXfc7HyH7awrEzkqawvYnWBw`**, immutable
+`https://underwatergame-fjglkxxsd-immortaldemongods-projects.vercel.app/`, serves
+the existing `https://underwatergame-opening-prologue-review.vercel.app/` alias.
+
+Scoped acceptance:
+
+- Native actual input: **15 s idle**, camera turn, **4.059 s / 19.333 m** swim,
+  then one authored Angler. A 384-case owner matrix varies heading, frame time
+  and prior idle; blocked/passive/vertical-only/reset/duplicate cases also pass.
+- Exact hosted full Mermaid playback: **15.007 s** stationary, camera-only
+  input, then actual W; Angler starts after **4.001 s** of swimming. No errors.
+  Idle world, battle and continuous movement recording inspected. A nine-second
+  derivative retains late idle/look, physical swimming and encounter start;
+  no frames/result/completion are synthesized.
+- Exact hosted complete opening with deliberate idle/look: **105.643 s total**,
+  **16.753 s injected idle/look**, **88.890 s engaged**. Actual persisted
+  completion, cold Load, two enemy-caused ordinary deaths, visible Restart
+  and Return to Title/Load all pass without replay or errors. Attrition fixture
+  remains disclosed; this is not unmodified campaign balance.
+- Separate exact hosted rejected IndexedDB commit: visible failure/Retry,
+  durable completion and cold Load pass. Only the injected storage error is
+  excluded, not arbitrary runtime errors.
+- Native real death, voluntary training Skip/death, denied recovery save,
+  optional training, state migration, Angler isolation and rendered narrow
+  moving-pose framing pass without runtime errors.
+
+Rejected verification attempt: headless framing with a resolution flag still
+used a 64×64 dummy viewport and a two-pixel stage. Its miniature finding is
+retained, not accepted. Correct rendered 720×480 invocation yields a 720×205
+stage and passes the moving-skin projection; no boss/camera patch was made for
+the invalid fixture. Review's PCK is independently downloaded/digest-checked.
+
+Raw red/green logs, JSON, inspected images and movement clip are in
+`docs/evidence/opening-prologue-no-idle/`, excluded from runtime by `.gdignore`.
+Public main/default aliases remain their prior deployment; no user save, main
+merge or child PR push/open. This is the reported idle-control correction, not
+the overall goal's final zero-defect visual/audio/human acceptance. The existing
+OPEN-032 and acceptance gaps remain explicit.

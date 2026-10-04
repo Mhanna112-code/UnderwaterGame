@@ -431,9 +431,23 @@ without any movement/camera input, with no runtime errors: captured browser red.
 Corrected native
 real-input test waits 15 seconds idle, turns the camera, then travels 19.333 m
 in 4.059 seconds of actual swimming before one Angler. The owner matrix passes.
-Exported-browser and full integration reruns remain pending. This current
+Exact hosted runtime `296b1a5` now passes full-movie idle/look/late-swim:
+15.007 seconds stationary and camera-only input stay free, then real W starts
+the Angler after 4.001 seconds. The continuous recording was inspected for
+actual displacement. Full opening, cold Load, two actual ordinary losses,
+Restart/title Load and a separate storage-denial/Retry/cold Load all pass
+without unexpected runtime errors. Current
 correction supersedes earlier OPEN-007/026 idle-fallback acceptance and timing
 rows in the plan; historical evidence is retained, not rewritten as a pass.
+
+The complete browser gate now includes the idle/look negative path. It records
+both total and engaged elapsed time; only deliberately injected idle/look time
+is excluded from the two-minute engaged-run target. No renderer delay or
+gameplay wait is subtracted. An attempted headless visual framing check used
+the engine's 64×64 dummy viewport (2-pixel battle stage) despite a resolution
+flag, so its miniature finding is retained as invalid visual verification.
+The gate's proper rendered 720×480 invocation passes actual moving-pose
+projection. Neither timeout nor boss composition was changed to hide that run.
 
 ## Browser checkpoint boundary, 2026-10-04
 

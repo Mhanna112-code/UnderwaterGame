@@ -12,12 +12,13 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
 **Current deployment:** checkpoint candidate from runtime source
-`85e15cf845c4ffccb51d85607e0375f99e32a039`:
-`https://underwatergame-gchsmf8yb-immortaldemongods-projects.vercel.app/`.
-PCK SHA-256 `3742539758b4ed13382700ce8a06eec4da89474eb47275b89803bfb7b0d6dfb2`.
+`296b1a562ef68727fb8b5d40f73d07aadc0b91a0`:
+`https://underwatergame-fjglkxxsd-immortaldemongods-projects.vercel.app/`.
+PCK SHA-256 `845a691e700582c9abf1e60e15ac94f68e2bacc54ac6e9cbc52b624a6dae4d2a`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-The stable alias now serves that candidate after hosted actual enemy-caused
-death / Restart / second death / title Load verification passed on 2026-10-04.
+The stable alias serves that candidate after hosted idle/look/late-swim,
+complete opening, real deaths / Restart / title Load, and browser storage-denial
+/ Retry verification passed on 2026-10-04. There is no idle fallback.
 This is a review candidate, not final acceptance. The inherited PR #96 alias
 remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
 
@@ -41,10 +42,10 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | 0: clean child branch | complete | Remote PR #96 head `27a5b525…`; clean child worktree; initial diff contains only these four planning contracts. |
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
 | B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Browser EOF defect repaired in `b5b3e86`; ordinary full split-movie browser journey completes in 118.711 s with real mouse input. Wide/narrow/tall final candidate and listening acceptance remain. |
-| C: quiet spawn and Angler | in progress | User's stationary-Angler report caught the old seven-second idle fallback. Current correction removes it and measures four seconds of requested, actual horizontal swimming; idle, camera-only, blocked input and passive motion cannot consume that window. Native real-input idle/look/swim and direction/frame-time matrix pass; exact hosted export pending. |
+| C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
 | D: Cordys interruption | in progress | Same-Battle negligible-hit/defeat and split cinematic journey green. Idle-only framing rejected; fixed orthographic action-envelope view and selected Poison Breath now pass moving-skin projection at all three sizes. Cached envelope replaces a measured 3-second reveal scan. Complete final browser/mix review remains. |
-| E: recovery and optional training | in progress | Recovery/save and voluntary training Skip/Retry/Return gates pass; Octopus cinematic remainder precedes motivation. Native actual enemy death/Restart/Load, failed writes, invalid loads, cross-slot write denial, and healed training checkpoints pass. Web durability barrier passes rejected IndexedDB commit/Retry/cold Load. Hosted full opening (86.032 s), cold Load, two actual enemy-caused deaths, Restart and title Load pass without replay/errors; attrition fixture is documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Stable alias serves runtime `85e15cf`; unauthenticated metadata/PCK match the clean archive export. Rejected harness/bridge attempts and final browser proof are retained in checkpoint-regression evidence. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion and final zero-defect audit round remain. |
+| E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
+| F: exact artifact and polish | in progress | Stable alias serves runtime `296b1a5`; unauthenticated metadata/PCK match the 93,300,480-byte clean archive export. Current no-idle proof and inspected movement clip are retained in `docs/evidence/opening-prologue-no-idle/`. Blind test, listening matrix, remaining viewport checks, OPEN-032 training-label occlusion and final zero-defect audit round remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence

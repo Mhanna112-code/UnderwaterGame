@@ -231,7 +231,7 @@ else
 	# This gate includes the complete opening, two cold boots and two actual
 	# enemy-caused defeats. Keep its process budget separate from the harness's
 	# unchanged 120-second opening acceptance limit.
-	GATE_TIMEOUT_SECONDS="${OPENING_DEATH_GATE_TIMEOUT_SECONDS:-420}" run "opening browser death: do real enemy deaths, Restart and cold Load retain completed play" env OPENING_SAVE_RECHECK=1 OPENING_DEATH_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-prologue
+	GATE_TIMEOUT_SECONDS="${OPENING_DEATH_GATE_TIMEOUT_SECONDS:-420}" run "opening browser idle/death: does idle stay free, swimming start once, and real deaths/Restart/cold Load retain completion" env OPENING_IDLE_RECHECK=1 OPENING_SAVE_RECHECK=1 OPENING_DEATH_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-prologue
 	run "opening browser storage denial: does rejected IndexedDB completion block Continue and recover through Retry" env OPENING_STORAGE_FAILURE=1 OPENING_SAVE_RECHECK=1 node verify/opening_webcheck.mjs "$WEB_DIR" /tmp/gate-opening-storage-denial
 	run "webcheck: does the build boot in Chromium" node verify/webcheck.mjs "$WEB_DIR" /tmp/gate-chromium.png
 	run "audio webcheck: does a trusted New Game click unlock browser audio" node verify/audio_webcheck.mjs "$WEB_DIR" /tmp/gate-audio.png
