@@ -17,6 +17,8 @@ const CLIP_FRAGMENTS := {
 	"hurt": "damaged)1",
 	"finish": "poison_breath",
 	"head_bash": "head_bash",
+	"octo_stab": "octostab",
+	"electric_shooting": "eletric_shooting",
 	"poison_breath": "poison_breath",
 }
 
@@ -50,13 +52,12 @@ func _ready() -> void:
 
 	# Imported get_aabb() is the unskinned bind pose, not what the player sees.
 	# Normalize from idle, then frame the actual surface envelope of every
-	# used clip. Battle uses a fixed authored view, never per-frame zooming.
+	# used clip. Battle uses fixed views per beat, never per-frame zooming.
 	_presentation_bounds = bounds
 	# Derived offline from this exact skin and the used clips. Scanning every
 	# action during _ready() caused a measured three-second first-reveal hitch.
 	# The projection gate still samples the live skin independently.
-	for point in FRAMING.get_meta("points") as PackedVector3Array:
-		_presentation_points.append(point)
+	set_framing_clip("")
 	_set_loop("idle")
 	_subdue_swordfish_bill()
 	play("idle")
@@ -86,21 +87,38 @@ func framing_points() -> Array[Vector3]:
 		points.append(global_transform * point)
 	return points
 
+func set_framing_clip(key: String) -> void:
+	# Opposite extremes from unrelated attacks made one all-clip camera too
+	# distant. Admit idle/reveal/player-hit plus only this response's motion.
+	_presentation_points.clear()
+	var by_pose := FRAMING.get_meta("pose_points", {}) as Dictionary
+	if by_pose.is_empty(): # Safe bootstrap while regenerating the derivative.
+		for point in FRAMING.get_meta("points") as PackedVector3Array:
+			_presentation_points.append(point)
+		return
+	var keys := ["idle", "reveal", "hurt"]
+	if not key.is_empty() and not keys.has(key):
+		keys.append(key)
+	for pose in keys:
+		for point in by_pose[pose] as PackedVector3Array:
+			_presentation_points.append(point)
+
 # The visible composite was authored with its face/front along local +Z.
 func face_toward(world_target: Vector3) -> void:
 	var target := Vector3(world_target.x, global_position.y, world_target.z)
 	if global_position.distance_squared_to(target) > 0.0025:
 		look_at(target, Vector3.UP, true)
 
-func play(key: String) -> float:
+func play(key: String, speed: float = 1.0) -> float:
 	if anim == null:
 		return 0.0
 	var clip := String(_clips.get(key, ""))
 	if clip.is_empty():
 		return 0.0
+	anim.speed_scale = maxf(0.1, speed)
 	anim.play(clip)
 	var animation := anim.get_animation(clip)
-	return animation.length if animation != null else 0.0
+	return animation.length / anim.speed_scale if animation != null else 0.0
 
 func has_clip(key: String) -> bool:
 	return not String(_clips.get(key, "")).is_empty()

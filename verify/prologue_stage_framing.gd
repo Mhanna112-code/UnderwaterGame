@@ -8,27 +8,22 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
-	world.skip_intro_for_test = true
-	root.add_child(world)
+	if DisplayServer.get_name() == "headless":
+		root.size = Vector2i(1280, 720)
+	# Focused production-stage fixture. Physical entry is verified separately
+	# by the full journey; it should not make a geometry gate focus-dependent.
+	var sources: Array[Diver] = []
+	for model in ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]:
+		var diver := Diver.new()
+		diver.model_name = model
+		root.add_child(diver)
+		sources.append(diver)
+	var fight := Battle.new()
+	fight.party_source = sources
+	fight.prologue_angler_encounter = true
+	root.add_child(fight)
 	await process_frame
-	await world._on_title_new_game(918306)
-	var swim := InputEventKey.new()
-	swim.keycode = KEY_W
-	swim.physical_keycode = KEY_W
-	swim.pressed = true
-	Input.parse_input_event(swim)
-	var deadline := Time.get_ticks_msec() + 10000
-	while not world.battling and Time.get_ticks_msec() < deadline:
-		await physics_frame
-	swim.pressed = false
-	Input.parse_input_event(swim)
 	await process_frame
-	var fight := world.battle
-	if fight == null:
-		push_error("OPEN-035 physical swim failed to start the framing fixture")
-		quit(1)
-		return
 	await fight.reveal_prologue_octopus()
 	await create_timer(0.1).timeout
 	var actor := fight.enemies[0].actor as PrologueOctopus
@@ -51,8 +46,25 @@ func _run() -> void:
 	if low.x < 0.0 or high.x > size.x or low.y < 0.0 or high.y > size.y:
 		findings.append("OPEN-012 boss framing clips the idle silhouette")
 	# Idle bounds alone cannot prove the authored finishing pose fits. Sample
-	# the actual moving skin against the unchanged production camera.
-	for key in ["idle", "reveal", "hurt", "finish"]:
+	# the actual moving skin against each fixed production beat camera. Repeat
+	# for all target facings, not only the initial party-centre orientation.
+	for target in fight.party:
+		actor.face_toward((target.actor as Node3D).global_position)
+		_check_attack_views(actor, fight, size)
+	fight.queue_free()
+	for diver in sources:
+		diver.queue_free()
+	await process_frame
+	paused = false
+	root.get_node("GameAudio").release_streams_for_shutdown()
+	for finding in findings:
+		print("FINDING  " + finding)
+	quit(0 if findings.is_empty() else 1)
+
+func _check_attack_views(actor: PrologueOctopus, fight: Battle, size: Vector2) -> void:
+	for key in ["idle", "reveal", "hurt", "octo_stab", "head_bash", "electric_shooting"]:
+		actor.set_framing_clip(key)
+		fight._frame_stage_camera()
 		var length := actor.play(key)
 		for sample in range(21):
 			var fraction_value := float(sample) / 20.0
@@ -69,11 +81,3 @@ func _run() -> void:
 			print("Cordys pose %s %.1f screen bounds %s %s" % [key, fraction_value, pose_low, pose_high])
 			if pose_low.x < 0.0 or pose_high.x > size.x or pose_low.y < 0.0 or pose_high.y > size.y:
 				findings.append("OPEN-012 %s %.1f clips the moving silhouette" % [key, fraction_value])
-	world.queue_free()
-	await process_frame
-	paused = false
-	root.get_node("GameAudio").release_streams_for_shutdown()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveManager.slot_path(918306)))
-	for finding in findings:
-		print("FINDING  " + finding)
-	quit(0 if findings.is_empty() else 1)

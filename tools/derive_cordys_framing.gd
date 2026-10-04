@@ -4,7 +4,7 @@
 extends SceneTree
 
 const OUTPUT := "res://art/deep_zone/octopus_prologue_frame.tres"
-const SAMPLES := 19
+const SAMPLES := 61
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -16,7 +16,9 @@ func _run() -> void:
 	print("Cordys actor ready: %d ms" % (Time.get_ticks_msec() - started))
 	var hull := PackedVector3Array()
 	var clips := {}
-	for key in ["idle", "reveal", "hurt", "finish"]:
+	var pose_points := {}
+	for key in ["idle", "reveal", "hurt", "finish", "octo_stab", "head_bash", "electric_shooting"]:
+		var first_point := hull.size()
 		clips[key] = actor.clip_name(key)
 		var duration := actor.play(key)
 		for sample in range(SAMPLES):
@@ -36,7 +38,8 @@ func _run() -> void:
 								largest = projected
 								extreme = point
 						hull.append(actor.to_local(extreme))
-	if hull.size() != 4 * SAMPLES * 26:
+		pose_points[key] = hull.slice(first_point)
+	if hull.size() != 7 * SAMPLES * 26:
 		push_error("Unexpected framing derivative point count")
 		quit(1)
 		return
@@ -46,6 +49,7 @@ func _run() -> void:
 	derivative.set_meta("clips", clips)
 	derivative.set_meta("samples", SAMPLES)
 	derivative.set_meta("points", hull)
+	derivative.set_meta("pose_points", pose_points)
 	var error := ResourceSaver.save(derivative, OUTPUT)
 	print("Cordys frame derivative: %d surface points, save result %d" % [hull.size(), error])
 	actor.queue_free()

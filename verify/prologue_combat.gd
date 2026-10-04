@@ -35,24 +35,32 @@ func _run() -> void:
 	var defenses: Array[int] = []
 	for entry in fight.party:
 		defenses.append((entry.stats as CombatantStats).effective_defense())
-	fight.attack_btn.emit_signal("pressed")
-	await process_frame
-	(fight.move_buttons[0] as Button).emit_signal("pressed")
-	await process_frame
-	(fight.target_buttons[0] as Button).emit_signal("pressed")
-	await create_timer(8.0).timeout
+	for turn in range(3):
+		fight.attack_btn.emit_signal("pressed")
+		await process_frame
+		(fight.move_buttons[0] as Button).emit_signal("pressed")
+		await process_frame
+		(fight.target_buttons[0] as Button).emit_signal("pressed")
+		await create_timer(1.0).timeout
+		var wait_started := Time.get_ticks_msec()
+		while fight.attack_btn.disabled and Time.get_ticks_msec() - wait_started < 20000:
+			await process_frame
+		for index in range(3):
+			var expected_hp := 200 - maxi(1, strength - defenses[index]) if index <= turn else 200
+			_expect((fight.party[index].stats as CombatantStats).hp == expected_hp, "SOLO-004 untargeted HP changed or real survivor was killed at turn %d" % turn)
 	_expect(outcomes.is_empty(), "OPEN-036 Cordys declared defeat although a stat-based hit should leave survivors")
 	for i in range(fight.party.size()):
 		var stats := fight.party[i].stats as CombatantStats
 		var expected := 200 - maxi(1, strength - defenses[i])
 		_expect(stats.hp == expected, "OPEN-036 retaliation bypassed STR/DEF: expected %d, got %d" % [expected, stats.hp])
-	_expect(game_audio.get_sfx_event_trace().count("combat_heavy_hit") == 1,
-		"OPEN-038 one Poison Breath stacks duplicate heavy-impact sounds")
+	_expect(game_audio.get_sfx_event_trace().count("combat_heavy_hit") == 3,
+		"SOLO-005 each distinct targeted impact must play exactly one heavy-hit cue")
 	fight.queue_free()
 	for diver in sources:
 		diver.queue_free()
 	await process_frame
 	if not OS.get_cmdline_user_args().has("--survivor-only"):
+		await _retaliation_rule_witnesses()
 		await _choice_matrix()
 	var audio := root.get_node_or_null("GameAudio")
 	if audio != null:
@@ -65,6 +73,38 @@ func _run() -> void:
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		findings.append(message)
+
+func _retaliation_rule_witnesses() -> void:
+	for scenario in ["evasion", "defense"]:
+		var fight := Battle.new()
+		fight.prologue_angler_encounter = true
+		root.add_child(fight)
+		await process_frame
+		await process_frame
+		await fight.reveal_prologue_octopus()
+		var stats := fight.party[0].stats as CombatantStats
+		if scenario == "evasion":
+			stats.evasion = 30
+			stats.evasion_current = 30
+		else:
+			stats.defense = 100
+		var outcomes: Array[String] = []
+		var strikes: Array[Dictionary] = []
+		fight.finished.connect(func(result: String) -> void: outcomes.append(result))
+		fight.prologue_strike_resolved.connect(func(_move: String, _target: String, result: Dictionary) -> void: strikes.append(result))
+		fight.attack_btn.pressed.emit()
+		await process_frame
+		(fight.move_buttons[0] as Button).pressed.emit()
+		await process_frame
+		(fight.target_buttons[0] as Button).pressed.emit()
+		var deadline := Time.get_ticks_msec() + 12000
+		while (strikes.is_empty() or fight.attack_btn.disabled) and Time.get_ticks_msec() < deadline:
+			await process_frame
+		_expect(stats.hp == stats.hp_max and outcomes.is_empty() and not fight.attack_btn.disabled, "SOLO-004 %s bypassed normal rules or did not return a surviving turn" % scenario)
+		_expect(strikes.size() == 1 and int(strikes[0].damage) == 0 and bool(strikes[0].hit) == (scenario == "defense"), "SOLO-004 %s retaliation is not a normal ACC/EVA/DEF resolution: %s" % [scenario, strikes])
+		print("RETALIATION WITNESS|", scenario, "|", strikes)
+		fight.queue_free()
+		await process_frame
 
 func _choice_matrix() -> void:
 	# Hand-computed witnesses, not a copy of the production resolver. These

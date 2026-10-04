@@ -43,7 +43,7 @@ func _run() -> void:
 	_expect(swordfish_material_is_subdued,
 		"OPEN-012: the bright Swordfish bill artifact has no actor-owned subdued material")
 
-	for key in ["reveal", "idle", "hurt", "finish"]:
+	for key in ["reveal", "idle", "hurt", "finish", "octo_stab", "head_bash", "electric_shooting"]:
 		var duration := float(actor.call("play", key)) if actor.has_method("play") else 0.0
 		_expect(duration > 0.0, "OPEN-012: semantic %s clip is missing or static" % key)
 		if duration > 0.0:
@@ -67,7 +67,7 @@ func _run() -> void:
 	_expect(hull.get_meta("source_sha256") == FileAccess.get_sha256("res://art/deep_zone/Octopus_Boss.fbx"),
 		"OPEN-020: prepared frame belongs to a different Octopus delivery")
 	var selected := hull.get_meta("clips") as Dictionary
-	for key in ["idle", "reveal", "hurt", "finish"]:
+	for key in ["idle", "reveal", "hurt", "finish", "octo_stab", "head_bash", "electric_shooting"]:
 		_expect(selected.get(key) == actor.clip_name(key),
 			"OPEN-020: prepared frame omits the currently selected %s animation" % key)
 

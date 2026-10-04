@@ -24,6 +24,7 @@ const PrologueOctopusScript := preload("res://game/prologue_octopus.gd")
 signal finished(result: String)     # "won", "fled", or "lost"
 signal prologue_angler_defeated
 signal prologue_phase_changed(phase: String)
+signal prologue_strike_resolved(move_name: String, target_name: String, result: Dictionary)
 # Emitted after a party actor has stepped into range, faced the selected
 # target, and started its authored attack clip. Gameplay does not consume this;
 # the end-to-end fight gate uses the real selected target instead of guessing
@@ -75,6 +76,7 @@ var prologue_angler_encounter := false
 var _prologue_angler_interrupted := false
 var prologue_octopus_encounter := false
 var _prologue_response_resolved := false
+var _prologue_strike_index := 0
 
 # The choreographed first fight (see World's light-beam intro sequence,
 # _start_first_encounter()). All three divers (always starting with Maxilani -
@@ -1068,41 +1070,64 @@ func _resolve_prologue_finisher() -> void:
 	_selected_move_panel.visible = false
 	(_player_stats_ui.panel as Control).visible = false
 	(_enemy_stats_ui.panel as Control).visible = false
+	var entry := _acting
 	# Let the real damage/status result remain readable before the response.
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(1.0).timeout
 	prologue_phase_changed.emit("scripted_defeat")
-	var cordys := enemies[0].actor as Node3D
-	_log("Cordys unleashes Poison Breath.")
-	var length := float(cordys.call("play", "finish"))
-	await get_tree().create_timer(maxf(0.4, length * IMPACT_FRACTION)).timeout
-	_audio_call(&"duck_music", [-9.0, 0.4])
+	var cordys := enemies[0].actor as PrologueOctopus
 	var attacker := enemies[0].stats as CombatantStats
 	attacker.begin_turn()
-	var breath := {"name": "Poison Breath", "formula": {"strength": 1}, "effects": [
-		{"kind": "status", "status": "poison", "level": {"flat": 4}, "duration": 3},
-	]}
-	var summaries: Array[String] = []
-	var impact_played := false
-	for entry in _living(party):
-		var result := CombatRules.resolve(attacker, entry.stats as CombatantStats, breath)
-		var audible := bool(result.hit) and int(result.damage) > 0 and not impact_played
-		_show_combat_feedback(entry, result, audible)
-		impact_played = impact_played or audible
-		_react(entry, result)
-		summaries.append("%s %s" % [String(entry.display_name), "-%d" % int(result.damage) if result.hit else "evades"])
-		if (entry.stats as CombatantStats).hp <= 0:
-			(entry.actor as Diver).play_death_fade()
-	_log("Cordys uses Poison Breath: %s." % "; ".join(summaries))
-	print("PROLOGUE_BREATH|strength=%d|accuracy=%d|%s" % [attacker.strength, attacker.effective_accuracy(), "; ".join(summaries)])
+	_acting = enemies[0]
+	_queue.clear()
+	_refresh_queue_row()
+	_turn_cursor.visible = false # This cursor is Diver-only; NOW identifies Cordys.
+	# One target per real boss turn. Every remaining diver gets a normal move
+	# before the next response; the encounter is not an automatic chain wipe.
+	var strikes := [
+		{"name": "Octo Stab", "clip": "octo_stab", "formula": {"strength": 1}},
+		{"name": "Head Bash", "clip": "head_bash", "formula": {"strength": 1}},
+		{"name": "Electric Shooting", "clip": "electric_shooting", "formula": {"strength": 1}},
+	]
+	var move: Dictionary = strikes[_prologue_strike_index % strikes.size()]
+	_prologue_strike_index += 1
+	var target_name := String(entry.display_name)
+	cordys.face_toward((entry.actor as Node3D).global_position)
+	cordys.set_framing_clip(String(move.clip))
+	_frame_stage_camera()
+	_log("Cordys uses %s on %s." % [move.name, target_name])
+	var length := cordys.play(String(move.clip), 1.65)
+	_audio_call(&"play_combat_swing", [true])
+	await get_tree().create_timer(maxf(0.35, length * IMPACT_FRACTION)).timeout
+	var result := CombatRules.resolve(attacker, entry.stats as CombatantStats, move)
+	_audio_call(&"duck_music", [-9.0, 0.4])
+	_show_combat_feedback(entry, result)
+	_react(entry, result)
+	if (entry.stats as CombatantStats).hp <= 0:
+		(entry.actor as Diver).play_death_fade()
+	_refresh_all_bars()
+	var summary := "-%d" % int(result.damage) if result.hit else "evades"
+	_log("%s: %s %s.%s" % [move.name, target_name, summary, " %s falls." % target_name if (entry.stats as CombatantStats).hp <= 0 else ""])
+	print("PROLOGUE_STRIKE|move=%s|target=%s|damage=%d|hit=%s|hp=%d|living=%d" % [move.name, target_name, result.damage, str(result.hit), (entry.stats as CombatantStats).hp, _living(party).size()])
+	prologue_strike_resolved.emit(String(move.name), target_name, result.duplicate(true))
+	await get_tree().create_timer(maxf(0.9, length * (1.0 - IMPACT_FRACTION))).timeout
+	cordys.play("idle")
 	_finish_actor_turn(enemies[0])
 	_refresh_all_bars()
-	await get_tree().create_timer(maxf(0.8, length * (1.0 - IMPACT_FRACTION))).timeout
+	await get_tree().create_timer(0.4).timeout
 	if not _living(party).is_empty():
 		# Diagnostic/high-stat survivors are real survivors, not silently
 		# overwritten to preserve the scene. Another normal choice is legal.
 		_prologue_response_resolved = false
 		cordys.call("play", "idle")
-		_acting = _living(party)[0]
+		cordys.set_framing_clip("")
+		_frame_stage_camera()
+		for offset in range(1, party.size() + 1):
+			var next: Dictionary = party[(party.find(entry) + offset) % party.size()]
+			if (next.stats as CombatantStats).hp > 0:
+				_acting = next
+				break
+		_queue.append(enemies[0])
+		_refresh_queue_row()
 		_start_party_turn(_acting)
 		return
 	_audio_call(&"stop_music")

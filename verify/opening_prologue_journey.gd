@@ -91,7 +91,12 @@ func _run() -> void:
 	var swings: Array[String] = []
 	original.player_swing_staged.connect(func(_a: Node3D, _b: Node3D) -> void: swings.append("hit"))
 	await _attack(original)
-	await _wait_phase(world, "octopus_aftermath", 20.0)
+	var response_deadline := Time.get_ticks_msec() + 35000
+	while world.route_state.prologue_phase != "octopus_aftermath" and Time.get_ticks_msec() < response_deadline:
+		if original.attack_btn.is_visible_in_tree() and not original.attack_btn.disabled:
+			await _attack(original)
+		await create_timer(0.1).timeout
+	_expect(swings.size() == 3, "SOLO-007 full journey skipped intervening player attacks")
 	_expect(not world.route_state.prologue_complete, "OPEN-024 recovery saved completion before aftermath finished")
 	_expect(_find_button(world, "Continue") == null, "OPEN-024 recovery message appeared over aftermath")
 	_expect(root.get_node("GameAudio").get_music_state().phase == "stopped", "OPEN-005 boss music overlaps aftermath")

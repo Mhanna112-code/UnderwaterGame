@@ -43,12 +43,13 @@ if (storageFault) await page.addInitScript(() => {
   };
 });
 const phases = [], errors = [], timestamps = {}, combatHits = [], bossResponses = [];
+const bossResponseTimes = [];
 let checkpointFailureObserved = false;
 const deaths = [];
 page.on('console', msg => {
   const line = msg.text();
   if (line.startsWith('PROLOGUE_HIT|')) { combatHits.push(line); console.log(line); }
-  if (line.startsWith('PROLOGUE_BREATH|')) { bossResponses.push(line); console.log(line); }
+  if (line.startsWith('PROLOGUE_STRIKE|')) { bossResponses.push(line); bossResponseTimes.push(Date.now()); console.log(line); }
   const match = line.match(/PROLOGUE_PHASE\|([a-z_]+)/);
   if (match) { phases.push(match[1]); timestamps[match[1]] = Date.now(); console.log(line); }
   if (line.includes('CHECKPOINT_SAVE_FAILED|')) { checkpointFailureObserved = true; console.log(line); }
@@ -75,7 +76,9 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-move-menu');
   // Restoring the full Angler kit changes menu height. Select the rendered
   // label, not the old four-move menu's coordinates or injected game state.
-  const moveName = name.includes('second-angler') ? 'Precise Tap'
+  const moveName = name.includes('cordys-musashi') ? 'Precise Tap'
+    : name.includes('cordys-bucky') ? 'Guard Bash'
+    : name.includes('second-angler') ? 'Precise Tap'
     : name.includes('cordys') && moveY === 604 ? 'Axe Kick' : 'Electric Touch';
   const menuRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, name + '-move-menu.png')], { encoding: 'utf8' }));
   const renderedMove = menuRows.find(row => row.text.trim() === moveName && row.y > 400);
@@ -183,8 +186,35 @@ try {
   await waitPhase('scripted_defeat', 15000);
   await page.waitForTimeout(600);
   await shot('06-finisher');
+  for (let index = 0; index < 3; index++) {
+    const deadline = Date.now() + 6000;
+    while (bossResponses.length <= index && Date.now() < deadline) await page.waitForTimeout(30);
+    if (bossResponses.length !== index + 1) throw new Error('SOLO-001 individual strike missing or indistinguishable');
+    await shot(`06${index}-individual-impact`);
+    if (index < 2) {
+      const menuDeadline = Date.now() + 5000;
+      let ready = false;
+      while (!ready && Date.now() < menuDeadline) {
+        await shot(`06${index}-next-player-turn`);
+        const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, `06${index}-next-player-turn.png`)], { encoding: 'utf8' }));
+        ready = rows.some(row => row.text.trim() === 'Attack' && row.y > 400);
+        if (!ready) await page.waitForTimeout(100);
+      }
+      if (!ready) throw new Error('SOLO-007 next living diver has no real Attack action');
+      await page.waitForTimeout(1000);
+      if (bossResponses.length !== index + 1 || phases.includes('octopus_aftermath')) throw new Error('SOLO-007 Cordys chains hits without a player choice');
+      await attack(index === 0 ? '06-cordys-musashi' : '06-cordys-bucky');
+    }
+  }
   await waitPhase('octopus_aftermath', 15000);
-  if (bossResponses.length !== 1 || !bossResponses[0].includes('Maxilani -80; Musashi -78; Bucky -76')) throw new Error('OPEN-036 browser boss response did not resolve actual STR/DEF: ' + bossResponses.join(';'));
+  const expectedStrikes = [
+    'move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2',
+    'move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1',
+    'move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0',
+  ];
+  if (bossResponses.length !== 3 || expectedStrikes.some((expected, index) => !bossResponses[index].includes(expected))) throw new Error('SOLO-001/004 browser response failed individual STR/DEF deaths: ' + bossResponses.join(';'));
+  if (bossResponseTimes.slice(1).some((time, index) => time - bossResponseTimes[index] < 1000)) throw new Error('SOLO-001 deaths too close to register');
+  if (combatHits.length !== 3 || !combatHits[1].includes('move=Precise Tap|damage=3|hit=true') || !combatHits[2].includes('move=Guard Bash|damage=10|hit=true')) throw new Error('SOLO-007 surviving divers did not land normal-stat attacks: ' + combatHits.join(';'));
   await page.waitForTimeout(5000);
   await shot('07-aftermath');
   await waitPhase('recovery', 45000);
@@ -219,7 +249,6 @@ try {
   elapsedSeconds = (Date.now() - started) / 1000;
   engagedSeconds = elapsedSeconds - deliberateIdleMs / 1000;
   console.log(`Normal browser New Game to control: ${elapsedSeconds}s; engaged=${engagedSeconds}s; deliberate idle/look=${deliberateIdleMs / 1000}s`);
-  if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
   const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'angler', 'angler_victory', 'octopus_notice', 'octopus_omen', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
   if (process.env.OPENING_ESCAPE_RECHECK === '1') {
@@ -405,9 +434,10 @@ try {
   }
   if (errors.length) throw new Error(errors.join('\n'));
   if (checkpointFailureObserved && !storageFault) throw new Error('Normal browser completion unexpectedly required Retry Save');
+  if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, bossResponseTimes, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }
