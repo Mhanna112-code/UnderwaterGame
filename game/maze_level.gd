@@ -4099,6 +4099,25 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	# The overview owns its keys before checkpoint/inventory/ability handling.
+	# MazeMiniMap consumes L/E/R/arrows; other keys must not stack a new owner.
+	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+	if map != null and map.main_map != null and map.main_map.visible:
+		return
+	# A swap choice is also an exclusive owner, including at a save point.
+	if target_selector != null and target_selector.selecting and not _battling and not any_modal_open():
+		if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
+			match (e as InputEventKey).keycode:
+				KEY_RIGHT:
+					target_selector.select_next()
+				KEY_LEFT:
+					target_selector.select_previous()
+				KEY_ENTER, KEY_KP_ENTER:
+					target_selector.confirm_selection()
+				KEY_ESCAPE:
+					target_selector.cancel_selection()
+			get_viewport().set_input_as_handled()
+		return
 	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		if _save_menu != null and _save_menu.visible and (e as InputEventKey).keycode in [KEY_P, KEY_ESCAPE]:
 			_save_menu.close()
@@ -4125,26 +4144,6 @@ func _unhandled_input(e: InputEvent) -> void:
 			return
 	if _battling or any_modal_open():
 		return
-	# While choosing a swap target (the main game's TargetSelector): Left/
-	# Right cycle, Enter confirms, Esc cancels.
-	if target_selector != null and target_selector.selecting and e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
-		match (e as InputEventKey).keycode:
-			KEY_RIGHT:
-				target_selector.select_next()
-				get_viewport().set_input_as_handled()
-				return
-			KEY_LEFT:
-				target_selector.select_previous()
-				get_viewport().set_input_as_handled()
-				return
-			KEY_ENTER, KEY_KP_ENTER:
-				target_selector.confirm_selection()
-				get_viewport().set_input_as_handled()
-				return
-			KEY_ESCAPE:
-				target_selector.cancel_selection()
-				get_viewport().set_input_as_handled()
-				return
 	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		_mouse_look = true

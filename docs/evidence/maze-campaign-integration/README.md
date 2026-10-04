@@ -39,3 +39,29 @@ Source: 529ba0d plus the checkpoint presentation increment. `ui-original-menu-na
 `ui-native-<size>.log` and `ui-<size>-{entry,contact,slots}.png` cover all four declared sizes with Godot 4.7.1 Compatibility/OpenGL/macOS: `gtimeout 120 godot --path . --rendering-method gl_compatibility --resolution <size> --script verify/maze_checkpoint_presentation.gd`. The gate uses actual P and mouse events, asserts actionable slot-picker/button bounds and a single recovery caption, then closes without writing any user slot. Twelve final images were inspected. The `ui-regression-*.log` receipts cover related state/menu checks; checkpoint, map and World-return were rerun after the final landmark-only visibility adjustment. All accepting processes exit 0 without script errors.
 
 These are sampled checkpoint/menu views, not complete maze navigation, every camera angle, web/IndexedDB behavior, Windows/Linux launch, battle animation/audio or the final zero-defect audit round. No deployable artifact is represented.
+
+## INT-03 relic consumer receipts
+
+Source before repair: e2d0024. `maze-relic-red.log` is a real three-action victory
+that misses Tidal Revival and also emits a duplicate caption connection error.
+`maze-relic-disconnected-red.log` removes only the repaired handoff assignment,
+failing skill/menu availability without script/engine errors; explicitly a mutation
+check. `maze-relic-green.log` passes eight relic-present/absent actual fights and
+Party Spells availability. `maze-relic-checkpoint.log`/`maze-relic-menus.log` pass
+affected regressions. Commands: Godot 4.7.1, `gtimeout 150 godot --headless --path .
+--script verify/maze_relic_consumers.gd`, 100 seconds for regressions. XP preparation
+and location fixtures are disclosed; this is not full-route or balance acceptance.
+
+## INT-06 input ownership receipts
+
+Source before repair: c58b26f. `maze-input-red.log` reproduces actual L/P stacking,
+exit 1 without script errors. `maze-input-green.log` passes nine owner/active cases,
+nine forced-room policy cases and actual wall/current E/R. `maze-input-map.log`,
+`maze-input-checkpoint.log` and `maze-input-return.log` pass related regressions.
+Commands: `gtimeout 100 godot --headless --path . --script
+verify/maze_input_ownership.gd`, 120 seconds for regressions; same engine.
+
+`maze-input-native-{narrow,wide}.log` and `input-ui-<size>-<phase>.png` rerun real
+P/mouse input and three inspected views at 360x640/1280x720 with Compatibility
+renderer. No user save was written. These are limited checkpoint/menu samples;
+other sizes, full route, overview art, browser/audio and final polish remain open.

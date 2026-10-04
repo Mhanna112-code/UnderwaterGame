@@ -111,4 +111,9 @@ spells without consuming those relics or reading spendable maze keys. The same
 real victory reproduced Tidal Revival absence before repair, and actual Party
 Spells now offers it. Catalog/fixtures/limits: maze_relic_consumers.bug-catalog.md.
 
-Remaining: INT-04 still requires browser denied-storage. INT-05–07 and INT-09–14 are unaccepted; INT-08 is accepted only for checkpoint/menu scope, not full route/battle art. Full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. The old maze-completion gate still assumes H-driven current relocation and fails; current-route acceptance remains open.
+INT-06 owner/policy scope passes real key dispatch across nine owner/active cases,
+nine strong-room policy cases and actual E/R geometry. Map/checkpoint stacking was
+reproduced before repair. Public selector and placement fixtures are disclosed in
+maze_input_ownership.bug-catalog.md; this does not prove full human navigation.
+
+Remaining: INT-04 still requires browser denied-storage. INT-05, INT-07 and INT-09–14 are unaccepted; INT-08 is accepted only for checkpoint/menu scope, not full route/battle art. Full traversal, real finale/wave wins, final rendered audit and deployed/native-platform evidence remain pending. The old maze-completion gate still assumes H-driven current relocation and fails; current-route acceptance remains open.

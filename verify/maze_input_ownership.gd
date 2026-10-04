@@ -1,0 +1,178 @@
+extends SceneTree
+## INT-06: real keys must not stack map/checkpoint/swap owners.
+var findings: Array[String] = []
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+func _run() -> void:
+	root.size = Vector2i(1280, 720)
+	for selected in range(3):
+		var maze := await _enter(selected)
+		if maze != null:
+			await _map_checkpoint(maze)
+			if findings.is_empty():
+				await _save_owner(maze, selected)
+				await _swap_owner(maze, selected)
+				await _map_geometry(maze)
+				await _room_policy(maze, selected)
+			maze.queue_free()
+			await process_frame
+		if not findings.is_empty():
+			break
+	paused = false
+	root.get_node("GameAudio").release_streams_for_shutdown()
+	for finding in findings:
+		print("FINDING ", finding)
+	print("MAZE INPUT OWNERSHIP: clean" if findings.is_empty() else "MAZE INPUT OWNERSHIP: %d findings" % findings.size())
+	quit(0 if findings.is_empty() else 1)
+
+func _enter(selected: int) -> MazeLevel:
+	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	world.skip_intro_for_test = true
+	world.skip_tutorial_for_test = true
+	root.add_child(world)
+	current_scene = world
+	await process_frame
+	world.title_screen.close()
+	paused = false
+	world.random_encounters_enabled = false
+	world.route_state.set_zone("deep")
+	world.route_state.set_maze_door_state("available")
+	world.active = selected
+	world.divers[selected].global_position = world.deep_zone_layout.route_points().maze_transition
+	for frame in range(20):
+		await physics_frame
+		if current_scene is MazeLevel:
+			break
+	if not current_scene is MazeLevel:
+		findings.append("INT-06 fixture actual World entrance did not reach Maze")
+		return null
+	var maze := current_scene as MazeLevel
+	maze.divers[selected].global_position = maze.get_node("MazeCheckpoint").global_position + Vector3.UP
+	for frame in range(8):
+		await physics_frame
+	return maze
+
+func _map_checkpoint(maze: MazeLevel) -> void:
+	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	await _key(KEY_L)
+	_expect(map.main_map.visible, "INT-06 L did not open real overview")
+	await _key(KEY_P)
+	_expect(map.main_map.visible and not maze._save_menu.visible,
+		"INT-06 P stacks checkpoint menu onto open maze map")
+	await _key(KEY_ESCAPE)
+	_expect(map.main_map.visible and not maze.inventory_menu.visible,
+		"INT-06 Esc stacks inventory onto open maze map")
+	var active := maze.active
+	await _key(KEY_TAB)
+	_expect(maze.active == active, "INT-06 map Tab steals active diver")
+	await _key(KEY_L)
+	_expect(not map.main_map.visible, "INT-06 map cannot relinquish ownership with L")
+	print("MAZE INPUT CASE|active=", active, "|owner=map")
+
+func _save_owner(maze: MazeLevel, selected: int) -> void:
+	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	await _key(KEY_P)
+	_expect(maze._save_menu.visible, "INT-06 real checkpoint P did not open save owner")
+	await _key(KEY_L)
+	await _key(KEY_TAB)
+	await _key(KEY_E)
+	_expect(maze._save_menu.visible and not map.main_map.visible and maze.active == selected
+		and not maze.target_selector.selecting and not maze.inventory_menu.visible,
+		"INT-06 save owner leaked map/diver/ability input")
+	await _key(KEY_ESCAPE)
+	_expect(not maze._save_menu.visible and not maze.inventory_menu.visible,
+		"INT-06 closing save owner also opens inventory")
+	print("MAZE INPUT CASE|active=", selected, "|owner=save")
+
+func _swap_owner(maze: MazeLevel, selected: int) -> void:
+	# Public selector activation is a fixture; only Maxilani uses Swap in play.
+	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	_expect(maze.target_selector.start_selection(maze.divers[selected]), "INT-06 selector has no valid target")
+	var first := maze.target_selector.current_target()
+	await _key(KEY_L)
+	await _key(KEY_P)
+	await _key(KEY_TAB)
+	_expect(maze.target_selector.selecting and not map.main_map.visible and not maze._save_menu.visible
+		and not maze.inventory_menu.visible and maze.active == selected,
+		"INT-06 Swap owner leaked map/save/diver input")
+	await _key(KEY_RIGHT)
+	_expect(maze.target_selector.current_target() != first, "INT-06 real arrow did not cycle Swap target")
+	await _key(KEY_ESCAPE)
+	_expect(not maze.target_selector.selecting and not maze.inventory_menu.visible,
+		"INT-06 cancelling Swap also opens inventory")
+	print("MAZE INPUT CASE|active=", selected, "|owner=swap")
+
+func _map_geometry(maze: MazeLevel) -> void:
+	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	var corridor := maze.get_node("WindCorridor1") as Area3D
+	var centre: Vector3 = (corridor.get_child(0) as CollisionShape3D).global_position
+	maze.divers[maze.active].global_position = centre
+	for frame in range(4):
+		await physics_frame
+		await process_frame
+	await _key(KEY_L)
+	var selected_current := map.selectedCurrentCorridor
+	_expect(selected_current != null and not map.selected_rotatable_set.is_empty(),
+		"INT-06 actual discovery did not expose nearby current/wall controls")
+	if selected_current != null:
+		var current: WaterCurrent = maze._currents_by_corridor[selected_current]
+		await _key(KEY_R)
+		_expect(map.selectedCurrentCorridor != selected_current and maze._currents_by_corridor.values().has(current)
+			and not maze.random_encounters_enabled,
+			"INT-06 map R did not move the same live current or changed campaign encounter Off")
+	if not map.selected_rotatable_set.is_empty():
+		var wall: CSGBox3D = map.selected_rotatable_set.walls[0]
+		var before := wall.global_transform
+		await _key(KEY_E)
+		await create_timer(1.7).timeout
+		_expect(not wall.global_transform.is_equal_approx(before) and not maze.target_selector.selecting
+			and not maze._save_menu.visible and not maze._battling,
+			"INT-06 map E did not rotate real wall exclusively")
+	await _key(KEY_L)
+	print("MAZE INPUT GEOMETRY|active=", maze.active, "|real_R/E=checked")
+
+func _room_policy(maze: MazeLevel, selected: int) -> void:
+	maze.random_encounters_enabled = false
+	maze.room_encounters_enabled = true
+	maze.divers[selected].global_position = maze.get_node("MazeCheckpoint").global_position + Vector3.UP
+	await physics_frame
+	maze.divers[selected].start_random_encounter()
+	await process_frame
+	_expect(not maze._battling, "INT-06 forced encounter policy leaked outside strong room")
+	var room := maze._strong_room_rect()
+	maze.divers[selected].global_position = Vector3(room.get_center().x, 0, room.get_center().y)
+	await physics_frame
+	await process_frame
+	var popup := root.get_node_or_null("CharacterAbilityPopup")
+	if popup != null and paused:
+		(popup.get_node("%PopupClose") as Button).pressed.emit()
+		await process_frame
+	maze.room_encounters_enabled = false
+	maze.divers[selected].start_random_encounter()
+	await process_frame
+	_expect(not maze._battling, "INT-06 Marc's local developer Off was ignored")
+	maze.room_encounters_enabled = true
+	maze.divers[selected].start_random_encounter()
+	await process_frame
+	_expect(maze._battling and maze._battle != null and not maze.random_encounters_enabled,
+		"INT-06 campaign Off bypasses Marc's forced strong room")
+	print("MAZE ROOM POLICY|active=", selected, "|outside=blocked|developer_off=blocked|global_off_local_on=battle")
+
+func _key(code: Key, shift := false) -> void:
+	var event := InputEventKey.new()
+	event.keycode = code
+	event.shift_pressed = shift
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	event = InputEventKey.new()
+	event.keycode = code
+	event.shift_pressed = shift
+	Input.parse_input_event(event)
+	await process_frame
+
+func _expect(ok: bool, message: String) -> void:
+	if not ok:
+		findings.append(message)

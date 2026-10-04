@@ -178,6 +178,7 @@ run "maze checkpoint: do cold Load, failed writes and real defeat/Restart conser
 run "maze checkpoint IO: do generated saves round-trip and malformed saves return an actionable title without mutation" "$GODOT" --headless --path . --script verify/maze_checkpoint_io.gd
 run "maze World return: do live exit and cold World save/re-entry retain party and independent maze/lab history" "$GODOT" --headless --path . --script verify/maze_world_return.gd
 run "maze relic consumers: do real victories unlock owned campaign spells without using or consuming maze keys" "$GODOT" --headless --path . --script verify/maze_relic_consumers.gd
+run "maze input ownership: do real map/save/swap keys stay exclusive while Marc's local encounter policy remains independent" "$GODOT" --headless --path . --script verify/maze_input_ownership.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
 run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
 run "audio settings UI: can players independently persist music and SFX volume/mute" "$GODOT" --headless --path . --script verify/audio_settings_ui.gd

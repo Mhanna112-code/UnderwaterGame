@@ -1185,6 +1185,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if maze_level != null and (maze_level._battling or maze_level.any_modal_open()):
 		return
+	if maze_level != null and maze_level.target_selector != null and maze_level.target_selector.selecting:
+		return
 	var key_event := event as InputEventKey
 	var keycode: Key = key_event.keycode
 	# While both dome levers are held, MazeLevel decides what opens/closes

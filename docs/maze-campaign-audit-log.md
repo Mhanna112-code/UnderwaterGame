@@ -103,3 +103,30 @@ menus/title regressions also pass. Receipts distinguish initial reproduction,
 clean disconnected-handoff mutation and repaired evidence. Full maze navigation,
 combat revival, contextual input, waves/finale, browser/audio and deployment remain
 open. Next: prevent map/save/swap surfaces from taking each other's inputs.
+
+## October 4 2026 INT-06 contextual input ownership
+
+Source before change: c58b26f. Actual L/P at the contacted checkpoint reproduced
+two simultaneous surfaces: overview map and SavePointMenu. Repair lets the map
+own inputs before checkpoint/inventory/abilities, and gives Swap selection
+priority before save keys. MazeMiniMap cannot open over an active selection.
+Marc's L/E/R controls and local forced-room decision remain intact.
+
+Nine generated owner × active-diver cases pass via parsed press/release events;
+save/map/Swap never stack or steal active identity. Actual E rotates a discovered
+wall and R moves the same live current while campaign encounters remain Off.
+Nine local-policy cases verify outside-room/no battle, inside developer Off/no
+battle and inside local On/actual Battle despite campaign Off. Swapping activation
+uses the public selector fixture; only Maxilani has Swap in normal play. Placement
+near interactions and public encounter events do not prove full navigation.
+
+Map, actual checkpoint/death recovery and twelve World return/history regressions
+pass. Native 360x640 and 1280x720 P/mouse checks pass; six final checkpoint/menu
+captures were inspected. This is not complete four-size overview/route/battle art
+acceptance. Initial wrongly named checkpoint was a harness script error, excluded.
+All accepted final processes exited 0 with no script/engine errors. No preview,
+export, main/public update or user-save writes from new input/presentation tests.
+
+Available disk is approximately 1.9 GiB; package/export planning must avoid
+duplicating heavy output, but it has not blocked these state/input checks. Next:
+real downed-diver combat revival, then current-input physical route verification.
