@@ -251,6 +251,72 @@ journey previously stopped before any death/restart scene reload.
   replay remains open, exact checkpoint cause not established. No full-fix or
   hosted updated-fix claim.
 
+### Expanded continuity audit after user challenged the coverage
+
+There is no evidence of a Safari-specific cause. Browser inspection was only
+an observation of stored data, not a root-cause diagnosis. The earlier native
+journey emitted `finished("lost")`, bypassing enemy damage, turn progression,
+QTE failure, `_lose()` and any state changes before result dispatch. That is
+a result-boundary characterization, not a reproduction of actual combat death.
+
+| Case | Independent expected outcome | Test boundary |
+| --- | --- | --- |
+| Finish opening; lose a later ordinary fight through real enemy attacks | Completion survives actual Restart and title Load; no opening owners; restored HP/control | Real Battle actions/damage/defeat, not injected result |
+| Recovery is displayed but Continue has not yet been pressed | Durable completed checkpoint already exists | Actual recovery UI and file read before Continue |
+| Optional training Skip, win, loss/Retry/Return, followed by death | Training state may change; completed prologue never regresses; saved party remains recoverable | Opening → training → checkpoint → real combat death |
+| Save to another slot; die; reload repeatedly | Restart selects active checkpoint, not another slot's incomplete opening | Two independent test slots and real reload |
+| Completion checkpoint cannot be written | No silent successful handoff backed by an old incomplete save; recovery must expose failure and permit retry | Actual FileAccess failure, readable initial checkpoint retained |
+| Missing/corrupt selected checkpoint | No silent New Game/prologue replay masquerading as Load | Invalid IO input through Load interface |
+
+OPEN-028: recovery silently ignores a failed checkpoint write and allows
+normal play, so later death/Load restores the still-readable pre-prologue
+checkpoint and repeats the opener. `SaveManager.write_slot()` currently returns
+void and silently exits when FileAccess.open fails; World cannot distinguish
+success from failure. Disk-space exhaustion was previously reported in this
+workspace, but it is **not established** as the user's cause. Use a uniquely
+owned test slot, deny its initial checkpoint and atomic staging candidate,
+complete the actual prologue, and require a visible retryable save failure.
+Restore permissions/clean only that test slot. This fault test must fail on
+the current silent handoff before any product repair.
+
+OPEN-029: Load silently treats an unreadable/missing/malformed checkpoint as
+a fresh World and launches the opening. `_load_save()` currently returns void
+on a wrong diver count, while its caller always closes the title and starts
+the prologue. A failed/partial prior write can therefore look like a deliberate
+New Game. Add `checkpoint_load_failures.gd`: bounded generated invalid counts
+plus captured truncated JSON/nested-shape cases must retain the title, show a
+load error, preserve the selected bytes and create no opening owner. Invalid
+data is never evidence that the player wants to replay the prologue.
+
+OPEN-030: selecting another save slot at a save point ignores a failed write,
+announces success and switches the active restart slot to its older checkpoint.
+Two uniquely owned slots must prove that denied replacement preserves both
+prior files and the previous active slot, emits no success announcement, and
+permits a later successful retry to switch slots with completion intact.
+
+Self-critique: the real-death variant uses a low-HP party fixture to reach a
+deterministic ordinary loss cheaply (HP 1, DEF/EVA 0); it does not inject damage, HP zero, result,
+completion or reload state. It proves the death pipeline, not a normal-stat
+human playtest. The failure variant exercises real filesystem denial rather
+than a mock success flag. Both assert the visible handoff and recovered-world
+outcome, not private callback call counts. Full exported browser combat remains
+separate evidence. Unrelated encounter balancing/media redesign is skipped.
+
+2026-10-04 regression results: OPEN-028 reproduced nine native failures including
+full `opening_video` replay from the retained initial checkpoint. OPEN-029
+reproduced silent New Game on missing data (three findings), then exposed
+fractional active-index acceptance while expanding malformed shapes. OPEN-030
+reproduced false success and wrong active-slot selection (two findings).
+Checked atomic replacement, recovery Retry Save, invalid-load rejection before
+actor mutation and successful-only active-slot switching now pass these cases.
+Enemy-caused ordinary deaths pass Restart and title Load with training both
+incomplete and voluntarily skipped. Existing training Retry/Return is tested
+at the result boundary, **not** a real enemy-death chain; training win followed
+by ordinary death and repeated failures across browser IndexedDB are not yet
+proven. Native migration, video-save, protected-world, free-swim and mutable
+world/drop persistence regressions are clean without runtime errors. The actual
+cause of the user's stored incomplete checkpoint remains unestablished.
+
 ## Captured quiet-spawn review finding, 2026-10-03
 
 OPEN-026: the first battle interrupts before the player can meaningfully swim.

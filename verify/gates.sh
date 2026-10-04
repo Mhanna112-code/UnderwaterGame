@@ -108,6 +108,11 @@ run "opening split video: is one decoder retained silently across combat" "$GODO
 run "opening cinematic edit: is the approved title ending retained without the monologue" "$GODOT" --headless --path . --script verify/prologue_cinematic_asset.gd
 run "opening journey: do real moves reach atomic recovery and ordinary encounters" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd
 run "opening fallback recovery: do death restart and title load preserve completed play without falsifying video viewing" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd -- --opening-fallback
+run "opening real death: do enemy attacks and actual defeat preserve completed play across Restart and Load" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd -- --opening-real-loss
+run "opening training continuity: does voluntary Skip preserve completion through actual later death" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd -- --opening-training-loss
+run "opening save denial: does failed recovery retain the previous checkpoint and allow Retry Save" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd -- --opening-save-failure
+run "checkpoint invalid load: do missing and malformed saves retain an actionable title instead of replaying opening" "$GODOT" --headless --path . --script verify/checkpoint_load_failures.gd
+run "checkpoint slot switch: does denied replacement retain the active save and retry correctly" "$GODOT" --headless --path . --script verify/checkpoint_slot_switch.gd
 run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
 
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd

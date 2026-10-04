@@ -5,6 +5,8 @@ extends SceneTree
 const SLOT := 918299
 var findings: Array[String] = []
 var phases: Array[String] = []
+var real_loss_case := false
+var training_case := false
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -12,22 +14,33 @@ func _initialize() -> void:
 func _run() -> void:
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	var fallback_case := OS.get_cmdline_user_args().has("--opening-fallback")
-	world.skip_intro_for_test = not fallback_case
+	var save_failure_case := OS.get_cmdline_user_args().has("--opening-save-failure")
+	real_loss_case = OS.get_cmdline_user_args().has("--opening-real-loss")
+	training_case = OS.get_cmdline_user_args().has("--opening-training-loss")
+	if training_case:
+		real_loss_case = true
+	world.skip_intro_for_test = not (fallback_case or save_failure_case)
 	root.add_child(world)
 	current_scene = world
 	await process_frame
 	await process_frame
 	world.route_state.phase_changed.connect(func(phase: String) -> void: phases.append(phase))
-	if fallback_case:
+	if fallback_case or save_failure_case:
 		# OPEN-027 cross-feature case: acknowledged decoder failure must not
 		# force a completed playable prologue to replay on a later death/load.
 		world._on_title_new_game(SLOT)
 		await process_frame
-		world.opening_video.call("fail_for_test")
-		var fallback_continue := _find_button(world.opening_video, "Continue")
-		_expect(fallback_continue != null, "OPEN-027 decoder fallback has no Continue")
-		if fallback_continue != null:
-			fallback_continue.emit_signal("pressed")
+		if save_failure_case:
+			# Only these uniquely owned test files are made unwritable. Keep
+			# the actual initial checkpoint readable, with both flags false.
+			_set_checkpoint_writable(false)
+			world.opening_video.call("finish_for_test")
+		else:
+			world.opening_video.call("fail_for_test")
+			var fallback_continue := _find_button(world.opening_video, "Continue")
+			_expect(fallback_continue != null, "OPEN-027 decoder fallback has no Continue")
+			if fallback_continue != null:
+				fallback_continue.emit_signal("pressed")
 		await process_frame
 		await process_frame
 	else:
@@ -77,7 +90,21 @@ func _run() -> void:
 		await create_timer(0.1).timeout
 		elapsed += 0.1
 	var continue_button := _find_button(world, "Continue")
+	if save_failure_case:
+		var retry := _find_button(world, "Retry Save")
+		_expect(retry != null, "OPEN-028 failed recovery save has no visible Retry Save")
+		_expect(continue_button == null, "OPEN-028 failed recovery save offers a false successful Continue")
+		var failed_save := SaveManager.read_slot(SLOT)
+		print("FAILED CHECKPOINT|", failed_save.get("route_state", {}))
+		_expect(not (failed_save.get("route_state", {}) as Dictionary).get("prologue_complete", true), "OPEN-028 fault fixture did not retain the initial checkpoint")
+		_expect(paused and world.battling, "OPEN-028 write failure released ordinary play")
+		_set_checkpoint_writable(true)
+		if retry != null:
+			retry.emit_signal("pressed")
+			await process_frame
+			continue_button = _find_button(world, "Continue")
 	_expect(continue_button != null, "OPEN-016 recovery motivation has no Continue action")
+	_expect((SaveManager.read_slot(SLOT).get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-027 motivation appeared before its completed checkpoint was durable")
 	if continue_button != null:
 		continue_button.emit_signal("pressed")
 	await process_frame
@@ -94,9 +121,11 @@ func _run() -> void:
 	var save := SaveManager.read_slot(SLOT)
 	_expect((save.get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-016 recovery save milestone missing")
 	var expected_phases: Array[String] = ["spawn_exploration", "angler", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"]
-	if fallback_case:
+	if fallback_case or save_failure_case:
 		expected_phases.push_front("opening_video")
 	_expect(phases == expected_phases, "OPEN-002 public phases missing/duplicated: %s" % [phases])
+	if training_case:
+		await _skip_optional_training(world)
 	# OPEN-018: prove the actual recovered run, with training still incomplete,
 	# can start an ordinary encounter. A synthetic completed fixture alone
 	# would not prove that the opening handoff unlocked the production signal.
@@ -104,12 +133,16 @@ func _run() -> void:
 	await process_frame
 	_expect(world.battle != null and not world.battle.prologue_angler_encounter and not world.battle.prologue_octopus_encounter, "OPEN-018 ignoring training leaves ordinary encounters locked")
 	# OPEN-027: a later ordinary defeat must not rewind the completed opening.
-	# Inject only the public combat-result boundary; restart itself uses the
-	# actual visible button, disk checkpoint and SceneTree reload, not _load_save.
+	# The fast characterization emits the result boundary; --opening-real-loss
+	# and --opening-training-loss instead run real enemy damage/defeat. Both
+	# restart via the visible button, persistent file and SceneTree reload.
 	if world.battle == null:
 		await _finish(world)
 		return
-	world.battle.finished.emit("lost")
+	if real_loss_case:
+		await _lose_through_real_combat(world)
+	else:
+		world.battle.finished.emit("lost")
 	await process_frame
 	_expect(world.game_over_screen.is_visible_in_tree(), "OPEN-027 ordinary loss does not show Game Over")
 	var restart := _find_button(world, "Restart from Save Point")
@@ -143,7 +176,10 @@ func _run() -> void:
 		(restored.divers[restored.active] as Diver).encounter_triggered.emit()
 		await process_frame
 		if restored.battle != null:
-			restored.battle.finished.emit("lost")
+			if real_loss_case:
+				await _lose_through_real_combat(restored)
+			else:
+				restored.battle.finished.emit("lost")
 			await process_frame
 			var title_button := _find_button(restored, "Return to Title")
 			_expect(title_button != null, "OPEN-027 Game Over has no Return to Title")
@@ -160,6 +196,76 @@ func _run() -> void:
 				_expect(not paused and not restored.battling and not restored.title_screen.is_visible_in_tree(), "OPEN-027 title Load Game does not return normal control")
 				_expect(get_nodes_in_group("opening_video").is_empty() and get_nodes_in_group("prologue_cinematic").is_empty(), "OPEN-027 title Load Game creates a prologue movie")
 	await _finish(restored)
+
+# OPEN-027/018 cross-feature path: real recovery → voluntary existing training
+# → public Skip → onboarding dismissal → ordinary enemy-caused death/reload.
+func _skip_optional_training(world: World) -> void:
+	var diver := world.divers[world.active] as Diver
+	diver.global_position = Vector3(world.light_beam.global_position.x, 2.0, world.light_beam.global_position.z)
+	world._update_intro_sequence()
+	await create_timer(0.7).timeout
+	_expect(world.battle != null and world.battle.tutorial_encounter, "OPEN-027 recovered run cannot voluntarily enter training")
+	if world.battle == null:
+		return
+	var elapsed := 0.0
+	while world.battle != null and elapsed < 10.0:
+		var button := _find_button(world.battle, "Continue")
+		if button != null and not button.disabled:
+			button.emit_signal("pressed")
+		var skip := world.battle.skip_tutorial_btn
+		if skip != null and skip.is_visible_in_tree() and not skip.disabled:
+			skip.emit_signal("pressed")
+		await create_timer(0.1).timeout
+		elapsed += 0.1
+	var onboarding := root.get_node_or_null("CharacterAbilityPopup")
+	if onboarding != null:
+		onboarding.call("_close")
+	await process_frame
+	_expect(world.battle == null and not paused and world.route_state.tutorial_complete, "OPEN-027 optional Skip fails to return control")
+	var state := SaveManager.read_slot(SLOT).get("route_state", {}) as Dictionary
+	_expect(state.get("tutorial_complete", false) and state.get("prologue_complete", false), "OPEN-027 training save loses completed opening")
+
+# OPEN-027: actual Run failure → enemy attack → QTE timeout → party death →
+# Battle._lose() → Game Over. A low-HP fixture represents ordinary attrition;
+# no HP-zero/result/completion injection bypasses the defeat pipeline.
+func _lose_through_real_combat(world: World) -> void:
+	for value in world.divers:
+		(value as Diver).stats.hp = 1
+		(value as Diver).stats.defense = 0
+		(value as Diver).stats.evasion = 0
+		(value as Diver).stats.evasion_current = 0
+	var elapsed := 0.0
+	var actions := 0
+	while not world.game_over_screen.is_visible_in_tree() and elapsed < 90.0:
+		if world.battle == null:
+			findings.append("OPEN-027 ordinary battle ended without Game Over")
+			return
+		var caption_continue := _find_button(world.battle, "Continue")
+		if caption_continue != null and not caption_continue.disabled:
+			caption_continue.emit_signal("pressed")
+			await create_timer(0.1).timeout
+			elapsed += 0.1
+			continue
+		var run := world.battle.run_btn
+		if run.is_visible_in_tree() and not run.disabled:
+			print("DEATH ACTION|party=", world.battle.party.map(func(entry: Dictionary) -> int: return (entry.stats as CombatantStats).hp), "|enemies=", world.battle.enemies.map(func(entry: Dictionary) -> String: return String(entry.display_name)))
+			# Deterministic randomness is only a fixture: arrange a blocked
+			# escape, then let the production move/damage/QTE pipeline run.
+			var fixture_seed := 701 + actions * 31
+			seed(fixture_seed)
+			while randf() < 0.9:
+				fixture_seed += 1
+				seed(fixture_seed)
+			seed(fixture_seed)
+			run.emit_signal("pressed")
+			actions += 1
+		await create_timer(0.1).timeout
+		elapsed += 0.1
+	_expect(world.game_over_screen.is_visible_in_tree(), "OPEN-027 real enemy attacks never reached ordinary Game Over")
+	_expect(actions > 0, "OPEN-027 real-death scenario bypassed player combat actions")
+	for value in world.divers:
+		_expect((value as Diver).stats.hp <= 0, "OPEN-027 Game Over appeared before actual party defeat")
+	print("REAL ORDINARY DEATH|actions=", actions, "|seconds=", elapsed)
 
 func _attack(fight: Battle) -> void:
 	fight.attack_btn.emit_signal("pressed")
@@ -203,6 +309,7 @@ func _expect(condition: bool, message: String) -> void:
 		findings.append(message)
 
 func _finish(world: World) -> void:
+	_set_checkpoint_writable(true)
 	if is_instance_valid(world):
 		world.queue_free()
 	await process_frame
@@ -213,7 +320,20 @@ func _finish(world: World) -> void:
 	var absolute := ProjectSettings.globalize_path(SaveManager.slot_path(SLOT))
 	if FileAccess.file_exists(absolute):
 		DirAccess.remove_absolute(absolute)
+	if FileAccess.file_exists(absolute + ".pending"):
+		DirAccess.remove_absolute(absolute + ".pending")
 	for finding in findings:
 		print("FINDING  " + finding)
 	print("OPENING JOURNEY: clean" if findings.is_empty() else "OPENING JOURNEY: %d finding(s)" % findings.size())
 	quit(0 if findings.is_empty() else 1)
+
+func _set_checkpoint_writable(writable: bool) -> void:
+	var absolute := ProjectSettings.globalize_path(SaveManager.slot_path(SLOT))
+	if not writable and not FileAccess.file_exists(absolute + ".pending"):
+		var pending := FileAccess.open(absolute + ".pending", FileAccess.WRITE)
+		pending.store_string("owned failure-fixture candidate")
+		pending.close()
+	for filename in [absolute, absolute + ".pending"]:
+		if FileAccess.file_exists(filename):
+			var result := FileAccess.set_unix_permissions(filename, 384 if writable else 256)
+			_expect(result == OK, "OPEN-028 could not establish/restore the owned file permission fixture")

@@ -3,6 +3,8 @@ extends CanvasLayer
 
 signal continued
 const MOTIVATION := "Grow stronger. Find a way to defeat Cordys."
+var _save_status: Label
+var _continue_button: Button
 
 func _ready() -> void:
 	layer = 40
@@ -27,7 +29,16 @@ func _ready() -> void:
 	text.add_theme_font_size_override("font_size", 26)
 	text.add_theme_color_override("font_color", Color("d5edf5"))
 	panel.add_child(text)
+	_save_status = Label.new()
+	_save_status.text = "Could not save your checkpoint. Free storage or enable saving, then retry."
+	_save_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_save_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_save_status.add_theme_font_size_override("font_size", 16)
+	_save_status.add_theme_color_override("font_color", Color("ffce93"))
+	_save_status.visible = false
+	panel.add_child(_save_status)
 	var button := Button.new()
+	_continue_button = button
 	button.text = "Continue"
 	button.custom_minimum_size = Vector2(200, 48)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -38,3 +49,12 @@ func _ready() -> void:
 		panel.custom_minimum_size.x = minf(600.0, maxf(280.0, get_viewport().get_visible_rect().size.x - 48.0))
 	get_viewport().size_changed.connect(resize)
 	resize.call()
+
+func show_save_failure() -> void:
+	_save_status.visible = true
+	_continue_button.text = "Retry Save"
+	_continue_button.grab_focus()
+
+func clear_save_failure() -> void:
+	_save_status.visible = false
+	_continue_button.text = "Continue"

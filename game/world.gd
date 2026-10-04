@@ -324,21 +324,64 @@ func _serialize_state() -> Dictionary:
 		"divers": divers_data,
 	}
 
-func _write_save() -> void:
+func _write_save() -> Error:
 	if _current_slot < 0:
-		return
-	SaveManager.write_slot(_current_slot, _serialize_state())
+		return ERR_UNCONFIGURED
+	return SaveManager.write_slot(_current_slot, _serialize_state())
 
 # Bails out and does nothing rather than a half-restore if the save data
 # doesn't actually match divers[] one-to-one (a missing/corrupt slot reads
 # back as {} from SaveManager, whose "divers" key then defaults to []) -
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
-func _load_save() -> void:
+func _load_save() -> bool:
 	var data: Dictionary = SaveManager.read_slot(_current_slot)
-	var divers_data: Array = data.get("divers", [])
-	if divers_data.size() != divers.size():
-		return
+	var raw_divers: Variant = data.get("divers", [])
+	if not raw_divers is Array or raw_divers.size() != divers.size():
+		return false
+	# Validate the complete shape before mutating any live actor. Invalid IO
+	# must not partly restore the party then fall through as a fresh opening.
+	if not data.get("route_state", {}) is Dictionary:
+		return false
+	var raw_route := data.get("route_state", {}) as Dictionary
+	for field in ["opening_video_seen", "prologue_complete", "tutorial_complete", "deep_warning_seen"]:
+		if raw_route.has(field) and not raw_route[field] is bool:
+			return false
+	var raw_active: Variant = data.get("active", 0)
+	if not typeof(raw_active) in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(raw_active)) or float(raw_active) != floorf(float(raw_active)) or int(raw_active) < 0 or int(raw_active) >= divers.size():
+		return false
+	for field in ["key_items", "revealed_key_items", "consumed_world_ids"]:
+		var values: Variant = data.get(field, [])
+		if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
+			return false
+	for field in ["inventory", "pending_world_drops"]:
+		if not data.get(field, {}) is Dictionary:
+			return false
+	for drop_value in (data.get("pending_world_drops", {}) as Dictionary).values():
+		if not drop_value is Dictionary:
+			return false
+		var drop := drop_value as Dictionary
+		var position_value: Variant = drop.get("position", [])
+		if not drop.get("item", "") is String or not position_value is Array or position_value.size() != 3 or position_value.any(func(value: Variant) -> bool: return not typeof(value) in [TYPE_INT, TYPE_FLOAT]):
+			return false
+	for snap_value in raw_divers:
+		if not snap_value is Dictionary:
+			return false
+		var snap := snap_value as Dictionary
+		var position_value: Variant = snap.get("position", [0, 2, 0])
+		if not position_value is Array or position_value.size() != 3 or position_value.any(func(value: Variant) -> bool: return not typeof(value) in [TYPE_INT, TYPE_FLOAT]):
+			return false
+		if not snap.get("stats", {}) is Dictionary:
+			return false
+		var raw_stats := snap.get("stats", {}) as Dictionary
+		for field in ["hp_max", "strength", "defense", "agility", "accuracy", "evasion", "oxygen_max", "level", "xp", "xp_to_next", "spell_points", "hp", "oxygen"]:
+			if raw_stats.has(field) and (not typeof(raw_stats[field]) in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(raw_stats[field]))):
+				return false
+		for field in ["known_spells", "equipped_spells"]:
+			var values: Variant = snap.get(field, [])
+			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
+				return false
+	var divers_data := raw_divers as Array
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
 		var snap: Dictionary = divers_data[i]
@@ -405,6 +448,7 @@ func _load_save() -> void:
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
+	return true
 
 func _normalize_loaded_route_state() -> void:
 	# A movie decoder or live Battle is not a serializable checkpoint. Older or
@@ -508,9 +552,15 @@ func _on_title_skip_tutorial(slot: int = 0) -> void:
 	_first_encounter_done = true
 	await _on_title_new_game(slot)
 
-func _on_title_load_game(slot: int) -> void:
+func _on_title_load_game(slot: int) -> bool:
 	_current_slot = slot
-	_load_save()
+	if not _load_save():
+		_current_slot = -1
+		$HUD.visible = false
+		get_tree().paused = true
+		title_screen.show_load_error("Could not load Slot %d. Choose another save or start a new game." % (slot + 1))
+		print("CHECKPOINT_LOAD_FAILED|slot=", slot)
+		return false
 	title_screen.close()
 	await _play_opening_if_needed()
 	_begin_quiet_spawn_if_needed()
@@ -519,6 +569,7 @@ func _on_title_load_game(slot: int) -> void:
 	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
 	if route_state.prologue_complete:
 		_build_optional_training()
+	return true
 
 # The opening owns no campaign state. World owns the durable milestone and
 # writes it only after actual playback completes. A decoder fallback continues
@@ -598,7 +649,7 @@ func _recover_from_prologue() -> void:
 		await _prologue_cinematic.completed
 	_prologue_cinematic = null
 	route_state.set_prologue_phase("recovery")
-	var recovery := PrologueRecoveryScript.new() as CanvasLayer
+	var recovery := PrologueRecoveryScript.new() as PrologueRecovery
 	title_layer.add_child(recovery)
 	for i in range(divers.size()):
 		var diver := divers[i] as Diver
@@ -617,7 +668,16 @@ func _recover_from_prologue() -> void:
 	route_state.set_objective("")
 	banner.text = ""
 	_banner_timer = 0.0
-	_write_save()
+	var checkpoint_error := _write_save()
+	while checkpoint_error != OK:
+		# Ordinary play must never be released on a false checkpoint promise.
+		# Retain this restored session, explain the failure and retry the exact
+		# active slot without replaying either movie or fight.
+		recovery.show_save_failure()
+		print("CHECKPOINT_SAVE_FAILED|slot=", _current_slot, "|error=", checkpoint_error)
+		await recovery.continued
+		checkpoint_error = _write_save()
+	recovery.clear_save_failure()
 	# The save is already safe if the player closes while reading motivation.
 	await recovery.continued
 	recovery.queue_free()
@@ -1020,8 +1080,8 @@ func _ready() -> void:
 	if _restart_slot >= 0:
 		var restart_slot := _restart_slot
 		_restart_slot = -1
-		await _on_title_load_game(restart_slot)
-		_announce("You wake back at your last save.")
+		if await _on_title_load_game(restart_slot):
+			_announce("You wake back at your last save.")
 	else:
 		_show_title_screen()
 	if _maze_playtest_requested():
@@ -1834,8 +1894,8 @@ func _diver_on_save_point(d: Diver) -> bool:
 	return false
 
 # world.gd owns showing the confirmation and closing the menu - the menu
-# itself only ever emits the request, it doesn't know whether saving
-# "worked" since there's nothing real to fail yet (see save_point_menu.gd).
+# itself only emits the request; World checks the persistent write before
+# promising success or changing the run's active checkpoint.
 #
 # A save-point visit restores HP/O2 on contact; this handler writes a real
 # save file (_write_save()) to whichever slot this run is
@@ -1858,8 +1918,14 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 	# list. Make the chosen slot this run's active checkpoint too, so future
 	# save-point visits and "Restart from Save Point" continue from the same
 	# destination rather than silently returning to the slot New Game chose.
+	var previous_slot := _current_slot
 	_current_slot = slot
-	_write_save()
+	var save_error := _write_save()
+	if save_error != OK:
+		_current_slot = previous_slot
+		_announce("Could not save. Your previous checkpoint is unchanged. Please retry.")
+		save_point_menu.close()
+		return
 	_announce("Progress saved to Slot %d." % (slot + 1))
 	save_point_menu.close()
 

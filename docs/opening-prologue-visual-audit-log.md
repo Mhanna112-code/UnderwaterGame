@@ -408,3 +408,51 @@ actual keydown timestamp. Exact runtime remains `4e244a1`; later edits only
 harden verification and record evidence/plan. OPEN-026 is fixed and has a
 native red→green regression plus actual hosted movement proof. This does not
 complete the wider opening goal's remaining acceptance matrix.
+
+## Save-continuity coverage correction, 2026-10-04
+
+The user correctly challenged the missing actual-death and failure-path tests.
+There is no established Safari-specific cause. Earlier `finished("lost")`
+injection skipped enemy attacks, QTE failures and Battle's actual defeat path.
+Browser save inspection remains evidence of stored data, not causation.
+
+Three deterministic native failures were reproduced before their repairs:
+
+- OPEN-028: denied completion write silently left the initial checkpoint and
+  permitted Continue; subsequent Restart replayed the full opening (nine
+  findings). SaveManager now returns IO errors, writes/flushed/verifies a
+  same-directory candidate before replacement, and recovery retains the
+  restored session with Retry Save until success. No completion is invented
+  in an existing user save.
+- OPEN-029: missing/malformed Load silently launched New Game (three findings).
+  Validated checkpoint shapes now fail before mutating actors. The title stays
+  visible/paused with an error; the selected bytes remain untouched. Malformed
+  JSON is handled without an engine-error log. Legacy and current valid loads
+  after an invalid selection remain supported.
+- OPEN-030: denied cross-slot save falsely announced success and selected the
+  destination's older opening checkpoint (two findings). Failure now preserves
+  the prior active slot; a successful retry switches slots with completion
+  intact. Both previous files remain readable on failure.
+
+Expanded native evidence: normal opening combat → recovery save before Continue
+→ actual ordinary enemy-caused death → real Restart → another actual death →
+real Return to Title → Load selected slot. A second run adds voluntary optional
+training Skip before death. These do not inject loss, HP-zero or completion;
+HP 1/DEF 0/EVA 0 and failed-escape RNG are explicit cheap attrition fixtures.
+Recovery-denial Retry Save and cross-slot denial/retry also pass. Migration,
+optional training Retry/Return/Skip (result-boundary coverage), video-save,
+protected world, physical free swim and world/drop checkpoint regressions pass
+with no runtime errors.
+
+Actual Godot-rendered Retry Save, restored Continue and load-error screens were
+inspected at 1280×720 and 720×480: text and actions fit, remain readable, and
+have no observed clipping/overlap. This is a scoped error-UI audit, not the
+full goal's final zero-defect audio/visual/human-comprehension acceptance.
+
+Limits: these reproduced paths are credible mechanisms, not proof of which one
+caused the user's earlier session. A native flushed file is not proof of
+browser IndexedDB durability. Training win followed by actual normal death,
+browser persistence-denial injection and the reported session's exact history
+remain unproven. The hosted alias is unchanged until an exact-source export is
+verified and published. Raw red/green logs and rendered screens are recorded
+under `docs/evidence/opening-prologue-checkpoint-regressions/`.
