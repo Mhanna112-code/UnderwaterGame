@@ -57,6 +57,9 @@ func _run() -> void:
 		"octopus_state": "unavailable",
 		"encounter_source": "lab_boss",
 		"deep_warning_seen": true,
+		"opening_video_seen": false,
+		"prologue_complete": false,
+		"tutorial_complete": false,
 	}
 	if restored.to_save_data() != expected:
 		findings.append("ROUND TRIP: expected %s, got %s" % [expected, restored.to_save_data()])
@@ -89,6 +92,11 @@ func _test_invalid_save_falls_back(route_script: Script) -> void:
 		"octopus_state": "unavailable",
 		"encounter_source": "random",
 		"deep_warning_seen": false,
+		# This dictionary represents an old PR #96 save because none of the
+		# prologue fields were supplied. Migration must bypass the new opening.
+		"opening_video_seen": true,
+		"prologue_complete": true,
+		"tutorial_complete": true,
 	}
 	if restored.to_save_data() != expected_defaults:
 		findings.append("INVALID SAVE: impossible route values did not fall back to safe defaults")

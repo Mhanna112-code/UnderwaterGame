@@ -145,7 +145,10 @@ const SPELL_TREES := {
 				"display": "Heavy Slam", "cost": 1,
 				"description": "A very heavy blow - slow and uncertain to land, but hits hard when it does.",
 				"requires_spells": [], "requires_items": [],
-				"power": 14, "acc_mod": -3, "oxygen_cost": 8.0,
+				# Bucky's base ACC is 1 and levels do not increase it. A -3
+				# modifier made this earned spell incapable of hitting EVA 0.
+				# Keep the heavy risk: it requires exhausting the target's EVA.
+				"power": 14, "acc_mod": 0, "oxygen_cost": 8.0,
 				"hint": "Very heavy, slow to land", "text": "You drive a heavy slam home",
 			},
 		},

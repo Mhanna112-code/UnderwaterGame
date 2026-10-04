@@ -27,7 +27,7 @@ func _run() -> void:
 	_expect(audio.get_music_state().phase == "stopped", "AUTOPLAY: cold title started music before player interaction")
 
 	await world._on_title_new_game(TEST_SLOT)
-	_expect(audio.get_music_state().cue_id == "exploration" and audio.get_music_state().phase == "loop", "WORLD: successful New Game did not start exploration music")
+	_expect(audio.get_music_state().cue_id == "prologue_exploration" and audio.get_music_state().phase == "loop", "WORLD: incomplete prologue did not start the quieter exploration cue")
 
 	world._start_battle()
 	await process_frame

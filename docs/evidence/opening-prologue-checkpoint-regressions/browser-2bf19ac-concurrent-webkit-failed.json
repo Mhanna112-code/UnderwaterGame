@@ -1,0 +1,16 @@
+{
+  "target": "/tmp/underwater-opening-checkpoints.rhlwq5/.vercel/output/static",
+  "browserEngine": "webkit",
+  "renderer": "Apple GPU",
+  "freeSwimKeydown": 1791091904178,
+  "phases": [
+    "opening_video",
+    "spawn_exploration"
+  ],
+  "timestamps": {
+    "opening_video": 1791091856337,
+    "spawn_exploration": 1791091891496
+  },
+  "errors": [],
+  "failure": "Error: Harness sent movement only after the exploration window"
+}

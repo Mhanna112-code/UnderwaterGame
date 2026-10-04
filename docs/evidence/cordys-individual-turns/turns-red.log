@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+CORDYS TARGETED SEQUENCE|[{ "changed": [0], "hp": [0, 10, 10], "living": 2, "time": 6472, "clip": &"rig|Octopus(Attack)OctoStab" }, { "changed": [1], "hp": [0, 0, 10], "living": 1, "time": 9446, "clip": &"rig|Octopus(Attack)Head_Bash" }, { "changed": [2], "hp": [0, 0, 0], "living": 0, "time": 12172, "clip": &"rig|Octopus(Attack)Eletric_Shooting" }]
+FINDING SOLO-007 automatic wipe removed intervening player attacks: 1 choices
+CORDYS TARGETED SEQUENCE: 1 findings

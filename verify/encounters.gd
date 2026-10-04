@@ -31,6 +31,10 @@ var _finishing := false
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
 	world.skip_intro_for_test = true
+	# This gate exercises ordinary play after recovery, not protected prologue.
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = true
 	root.add_child(world)
 
 func _process(_d: float) -> bool:
@@ -59,6 +63,10 @@ func _process(_d: float) -> bool:
 		return false
 
 	if at >= 0:
+		# Ordinary rolls now reveal their real enemies in the exploration world
+		# before constructing Battle. Site dispatch remains immediate/chooser.
+		if world._transitioning_to_encounter:
+			return false
 		_check_result()
 	at += 1
 	if at >= cases.size():

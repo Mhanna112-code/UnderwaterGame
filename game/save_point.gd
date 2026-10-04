@@ -10,7 +10,10 @@ extends Area3D
 
 var occupants: Array[Diver] = []
 var _mat: StandardMaterial3D
+var _crystal: MeshInstance3D
+var _crystal_material: StandardMaterial3D
 var disabled = false
+@export var footprint_offset_y := 0.05
 
 func _ready() -> void:
 	if not disabled:
@@ -32,7 +35,13 @@ func _ready() -> void:
 		_mat.emission = Color(0.3, 0.75, 0.95)
 		_mat.emission_energy_multiplier = 1.4
 		_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mesh.material_override = _mat
+		# A solid foreground crystal can completely hide the chase-camera diver.
+		# Fade just this decorative crystal near the camera, not the ground ring
+		# or rest/save contact volume. The landmark remains opaque at distance.
+		_crystal = mesh
+		_crystal_material = _mat.duplicate() as StandardMaterial3D
+		_crystal_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mesh.material_override = _crystal_material
 		add_child(mesh)
 
 		var ring := TorusMesh.new()
@@ -40,8 +49,9 @@ func _ready() -> void:
 		ring.outer_radius = 1.4
 		var ring_mesh := MeshInstance3D.new()
 		ring_mesh.mesh = ring
-		ring_mesh.rotation_degrees.x = 90.0
-		ring_mesh.position.y = 0.05
+		# TorusMesh already lies in XZ. Rotating it 90 degrees makes an upright
+		# opaque ring whose edge hides the diver even after the prism fades.
+		ring_mesh.position.y = footprint_offset_y
 		ring_mesh.material_override = _mat
 		add_child(ring_mesh)
 
@@ -54,6 +64,21 @@ func _ready() -> void:
 
 		var tw := create_tween().set_loops()
 		tw.tween_property(mesh, "rotation:y", TAU, 6.0).from(0.0)
+
+func _process(_delta: float) -> void:
+	if not is_instance_valid(_crystal):
+		return
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	# Explicit opacity also works in the Compatibility/web renderer, where
+	# shader distance fading did not remove the near-camera foreground prism.
+	var distance := camera.global_position.distance_to(_crystal.global_position)
+	var opacity := clampf((distance - 5.0) / 3.0, 0.0, 1.0)
+	_crystal.visible = opacity > 0.01
+	var color := _crystal_material.albedo_color
+	color.a = opacity
+	_crystal_material.albedo_color = color
 
 func _on_body_entered(body: Node3D) -> void:
 	if body is Diver and not occupants.has(body):

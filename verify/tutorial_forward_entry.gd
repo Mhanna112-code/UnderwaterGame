@@ -6,6 +6,7 @@
 extends SceneTree
 
 const TIMEOUT_SECONDS := 8.0
+const SLOT := 918305
 var findings: Array[String] = []
 
 func _initialize() -> void:
@@ -17,7 +18,16 @@ func _run() -> void:
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(97)
+	# Preserve physical forward entry from the actual recovered-save milestone.
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = false
+	world.route_state.set_objective("")
+	SaveManager.write_slot(SLOT, world._serialize_state())
+	await world._on_title_load_game(SLOT)
+	# Random fights are legitimately available before optional training. This
+	# physical-entry test isolates that one destination, like the player's R.
+	world.random_encounters_enabled = false
 	await physics_frame
 
 	# A default-yaw W press maps to positive Z in World. Drive that same
@@ -46,6 +56,7 @@ func _run() -> void:
 	if audio != null and audio.has_method("release_streams_for_shutdown"):
 		audio.call("release_streams_for_shutdown")
 	await process_frame
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveManager.slot_path(SLOT)))
 	quit(0 if findings.is_empty() else 1)
 
 func _expect(condition: bool, message: String) -> void:

@@ -23,42 +23,39 @@ const MOVES := [
 	{
 		"id": "double_scratch", "name": "Double Scratch",
 		"clip": "double_cratch", "target": "single", "hits": 2,
-		"power": 4, "acc_mod": 1,
+		"power": 1, "acc_mod": 0,
 		"intent": "Two attacks drain and then pressure the target's evasion pool",
 	},
 	{
 		"id": "tail_sweep", "name": "Tail Sweep",
 		"clip": "tail_sweep", "target": "all", "hits": 1,
-		"power": 7, "acc_mod": 2, "ignore_defense": true,
+		"power": 2, "acc_mod": 0, "ignore_defense": true,
 		"intent": "Party-wide armour counter",
 	},
 	{
 		"id": "poison_breath", "name": "Poison Breath",
 		"clip": "poison_breath", "target": "all", "hits": 1,
-		# Unlike ordinary fixed-level poison, this attack must remain threatening
-		# once a party has grown beyond its opening 10 HP. The raw #72 contract
-		# is 15% of each struck target's own maximum HP, rounded with a one-point
-		# floor by Battle._do_boss_turn(). It deliberately does not borrow the
-		# boss's Strength: this is an encounter-scale pressure effect.
-		"power": 3, "acc_mod": 4, "poison_fraction": 0.15, "poison_turns": 3,
+		# Levels unlock spells, not HP growth. Preserve the authored 15% poison
+		# contract, but do not also deliver a near-lethal direct breath hit.
+		"power": 0, "acc_mod": 1, "poison_fraction": 0.15, "poison_turns": 3,
 		"intent": "Party-wide pressure that continues for three turns",
 	},
 	{
 		"id": "tail_slam", "name": "Tail Slam",
 		"clip": "tail_slam", "target": "single", "hits": 1,
-		"power": 10, "acc_mod": 0, "quick_time_bool": true,
+		"power": 4, "acc_mod": 0, "quick_time_bool": true,
 		"intent": "Provisional telegraphed single-target heavy",
 	},
 	{
 		"id": "tongue_slayer", "name": "Tongue Slayer",
 		"clip": "tongue_slayer", "target": "single", "hits": 1,
-		"power": 7, "acc_mod": 6,
+		"power": 2, "acc_mod": 4,
 		"intent": "Provisional high-accuracy single-target strike",
 	},
 	{
 		"id": "spinning_death", "name": "Spinning Death",
 		"clip": "spinning_death", "target": "all", "hits": 1,
-		"power": 9, "acc_mod": 1,
+		"power": 3, "acc_mod": 0,
 		"intent": "Provisional late-cycle party-wide finisher",
 	},
 ]
@@ -121,19 +118,20 @@ func face_toward(world_target: Vector3) -> void:
 	if global_position.distance_squared_to(level_target) > 0.0025:
 		look_at(level_target, Vector3.UP, true)
 
-func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
+func make_stats(_ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = BASE_XP + maxi(0, player_level - 1) * 12
 	var s := CombatantStats.new()
-	# One boss is fighting a party of three. These values make the validation
-	# encounter long enough to expose its full six-move animation cycle while
-	# remaining beatable with the existing level-one kits. They are explicitly
-	# playtest tuning, not a claim that Glassgoat supplied final numbers.
-	s.hp_max = maxi(180, int(round(float(ref.hp_max) * 6.0)))
-	s.strength = maxi(6, int(round(float(ref.strength) * 1.15)))
-	s.defense = maxi(3, int(round(float(ref.defense) * 1.1)))
-	s.agility = maxi(4, ref.agility)
-	s.evasion = maxi(2, int(round(float(ref.evasion) * 0.75)))
-	s.accuracy = maxi(6, int(round(float(ref.accuracy) * 1.1)))
+	# Current divers stay at 10 HP even at level 3. The former scaling imagined
+	# stat growth that does not exist and killed the party in two boss turns.
+	# Fixed encounter tuning admits earned spells/control and armor payoff;
+	# larger XP levels must not strengthen the boss faster than the player.
+	# Animation-cycle validation is separate from real attainable victory.
+	s.hp_max = 65
+	s.strength = 1
+	s.defense = 1
+	s.agility = 2
+	s.evasion = 2
+	s.accuracy = 3
 	s.fill()
 	return s
 

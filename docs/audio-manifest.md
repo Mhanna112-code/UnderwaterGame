@@ -3,7 +3,9 @@
 Source of truth: `/Users/tomriddle1/Dropbox/Underwater Music and SFX.zip`
 (SHA-256 `a89a04c0c7931731e3bb4e243f80106aca322d06b6377afd45af12cadd7a3d43`).
 The ZIP's PCM WAVs are canonical. Long music is encoded to Ogg Vorbis for the
-web runtime; the three delivered menu sounds remain byte-identical WAVs.
+web runtime; the three delivered menu sources remain byte-identical WAVs.
+Menu hover now uses a separately named soft derivative rather than the raw
+four-second source; click and start-game originals are unchanged.
 Dropbox-root copies and `__MACOSX` metadata are not runtime inputs.
 
 Decoded runtime edge measurements and their explicit human-listening boundary
@@ -21,9 +23,10 @@ are recorded in [audio-edge-audit.md](audio-edge-audit.md).
 | `audio/music/victory_candidate_intro.ogg` | `Underwater Victory Fanfare and Victory Theme 1.wav` | `600c0e8ed037092a2c82a1f156a94199964c29047e329933a6b79fc78e6261bd` | `af53ff067c466697c9d3d7a197521bdc7711986bddbfaca81f3267ab874e04ca` | Production victory first segment; browser listening must approve its loop join. |
 | `audio/music/victory_loop.ogg` | `UnderwaterVictory Theme 2 (LOOP).wav` | `25ea80a4790447a36e2c95789348d47b127283930d77b52bb50b9f1b0875d8` | `d36bc5995d1d6b1937117cfa3cf1c7334689f5c45df6fcaa2e5e2c26a3197fdb` | Production victory loop. |
 | `audio/music/game_over.ogg` | `Underwater Game Over.wav` | `c0784b24b177f5a7b1f59faa15d28a08e2697f160780a16c69b3490807a8a5f1` | `fde8c2f09fa239a48c93e860979af6d46b94bf216ad05fd629c9a498e6e8872f` | Production game-over one-shot. |
-| — (deferred, not imported) | `Underwater Final Boss 1 (INTRO).wav` | `122544c04a6874ecc9d24468160950e02a70b2e7e5d933273e354efcc6d4dd91` | — | Canonical 22.588 s Octopus-route intro retained in Phoenix's ZIP; no runtime owner in this slice. |
-| — (deferred, not imported) | `Underwater Final Boss 2 (LOOP).wav` | `20020af1293e4fe1736078446b8b84447b127283930d77b52bb50b9f1b0875d8` | — | Canonical 90.353 s Octopus-route loop retained in Phoenix's ZIP; no runtime owner in this slice. |
-| `audio/sfx/ui/hover.wav` | `SFX/UIHOVER.wav` | `0a33872ad6512eac29043f86292019f28e00418702978f817c3495d02bca6778` | same | Main-menu hover only. |
+| `audio/music/final_boss_intro.ogg` | `Underwater Final Boss 1 (INTRO).wav` | `122544c04a6874ecc9d24468160950e02a70b2e7e5d933273e354efcc6d4dd91` | `e00bd3d8601cffad0fd9d2232853ceefcaa974aa06b0d924a4208cdf8f9c675f` | Production Cordys prologue intro; 22.589 s, authored local gain -1 dB. |
+| `audio/music/final_boss_loop.ogg` | `Underwater Final Boss 2 (LOOP).wav` | `20020af1293e4fe1736078446b8b84447b127283930d77b52bb50b9f1b0875d8` | `dfa5e61d103c53b9420dc58085079684a5dd2d25e2fde835ef37bba45f14eda4` | Production Cordys fallback/future loop; 90.353 s, authored local gain -4.5 dB. |
+| `audio/sfx/ui/hover.wav` | `SFX/UIHOVER.wav` | `0a33872ad6512eac29043f86292019f28e00418702978f817c3495d02bca6778` | same | Preserved original; not played by the title menu. |
+| `audio/sfx/ui/hover_soft.wav` | Derived from `SFX/UIHOVER.wav` | Original above | `fa711f542b102bd57ae2399fa017863ff393dfaa407ba4d15ad2346c1def89f3` | Production hover: 180ms, 1.8kHz two-pole low-pass, 12ms attack/90ms release, -15dB asset trim; 250ms repeat/confirmation guard. SFX bus still controls volume/mute. |
 | `audio/sfx/ui/click.wav` | `SFX/UI CLICK.wav` | `fa4ba4bd62e94c085dc790c100d16cad6ce3dd72b5bf8ed530aedfc281bd4922` | same | Main-menu confirm/click only. |
 | `audio/sfx/ui/start_game.wav` | `SFX/UI START GAME.wav` | `e3bd6c7e8e5b8587b8be2ad318bed5518ce4bb84fbc6477253af13e626e5a5ab` | same | Successful run start only. |
 
@@ -50,6 +53,7 @@ ordinary/heavy impact, miss, dodge, and Shockwave feedback through one
 four-player overlap pool. Their final mix balance must still be approved
 against Phoenix's music in a browser listening pass. No delivered menu sound
 is repurposed as combat feedback. Phoenix's labelled Octopus Final Boss
-`INTRO`/`LOOP` pair exists in the canonical ZIP and is recorded above, but is
-deliberately absent from the runtime because the later route and boss gameplay
-are out of scope.
+`INTRO`/`LOOP` pair is now admitted for the opening Cordys reveal.
+`UnderwaterAudioManager` owns the no-crossfade handoff and applies local
+authored trims without changing the user's Music volume. The old Final Boss
+DEMO MP3 remains reference-only.

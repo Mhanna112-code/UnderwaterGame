@@ -1,0 +1,26 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -3
+ANGLER BUTTON|["Staff_Diver", "Scuba Stabbing", 1, 2]|HP=2|log=Scuba Stabbing opens a wound for 1.  •  Bleed 2 (3 turns)
+ANGLER BUTTON|["Staff_Diver", "Flash Blast", 0, 0]|HP=3|log=Flash Blast: Angler affected.
+ANGLER BUTTON|["Staff_Diver", "Multiple Knee Combo", 1, 0]|HP=2|log=Multiple Knee Combo: Angler -1.
+ANGLER BUTTON|["Staff_Diver", "Axe Kick", 3, 0]|HP=0|log=The Angler falls. The water goes still.
+ANGLER BUTTON|["Prototype_1(1910)", "Precise Tap", 3, 0]|HP=0|log=The Angler falls. The water goes still.
+ANGLER BUTTON|["Prototype_1(1910)", "Weaken", 0, 0]|HP=3|log=This enemy's Defense can't be lowered any further!
+ANGLER BUTTON|["Prototype_1(1910)", "Slow", 0, 0]|HP=3|log=This enemy's Agility can't be lowered any further!
+ANGLER BUTTON|["Prototype_V(1922)", "Guard Bash", 3, 0]|HP=0|log=The Angler falls. The water goes still.
+ANGLER BUTTON|["Prototype_V(1922)", "Heavy Kick", 0, 0]|HP=3|log=You drive a heavy kick home - Angler evades!
+ANGLER BUTTON|["Prototype_V(1922)", "Crushing Haymaker", 0, 0]|HP=3|log=You wind up and crush it - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 0]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -2
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 3]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -2
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 2, 9]|HP=3|log=Electric Touch shocks the target for 0.  •  EVA -2
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 0]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -5
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 3]|HP=2|log=Electric Touch shocks the target for 1.  •  EVA -5
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 5, 9]|HP=3|log=Electric Touch shocks the target for 0.  •  EVA -5
+PROLOGUE ANGLER: clean

@@ -1,0 +1,353 @@
+{
+  "guided": 5,
+  "victorySeen": true,
+  "victoryContinued": true,
+  "worldSeen": true,
+  "checkpoint": {
+    "active": 0,
+    "consumed_world_ids": [],
+    "divers": [
+      {
+        "equipped_spells": [],
+        "known_spells": [],
+        "position": [
+          0,
+          2,
+          10
+        ],
+        "stats": {
+          "accuracy": 3,
+          "agility": 3,
+          "defense": 0,
+          "evasion": 3,
+          "hp": 10,
+          "hp_max": 10,
+          "level": 1,
+          "oxygen": 100,
+          "oxygen_max": 100,
+          "spell_points": 0,
+          "strength": 1,
+          "xp": 0,
+          "xp_to_next": 30
+        }
+      },
+      {
+        "equipped_spells": [],
+        "known_spells": [],
+        "position": [
+          -3.59999990463257,
+          2.20000004768372,
+          -3
+        ],
+        "stats": {
+          "accuracy": 2,
+          "agility": 2,
+          "defense": 2,
+          "evasion": 2,
+          "hp": 10,
+          "hp_max": 10,
+          "level": 1,
+          "oxygen": 100,
+          "oxygen_max": 100,
+          "spell_points": 0,
+          "strength": 2,
+          "xp": 0,
+          "xp_to_next": 30
+        }
+      },
+      {
+        "equipped_spells": [],
+        "known_spells": [],
+        "position": [
+          3.59999990463257,
+          2.40000009536743,
+          -3
+        ],
+        "stats": {
+          "accuracy": 1,
+          "agility": 1,
+          "defense": 4,
+          "evasion": 0,
+          "hp": 10,
+          "hp_max": 10,
+          "level": 1,
+          "oxygen": 100,
+          "oxygen_max": 100,
+          "spell_points": 0,
+          "strength": 4,
+          "xp": 0,
+          "xp_to_next": 30
+        }
+      }
+    ],
+    "inventory": {},
+    "key_items": [],
+    "pending_world_drops": {},
+    "revealed_key_items": [],
+    "route_state": {
+      "bomb_bot_state": "available",
+      "deep_warning_seen": false,
+      "encounter_source": "random",
+      "lab_state": "locked",
+      "maze_door_state": "locked",
+      "objective_id": "",
+      "octopus_state": "unavailable",
+      "opening_video_seen": true,
+      "prologue_complete": true,
+      "sword_slayer_state": "available",
+      "tethys_state": "locked",
+      "tutorial_complete": true,
+      "zone_id": "shallows"
+    },
+    "save_point_tutorial_seen": false
+  },
+  "steps": [
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999880170772,
+      "y": 498.411556782094
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 107.00000087426963,
+      "y": 498.41155652079
+    },
+    {
+      "kind": "guided-move",
+      "label": "Electric Touch",
+      "x": 167.00000137499993,
+      "y": 660.220518793013
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999909949105,
+      "y": 620.2676888003814
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999910057663,
+      "y": 620.2676888081766
+    },
+    {
+      "kind": "normal-target",
+      "label": "Angler",
+      "x": 164.9999995,
+      "y": 784.0742922730426
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999880000006,
+      "y": 608.2818397225236
+    },
+    {
+      "kind": "guided-target",
+      "label": "Angler",
+      "x": 165.00000009955312,
+      "y": 784.0742926328652
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 107.0000008748251,
+      "y": 682.1945753947758
+    },
+    {
+      "kind": "keyboard-caption"
+    },
+    {
+      "kind": "guided-move",
+      "label": "Precise Tap",
+      "x": 166.0000004,
+      "y": 734.1332544423053
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999910057663,
+      "y": 620.2676888081766
+    },
+    {
+      "kind": "guided-target",
+      "label": "Angler",
+      "x": 165.00000010000002,
+      "y": 785.0731134073113
+    },
+    {
+      "kind": "guided-move",
+      "label": "Crushing Haymaker",
+      "x": 789.99999995,
+      "y": 723.1462261653892
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999880023981,
+      "y": 620.2676887819606
+    },
+    {
+      "kind": "guided-target",
+      "label": "Angler",
+      "x": 165.00000010000002,
+      "y": 785.0731134073113
+    },
+    {
+      "kind": "keyboard-caption"
+    },
+    {
+      "kind": "guided-move",
+      "label": "Weaken",
+      "x": 475.99999915101046,
+      "y": 723.1462264799547
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999880000006,
+      "y": 620.2676887791274
+    },
+    {
+      "kind": "guided-target",
+      "label": "Angler",
+      "x": 165.00000012499999,
+      "y": 785.0731134572522
+    },
+    {
+      "kind": "guided-move",
+      "label": "Flash Blast",
+      "x": 789.9999991588614,
+      "y": 660.2205186935283
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999910062388,
+      "y": 620.2676888085049
+    },
+    {
+      "kind": "guided-target",
+      "label": "All enemies",
+      "x": 166.00000076666663,
+      "y": 783.075471598231
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 107.00000087583811,
+      "y": 682.1945754072952
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 105.99999880000006,
+      "y": 682.1945756381683
+    },
+    {
+      "kind": "attack",
+      "label": "Attack",
+      "x": 167.00000054060231,
+      "y": 605.2853772827568
+    },
+    {
+      "kind": "normal-move",
+      "label": "Guard Bash",
+      "x": 167.0000003,
+      "y": 597.2948112925401
+    },
+    {
+      "kind": "normal-target",
+      "label": "Angler",
+      "x": 165.99999940000004,
+      "y": 723.1462262153302
+    },
+    {
+      "kind": "keyboard-caption"
+    },
+    {
+      "kind": "keyboard-caption"
+    },
+    {
+      "kind": "attack",
+      "label": "Attack",
+      "x": 166.99999965442566,
+      "y": 606.2841982820596
+    },
+    {
+      "kind": "normal-move",
+      "label": "Electric Touch",
+      "x": 166.99999816666673,
+      "y": 597.2948113873427
+    },
+    {
+      "kind": "normal-target",
+      "label": "Angler",
+      "x": 165.00000045,
+      "y": 724.1450470532823
+    },
+    {
+      "kind": "attack",
+      "label": "Attack",
+      "x": 166.99999956803214,
+      "y": 606.2841983242727
+    },
+    {
+      "kind": "normal-move",
+      "label": "Precise Tap",
+      "x": 164.99999925000003,
+      "y": 611.2783019533805
+    },
+    {
+      "kind": "normal-target",
+      "label": "Angler",
+      "x": 165.00000045,
+      "y": 724.1450470532823
+    },
+    {
+      "kind": "continue",
+      "label": "Continue",
+      "x": 106.0000009003142,
+      "y": 792.0648584195211
+    },
+    {
+      "kind": "onboarding",
+      "label": "Next",
+      "x": 821.9999996399999,
+      "y": 562.3360847258728
+    },
+    {
+      "kind": "onboarding",
+      "label": "Next",
+      "x": 822.0000003333332,
+      "y": 577.318396126533
+    },
+    {
+      "kind": "onboarding",
+      "label": "Next",
+      "x": 821.9999996399999,
+      "y": 564.3337262353066
+    },
+    {
+      "kind": "onboarding",
+      "label": "Next",
+      "x": 821.9999996399999,
+      "y": 562.3360847258728
+    },
+    {
+      "kind": "onboarding",
+      "label": "Next",
+      "x": 821.9999996399999,
+      "y": 562.3360847258728
+    },
+    {
+      "kind": "onboarding",
+      "label": "Close",
+      "x": 817.9999996333333,
+      "y": 563.3349057602595
+    }
+  ],
+  "errors": []
+}

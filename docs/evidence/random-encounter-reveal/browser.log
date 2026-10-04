@@ -1,0 +1,13 @@
+Browser launched
+Export page loaded
+Requested ANGLE backend: metal
+Observed WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+Error: VICT-002 victory/suspense bridge is abrupt or overlong: 6563

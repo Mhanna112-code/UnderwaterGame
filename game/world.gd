@@ -32,6 +32,7 @@ var _intro_active := false
 const INTRO_ARRIVAL_DIST := 2.5
 var _first_encounter_started := false
 var _transitioning_to_encounter := false
+var random_encounter_reveal: RandomEncounterReveal
 # Set once the choreographed tutorial fight (see battle.gd's
 # tutorial_encounter) actually finishes - _on_battle_finished() flips this.
 # Gates the save point (_toggle_save_menu()/_update_save_point_prompt())
@@ -91,6 +92,7 @@ var mouse_look := false
 # dev/test-only flag): on by default, so ordinary play is unaffected unless
 # someone actually presses R.
 var random_encounters_enabled := true
+var escape_encounter_hint: PanelContainer
 var _t := 0.0
 
 # First-person aim mode for aimed abilities (grapple): E enters it instead
@@ -126,6 +128,10 @@ const SiteScript := preload("res://game/site.gd")
 const DeepZoneLayoutScript := preload("res://content/deep_zone_layout.gd")
 const DeepZoneEnvironmentScript := preload("res://game/deep_zone_environment.gd")
 const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
+const OpeningVideoScript := preload("res://game/opening_video.gd")
+const OpeningTriggerScript := preload("res://game/opening_prologue_trigger.gd")
+const PrologueRecoveryScript := preload("res://game/prologue_recovery.gd")
+const PrologueCinematicScript := preload("res://game/prologue_cinematic.gd")
 
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
@@ -209,11 +215,11 @@ const SLOT_SCENE := preload("res://slot.tscn")
 # an autoload singleton (project.godot's [autoload] section), reached
 # directly by its global name in _show_ability_popups() below.
 var _diver_slots: Array = []
-# Shown once on a genuinely new save (_on_title_new_game()) instead of the
-# tutorial book auto-opening there - see IntroCrawl's own header comment.
-# The tutorial book itself is untouched: F1 (this file's own
-# _unhandled_input()) still reopens it any time, same as before.
-var intro_crawl: IntroCrawl
+# The first-run opening and the later lab cutscene deliberately have separate
+# owners and policies even while both temporarily point to the same Mermaid
+# media bytes. This reference exists so the normal title path and verification
+# can observe one active owner without searching the scene tree.
+var opening_video: CanvasLayer
 var _special_encounter_item := ""
 var _special_encounter_diver: Diver
 var _special_encounter_pre_hp := 0
@@ -257,6 +263,9 @@ var _current_slot := -1
 # signal; World only includes it in the same atomic checkpoint dictionary as
 # party, inventory, and mutable geometry.
 var route_state := RouteState.new()
+var _prologue_trigger := OpeningTriggerScript.new()
+var _prologue_spawn_delay := 0.0
+var _prologue_cinematic: CanvasLayer
 var deep_zone_layout := DeepZoneLayoutScript.new()
 var deep_zone_environment: DeepZoneEnvironment
 var _lab_video_cutscene: LabVideoCutscene
@@ -294,6 +303,7 @@ func _serialize_state() -> Dictionary:
 		var s: CombatantStats = d.stats
 		divers_data.append({
 			"position": [d.position.x, d.position.y, d.position.z],
+			"sonar_active": d.sonar_active,
 			"known_spells": (d.known_spells as Array).duplicate(),
 			"equipped_spells": (d.equipped_spells as Array).duplicate(),
 			"stats": {
@@ -307,6 +317,7 @@ func _serialize_state() -> Dictionary:
 		})
 	return {
 		"active": active,
+		"random_encounters_enabled": random_encounters_enabled,
 		"inventory": inventory.duplicate(),
 		"pending_world_drops": pending_world_drops.duplicate(true),
 		"key_items": key_items.duplicate(),
@@ -317,21 +328,71 @@ func _serialize_state() -> Dictionary:
 		"divers": divers_data,
 	}
 
-func _write_save() -> void:
+func _write_save() -> Error:
 	if _current_slot < 0:
-		return
-	SaveManager.write_slot(_current_slot, _serialize_state())
+		return ERR_UNCONFIGURED
+	return SaveManager.write_slot(_current_slot, _serialize_state())
 
 # Bails out and does nothing rather than a half-restore if the save data
 # doesn't actually match divers[] one-to-one (a missing/corrupt slot reads
 # back as {} from SaveManager, whose "divers" key then defaults to []) -
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
-func _load_save() -> void:
+func _load_save() -> bool:
 	var data: Dictionary = SaveManager.read_slot(_current_slot)
-	var divers_data: Array = data.get("divers", [])
-	if divers_data.size() != divers.size():
-		return
+	var raw_divers: Variant = data.get("divers", [])
+	if not raw_divers is Array or raw_divers.size() != divers.size():
+		return false
+	# Validate the complete shape before mutating any live actor. Invalid IO
+	# must not partly restore the party then fall through as a fresh opening.
+	if not data.get("route_state", {}) is Dictionary:
+		return false
+	var raw_route := data.get("route_state", {}) as Dictionary
+	if data.has("random_encounters_enabled") and not data["random_encounters_enabled"] is bool:
+		return false
+	for field in ["opening_video_seen", "prologue_complete", "tutorial_complete", "deep_warning_seen"]:
+		if raw_route.has(field) and not raw_route[field] is bool:
+			return false
+	var raw_active: Variant = data.get("active", 0)
+	if not typeof(raw_active) in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(raw_active)) or float(raw_active) != floorf(float(raw_active)) or int(raw_active) < 0 or int(raw_active) >= divers.size():
+		return false
+	for field in ["key_items", "revealed_key_items", "consumed_world_ids"]:
+		var values: Variant = data.get(field, [])
+		if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
+			return false
+	for field in ["inventory", "pending_world_drops"]:
+		if not data.get(field, {}) is Dictionary:
+			return false
+	for drop_value in (data.get("pending_world_drops", {}) as Dictionary).values():
+		if not drop_value is Dictionary:
+			return false
+		var drop := drop_value as Dictionary
+		var position_value: Variant = drop.get("position", [])
+		if not drop.get("item", "") is String or not position_value is Array or position_value.size() != 3 or position_value.any(func(value: Variant) -> bool: return not typeof(value) in [TYPE_INT, TYPE_FLOAT]):
+			return false
+	for snap_value in raw_divers:
+		if not snap_value is Dictionary:
+			return false
+		var snap := snap_value as Dictionary
+		if snap.has("sonar_active") and not snap["sonar_active"] is bool:
+			return false
+		var position_value: Variant = snap.get("position", [0, 2, 0])
+		if not position_value is Array or position_value.size() != 3 or position_value.any(func(value: Variant) -> bool: return not typeof(value) in [TYPE_INT, TYPE_FLOAT]):
+			return false
+		if not snap.get("stats", {}) is Dictionary:
+			return false
+		var raw_stats := snap.get("stats", {}) as Dictionary
+		for field in ["hp_max", "strength", "defense", "agility", "accuracy", "evasion", "oxygen_max", "level", "xp", "xp_to_next", "spell_points", "hp", "oxygen"]:
+			if raw_stats.has(field) and (not typeof(raw_stats[field]) in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(raw_stats[field]))):
+				return false
+		for field in ["known_spells", "equipped_spells"]:
+			var values: Variant = snap.get(field, [])
+			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
+				return false
+	var divers_data := raw_divers as Array
+	_cancel_random_encounter_reveal()
+	if is_instance_valid(escape_encounter_hint):
+		escape_encounter_hint.dismiss()
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
 		var snap: Dictionary = divers_data[i]
@@ -372,6 +433,17 @@ func _load_save() -> void:
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
+	random_encounters_enabled = data.get("random_encounters_enabled", true)
+	for i in range(divers.size()):
+		var d := divers[i] as Diver
+		# Older completed checkpoints predate these settings. Migrate them
+		# to the new exploration default; explicit later Off choices survive.
+		var sonar_on: bool = divers_data[i].get("sonar_active", route_state.prologue_complete and d.passive_id == "sonar")
+		sonar_on = sonar_on and d.passive_id == "sonar" and d.stats.oxygen > 0.0
+		if d.sonar_active != sonar_on:
+			d.toggle_sonar() # initializes the drain clock and refuses empty O2
+	_first_encounter_done = route_state.prologue_complete
+	_first_encounter_started = route_state.tutorial_complete
 	_normalize_loaded_route_state()
 	_sync_deep_zone_blocker_staging()
 	_sync_lab_staging()
@@ -396,6 +468,7 @@ func _load_save() -> void:
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
+	return true
 
 func _normalize_loaded_route_state() -> void:
 	# A movie decoder or live Battle is not a serializable checkpoint. Older or
@@ -429,6 +502,9 @@ func _audio_call(method: StringName) -> void:
 		owner.call(method)
 
 func _show_title_screen() -> void:
+	_cancel_random_encounter_reveal()
+	if is_instance_valid(escape_encounter_hint):
+		escape_encounter_hint.dismiss()
 	# The title owns the entire cold-launch surface. Keeping it on a separate
 	# layer lets the world HUD disappear as one unit instead of maintaining a
 	# growing list of labels/bars/minimap nodes to hide individually.
@@ -448,15 +524,14 @@ func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
 	_write_save()
 	title_screen.close()
-	# This is the draft narration under review. It intentionally plays before
-	# the HUD/world are enabled, so Glassgoat can approve or replace it from
-	# the normal New Game path without a title/HUD overlap.
-	if not skip_intro_for_test:
-		intro_crawl.open()
-		await intro_crawl.finished
+	await _play_opening_if_needed()
+	_begin_quiet_spawn_if_needed()
 	$HUD.visible = true
 	get_tree().paused = false
-	_audio_call(&"play_exploration_music")
+	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+	var audio := get_node_or_null("/root/GameAudio")
+	if audio != null:
+		audio.fade_music_in(0.35)
 	# Covers the plain --skip-tutorial/?skip_tutorial=1 route: skip_tutorial_
 	# for_test was already true before _ready() ever rendered the light beam
 	# (see the block right after _build_diver_slots()), so a player clicking
@@ -477,6 +552,12 @@ func _on_title_new_game(slot: int) -> void:
 # save/intro-crawl/HUD handling.
 func _on_title_skip_tutorial(slot: int = 0) -> void:
 	skip_tutorial_for_test = true
+	# This dedicated review entry bypasses the opening too. Normal New Game
+	# never calls it; do not confuse its skip with completing optional training.
+	route_state.opening_video_seen = true
+	route_state.prologue_complete = true
+	route_state.tutorial_complete = true
+	route_state.set_prologue_phase("complete")
 	# Otherwise _on_title_new_game() below still plays the full intro-crawl
 	# narrative cutscene first, same as an ordinary New Game - every other
 	# playtest button (Boss/Guardian/Special/Spell) jumps straight into
@@ -494,13 +575,214 @@ func _on_title_skip_tutorial(slot: int = 0) -> void:
 	_first_encounter_done = true
 	await _on_title_new_game(slot)
 
-func _on_title_load_game(slot: int) -> void:
+func _on_title_load_game(slot: int) -> bool:
+	_cancel_random_encounter_reveal()
 	_current_slot = slot
-	_load_save()
+	if not _load_save():
+		_current_slot = -1
+		$HUD.visible = false
+		get_tree().paused = true
+		title_screen.show_load_error("Could not load Slot %d. Choose another save or start a new game." % (slot + 1))
+		print("CHECKPOINT_LOAD_FAILED|slot=", slot)
+		return false
 	title_screen.close()
+	await _play_opening_if_needed()
+	_begin_quiet_spawn_if_needed()
+	$HUD.visible = true
+	get_tree().paused = false
+	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+	if route_state.prologue_complete:
+		_build_optional_training()
+	return true
+
+# The opening owns no campaign state. World owns the durable milestone and
+# writes it only after actual playback completes. A decoder fallback continues
+# this session safely but intentionally leaves the viewing milestone false.
+# Retry that cinematic only while the playable prologue is still incomplete;
+# completed recovery takes precedence and must never rewind normal play.
+func _play_opening_if_needed() -> bool:
+	if route_state.prologue_complete or route_state.opening_video_seen:
+		return true
+	if skip_intro_for_test:
+		route_state.opening_video_seen = true
+		route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_SPAWN_EXPLORATION)
+		_write_save()
+		return true
+	_audio_call(&"stop_music")
+	route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_OPENING_VIDEO)
+	opening_video = OpeningVideoScript.new() as CanvasLayer
+	opening_video.show_opening_title = true
+	opening_video.handoff_started.connect(func() -> void:
+		route_state.set_prologue_phase("opening_handoff")
+		# Prepare the HUD behind the opaque title so the final reveal includes
+		# controls. World physics stays paused until completed below.
+		_camera_look_override = null
+		return_camera_to_player()
+		# Settle the existing chase framing before revealing it, not on the
+		# first unpaused frame (which otherwise visibly zooms after the fade).
+		_move_camera(1.0)
+		_update_hp_bar()
+		_update_oxygen_bar()
+		_update_active_cursor()
+		$HUD.visible = true
+	)
+	title_layer.add_child(opening_video)
+	var successful: bool = await opening_video.completed
+	opening_video = null
+	if successful:
+		route_state.opening_video_seen = true
+	route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_SPAWN_EXPLORATION)
+	_write_save()
+	return successful
+
+func _begin_quiet_spawn_if_needed() -> void:
+	if route_state.prologue_complete:
+		return
+	_intro_active = false
+	_camera_look_override = null
+	banner.text = ""
+	route_state.set_objective("")
+	route_state.set_prologue_phase("spawn_exploration")
+	_prologue_spawn_delay = 0.35
+	_prologue_trigger.reset((divers[active] as Diver).position)
+
+func _update_prologue_trigger(dt: float) -> void:
+	if route_state.prologue_complete or route_state.prologue_phase != "spawn_exploration" or battling:
+		return
+	if _prologue_spawn_delay > 0.0:
+		_prologue_spawn_delay = maxf(0.0, _prologue_spawn_delay - dt)
+		return
+	var swimming := _player_dir().length_squared() > 0.0 and not target_selector.selecting and not _transitioning_to_encounter
+	if _prologue_trigger.update((divers[active] as Diver).position, dt, swimming):
+		route_state.set_prologue_phase("angler")
+		route_state.set_encounter_source("prologue_angler")
+		_start_battle("", false, "angler", divers, false, false, "An Angler darts out of the murk.", true)
+
+func _on_prologue_angler_defeated() -> void:
+	if route_state.prologue_phase != "angler" or not is_instance_valid(battle) or not battle.prologue_angler_encounter:
+		return
+	route_state.set_prologue_phase("angler_victory")
+	_audio_call(&"play_prologue_victory_music")
+	var bridge := preload("res://game/prologue_victory_bridge.gd").new()
+	bridge.battlefield_texture = battle.get_battlefield_texture()
+	bridge.beat_changed.connect(func(beat: String) -> void:
+		match beat:
+			"notice":
+				route_state.set_prologue_phase("octopus_notice")
+				_audio_call(&"fade_music_out")
+			"omen":
+				route_state.set_prologue_phase("octopus_omen")
+	)
+	title_layer.add_child(bridge)
+	await bridge.completed
+	# Music has already faded to silence during the notice. Retire its owner
+	# explicitly before the movie starts, even if a device's audio thread lags.
+	_audio_call(&"stop_music")
+	route_state.set_encounter_source("prologue_octopus")
+	route_state.set_prologue_phase("octopus_introduction")
+	_prologue_cinematic = PrologueCinematicScript.new() as CanvasLayer
+	title_layer.add_child(_prologue_cinematic)
+	await _prologue_cinematic.introduction_finished
+	get_tree().paused = false
+	route_state.set_prologue_phase("octopus_reveal")
+	battle.reveal_prologue_octopus()
+
+func _report_prologue_phase(phase: String) -> void:
+	print("PROLOGUE_PHASE|" + phase)
+
+func _on_prologue_phase_changed(phase: String) -> void:
+	route_state.set_prologue_phase(phase)
+
+func _recover_from_prologue() -> void:
+	_audio_call(&"stop_music")
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	mouse_look = false
+	# Hold deliberate silence while the defeated formation remains visible.
+	await get_tree().create_timer(1.0).timeout
+	if is_instance_valid(_prologue_cinematic) and not _prologue_cinematic.is_queued_for_deletion():
+		route_state.set_prologue_phase("octopus_aftermath")
+		_prologue_cinematic.resume_aftermath()
+		await _prologue_cinematic.completed
+	_prologue_cinematic = null
+	route_state.set_prologue_phase("recovery")
+	var recovery := PrologueRecoveryScript.new() as PrologueRecovery
+	title_layer.add_child(recovery)
+	for i in range(divers.size()):
+		var diver := divers[i] as Diver
+		diver.position = CAST[i].at as Vector3
+		diver.velocity = Vector3.ZERO
+		diver.stats.fill()
+		if diver.passive_id == "sonar" and not diver.sonar_active:
+			diver.toggle_sonar()
+	active = 0
+	yaw = 0.0
+	pitch = -0.16
+	_camera_look_override = null
+	_intro_active = false
+	_first_encounter_done = true
+	_first_encounter_started = false
+	route_state.prologue_complete = true
+	route_state.set_encounter_source("random")
+	random_encounters_enabled = true
+	route_state.set_objective("")
+	banner.text = ""
+	_banner_timer = 0.0
+	recovery.show_saving()
+	var checkpoint_error := _write_save()
+	if checkpoint_error == OK:
+		checkpoint_error = await BrowserCheckpoint.confirm_slot(_current_slot)
+	while checkpoint_error != OK:
+		# Ordinary play must never be released on a false checkpoint promise.
+		# Retain this restored session, explain the failure and retry the exact
+		# active slot without replaying either movie or fight.
+		recovery.show_save_failure()
+		print("CHECKPOINT_SAVE_FAILED|slot=", _current_slot, "|error=", checkpoint_error)
+		await recovery.continued
+		recovery.show_saving()
+		checkpoint_error = _write_save()
+		if checkpoint_error == OK:
+			checkpoint_error = await BrowserCheckpoint.confirm_slot(_current_slot)
+	recovery.clear_save_failure()
+	# The save is already safe if the player closes while reading motivation.
+	await recovery.continued
+	recovery.queue_free()
+	if is_instance_valid(battle):
+		battle.queue_free()
+	battle = null
+	battling = false
+	route_state.set_prologue_phase("complete")
+	_build_optional_training()
+	_update_hud()
+	_update_hp_bar()
+	_update_oxygen_bar()
 	$HUD.visible = true
 	get_tree().paused = false
 	_audio_call(&"play_exploration_music")
+	var audio := get_node_or_null("/root/GameAudio")
+	if audio != null:
+		audio.fade_music_in(0.35)
+
+func _build_optional_training() -> void:
+	if not route_state.prologue_complete or route_state.tutorial_complete or is_instance_valid(light_beam):
+		return
+	# Use the existing training beam at its original clear-water position,
+	# ten metres from recovery spawn, with no compulsory arrow/camera lock.
+	render_light_beam()
+	light_beam.position = Vector3(0.0, 6.0, 10.0)
+	var label := Label3D.new()
+	label.name = "OptionalTrainingLabel"
+	label.text = "Optional Combat Training"
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 72
+	label.pixel_size = 0.01
+	label.modulate = Color("a6e6ff")
+	label.outline_size = 8
+	# The old y=4 label projected directly through Maxilani's head after
+	# recovery/Load. Put the optional affordance above the swimming silhouette.
+	label.position = Vector3(0.0, 1.2, 0.0)
+	label.no_depth_test = true
+	light_beam.add_child(label)
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -608,6 +890,8 @@ func _maze_playtest_requested() -> bool:
 	return false
 
 func _show_game_over() -> void:
+	escape_encounter_hint.dismiss()
+	print("CHECKPOINT_GAME_OVER|slot=", _current_slot, "|complete=", route_state.prologue_complete)
 	# Defeat owns the whole screen just like cold launch. The controls, active
 	# diver label, bars, minimap and any announcement describe a playable world
 	# and become misleading noise once that world has been paused.
@@ -637,6 +921,7 @@ var _lock_plates: Array = []
 var _doors: Array = []
 var _puzzle_goal: Waypoint
 var _puzzle_solved := false
+var _puzzle_hint_bounds := AABB()
 
 # Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
 # revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
@@ -712,6 +997,9 @@ var scripted_rise := 0.0
 var _active_cursor: MeshInstance3D
 
 func _ready() -> void:
+	# Read-only trace synchronizes exported playtests to real gameplay without
+	# query shortcuts or commands that mutate state.
+	route_state.phase_changed.connect(_report_prologue_phase)
 	cam = $Camera3D
 	hud = $HUD/Controls
 	# MODIFIED (added): none of $HUD's own children ever set mouse_filter,
@@ -742,6 +1030,8 @@ func _ready() -> void:
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
 	_build_route_objective_hud()
+	escape_encounter_hint = preload("res://game/encounter_escape_hint.gd").new()
+	$HUD.add_child(escape_encounter_hint)
 	route_state.objective_changed.connect(_on_route_objective_changed)
 	_on_route_objective_changed(route_state.objective_id)
 
@@ -803,17 +1093,10 @@ func _ready() -> void:
 		# actually finishing the real tutorial fight.
 		_first_encounter_started = true
 		_first_encounter_done = true
-	else:
-		render_light_beam()
-		intro_arrow()
-		_show_intro_text()
-		_intro_active = true
-		# Holds the camera on the light beam from the moment the world loads
-		# until the active diver actually reaches it - see this class's own
-		# header comment on _intro_active. Released the instant the diver
-		# arrives (_start_first_encounter()) so the tutorial battle that follows
-		# isn't fighting a locked camera.
-		_camera_look_override = light_beam
+		route_state.opening_video_seen = true
+		route_state.prologue_complete = true
+		route_state.tutorial_complete = true
+		route_state.set_prologue_phase("complete")
 	_update_hud()
 
 	# Do not parent the title to HUD: _show_title_screen() deliberately hides
@@ -858,9 +1141,6 @@ func _ready() -> void:
 	if _tutorial_loss_playtest_requested():
 		call_deferred("_show_tutorial_loss_playtest")
 
-	intro_crawl = IntroCrawl.new()
-	title_layer.add_child(intro_crawl)
-
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
 	game_over_screen.title_chosen.connect(_on_game_over_title)
@@ -872,13 +1152,10 @@ func _ready() -> void:
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
 	# still opens the title screen exactly as before.
 	if _restart_slot >= 0:
-		_current_slot = _restart_slot
+		var restart_slot := _restart_slot
 		_restart_slot = -1
-		_load_save()
-		title_screen.close()
-		$HUD.visible = true
-		get_tree().paused = false
-		_announce("You wake back at your last save.")
+		if await _on_title_load_game(restart_slot):
+			_announce("You wake back at your last save.")
 	else:
 		_show_title_screen()
 	if _maze_playtest_requested():
@@ -1104,6 +1381,7 @@ func _on_world_object_consumed(id: String) -> void:
 	if not consumed_world_ids.has(id):
 		consumed_world_ids.append(id)
 	_cracked_walls.erase(id)
+	_refresh_world_guidance()
 
 func _on_item_orb_collected(item_id: String, _d: Diver, drop_id: String) -> void:
 	pending_world_drops.erase(drop_id)
@@ -1307,6 +1585,12 @@ func _build_highway() -> void:
 
 	var length := END_X - START_X
 	var center_x := (START_X + END_X) * 0.5
+	# Contextual guidance follows this visible room, not a world-spanning
+	# collider or a saved objective. Small margins count contact/approach.
+	_puzzle_hint_bounds = AABB(
+		Vector3(START_X - 3.0, 0.0, LANE_Z - LANE_HALF_WIDTH - 2.0),
+		Vector3(length + 6.0, WALL_HEIGHT + 2.0, LANE_HALF_WIDTH * 2.0 + 4.0)
+	)
 
 	# 0. A save point before the corridor even starts - the first place in
 	# the game save menu becomes available at all (see
@@ -1315,6 +1599,9 @@ func _build_highway() -> void:
 	# "rest here before attempting the gate," not "partway through it."
 	var save_point := SavePoint.new()
 	save_point.position = Vector3(START_X - 5.0, 2.0, LANE_Z)
+	# Contact volume is centred at swimming height; its visual footprint belongs
+	# on the floor, not across the player's torso at that same two-metre height.
+	save_point.footprint_offset_y = -1.8
 	add_child(save_point)
 	_save_points.append(save_point)
 
@@ -1509,7 +1796,7 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 		})
 
 func _unhandled_input(e: InputEvent) -> void:
-	if battling:
+	if battling or _transitioning_to_encounter:
 		return
 
 	# Aim mode intercepts clicks before the normal "first click captures
@@ -1579,7 +1866,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var k := (e as InputEventKey).keycode
 		if k == KEY_TAB:
-			if not aiming and not target_selector.selecting and not _intro_active:
+			if route_state.prologue_complete and not aiming and not target_selector.selecting and not _intro_active:
 				active = (active + 1) % divers.size()
 				_update_hud()
 		elif k == KEY_E:
@@ -1598,7 +1885,7 @@ func _unhandled_input(e: InputEvent) -> void:
 # Swap goes through TargetSelector's cycle-through-candidates flow instead
 # of either - see target_selector.gd.
 func _start_ability() -> void:
-	if aiming or target_selector.selecting:
+	if not route_state.prologue_complete or aiming or target_selector.selecting:
 		return
 	var d: Diver = divers[active]
 	if not d.can_use_ability() or _intro_active:
@@ -1634,7 +1921,7 @@ func _start_ability() -> void:
 # the goal is a clean first walk with nothing else competing for
 # attention, not a wall of "can't do that yet" banners.
 func _toggle_sonar() -> void:
-	if not _first_encounter_done:
+	if not route_state.prologue_complete:
 		return
 	var d: Diver = divers[active]
 	if d.passive_id != "sonar":
@@ -1658,6 +1945,7 @@ func _toggle_sonar() -> void:
 # tutorial fight as after it.
 func _toggle_random_encounters() -> void:
 	random_encounters_enabled = not random_encounters_enabled
+	escape_encounter_hint.set_encounters_enabled(random_encounters_enabled)
 	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
 	_update_hud()   # refreshes the "R: Encounters (On/Off)" hint immediately
 
@@ -1671,7 +1959,7 @@ func _toggle_save_menu() -> void:
 		return
 	if aiming or target_selector.selecting:
 		return
-	if not _first_encounter_done:
+	if not route_state.prologue_complete:
 		_announce("Finish your first encounter before saving.")
 		return
 	# Pressing P off a save point used to just silently do nothing - which
@@ -1691,8 +1979,8 @@ func _diver_on_save_point(d: Diver) -> bool:
 	return false
 
 # world.gd owns showing the confirmation and closing the menu - the menu
-# itself only ever emits the request, it doesn't know whether saving
-# "worked" since there's nothing real to fail yet (see save_point_menu.gd).
+# itself only emits the request; World checks the persistent write before
+# promising success or changing the run's active checkpoint.
 #
 # A save-point visit restores HP/O2 on contact; this handler writes a real
 # save file (_write_save()) to whichever slot this run is
@@ -1715,8 +2003,14 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 	# list. Make the chosen slot this run's active checkpoint too, so future
 	# save-point visits and "Restart from Save Point" continue from the same
 	# destination rather than silently returning to the slot New Game chose.
+	var previous_slot := _current_slot
 	_current_slot = slot
-	_write_save()
+	var save_error := _write_save()
+	if save_error != OK:
+		_current_slot = previous_slot
+		_announce("Could not save. Your previous checkpoint is unchanged. Please retry.")
+		save_point_menu.close()
+		return
 	_announce("Progress saved to Slot %d." % (slot + 1))
 	save_point_menu.close()
 
@@ -1727,7 +2021,7 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 # fixed few seconds - but that also means it only ever clears its own
 # text, never a real announcement's, via _showing_save_prompt.
 func _update_save_point_prompt() -> void:
-	var on_point := _diver_on_save_point(divers[active]) and _first_encounter_done
+	var on_point := _diver_on_save_point(divers[active]) and route_state.prologue_complete
 	if on_point and not _save_point_contact_active:
 		_save_point_contact_active = true
 		_restore_party_at_save_point()
@@ -1756,6 +2050,7 @@ func _update_save_point_prompt() -> void:
 		_showing_save_prompt = false
 
 func _restore_party_at_save_point() -> void:
+	escape_encounter_hint.dismiss()
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
@@ -1788,7 +2083,7 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
-	if battling or inventory_menu.visible:
+	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
 	# browser, and a build nobody can steer is a build nobody plays.
@@ -1815,6 +2110,11 @@ func _physics_process(dt: float) -> void:
 		# it for the diver's actual position.
 		if i == active and not target_selector.selecting and not _transitioning_to_encounter:
 			d.swim(_player_dir(), _player_rise(), dt)
+			# The distance roll can pause the tree inside swim(). Do not continue
+			# this already-running frame and move the camera or trigger a second
+			# route encounter after the preview has measured its placement.
+			if is_instance_valid(random_encounter_reveal):
+				return
 		else:
 			# Zero input, not skipped entirely - swim() still drains
 			# velocity to a stop and keeps bob/bubble animation ticking,
@@ -1822,25 +2122,29 @@ func _physics_process(dt: float) -> void:
 			# TAB away from (mid-gap-crossing, standing on a lock plate)
 			# now stays exactly where you left it instead of drifting off.
 			d.swim(Vector3.ZERO, 0.0, dt)
-	_try_trigger_item_site(divers[active] as Diver)
 	_move_camera(dt)
 	_update_aim_marker()
 	_update_hp_bar()
 	_update_oxygen_bar()
 	_update_active_cursor()
 	_update_banner(dt)
+	if not route_state.prologue_complete:
+		_update_prologue_trigger(dt)
+		return
+	_try_trigger_item_site(divers[active] as Diver)
 	_update_save_point_prompt()
 	_check_gap_puzzle()
 	_update_wall_visibility()
 	_update_intro_sequence()
 	_update_route_zone()
+	_refresh_world_guidance()
 	_update_deep_zone_visuals()
 	_update_deep_zone_blockers()
 	_update_lab_route()
 	_update_maze_transition()
 
 func _update_route_zone() -> void:
-	if not _first_encounter_done or divers.is_empty():
+	if not route_state.prologue_complete or divers.is_empty():
 		return
 	var physical_zone: String = deep_zone_layout.zone_for_position((divers[active] as Diver).global_position)
 	if physical_zone == route_state.zone_id:
@@ -1881,7 +2185,7 @@ func _update_deep_zone_visuals() -> void:
 # keeping Bomb Bot alone here prevents an unimplemented id falling back to an
 # Angler if a player swims ahead during this commit.
 func _update_deep_zone_blockers() -> void:
-	if battling or divers.is_empty() or not _first_encounter_done:
+	if battling or divers.is_empty() or not route_state.prologue_complete:
 		return
 	var diver := divers[active] as Diver
 	var points: Dictionary = deep_zone_layout.route_points()
@@ -1943,7 +2247,7 @@ func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
 # point. A state latch is more reliable than a one-frame Area signal and makes
 # remaining inside the radius harmless after the cutscene has started.
 func _update_lab_route() -> void:
-	if battling or divers.is_empty() or not _first_encounter_done:
+	if battling or divers.is_empty() or not route_state.prologue_complete:
 		return
 	if route_state.lab_state != "available":
 		return
@@ -1987,7 +2291,7 @@ func _sync_lab_staging() -> void:
 # It does not import or wait for Marc's unfinished door/maze branch; the blue
 # landmark is the isolated boundary where a later maze revision can be swapped.
 func _update_maze_transition() -> void:
-	if _maze_transition_started or battling or divers.is_empty() or not _first_encounter_done:
+	if _maze_transition_started or battling or divers.is_empty() or not route_state.prologue_complete:
 		return
 	if route_state.maze_door_state != "available":
 		return
@@ -2027,19 +2331,24 @@ func _build_deep_zone_blocker_staging() -> void:
 		# These are visible guardians, not waypoint icons. Their source rigs use
 		# large authored offsets, so a guessed Y value can put every rendered
 		# mesh below the seafloor even while the actor node itself looks valid.
-		# Place first, measure the real transformed meshes, then floor-align.
+		# Place first, measure the real transformed meshes, then hover above the
+		# floor and the approaching diver's silhouette.
 		var presentation_scale := 1.5 if blocker_id == "bomb_bot" else 1.6
-		# Stand on the player's side of the field and slightly off the party's
-		# centre line. The field must not visually swallow the actor whose fight
-		# it represents.
-		actor.position = Vector3(point.x - 5.0, 0.0, point.z - 6.0)
+		# Stand on the player's side of the field, centered on its opening.
+		# Imported roots are offset: center actual bounds after facing, not just
+		# the Node3D, otherwise both guardians still look pushed to the left.
+		actor.position = Vector3(point.x - 5.0, 0.0, point.z)
 		actor.scale = Vector3.ONE * presentation_scale
 		add_child(actor)
 		actor.face_toward(Vector3(point.x - 10.0, 0.0, point.z))
 		actor.force_update_transform()
 		var actor_bounds := _route_actor_visible_bounds(actor)
 		if actor_bounds.size.length() > 0.01:
-			actor.position.y += 2.0 - actor_bounds.position.y
+			actor.position.x += point.x - 5.0 - actor_bounds.get_center().x
+			actor.position.z += point.z - actor_bounds.get_center().z
+			# Hover above the chase-camera diver's silhouette. Horizontal mesh
+			# centering alone hid the entire guard behind the player on approach.
+			actor.position.y += 5.0 - actor_bounds.position.y
 			actor.force_update_transform()
 		_route_blocker_world_actors[blocker_id] = actor
 		_route_blocker_gates[blocker_id] = _build_route_blocker_gate(blocker_id, point)
@@ -2143,9 +2452,7 @@ func _sync_deep_zone_blocker_staging() -> void:
 	if _route_blocker_world_actors.has("bomb_bot"):
 		(_route_blocker_world_actors.bomb_bot as Node3D).visible = route_state.bomb_bot_state == "available"
 	if _route_blocker_world_actors.has("sword_slayer"):
-		(_route_blocker_world_actors.sword_slayer as Node3D).visible = (
-			route_state.bomb_bot_state == "defeated" and route_state.sword_slayer_state == "available"
-		)
+		(_route_blocker_world_actors.sword_slayer as Node3D).visible = route_state.sword_slayer_state == "available"
 	for blocker_id in _route_blocker_gates:
 		var gate := _route_blocker_gates[blocker_id] as Dictionary
 		var state := route_state.bomb_bot_state if blocker_id == "bomb_bot" else route_state.sword_slayer_state
@@ -2176,9 +2483,9 @@ func _point_arrow_at(target_pos: Vector3) -> void:
 	_intro_arrow.look_at(target_pos, up)
 
 func _update_intro_sequence() -> void:
-	if not _intro_active or _first_encounter_started:
+	if not route_state.prologue_complete or route_state.tutorial_complete or _first_encounter_started:
 		return
-	if not is_instance_valid(light_beam) or not is_instance_valid(_intro_arrow):
+	if not is_instance_valid(light_beam):
 		_intro_active = false
 		return
 	_point_arrow_at(light_beam.global_position)
@@ -2191,13 +2498,15 @@ func _update_intro_sequence() -> void:
 		Vector2(light_beam.global_position.x, light_beam.global_position.z)
 	)
 	if horizontal_distance <= INTRO_ARRIVAL_DIST:
-		_intro_arrow.visible = false
+		if is_instance_valid(_intro_arrow):
+			_intro_arrow.visible = false
 		_start_first_encounter(d)
 
 func _start_first_encounter(d: Diver) -> void:
 	if _first_encounter_started:
 		return
 	_first_encounter_started = true
+	light_beam.visible = false
 	_transitioning_to_encounter = true
 	var target_pos := Vector3(light_beam.global_position.x, d.global_position.y, light_beam.global_position.z)
 	var tw := create_tween()
@@ -2676,7 +2985,7 @@ func _update_banner(dt: float) -> void:
 # same radius; leaving and re-entering can trigger a repeatable special
 # reward site again.
 func _try_trigger_item_site(d: Diver) -> bool:
-	if d != divers[active] or battling or _intro_active or _transitioning_to_encounter:
+	if not route_state.prologue_complete or d != divers[active] or battling or _intro_active or _transitioning_to_encounter:
 		return false
 	var found: Dictionary = {}
 	for entry_value in ItemGuardian.spots():
@@ -2713,13 +3022,47 @@ func _try_trigger_item_site(d: Diver) -> bool:
 # _physics_process() and here, since a movement roll may land on the same
 # frame the active diver crosses a site boundary.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active] or _intro_active or not random_encounters_enabled:
+	if not route_state.prologue_complete or battling or _transitioning_to_encounter or d != divers[active] or _intro_active or not random_encounters_enabled:
 		return
 	if _try_trigger_item_site(d):
 		return
 	if deep_zone_layout.zone_for_position(d.global_position) == "deep" and not deep_zone_layout.allows_random_encounter(d.global_position):
 		return
-	_start_battle()
+	_begin_random_encounter_reveal()
+
+func _begin_random_encounter_reveal() -> void:
+	var selected := Battle.select_ordinary_enemies((divers[0] as Diver).stats.level)
+	_transitioning_to_encounter = true
+	if aiming:
+		_cancel_aim()
+	if target_selector.selecting:
+		target_selector.cancel_selection()
+	random_encounter_reveal = RandomEncounterReveal.new()
+	var reveal := random_encounter_reveal
+	reveal.enemy_ids = selected
+	reveal.camera = cam
+	# Freeze world physics/status timers, not just movement input. Preview
+	# animations run ALWAYS; no HP/O2, preference or checkpoint is modified.
+	get_tree().paused = true
+	reveal.finished.connect(func() -> void:
+		if random_encounter_reveal != reveal:
+			return
+		_cancel_random_encounter_reveal()
+		route_state.set_encounter_source("random")
+		_start_battle("", false, "angler", [], false, false, "", false, selected)
+		print("RANDOM_COMBAT|enemies=", ",".join(selected))
+	, CONNECT_ONE_SHOT)
+	add_child(reveal)
+
+func _cancel_random_encounter_reveal() -> void:
+	if not is_instance_valid(random_encounter_reveal):
+		return
+	random_encounter_reveal.set_process(false)
+	random_encounter_reveal.restore_camera()
+	random_encounter_reveal.queue_free()
+	random_encounter_reveal = null
+	_transitioning_to_encounter = false
+	get_tree().paused = false
 
 # Skips the Enter/Not Now prompt and drops the player straight into the
 # minigame as Maxilani, narrated by battle.gd's own _first_fight_prompt()
@@ -2794,10 +3137,14 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # reward_item carries straight into _pending_reward_item - "" (the
 # default, what every ordinary random encounter passes) means an
 # unmodified fight with nothing riding on it, same as before this existed.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = []) -> void:
+	_cancel_random_encounter_reveal()
+	escape_encounter_hint.dismiss()
 	battling = true
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
+	elif route_state.encounter_source == "prologue_angler":
+		_audio_call(&"play_prologue_battle_music")
 	else:
 		_audio_call(&"play_battle_music")
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
@@ -2824,8 +3171,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		# the fight even started.
 		_announce("Defeat the enemy to gain a special reward item!")
 	else:
-		_announce("An angler fish emerges from the murk!")
+		_announce("Enemies emerge from the murk!" if revealed_enemy_ids.size() > 1 else "An enemy emerges from the murk!")
 	battle = Battle.new()
+	battle.ordinary_enemy_ids = revealed_enemy_ids.duplicate()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
 	battle.world = self
 	battle.boss_encounter = boss_encounter
@@ -2834,6 +3182,10 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_encounter = (reward_item != "" or authored_enemy) and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.encounter_source = route_state.encounter_source
+	battle.prologue_angler_encounter = route_state.encounter_source == "prologue_angler"
+	if battle.prologue_angler_encounter:
+		battle.prologue_angler_defeated.connect(_on_prologue_angler_defeated)
+		battle.prologue_phase_changed.connect(_on_prologue_phase_changed)
 	battle.tutorial_encounter = tutorial
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text
@@ -2842,6 +3194,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 
 
 func _on_battle_finished(result: String) -> void:
+	if result == "prologue_defeat" and battle.encounter_source == "prologue_octopus":
+		_recover_from_prologue()
+		return
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
 	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
@@ -2862,14 +3217,20 @@ func _on_battle_finished(result: String) -> void:
 		"lost":
 			if was_tutorial or was_special:
 				_audio_call(&"play_exploration_music")
-	if was_tutorial:
+	if was_tutorial and not was_special:
 		_first_encounter_done = true
+		if result in ["won", "skipped"]:
+			route_state.tutorial_complete = true
 		# Guided the walk-over and held the camera during it - once the
 		# tutorial fight is actually over (win or the softened loss), it's
 		# done its job and would just sit there as a permanent beam of light
 		# in the overworld otherwise.
-		if is_instance_valid(light_beam):
+		if route_state.tutorial_complete and is_instance_valid(light_beam):
 			light_beam.queue_free()
+			light_beam = null
+		# Do not persist the damaged/dead training result. Win/Skip save only
+		# after the shared recovery below; loss keeps the prior checkpoint
+		# until Return heals/repositions the party.
 	if _boss_playtest_active:
 		var test_kind := "Tethys boss"
 		_boss_playtest_active = false
@@ -2987,6 +3348,7 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 		"fled":
 			_announce("You successfully ran away.")
+			escape_encounter_hint.show_after_escape(random_encounters_enabled)
 		"skipped":
 			# The "Skip Tutorial" in-battle menu option (see battle.gd's
 			# _on_skip_tutorial_pressed()) - Run itself stays disabled for the
@@ -3040,6 +3402,7 @@ func _on_battle_finished(result: String) -> void:
 		# above still need to land first, and open() itself pauses the
 		# tree, which should only happen once this whole handler (and
 		# whatever signal dispatch got it here) has actually finished.
+		_write_save()
 		call_deferred("_show_ability_popups")
 
 # Heals the party and returns to the overworld - the same recovery a
@@ -3074,6 +3437,14 @@ func _on_tutorial_loss_exit() -> void:
 	# a lost-and-exited first special encounter was opening this onboarding
 	# carousel again too.
 	if not _tutorial_loss_was_special:
+		_first_encounter_started = false
+		for i in range(divers.size()):
+			(divers[i] as Diver).position = CAST[i].at as Vector3
+		if is_instance_valid(light_beam):
+			light_beam.visible = true
+		else:
+			_build_optional_training()
+		_write_save()
 		call_deferred("_show_ability_popups")
 
 # --tutorial-loss-playtest's own entry point (see
@@ -3214,6 +3585,7 @@ func _build_diver_slots() -> void:
 # exists, so tree teardown cannot free those Nodes for us. Explicit ownership
 # here prevents three hidden Control subtrees leaking on every restart/load.
 func _exit_tree() -> void:
+	_cancel_random_encounter_reveal()
 	for slot_value in _diver_slots:
 		var slot := slot_value as Slot
 		if is_instance_valid(slot) and not slot.is_inside_tree():
@@ -3346,10 +3718,21 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	route_objective_panel.offset_right = panel_left + panel_width
 	route_objective_panel.offset_bottom = 118.0
 
-func _on_route_objective_changed(objective_id: String) -> void:
+func _on_route_objective_changed(_objective_id: String) -> void:
+	_refresh_world_guidance()
+
+func _refresh_world_guidance() -> void:
 	if route_objective_panel == null or route_objective_label == null:
 		return
-	var text := _route_objective_text(objective_id)
+	var text := ""
+	if route_state.prologue_complete and not divers.is_empty():
+		var position := (divers[active] as Diver).global_position
+		if deep_zone_layout.zone_for_position(position) == "deep":
+			text = _route_objective_text(route_state.objective_id)
+		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
+			text = "Use Bucky's Shockwave to break the wall. (TAB)"
+		else:
+			text = "Shallows: fight to grow stronger."
 	route_objective_label.text = text
 	route_objective_panel.visible = text != ""
 
@@ -3371,6 +3754,7 @@ func _route_objective_text(objective_id: String) -> String:
 			return ""
 
 func _update_hud() -> void:
+	_refresh_world_guidance()
 	if target_selector.selecting:
 		var t := target_selector.current_target()
 		if t != null and t is Diver:
@@ -3382,6 +3766,9 @@ func _update_hud() -> void:
 		hud.text = "Aiming %s\nLeft click: fire   ·   Right click: cancel" % String(divers[active].ability_id).capitalize()
 		return
 	var d: Diver = divers[active]
+	if not route_state.prologue_complete:
+		hud.text = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look" % _display_name(d.model_name)
+		return
 	var narrow := get_viewport().get_visible_rect().size.x < 900.0
 	var line := ""
 	if narrow:

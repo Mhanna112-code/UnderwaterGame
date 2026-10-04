@@ -1,0 +1,11 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+FINDING  ANGLE-001 opening must be weaker through modest HP reduction, not 1 HP
+FINDING  ANGLE-001 opening overrides ordinary species range for strength
+FINDING  ANGLE-001 opening overrides ordinary species range for agility
+FINDING  ANGLE-001 opening overrides ordinary species range for accuracy
+FINDING  ANGLE-001 opening overrides ordinary species range for evasion
+FINDING  ANGLE-002 opening hides/rewrites ordinary kit Staff_Diver
+FINDING  ANGLE-002 opening hides/rewrites ordinary kit Prototype_1(1910)
+FINDING  ANGLE-002 opening hides/rewrites ordinary kit Prototype_V(1922)
+PROLOGUE ANGLER: 8 findings

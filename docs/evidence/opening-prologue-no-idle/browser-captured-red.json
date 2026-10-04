@@ -1,0 +1,14 @@
+{
+  "target": "https://underwatergame-opening-prologue-review.vercel.app/",
+  "browserEngine": "webkit",
+  "recording": "/tmp/opening-no-idle-browser-red/page@63cfba73ce7c2d1d1a4ce9e60c32db99.webm",
+  "recordingStarted": 1791095517711,
+  "idleSeconds": 15.019,
+  "timestamps": {
+    "opening_video": 1791095544523,
+    "spawn_exploration": 1791095578921,
+    "angler": 1791095586725
+  },
+  "errors": [],
+  "failure": "Error: OPEN-035 Angler started while stationary before any swimming"
+}

@@ -1,0 +1,8 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_BREATH|strength=80|accuracy=30|Maxilani -80; Musashi -78; Bucky -76
+CORDYS TARGETED SEQUENCE|[{ "changed": [0, 1, 2], "hp": [0, 0, 0], "living": 0, "time": 7910, "clip": &"rig|Octopus(Attack)Poison_breath" }]
+FINDING SOLO-001 boss changes multiple divers' HP in one frame: [0, 1, 2]
+FINDING SOLO-001 expected three separate targeted impacts, got [{ "changed": [0, 1, 2], "hp": [0, 0, 0], "living": 0, "time": 7910, "clip": &"rig|Octopus(Attack)Poison_breath" }]
+CORDYS TARGETED SEQUENCE: 2 findings

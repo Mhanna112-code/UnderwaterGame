@@ -1,0 +1,11 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+VICTORY BRIDGE|seconds=6.634|phases=["angler", "angler_victory", "octopus_notice", "octopus_omen", "octopus_introduction"]|music={ "cue_id": "", "phase": "stopped", "playing": false, "looping": false }
+ANGLER VICTORY BRIDGE: clean

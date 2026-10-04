@@ -17,15 +17,13 @@ func _run() -> void:
 		"ORDINARY ROSTER: three-way roll boundary selects Angler, then Swordfish, then Frilled Shark — guards against an unreachable roster entry")
 	_expect(Battle.encounter_intro([{"display_name": "Swordfish Duelist"}]) == "Swordfish Duelist blocks the way!",
 		"ORDINARY ROSTER: lone battle announces the visible enemy — guards against stale Angler-only combat copy")
-	var dispatch_probe := Battle.new()
-	var shark := dispatch_probe._actor_for_enemy_id("frilled_shark")
+	var shark := Battle.actor_for_enemy_id("frilled_shark")
 	_expect(shark is FrilledShark and shark.enemy_id() == "frilled_shark",
 		"ORDINARY ROSTER: Frilled Shark id must dispatch its actual actor rather than the Angler fallback")
 	var shark_stats := shark.make_stats(CombatantStats.new(), 1)
 	_expect([shark_stats.hp_max, shark_stats.strength, shark_stats.defense, shark_stats.agility, shark_stats.evasion, shark_stats.accuracy] == [5, 2, 2, 1, 2, 2],
 		"ORDINARY ROSTER: Frilled Shark must use Glassgoat's 5/2/2/1/2/2 stat block")
 	shark.free()
-	dispatch_probe.free()
 
 	seed(20260906)
 	var seen: Dictionary = {}

@@ -27,6 +27,7 @@ signal blocker_playtest_chosen
 
 var _mode := "main"
 var _pending_action := "new"   # "new" | "load"
+var _load_error := ""
 
 var _list: VBoxContainer
 var _boss_playtest_available := false
@@ -111,6 +112,7 @@ func _ready() -> void:
 	col.add_child(_list)
 
 func open() -> void:
+	_load_error = ""
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mode = "main"
@@ -118,6 +120,13 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+
+func show_load_error(message: String) -> void:
+	_load_error = message
+	visible = true
+	_mode = "main"
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_refresh()
 
 # Kept out of the ordinary title flow. World enables this only for the
 # dedicated ?boss=1 review URL (or the matching command-line test flag), so
@@ -164,6 +173,13 @@ func enable_blocker_playtest() -> void:
 func _refresh() -> void:
 	for child in _list.get_children():
 		child.queue_free()
+	if not _load_error.is_empty():
+		var error_label := Label.new()
+		error_label.text = _load_error
+		error_label.custom_minimum_size.x = 360
+		error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		error_label.add_theme_color_override("font_color", Color("ffce93"))
+		_list.add_child(error_label)
 	if _mode == "main":
 		_refresh_main()
 	else:

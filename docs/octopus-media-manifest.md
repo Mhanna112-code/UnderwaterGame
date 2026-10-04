@@ -1,7 +1,7 @@
 # Octopus media intake manifest
 
-This is a verified asset intake, not a claim that the Octopus route or fight is
-implemented. The current vertical slice ends at the existing maze transition.
+This is a verified asset intake plus a prologue-only presentation owner. It is
+not a claim that the later Octopus route or campaign fight is implemented.
 
 ## Visible model
 
@@ -18,12 +18,13 @@ committed as a duplicate. The old `Octopus_Boss.fbx` delivery had animations
 but no renderable geometry and is not used.
 
 The replacement is a composite boss with Octopus, Sword Fish, Angler, Frilled
-Shark, Merfolk, and Bomb Bot corpse materials. That may be narrative intent,
-but it still requires Glassgoat's confirmation. Some attack poses expose a
-bright line primitive as long white rods. The future boss actor must suppress
-or repair that surface before gameplay can be approved.
+Shark, Merfolk, and Bomb Bot corpse materials. Glassgoat supplied the complete
+asset for project use. Some raw attack poses exposed the pale Swordfish bill as
+long white rods. `PrologueOctopus` preserves that mesh while applying a dark
+underwater material tint, and the opening gallery verifies the resulting
+reveal, idle, hurt, and finishing poses. Campaign ownership remains deferred.
 
-## Revised cutscene
+## Revised cutscene (unchanged full PR #96 intake archive)
 
 | Field | Value |
 | --- | --- |
@@ -38,8 +39,11 @@ V3 improves capitalization, pronouns, punctuation, and the final visible reveal
 of “Cordys, Mistress of the Puppets.” Its AAC source audio is byte-identical to
 V2; the revision is visual/textual. Red text on black remains low-contrast, and
 the sentence “I made your furnaces heat it from below to above all.” remains
-awkward. The file is admitted for later-route integration but is not yet wired
-into progression.
+awkward. This full derivative remains a later-route intake reference, not a
+live campaign owner. The opening child uses the separately approved short edit
+in `docs/opening-prologue-asset-manifest.md`: first 25 seconds plus the complete
+Cordys title ending, with the long monologue removed. The child web package
+excludes this unused full derivative; this archive's bytes/digest are unchanged.
 
 ## Evidence and automated contracts
 
@@ -48,5 +52,10 @@ into progression.
 - `docs/evidence/octopus-intake/octopus-godot-poison-breath.png`
 - `docs/evidence/octopus-intake/octopus-godot-spinning-slay.png`
 - `docs/evidence/octopus-intake/octopus-v3-timed.jpg`
+- `docs/evidence/opening-prologue-cordys/cordys-reveal.png`
+- `docs/evidence/opening-prologue-cordys/cordys-idle.png`
+- `docs/evidence/opening-prologue-cordys/cordys-hurt.png`
+- `docs/evidence/opening-prologue-cordys/cordys-finish.png`
 - `verify/octopus_asset_intake.gd`
+- `verify/prologue_octopus.gd`
 - `verify/octopus_cutscene_asset.gd`

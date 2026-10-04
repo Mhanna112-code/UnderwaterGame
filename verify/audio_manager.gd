@@ -45,6 +45,22 @@ func _run() -> void:
 		"playing": true,
 		"looping": true,
 	}, "HANDOFF: intro completion did not become the single looping track")
+	# OPEN-005/006: authored cue gain belongs to the semantic music owner and
+	# changes at the intro/loop handoff without touching persisted user volume.
+	if not manager.has_method("play_authored_music_sequence") or not manager.has_method("get_music_gain_state"):
+		findings.append("AUTHORED GAIN: manager lacks the prologue cue-gain contract")
+	else:
+		manager.play_authored_music_sequence("prologue_test", intro, loop, -1.0, -4.5)
+		_expect(manager.get_music_gain_state() == {
+			"intro_db": -1.0,
+			"loop_db": -4.5,
+			"active_db": -1.0,
+		}, "AUTHORED GAIN: intro did not begin at its independent local trim")
+		manager.advance_music_after_stream_finished()
+		_expect(manager.get_music_gain_state().active_db == -4.5,
+			"AUTHORED GAIN: intro-to-loop handoff did not adopt the loop trim")
+		_expect(manager.get_audio_settings().music_volume == 1.0,
+			"AUTHORED GAIN: local cue trim rewrote the player Music slider")
 	var loop_trace: Array = manager.get_music_transition_trace()
 	manager.advance_music_after_stream_finished()
 	_expect(manager.get_music_transition_trace() == loop_trace, "LOOP: a loop completion incorrectly restarted or stacked playback")

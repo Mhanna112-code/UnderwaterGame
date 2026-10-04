@@ -1,0 +1,16 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|complete
+LAB LIVE ROUTE|fight=bomb_bot|result=won|actions=6
+LAB CARRIED PARTY|after=bomb_bot|name=Staff_Diver|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB CARRIED PARTY|after=bomb_bot|name=Prototype_1(1910)|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB CARRIED PARTY|after=bomb_bot|name=Prototype_V(1922)|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB LIVE ROUTE|fight=sword_slayer|result=won|actions=5
+LAB CARRIED PARTY|after=sword_slayer|name=Staff_Diver|level=2|xp=2|hp=10|o2=100.0|spells=["swift_strike"]
+LAB CARRIED PARTY|after=sword_slayer|name=Prototype_1(1910)|level=2|xp=2|hp=10|o2=100.0|spells=["precise_jab"]
+LAB CARRIED PARTY|after=sword_slayer|name=Prototype_V(1922)|level=2|xp=2|hp=10|o2=100.0|spells=["heavy_slam"]
+LAB LIVE ROUTE|fight=lab|result=won|actions=11
+LAB CARRIED PARTY|after=lab|name=Staff_Diver|level=3|xp=4|hp=10|o2=100.0|spells=["swift_strike", "current_snare"]
+LAB CARRIED PARTY|after=lab|name=Prototype_1(1910)|level=3|xp=4|hp=10|o2=100.0|spells=["precise_jab", "weaken"]
+LAB CARRIED PARTY|after=lab|name=Prototype_V(1922)|level=3|xp=4|hp=10|o2=100.0|spells=["heavy_slam", "mending_current"]
+LAB LIVE ROUTE: clean

@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=9|hit=true|hp=987|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+CORDYS TARGETED SEQUENCE|[{ "changed": [0], "hp": [0, 10, 10], "living": 2, "time": 6739, "clip": &"rig|Octopus(Attack)OctoStab" }, { "changed": [1], "hp": [0, 0, 10], "living": 1, "time": 11550, "clip": &"rig|Octopus(Attack)Head_Bash" }, { "changed": [2], "hp": [0, 0, 0], "living": 0, "time": 16437, "clip": &"rig|Octopus(Attack)Eletric_Shooting" }]
+CORDYS TARGETED SEQUENCE: clean

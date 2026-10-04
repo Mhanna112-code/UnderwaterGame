@@ -61,6 +61,12 @@ It checks the player-visible enemy mix in ordinary Battles. Every individual ord
 
 ## Post-write evaluation
 
+- HARNESS-ROSTER-01, 2026-10-04: the accumulated gate retained the removed
+  private `_actor_for_enemy_id` factory and failed Godot type inference before
+  running. Use the public typed `Battle.actor_for_enemy_id` factory; retain
+  species/stat and 48 real-Battle roster assertions. This is a verifier repair,
+  not a change to the production roster.
+
 - **Bugs caught:** #1. The first valid roster run sampled 24 production Battles and saw only Anglers, proving that normal Battle construction bypassed the declared roster. Routing those actors through `EnemyRoster` fixes the failure.
 - **Bugs characterized:** #2 and #3. The seeded sample sees both declared actor identities, and the one-enemy text contract says `Swordfish Duelist blocks the way!` rather than using the old fixed Angler copy.
 - **Bugs discovered during writing:** using the global combat RNG for roster choice changed the balance simulator's seeded combat sequence and dropped casual route success to 44.2%. The roster now owns separate randomness; the normal balance result returns to 50.4% casual / 84.6% skilled while still modelling the varied actor catalogues.

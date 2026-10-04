@@ -19,6 +19,9 @@ func _initialize() -> void:
 		_slot_backup = source.get_buffer(source.get_length())
 	world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	world.skip_intro_for_test = true
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = true
 	root.add_child(world)
 	call_deferred("_run")
 
