@@ -1,5 +1,26 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: location-scoped world guidance (OPEN-043/044/045)
+
+User request: short Bucky/wall instruction near the puzzle room, and no lab
+instruction after returning from Deep to Shallows. The panel previously
+reacted only to objective changes, so a retained `find_lab` goal left stale
+text in Shallows. Derive visibility from the active diver's physical location
+each frame and on Load/selection. Keep progression state intact. Derive room
+proximity from existing geometry; show "Use Bucky's Shockwave to break the
+wall." only while the entrance blockade remains intact. Real Shockwave and
+saved consumption retire it. No collision, maze or Sonar redesign.
+
+Captured actual boundary-crossing red/green; rendered 1280×720 and 720×480
+checks pass for movement/re-entry, contact/leave/return, active diver,
+altitude, unfinished Load, actual E Shockwave and consumed Save/Load. Text
+views inspected: no clipping or minimap overlap. Existing exploration
+defaults, Deep guidance, legacy puzzle and open-water collision gates green.
+Verification-only coasting/unfinished-fixture defects are recorded honestly
+in the packet, not counted as gameplay fixes. Browser/export verification
+pending. Evidence: `docs/evidence/local-world-guidance/`.
+This focused fix does not close the larger final visual/audio audit.
+
 ## 2026-10-04: automatic exploration defaults (OPEN-040/041/042)
 
 Requested: Sonar and random encounters On after the full opening/cutscene

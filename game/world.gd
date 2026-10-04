@@ -876,6 +876,7 @@ var _lock_plates: Array = []
 var _doors: Array = []
 var _puzzle_goal: Waypoint
 var _puzzle_solved := false
+var _puzzle_hint_bounds := AABB()
 
 # Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
 # revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
@@ -1333,6 +1334,7 @@ func _on_world_object_consumed(id: String) -> void:
 	if not consumed_world_ids.has(id):
 		consumed_world_ids.append(id)
 	_cracked_walls.erase(id)
+	_refresh_world_guidance()
 
 func _on_item_orb_collected(item_id: String, _d: Diver, drop_id: String) -> void:
 	pending_world_drops.erase(drop_id)
@@ -1536,6 +1538,12 @@ func _build_highway() -> void:
 
 	var length := END_X - START_X
 	var center_x := (START_X + END_X) * 0.5
+	# Contextual guidance follows this visible room, not a world-spanning
+	# collider or a saved objective. Small margins count contact/approach.
+	_puzzle_hint_bounds = AABB(
+		Vector3(START_X - 3.0, 0.0, LANE_Z - LANE_HALF_WIDTH - 2.0),
+		Vector3(length + 6.0, WALL_HEIGHT + 2.0, LANE_HALF_WIDTH * 2.0 + 4.0)
+	)
 
 	# 0. A save point before the corridor even starts - the first place in
 	# the game save menu becomes available at all (see
@@ -2072,6 +2080,7 @@ func _physics_process(dt: float) -> void:
 	_update_wall_visibility()
 	_update_intro_sequence()
 	_update_route_zone()
+	_refresh_world_guidance()
 	_update_deep_zone_visuals()
 	_update_deep_zone_blockers()
 	_update_lab_route()
@@ -3610,10 +3619,19 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	route_objective_panel.offset_right = panel_left + panel_width
 	route_objective_panel.offset_bottom = 118.0
 
-func _on_route_objective_changed(objective_id: String) -> void:
+func _on_route_objective_changed(_objective_id: String) -> void:
+	_refresh_world_guidance()
+
+func _refresh_world_guidance() -> void:
 	if route_objective_panel == null or route_objective_label == null:
 		return
-	var text := _route_objective_text(objective_id)
+	var text := ""
+	if route_state.prologue_complete and not divers.is_empty():
+		var position := (divers[active] as Diver).global_position
+		if deep_zone_layout.zone_for_position(position) == "deep":
+			text = _route_objective_text(route_state.objective_id)
+		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
+			text = "Use Bucky's Shockwave to break the wall."
 	route_objective_label.text = text
 	route_objective_panel.visible = text != ""
 
@@ -3635,6 +3653,7 @@ func _route_objective_text(objective_id: String) -> String:
 			return ""
 
 func _update_hud() -> void:
+	_refresh_world_guidance()
 	if target_selector.selecting:
 		var t := target_selector.current_target()
 		if t != null and t is Diver:

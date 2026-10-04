@@ -164,6 +164,7 @@ run "menus/spells/title: do help, safe tutorial replay, review routing, and titl
 run "route state: does authored progression round-trip through its public contract" "$GODOT" --headless --path . --script verify/route_state.gd
 run "deep-zone route: is the expanded dark route physically supported and state-driven" "$GODOT" --headless --path . --script verify/deep_zone_route.gd
 run "deep-zone guidance: does water deepen continuously while the lab remains the main objective" "$GODOT" --headless --path . --script verify/deep_zone_guidance.gd
+run "local world guidance: do lab and Bucky wall hints follow location, active diver and real wall destruction" "$GODOT" --headless --path . --script verify/local_world_guidance.gd -- --puzzle
 run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip" "$GODOT" --headless --path . --script verify/lab_tethys_route.gd
 run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
