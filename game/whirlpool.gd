@@ -28,7 +28,18 @@ signal diver_sucked_in(d: Diver, amount: int)
 @export var damage_max := 10
 @export var warning_radius := 9.0
 @export var suction_radius := 3.0
-@export var pull_duration := 0.7
+# > 0: the suction zone is a cylinder this tall (can't be swum over).
+@export var suction_height := 0.0
+# Divers within pull_radius (horizontally) get dragged toward the centre at
+# up to pull_speed, strongest close in. 0 = no drag.
+@export var pull_radius := 0.0
+@export var pull_speed := 0.0
+@export var pull_duration := 1.4
+# The pull is a spiral: this many turns around the centre on the way in,
+# the diver spinning and rolling as they go, sinking this far as they reach
+# it ("spun down").
+@export var spin_turns := 2.0
+@export var sink_depth := 2.2
 @export var vanish_duration := 0.35
 
 var armed := true
@@ -66,9 +77,15 @@ func _ready() -> void:
 
 	var suck_area := Area3D.new()
 	var suck_shape := CollisionShape3D.new()
-	var suck_col := SphereShape3D.new()
-	suck_col.radius = suction_radius
-	suck_shape.shape = suck_col
+	if suction_height > 0.0:
+		var cyl := CylinderShape3D.new()
+		cyl.radius = suction_radius
+		cyl.height = suction_height
+		suck_shape.shape = cyl
+	else:
+		var suck_col := SphereShape3D.new()
+		suck_col.radius = suction_radius
+		suck_shape.shape = suck_col
 	suck_area.add_child(suck_shape)
 	suck_area.collision_mask = 2
 	suck_area.body_entered.connect(_on_suction_entered)
@@ -148,6 +165,26 @@ func _build_warning_caption() -> void:
 	get_tree().root.add_child.call_deferred(layer)
 	_warning_caption = label
 
+# The drag toward the centre, and a catch for anyone who ends up inside the
+# suction zone without "entering" it (e.g. it was bypassed when they did).
+func _physics_process(dt: float) -> void:
+	if not armed or (bypass.is_valid() and bool(bypass.call())):
+		return
+	for body in _divers_in_warning.keys():
+		var d := body as Diver
+		if d == null or not is_instance_valid(d) or d.is_grappling() or d.is_suction_locked():
+			continue
+		var to_centre := global_position - d.global_position
+		to_centre.y = 0.0
+		var dist := to_centre.length()
+		if dist <= suction_radius:
+			_pull_in(d)
+			continue
+		if pull_radius <= 0.0 or dist > pull_radius:
+			continue
+		var strength := pull_speed * (0.35 + 0.65 * (1.0 - (dist - suction_radius) / maxf(pull_radius - suction_radius, 0.01)))
+		d.move_and_collide(to_centre / dist * strength * dt)
+
 func _on_suction_entered(body: Node3D) -> void:
 	if not armed or not (body is Diver):
 		return
@@ -165,11 +202,28 @@ func _on_suction_entered(body: Node3D) -> void:
 func _pull_in(d: Diver) -> void:
 	d.velocity = Vector3.ZERO
 	d.set_suction_locked(true)
+	var start := d.global_position
+	var rel := start - global_position
+	rel.y = 0.0
+	var r0 := rel.length()
+	var a0 := atan2(rel.z, rel.x)
+	var yaw0 := d.rotation.y
 	var tw := create_tween()
-	tw.tween_property(d, "global_position", global_position, pull_duration)
+	tw.tween_method(func(f: float) -> void:
+		var r := r0 * (1.0 - f)
+		var a := a0 + f * spin_turns * TAU
+		var p := global_position + Vector3(cos(a) * r, 0.0, sin(a) * r)
+		p.y = lerpf(start.y, global_position.y - sink_depth, f * f)
+		d.global_position = p
+		d.rotation.y = yaw0 + f * spin_turns * TAU * 2.0   # spinning
+		if d.model != null:
+			d.model.rotation.z = sin(f * PI * 4.0) * 0.7 * f   # twisting
+		, 0.0, 1.0, pull_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void: d.set_model_visible(false))
 	tw.tween_interval(vanish_duration)
 	tw.tween_callback(func() -> void:
+		if d.model != null:
+			d.model.rotation.z = 0.0
 		var before: int = d.stats.hp
 		var dmg: int = randi_range(damage_min, damage_max)
 		d.stats.hp = maxi(1, d.stats.hp - dmg)   # a scare, never a knockout
