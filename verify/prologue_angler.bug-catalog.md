@@ -50,4 +50,9 @@ Button matrix covers all 11 base moves plus 12 ACC/DEF boundary shapes; separate
 nonlethal, utility and miss follow-ups must return usable turns and finish.
 Native ordinary rules, Quick Read, enemy clips, Cordys 15-case/survivor matrix
 and full opening → recovery → actual later death → Restart/Load pass.
-Browser exact-artifact proof remains required before alias update.
+Exact export/browser proof is now green: full normal title/New Game, genuine
+nonlethal Electric Touch, usable Musashi turn/actual kill, Cordys, recovery,
+persisted completion/defaults and cold Load, 111.656 seconds, zero errors.
+The browser harness's stale next-move Y coordinate was repaired by selecting
+the rendered move label. Evidence and remaining campaign-balance caveat:
+`docs/evidence/opening-angler-normal-rules/README.md`.

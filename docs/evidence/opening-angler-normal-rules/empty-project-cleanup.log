@@ -1,0 +1,6 @@
+
+ ⚠ WARNING  AGENT MODE - DELETE CONFIRMATION BYPASSED
+  An AI agent (codex) is executing a DELETE request with --dangerously-skip-permissions flag.
+  This operation will delete data: /v9/projects/prj_PZ677ZrDfegjzVzSnuF6EtIKwEpR
+  The --dangerously-skip-permissions flag has bypassed the confirmation prompt.
+
