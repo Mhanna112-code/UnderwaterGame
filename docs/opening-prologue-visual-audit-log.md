@@ -1,5 +1,39 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: Mermaid closing title/reveal (TITLE-001..007)
+
+User reported abrupt cinematic EOF into gameplay. Verified immediate owner
+free/completion; red test caught absence of a handoff. First-run World now opts
+into 550ms picture/local-audio fade, UNDERWATER / Can you survive the deep? /
+verified Glass_Goat and Phoenix credits, followed by a world/controls reveal.
+3.55s authored title/reveal; no crawl, additional input or music overlap. No
+media bytes, user settings, lab policy, split Cordys policy, gameplay rules or
+later route changes.
+
+Native real decoder, repeated EOF, Escape, completion/teardown and real wide/
+narrow captures pass. Actual World held W during title stays motionless/paused;
+after reveal real W swims 19.333m and starts Angler after 4.117s. Isolated
+save/load and existing cinematic/state/audio regression gates pass. Headless
+implicit display size and occluded macOS capture defects were logged/corrected,
+not counted as game fixes. Final wide/narrow/browser title images inspected.
+
+Initial `4c04e2a` browser excerpt revealed camera zoom and late HUD population
+when the paused world became visible. TITLE-007 reproduced that as a failing
+camera-pose test. `44ae14b` settles the existing chase camera and HP/O2/cursor
+behind the title; native test and final first-reveal/idle browser images now
+match framing with populated HUD. Initial evidence is retained, not passed off
+as a defect-free final round.
+
+Runtime `44ae14b`, clean archive export 93,348,868 bytes; SHA-256
+`9aae479107c184063dba78c0ea09ed25f0db12813cdfd39f61876aa94b54375e`.
+Hosted normal New Game/full movie/title/free swim passes: 3.495s title handoff,
+16.123s idle, camera-only checks, then 4.016s swimming to Angler, zero errors.
+Browser continuous recording and real transition GIF retained. Deployment
+`dpl_9Gnhwqvzz69tVMRHPfaQJGyZWBNb`; served PCK and metadata match. Same review
+alias refreshed; public main and secondary alias unchanged. Evidence:
+`docs/evidence/opening-title-handoff/`. Broader audit, OPEN-032/046 and human
+listening/comprehension acceptance remain open; this is not an overall PASS.
+
 ## 2026-10-04: harsh menu hover (OPEN-047/048; OPEN-049 preferences)
 
 User reported the opening-menu pointer sounds extremely harsh. Native title

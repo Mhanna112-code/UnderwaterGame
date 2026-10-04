@@ -11,16 +11,20 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment:** softened-menu-audio candidate from runtime source
-`ceb049ccef66d4fe1a4062ca117b92ebf9370362`:
-`https://underwatergame-hugtgp72s-immortaldemongods-projects.vercel.app/`.
-PCK SHA-256 `01fb064cdee83cce3b6193e601e7ec40e62a679436d5a18a736746d19c64fbc1`.
+**Current deployment:** opening-title handoff candidate from runtime source
+`44ae14bab08f744ec6ac9019509c19b94cce72ac`:
+`https://underwatergame-pow6qnuoo-immortaldemongods-projects.vercel.app/`.
+PCK SHA-256 `9aae479107c184063dba78c0ea09ed25f0db12813cdfd39f61876aa94b54375e`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-The stable alias serves that candidate after actual hosted title pointer/
-WebAudio capture. Its hover is quieter, filtered/faded, 180ms and rate-limited.
+The stable alias serves that candidate after actual hosted full movie,
+title/reveal, idle/look and swimming. No injected completion or review flag.
+The movie now closes with a brief question/credits/title and fades into control;
+native held-input isolation and save/load gates pass. Its hover remains quieter,
+filtered/faded, 180ms and rate-limited (prior source-labeled WebAudio proof).
 Prior focused Deep/Shallows/puzzle proof remains in the source-labeled packet.
 Earlier opening/free-swim/restart/storage evidence remains in its original
-packets; it is not mislabeled as a new whole-opening run for this hint fix.
+packets; it is not mislabeled as a new full Cordys/recovery/restart run for this
+opening-title fix. Focused evidence: `docs/evidence/opening-title-handoff/`.
 There is no idle fallback. Sonar and encounters enable at opening recovery.
 This is a review candidate, not final acceptance. The inherited PR #96 alias
 remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
@@ -44,11 +48,11 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | --- | --- | --- |
 | 0: clean child branch | complete | Remote PR #96 head `27a5b525…`; clean child worktree; initial diff contains only these four planning contracts. |
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
-| B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Browser EOF defect repaired in `b5b3e86`; ordinary full split-movie browser journey completes in 118.711 s with real mouse input. Wide/narrow/tall final candidate and listening acceptance remain. |
+| B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Latest title/reveal now joins the movie to control with credits/question and settled camera/HUD; real EOF/held input, 1280x720/720x480 title frames and normal hosted movie/title/idle/swim pass (`opening-title-handoff/`). Earlier full Cordys/recovery journey remains source-labeled. Tall/final whole-candidate listening/human acceptance remain. |
 | C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
 | D: Cordys interruption | in progress | OPEN-036/037 replace the forced HP-zero finisher and Angler-derived accuracy rewrite with normal player moves/effects and actual STR/DEF/ACC/EVA retaliation. Native 15-case button/differential matrix and three high-HP survivors pass. OPEN-038 duplicate impact cue was caught and repaired. Exact hosted normal-entry Axe Kick shows 4 damage, 996/1,000 boss HP, then 80/78/76 retaliation. Browser later-death/Restart/Load and denied-storage/Retry/cold-Load pass. Framing remains green; complete final listening/human audit remains. |
 | E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Stable alias serves runtime `ceb049c`; unauthenticated metadata/PCK match the 93,339,592-byte archive export. Latest native/browser menu-audio capture is in `docs/evidence/menu-audio-comfort/`; earlier guidance/opening/combat/save/defaults journeys remain source-labeled, not claimed as new whole-opening runs. Blind test, user listening acceptance, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final zero-defect audit round remain. |
+| F: exact artifact and polish | in progress | Stable alias serves runtime `44ae14b`; unauthenticated metadata/PCK match the 93,348,868-byte archive export. Latest packet `docs/evidence/opening-title-handoff/` retains the initial camera/HUD defect and corrected actual browser replay/GIF. Prior menu-audio/guidance/combat/save/defaults evidence stays source-labeled, not claimed as new whole-opening proof. Blind test, user listening acceptance, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final zero-defect audit round remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence

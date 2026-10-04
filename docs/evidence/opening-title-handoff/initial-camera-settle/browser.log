@@ -1,0 +1,5 @@
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+OPENING FREE SWIM WEB: idle/camera-only stays free; late actual swimming starts one Angler after four seconds; inspect continuous recording for displacement

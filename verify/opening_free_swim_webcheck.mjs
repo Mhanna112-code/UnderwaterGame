@@ -44,6 +44,7 @@ try {
   await waitPhase('spawn_exploration');
   const handoffSeconds = (timestamps.spawn_exploration - timestamps.opening_handoff) / 1000;
   if (handoffSeconds < 3.3 || handoffSeconds > 6) throw new Error(`TITLE-001 title handoff duration ${handoffSeconds}s is missing or stalled`);
+  await page.screenshot({ path: path.join(output, 'revealed-world.png') });
   await page.waitForTimeout(15000);
   idleSeconds = (Date.now() - timestamps.spawn_exploration) / 1000;
   await page.screenshot({ path: path.join(output, 'idle-world.png') });

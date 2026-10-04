@@ -134,3 +134,15 @@ phase adds no duplicate video or FBX bytes.
   by PR #96.
 - Final credit wording remains inherited release metadata; lack of polished
   credit prose does not permit replacing canonical source records.
+
+## 2026-10-04: first-run closing title
+
+The opening now fades its final 550ms of picture/local audio into a 3.55s
+title/reveal: `UNDERWATER`, `Can you survive the deep?`,
+`Art and cinematics: Glass_Goat`, `Music: Phoenix Down Music`.
+These credits reflect the verified deliveries above, not an invented studio or
+license statement. No media bytes change. First-run World alone opts into this
+handoff; the inherited split Cordys owner and independent lab policy retain
+their prior behavior. Music is silent beneath the title and the existing quiet
+exploration cue fades in when control returns. User Music/SFX settings are not
+modified. Evidence: `docs/evidence/opening-title-handoff/`.
