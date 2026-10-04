@@ -3675,7 +3675,7 @@ func _refresh_world_guidance() -> void:
 		if deep_zone_layout.zone_for_position(position) == "deep":
 			text = _route_objective_text(route_state.objective_id)
 		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
-			text = "Use Bucky's Shockwave to break the wall."
+			text = "Use Bucky's Shockwave to break the wall. (TAB)"
 		else:
 			text = "Shallows: fight to grow stronger."
 	route_objective_label.text = text

@@ -86,7 +86,9 @@ try {
   expect(/Shallows.*stronger/i.test(outside) && !/find the laboratory/i.test(outside), 'SHALLOW-001 Shallows Load lacks zone/purpose or retains lab text');
   await hold('ArrowLeft', 800); // turn east
   await hold('w', 600);
-  expect(/Bucky.*Shockwave.*break the wall/i.test(await observe('puzzle-contact')), 'OPEN-044 actual contact lacks Bucky wall instruction');
+  const contact = await observe('puzzle-contact');
+  expect(/Bucky.*Shockwave.*break the wall/i.test(contact), 'OPEN-044 actual contact lacks Bucky wall instruction');
+  expect(/\(TAB\)/i.test(contact), 'OPEN-049 rendered wall instruction omits parenthesized TAB switching key');
   await hold('s', 1600);
   const left = await observe('puzzle-left');
   expect(/Shallows.*stronger/i.test(left) && !/break the wall/i.test(left), 'SHALLOW-003 departed puzzle does not restore Shallows purpose');

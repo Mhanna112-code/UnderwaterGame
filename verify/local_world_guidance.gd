@@ -50,6 +50,7 @@ func _puzzle() -> void:
 	(world.divers[0] as Diver).position = Vector3(11.4, 2.0, 10.0)
 	await _hold(KEY_W, 0.55)
 	_expect(world.route_objective_panel.visible and "bucky" in world.route_objective_label.text.to_lower() and "wall" in world.route_objective_label.text.to_lower(), "OPEN-044 touching puzzle entrance has no short Bucky/wall instruction")
+	_expect("(TAB)" in world.route_objective_label.text, "OPEN-049 Bucky/wall hint omits parenthesized TAB switching key")
 	await _capture("puzzle")
 	# Leave without breaking it, then return; the hint is proximity, not a latch.
 	await _hold(KEY_S, 1.2)

@@ -40,6 +40,7 @@ New bug catalog: `verify/shallows_guidance.bug-catalog.md`.
 | OPEN-043 | Lab text sticks in Shallows or fails to reappear in Deep. Conflicts with Sonar discovery. | Objective ID stays unchanged across zone crossings. | Real W/S movement across boundary, assert panel/text and unchanged lab progression; bounded position sweep and Load. |
 | OPEN-044 | No Bucky hint at puzzle contact, or it follows player away / survives wall destruction. | No contextual hint exists; consumed geometry is separate from route objective. | Approach visible entrance by actual movement, inspect panel, Tab to Bucky and real E Shockwave, assert prompt retires; return/reload consumed state. |
 | OPEN-045 | Inactive diver, altitude or nearby open water triggers wrong prompt. | Underwater 3D bounds and diver selection differ from simple x-only zone. | Spatial decision table around room's visible bounds, active diver switch, unfinished opening exclusion. |
+| OPEN-049 | Bucky/wall hint omits the TAB switching key, leaving another diver's player unsure what to do. | The static instruction names the ability but assumes controls were read. | Actual puzzle approach with Maxilani selected: visible instruction contains parenthesized TAB; narrow/wide render for wrapping. |
 
 Self-critique: expected observable panel visibility and semantic Bucky/wall
 instruction, not callbacks or helper-call counts. Wrong stable output fails.
