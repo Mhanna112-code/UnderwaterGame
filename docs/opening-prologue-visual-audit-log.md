@@ -1,5 +1,40 @@
 # Cordys opening prologue — visual/audio audit log
 
+## 2026-10-04: ordinary world-enemy reveal (REVEAL-01..06)
+
+Source `4c6ca74`: after recovery, the normal distance roll briefly presents its
+actual selected enemy actors in the exploration world, then passes the same
+ordered roster to normal Battle. 1.5 engine seconds; freeze movement/stat
+timers, retain exploration cue until battle, no collider/ring/prompt/save or
+balance change. Prologue, optional training, special/site and authored bosses
+keep their existing entry paths.
+
+Rounds: initial direct-to-Battle test failed; a wall-face camera test exposed
+hidden/intersecting previews; render inspection exposed a face-only Shark.
+Temporary clear-camera placement, volume/sight-line clearance, proportional
+foreground travel and three-quarter silhouettes corrected those reveal issues.
+Ninety formations with three live animation samples, 32 actual roster Battles,
+duplicate/freeze/title/Load/teardown and relevant existing gates pass. Final
+wide/narrow real renders show no new reveal defect. Native placement/signal
+fixtures are not falsely described as natural random rolls.
+
+Actual hosted ordinary New Game/full movies followed by real swimming show
+Frilled Shark (1646ms) and Swordfish (1839ms), matching their real battle HUD,
+usable Run and zero runtime errors. Source-clock correction retains an initial
+Node/OCR timing false negative. The recorded opening overran at 120.991s engaged;
+the non-recorded run also measured 134.803s and a late escape assertion demanded
+a transient cue after expiry although HUD was correctly Off. Neither whole-flow
+run is labelled PASS. Scoped reveal evaluations retain these failures explicitly;
+no timing tolerance/cue duration/gameplay has been relaxed to make them green.
+
+Evidence: `docs/evidence/random-encounter-reveal/`, including genuine browser
+transition GIF. READY `dpl_NfETWbn74s1o1oSodnAbhwUnh938`, source `4c6ca74`,
+111,641,396-byte PCK / SHA-256
+`027740c15745e1acac7d5938b5dddafb9df9840d369c8d1480feecf103e6b5a8`.
+Same review alias only; main and secondary are not promoted. Bounded reveal
+round has zero observed new preview defects, not a whole-opening/whole-goal
+green audit. Opening timing and prior OPEN-032/046 remain open.
+
 ## 2026-10-04: Mermaid closing title/reveal (TITLE-001..007)
 
 User reported abrupt cinematic EOF into gameplay. Verified immediate owner

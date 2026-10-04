@@ -1,0 +1,17 @@
+{
+  "randomReveal": "PASS",
+  "checks": [
+    {
+      "roster": [
+        "frilled_shark"
+      ],
+      "durationMs": 1646
+    }
+  ],
+  "actualBattleHUD": [
+    "FrilledShark"
+  ],
+  "browserErrors": [],
+  "separateWholeFlowFailure": "Error: Engaged opening exceeds the two-minute acceptance limit",
+  "openingEngagedSeconds": 120.991
+}

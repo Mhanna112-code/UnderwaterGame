@@ -40,4 +40,31 @@ Public signal and displayed actors are the primary oracle, not helper call count
 
 ## Evaluation
 
-Pending red/green runs and visual audit. Do not claim complete from headless alone.
+- REVEAL-01 failed against the previous direct-to-Battle implementation; the
+  real signal/reveal/identity/freeze/duplicate handoff now passes.
+- REVEAL-02: 32 real Battles across four party levels preserve selected identity
+  and count, with the existing level-one/two/later formation bands unchanged.
+- REVEAL-03/05: duplicate signal, title retirement, actual checkpoint Load and
+  teardown during a pending reveal pass without stat/pause/preference leaks.
+- REVEAL-04: a camera on the entrance-blockade face exposed hidden/intersecting
+  previews. Preserved red log; temporary clear-camera origin, silhouette sight
+  lines and proportional foreground travel fix it. Ninety formations across
+  wide/narrow viewports, three camera pitches/yaws, open/low-floor/wall-side
+  origins and five rosters pass at three actual animation samples each.
+- Native wide/narrow render inspection exposed a face-only Shark silhouette;
+  the admitted three-quarter angle now exposes its body. Capture fixtures with
+  a manually resized viewport have stale unrelated world HUD layout; the real
+  narrow World entry separately checks the actual compact HUD/reveal surface.
+- Existing guardian exclusion, all site dispatches, normal-stat prologue combat,
+  player turns between individual Cordys defeats, tutorial win handoff and
+  invalid-checkpoint recovery pass. No entry path was redesigned.
+- Browser verification is separate from these fixture gates: natural swimming
+  and the complete ordinary opening are required before refreshing the alias.
+  Initial existing bridge assertion used delayed Node console receipt times
+  while synchronous OCR was running; preserved failed recording and switched
+  to read-only browser-source timing, not wider game timing tolerances.
+- Final affected browser contract: Frilled Shark (1646ms) and Swordfish
+  (1839ms), matching actual battle HUD and usable controls, no runtime errors.
+  Separate full-opening timing overruns (120.991s / 134.803s engaged) remain
+  explicitly OPEN. A later escape assertion demanded already-expired text;
+  the retained HUD shows R correctly Off. No gameplay timer was lengthened.

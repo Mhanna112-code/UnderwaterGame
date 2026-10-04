@@ -1,0 +1,29 @@
+Browser launched
+Export page loaded
+Requested ANGLE backend: metal
+Observed WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+SHALLOWS VIEW|09-optional-training|Maxilani. | WASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (On) | Shallows: fight to grow stronger. | Optional | vat Training | 02 100 / 100 | Maxilani | 10 / 10
+Normal browser New Game to control: 136.805s; engaged=134.803s; deliberate idle/look=2.002s
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist
+Error: ESC-005 real R did not update Off cue

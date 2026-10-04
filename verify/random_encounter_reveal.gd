@@ -100,11 +100,16 @@ func _run() -> void:
 	world.title_screen.load_game_chosen.emit(918281)
 	await create_timer(1.7, true).timeout
 	_check(world.battle == null and not paused and get_nodes_in_group("random_encounter_reveal").is_empty(), "REVEAL-05: checkpoint Load leaves stale reveal callback")
-	for finding in findings:
-		push_error(finding)
+	# REVEAL-05: teardown during the reveal must release its temporary pause
+	# and cannot leave a callback capable of creating a ghost battle.
+	diver.encounter_triggered.emit()
+	await process_frame
 	world.queue_free()
 	await process_frame
-	paused = false
+	await create_timer(1.7, true).timeout
+	_check(not paused and get_nodes_in_group("random_encounter_reveal").is_empty(), "REVEAL-05: scene teardown leaves reveal or its pause alive")
+	for finding in findings:
+		push_error(finding)
 	var audio := root.get_node_or_null("GameAudio")
 	if audio != null:
 		audio.release_streams_for_shutdown()

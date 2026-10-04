@@ -1,0 +1,60 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=120|living=3
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=122|living=3
+PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=124|living=3
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=false|hp=10|living=1
+RETALIATION WITNESS|evasion|[{ "hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 30, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=true|hp=10|living=1
+RETALIATION WITNESS|defense|[{ "hit": true, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 0, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA -3"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=4|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 4, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=1|hit=true|hp=999|effects=["Bleed 2 (3 turns)"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 2, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=["Blindness 2 (3 turns)"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 2, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=9|hit=true|hp=991|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 9, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=5|hit=true|hp=995|effects=["EVA -4"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 5, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=0|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=7|ACC=3|DEF=0|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=3|hit=true|hp=997|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=12|ACC=1|DEF=10|EVA=0|[{ "damage": 3, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=3|ACC=0|DEF=10|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=12|ACC=0|DEF=7|EVA=5|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=["Blindness 2 (6 turns)"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=9|ACC=6|DEF=5|EVA=1|[{ "damage": 0, "bleed": 0, "blindness": 2, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=10|hit=true|hp=990|effects=["EVA -6"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=12|ACC=6|DEF=2|EVA=5|[{ "damage": 10, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=2|hit=true|hp=998|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=2|EVA=0|[{ "damage": 2, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE COMBAT: clean

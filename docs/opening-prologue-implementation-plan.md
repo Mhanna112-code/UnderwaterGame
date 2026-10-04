@@ -661,7 +661,35 @@ When Glassgoat supplies the final opening:
 No prologue state, combat, save, tutorial, or campaign-route code should need
 to change for that replacement.
 
-## Blocking decisions
+## Follow-up: ordinary random-encounter world reveal (2026-10-04)
+
+After recovery, a successful ordinary distance roll shows its selected enemy
+pack in the existing exploration world for 1.5 seconds, then hands that exact
+ordered roster to normal Battle. No reroll, manufactured stats, healing,
+checkpoint writes, rings, extra tutorial or confirmation prompt. Exploration
+music continues during the reveal; the existing battle cue starts at handoff.
+World physics/input/stat timers freeze only for that brief presentation. Preview
+actors have no colliders and are removed at handoff, title, successful Load,
+another encounter or scene teardown. Pack-size bands and species tables remain
+unchanged. Prologue fights, optional training, special sites, authored guardians,
+lab blockers and bosses keep their existing entry paths.
+
+Actual mesh bounds determine camera-cell fit, and environment volume plus
+silhouette sight-lines prevent buried/hidden fish. A camera already inside
+scenery gets a temporary clear reveal viewpoint; its original pose is restored.
+Long-bodied rigs use a three-quarter silhouette, not just a face-on head.
+
+Acceptance: public distance-roll signal and genuine browser swimming; exact
+preview-to-Battle species/count; one owner under duplicate signals; frozen
+position/HP/O2/preferences; safe cancellation/load/teardown; wide/narrow real
+renders and animation/collision properties; unchanged opening/guardian/tutorial
+and checkpoint gates. Record defects and repeat the affected visual round until
+no new reveal defect is observed. Evidence is in
+`docs/evidence/random-encounter-reveal/` and the catalog in
+`verify/random_encounter_reveal.bug-catalog.md`. This is not a claim that all
+pre-existing whole-game visual issues are fixed.
+
+## Blocking decisions (unchanged)
 
 None. Timing, gains, trigger distance, camera composition, and animation choice
 are bounded implementation hypotheses to be tuned through the recorded audit

@@ -22,7 +22,22 @@ const gpuMode = process.env.OPENING_BROWSER_GPU || (process.platform === 'darwin
 const browserEngine = process.env.OPENING_BROWSER_ENGINE || 'chromium';
 const browser = browserEngine === 'webkit' ? await webkit.launch() : await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined, args: ['--use-gl=angle', `--use-angle=${gpuMode}`, '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 console.log('Browser launched');
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 },
+  ...(process.env.OPENING_REVEAL_RECORD === '1' ? { recordVideo: { dir: path.join(output, 'recording'), size: { width: 1280, height: 720 } } } : {}) });
+await page.addInitScript(() => {
+  // Timestamp presentation events at their browser source. Synchronous OCR
+  // blocks the Node receiver and can falsely shorten one beat / lengthen the
+  // preceding one. This observes logs only; no game state or input is injected.
+  window.underwaterPresentationEvents = [];
+  const original = console.log;
+  console.log = function(...args) {
+    const line = args.map(String).join(' ');
+    if (/^(PROLOGUE_PHASE|RANDOM_REVEAL|RANDOM_COMBAT)\|/.test(line)) {
+      window.underwaterPresentationEvents.push({ line, time: Date.now() });
+    }
+    return original.apply(this, args);
+  };
+});
 const storageFault = process.env.OPENING_STORAGE_FAILURE === '1';
 if (storageFault) await page.addInitScript(() => {
   // Fault only our disposable context's completed saves. Initial checkpoints
@@ -96,7 +111,7 @@ const attack = async (name, moveY = 604) => {
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
 };
-let failure, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs = 0, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck, escapeRecheck;
+let failure, renderer, elapsedSeconds, engagedSeconds, sourcePresentationEvents, deliberateIdleMs = 0, freeSwimKeydown, freeSwimMs, saveRecheck, deathRecheck, escapeRecheck;
 try {
   await page.goto(live ? target : `http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
   console.log('Export page loaded');
@@ -176,8 +191,11 @@ try {
   bridgeRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03g-something-stirs.png')], { encoding: 'utf8' }));
   if (!bridgeRows.some(row => /Something stirs in the deep/i.test(row.text))) throw new Error('VICT-002 suspense omen unreadable');
   await waitPhase('octopus_introduction', 5000);
-  const bridgeMs = timestamps.octopus_introduction - timestamps.angler_victory;
-  if (bridgeMs < 5500 || bridgeMs > 7500 || timestamps.octopus_notice - timestamps.angler_victory < 2000 || timestamps.octopus_omen - timestamps.octopus_notice < 1700 || timestamps.octopus_introduction - timestamps.octopus_omen < 1700) throw new Error('VICT-002 victory/suspense bridge is abrupt or overlong: ' + bridgeMs);
+  sourcePresentationEvents = await page.evaluate(() => window.underwaterPresentationEvents);
+  const sourceTimes = Object.fromEntries(sourcePresentationEvents.filter(event => event.line.startsWith('PROLOGUE_PHASE|')).map(event => [event.line.split('|')[1], event.time]));
+  if (['angler_victory', 'octopus_notice', 'octopus_omen', 'octopus_introduction'].some(phase => !sourceTimes[phase])) throw new Error('Missing browser-source phase timing oracle');
+  const bridgeMs = sourceTimes.octopus_introduction - sourceTimes.angler_victory;
+  if (bridgeMs < 5500 || bridgeMs > 7500 || sourceTimes.octopus_notice - sourceTimes.angler_victory < 2000 || sourceTimes.octopus_omen - sourceTimes.octopus_notice < 1700 || sourceTimes.octopus_introduction - sourceTimes.octopus_omen < 1700) throw new Error('VICT-002 victory/suspense bridge is abrupt or overlong: ' + bridgeMs);
   await page.waitForTimeout(6000);
   await shot('04-octopus-introduction');
   await waitPhase('octopus_response');
@@ -284,8 +302,12 @@ try {
     await page.keyboard.up('d');
     if (!runRow) throw new Error('ESC-001 normal swimming did not produce a usable Run button');
     if (!randomReveals.length || randomCombats.length !== randomReveals.length) throw new Error('REVEAL-01 natural swimming bypassed world reveal');
+    sourcePresentationEvents = await page.evaluate(() => window.underwaterPresentationEvents);
+    const sourceReveals = sourcePresentationEvents.filter(event => event.line.startsWith('RANDOM_REVEAL|'));
+    const sourceCombats = sourcePresentationEvents.filter(event => event.line.startsWith('RANDOM_COMBAT|'));
     for (let index = 0; index < randomReveals.length; index++) {
-      const shown = randomReveals[index], fight = randomCombats[index];
+      const shown = sourceReveals[index], fight = sourceCombats[index];
+      if (!shown || !fight) throw new Error('Missing browser-source random reveal timing oracle');
       if (shown.line.split('|')[1] !== fight.line.split('|')[1]) throw new Error('REVEAL-02 browser reveal and fight roster differ');
       if (fight.time - shown.time < 1300 || fight.time - shown.time > 4000) throw new Error('REVEAL-01 reveal not briefly readable: ' + (fight.time - shown.time));
     }
@@ -306,7 +328,9 @@ try {
     await page.keyboard.press('r');
     await page.waitForTimeout(80);
     const offRows = await rowsFor('22-escape-cue-off');
-    if (!offRows.some(row => /Random encounters off.*save point/i.test(row.text))) throw new Error('ESC-005 real R did not update Off cue');
+    // The three-second cue may expire while diagnostic OCR runs. The
+    // persistent HUD is the setting oracle, not a longer-lived hint demand.
+    if (!offRows.some(row => /R: Encounters \(Off\)/i.test(row.text))) throw new Error('ESC-005 real R did not change the encounter setting');
     await page.waitForTimeout(3300);
     const expired = await rowsFor('23-escape-cue-expired');
     if (expired.some(row => /heading to a save point|Head to a save point/i.test(row.text))) throw new Error('ESC-002 escape cue failed to expire');
@@ -458,7 +482,7 @@ try {
   if (!storageFault && engagedSeconds >= 120) throw new Error('Engaged opening exceeds the two-minute acceptance limit');
 } catch (error) { failure = String(error); await shot('failure'); }
 finally {
-  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, combatHits, bossResponses, bossResponseTimes, randomReveals, randomCombats, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
+  fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ target, browserEngine, renderer, elapsedSeconds, engagedSeconds, deliberateIdleMs, freeSwimKeydown, freeSwimMs, phases, timestamps, sourcePresentationEvents, combatHits, bossResponses, bossResponseTimes, randomReveals, randomCombats, saveRecheck, deathRecheck, escapeRecheck, errors, failure: failure || null }, null, 2));
   await browser.close();
   if (!live) server.close();
 }

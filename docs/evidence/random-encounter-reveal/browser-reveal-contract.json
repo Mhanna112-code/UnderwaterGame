@@ -1,0 +1,17 @@
+{
+  "randomReveal": "PASS",
+  "checks": [
+    {
+      "roster": [
+        "swordfish_duelist"
+      ],
+      "durationMs": 1839
+    }
+  ],
+  "actualBattleHUD": [
+    "SwordfishDuelist"
+  ],
+  "browserErrors": [],
+  "separateWholeFlowFailure": "Error: ESC-005 real R did not update Off cue",
+  "openingEngagedSeconds": 134.803
+}
