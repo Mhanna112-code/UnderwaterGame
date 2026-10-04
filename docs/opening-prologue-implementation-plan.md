@@ -11,25 +11,21 @@ head `27a5b5253256a26733f8a320c3c6b4f97c64dece` on 2026-10-03.
 `/Users/tomriddle1/underwatergame-opening-prologue` on
 `feature/opening-octopus-prologue`, based exactly on the confirmed parent SHA.
 
-**Current deployment:** Shallows guidance candidate from runtime source
-`4836d0198aa4a3468f570df31782a0cedb36eb92`:
-`https://underwatergame-opk53hlsh-immortaldemongods-projects.vercel.app/`.
-PCK SHA-256 `ea5ef3c1d7e879c41392d7ed85ad62b5f63b9536189e74d3e5ab3fe08d714e8e`.
+**Current deployment:** individual Cordys turns from runtime source
+`ff078ba2c8e7a01e391cfbb72b10a5f2802a38a3`:
+`https://underwatergame-nl6ozcoml-immortaldemongods-projects.vercel.app/`.
+PCK SHA-256 `8bdeb24e859b57c36bd0949d6cf2dfe42aa68a4b46c32ddef9b530de5feb6d6c`.
 Stable review alias: `https://underwatergame-opening-prologue-review.vercel.app/`.
-The stable alias serves that candidate after actual hosted full movies,
-title/reveal, swimming, combat, recovery and cold Load (94.215s to control).
-Shallows visibly says `Shallows: fight to grow stronger.`; Deep and local
-puzzle hints retain their location/priority. No injected completion or review
-flag in the full opening run; geography fixtures are explicit in the separate
-eight-observation boundary/puzzle run. Evidence: `docs/evidence/shallows-guidance/`.
-The movie now closes with a brief question/credits/title and fades into control;
-native held-input isolation and save/load gates pass. Its hover remains quieter,
-filtered/faded, 180ms and rate-limited (prior source-labeled WebAudio proof).
-Native wide/narrow Shallows frames and existing Deep/defaults gates also pass.
-Earlier opening/free-swim/restart/storage evidence remains in its original
-packets; this is not a new actual later-death/Restart or storage-fault run.
-Prior title/held-input/idle proof: `docs/evidence/opening-title-handoff/`.
-There is no idle fallback. Sonar and encounters enable at opening recovery.
+The stable alias serves this candidate after a normal hosted full-movie,
+physical-swim, three-player-attack/three-individual-death, recovery and cold Load
+run: 119.376s total, 117.371s engaged, zero errors. No query shortcut, injected
+completion or shortened movie. Native actual later enemy death/Restart/title Load
+also passes; no new storage-fault run is claimed. Packet:
+`docs/evidence/cordys-individual-turns/`. The response uses distinct Octo Stab,
+Head Bash and Electric Shooting, normal stats, and actual menus between hits.
+Prior title/audio/idle, Shallows/Deep/defaults, victory bridge, escape cue,
+TAB hint and denied-storage evidence remain source-labelled in their original
+packets. Sonar and encounters enable at recovery; idle never starts the Angler.
 This is a review candidate, not final acceptance. The inherited PR #96 alias
 remains baseline only; `underwatergame.vercel.app` remains the Oct 1 deployment.
 
@@ -54,9 +50,9 @@ review shows only the opening delta. After PR #96 merges, retarget/rebase onto
 | A: contracts and asset intake | complete | Durable state/migration gates; canonical manifests; 4 m prologue Cordys adapter and four-pose gallery; pinned Final Boss Ogg derivatives and authored gain gate. |
 | B: opening video lifecycle | in progress | Native lifecycle/policy/save gates green. Latest title/reveal now joins the movie to control with credits/question and settled camera/HUD; real EOF/held input, 1280x720/720x480 title frames and normal hosted movie/title/idle/swim pass (`opening-title-handoff/`). Earlier full Cordys/recovery journey remains source-labeled. Tall/final whole-candidate listening/human acceptance remain. |
 | C: quiet spawn and Angler | in progress | OPEN-035 removed the old seven-second idle fallback. Four seconds of requested, actual horizontal swimming are required; idle, camera-only, blocked input and passive motion cannot consume that window. Native idle/look/swim and 384-case direction/frame-time/prior-idle matrix pass. Exact hosted full-movie idle/look/late-swim passes: 15.007 seconds stationary, then 4.001 seconds of real W before Angler. Continuous video shows actual displacement; remaining broader visual/human acceptance is not claimed. |
-| D: Cordys interruption | in progress | OPEN-036/037 replace the forced HP-zero finisher and Angler-derived accuracy rewrite with normal player moves/effects and actual STR/DEF/ACC/EVA retaliation. Native 15-case button/differential matrix and three high-HP survivors pass. OPEN-038 duplicate impact cue was caught and repaired. Exact hosted normal-entry Axe Kick shows 4 damage, 996/1,000 boss HP, then 80/78/76 retaliation. Browser later-death/Restart/Load and denied-storage/Retry/cold-Load pass. Framing remains green; complete final listening/human audit remains. |
+| D: Cordys interruption | in progress | SOLO-001–007 now preserve three actual player turns between distinct targeted 80/78/76 responses, without AoE or forced HP-zero. Native per-frame HP/input/SFX, high-HP/EVA/DEF witnesses and 15-case normal-rule matrix pass. Per-beat 61-sample framing repairs miniature/clipped poses; independent live skin/target-facing wide/narrow checks and rendered audit pass. Hosted real mouse choices and recovery/cold Load pass (`cordys-individual-turns/`). Final whole-game/human listening acceptance is not claimed. |
 | E: recovery and optional training | in progress | Prior checkpoint proofs remain; current `296b1a5` reruns native actual death/Restart/Load, training Skip/death, denied recovery save, optional training and migration. Hosted full opening with 16.753 s deliberate idle/look takes 105.643 s total (88.890 s engaged), then cold Load/two actual deaths/Restart/title Load pass without replay/errors. Separate hosted rejected IndexedDB commit/Retry/cold Load passes. Attrition fixtures are documented, not campaign balance evidence. |
-| F: exact artifact and polish | in progress | Stable alias now serves runtime `7ffc531`, 96,740,568-byte PCK, after ANGLE-001–004 restore HP-only weak Angler and ordinary full combat. `opening-angler-normal-rules/`: red reproduction, all 11 moves plus 12 ACC/DEF fixtures and three real follow-ups, native full/actual-death journeys, exact normal hosted two-action Angler/Cordys/recovery/cold Load (111.656 s, zero errors). Old browser click-coordinate defect was caught and repaired. Metadata/PCK match; public main remains unchanged. Prior Shallows/title/audio/storage evidence remains source-labeled. Campaign balance, human listening/acceptance, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final zero-defect audit round remain. |
+| F: exact artifact and polish | in progress | Current source `ff078ba`, 104,602,252-byte PCK and exact hosted SHA match. Normal full entry with all three player attacks/recovery/cold Load passes (119.376s total, 117.371s engaged, zero errors); existing review alias only, public main unchanged. Earlier packets remain historical source-labelled evidence. Campaign balance, human listening/acceptance, remaining viewport checks, OPEN-032 training-label occlusion, OPEN-046 close save-crystal occlusion and final whole-game zero-defect audit remain. |
 
 Update this table whenever a phase changes state. A phase may be `in progress`
 or `complete` only when its stated stop gate and evidence exist; code presence
@@ -71,8 +67,8 @@ that gives the player a reason to care before instruction:
 2. play Glassgoat's Mermaid Freak video as a temporary first-run opening;
 3. return control in a quiet free-swimming spawn;
 4. fight a modestly weaker Angler with ordinary stats, full moves and real turns;
-5. have Cordys interrupt the victory, receive one normal combat action, and
-   decisively defeat the party;
+5. have Cordys interrupt the victory and defeat the divers individually, with
+   a real player attack between its distinct single-target responses;
 6. recover the party, establish the long-term goal, and save safely;
 7. restore the existing combat tutorial as an optional nearby beacon;
 8. continue into the existing PR #96 game without redesigning its later route.
@@ -179,12 +175,14 @@ cover art (silent)
   -> at least four seconds of actual swimming, never an idle countdown
   -> one-Angler prologue battle
   -> ordinary combat actions defeat the 3-HP Angler (normal species HP is 5)
-  -> no victory fanfare; brief false-relief pause
+  -> brief Victory acknowledgement, quiet fanfare, noticed victory and suspense
   -> first 25 seconds of the Octopus V3 cinematic, with its own audio only
   -> environment darkens and Cordys interrupts the same battle presentation
   -> Phoenix Final Boss intro begins on the reveal
-  -> one real player action resolves normal damage/status/cost rules
-  -> one authored Cordys finishing move defeats the party
+  -> Maxilani's real player action, then Cordys's single-target Octo Stab
+  -> Musashi's real player action, then Cordys's single-target Head Bash
+  -> Bucky's real player action, then Cordys's single-target Electric Shooting
+  -> each hit uses real stats; only the targeted diver falls, never an AoE wipe
   -> music ends; approximately one second of silence
   -> resume at the Cordys title ending from the edited movie's paused 25-second position
   -> recovery card: “Grow stronger. Find a way to defeat Cordys.”
@@ -313,8 +311,8 @@ recorded playtest finding, not ad hoc code edits.
 | Angler rewards | none | No progression data changes. |
 | Battle intro | existing 15.000 s intro at `0 dB` local trim | Good existing music remains; it does not dominate. |
 | Battle loop fallback | approximately `-7 dB` if reached | Waiting in the menu cannot cause a loud jump. |
-| Cordys response | one player action | Attack visibly connects but changes the outcome negligibly. |
-| Cordys attack | one selected authored finishing move | Full party defeat is decisive and obviously scripted. |
+| Cordys response | one real action from each remaining diver | Normal damage/effects/costs; the next hit waits indefinitely for player input. |
+| Cordys attacks | Octo Stab, Head Bash, Electric Shooting, one target each | Three separate stat-based one-shots against the fresh party, not forced HP-zero or a party-wide wipe. |
 | Final Boss intro | approximately `0` to `-1 dB` | Cordys has a distinct musical identity without clipping. |
 | Final Boss loop | approximately `-4.5 dB` if reached | Intro-to-loop loudness remains perceptually stable. |
 | Post-impact silence | approximately 1 s | Defeat lands emotionally without reading as a hang. |
@@ -376,14 +374,14 @@ crossfade. Cue-to-cue fades are allowed because they are separate states.
 
 ## Visual and motion contract
 
-Recorded framing repair: Spinning Slay's wide/deep travel could not be both
-contained and readable in the short laptop stage. Poison Breath is the selected
-authored prologue finisher, with the existing impact/death timing and no campaign
-move-table change. A fixed orthographic stage contains the actual skin envelope
-without perspective shrinkage or camera pumping. The 19-pose-per-clip derivative
-is generated by `tools/derive_cordys_framing.gd`; the live projection verifier
-independently samples 21 poses for idle/reveal/hurt/finish at every viewport.
-Do not accept the prepared hull as a substitute for those moving-skin checks.
+The older single Poison Breath finisher is superseded by the individual-turn
+contract. The initial combined new-clip envelope made Cordys miniature; sparse
+19-pose samples also missed Octo Stab's fast extreme. Use an offline 61-sample
+per-clip derivative from `tools/derive_cordys_framing.gd`, with a fixed camera per
+response beat and a separate player-choice view. Never zoom each rendered frame.
+The live-skin projection gate independently samples 21 poses for idle/reveal/
+hurt and all three attacks against each target facing, wide/narrow. Do not accept
+the prepared hull as a substitute for those moving-skin and rendered checks.
 
 - The video uses responsive 16:9 FIT sizing with letterboxing as necessary;
   never stretch, crop, or double-render it.
@@ -494,11 +492,14 @@ reward/state leak or duplicate battle exists.
    and Oxygen rules. Damage is small relative to 1,000 HP, never clamped to 1.
    Base Maxilani witnesses: Electric Touch 1, Axe Kick 4, Stabbing 1 plus Bleed
    2; Flash Blast applies Blindness even though it deals no damage.
-5. Resolve Poison Breath through shared combat rules using opening-only STR
-   80 and ACC 30 against each diver's real DEF/EVA. No direct HP reset. These
-   stats defeat the fresh party; high-stat diagnostic survivors remain alive
-   and can act again rather than being declared defeated. Preserve the special
-   defeat/recovery presentation and campaign-boss isolation.
+5. Resolve one targeted strike per real boss turn, cycling Octo Stab, Head Bash
+   and Electric Shooting. STR 80 and ACC 30 use the target's real DEF/EVA, with
+   no direct HP reset or poison spread. Return the normal move/target menu to
+   the next living diver before the next response. Three actual player choices
+   and three distinct impacts defeat the fresh party. High-HP/EVA/DEF diagnostic
+   survivors remain alive; normal status ticks occur once per actual boss turn.
+   Emit the special final defeat only after zero living divers; preserve recovery,
+   checkpoint durability and campaign-boss isolation.
 
 **Stop gate:** no normal victory, Game Over, campaign Octopus state, reward,
 or balance mutation occurs; Cordys is readable and animated at every target
@@ -620,9 +621,11 @@ defects. Technical playback, layout, audio, and handoff defects still block.
 - The prologue Angler changes HP only (3 versus normal 5). All moves, stats,
   hit/miss rules, costs, effects and turns match normal combat. Actual defeat
   interrupts once with no rewards. Campaign-wide balance is not claimed.
-- Cordys visibly interrupts the victory, receives one normal stat-based action
-  (not a fixed damage result), and defeats the fresh party with one readable
-  stat-based authored move. Status and cost choices remain real.
+- Cordys visibly interrupts the victory and lets each surviving diver perform
+  a real stat-based action before its next single-target response. Only one
+  diver loses HP per hit. Octo Stab, Head Bash and Electric Shooting use distinct
+  delivered clips; status/cost choices remain real. Waiting at the returned move
+  menu never causes an automatic follow-up attack.
 - No normal victory fanfare, Game Over screen/music, campaign Octopus state,
   or route progression is used for the scripted loss.
 - The party is restored, safely positioned, saved, and given the exact

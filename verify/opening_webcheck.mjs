@@ -201,7 +201,12 @@ try {
         if (!ready) await page.waitForTimeout(100);
       }
       if (!ready) throw new Error('SOLO-007 next living diver has no real Attack action');
+      const heldDecisionStarted = Date.now();
       await page.waitForTimeout(1000);
+      // Explicit no-input test hold, like the existing idle/look probe. Keep
+      // total wall time reported; exclude only this measured deliberate wait
+      // from the engaged-run budget, never rendering or ordinary input time.
+      deliberateIdleMs += Date.now() - heldDecisionStarted;
       if (bossResponses.length !== index + 1 || phases.includes('octopus_aftermath')) throw new Error('SOLO-007 Cordys chains hits without a player choice');
       await attack(index === 0 ? '06-cordys-musashi' : '06-cordys-bucky');
     }

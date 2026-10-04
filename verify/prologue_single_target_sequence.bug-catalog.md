@@ -63,6 +63,11 @@ Repair: offline 61-sample per-clip hull, fixed view per attack beat and normal
 player-turn view, independently checked against live skin and target facings.
 No frame-by-frame zoom or weakening the readability gate.
 
-Pending final native rendered audit and exported browser/cold-Load proof. The
-added two player turns must be measured against the original two-minute goal;
-do not silently cut movies or sacrifice the requested intervening attacks.
+Final native wide/narrow renders and all target-facing moving-skin projections
+pass; no new response defect observed in the bounded visual round. Exported
+normal-entry Chromium/Metal proves three actual mouse-driven player attacks,
+three separate stat-based deaths and cold title Load without opener replay.
+Full wall time 119.376s; engaged 117.371s excludes only the measured 2.005s
+deliberate no-input probes. The original cap is retained, movies and player turns
+are unchanged. First timing-accounting failure and both earlier gameplay reds
+remain in `docs/evidence/cordys-individual-turns/`; no result is rewritten.

@@ -863,3 +863,53 @@ also checks Shallows purpose after recovery and Load. No assertion was relaxed
 to excuse a gameplay defect. Same review alias updated, public main unchanged.
 Packet: `docs/evidence/shallows-guidance/README.md`.
 OPEN-032/046 remain; this is not final whole-project zero-defect acceptance.
+
+## 2026-10-04: individual Cordys deaths, intervening player attacks
+
+User correction: no party-wide AoE wipe. Kill the divers one at a time with
+different attacks, and retain player attacks between Cordys's turns.
+
+SOLO-001 red reproduced three HP changes in one frame. The first local draft
+separated the hits but chained them without new choices; SOLO-007 red caught
+that after the user's clarification. That draft was not published. The repair
+uses Octo Stab, Head Bash and Electric Shooting on one real target per boss
+turn, returning the normal Attack/move/target menu to the next living diver.
+Only the targeted diver loses HP; no new hit occurs while input is withheld.
+Normal STR/DEF/ACC/EVA and player move effects/costs remain, including Bucky's
+ordinary 9–11 Guard Bash variance. High-HP/EVA/DEF witnesses genuinely survive.
+
+Defects found and repaired while verifying:
+
+- Combined attack hull made Cordys miniature; sparse temporal samples missed
+  Octo Stab's fast extreme. Use offline 61-sample per-clip bounds, fixed view per
+  beat, and independent live-skin checks for every target facing, wide/narrow.
+- Diver-only turn cursor could not accept the boss actor. Hide that cursor on
+  the response; NOW correctly names Cordys, then the next living diver.
+- Old focused geometry fixture depended on window focus/swimming and headless
+  64-pixel default size. Its production-stage fixture now has explicit viewport
+  sizing; full native/browser journeys separately verify real physical entry.
+- Browser oracle initially assumed a fixed Guard Bash result, despite normal
+  legacy variance. It now independently admits 9–11, without changing gameplay.
+- First hosted run counted two deliberately held player menus as engaged time
+  (120.740s). Preserve its failure and correct the measured accounting, not the
+  result or game. Repeat passes at 119.376s total / 117.371s engaged, with 2.005s
+  deliberate holds. No movie, player turn or render time was cut/excluded.
+
+Native real-control per-frame sequence, normal-rule differential witnesses,
+audio ownership, generated durable-state matrix, full journey, and actual later
+enemy deaths/Restart/title Load pass. Native wide/narrow GIF/stills and hosted
+individual-hit/returned-menu frames inspected: no new defect observed in this
+bounded response round. Existing OPEN-032/046 and whole-game/human acceptance
+remain, not silently closed.
+
+Clean runtime `ff078ba2c8e7a01e391cfbb72b10a5f2802a38a3`, 104,602,252-byte
+PCK, SHA `8bdeb24e859b57c36bd0949d6cf2dfe42aa68a4b46c32ddef9b530de5feb6d6c`.
+Hosted download matches; no test user override ships. Normal entry plays full
+movies, accepts three real mouse-driven player attacks, resolves three distinct
+single-target deaths and recovers. Cold Load does not replay the opening;
+training stays incomplete and Sonar/encounters On. Zero browser/script errors.
+
+Same review alias now points to `dpl_HLde6GiW2TgP7zsePDRcmGjPYVLe`.
+Public main and secondary aliases remain `dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5`.
+Packet: `docs/evidence/cordys-individual-turns/README.md`. Local commits and review
+deployment are not a claim of a GitHub push, main merge or final goal completion.
