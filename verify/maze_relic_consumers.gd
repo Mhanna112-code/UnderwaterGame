@@ -130,9 +130,12 @@ func _case(relic: String, spell: String, owner: int, present: bool) -> void:
 		maze.inventory_menu.close()
 	root.size = Vector2i(360, 640)
 	await process_frame
-	for caption in maze._responsive_captions:
-		_expect(caption.offset_left >= -164.1 and caption.offset_right <= 164.1,
-			"INT-08 a second caption did not resize with the viewport")
+	var viewport := Rect2(Vector2.ZERO, root.get_visible_rect().size)
+	for node in maze.get_node("HUD").find_children("*", "Label", true, false):
+		var caption := node as Label
+		if caption.is_visible_in_tree():
+			_expect(viewport.encloses(caption.get_global_rect()),
+				"INT-08 visible victory/encounter caption did not resize with viewport: " + caption.text)
 	root.size = Vector2i(1280, 720)
 	for diver in maze.divers:
 		_expect(diver.stats.hp_max == 10, "INT-03 fixture inflated HP")

@@ -1,0 +1,30 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MAZE INPUT CASE|active=0|owner=map
+MAZE INPUT CASE|active=0|owner=save
+MAZE INPUT CASE|active=0|owner=swap
+MAZE INPUT GEOMETRY|active=0|real_R/E=checked
+MAZE ROOM POLICY|active=0|outside=blocked|developer_off=blocked|global_off_local_on=battle
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MAZE INPUT CASE|active=1|owner=map
+MAZE INPUT CASE|active=1|owner=save
+MAZE INPUT CASE|active=1|owner=swap
+MAZE INPUT GEOMETRY|active=1|real_R/E=checked
+MAZE ROOM POLICY|active=1|outside=blocked|developer_off=blocked|global_off_local_on=battle
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MAZE INPUT CASE|active=2|owner=map
+MAZE INPUT CASE|active=2|owner=save
+MAZE INPUT CASE|active=2|owner=swap
+MAZE INPUT GEOMETRY|active=2|real_R/E=checked
+MAZE ROOM POLICY|active=2|outside=blocked|developer_off=blocked|global_off_local_on=battle
+MAZE INPUT OWNERSHIP: clean

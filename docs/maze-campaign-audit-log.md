@@ -130,3 +130,9 @@ export, main/public update or user-save writes from new input/presentation tests
 Available disk is approximately 1.9 GiB; package/export planning must avoid
 duplicating heavy output, but it has not blocked these state/input checks. Next:
 real downed-diver combat revival, then current-input physical route verification.
+
+Test-oracle hardening on 8ba4c92: caption resizing now checks actual visible HUD
+Label rectangles against the viewport instead of a private caption registry.
+Current placement finds the real CollisionShape3D rather than depending on child
+index order. The same eight real relic wins and all generated input/policy cases
+pass after this behavior-preserving fixture change, with no runtime errors.

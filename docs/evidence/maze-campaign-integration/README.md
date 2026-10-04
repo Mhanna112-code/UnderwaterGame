@@ -65,3 +65,8 @@ verify/maze_input_ownership.gd`, 120 seconds for regressions; same engine.
 P/mouse input and three inspected views at 360x640/1280x720 with Compatibility
 renderer. No user save was written. These are limited checkpoint/menu samples;
 other sizes, full route, overview art, browser/audio and final polish remain open.
+
+`maze-relic-public-ui.log` and `maze-input-shape.log` rerun the same suites on
+8ba4c92 with hardened, refactor-tolerant oracles: visible caption rectangles,
+not a private registry; actual collision type, not child order. Both exit 0 with
+no script/engine errors. No gameplay/source changes in this test-only increment.

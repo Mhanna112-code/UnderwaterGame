@@ -107,7 +107,14 @@ func _swap_owner(maze: MazeLevel, selected: int) -> void:
 func _map_geometry(maze: MazeLevel) -> void:
 	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
 	var corridor := maze.get_node("WindCorridor1") as Area3D
-	var centre: Vector3 = (corridor.get_child(0) as CollisionShape3D).global_position
+	var shape: CollisionShape3D
+	for child in corridor.get_children():
+		if child is CollisionShape3D:
+			shape = child as CollisionShape3D
+	if shape == null:
+		findings.append("INT-06 fixture corridor has no physical push area")
+		return
+	var centre := shape.global_position
 	maze.divers[maze.active].global_position = centre
 	for frame in range(4):
 		await physics_frame
