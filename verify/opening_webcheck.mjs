@@ -206,6 +206,10 @@ try {
     });
     await page.waitForTimeout(2000);
     saveRecheck = { beforeReload: await readSaves() };
+    const explorationCheckpoint = saveRecheck.beforeReload.find(save => String(save.key).endsWith('/slot_0.json'));
+    if (!explorationCheckpoint?.data.random_encounters_enabled || !explorationCheckpoint.data.divers[0].sonar_active) {
+      throw new Error('OPEN-040/041 actual opening did not persist enabled Sonar and encounters');
+    }
     console.log('BROWSER CHECKPOINT|' + JSON.stringify(saveRecheck.beforeReload));
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(20000);
@@ -218,6 +222,10 @@ try {
     await page.waitForTimeout(4000);
     await shot('12-loaded-world');
     saveRecheck.afterReload = await readSaves();
+    const loadedExploration = saveRecheck.afterReload.find(save => String(save.key).endsWith('/slot_0.json'));
+    if (!loadedExploration?.data.random_encounters_enabled || !loadedExploration.data.divers[0].sonar_active) {
+      throw new Error('OPEN-041 cold Load lost enabled exploration settings');
+    }
     if (phases.slice(expected.length).includes('opening_video') || phases.slice(expected.length).includes('spawn_exploration')) {
       throw new Error('OPEN-027 cold Load Game replayed the completed opening');
     }

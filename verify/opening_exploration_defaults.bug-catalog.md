@@ -59,4 +59,8 @@ diver and missing fields; it does not mirror the loader implementation.
 - Test harness required an explicit String annotation for temporary file
   cleanup; parse errors were corrected, never accepted as green exit codes.
 - Evidence: `docs/evidence/opening-exploration-defaults/`.
-- Web build/alias smoke check pending. No campaign balance change.
+- Hosted full ordinary opening and cold Load passed; both settings persisted
+  in actual IndexedDB, HUD screenshots inspected, zero errors. Existing review
+  alias updated to exact tested runtime `42d8bf2`; main unchanged.
+- No campaign balance change. Existing optional-label occlusion OPEN-032 is
+  still visible in browser screenshots and belongs to the larger final audit.

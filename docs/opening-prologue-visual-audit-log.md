@@ -12,7 +12,16 @@ rendered 1280×720 HUD inspected showing both On. Eight preference round-trips,
 legacy/unfinished migration, invalid boolean rejection, empty-O2 honesty,
 existing invalid-load and optional-training gates green without engine errors.
 Evidence: `docs/evidence/opening-exploration-defaults/`.
-Hosted export check pending; overall final visual/audio audit remains open.
+Hosted ordinary New Game/full movies/real combat/recovery/cold Load passed:
+94.228 seconds to control, zero errors; actual IndexedDB retained both On
+flags. Recovery and loaded HUD screenshots inspected; existing Sonar drain
+remains active (loaded O2 97). Exact runtime `42d8bf2`, PCK 93,320,308 bytes,
+SHA-256 `0205efe8814794676d4414f85b8ed5216a91aee0be78106b99a683a101986ca7`,
+deployment `dpl_5aws4NhxmoY8WqypFv3GVU6DcHxK`; served bytes match. Existing
+review alias updated and metadata verified; public main unchanged.
+Existing optional-label occlusion OPEN-032 remains visible; no new label
+repair was attempted in this defaults change. Overall final visual/audio
+audit remains open.
 
 This log is part of the release contract. A green test suite, successful
 export, or attractive isolated screenshot cannot produce the final PASS.
