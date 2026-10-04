@@ -73,7 +73,14 @@ const attack = async (name, moveY = 604) => {
   await page.mouse.click(160, 544);
   await page.waitForTimeout(400);
   await shot(name + '-move-menu');
-  await page.mouse.click(160, moveY);
+  // Restoring the full Angler kit changes menu height. Select the rendered
+  // label, not the old four-move menu's coordinates or injected game state.
+  const moveName = name.includes('second-angler') ? 'Precise Tap'
+    : name.includes('cordys') && moveY === 604 ? 'Axe Kick' : 'Electric Touch';
+  const menuRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, name + '-move-menu.png')], { encoding: 'utf8' }));
+  const renderedMove = menuRows.find(row => row.text.trim() === moveName && row.y > 400);
+  if (!renderedMove) throw new Error('Expected rendered move missing: ' + moveName);
+  await page.mouse.click(renderedMove.x, renderedMove.y);
   await page.waitForTimeout(400);
   await shot(name + '-target-menu');
   await page.mouse.click(160, 666);
