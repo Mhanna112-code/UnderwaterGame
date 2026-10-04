@@ -40,6 +40,7 @@ var _transitioning_to_encounter := false
 var _first_encounter_done := false
 
 const OBJECTIVE_TEXT := "OBJECTIVE: Explore the mysterious blockade path"
+const OBJECTIVE_GAP := 8.0
 var _objective_label: Label
 
 # The objective shows once the opening tutorial fight is over, and stays
@@ -47,6 +48,12 @@ var _objective_label: Label
 func _update_objective() -> void:
 	if _objective_label != null:
 		_objective_label.visible = _first_encounter_done and not battling
+		# Its top sits a little below the bottom of the controls text at the
+		# top left (which can be 2-3 lines), still centred.
+		if hud != null:
+			var top := hud.position.y + hud.get_combined_minimum_size().y + OBJECTIVE_GAP
+			_objective_label.offset_top = top
+			_objective_label.offset_bottom = top + 30.0
 # Set right before tutorial_result_popup.open() in _on_battle_finished()'s
 # "lost" branch, read by _on_tutorial_loss_exit() - the popup itself carries
 # no memory of which tutorial fight opened it (special encounter vs. the
