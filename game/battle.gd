@@ -1596,7 +1596,8 @@ func _build_ui() -> void:
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(log_label)
+	# Added to `col` below, after the tutorial/level-up captions, so
+	# "X's turn." always reads under them.
 
 	# A second, wrapping line above the normal one-line log - the log's
 	# combat messages ("You strike for 12.") are too short-lived and terse
@@ -1649,6 +1650,7 @@ func _build_ui() -> void:
 	_levelup_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_levelup_caption.install_effect(PulseTextEffect.new())
 	col.add_child(_levelup_caption)
+	col.add_child(log_label)
 
 	main_menu = HFlowContainer.new()
 	main_menu.add_theme_constant_override("h_separation", 12)
