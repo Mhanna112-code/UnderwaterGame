@@ -67,4 +67,26 @@ normal-entry test must not use that fixture or accelerate the new bridge.
 
 ## Evaluation
 
-Pending red/green, native visual and normal-entry hosted verification.
+- Real attack-button red reproduced VICT-001: actual kill immediately entered
+  `octopus_introduction`, with no visible Victory. Fixed gate passes headless and
+  rendered at 1280x720 and 720x480 (6.60 / 6.63 seconds respectively).
+- VICT-002 caught an implementation-time tween sequencing defect: the omen's
+  copy faded concurrently with its intended hold. The delayed-alpha assertion
+  now rejects that regression. The final fade follows the readable hold.
+- Native visual inspection caught VICT-007: the dead Angler's turn queue and
+  old move controls lingered underneath the bridge. A read-only texture of the
+  actual 3D stage now excludes those controls, with aspect preserved. Final
+  wide/narrow screenshots have readable, unclipped static copy.
+- Real Escape/R/W during the bridge leave gameplay, encounter preference, HP,
+  positions and the same Battle owner unchanged. No XP/spells/completion are
+  awarded. Local fanfare gain and unchanged player audio settings are asserted;
+  music is stopped before movie playback. These are lifecycle/gain checks, not
+  a claim of subjective audio audition on every device.
+- Existing full native journey and generated durable milestone x every-phase
+  save/load matrix pass. The focused native fixture skips only the Mermaid
+  movie; hosted normal-entry verification must play it in full.
+- A first narrow run never entered combat while native harnesses ran together.
+  Sequential real-input rerun passed; the test now reports missing setup
+  separately rather than misdiagnosing it as an absent victory bridge.
+
+Release and hosted evidence: `docs/evidence/angler-victory-bridge/README.md`.
