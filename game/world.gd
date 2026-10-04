@@ -579,6 +579,9 @@ func _on_prologue_angler_defeated() -> void:
 	route_state.set_prologue_phase("octopus_reveal")
 	battle.reveal_prologue_octopus()
 
+func _report_prologue_phase(phase: String) -> void:
+	print("PROLOGUE_PHASE|" + phase)
+
 func _on_prologue_phase_changed(phase: String) -> void:
 	route_state.set_prologue_phase(phase)
 
@@ -862,6 +865,9 @@ var scripted_rise := 0.0
 var _active_cursor: MeshInstance3D
 
 func _ready() -> void:
+	# Read-only trace synchronizes exported playtests to real gameplay without
+	# query shortcuts or commands that mutate state.
+	route_state.phase_changed.connect(_report_prologue_phase)
 	cam = $Camera3D
 	hud = $HUD/Controls
 	# MODIFIED (added): none of $HUD's own children ever set mouse_filter,
