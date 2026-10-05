@@ -125,6 +125,13 @@ func is_in_range(actor: Diver) -> bool:
 	var nearest := local.clamp(-half, half)
 	return (_collision.global_transform * nearest).distance_to(actor.global_position) <= interaction_radius * 0.8
 
+# In reach, shut, and E would open it right now (no key needed, or one in
+# hand) - what lets E unlock a door even while the maze map is up.
+func can_unlock(actor: Diver) -> bool:
+	if _opened or _opening or not is_in_range(actor):
+		return false
+	return _nearby_prompt(actor) in ["E: Unlock door", "E: Open door"]
+
 func is_open() -> bool:
 	return _opened
 

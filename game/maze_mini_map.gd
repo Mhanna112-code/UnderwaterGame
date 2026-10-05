@@ -1373,6 +1373,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Ctrl+E: move the blinking current (Ctrl+Left/Right picks it).
 		_rotate_selected_current()
 		get_viewport().set_input_as_handled()
+	elif main_map.visible and keycode == KEY_E and maze_level != null and maze_level.door_ready_to_unlock():
+		# A door you can unlock right here takes E first, map open or not.
+		maze_level._try_open_door()
+		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
 		# Confirm: rotate the blinking set. Handled here so E doesn't also
 		# reach MazeLevel's relic interaction while the map is open.
