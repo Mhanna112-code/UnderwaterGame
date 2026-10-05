@@ -69,6 +69,12 @@ Combined hosted Save denial/exact durable rollback/retry/cold Load and actual
 Cordys Title Load/W/No/reapproach/Yes passed with no findings; narrow danger
 choices rendered/readable. See combined-hosted-save and combined-hosted-cordys
 in the evidence packet. The served review guide states the outstanding plan.
-Main push and canonical promotion/hash/recheck are pending in this source
-receipt; the post-delivery receipt will record them. Git pushes alone do not
-update the canonical alias.
+Published to main in artifact279dd5e by non-force fast-forward push. The tested
+READY candidate was promoted to https://underwatergame.vercel.app/ and assigned
+to the existing campaign-review alias. Both aliases identify138ca53; the actual
+canonical PCK download matches the SHA256 above. A new disposable browser
+profile repeated denied Save/exact rollback/retry/success/cold Load on canonical
+with no findings. See [delivery.json](evidence/main-safety-oct5/delivery.json)
+and canonical-save/receipt.json. Git pushes alone still do not update either
+alias; this release is an explicit checked deployment. Native downloads remain
+olderbffe1b5, and this bounded safety release is not campaign completion.

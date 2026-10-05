@@ -50,3 +50,8 @@ Concurrent main afdbd45 is preserved in138ca53. The combined affected checks
 and hosted-candidate receipts (combined-hosted-save/combined-hosted-cordys)
 pass; the actual new served PCK is e5f790f1a30bc3390a1006784257ac1957c8998ec53fcc672bc8ed723c527de9.
 This replaces, rather than silently reuses, the earlier764097e artifact proof.
+
+delivery.json records the non-force main push and exact candidate promotion.
+canonical-save/ repeats real browser denied persistence/exact rollback/retry/
+success/cold Load on the canonical alias in another disposable profile, with
+no findings. Canonical's downloaded PCK and both aliases' metadata match138ca53.

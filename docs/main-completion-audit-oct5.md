@@ -6,9 +6,19 @@ The original73c2d72 findings below are historical evidence. Main subsequently
 advanced through17e4705/1dc675c and deployed the reward-rock hints. This isolated
 repair checkout fast-forwarded without overwriting that work. Player-safety
 implementation and focused native/exported-browser evidence are now recorded
-in [the first safety batch](main-safety-batch-oct5.md); its release receipt will
-identify the exact published revision and pack. This does not complete the
+in [the first safety batch](main-safety-batch-oct5.md). That batch is now published
+to main279dd5e and both existing aliases, runtime138ca53/PCKe5f790f1. It preserves
+concurrent mainafdbd45's stationed Cordys and danger confirmation. Actual
+canonical denied Save/rollback/retry/cold Load passes in a fresh browser profile;
+[delivery receipt](evidence/main-safety-oct5/delivery.json) records exact identity.
+This does not complete the
 opening, goals/ending, earned balance or full campaign acceptance batches.
+
+Next implementation is batch2: keep Angler, replace opening Cordys with
+overwhelming Tethys without altering laboratory balance, retain durable recovery,
+and move Cordys's film to his actual maze encounter. The visible stationed
+Cordys/requested confirmation is already implemented and must be retained.
+Do not repeat it or confuse it with the still-missing film relocation.
 
 ## Authority and baseline
 
