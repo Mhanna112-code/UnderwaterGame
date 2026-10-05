@@ -1156,11 +1156,6 @@ func _refresh_map_copy() -> void:
 		if _map_help != null:
 			# The lever map has its own controls list under the map instead.
 			_map_help.visible = main_map.visible and legend.visible
-			# The bottom-left HUD captions sit where the help panel goes.
-			for caption in ["Controls", "GoalLabel"]:
-				var node := get_parent().get_node_or_null(caption) as CanvasItem
-				if node != null:
-					node.visible = not _map_help.visible
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):

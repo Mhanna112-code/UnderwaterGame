@@ -106,6 +106,7 @@ func _ready() -> void:
 	_build_wall_10_11_extras()
 	_build_hall_gauntlet()
 	_build_inventory_menu()
+	_build_tutorial_book()
 	_build_special_encounters()
 	_build_visible_floors()
 	_carve_hall_whirlpool_holes()
@@ -712,15 +713,28 @@ const ENEMY_BOOST_MIN := 1.05
 const ENEMY_BOOST_MAX := 1.15
 const BOOSTED_STATS := ["hp_max", "strength", "defense", "agility", "accuracy"]
 var room_encounters_enabled := true
+# R, as in the main game: ordinary random encounters everywhere else in the
+# maze. Shared with World's own switch when the maze is part of the world.
+var random_encounters_enabled := true
 var _strong_room_seen := false
 var _battling := false
 var _battle: Battle
 var _encounter_status: Label
 
 func _on_diver_encounter(d: Diver) -> void:
-	if _battling or any_modal_open() or d != _diver or not room_encounters_enabled or not is_diver_in_strong_room():
+	if _battling or any_modal_open() or d != _diver:
 		return
-	_start_battle()
+	if is_diver_in_strong_room():
+		if room_encounters_enabled:
+			_start_battle()
+	elif random_encounters_enabled:
+		_start_battle("ordinary")
+
+func _toggle_random_encounters() -> void:
+	if is_diver_in_strong_room():
+		return   # forced on in the danger zone - the HUD hint is greyed out
+	random_encounters_enabled = not random_encounters_enabled
+	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
 
 # kind: "strong" (the strong-enemy room's random encounters), "secret_boss"
 # or "main_boss".
@@ -743,6 +757,8 @@ func _start_battle(kind := "strong") -> void:
 			_announce("Something was hiding in the rock!")
 		"special":
 			pass   # no banner - the combat text says the enemy is carrying an item
+		"ordinary":
+			pass   # an ordinary encounter, as in the open world - no banner
 		_:
 			_announce("Strong enemies emerge from the murk!")
 	_battle.party_source = divers
@@ -798,7 +814,7 @@ func _on_battle_finished(result: String) -> void:
 		return
 	match result:
 		"won":
-			_announce("The strong enemies were defeated.")
+			_announce("The enemies were defeated." if kind == "ordinary" else "The strong enemies were defeated.")
 		"fled":
 			_announce("You escaped.")
 		_:
@@ -2480,10 +2496,15 @@ const WORLD_CONTROLS_TAB := "TAB switch diver"
 var _world_hud_name: Label
 var _world_hud_tab: Label
 var _world_hud_after: Label
+var _world_hud_encounters: Label
+var _world_hud_tail: Label
 var _tab_flash: Tween
 
 func _build_world_hud() -> void:
 	var status := $HUD/Controls as Label
+	# The bottom-left status line (hallway/current/wall messages) isn't shown:
+	# the map and the orange announcements already say what changed.
+	status.visible = false
 	status.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	status.offset_left = 16.0
 	status.offset_right = 900.0
@@ -2507,7 +2528,13 @@ func _build_world_hud() -> void:
 	row.add_child(_world_hud_tab)
 	_world_hud_after = Label.new()
 	row.add_child(_world_hud_after)
-	for l in [_world_hud_name, before, _world_hud_tab, _world_hud_after]:
+	# Its own label so it can be greyed out in the danger zone (see
+	# _update_world_hud()).
+	_world_hud_encounters = Label.new()
+	row.add_child(_world_hud_encounters)
+	_world_hud_tail = Label.new()
+	row.add_child(_world_hud_tail)
+	for l in [_world_hud_name, before, _world_hud_tab, _world_hud_after, _world_hud_encounters, _world_hud_tail]:
 		(l as Label).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _update_world_hud() -> void:
@@ -2524,8 +2551,13 @@ func _update_world_hud() -> void:
 		after += "  ·  E: %s" % String(_diver.ability_id).capitalize()
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
-	after += "  ·  L: Map"
 	_world_hud_after.text = after
+	# In the danger zone (the strong-enemy room) encounters are forced on, so
+	# R does nothing there: the hint greys out, still showing the setting
+	# you left it on, and turns white again once you're out.
+	_world_hud_encounters.text = "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
+	_world_hud_encounters.modulate = Color(0.55, 0.57, 0.6) if is_diver_in_strong_room() else Color.WHITE
+	_world_hud_tail.text = "  ·  L: Map"
 	var flash := _tab_should_flash()
 	if flash and _tab_flash == null:
 		_tab_flash = create_tween().set_loops()
@@ -2763,6 +2795,8 @@ func _build_rotate_prompt() -> void:
 	label.offset_right = 560.0
 	label.offset_bottom = -16.0
 	label.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+	# Not shown: the controls are in the top-left HUD and the map's help.
+	label.visible = false
 	$HUD.add_child(label)
 
 # Returns the wall's useful physical geometry in world space.  `basis.x` is
@@ -4243,6 +4277,14 @@ func _unhandled_input(e: InputEvent) -> void:
 			_announce("Sonar %s." % ("on" if _diver.toggle_sonar() else "off"))
 		else:
 			_announce("Only Maxilani has sonar.")
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_R:
+		# On the open map R moves the picked current instead (the map's own).
+		var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+		if map == null or not map.main_map.visible:
+			_toggle_random_encounters()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_F1:
+		if tutorial_book != null:
+			tutorial_book.open(TutorialContent.GENERAL_PAGES)
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_TAB:
 		_switch_diver()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
@@ -5342,6 +5384,17 @@ func _build_rock_column(at: Vector3, rng: RandomNumberGenerator) -> void:
 		boulder.rotation = Vector3(rng.randf_range(-0.4, 0.4), rng.randf() * TAU, rng.randf_range(-0.4, 0.4))
 		column.add_child(boulder)
 		y += mesh.height * 0.8
+
+# --- Tutorial guide (F1, as in the main game) -----------------------------------
+var tutorial_book: TutorialBook
+
+func _build_tutorial_book() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 96
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS   # it pauses the game while open
+	add_child(layer)
+	tutorial_book = TutorialBook.new()
+	layer.add_child(tutorial_book)
 
 # --- Inventory (ported from the main game) -------------------------------------
 # Esc opens main's InventoryMenu: Items (use on whoever you're steering),
