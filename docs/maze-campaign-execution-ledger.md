@@ -2,6 +2,18 @@
 
 ## Current authoritative status
 
+Current feedback runtime is bffe1b50edd23199d346fac6b4ca71903b70acc0. Existing
+review alias is updated and locally/immutable/stable checksum-title-L checks
+pass; portable control screenshots inspected. PCK and deployment identifiers
+are in the runtime manifest. Same-source Windows/Linux prerelease is published,
+ZIP/architecture/published hashes pass, target launches still unverified.
+Main/public untouched. Current bounded next admission: c035c20 sphere-room gaps.
+Old spacing fails six generated geometry checks; actual swimming/rendered
+admission is still pending. Earned chest/legend, underpass, queue, embedded
+geometry and complete route/storage/audio/polish acceptance remain open.
+
+## Earlier batch receipts (historical, not latest hosted status)
+
 October 4 delivery audit: pushed source `2559d97` was exported, but its immutable
 preview was rejected before alias assignment because browser arrow badges showed
 broken glyphs. The strengthened exported-browser gate reproduces the failure

@@ -21,7 +21,7 @@ Branch inventory: battle/modal/Swap reject map keys; a visible overview rejects 
 | MAP-5 | The overview/help run below a short window or beyond its right edge; its legend/title are clipped; exploration HUD shows through. | High: correct keys exist but cannot be read. Fixed 500px map plus long help exceeds supported viewports. | Actual widget bounds/text extents at four fixed and eight generated desktop/portrait shapes; native rendered inspection catches HUD bleed-through and narrow orphaned R copy. | repaired; native 12 shapes pass; wide/short/portrait captures inspected |
 | MAP-6 | Holding Ctrl sinks a diver while selecting a current or after closing the map. | High: new input silently changes depth. | Actual held-key differential over physics frames in both World and Maze; Shift must still descend. | valid old Ctrl red; repaired two-owner test passes |
 | MAP-7 | Restored discovered rooms draw before reveal groups exist and emit a script error. | High: cold/restored overview may be broken despite printed clean result. | Public restore-discovery followed by actual rendered frames, rejecting script errors. | reproduced during layout gate; initialize reveal groups before restoring rooms; clean native rerun |
-| MAP-8 | Unicode arrow badges are broken glyphs in web export despite correct native rendering and OCR smoke pass. | High: player cannot read new controls. | Inspect actual exported-browser help; use portable Left/Right words, remeasure native wrapping, strengthen browser OCR to require those words. | valid exported negative reproduced; portable native repair passes 12 shapes; fresh browser acceptance pending |
+| MAP-8 | Unicode arrow badges are broken glyphs in web export despite correct native rendering and OCR smoke pass. | High: player cannot read new controls. | Inspect actual exported-browser help; use portable Left/Right words, remeasure native wrapping, strengthen browser OCR to require those words. | valid exported negative reproduced; native 12 shapes and local/immutable/stable browser repair pass; screenshots inspected |
 
 ## Skipped / suspect boundaries
 
@@ -75,7 +75,11 @@ and 720x480 captures were inspected. Compact copy keeps E and Rotate together.
 The rejected preview is deployment `dpl_5mubSd5LF3hj8dY7DESpnQSedgwM`,
 source 2559d979376a854da7472a543ee213c96254eaf4, pack 93,214,600 bytes,
 SHA256 d1d6110bfe71f6cfc44823769a10e3fdc942a45b13705af6800c38dee00db1b5.
-It was never assigned to the stable alias. A fresh export is required.
+It was never assigned to the stable alias. Repaired bffe1b5 export passes the
+strengthened local, immutable and stable browser checks, with actual screenshots
+inspected: `/tmp/underwater-marc-portable-browser-green.log`,
+`/tmp/underwater-marc-portable-hosted.log`, `/tmp/underwater-marc-portable-stable.log`.
+Pack identity and same-source native archives are in the runtime manifest.
 
 ## Subsequent intake: c035c20 / 86878fa
 

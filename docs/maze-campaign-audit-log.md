@@ -1,5 +1,37 @@
 # Maze and campaign integration audit log
 
+## October 4, bffe1b5 control/status feedback delivery
+
+Marc heads repeatedly refreshed and unchanged at c035c20 / 86878fa. Shared
+pause/popup/Bleed/caption/status, Ctrl-current/Shift-sink, immediate EVA cap and
+ready-door/surface reach batches are admitted separately with named bug catalogs.
+Actual puzzle entry, puppet reward and campaign Cordys consumer wins pass on
+their recorded source. These are not full resource/traversal or listening proof.
+
+2559d97 initial export was rejected: browser controls had broken arrow glyphs
+despite an initially passing checksum/OCR smoke. Strengthened exported-browser
+test fails against that original pack. Portable key words and compact narrow
+copy pass 12 native shapes, inspected narrow/short frames and fresh local/hosted
+browser screenshots. No rejected artifact was assigned to the stable alias.
+
+Repaired runtime bffe1b50edd23199d346fac6b4ca71903b70acc0 exports without errors.
+PCK 93,214,808 bytes, SHA256
+7b69e987e2c127f505da3224087f931edd40a466b6135f31047b7b0b04dcc826.
+Local and m40s353e5 immutable browser title/L/served-byte checks pass. Final
+f24zqpswq deployment dpl_7zY9uB1rgm6BDDHzJxsua5K8aufo has the identical pack
+and e28b201 guide/native metadata, independently stream-hashed before assigning
+the existing review alias. Fresh stable browser rerun passes the same served-byte,
+ordinary-title and actual L/portable controls checks, without captured errors;
+the stable map screenshot was inspected. Receipt:
+`/tmp/underwater-marc-portable-stable.log`. No full-route claim is implied.
+
+Same-source Windows/Linux exports exit 0, PE32+/ELF x86_64 architecture and ZIP
+integrity pass. Prerelease pr100-feedback-bffe1b5 is published; GitHub digests
+match local hashes and anonymous endpoints return 200. Neither target platform
+is launch/playtest verified. Main and public build unchanged. Pending upstream
+rows, complete physical/resource paths, browser maze durability and final
+zero-defect visual/audio audit remain open, not silently closed by deployment.
+
 ## October 4 b0bee59 preview admission and collaborator refresh
 
 Pushed cursor correction b0bee59 exported with Godot 4.7.1, exit 0 and no export

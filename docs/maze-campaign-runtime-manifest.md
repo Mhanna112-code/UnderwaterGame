@@ -3,8 +3,10 @@
 Status: feedback artifact delivered; final integration acceptance remains open.
 Initial baseline 493b1d8 includes current main and PR98. PR97's initial merge and
 its October 4 portrait/switch follow-ups are now reconciled. Current working
-source includes those follow-ups and the user-confirmed puzzle exit correction;
-the latest preview runtime is b0bee59. Native downloads still use 1ccf92f.
+source includes those follow-ups and the user-confirmed puzzle exit correction.
+Current feedback runtime is bffe1b5, with Marc's shared status/pause/popup and
+map/control/door admission. Windows/Linux use that same runtime source.
+This is still partial upstream integration, not full route/polish acceptance.
 
 | Artifact | Identity | Verification |
 | --- | --- | --- |
@@ -13,14 +15,42 @@ the latest preview runtime is b0bee59. Native downloads still use 1ccf92f.
 | PR96 campaign parent | 27a5b5253256a26733f8a320c3c6b4f97c64dece | Remote PR head checked |
 | PR98 reviewed opening | c3da257d115385b423306ef61e0214ebf7416f0c | Remote PR head checked |
 | PR97 integrated maze | 58c6ed07944676631002794e4649220d3c5bf264 | Initial 55e8515 plus d5bf893/58c6ed0 integrated deliberately; later work pending |
-| PR97 refreshed remote | f3018f4e402da942d8c2e262aeb0aead70a238f1 | New maze geometry, embedded-World and popup deltas not yet reconciled |
-| PR99 refreshed remote | d5134bf293487cbae8b8f8cdeaf0fb1c2233dfd9 | Carrier subset adapted; remaining stats/guidance/caption/status/pause deltas pending |
-| Latest combined web export | b0bee59223e3c29e7919a1146f3cb40ba6d83e1c | Nine delivered animations, full-party framing and cast cursor correction; immutable browser cast and both immutable/stable title/real L-map/served checksum pass |
-| Windows x86_64 | 1ccf92ff0aa07bbf2b4a8612435ea5322968c0e9 | Exported, PE32+ identified, ZIP integrity and published digest match; not target-launched/playtested |
-| Linux x86_64 | 1ccf92ff0aa07bbf2b4a8612435ea5322968c0e9 | Exported, ELF x86_64 identified, ZIP integrity and published digest match; not target-launched/playtested |
+| PR97 refreshed remote | c035c206db2ce67732f68fb57923ac1403b73c15 | Each authored delta classified in marc-oct4-integration-intake.md; remaining geometry/chest/legend/underpass work pending |
+| PR99 refreshed remote | 86878faedb71e81072b1d200f4ccbfc6f0507210 | Shared pause/popup/caption/status/Bleed/EVA admitted; remaining message queue/learned-stat/guidance subset pending |
+| Latest combined web export | bffe1b50edd23199d346fac6b4ca71903b70acc0 | Exported pack, ordinary title, actual L controls and portable badges checked locally/immutable/stable; screenshots inspected |
+| Review documentation | e28b20149be0f8bf79ca17376b5546829f0264b4 | Same-source native links, partial integration limits and current controls |
+| Windows x86_64 | bffe1b50edd23199d346fac6b4ca71903b70acc0 | Exported, PE32+ identified, ZIP integrity and published digest match; not target-launched/playtested |
+| Linux x86_64 | bffe1b50edd23199d346fac6b4ca71903b70acc0 | Exported, ELF x86_64 identified, ZIP integrity and published digest match; not target-launched/playtested |
 
 Feedback alias: https://underwatergame-maze-campaign-review.vercel.app/
-Review guide: /review.html. Deployment dpl_77kdAJvGn1ekQY5RJKNJ1dJZEUmT,
+Review guide: /review.html. Current deployment
+`dpl_7zY9uB1rgm6BDDHzJxsua5K8aufo` / immutable `f24zqpswq`, READY preview,
+same browser-accepted runtime pack as `m40s353e5` with updated guide/metadata.
+PCK 93,214,808 bytes, SHA256
+`7b69e987e2c127f505da3224087f931edd40a466b6135f31047b7b0b04dcc826`.
+Existing alias explicitly assigned; fresh stable browser rerun passes. Local,
+immutable and stable title/L/portable key controls pass with inspected screenshots.
+No campaign traversal/storage/listening acceptance follows from that smoke.
+Main/public remain unchanged.
+
+Windows/Linux current prerelease:
+https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5
+Windows ZIP 111,120,289 bytes, SHA256
+`d48756ae7ba2617869815c807c72d1b9a57e6019dad59ebf4dd9d8c766a606b5`.
+Linux ZIP 101,518,930 bytes, SHA256
+`26ee2c2381d32731e6f99f640df7499ce7f366e069c1d8daf48d38990db3bf04`.
+Both ZIPs pass integrity; executable architectures verified and GitHub asset
+digests match. Anonymous download endpoints return 200. Payload/launcher hashes
+and explicit untested target-platform flags are inside BUILD-INFO.json. Current
+launchers are Play.bat and Play.sh; no Windows/Linux target launch is claimed.
+
+Rejected 2559d97 export: checksum/title/L smoke passed, but visually broken
+arrow badges failed MAP-8. Never assigned to the alias; strengthened browser
+negative reproduces the failure against its original pack. See bug catalog.
+
+## Earlier b0bee59 / 1ccf92f artifacts (historical)
+
+Deployment dpl_77kdAJvGn1ekQY5RJKNJ1dJZEUmT,
 READY preview in immortaldemongods-projects/underwatergame. No public promotion.
 PCK 93,209,800 bytes, SHA256
 de249eed5c6a1db0074c608c23738df1159b59b27034d2184ae10ffd0b014132.

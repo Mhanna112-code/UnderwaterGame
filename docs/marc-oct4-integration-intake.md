@@ -18,7 +18,11 @@ Bounded integration is pushed through `2559d97`. A new preview of that source
 was rejected during browser inspection: arrow-key badges rendered as broken
 glyphs despite a passing initial smoke. Portable-word repair passes native
 layout and a strengthened browser test reproduces the old artifact failure.
-Fresh export/browser acceptance is pending. Stable preview remains `b0bee59`.
+The repaired bffe1b5 pack now passes local/immutable/stable browser checksum,
+title and actual L/portable control checks; screenshots inspected. Existing
+review alias is updated, with e28b201 guide metadata and matching bffe1b5
+Windows/Linux prerelease. Platform launches remain unverified. Pending rows
+below are not admitted by this bounded delivery; full route/polish remains open.
 
 ## Authored deltas and ownership
 
@@ -95,10 +99,13 @@ Fresh export/browser acceptance is pending. Stable preview remains `b0bee59`.
   with ready-only dispatch. Native camera/selection fixture mistakes and a
   rejected extra-input run remain recorded in `verify/marc_map_door.bug-catalog.md`.
   Actual puzzle entrance and real puppet reward/Cordys victories pass. Not hosted yet.
-- MAP-8 portable control repair: native 12-shape run and inspected narrow/short
+- bffe1b5 MAP-8 portable control repair: native 12-shape run and inspected narrow/short
   captures pass; the strengthened browser gate fails against the unchanged
   2559d97 pack for missing Left/Right controls. The rejected immutable deployment
-  was not assigned to the review alias. Fresh export/browser acceptance pending.
+  was not assigned to the review alias. Fresh local/immutable/stable exported
+  pack-title-L checks pass with inspected control screenshots. Same-source
+  Windows/Linux archives are published and integrity/hash checked; target
+  launches are not claimed. See runtime manifest for exact source/artifacts.
 - All other maze rows above remain pending. In particular, a new branch snapshot
   is not evidence that seamless geometry, acquired-map behavior or underpass
   traversal has been integrated or verified.
