@@ -113,7 +113,7 @@ func _ready() -> void:
 	_build_special_encounters()
 	_build_visible_floors()
 	_carve_hall_whirlpool_holes()
-	_build_secret_wall_entrance()
+	_build_underpass()
 	_build_save_points()
 	_add_wall_skirts()
 	if dev_all_keys_gate_open or OS.get_cmdline_user_args().has("--dev"):
@@ -1399,22 +1399,78 @@ func _build_secret_wall_entrance() -> void:
 	add_child(_secret_entrance)
 	var bottom := w27.global_position.y - w27.size.y * 0.5
 	_secret_entrance.global_position = Vector3(w27.global_position.x + face * (w27.size.z * 0.5 + 0.07), bottom + 0.3 + 1.8, mid.z)
+	var pulse := create_tween().set_loops()
+	pulse.tween_property(mat, "emission_energy_multiplier", 3.0, 0.5).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(mat, "emission_energy_multiplier", 0.4, 0.5).set_trans(Tween.TRANS_SINE)
 	_secret_entrance.set_meta("face", face)
-	# No glowing panel any more - just an anchor for where the way in is. What
-	# you see is the draft: water streaming in along the floor and away under
-	# the wall to the other side.
-	_secret_entrance.visible = false
-	_build_secret_draft(w27, face, mid.z)
 
-# Pale streaks drawn in toward wall 27 along the floor and out of sight through
-# the gap beneath it - a current that plainly goes somewhere.
-func _build_secret_draft(w27: CSGBox3D, face: float, z: float) -> void:
-	var wall_bottom := w27.global_position.y - w27.size.y * 0.5
-	var gap_mid := (_floor_top_y + 0.15 + wall_bottom) * 0.5
+# --- The underpass beneath Wall11EndCap (in the Break Room) -------------------------
+# Right by the potion rock, the floor opens into a dark slot along the foot of
+# Wall11EndCap, through under the wall to the far side, and the water pours
+# down into it: a draft. Swimming up to it from either side asks whether to
+# follow it; yes swims you down, under the wall and up the other side.
+const UNDERPASS_WIDTH := 2.6     # along the wall
+const UNDERPASS_REACH := 1.6     # how far the slot runs out from each face
+var _underpass_wall: CSGBox3D
+var _underpass_z := 0.0          # the slot's middle, along the wall (it runs along z)
+var _potion_rock_spot := Vector3.ZERO
+
+func _build_underpass() -> void:
+	_underpass_wall = get_node_or_null("Wall11EndCap") as CSGBox3D
+	if _underpass_wall == null:
+		return
+	var g: Dictionary = _wall_geometry(_underpass_wall)
+	var z_lo := minf((g["negative_end"] as Vector3).z, (g["positive_end"] as Vector3).z)
+	var z_hi := maxf((g["negative_end"] as Vector3).z, (g["positive_end"] as Vector3).z)
+	# From just past the rock, along the wall.
+	var start := _potion_rock_spot.z + 0.55 + 0.15 if _potion_rock_spot != Vector3.ZERO else z_lo + 1.0
+	_underpass_z = clampf(start + UNDERPASS_WIDTH * 0.5, z_lo + UNDERPASS_WIDTH * 0.5, z_hi - UNDERPASS_WIDTH * 0.5)
+	var x := _underpass_wall.global_position.x
+	var t := _underpass_wall.size.z
+	var span_x := t + UNDERPASS_REACH * 2.0
+	# No floor there: cut it out of every visible floor it crosses.
+	for child in get_children():
+		var floor_box := child as CSGBox3D
+		if floor_box == null or not String(floor_box.name).begins_with("Floor_"):
+			continue
+		var local := floor_box.global_transform.affine_inverse() * Vector3(x, floor_box.global_position.y, _underpass_z)
+		if absf(local.x) > floor_box.size.x * 0.5 + span_x or absf(local.z) > floor_box.size.z * 0.5 + span_x:
+			continue
+		var hole := CSGBox3D.new()
+		hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+		hole.size = Vector3(span_x, FLOOR_THICKNESS_VISUAL * 4.0, UNDERPASS_WIDTH)
+		floor_box.add_child(hole)
+		hole.global_position = Vector3(x, floor_box.global_position.y, _underpass_z)
+	# The dark slot below.
+	var pit := MeshInstance3D.new()
+	var pit_mesh := BoxMesh.new()
+	pit_mesh.size = Vector3(span_x, 2.0, UNDERPASS_WIDTH)
+	pit.mesh = pit_mesh
+	var pit_mat := StandardMaterial3D.new()
+	pit_mat.albedo_color = Color(0.02, 0.06, 0.11)
+	pit_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pit_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	pit.material_override = pit_mat
+	add_child(pit)
+	pit.global_position = Vector3(x, _floor_top_y - 1.0, _underpass_z)
+	# The draft: streaks drawn in from the Break Room side, down into the slot
+	# and away under the wall.
+	var into := -signf(_break_room_side_x() - x)
+	_build_underpass_draft(Vector3(x - into * (t * 0.5 + 1.2), _floor_top_y + 0.5, _underpass_z), into)
+
+# Which way the Break Room (where the draft comes from) lies: its corridor's
+# middle, or the side the potion rock is on.
+func _break_room_side_x() -> float:
+	var br := get_node_or_null("WindCorridorBreakRock") as Area3D
+	if br != null:
+		return _corridor_shape(br).global_position.x
+	return _potion_rock_spot.x
+
+func _build_underpass_draft(at: Vector3, into: float) -> void:
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(0.9, maxf(0.1, (wall_bottom - _floor_top_y) * 0.35), 1.4)
-	pm.direction = Vector3(-face, 0, 0)
+	pm.emission_box_extents = Vector3(0.9, 0.4, UNDERPASS_WIDTH * 0.45)
+	pm.direction = Vector3(into, -0.35, 0).normalized()
 	pm.spread = 4.0
 	pm.initial_velocity_min = 2.0
 	pm.initial_velocity_max = 3.0
@@ -1436,7 +1492,7 @@ func _build_secret_draft(w27: CSGBox3D, face: float, z: float) -> void:
 	mat.vertex_color_use_as_albedo = true
 	streak.material = mat
 	var draft := GPUParticles3D.new()
-	draft.name = "SecretWallDraft"
+	draft.name = "UnderpassDraft"
 	draft.amount = 70
 	draft.lifetime = 2.0
 	draft.preprocess = 2.0
@@ -1444,7 +1500,31 @@ func _build_secret_draft(w27: CSGBox3D, face: float, z: float) -> void:
 	draft.draw_pass_1 = streak
 	draft.visibility_aabb = AABB(Vector3(-8, -2, -4), Vector3(16, 4, 8))
 	add_child(draft)
-	draft.global_position = Vector3(w27.global_position.x + face * (w27.size.z * 0.5 + 2.2), gap_mid, z)
+	draft.global_position = at
+
+# Yes to the draft: down into the slot, under the wall and up the far side.
+func _swim_under_wall() -> void:
+	var side := _underpass_side()
+	if side == 0.0 or _underpass_wall == null:
+		return
+	var d := _diver
+	var x := _underpass_wall.global_position.x
+	var t := _underpass_wall.size.z
+	var start := d.global_position
+	var low := _floor_top_y - 0.4
+	var near_mouth := Vector3(x + side * (t * 0.5 + 0.6), low, _underpass_z)
+	var far_mouth := Vector3(x - side * (t * 0.5 + 0.6), low, _underpass_z)
+	var out := _nearest_clear_spot(d, Vector3(x - side * (t * 0.5 + UNDERPASS_REACH + 0.8), start.y, _underpass_z), _underpass_wall, -side)
+	d.velocity = Vector3.ZERO
+	d.set_suction_locked(true)
+	var tw := create_tween()
+	tw.tween_property(d, "global_position", near_mouth, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(d, "global_position", far_mouth, 0.5)
+	tw.tween_property(d, "global_position", out, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void:
+		d.set_suction_locked(false)
+		d.velocity = Vector3.ZERO
+		_draft_prompt_latched = true)   # no asking again until you swim away
 
 # Swimming up to the draft asks whether to follow it. Asked once per approach:
 # say no and it waits until you've swum away and come back.
@@ -1452,8 +1532,21 @@ const SECRET_DRAFT_PROMPT_TEXT := "A draft leads to the other side of the wall..
 var _draft_prompt: ConfirmPromptModal
 var _draft_prompt_latched := false
 
+# Which side of Wall11EndCap the active diver is on (+1/-1), within reach of
+# the slot - 0 if not near it.
+func _underpass_side() -> float:
+	if _underpass_wall == null or _diver == null:
+		return 0.0
+	var p := _diver.global_position
+	var x := _underpass_wall.global_position.x
+	var off := p.x - x
+	var reach := _underpass_wall.size.z * 0.5 + UNDERPASS_REACH + 1.2
+	if absf(off) > reach or absf(p.z - _underpass_z) > UNDERPASS_WIDTH * 0.5 + 1.0:
+		return 0.0
+	return signf(off) if off != 0.0 else 1.0
+
 func _update_secret_draft_prompt() -> void:
-	var near := _secret_entrance_in_reach()
+	var near := _underpass_side() != 0.0
 	if not near:
 		_draft_prompt_latched = false
 		return
@@ -1472,7 +1565,7 @@ func _open_secret_draft_prompt() -> void:
 	_draft_prompt.answered.connect(func(yes: bool) -> void:
 		_draft_prompt = null
 		if yes:
-			_enter_secret_wall())
+			_swim_under_wall())
 	add_child(_draft_prompt)
 
 func _secret_entrance_in_reach() -> bool:
@@ -2436,46 +2529,8 @@ func _build_lever_dome() -> void:
 	lamp.position = Vector3(0, DOME_HEIGHT - 1.5, 0)
 	dome.add_child(lamp)
 
-	# Levers toward the back (south), facing the north door: left (-X)
-	# walls, right (+X) currents.
-	for i in 2:
-		var lever := Lever.new()
-		lever.name = "Lever%d" % (i + 1)
-		lever.handles_input = false
-		lever.color_by_state = false
-		add_child(lever)
-		var side := -1.0 if i == 0 else 1.0
-		lever.global_position = Vector3(_dome_site.x + side * 2.0, PLINTH_TOP_Y, _dome_site.z - 4.5)
-		_dome_levers.append(lever)
-		# Red light on a short post just outside the lever.
-		var post := MeshInstance3D.new()
-		var post_mesh := CylinderMesh.new()
-		post_mesh.top_radius = 0.05
-		post_mesh.bottom_radius = 0.07
-		post_mesh.height = 0.9
-		post.mesh = post_mesh
-		post.material_override = _stone(Color(0.2, 0.22, 0.24))
-		add_child(post)
-		post.global_position = lever.global_position + Vector3(side * 0.9, 0.45, 0)
-		var light := MeshInstance3D.new()
-		var bulb := SphereMesh.new()
-		bulb.radius = 0.14
-		bulb.height = 0.28
-		light.mesh = bulb
-		var mat := StandardMaterial3D.new()
-		mat.emission_enabled = true
-		mat.emission_energy_multiplier = 3.0
-		light.material_override = mat
-		add_child(light)
-		light.global_position = post.global_position + Vector3(0, 0.55, 0)
-		var glow := OmniLight3D.new()
-		glow.omni_range = 2.0
-		glow.light_energy = 1.2
-		add_child(glow)
-		glow.global_position = light.global_position + Vector3(0, 0, 0.3)
-		_lever_lights.append(light)
-		_lever_glows.append(glow)
-		_set_lever_light(i, false)
+	# (The dome's two levers are gone: the maze nav map no longer needs both
+	# held to open it. _dome_levers stays empty, so nothing else finds one.)
 
 func _set_lever_light(i: int, on: bool) -> void:
 	var c := Color(0.2, 1.0, 0.35) if on else Color(1.0, 0.1, 0.1)
@@ -4522,6 +4577,8 @@ func _handle_e(e: InputEventKey) -> void:
 	elif _vortex_chest_in_reach():
 		_open_vortex_chest()
 	elif _secret_entrance_in_reach():
+		_enter_secret_wall()
+	elif _underpass_side() != 0.0:
 		_open_secret_draft_prompt()
 	elif _split_rock_in_reach():
 		_announce("This rock looks broken in half. I wonder if something could split it open...", 5.0)
@@ -4843,6 +4900,7 @@ func _build_wall_10_11_extras() -> void:
 	var r := 0.55
 	var inward_z := signf(line11_z - line10_z)
 	var spot := Vector3(a_x + t * 0.5 + r + 0.25, _floor_top_y + r, line10_z + inward_z * (t * 0.5 + r + 0.25))
+	_potion_rock_spot = spot
 	var rock := CrackedWall.new()
 	rock.span = Vector3(1.1, 1.1, 1.1)
 	rock.disguised_as_scenery_rock = true
