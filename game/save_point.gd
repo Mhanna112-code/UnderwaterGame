@@ -65,6 +65,24 @@ func _ready() -> void:
 		var tw := create_tween().set_loops()
 		tw.tween_property(mesh, "rotation:y", TAU, 6.0).from(0.0)
 
+		# Floating sign above the crystal: a title and a smaller subtitle.
+		add_child(_sign_label("SavePointTitle", "Save Point", 64, Color(0.75, 0.95, 1.0), 2.75))
+		add_child(_sign_label("SavePointSubtitle", "Restore your party", 40, Color(0.6, 0.85, 0.95), 2.35))
+
+func _sign_label(label_name: String, text: String, font_size: int, color: Color, height: float) -> Label3D:
+	var label := Label3D.new()
+	label.name = label_name
+	label.text = text
+	label.font_size = font_size
+	label.pixel_size = 0.008
+	label.modulate = color
+	label.outline_size = 10
+	label.outline_modulate = Color(0.0, 0.05, 0.1, 0.9)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.position = Vector3(0.0, height, 0.0)
+	return label
+
 func _process(_delta: float) -> void:
 	if not is_instance_valid(_crystal):
 		return

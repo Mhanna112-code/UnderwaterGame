@@ -85,7 +85,8 @@ func _test_failure_fallback(opening_script: Script) -> void:
 	_expect(fallback.has_method("fail_for_test"), "OPEN-004 decoder failure seam is missing")
 	if fallback.has_method("fail_for_test"):
 		fallback.call("fail_for_test")
-	var buttons := _descendants_of_type(fallback, "Button")
+	# Skip Cutscene hides itself once the fallback takes over.
+	var buttons := _descendants_of_type(fallback, "Button").filter(func(b: Node) -> bool: return (b as Button).visible)
 	_expect(buttons.size() == 1, "OPEN-004 decoder failure does not expose one concise Continue fallback")
 	if buttons.size() == 1:
 		var button := buttons[0] as Button

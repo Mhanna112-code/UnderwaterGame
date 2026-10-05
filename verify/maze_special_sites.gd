@@ -201,7 +201,7 @@ func _outcome_cases() -> void:
 			var hp := actor.stats.hp
 			var oxygen := actor.stats.oxygen
 			var stats := actor.stats
-			var quantity := int(maze.inventory.get("spell_shard", 0))
+			var quantity := int(maze.inventory.get("accuracy_up", 0))
 			await _settle()
 			await _key(KEY_R)
 			await _settle()
@@ -230,7 +230,7 @@ func _outcome_cases() -> void:
 				_expect(actor.stats == stats and actor.stats.hp == (actor.stats.hp_max if outcome == "won" else hp)
 					and is_equal_approx(actor.stats.oxygen, actor.stats.oxygen_max if outcome == "won" else oxygen),
 					"SITE-4 result changes actor/resource identity or authored win/loss policy")
-				_expect(int(maze.inventory.get("spell_shard", 0)) == quantity + (1 if outcome == "won" else 0),
+				_expect(int(maze.inventory.get("accuracy_up", 0)) == quantity + (1 if outcome == "won" else 0),
 					"SITE-3 result loses or duplicates reward")
 				_expect(maze.campaign_snapshot().special_sites[0].consumed == (outcome == "won"),
 					"SITE-3 outcome loses consumed state")
@@ -245,7 +245,7 @@ func _outcome_cases() -> void:
 
 func _reward_matrix() -> void:
 	var baseline := maze.campaign_snapshot()
-	var items := ["spell_shard", "attack_up", "defense_up", "oxygen_cell", "spell_shard", "attack_up", "potion"]
+	var items := ["accuracy_up", "attack_up", "defense_up", "oxygen_cell", "evasion_up", "attack_up", "potion"]
 	var enemies := ["swordfish_duelist", "angler", "swordfish_duelist", "angler", "angler", "swordfish_duelist", "angler"]
 	var chooser := maze.special_sites.prompt as SpecialEncounterPrompt
 	for site_index in 7:

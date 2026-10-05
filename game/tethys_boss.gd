@@ -137,6 +137,7 @@ func make_stats(_ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	s.agility = 2
 	s.evasion = 2
 	s.accuracy = 3
+	s.immune_to_stat_loss = true
 	s.fill()
 	return s
 

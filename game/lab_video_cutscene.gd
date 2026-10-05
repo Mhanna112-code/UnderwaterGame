@@ -71,20 +71,26 @@ func _ready() -> void:
 	_action_button.pressed.connect(_on_action_pressed)
 	layout.add_child(_action_button)
 
-	var hint := Label.new()
-	hint.text = "Escape skips. Press Continue when the scene ends."
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_color_override("font_color", Color("b8cbd2"))
-	layout.add_child(hint)
 
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if _video.stream == null:
+		# Nothing to show - continue straight into the game.
 		_finished_playing = true
-		_action_button.text = "Continue"
+		call_deferred("_complete", false)
 	else:
 		_video.play()
 	_action_button.grab_focus()
+
+# Web Theora can keep its clock running past EOF without emitting finished
+# (same guard as OpeningVideo._process()), which would now leave the scene
+# stuck with no Continue button to fall back on.
+func _process(_dt: float) -> void:
+	if _completed or _finished_playing or not is_instance_valid(_video) or _video.stream == null:
+		return
+	var duration := _video.get_stream_length()
+	if duration > 0.0 and _video.stream_position >= duration:
+		_on_video_finished()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _completed or not event.is_pressed():
@@ -96,10 +102,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _finished_playing and (key == KEY_ENTER or key == KEY_KP_ENTER):
 			_complete(false)
 
+# No Continue step: the scene hands straight back to the game when it ends.
 func _on_video_finished() -> void:
 	_finished_playing = true
-	_action_button.text = "Continue"
-	_action_button.grab_focus()
+	_complete(false)
 
 func _on_action_pressed() -> void:
 	_complete(not _finished_playing)

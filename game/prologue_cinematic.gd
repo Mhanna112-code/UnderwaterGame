@@ -38,6 +38,16 @@ func resume_aftermath() -> void:
 	_video.paused = false
 	_watchdog.start()
 
+# Skip jumps to the end of whichever segment is playing: the introduction
+# hands off to the Cordys fight, the aftermath goes on to recovery.
+func _skip() -> void:
+	if _completed:
+		return
+	if _segment == "introduction":
+		_pause_introduction()
+	elif _segment == "aftermath":
+		_complete(true)
+
 func _unhandled_input(event: InputEvent) -> void:
 	# The hidden owner must not swallow the player's response to Cordys.
 	if visible:

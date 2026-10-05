@@ -29,13 +29,13 @@ func _run() -> void:
 	await physics_frame
 	await process_frame
 	var text := world.route_objective_label.text.to_lower()
-	_expect(world.route_objective_panel.visible and "shallows" in text and "stronger" in text,
+	# Tutorial side of the entrance blockade (x < 16).
+	_expect(world.route_objective_panel.visible and "mysterious blockade" in text,
 		"SHALLOW-001 post-opening Shallows has no visible zone/purpose instruction: " + text)
-	# GOAL-2 adds the wider destination explicitly in deeper water. A stale
-	# immediate Deep instruction is still wrong; mentioning where to go next
-	# while preserving Shallows/growth context is now the intended contract.
-	_expect("laboratory" in text and "deeper water" in text and not "wall" in text,
-		"SHALLOW-001 Shallows loses its contextual next-destination instruction")
+	# The Shallows wording is now "Explore the mysterious blockade" until the
+	# ringed doors, then "Explore the deep sea" (requested), not GOAL-2's
+	# "seek the laboratory in deeper water" line.
+	_expect(not "wall" in text, "SHALLOW-001 Shallows shows the removed wall hint")
 	_expect(world.route_state.objective_id == "find_lab", "SHALLOW-002 Shallows instruction erases lab progression")
 	if OS.get_cmdline_user_args().has("--capture"):
 		await create_timer(0.5).timeout

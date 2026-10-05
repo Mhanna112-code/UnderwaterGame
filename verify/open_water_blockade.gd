@@ -26,9 +26,11 @@ func _run() -> void:
 		diver.swim(Vector3.RIGHT, 0.0, 1.0 / 60.0)
 		await physics_frame
 
-	if diver.global_position.x < 22.0:
+	# The invisible wall in line with the blockade entrance was restored on
+	# request: swimming past beside the rocks must now be stopped at the gate.
+	if diver.global_position.x > 16.0:
 		findings.append(
-			"INVISIBLE OPEN-WATER BLOCKADE: diver stopped at x=%.2f beside the visible entrance rocks" % diver.global_position.x
+			"BLOCKADE BYPASS: diver swam past the entrance line to x=%.2f beside the rocks" % diver.global_position.x
 		)
 
 	# A later PR #96 change reintroduced the same player-facing failure class
@@ -47,7 +49,8 @@ func _run() -> void:
 		diver.global_position = sample
 		diver.velocity = Vector3.ZERO
 		await physics_frame
-		var collision := diver.move_and_collide(Vector3.UP * 26.0, true)
+		# Free water all the way up past the airborne reward rocks (18 m)...
+		var collision := diver.move_and_collide(Vector3.UP * 17.0, true)
 		if collision != null:
 			findings.append(
 				"INVISIBLE OPEN-WATER CEILING: upward path from %s hit collision at y=%.2f" % [
@@ -55,11 +58,15 @@ func _run() -> void:
 					collision.get_position().y,
 				]
 			)
+		# ...then the restored world ceiling at four blockade heights (24 m).
+		var roof := diver.move_and_collide(Vector3.UP * 40.0, true)
+		if roof == null or absf(roof.get_position().y - World.WORLD_CEILING_Y) > 0.5:
+			findings.append("WORLD CEILING MISSING: upward path from %s did not stop at y=%.1f" % [sample, World.WORLD_CEILING_Y])
 
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
-		print("OPEN WATER: horizontal and vertical traversal are free of invisible world-spanning collision")
+		print("OPEN WATER: blockade line blocks the bypass; vertical is free up to the world ceiling")
 	world.queue_free()
 	await process_frame
 	var audio := root.get_node_or_null("GameAudio")

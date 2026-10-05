@@ -1,11 +1,11 @@
 extends Node3D
 # Authored #97 4ec6598 radius sites; snapshots own new-run locations forever.
 const DEFINITIONS := [
-	{"item": "spell_shard", "enemy": "swordfish_duelist"},
+	{"item": "accuracy_up", "enemy": "swordfish_duelist"},
 	{"item": "attack_up", "enemy": "angler"},
 	{"item": "defense_up", "enemy": "swordfish_duelist"},
 	{"item": "oxygen_cell", "enemy": "angler"},
-	{"item": "spell_shard", "enemy": "angler"},
+	{"item": "evasion_up", "enemy": "angler"},
 	{"item": "attack_up", "enemy": "swordfish_duelist"},
 	{"item": "potion", "enemy": "angler"},
 ]

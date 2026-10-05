@@ -44,7 +44,7 @@ func _test_catalogue_and_clips() -> void:
 		"spinning_slayer": {
 			"name": "Spinning Slayer", "clip": "attack)spinning_drill", "target": "single",
 			"formula": {"strength": 1, "defense": 1},
-			"effect": {"kind": "reduce_defense", "amount": {"defense": 1}},
+			"effect": {"kind": "status", "status": "defense_down", "level": {"defense": 1}, "duration": EnemyMoveData.DEFENSE_DOWN_TURNS},
 		},
 	}
 	var by_id := {}
