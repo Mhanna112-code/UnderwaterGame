@@ -1,5 +1,58 @@
 # Maze and campaign integration audit log
 
+## October 4, 19:56 CDT exported cast inspection and independent occlusion oracle
+
+446b6b9 export was verified on immutable ffw6phbxh, not assigned to the stable
+alias: actual World swimming, mouse attack/target selection and Swift Strike
+damage worked, but its full-party pose was behind Bucky. Native reproduction
+measured 49% bounding overlap. A camera-facing approach removed it but exposed
+cropping (only 72% of the projected body visible); using the cast's actual
+animated-skin envelope fixes containment. An in-place air slash was rejected.
+Riptide's late pose also overlapped Bucky (46%); the visible-flank approach
+applies to delivered offensive gestures, not legacy attacks or support casts.
+
+Derivation samples all nine runtime skins at 41 poses, stores exact rig/library
+hashes and supplies compact framing points. Runtime does not rescan vertices.
+Source/hash tests and independent actual-skin projection catch stale bounds.
+Support casts still face allies in place; ordinary exploration is unchanged.
+
+Guard Break's large telescoping pose looked suspicious. Isolated original-FBX
+versus ported-rig comparison shows the same authored motion. Its rectangle
+overlapped Musashi 40–42%, but rendered depth/color-mask comparison reports zero
+actual occlusion. No animation was altered to satisfy a rectangle false alarm.
+The old Swift approach AND old idle camera are an explicit fault injection:
+67% of actual skin hidden, same oracle fails. Keeping the new camera while only
+reverting approach did not reproduce it; that incomplete control was rejected.
+
+Capture correction: slow geometry measurement could let later poses elapse.
+Each phase now runs a fresh real-menu fight and captures before measurement.
+Depth masks freeze only that already-observed pose, not an injected animation.
+Resolved victory stays busy by design; check cast-camera release separately.
+A parallel native run timed out without inspecting Swift; retain failure and
+rerun serially before acceptance. No timeout is counted as a pass.
+
+Functional/affected regressions pass: nine runtime clips plus legacy motions,
+real healing/revival with HP/O2 and later turns, five initially-downed cases,
+normal Heavy Slam ACC/EVA/O2, six puppet boundary cases, campaign Cordys's real
+12-action win, tutorial handoff, three one-shot prologue deaths with player turns,
+menus/title, carrier layout and 1280x720/720x480 laboratory readability.
+
+Bomb Bot browser observer missed its transient named-attack log under concurrent
+OCR load despite real victory. It now accepts either that named log or both an
+observed enemy turn AND actual party HP loss; ambient animation alone cannot
+satisfy either. Sequential rerun on 446b6b9 passes real 19-action victory and
+World input. This does NOT close Marc's unreplicated Google Chrome/hardware crash.
+
+Native completion: 42 offensive views pass (seven moves × three separate
+phases × two screen sizes). Every sampled skin is fully contained. Guard's
+mid-pose broad overlap invokes a renderer check, which reports zero hidden skin.
+The serial narrow rerun completes all three phases, unlike the earlier parallel
+timeout. Full raw logs and source/control comparison evidence are retained.
+
+Final new export/deployment acceptance and whole-game clean audit remain pending.
+Stable alias remains dcb7650; old native packages remain 1ccf92f. Main/public
+unchanged. New PR97/PR99 semantic deltas remain explicitly pending.
+
 ## October 4, 19:13 CDT downloaded character clips and collaborator refresh
 
 SPELL-ANIM-01 red: all nine spells chose generic attacks despite partial FBX

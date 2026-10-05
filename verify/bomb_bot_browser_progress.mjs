@@ -104,7 +104,14 @@ try{
   }
   if(!won||!returned)throw new Error('BB-WEB-01: real fight did not complete victory and World return');
   if(actions.length<5)throw new Error('Too few real menu actions to establish combat progress');
-  if(!observations.some(view=>/Bomb Bot uses/.test(view.text)))throw new Error('No actual enemy attack feedback was observed');
+  // OCR/capture work can outlast the short attack log. An observed enemy
+  // turn followed by actual loss from this full-health party is independent
+  // outcome evidence; ambient animation alone satisfies neither condition.
+  const namedAttack=observations.some(view=>/Bomb Bot uses/.test(view.text));
+  const enemyTurn=observations.some(view=>/NOW\s*\nBomb Bot/.test(view.text));
+  const partyHurt=observations.some(view=>!/^Victory/m.test(view.text)&&
+    [...view.text.matchAll(/(\d+)\s*\/\s*10\b/g)].some(match=>Number(match[1])<10));
+  if(!namedAttack&&!(enemyTurn&&partyHurt))throw new Error('No actual enemy attack or enemy-turn/party-damage outcome was observed');
   await page.keyboard.press('KeyR');await page.waitForTimeout(600);
   const world=await observe('world-input');
   if(!/TAB diver/.test(world.text)||!/Encounters/.test(world.text))throw new Error('Return did not restore exploration controls');

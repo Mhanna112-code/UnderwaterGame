@@ -1,0 +1,31 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+SPELL CAST FRAME|0.35|visible=1.00
+SPELL SILHOUETTE|Swift Strike|Musashi|0.35|overlap=0.00
+SPELL SILHOUETTE|Swift Strike|Bucky|0.35|overlap=0.00
+SPELL CAST FRAME|0.35|visible=1.00
+SPELL SILHOUETTE|Riptide Slash|Musashi|0.35|overlap=0.00
+SPELL SILHOUETTE|Riptide Slash|Bucky|0.35|overlap=0.00
+SPELL CAST FRAME|0.35|visible=1.00
+SPELL SILHOUETTE|Blinding Silt|Maxilani|0.35|overlap=0.00
+SPELL SILHOUETTE|Blinding Silt|Bucky|0.35|overlap=0.00
+SPELL CAST FRAME|0.35|visible=1.00
+SPELL SILHOUETTE|Exploit Opening|Maxilani|0.35|overlap=0.00
+SPELL SILHOUETTE|Exploit Opening|Bucky|0.35|overlap=0.00
+SPELL CAST FRAME|0.35|visible=1.00
+SPELL SILHOUETTE|Precise Jab|Maxilani|0.35|overlap=0.00
+SPELL SILHOUETTE|Precise Jab|Bucky|0.35|overlap=0.00
+SPELL CAST FRAME|0.35|visible=1.00
+SPELL SILHOUETTE|Guard Break|Maxilani|0.35|overlap=0.00
+SPELL SILHOUETTE|Guard Break|Musashi|0.35|overlap=0.21
+SPELL CAST FRAME|0.35|visible=1.00
+SPELL SILHOUETTE|Heavy Slam|Maxilani|0.35|overlap=0.00
+SPELL SILHOUETTE|Heavy Slam|Musashi|0.35|overlap=0.00
+SPELL ATTACK DELIVERY: clean
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+FINDING SPELL-ANIM-05 actual cast was never inspected
+FINDING SPELL-ANIM-05 cast/return failed to finish: Swift Strike
+SPELL ATTACK DELIVERY: failed

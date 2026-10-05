@@ -26,3 +26,7 @@ on Marc's machine remains unverified and the reported crash is not closed.
 Early heading-click and OCR failures were rejected harness runs, not game
 freezes. Local-export directory support allows the same accepting oracle in
 gates.sh; missing native OCR is a recorded skip, never a pass.
+The attack oracle accepts either the named attack log or an observed Bomb Bot
+turn followed by actual HP loss in the initial full-health party. A long OCR
+capture can miss the transient log; this state/outcome alternative is not a
+canvas difference and cannot be satisfied by idle animation alone.

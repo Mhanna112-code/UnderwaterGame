@@ -32,6 +32,9 @@ func _run() -> void:
 		diver.set_process(false)
 		diver.set_physics_process(false)
 		var skeleton := _skeleton(diver)
+		var frame_sources: Dictionary = Diver.SPELL_FRAMES.get_meta("sources", {}).get(model_name, {})
+		if frame_sources.get("rig", "") != FileAccess.get_sha256(Cast.file(model_name)) or frame_sources.get("library", "") != FileAccess.get_sha256(Cast.ALL[model_name].spell_animations):
+			findings.append("SPELL-ANIM-06 action camera uses stale mesh/animation bounds: " + model_name)
 		for move_name in CASES[model_name]:
 			var expected: String = CASES[model_name][move_name]
 			var chosen := Cast.ability(model_name, move_name)
@@ -42,6 +45,9 @@ func _run() -> void:
 			if duration <= 0.05:
 				findings.append("SPELL-ANIM-01 %s did not play" % move_name)
 				continue
+			diver.framing_clip = String(diver.anim.current_animation)
+			if diver.framing_points().is_empty():
+				findings.append("SPELL-ANIM-06 no measured action envelope for " + move_name)
 			diver.anim.seek(0.0, true)
 			var initial := _poses(skeleton)
 			var changed := 0
@@ -54,6 +60,7 @@ func _run() -> void:
 			if changed < 8:
 				findings.append("SPELL-ANIM-03 %s resolves but barely moves the runtime rig (%d)" % [move_name, changed])
 			print("SPELL POSE|%s|%s|%.3fs|changed=%d" % [model_name, move_name, duration, changed])
+			diver.framing_clip = ""
 		for motion in ["idle", "swim_start", "swim", "swim_end", "hurt", "hurt_bad", "down_start", "down", "win"]:
 			if diver.resolve(Cast.motion(model_name, motion)).is_empty():
 				findings.append("SPELL-ANIM-02 lost %s/%s" % [model_name, motion])

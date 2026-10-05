@@ -157,6 +157,18 @@ var radius := 0.4
 # The rigged file's own AnimationPlayer, left where it was inside the
 # imported tree. See _ready() for why it is not moved.
 var anim: AnimationPlayer
+# Only Battle opts into the delivered cast's measured action envelope. Idle
+# exploration and legacy combat framing remain unchanged.
+const SPELL_FRAMES := preload("res://art/characters/spell_animations/frames.res")
+var framing_clip := ""
+
+func framing_points() -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	var frames: Dictionary = SPELL_FRAMES.get_meta("frames", {}).get(model_name, {})
+	for point in frames.get(framing_clip, PackedVector3Array()):
+		result.append(global_transform * (point as Vector3))
+	return result
+
 # Whichever armature name this particular delivery used - "rig",
 # "rig_001", "rig_002". Learned from the file rather than assumed.
 var _prefix := ""

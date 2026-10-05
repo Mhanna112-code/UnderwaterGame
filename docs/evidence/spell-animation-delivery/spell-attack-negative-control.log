@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Swift Strike|Musashi|0.65|overlap=0.00
+SPELL SILHOUETTE|Swift Strike|Bucky|0.65|overlap=0.49
+SPELL PIXEL OCCLUSION|Swift Strike|0.65|0.670
+FINDING SPELL-ANIM-05 moving attack skin is hidden by idle party
+SPELL ATTACK DELIVERY: failed

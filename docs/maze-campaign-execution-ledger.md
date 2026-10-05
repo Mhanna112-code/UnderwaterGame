@@ -2,6 +2,24 @@
 
 ## Current authoritative status
 
+October 4, 19:56 CDT cast-framing follow-up: first character-delivery commit
+446b6b9 was exported to an immutable preview, but was NOT assigned to the stable
+alias. Actual browser Swift Strike exposed full-party occlusion missed by the
+solo captures. Current repair uses the visible enemy flank plus measured
+animated-skin envelopes and releases them before the next turn. Original
+approach/control hides 67% of Swift Strike's rendered skin; repaired staging
+clears it. All nine pose/legacy checks, actual support/revival, puppet waves,
+campaign Cordys, tutorial handoff and wide/narrow lab regressions pass.
+All 42 native offensive views now pass: seven real moves, three separate
+phases, two viewport sizes. Serial narrow rerun passes; the earlier parallel
+timeout remains a failed capture, not accepted evidence. New export/browser
+acceptance is pending. Stable web remains dcb7650; native remains 1ccf92f.
+Guard Break's telescoping motion matches Glass's original FBX, not a porting
+defect. Its broad rectangle falsely implied occlusion; renderer depth-mask
+comparison shows zero hidden skin. The strengthened oracle rejects the old
+Swift approach. A concurrent native capture timed out without an inspected
+cast; it is retained as a failed run, not accepted.
+
 October 4, 19:13 CDT follow-up: nine spell animations from the already-downloaded
 partial character FBXs are integrated locally as supplementary libraries. All
 nine failed as generic fallbacks first; runtime poses and old motion/base moves

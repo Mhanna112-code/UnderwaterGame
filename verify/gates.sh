@@ -223,6 +223,9 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	for shape in 1280x720 720x480; do
+		for phase in 0.35 0.65 0.8; do
+			run "full-party attack presentation $shape/$phase: do all delivered attacks stay visible through the real gesture" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/spell_attack_delivery.gd -- "--phase=$phase"
+		done
 		run "spell support presentation $shape: do real cast silhouettes stay below status cards with a usable stage" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/spell_support_delivery.gd -- --capture-support
 		run "full-party support presentation $shape: do actual three-diver cast and revival remain unobscured" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/spell_support_delivery.gd -- --capture-support --three-party
 		run "item notice presentation $shape: does actual wrapped reward text fit above usable buttons" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/marc_reward_layout.gd
@@ -294,6 +297,12 @@ else
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
 	if [ -x /tmp/underwater-screen-ocr ]; then
 		GATE_TIMEOUT_SECONDS=300 run "Bomb Bot browser progress: do actual mouse actions reach enemy attacks, victory and restored World controls" node verify/bomb_bot_browser_progress.mjs "$WEB_DIR" /tmp/gate-bomb-progress
+		if [ -f "$WEB_DIR/build-info.json" ]; then
+			run "delivered spell browser: do real world input and mouse targeting animate/resolve an authored cast" node verify/spell_animation_browser.mjs "$WEB_DIR" /tmp/gate-spell-animation
+		else
+			echo "=== delivered spell browser: skipped, no identified export ==="
+			skips=$((skips + 1))
+		fi
 	else
 		echo "=== Bomb Bot browser progress: skipped, native OCR helper unavailable ==="
 		skips=$((skips + 1))

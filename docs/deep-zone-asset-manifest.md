@@ -61,6 +61,15 @@ Maxilani's two new unbound controls (`Staff`, `c_hand_ik.r`) are omitted; her
 existing skinned carried prop remains. Other source tracks resolve unchanged.
 The resource metadata records each source/target hash and omitted track.
 
+Cast camera derivative: `art/characters/spell_animations/frames.res`, SHA256
+`33fa83968b3ad8adfe3ae591e78fae346fc71ff0561debf38277886afc66a3b7`.
+Regenerate with `godot --headless --path . --script tools/derive_spell_frames.gd`
+after changing a rig or supplementary library. It measures every admitted
+clip's actual skinned surface at 41 poses, stores model/library hashes and
+only affects framing during delivered casts. Runtime does not rescan meshes.
+Live full-party projection checks independently catch stale or inadequate
+bounds. Old exploration and base-attack framing remain unchanged.
+
 Verification: all nine generic fallbacks failed the new delivery check before
 repair. Runtime rigs now change sampled poses and retain old movement/base
 attacks. Native gallery and real learned-move battles were inspected; healing

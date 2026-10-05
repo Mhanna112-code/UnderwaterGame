@@ -1820,8 +1820,10 @@ func _frame_stage_camera() -> void:
 		if a.has_method("framing_points"):
 			# Actual skinned silhouette, not rotated world-AABB empty corners.
 			# Those corners shrank the entire prologue despite valid mesh bounds.
-			pts.append_array(a.call("framing_points"))
-			continue
+			var measured: Array = a.call("framing_points")
+			if not measured.is_empty():
+				pts.append_array(measured)
+				continue
 		# Imported enemies can be dramatically longer than their collision
 		# radius suggests (Frilled Shark is the concrete regression). When an
 		# actor exposes real world-space visual bounds, frame all eight mesh
@@ -4960,11 +4962,19 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 	# on top of the diver standing between them. Support casts turn to face
 	# the ally and cast from where they stand instead.
 	var in_place := String(mv.get("effect", "")) in ["heal", "revive"]
-	await _step_toward(entry, target, in_place)
-	var length: float = d.play_clip(Cast.ability(String(entry.model_name), String(mv.get("name", ""))))
+	# Delivered offensive gestures cross behind the front party row from
+	# the ordinary rear approach. Use the target's camera-facing flank so
+	# they close to attack reach without hiding behind an idle teammate.
+	var clip_stem := Cast.ability(String(entry.model_name), String(mv.get("name", "")))
+	var delivered := d.resolve(clip_stem).begins_with("spells/")
+	await _step_toward(entry, target, in_place, delivered and not in_place)
+	var length: float = d.play_clip(clip_stem)
 	if length <= 0.0:
 		_send_home(entry, 0.0)
 		return
+	if String(d.anim.current_animation).begins_with("spells/"):
+		d.framing_clip = String(d.anim.current_animation)
+		_frame_stage_camera()
 	if target.has("actor") and is_instance_valid(target.actor) and target.actor is Node3D:
 		player_swing_staged.emit(d, target.actor as Node3D)
 	_audio_call(&"play_combat_swing", [_move_is_heavy(mv)])
@@ -4977,7 +4987,7 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 # distance short of the target rather than the target itself, because these
 # attacks have length: standing on top of somebody puts the swing through
 # them and out the other side.
-func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false) -> void:
+func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false, camera_flank: bool = false) -> void:
 	var a: Node3D = entry.get("actor")
 	if a == null or not is_instance_valid(a):
 		return
@@ -5001,6 +5011,13 @@ func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false
 	if radius_value != null:
 		target_radius = float(radius_value)
 	var stand: Vector3 = (target.actor as Node3D).position - to.normalized() * (SWING_REACH + target_radius)
+	if camera_flank and _stage_cam != null:
+		var flank := _stage_cam.global_position - (target.actor as Node3D).global_position
+		flank.y = 0.0
+		if flank.length_squared() > 0.01:
+			stand = (target.actor as Node3D).position + flank.normalized() * (SWING_REACH + target_radius)
+			var facing := (target.actor as Node3D).position - stand
+			a.rotation.y = atan2(-facing.x, -facing.z)
 	stand.y = home.y
 	var step := a.create_tween()
 	step.tween_property(a, "position", stand, SWING_STEP_TIME)
@@ -5201,13 +5218,15 @@ func _wait_for_delivered_cast(entry: Dictionary) -> void:
 		return
 	var actor := actor_value as Diver
 	var clip := String(actor.anim.current_animation)
-	if not clip.begins_with("spells/") or not actor.anim.is_playing():
-		return
 	# These authored casts are longer than the legacy attacks. Damage still
 	# lands at its ordinary impact fraction, but a new turn must not interrupt
 	# the spell's remaining gesture or display controls across it.
-	var remaining := maxf(0.0, actor.anim.get_animation(clip).length - actor.anim.current_animation_position)
-	await get_tree().create_timer(remaining / maxf(0.01, actor.anim.speed_scale) + SWING_STEP_TIME).timeout
+	if clip.begins_with("spells/") and actor.anim.is_playing():
+		var remaining := maxf(0.0, actor.anim.get_animation(clip).length - actor.anim.current_animation_position)
+		await get_tree().create_timer(remaining / maxf(0.01, actor.anim.speed_scale) + SWING_STEP_TIME).timeout
+	if not actor.framing_clip.is_empty():
+		actor.framing_clip = ""
+		_frame_stage_camera()
 
 # Weighted random rather than always-lowest-HP - a party member missing
 # more of their max HP is proportionally more likely to get picked, but a

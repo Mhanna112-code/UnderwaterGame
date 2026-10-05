@@ -24,6 +24,9 @@ are partial animation updates, not complete replacements for these models.
 | SPELL-ANIM-02 | Replacing a partial FBX loses existing swim or attack clips. | Preserve all motion and base-move playback on the actual runtime diver; existing `clips.gd` remains a second check. |
 | SPELL-ANIM-03 | Valid clip names animate no mesh, or mismatched rig paths distort it. | Generator rejects unresolved nodes/bones; sample actual runtime skeleton and rendered skin. Compare source/target rest poses and inspect native captures rather than treating name resolution as visual proof. |
 | SPELL-ANIM-04 | Long support casts obscure allies or leave the diver stuck. | Public battle move/target controls, actual heal/revive outcome, return to idle and next usable turn; rendered battle inspection at narrow/wide sizes. |
+| SPELL-ANIM-05 | A new attack works alone but is hidden behind an idle teammate or cropped in normal three-party combat. | Actual public move/target controls over all seven delivered offensive moves, three fresh-fight phases and wide/narrow sizes; independent skinned-body projection checks containment and teammate overlap. Exported browser inspection exposed this after single-caster checks passed. |
+| SPELL-ANIM-06 | Camera bounds silently become stale after a rig/animation update. | Every admitted source/library hash and move envelope checked; regenerated bounds must describe the current files. Live skin projection is independent of the derived bounds, so wrong-but-stable envelopes cannot pass the presentation oracle. |
+| SPELL-ANIM-07 | Native clips pass but exported gameplay cannot select, target or display them. | Fresh exported review kit, actual World swimming/random fight and mouse-selected Swift Strike; capture actual early/impact/late frames and require real feedback/error-free progress. No synthetic won result. Not proof of all browser moves or earning. |
 
 Tests assert authored delivery contracts and actual poses/outcomes. Cosmetic
 renames require an intentional contract update; code-only refactors do not.
@@ -56,5 +59,21 @@ renames require an intentional contract update; code-only refactors do not.
 - Invalid fixture rejected: the added companion case initially selected a
   nonexistent Palm Thrust label and failed with a script error. Corrected to
   the actual Precise Tap button and added an explicit missing-target failure.
+- Additional visual red: exported full-party Swift Strike hid behind Bucky
+  (49% projected overlap). A camera-facing approach exposed wide-screen cropping
+  instead (only 72% visible). Riptide also hid behind Bucky (46% at its late pose).
+  Delivered offensive clips now approach the visible enemy flank; camera framing
+  uses an offline derivative of the actual skin through 41 poses, not idle bounds.
+  Legacy attack and exploration framing stay unchanged. Cast completion releases
+  the envelope before the next turn.
+- Capture harness corrected: heavy mesh measurement could make later captures
+  miss the gesture. Each phase now uses a fresh public-menu fight and captures
+  the rendered image before measurement. A resolved victory deliberately stays
+  busy, so camera release is checked independently of the battle's busy flag.
+- Guard Break's large telescoping pose is present in the delivered FBX and
+  the ported rig alike. Its rectangle overlaps Musashi by 40–42%, but direct
+  rendered skin/depth comparison shows zero actual occlusion. Broad-phase
+  rectangles now invoke a frozen-live-pose color/depth mask rather than
+  declaring their empty space hidden. Preserve the artist's authored motion.
 - Native runtime evidence alone does not establish exported browser playback,
   all attack extremes, subjective pacing or full-game polish.
