@@ -1801,6 +1801,7 @@ func _build_boss_triggers() -> void:
 		var label := Label3D.new()
 		label.text = "Cordys"
 		label.font_size = 40
+		label.pixel_size = 0.012
 		label.outline_size = 5
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.position = Vector3(0, actor.height + 0.7, 0)

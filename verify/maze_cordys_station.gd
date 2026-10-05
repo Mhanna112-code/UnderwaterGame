@@ -69,12 +69,13 @@ func _run() -> void:
 			await create_timer(0.5).timeout
 			await _capture("station")
 		await _press(KEY_W, true)
-		var deadline := Time.get_ticks_msec() + 3500
+		var deadline := Time.get_ticks_msec() + 8000
 		while not maze.any_modal_open() and not maze._battling and Time.get_ticks_msec() < deadline:
 			await physics_frame
 		await _press(KEY_W, false)
 		var prompts := maze.find_children("*", "ConfirmPromptModal", false, false)
-		_expect(prompts.size() == 1 and not maze._battling, "CS-1 real approach bypassed confirmation for diver %d" % index)
+		print("CORDYS APPROACH|diver=", index, "|position=", diver.global_position, "|yaw=", maze._yaw, "|prompt=", prompts.size(), "|battle=", maze._battling, "|armed=", maze._cordys_prompt_armed)
+		_expect(prompts.size() == 1 and not maze._battling, "CS-1 real approach did not reach confirmation for diver %d at %s (battle=%s)" % [index, diver.global_position, maze._battling])
 		if prompts.size() != 1:
 			break
 		var prompt := prompts[0] as ConfirmPromptModal

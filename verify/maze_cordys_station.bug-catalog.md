@@ -65,5 +65,12 @@ semantic checks, never replace them.
 - Initial room-location fixture bypassed a closed entrance, squeezing the
   camera against it. The corrected fixture supplies one key and spends it with
   real E; this is disclosed and is not proof of earning the key.
+- A rendered rerun exceeded the harness's 3.5-second approach deadline for
+  Bucky without starting a battle. An 8-second bounded wait plus position/yaw/
+  modal diagnostics confirms all three stop at the same physical prompt range;
+  do not label a harness timeout as an automatic-combat regression.
+- Visual reinspection found the initial default Label3D pixel size made the
+  name too small from the entrance. Increased its world-space text scale and
+  confirmed the rendered name reads at the normal approach distance.
 - Browser verification and served-artifact receipts are recorded separately in
   `docs/cordys-maze-station.md`; native checks do not prove a hosted export.
