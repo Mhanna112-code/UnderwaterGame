@@ -3717,6 +3717,8 @@ func _collect_bounds_points() -> Array[Vector3]:
 	for child in get_children():
 		if child is CSGBox3D:
 			var box := child as CSGBox3D
+			if String(box.name).begins_with("Floor_"):
+				continue   # floors sit inside the level; Floor_Base spans its padded bounds
 			var half: Vector3 = box.size * 0.5
 			for sx in [-1.0, 1.0]:
 				for sz in [-1.0, 1.0]:
@@ -5291,17 +5293,18 @@ func _build_hall_gauntlet() -> void:
 # A round hole through the hall's visible floor under each deep whirlpool
 # (the invisible slab stays - the whirlpool catches anyone that close first).
 func _carve_hall_whirlpool_holes() -> void:
-	var floor_box := get_node_or_null("Floor_BossHall") as CSGBox3D
-	if floor_box == null:
-		return
-	for w in _hall_whirlpools:
-		var hole := CSGCylinder3D.new()
-		hole.operation = CSGShape3D.OPERATION_SUBTRACTION
-		hole.radius = w.deep_hole_radius
-		hole.height = FLOOR_THICKNESS_VISUAL * 4.0
-		hole.sides = 24
-		floor_box.add_child(hole)
-		hole.global_position = Vector3(w.global_position.x, floor_box.global_position.y, w.global_position.z)
+	for floor_name in ["Floor_BossHall", "Floor_Base"]:
+		var floor_box := get_node_or_null(floor_name) as CSGBox3D
+		if floor_box == null:
+			continue
+		for w in _hall_whirlpools:
+			var hole := CSGCylinder3D.new()
+			hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+			hole.radius = w.deep_hole_radius
+			hole.height = FLOOR_THICKNESS_VISUAL * 4.0
+			hole.sides = 24
+			floor_box.add_child(hole)
+			hole.global_position = Vector3(w.global_position.x, floor_box.global_position.y, w.global_position.z)
 
 func _on_deep_whirlpool(_d: Diver, amount: int) -> void:
 	_announce("You were sucked to the ocean deep.. (-%d HP)" % amount)
@@ -5606,6 +5609,20 @@ var _sphere_room_interior := Rect2()
 
 func _build_visible_floors() -> void:
 	var n := 0
+	# One seafloor under the whole level first, so nowhere between the
+	# hallway/room floors below (e.g. the corner of walls 15/16, or round the
+	# sphere room's door) is left with no floor. A little lower than those,
+	# so where they overlap they don't flicker against it.
+	var points := _collect_bounds_points()
+	if not points.is_empty():
+		var lo: Vector3 = points[0]
+		var hi: Vector3 = points[0]
+		for p in points:
+			lo = lo.min(p)
+			hi = hi.max(p)
+		lo -= Vector3(_PERIMETER_MARGIN, 0, _PERIMETER_MARGIN)
+		hi += Vector3(_PERIMETER_MARGIN, 0, _PERIMETER_MARGIN)
+		_floor_box("Floor_Base", Vector3((lo.x + hi.x) * 0.5, 0, (lo.z + hi.z) * 0.5), 0.0, Vector2(hi.x - lo.x, hi.z - lo.z), -0.05)
 	# Hallways between walls that stay put.
 	for pair in HALLWAY_PAIRS:
 		var a := get_node_or_null(String(pair[0])) as CSGBox3D
@@ -5678,7 +5695,7 @@ func _hallway_floor(floor_name: String, a: Dictionary, b: Dictionary) -> bool:
 	_floor_box(floor_name, centre, atan2(-axis.z, axis.x), Vector2(hi - lo, absf(gap) + 1.0))
 	return true
 
-func _floor_box(floor_name: String, centre: Vector3, yaw: float, footprint: Vector2) -> void:
+func _floor_box(floor_name: String, centre: Vector3, yaw: float, footprint: Vector2, lift := 0.0) -> void:
 	var box := CSGBox3D.new()
 	box.name = floor_name
 	box.size = Vector3(footprint.x, FLOOR_THICKNESS_VISUAL, footprint.y)
@@ -5686,7 +5703,7 @@ func _floor_box(floor_name: String, centre: Vector3, yaw: float, footprint: Vect
 	box.use_collision = false
 	add_child(box)
 	box.rotation.y = yaw
-	box.global_position = Vector3(centre.x, _floor_top_y + FLOOR_THICKNESS_VISUAL * 0.5 + 0.01, centre.z)
+	box.global_position = Vector3(centre.x, _floor_top_y + FLOOR_THICKNESS_VISUAL * 0.5 + 0.01 + lift, centre.z)
 
 # --- Save points (as in the main game) -------------------------------------------
 # The world's SavePoint crystal and SavePointMenu: standing on one shows
