@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const browserRequire = createRequire(require.resolve('playwright'));
+const { PNG } = require(path.join(path.dirname(browserRequire.resolve('playwright-core/package.json')), 'lib/utilsBundle.js'));
 
 const target = process.argv[2], output = process.argv[3] || '/tmp/lab-maze-navigation-web';
 fs.mkdirSync(output, { recursive: true });
@@ -55,6 +59,33 @@ const title = async label => {
   }
   throw Error('Title never rendered');
 };
+const alignWithVisibleArrow = async label => {
+  for (let turn = 0; turn < 8; turn++) {
+    const name = label + '-turn-' + turn, rows = await capture(name);
+    const caption = rows.find(row => /^Maze ramp$/i.test(row.text.trim()));
+    expect(caption, 'NAV-W2 cannot steer without a visible compass');
+    const png = PNG.sync.read(fs.readFileSync(path.join(output, name + '.png'))), pixels = [];
+    // Read the rendered cyan pointer, not Godot state or a injected waypoint.
+    // Restrict to the icon left of the observed caption; exclude its border,
+    // text and other HUD icons by their actual rendered color.
+    for (let y = Math.max(0, Math.floor(caption.y - 35)); y < Math.min(png.height, caption.y + 35); y++) {
+      for (let x = Math.max(0, Math.floor(caption.x - 150)); x < Math.min(png.width, caption.x - 35); x++) {
+        const i = (y * png.width + x) * 4;
+        if (png.data[i] >= 135 && png.data[i] <= 155 && png.data[i + 1] >= 225 && png.data[i + 1] <= 242 && png.data[i + 2] >= 249) pixels.push({ x, y });
+      }
+    }
+    expect(pixels.length > 50, 'NAV-W2 rendered compass pointer is not readable');
+    const center = pixels.reduce((a, p) => ({ x: a.x + p.x / pixels.length, y: a.y + p.y / pixels.length }), { x: 0, y: 0 });
+    const tip = pixels.reduce((a, p) => Math.hypot(p.x - center.x, p.y - center.y) > Math.hypot(a.x - center.x, a.y - center.y) ? p : a);
+    const angle = Math.atan2(tip.x - center.x, -(tip.y - center.y));
+    observations.push({ name: 'rendered-bearing', angle, pixels: pixels.length });
+    if (Math.abs(angle) < 0.08) return;
+    const key = angle < 0 ? 'ArrowLeft' : 'ArrowRight';
+    await page.keyboard.down(key); await page.waitForTimeout(Math.min(300, Math.max(30, Math.abs(angle) * 500))); await page.keyboard.up(key);
+    await page.waitForTimeout(200);
+  }
+  throw Error('NAV-W2 ordinary look controls could not align the rendered compass');
+};
 try {
   if (process.env.EXPECTED_SOURCE_SHA) expect(metadata.source_commit === process.env.EXPECTED_SOURCE_SHA, 'Stale exported source');
   await page.goto(url, { waitUntil: 'load' }); await title('fresh');
@@ -80,25 +111,27 @@ try {
     expect(label.x > 0 && label.x < width && label.y > 160 && label.y < 590, 'NAV-W4 compass overlaps map/controls or bottom health');
   }
   await page.setViewportSize({ width: 1280, height: 720 });
-  // Follow the compass with ordinary look/swim controls, instead of staring
-  // sideways into the ramp rail while holding A. Normal Load starts yaw zero;
-  // Left turns toward the east passage. No camera/actor/phase injection.
-  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(785); await page.keyboard.up('ArrowLeft');
-  await page.waitForTimeout(400); await capture('face-the-compass');
-  await page.keyboard.down('KeyW');
-  const deadline = Date.now() + 25000;
+  // Follow the arrow with real look/swim input, correcting rendered bearing
+  // rather than trusting a timed 90-degree turn through variable frame rates.
+  await alignWithVisibleArrow('face-the-compass');
+  const deadline = Date.now() + 55000;
   let entered = false;
   let previousDistance = Infinity;
   for (let step = 0; Date.now() < deadline; step++) {
-    await page.waitForTimeout(1600);
+    await page.keyboard.down('KeyW'); await page.waitForTimeout(1600); await page.keyboard.up('KeyW');
+    await page.waitForTimeout(150);
     const rows = await capture('actual-swim-' + step), text = rows.map(row => row.text).join('\n');
-    if (!/Maze ramp|Laboratory cleared/i.test(text)) { entered = true; break; }
+    if (!/Maze ramp|Laboratory cleared/i.test(text)) {
+      expect(/Control Room/i.test(text), 'NAV-W3 guide vanished without visible maze-room ownership');
+      entered = true; break;
+    }
     const label = rows.find(row => /^Maze ramp$/i.test(row.text.trim()));
     const distance = label && rows.find(row => /^\d+\s*m/i.test(row.text.trim()) && row.y > label.y && row.y < label.y + 40);
     expect(distance, 'NAV-W6 visible compass lost its distance during the approach');
     const metres = Number(distance.text.match(/^\d+/)[0]);
     expect(metres <= previousDistance + 1, 'NAV-W6 distance increases before entry: compass points back to the ramp mouth');
     previousDistance = metres;
+    await alignWithVisibleArrow('follow-' + step);
   }
   await page.keyboard.up('KeyW');
   expect(entered, 'NAV-W2 actual lab-to-ramp swimming never relinquished World HUD to the maze');

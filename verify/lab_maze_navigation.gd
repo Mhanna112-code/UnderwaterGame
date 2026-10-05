@@ -47,11 +47,16 @@ func _run() -> void:
 	# Actual input and actual collisions, including the formerly hidden region
 	# between the lab facade and the ramp. No subsequent position assignment.
 	await _hold(KEY_W, true)
-	var deadline := Time.get_ticks_msec() + 24000
+	# Rendering may slow below real time alongside other Godot processes.
+	# Bound both simulated travel and wall time; do not label slow rendering
+	# as a collision failure after only half the physical route has elapsed.
+	var deadline := Time.get_ticks_msec() + 90000
+	var travel_seconds := 0.0
 	var captured := false
 	var reversed_before_entry := false
-	while not world.embedded_maze.maze_active and Time.get_ticks_msec() < deadline:
+	while not world.embedded_maze.maze_active and travel_seconds < 24.0 and Time.get_ticks_msec() < deadline:
 		await physics_frame
+		travel_seconds += world.get_physics_process_delta_time()
 		if guide.is_visible_in_tree():
 			var direction := guide.find_child("Direction", true, false) as Polygon2D
 			if Vector2.UP.rotated(direction.rotation).dot(Vector2.UP) < 0.9:

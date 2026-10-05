@@ -26,3 +26,9 @@ The first narrow render exposed health-bar overlap even though the initial bound
 This is focused navigation/recovery verification, not a full earned campaign/balance or all-platform audit. No existing player saves were modified; any test slot is uniquely owned and removed by its harness.
 
 The first exported browser route succeeded at movement/entry but its distance rose after passing the ramp mouth (56→4→9→20). It is rejected as acceptance: following that arrow would turn a player back. `ramp-mouth-red.log` captures the strengthened failing native test. Final verification must use the corrected boundary target, require a forward pointer through the native crossing and decreasing browser distance until maze entry. The provisional preview was never promoted.
+
+## Concurrent main intake and browser observer
+
+Marc's `e572a55` and `4dd2a47` changes were merged before final export. His persistent maze health/party HUD, objective layout helper, combat pacing, ending checkpoints and 12-Oxygen Shockwave are preserved. The older embedded-maze assertion requiring the entire World CanvasLayer to disappear was updated to require exclusive exploration controls/camera while retaining the shared health HUD.
+
+A fixed-duration camera turn was rejected as an observer: its slight heading error drifted into a ramp rail. The final browser observer reads the rendered cyan arrow pixels, adjusts ordinary arrow-key look controls, and swims with W. It verifies decreasing distance and the actual visible Control Room handoff, not merely disappearance of the guide. No internal position/entry mutation occurs during the crossing.
