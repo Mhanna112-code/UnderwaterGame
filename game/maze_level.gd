@@ -185,6 +185,7 @@ func contains_point(point: Vector3) -> bool:
 func set_maze_active(on: bool) -> void:
 	if not on:
 		_cancel_aim()
+		_cancel_wall_motion()
 		if special_sites != null:
 			special_sites.cancel()
 	maze_active = on
@@ -3055,6 +3056,7 @@ func _wall_motion_hinge(start: Vector3, target: Vector3, yaw_delta: float) -> Ve
 	)
 
 func _tween_wall_to_transform_about_hinge(wall: CSGBox3D, target_position: Vector3, target_yaw: float, duration := 1.2) -> Tween:
+	_wall_motion_targets[wall] = wall.get_parent().global_transform.affine_inverse() * Transform3D(Basis(Vector3.UP, target_yaw), target_position)
 	var start_position := wall.global_position
 	var start_yaw := wall.rotation.y
 	var yaw_delta := wrapf(target_yaw - start_yaw, -PI, PI)
@@ -3076,6 +3078,7 @@ func _tween_wall_to_transform_about_hinge(wall: CSGBox3D, target_position: Vecto
 # Straight motion remains useful for a no-turn caller. Hallway motion never
 # reaches this fallback: opening and closing both rotate 90 degrees.
 func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1.2) -> Tween:
+	_wall_motion_targets[wall] = wall.get_parent().global_transform.affine_inverse() * Transform3D(Basis(Vector3.UP, yaw), position)
 	var tw := create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(wall, "global_position", position, duration)
@@ -3149,6 +3152,9 @@ func rotatable_wall_sets() -> Array[Dictionary]:
 # is still moving is ignored, so it can't be sent back the other way before
 # it reaches the position it's rotating to.
 var _moving_wall_sets: Dictionary = {}
+var _wall_motion_tweens: Dictionary = {}
+var _wall_motion_targets: Dictionary = {}
+var _wall_motion_collision: Dictionary = {}
 
 func _wall_set_moving(set_name: String) -> bool:
 	return _moving_wall_sets.has(set_name)
@@ -3166,12 +3172,69 @@ func _track_wall_set_motion(set_name: String, tweens: Array, walls: Array = []) 
 			d.velocity = Vector3.ZERO
 	_moving_wall_sets[set_name] = pending.size()
 	_moving_wall_nodes[set_name] = walls
+	_wall_motion_tweens[set_name] = pending.duplicate()
 	for tw in pending:
 		(tw as Tween).finished.connect(func() -> void:
-			_moving_wall_sets[set_name] = int(_moving_wall_sets.get(set_name, 1)) - 1
+			# A checkpoint restore may have cancelled this whole set. A late
+			# completion may not recreate ownership or rewrite loaded geometry.
+			if not _moving_wall_sets.has(set_name):
+				return
+			(_wall_motion_tweens[set_name] as Array).erase(tw)
+			_moving_wall_sets[set_name] = int(_moving_wall_sets[set_name]) - 1
 			if int(_moving_wall_sets[set_name]) <= 0:
-				_moving_wall_sets.erase(set_name)
-				_moving_wall_nodes.erase(set_name))
+				_finish_wall_motion(set_name))
+
+func _finish_wall_motion(set_name: String, interrupted := false) -> void:
+	if interrupted:
+		for tw in _wall_motion_tweens.get(set_name, []):
+			if tw is Tween and (tw as Tween).is_valid():
+				(tw as Tween).kill()
+	for wall in _moving_wall_nodes.get(set_name, []):
+		if not is_instance_valid(wall):
+			continue
+		# Flags already describe the requested destination. On interruption
+		# settle there, never leave half-rotated unsaveable geometry behind.
+		if interrupted and _wall_motion_targets.has(wall):
+			(wall as CSGBox3D).transform = _wall_motion_targets[wall]
+		_restore_motion_collision(wall)
+		_wall_motion_targets.erase(wall)
+		_wall_last_xf.erase(wall)
+	_moving_wall_sets.erase(set_name)
+	_moving_wall_nodes.erase(set_name)
+	_wall_motion_tweens.erase(set_name)
+
+func _cancel_wall_motion() -> void:
+	for set_name in _moving_wall_sets.keys():
+		_finish_wall_motion(String(set_name), true)
+	# Defensive cleanup for a request which was cancelled before tracking.
+	for wall in _wall_motion_collision.keys():
+		_restore_motion_collision(wall)
+	_wall_motion_targets.clear()
+	_wall_last_xf.clear()
+
+func _suspend_motion_collision(wall: CSGBox3D) -> void:
+	if _wall_motion_collision.has(wall):
+		return
+	var saved := {"wall": wall.collision_layer, "bodies": {}}
+	# The split rock is parented to wall10 and moves with it too. Suspending
+	# only Skirt leaves that solid child shoving C5 occupants during the swing.
+	for child in wall.find_children("*", "CollisionObject3D", true, false):
+		var body := child as CollisionObject3D
+		saved.bodies[body] = body.collision_layer
+		body.collision_layer = 0
+	_wall_motion_collision[wall] = saved
+	wall.collision_layer = 0
+
+func _restore_motion_collision(wall: Variant) -> void:
+	if not _wall_motion_collision.has(wall):
+		return
+	var saved: Dictionary = _wall_motion_collision[wall]
+	if is_instance_valid(wall):
+		wall.collision_layer = int(saved.wall)
+	for body in saved.bodies:
+		if is_instance_valid(body):
+			(body as CollisionObject3D).collision_layer = int(saved.bodies[body])
+	_wall_motion_collision.erase(wall)
 
 var _moving_wall_nodes: Dictionary = {}   # set name -> Array of the walls it's moving
 
@@ -3185,6 +3248,11 @@ const SWEEP_MARGIN := 0.05
 var _wall_last_xf: Dictionary = {}   # moving wall -> its transform last physics frame
 
 func _sweep_divers_with_moving_walls() -> void:
+	# Tween.kill() does not emit finished. Detect the interrupted set before
+	# sweeping or deciding that input/checkpoints must remain locked forever.
+	for set_name in _wall_motion_tweens.keys():
+		if (_wall_motion_tweens[set_name] as Array).any(func(t: Tween) -> bool: return not t.is_valid()):
+			_finish_wall_motion(String(set_name), true)
 	var still_moving: Dictionary = {}
 	for set_name in _moving_wall_nodes:
 		for w in _moving_wall_nodes[set_name]:
@@ -3196,6 +3264,12 @@ func _sweep_divers_with_moving_walls() -> void:
 			var last: Transform3D = _wall_last_xf.get(wall, xf)
 			var half := wall.size * 0.5
 			for d in divers:
+				if not is_instance_valid(d):
+					continue
+				# bba8b80: C5 occupants are not passengers on walls 10/11.
+				# Collision is also suspended so physics cannot shove them out.
+				if set_name == "CSGBox3D10/11" and _c5_zone().has_point(Vector2(d.global_position.x, d.global_position.z)):
+					continue
 				var r := d.radius + SWEEP_MARGIN
 				var local := xf.affine_inverse() * d.global_position
 				if absf(local.x) > half.x + r or absf(local.z) > half.z + r or absf(local.y) > half.y + d.height * 0.5:
@@ -3214,6 +3288,23 @@ func _sweep_divers_with_moving_walls() -> void:
 	_wall_last_xf.clear()
 	for wall in still_moving:
 		_wall_last_xf[wall] = (wall as CSGBox3D).global_transform
+
+func _c5_zone() -> Rect2:
+	var cs := _corridor_shape($WindCorridor5)
+	if cs == null or not cs.shape is BoxShape3D:
+		return Rect2()
+	var half := (cs.shape as BoxShape3D).size * 0.5
+	var west := INF
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			west = minf(west, (cs.global_transform * Vector3(half.x * sx, 0, half.z * sz)).x)
+	var b8 := $CSGBox3D8 as CSGBox3D
+	var b9 := $CSGBox3D9 as CSGBox3D
+	var t := b9.size.z * 0.5
+	var east := maxf(_wall_11_joint.x, _wall_10_joint.x) + t
+	var z0 := minf(b8.global_position.z, b9.global_position.z) - t
+	var z1 := maxf(b8.global_position.z, b9.global_position.z) + t
+	return Rect2(west, z0, east - west, z1 - z0)
 
 func _rotate_hallway_1_2() -> void:
 	if _wall_set_moving("CurrentWall1/2"):
@@ -4543,6 +4634,7 @@ func _update_aim_marker() -> void:
 
 func _exit_tree() -> void:
 	_cancel_aim()
+	_cancel_wall_motion()
 
 # --- Keys ---------------------------------------------------------------------
 # Keys aren't tied to doors: each key opens any one door (KeyDoor spends it),
@@ -4733,6 +4825,8 @@ func _rotate_walls_10_11() -> void:
 		_walls_10_11_swung = true
 		$HUD/Controls.text = "Walls 10/11 swinging..."
 	_update_state_barriers()
+	for wall in [$CSGBox3D10, $CSGBox3D11]:
+		_suspend_motion_collision(wall)
 	_track_wall_set_motion("CSGBox3D10/11", tweens, [$CSGBox3D10, $CSGBox3D11])
 	if not tweens.is_empty():
 		(tweens[-1] as Tween).finished.connect(func() -> void:
@@ -5866,6 +5960,9 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	data = MazeCoordinateFrame.rebase(data, coordinate_origin)
 	if data.is_empty():
 		return
+	# Cancel only after valid coordinate preflight. Old Tweens must not keep
+	# moving walls after applying the checkpoint, or retain disabled skirts.
+	_cancel_wall_motion()
 	for flag in CAMPAIGN_FLAGS:
 		set(flag, bool(data.flags.get(flag, false)))
 	keys_held = int(data.keys_held)

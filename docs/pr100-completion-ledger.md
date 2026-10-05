@@ -3,6 +3,18 @@
 Contract: user-authorized comprehensive plan in the October 4 conversation.
 This ledger retains the full scope; a green focused batch is not release readiness.
 
+October 5 C5 follow-up integrates the bba8b80 exception for walls10/11 and
+suspends/restores their attached collision bodies, including the split rock.
+Actual collision rays reproduced the original wall/skirt defect; generated C5
+capsules exposed the attached-rock shove after the first port. Both are repaired.
+Three actors × three positions × opening/closing are checked with a relocated
+current and with the authored C5 current active. Live restore, scheduler
+interruption, inactive/re-entry and removed-owner/non-default-layer checks are
+covered by `verify/maze_wall_motion.gd`. Evidence and fixture limits are in
+`docs/evidence/maze-wall-motion-oct5`. This is NOT admission of the remaining
+outside-C5 retained-rider port, poster-west barrier, hall whirlpools or autosaves.
+Final campaign, browser, exports and full-suite acceptance remain open.
+
 October 5 Box12 follow-up admits only the Control Room route portion of bba8b80:
 three real capsule traversals/240 independently queried motion frames, blocked
 exits, three interrupted owners, paused lessons, actual chest E/L and normal
@@ -10,8 +22,9 @@ pre-map approach/return pass. Raw captured old E-path JSON covers36 actor/frame/
 map/placement cases and raw historical cold Title Load/real swimming. Migration
 avoids active pull zones as well as solids; native inspection caught and repaired
 the below-floor chase camera. Wide/true360×640 visuals and source receipts are in
-`docs/evidence/maze-box12-route-oct5`. C5 wall collision/riders, poster-west
-extension, hall whirlpools and autosaves remain pending late intake. The overall
+`docs/evidence/maze-box12-route-oct5`. C5 collision is now separately verified
+above; retained outside-C5 riders, poster-west extension, hall whirlpools and
+autosaves remain pending late intake. The overall
 maze row below retains its full-route/browser acceptance; no hosted update,
 full-suite or merge-ready claim is made by this batch.
 No new PR, main push, canonical-main promotion, or merge is authorized by this work.

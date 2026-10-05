@@ -191,6 +191,9 @@ run "puzzle saved Deep exit: do saved solved doors reopen without an obsolete ma
 run "embedded maze ownership and ramp: does actual bidirectional swimming retain one party/input/camera/HUD owner without inactive encounters or Oxygen drain" "$GODOT" --headless --path . --script verify/embedded_maze.gd
 run "embedded maze saves: do 48 generated World/maze cases and cold legacy Title Load preserve frames, resources and independent progress" "$GODOT" --headless --path . --script verify/embedded_maze_checkpoint.gd
 run "maze drafts: do three capsules traverse real outgoing/return paths without clipping, reversing, or racing moving walls" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd
+run "C5 wall safety: do all three capsules avoid wall/attached-rock shoves and regain stable collision after restore/interruption" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd
+run "C5 active current: does live water push remain distinct from moving-wall carry" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd -- --currents
+run "moving-wall teardown: are surviving shared actors and non-default wall/skirt/rock layers preserved" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd -- --teardown
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
 run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd
