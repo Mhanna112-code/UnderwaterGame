@@ -57,7 +57,18 @@ matching native packages. Fixed75HP Cordys/generic puppet key/early maze stay.
 
 ## Delivery
 
-Pending source commit, matching export, candidate test, fast-forward main push
-and canonical promotion/hash check. The canonical alias is explicitly deployed;
-Git pushes alone do not update it. This row must be replaced with real receipts
-after delivery, never inferred from a local green.
+Source764097e was combined with concurrent main afdbd45 (stationed Cordys and
+deliberate danger confirmation) as138ca535c3a5d8d174225eb109b56b35ea190be0.
+Affected real station/confirmation, checkpoint defeat/restart, puppet dispatch,
+normal lab-side ramp, World manual save and three whirlpool ownership gates
+all reran clean. READY candidate dpl_d9oHJxziYwgsNCiePwX5h9gCH7tY serves the
+matching93,321,284-byte PCK, SHA256
+e5f790f1a30bc3390a1006784257ac1957c8998ec53fcc672bc8ed723c527de9.
+
+Combined hosted Save denial/exact durable rollback/retry/cold Load and actual
+Cordys Title Load/W/No/reapproach/Yes passed with no findings; narrow danger
+choices rendered/readable. See combined-hosted-save and combined-hosted-cordys
+in the evidence packet. The served review guide states the outstanding plan.
+Main push and canonical promotion/hash/recheck are pending in this source
+receipt; the post-delivery receipt will record them. Git pushes alone do not
+update the canonical alias.

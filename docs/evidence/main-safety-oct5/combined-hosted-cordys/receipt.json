@@ -1,0 +1,56 @@
+{
+  "source_commit": "138ca535c3a5d8d174225eb109b56b35ea190be0",
+  "fixture": "recovered campaign room; supplied key spent through native E; disposable profile",
+  "observations": [
+    {
+      "name": "station",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nFind the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "approach-0",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nFind the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "approach-1",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nFind the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "approach-2",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nA great danger is detected here. Are you sure\nyou would like to proceed?\nYes (Y)\nNo (N)"
+    },
+    {
+      "name": "confirmation-720x480",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look\nTAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nA great danger is detected here. Are you sure\nyou would like to proceed?\nYes (Y)\nNo (N)"
+    },
+    {
+      "name": "confirmation-360x640",
+      "text": "Maxilani\nWASD swim\nSPACE/SHIFT depth\nmouse/arrows look\nTAB switch diver\n• F: Swap • Q:\nSonar (Off) • R:\nEncounters (On)\nCordys\nA great danger is detected\nhere. Are you sure you\nwould like to proceed?\nYes (Y)\nNo (N)"
+    },
+    {
+      "name": "declined",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nFind the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "reapproach-0",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nFind the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "reapproach-1",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap\n• Q: Sonar (Off) • R: Encounters (On)\nCordys\nFind the navigation map in the Control Room.\nE: interact • F: ability"
+    },
+    {
+      "name": "reapproach-2",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nFind the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "reapproach-3",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nA great danger is detected here. Are you sure\nyou would like to proceed?\nYes (Y)\nNo (N)"
+    },
+    {
+      "name": "confirmed-battle",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n75 / 75"
+    }
+  ],
+  "findings": [],
+  "scope": "exported Title Load/W/N/S/W/Y and responsive popup, not full campaign or browser durability"
+}

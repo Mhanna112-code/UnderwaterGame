@@ -1,0 +1,52 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=angler|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(28.0, 2.0, 10.0)|lock=false|visible=true|clear=true|hp=7|oxygen=0.0|warning=false
+RANDOM_COMBAT|enemies=angler
+WHIRL_BATTLE|actual_reveal=true|battle=true|hp=7|caught=0|warning=false|actor=0|phase=spiral
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=angler|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(28.0, 2.0, 10.0)|lock=false|visible=true|clear=true|hp=7|oxygen=0.0|warning=false
+RANDOM_COMBAT|enemies=angler
+WHIRL_BATTLE|actual_reveal=true|battle=true|hp=7|caught=0|warning=false|actor=0|phase=vanish
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(28.0, 2.0, 10.0)|lock=false|visible=true|clear=true|hp=7|oxygen=0.0|warning=false
+RANDOM_COMBAT|enemies=swordfish_duelist
+WHIRL_BATTLE|actual_reveal=true|battle=true|hp=6|caught=0|warning=false|actor=1|phase=spiral
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(28.0, 2.0, 10.0)|lock=false|visible=true|clear=true|hp=7|oxygen=0.0|warning=false
+RANDOM_COMBAT|enemies=swordfish_duelist
+WHIRL_BATTLE|actual_reveal=true|battle=true|hp=4|caught=0|warning=false|actor=1|phase=vanish
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(28.0, 2.0, 10.0)|lock=false|visible=true|clear=true|hp=7|oxygen=0.0|warning=false
+RANDOM_COMBAT|enemies=frilled_shark
+WHIRL_BATTLE|actual_reveal=true|battle=true|hp=7|caught=0|warning=false|actor=2|phase=spiral
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=frilled_shark,frilled_shark|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(28.0, 2.0, 10.0)|lock=false|visible=true|clear=true|hp=7|oxygen=0.0|warning=false
+RANDOM_COMBAT|enemies=frilled_shark,frilled_shark
+WHIRL_BATTLE|actual_reveal=true|battle=true|hp=7|caught=0|warning=false|actor=2|phase=vanish
+WHIRL_BATTLE_CASES|completed=6
+WHIRLPOOL SAFETY: clean

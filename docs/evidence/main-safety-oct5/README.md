@@ -31,3 +31,22 @@ This is an observer correction, not a fabricated product repair.
 Full new-game/earned route/migration/autosave-browser/Bomb Bot/audio and native
 platform launch acceptance remains in the campaign plan. Hosted candidate and
 canonical acceptance will be recorded separately after actual delivery.
+
+Final runtime764097e reruns all seven extended whirlpool families with terminal
+exit0 and no engine/script ERROR/FINDING; main-safety-release-whirl-* records
+them. The release native frame/trace are whirl-inventory-release-764097e.png
+and main-safety-release-native.log. This includes the final World Sonar-reading
+addition, unlike the earlier extended-family receipts.
+
+hosted-candidate/ repeats real denied durable save, exact byte preservation,
+retry/success and cold Title Load against READY deployment
+dpl_BXSRTNTyomgDad14NhHLw5TNqgsM. Its actual served PCK hashes to
+f6da83bae400114b2543f15e3ae857a7d06528f7d4b32ef7491acc18b9c8e948,
+runtime764097e. Receipt findings are empty. The review guide is subsequently
+corrected without changing that PCK; a final candidate/promotion receipt must
+record that correction and canonical acceptance separately.
+
+Concurrent main afdbd45 is preserved in138ca53. The combined affected checks
+and hosted-candidate receipts (combined-hosted-save/combined-hosted-cordys)
+pass; the actual new served PCK is e5f790f1a30bc3390a1006784257ac1957c8998ec53fcc672bc8ed723c527de9.
+This replaces, rather than silently reuses, the earlier764097e artifact proof.

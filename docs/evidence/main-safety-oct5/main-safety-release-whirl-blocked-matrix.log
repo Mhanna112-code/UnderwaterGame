@@ -1,0 +1,32 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=0.0|phase=spiral|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=0.0|phase=vanish|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=1.5707963267949|phase=spiral|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.2342, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=1.5707963267949|phase=vanish|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.2342, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=0.0|phase=spiral|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=0.0|phase=vanish|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=1.5707963267949|phase=spiral|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.2342, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=1.5707963267949|phase=vanish|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.2342, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_MATRIX|cases=24|no_player_files=true
+WHIRLPOOL SAFETY: clean
