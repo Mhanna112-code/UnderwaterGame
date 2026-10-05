@@ -1,0 +1,7 @@
+BROWSER PACK REQUEST COMPLETE||http://127.0.0.1:54625/index.pck
+EXPORTED TITLE|Underwater | New Game
+BROWSER PACK REQUEST COMPLETE|?maze=1&entry=entrance|http://127.0.0.1:54625/index.pck
+EXPORTED CHEST APPROACH|Maxilani | WASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver | • F: Swap • Q: Sonar (Off) • R: Encounters (Off) | Find the navigation map in the Control Room. | Press E to open | E: interact • F: ability. | Room
+EXPORTED MAZE MAP|MAZE NAVIGATION [L] Close | * | Control | Room | LEGEND | You | | Visited room | Chest | • Up | Left / Right Select walls • E Rotate | Ctrl + Left / Right Select currents | CtrI+E Move current • R Encounters
+{"source_commit":"2054d1148e80ed385400422ed4e1cedae88dd2a8","downloads":[{"bytes":93267452,"sha256":"2030c084ebfb77242c93e899b468cbdd5f51dd34e192800c54cde2569bf49a1a","endpoint":"http://127.0.0.1:54625/index.pck"}],"findings":[],"scope":"served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection and actual swimming/E acquisition/earned L controls; no full campaign or durability claim"}
+MAZE FEEDBACK WEB: clean

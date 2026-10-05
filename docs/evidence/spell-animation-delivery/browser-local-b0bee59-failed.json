@@ -1,0 +1,125 @@
+{
+  "source_commit": "b0bee59223e3c29e7919a1146f3cb40ba6d83e1c",
+  "cast": false,
+  "errors": [],
+  "failure": "Error: Missing visible review control",
+  "observations": [
+    {
+      "name": "title",
+      "text": "Underwater\nNew Game\nPlay Spell Test"
+    },
+    {
+      "name": "world",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\nSpell test ready: spells are learned and equipped. Press Esc, then\nParty Spells.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-1",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10/10"
+    },
+    {
+      "name": "approach-2",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-3",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-4",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-5",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-6",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap*• Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-7",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-8",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap\nQ: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-9",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap\n, • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-10",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-11",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q; Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-12",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-13",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-14",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-15",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-16",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-17",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap\nQ: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-18",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-19",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-20",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-21",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap ••Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-22",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-23",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-24",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-25",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap\n•Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-26",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02 100 / 100\nMaxilani\n10 / 10"
+    }
+  ],
+  "scope": "actual exported kit, world encounter, mouse-selected Swift Strike and rendered early/impact/late frames; not all clips or earning"
+}

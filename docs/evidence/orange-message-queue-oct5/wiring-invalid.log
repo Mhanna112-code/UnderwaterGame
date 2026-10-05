@@ -1,0 +1,14 @@
+Rejected intermediate wiring run — excerpt (not accepted verification).
+Full original retained locally at /private/tmp/pr100-orange-input-green.log.
+The same per-frame error repeated; duplicate backtraces omitted here.
+
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+PROLOGUE_PHASE|complete
+SCRIPT ERROR: Invalid call. Nonexistent function 'is_visible_in_tree' in base 'CanvasLayer'.
+          at: World._update_banner (res://game/world.gd:3248)
+          GDScript backtrace (most recent call first):
+              [0] _update_banner (res://game/world.gd:3248)
+              [1] _physics_process (res://game/world.gd:2302)
+
+Repair: use CanvasLayer.visible. This intermediate error is not counted
+as a pre-existing product defect; all accepted receipts reject script errors.

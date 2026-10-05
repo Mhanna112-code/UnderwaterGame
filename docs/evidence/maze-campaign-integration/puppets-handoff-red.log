@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PUPPET DISPATCH|["angler", "swordfish_duelist", "frilled_shark"]
+PUPPET HANDOFF|actions=6|outcomes=["won"]|next=["angler", "swordfish_duelist", "frilled_shark"]
+FINDING INT-11 first wave emitted final outcome: ["won"]
+FINDING INT-11 clearing first wave did not build the second: ["angler", "swordfish_duelist", "frilled_shark"]
+FINDING INT-11 first wave awarded XP
+FINDING INT-11 first wave awarded XP
+FINDING INT-11 first wave awarded XP
+MAZE PUPPET WAVES: 5 findings

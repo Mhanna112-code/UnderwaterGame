@@ -32,6 +32,7 @@ const MOUSE_LOOK_SETTLE_SECONDS := 0.40
 # finish, and a frame budget generous enough to cover it would be a number
 # nobody could justify. Wait for the sequence, give up on the clock.
 const PATIENCE_SECONDS := 20.0
+const SLOT := 918303
 
 var world: Node3D
 var frames := 0
@@ -53,6 +54,11 @@ var timeline: Array = []
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
 	world.skip_intro_for_test = true
+	# Ordinary recovered-world locomotion, not the deliberate idle prologue.
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = true
+	world.route_state.set_prologue_phase("complete")
 	root.add_child(world)
 	started_ms = Time.get_ticks_msec()
 
@@ -72,7 +78,7 @@ func _process(_dt: float) -> bool:
 		# nobody had started yet and reported that nothing moved, which was
 		# true and useless. Going through the signal rather than poking
 		# `paused` keeps the gate on the path a player actually takes.
-		world.title_screen.new_game_chosen.emit(1)
+		world.title_screen.new_game_chosen.emit(SLOT)
 		return false
 
 	if frames == 2:
@@ -130,6 +136,7 @@ func _process(_dt: float) -> bool:
 	for f in findings:
 		print("FINDING  " + f)
 	print("SWIM: clean" if findings.is_empty() else "SWIM: %d finding(s)" % findings.size())
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveManager.slot_path(SLOT)))
 	quit(0 if findings.is_empty() else 1)
 	return true
 

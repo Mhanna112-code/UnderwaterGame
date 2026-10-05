@@ -1,0 +1,31 @@
+{
+  "target": "https://underwatergame-5s8dreh6s-immortaldemongods-projects.vercel.app/",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "elapsedSeconds": 94.409,
+  "phases": [
+    "opening_video",
+    "spawn_exploration",
+    "angler",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery",
+    "complete"
+  ],
+  "timestamps": {
+    "opening_video": 1791085044096,
+    "spawn_exploration": 1791085081367,
+    "angler": 1791085087049,
+    "octopus_introduction": 1791085093630,
+    "octopus_reveal": 1791085119329,
+    "octopus_response": 1791085121128,
+    "scripted_defeat": 1791085124759,
+    "octopus_aftermath": 1791085129263,
+    "recovery": 1791085135640,
+    "complete": 1791085136255
+  },
+  "errors": [],
+  "failure": null
+}

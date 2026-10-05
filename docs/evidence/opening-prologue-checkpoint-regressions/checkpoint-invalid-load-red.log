@@ -1,0 +1,8 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_PHASE|opening_video
+INVALID LOAD CASE|<null>
+FINDING  OPEN-029 invalid Load releases the title instead of retaining an actionable error
+FINDING  OPEN-029 invalid Load launches the opener
+FINDING  OPEN-029 invalid Load has no visible explanation
+CHECKPOINT LOAD FAILURES: 3 finding(s)

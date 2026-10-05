@@ -22,6 +22,10 @@ extends CharacterBody3D
 # only the active one counts.
 signal encounter_triggered
 
+# Exploration clocks have no work in a battle. Preserve Sonar's enabled state
+# and remaining tick, but don't bill it against the shared combat resource.
+var exploration_paused := false
+
 # Fired by _swap() once a swap actually lands, target being who this diver
 # just traded places with. world.gd listens for this to do a confirmation
 # camera pan toward the traded-to position - purely a presentation hook,
@@ -153,6 +157,18 @@ var radius := 0.4
 # The rigged file's own AnimationPlayer, left where it was inside the
 # imported tree. See _ready() for why it is not moved.
 var anim: AnimationPlayer
+# Only Battle opts into the delivered cast's measured action envelope. Idle
+# exploration and legacy combat framing remain unchanged.
+const SPELL_FRAMES := preload("res://art/characters/spell_animations/frames.res")
+var framing_clip := ""
+
+func framing_points() -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	var frames: Dictionary = SPELL_FRAMES.get_meta("frames", {}).get(model_name, {})
+	for point in frames.get(framing_clip, PackedVector3Array()):
+		result.append(global_transform * (point as Vector3))
+	return result
+
 # Whichever armature name this particular delivery used - "rig",
 # "rig_001", "rig_002". Learned from the file rather than assumed.
 var _prefix := ""
@@ -264,6 +280,9 @@ func _ready() -> void:
 	if anim == null:
 		push_error("NO AnimationPlayer in %s" % file)
 	else:
+		# New spell deliveries are partial FBXs. Add their verified animation
+		# tracks to the existing rig instead of losing its old movement clips.
+		anim.add_animation_library("spells", Cast.spell_animations(model_name))
 		# Keep animating while the tree is paused. _ready() runs under the
 		# title screen, which pauses everything, and a paused
 		# AnimationPlayer never advances a frame - so calling play() below
@@ -381,6 +400,10 @@ func _build_stats() -> void:
 const SHOCKWAVE_RADIUS := 3.0
 const GRAPPLE_RANGE := 14.0
 const GRAPPLE_PULL_DURATION := 0.4
+# Environment occludes shots; lightweight item targets live on layer 5 so
+# swimming and camera collision remain unaffected. Both preview and fire use
+# this mask rather than including buddies or silently missing floating items.
+const GRAPPLE_COLLISION_MASK := 1 | (1 << 4)
 
 # Different cooldowns on purpose, not just one shared constant: shockwave
 # always does something the instant it's used (no aim, nothing to whiff),
@@ -393,21 +416,13 @@ const SHOCKWAVE_COOLDOWN := 2.5
 const GRAPPLE_COOLDOWN := 1.2
 const SWAP_COOLDOWN := 2.0
 
-# Swap costs less than the other two - it's a reposition, not a combat move
-# (see the cooldown comment above for the same distinction). Keyed by
-# ability_id rather than three separate consts so _ability_oxygen_cost()
-# stays a one-line lookup no matter how many abilities this ever grows to.
-const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0, "swap": 15.0}
-
-# No passive regen at all - a save point (world.gd's _on_save_requested())
-# is the only way oxygen comes back, so every ability use and every tick
-# of sonar is spending down a tank that stays spent until you actually go
-# find one. Lower than the old always-on-passive drain used to need, since
-# there's no regen fighting it anymore - this is the whole cost, not a net
-# rate against something clawing it back. Still expressed as a per-second
-# rate for balance purposes (tune this the same way you always would), but
-# charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather than
-# smoothly every physics frame - see _physics_process()'s _sonar_drain_timer.
+# Shockwave, Grapple, and Swap are the environmental progression verbs, so
+# their availability must never be exhausted by Oxygen. A player can always
+# recover from a missed route step or an empty tank. Sonar deliberately keeps
+# its distinct resource cost below; combat and spell systems own their costs.
+# Its drain is charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather
+# than smoothly every physics frame - see _physics_process()'s
+# _sonar_drain_timer.
 const SONAR_OXYGEN_DRAIN_PER_SEC := 3.0
 
 # How often the sonar drain actually gets charged - a few seconds, not
@@ -446,16 +461,13 @@ func _process(dt: float) -> void:
 			# on the very next physics frame, so it costs nothing there.
 			play_motion(_hold if _hold != "" else "idle")
 
-func _ability_oxygen_cost() -> float:
-	return float(ABILITY_OXYGEN_COST.get(ability_id, 0.0))
-
 # Read-only check world.gd can make before deciding whether to enter aim
 # mode or fire immediately - mirrors use_ability()'s own guard exactly, so
 # there's one place that knows what "ready to use" means instead of
 # world.gd guessing at Diver's private cooldown/grapple-in-progress state.
 func can_use_ability() -> bool:
 	return (ability_id != "" and not ability_locked and _ability_cooldown <= 0.0
-		and not _is_grappling and stats.oxygen >= _ability_oxygen_cost())
+		and not _is_grappling)
 
 # Called by whatever is meant to unlock a locked ability - right now just
 # grapple_anchor.gd's on_grappled_to(), for the one anchor whose
@@ -491,7 +503,7 @@ var external_push := Vector3.ZERO
 var current_axis := Vector3.ZERO
 
 # Which abilities need a deliberate aim step (first-person raycast, click
-# to fire) vs firing the instant E is pressed. Shockwave is omnidirectional,
+# to fire) vs firing the instant F is pressed. Shockwave is omnidirectional,
 # nothing to aim. Swap used to be raycast-aimed too, but now goes through
 # TargetSelector's cycle-through-candidates flow instead (see world.gd),
 # so it's no longer in this list - world.gd checks ability_id == "swap"
@@ -509,7 +521,6 @@ func ability_needs_aim() -> bool:
 func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> void:
 	if not can_use_ability():
 		return
-	stats.oxygen -= _ability_oxygen_cost()
 	match ability_id:
 		"shockwave":
 			_shockwave()
@@ -563,7 +574,28 @@ func toggle_sonar() -> bool:
 		_sonar_drain_timer = SONAR_DRAIN_INTERVAL
 	return sonar_active
 
+# Scene handoffs retain the resource consumed by combat rather than rebuilding
+# or filling baseline stats. Preserve the Sonar billing clock as well: resetting
+# it on entry must neither charge immediately nor buy a free new interval.
+func campaign_member_state() -> Dictionary:
+	return {"model": model_name, "stats": stats,
+		"known_spells": known_spells.duplicate(), "equipped_spells": equipped_spells.duplicate(),
+		"sonar_active": sonar_active, "sonar_drain_timer": _sonar_drain_timer,
+		"sonar_timer": sonar_timer, "ability_locked": ability_locked}
+
+func restore_campaign_member(data: Dictionary) -> void:
+	assert(String(data.model) == model_name, "Campaign diver identity mismatch")
+	stats = data.stats as CombatantStats
+	known_spells.assign(data.known_spells)
+	equipped_spells.assign(data.equipped_spells)
+	sonar_active = bool(data.sonar_active)
+	_sonar_drain_timer = float(data.sonar_drain_timer)
+	sonar_timer = float(data.sonar_timer)
+	ability_locked = bool(data.ability_locked)
+
 func _physics_process(delta: float) -> void:
+	if exploration_paused:
+		return
 	if passive_id == "sonar" and sonar_active:
 		_sonar_drain_timer -= delta
 		if _sonar_drain_timer <= 0.0:
@@ -620,6 +652,8 @@ func _physics_process(delta: float) -> void:
 func update_sonar() -> void:
 	if world == null:
 		return
+	if world.embedded_maze != null and world.embedded_maze.maze_active:
+		return # MazeMiniMap owns local Sonar discoveries in this active area.
 	var s_items := []
 	for item in ItemGuardian.spots():
 		if world.key_items.has(String(item.item)):
@@ -670,6 +704,9 @@ func _grapple(aim_dir: Vector3) -> void:
 	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
+	# Keep the live ray aligned with the aim preview and ignore party bodies.
+	query.exclude = [get_rid()]
+	query.collision_mask = GRAPPLE_COLLISION_MASK
 	var result := space.intersect_ray(query)
 
 	# Beam end is wherever the ray actually stopped - the max range if it
@@ -681,6 +718,11 @@ func _grapple(aim_dir: Vector3) -> void:
 		return
 
 	_ability_cooldown = GRAPPLE_COOLDOWN
+	# Light rewards travel to the actual shooter. Anchors retain traversal;
+	# choosing the nearest diver after a pull would award the wrong player.
+	if (result.collider as Node).has_method("reel_in_to"):
+		(result.collider as Node).call("reel_in_to", self)
+		return
 	_is_grappling = true
 	var target: Vector3 = (result.collider as Node3D).global_position
 
@@ -729,7 +771,7 @@ func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
 	tw.tween_callback(beam.queue_free)
 
 # Not aimed at all - the target comes pre-selected from TargetSelector's
-# cycle-through-candidates flow (world.gd routes E through
+# cycle-through-candidates flow (world.gd routes F through
 # target_selector.start_selection() for "swap" instead of first-person
 # aim; see ability_needs_aim()). Swaps this diver's position with
 # `target` outright: instant, not a tween like grapple's pull - "switch
@@ -860,6 +902,8 @@ func resolve(stem: String) -> String:
 		return _prefix + stem
 	if anim.has_animation(stem):
 		return stem
+	if anim.has_animation("spells/" + stem):
+		return "spells/" + stem
 	for a in anim.get_animation_list():
 		var nm := String(a)
 		var bar := nm.rfind("|")

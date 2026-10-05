@@ -1,0 +1,14 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+DRAFT_RESTORE|legacy=false|diver=0|west_alignment=0.0000057220459|real_return=(348.4379, 1.8, 30.24161)
+DRAFT_RESTORE|legacy=false|diver=1|west_alignment=0.0000057220459|real_return=(348.4379, 1.8, 30.24161)
+DRAFT_RESTORE|legacy=false|diver=2|west_alignment=0.0000057220459|real_return=(348.4379, 1.8, 30.24161)
+DRAFT_SOLID_INTERIOR|wall=CSGBox3D11|actor=(343.4379, 1.8, 33.14161)
+DRAFT_LEGACY_POSITION|diver=0|restored=(343.4379, 1.8, 33.14161)|immediately_clear=false
+DRAFT_SOLID_INTERIOR|wall=CSGBox3D11|actor=(343.4379, 1.8, 33.14161)
+FINDING DRAFT-5 legacy=true diver=0 buries a saved actor in the migrated wall
+MAZE DRAFT PASSAGES: 1 findings

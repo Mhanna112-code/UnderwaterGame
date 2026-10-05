@@ -1,0 +1,96 @@
+{
+  "target": "https://underwatergame-nskcv38hd-immortaldemongods-projects.vercel.app/",
+  "timingOnly": true,
+  "browserEngine": "chromium",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "elapsedSeconds": 119.189,
+  "engagedSeconds": 117.18599999999999,
+  "deliberateIdleMs": 2003,
+  "freeSwimKeydown": 1791122573793,
+  "freeSwimMs": 4235,
+  "phases": [
+    "opening_video",
+    "opening_handoff",
+    "spawn_exploration",
+    "angler",
+    "angler_victory",
+    "octopus_notice",
+    "octopus_omen",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery",
+    "complete"
+  ],
+  "timestamps": {
+    "opening_video": 1791122535804,
+    "opening_handoff": 1791122569811,
+    "spawn_exploration": 1791122573399,
+    "angler": 1791122578028,
+    "angler_victory": 1791122590671,
+    "octopus_notice": 1791122593085,
+    "octopus_omen": 1791122595127,
+    "octopus_introduction": 1791122597247,
+    "octopus_reveal": 1791122622617,
+    "octopus_response": 1791122623999,
+    "scripted_defeat": 1791122628544,
+    "octopus_aftermath": 1791122645560,
+    "recovery": 1791122651924,
+    "complete": 1791122652687
+  },
+  "sourcePresentationEvents": [
+    {
+      "line": "PROLOGUE_PHASE|opening_video",
+      "time": 1791122535792
+    },
+    {
+      "line": "PROLOGUE_PHASE|opening_handoff",
+      "time": 1791122569802
+    },
+    {
+      "line": "PROLOGUE_PHASE|spawn_exploration",
+      "time": 1791122573398
+    },
+    {
+      "line": "PROLOGUE_PHASE|angler",
+      "time": 1791122578026
+    },
+    {
+      "line": "PROLOGUE_PHASE|angler_victory",
+      "time": 1791122590660
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_notice",
+      "time": 1791122593078
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_omen",
+      "time": 1791122595126
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_introduction",
+      "time": 1791122597245
+    }
+  ],
+  "combatHits": [
+    "PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[\"EVA -3\"]",
+    "PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]",
+    "PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]"
+  ],
+  "bossResponses": [
+    "PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2",
+    "PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1",
+    "PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0"
+  ],
+  "bossResponseTimes": [
+    1791122629292,
+    1791122636772,
+    1791122643657
+  ],
+  "randomReveals": [],
+  "randomCombats": [],
+  "errors": [],
+  "failure": null
+}

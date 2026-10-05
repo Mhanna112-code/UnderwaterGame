@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE SITE TRIGGERS|wall_blocked=true|height_blocked=true|inactive_blocked=true|modal_blocked=true|R_inside=true|actual_reentry=true
+FINDING SITE-2 site stacks a chooser after the shared lesson has paused the frame
+FINDING SITE-2 site steals the inventory owner
+FINDING SITE-1/2 actual R-on inside the open radius does not open an exclusive chooser
+FINDING SITE-3 real capsule cannot leave authored radius
+FINDING SITE-3 actual leave/re-entry does not reoffer canceled site
+MAZE SPECIAL SITES: failed

@@ -1,0 +1,24 @@
+{
+  "target": "https://underwatergame-odan8133h-immortaldemongods-projects.vercel.app",
+  "browserEngine": "chromium",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "deliberateIdleMs": 0,
+  "freeSwimKeydown": 1791108608327,
+  "freeSwimMs": 4441,
+  "phases": [
+    "opening_video",
+    "opening_handoff",
+    "spawn_exploration",
+    "angler"
+  ],
+  "timestamps": {
+    "opening_video": 1791108569435,
+    "opening_handoff": 1791108603945,
+    "spawn_exploration": 1791108607505,
+    "angler": 1791108612768
+  },
+  "combatHits": [],
+  "bossResponses": [],
+  "errors": [],
+  "failure": "Error: missing octopus_introduction; observed opening_video,opening_handoff,spawn_exploration,angler"
+}

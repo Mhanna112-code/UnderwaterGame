@@ -1,0 +1,12 @@
+{
+  "source_commit": "2bf19acb86f1727f9ed199e669658bcb010ac036",
+  "deployment_id": "dpl_12wKPV7Qg8x8mGbVcLhcnxGfyPFD",
+  "immutable_url": "https://underwatergame-a85nxr641-immortaldemongods-projects.vercel.app/",
+  "stable_alias": "https://underwatergame-opening-prologue-review.vercel.app/",
+  "pck_bytes": 92951692,
+  "local_and_downloaded_sha256": "b56c773115f36905bc18a3b226778635456fdb24d88a1829edd4902098f0cffb",
+  "public_main_unchanged": "dpl_HEhyJ5cpLkbptB19ZioSAZFpu4H5",
+  "full_goal_complete": false,
+  "reported_session_root_cause": "unestablished",
+  "user_saves_modified": false
+}

@@ -1,0 +1,38 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WALL_HOME|["CSGBox3D10:(376.5983, 1.4204, 9.60191):(33.6604, 4.05762, 1.0)", "CSGBox3D11:(368.0748, 1.4204, 16.68196):(31.9193, 4.05762, 1.0)"]
+C5_ORACLE|west=351.458465576172|east=376.598297119141|z=-6.72829055786133..1.22230958938599
+C5_CASE|diver=0|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.507667, -2.75299)|end=(357.6864, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.507667, -2.75299)|end=(364.0284, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.507667, -2.75299)|end=(370.3703, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.507667, -2.75299)|end=(357.6864, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.507667, -2.75299)|end=(364.0284, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.507667, -2.75299)|end=(370.3703, -0.507667, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.376822, -2.75299)|end=(357.6864, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.376822, -2.75299)|end=(364.0284, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.376822, -2.75299)|end=(370.3703, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.376822, -2.75299)|end=(357.6864, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.376822, -2.75299)|end=(364.0284, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.376822, -2.75299)|end=(370.3703, -0.376822, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.120827, -2.75299)|end=(357.6864, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.120827, -2.75299)|end=(364.0284, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.120827, -2.75299)|end=(370.3703, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.120827, -2.75299)|end=(357.6864, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.120827, -2.75299)|end=(364.0284, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.120827, -2.75299)|end=(370.3703, -0.120827, -2.75299)
+WALL_RESTORE|actor=0|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=0|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=0|delay_frames=55|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=55|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=55|loaded_geometry_retained=true
+WALL_KILL|settled_target=true|saveable=true
+WALL_INACTIVE|reentered=true|geometry_settled=true|owner_released=true
+MAZE WALL MOTION: clean | physical_samples=48|C5_cases=18|swept_capsule_frames=30

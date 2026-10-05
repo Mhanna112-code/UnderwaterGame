@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+ERROR: EMBED-1 constructing inactive maze advances the opening/boss milestone
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _expect (res://verify/embedded_maze.gd:170)
+       [1] _run (res://verify/embedded_maze.gd:44)
+EMBED_LAYOUT|bounds=[P: (256.3036, -23.75299), S: (182.0708, 156.4959)]|entry=(286.609, 0.0, 16.0)
+EMBEDDED MAZE: 1 findings

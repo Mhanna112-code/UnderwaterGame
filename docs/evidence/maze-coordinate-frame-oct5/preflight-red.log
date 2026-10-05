@@ -1,0 +1,6 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE COORDINATE FRAME|generated_party_frame_cases=144
+MAZE COORDINATE FRAME|invalid_frames=10|invalid_destinations=3|range_overflow=1
+FINDING  FRAME-5 runtime preflight accepts an untranslatable frame and releases a failed restore
+MAZE COORDINATE FRAME: 1 finding(s)

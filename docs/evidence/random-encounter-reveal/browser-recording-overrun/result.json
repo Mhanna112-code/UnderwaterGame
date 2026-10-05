@@ -1,0 +1,144 @@
+{
+  "target": "https://underwatergame-cmop2s7of-immortaldemongods-projects.vercel.app/",
+  "browserEngine": "chromium",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "elapsedSeconds": 122.995,
+  "engagedSeconds": 120.991,
+  "deliberateIdleMs": 2004,
+  "freeSwimKeydown": 1791116571130,
+  "freeSwimMs": 4484,
+  "phases": [
+    "opening_video",
+    "opening_handoff",
+    "spawn_exploration",
+    "angler",
+    "angler_victory",
+    "octopus_notice",
+    "octopus_omen",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery",
+    "complete"
+  ],
+  "timestamps": {
+    "opening_video": 1791116533099,
+    "opening_handoff": 1791116567152,
+    "spawn_exploration": 1791116570618,
+    "angler": 1791116575614,
+    "angler_victory": 1791116588347,
+    "octopus_notice": 1791116590717,
+    "octopus_omen": 1791116592781,
+    "octopus_introduction": 1791116594896,
+    "octopus_reveal": 1791116620163,
+    "octopus_response": 1791116622368,
+    "scripted_defeat": 1791116627112,
+    "octopus_aftermath": 1791116646826,
+    "recovery": 1791116653188,
+    "complete": 1791116653914
+  },
+  "sourcePresentationEvents": [
+    {
+      "line": "PROLOGUE_PHASE|opening_video",
+      "time": 1791116533014
+    },
+    {
+      "line": "PROLOGUE_PHASE|opening_handoff",
+      "time": 1791116567016
+    },
+    {
+      "line": "PROLOGUE_PHASE|spawn_exploration",
+      "time": 1791116570615
+    },
+    {
+      "line": "PROLOGUE_PHASE|angler",
+      "time": 1791116575613
+    },
+    {
+      "line": "PROLOGUE_PHASE|angler_victory",
+      "time": 1791116588303
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_notice",
+      "time": 1791116590712
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_omen",
+      "time": 1791116592779
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_introduction",
+      "time": 1791116594894
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_reveal",
+      "time": 1791116620023
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_response",
+      "time": 1791116622277
+    },
+    {
+      "line": "PROLOGUE_PHASE|scripted_defeat",
+      "time": 1791116627110
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_aftermath",
+      "time": 1791116646825
+    },
+    {
+      "line": "PROLOGUE_PHASE|recovery",
+      "time": 1791116653187
+    },
+    {
+      "line": "PROLOGUE_PHASE|complete",
+      "time": 1791116653913
+    },
+    {
+      "line": "RANDOM_REVEAL|enemies=frilled_shark|duration=1.5",
+      "time": 1791116664620
+    },
+    {
+      "line": "RANDOM_COMBAT|enemies=frilled_shark",
+      "time": 1791116666266
+    }
+  ],
+  "combatHits": [
+    "PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[\"EVA -3\"]",
+    "PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]",
+    "PROLOGUE_HIT|move=Guard Bash|damage=9|hit=true|hp=987|effects=[]"
+  ],
+  "bossResponses": [
+    "PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2",
+    "PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1",
+    "PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0"
+  ],
+  "bossResponseTimes": [
+    1791116628090,
+    1791116636371,
+    1791116644510
+  ],
+  "randomReveals": [
+    {
+      "line": "RANDOM_REVEAL|enemies=frilled_shark|duration=1.5",
+      "time": 1791116664682
+    }
+  ],
+  "randomCombats": [
+    {
+      "line": "RANDOM_COMBAT|enemies=frilled_shark",
+      "time": 1791116666267
+    }
+  ],
+  "escapeRecheck": {
+    "naturalEncounter": true,
+    "attempts": 1,
+    "realRun": true,
+    "realR": true,
+    "expired": true
+  },
+  "errors": [],
+  "failure": "Error: Engaged opening exceeds the two-minute acceptance limit"
+}

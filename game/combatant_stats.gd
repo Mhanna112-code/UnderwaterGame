@@ -31,7 +31,8 @@ var evasion_current: int = 5
 var stat_floor: Dictionary = {}
 
 # Status entries are {level, turns}. A turns value of 0 means persistent for
-# the battle (Bleed); positive durations tick after this combatant's turn.
+# the battle; positive durations tick after this combatant's turn. Current
+# Bleed is authored as persistent; Poison and other timed statuses expire.
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
@@ -86,6 +87,8 @@ func fill() -> void:
 # diver doesn't get back up just because the party won; only a level-up
 # (fill(), above) or an actual Revive spell (battle.gd's "revive" effect,
 # world.gd's out-of-battle version) brings them back.
+# Legacy helper used by older math-only verification. Production Battle no
+# longer calls this: Marc's current recovery comes from rest points/level-ups.
 func recover_after_victory(fraction: float = 0.30) -> void:
 	var amount := clampf(fraction, 0.0, 1.0)
 	if hp > 0:
@@ -99,7 +102,7 @@ func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 
 func effective_evasion() -> int:
-	return maxi(0, evasion + int(temporary_modifiers.evasion))
+	return maxi(0, evasion - status_level("evasion_down") + int(temporary_modifiers.evasion))
 
 func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
@@ -148,6 +151,24 @@ func reduce_evasion(amount: int) -> int:
 	evasion_current = mini(evasion_current, effective_evasion())
 	return before - evasion
 
+func reduce_defense(amount: int) -> int:
+	var before := defense
+	defense = maxi(0, defense - maxi(0, amount))
+	return before - defense
+
+func is_stunned() -> bool:
+	return status_level("stun") > 0 and status_turns("stun") > 0
+
+func consume_status_turn(status: String) -> void:
+	if not statuses.has(status):
+		return
+	var entry := statuses[status] as Dictionary
+	var turns := int(entry.get("turns", 0))
+	if turns <= 1:
+		statuses.erase(status)
+	else:
+		entry.turns = turns - 1
+
 func add_temporary_modifier(stat: String, amount: int) -> void:
 	if not temporary_modifiers.has(stat):
 		return
@@ -158,6 +179,10 @@ func add_temporary_modifier(stat: String, amount: int) -> void:
 func add_status(status: String, level: int, turns: int = 0) -> void:
 	if status == "" or level <= 0:
 		return
+	# The advertised Bleed cap applies to the first wound too. A high-STR
+	# Stabbing must not start above the cap that repeat hits enforce.
+	if status == "bleed":
+		level = mini(10, level)
 	if status == "bleed" and statuses.has(status):
 		(statuses[status] as Dictionary).level = mini(10, status_level(status) + level)
 		return
@@ -166,6 +191,10 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 		"level": maxi(level, int(existing.get("level", 0))),
 		"turns": maxi(turns, int(existing.get("turns", 0))),
 	}
+	# Marc's timed debuff also shrinks the live dodge allowance immediately.
+	# Never refill a pool already spent by previous attacks this turn.
+	if status == "evasion_down":
+		evasion_current = mini(evasion_current, effective_evasion())
 
 func status_level(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("level", 0))
@@ -178,7 +207,13 @@ func status_summary() -> String:
 	for status in statuses.keys():
 		var level := status_level(String(status))
 		var turns := status_turns(String(status))
-		parts.append("%s %d%s" % [String(status).capitalize(), level, "·%d" % turns if turns > 0 else ""])
+		var name := String(status).capitalize()
+		var left := " (%d %s left)" % [turns, "turn" if turns == 1 else "turns"] if turns > 0 else ""
+		# Marc's readable duration units, separate from damage/debuff amount.
+		if String(status) == "stun":
+			parts.append(name + (left if turns > 0 else " (%d %s left)" % [level, "turn" if level == 1 else "turns"]))
+		else:
+			parts.append("%s %d%s" % [name, level, left])
 	return "  ".join(parts)
 
 # Adds XP and applies every level-up it crosses (a big win can jump more

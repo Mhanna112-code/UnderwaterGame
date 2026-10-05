@@ -1,0 +1,16 @@
+{
+  "inspection": "Read-only Safari Web Inspector console after explicit user authorization",
+  "origin": "https://underwatergame-opening-prologue-review.vercel.app",
+  "loaded_runtime_pck_bytes": 92096636,
+  "fetched_build_source": "4e244a1304357eaaf08ac0bcc43a6f239da6f686",
+  "database": "/userfs",
+  "object_store": "FILE_DATA",
+  "slots": [
+    {"file": "slot_0.json", "timestamp": "2026-10-04T04:17:57.128Z", "opening_video_seen": true, "prologue_complete": false, "tutorial_complete": false, "diver_count": 3},
+    {"file": "slot_1.json", "timestamp": "2026-10-04T04:08:30.065Z", "opening_video_seen": true, "prologue_complete": false, "tutorial_complete": false, "diver_count": 3},
+    {"file": "slot_2.json", "timestamp": "2026-10-04T04:14:47.341Z", "opening_video_seen": false, "prologue_complete": false, "tutorial_complete": false, "diver_count": 3}
+  ],
+  "party_snapshot": "All slots have initial diver positions, full starting HP/Oxygen and zero XP/spell points.",
+  "save_mutations": "None: no New Game, overwrite, deletion or completion repair",
+  "limits": "No past write trace exists. Originally reported playtest browser not yet confirmed. These snapshots establish incomplete saved state, not how a completed session lost its checkpoint."
+}

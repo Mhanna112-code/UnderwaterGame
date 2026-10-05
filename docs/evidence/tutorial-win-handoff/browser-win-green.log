@@ -1,0 +1,49 @@
+BROWSER|Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+BROWSER|OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+BROWSER|Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.
+BROWSER|PROLOGUE_PHASE|opening_video
+BROWSER|Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+BROWSER|OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+BROWSER|Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.
+READY|/tmp/tutorial-win-hosted-9778296-final-proof
+BROWSER|PROLOGUE_PHASE|complete
+INPUT|continue|Continue
+INPUT|continue|Continue
+INPUT|guided-move|Electric Touch
+INPUT|continue|Continue
+INPUT|continue|Continue
+INPUT|normal-target|Angler
+INPUT|continue|Continue
+INPUT|guided-target|Angler
+INPUT|continue|Continue
+INPUT|guided-move|Precise Tap
+INPUT|continue|Continue
+INPUT|guided-target|Angler
+INPUT|guided-move|Crushing Haymaker
+INPUT|continue|Continue
+INPUT|guided-target|Angler
+INPUT|guided-move|Weaken
+INPUT|continue|Continue
+INPUT|guided-target|Angler
+INPUT|guided-move|Flash Blast
+INPUT|continue|Continue
+INPUT|guided-target|All enemies
+INPUT|continue|Continue
+INPUT|continue|Continue
+INPUT|attack|Attack
+INPUT|normal-move|Guard Bash
+INPUT|normal-target|Angler
+INPUT|attack|Attack
+INPUT|normal-move|Electric Touch
+INPUT|normal-target|Angler
+INPUT|attack|Attack
+INPUT|normal-move|Precise Tap
+INPUT|normal-target|Angler
+INPUT|continue|Continue
+INPUT|onboarding|Next
+INPUT|onboarding|Next
+INPUT|onboarding|Next
+INPUT|onboarding|Next
+INPUT|onboarding|Next
+INPUT|onboarding|Close
+BROWSER TUTORIAL WIN: clean

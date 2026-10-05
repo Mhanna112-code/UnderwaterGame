@@ -1,0 +1,8 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+INITIAL DOWN CASE|target=0|method=potion|restored=true|actual_swing=true|actions=3|hp=10|o2=92.0
+INITIAL DOWN CASE|target=0|method=spell|restored=true|actual_swing=true|actions=3|hp=10|o2=72.0
+INITIAL DOWN CASE|target=1|method=potion|restored=true|actual_swing=true|actions=4|hp=10|o2=92.0
+INITIAL DOWN CASE|target=1|method=spell|restored=true|actual_swing=true|actions=4|hp=10|o2=72.0
+INITIAL DOWN CASE|target=2|method=potion|restored=true|actual_swing=true|actions=5|hp=10|o2=100.0
+COMBAT INITIALLY DOWNED: clean

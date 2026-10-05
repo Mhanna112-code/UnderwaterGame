@@ -41,6 +41,9 @@ func _run() -> void:
 func _fresh_world() -> World:
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	world.skip_intro_for_test = true
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = true
 	root.add_child(world)
 	await process_frame
 	await process_frame

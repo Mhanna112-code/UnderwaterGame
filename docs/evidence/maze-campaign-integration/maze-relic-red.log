@@ -1,0 +1,17 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+ERROR: Signal 'size_changed' is already connected to given callable 'Node3D(MazeLevel)::_resize_caption' in that object.
+   at: connect (core/object/object.cpp:1562)
+   GDScript backtrace (most recent call first):
+       [0] _make_caption (res://game/maze_level.gd:714)
+       [1] _announce (res://game/maze_level.gd:688)
+       [2] _start_battle (res://game/maze_level.gd:773)
+       [3] _on_diver_encounter (res://game/maze_level.gd:751)
+       [4] _case (res://verify/maze_relic_consumers.gd:75)
+MAZE RELIC CASE|relic=reef_plate|present=true|result=won|actions=3|known=["heavy_slam", "mending_current"]|points=5
+FINDING INT-03 actual maze victory missed owned relic spell or granted maze-key-only spell: tidal_revival
+MAZE RELIC CONSUMERS: 1 findings

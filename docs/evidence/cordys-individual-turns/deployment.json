@@ -1,0 +1,33 @@
+{
+  "id": "dpl_HLde6GiW2TgP7zsePDRcmGjPYVLe",
+  "name": "underwatergame",
+  "url": "underwatergame-nl6ozcoml-immortaldemongods-projects.vercel.app",
+  "target": "production",
+  "readyState": "READY",
+  "createdAt": 1791114105324,
+  "builds": [
+    {
+      "id": "bld_ee4m0jajp",
+      "deploymentId": "dpl_HLde6GiW2TgP7zsePDRcmGjPYVLe",
+      "entrypoint": ".",
+      "readyState": "READY",
+      "readyStateAt": 1791114105226,
+      "createdAt": 1791114105226,
+      "createdIn": "sfo1",
+      "use": "@vercel/vc-build",
+      "config": {
+        "outputDirectory": "docs",
+        "nodeVersion": "24.x",
+        "projectCreatedAt": 1786746962227,
+        "vercelConfig": {
+          "name": "underwatergame",
+          "version": 2
+        }
+      },
+      "middleware": [],
+      "output": [],
+      "fingerprint": null
+    }
+  ],
+  "contextName": "immortaldemongods-projects"
+}

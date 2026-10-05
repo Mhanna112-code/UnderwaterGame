@@ -144,6 +144,12 @@ func _run() -> void:
 		if qte_finished:
 			var resolution_deadline := Time.get_ticks_msec() + TIMEOUT_MS
 			while Time.get_ticks_msec() < resolution_deadline and String(battle._acting.get("kind", "")) != "party":
+				# Completing the first enemy turn immediately opens the tutorial's
+				# real post-lesson captions. A player advances those with Enter; the
+				# gate must do the same instead of mistaking an intentionally paused
+				# caption for an enemy turn that never resolved.
+				if battle._tutorial_awaiting_enter:
+					battle._unhandled_input(_key(KEY_ENTER))
 				extra_qte_seen = extra_qte_seen or battle._qte_active
 				await process_frame
 			if String(battle._acting.get("kind", "")) != "party":
@@ -159,5 +165,9 @@ func _run() -> void:
 		push_error(finding)
 	if findings.is_empty():
 		print("tutorial qte          forced Angler bite showed and accepted the live timing dodge")
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
 	world.queue_free()
+	await process_frame
 	quit(0 if findings.is_empty() else 1)

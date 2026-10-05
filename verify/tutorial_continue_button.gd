@@ -40,4 +40,9 @@ func _run() -> void:
 	if findings.is_empty():
 		print("tutorial continue button   mouse click advanced the live caption wait state")
 	world.queue_free()
+	await process_frame
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
 	quit(0 if findings.is_empty() else 1)

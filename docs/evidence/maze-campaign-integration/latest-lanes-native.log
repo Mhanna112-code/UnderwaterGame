@@ -1,0 +1,5 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+LANE CONSUMER|lanes=[2, 1, 2]|used=[[{ "node": @Line2D@33:<Line2D#83013666786>, "from": 0, "to": 2, "from_y": 190.0, "to_y": 190.0 }], [], []]|traveling=true|crossing=[false, false, false]|foot=190.0
+LATEST MAZE SWITCH: clean

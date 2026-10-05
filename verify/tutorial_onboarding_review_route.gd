@@ -1,10 +1,5 @@
-# `tutorial onboarding review route: query-only title action opens the real
-# controls walkthrough — guards against inaccessible visual evidence`.
-#
-# The browser URL itself is exercised manually because JavaScriptBridge is a
-# web-only API. This checks the durable part of the route: the title action
-# World wires for that URL reaches the real overlay without starting a battle,
-# saving a game, or changing the ordinary title surface.
+# `tutorial guide replay: Combat Help opens the real guide without stacked
+# full-screen menus or a hidden query-only title action`.
 extends SceneTree
 
 var findings: Array[String] = []
@@ -13,40 +8,50 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var world: World = (load("res://game/world.tscn") as PackedScene).instantiate()
+	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	world.skip_intro_for_test = true
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.enable_onboarding_playtest()
-	world.title_screen.open()
+	world.title_screen.new_game_chosen.emit(3)
 	await process_frame
-	var review_button := _button_named(world.title_screen, "Review World Controls")
-	_expect(review_button != null, "ONBOARDING REVIEW ROUTE: title did not expose the query-only review action")
+	world._intro_active = false
+	world._first_encounter_done = true
+	world.inventory_menu.open()
+	world.inventory_menu.call("_switch_to", "help")
+	await process_frame
+	var review_button := _button_named(world.inventory_menu, "Reopen Tutorial Guide")
+	_expect(review_button != null, "ONBOARDING REPLAY: Combat Help has no mouse-accessible tutorial guide action")
 	if review_button != null:
-		review_button.emit_signal("pressed")
+		review_button.pressed.emit()
 		await process_frame
-	_expect(not world.title_screen.visible, "ONBOARDING REVIEW ROUTE: title stayed open over the walkthrough")
-	_expect(world.ability_onboarding.visible, "ONBOARDING REVIEW ROUTE: action did not open the real walkthrough")
-	_expect(world.battle == null, "ONBOARDING REVIEW ROUTE: visual review unexpectedly started combat")
-	_expect(world._current_slot == -1, "ONBOARDING REVIEW ROUTE: visual review created or selected a save slot")
-	_expect(world.banner.text.is_empty(), "ONBOARDING REVIEW ROUTE: stale intro-beacon instruction remained behind the walkthrough")
-	_expect(paused, "ONBOARDING REVIEW ROUTE: walkthrough did not pause world input")
-	world.ability_onboarding.call("dismiss")
+	_expect(not world.inventory_menu.visible, "ONBOARDING REPLAY: Inventory remained stacked beneath the tutorial guide")
+	_expect(world.tutorial_book.visible, "ONBOARDING REPLAY: action did not open the real TutorialBook")
+	_expect(world.battle == null, "ONBOARDING REPLAY: opening help unexpectedly started combat")
+	_expect(paused, "ONBOARDING REPLAY: guide did not pause world input")
+	world.tutorial_book.call("_on_close_pressed")
 	await process_frame
-	_expect(not paused, "ONBOARDING REVIEW ROUTE: closing walkthrough left review world paused")
+	_expect(not paused, "ONBOARDING REPLAY: closing the guide left the world paused")
 
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
-		print("tutorial onboarding route  title action opens the exact review UI without combat or saves")
+		print("tutorial onboarding route  Combat Help opens the guide without stacked overlays")
 	world.queue_free()
+	await process_frame
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
 	quit(0 if findings.is_empty() else 1)
 
-func _button_named(root_node: Node, text: String) -> Button:
-	for candidate in root_node.find_children("*", "Button", true, false):
-		if candidate is Button and (candidate as Button).text == text:
-			return candidate as Button
+func _button_named(node: Node, text_value: String) -> Button:
+	for child in node.get_children():
+		if child is Button and (child as Button).text == text_value:
+			return child as Button
+		var nested := _button_named(child, text_value)
+		if nested != null:
+			return nested
 	return null
 
 func _expect(ok: bool, message: String) -> void:

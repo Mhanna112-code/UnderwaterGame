@@ -26,20 +26,27 @@ var stage := 0
 var cases: Array = []
 var at := -1
 var expect_reward := ""
+var _finishing := false
 
 func _initialize() -> void:
 	world = (load("res://game/world.tscn") as PackedScene).instantiate()
 	world.skip_intro_for_test = true
+	# This gate exercises ordinary play after recovery, not protected prologue.
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = true
 	root.add_child(world)
 
 func _process(_d: float) -> bool:
+	if _finishing:
+		return false
 	frames += 1
 	if frames == 1:
 		world.title_screen.new_game_chosen.emit(1)
 		return false
 	if frames == 2:
 		_report_encounter_rate()
-		_check_spawned()
+		_check_site_contracts()
 		_check_spots_are_reachable()
 		# The first tutorial route intentionally suppresses random encounters.
 		# Complete that gate for this ordinary-encounter test rather than
@@ -56,6 +63,10 @@ func _process(_d: float) -> bool:
 		return false
 
 	if at >= 0:
+		# Ordinary rolls now reveal their real enemies in the exploration world
+		# before constructing Battle. Site dispatch remains immediate/chooser.
+		if world._transitioning_to_encounter:
+			return false
 		_check_result()
 	at += 1
 	if at >= cases.size():
@@ -63,7 +74,23 @@ func _process(_d: float) -> bool:
 	_run(cases[at] as Dictionary)
 	return false
 
-# The bug that started all of this: the spawner ran and built nothing.
+# The guarded-site contract is data-driven now: no visible ItemGuardian node
+# or debug ring is required. Verify that every record resolves to real content
+# before exercising entry below.
+func _check_site_contracts() -> void:
+	var ids: Array[String] = []
+	for entry_value in ItemGuardian.spots():
+		var entry := entry_value as Dictionary
+		var site_id := String(entry.get("site", ""))
+		if site_id == "" or Sites.by_id(site_id).is_empty():
+			findings.append("MISSING SITE: guarded item '%s' has no world site record" % String(entry.get("item", "")))
+		if ids.has(site_id):
+			findings.append("DUPLICATE SITE: guarded site '%s' appears more than once" % site_id)
+		ids.append(site_id)
+		if not EnemyRoster.ORDINARY_IDS.has(String(entry.get("enemy", ""))):
+			findings.append("MISSING ENEMY: guarded site '%s' maps to unknown enemy '%s'" % [site_id, String(entry.get("enemy", ""))])
+
+# How far you swim between fights, as a number.
 # How far you swim between fights, as a number.
 #
 # Marc: "may need to turn up the encounter rate just a tad, sometimes im
@@ -84,39 +111,6 @@ func _report_encounter_rate() -> void:
 		findings.append("ENCOUNTER TUNING IGNORED: Marc's tested 8-16 m / 50%% values were replaced with %.0f-%.0f m / %.0f%%" % [
 			d.min_encounter_distance, d.max_encounter_distance, d.encounter_chance * 100.0])
 
-func _check_spawned() -> void:
-	var guardians: Array = []
-	var decoys: Array = []
-	for c in world.get_children():
-		if c is ItemGuardian:
-			guardians.append(String((c as ItemGuardian).item_id))
-		elif c is Goblin:
-			decoys.append(c as Goblin)
-	print("built: %d guardian(s) %s, %d decoy(s)" % [guardians.size(), guardians, decoys.size()])
-	if guardians.size() != ItemGuardian.spots().size():
-		findings.append("NOTHING TO SWIM TO: %d guardians in the water, expected %d" % [
-			guardians.size(), ItemGuardian.spots().size()])
-	if decoys.size() < guardians.size():
-		findings.append("UNGUARDED: %d guardians but only %d visible enemies beside them" % [
-			guardians.size(), decoys.size()])
-	for entry_value in ItemGuardian.spots():
-		var entry := entry_value as Dictionary
-		var closest: Goblin
-		var closest_distance := INF
-		for decoy_value in decoys:
-			var decoy := decoy_value as Goblin
-			var distance := decoy.global_position.distance_to(entry.at as Vector3)
-			if distance < closest_distance:
-				closest = decoy
-				closest_distance = distance
-		var expected_enemy := String(entry.get("enemy", "angler"))
-		# Guardians sit 3.22 m off their artifacts so the player can approach the
-		# pickup without spawning inside the enemy.  Four metres is close enough
-		# to prove this is the site guardian, not a detached review-only actor.
-		if closest == null or closest_distance > 4.0 or closest.enemy_id() != expected_enemy:
-			findings.append("REAL WORLD GUARDIAN: %s decoy is %s at its reachable artifact site — guards against a Swordfish that only exists in a review URL (got %s at %.2f m)" % [
-				String(entry.item), expected_enemy, closest.enemy_id() if closest != null else "none", closest_distance])
-
 # A spot in clear water you cannot reach is not a destination. The first
 # pair of coordinates sat inside rocks; the second pair I picked sat behind
 # a wall. Both are checked here so the next person to move a rock finds out
@@ -132,8 +126,18 @@ func _check_spots_are_reachable() -> void:
 		q.shape = sph
 		q.transform = Transform3D(Basis(), spot)
 		q.collision_mask = 1               # the environment layer
-		var overlaps := space.intersect_shape(q, 4)
+		var overlaps: Array = []
+		for hit_value in space.intersect_shape(q, 8):
+			var collider := (hit_value as Dictionary).get("collider") as Node
+			if collider == null or not collider.is_in_group("grapple_anchor"):
+				overlaps.append(hit_value)
 		var ray := PhysicsRayQueryParameters3D.create(start, spot, 1)
+		var excluded: Array[RID] = []
+		for node_value in get_nodes_in_group("grapple_anchor"):
+			var collision_object := node_value as CollisionObject3D
+			if collision_object != null:
+				excluded.append(collision_object.get_rid())
+		ray.exclude = excluded
 		var blocked := space.intersect_ray(ray)
 		print("%-14s at %s: %d overlap(s), approach %s" % [
 			String(entry.item), spot, overlaps.size(),
@@ -156,17 +160,10 @@ func _run(spot: Dictionary) -> void:
 	if String(spot.kind) == "encounter":
 		d.encounter_triggered.emit()
 	else:
-		# Walk into it the way a player does, rather than calling the
-		# handler: a guardian whose Area3D never fires is exactly the bug
-		# this is here to catch.
-		d.force_update_transform()
-		for c in world.get_children():
-			if c is ItemGuardian and (c as ItemGuardian).item_id == expect_reward:
-				(c as Area3D).body_entered.emit(d)
-				break
-		# Guardian entry now deliberately opens Marc's chooser. Drive the
-		# public selection signal so this gate verifies the full path from
-		# physical Area3D to one-enemy, correctly rewarded battle.
+		world._inside_item_site_id = ""
+		d.encounter_triggered.emit()
+		# Special sites deliberately open Marc's chooser after the first
+		# tutorial example. Drive its public selection signal when present.
 		if world.special_encounter_prompt.visible:
 			world.special_encounter_prompt.diver_chosen.emit(d.model_name)
 
@@ -203,8 +200,18 @@ func _check_result() -> void:
 					String(spot.reward), expected_enemy, actor.enemy_id() if actor != null else "none"])
 
 func _report() -> bool:
+	_finishing = true
 	for f in findings:
 		print("FINDING  " + f)
 	print("ENCOUNTERS: clean" if findings.is_empty() else "ENCOUNTERS: %d finding(s)" % findings.size())
-	quit(0 if findings.is_empty() else 1)
+	world.queue_free()
+	call_deferred("_finish_report")
 	return true
+
+func _finish_report() -> void:
+	await process_frame
+	var audio := root.get_node_or_null("GameAudio")
+	if audio != null and audio.has_method("release_streams_for_shutdown"):
+		audio.call("release_streams_for_shutdown")
+	await process_frame
+	quit(0 if findings.is_empty() else 1)

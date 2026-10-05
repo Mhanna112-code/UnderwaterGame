@@ -1,0 +1,44 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+Staff_Diver          Scuba_Rigged.fbx                         59 clips
+   motion idle    Scuba_(Idle)1(Loop)                1.65s
+   motion swim    Scuba_(Swimming1)(Mid)(Loop)       0.98s
+   motion swim_start Scuba_(Swimming1)(Start)           0.65s
+   motion swim_end Scuba_(Swimming1)(End)             0.98s
+   motion hurt    Scuba_(Damaged1)Weak_Hit           1.65s
+   motion hurt_bad Scuba_(Damaged2)Heavy_Hit          1.48s
+   motion down    Scuba_(Faint)(Mid)(Loop)           0.98s
+   motion down_start Scuba_(Faint)(Start)               1.32s
+   motion win     Scuba_(Win)(Mid2)(Loop)            2.17s
+   move Electric Touch Scuba_(Attack)Eletric1             1.98s
+   move Scuba Stabbing Scuba_(Attack)Stab1                1.15s
+   move Flash Blast Scuba_(Attack)Flash1               1.65s
+   move Multiple Knee Combo Scuba_(Attack)Double_Knee1         1.48s
+   move Axe Kick  Scuba_(Attack)Axe_Kick1            1.72s
+Prototype_1(1910)    Prototype1_Rigged.fbx                    59 clips
+   motion idle    Proto1_(Idle1)                     0.82s
+   motion swim    Proto1_(Swimming1)(Mid)(Loop)      0.73s
+   motion swim_start Proto1_(Swimming1)(Start)          0.32s
+   motion swim_end Proto1_(Swimming1)(End)            1.32s
+   motion hurt    Proto1_(Damaged1)Weak_Hit          0.65s
+   motion hurt_bad Proto1_(Damaged2)Heavy_Hit         2.32s
+   motion down    Proto1_(Faint)(Mid)(Loop)          0.98s
+   motion down_start Proto1_(Faint)(Start)              1.32s
+   motion win     Proto1_(Win)(Mid)(Loop)            0.98s
+   move Precise Tap Proto1_(Attack)Palm_Strike         1.40s
+   move Weaken    Proto1_(Attack)DualPalm            1.65s
+   move Slow      Proto1_(Attack)Axe_Kick            1.98s
+Prototype_V(1922)    PrototypeV_Rigged.fbx                    59 clips
+   motion idle    Proto5_(Idle)(Loop)                1.65s
+   motion swim    Proto5_(Swimming1)(Mid)(Loop)      0.98s
+   motion swim_start Proto5_(Swimming1)(Start)          0.48s
+   motion swim_end Proto5_(Swimming1)(End)            0.98s
+   motion hurt    Proto5_(Damaged1)Weak_Hit          0.32s
+   motion hurt_bad Proto5_(Damaged2)Strong_Hit        0.98s
+   motion down    Proto5_(Faint)(Mid)(Loop)          0.65s
+   motion down_start Proto5_(Faint)(Start)              1.98s
+   motion win     Proto5_(Thumbs_P)(Mid)(Loop)       0.65s
+   move Guard Bash Proto5_(Attack)BodyPress           2.15s
+   move Heavy Kick Proto5_(Attack)Slam                1.98s
+   move Crushing Haymaker Proto5_(Attack)Hammer              2.32s
+CLIPS: clean

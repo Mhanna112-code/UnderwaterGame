@@ -1,0 +1,137 @@
+{
+  "target": "https://underwatergame-cmop2s7of-immortaldemongods-projects.vercel.app/",
+  "browserEngine": "chromium",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "elapsedSeconds": 136.805,
+  "engagedSeconds": 134.803,
+  "deliberateIdleMs": 2002,
+  "freeSwimKeydown": 1791116809443,
+  "freeSwimMs": 4873,
+  "phases": [
+    "opening_video",
+    "opening_handoff",
+    "spawn_exploration",
+    "angler",
+    "angler_victory",
+    "octopus_notice",
+    "octopus_omen",
+    "octopus_introduction",
+    "octopus_reveal",
+    "octopus_response",
+    "scripted_defeat",
+    "octopus_aftermath",
+    "recovery",
+    "complete"
+  ],
+  "timestamps": {
+    "opening_video": 1791116769448,
+    "opening_handoff": 1791116804189,
+    "spawn_exploration": 1791116807715,
+    "angler": 1791116814316,
+    "angler_victory": 1791116833565,
+    "octopus_notice": 1791116835903,
+    "octopus_omen": 1791116837961,
+    "octopus_introduction": 1791116840080,
+    "octopus_reveal": 1791116865984,
+    "octopus_response": 1791116867944,
+    "scripted_defeat": 1791116873910,
+    "octopus_aftermath": 1791116896079,
+    "recovery": 1791116902352,
+    "complete": 1791116903213
+  },
+  "sourcePresentationEvents": [
+    {
+      "line": "PROLOGUE_PHASE|opening_video",
+      "time": 1791116769441
+    },
+    {
+      "line": "PROLOGUE_PHASE|opening_handoff",
+      "time": 1791116803858
+    },
+    {
+      "line": "PROLOGUE_PHASE|spawn_exploration",
+      "time": 1791116807714
+    },
+    {
+      "line": "PROLOGUE_PHASE|angler",
+      "time": 1791116814112
+    },
+    {
+      "line": "PROLOGUE_PHASE|angler_victory",
+      "time": 1791116833491
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_notice",
+      "time": 1791116835900
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_omen",
+      "time": 1791116837959
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_introduction",
+      "time": 1791116840075
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_reveal",
+      "time": 1791116865656
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_response",
+      "time": 1791116867942
+    },
+    {
+      "line": "PROLOGUE_PHASE|scripted_defeat",
+      "time": 1791116873908
+    },
+    {
+      "line": "PROLOGUE_PHASE|octopus_aftermath",
+      "time": 1791116895920
+    },
+    {
+      "line": "PROLOGUE_PHASE|recovery",
+      "time": 1791116902350
+    },
+    {
+      "line": "PROLOGUE_PHASE|complete",
+      "time": 1791116903211
+    },
+    {
+      "line": "RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5",
+      "time": 1791116915441
+    },
+    {
+      "line": "RANDOM_COMBAT|enemies=swordfish_duelist",
+      "time": 1791116917280
+    }
+  ],
+  "combatHits": [
+    "PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[\"EVA -3\"]",
+    "PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]",
+    "PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]"
+  ],
+  "bossResponses": [
+    "PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2",
+    "PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1",
+    "PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0"
+  ],
+  "bossResponseTimes": [
+    1791116875041,
+    1791116885123,
+    1791116893575
+  ],
+  "randomReveals": [
+    {
+      "line": "RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5",
+      "time": 1791116915789
+    }
+  ],
+  "randomCombats": [
+    {
+      "line": "RANDOM_COMBAT|enemies=swordfish_duelist",
+      "time": 1791116917282
+    }
+  ],
+  "errors": [],
+  "failure": "Error: ESC-005 real R did not update Off cue"
+}

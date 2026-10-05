@@ -1,0 +1,15 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WALL_HOME|["CSGBox3D10:(376.5983, 1.4204, 9.60191):(33.6604, 4.05762, 1.0)", "CSGBox3D11:(368.0748, 1.4204, 16.68196):(31.9193, 4.05762, 1.0)"]
+C5_ORACLE|west=351.458465576172|east=376.598297119141|z=-6.72829055786133..1.22230958938599
+C5_CASE|diver=0|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.507667, -2.75299)|end=(357.6864, -0.507667, -2.75299)
+C5_FAILED_FRAME|zone=[P: (351.4585, -7.228291), S: (25.63983, 8.9506)]|velocity=(0.0, 0.0, 0.0)|push=(0.0, 0.0, 0.0)|moving=["CSGBox3D10/11"]|wall10=(371.2982, 1.4204, 10.43227)
+C5_COLLISION_LAYERS|wall=CSGBox3D10|layer=0|skirt=0
+C5_COLLISION_LAYERS|wall=CSGBox3D11|layer=0|skirt=0
+C5_SLIDE|/root/World/MazeLevel/CSGBox3D10/SplitRock/Body
+FINDING WALL-1 diver 0 is carried/shoved in C5 at frame 13 ((364.0284, -0.507667, -2.75299) -> (363.7048, -0.507667, -2.671559))
+MAZE WALL MOTION: findings=1

@@ -1,0 +1,21 @@
+Fetching deployment "underwatergame-opening-prologue-review.vercel.app" in immortaldemongods-projects
+> Fetched deployment "underwatergame-a85nxr641-immortaldemongods-projects.vercel.app" in immortaldemongods-projects [365ms]
+
+  General
+
+    id		dpl_12wKPV7Qg8x8mGbVcLhcnxGfyPFD
+    name	underwatergame
+    target	production
+    status	● Ready
+    url		https://underwatergame-a85nxr641-immortaldemongods-projects.vercel.app
+    created	Sun Oct 04 2026 00:30:27 GMT-0500 (Central Daylight Time) [8m ago]
+
+
+  Aliases
+
+    ╶ https://underwatergame-immortaldemongods-projects.vercel.app
+
+
+  Builds
+
+    ╶ .        [0ms]

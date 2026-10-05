@@ -1,0 +1,28 @@
+{
+  "target": "https://underwatergame-hugtgp72s-immortaldemongods-projects.vercel.app/",
+  "boundary": "ordinary title, trusted cover click, real mouse input, passive WebAudio output tap",
+  "measurement": {
+    "peakDb": -27.435948925432477,
+    "pulses": [
+      {
+        "start": 0.1518140589569161,
+        "end": 0.439546485260771
+      },
+      {
+        "start": 0.6626530612244897,
+        "end": 0.9503854875283446
+      },
+      {
+        "start": 1.2083219954648525,
+        "end": 1.4960544217687075
+      },
+      {
+        "start": 1.7307709750566893,
+        "end": 2.0185034013605443
+      }
+    ],
+    "sampleRate": 44100
+  },
+  "errors": [],
+  "failure": "Error: OPEN-047 browser cue not brief"
+}

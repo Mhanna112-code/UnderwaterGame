@@ -1,0 +1,20 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_ACTOR_LIFETIME|rig=0|phase=spiral|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=0|phase=vanish|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=1|phase=spiral|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=1|phase=vanish|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=2|phase=spiral|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=2|phase=vanish|replacement_completions=1
+WHIRL_NONSTEAL_OBSERVER|actor=0|own_busy=false|positions=[(229.4, 2.0, 16.0), (210.0, 2.0, 18.0), (210.0, 2.0, 20.0)]|locked=true
+WHIRL_NONSTEAL|actor=0|mask=5|lock=true
+WHIRL_NONSTEAL_OBSERVER|actor=1|own_busy=false|positions=[(210.0, 2.0, 16.0), (229.4, 2.0, 16.0), (210.0, 2.0, 20.0)]|locked=true
+WHIRL_NONSTEAL|actor=1|mask=9|lock=true
+WHIRL_NONSTEAL_OBSERVER|actor=2|own_busy=false|positions=[(210.0, 2.0, 16.0), (210.0, 2.0, 18.0), (229.4, 2.0, 16.0)]|locked=true
+WHIRL_NONSTEAL|actor=2|mask=17|lock=true
+WHIRL_ACTOR_LIFETIME|cases=9|no_player_files=true
+WHIRLPOOL SAFETY: clean

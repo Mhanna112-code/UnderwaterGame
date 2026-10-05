@@ -11,6 +11,7 @@ extends SceneTree
 # LOG_READ_DELAY timer, ~1.6s apiece) instead of an immediate force-win, so
 # this needs real wall-clock room rather than the old flow's single timer.
 const TIMEOUT_MS := 8000
+const SLOT := 918307
 
 var findings: Array[String] = []
 
@@ -23,10 +24,26 @@ func _run() -> void:
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(3)
-	await process_frame
-	world._start_battle("", false, "angler", world.divers, false, true)
-	await process_frame
+	world.route_state.opening_video_seen = true
+	world.route_state.prologue_complete = true
+	world.route_state.tutorial_complete = false
+	world.route_state.set_objective("")
+	SaveManager.write_slot(SLOT, world._serialize_state())
+	await world._on_title_load_game(SLOT)
+	# Enter the rendered beam through World's normal handoff so this test also
+	# observes the real retirement of beam/arrow guidance. Calling _start_battle
+	# directly would leave the pre-battle arrow visible by construction and
+	# create a false regression report.
+	var diver := world.divers[world.active] as Diver
+	diver.global_position = Vector3(
+		world.light_beam.global_position.x,
+		diver.global_position.y,
+		world.light_beam.global_position.z
+	)
+	diver.force_update_transform()
+	var start_deadline := Time.get_ticks_msec() + TIMEOUT_MS
+	while world.battle == null and Time.get_ticks_msec() < start_deadline:
+		await process_frame
 
 	var battle: Battle = world.battle
 	if battle == null:
@@ -61,10 +78,17 @@ func _run() -> void:
 			findings.append("WORLD HANDOFF: battling stayed true after tutorial completion")
 		if not world._first_encounter_done:
 			findings.append("WORLD HANDOFF: tutorial completion did not restore world progression")
+		if world.banner.text.contains("Swim over to the light beam"):
+			findings.append("WORLD HANDOFF: stale tutorial-beam guidance remained after the fight")
+		if is_instance_valid(world.light_beam):
+			findings.append("WORLD HANDOFF: completed tutorial left its light beam in the world")
+		if is_instance_valid(world._intro_arrow) and world._intro_arrow.visible:
+			findings.append("WORLD HANDOFF: completed tutorial left its intro arrow visible")
 
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
 		print("tutorial exit         completed lesson returned to the world clean")
 	world.queue_free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveManager.slot_path(SLOT)))
 	quit(0 if findings.is_empty() else 1)

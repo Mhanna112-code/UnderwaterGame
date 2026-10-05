@@ -1,0 +1,15 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+encounter rate: a check every 12 m on average, 50% of them bite, so a fight every 24 m
+current_pearl  at (-24.0, 2.6, -12.0): 0 overlap(s), approach clear
+reef_plate     at (12.0, 2.6, -42.0): 0 overlap(s), approach clear
+attack_up      at (-45.0, 2.6, 15.0): 0 overlap(s), approach clear
+defense_up     at (-15.0, 2.6, -44.0): 0 overlap(s), approach clear
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark
+open water                   1 battle(s), reward none
+the current_pearl guardian   1 battle(s), reward current_pearl
+the reef_plate guardian      1 battle(s), reward reef_plate
+the attack_up guardian       1 battle(s), reward attack_up
+the defense_up guardian      1 battle(s), reward defense_up
+ENCOUNTERS: clean

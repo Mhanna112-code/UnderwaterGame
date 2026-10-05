@@ -1,0 +1,62 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PASS: ORB-2: light reward does not start a diver traversal pull
+PASS: ORB-3: successful orb shot spends its cooldown even at zero Oxygen
+PASS: ORB-2: shooter stays put before player-directed movement
+PASS: ORB-1/3: real shot collects exactly once at distance 2.5, offset (0.0, 0.0, 0.0)
+PASS: ORB-2: collection identifies the shooter, not the nearest bystander
+PASS: ORB-2: authored item identity survives reeling
+PASS: ORB-2: item follows the moving shooter to their current position
+PASS: ORB-1: environmental grapple remains available without Oxygen
+PASS: ORB-2: light reward does not start a diver traversal pull
+PASS: ORB-3: successful orb shot spends its cooldown even at zero Oxygen
+PASS: ORB-2: shooter stays put before player-directed movement
+PASS: ORB-1/3: real shot collects exactly once at distance 6.0, offset (0.0, 0.0, 0.0)
+PASS: ORB-2: collection identifies the shooter, not the nearest bystander
+PASS: ORB-2: authored item identity survives reeling
+PASS: ORB-2: item follows the moving shooter to their current position
+PASS: ORB-1: environmental grapple remains available without Oxygen
+PASS: ORB-2: light reward does not start a diver traversal pull
+PASS: ORB-3: successful orb shot spends its cooldown even at zero Oxygen
+PASS: ORB-2: shooter stays put before player-directed movement
+PASS: ORB-1/3: real shot collects exactly once at distance 11.0, offset (0.0, 0.0, 0.0)
+PASS: ORB-2: collection identifies the shooter, not the nearest bystander
+PASS: ORB-2: authored item identity survives reeling
+PASS: ORB-2: item follows the moving shooter to their current position
+PASS: ORB-1: environmental grapple remains available without Oxygen
+PASS: ORB-2: light reward does not start a diver traversal pull
+PASS: ORB-3: successful orb shot spends its cooldown even at zero Oxygen
+PASS: ORB-2: shooter stays put before player-directed movement
+PASS: ORB-1/3: real shot collects exactly once at distance 2.5, offset (100.0, -15.0, 45.0)
+PASS: ORB-2: collection identifies the shooter, not the nearest bystander
+PASS: ORB-2: authored item identity survives reeling
+PASS: ORB-2: item follows the moving shooter to their current position
+PASS: ORB-1: environmental grapple remains available without Oxygen
+PASS: ORB-2: light reward does not start a diver traversal pull
+PASS: ORB-3: successful orb shot spends its cooldown even at zero Oxygen
+PASS: ORB-2: shooter stays put before player-directed movement
+PASS: ORB-1/3: real shot collects exactly once at distance 6.0, offset (100.0, -15.0, 45.0)
+PASS: ORB-2: collection identifies the shooter, not the nearest bystander
+PASS: ORB-2: authored item identity survives reeling
+PASS: ORB-2: item follows the moving shooter to their current position
+PASS: ORB-1: environmental grapple remains available without Oxygen
+PASS: ORB-2: light reward does not start a diver traversal pull
+PASS: ORB-3: successful orb shot spends its cooldown even at zero Oxygen
+PASS: ORB-2: shooter stays put before player-directed movement
+PASS: ORB-1/3: real shot collects exactly once at distance 11.0, offset (100.0, -15.0, 45.0)
+PASS: ORB-2: collection identifies the shooter, not the nearest bystander
+PASS: ORB-2: authored item identity survives reeling
+PASS: ORB-2: item follows the moving shooter to their current position
+PASS: ORB-1: environmental grapple remains available without Oxygen
+PASS: ORB-4: freed shooter cannot receive a reward
+PASS: ORB-4: abandoned reel restores a reachable reward
+PASS: ORB-4: surviving shooter can recollect the abandoned reward
+PASS: ORB-4: no stale shooter identity survives cancellation
+PASS: ORB-4: scene teardown cancels a pending reward without a late callback
+PASS: ORB-5: solid walls occlude light-item shots
+PASS: ORB-5: hitting a non-target wall spends no cooldown
+PASS: ORB-5: anchor still starts traversal despite an intervening buddy
+PASS: ORB-5: anchor pull reaches its original one-metre standoff
+PASS: ORB-5: anchor traversal releases movement ownership
+PASS: ORB-3: ordinary pickups still collect once by actual body overlap
+MARC ORB REEL: clean

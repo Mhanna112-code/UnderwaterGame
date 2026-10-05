@@ -1,0 +1,8 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR LEGACY|owned=false|equipped=false|three_actors=true
+SONAR LEGACY|owned=false|equipped=true|three_actors=true
+SONAR LEGACY|owned=true|equipped=false|three_actors=true
+SONAR LEGACY|owned=true|equipped=true|three_actors=true
+FINDING SV-4 latest Q off leaves an obsolete Sonar-on notice contradicting the HUD
+SONAR VISION: failed

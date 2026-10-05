@@ -1,0 +1,12 @@
+{
+  "source_commit": "b0bee59223e3c29e7919a1146f3cb40ba6d83e1c",
+  "downloads": [
+    {
+      "bytes": 93209800,
+      "sha256": "de249eed5c6a1db0074c608c23738df1159b59b27034d2184ae10ffd0b014132",
+      "endpoint": "https://underwatergame-8cvu27573-immortaldemongods-projects.vercel.app/index.pck"
+    }
+  ],
+  "findings": [],
+  "scope": "served pack checksum, completed browser pack requests, rendered ordinary title and real direct-maze L controls only"
+}

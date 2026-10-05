@@ -1,0 +1,847 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+[   0% ] [90m[1mfirst_scan_filesystem[22m | Started Project initialization (5 steps)[39m[0m
+[   0% ] [90m[1mfirst_scan_filesystem[22m | Scanning file structure...[39m[0m
+[  16% ] [90m[1mfirst_scan_filesystem[22m | Loading global class names...[39m[0m
+[  33% ] [90m[1mfirst_scan_filesystem[22m | Verifying GDExtensions...[39m[0m
+[  50% ] [90m[1mfirst_scan_filesystem[22m | Creating autoload scripts...[39m[0m
+[  66% ] [90m[1mfirst_scan_filesystem[22m | Initializing plugins...[39m[0m
+[  83% ] [90m[1mfirst_scan_filesystem[22m | Starting file scan...[39m[0m
+[92m[ DONE ][39m [1mfirst_scan_filesystem[22m
+[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | Started Registering global classes... (233 steps)[39m[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | Cast[39m[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | CombatMoves[39m[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | DeepZoneLayout[39m[0m
+[   1% ] [90m[1mupdate_scripts_classes[22m | EnemyMoves[39m[0m
+[   1% ] [90m[1mupdate_scripts_classes[22m | EnemyRoster[39m[0m
+[   2% ] [90m[1mupdate_scripts_classes[22m | Sites[39m[0m
+[   2% ] [90m[1mupdate_scripts_classes[22m | TutorialContent[39m[0m
+[   2% ] [90m[1mupdate_scripts_classes[22m | AbilityOnboarding[39m[0m
+[   3% ] [90m[1mupdate_scripts_classes[22m | UnderwaterAudioManager[39m[0m
+[   3% ] [90m[1mupdate_scripts_classes[22m | Battle[39m[0m
+[   4% ] [90m[1mupdate_scripts_classes[22m | Beacon[39m[0m
+[   4% ] [90m[1mupdate_scripts_classes[22m | BombBot[39m[0m
+[   5% ] [90m[1mupdate_scripts_classes[22m | BrowserCheckpoint[39m[0m
+[   5% ] [90m[1mupdate_scripts_classes[22m | CombatantStats[39m[0m
+[   5% ] [90m[1mupdate_scripts_classes[22m | CombatRules[39m[0m
+[   6% ] [90m[1mupdate_scripts_classes[22m | CrackedWall[39m[0m
+[   6% ] [90m[1mupdate_scripts_classes[22m | Cutscene[39m[0m
+[   7% ] [90m[1mupdate_scripts_classes[22m | DeepZoneEnvironment[39m[0m
+[   7% ] [90m[1mupdate_scripts_classes[22m | Diver[39m[0m
+[   8% ] [90m[1mupdate_scripts_classes[22m | DiverSwapMinigame[39m[0m
+[   8% ] [90m[1mupdate_scripts_classes[22m | Door[39m[0m
+[   8% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[   9% ] [90m[1mupdate_scripts_classes[22m | FrilledShark[39m[0m
+[   9% ] [90m[1mupdate_scripts_classes[22m | GameOverScreen[39m[0m
+[  10% ] [90m[1mupdate_scripts_classes[22m | Goblin[39m[0m
+[  10% ] [90m[1mupdate_scripts_classes[22m | GrappleAnchor[39m[0m
+[  11% ] [90m[1mupdate_scripts_classes[22m | GrappleInterceptMinigame[39m[0m
+[  11% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  11% ] [90m[1mupdate_scripts_classes[22m | IntroCrawl[39m[0m
+[  12% ] [90m[1mupdate_scripts_classes[22m | InventoryMenu[39m[0m
+[  12% ] [90m[1mupdate_scripts_classes[22m | Items[39m[0m
+[  13% ] [90m[1mupdate_scripts_classes[22m | ItemGuardian[39m[0m
+[  13% ] [90m[1mupdate_scripts_classes[22m | ItemOrb[39m[0m
+[  14% ] [90m[1mupdate_scripts_classes[22m | LabVideoCutscene[39m[0m
+[  14% ] [90m[1mupdate_scripts_classes[22m | Lever[39m[0m
+[  14% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  15% ] [90m[1mupdate_scripts_classes[22m | LockPlate[39m[0m
+[  15% ] [90m[1mupdate_scripts_classes[22m | MazeLevel[39m[0m
+[  16% ] [90m[1mupdate_scripts_classes[22m | MazeMiniMap[39m[0m
+[  16% ] [90m[1mupdate_scripts_classes[22m | MiniMap[39m[0m
+[  17% ] [90m[1mupdate_scripts_classes[22m | OpeningPrologueTrigger[39m[0m
+[  17% ] [90m[1mupdate_scripts_classes[22m | OpeningVideo[39m[0m
+[  17% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  18% ] [90m[1mupdate_scripts_classes[22m | PrologueOctopus[39m[0m
+[  18% ] [90m[1mupdate_scripts_classes[22m | PrologueRecovery[39m[0m
+[  19% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  19% ] [90m[1mupdate_scripts_classes[22m | PulseTextEffect[39m[0m
+[  20% ] [90m[1mupdate_scripts_classes[22m | RandomEncounterReveal[39m[0m
+[  20% ] [90m[1mupdate_scripts_classes[22m | RockDodgeMinigame[39m[0m
+[  20% ] [90m[1mupdate_scripts_classes[22m | RotateCurrents[39m[0m
+[  21% ] [90m[1mupdate_scripts_classes[22m | RouteState[39m[0m
+[  21% ] [90m[1mupdate_scripts_classes[22m | SalvagePart[39m[0m
+[  22% ] [90m[1mupdate_scripts_classes[22m | SaveManager[39m[0m
+[  22% ] [90m[1mupdate_scripts_classes[22m | SavePoint[39m[0m
+[  23% ] [90m[1mupdate_scripts_classes[22m | SavePointMenu[39m[0m
+[  23% ] [90m[1mupdate_scripts_classes[22m | Site[39m[0m
+[  23% ] [90m[1mupdate_scripts_classes[22m | SpecialEncounterPrompt[39m[0m
+[  24% ] [90m[1mupdate_scripts_classes[22m | SpellTree[39m[0m
+[  24% ] [90m[1mupdate_scripts_classes[22m | SpellTreeUI[39m[0m
+[  25% ] [90m[1mupdate_scripts_classes[22m | SwordDuelist[39m[0m
+[  25% ] [90m[1mupdate_scripts_classes[22m | SwordSlayer[39m[0m
+[  26% ] [90m[1mupdate_scripts_classes[22m | TargetSelector[39m[0m
+[  26% ] [90m[1mupdate_scripts_classes[22m | TethysBoss[39m[0m
+[  26% ] [90m[1mupdate_scripts_classes[22m | TitleScreen[39m[0m
+[  27% ] [90m[1mupdate_scripts_classes[22m | TooltipButton[39m[0m
+[  27% ] [90m[1mupdate_scripts_classes[22m | TutorialBook[39m[0m
+[  28% ] [90m[1mupdate_scripts_classes[22m | TutorialResultPopup[39m[0m
+[  28% ] [90m[1mupdate_scripts_classes[22m | VortexCollision[39m[0m
+[  29% ] [90m[1mupdate_scripts_classes[22m | VortexGrappleSphere[39m[0m
+[  29% ] [90m[1mupdate_scripts_classes[22m | WaterCurrent[39m[0m
+[  29% ] [90m[1mupdate_scripts_classes[22m | Waypoint[39m[0m
+[  30% ] [90m[1mupdate_scripts_classes[22m | Whirlpool[39m[0m
+[  30% ] [90m[1mupdate_scripts_classes[22m | World[39m[0m
+[  31% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  31% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  32% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  32% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  32% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  33% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  33% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  34% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  34% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  35% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  35% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  35% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  36% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  36% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  37% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  37% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  38% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  38% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  38% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  39% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  39% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  40% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  40% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  41% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  41% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  41% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  42% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  42% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  43% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  43% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  44% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  44% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  44% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  45% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  45% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  46% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  46% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  47% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  47% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  47% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  48% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  48% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  49% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  49% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  50% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  50% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  50% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  51% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  51% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  52% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  52% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  52% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  53% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  53% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  54% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  54% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  55% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  55% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  55% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  56% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  56% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  57% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  57% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  58% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  58% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  58% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  59% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  59% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  60% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  60% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  61% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  61% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  61% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  62% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  62% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  63% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  63% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  64% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  64% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  64% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  65% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  65% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  66% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  66% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  67% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  67% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  67% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  68% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  68% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  69% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  69% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  70% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  70% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  70% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  71% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  71% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  72% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  72% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  73% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  73% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  73% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  74% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  74% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  75% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  75% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  76% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  76% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  76% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  77% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  77% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  78% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  78% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  79% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  79% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  79% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  80% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  80% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  81% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  81% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  82% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  82% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  82% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  83% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  83% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  84% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  84% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  85% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  85% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  85% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  86% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  86% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  87% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  87% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  88% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  88% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  88% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  89% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  89% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  90% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  90% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  91% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  91% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  91% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  92% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  92% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  93% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  93% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  94% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  94% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  94% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  95% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  95% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  96% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  96% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  97% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  97% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  97% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  98% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  98% ] [90m[1mupdate_scripts_classes[22m | Slot[39m[0m
+[  99% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[92m[ DONE ][39m [1mupdate_scripts_classes[22m
+[0m
+[   0% ] [90m[1m_update_scan_actions[22m | Started Scanning actions... (415 steps)[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | divers.glb[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_0.png[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_1.png[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_2.png[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_3.png[39m[0m
+[   1% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_4.png[39m[0m
+[   1% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_5.png[39m[0m
+[   1% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_6.png[39m[0m
+[   1% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_7.png[39m[0m
+[   2% ] [90m[1m_update_scan_actions[22m | divers_Main_Team_Rigging_2_8.png[39m[0m
+[   2% ] [90m[1m_update_scan_actions[22m | golden_energy_orb.glb[39m[0m
+[   2% ] [90m[1m_update_scan_actions[22m | Proto1_Rigged_0.png[39m[0m
+[   2% ] [90m[1m_update_scan_actions[22m | Proto5_Rigged_0.png[39m[0m
+[   3% ] [90m[1m_update_scan_actions[22m | Prototype1_Rigged.fbx[39m[0m
+[   3% ] [90m[1m_update_scan_actions[22m | Prototype1_Rigged_0.png[39m[0m
+[   3% ] [90m[1m_update_scan_actions[22m | PrototypeV_Rigged.fbx[39m[0m
+[   3% ] [90m[1m_update_scan_actions[22m | PrototypeV_Rigged_0.png[39m[0m
+[   4% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged.fbx[39m[0m
+[   4% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_0.png[39m[0m
+[   4% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_1.png[39m[0m
+[   4% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_2.png[39m[0m
+[   5% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_3.png[39m[0m
+[   5% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_4.png[39m[0m
+[   5% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_5.png[39m[0m
+[   5% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_6.png[39m[0m
+[   6% ] [90m[1m_update_scan_actions[22m | Scuba_Rigged_7.png[39m[0m
+[   6% ] [90m[1m_update_scan_actions[22m | Beach_assets1.fbx[39m[0m
+[   6% ] [90m[1m_update_scan_actions[22m | Beach_assets1_0.png[39m[0m
+[   6% ] [90m[1m_update_scan_actions[22m | Beach_assets1_1.png[39m[0m
+[   6% ] [90m[1m_update_scan_actions[22m | Beach_assets1_2.png[39m[0m
+[   7% ] [90m[1m_update_scan_actions[22m | Bomb_Bot.fbx[39m[0m
+[   7% ] [90m[1m_update_scan_actions[22m | Bomb_Bot_0.png[39m[0m
+[   7% ] [90m[1m_update_scan_actions[22m | Broken_Office.fbx[39m[0m
+[   7% ] [90m[1m_update_scan_actions[22m | Broken_Office_0.png[39m[0m
+[   8% ] [90m[1m_update_scan_actions[22m | Broken_Office_1.png[39m[0m
+[   8% ] [90m[1m_update_scan_actions[22m | Broken_Office_2.png[39m[0m
+[   8% ] [90m[1m_update_scan_actions[22m | Broken_Office_3.png[39m[0m
+[   8% ] [90m[1m_update_scan_actions[22m | Broken_Office_4.png[39m[0m
+[   9% ] [90m[1m_update_scan_actions[22m | Broken_Office_5.png[39m[0m
+[   9% ] [90m[1m_update_scan_actions[22m | Corrected_Door.fbx[39m[0m
+[   9% ] [90m[1m_update_scan_actions[22m | Corrected_Door_0.png[39m[0m
+[   9% ] [90m[1m_update_scan_actions[22m | Octopus_Boss.fbx[39m[0m
+[  10% ] [90m[1m_update_scan_actions[22m | Octopus_Boss_0.png[39m[0m
+[  10% ] [90m[1m_update_scan_actions[22m | Octopus_Boss_1.png[39m[0m
+[  10% ] [90m[1m_update_scan_actions[22m | Octopus_Boss_2.png[39m[0m
+[  10% ] [90m[1m_update_scan_actions[22m | Octopus_Boss_3.png[39m[0m
+[  11% ] [90m[1m_update_scan_actions[22m | Octopus_Boss_4.png[39m[0m
+[  11% ] [90m[1m_update_scan_actions[22m | Octopus_Boss_5.png[39m[0m
+[  11% ] [90m[1m_update_scan_actions[22m | Octopus_Boss_6.png[39m[0m
+[  11% ] [90m[1m_update_scan_actions[22m | Rocks.fbx[39m[0m
+[  12% ] [90m[1m_update_scan_actions[22m | Rocks_0.png[39m[0m
+[  12% ] [90m[1m_update_scan_actions[22m | Rocks_1.png[39m[0m
+[  12% ] [90m[1m_update_scan_actions[22m | Sword_Slayer.fbx[39m[0m
+[  12% ] [90m[1m_update_scan_actions[22m | Sword_Slayer_0.png[39m[0m
+[  12% ] [90m[1m_update_scan_actions[22m | battle_intro.ogg[39m[0m
+[  13% ] [90m[1m_update_scan_actions[22m | battle_loop.ogg[39m[0m
+[  13% ] [90m[1m_update_scan_actions[22m | exploration_loop.ogg[39m[0m
+[  13% ] [90m[1m_update_scan_actions[22m | final_boss_intro.ogg[39m[0m
+[  13% ] [90m[1m_update_scan_actions[22m | final_boss_loop.ogg[39m[0m
+[  14% ] [90m[1m_update_scan_actions[22m | game_over.ogg[39m[0m
+[  14% ] [90m[1m_update_scan_actions[22m | tethys_candidate_intro.ogg[39m[0m
+[  14% ] [90m[1m_update_scan_actions[22m | tethys_loop.ogg[39m[0m
+[  14% ] [90m[1m_update_scan_actions[22m | title_candidate_intro.ogg[39m[0m
+[  15% ] [90m[1m_update_scan_actions[22m | title_loop.ogg[39m[0m
+[  15% ] [90m[1m_update_scan_actions[22m | victory_candidate_intro.ogg[39m[0m
+[  15% ] [90m[1m_update_scan_actions[22m | victory_loop.ogg[39m[0m
+[  15% ] [90m[1m_update_scan_actions[22m | attack_swirl.ogg[39m[0m
+[  16% ] [90m[1m_update_scan_actions[22m | fast_swish_01.ogg[39m[0m
+[  16% ] [90m[1m_update_scan_actions[22m | fast_swish_02.ogg[39m[0m
+[  16% ] [90m[1m_update_scan_actions[22m | fast_swish_03.ogg[39m[0m
+[  16% ] [90m[1m_update_scan_actions[22m | fast_swish_04.ogg[39m[0m
+[  17% ] [90m[1m_update_scan_actions[22m | fast_swish_05.ogg[39m[0m
+[  17% ] [90m[1m_update_scan_actions[22m | heavy_hit.ogg[39m[0m
+[  17% ] [90m[1m_update_scan_actions[22m | shockwave_swirl.ogg[39m[0m
+[  17% ] [90m[1m_update_scan_actions[22m | swish_01.ogg[39m[0m
+[  18% ] [90m[1m_update_scan_actions[22m | swish_02.ogg[39m[0m
+[  18% ] [90m[1m_update_scan_actions[22m | swish_03.ogg[39m[0m
+[  18% ] [90m[1m_update_scan_actions[22m | swish_04.ogg[39m[0m
+[  18% ] [90m[1m_update_scan_actions[22m | swish_05.ogg[39m[0m
+[  18% ] [90m[1m_update_scan_actions[22m | swish_06.ogg[39m[0m
+[  19% ] [90m[1m_update_scan_actions[22m | click.wav[39m[0m
+[  19% ] [90m[1m_update_scan_actions[22m | hover.wav[39m[0m
+[  19% ] [90m[1m_update_scan_actions[22m | hover_soft.wav[39m[0m
+[  19% ] [90m[1m_update_scan_actions[22m | start_game.wav[39m[0m
+[  20% ] [90m[1m_update_scan_actions[22m | Angler_Fish.fbx[39m[0m
+[  20% ] [90m[1m_update_scan_actions[22m | Angler_Fish_0.png[39m[0m
+[  20% ] [90m[1m_update_scan_actions[22m | Angler_Fish_1.png[39m[0m
+[  20% ] [90m[1m_update_scan_actions[22m | GoblinGrunt.fbx[39m[0m
+[  21% ] [90m[1m_update_scan_actions[22m | GoblinGrunt_0.png[39m[0m
+[  21% ] [90m[1m_update_scan_actions[22m | Mermaid_Freak.fbx[39m[0m
+[  21% ] [90m[1m_update_scan_actions[22m | Sword_Duelist.fbx[39m[0m
+[  21% ] [90m[1m_update_scan_actions[22m | Sword_Duelist_0.png[39m[0m
+[  22% ] [90m[1m_update_scan_actions[22m | 03e-victory-beat.png[39m[0m
+[  22% ] [90m[1m_update_scan_actions[22m | 03f-victory-noticed.png[39m[0m
+[  22% ] [90m[1m_update_scan_actions[22m | 03g-something-stirs.png[39m[0m
+[  22% ] [90m[1m_update_scan_actions[22m | 08-recovery.png[39m[0m
+[  23% ] [90m[1m_update_scan_actions[22m | 12-loaded-world.png[39m[0m
+[  23% ] [90m[1m_update_scan_actions[22m | angler-victory-notice-720x480.png[39m[0m
+[  23% ] [90m[1m_update_scan_actions[22m | angler-victory-notice-1280x720.png[39m[0m
+[  23% ] [90m[1m_update_scan_actions[22m | angler-victory-omen-720x480.png[39m[0m
+[  24% ] [90m[1m_update_scan_actions[22m | angler-victory-omen-1280x720.png[39m[0m
+[  24% ] [90m[1m_update_scan_actions[22m | angler-victory-victory-720x480.png[39m[0m
+[  24% ] [90m[1m_update_scan_actions[22m | angler-victory-victory-1280x720.png[39m[0m
+[  24% ] [90m[1m_update_scan_actions[22m | audio-settings-1280x720.png[39m[0m
+[  25% ] [90m[1m_update_scan_actions[22m | puzzle-contact.png[39m[0m
+[  25% ] [90m[1m_update_scan_actions[22m | wall-broken.png[39m[0m
+[  25% ] [90m[1m_update_scan_actions[22m | puzzle-720x480.png[39m[0m
+[  25% ] [90m[1m_update_scan_actions[22m | puzzle-1280x720.png[39m[0m
+[  25% ] [90m[1m_update_scan_actions[22m | 01-title.png[39m[0m
+[  26% ] [90m[1m_update_scan_actions[22m | 02-mermaid.png[39m[0m
+[  26% ] [90m[1m_update_scan_actions[22m | 03-angler.png[39m[0m
+[  26% ] [90m[1m_update_scan_actions[22m | 03a-angler-move-menu.png[39m[0m
+[  26% ] [90m[1m_update_scan_actions[22m | 03a-angler-target-menu.png[39m[0m
+[  27% ] [90m[1m_update_scan_actions[22m | 03b-nonlethal-angler.png[39m[0m
+[  27% ] [90m[1m_update_scan_actions[22m | 03c-next-turn.png[39m[0m
+[  27% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-move-menu.png[39m[0m
+[  27% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-target-menu.png[39m[0m
+[  28% ] [90m[1m_update_scan_actions[22m | 03e-victory-beat.png[39m[0m
+[  28% ] [90m[1m_update_scan_actions[22m | 03f-victory-noticed.png[39m[0m
+[  28% ] [90m[1m_update_scan_actions[22m | 03g-something-stirs.png[39m[0m
+[  28% ] [90m[1m_update_scan_actions[22m | 04-octopus-introduction.png[39m[0m
+[  29% ] [90m[1m_update_scan_actions[22m | 05-cordys.png[39m[0m
+[  29% ] [90m[1m_update_scan_actions[22m | 05a-cordys-move-menu.png[39m[0m
+[  29% ] [90m[1m_update_scan_actions[22m | 05a-cordys-target-menu.png[39m[0m
+[  29% ] [90m[1m_update_scan_actions[22m | 05b-real-impact.png[39m[0m
+[  30% ] [90m[1m_update_scan_actions[22m | 06-cordys-bucky-move-menu.png[39m[0m
+[  30% ] [90m[1m_update_scan_actions[22m | 06-cordys-bucky-target-menu.png[39m[0m
+[  30% ] [90m[1m_update_scan_actions[22m | 06-cordys-musashi-move-menu.png[39m[0m
+[  30% ] [90m[1m_update_scan_actions[22m | 06-cordys-musashi-target-menu.png[39m[0m
+[  31% ] [90m[1m_update_scan_actions[22m | 06-finisher.png[39m[0m
+[  31% ] [90m[1m_update_scan_actions[22m | 07-aftermath.png[39m[0m
+[  31% ] [90m[1m_update_scan_actions[22m | 08-recovery.png[39m[0m
+[  31% ] [90m[1m_update_scan_actions[22m | 09-optional-training.png[39m[0m
+[  31% ] [90m[1m_update_scan_actions[22m | 10-reloaded-title.png[39m[0m
+[  32% ] [90m[1m_update_scan_actions[22m | 11-load-slots.png[39m[0m
+[  32% ] [90m[1m_update_scan_actions[22m | 12-loaded-world.png[39m[0m
+[  32% ] [90m[1m_update_scan_actions[22m | 060-individual-impact.png[39m[0m
+[  32% ] [90m[1m_update_scan_actions[22m | 060-next-player-turn.png[39m[0m
+[  33% ] [90m[1m_update_scan_actions[22m | 061-individual-impact.png[39m[0m
+[  33% ] [90m[1m_update_scan_actions[22m | 061-next-player-turn.png[39m[0m
+[  33% ] [90m[1m_update_scan_actions[22m | 062-individual-impact.png[39m[0m
+[  33% ] [90m[1m_update_scan_actions[22m | 01-title.png[39m[0m
+[  34% ] [90m[1m_update_scan_actions[22m | 02-mermaid.png[39m[0m
+[  34% ] [90m[1m_update_scan_actions[22m | 03-angler.png[39m[0m
+[  34% ] [90m[1m_update_scan_actions[22m | 03a-angler-move-menu.png[39m[0m
+[  34% ] [90m[1m_update_scan_actions[22m | 03a-angler-target-menu.png[39m[0m
+[  35% ] [90m[1m_update_scan_actions[22m | 03b-nonlethal-angler.png[39m[0m
+[  35% ] [90m[1m_update_scan_actions[22m | 03c-next-turn.png[39m[0m
+[  35% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-move-menu.png[39m[0m
+[  35% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-target-menu.png[39m[0m
+[  36% ] [90m[1m_update_scan_actions[22m | 03e-victory-beat.png[39m[0m
+[  36% ] [90m[1m_update_scan_actions[22m | 03f-victory-noticed.png[39m[0m
+[  36% ] [90m[1m_update_scan_actions[22m | 03g-something-stirs.png[39m[0m
+[  36% ] [90m[1m_update_scan_actions[22m | 04-octopus-introduction.png[39m[0m
+[  37% ] [90m[1m_update_scan_actions[22m | 05-cordys.png[39m[0m
+[  37% ] [90m[1m_update_scan_actions[22m | 05a-cordys-move-menu.png[39m[0m
+[  37% ] [90m[1m_update_scan_actions[22m | 05a-cordys-target-menu.png[39m[0m
+[  37% ] [90m[1m_update_scan_actions[22m | 05b-real-impact.png[39m[0m
+[  37% ] [90m[1m_update_scan_actions[22m | 06-cordys-bucky-move-menu.png[39m[0m
+[  38% ] [90m[1m_update_scan_actions[22m | 06-cordys-bucky-target-menu.png[39m[0m
+[  38% ] [90m[1m_update_scan_actions[22m | 06-cordys-musashi-move-menu.png[39m[0m
+[  38% ] [90m[1m_update_scan_actions[22m | 06-cordys-musashi-target-menu.png[39m[0m
+[  38% ] [90m[1m_update_scan_actions[22m | 06-finisher.png[39m[0m
+[  39% ] [90m[1m_update_scan_actions[22m | 07-aftermath.png[39m[0m
+[  39% ] [90m[1m_update_scan_actions[22m | 08-recovery.png[39m[0m
+[  39% ] [90m[1m_update_scan_actions[22m | 09-optional-training.png[39m[0m
+[  39% ] [90m[1m_update_scan_actions[22m | 10-reloaded-title.png[39m[0m
+[  40% ] [90m[1m_update_scan_actions[22m | 11-load-slots.png[39m[0m
+[  40% ] [90m[1m_update_scan_actions[22m | 12-loaded-world.png[39m[0m
+[  40% ] [90m[1m_update_scan_actions[22m | 060-individual-impact.png[39m[0m
+[  40% ] [90m[1m_update_scan_actions[22m | 060-next-player-turn.png[39m[0m
+[  41% ] [90m[1m_update_scan_actions[22m | 061-individual-impact.png[39m[0m
+[  41% ] [90m[1m_update_scan_actions[22m | 061-next-player-turn.png[39m[0m
+[  41% ] [90m[1m_update_scan_actions[22m | 062-individual-impact.png[39m[0m
+[  41% ] [90m[1m_update_scan_actions[22m | failure.png[39m[0m
+[  42% ] [90m[1m_update_scan_actions[22m | bucky-attack-narrow.png[39m[0m
+[  42% ] [90m[1m_update_scan_actions[22m | first-defeat-narrow.png[39m[0m
+[  42% ] [90m[1m_update_scan_actions[22m | musashi-attack-narrow.png[39m[0m
+[  42% ] [90m[1m_update_scan_actions[22m | second-defeat-narrow.png[39m[0m
+[  43% ] [90m[1m_update_scan_actions[22m | bomb-bot.png[39m[0m
+[  43% ] [90m[1m_update_scan_actions[22m | broken-office.png[39m[0m
+[  43% ] [90m[1m_update_scan_actions[22m | sword-slayer.png[39m[0m
+[  43% ] [90m[1m_update_scan_actions[22m | battle-bomb-bot-1280x720.png[39m[0m
+[  43% ] [90m[1m_update_scan_actions[22m | battle-sword-slayer-1280x720.png[39m[0m
+[  44% ] [90m[1m_update_scan_actions[22m | world-bomb-720x480.png[39m[0m
+[  44% ] [90m[1m_update_scan_actions[22m | world-bomb-1280x720.png[39m[0m
+[  44% ] [90m[1m_update_scan_actions[22m | world-lab-open-720x480.png[39m[0m
+[  44% ] [90m[1m_update_scan_actions[22m | world-lab-open-1280x720.png[39m[0m
+[  45% ] [90m[1m_update_scan_actions[22m | world-maze-720x480.png[39m[0m
+[  45% ] [90m[1m_update_scan_actions[22m | world-maze-1280x720.png[39m[0m
+[  45% ] [90m[1m_update_scan_actions[22m | world-sword-720x480.png[39m[0m
+[  45% ] [90m[1m_update_scan_actions[22m | world-sword-1280x720.png[39m[0m
+[  46% ] [90m[1m_update_scan_actions[22m | bomb-gradient.png[39m[0m
+[  46% ] [90m[1m_update_scan_actions[22m | entry-gradient.png[39m[0m
+[  46% ] [90m[1m_update_scan_actions[22m | lab-gradient.png[39m[0m
+[  46% ] [90m[1m_update_scan_actions[22m | entry-palms-720x480.png[39m[0m
+[  47% ] [90m[1m_update_scan_actions[22m | entry-palms.png[39m[0m
+[  47% ] [90m[1m_update_scan_actions[22m | entry.png[39m[0m
+[  47% ] [90m[1m_update_scan_actions[22m | lab-approach.png[39m[0m
+[  47% ] [90m[1m_update_scan_actions[22m | lab-close.png[39m[0m
+[  48% ] [90m[1m_update_scan_actions[22m | lab-door-approach.png[39m[0m
+[  48% ] [90m[1m_update_scan_actions[22m | lab-door-close.png[39m[0m
+[  48% ] [90m[1m_update_scan_actions[22m | lab-door-final-720x480.png[39m[0m
+[  48% ] [90m[1m_update_scan_actions[22m | lab-door-final.png[39m[0m
+[  49% ] [90m[1m_update_scan_actions[22m | maze-palms-720x480.png[39m[0m
+[  49% ] [90m[1m_update_scan_actions[22m | maze-palms.png[39m[0m
+[  49% ] [90m[1m_update_scan_actions[22m | maze-transition.png[39m[0m
+[  49% ] [90m[1m_update_scan_actions[22m | 01-title.png[39m[0m
+[  50% ] [90m[1m_update_scan_actions[22m | 02-mermaid.png[39m[0m
+[  50% ] [90m[1m_update_scan_actions[22m | 03-angler.png[39m[0m
+[  50% ] [90m[1m_update_scan_actions[22m | 03a-angler-move-menu.png[39m[0m
+[  50% ] [90m[1m_update_scan_actions[22m | 03a-angler-target-menu.png[39m[0m
+[  50% ] [90m[1m_update_scan_actions[22m | 03b-nonlethal-angler.png[39m[0m
+[  51% ] [90m[1m_update_scan_actions[22m | 03c-next-turn.png[39m[0m
+[  51% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-move-menu.png[39m[0m
+[  51% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-target-menu.png[39m[0m
+[  51% ] [90m[1m_update_scan_actions[22m | 04-octopus-introduction.png[39m[0m
+[  52% ] [90m[1m_update_scan_actions[22m | 05-cordys.png[39m[0m
+[  52% ] [90m[1m_update_scan_actions[22m | 05a-cordys-move-menu.png[39m[0m
+[  52% ] [90m[1m_update_scan_actions[22m | 05a-cordys-target-menu.png[39m[0m
+[  52% ] [90m[1m_update_scan_actions[22m | 05b-real-impact.png[39m[0m
+[  53% ] [90m[1m_update_scan_actions[22m | 06-finisher.png[39m[0m
+[  53% ] [90m[1m_update_scan_actions[22m | 07-aftermath.png[39m[0m
+[  53% ] [90m[1m_update_scan_actions[22m | 08-recovery.png[39m[0m
+[  53% ] [90m[1m_update_scan_actions[22m | 09-optional-training.png[39m[0m
+[  54% ] [90m[1m_update_scan_actions[22m | 10-reloaded-title.png[39m[0m
+[  54% ] [90m[1m_update_scan_actions[22m | 11-load-slots.png[39m[0m
+[  54% ] [90m[1m_update_scan_actions[22m | 12-loaded-world.png[39m[0m
+[  54% ] [90m[1m_update_scan_actions[22m | 18-swimming-to-encounter.png[39m[0m
+[  55% ] [90m[1m_update_scan_actions[22m | 19-run-menu.png[39m[0m
+[  55% ] [90m[1m_update_scan_actions[22m | 20-run-outcome.png[39m[0m
+[  55% ] [90m[1m_update_scan_actions[22m | 21-escape-cue-on.png[39m[0m
+[  55% ] [90m[1m_update_scan_actions[22m | 22-escape-cue-off.png[39m[0m
+[  56% ] [90m[1m_update_scan_actions[22m | 23-escape-cue-expired.png[39m[0m
+[  56% ] [90m[1m_update_scan_actions[22m | escape-cue-off-720x480.png[39m[0m
+[  56% ] [90m[1m_update_scan_actions[22m | escape-cue-off-1280x720.png[39m[0m
+[  56% ] [90m[1m_update_scan_actions[22m | escape-cue-on-720x480.png[39m[0m
+[  56% ] [90m[1m_update_scan_actions[22m | escape-cue-on-1280x720.png[39m[0m
+[  57% ] [90m[1m_update_scan_actions[22m | tethys-narrow.png[39m[0m
+[  57% ] [90m[1m_update_scan_actions[22m | tethys-wide.png[39m[0m
+[  57% ] [90m[1m_update_scan_actions[22m | octopus-godot-head-bash.png[39m[0m
+[  57% ] [90m[1m_update_scan_actions[22m | octopus-godot-idle.png[39m[0m
+[  58% ] [90m[1m_update_scan_actions[22m | octopus-godot-poison-breath.png[39m[0m
+[  58% ] [90m[1m_update_scan_actions[22m | octopus-godot-spinning-slay.png[39m[0m
+[  58% ] [90m[1m_update_scan_actions[22m | octopus-v3-timed.jpg[39m[0m
+[  58% ] [90m[1m_update_scan_actions[22m | sfx-waveforms.png[39m[0m
+[  59% ] [90m[1m_update_scan_actions[22m | 01-title.png[39m[0m
+[  59% ] [90m[1m_update_scan_actions[22m | 02-mermaid.png[39m[0m
+[  59% ] [90m[1m_update_scan_actions[22m | 03-angler.png[39m[0m
+[  59% ] [90m[1m_update_scan_actions[22m | 03a-angler-move-menu.png[39m[0m
+[  60% ] [90m[1m_update_scan_actions[22m | 03a-angler-target-menu.png[39m[0m
+[  60% ] [90m[1m_update_scan_actions[22m | 03b-nonlethal-angler.png[39m[0m
+[  60% ] [90m[1m_update_scan_actions[22m | 03c-next-turn.png[39m[0m
+[  60% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-move-menu.png[39m[0m
+[  61% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-target-menu.png[39m[0m
+[  61% ] [90m[1m_update_scan_actions[22m | failure.png[39m[0m
+[  61% ] [90m[1m_update_scan_actions[22m | 01-title.png[39m[0m
+[  61% ] [90m[1m_update_scan_actions[22m | 02-mermaid.png[39m[0m
+[  62% ] [90m[1m_update_scan_actions[22m | 03-angler.png[39m[0m
+[  62% ] [90m[1m_update_scan_actions[22m | 03a-angler-move-menu.png[39m[0m
+[  62% ] [90m[1m_update_scan_actions[22m | 03a-angler-target-menu.png[39m[0m
+[  62% ] [90m[1m_update_scan_actions[22m | 03b-nonlethal-angler.png[39m[0m
+[  62% ] [90m[1m_update_scan_actions[22m | 03c-next-turn.png[39m[0m
+[  63% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-move-menu.png[39m[0m
+[  63% ] [90m[1m_update_scan_actions[22m | 03d-second-angler-action-target-menu.png[39m[0m
+[  63% ] [90m[1m_update_scan_actions[22m | 04-octopus-introduction.png[39m[0m
+[  63% ] [90m[1m_update_scan_actions[22m | 05-cordys.png[39m[0m
+[  64% ] [90m[1m_update_scan_actions[22m | 05a-cordys-move-menu.png[39m[0m
+[  64% ] [90m[1m_update_scan_actions[22m | 05a-cordys-target-menu.png[39m[0m
+[  64% ] [90m[1m_update_scan_actions[22m | 05b-real-impact.png[39m[0m
+[  64% ] [90m[1m_update_scan_actions[22m | 06-finisher.png[39m[0m
+[  65% ] [90m[1m_update_scan_actions[22m | 07-aftermath.png[39m[0m
+[  65% ] [90m[1m_update_scan_actions[22m | 08-recovery.png[39m[0m
+[  65% ] [90m[1m_update_scan_actions[22m | 09-optional-training.png[39m[0m
+[  65% ] [90m[1m_update_scan_actions[22m | 10-reloaded-title.png[39m[0m
+[  66% ] [90m[1m_update_scan_actions[22m | 11-load-slots.png[39m[0m
+[  66% ] [90m[1m_update_scan_actions[22m | 12-loaded-world.png[39m[0m
+[  66% ] [90m[1m_update_scan_actions[22m | actual-ordinary-death.png[39m[0m
+[  66% ] [90m[1m_update_scan_actions[22m | continue-after-retry.png[39m[0m
+[  67% ] [90m[1m_update_scan_actions[22m | restarted-world.png[39m[0m
+[  67% ] [90m[1m_update_scan_actions[22m | retry-save.png[39m[0m
+[  67% ] [90m[1m_update_scan_actions[22m | title-loaded-world.png[39m[0m
+[  67% ] [90m[1m_update_scan_actions[22m | cold-loaded-world-2bf19ac.png[39m[0m
+[  68% ] [90m[1m_update_scan_actions[22m | load-error-720x480.png[39m[0m
+[  68% ] [90m[1m_update_scan_actions[22m | load-error-1280x720.png[39m[0m
+[  68% ] [90m[1m_update_scan_actions[22m | retry-save-720x480.png[39m[0m
+[  68% ] [90m[1m_update_scan_actions[22m | retry-save-1280x720.png[39m[0m
+[  68% ] [90m[1m_update_scan_actions[22m | save-restored-720x480.png[39m[0m
+[  69% ] [90m[1m_update_scan_actions[22m | save-restored-1280x720.png[39m[0m
+[  69% ] [90m[1m_update_scan_actions[22m | cordys-finish.png[39m[0m
+[  69% ] [90m[1m_update_scan_actions[22m | cordys-hurt.png[39m[0m
+[  69% ] [90m[1m_update_scan_actions[22m | cordys-idle.png[39m[0m
+[  70% ] [90m[1m_update_scan_actions[22m | cordys-reveal.png[39m[0m
+[  70% ] [90m[1m_update_scan_actions[22m | moving.png[39m[0m
+[  70% ] [90m[1m_update_scan_actions[22m | start.png[39m[0m
+[  70% ] [90m[1m_update_scan_actions[22m | chromium-loaded-world.png[39m[0m
+[  71% ] [90m[1m_update_scan_actions[22m | webkit-loaded-world.png[39m[0m
+[  71% ] [90m[1m_update_scan_actions[22m | title-native.png[39m[0m
+[  71% ] [90m[1m_update_scan_actions[22m | title-web.png[39m[0m
+[  71% ] [90m[1m_update_scan_actions[22m | after-swimming-angler.png[39m[0m
+[  72% ] [90m[1m_update_scan_actions[22m | idle-world.png[39m[0m
+[  72% ] [90m[1m_update_scan_actions[22m | opening-title.png[39m[0m
+[  72% ] [90m[1m_update_scan_actions[22m | revealed-world.png[39m[0m
+[  72% ] [90m[1m_update_scan_actions[22m | after-swimming-angler.png[39m[0m
+[  73% ] [90m[1m_update_scan_actions[22m | idle-world.png[39m[0m
+[  73% ] [90m[1m_update_scan_actions[22m | opening-title.png[39m[0m
+[  73% ] [90m[1m_update_scan_actions[22m | title-narrow.png[39m[0m
+[  73% ] [90m[1m_update_scan_actions[22m | title-wide.png[39m[0m
+[  74% ] [90m[1m_update_scan_actions[22m | frilled-shark-720x480.png[39m[0m
+[  74% ] [90m[1m_update_scan_actions[22m | frilled-shark-1280x720.png[39m[0m
+[  74% ] [90m[1m_update_scan_actions[22m | deep-loaded.png[39m[0m
+[  74% ] [90m[1m_update_scan_actions[22m | deep-return.png[39m[0m
+[  75% ] [90m[1m_update_scan_actions[22m | puzzle-contact.png[39m[0m
+[  75% ] [90m[1m_update_scan_actions[22m | puzzle-left.png[39m[0m
+[  75% ] [90m[1m_update_scan_actions[22m | puzzle-outside.png[39m[0m
+[  75% ] [90m[1m_update_scan_actions[22m | puzzle-return.png[39m[0m
+[  75% ] [90m[1m_update_scan_actions[22m | shallows.png[39m[0m
+[  76% ] [90m[1m_update_scan_actions[22m | wall-broken.png[39m[0m
+[  76% ] [90m[1m_update_scan_actions[22m | 01-title.png[39m[0m
+[  76% ] [90m[1m_update_scan_actions[22m | 02-mermaid.png[39m[0m
+[  76% ] [90m[1m_update_scan_actions[22m | 03-angler.png[39m[0m
+[  77% ] [90m[1m_update_scan_actions[22m | 03a-angler-move-menu.png[39m[0m
+[  77% ] [90m[1m_update_scan_actions[22m | 03a-angler-target-menu.png[39m[0m
+[  77% ] [90m[1m_update_scan_actions[22m | 04-octopus-introduction.png[39m[0m
+[  77% ] [90m[1m_update_scan_actions[22m | 05-cordys.png[39m[0m
+[  78% ] [90m[1m_update_scan_actions[22m | 05a-cordys-move-menu.png[39m[0m
+[  78% ] [90m[1m_update_scan_actions[22m | 05a-cordys-target-menu.png[39m[0m
+[  78% ] [90m[1m_update_scan_actions[22m | 05b-real-impact.png[39m[0m
+[  78% ] [90m[1m_update_scan_actions[22m | 06-finisher.png[39m[0m
+[  79% ] [90m[1m_update_scan_actions[22m | 07-aftermath.png[39m[0m
+[  79% ] [90m[1m_update_scan_actions[22m | 08-recovery.png[39m[0m
+[  79% ] [90m[1m_update_scan_actions[22m | 09-optional-training.png[39m[0m
+[  79% ] [90m[1m_update_scan_actions[22m | 10-reloaded-title.png[39m[0m
+[  80% ] [90m[1m_update_scan_actions[22m | 11-load-slots.png[39m[0m
+[  80% ] [90m[1m_update_scan_actions[22m | 12-loaded-world.png[39m[0m
+[  80% ] [90m[1m_update_scan_actions[22m | native-narrow.png[39m[0m
+[  80% ] [90m[1m_update_scan_actions[22m | native-wide.png[39m[0m
+[  81% ] [90m[1m_update_scan_actions[22m | angler-fish-facing.png[39m[0m
+[  81% ] [90m[1m_update_scan_actions[22m | glassgoat-followup-formulas.png[39m[0m
+[  81% ] [90m[1m_update_scan_actions[22m | glassgoat-followup-moves.png[39m[0m
+[  81% ] [90m[1m_update_scan_actions[22m | glassgoat-followup-result.png[39m[0m
+[  81% ] [90m[1m_update_scan_actions[22m | glassgoat-v2-moves.png[39m[0m
+[  82% ] [90m[1m_update_scan_actions[22m | glassgoat-v2-result.png[39m[0m
+[  82% ] [90m[1m_update_scan_actions[22m | glassgoat-v2-target.png[39m[0m
+[  82% ] [90m[1m_update_scan_actions[22m | maze-minimap-closed.png[39m[0m
+[  82% ] [90m[1m_update_scan_actions[22m | maze-minimap-open.png[39m[0m
+[  83% ] [90m[1m_update_scan_actions[22m | pr54-character-names.png[39m[0m
+[  83% ] [90m[1m_update_scan_actions[22m | pr54-defeat-exclusive.png[39m[0m
+[  83% ] [90m[1m_update_scan_actions[22m | pr70-csgbox6-flush.svg[39m[0m
+[  83% ] [90m[1m_update_scan_actions[22m | pr70-csgbox67-alignment.svg[39m[0m
+[  84% ] [90m[1m_update_scan_actions[22m | pr70-main-vs-pr-static.png[39m[0m
+[  84% ] [90m[1m_update_scan_actions[22m | pr70-maze-complete-before.png[39m[0m
+[  84% ] [90m[1m_update_scan_actions[22m | pr70-maze-complete.png[39m[0m
+[  84% ] [90m[1m_update_scan_actions[22m | pr70-open-route-after.png[39m[0m
+[  85% ] [90m[1m_update_scan_actions[22m | pr70-open-route-before.png[39m[0m
+[  85% ] [90m[1m_update_scan_actions[22m | pr81-spell-review-title.png[39m[0m
+[  85% ] [90m[1m_update_scan_actions[22m | pr81-spell-review-tree.png[39m[0m
+[  85% ] [90m[1m_update_scan_actions[22m | pr83-swordfish-quick-read.png[39m[0m
+[  86% ] [90m[1m_update_scan_actions[22m | pr83-tethys-boss-combat.png[39m[0m
+[  86% ] [90m[1m_update_scan_actions[22m | pr84-special-chooser.png[39m[0m
+[  86% ] [90m[1m_update_scan_actions[22m | pr84-swordfish-guardian.png[39m[0m
+[  86% ] [90m[1m_update_scan_actions[22m | swordfish-duelist-textured.png[39m[0m
+[  87% ] [90m[1m_update_scan_actions[22m | tethys-boss-battle.png[39m[0m
+[  87% ] [90m[1m_update_scan_actions[22m | tethys-boss-title.png[39m[0m
+[  87% ] [90m[1m_update_scan_actions[22m | index.apple-touch-icon.png[39m[0m
+[  87% ] [90m[1m_update_scan_actions[22m | index.icon.png[39m[0m
+[  87% ] [90m[1m_update_scan_actions[22m | index.png[39m[0m
+[  88% ] [90m[1m_update_scan_actions[22m | underwater-cover.png[39m[0m
+[  88% ] [90m[1m_update_scan_actions[22m | Angler_Fish.fbx[39m[0m
+[  88% ] [90m[1m_update_scan_actions[22m | Angler_Fish_0.png[39m[0m
+[  88% ] [90m[1m_update_scan_actions[22m | Angler_Fish_1.png[39m[0m
+[  89% ] [90m[1m_update_scan_actions[22m | FrilledShark.fbx[39m[0m
+[  89% ] [90m[1m_update_scan_actions[22m | FrilledShark_0.png[39m[0m
+[  89% ] [90m[1m_update_scan_actions[22m | golden_energy_orb.glb[39m[0m
+[  89% ] [90m[1m_update_scan_actions[22m | Sea_Urchin.fbx[39m[0m
+[  90% ] [90m[1m_update_scan_actions[22m | target.png[39m[0m
+[  90% ] [90m[1m_update_scan_actions[22m | bucky_01_calm.png[39m[0m
+[  90% ] [90m[1m_update_scan_actions[22m | bucky_02_grin.png[39m[0m
+[  90% ] [90m[1m_update_scan_actions[22m | bucky_03_love.png[39m[0m
+[  91% ] [90m[1m_update_scan_actions[22m | bucky_04_angry.png[39m[0m
+[  91% ] [90m[1m_update_scan_actions[22m | bucky_05_crying.png[39m[0m
+[  91% ] [90m[1m_update_scan_actions[22m | bucky_06_frown.png[39m[0m
+[  91% ] [90m[1m_update_scan_actions[22m | bucky_07_bored.png[39m[0m
+[  92% ] [90m[1m_update_scan_actions[22m | bucky_08_surprised.png[39m[0m
+[  92% ] [90m[1m_update_scan_actions[22m | maxilani_01_normal.png[39m[0m
+[  92% ] [90m[1m_update_scan_actions[22m | maxilani_02_smile.png[39m[0m
+[  92% ] [90m[1m_update_scan_actions[22m | maxilani_03_eyes_closed.png[39m[0m
+[  93% ] [90m[1m_update_scan_actions[22m | maxilani_04_smirk.png[39m[0m
+[  93% ] [90m[1m_update_scan_actions[22m | maxilani_05_grimace.png[39m[0m
+[  93% ] [90m[1m_update_scan_actions[22m | maxilani_06_surprised.png[39m[0m
+[  93% ] [90m[1m_update_scan_actions[22m | maxilani_07_sad.png[39m[0m
+[  93% ] [90m[1m_update_scan_actions[22m | maxilani_08_wink.png[39m[0m
+[  94% ] [90m[1m_update_scan_actions[22m | cyclops_01_calm.png[39m[0m
+[  94% ] [90m[1m_update_scan_actions[22m | cyclops_02_wavy.png[39m[0m
+[  94% ] [90m[1m_update_scan_actions[22m | cyclops_03_content.png[39m[0m
+[  94% ] [90m[1m_update_scan_actions[22m | cyclops_04_grin.png[39m[0m
+[  95% ] [90m[1m_update_scan_actions[22m | cyclops_05_angry.png[39m[0m
+[  95% ] [90m[1m_update_scan_actions[22m | cyclops_06_surprised.png[39m[0m
+[  95% ] [90m[1m_update_scan_actions[22m | cyclops_07_pout.png[39m[0m
+[  95% ] [90m[1m_update_scan_actions[22m | cyclops_08_mystery.png[39m[0m
+[  96% ] [90m[1m_update_scan_actions[22m | Cyclops_Portraits.png[39m[0m
+[  96% ] [90m[1m_update_scan_actions[22m | grapple-playtest-evidence.png[39m[0m
+[  96% ] [90m[1m_update_scan_actions[22m | special-encounter-carousel.png[39m[0m
+[  96% ] [90m[1m_update_scan_actions[22m | special-encounter-chooser.png[39m[0m
+[  97% ] [90m[1m_update_scan_actions[22m | title-after-starting-game.png[39m[0m
+[  97% ] [90m[1m_update_scan_actions[22m | title-cover-art.png[39m[0m
+[  97% ] [90m[1m_update_scan_actions[22m | title-first-run.png[39m[0m
+[  97% ] [90m[1m_update_scan_actions[22m | title-load-game-slots.png[39m[0m
+[  98% ] [90m[1m_update_scan_actions[22m | title-new-game-slots.png[39m[0m
+[  98% ] [90m[1m_update_scan_actions[22m | title-returning-player.png[39m[0m
+[  98% ] [90m[1m_update_scan_actions[22m | title-screen-after.png[39m[0m
+[  98% ] [90m[1m_update_scan_actions[22m | title-screen-before.png[39m[0m
+[  99% ] [90m[1m_update_scan_actions[22m | GoblinGrunt_0.png[39m[0m
+[  99% ] [90m[1m_update_scan_actions[22m | golden_energy_orb.glb[39m[0m
+[  99% ] [90m[1m_update_scan_actions[22m | icon.svg[39m[0m
+[92m[ DONE ][39m [1m_update_scan_actions[22m
+[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (82 steps)[39m[0m
+[   0% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   1% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   2% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   3% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   4% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   6% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   7% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   8% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   9% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  10% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  12% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  13% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  14% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  15% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  16% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  18% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  19% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  20% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  21% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  22% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  24% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  25% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  26% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  27% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  28% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  30% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  31% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  32% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  33% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  34% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  36% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  37% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  38% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  39% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  40% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  42% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  43% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  44% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  45% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  46% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  48% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  49% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  50% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  51% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  53% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  54% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  55% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  56% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  57% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  59% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  60% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  61% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  62% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  63% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  65% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  66% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  67% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  68% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  69% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  71% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  72% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  73% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  74% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  75% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  77% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  78% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  79% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  80% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  81% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  83% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  84% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  85% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  86% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  87% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  89% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  90% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  91% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  92% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  93% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  95% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  96% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  97% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   0% ] [90m[1mreimport[22m | Executing pre-reimport operations...[39m[0m
+[   0% ] [90m[1mreimport[22m | 12-loaded-world.png[39m[0m
+[   1% ] [90m[1mreimport[22m | 11-load-slots.png[39m[0m
+[   2% ] [90m[1mreimport[22m | 10-reloaded-title.png[39m[0m
+[   3% ] [90m[1mreimport[22m | 09-optional-training.png[39m[0m
+[   4% ] [90m[1mreimport[22m | 08-recovery.png[39m[0m
+[   6% ] [90m[1mreimport[22m | 07-aftermath.png[39m[0m
+[   7% ] [90m[1mreimport[22m | 06-finisher.png[39m[0m
+[   8% ] [90m[1mreimport[22m | 06-cordys-musashi-target-menu.png[39m[0m
+[   9% ] [90m[1mreimport[22m | 06-cordys-musashi-move-menu.png[39m[0m
+[  10% ] [90m[1mreimport[22m | 06-cordys-bucky-target-menu.png[39m[0m
+[  12% ] [90m[1mreimport[22m | 06-cordys-bucky-move-menu.png[39m[0m
+[  13% ] [90m[1mreimport[22m | 05b-real-impact.png[39m[0m
+[  14% ] [90m[1mreimport[22m | 05a-cordys-target-menu.png[39m[0m
+[  15% ] [90m[1mreimport[22m | 05a-cordys-move-menu.png[39m[0m
+[  16% ] [90m[1mreimport[22m | 05-cordys.png[39m[0m
+[  18% ] [90m[1mreimport[22m | 04-octopus-introduction.png[39m[0m
+[  19% ] [90m[1mreimport[22m | 03g-something-stirs.png[39m[0m
+[  20% ] [90m[1mreimport[22m | 03f-victory-noticed.png[39m[0m
+[  21% ] [90m[1mreimport[22m | 03e-victory-beat.png[39m[0m
+[  22% ] [90m[1mreimport[22m | 03d-second-angler-action-target-menu.png[39m[0m
+[  24% ] [90m[1mreimport[22m | maxilani_08_wink.png[39m[0m
+[  25% ] [90m[1mreimport[22m | maxilani_07_sad.png[39m[0m
+[  26% ] [90m[1mreimport[22m | maxilani_06_surprised.png[39m[0m
+[  27% ] [90m[1mreimport[22m | maxilani_05_grimace.png[39m[0m
+[  28% ] [90m[1mreimport[22m | maxilani_04_smirk.png[39m[0m
+[  30% ] [90m[1mreimport[22m | maxilani_03_eyes_closed.png[39m[0m
+[  31% ] [90m[1mreimport[22m | maxilani_02_smile.png[39m[0m
+[  32% ] [90m[1mreimport[22m | maxilani_01_normal.png[39m[0m
+[  33% ] [90m[1mreimport[22m | bucky_08_surprised.png[39m[0m
+[  34% ] [90m[1mreimport[22m | bucky_07_bored.png[39m[0m
+[  36% ] [90m[1mreimport[22m | bucky_06_frown.png[39m[0m
+[  37% ] [90m[1mreimport[22m | second-defeat-narrow.png[39m[0m
+[  38% ] [90m[1mreimport[22m | musashi-attack-narrow.png[39m[0m
+[  39% ] [90m[1mreimport[22m | first-defeat-narrow.png[39m[0m
+[  40% ] [90m[1mreimport[22m | bucky-attack-narrow.png[39m[0m
+[  42% ] [90m[1mreimport[22m | failure.png[39m[0m
+[  43% ] [90m[1mreimport[22m | 062-individual-impact.png[39m[0m
+[  44% ] [90m[1mreimport[22m | 061-next-player-turn.png[39m[0m
+[  45% ] [90m[1mreimport[22m | 061-individual-impact.png[39m[0m
+[  46% ] [90m[1mreimport[22m | 060-next-player-turn.png[39m[0m
+[  48% ] [90m[1mreimport[22m | 060-individual-impact.png[39m[0m
+[  49% ] [90m[1mreimport[22m | 06-cordys-musashi-move-menu.png[39m[0m
+[  50% ] [90m[1mreimport[22m | 06-cordys-bucky-target-menu.png[39m[0m
+[  51% ] [90m[1mreimport[22m | 06-cordys-bucky-move-menu.png[39m[0m
+[  53% ] [90m[1mreimport[22m | 05b-real-impact.png[39m[0m
+[  54% ] [90m[1mreimport[22m | 05a-cordys-target-menu.png[39m[0m
+[  55% ] [90m[1mreimport[22m | 05a-cordys-move-menu.png[39m[0m
+[  56% ] [90m[1mreimport[22m | 05-cordys.png[39m[0m
+[  57% ] [90m[1mreimport[22m | 04-octopus-introduction.png[39m[0m
+[  59% ] [90m[1mreimport[22m | 03g-something-stirs.png[39m[0m
+[  60% ] [90m[1mreimport[22m | 03f-victory-noticed.png[39m[0m
+[  61% ] [90m[1mreimport[22m | 03e-victory-beat.png[39m[0m
+[  62% ] [90m[1mreimport[22m | 03d-second-angler-action-target-menu.png[39m[0m
+[  63% ] [90m[1mreimport[22m | 03d-second-angler-action-move-menu.png[39m[0m
+[  65% ] [90m[1mreimport[22m | 03c-next-turn.png[39m[0m
+[  66% ] [90m[1mreimport[22m | 03b-nonlethal-angler.png[39m[0m
+[  67% ] [90m[1mreimport[22m | 03a-angler-target-menu.png[39m[0m
+[  68% ] [90m[1mreimport[22m | 03a-angler-move-menu.png[39m[0m
+[  69% ] [90m[1mreimport[22m | 03-angler.png[39m[0m
+[  71% ] [90m[1mreimport[22m | 02-mermaid.png[39m[0m
+[  72% ] [90m[1mreimport[22m | 01-title.png[39m[0m
+[  73% ] [90m[1mreimport[22m | 03d-second-angler-action-move-menu.png[39m[0m
+[  74% ] [90m[1mreimport[22m | 03c-next-turn.png[39m[0m
+[  75% ] [90m[1mreimport[22m | 03b-nonlethal-angler.png[39m[0m
+[  77% ] [90m[1mreimport[22m | 03a-angler-target-menu.png[39m[0m
+[  78% ] [90m[1mreimport[22m | 03a-angler-move-menu.png[39m[0m
+[  79% ] [90m[1mreimport[22m | 03-angler.png[39m[0m
+[  80% ] [90m[1mreimport[22m | 02-mermaid.png[39m[0m
+[  81% ] [90m[1mreimport[22m | 01-title.png[39m[0m
+[  83% ] [90m[1mreimport[22m | 062-individual-impact.png[39m[0m
+[  84% ] [90m[1mreimport[22m | 061-next-player-turn.png[39m[0m
+[  85% ] [90m[1mreimport[22m | 061-individual-impact.png[39m[0m
+[  86% ] [90m[1mreimport[22m | 060-next-player-turn.png[39m[0m
+[  87% ] [90m[1mreimport[22m | 060-individual-impact.png[39m[0m
+[  89% ] [90m[1mreimport[22m | 12-loaded-world.png[39m[0m
+[  90% ] [90m[1mreimport[22m | 11-load-slots.png[39m[0m
+[  91% ] [90m[1mreimport[22m | 10-reloaded-title.png[39m[0m
+[  92% ] [90m[1mreimport[22m | 09-optional-training.png[39m[0m
+[  93% ] [90m[1mreimport[22m | 08-recovery.png[39m[0m
+[  95% ] [90m[1mreimport[22m | 07-aftermath.png[39m[0m
+[  96% ] [90m[1mreimport[22m | 06-finisher.png[39m[0m
+[  97% ] [90m[1mreimport[22m | 06-cordys-musashi-target-menu.png[39m[0m
+[  98% ] [90m[1mreimport[22m | Finalizing Asset Import...[39m[0m
+[92m[ DONE ][39m [1mreimport[22m
+[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (82 steps)[39m[0m
+[   0% ] [90m[1mreimport[22m | Executing post-reimport operations...[39m[0m
+[92m[ DONE ][39m [1mreimport[22m
+[0m
+[   0% ] [90m[1mloading_editor_layout[22m | Started Loading editor (5 steps)[39m[0m
+[   0% ] [90m[1mloading_editor_layout[22m | Loading editor layout...[39m[0m
+[  16% ] [90m[1mloading_editor_layout[22m | Loading docks...[39m[0m
+[  33% ] [90m[1mloading_editor_layout[22m | Reopening scenes...[39m[0m
+[  50% ] [90m[1mloading_editor_layout[22m | Loading central editor layout...[39m[0m
+[  66% ] [90m[1mloading_editor_layout[22m | Loading plugin window layout...[39m[0m
+[  83% ] [90m[1mloading_editor_layout[22m | Editor layout ready.[39m[0m
+[92m[ DONE ][39m [1mloading_editor_layout[22m
+[0m

@@ -1,0 +1,16 @@
+{
+  "target": "https://underwatergame-opening-prologue-review.vercel.app/",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)",
+  "phases": [
+    "opening_video",
+    "spawn_exploration",
+    "angler"
+  ],
+  "timestamps": {
+    "opening_video": 1791086823533,
+    "spawn_exploration": 1791086859301,
+    "angler": 1791086866780
+  },
+  "errors": [],
+  "failure": "Error: Free-swim interval is premature or only proves idle fallback"
+}

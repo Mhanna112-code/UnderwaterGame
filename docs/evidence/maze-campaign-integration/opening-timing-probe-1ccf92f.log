@@ -1,0 +1,30 @@
+Browser launched
+Export page loaded
+Requested ANGLE backend: metal
+Observed WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|angler
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=["EVA unchanged"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=10|hit=true|hp=986|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+SHALLOWS VIEW|09-optional-training|Maxilani | WASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (On) | Shallows: fight to grow stronger. | Optional Combat Training | 02 100 / 100 | Maxilani | 10 / 10
+Normal browser New Game to control: 136.988s; engaged=118.025s; deliberate idle/look=18.963s; post-control screenshot/OCR=1.7949999999999875s; raw through verification=138.783s
+BROWSER CHECKPOINT|[{"database":"/userfs","key":"/userfs/godot/app_userdata/UnderwaterGame/saves/slot_0.json","data":{"active":0,"consumed_world_ids":[],"divers":[{"equipped_spells":[],"known_spells":[],"position":[0,2,0],"sonar_active":true,"stats":{"accuracy":3,"agility":3,"defense":0,"evasion":3,"hp":10,"hp_max":10,"level":1,"oxygen":100,"oxygen_max":100,"spell_points":0,"strength":1,"xp":0,"xp_to_next":30}},{"equipped_spells":[],"known_spells":[],"position":[-3.59999990463257,2.20000004768372,-3],"sonar_active":false,"stats":{"accuracy":2,"agility":2,"defense":2,"evasion":2,"hp":10,"hp_max":10,"level":1,"oxygen":100,"oxygen_max":100,"spell_points":0,"strength":2,"xp":0,"xp_to_next":30}},{"equipped_spells":[],"known_spells":[],"position":[3.59999990463257,2.40000009536743,-3],"sonar_active":false,"stats":{"accuracy":1,"agility":1,"defense":4,"evasion":0,"hp":10,"hp_max":10,"level":1,"oxygen":100,"oxygen_max":100,"spell_points":0,"strength":4,"xp":0,"xp_to_next":30}}],"inventory":{},"key_items":[],"pending_world_drops":{},"random_encounters_enabled":true,"revealed_key_items":[],"route_state":{"bomb_bot_state":"available","deep_warning_seen":false,"encounter_source":"random","lab_state":"locked","maze_door_state":"locked","objective_id":"","octopus_state":"unavailable","opening_video_seen":true,"prologue_complete":true,"sword_slayer_state":"available","tethys_state":"locked","tutorial_complete":false,"zone_id":"shallows"},"save_point_tutorial_seen":false}}]
+PROLOGUE_PHASE|complete
+SHALLOWS VIEW|12-loaded-world|Maxilani | WASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (On) | Shallows: fight to grow stronger. | Optional Combat Training | 02 97 / 100 | Maxilani | 10 / 10
+OPENING WEB: ordinary entry, full split movies, real mouse combat and recovered control clean

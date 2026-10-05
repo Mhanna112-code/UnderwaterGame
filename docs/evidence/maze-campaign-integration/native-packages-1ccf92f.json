@@ -1,0 +1,19 @@
+{
+  "source_commit": "1ccf92ff0aa07bbf2b4a8612435ea5322968c0e9",
+  "archives": [
+    {
+      "file": "/private/tmp/underwater-maze-feedback.93l45P/UnderwaterGame-PR100-windows-x86_64-1ccf92f.zip",
+      "bytes": 110352698,
+      "sha256": "2b931562b224d34f0297de499ff39a6e29445db6457e4283c75fa1a24bcc2c0f",
+      "platform": "windows x86_64",
+      "status": "cross-exported on macOS; NOT target-launched or playtest-verified"
+    },
+    {
+      "file": "/private/tmp/underwater-maze-feedback.93l45P/UnderwaterGame-PR100-linux-x86_64-1ccf92f.zip",
+      "bytes": 100751322,
+      "sha256": "d3f59f6442172bb765cae443b87e0c313b460e2d995ef9e52ab208aa7cf77d34",
+      "platform": "linux x86_64",
+      "status": "cross-exported on macOS; NOT target-launched or playtest-verified"
+    }
+  ]
+}

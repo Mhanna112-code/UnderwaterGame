@@ -17,31 +17,83 @@ const SLOT_COUNT := 3
 static func slot_path(slot: int) -> String:
 	return SAVE_DIR + "slot_%d.json" % slot
 
+static func autosave_path(slot: int) -> String:
+	return SAVE_DIR + "slot_%d_auto.json" % slot
+
+static func write_autosave(slot: int, data: Dictionary) -> Error:
+	return _write_path(autosave_path(slot), JSON.stringify(data).to_utf8_buffer())
+
+static func read_autosave(slot: int) -> Dictionary:
+	return _read_path(autosave_path(slot))
+
+static func clear_autosave(slot: int) -> Error:
+	var path := autosave_path(slot)
+	return DirAccess.remove_absolute(path) if FileAccess.file_exists(path) else OK
+
+static func rollback_autosave(slot: int, existed: bool, previous: PackedByteArray) -> Error:
+	return _write_path(autosave_path(slot), previous) if existed else clear_autosave(slot)
+
 static func slot_exists(slot: int) -> bool:
 	return FileAccess.file_exists(slot_path(slot))
 
 # make_dir_recursive_absolute() is a no-op (returns OK) if the directory
 # already exists, so this is safe to call before every write rather than
 # needing a one-time setup step anywhere.
-static func write_slot(slot: int, data: Dictionary) -> void:
-	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
-	var f := FileAccess.open(slot_path(slot), FileAccess.WRITE)
+static func write_slot(slot: int, data: Dictionary) -> Error:
+	return _write_bytes(slot, JSON.stringify(data).to_utf8_buffer())
+
+# A web durable-sync rejection must roll the RAM filesystem back too. Keep
+# exact previous bytes, including a previously corrupt file; never delete an
+# existing slot simply because JSON parsing returned an empty dictionary.
+static func rollback_slot(slot: int, existed: bool, previous: PackedByteArray) -> Error:
+	if existed:
+		return _write_bytes(slot, previous)
+	if slot_exists(slot):
+		return DirAccess.remove_absolute(slot_path(slot))
+	return OK
+
+static func _write_bytes(slot: int, serialized: PackedByteArray) -> Error:
+	return _write_path(slot_path(slot), serialized)
+
+static func _write_path(destination: String, serialized: PackedByteArray) -> Error:
+	var directory_error := DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+	if directory_error != OK:
+		return directory_error
+	# Never truncate the last usable checkpoint before a replacement has
+	# actually been written. A full disk/denied write must leave it readable.
+	# The same-directory .pending file is the save protocol's staging owner;
+	# only a complete, flushed candidate may replace the selected slot.
+	var pending := destination + ".pending"
+	var f := FileAccess.open(pending, FileAccess.WRITE)
 	if f == null:
-		return
-	f.store_string(JSON.stringify(data))
+		return FileAccess.get_open_error()
+	f.store_buffer(serialized)
+	f.flush()
+	var write_error := f.get_error()
 	f.close()
+	if write_error != OK:
+		return write_error
+	if FileAccess.get_file_as_bytes(pending) != serialized:
+		return ERR_FILE_CORRUPT
+	return DirAccess.rename_absolute(pending, destination)
 
 # {} for a missing/corrupt slot rather than an error - callers (World's
 # title screen slot list, _apply_state()) already treat an empty
 # dictionary as "nothing to load," so a bad file degrades to "looks empty"
 # instead of crashing the title screen.
 static func read_slot(slot: int) -> Dictionary:
-	if not slot_exists(slot):
+	return _read_path(slot_path(slot))
+
+static func _read_path(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
 		return {}
-	var f := FileAccess.open(slot_path(slot), FileAccess.READ)
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return {}
 	var text := f.get_as_text()
 	f.close()
-	var parsed: Variant = JSON.parse_string(text)
+	var parser := JSON.new()
+	if parser.parse(text) != OK:
+		return {}
+	var parsed: Variant = parser.data
 	return parsed if parsed is Dictionary else {}

@@ -88,6 +88,15 @@ func _ready() -> void:
 	var raw_height: float = maxf(box.size.y, 0.05)
 	model.scale *= TARGET_HEIGHT / raw_height
 	box = _world_aabb(model)
+	# Some delivered creatures are much longer than they are tall. Height-only
+	# normalization makes those rigs technically 1.6 m high but wide enough to
+	# leave the battle stage or cover the party. Subclasses can declare a real
+	# presentation cap without changing ordinary Angler sizing.
+	var horizontal_span := maxf(box.size.x, box.size.z)
+	var horizontal_cap := max_visual_horizontal_span()
+	if horizontal_cap < INF and horizontal_span > horizontal_cap:
+		model.scale *= horizontal_cap / horizontal_span
+		box = _world_aabb(model)
 	height = box.size.y
 	radius = maxf(0.3, minf(box.size.x, box.size.z) * 0.5)
 	model.position.y -= box.position.y
@@ -98,6 +107,9 @@ func _ready() -> void:
 			var lower := String(a).to_lower()
 			if "idle" in lower:
 				_idle_anim = a
+				var idle_animation := anim.get_animation(a)
+				if idle_animation != null:
+					idle_animation.loop_mode = Animation.LOOP_LINEAR
 			elif "swimming" in lower and "mid" in lower:
 				_swim_anim = a
 			elif "damaged" in lower:
@@ -124,6 +136,18 @@ func display_name() -> String:
 
 func primary_attack_clip() -> String:
 	return "attack)bite"
+
+# Height normalization is sufficient for most rigs. Long-bodied subclasses
+# can override this to keep their largest horizontal visual dimension within
+# a camera-friendly span.
+func max_visual_horizontal_span() -> float:
+	return INF
+
+# Battle framing must measure the imported mesh, not infer its footprint from
+# a generic collision radius. Returned in world space so the stage camera can
+# use every actual corner regardless of the actor's rotation or FBX hierarchy.
+func visual_bounds() -> AABB:
+	return _world_aabb(self)
 
 # This one stands its model's feet on its own origin (see _ready()'s
 # model.position.y line), which is the opposite of what diver.gd does. Both
@@ -195,7 +219,7 @@ func play(substr: String) -> void:
 			want = _death_anim
 	if want == "" and not anim.get_animation_list().is_empty():
 		want = anim.get_animation_list()[0]
-	if want != "" and anim.current_animation != want:
+	if want != "" and (anim.current_animation != want or not anim.is_playing()):
 		anim.play(want)
 
 # A fresh deep copy makes it safe for Battle/UI code to attach per-turn data
@@ -251,6 +275,72 @@ func choose_move(target: CombatantStats) -> Dictionary:
 		if roll <= 0.0:
 			return move.duplicate(true)
 	return (moves.back() as Dictionary).duplicate(true)
+
+# Authored Angler policy: below half HP, a 37.5% Headbutt opportunity
+# retaliates against the largest living damage dealer. Otherwise Bite is
+# random; misses catching up to hits schedule one Flash Blast. These were
+# separate from the move catalogue and were lost during integration.
+const LOW_HP_FRACTION := 0.5
+const STUN_PRIORITY_CHANCE := 0.375
+var _damage_taken_by: Dictionary = {}
+var _bite_hits := 0
+var _bite_misses := 0
+var _use_flash_blast_next := false
+
+func record_damage_taken(from_actor: Node, amount: int) -> void:
+	if enemy_id() != "angler" or amount <= 0 or not is_instance_valid(from_actor):
+		return
+	_damage_taken_by[from_actor] = int(_damage_taken_by.get(from_actor, 0)) + amount
+
+func record_bite_result(hit: bool) -> void:
+	if enemy_id() != "angler":
+		return
+	if hit:
+		_bite_hits += 1
+	else:
+		_bite_misses += 1
+	_use_flash_blast_next = _bite_misses >= _bite_hits
+
+func _find_move(id: String) -> Dictionary:
+	for move_value in available_moves():
+		var move := move_value as Dictionary
+		if String(move.get("id", "")) == id:
+			return move
+	return {}
+
+func _highest_damage_target(alive_party: Array, fallback: Dictionary) -> Dictionary:
+	var best_amount := 0
+	var best_entries: Array = []
+	for entry_value in alive_party:
+		var entry := entry_value as Dictionary
+		var dealt := int(_damage_taken_by.get(entry.get("actor"), 0))
+		if dealt > best_amount:
+			best_amount = dealt
+			best_entries = [entry]
+		elif dealt == best_amount and dealt > 0:
+			best_entries.append(entry)
+	return fallback if best_entries.is_empty() else best_entries[randi() % best_entries.size()] as Dictionary
+
+func choose_move_and_target(self_stats: CombatantStats, alive_party: Array, default_target: Dictionary, forced: bool) -> Dictionary:
+	# Other rigs override this method; keep the base contract safe for a new
+	# subtype too. Choreographed targets must agree with their on-screen lesson.
+	if enemy_id() != "angler" or forced or alive_party.is_empty():
+		return {"move": choose_move(default_target.stats as CombatantStats), "target": default_target}
+	if float(self_stats.hp) < float(self_stats.hp_max) * LOW_HP_FRACTION:
+		var headbutt := _find_move("headbutt")
+		if not headbutt.is_empty() and randf() < STUN_PRIORITY_CHANCE:
+			return {"move": headbutt, "target": _highest_damage_target(alive_party, default_target)}
+	if _use_flash_blast_next:
+		var flash := _find_move("flash_blast")
+		if not flash.is_empty():
+			_bite_hits = 0
+			_bite_misses = 0
+			_use_flash_blast_next = false
+			return {"move": flash, "target": default_target}
+	var bite := _find_move("bite")
+	if bite.is_empty():
+		return {"move": choose_move(default_target.stats as CombatantStats), "target": default_target}
+	return {"move": bite, "target": alive_party[randi() % alive_party.size()] as Dictionary}
 
 func face_toward(world_target: Vector3) -> void:
 	var to := world_target - global_position

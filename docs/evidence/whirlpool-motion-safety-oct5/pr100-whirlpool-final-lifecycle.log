@@ -1,0 +1,44 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=vanish|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=vanish|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=vanish|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=spiral|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=spiral|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=spiral|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=vanish|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=vanish|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=vanish|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=spiral|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=spiral|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=spiral|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=vanish|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=vanish|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=vanish|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE|cases=18|no_player_files=true
+WHIRLPOOL SAFETY: clean

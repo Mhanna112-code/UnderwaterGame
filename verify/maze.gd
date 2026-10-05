@@ -97,6 +97,10 @@ func _wall_corners(wall: CSGBox3D) -> Array[Vector3]:
 
 func _run() -> void:
 	var maze := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
+	# Always the normal entrance start, whichever developer spawn is switched on.
+	maze.dev_spawn_at_sphere_room = false
+	maze.dev_spawn_at_boss_rooms = false
+	maze.dev_spawn_at_switch = false
 	root.add_child(maze)
 	await process_frame
 	var wall_a := maze.get_node("CurrentWall1") as CSGBox3D

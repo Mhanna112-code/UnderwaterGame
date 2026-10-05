@@ -1,0 +1,282 @@
+{
+  "target": "https://underwatergame-daq5wkuqg-immortaldemongods-projects.vercel.app/",
+  "fixtureBoundary": "disposable actual recovered checkpoint; explicit positions, no injected victory/consumption",
+  "fixtures": [
+    {
+      "name": "deep-checkpoint",
+      "data": {
+        "active": 0,
+        "consumed_world_ids": [],
+        "divers": [
+          {
+            "equipped_spells": [],
+            "known_spells": [],
+            "position": [
+              60.8,
+              2,
+              30
+            ],
+            "sonar_active": true,
+            "stats": {
+              "accuracy": 3,
+              "agility": 3,
+              "defense": 0,
+              "evasion": 3,
+              "hp": 10,
+              "hp_max": 10,
+              "level": 1,
+              "oxygen": 100,
+              "oxygen_max": 100,
+              "spell_points": 0,
+              "strength": 1,
+              "xp": 0,
+              "xp_to_next": 30
+            }
+          },
+          {
+            "equipped_spells": [],
+            "known_spells": [],
+            "position": [
+              -3.59999990463257,
+              2.20000004768372,
+              -3
+            ],
+            "sonar_active": false,
+            "stats": {
+              "accuracy": 2,
+              "agility": 2,
+              "defense": 2,
+              "evasion": 2,
+              "hp": 10,
+              "hp_max": 10,
+              "level": 1,
+              "oxygen": 100,
+              "oxygen_max": 100,
+              "spell_points": 0,
+              "strength": 2,
+              "xp": 0,
+              "xp_to_next": 30
+            }
+          },
+          {
+            "equipped_spells": [],
+            "known_spells": [],
+            "position": [
+              14.2,
+              2,
+              10
+            ],
+            "sonar_active": false,
+            "stats": {
+              "accuracy": 1,
+              "agility": 1,
+              "defense": 4,
+              "evasion": 0,
+              "hp": 10,
+              "hp_max": 10,
+              "level": 1,
+              "oxygen": 100,
+              "oxygen_max": 100,
+              "spell_points": 0,
+              "strength": 4,
+              "xp": 0,
+              "xp_to_next": 30
+            }
+          }
+        ],
+        "inventory": {},
+        "key_items": [],
+        "pending_world_drops": {},
+        "random_encounters_enabled": false,
+        "revealed_key_items": [],
+        "route_state": {
+          "bomb_bot_state": "available",
+          "deep_warning_seen": true,
+          "encounter_source": "random",
+          "lab_state": "locked",
+          "maze_door_state": "locked",
+          "objective_id": "find_lab",
+          "octopus_state": "unavailable",
+          "opening_video_seen": true,
+          "prologue_complete": true,
+          "sword_slayer_state": "available",
+          "tethys_state": "locked",
+          "tutorial_complete": false,
+          "zone_id": "deep"
+        },
+        "save_point_tutorial_seen": true
+      }
+    },
+    {
+      "name": "puzzle-approach",
+      "data": {
+        "active": 0,
+        "consumed_world_ids": [],
+        "divers": [
+          {
+            "equipped_spells": [],
+            "known_spells": [],
+            "position": [
+              11.4,
+              2,
+              10
+            ],
+            "sonar_active": true,
+            "stats": {
+              "accuracy": 3,
+              "agility": 3,
+              "defense": 0,
+              "evasion": 3,
+              "hp": 10,
+              "hp_max": 10,
+              "level": 1,
+              "oxygen": 100,
+              "oxygen_max": 100,
+              "spell_points": 0,
+              "strength": 1,
+              "xp": 0,
+              "xp_to_next": 30
+            }
+          },
+          {
+            "equipped_spells": [],
+            "known_spells": [],
+            "position": [
+              -3.59999990463257,
+              2.20000004768372,
+              -3
+            ],
+            "sonar_active": false,
+            "stats": {
+              "accuracy": 2,
+              "agility": 2,
+              "defense": 2,
+              "evasion": 2,
+              "hp": 10,
+              "hp_max": 10,
+              "level": 1,
+              "oxygen": 100,
+              "oxygen_max": 100,
+              "spell_points": 0,
+              "strength": 2,
+              "xp": 0,
+              "xp_to_next": 30
+            }
+          },
+          {
+            "equipped_spells": [],
+            "known_spells": [],
+            "position": [
+              14.2,
+              2,
+              10
+            ],
+            "sonar_active": false,
+            "stats": {
+              "accuracy": 1,
+              "agility": 1,
+              "defense": 4,
+              "evasion": 0,
+              "hp": 10,
+              "hp_max": 10,
+              "level": 1,
+              "oxygen": 100,
+              "oxygen_max": 100,
+              "spell_points": 0,
+              "strength": 4,
+              "xp": 0,
+              "xp_to_next": 30
+            }
+          }
+        ],
+        "inventory": {},
+        "key_items": [],
+        "pending_world_drops": {},
+        "random_encounters_enabled": false,
+        "revealed_key_items": [],
+        "route_state": {
+          "bomb_bot_state": "available",
+          "deep_warning_seen": true,
+          "encounter_source": "random",
+          "lab_state": "locked",
+          "maze_door_state": "locked",
+          "objective_id": "find_lab",
+          "octopus_state": "unavailable",
+          "opening_video_seen": true,
+          "prologue_complete": true,
+          "sword_slayer_state": "available",
+          "tethys_state": "locked",
+          "tutorial_complete": false,
+          "zone_id": "shallows"
+        },
+        "save_point_tutorial_seen": true
+      }
+    }
+  ],
+  "steps": [
+    {
+      "key": "ArrowRight",
+      "milliseconds": 800
+    },
+    {
+      "key": "w",
+      "milliseconds": 800
+    },
+    {
+      "key": "s",
+      "milliseconds": 1500
+    },
+    {
+      "key": "ArrowLeft",
+      "milliseconds": 800
+    },
+    {
+      "key": "w",
+      "milliseconds": 600
+    },
+    {
+      "key": "s",
+      "milliseconds": 1600
+    },
+    {
+      "key": "w",
+      "milliseconds": 1600
+    }
+  ],
+  "observations": [
+    {
+      "name": "deep-loaded",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (Off)\nDeep Zone: find the laboratory.\n02\n100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "shallows",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (Off)\n02 97 / 100\nMaxilani l\n10 / 10"
+    },
+    {
+      "name": "deep-return",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (Off)\nDeep Zone: find the laboratory.\n02 94/100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "puzzle-outside",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (Off)\nSave - Press P\n02 100 / 100\nMaxilani\n10/10"
+    },
+    {
+      "name": "puzzle-contact",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (Off)\nUse Bucky's Shockwave to break the wall.\n02 97 / 100\nMaxilani 10/10"
+    },
+    {
+      "name": "puzzle-left",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (Off)\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "puzzle-return",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (On) • R: Encounters (Off)\nUse Bucky's Shockwave to break the wall.\n02 100 / 100\nMaxilani\n10/10"
+    },
+    {
+      "name": "wall-broken",
+      "text": "Bucky\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Shockwave • R: Encounters (Off)\n02\n100 / 100\nBucky 10/10"
+    }
+  ],
+  "errors": [],
+  "failure": null
+}

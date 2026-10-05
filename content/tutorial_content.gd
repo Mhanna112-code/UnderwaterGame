@@ -17,7 +17,7 @@ const VIDEO_FRAME_SIZE := Vector2(320, 180)
 const GENERAL_PAGES: Array[Dictionary] = [
 	{
 		"title": "Combat Basics",
-		"body": "A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order; the log above your menu says what just happened.",
+		"body": "A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order.",
 	},
 	{
 		"title": "Dodging: Accuracy vs. Evasion",
@@ -25,7 +25,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Every Other Stat",
-		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.",
+		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.",
 	},
 	{
 		"title": "Special Encounters",
@@ -106,16 +106,16 @@ static func stat_glossary_body(title: String) -> String:
 # diver, when world.gd's _show_ability_popups() first walks the party.
 # Distinct from ABILITY_BLURBS below: that one describes the special-
 # encounter minigame's own reflex-test version of an ability, this one
-# describes what pressing E (or Q, for the sonar passive) actually does
+# describes what pressing F (or Q, for the sonar passive) actually does
 # while exploring - a different context with a different payoff, read
 # straight out of diver.gd's _grapple()/_shockwave()/_swap()/sonar handling
 # rather than guessed at (same "never describe a mechanic wrong" rule as
 # GENERAL_PAGES above).
 const WORLD_ABILITY_BLURBS := {
-	"swap": "Instantly trades places with another party member - press E, cycle who with Left/Right, confirm with Enter. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
-	"grapple": "Press E to aim, then click to fire a beam in that direction. Pulls you to wherever it connects, but only if that point is actually a grapple anchor - firing at open water or a wall does nothing.",
-	"shockwave": "Press E to fire instantly in every direction at once - no aiming needed. Breaks any nearby obstacle that's built to be shockwaved open.",
-	"sonar": "Toggled with Q, not E - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
+	"swap": "Instantly trades places with another party member - press F, cycle who with Left/Right, confirm with Enter. Escape cancels. Uses no Oxygen. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
+	"grapple": "Press F to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. Anchors pull Musashi toward them; floating light items reel toward him instead. Uses no Oxygen. Firing at open water or a wall does nothing and can be retried immediately.",
+	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks nearby obstacles built to be shockwaved open. Uses no Oxygen and has a short cooldown.",
+	"sonar": "Toggled with Q, not F - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
 }
 
 const ABILITY_BLURBS := {
@@ -205,8 +205,12 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 		"body": "Skips the combatant's turn entirely. Its number is how many turns get skipped, not a stat penalty.",
 	},
 	{
+		"title": "Evasion Down",
+		"body": "Temporarily subtracts its level from Evasion. Flash Blast sets both its level and duration from the caster's Accuracy.",
+	},
+	{
 		"title": "Bleed",
-		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, then fades after 3 turns. Another Bleed hit only adds to that damage stack - it does not restart the 3-turn clock, so a bleed about to expire won't get more time from a fresh hit, just a harder tick before it does. Scuba Stabbing applies 1 plus the caster's Strength.",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight - it never wears off on its own. Every later damaging hit on a bleeding character adds 1 more to the stack (up to 10). Scuba Stabbing applies 1 plus the caster's Strength.",
 	},
 	{
 		"title": "Poison",
@@ -220,8 +224,9 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 # (not a crash/placeholder body) for a name with no entry, so a caller can
 # just skip attaching a tooltip rather than showing an empty one.
 static func status_condition_body(status_name: String) -> String:
+	var normalized := status_name.replace("_", " ").to_lower()
 	for entry in STATUS_CONDITIONS:
-		if String(entry.get("title", "")).to_lower() == status_name.to_lower():
+		if String(entry.get("title", "")).to_lower() == normalized:
 			return String(entry.get("body", ""))
 	return ""
 

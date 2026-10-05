@@ -1,0 +1,41 @@
+{
+  "source_commit": "b0bee59223e3c29e7919a1146f3cb40ba6d83e1c",
+  "cast": true,
+  "errors": [],
+  "failure": null,
+  "observations": [
+    {
+      "name": "title",
+      "text": "Underwater\nNew Game\nPlay Spell Test"
+    },
+    {
+      "name": "world",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\nSpell test ready: spells are learned and equipped. Press Esc, then\nParty Spells.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\nSpell test ready: spells are learned and equipped. Press Esc, then\nParty Spells.\n02 100 / 100\nMaxilani\n10/10"
+    },
+    {
+      "name": "approach-1",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • E: Swap • Q: Sonar (Off) • R: Encounters (On)\nShallows: fight to grow stronger.\n02\n100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-2",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nFrilled Shark 1\nFrilled Shark 2\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nFrilled Shark 1\nFrilled Shark 2\n5/5\n5 / 5"
+    },
+    {
+      "name": "moves-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nFrilled Shark 1\nFrilled Shark 2\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nFrilled Shark 1\nFrilled Shark 2\n5/5\n5 / 5\nMaxilani's turn.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nFlash Blast\n2 Blindness\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nAxe Kick\nStrength Damage • EVA -3\nSwift Strike\nFast, reliable - 8 02\n5\nE Up\nDown\nBack"
+    },
+    {
+      "name": "targets",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nFrilled Shark 1\nFrilled Shark 2\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nFrilled Shark 1\nEVA 2/2 HP 5/5\nFrilled Shark 2\nEVA 2/2 HP 5/5\nBack\nFrilled Shark 1\nFrilled Shark 2\n5/5\n5 / 5"
+    },
+    {
+      "name": "outcome",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nFrilled Shark 1\nFrilled Shark 2\nMaxilani\nEVA 3/3\n10/10 Lv 1\n-92 / 100 02\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/O\nFrilled Shark 1\nFrilled Shark 2\n2/5\n5 / 5\nYou lash out in a burst of speed for 3.\nSwift Strike 6\nYou\nSTR\nACC\n1\nDEF\nEVA\n3"
+    }
+  ],
+  "scope": "actual exported kit, world encounter, mouse-selected Swift Strike and rendered early/impact/late frames; not all clips or earning"
+}
