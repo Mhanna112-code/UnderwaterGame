@@ -2435,7 +2435,7 @@ func handle_lever_map_key(keycode: Key) -> bool:
 	if keycode in [KEY_ESCAPE, KEY_L]:
 		_free_map_open = false
 		return true
-	return not keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_LEFT, KEY_RIGHT, KEY_R]
+	return not keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_LEFT, KEY_RIGHT, KEY_E, KEY_R]
 
 # The map header's close hint while the lever map is up.
 func lever_map_close_hint() -> String:
@@ -2526,7 +2526,7 @@ func _update_lever_ui() -> void:
 		# Boxed list to the right of the map; "Press E to release levers"
 		# sits under the map itself.
 		var close_line := "[Esc]  close the map\n          (also releases the levers)" if on_lever else "[Esc] or [L]  close the map"
-		_lever_map_controls.text = "WALLS\n  [Left] / [Right]  select\n  [Enter]  rotate\nCURRENTS\n  [Shift] + [Left] / [Right]  select\n  [R]  rotate\n" + close_line
+		_lever_map_controls.text = "WALLS\n  [Left] / [Right]  select\n  [Enter]  rotate\nCURRENTS\n  [Ctrl] + [Left] / [Right]  select\n  [Ctrl] + [E]  rotate\n" + close_line
 		_lever_map_controls.size = Vector2.ZERO   # shrink to the current text
 		_lever_map_controls.position = Vector2(536, 76)
 	var minimap := $HUD.get_node_or_null("MazeMiniMap") as MazeMiniMap
@@ -2561,6 +2561,7 @@ func _build_world_hud() -> void:
 	status.offset_bottom = -106.0
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var column := VBoxContainer.new()
+	column.name = "MazeExplorationControls"
 	column.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	column.offset_left = 16.0
 	column.offset_top = 10.0
@@ -2601,6 +2602,7 @@ func _update_world_hud() -> void:
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
 	after += "  ·  L: Map"
+	after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
 	if has_sonar_vision:
 		after += "  ·  G: Sonar Vision (%s)" % ("Equipped" if sonar_vision_equipped else "Off")
 	_world_hud_after.text = after
@@ -3204,7 +3206,7 @@ func _toggle_current_7_to_8() -> void:
 	_current_7_in_8 = not _current_7_in_8
 	$HUD/Controls.text = "Current moved to WindCorridor8 (pushing +Z)." if _current_7_in_8 else "Current moved back to WindCorridor7 (pushing -Z)."
 
-# R on the maze map: rotates whichever current is in `corridor` to its
+# Ctrl+E on the maze map: rotates whichever current is in `corridor` to its
 # paired corridor - Corridor1 <-> 2 (C), Corridor3 <-> 4 (V),
 # Corridor5 <-> 6 (B) and Corridor7 <-> 8 (N). Returns the corridor the current ended up in, or null if this
 # current has nowhere to rotate to.
@@ -3326,7 +3328,7 @@ func _setup_currents() -> void:
 	_add_current($WindCorridor1, WaterCurrent.Direction.NEGATIVE_Z)
 	_add_current($WindCorridor3, WaterCurrent.Direction.NEGATIVE_Z)
 	_add_current($WindCorridor5, WaterCurrent.Direction.NEGATIVE_X)
-	# Corridor7 pushes -Z; N (or R on the map) moves it to Corridor8, +Z.
+	# Corridor7 pushes -Z; Ctrl+E on the map moves it to Corridor8, +Z.
 	if has_node("WindCorridor7"):
 		_add_current($WindCorridor7, WaterCurrent.Direction.NEGATIVE_Z)
 
@@ -3581,7 +3583,7 @@ func _line_up_c4_and_break_rock() -> void:
 # A whirlpool across the back of WindCorridor4: the north end of the stretch
 # where its two walls face each other (downstream for CORRIDOR_4_FLOW is the
 # back). It swallows a diver and returns them to that stretch's south end -
-# unless WindCorridor4 holds the current (V / R on the map), which carries
+# unless WindCorridor4 holds the current (Ctrl+E on the map), which carries
 # the diver through it instead. Sized to the gap so it can't be swum around.
 func _setup_corridor_4_whirlpool() -> void:
 	var corridor := $WindCorridor4 as Area3D
@@ -4010,7 +4012,7 @@ func _player_rise() -> float:
 	var r := 0.0
 	if Input.is_key_pressed(KEY_SPACE):
 		r += 1.0
-	if Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_CTRL):
+	if Input.is_key_pressed(KEY_SHIFT):
 		r -= 1.0
 	return r
 
@@ -4138,8 +4140,21 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	# R keeps its campaign meaning even on the overview. Exclusive owners
+	# still block it; changing this preference never overrides the strong room.
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_R:
+		if not _battling and not any_modal_open() and not (target_selector != null and target_selector.selecting):
+			if is_diver_in_strong_room():
+				get_viewport().set_input_as_handled()
+				return
+			random_encounters_enabled = not random_encounters_enabled
+			if campaign_session != null:
+				campaign_session.random_encounters_enabled = random_encounters_enabled
+			_announce("Random encounters %s." % ("on" if random_encounters_enabled else "off"))
+			get_viewport().set_input_as_handled()
+		return
 	# The overview owns its keys before checkpoint/inventory/ability handling.
-	# MazeMiniMap consumes L/E/R/arrows; other keys must not stack a new owner.
+	# MazeMiniMap consumes L/E/Ctrl+E/arrows; other keys cannot stack owners.
 	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
 	if map != null and map.main_map != null and map.main_map.visible:
 		return
@@ -4621,7 +4636,7 @@ func _switch_poster_spot() -> Array:
 # A big rock cracked clean in half at the start of wall 10 (its wall-8 end).
 # E beside it just wonders about it. It splits once two opposite currents
 # are running at the same time: WindCorridor4's (-Z) and
-# WindCorridorBreakRock's (+Z, Corridor1's current moved there with R) - a
+# WindCorridorBreakRock's (+Z, Corridor1's current moved there with Ctrl+E) - a
 # short cutscene with the world paused: the halves wrench apart and crumble,
 # and a shining key hops out and bounces to a stop, there to be picked up.
 const SPLIT_ROCK_RADIUS := 1.5

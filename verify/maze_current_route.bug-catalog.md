@@ -5,7 +5,7 @@ reads carried forward; current setup/control/physics/geometry consumers reread.
 
 ## Module contract
 
-1. Surface: parsed movement/mouse, Tab and L/E/R/Shift-arrow key input; actual
+1. Surface: parsed movement/mouse, Tab and L/E/Ctrl+E/Ctrl-arrow key input; actual
    CharacterBody3D collision, WaterCurrent Areas and discovered map selection.
 2. Load-bearing: walls and currents move independently now. Opening hallway
    walls does not vacate either current. Current3 begins southbound, obstructing
@@ -25,7 +25,7 @@ reads carried forward; current setup/control/physics/geometry consumers reread.
 
 | Bug | Impact / plausibility | Oracle / status |
 | --- | --- | --- |
-| Player cannot physically traverse the first channel with the current documented controls | High: all deeper content remains unreachable; old H test can approve wrong geometry/state | Characterized: real L/E/R and movement pass headless/native |
+| Player cannot physically traverse the first channel with the current documented controls | High: all deeper content remains unreachable; old H test can approve wrong geometry/state | Characterized: original L/E/R route passed headless/native; latest Ctrl+E route passes fresh headless physics |
 | A route fixture passes by teleporting or bypassing the authored passage | High: invisible barrier remains in shipped gameplay | Physical trace crosses interior; leaving current3 in place fails actual traversal |
 
 The first gate opens the real map, rotates the revealed hallway walls, moves
@@ -45,6 +45,13 @@ channel check; extend only after this channel is genuinely traversable. Battle
 resources, save durability, camera polish and browser input have separate gates.
 
 ## Evaluation
+
+Latest October 4 contract uses Ctrl+E and Ctrl+arrows, superseding the R and
+intermediate Shift bindings. Fresh physical channel run passes without captured
+script errors: `/tmp/underwater-marc-map-route-final.log`. This rerun is headless;
+the older native/negative receipts below are historical, not fresh Ctrl-native
+or fresh Ctrl-negative acceptance. The driver still uses actual key-controlled
+swimming through the physical current region, not an injected completion.
 
 First physical channel passes headless and native OpenGL without game changes.
 It starts normally, switches to Bucky with actual Tab, physically discovers the

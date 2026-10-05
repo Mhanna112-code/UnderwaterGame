@@ -257,7 +257,7 @@ The global encounter preference and a local enforced policy are different things
 
 Our escape hint teaches R in normal exploration. Do not show an actionable 'disable encounters with R' hint where Marc deliberately forbids that action. Use valid retreat/recovery feedback there without weakening his system.
 
-L-map controls use R to manipulate currents; the campaign uses R for encounters. Consume input in the active context so one press cannot both move a current and toggle encounters. Similarly prioritize map, popup, lever, door and ability uses of E. Verify with real key events, not direct method calls alone.
+Marc's latest map controls supersede both earlier R-current and Shift-current bindings: Ctrl+E moves the selected current; Ctrl+arrows select currents; E/Enter rotates selected walls (except E must first unlock a nearby ready door). R changes campaign encounter preference with the map open or closed, but must not disable Marc's forced strong room. Only Shift sinks the diver. Exclusive popup/save/Swap/battle owners block exploration keys. Verify actual dispatch and durable preference with real key events, not direct method calls alone.
 
 Marc's strong/ambush boost currently modifies several stats by roughly 5–15 percent, but rounding and caps can leave small stats unchanged. Its older party-scaling can also dominate that local boost. Preserve the intended policy while measuring the actual effect after integration with the modern roster.
 
@@ -468,7 +468,7 @@ These entries define risks and accepting oracles. Baseline reproduction is still
 | INT-03 | Door consumes a campaign spell relic. | Open with a maze key, verify one key consumed and relic/unlocked spell unchanged through reload. |
 | INT-04 | Checkpoint rollback splits inventory and world state. | Saved and unsaved door/rock/pending-pickup sequences, actual death Restart and cold Load. |
 | INT-05 | Boss labels change but Battle still builds Tethys. | Actual main trigger produces campaign Cordys stats/model/moves; real victory changes only its own progression. |
-| INT-06 | Map R also changes encounters, or global Off bypasses the strong room. | Real contextual key events; observe current movement and effective encounter policy independently. |
+| INT-06 | Ctrl+E moves walls, R moves currents/becomes dead, or global Off bypasses the strong room. | Real contextual key events; observe current movement, campaign preference and effective encounter policy independently. |
 | INT-07 | Revival updates HP but not model/card/turn participation. | Initially downed diver, actual consumable/ability, restored battle actor and next-turn use. |
 | INT-08 | Framing/import test passes but a selected attack hides actors/UI. | Real rendered mesh/animation extremes and target facings at wide/narrow/tall sizes, plus inspection. |
 | INT-09 | Scene/battle/film music stacks or never resumes. | Semantic owner/cue trace across repeat transitions plus exact-build listening. |
@@ -511,7 +511,7 @@ Keep the available music mapping provisional until heard in the combined build a
 | Keys | Any maze key opens a door once; no campaign relic consumed; counts and rewards persist without duplication. |
 | Persistence | Cold save/load, secret-room return and later death preserve the appropriate saved maze state and selected scene/slot. |
 | Recovery | Maze Game Over restores its identified checkpoint; opening never replays; failed writes/corrupt saves handled honestly. |
-| Encounter/input policy | Strong-room forcing survives R; ordinary areas still honor normal policy; L-map R affects only currents. |
+| Encounter/input policy | Strong-room forcing survives R; R preserves encounter preference on/off-map outside that forced room; Ctrl+E affects only the selected current; Ctrl does not sink the diver. |
 | Maze puzzles | Full normal traversal, poster puzzle, split rock, levers/currents, secret discovery and doors exercised with actual input. |
 | Combat ownership | Tethys in lab, approved puppets in the secret room, Cordys at maze finale; independent lab blocker flags and no prologue forced-loss logic reused for final combat. |
 | Puppet waves | Actual mixed three-enemy first wave then two-enemy second wave; correct resources/effects/turns, clear framing, no premature victory, once-only reward and interruption recovery. |

@@ -47,8 +47,8 @@ func _run() -> void:
 		_expect(maze._hallway_1_2_swung, "ROUTE real E did not open hallway")
 		_expect(map.selectedCurrentCorridor == maze.get_node("WindCorridor1"), "ROUTE entrance did not select obstructing current1")
 		if findings.is_empty():
-			await _key(KEY_R)
-			_expect(not maze._currents_by_corridor.has(maze.get_node("WindCorridor1")), "ROUTE R left the entry current in place")
+			await _key(KEY_E, true)
+			_expect(not maze._currents_by_corridor.has(maze.get_node("WindCorridor1")), "ROUTE Ctrl+E left the entry current in place")
 	await _key(KEY_L)
 	var w6 := maze.get_node("CSGBox3D6") as CSGBox3D
 	var w7 := maze.get_node("CSGBox3D7") as CSGBox3D
@@ -92,7 +92,7 @@ func _run() -> void:
 		_expect(selected, "ROUTE physical channel approach did not reveal selectable current3")
 		if selected:
 			if "--leave-current3" not in OS.get_cmdline_user_args():
-				await _key(KEY_R)
+				await _key(KEY_E, true)
 				_expect(not maze._currents_by_corridor.has(maze.get_node("WindCorridor3")), "ROUTE current3 did not vacate first channel")
 		await _key(KEY_L)
 	if findings.is_empty():
@@ -211,10 +211,10 @@ func _release_movement() -> void:
 	Input.parse_input_event(release)
 	await physics_frame
 
-func _key(code: Key, shift := false) -> void:
+func _key(code: Key, ctrl := false) -> void:
 	var event := InputEventKey.new()
 	event.keycode = code
-	event.shift_pressed = shift
+	event.ctrl_pressed = ctrl
 	event.pressed = true
 	Input.parse_input_event(event)
 	await process_frame

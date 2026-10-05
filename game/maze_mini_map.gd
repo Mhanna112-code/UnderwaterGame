@@ -217,7 +217,7 @@ var selectedHall: Array[CSGBox3D] = []
 var selectedHallName := ""
 
 # The currently highlighted *active flow area*.  It never names a wall pair
-# or an old controller location. Shift+arrow cycles this independently from
+# or an old controller location. Ctrl+arrow cycles this independently from
 # selectedHallName so map readers can inspect a current without losing their
 # wall selection.
 var selectedCurrentCorridor: Area3D
@@ -225,8 +225,8 @@ var selectedCurrentCorridor: Area3D
 # The selected rotatable wall set (one entry of MazeLevel.rotatable_wall_sets()),
 # or {}. While the map is closed it tracks the set nearest the diver (and
 # selectedCurrentCorridor the nearest current); once L opens the map,
-# Left/Right steps through revealed sets and Shift+Left/Right through
-# currents. The map blinks both; E rotates the set, R the current.
+# Left/Right steps through revealed sets and Ctrl+Left/Right through
+# currents. The map blinks both; E rotates the set, Ctrl+E the current.
 var selected_rotatable_set: Dictionary = {}
 var _rotatable_blink_on := true
 const ROTATABLE_BLINK_INTERVAL := 0.4
@@ -309,7 +309,7 @@ func _update_revealed() -> void:
 		# the nearest rotatable wall set (_update_selected_rotatable_set()).
 
 # True once the player has chosen a wall set or current themselves (arrow
-# keys, or R moving a current) on the open map; closing the map hands
+# keys, or Ctrl+E moving a current) on the open map; closing the map hands
 # selection back to "nearest".
 var _selection_manual := false
 # How near a rotatable wall set has to be for it to be picked automatically.
@@ -369,8 +369,33 @@ func _validate_selection() -> void:
 	if selectedCurrentCorridor != null and (not is_instance_valid(selectedCurrentCorridor) or not maze_level._currents_by_corridor.has(selectedCurrentCorridor) or not _is_discovered_corridor(selectedCurrentCorridor)):
 		selectedCurrentCorridor = null
 
+# Marc's spatial selection order: screen right is +X, down is +Z.
+func _clockwise_angle(p: Vector3) -> float:
+	var middle := _maze_middle()
+	return fposmod(atan2(p.z - middle.y, p.x - middle.x), TAU)
+
+func _maze_middle() -> Vector2:
+	var points: Array[Vector3] = maze_level._collect_bounds_points()
+	if points.is_empty():
+		return Vector2.ZERO
+	var lo: Vector3 = points[0]
+	var hi: Vector3 = points[0]
+	for p in points:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	return Vector2((lo.x + hi.x) * 0.5, (lo.z + hi.z) * 0.5)
+
+func _set_centre(wall_set: Dictionary) -> Vector3:
+	var sum := Vector3.ZERO
+	var n := 0
+	for box in wall_set["walls"]:
+		if is_instance_valid(box):
+			sum += (box as Node3D).global_position
+			n += 1
+	return sum / maxf(n, 1)
+
 # Left/Right on the open map: step through the rotatable wall sets the diver
-# has revealed (at least one wall seen), the way Shift+Left/Right steps
+# has revealed (at least one wall seen), the way Ctrl+Left/Right steps
 # through currents.
 func _cycle_selected_set(direction: int) -> void:
 	var sets: Array = []
@@ -381,6 +406,7 @@ func _cycle_selected_set(direction: int) -> void:
 				break
 	if sets.is_empty():
 		return
+	sets.sort_custom(func(a, b) -> bool: return _clockwise_angle(_set_centre(a)) < _clockwise_angle(_set_centre(b)))
 	var index := -1
 	for i in sets.size():
 		if sets[i]["name"] == selected_rotatable_set.get("name", ""):
@@ -461,7 +487,7 @@ func _apply_rotatable_highlight() -> void:
 		if _main_map_current_heads.has(current):
 			(_main_map_current_heads[current] as Polygon2D).color = flow_color
 
-# R: rotate the selected current to its paired corridor, and keep it
+# Ctrl+E: rotate the selected current to its paired corridor, and keep it
 # selected in its new place (that corridor counts as discovered - the
 # player just sent a current into it).
 func _rotate_selected_current() -> void:
@@ -809,6 +835,20 @@ func _flow_path_for_corridor(corridor: Area3D, current: WaterCurrent) -> PackedV
 func _is_discovered_corridor(corridor: Area3D) -> bool:
 	return corridor != null and _discovered_corridors.has(corridor)
 
+# Marc's readable flow symbols. These extend only the drawing, never the
+# Area3D which physically pushes a diver. Center and facing remain exact.
+const MAIN_MAP_MIN_CURRENT_PX := 44.0
+const RADAR_MIN_CURRENT_PX := 26.0
+
+func _at_least_long(start: Vector2, end: Vector2, min_len: float) -> Array:
+	var run := end - start
+	var length := run.length()
+	if length >= min_len or length < 0.001:
+		return [start, end]
+	var middle := (start + end) * 0.5
+	var half := run / length * min_len * 0.5
+	return [middle - half, middle + half]
+
 # Rebind discovered geometry to fresh scene nodes. Instance IDs are not save
 # identities, and discovering the return panel must not erase earlier halls.
 func campaign_discovery() -> Dictionary:
@@ -831,6 +871,9 @@ func campaign_discovery() -> Dictionary:
 	return data
 
 func restore_campaign_discovery(data: Dictionary) -> void:
+	# A restored room can draw before the first discovery process tick.
+	if not _reveal_groups_built:
+		_build_reveal_groups()
 	_revealed_walls.clear()
 	_revealed_rooms.clear()
 	_discovered_corridors.clear()
@@ -875,8 +918,11 @@ func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3
 		return
 	var start := (clipped[0] as Vector2) * px_per_unit + mid
 	var end := (clipped[1] as Vector2) * px_per_unit + mid
+	var stretched := _at_least_long(start, end, RADAR_MIN_CURRENT_PX)
+	start = stretched[0]
+	end = stretched[1]
 	# Same blue wavy line + arrowhead as the big map. The selected current
-	# blinks bright/dim blue only while the big map is open (where R can
+	# blinks bright/dim blue only while the big map is open (where Ctrl+E can
 	# rotate it); otherwise it's drawn like every other current.
 	var color := FLOW_COLOR
 	if corridor == selectedCurrentCorridor and main_map.visible:
@@ -919,8 +965,9 @@ const MAIN_MAP_SIZE := 500.0
 const MAIN_MAP_MARGIN := 14.0
 # Room kept clear at the top for the title and at the bottom for the legend,
 # so the whole maze is drawn between them.
-const MAIN_MAP_HEADER := 44.0
+const MAIN_MAP_HEADER := 56.0
 const MAIN_MAP_FOOTER := 30.0
+var _main_map_footer := MAIN_MAP_FOOTER
 var main_map: Control
 var _main_map_px_per_unit := 1.0
 var _main_map_origin := Vector2.ZERO
@@ -1026,8 +1073,8 @@ func _compute_main_map_bounds() -> void:
 	_main_map_origin = Vector2(min_pt.x, min_pt.z)
 	var span_x: float = maxf(max_pt.x - min_pt.x, 1.0)
 	var span_z: float = maxf(max_pt.z - min_pt.z, 1.0)
-	var usable_w: float = MAIN_MAP_SIZE - MAIN_MAP_MARGIN * 2.0
-	var usable_h: float = MAIN_MAP_SIZE - MAIN_MAP_HEADER - MAIN_MAP_FOOTER
+	var usable_w: float = main_map.size.x - MAIN_MAP_MARGIN * 2.0
+	var usable_h: float = main_map.size.y - MAIN_MAP_HEADER - _main_map_footer
 	_main_map_px_per_unit = minf(usable_w / span_x, usable_h / span_z)
 	_main_map_bounds_computed = true
 
@@ -1035,7 +1082,7 @@ func _build_main_map() -> void:
 	main_map = Control.new()
 	main_map.name = "MazeMainMap"
 	main_map.size = Vector2(MAIN_MAP_SIZE, MAIN_MAP_SIZE)
-	main_map.custom_minimum_size = Vector2(MAIN_MAP_SIZE, MAIN_MAP_SIZE)
+	main_map.custom_minimum_size = Vector2.ZERO
 	main_map.position = Vector2(18.0, 76.0)
 	main_map.clip_contents = true
 	main_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1081,6 +1128,22 @@ func _make_map_label(node_name: String, text: String, position: Vector2, label_s
 	return label
 
 func _build_main_map_copy() -> void:
+	# Marc's title band stays opaque and separate from the projected geometry.
+	var band := ColorRect.new()
+	band.name = "MazeMapTitleBand"
+	band.color = Color(0.03, 0.06, 0.08, 1.0)
+	band.size = Vector2(MAIN_MAP_SIZE, 48)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.z_index = 2
+	main_map.add_child(band)
+	var divider := ColorRect.new()
+	divider.name = "MazeMapTitleDivider"
+	divider.color = Color(0.3, 0.55, 0.95, 0.8)
+	divider.position = Vector2(0, 46)
+	divider.size = Vector2(MAIN_MAP_SIZE, 2)
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	divider.z_index = 2
+	main_map.add_child(divider)
 	_make_map_label("MazeMapTitle", "MAZE NAVIGATION   [L] Close", Vector2(16, 10), Vector2(468, 28), 19, Color(0.86, 0.94, 1.0))
 	# The legend: each map symbol drawn as it appears on the map, with what
 	# it means to its right.
@@ -1099,9 +1162,13 @@ const LEGEND_FONT_SIZE := 13
 
 func _draw_legend(legend: Control) -> void:
 	var font := ThemeDB.fallback_font
-	var mid_y := legend.size.y * 0.5
+	var mid_y := 11.0
 	var x := 0.0
+	var index := 0
 	for entry in [["wall", "walls"], ["current", "current"], ["you", "you"], ["room", "visited room"]]:
+		if legend.size.x < 440 and index == 2:
+			x = 0.0
+			mid_y = 33.0
 		var icon_w := 22.0
 		match String(entry[0]):
 			"wall":
@@ -1123,6 +1190,7 @@ func _draw_legend(legend: Control) -> void:
 		var label := String(entry[1])
 		legend.draw_string(font, Vector2(x, mid_y + LEGEND_FONT_SIZE * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_FONT_SIZE, LEGEND_TEXT_COLOR)
 		x += font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_FONT_SIZE).x + 18.0
+		index += 1
 
 # The controls, big and clear, in a panel right under the map: walls and
 # currents only move from here.
@@ -1140,22 +1208,25 @@ func _build_map_help() -> void:
 	style.set_content_margin_all(10)
 	_map_help.add_theme_stylebox_override("panel", style)
 	_map_help.position = main_map.position + Vector2(0, MAIN_MAP_SIZE + 6)
-	_map_help.custom_minimum_size = Vector2(MAIN_MAP_SIZE, 0)
+	_map_help.custom_minimum_size = Vector2.ZERO
 	_map_help.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_help.z_index = 4
 	# The keys drawn as the same dark key badges as the ability popup
 	# (Slot._badge()).
 	_map_help_label = RichTextLabel.new()
 	_map_help_label.bbcode_enabled = true
-	_map_help_label.fit_content = true
+	# Height is measured after wrapping into the actual panel width. Enabling
+	# fit_content at zero width caches a huge initial minimum on live resize.
+	_map_help_label.fit_content = false
 	_map_help_label.scroll_active = false
-	_map_help_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_map_help_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_map_help_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_help_label.add_theme_font_size_override("normal_font_size", 16)
 	_map_help_label.add_theme_color_override("default_color", Color(0.92, 0.97, 1.0))
-	_map_help_label.text = "%s / %s  choose a selected hallway   ·   %s  rotate it\n%s + %s / %s  choose a selected current   ·   %s  rotate it" % [
-		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"),
-		Slot._badge("Shift"), Slot._badge("Left"), Slot._badge("Right"), Slot._badge("R"),
+	_map_help_label.text = "%s / %s  Select walls   ·   %s  Rotate\n%s + %s / %s  Select currents\n%s  Move current   ·   %s  Encounters" % [
+		Slot._badge("←"), Slot._badge("→"), Slot._badge("E"),
+		Slot._badge("Ctrl"), Slot._badge("←"), Slot._badge("→"),
+		Slot._badge("Ctrl+E"), Slot._badge("R"),
 	]
 	_map_help.add_child(_map_help_label)
 	main_map.get_parent().add_child(_map_help)
@@ -1165,6 +1236,13 @@ func _build_map_help() -> void:
 func _refresh_map_copy() -> void:
 	if main_map == null:
 		return
+	# The overview replaces exploration controls/radar rather than drawing
+	# through them on a narrow viewport. Sibling map input still owns L.
+	visible = not main_map.visible
+	var exploration := get_parent().get_node_or_null("MazeExplorationControls") as Control
+	if exploration != null:
+		exploration.visible = not main_map.visible
+	_layout_overview()
 	var title := main_map.get_node_or_null("MazeMapTitle") as Label
 	if title != null:
 		title.text = "MAZE NAVIGATION   " + (maze_level.lever_map_close_hint() if maze_level != null and maze_level.levers_map_mode() else "[L] Close")
@@ -1179,6 +1257,42 @@ func _refresh_map_copy() -> void:
 				var node := get_parent().get_node_or_null(caption) as CanvasItem
 				if node != null:
 					node.visible = not _map_help.visible
+
+func _layout_overview() -> void:
+	if _map_help == null:
+		return
+	var viewport := get_viewport_rect().size
+	main_map.position = Vector2(18, 16)
+	var width := minf(MAIN_MAP_SIZE, viewport.x - 36.0)
+	var last_separator := "\n" if width < 400 else "   ·   "
+	var help_copy := "%s / %s  Select walls   ·   %s  Rotate\n%s + %s / %s  Select currents\n%s  Move current%s%s  Encounters" % [
+		Slot._badge("←"), Slot._badge("→"), Slot._badge("E"),
+		Slot._badge("Ctrl"), Slot._badge("←"), Slot._badge("→"),
+		Slot._badge("Ctrl+E"), last_separator, Slot._badge("R"),
+	]
+	if _map_help_label.text != help_copy:
+		_map_help_label.text = help_copy
+	var help_height := maxf(90.0, _map_help_label.get_content_height() + 24.0)
+	_map_help.size = Vector2(width, help_height)
+	var height := minf(MAIN_MAP_SIZE, viewport.y - 16.0 - help_height - 18.0)
+	var desired := Vector2(width, maxf(160.0, height))
+	if not main_map.size.is_equal_approx(desired):
+		main_map.size = desired
+		_main_map_bounds_computed = false
+	_map_help.position = main_map.position + Vector2(0, main_map.size.y + 6)
+	var title := main_map.get_node("MazeMapTitle") as Label
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.size = Vector2(width - 32, 38)
+	var font_size := 16 if width < 450 else 19
+	if title.get_theme_font_size("font_size") != font_size:
+		title.add_theme_font_size_override("font_size", font_size)
+	(main_map.get_node("MazeMapTitleBand") as Control).size.x = width
+	(main_map.get_node("MazeMapTitleDivider") as Control).size.x = width
+	var legend := main_map.get_node("MazeMapLegend") as Control
+	legend.size = Vector2(width - 32, 44 if width < 472 else 22)
+	_main_map_footer = legend.size.y + 8
+	legend.position = Vector2(16, main_map.size.y - _main_map_footer)
+	legend.queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
@@ -1202,19 +1316,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			_update_selected_rotatable_set()
 			main_map.queue_redraw()
 		get_viewport().set_input_as_handled()
+	elif main_map.visible and keycode == KEY_E and key_event.ctrl_pressed:
+		_rotate_selected_current()
+		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
 		# Confirm: rotate the blinking set. Handled here so E doesn't also
 		# reach MazeLevel's relic interaction while the map is open.
 		_rotate_selected_set()
 		get_viewport().set_input_as_handled()
-	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT] and key_event.shift_pressed:
+	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT] and key_event.ctrl_pressed:
 		_cycle_selected_current(1 if keycode == KEY_RIGHT else -1)
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT]:
 		_cycle_selected_set(1 if keycode == KEY_RIGHT else -1)
-		get_viewport().set_input_as_handled()
-	elif main_map.visible and keycode == KEY_R:
-		_rotate_selected_current()
 		get_viewport().set_input_as_handled()
 
 # Absolute panel-space projection - MAIN_MAP_MARGIN + (world offset from
@@ -1297,6 +1411,9 @@ func _update_main_map_current_line(corridor: Area3D, current: WaterCurrent) -> v
 		return
 	var start := _project_to_main_map(path[0])
 	var end := _project_to_main_map(path[1])
+	var stretched := _at_least_long(start, end, MAIN_MAP_MIN_CURRENT_PX)
+	start = stretched[0]
+	end = stretched[1]
 	if not _main_map_current_lines.has(corridor):
 		var line := _make_main_map_line()
 		line.name = "Current_%s" % corridor.name
@@ -1345,7 +1462,7 @@ func _cycle_selected_current(direction: int) -> void:
 	for corridor in maze_level._currents_by_corridor:
 		if _is_discovered_corridor(corridor as Area3D):
 			corridors.append(corridor)
-	corridors.sort_custom(func(a, b) -> bool: return String((a as Node).name) < String((b as Node).name))
+	corridors.sort_custom(func(a, b) -> bool: return _clockwise_angle(_corridor_center(a as Area3D)) < _clockwise_angle(_corridor_center(b as Area3D)))
 	if corridors.is_empty():
 		return
 	var index := corridors.find(selectedCurrentCorridor)
@@ -1410,7 +1527,7 @@ func _pick_hall_at(p: Vector2, max_dist: float = 10.0) -> String:
 # _build_main_map()) is what hooks a plain runtime Control into this
 # callback instead.
 func _on_main_map_draw() -> void:
-	main_map.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.03, 0.06, 0.08, 0.92))
+	main_map.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.03, 0.06, 0.08, 1.0))
 	# Walls themselves are no longer drawn here - _main_map_hall_lines and
 	# _main_map_lone_lines are real Line2D children of main_map now (see
 	# _make_main_map_line()), so Godot renders them on its own, right after

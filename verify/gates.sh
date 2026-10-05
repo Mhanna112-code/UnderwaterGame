@@ -189,6 +189,9 @@ run "maze checkpoint IO: do generated saves round-trip and malformed saves retur
 run "maze World return: do live exit and cold World save/re-entry retain party and independent maze/lab history" "$GODOT" --headless --path . --script verify/maze_world_return.gd
 run "maze relic consumers: do real victories unlock owned campaign spells without using or consuming maze keys" "$GODOT" --headless --path . --script verify/maze_relic_consumers.gd
 run "maze input ownership: do real map/save/swap keys stay exclusive while Marc's local encounter policy remains independent" "$GODOT" --headless --path . --script verify/maze_input_ownership.gd
+run "maze modifier: does Ctrl avoid sinking while Shift sinks in World and Maze" "$GODOT" --headless --path . --script verify/marc_current_modifier.gd
+run "maze clockwise selection: do real arrow cycles obey geometry across generated discovery subsets" "$GODOT" --headless --path . --script verify/marc_maze_map_order.gd
+run "maze map presentation: do actual overview/help widgets fit desktop and narrow viewports" "$GODOT" --headless --path . --script verify/marc_maze_map_presentation.gd
 run "audio manager: does paired music hand off without overlap or stacking" "$GODOT" --headless --path . --script verify/audio_manager.gd
 run "audio lifecycle: do title, world, battle, victory, boss, and defeat own one correct cue" "$GODOT" --headless --path . --script verify/audio_lifecycle.gd
 run "audio settings UI: can players independently persist music and SFX volume/mute" "$GODOT" --headless --path . --script verify/audio_settings_ui.gd
@@ -201,7 +204,7 @@ run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headles
 run "world grapple aim: is the first-person target unobstructed and safely restored" "$GODOT" --headless --path . --script verify/world_grapple_aim.gd
 run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
-run "maze current route: do normal movement and actual L/E/R traverse the first channel without bypassing collision or currents" "$GODOT" --headless --path . --script verify/maze_current_route.gd
+run "maze current route: do normal movement and actual L/E/Ctrl+E traverse the first channel without bypassing collision or currents" "$GODOT" --headless --path . --script verify/maze_current_route.gd
 run "world maze compatibility route: does actual spawn-to-Deep travel enter the maze with both lab guards undefeated" "$GODOT" --headless --path . --script verify/world_maze_route.gd
 run "maze puppet approach: does real proximity/confirmation start puppets instead of lab Tethys" "$GODOT" --headless --path . --script verify/maze_puppet_trigger.gd
 run "maze puppet waves: do real moves carry resources/effects into wave two with one final outcome and reward" "$GODOT" --headless --path . --script verify/maze_puppet_waves.gd
@@ -226,6 +229,7 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	run "maze overview native presentation: do title/help/legend fit actual rendered wide/short/portrait windows without HUD bleed-through" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_maze_map_presentation.gd
 	for shape in 1280x720 720x480; do
 		for phase in 0.35 0.65 0.8; do
 			run "full-party attack presentation $shape/$phase: do all delivered attacks stay visible through the real gesture" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/spell_attack_delivery.gd -- "--phase=$phase"

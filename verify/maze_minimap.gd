@@ -9,11 +9,11 @@ const EPSILON := 0.02
 func _initialize() -> void:
 	call_deferred("_run")
 
-func _key(keycode: Key, shift := false) -> InputEventKey:
+func _key(keycode: Key, ctrl := false) -> InputEventKey:
 	var event := InputEventKey.new()
 	event.pressed = true
 	event.keycode = keycode
-	event.shift_pressed = shift
+	event.ctrl_pressed = ctrl
 	return event
 
 func _line_for_wall(minimap: MazeMiniMap, wall: CSGBox3D) -> Line2D:
@@ -32,11 +32,6 @@ func _line_for_wall(minimap: MazeMiniMap, wall: CSGBox3D) -> Line2D:
 func _points_match(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 	return a.size() == b.size() and a.size() >= 2 and a[0].distance_to(b[0]) <= EPSILON and a[a.size() - 1].distance_to(b[b.size() - 1]) <= EPSILON
 
-# The current overlay is a wavy polyline, so only its two ends have to match
-# the live flow path.
-func _endpoints_match(a: PackedVector2Array, b: PackedVector2Array) -> bool:
-	return a.size() >= 2 and b.size() >= 2 and a[0].distance_to(b[0]) <= EPSILON and a[a.size() - 1].distance_to(b[b.size() - 1]) <= EPSILON
-
 func _reveal_all(minimap: MazeMiniMap, maze: MazeLevel) -> void:
 	var diver := maze._diver
 	var home := diver.global_position
@@ -47,17 +42,7 @@ func _reveal_all(minimap: MazeMiniMap, maze: MazeLevel) -> void:
 	diver.global_position = home
 	minimap._refresh_main_map()
 
-func _expected_flow_points(minimap: MazeMiniMap, corridor: Area3D, current: WaterCurrent) -> PackedVector2Array:
-	var path: PackedVector3Array = minimap.call("_flow_path_for_corridor", corridor, current) as PackedVector3Array
-	var points := PackedVector2Array()
-	for point in path:
-		points.append(minimap._project_to_main_map(point))
-	return points
-
 func _assert_current_truth(minimap: MazeMiniMap, maze: MazeLevel, findings: Array[String], phase: String) -> void:
-	if not minimap.has_method("_flow_path_for_corridor"):
-		findings.append("%s: minimap has no flow path sourced from live WaterCurrent state" % phase)
-		return
 	if minimap.get("_main_map_current_lines") == null:
 		findings.append("%s: minimap has no persistent rendered current overlays" % phase)
 		return
@@ -69,19 +54,41 @@ func _assert_current_truth(minimap: MazeMiniMap, maze: MazeLevel, findings: Arra
 			findings.append("%s: active %s has no map overlay" % [phase, (corridor as Area3D).name])
 			continue
 		var current := maze._currents_by_corridor[corridor] as WaterCurrent
-		var path: PackedVector3Array = minimap.call("_flow_path_for_corridor", corridor as Area3D, current) as PackedVector3Array
-		if path.size() < 2:
-			findings.append("%s: active %s produced no directional path" % [phase, (corridor as Area3D).name])
+		var shape: CollisionShape3D
+		for child in corridor.get_children():
+			if child is CollisionShape3D and child.shape is BoxShape3D:
+				shape = child
+		if shape == null:
+			findings.append("%s: physical current has no Box push volume" % phase)
 			continue
 		var rendered := (lines[corridor] as Line2D).points
-		var expected := _expected_flow_points(minimap, corridor as Area3D, current)
-		if not _endpoints_match(rendered, expected):
-			findings.append("%s: rendered flow for %s does not match its live collision area" % [phase, (corridor as Area3D).name])
-		var shown_direction: Vector3 = (path[path.size() - 1] - path[0]).normalized()
-		if shown_direction.dot(current.orientation.normalized()) < 0.999:
-			findings.append("%s: rendered flow for %s points away from WaterCurrent.orientation" % [phase, (corridor as Area3D).name])
+		if rendered.size() < 2:
+			findings.append("MAP-4 live current has no rendered directional line")
+			continue
+		var shown := rendered[-1] - rendered[0]
+		var centre := Vector2(shape.global_position.x, shape.global_position.z)
+		var expected_centre := Vector2(MazeMiniMap.MAIN_MAP_MARGIN, MazeMiniMap.MAIN_MAP_HEADER) + (centre - minimap._main_map_origin) * minimap._main_map_px_per_unit
+		if ((rendered[0] + rendered[-1]) * 0.5).distance_to(expected_centre) > EPSILON:
+			findings.append("MAP-4 %s symbolic flow is not centered on its physical push volume" % corridor.name)
+		var physical_direction := Vector2(current.orientation.x, current.orientation.z).normalized()
+		if shown.normalized().dot(physical_direction) < 0.999:
+			findings.append("MAP-4 %s arrow reverses its physical flow" % corridor.name)
+		# Independent corner projection, not the product's flow-path helper.
+		var lo := INF
+		var hi := -INF
+		for x in [-0.5, 0.5]:
+			for y in [-0.5, 0.5]:
+				for z in [-0.5, 0.5]:
+					var corner: Vector3 = shape.global_transform * (shape.shape.size * Vector3(x, y, z))
+					var distance := Vector2(corner.x, corner.z).dot(physical_direction)
+					lo = minf(lo, distance)
+					hi = maxf(hi, distance)
+		var largest_valid_length := maxf(44.0, (hi - lo) * minimap._main_map_px_per_unit)
+		if shown.length() < 44.0 - EPSILON or shown.length() > largest_valid_length + EPSILON:
+			findings.append("MAP-4 %s line length %.2f is unreadable or overstates its physical extent (44..%.2f)" % [corridor.name, shown.length(), largest_valid_length])
 
 func _run() -> void:
+	root.size = Vector2i(1280, 720)
 	var maze := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
 	# Always the normal entrance start, whichever developer spawn is switched on.
 	maze.dev_spawn_at_sphere_room = false
@@ -164,16 +171,16 @@ func _run() -> void:
 			if not minimap.selected_rotatable_set.is_empty():
 				findings.append("a rotatable set stays selected with the diver far away")
 
-			# MAP-CURRENT: Shift+arrows move the current selection, and R
+			# MAP-CURRENT: Ctrl+arrows move the current selection, and Ctrl+E
 			# rotates the selected current to its paired corridor.
 			var before_current: Variant = minimap.selectedCurrentCorridor
 			minimap._unhandled_input(_key(KEY_RIGHT, true))
 			if minimap.selectedCurrentCorridor == null or minimap.selectedCurrentCorridor == before_current:
-				findings.append("Shift+Right does not select a different current")
+				findings.append("Ctrl+Right does not select a different current")
 			minimap.selectedCurrentCorridor = corridor_4
-			minimap._unhandled_input(_key(KEY_R))
+			minimap._unhandled_input(_key(KEY_E, true))
 			if not maze._currents_by_corridor.has(corridor_3) or maze._currents_by_corridor.has(corridor_4):
-				findings.append("R does not rotate the selected Corridor4 current back to Corridor3")
+				findings.append("Ctrl+E does not rotate the selected Corridor4 current back to Corridor3")
 			elif minimap.selectedCurrentCorridor != corridor_3:
 				findings.append("the rotated current is not still selected in its new corridor")
 

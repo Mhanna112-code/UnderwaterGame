@@ -8,8 +8,9 @@ TargetSelector, Diver and SavePoint/Menu. Fixture placement is not traversal pro
 1. Public surface: parsed key press/release events, overview map L/E/R/arrows,
    checkpoint P/Esc, swap selection arrows/Enter/Esc, active diver encounter event.
 2. Load-bearing comments: Marc forces encounters inside the strong room despite
-   World Off. Map E must rotate walls, not activate abilities; R rotates currents,
-   not the campaign encounter preference. TargetSelector owns selection/cancellation.
+   World Off. Latest Marc controls: Ctrl+E moves currents, normal E rotates walls
+   (ready-door priority is a separate pending port). R changes campaign encounter
+   preference outside the forced room, not current position. TargetSelector owns selection/cancellation.
 3. IO: Godot child-before-parent unhandled-input dispatch, process/physics frames,
    deferred collision/contact signals, wall rotation tweens and random encounters.
    No save writes; test dismisses genuine first-visit warning via its visible button.
@@ -41,6 +42,12 @@ Full puzzle route, held movement/camera ergonomics, rendered overview layout,
 browser pointer behavior, post-fight audio and native saves are separate gates.
 
 ## Evaluation
+
+Latest October 4 refresh: #97 `04bc26e`/`0d55685` supersede earlier R/Shift-current
+contracts. Fresh actual input across three divers passes with Ctrl+E, exclusive
+Save/Swap ownership, R preference synchronization, and the forced-room R guard.
+Receipt: `/tmp/underwater-marc-map-input-final.log`. No captured script errors.
+Historical R-current receipts below describe their source version, not today's controls.
 
 Valid red receipt on c58b26f: actual L/P at checkpoint left map and SavePointMenu
 visible simultaneously. New exclusion/selection priority repairs the ownership

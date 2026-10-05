@@ -2,6 +2,24 @@
 
 ## Current authoritative status
 
+Latest October 4 refresh: PR97 `c035c20` / PR99 `86878fa`, unchanged on a
+second fetch after verification. Nine new maze / three shared deltas are
+classified in the intake. Ctrl supersedes the intermediate Shift current keys.
+Local bounded map admission now passes real input for all three divers, R
+preference/forced-room ownership, 24 independent clockwise discovery cycles,
+44px readable strokes, actual physical first-channel traversal, and Ctrl/Shift
+vertical-input checks in both World and Maze. Checkpoint cold-load/defeat and
+12 World-return cases pass. Native 12-shape overview checks pass; inspected
+1280x720, 803x893, 720x480 and 360x640. Native inspection caught HUD bleed-through
+and narrow R help wrapping; both repaired and recaptured. Public restored-room
+discovery also exposed a first-draw script error, repaired before acceptance.
+Evidence: `/Volumes/Totallynotaharddrive/underwater-marc-map.azaA0G`; detailed
+valid reds and excluded faulty oracles: `verify/marc_maze_map_contract.bug-catalog.md`.
+Shared work is pushed through `5a21f80`; this map batch is locally verified.
+Earned chest/legend, ready-door priority, orange queue, underpass, sphere room,
+and World-embedded geometry remain pending. No new deployment is claimed:
+stable review is still `b0bee59`, Windows/Linux `1ccf92f`, main untouched.
+
 Newest intake (October 4): subsequent refresh found PR97 659ff69 / PR99 7a27230;
 the earlier ebcb22e / d5134bf batch and every later authored delta are recorded in
 `marc-oct4-integration-intake.md`. The Wall11EndCap underpass supersedes the
@@ -36,9 +54,10 @@ normal HP. Narrow Heavy Slam framing and real Mending/Revival effect, O2 cost,
 clip completion and usable next turn pass; captures inspected. This does not
 accept a full earned route, every clip on the web or a clean whole-game polish round.
 
-Latest maze deltas add an earned navigation-map chest, discovery-only legend,
-Shift+E current rotation, chest collision and encounter toggle/owner repairs.
-They are intake-only at this point. Seamless maze/world ownership, actual new
+Earlier maze intake adds an earned navigation-map chest, discovery-only legend,
+chest collision and encounter owner repairs. Those remain pending; its Shift
+current binding has been superseded by the locally verified Ctrl controls above.
+Seamless maze/world ownership, actual new
 underpass traversal, map acquisition and complete campaign save reconciliation
 still require implementation and end-to-end verification. No stale test or
 earlier forced-room assumption substitutes for reading the new handlers.

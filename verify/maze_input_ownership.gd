@@ -78,8 +78,9 @@ func _save_owner(maze: MazeLevel, selected: int) -> void:
 	await _key(KEY_L)
 	await _key(KEY_TAB)
 	await _key(KEY_E)
+	await _key(KEY_R)
 	_expect(maze._save_menu.visible and not map.main_map.visible and maze.active == selected
-		and not maze.target_selector.selecting and not maze.inventory_menu.visible,
+		and not maze.target_selector.selecting and not maze.inventory_menu.visible and not maze.random_encounters_enabled,
 		"INT-06 save owner leaked map/diver/ability input")
 	await _key(KEY_ESCAPE)
 	_expect(not maze._save_menu.visible and not maze.inventory_menu.visible,
@@ -94,8 +95,9 @@ func _swap_owner(maze: MazeLevel, selected: int) -> void:
 	await _key(KEY_L)
 	await _key(KEY_P)
 	await _key(KEY_TAB)
+	await _key(KEY_R)
 	_expect(maze.target_selector.selecting and not map.main_map.visible and not maze._save_menu.visible
-		and not maze.inventory_menu.visible and maze.active == selected,
+		and not maze.inventory_menu.visible and maze.active == selected and not maze.random_encounters_enabled,
 		"INT-06 Swap owner leaked map/save/diver input")
 	await _key(KEY_RIGHT)
 	_expect(maze.target_selector.current_target() != first, "INT-06 real arrow did not cycle Swap target")
@@ -125,10 +127,26 @@ func _map_geometry(maze: MazeLevel) -> void:
 		"INT-06 actual discovery did not expose nearby current/wall controls")
 	if selected_current != null:
 		var current: WaterCurrent = maze._currents_by_corridor[selected_current]
-		await _key(KEY_R)
+		var walls: Array[Transform3D] = []
+		for wall in map.selected_rotatable_set.get("walls", []):
+			walls.append((wall as Node3D).global_transform)
+		await _key(KEY_E, true)
 		_expect(map.selectedCurrentCorridor != selected_current and maze._currents_by_corridor.values().has(current)
 			and not maze.random_encounters_enabled,
-			"INT-06 map R did not move the same live current or changed campaign encounter Off")
+			"MAP-1 Ctrl+E did not move the same live current exclusively")
+		for i in walls.size():
+			_expect((map.selected_rotatable_set.walls[i] as Node3D).global_transform.is_equal_approx(walls[i]),
+				"MAP-1 Ctrl+E rotated walls instead of only the selected current")
+		if not findings.is_empty():
+			return
+		var moved := map.selectedCurrentCorridor
+		await _key(KEY_R)
+		_expect(maze.random_encounters_enabled and maze.campaign_session.random_encounters_enabled
+			and map.selectedCurrentCorridor == moved,
+			"MAP-1 open-map R is dead, moves a current, or loses campaign preference")
+		await _key(KEY_R)
+		_expect(not maze.random_encounters_enabled and not maze.campaign_session.random_encounters_enabled,
+			"MAP-1 second open-map R did not turn encounters Off")
 	if not map.selected_rotatable_set.is_empty():
 		var wall: CSGBox3D = map.selected_rotatable_set.walls[0]
 		var before := wall.global_transform
@@ -138,7 +156,11 @@ func _map_geometry(maze: MazeLevel) -> void:
 			and not maze._save_menu.visible and not maze._battling,
 			"INT-06 map E did not rotate real wall exclusively")
 	await _key(KEY_L)
-	print("MAZE INPUT GEOMETRY|active=", maze.active, "|real_R/E=checked")
+	await _key(KEY_R)
+	_expect(maze.random_encounters_enabled and maze.campaign_session.random_encounters_enabled,
+		"MAP-1 closed-map R did not synchronize preference")
+	await _key(KEY_R)
+	print("MAZE INPUT GEOMETRY|active=", maze.active, "|real_CtrlE/R/E=checked")
 
 func _room_policy(maze: MazeLevel, selected: int) -> void:
 	maze.random_encounters_enabled = false
@@ -157,6 +179,8 @@ func _room_policy(maze: MazeLevel, selected: int) -> void:
 		(popup.get_node("%PopupClose") as Button).pressed.emit()
 		await process_frame
 	maze.room_encounters_enabled = false
+	await _key(KEY_R)
+	_expect(not maze.random_encounters_enabled, "MAP-2 R changes the forced-room encounter preference")
 	maze.divers[selected].start_random_encounter()
 	await process_frame
 	_expect(not maze._battling, "INT-06 Marc's local developer Off was ignored")
@@ -167,16 +191,16 @@ func _room_policy(maze: MazeLevel, selected: int) -> void:
 		"INT-06 campaign Off bypasses Marc's forced strong room")
 	print("MAZE ROOM POLICY|active=", selected, "|outside=blocked|developer_off=blocked|global_off_local_on=battle")
 
-func _key(code: Key, shift := false) -> void:
+func _key(code: Key, ctrl := false) -> void:
 	var event := InputEventKey.new()
 	event.keycode = code
-	event.shift_pressed = shift
+	event.ctrl_pressed = ctrl
 	event.pressed = true
 	Input.parse_input_event(event)
 	await process_frame
 	event = InputEventKey.new()
 	event.keycode = code
-	event.shift_pressed = shift
+	event.ctrl_pressed = ctrl
 	Input.parse_input_event(event)
 	await process_frame
 
