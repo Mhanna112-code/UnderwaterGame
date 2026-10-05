@@ -3095,6 +3095,7 @@ func _update_aim_marker() -> void:
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [d.get_rid()]
+	query.collision_mask = Diver.GRAPPLE_COLLISION_MASK
 	var result := space.intersect_ray(query)
 
 	var point: Vector3 = to if result.is_empty() else (result.position as Vector3)

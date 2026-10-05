@@ -15,8 +15,8 @@ signal collected(item_id: String, diver: Diver)
 @export var item_id := ""
 # Maze options: `golden` gives it a gold shimmer (pulsing glow, sparkles, a
 # little light) so it reads as "grab this"; `grappleable` lets Musashi's
-# grapple hit it - the grapple pulls the diver in and the orb comes the
-# rest of the way to them (handy for orbs left floating out of reach).
+# grapple hit it - the diver stays put and reels the orb toward themselves
+# (handy for orbs left floating out of reach).
 @export var golden := false
 @export var grappleable := false
 # Only a grapple picks this one up; swimming into it just says so (the
@@ -27,6 +27,8 @@ signal needs_ability(diver: Diver)
 var _mesh: MeshInstance3D
 var _mat: StandardMaterial3D
 var _bob_t := 0.0
+var _reeling := false
+var _collected := false
 
 func _ready() -> void:
 	collision_mask = 2
@@ -75,6 +77,10 @@ func _process(dt: float) -> void:
 	_mesh.rotate_y(dt * 1.6)
 
 func _on_body_entered(body: Node3D) -> void:
+	# Mid-flight reward ownership belongs to the shooter, not a bystander
+	# whose body happens to touch the item while it crosses the party.
+	if _reeling or _collected:
+		return
 	if body is Diver:
 		if grapple_only:
 			needs_ability.emit(body as Diver)
@@ -82,8 +88,11 @@ func _on_body_entered(body: Node3D) -> void:
 		_collect(body as Diver)
 
 func _collect(diver: Diver) -> void:
-	if is_queued_for_deletion():
+	if _collected or is_queued_for_deletion() or not is_instance_valid(diver) or diver.is_queued_for_deletion():
 		return
+	# Set before listeners run: a synchronous collection callback may itself
+	# cause another overlap/collection attempt before queue_free completes.
+	_collected = true
 	collected.emit(item_id, diver)
 	queue_free()
 
@@ -134,11 +143,11 @@ func _add_golden_shimmer() -> void:
 
 # What the grapple's ray actually hits: a small body on its own collision
 # layer (5), so divers (which only collide with layer 1) never bump into it
-# and the camera's wall check ignores it, but the grapple's ray (all
-# layers) does. Grappled: once the pull brings the diver in, the orb comes
-# the rest of the way to the nearest diver and is collected.
+# and the camera's wall check ignores it, but the grapple's dedicated ray
+# mask does not. The orb follows the shooter, shrinking as it arrives.
 class GrappleTarget extends StaticBody3D:
 	var orb: ItemOrb
+	var _reel_tween: Tween
 
 	func _ready() -> void:
 		collision_layer = 1 << 4
@@ -150,20 +159,38 @@ class GrappleTarget extends StaticBody3D:
 		shape.shape = sphere
 		add_child(shape)
 
-	func on_grappled_to() -> void:
-		if orb == null or not is_instance_valid(orb):
+	func reel_in_to(diver: Diver) -> void:
+		if not is_instance_valid(orb) or orb._reeling or orb._collected or not is_instance_valid(diver):
 			return
-		await orb.get_tree().create_timer(0.35).timeout
-		if not is_instance_valid(orb):
+		orb._reeling = true
+		collision_layer = 0
+		var start := orb.global_position
+		var initial_scale := orb.scale
+		_reel_tween = orb.create_tween()
+		_reel_tween.tween_method(func(t: float) -> void:
+			if not is_instance_valid(orb):
+				return
+			if not is_instance_valid(diver) or diver.is_queued_for_deletion() or not diver.is_inside_tree():
+				_cancel_reel(start, initial_scale)
+				return
+			var chest := diver.global_position + Vector3(0, diver.height * 0.5, 0)
+			orb.global_position = start.lerp(chest, t)
+			orb.scale = initial_scale * lerpf(1.0, 0.35, maxf(0.0, (t - 0.7) / 0.3)),
+			0.0, 1.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_reel_tween.tween_callback(func() -> void:
+			if not is_instance_valid(orb):
+				return
+			if not is_instance_valid(diver) or diver.is_queued_for_deletion() or not diver.is_inside_tree():
+				_cancel_reel(start, initial_scale)
+				return
+			orb._collect(diver))
+
+	func _cancel_reel(start: Vector3, initial_scale: Vector3) -> void:
+		if _reel_tween != null and _reel_tween.is_valid():
+			_reel_tween.kill()
+		if not is_instance_valid(orb) or orb._collected:
 			return
-		var nearest: Diver = null
-		for c in orb.get_parent().get_children():
-			if c is Diver and (nearest == null or (c as Diver).global_position.distance_to(orb.global_position) < nearest.global_position.distance_to(orb.global_position)):
-				nearest = c as Diver
-		if nearest == null:
-			return
-		var tw := orb.create_tween()
-		tw.tween_property(orb, "global_position", nearest.global_position, 0.3)
-		tw.tween_callback(func() -> void:
-			if is_instance_valid(orb):
-				orb._collect(nearest))
+		orb.global_position = start
+		orb.scale = initial_scale
+		orb._reeling = false
+		collision_layer = 1 << 4
