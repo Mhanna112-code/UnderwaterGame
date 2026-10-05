@@ -164,10 +164,12 @@ func _show_opening_title() -> void:
 	var spacer := Control.new()
 	spacer.custom_minimum_size.y = 20.0
 	copy.add_child(spacer)
-	copy.add_child(_title_label("Art and cinematics: Glass_Goat\nMusic: Phoenix Down Music", 16, Color("97b2bd")))
+	copy.add_child(_title_label("Game development: ImmortalDemonGod and Mhanna\nArt and cinematics: Glass_Goat\nMusic: Phoenix Down Music", 16, Color("97b2bd")))
 	get_viewport().size_changed.connect(func() -> void:
 		copy.custom_minimum_size.x = minf(640.0, get_viewport().get_visible_rect().size.x - 48.0)
+		title.add_theme_font_size_override("font_size", int(clampf(copy.custom_minimum_size.x / 7.0, 24.0, 52.0)))
 	)
+	title.add_theme_font_size_override("font_size", int(clampf(copy.custom_minimum_size.x / 7.0, 24.0, 52.0)))
 	center.modulate.a = 0.0
 	handoff_started.emit()
 	var transition := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
