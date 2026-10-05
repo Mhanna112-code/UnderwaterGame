@@ -869,6 +869,21 @@ func _flow_path_for_corridor(corridor: Area3D, current: WaterCurrent) -> PackedV
 	points.append(center + flow * half_span)
 	return points
 
+# A current's line is drawn at least this long on each map, so a short push
+# zone (or one seen at the radar's small scale) still reads as a current -
+# stretched about its middle, along its flow.
+const MAIN_MAP_MIN_CURRENT_PX := 44.0
+const RADAR_MIN_CURRENT_PX := 26.0
+
+func _at_least_long(start: Vector2, end: Vector2, min_len: float) -> Array:
+	var run := end - start
+	var length := run.length()
+	if length >= min_len or length < 0.001:
+		return [start, end]
+	var middle := (start + end) * 0.5
+	var half := run / length * min_len * 0.5
+	return [middle - half, middle + half]
+
 func _is_discovered_corridor(corridor: Area3D) -> bool:
 	return corridor != null and _discovered_corridors.has(corridor)
 
@@ -883,6 +898,9 @@ func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3
 		return
 	var start := (clipped[0] as Vector2) * px_per_unit + mid
 	var end := (clipped[1] as Vector2) * px_per_unit + mid
+	var stretched := _at_least_long(start, end, RADAR_MIN_CURRENT_PX)
+	start = stretched[0]
+	end = stretched[1]
 	# Same blue wavy line + arrowhead as the big map. The selected current
 	# blinks bright/dim blue only while the big map is open (where R can
 	# rotate it); otherwise it's drawn like every other current.
@@ -1414,6 +1432,9 @@ func _update_main_map_current_line(corridor: Area3D, current: WaterCurrent) -> v
 		return
 	var start := _project_to_main_map(path[0])
 	var end := _project_to_main_map(path[1])
+	var stretched := _at_least_long(start, end, MAIN_MAP_MIN_CURRENT_PX)
+	start = stretched[0]
+	end = stretched[1]
 	if not _main_map_current_lines.has(corridor):
 		var line := _make_main_map_line()
 		line.name = "Current_%s" % corridor.name
