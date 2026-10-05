@@ -767,6 +767,8 @@ var _room_warning_fade: Tween
 # --- Announcements (World's orange banner) -------------------------------
 var _banner: Label
 var _banner_timer := 0.0
+var _announcements := preload("res://game/orange_message_queue.gd").new()
+var _announcement_revision := 0
 
 # Set when E on something brings up orange text: until that text is gone,
 # the white "Press E to interact" stays hidden and E interacts with nothing.
@@ -775,17 +777,28 @@ var _interact_cooldown := false
 func _announce(text: String, seconds := 4.0) -> void:
 	if _banner == null:
 		_banner = _make_caption(-170.0, -130.0, 20, Color(1.0, 0.6, 0.45))
-	_banner.text = text
-	_banner.visible = true
-	_banner_timer = seconds
+	_announcements.push(text, seconds)
+	_announcement_revision += 1
+	_banner.text = _announcements.current_text()
+	_banner_timer = _announcements.seconds_left()
+	_refresh_announcement_visibility()
 
 func _update_announce(dt: float) -> void:
 	if _banner == null:
 		return
-	_banner_timer = maxf(_banner_timer - dt, 0.0)
+	if _announcement_readable():
+		_announcements.advance(dt)
+	_banner.text = _announcements.current_text()
+	_banner_timer = _announcements.seconds_left()
+	_refresh_announcement_visibility()
+
+func _announcement_readable() -> bool:
 	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
 	var map_open := map != null and map.main_map != null and map.main_map.visible
-	var captions_allowed := not any_modal_open() and not _battling and not map_open
+	return maze_active and $HUD.visible and not any_modal_open() and not _battling and not map_open
+
+func _refresh_announcement_visibility() -> void:
+	var captions_allowed := _announcement_readable()
 	_banner.visible = _banner_timer > 0.0 and captions_allowed
 	# Status/goal and an announcement share the bottom reading area. Give
 	# only one surface ownership rather than painting text on top of text.
@@ -4489,11 +4502,11 @@ func _unhandled_input(e: InputEvent) -> void:
 		# cooldown (see _interact_cooldown).
 		if _interact_cooldown:
 			return
-		var banner_text := _banner.text if _banner != null else ""
-		var banner_time := _banner_timer
+		var notice_before := _announcement_revision
 		_handle_e(e as InputEventKey)
-		# This press put up (or renewed) orange text: cool down until it's gone.
-		if _banner != null and _banner_timer > 0.0 and (_banner.text != banner_text or _banner_timer > banner_time):
+		# A queued notice may not change the currently visible text/timer.
+		# Preserve E cooldown for accepted interaction feedback as well.
+		if _announcement_revision != notice_before:
 			_interact_cooldown = true
 
 # E owns nearby context interactions only. F remains available independently

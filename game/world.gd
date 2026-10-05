@@ -77,6 +77,7 @@ func _tutorial_skip_requested() -> bool:
 # freezes the dive while game/battle.gd runs it.
 var banner: Label
 var _banner_timer := 0.0
+var _announcements := preload("res://game/orange_message_queue.gd").new()
 var route_objective_panel: PanelContainer
 var route_objective_label: Label
 var battling := false
@@ -717,6 +718,7 @@ func _begin_quiet_spawn_if_needed() -> void:
 		return
 	_intro_active = false
 	_camera_look_override = null
+	_announcements.clear()
 	banner.text = ""
 	route_state.set_objective("")
 	route_state.set_prologue_phase("spawn_exploration")
@@ -803,6 +805,7 @@ func _recover_from_prologue() -> void:
 	route_state.set_encounter_source("random")
 	random_encounters_enabled = true
 	route_state.set_objective("")
+	_announcements.clear()
 	banner.text = ""
 	_banner_timer = 0.0
 	recovery.show_saving()
@@ -2187,7 +2190,7 @@ func _update_save_point_prompt() -> void:
 			banner.text = ""
 			_showing_save_prompt = false
 		return
-	if on_point and not _showing_save_prompt:
+	if on_point and not _showing_save_prompt and _announcements.current_text().is_empty():
 		if not _save_point_tutorial_seen:
 			_save_point_tutorial_seen = true
 			var pages: Array[Dictionary] = [{
@@ -3240,10 +3243,14 @@ func _update_aim_marker() -> void:
 # fade the banner. Only called while not battling: _physics_process skips
 # this whole side of the world once a fight is up.
 func _update_banner(dt: float) -> void:
-	if _banner_timer > 0.0:
-		_banner_timer -= dt
-		if _banner_timer <= 0.0:
-			banner.text = ""
+	if _announcements.current_text().is_empty():
+		return # Held intro/save-point prompts are not transient announcements.
+	# SavePointMenu does not pause the tree, unlike a lesson; neither reading
+	# menu may consume the exploration banner's allotted time underneath it.
+	if $HUD.visible and not save_point_menu.visible and not inventory_menu.visible:
+		_announcements.advance(dt)
+	_banner_timer = _announcements.seconds_left()
+	banner.text = _announcements.current_text()
 
 # Entering a guarded item's site starts its encounter directly; Sonar and
 # random-encounter rolls are not prerequisites, but the R encounter toggle
@@ -3822,10 +3829,14 @@ func _grant_reward_item(item_id: String) -> void:
 	_add_to_inventory(item_id)
 
 func _announce(text: String) -> void:
-	banner.text = text
-	_banner_timer = 4.0
+	_announcements.push(text)
+	_showing_save_prompt = false
+	banner.text = _announcements.current_text()
+	_banner_timer = _announcements.seconds_left()
 
 func _intro_announce(text: String) -> void:
+	_announcements.clear()
+	_banner_timer = 0.0
 	banner.text = text
 
 

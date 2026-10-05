@@ -39,8 +39,15 @@ func _run() -> void:
 	FileAccess.set_unix_permissions(pending, 384)
 	world.save_point_menu.save_requested.emit(world.divers[0], TARGET)
 	await process_frame
-	_expect(world._current_slot == TARGET and "Progress saved" in world.banner.text, "OPEN-030 retry does not select a successful target")
+	_expect(world._current_slot == TARGET, "OPEN-030 retry does not select a successful target")
 	_expect((SaveManager.read_slot(TARGET).get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-030 cross-slot retry loses opening completion")
+	# MSG-6: the real retry commits immediately, but its notice follows the
+	# still-readable failure instead of erasing it. Keep both IO and UI oracles.
+	_expect("Could not save" in world.banner.text, "MSG-6 successful retry overwrites unread failure")
+	var deadline := Time.get_ticks_msec() + 5500
+	while not "Progress saved" in world.banner.text and Time.get_ticks_msec() < deadline:
+		await physics_frame
+	_expect("Progress saved" in world.banner.text, "MSG-6 committed retry never announces success after failure")
 	world.queue_free()
 	await process_frame
 	paused = false
