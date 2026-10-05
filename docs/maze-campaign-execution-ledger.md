@@ -7,11 +7,16 @@ review alias is updated and locally/immutable/stable checksum-title-L checks
 pass; portable control screenshots inspected. PCK and deployment identifiers
 are in the runtime manifest. Same-source Windows/Linux prerelease is published,
 ZIP/architecture/published hashes pass, target launches still unverified.
-Main/public untouched. Source includes pushed `0561454` sphere-room gaps and
-newly fetched PR100 `e7072ab` Stun/Angler repair. Marc's latest heads are
+Main/public untouched. Source includes `0561454` sphere-room gaps,
+PR100 `e7072ab` Stun/Angler repair, earned-map `6cc66c7` and incoming shooter-
+owned orb `b064f99`, combined in `b916637`. Marc's latest heads are
 #97 `4ec6598` and #99 `86878fa`; f698bee/4ec6598 are read and classified,
-not silently admitted. Local earned-map/chest admission is undergoing final
-merged-source consumer checks. Real acquisition/return, six capsule/input/pause
+not silently admitted (orb subset is carried separately). Earned-map/chest
+affected gates passed on the Stun/Angler source. Orb-combined real-physics reel,
+World aim, swimming, animation, puppet reward, six chest and map persistence
+reruns pass without script errors (`/tmp/underwater-late-orb-*.log`). These are
+bounded checks, not full-suite/embedded/browser/polish acceptance.
+Real acquisition/return, six capsule/input/pause
 cases, 72 map boundaries, isolated-slot cold/legacy Load and actual door-key
 separation pass. Native acquisition/map frames inspected; external Control Room
 discoverability and browser acquisition remain open.

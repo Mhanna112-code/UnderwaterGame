@@ -49,6 +49,17 @@ affected gates run separately; none implies a full route/polish approval.
 No new web/native export or public/main promotion. Artifacts remain bffe1b5.
 Detailed receipts/exclusions: `verify/marc_earned_map.bug-catalog.md`.
 
+Earned-map batch committed as 6cc66c7, preserving e7072ab. Incoming b064f99
+orb reel combined in b916637; merged World keeps both the ray-mask repair and
+the no-free-map spell diagnostic. Gate registry retains both sets. Fresh
+merged-source `marc_orb_reel`, World aim, swim, animation, actual puppet reward,
+six chest and map-persistence checks pass without script errors. Final earlier
+earned-map/channel, 27 door, 24 map selection, 12 viewport, input/minimap,
+checkpoint IO, World return, relic consumer, Cordys dispatch and spell-menu
+gates also pass; spell-menu stale all-key expectation now explicitly rejects
+unearned map instead of granting it. No complete route or hosted claim follows.
+
+
 ## October 4, sphere-room intake after bffe1b5 delivery
 
 c035c20's 4m column spacing is carried: six generated room sizes fail old ~2m
