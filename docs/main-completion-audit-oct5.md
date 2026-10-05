@@ -59,6 +59,16 @@ recorded in `mermaid-weirdo-inspection-oct5.md`. No opening or Cordys change.
 Actual browser lab presentation and matching candidate/canonical delivery are
 the next batch checks; no runtime push/publication is claimed yet.
 
+Laboratory browser follow-up now reached the movie by real swimming, skipped
+through its actual button, won in12 ordinary actions, displayed exclusive
+1280/720/360 computer/controller/ramp payoff and cold-loaded unchanged durable
+cleared-lab bytes. Visual inspection nevertheless caught a stale Tethys-arrival
+banner after Close. Native red reproduced one finding; bounded repair omits
+only the lab World arrival (Battle owns the intro), preserving other queued
+messages. Native win/Close/Load is green. Matching repaired browser/candidate/
+canonical acceptance is still pending. Current credited main8762277 is merged
+without altering the deferred opening identity or film.
+
 ## Authority and baseline
 
 Miguel requested a systematic audit of the remaining comprehensive plan and
