@@ -3,6 +3,18 @@
 Contract: user-authorized comprehensive plan in the October 4 conversation.
 This ledger retains the full scope; a green focused batch is not release readiness.
 
+October5 whirlpool motion follow-up repairs actual owner removal, killed-timer
+recapture, post-load resource overwrite, active-maze deactivation locks, buried
+CSG returns, freed actor lambda errors/stale physics overlap and0HP resurrection.
+The bounded packet in docs/evidence/whirlpool-motion-safety-oct5 distinguishes
+18 World interruptions,6 active-maze handoffs,24 blocked returns,36 actual
+damage completions and9 actor/external-owner cases from the still-required
+battle/modal warning ownership, standalone/World save-guard and hall layout.
+All nine final-source runtime commands exit0 without engine/script errors;
+existing earned-map/current, grapple and shared-ramp preservation pass too.
+This admits only the stated motion/resource batch. It does not finish Step2, update the
+hosted preview, or establish normal campaign/browser/full-suite readiness.
+
 October 5 whirlpool LOS follow-up ports Marc's open-water wall-occlusion
 contract to both drag and suction. A real intervening wall originally still
 locked/reset the diver and removed2HP. The same case now refuses catch while

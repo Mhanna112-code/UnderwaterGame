@@ -1,0 +1,44 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DAMAGE|actor=0|before=0|damage=0|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=0|damage=2|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=0|damage=10|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=1|damage=0|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=1|damage=2|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=1|damage=10|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=2|damage=0|after=2|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=2|damage=2|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=0|before=2|damage=10|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=0|before=7|damage=0|after=7|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=7|damage=2|after=5|reported=2|completions=1
+WHIRL_DAMAGE|actor=0|before=7|damage=10|after=1|reported=6|completions=1
+WHIRL_DAMAGE|actor=1|before=0|damage=0|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=0|damage=2|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=0|damage=10|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=1|damage=0|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=1|damage=2|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=1|damage=10|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=2|damage=0|after=2|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=2|damage=2|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=1|before=2|damage=10|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=1|before=7|damage=0|after=7|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=7|damage=2|after=5|reported=2|completions=1
+WHIRL_DAMAGE|actor=1|before=7|damage=10|after=1|reported=6|completions=1
+WHIRL_DAMAGE|actor=2|before=0|damage=0|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=0|damage=2|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=0|damage=10|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=1|damage=0|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=1|damage=2|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=1|damage=10|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=2|damage=0|after=2|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=2|damage=2|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=2|before=2|damage=10|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=2|before=7|damage=0|after=7|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=7|damage=2|after=5|reported=2|completions=1
+WHIRL_DAMAGE|actor=2|before=7|damage=10|after=1|reported=6|completions=1
+WHIRL_DAMAGE|cases=36|no_player_files=true
+WHIRLPOOL SAFETY: clean

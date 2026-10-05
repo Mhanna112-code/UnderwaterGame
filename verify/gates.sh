@@ -39,7 +39,7 @@ run() {
 		local command_pid=$!
 		local stopped_on_script_error=0
 		while kill -0 "$command_pid" 2>/dev/null; do
-			if grep -q "SCRIPT ERROR:" "$gate_log"; then
+			if rg -q '(^|[[:space:]])ERROR:|Infinite loop detected' "$gate_log"; then
 				# A SceneTree verifier can throw before reaching quit(), leaving
 				# Godot alive forever. Stop immediately instead of waiting out the
 				# full timeout; the captured error is already the useful evidence.
@@ -60,8 +60,8 @@ run() {
 	fi
 	cat "$gate_log"
 	local script_error=0
-	if rg -q 'SCRIPT ERROR:|Infinite loop detected' "$gate_log"; then
-		echo "GATE ERROR: Godot reported a script error or a release-blocking infinite tween loop despite the exit status"
+	if rg -q '(^|[[:space:]])ERROR:|Infinite loop detected' "$gate_log"; then
+		echo "GATE ERROR: an engine/script error or release-blocking infinite tween loop invalidates the exit status"
 		script_error=1
 	fi
 	if [ "$command_status" -eq 124 ]; then
@@ -74,6 +74,20 @@ run() {
 	fails=$((fails + 1))
 	return 0
 }
+
+# Public runner probes exercise log/exit handling without importing the
+# wrapper into a second script or starting every gameplay gate.
+case "${1:-}" in
+	--probe-engine-error)
+		run "expected engine ERROR witness" /bin/echo 'ERROR: Lambda capture at index 0 was freed.'
+		exit "$fails" ;;
+	--probe-script-error)
+		run "expected script ERROR witness" /bin/echo 'SCRIPT ERROR: invalid instance'
+		exit "$fails" ;;
+	--probe-healthy)
+		run "healthy runner witness" /bin/echo 'healthy child'
+		exit "$fails" ;;
+esac
 
 # Project-wide script classes are cached by the Godot editor and that cache is
 # intentionally ignored. A brand-new worktree therefore needs one ordinary
@@ -94,6 +108,7 @@ prepare_godot_classes() {
 }
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
+run "verification runner: are engine/script errors rejected even when the child exits0" bash verify/gate_error_detection.sh
 run "authored combat turns: do real stun skips and Angler damage/Bite history reach live Battle" "$GODOT" --headless --path . --script verify/authored_combat_turns.gd
 run "Marc pause port: do all four tabs fit and block exploration without losing audio/training" "$GODOT" --headless --path . --script verify/marc_pause_presentation.gd
 run "Marc popup port: do real battles defer lessons and resume surviving callers safely" "$GODOT" --headless --path . --script verify/marc_popup_ownership.gd
@@ -204,6 +219,13 @@ run "poster fence saved placements: do old/current-frame JSON restores retain re
 run "poster fence downed party: do overlapping saved downed bodies clear without revival, refill or effect loss" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --restore --downed
 run "whirlpool wall safety: does a real wall prevent suction without disabling an open-water catch" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd
 run "whirlpool wall safety family: do three capsules, static/CSG walls, sphere/cylinder suction and both orientations obey physical occlusion" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --matrix
+run "whirlpool owner teardown: does a caught shared diver survive hazard removal and really swim" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --teardown
+run "whirlpool interruption family: do three actors survive spiral/vanish owner loss, stopped timers and live JSON restore" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --lifecycle
+run "whirlpool inactive owner: does the actual disabled maze remain quiet for parked shared actors" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --inactive
+run "whirlpool active deactivation: does real maze handoff release six interrupted actors and refuse transient snapshots" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --deactivate
+run "whirlpool blocked return: do24 capsule/solid/yaw/phase cases release outside new solids and permit actual clear-direction swimming" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --blocked-matrix
+run "whirlpool actual damage: do36 completed overlaps keep downed HP0, living HP1 and nonnegative loss without O2 cost" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --damage
+run "whirlpool actor lifetime: do six removed rigs leave no engine errors and three preexisting owners retain their locks/models/masks" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --actor-lifetime
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
 run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd

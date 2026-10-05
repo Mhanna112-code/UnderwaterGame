@@ -429,6 +429,9 @@ func restore_checkpoint(data: Dictionary) -> bool:
 			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
 				return false
 	var divers_data := raw_divers as Array
+	# Preflight is complete. Old hazard timers must relinquish shared actors
+	# before the loaded pose/resources replace them, never after that point.
+	Whirlpool.cancel_in(self)
 	_loaded_maze_session = maze_session if data.get("campaign_scene") == "maze" else null
 	_campaign_session = maze_session
 	_cancel_random_encounter_reveal()

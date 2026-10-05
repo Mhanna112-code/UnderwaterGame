@@ -28,8 +28,8 @@ motion owner or cancellation boundary; that must be investigated explicitly.
 |---|---|---|---|
 | WHIRL-1 | A warning/suction shape crossing a solid wall catches or drags a diver in the adjacent passage. | High: unavoidable damage/reset bypasses physical corridors; both callbacks lack upstream line-of-sight protection. | Fixed: original real World overlap red,24 generated obstructed/open pairs and native Metal repeat. |
 | WHIRL-2 | Inactive maze, battle or exclusive reading/menu state still pulls actors or draws root-owned warnings. | High: two input/resource/HUD owners; scene-child areas/Tweens/static labels can outlive owning gameplay. | Actual shared area handoff, battle/modal and paused-warning checks. Pending. |
-| WHIRL-3 | Restore, killed Tween or owner/actor teardown leaves a shared model hidden, rolled or suction-locked, or emits freed-reference errors. | High: irreversible gameplay stall; the current Tween is local/untracked and exit only clears captions. | Actual lifecycle interruption with live actor/model/mask/resource conservation and resumed swimming. Pending. |
-| WHIRL-4 | Nonlethal damage revives a downed diver or reports negative damage. | High: corrupts combat/resource contract; max(1,hp-damage) unconditionally raises0HP. | Generated living/downed HP and damage values under actual overlaps. Pending. |
+| WHIRL-3 | Restore, killed Tween or owner/actor teardown leaves a shared model hidden, rolled or suction-locked, or emits freed-reference errors. | High: irreversible gameplay stall; the original Tween was local/untracked and exit only cleared captions. | Captured reds repaired:18 World interruptions,6 active-maze handoffs,24 blocked returns,6 actor deletions and3 external-owner cases. Standalone restore/World save guard and battle/modal ownership acceptance remain separate. |
+| WHIRL-4 | Nonlethal damage revives a downed diver or reports negative damage. | High: corrupts combat/resource contract; max(1,hp-damage) unconditionally raises0HP. | Actual0HP→1HP/−1loss red repaired;36 completed overlap/resource/signal cases pass. |
 | WHIRL-5 | Hall layout/deep-shaft port blocks all safe lanes or regresses grapple visibility. | High: final route becomes impossible; current hall tuning/layout and deep visuals differ upstream. | Real avoidance/arrival/reset traversal plus physical columns/ceilings, native shaft/floor/ring/anchor view. Pending after first safety red. |
 
 ## First test / self-critique
@@ -56,7 +56,90 @@ separate height/deep-hall generator belongs to WHIRL-5.
 - No new narration, enemy kit or ordinary victory recovery in this module.
 - Final browser/campaign/audio and desktop packages remain in the full ledger.
 
+## WHIRL-3 first interruption probe
+
+Use the actual authored World whirlpool and a capsule-clear shared actor.
+Wait for a real Area3D catch, remove only the hazard owner mid-spiral, then
+require release of lock/model/roll ownership, unchanged HP/Oxygen and real
+W swimming. The World and actor survive; no callback is called by the test.
+Always-disabled suction fails the precondition. A helper/Tween refactor keeps
+passing if the surviving actor remains controllable. After this first red is
+fixed, generate all three capsules and spiral/vanish interruption phases,
+then test live restore, killed scheduler, inactive area and blocked approaches.
+
 ## Evaluation / investigation
+
+Final-source rerun: nine commands exit0 and logs contain no engine/script
+ERROR, infinite loop or FINDING. The complete actor/source hash receipt and
+red/rejected-observer logs are in docs/evidence/whirlpool-motion-safety-oct5.
+The current-route, grapple and shared-ramp gates also pass. This is bounded
+motion/damage acceptance, not battle/menu warning or full campaign readiness.
+
+- WHIRL-3 owner-removal red is now reproduced and repaired: the actual World
+  hazard caught a living shared diver; freeing only that hazard left the
+  surviving actor locked and real W made no progress. Tracked motion cleanup
+  now returns it to its physically checked departure, keeps7HP/0O2 and permits
+  actual W swimming. This first green is not live-save/deactivation acceptance.
+- Next generated interruption family: three actors × spiral/vanish × owner
+  removal/killed SceneTree scheduler/validated JSON live checkpoint restore.
+  Actual overlap must first own the actor; all cases require visible model,
+  restored rotation/roll, unchanged resources (or exactly restored save values),
+  clear capsule and real W after interruption. Restore must remain stable
+  beyond the original timer deadline. Killing engine timers tests interruption,
+  not private callback calls or expectations about implementation dictionaries.
+  Always-disabled suction fails catch; late callbacks/locks fail conservation.
+- Rejected observer: exact whole model rotation after75 resumed frames falsely
+  blamed cleanup for model X returning to0. Diver._animate owns that lean on
+  normal swimming. The surviving yaw and hazard-owned Z roll are checked
+  separately; this is not a production fix or relaxed pose/visibility gate.
+- Next live-area probe: three shared actors × spiral/vanish at the actual
+  authored Corridor4 whirlpool, active through World's normal ownership
+  handoff. Disabling/re-enabling Maze must relinquish its lock/model and
+  resources, refuse a stable checkpoint while caught, and allow actual swim
+  on resumption. This is different from the already-green fresh inactive
+  Area overlap. It must catch first and bypass/current preconditions must
+  be checked rather than disabled to manufacture a test.
+- Blocked departure probe: actual overlap, then introduce a real solid CSG
+  box around the old departure before freeing the hazard. Require release
+  outside the box's independently known solid volume and a clear capsule;
+  resumed W must be possible without any HP/O2 charge. CSG triangle-only
+  queries can return empty for a fully buried actor, so a surface-query-only
+  green cannot prove this negative path. After first red, generate three
+  capsules × Static/CSG ×0/90° yaw × spiral/vanish.
+- Rotated-block observer correction: W pointed straight into the newly
+  introduced wall at the north landing. A successful release is not a
+  noclip contract. The generator now selects a real WASD direction using
+  independent capsule cast_motion clearance, then requires actual swimming.
+  No-clear-direction remains a failure, not a skipped movement assertion.
+- WHIRL-4 damage-family probe: three live capsules × HP0/1/2/7 × authored
+  damage0/2/10 through actual overlaps and completion signals. Independent
+  expected loss is bounded by damage and living HP above1; a downed actor
+  remains0 and reports0, not negative loss. Require an actual completion,
+  unlocked/visible clear reset and unchanged0O2. Always-disabled suction
+  fails completion; formula-only/helper tests cannot establish this contract.
+- Final lifetime/non-stealing probe: actual new Diver nodes with all three
+  delivered rigs leave during spiral/vanish, and new actors then complete the
+  same hazard normally (not an always-disabled cleanup). Separately overlap
+  the shared party's three actors with preexisting suction locks and hidden
+  models; the hazard must neither claim nor clear those external owners.
+  This verifies hazard lifetime, not support for deleting World party slots.
+- This probe caught two genuine extra failures: captured Node lambdas emit
+  engine ERROR before the callback's own validity guard after actor deletion;
+  callbacks now resolve a WeakRef. Also, freshly created Areas can report an
+  overlap from a teleported actor's old physical pose and catch it20m away.
+  Warning/suction entry now verifies the current capsule/zone geometry. The
+  latter was not an external-lock theft: the externally locked actor itself
+  remained untouched, but the previous actor was wrongly captured remotely.
+- LOS preservation's40-frame positive leg observed damage-flash blinking
+  rather than settled visibility. The .4s pull/.1s vanish plus .64s flash
+  require a longer observation;90 physics frames preserve the same exact
+  reset/HP/O2/catch and visibility assertions after the authored flash ends.
+- Preservation gate observer: current-route chest waypoint allowed .45m
+  early stopping at1.8m nominal horizontal distance. The tall diver is raised
+  to2.956m by the real plinth; combined3D distance can exceed CHEST_REACH2.4.
+  The route now approaches to1.4m nominal horizontal distance and prints the
+  actual3D distance before E. It still physically earns the map and returns;
+  no interaction-radius change, map grant or removed assertion is permitted.
 
 - WHIRL-1 caught at7ced43e: an intervening real wall did not prevent suction;
   the diver locked, lost2HP and reset from228.8 to226. LOS protection now
@@ -73,6 +156,13 @@ separate height/deep-hall generator belongs to WHIRL-5.
   generator stays in validated water and uses the independently clear normal
   approach as reset. A still-blocked positive sightline is now a fixture
   failure, never an excuse to disable the production LOS check.
-- WHIRL-2/3/4/5 remain open. No admission of inactive-area/paused warning,
-  motion teardown, downed resource policy, deep shafts, gentle hall layout,
-  browser or full campaign acceptance follows from these LOS cases.
+- LOS receipts alone never admitted WHIRL-2/3/4/5. Later ownership/damage
+  probes below admit only their stated runtime cases. Battle/modal/root
+  caption ownership, hall layout/deep shafts, browser/full campaign and
+  final platform acceptance remain open.
+- Next ownership probe: the actual inactive authored Corridor4 hazard does
+  not catch a parked shared Musashi while World remains the selected owner.
+  This retracts the assumption that this fresh disabled-subtree overlap
+  necessarily fires a capture callback. It does not cover deactivation during
+  an existing spiral, battle/menu warning lifetime or interrupted teardown;
+  probe those next rather than adding a redundant fresh-inactive fix.

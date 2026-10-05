@@ -186,6 +186,7 @@ func set_maze_active(on: bool) -> void:
 	if not on:
 		_cancel_aim()
 		_cancel_wall_motion()
+		Whirlpool.cancel_in(self)
 		if special_sites != null:
 			special_sites.cancel()
 	maze_active = on
@@ -5730,7 +5731,7 @@ const CAMPAIGN_FLAGS := ["_completed", "_hallway_1_2_swung", "_walls_14_15_open"
 	"room_encounters_enabled", "_strong_room_seen", "_switch_explained"]
 
 func can_capture_campaign_snapshot() -> bool:
-	return _moving_wall_sets.is_empty() and not _wall_riders.busy() and not _gate_cutscene and not _chest_reward_pending \
+	return _moving_wall_sets.is_empty() and not _wall_riders.busy() and not Whirlpool.busy_in(self) and not _gate_cutscene and not _chest_reward_pending \
 		and not _battling and not aiming and not get_tree().paused and not any_modal_open() \
 		and special_sites != null and special_sites.initialized
 
@@ -5994,6 +5995,7 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	# Cancel only after valid coordinate preflight. Old Tweens must not keep
 	# moving walls after applying the checkpoint, or retain disabled skirts.
 	_cancel_wall_motion(true)
+	Whirlpool.cancel_in(self, not restore_positions)
 	for flag in CAMPAIGN_FLAGS:
 		set(flag, bool(data.flags.get(flag, false)))
 	keys_held = int(data.keys_held)
