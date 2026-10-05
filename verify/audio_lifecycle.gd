@@ -35,11 +35,11 @@ func _run() -> void:
 	world._on_battle_finished("won")
 	await process_frame
 	await process_frame
-	_expect(audio.get_music_state().cue_id == "victory" and audio.get_music_state().phase == "intro", "VICTORY: normal win did not replace Battle music with victory fanfare")
+	_expect(audio.get_music_state().cue_id == "exploration" and audio.get_music_state().phase == "loop", "RETURN: resolved win left celebration music playing in exploration")
 
 	world._start_battle("", true)
 	await process_frame
-	_expect(audio.get_music_state().cue_id == "tethys" and audio.get_music_state().phase == "loop", "BOSS: Tethys encounter did not replace victory with its boss loop")
+	_expect(audio.get_music_state().cue_id == "tethys" and audio.get_music_state().phase == "loop", "BOSS: Tethys encounter did not replace exploration with its boss loop")
 	world._on_battle_finished("lost")
 	await process_frame
 	await process_frame

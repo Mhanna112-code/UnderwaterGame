@@ -3360,15 +3360,11 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
-	# A result owns music before any playtest/title branch returns. The victory
-	# pair intentionally persists in the overworld until the next explicit
-	# state (another encounter, defeat, or title); its second file is authored
-	# as a loop. Soft tutorial/special losses and fleeing return to exploration,
-	# while a normal loss is replaced by _show_game_over() below.
+	# Battle owns victory music while its result is visible. Once it relinquishes
+	# the screen, restore exploration before any playtest/title early return.
+	# A normal loss is replaced by _show_game_over() below.
 	match result:
-		"won":
-			_audio_call(&"play_victory_music")
-		"fled", "skipped":
+		"won", "fled", "skipped":
 			_audio_call(&"play_exploration_music")
 		"lost":
 			if was_tutorial or was_special:

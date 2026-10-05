@@ -5849,6 +5849,10 @@ func _build_levelup_block(entry: Dictionary, levels: Array) -> String:
 	return "[b]%s[/b] - Lv.%d\n%s" % [String(entry.display_name), last_level, line]
 
 func _win() -> void:
+	# Battle still owns the screen throughout celebration, XP and unlocks.
+	# Replace its combat cue now, not after `finished` returns to exploration.
+	# Intermediate puppet waves and the prologue have separate dispatch paths.
+	_audio_call(&"play_victory_music")
 	_set_all_buttons(false)
 	# Resolved combat has no active turn or pending opponent. Keeping the
 	# final NOW/cursor made a real victory look like an unfinished action.
