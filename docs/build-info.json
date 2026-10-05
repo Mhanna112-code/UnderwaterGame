@@ -1,14 +1,14 @@
 {
-  "source_commit": "a9b531f4c97aee141669708c585c46f4ad99bf1f",
-  "pck_sha256": "ac6a97577c163d8755e759f21df3bb5c6b647f33e4af0347879b26ab472fa414",
-  "pck_bytes": 94977948,
+  "source_commit": "153b2a59275969fb05e683b26141a48ef42e1182",
+  "pck_sha256": "f9264ce939a6c1d3d781ca4313d70859985edc3968df85dae609e694a9c09082",
+  "pck_bytes": 94984492,
   "engine": "Godot 4.7.1",
   "status": "Post-Tethys visible maze ramp guide and cleared exit; focused navigation verification, not full-campaign readiness",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Camera-relative maze compass after lab victory/cold Load; cleared exit-cover geometry and responsive navigation layout. Retains latest valid autosave recovery and Marc f457098 combat/tutorial/maze rules. Latest upstream audit-only commits incorporated",
+  "change": "Camera-relative maze compass after lab victory/cold Load; cleared exit-cover geometry and responsive navigation layout. Preserves Marc e572a55 shared maze HUD, ending checkpoints, pacing and spell rules, plus 4dd2a47 12-Oxygen Shockwave and renamed Spells tab",
   "deferred": "Full earned campaign/browser/audio/polish acceptance; same-source Windows/Linux packages. Native download source below is older than this web build",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"

@@ -122,7 +122,10 @@ try {
     await page.waitForTimeout(150);
     const rows = await capture('actual-swim-' + step), text = rows.map(row => row.text).join('\n');
     if (!/Maze ramp|Laboratory cleared/i.test(text)) {
-      expect(/Control Room/i.test(text), 'NAV-W3 guide vanished without visible maze-room ownership');
+      // Thin perspective text can OCR its t as c or o as a. Require this
+      // specific room name (not merely missing World text), tolerating those
+      // two observed glyph errors only; the retained frame is inspected too.
+      expect(/Con[tc]r[oa]l Room/i.test(text), 'NAV-W3 guide vanished without visible maze-room ownership');
       entered = true; break;
     }
     const label = rows.find(row => /^Maze ramp$/i.test(row.text.trim()));
