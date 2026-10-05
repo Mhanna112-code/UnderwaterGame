@@ -268,6 +268,9 @@ func _ready() -> void:
 	if anim == null:
 		push_error("NO AnimationPlayer in %s" % file)
 	else:
+		# New spell deliveries are partial FBXs. Add their verified animation
+		# tracks to the existing rig instead of losing its old movement clips.
+		anim.add_animation_library("spells", Cast.spell_animations(model_name))
 		# Keep animating while the tree is paused. _ready() runs under the
 		# title screen, which pauses everything, and a paused
 		# AnimationPlayer never advances a frame - so calling play() below
@@ -877,6 +880,8 @@ func resolve(stem: String) -> String:
 		return _prefix + stem
 	if anim.has_animation(stem):
 		return stem
+	if anim.has_animation("spells/" + stem):
+		return "spells/" + stem
 	for a in anim.get_animation_list():
 		var nm := String(a)
 		var bar := nm.rfind("|")

@@ -19,6 +19,7 @@ const ALL := {
 	"Staff_Diver": {
 		"family": "Scuba",
 		"file": "res://art/characters/Scuba_Rigged.fbx",
+		"spell_animations": "res://art/characters/spell_animations/maxilani.res",
 		# The staff is skinned to the same rig and swims with her, so it is
 		# part of the character and not a prop parked nearby. Hiding it is
 		# what left it floating on its own beside her (#26).
@@ -27,11 +28,13 @@ const ALL := {
 	"Prototype_1(1910)": {
 		"family": "Proto1",
 		"file": "res://art/characters/Prototype1_Rigged.fbx",
+		"spell_animations": "res://art/characters/spell_animations/musashi.res",
 		"carries": [],
 	},
 	"Prototype_V(1922)": {
 		"family": "Proto5",
 		"file": "res://art/characters/PrototypeV_Rigged.fbx",
+		"spell_animations": "res://art/characters/spell_animations/bucky.res",
 		"carries": [],
 	},
 }
@@ -116,19 +119,25 @@ const ABILITY_CLIPS := {
 	"Flash Blast": "Scuba_(Attack)Flash1",
 	"Multiple Knee Combo": "Scuba_(Attack)Double_Knee1",
 	"Axe Kick": "Scuba_(Attack)Axe_Kick1",
+	# Animation-only October delivery: preserve the complete working FBXs.
+	# The delivered Swift Slash is the spell tree's Swift Strike.
+	"Swift Strike": "Scuba_(Attack) Swift Slash",
+	"Riptide Slash": "Scuba_(Attack) Riptide Slash",
 	# Prototype_1(1910)
 	"Precise Tap": "Proto1_(Attack)Palm_Strike",
 	"Weaken": "Proto1_(Attack)DualPalm",
 	"Slow": "Proto1_(Attack)Axe_Kick",
+	"Blinding Silt": "Proto1_(Attack)Blinding)Silt",
+	"Exploit Opening": "Proto1_(Attack)Blinding)Exploit_Opening",
+	"Precise Jab": "Proto1_(Attack)Precise_Jab",
 	# Prototype_V(1922)
 	"Guard Bash": "Proto5_(Attack)BodyPress",
 	"Heavy Kick": "Proto5_(Attack)Slam",
 	"Crushing Haymaker": "Proto5_(Attack)Hammer",
-	# Support casts face an ally in place. The fallback Hammer telescopes
-	# across that row and obscures the recipient. Use the delivered positive
-	# gesture's one-shot start, not the shared looping victory resource.
-	"Mending Current": "Proto5_(Thumbs_P)(Start)",
-	"Tidal Revival": "Proto5_(Thumbs_P)(Start)",
+	"Guard Break": "Proto5_Guard_Break",
+	"Heavy Slam": "Proto5_Heavy_Slam",
+	"Mending Current": "Proto5_Mending Current",
+	"Tidal Revival": "Proto5_Tidal_Revival",
 }
 
 const FALLBACK_ATTACK := {
@@ -157,6 +166,9 @@ static func family(model_name: String) -> String:
 
 static func file(model_name: String) -> String:
 	return String(entry(model_name).file)
+
+static func spell_animations(model_name: String) -> AnimationLibrary:
+	return load(String(entry(model_name).spell_animations)) as AnimationLibrary
 
 static func carries(model_name: String) -> Array:
 	return entry(model_name).carries as Array

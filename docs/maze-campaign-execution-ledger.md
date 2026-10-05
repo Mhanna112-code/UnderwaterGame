@@ -2,12 +2,34 @@
 
 ## Current authoritative status
 
+October 4, 19:13 CDT follow-up: nine spell animations from the already-downloaded
+partial character FBXs are integrated locally as supplementary libraries. All
+nine failed as generic fallbacks first; runtime poses and old motion/base moves
+now pass. Real Mending/Revival restore HP and spend O2, finish their clips and
+release usable turns. Full three-diver native casts pass at 720x480/1280x720.
+Target-menu/status-card occlusion and a narrow lab framing regression were
+caught and repaired, not dismissed because functional checks were green.
+This increment also adapts Marc's actual item-carrier message/first-turn log.
+Export/deployed acceptance for this increment is still pending; dcb7650 remains
+the last hosted runtime below. The exact admission is in the asset manifest.
+
+Remote refresh found new work: PR97 is now bbadaaf (five commits after the
+integrated 58c6ed0), PR99 is 7e52dfc (three after the inspected 11857ae).
+These later deltas are not yet integrated; the plan's reconciliation section
+records their ownership and required oracles. PR99 stat/guidance changes remain
+pending. Marc's reported PR96 Chrome crash did not reproduce in actual bundled
+Chromium/Metal fights on either PR96 or dcb7650; real victory and World return
+passed, but his Chrome/hardware report is not closed. No global rebalance,
+main merge or public promotion was performed.
+
 Latest local correction: user clarified the shallow puzzle's opened exit must
 enter the maze. Actual exit failed on 213f9af, now live/cold restore and safe return
 pass, with inspected native label/passage/arrival. Primary topology is puzzle →
 maze; independent lab → Tethys. Deep arch remains compatible with earlier saves.
-Export/host refresh for this correction is pending; current delivered runtime below
-does not yet include it. Full grapple/Swap route and broad polish remain open.
+Latest PR100 dcb7650 is now exported and hosted on the same stable alias. Actual
+served PCK SHA/size, completed browser requests, title and real L-map pass without
+captured errors. Windows/Linux packages remain 1ccf92f and do not include this
+correction. Full grapple/Swap route and broad polish remain open.
 
 October 4, 2026: campaign/opening and Marc's maze are reconciled locally. Earlier
 entrance, secret return, checkpoint, World-return, input and recovery increments

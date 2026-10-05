@@ -552,6 +552,52 @@ Keep the separate combat/recovery findings and PR #88 history as evidence. This 
 
 The secret guardian assignment is settled: Cordys's approved two-wave puppet encounter. The remaining bounded content item is exact final victory/ending presentation; a clear functional closure can serve the feedback preview without bespoke narration. Do not reopen the settled decisions in section 1.
 
+### October 4 follow-up reconciliation: PR99, new PR97 and character delivery
+
+This is a new execution delta, not retrospective acceptance of the earlier
+preview. PR100's last delivered source is dcb7650 until the runtime manifest
+identifies a newer artifact. Main/public remain unchanged.
+
+- Partial downloaded FBXs: admit nine authored spell clips through animation-
+  only libraries while preserving complete existing models/motions. Verify
+  source hashes/rig paths/rest transforms, actual deformation, real spell
+  outcomes, finished gestures and narrow/full-party framing. The inventory
+  names exact covered and uncovered spells. Local checks pass; export proof
+  is a separate boundary.
+- Marc's PR99 initially inspected at 11857ae: preserve real carrier text
+  through the first usable turn, with content-fitting log layout. Rewardless
+  lab blockers must not promise an item. This subset is repaired locally.
+  Learned-spell enemy bonus, Goblin 5–10% boost/EVA exclusion and objective/
+  blockade arrow remain separate pending increments; do not import a second
+  objective owner over existing region-sensitive guidance.
+- New remote snapshots now observed: PR99 7e52dfc adds objective repositioning,
+  log below captions and pause backdrop; PR97 bbadaaf adds carrier/pause
+  changes plus 6719ad2 floors/special sites/save pads/map polish, c943218
+  first-person Grapple/rotating-wall collision handling, and bbadaaf
+  whirlpool occlusion/fake-rock ambushes/Sonar Vision/door reach. These later
+  maze changes are NOT integrated yet. Compare the nine-file semantic delta
+  rather than replacing our maze, inventory, state or Battle wholesale.
+- Preservation oracles for the new maze delta: route geometry/current map,
+  Grapple mouse aim/fire/cancel restoration, actual caught wall movement,
+  ambush versus real item identity, campaign checkpoint save/Load/rollback,
+  key/relic separation, independent lab/maze bosses and contextual input.
+  Adapt Marc's standalone `maze_save.json` pads to the established campaign
+  checkpoint owner; never introduce a second save product that loses the
+  reviewed opening or actual party state. Shared Whirlpool changes require
+  outer-world regression too.
+- PR96 Chrome Bomb Bot report: actual attack/victory/World-return checks pass
+  on bundled Chromium/Apple M1 Metal and native Godot, including the reported
+  PR96 URL. This does NOT establish Marc's Chrome/hardware crash cause or
+  close his report. A no-input control fails instead of passing on ambient
+  animation. Keep exact target/browser evidence and remaining uncertainty.
+- PR96 progression discussion is not authorization for a global combat
+  rebalance; keep that audit separate. The local animation/UI work neither
+  claims final balance nor substitutes for full earned-route/polish evidence.
+
+Commit and verify each delta against the same stable feedback alias. Refresh
+remote heads before declaring all collaborator changes reconciled. Keep the
+complete visual/audio audit loop below as the last release gate.
+
 ## 15. Final visual and audio polish audit loop
 
 This is the final release-readiness gate, not a prerequisite for sharing the early combined feedback preview. Keep repeating complete audit rounds until one entire round finishes with zero observed defects within the declared integration scope.

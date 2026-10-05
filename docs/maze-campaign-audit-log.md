@@ -1,5 +1,56 @@
 # Maze and campaign integration audit log
 
+## October 4, 19:13 CDT downloaded character clips and collaborator refresh
+
+SPELL-ANIM-01 red: all nine spells chose generic attacks despite partial FBX
+deliveries containing authored actions. Source intake found missing old clips,
+so whole-FBX replacement would regress movement/base attacks. Generator admits
+only reviewed animation tracks onto the complete working rigs. It checks source
+hashes, bone/node paths and rests, permits the explicitly keyed c_pos difference,
+and omits only Maxilani's two unbound new controls. Working carried prop remains.
+Native side-by-side source/ported body poses and runtime pose samples inspected.
+
+Green: all nine clips deform the actual runtime rig, legacy motion/base attacks
+remain available, and real learned Heavy Slam still uses normal ACC/EVA/O2.
+Actual Mending restores 1→9 HP, Revival 0→10, with O2 costs and usable later
+turns. Long clips originally overlapped the next turn; casting now waits for the
+delivered gesture to finish. Full-party public-menu casts pass wide/narrow.
+This is an explicit learned-kit fixture, not proof of earning through the maze.
+
+Visual red despite functional green: hidden target-flow menus retained deferred
+height, support poses sat under HP cards, and a clipped turn cursor survived.
+Refitting actual container sizes, compact cast-stage information and hiding
+selection-only UI during narrow casts corrected those views. A fixed two-line
+log then regressed lab readability (64px smallest actor); actual content-fitting
+space restored 73px/223px stage at 720x480 while carrier text still fits. No
+acceptance threshold was weakened. Full-party 1x support images inspected.
+
+Invalid evidence excluded: a three-party test attempted the nonexistent Palm
+Thrust label and hit an empty target array. The fixture now uses the real Precise
+Tap control and fails explicitly for a missing target. This was not a game bug.
+
+M99-01/02: actual rewarded enemy notice is retained with the first playable turn;
+rewardless lab blockers do not promise an item, authored puppet intro remains.
+Native reward/menu layout passes. Stat/guidance and later caption/pause changes
+remain pending; no broad rebalance was performed.
+
+BB-WEB-01/02: the previous canvas check could mistake ambient animation for a
+working fight. New rendered-menu/mouse oracle requires actual enemy attack,
+victory, World return and restored input; no-input control fails. Both reported
+PR96 URL and hosted dcb7650 pass 19 actions on bundled Chromium/Metal/Apple M1.
+Earlier heading-click/OCR errors were harness failures. This does not reproduce
+or close Marc's actual Google Chrome/hardware report.
+
+Fresh remote heads: PR97 bbadaaf and PR99 7e52dfc, newer than the inspected
+58c6ed0/11857ae. Five maze and three UI follow-ups remain to reconcile; plan
+records semantic preservation and checkpoint/input/geometry oracles. No blanket
+whole-file merge. Latest Discord pins are unestablished by the stale export.
+
+This is local verification, not an exported/hosted or final whole-game clean
+audit. The runtime manifest retains exact shipped SHAs until new bytes pass.
+Only generated temporary output was moved to external storage; assets and user
+saves remain intact. Main/public unchanged.
+
 ## October 4 user-confirmed shallow-puzzle entrance correction
 
 User observed completing the shallow puzzle does not enter the maze and clarified
@@ -30,6 +81,22 @@ owned slot. Receipts retain the failed production reproduction and rejected runs
 Current published runtime is still 1ccf92f, docs deployment HtzT3N5oXr2rd8usvjxEAV6FQuKv
 with review documentation 213f9af. This correction must be exported and verified
 on the same stable alias before telling the user the hosted handoff is fixed.
+
+Later: pushed dcb7650, verified it is PR100's current head, exported without script
+errors and deployed READY dpl_9cwPgCqLQtKLxaiuavjD6amzxecj. Same stable alias now
+serves 92,417,000-byte PCK SHA 48a82da824be2710940fe086cab03e0be3fa5c2d06f38214bee4bad36ccdf788.
+Actual streamed served checksum, completed browser downloads, real title and L-map
+gate pass with no findings. Native downloads remain 1ccf92f, explicitly disclosed
+in PR body and hosted metadata. Deployed puzzle cold-Load/input probe is running;
+do not conflate that focused fixture with full puzzle-solving acceptance.
+
+Later deployed probe passes: disposable browser profile seeded with the actual
+native solved-plate checkpoint, then public Title Load, real arrow/W movement
+through the opened doorway and real L map. Rendered loaded exit and maze arrival
+inspected; no captured script errors. No JavaScript runtime game-state injection,
+no user's save touched. This verifies cold saved exit/entry on the exact hosted
+dcb7650, not earning/solving the whole shallow puzzle or writing a browser maze
+checkpoint. Latest PR head rechecked dcb7650 matches hosted source.
 
 ## October 4 feedback artifact and Marc's new portrait/switch fixes
 

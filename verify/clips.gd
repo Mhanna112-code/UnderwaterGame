@@ -48,12 +48,13 @@ func _check(model_name: String) -> void:
 		findings.append("NO AnimationPlayer: %s" % path)
 		inst.queue_free()
 		return
+	ap.add_animation_library("spells", Cast.spell_animations(model_name))
 
 	# The suffix after the bar is the clip; the part before it is whichever
 	# armature name this particular delivery happened to use.
 	var have: Dictionary = {}
 	for a in ap.get_animation_list():
-		var s := String(a)
+		var s := String(a).trim_prefix("spells/")
 		var bar := s.rfind("|")
 		have[s.substr(bar + 1) if bar >= 0 else s] = ap.get_animation(a).length
 
@@ -71,6 +72,9 @@ func _check(model_name: String) -> void:
 	var moves: Array = Battle.BASE_MOVES.get(model_name, []) as Array
 	for mv in moves:
 		_want(model_name, have, Cast.ability(model_name, String(mv.name)), "move " + String(mv.name))
+	for branch in SpellTree.tree_for(model_name).values():
+		for definition in branch.values():
+			_want(model_name, have, Cast.ability(model_name, String(definition.display)), "spell " + String(definition.display))
 	inst.queue_free()
 
 func _want(model_name: String, have: Dictionary, clip: String, what: String) -> void:

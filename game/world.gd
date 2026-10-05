@@ -3304,13 +3304,11 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		# hang on screen through the whole fight and after.
 		banner.text = ""
 		_banner_timer = 0.0
-	elif reward_item != "" and not special:
-		# The plain (non-special) guarded fights - shallows/trench's key
-		# items. A special encounter doesn't need this: its own Enter/Not
-		# Now prompt (or, for the very first one, battle.gd's own tutorial
-		# caption) already told the player what they're walking into before
-		# the fight even started.
-		_announce("Defeat the enemy to gain a special reward item!")
+	elif reward_item != "":
+		# Marc PR99: actual carrier notice belongs with the combat log and
+		# first playable turn, not a competing world banner.
+		banner.text = ""
+		_banner_timer = 0.0
 	else:
 		_announce("Enemies emerge from the murk!" if revealed_enemy_ids.size() > 1 else "An enemy emerges from the murk!")
 	battle = Battle.new()

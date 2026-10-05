@@ -51,6 +51,8 @@ var ordinary_enemy_ids: Array[String] = []
 # with their consumable door-key collection.
 var world: World
 var reward_item_on_win := ""
+const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
+var _intro_hold := ""
 var encounter_intro_override := ""
 # Without a World (the standalone maze), the party's items come from here
 # instead - MazeLevel hands over its own inventory dictionary, shared, so
@@ -669,7 +671,14 @@ func _ready() -> void:
 	elif encounter_source == "maze_cordys":
 		_begin_campaign_cordys()
 	else:
-		_log(encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies))
+		var intro := encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies)
+		# The guardian flag also identifies rewardless lab blockers. Only a
+		# real item reward may promise an item. Explicit authored introductions
+		# (including the two-wave puppets) retain their narrative ownership.
+		if not reward_item_on_win.is_empty() and encounter_intro_override.is_empty():
+			intro = ITEM_CARRIER_INTRO
+			_intro_hold = intro
+		_log(intro)
 		_advance_turn()
 
 static func encounter_intro(entries: Array) -> String:
@@ -1271,6 +1280,13 @@ func _build_party() -> void:
 # Goblins the encounter rolled - these actors are display-only, the real
 # stats live in party[]/enemies[], not on these nodes.
 func _build_stage() -> void:
+	# Opaque backing also covers the narrow-screen information band above
+	# the 3D stage; otherwise reserving HUD space exposes the paused World.
+	var backing := ColorRect.new()
+	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backing.color = Color(0.05, 0.13, 0.17)
+	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(backing)
 	# Full width, and from the top of the screen down to wherever the HUD
 	# starts. It used to be the whole screen with the HUD painted over it,
 	# and since Godot's default PanelContainer background is 60% black
@@ -1991,6 +2007,7 @@ func _build_ui() -> void:
 	_party_status_column.add_theme_constant_override("h_separation", 8)
 	_party_status_column.add_theme_constant_override("v_separation", 8)
 	_party_status_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_party_status_column.sort_children.connect(func() -> void: call_deferred("_fit_panel_height"))
 	add_child(_party_status_column)
 
 	_enemy_status_column = VBoxContainer.new()
@@ -2038,6 +2055,11 @@ func _build_ui() -> void:
 	_bottom_panel.add_theme_stylebox_override("panel", bg)
 
 	add_child(_bottom_panel)
+	# Hiding the target buttons starts a cast. Their flow height changes
+	# after the deferred container sort, not when the target was clicked.
+	# Refit on that actual minimum-size change so a long learned-move menu
+	# cannot keep most of a narrow screen reserved after it disappears.
+	_bottom_panel.minimum_size_changed.connect(func() -> void: call_deferred("_fit_panel_height"))
 
 	var margin := MarginContainer.new()
 	var compact_battle_ui := get_viewport().get_visible_rect().size.y <= 500.0
@@ -2154,7 +2176,11 @@ func _build_ui() -> void:
 		_build_overhead_bar(entry)
 
 	log_label = RichTextLabel.new()
-	log_label.custom_minimum_size = Vector2(0, 28 if compact_battle_ui else 36)
+	# Fit actual wrapped carrier/turn text, but don't charge a short display
+	# for an empty second line: it makes the lab actors unreadably small.
+	log_label.custom_minimum_size = Vector2(0, 28 if compact_battle_ui else 56)
+	log_label.fit_content = true
+	log_label.minimum_size_changed.connect(func() -> void: call_deferred("_fit_panel_height"))
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2386,6 +2412,16 @@ func _fit_panel_height() -> void:
 		# rendered under an opaque bar is rendered where nobody can see it.
 		# The stage is now strictly the band between the two.
 		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
+		if _uses_narrow_info_band() and _busy:
+			# Keep actual spell silhouettes below the compact party row rather
+			# than placing names/HP across the delivered support animations.
+			for entry in party:
+				var card := entry.card as Control
+				if card.is_visible_in_tree():
+					_stage_container.offset_top = maxf(_stage_container.offset_top, card.get_global_rect().end.y + 8.0)
+
+func _uses_narrow_info_band() -> bool:
+	return get_viewport().get_visible_rect().size.y <= 500.0 and not (tutorial_encounter or special_encounter or prologue_angler_encounter or prologue_octopus_encounter or boss_encounter)
 
 # Party cards normally form the familiar left-side stack. A long tutorial
 # explanation can legitimately make the opaque bottom panel taller, though,
@@ -2411,7 +2447,7 @@ func _fit_party_status_cards_above_panel() -> void:
 	var panel_top := get_viewport().get_visible_rect().size.y + _bottom_panel.offset_top
 	var normal_right := 12.0 + STATUS_COLUMN_WIDTH
 	var expanded_right := maxf(normal_right, get_viewport().get_visible_rect().size.x - STATUS_COLUMN_WIDTH - 24.0)
-	_party_status_column.offset_right = expanded_right if _party_status_column.offset_top + vertical_height > panel_top else normal_right
+	_party_status_column.offset_right = expanded_right if _uses_narrow_info_band() or _party_status_column.offset_top + vertical_height > panel_top else normal_right
 
 # Name plus a one-line tradeoff, right on the button: the choice needs to
 # read before it's clicked, not just get explained after in the log.
@@ -2717,7 +2753,8 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	box.add_child(bar_row)
 
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(OVERHEAD_BAR_WIDTH, 10)
+	var bar_width := 72.0 if _uses_narrow_info_band() else float(OVERHEAD_BAR_WIDTH)
+	bar.custom_minimum_size = Vector2(bar_width, 10)
 	bar.show_percentage = false
 	var hp_fill := StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.78, 0.15, 0.15)
@@ -2769,7 +2806,7 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 		box.add_child(o2_row)
 
 		oxygen_bar = ProgressBar.new()
-		oxygen_bar.custom_minimum_size = Vector2(OVERHEAD_BAR_WIDTH, 8)
+		oxygen_bar.custom_minimum_size = Vector2(bar_width, 8)
 		oxygen_bar.show_percentage = false
 		var o2_fill := StyleBoxFlat.new()
 		# Same blue used for the overworld oxygen bar (world.gd's
@@ -2872,13 +2909,15 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	if max_value <= 0.0 or after <= before:
 		overlay.visible = false
 		return
-	overlay.position.x = (before / max_value) * OVERHEAD_BAR_WIDTH
-	overlay.size.x = ((after - before) / max_value) * OVERHEAD_BAR_WIDTH
+	var actual_width := (overlay.get_parent() as Control).size.x
+	overlay.position.x = (before / max_value) * actual_width
+	overlay.size.x = ((after - before) / max_value) * actual_width
 	overlay.visible = true
 
 func _log(text: String) -> void:
 	log_label.clear()
 	log_label.add_text(text)
+	call_deferred("_fit_panel_height")
 
 func _audio_call(method: StringName, args: Array = []) -> void:
 	var owner := get_node_or_null("/root/GameAudio")
@@ -3460,7 +3499,11 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
 	_show_turn_cursor_on(actor)
-	_log("%s's turn." % String(actor.display_name))
+	var turn_text := "%s's turn." % String(actor.display_name)
+	if not _intro_hold.is_empty():
+		turn_text = "%s\n%s" % [_intro_hold, turn_text]
+		_intro_hold = ""
+	_log(turn_text)
 	_set_all_buttons(true)
 	if prologue_angler_encounter or prologue_octopus_encounter:
 		run_btn.visible = false
@@ -4622,6 +4665,9 @@ func _populate_target_menu(targets: Array) -> void:
 func _on_target_chosen(target: Dictionary) -> void:
 	target_menu.visible = false
 	_clear_stat_preview()
+	if _uses_narrow_info_band():
+		(_player_stats_ui.panel as Control).visible = false
+		_turn_cursor.visible = false
 	if _pending_item != "":
 		var item_id := _pending_item
 		_pending_item = ""
@@ -4632,6 +4678,9 @@ func _on_target_chosen(target: Dictionary) -> void:
 func _on_all_targets_chosen(targets: Array) -> void:
 	target_menu.visible = false
 	_clear_stat_preview()
+	if _uses_narrow_info_band():
+		(_player_stats_ui.panel as Control).visible = false
+		_turn_cursor.visible = false
 	var move := _pending_move
 	_pending_move = {}
 	_resolve_party_move_all(move, targets)
@@ -5084,6 +5133,7 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await _wait_for_delivered_cast(_acting)
 	if not target_died:
 		_restore_enemy_idle(target)
 	_advance_turn()
@@ -5142,7 +5192,22 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 			await _explain_other_stats()
 		_tutorial_step += 1
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await _wait_for_delivered_cast(_acting)
 	_advance_turn()
+
+func _wait_for_delivered_cast(entry: Dictionary) -> void:
+	var actor_value: Variant = entry.get("actor")
+	if actor_value == null or not is_instance_valid(actor_value) or not actor_value is Diver:
+		return
+	var actor := actor_value as Diver
+	var clip := String(actor.anim.current_animation)
+	if not clip.begins_with("spells/") or not actor.anim.is_playing():
+		return
+	# These authored casts are longer than the legacy attacks. Damage still
+	# lands at its ordinary impact fraction, but a new turn must not interrupt
+	# the spell's remaining gesture or display controls across it.
+	var remaining := maxf(0.0, actor.anim.get_animation(clip).length - actor.anim.current_animation_position)
+	await get_tree().create_timer(remaining / maxf(0.01, actor.anim.speed_scale) + SWING_STEP_TIME).timeout
 
 # Weighted random rather than always-lowest-HP - a party member missing
 # more of their max HP is proportionally more likely to get picked, but a

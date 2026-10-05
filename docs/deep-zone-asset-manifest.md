@@ -1,6 +1,11 @@
 # Deep-zone Runtime Asset Manifest
 
-This manifest records only assets admitted to the current vertical slice. Raw
+The table and exclusions below record the original PR96 asset admission, not
+the current PR100 encounter ownership. In PR100, the visible V2 Octopus is
+Cordys in the opening and the independent, defeatable maze finale. Bomb Bot
+and Sword Slayer also have separate maze-puppet instances; those do not clear
+their laboratory blockers. The partial character-animation admission below is
+new integration work. Raw
 dimensions are measurements from Godot's imported mesh bounds; production
 scale, facing, floor alignment, and composition are owned by later actor/room
 wrappers and must be proved separately.
@@ -31,3 +36,39 @@ wrappers and must be proved separately.
   approved textured palm mesh is visible in production, with scale,
   floor-alignment, transform variety, route clearance, and visual evidence
   verified separately.
+
+## Partial character-animation delivery admitted to PR100
+
+October 3 Dropbox deliveries contain nine authored spell clips missing from
+the previous runtime mapping. They omit existing clips, so the complete
+working character FBXs remain the model/skin owners. Do not replace them with
+the partial updates. These are the files already downloaded; the stale Discord
+export cannot establish whether Marc's latest pins contain additional files.
+
+| Character / source | Source SHA256 | Moves now mapped to delivered clips | Animation-only runtime derivative / SHA256 |
+| --- | --- | --- | --- |
+| Maxilani, `/Users/tomriddle1/Dropbox/Max.fbx` | cee7fc9b79ad35531e9a78b0d2372b2dba9c53d0e09fe2e83f6839a974a5a977 | Swift Strike (delivered Swift Slash), Riptide Slash | `art/characters/spell_animations/maxilani.res`, ace0b57510484b5bca8c69d51e2ea996a84a883556cb57fc84bd365ebf612fce |
+| Musashi, `/Users/tomriddle1/Dropbox/Musashi.fbx` | f78fb38418032c421b4a826f874f9573e8d05c1d4f010f21bed695f21de887b7 | Blinding Silt, Exploit Opening, Precise Jab | `art/characters/spell_animations/musashi.res`, 0df0fb4002499635edec7530bfcdd3f70699fce8c5d439a0565bba2d9eaec35a |
+| Bucky, `/Users/tomriddle1/Dropbox/Buxky.fbx` | deadfbc96217f1fd5ae03cde371f9a39145d28cbb5fbda7ae84fb53623ce1afb | Guard Break, Heavy Slam, Mending Current, Tidal Revival | `art/characters/spell_animations/bucky.res`, 2806fec46d867101b2d4cc2d585192ca25213d0f7d460206faf6836fe05317fa |
+
+Derivation: import these three sources plus `Scuba_Rigged.fbx`,
+`Prototype1_Rigged.fbx`, `PrototypeV_Rigged.fbx` in an isolated Godot 4.7.1
+project. Run `tools/derive_spell_animations.gd` against that project with
+`-- --output-dir=/absolute/checkout/art/characters/spell_animations`.
+The generator checks source hashes, node/bone paths and rest poses. The only
+rest difference is explicitly keyed `c_pos`; it is not rotated a second time.
+Maxilani's two new unbound controls (`Staff`, `c_hand_ik.r`) are omitted; her
+existing skinned carried prop remains. Other source tracks resolve unchanged.
+The resource metadata records each source/target hash and omitted track.
+
+Verification: all nine generic fallbacks failed the new delivery check before
+repair. Runtime rigs now change sampled poses and retain old movement/base
+attacks. Native gallery and real learned-move battles were inspected; healing
+and revival use actual UI, HP/Oxygen and usable subsequent turns. Narrow-screen
+cast occlusion and a lab-size regression were caught and repaired. These are
+scoped checks, not a full earned route or a zero-defect whole-game round.
+
+No bespoke clip was delivered here for Tidal Burst, Current Snare, Healing
+Current or empowered Weaken/Slow. Their existing working fallbacks remain;
+do not report every spell as having bespoke animation. Preview/native export
+and platform status belong in the runtime manifest, not this source inventory.

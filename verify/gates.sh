@@ -122,6 +122,9 @@ run "tutorial full lesson: do all five real guided moves and a real victory fini
 run "tutorial world win: does actual optional beacon entry and victory restore movement and persist both milestones" "$GODOT" --headless --path . --script verify/tutorial_win_handoff.gd -- --world-lesson
 
 run "clips: does every clip the game asks for exist"  "$GODOT" --headless --path . --script verify/clips.gd
+run "spell delivery: do authored spells deform the runtime rig without losing old motions" "$GODOT" --headless --path . --script verify/spell_animation_delivery.gd
+run "spell support: do delivered casts heal/revive and return to usable turns" "$GODOT" --headless --path . --script verify/spell_support_delivery.gd
+run "item message: do real rewards survive first-turn text without menu overlap" "$GODOT" --headless --path . --script verify/marc_reward_layout.gd
 run "animations: does every rig change state correctly" "$GODOT" --headless --path . --script verify/animations.gd
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
 run "current: can full upstream input cross the flow" "$GODOT" --headless --path . --script verify/current_barrier.gd
@@ -219,6 +222,11 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	for shape in 1280x720 720x480; do
+		run "spell support presentation $shape: do real cast silhouettes stay below status cards with a usable stage" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/spell_support_delivery.gd -- --capture-support
+		run "full-party support presentation $shape: do actual three-diver cast and revival remain unobscured" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/spell_support_delivery.gd -- --capture-support --three-party
+		run "item notice presentation $shape: does actual wrapped reward text fit above usable buttons" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/marc_reward_layout.gd
+	done
 	for shape in 1280x720 720x480 720x900 360x640; do
 		run "maze checkpoint presentation $shape: do real P/mouse input expose unclipped save slots without overlapping gameplay captions" "$GODOT" --path . --rendering-method gl_compatibility --resolution "$shape" --script verify/maze_checkpoint_presentation.gd
 	done
@@ -284,6 +292,12 @@ else
 	fi
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
+	if [ -x /tmp/underwater-screen-ocr ]; then
+		GATE_TIMEOUT_SECONDS=300 run "Bomb Bot browser progress: do actual mouse actions reach enemy attacks, victory and restored World controls" node verify/bomb_bot_browser_progress.mjs "$WEB_DIR" /tmp/gate-bomb-progress
+	else
+		echo "=== Bomb Bot browser progress: skipped, native OCR helper unavailable ==="
+		skips=$((skips + 1))
+	fi
 	run "special webcheck: does ?special=1 reach the chooser" node verify/special_webcheck.mjs "$WEB_DIR" /tmp/gate-special.png
 	run "spell review webcheck: does ?spells=1 reach the real spell UI" node verify/spell_review_webcheck.mjs "$WEB_DIR" /tmp/gate-spell-review.png /tmp/gate-spell-review-title.png
 fi
