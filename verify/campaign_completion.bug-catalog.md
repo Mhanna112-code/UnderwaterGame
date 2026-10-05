@@ -36,7 +36,7 @@ existing completion UI/first victory/completed load/legacy incomplete load.
 | ID | Failure and impact | Why plausible / cheapest test | Status |
 |---|---|---|---|
 | END-1 | Final boss victory is only a temporary exploration notice and is not checkpointed | Current Maze result handler; real legal-kit battle through UI, visible modal and durable file readback | Reproduced red; local native repair passes |
-| END-2 | Failed ending write falsely offers saved exit or destroys previous checkpoint | World write and async browser boundary; denied staging then actual Retry, exact bytes/slot checks; hosted IDB rejection separately | Native denied IO/retry characterized; browser pending |
+| END-2 | Failed ending write falsely offers saved exit or destroys previous checkpoint | World write and async browser boundary; denied staging then actual Retry, exact bytes/slot checks; hosted IDB rejection separately | Native denied IO/retry and local exported browser IDB denial/retry characterized; hosted pending |
 | END-3 | Title Load resurrects boss or rewards/opening, or completed save lacks ending | Cross-scene restoration; actual Return to Title/Load and resource/conservation checks | Native public title boundary characterized |
 | END-4 | Completion screen leaks swimming/input or clips narrow choices | Existing shared party/HUD ownership; held W/Tab/P and 1280/720/360 rendered controls | Native held controls/bounds characterized; rendered images inspected |
 | GOAL-1 | Maze-first/return/completed routes display stale laboratory/relic goals | Existing location/objective split; generated meaningful campaign state combinations and actual handoffs | Local native repair/evidence in campaign_goals.bug-catalog.md |
@@ -86,7 +86,11 @@ payoff, not merely a milestone name. Add each only after the prior red is fixed.
   surfaces: wrapped readable status, exclusive backdrop, reachable choices.
 - Adversarial preservation: existing standalone Cordys confirmation and 48
   generated World/maze checkpoint cases plus legacy cold Load still pass.
-- Browser durable-IDB failure remains unverified; native file readback is not
-  browser evidence. No complete earned-route, full-suite or release claim.
+- Actual local exported-browser fight now characterizes durable-IDB rejection,
+  exact previous bytes/disabled exit, Retry, responsive controls and destroyed-
+  page cold Load with exact completed bytes. Receipt under
+  docs/evidence/campaign-ending-oct5/browser-local. Native file readback was not
+  substituted for this proof. Hosted acceptance remains pending; no complete
+  earned-route, full-suite or release claim.
 - No tests removed; no additional confirmed bug outside END-1 yet. GOAL-1 and
   LAB-1 remain separate next tests, not characterized by this ending fixture.

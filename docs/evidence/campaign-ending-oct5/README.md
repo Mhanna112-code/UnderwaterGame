@@ -14,3 +14,21 @@ slot918426 is the displayed one-based disposable slot, not a player slot.
 - `loaded.png`: actual Return to Title and chosen-slot Load preserves ending.
 
 Native rendering was Metal on Apple M1. Main/canonical are not updated yet.
+
+## Actual exported browser evidence
+
+`browser-local/receipt.json` records a new disposable Chromium context and
+12 normal move/target selections against fixed75HP Cordys. Exact previous
+durable bytes survive rejected completed-slot IndexedDB transactions; actual
+disabled title exit stays on ending. Actual Retry confirms completion/removes
+the station, then Return to Title and a destroyed-page cold Load retain the
+exact completed bytes. Lab/puppet milestones remain independently unfinished.
+There were no browser/script errors; deliberately injected storage-error logs
+are classified separately in the receipt. The supplied level5 kit/key/room is
+declared and is not proof of earning them.
+
+`browser-local/artifact.json` identifies the exact isolated local export.
+Failure, confirmed save, 720/360 responsive layouts, title exit and cold-load
+screenshots accompany the receipt. Failure and narrow images were inspected:
+exclusive readable panel, wrapped status and reachable choice. Browser storage
+acceptance is now proven locally, not yet on Vercel/canonical.

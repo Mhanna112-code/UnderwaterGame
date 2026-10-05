@@ -43,6 +43,14 @@ rig/clips; actual material/role/live-combat validation and browser ending
 durability/presentation remain before batch publication. No deferred opening
 change was implemented and no new runtime has been pushed in this follow-up.
 
+Browser follow-up now passes on an isolated release export of6e6a70f: actual
+12-action Cordys win → rejected IndexedDB completion/exact previous bytes and
+blocked exit → Retry → Return to Title → destroyed-page cold Load with exact
+completed bytes. Responsive ending screenshots inspected at1280/720/360.
+See `evidence/campaign-ending-oct5/browser-local`; the reproducible browser
+gate is now part of the runner. This is not hosted acceptance or earned balance.
+Lab/variant live presentation and matching candidate/canonical delivery remain.
+
 ## Authority and baseline
 
 Miguel requested a systematic audit of the remaining comprehensive plan and

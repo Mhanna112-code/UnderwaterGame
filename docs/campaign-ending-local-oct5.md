@@ -34,7 +34,11 @@ Evidence: [ending screenshots/logs](evidence/campaign-ending-oct5/README.md).
 State-aware objectives/early maze/return and laboratory computer/controller
 payoff now pass local native tests; see `campaign-goals-local-oct5.md`.
 Mermaid-Weirdo isolated import inspection is recorded, but actual material/
-role/live-combat validation remains. Browser durable-IDB failure/retry and real
-browser completion presentation before export/publish. Full earned balance and
+role/live-combat validation remains. Actual browser ending now passes on an
+isolated release export: 12 real actions, denied durable IDB write/exact previous
+bytes, disabled exit, Retry, responsive UI and destroyed-page cold Title Load
+with unchanged completed bytes. See `evidence/campaign-ending-oct5/browser-local`.
+Hosted candidate and canonical acceptance are still required before publication.
+Full earned balance and
 full campaign acceptance remain later plan batches. This granted-kit fixture
 does not prove ordinary players can earn their way through the maze/boss.
