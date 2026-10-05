@@ -207,6 +207,8 @@ run "world grapple aim: is the first-person target unobstructed and safely resto
 run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze current route: do normal movement and actual L/E/Ctrl+E traverse the first channel without bypassing collision or currents" "$GODOT" --headless --path . --script verify/maze_current_route.gd
+run "Marc swirl spacing: do generated room geometries leave real column gaps rather than count-only improvements" "$GODOT" --headless --path . --script verify/marc_swirl_spacing.gd
+run "Marc swirl route: can all three divers actually swim to the eye while orbiting hazards still damage on contact" "$GODOT" --headless --path . --script verify/marc_swirl_route.gd
 run "world maze compatibility route: does actual spawn-to-Deep travel enter the maze with both lab guards undefeated" "$GODOT" --headless --path . --script verify/world_maze_route.gd
 run "maze puppet approach: does real proximity/confirmation start puppets instead of lab Tethys" "$GODOT" --headless --path . --script verify/maze_puppet_trigger.gd
 run "maze puppet waves: do real moves carry resources/effects into wave two with one final outcome and reward" "$GODOT" --headless --path . --script verify/maze_puppet_waves.gd
@@ -231,6 +233,7 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	run "Marc swirl native visibility: do revealed foreground rocks leave the controlled diver readable at column-aligned camera angles" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_swirl_occlusion.gd
 	run "maze overview native presentation: do title/help/legend fit actual rendered wide/short/portrait windows without HUD bleed-through" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_maze_map_presentation.gd
 	run "maze native ready-door input: do eligible door/current/wall priorities survive rendered frame dispatch" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_map_door.gd
 	for shape in 1280x720 720x480; do

@@ -8,8 +8,14 @@ pass; portable control screenshots inspected. PCK and deployment identifiers
 are in the runtime manifest. Same-source Windows/Linux prerelease is published,
 ZIP/architecture/published hashes pass, target launches still unverified.
 Main/public untouched. Current bounded next admission: c035c20 sphere-room gaps.
-Old spacing fails six generated geometry checks; actual swimming/rendered
-admission is still pending. Earned chest/legend, underpass, queue, embedded
+Old spacing fails six generated geometry checks; local three-diver swimming,
+actual hazard damage, rendered occlusion repair and vortex-chest solidity now
+pass bounded checks. Final settled native capture shows readable Press E to open
+and the diver beside the solid chest; current checkpoint recovery also passes.
+This source batch is ready for review, not yet export/browser-hosted. See
+marc_swirl_spacing.bug-catalog.md for invalid observers and the earlier unaccepted
+native timeout. No complete normal-access/resource/polish claim is implied.
+Earned chest/legend, underpass, queue, embedded
 geometry and complete route/storage/audio/polish acceptance remain open.
 
 ## Earlier batch receipts (historical, not latest hosted status)

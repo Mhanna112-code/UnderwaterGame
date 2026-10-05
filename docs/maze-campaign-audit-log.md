@@ -1,5 +1,29 @@
 # Maze and campaign integration audit log
 
+## October 4, sphere-room intake after bffe1b5 delivery
+
+c035c20's 4m column spacing is carried: six generated room sizes fail old ~2m
+chords and pass new ~4m chords; actual room has 124 rocks. Three real actors
+swim a controlled interior approach with real orbit/contact damage. This is not
+normal access, earning Sonar Vision or the entire maze route.
+
+Native inspection found new defects rather than accepting a count-only pass:
+foreground columns hid up to 95% of the controlled skin; a pixel-alpha near-
+camera fade repairs eight independent depth-mask views without deleting hazards.
+Then the actual diver swam inside the nonsolid chest. Marc's 2c32467 vortex
+collision/caption subset fixes that physical penetration and says Press E to open.
+Actual E/Tween awards one key; that reward already worked and is pinned, not
+newly fixed. Control Room map chest and chest-cutscene ownership are still pending.
+
+Final headless/serial native approach, collision, caption, reward and contact
+checks pass; settled eye/approach frames inspected. Checkpoint cold-load/actual
+defeat rerun passes. An initial concurrent native Maxilani timeout remains
+unaccepted, with cause unestablished; serial success does not erase it. Invalid
+observer/fixture green runs and harness errors are disclosed in
+verify/marc_swirl_spacing.bug-catalog.md. New gates registered and shell syntax
+passes. This is local source admission, not a hosted/browser/polish acceptance.
+Feedback alias and Windows/Linux remain bffe1b5. Main/public unchanged.
+
 ## October 4, bffe1b5 control/status feedback delivery
 
 Marc heads repeatedly refreshed and unchanged at c035c20 / 86878fa. Shared

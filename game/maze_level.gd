@@ -976,7 +976,8 @@ func _update_room_switch() -> void:
 		poster = null
 	for p in _posters:
 		p.set_highlight(p == poster)
-	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _secret_entrance_in_reach() or _vortex_chest_in_reach() or _split_rock_in_reach()
+	var at_chest := _vortex_chest_in_reach()
+	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _secret_entrance_in_reach() or at_chest or _split_rock_in_reach()
 	if _interact_cooldown and (_banner == null or _banner_timer <= 0.0):
 		_interact_cooldown = false
 	if _interact_cooldown:
@@ -985,7 +986,7 @@ func _update_room_switch() -> void:
 		if not near:
 			return
 		_switch_prompt = _make_caption(-128.0, -96.0, 18, Color(1, 1, 1))
-		_switch_prompt.text = "Press E to interact"
+	_switch_prompt.text = "Press E to open" if at_chest else "Press E to interact"
 	_switch_prompt.visible = near
 
 var _switch_modal: SwitchMinigameModal
@@ -1895,6 +1896,7 @@ func _build_vortex_chest() -> void:
 	var size := Vector3(1.4, 0.8, 0.9)
 	var base := _chest_box(Vector3(size.x, size.y, size.z), Vector3(0, size.y * 0.5, 0), wood)
 	_vortex_chest.add_child(base)
+	_add_chest_collision(_vortex_chest, size + Vector3(0.04, 0.3, 0.04))
 	for band_x in [-0.5, 0.5]:
 		_vortex_chest.add_child(_chest_box(Vector3(0.1, size.y + 0.02, size.z + 0.04), Vector3(band_x, size.y * 0.5, 0), gold))
 	# Lid hinged along the back edge.
@@ -1909,6 +1911,18 @@ func _build_vortex_chest() -> void:
 	glow.omni_range = 3.5
 	glow.position = Vector3(0, 1.6, 0)
 	_vortex_chest.add_child(glow)
+
+func _add_chest_collision(chest: Node3D, size: Vector3) -> void:
+	# Marc 2c32467: keep the visible chest solid, not a diver-sized hiding box.
+	var body := StaticBody3D.new()
+	body.name = "ChestBody"
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	shape.position = Vector3(0, size.y * 0.5, 0)
+	body.add_child(shape)
+	chest.add_child(body)
 
 func _chest_box(box_size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var m := MeshInstance3D.new()

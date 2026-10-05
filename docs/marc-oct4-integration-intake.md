@@ -50,7 +50,7 @@ below are not admitted by this bounded delivery; full route/polish remains open.
 | #97 64c778a / c65cf93 / 1a9ba39 | Navigation map earned from Control Room chest, including dev start | Persist actual maze_map key item; L requires earned map, inventory explains ownership; do not grant via ordinary/dev initialization. Chest access must remain possible without already owning L. |
 | #97 f58b4ce / 2d60a03 / 4f3cc97 | Right-side discovery-only map legend, chest and visited-boss icons | No undiscovered boss spoilers; right-side panel fits small viewports and updates on discovery. |
 | #97 2a41c0f / 65c3f70 | Intermediate Shift current binding; readable current strokes | Shift superseded by 04bc26e Ctrl; readable strokes admitted with actual input, HUD/help and physical route verification. |
-| #97 2c32467 | Solid chests, Press E to open | Verify physical collision and reachable interaction; no player overlaps chest or infinite regrant. |
+| #97 2c32467 | Solid chests, Press E to open | Vortex subset locally carried/verified after native clipping discovery; Control Room chest counterpart pending. Physical capsule stops outside, real E/Tween/key and caption pass. |
 | #97 f5a8a97 / ef99337 | Encounter owner/toggle synchronization; special/item spots respect R | Latest Marc decision replaces earlier assumptions: inactive embedded maze must not start World fights; maze special sites require encounters on. Do not silently change authored boss gating. Strong-room forcing still needs inspection against the exact new handlers. |
 | #97 818e2ab / #99 7c34be2 / 1b43949 | Status cards and applied messages use remaining-turn units | Deduplicate shared changes; preserve responsive labels and persistent Bleed cap. |
 | #97 659ff69 / #99 7a27230 | Remove Reopen Tutorial Guide button; retain F1 | One shared removal; two practice buttons and optional world beacon remain. This does not remove the tutorial content. |
@@ -62,7 +62,7 @@ below are not admitted by this bounded delivery; full route/polish remains open.
 | #97 41aeb76 | Opaque separate map title band; larger Control Room POI | Title band admitted responsively; larger POI pending discovery/chest batch. |
 | #97 0d55685 / #99 86878fa | Only Shift sinks; Ctrl is available for map | Admitted in both World and Maze; actual held-key physics checks pass. |
 | #97 6758afb | E unlocks nearby ready door before rotating a wall on open map | Admitted: 27 real-input cases pass; Ctrl+E current behavior retained, door top reachable, one key consumed and relics unchanged. Ready-only dispatch also fixes overlapping eligible-door mismatch reproduced during port. |
-| #97 c035c20 | Half sphere-room rock columns, room to swim through | Pending actual physical route/rendered spacing check, not count-only acceptance. |
+| #97 c035c20 | Half sphere-room rock columns, room to swim through | Locally carried: six independent chord checks, actual three-diver swimming and preserved contact damage pass. Native inspection required near-camera presentation fade and missing vortex solidity. Settled native approach/key/collision and checkpoint checks pass; fresh export/browser admission pending, not yet hosted. |
 
 ## Admission receipts
 
@@ -109,6 +109,16 @@ below are not admitted by this bounded delivery; full route/polish remains open.
 - All other maze rows above remain pending. In particular, a new branch snapshot
   is not evidence that seamless geometry, acquired-map behavior or underpass
   traversal has been integrated or verified.
+
+Local next batch, not in bffe1b5 preview: sphere columns 2→4m (124 actual rocks),
+with three real diver swims/hits. Native inspection caught foreground occlusion
+(52–95% independent rendered skin coverage) and swimming inside the chest.
+Near-camera fade leaves hazard state intact; eight repaired views show zero
+skin coverage. Marc's vortex collision/caption subset repairs genuine capsule
+penetration and real E/Tween/reward checks pass. Read
+`verify/marc_swirl_spacing.bug-catalog.md` for failed native timing, invalid
+observer/fixture exclusions and exact scope. This does not admit the earned
+map chest, all chest cutscene input, normal room access or browser rendering.
 
 ## Sequence and acceptance
 

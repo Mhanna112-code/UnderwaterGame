@@ -40,7 +40,7 @@ const CLEAR_RADIUS := 4.0        # open space around the centre (the key)
 const ORBIT_SPEED := 2.5         # along the ring, units per second
 const WALL_MARGIN := 0.8         # outermost ring stays this far inside the walls
 const LAYER_SPACING := 1.25      # height between layers of spheres
-const RING_SPACING := 2.0        # between neighbouring spheres along a ring
+const RING_SPACING := 4.0        # between neighbouring rock columns; room to weave through
 const HIT_DAMAGE := 2
 const HIT_COOLDOWN := 1.0
 const KNOCKBACK_SPEED := 14.0
@@ -157,6 +157,12 @@ func _build_multimesh() -> void:
 	mat.emission_enabled = true
 	mat.emission = Color(0.15, 0.55, 0.65)
 	mat.emission_energy_multiplier = 0.35
+	# Sonar exposes hazards, but rocks between the chase camera and the diver
+	# must not become an opaque curtain over the eye/chest. Presentation only:
+	# positions(), contact damage and knockback retain every nearby rock.
+	mat.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+	mat.distance_fade_min_distance = 4.0
+	mat.distance_fade_max_distance = 7.0
 	rock.material = mat
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
