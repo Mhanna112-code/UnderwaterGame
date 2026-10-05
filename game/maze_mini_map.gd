@@ -1315,7 +1315,7 @@ func _refresh_map_copy() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
 		return
-	if maze_level != null and (maze_level._battling or maze_level.any_modal_open()):
+	if maze_level != null and (maze_level._battling or maze_level.any_modal_open() or maze_level._chest_cutscene):
 		return
 	var key_event := event as InputEventKey
 	var keycode: Key = key_event.keycode

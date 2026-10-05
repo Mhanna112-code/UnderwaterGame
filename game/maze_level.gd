@@ -2101,6 +2101,18 @@ func _float_reward_label(spot: Vector3, text: String) -> void:
 # reach opens it (lid swings up) and the Vortex Key rises out of it into the
 # party's keys - the key to the secret boss room.
 const CHEST_REACH := 2.4
+# True while a chest is opening (lid, item rising, taken): the diver holds
+# still and every action but Esc (pause) is off, like a short cutscene.
+var _chest_cutscene := false
+
+func _begin_chest_cutscene() -> void:
+	_chest_cutscene = true
+	if _aiming:
+		_cancel_aim()
+	if target_selector != null and target_selector.selecting:
+		target_selector.cancel_selection()
+	for d in divers:
+		d.velocity = Vector3.ZERO
 var _vortex_chest: Node3D
 var _vortex_chest_lid: Node3D
 var _vortex_chest_open := false
@@ -2198,6 +2210,7 @@ func _map_chest_in_reach() -> bool:
 
 func _open_map_chest() -> void:
 	_map_chest_open = true
+	_begin_chest_cutscene()
 	var tw := create_tween()
 	tw.tween_property(_map_chest_lid, "rotation:x", -deg_to_rad(110.0), 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# A rolled map rises out of it and is taken.
@@ -2221,6 +2234,7 @@ func _open_map_chest() -> void:
 	tw.tween_interval(0.3)
 	tw.tween_callback(func() -> void:
 		scroll.queue_free()
+		_chest_cutscene = false
 		if not key_items.has(MAP_ITEM):
 			key_items.append(MAP_ITEM)
 		_show_map_item_popup())
@@ -2292,6 +2306,7 @@ func _vortex_chest_in_reach() -> bool:
 
 func _open_vortex_chest() -> void:
 	_vortex_chest_open = true
+	_begin_chest_cutscene()
 	var tw := create_tween()
 	tw.tween_property(_vortex_chest_lid, "rotation:x", -deg_to_rad(110.0), 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# The key rises out of it and is taken.
@@ -2303,6 +2318,7 @@ func _open_vortex_chest() -> void:
 	tw.tween_interval(0.4)
 	tw.tween_callback(func() -> void:
 		key.queue_free()
+		_chest_cutscene = false
 		_gain_key("vortex_key"))
 
 func _make_key_mesh() -> Node3D:
@@ -4508,7 +4524,7 @@ func _physics_process(dt: float) -> void:
 			# Inactive divers still run swim() with no input, so currents and
 			# drag keep acting on them (World does the same).
 			# No steering while any walls are mid-rotation (_moving_wall_sets).
-			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _gate_cutscene:
+			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _gate_cutscene and not _chest_cutscene:
 				d.swim(_player_dir(), _player_rise(), dt)
 			else:
 				d.swim(Vector3.ZERO, 0.0, dt)
@@ -4626,6 +4642,11 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	# A chest opening is a little cutscene: nothing but Esc (pause) until it's
+	# done - no moving, looking, abilities, map or anything else.
+	if _chest_cutscene and not (e is InputEventKey and (e as InputEventKey).keycode == KEY_ESCAPE):
+		get_viewport().set_input_as_handled()
+		return
 	if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var key := (e as InputEventKey).keycode
 		if save_point_menu != null and save_point_menu.visible and key in [KEY_P, KEY_ESCAPE]:
@@ -4652,7 +4673,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			_mouse_look = false
 			get_viewport().set_input_as_handled()
 			return
-	if _battling or any_modal_open():
+	if _battling or any_modal_open() or _chest_cutscene:
 		return
 	# Grapple aim: left click fires, right click backs out. Tab and E wait
 	# until the aim is fired or cancelled.
