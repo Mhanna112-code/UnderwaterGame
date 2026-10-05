@@ -540,6 +540,17 @@ func _register_stat_effects(attack: Dictionary) -> void:
 						stat_effects[attack_name]["player"]["evasion"] = \
 							effect["evasion"]
 
+# Info popups, which draw above the battle screen, keep out of the way for
+# as long as a battle runs.
+func _enter_tree() -> void:
+	add_to_group("battle")
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup != null and popup.has_method("suspend_for_battle"):
+		popup.call("suspend_for_battle")
+
+func _exit_tree() -> void:
+	remove_from_group("battle")
+
 func _ready() -> void:
 	for diver in BASE_MOVES:
 		for attack in BASE_MOVES[diver]:
@@ -2859,12 +2870,20 @@ func _play_special_encounter_intro() -> void:
 # actor.actor is always the Diver battle-stage instance built in
 # _build_stage(), never a Goblin, so no type check needed before the cast.
 func _process(_delta: float) -> void:
+	# While a caption is waiting on "Press Enter to continue", the turn line
+	# ("X's turn.") stays hidden - it's not that turn yet until Enter is
+	# pressed. Captions that are just instructions keep it showing under them.
+	if is_instance_valid(log_label):
+		log_label.visible = not (_caption_awaits_enter(_tutorial_caption) or _caption_awaits_enter(_levelup_caption))
 	if not is_instance_valid(_turn_cursor) or not _turn_cursor.visible:
 		return
 	if not is_instance_valid(_turn_cursor_target):
 		_turn_cursor.visible = false
 		return
 	_turn_cursor.global_position = _turn_cursor_target.global_position + Vector3.UP * _turn_cursor_height
+
+func _caption_awaits_enter(caption: RichTextLabel) -> bool:
+	return is_instance_valid(caption) and caption.visible and caption.text.contains("Press Enter to continue")
 
 func _show_turn_cursor_on(actor: Dictionary) -> void:
 	if not actor.has("actor") or not is_instance_valid(actor.actor) or not is_instance_valid(_turn_cursor):
@@ -3872,6 +3891,34 @@ func _explain_other_stats() -> void:
 	var text := "HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. %s" % TutorialContent.page_body("Every Other Stat")
 	await _tutorial_show_step(
 		text,
+		func() -> void:
+			if player_card != null:
+				_set_row_highlight(player_card, true, Color(0.65, 0.3, 0.9))
+			if enemy_card != null:
+				_set_row_highlight(enemy_card, true, Color(0.65, 0.3, 0.9))
+	)
+	if player_card != null:
+		_set_row_highlight(player_card, false)
+	if enemy_card != null:
+		_set_row_highlight(enemy_card, false)
+	await _explain_status_effects(player_card, enemy_card)
+
+# The page right after the HP/oxygen one: the same status cards boxed in
+# purple, now about the line under the bars - EVA and any status effects -
+# one short line each (the full rules stay in Combat Help, so the caption
+# doesn't crowd the fight off the screen).
+const STATUS_EFFECTS_PAGE := [
+	"Under the bars is a status line. [b]EVA[/b] is the dodge pool: left now / full - an attack whose Accuracy is no higher than what's left is dodged and uses it up, and it refills each turn. Status effects show beside it:",
+	"[b]Bleed 4[/b] - takes 4 damage at the end of each of its turns; every hit while bleeding adds 1 more.",
+	"[b]Poison 2 (3 turns left)[/b] - takes 2 damage at the end of each turn until it wears off.",
+	"[b]Stun (2 turns left)[/b] - skips its turns until it wears off.",
+	"[b]Blindness 2[/b] - Agility, Accuracy and Defense are each 2 lower until it wears off.",
+	"Full details are in Combat Help in the Esc menu.",
+]
+
+func _explain_status_effects(player_card: PanelContainer, enemy_card: PanelContainer) -> void:
+	await _tutorial_show_step(
+		"\n".join(STATUS_EFFECTS_PAGE),
 		func() -> void:
 			if player_card != null:
 				_set_row_highlight(player_card, true, Color(0.65, 0.3, 0.9))

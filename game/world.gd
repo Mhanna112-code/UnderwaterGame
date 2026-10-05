@@ -2380,6 +2380,10 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # unmodified fight with nothing riding on it, same as before this existed.
 func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "") -> void:
 	battling = true
+	# Nothing left over from swimming ("Danger - a whirlpool lies just ahead!"
+	# and the like) once the fight starts.
+	banner.text = ""
+	_banner_timer = 0.0
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
