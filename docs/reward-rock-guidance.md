@@ -30,3 +30,7 @@ captured script errors. Manual-slot coordinates and instant-pickup assumptions
 in the observer were corrected; their failed receipts are preserved separately.
 Native and browser frames inspected. Public delivery keeps the same URLs;
 none of this claims a full fresh-opening/campaign or browser durability audit.
+
+Published on main and both existing public/review URLs. Both actual hosted
+PCK endpoints were downloaded and hashed against the source/bytes/SHA above;
+they match the checked preview. Receipt: evidence/reward-rock-guidance/hosted-packs.jsonl.
