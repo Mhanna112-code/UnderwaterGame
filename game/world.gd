@@ -59,7 +59,7 @@ var skip_intro_for_test := false
 var skip_tutorial_for_test := false
 
 func _tutorial_skip_requested() -> bool:
-	if OS.get_cmdline_user_args().has("--skip-tutorial"):
+	if OS.get_cmdline_user_args().has("--skip-tutorial") or _dev_requested():
 		return true
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
@@ -773,8 +773,54 @@ func _ready() -> void:
 		$HUD.visible = true
 		get_tree().paused = false
 		_announce("You wake back at your last save.")
+	elif _dev_requested():
+		call_deferred("_start_dev_mode")
 	else:
 		_show_title_screen()
+
+# Developer mode ("-- --dev" on the command line): straight into play, no
+# title/intro/tutorial and no save slot (nothing is ever written), with every
+# key item, a few of every other item, and the party just outside the way
+# into the maze, facing it. The maze's own --dev handling (MazeLevel.
+# _apply_dev_unlocks()) gives all its door keys and lowers its gate.
+func _dev_requested() -> bool:
+	return OS.get_cmdline_user_args().has("--dev")
+
+const DEV_ITEM_COUNT := 5
+
+func _start_dev_mode() -> void:
+	_current_slot = -1
+	if is_instance_valid(light_beam):
+		light_beam.queue_free()
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.queue_free()
+	_intro_active = false
+	_camera_look_override = null
+	_first_encounter_started = true
+	_first_encounter_done = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	for id in Items.ITEMS:
+		var item_id := String(id)
+		if Items.is_key_item(item_id):
+			if not key_items.has(item_id):
+				key_items.append(item_id)
+		else:
+			inventory[item_id] = int(inventory.get(item_id, 0)) + DEV_ITEM_COUNT
+	# In the open water just west of the opening in the site's east edge,
+	# lined up on the passage, the camera looking east down it.
+	# The others a little behind and to either side, out of the camera's way.
+	var front := Vector3(52.0, 2.0, MAZE_PASSAGE_Z)
+	var offsets := [Vector3.ZERO, Vector3(-1.5, 0.0, -2.5), Vector3(-1.5, 0.0, 2.5)]
+	for i in divers.size():
+		var slot: int = (i - active + divers.size()) % divers.size()
+		(divers[i] as Diver).global_position = front + (offsets[slot % offsets.size()] as Vector3)
+		(divers[i] as Diver).velocity = Vector3.ZERO
+	yaw = PI * 0.5
+	pitch = -0.12
+	_update_hud()
+	_announce("DEV MODE: every item, all maze keys, maze gate open - the maze is straight ahead.")
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
