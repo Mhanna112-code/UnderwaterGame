@@ -57,8 +57,14 @@ func _run() -> void:
 						await physics_frame
 						await process_frame
 					var maze := world.embedded_maze
-					_expect(maze.maze_active and not world.get_node("HUD").visible,
-						"GOAL-1 physical early entry rejected or World HUD still owns maze: " + label)
+					# Marc's current HUD deliberately retains shared HP/O2 in the
+					# maze. Its World destination/controls must still relinquish
+					# ownership; hiding the entire HUD would discard that feature.
+					_expect(maze.maze_active and world.hp_bar.is_visible_in_tree()
+						and world.oxygen_bar.is_visible_in_tree()
+						and not world.route_objective_panel.is_visible_in_tree()
+						and not world.get_node("HUD/Controls").is_visible_in_tree(),
+						"GOAL-1 maze loses shared health or retains World guidance/controls: " + label)
 					var goal := maze.get_node("HUD/GoalLabel") as Label
 					var text := goal.text.to_lower()
 					_expect(goal.is_visible_in_tree() and not "laboratory" in text and not "tethys" in text,

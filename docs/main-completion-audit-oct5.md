@@ -1,5 +1,48 @@
 # Remaining campaign plan: current main audit, October 5
 
+## Latest instruction and local follow-up (supersedes ending contract below)
+
+Miguel explicitly chose **Preserve Marc's pre-boss-only ending** on October 5.
+Do not restore the older completion-save design. Final victory must show the
+exclusive ending; Restart restores the pre-Cordys party/checkpoint, while
+Return to Title remains available. A successful in-memory capture must not be
+represented as a durable browser autosave. All older completed-save receipts
+below are historical, not acceptance for this changed contract.
+
+The local candidate has merged Marc e572a55/4dd2a47, preserving shared maze
+HP/O2, red stat-loss hints, combat pacing, party-spell rules and 12-Oxygen
+Shockwave. The previously hidden maze destination and clipped aim text remain
+repaired. All40 generated milestone cases and actual R/Escape/L/Tab/F ownership
+pass, including a rendered360px run. World health remains visible in the maze;
+World destination and generic controls do not compete with its own guidance.
+
+Two real pre-boss ending defects were reproduced: a static snapshot enabled
+another selected slot's restart, and denied autosave staging still claimed
+'autosaved'. Local instance/run ownership, validated restart destinations,
+honest session-only failure status and failed-sync rollback now pass native
+cross-slot, eight-candidate matrix and denied-write/actual-restart checks.
+A real12-action Cordys win then Restart and fresh Title autosave Load preserve
+HP/O2/XP/level and exact autosave bytes. This uses a supplied legal level5 kit;
+it is ending proof, **not earned campaign/balance proof**. Browser rejection/
+cold durability and matching publication remain unverified for this repair.
+
+The current full native runner was intentionally stopped before merging new
+main sources; its partial result is not a full-suite pass. The native tutorial
+observer had bypassed the zero mouse-mask hover guard by emitting pressed.
+Corrected actual hover/continue/target flow completes all five lessons and a
+real victory with no engine errors. This is not full browser curriculum proof.
+The previous local maze browser run reached/earned its actual map and checked
+owners/layout, but reported WrongDocumentError; retain it as failed, with a
+stage/stack observer added for the next identified export.
+
+Fresh main/canonical have since advanced to the separate post-Tethys maze
+navigation batch (published runtime153b2a5, delivery8ad75fb). Its compass and
+cleared exit must be merged and reverified before publishing this candidate.
+The Tethys opening/Cordys introduction remains **LAST**, with Miguel's explicit
+review/approval required before main or canonical. No opening actor/sequence
+change is included here. Full earned routes, remaining integration dispositions,
+browser/Bomb Bot/audio/visual acceptance and matching native packages remain.
+
 ## Current checkpoint: fresh main intake supersedes prior acceptance below
 
 During earned-route verification, main advanced through Marc's f457098 and

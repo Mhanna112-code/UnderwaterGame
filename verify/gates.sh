@@ -300,8 +300,9 @@ run "maze puppet reward: does a real carried-party win give one maze key without
 run "maze Cordys: does the campaign rematch use normal combat and admit a real legal-kit win" "$GODOT" --headless --path . --script verify/maze_cordys.gd
 run "maze Cordys station: do visible stationary actor, real approach, decline and modal ownership work for every diver" "$GODOT" --headless --path . --script verify/maze_cordys_station.gd
 run "maze Cordys confirmation: does real Yes start Cordys and preserve independent completion through a snapshot" "$GODOT" --headless --path . --script verify/maze_cordys_trigger.gd -- --real-win
-run "campaign ending: does actual Cordys victory checkpoint completion and conserve rewards through Title Load" "$GODOT" --headless --path . --script verify/campaign_completion.gd
-run "campaign ending denied write: does real Retry preserve previous bytes and block exit until saved" "$GODOT" --headless --path . --script verify/campaign_completion.gd -- --denied
+run "campaign ending: does actual Cordys victory offer the saved pre-boss restart without writing completion" "$GODOT" --headless --path . --script verify/campaign_completion.gd
+run "pre-boss restart ownership: do actual Title Loads reject another run and invalid checkpoint destinations" "$GODOT" --headless --path . --script verify/pre_boss_restart_ownership.gd -- --candidates
+run "pre-boss denied autosave: does the ending distinguish session-only restart and preserve saved bytes" "$GODOT" --headless --path . --script verify/pre_boss_restart_ownership.gd -- --denied
 run "campaign goals: do generated saved milestones, early maze, return and Shallows purpose replace stale guidance" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --shallows
 run "maze destination owners: do actual notice/map/Inventory/aim controls preserve goals without restoring retired hints" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --ownership
 run "maze narrow aim: do actual F/cancel instructions remain inside a 360px viewport" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --ownership --narrow

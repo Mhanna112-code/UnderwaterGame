@@ -1,11 +1,10 @@
 extends SceneTree
-## END-1/3: real confirmed victory must become a visible durable ending.
+## END-1/3: real victory must show completion and retain its pre-boss restart.
 ## Supplied level5 kit/room/key fixture isolates ending, NOT earned balance.
 const SLOT := 918425
 var findings: Array[String] = []
 var world: World
 var owns_slot := false
-var denied_staging := false
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -44,9 +43,6 @@ func _run() -> void:
 	_expect(door.is_open() and maze.keys_held == 0, "END-1 room fixture failed real key interaction")
 	_expect(SaveManager.write_slot(SLOT, world._serialize_state()) == OK, "END-1 initial disposable checkpoint failed")
 	var initial_bytes := FileAccess.get_file_as_bytes(path)
-	if "--denied" in OS.get_cmdline_user_args():
-		_expect(DirAccess.make_dir_recursive_absolute(path + ".pending") == OK, "END-2 denied staging fixture failed")
-		denied_staging = true
 	var station := maze._boss_triggers.get("main_boss") as Node3D
 	maze._diver.global_position = station.global_position + Vector3(-4, 1.2, 0)
 	for frame in 20:
@@ -94,10 +90,8 @@ func _run() -> void:
 		await _finish()
 		return
 	var screen := screens[0] as CanvasLayer
-	if denied_staging:
-		DirAccess.remove_absolute(path + ".pending")
-		denied_staging = false
-	# Requested contract: the ending writes no completion save; it offers the
+	# Miguel confirmed Marc's pre-boss-only contract on October 5:
+	# the ending writes no completion save; it offers the
 	# autosave taken the moment the Cordys fight was confirmed.
 	_expect(not screen.restart_button.disabled and "autosaved right before" in screen.status.text,
 		"END-1 ending offers no Restart from Auto Save")
@@ -108,6 +102,8 @@ func _run() -> void:
 		"END-1 pre-boss autosave lost the Cordys station")
 	_expect(SaveManager.read_slot(SLOT).get("route_state", {}).get("octopus_state", "") != "defeated",
 		"END-1 ending still wrote a completion save")
+	_expect(FileAccess.get_file_as_bytes(path) == initial_bytes,
+		"END-1 ending changed the player's existing manual checkpoint")
 	_expect(world.route_state.tethys_state == "locked" and maze._boss_triggers.has("secret_boss"), "END-1 victory incorrectly completed lab or puppets")
 	print("CAMPAIGN ENDING|actions=", actions, "|outcomes=", outcomes, "|visible_screens=", screens.size(), "|pre_boss_autosave=", not auto.is_empty())
 	# END-4: actual held movement/selection/menu keys cannot change the frozen party.
@@ -148,6 +144,27 @@ func _run() -> void:
 		"END-3 restart did not return to just before the Cordys fight")
 	_expect(get_nodes_in_group("campaign_completion").is_empty(), "END-3 restart left the ending screen up")
 	await _capture("loaded")
+	# Destroy the scene again and Load the selected slot's actual autosave.
+	# This must work without the just-used in-memory restart envelope.
+	var auto_bytes := FileAccess.get_file_as_bytes(SaveManager.autosave_path(SLOT))
+	world._on_game_over_title()
+	for frame in 20:
+		await process_frame
+	world = current_scene as World
+	world.title_screen.load_autosave_chosen.emit(SLOT)
+	for frame in 30:
+		await process_frame
+	_expect(not paused and not world.title_screen.visible and world.embedded_maze.maze_active
+		and world.embedded_maze._boss_triggers.has("main_boss") and world.route_state.octopus_state != "defeated",
+		"END-3 fresh title autosave Load does not return before Cordys")
+	var loaded := world._serialize_state()
+	for index in 3:
+		var expected: Dictionary = auto.campaign_checkpoint.party[index].stats
+		var actual: Dictionary = loaded.campaign_checkpoint.party[index].stats
+		for field in ["hp", "oxygen", "xp", "level"]:
+			_expect(actual[field] == expected[field], "END-3 pre-boss Load changes party resource " + field)
+	_expect(FileAccess.get_file_as_bytes(SaveManager.autosave_path(SLOT)) == auto_bytes,
+		"END-3 reading the pre-boss autosave rewrites its bytes")
 	await _finish()
 
 func _capture(label: String) -> void:
@@ -203,8 +220,6 @@ func _finish() -> void:
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	Engine.time_scale = 1.0
 	if owns_slot:
-		if denied_staging:
-			DirAccess.remove_absolute(SaveManager.slot_path(SLOT) + ".pending")
 		for path in [SaveManager.slot_path(SLOT), SaveManager.slot_path(SLOT) + ".pending", SaveManager.autosave_path(SLOT)]:
 			if FileAccess.file_exists(path):
 				DirAccess.remove_absolute(path)

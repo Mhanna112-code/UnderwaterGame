@@ -65,8 +65,16 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(resize)
 	resize.call()
 
-# has_autosave: whether a pre-boss autosave exists to restart from.
-func show_options(has_autosave: bool) -> void:
-	status.text = "The game was autosaved right before the Cordys fight." if has_autosave 		else "No autosave from before the Cordys fight is available."
-	restart_button.disabled = not has_autosave
-	(restart_button if has_autosave else title_button).grab_focus()
+# A session snapshot can support Restart even when persistent saving fails.
+# Never describe RAM-only or unconfirmed browser bytes as a saved checkpoint.
+func show_options(has_restart: bool, durable: bool, saving := false) -> void:
+	if not has_restart:
+		status.text = "No autosave from before the Cordys fight is available."
+	elif durable:
+		status.text = "The game was autosaved right before the Cordys fight."
+	elif saving:
+		status.text = "Restart is available in this session. The autosave is still being confirmed; keep the game open."
+	else:
+		status.text = "Autosave failed. Restart is available in this session only; closing the game may lose this checkpoint."
+	restart_button.disabled = not has_restart
+	(restart_button if has_restart else title_button).grab_focus()

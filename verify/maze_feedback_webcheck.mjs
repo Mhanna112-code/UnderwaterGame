@@ -24,7 +24,9 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=me
 const errors = [], downloads = [], findings = [];
 const metadata = live ? await (await fetch(new URL('build-info.json', base))).json()
   : JSON.parse(fs.readFileSync(path.join(target, 'build-info.json'), 'utf8'));
+let observationStage = 'setup';
 const capture = async (page, name) => {
+  observationStage = name;
   const file = path.join(output, name + '.png');
   await page.screenshot({ path: file });
   return JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [file], { encoding: 'utf8' })).map(row => row.text).join('\n');
@@ -44,7 +46,11 @@ try {
   for (const route of ['', '?maze=1&entry=entrance']) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const page = await context.newPage();
-    page.on('pageerror', error => errors.push(String(error)));
+    page.on('pageerror', error => {
+      const detail = observationStage + '|' + String(error.stack || error);
+      errors.push(detail);
+      console.log('BROWSER ERROR|' + detail);
+    });
     page.on('console', message => {
       if (message.type() === 'error' || /SCRIPT ERROR:|^ERROR:/.test(message.text())) errors.push(message.text());
     });
@@ -168,6 +174,7 @@ try {
       const reopened = await capture(page, 'maze-map-repeat');
       if (/discovered|closes\s+the\s+map/i.test(reopened)) throw new Error('Navigation lesson repeated on the next L open');
     }
+    observationStage = 'context-teardown';
     await context.close();
   }
 } catch (error) { findings.push(String(error)); }

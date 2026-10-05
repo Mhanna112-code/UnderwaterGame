@@ -33,6 +33,51 @@ existing completion UI/first victory/completed load/legacy incomplete load.
 
 ## Catalog
 
+### Fresh Marc ending intake — 2026-10-05
+
+Miguel explicitly confirmed Marc's pre-boss-only ending on October5. The new
+contract keeps the pre-boss autosave instead of saving completion. Earlier
+durable-completed-save acceptance below is historical and superseded, not
+evidence for this changed requirement. Opening/film changes remain deferred.
+
+END-5: a static pre-boss snapshot survives Return to Title/New Game/Load and
+enables Restart for an unrelated selected slot. High impact: restarting can
+replace the selected run's party/progression with another run's snapshot.
+Test `pre_boss_restart_ownership.gd`: two preflight-owned disposable slots;
+capture the first, actual title reload, public Load of a completed second
+fixture with no autosave. Ending must disable restart and preserve both
+files. This is a cross-slot invariant/negative path, not a balance test. It
+fails for wrong-but-stable enabled restart, and does not depend on whether
+ownership is fixed with instance storage, a run ID or another implementation.
+
+END-6: a failed pre-boss write/IndexedDB confirmation still says 'autosaved'.
+High impact: closing the browser can lose the advertised restart checkpoint.
+Native denied autosave staging and exported-browser rejected durability need
+independent checks. The old ending `--denied` blocked the manual staging path,
+not the new autosave path; it was replaced in the runner with actual denied
+autosave staging and session Restart. Native red reproduces the false claim;
+green preserves previous exact bytes, reports session-only failure and restores
+the captured3HP party rather than silently using the older saved party.
+Exported-browser rejected durability remains required.
+
+END-7: a completed/open-water/missing-boss/corrupt autosave enables a purported
+pre-Cordys restart. Generated scene×victory×station candidates (eight shapes)
+must enable only a valid unfinished maze station. This is read-only file/UI
+decision-table evidence, not battle or route attainment. Native matrix passes;
+first attempt was a GDScript test type-inference parse error, retained as an
+observer defect, not a production finding.
+
+Current evaluation: END-5 red1 -> green0 after instance/run ownership. END-6
+red1 -> green0 including actual session Restart and exact previous bytes.
+Current real legal-kit12-action win, visible frozen ending, Restart and fresh
+Title autosave Load pass with HP/O2/XP/level conserved, no completion write and
+unchanged saved bytes. These are native-focused receipts, not a full-suite or
+earned balance claim. END-7 is characterized after the defensive validation.
+
+Skipped here: genuine final-boss win, earned navigation, native packaging and
+browser cold persistence; the slot fixture cannot establish these. Do not
+count the older durable-completion receipts as current pre-boss acceptance.
+
 | ID | Failure and impact | Why plausible / cheapest test | Status |
 |---|---|---|---|
 | END-1 | Final boss victory is only a temporary exploration notice and is not checkpointed | Current Maze result handler; real legal-kit battle through UI, visible modal and durable file readback | Reproduced red; local native repair passes |
