@@ -20,6 +20,10 @@
 class_name Whirlpool
 extends Node3D
 
+# Reading retains the pending catch; leaving exploration retires it before
+# another owner uses the same actors/resources. Owners expose this contract.
+enum Activity { EXPLORING, SUSPENDED, INACTIVE }
+
 signal warned
 signal diver_sucked_in(d: Diver, amount: int)
 
@@ -69,11 +73,15 @@ var _warned_now := false
 # The actors are shared with World, not children of this hazard. A Tween
 # disappearing with its owner must not leave its movement/model lock behind.
 var _motions: Dictionary = {} # instance ID -> weak actor and owned motion
-var _released: Dictionary = {} # canceled actor waits to leave the core
+var _released: Dictionary = {} # returned actor waits to leave the core
 var _return_boxes: Array[Dictionary] = []
+var _activity := Activity.EXPLORING
 
 func _ready() -> void:
 	add_to_group("whirlpool_hazards")
+	# Watch ownership even while a lesson pauses the tree or the embedded
+	# subtree is disabled. Physical effects still require EXPLORING below.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var warn_area := Area3D.new()
 	var warn_shape := CollisionShape3D.new()
 	var warn_col := SphereShape3D.new()
@@ -211,8 +219,10 @@ func _on_warning_entered(body: Node3D) -> void:
 		return # A teleported body's cached physics overlap can be stale.
 	_warned_now = true
 	_divers_in_warning[body] = true
+	refresh_activity()
 	_update_warning_caption()
-	warned.emit()
+	if _activity == Activity.EXPLORING:
+		warned.emit()
 
 func _on_warning_exited(body: Node3D) -> void:
 	if body is Diver:
@@ -238,6 +248,37 @@ static func busy_in(scope: Node) -> bool:
 		if scope.is_ancestor_of(hazard) and (hazard as Whirlpool).busy():
 			return true
 	return false
+
+static func refresh_in(scope: Node) -> void:
+	for hazard in scope.get_tree().get_nodes_in_group("whirlpool_hazards"):
+		if scope.is_ancestor_of(hazard):
+			(hazard as Whirlpool).refresh_activity()
+
+func refresh_activity() -> void:
+	var next := Activity.EXPLORING
+	var owner := get_parent()
+	while owner != null:
+		if owner.has_method("whirlpool_activity"):
+			next = owner.whirlpool_activity()
+			break
+		owner = owner.get_parent()
+	if next == Activity.EXPLORING and get_tree().paused:
+		next = Activity.SUSPENDED
+	_activity = next
+	if next == Activity.INACTIVE:
+		cancel_motion()
+	else:
+		for record: Dictionary in _motions.values():
+			var tween := record.tween as Tween
+			if not tween.is_valid():
+				continue
+			if next == Activity.SUSPENDED and not bool(record.get("reading_pause", false)):
+				tween.pause()
+				record.reading_pause = true
+			elif next == Activity.EXPLORING and bool(record.get("reading_pause", false)):
+				tween.play()
+				record.reading_pause = false
+	_update_warning_caption()
 
 # Call before applying loaded party poses or disabling the owning area.
 # preserve_positions is for a caller that has already restored those poses.
@@ -326,7 +367,11 @@ func _buried_in_box(center: Vector3, actor: Diver) -> bool:
 	return false
 
 func _update_warning_caption() -> void:
-	if _divers_in_warning.is_empty():
+	for body in _divers_in_warning.keys():
+		if not is_instance_valid(body) or not body.is_inside_tree() or not is_inside_tree() \
+			or not _within_radius(body as Diver, warning_radius, 0.0):
+			_divers_in_warning.erase(body)
+	if _activity != Activity.EXPLORING or _divers_in_warning.is_empty():
 		_warning_whirlpools.erase(self)
 	else:
 		_warning_whirlpools[self] = true
@@ -335,6 +380,11 @@ func _update_warning_caption() -> void:
 			return
 		_build_warning_caption()
 	_warning_caption.visible = not _warning_whirlpools.is_empty() and not _battle_running
+	# Relinquish the whole warning canvas when it has nothing to display,
+	# not merely the child text. This layer has no other UI owner.
+	var layer := _warning_caption.get_parent() as CanvasLayer
+	if layer != null:
+		layer.visible = _warning_caption.visible
 
 func _build_warning_caption() -> void:
 	var layer := CanvasLayer.new()
@@ -362,6 +412,7 @@ func _build_warning_caption() -> void:
 # The drag toward the centre, and a catch for anyone who ends up inside the
 # suction zone without "entering" it (e.g. it was bypassed when they did).
 func _physics_process(dt: float) -> void:
+	refresh_activity()
 	if busy():
 		_refresh_return_boxes()
 	for id in _released.keys():
@@ -379,14 +430,14 @@ func _physics_process(dt: float) -> void:
 			_motions.erase(id)
 		elif not tween.is_valid():
 			_cancel_motion(int(id)) # Killed scheduler, not a completed reset.
-	if not armed or (bypass.is_valid() and bool(bypass.call())):
+	if _activity != Activity.EXPLORING or not armed or (bypass.is_valid() and bool(bypass.call())):
 		return
 	for body in _divers_in_warning.keys():
 		if not is_instance_valid(body):
 			_divers_in_warning.erase(body)
 			continue
 		var d := body as Diver
-		if d == null or not is_instance_valid(d) or d.is_grappling() or d.is_suction_locked() or _released.has(d.get_instance_id()):
+		if d == null or not is_instance_valid(d) or d.exploration_paused or d.is_grappling() or d.is_suction_locked() or _released.has(d.get_instance_id()):
 			continue
 		if not _in_open_water_with(d):
 			continue
@@ -402,12 +453,13 @@ func _physics_process(dt: float) -> void:
 		d.move_and_collide(to_centre / dist * strength * dt)
 
 func _on_suction_entered(body: Node3D) -> void:
-	if not armed or not (body is Diver):
+	refresh_activity()
+	if _activity != Activity.EXPLORING or not armed or not (body is Diver):
 		return
 	var d := body as Diver
 	if not _within_radius(d, suction_radius, suction_height):
 		return # Validate the current pose, not last frame's physics cache.
-	if d.is_grappling() or d.is_suction_locked() or _released.has(d.get_instance_id()):
+	if d.exploration_paused or d.is_grappling() or d.is_suction_locked() or _released.has(d.get_instance_id()):
 		return
 	if bypass.is_valid() and bool(bypass.call()):
 		return
@@ -494,6 +546,11 @@ func _pull_in(d: Diver) -> void:
 		actor.global_position = landing
 		_restore_actor(actor, record)
 		_motions.erase(id)
+		# Let an overlapping returned actor actually leave the core before
+		# owning it again. Authored returns belong outside the outer pull zone,
+		# not an immunity lane through the obstacle. Never start an idle loop of
+		# catches while the completion flash is still playing.
+		_released[id] = weakref(actor)
 		if lost > 0 and bool(record.visible):
 			actor.flash_damage()
 		diver_sucked_in.emit(actor, lost)

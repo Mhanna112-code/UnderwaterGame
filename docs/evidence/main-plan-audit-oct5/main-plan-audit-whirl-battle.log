@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=angler|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(27.7337, 1.993506, 10.59663)|lock=true|visible=true|clear=true|hp=7|oxygen=0.0|warning=true
+FINDING WHIRL-2 encounter reveal retains suction lock/model/resource/warning ownership
+WHIRLPOOL SAFETY: findings=1

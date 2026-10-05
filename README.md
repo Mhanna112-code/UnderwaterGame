@@ -22,6 +22,12 @@ to this GitHub repository for automatic deployments. Until that connection is
 enabled, verify the deployed build after a merge instead of assuming that the
 alias advanced with the branch.
 
+The remaining campaign work is tracked in
+[the direct-main completion plan](docs/main-completion-audit-oct5.md).
+Each accepted batch is explicitly exported, deployed and checked at the same
+URL. [The safety batch](docs/main-safety-batch-oct5.md) records its evidence
+and outstanding campaign acceptance; it is not a full-game readiness claim.
+
 ## Controls
 
 ### Exploration

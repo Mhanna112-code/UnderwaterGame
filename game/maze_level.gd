@@ -193,6 +193,7 @@ func set_maze_active(on: bool) -> void:
 		if special_sites != null:
 			special_sites.cancel()
 	maze_active = on
+	Whirlpool.refresh_in(self)
 	# Disabling only this script leaves maps, hazards and child input owners
 	# running. The three shared actors stay under World, outside this subtree.
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
@@ -821,6 +822,7 @@ func _announcement_readable() -> bool:
 	return maze_active and $HUD.visible and not any_modal_open() and not _battling and not map_open
 
 func _refresh_announcement_visibility() -> void:
+	Whirlpool.refresh_in(self)
 	var captions_allowed := _announcement_readable()
 	var notice_visible := _banner != null and _banner_timer > 0.0 and captions_allowed
 	if _banner != null:
@@ -893,6 +895,7 @@ func _start_battle(kind := "strong") -> void:
 		return
 	_cancel_aim()
 	_battling = true
+	Whirlpool.refresh_in(self)
 	_battle_kind = kind
 	_play_maze_music(&"play_cordys_music" if kind == "main_boss" else &"play_battle_music")
 	for d in divers:
@@ -1227,6 +1230,13 @@ func _poster_in_reach() -> MazePoster:
 
 func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
+
+func whirlpool_activity() -> int:
+	if not maze_active or _battling:
+		return Whirlpool.Activity.INACTIVE
+	if not _announcement_readable() or _chest_reward_pending or _gate_cutscene:
+		return Whirlpool.Activity.SUSPENDED
+	return Whirlpool.Activity.EXPLORING
 
 func any_modal_open() -> bool:
 	return _wall_riders.busy() or (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
@@ -3834,6 +3844,16 @@ func _place_corridor_4_whirlpool() -> void:
 	var spot := back + into * (_corridor_4_whirlpool.suction_radius + 0.5)
 	_corridor_4_whirlpool.global_position = Vector3(spot.x, floor_y, spot.z)
 	var reset := start - into * 1.5
+	# The old corridor-end return is still inside the extended pull zone:
+	# even without input it drags the diver straight into another catch.
+	# Return on the approach side outside that influence for every party
+	# capsule. Deliberate reentry still requires the current/grapple crossing.
+	var largest_radius := 0.0
+	for actor in divers:
+		largest_radius = maxf(largest_radius, actor.radius)
+	var safe_distance := maxf(_corridor_4_whirlpool.suction_radius, _corridor_4_whirlpool.pull_radius) + largest_radius + 0.75
+	if (reset - spot).dot(into) < safe_distance:
+		reset = spot + into * safe_distance
 	_corridor_4_whirlpool.reset_to = Vector3(reset.x, floor_y, reset.z)
 
 func _on_whirlpool_warned() -> void:
@@ -5709,6 +5729,7 @@ func _build_inventory_menu() -> void:
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
 	$HUD.add_child(inventory_menu)
+	inventory_menu.visibility_changed.connect(_refresh_announcement_visibility)
 
 func use_inventory_item(item_id: String) -> void:
 	var count: int = int(inventory.get(item_id, 0))
@@ -6020,6 +6041,7 @@ func _build_campaign_checkpoint() -> void:
 	_save_menu = SavePointMenu.new()
 	_save_menu.save_requested.connect(_on_campaign_save_requested)
 	$HUD.add_child(_save_menu)
+	_save_menu.visibility_changed.connect(_refresh_announcement_visibility)
 	var layer := CanvasLayer.new()
 	layer.name = "MazeRecoveryLayer"
 	layer.layer = 20

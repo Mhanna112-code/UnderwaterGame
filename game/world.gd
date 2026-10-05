@@ -263,8 +263,11 @@ var _current_slot := -1
 const AUTOSAVE_INTERVAL := 180.0
 var _autosave_timer := 0.0
 var _autosave_writing := false
+var _checkpoint_saving := false
 
 func _autosave_safe() -> bool:
+	if _checkpoint_saving:
+		return false
 	if _current_slot < 0 or title_screen.visible or get_tree().paused or not route_state.prologue_complete:
 		return false
 	if battling or _intro_active or _transitioning_to_encounter or aiming or target_selector.selecting:
@@ -625,6 +628,7 @@ func _show_title_screen() -> void:
 	# Cold title must remain silent until a trusted browser gesture. Any return
 	# from gameplay also retires the prior world/battle/result cue here.
 	_audio_call(&"stop_music")
+	Whirlpool.refresh_in(self)
 	get_tree().paused = true
 	title_screen.open()
 
@@ -1204,6 +1208,8 @@ func _ready() -> void:
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
 	$HUD.add_child(inventory_menu)
+	inventory_menu.visibility_changed.connect(_refresh_world_reading)
+	save_point_menu.visibility_changed.connect(_refresh_world_reading)
 
 	_build_hp_bar()
 	_build_oxygen_bar()
@@ -2037,7 +2043,28 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 			"line_b": Vector3.ZERO,
 		})
 
+func _refresh_world_reading() -> void:
+	Whirlpool.refresh_in(self)
+	if embedded_maze != null and embedded_maze.maze_active:
+		return # Its own reading/input owner controls the shared party.
+	var reading := _checkpoint_saving or inventory_menu.visible or save_point_menu.visible
+	for actor in divers:
+		# Sonar owns a separate physics clock; stopping World.swim alone would
+		# keep billing Oxygen behind this exclusive reading surface.
+		actor.exploration_paused = reading or (embedded_maze != null and embedded_maze.contains_point(actor.global_position))
+
+func whirlpool_activity() -> int:
+	if battling or _transitioning_to_encounter or (embedded_maze != null and embedded_maze.maze_active):
+		return Whirlpool.Activity.INACTIVE
+	if _checkpoint_saving or not $HUD.visible or (inventory_menu != null and inventory_menu.visible) \
+		or (save_point_menu != null and save_point_menu.visible):
+		return Whirlpool.Activity.SUSPENDED
+	return Whirlpool.Activity.EXPLORING
+
 func _unhandled_input(e: InputEvent) -> void:
+	if _checkpoint_saving:
+		get_viewport().set_input_as_handled()
+		return
 	if embedded_maze != null and embedded_maze.maze_active:
 		return
 	if battling or _transitioning_to_encounter:
@@ -2250,7 +2277,26 @@ func _diver_on_save_point(d: Diver) -> bool:
 # across all three divers, so a rest stop patching up only the one you
 # happened to be steering would leave the other two stuck damaged/
 # drained with no other way to recover.
+func _manual_save_safe() -> bool:
+	if battling or _transitioning_to_encounter or _intro_active or aiming or target_selector.selecting or get_tree().paused:
+		return false
+	if not route_state.prologue_complete or title_screen.visible or is_instance_valid(random_encounter_reveal) or is_instance_valid(_lab_video_cutscene):
+		return false
+	if special_encounter_prompt.visible or _special_encounter_item != "" or _special_encounter_diver != null or tutorial_result_popup.visible:
+		return false
+	if Whirlpool.busy_in(self) or divers.any(func(d: Diver) -> bool: return d.is_grappling() or d.is_suction_locked()):
+		return false
+	# The menu requesting this save is allowed. The other area's puzzle and
+	# reward state must still be stable, even though its shared actors live here.
+	return embedded_maze == null or (not embedded_maze.maze_active and embedded_maze.can_capture_campaign_snapshot())
+
 func _on_save_requested(_d: Diver, slot: int) -> void:
+	if _checkpoint_saving or _autosave_writing:
+		return
+	if slot < 0 or not _manual_save_safe():
+		save_point_menu.close()
+		_announce("Wait for the movement or encounter to finish, then save.")
+		return
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
@@ -2261,14 +2307,30 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 	# list. Make the chosen slot this run's active checkpoint too, so future
 	# save-point visits and "Restart from Save Point" continue from the same
 	# destination rather than silently returning to the slot New Game chose.
-	var previous_slot := _current_slot
-	_current_slot = slot
-	var save_error := _write_save()
+	var existed := SaveManager.slot_exists(slot)
+	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
+	_checkpoint_saving = true
+	save_point_menu.set_saving(true, slot)
+	_refresh_world_reading()
+	var save_error := SaveManager.write_slot(slot, _serialize_state())
+	var written := save_error == OK
+	if written:
+		save_error = await BrowserCheckpoint.confirm_slot(slot)
+	if save_error != OK and written:
+		if SaveManager.rollback_slot(slot, existed, previous) != OK:
+			save_point_menu.set_saving(false)
+			_checkpoint_saving = false
+			save_point_menu.close()
+			_announce("Saving failed and recovery could not be confirmed. Please retry before leaving.")
+			return
+	save_point_menu.set_saving(false)
+	_checkpoint_saving = false
+	_refresh_world_reading()
 	if save_error != OK:
-		_current_slot = previous_slot
 		_announce("Could not save. Your previous checkpoint is unchanged. Please retry.")
 		save_point_menu.close()
 		return
+	_current_slot = slot
 	_announce("Progress saved to Slot %d." % (slot + 1))
 	save_point_menu.close()
 
@@ -2354,7 +2416,7 @@ func _physics_process(dt: float) -> void:
 			_set_maze_ownership(false)
 		# The Maze owns this frame even on departure: never swim twice.
 		return
-	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible:
+	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible or save_point_menu.visible or _checkpoint_saving:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
 	# browser, and a build nobody can steer is a build nobody plays.
@@ -2607,6 +2669,7 @@ func _set_maze_ownership(on: bool, restored := false) -> void:
 	$HUD.visible = not on
 	$HUD.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT
 	_active_cursor.visible = false if on else _active_cursor.visible
+	Whirlpool.refresh_in(self)
 
 func _build_embedded_maze() -> void:
 	_campaign_session = CampaignSession.new()
@@ -2882,6 +2945,7 @@ func _start_first_encounter(d: Diver) -> void:
 	_first_encounter_started = true
 	light_beam.visible = false
 	_transitioning_to_encounter = true
+	Whirlpool.refresh_in(self)
 	var target_pos := Vector3(light_beam.global_position.x, d.global_position.y, light_beam.global_position.z)
 	var tw := create_tween()
 	tw.tween_property(d, "global_position", target_pos, 0.5)
@@ -3452,6 +3516,7 @@ func _on_encounter_triggered(d: Diver) -> void:
 func _begin_random_encounter_reveal() -> void:
 	var selected := Battle.select_ordinary_enemies((divers[0] as Diver).stats.level)
 	_transitioning_to_encounter = true
+	Whirlpool.refresh_in(self)
 	if aiming:
 		_cancel_aim()
 	if target_selector.selecting:
@@ -3564,6 +3629,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	_cancel_random_encounter_reveal()
 	escape_encounter_hint.dismiss()
 	battling = true
+	Whirlpool.refresh_in(self)
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
 	elif route_state.encounter_source == "prologue_angler":

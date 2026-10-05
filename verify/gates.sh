@@ -147,6 +147,8 @@ run "opening training continuity: does voluntary Skip preserve completion throug
 run "opening save denial: does failed recovery retain the previous checkpoint and allow Retry Save" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd -- --opening-save-failure
 run "checkpoint invalid load: do missing and malformed saves retain an actionable title instead of replaying opening" "$GODOT" --headless --path . --script verify/checkpoint_load_failures.gd
 run "checkpoint slot switch: does denied replacement retain the active save and retry correctly" "$GODOT" --headless --path . --script verify/checkpoint_slot_switch.gd
+run "World manual checkpoint: does real caught-actor rejection preserve bytes and stable/denied retries retain the correct slot" "$GODOT" --headless --path . --script verify/world_manual_save.gd
+run "World Save reading: do actual P and held W retain poses and restore swimming after close" "$GODOT" --headless --path . --script verify/world_manual_save.gd -- --reading
 run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
 run "opening exploration: do Sonar/encounters enable at recovery and saved manual choices survive Load" "$GODOT" --headless --path . --script verify/opening_exploration_defaults.gd
 run "menu audio comfort: is hover brief, rate-limited and subordinate to confirmations" "$GODOT" --headless --path . --script verify/menu_audio_comfort.gd -- --interaction --preferences
@@ -236,6 +238,11 @@ run "whirlpool active deactivation: does real maze handoff release six interrupt
 run "whirlpool blocked return: do24 capsule/solid/yaw/phase cases release outside new solids and permit actual clear-direction swimming" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --blocked-matrix
 run "whirlpool actual damage: do36 completed overlaps keep downed HP0, living HP1 and nonnegative loss without O2 cost" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --damage
 run "whirlpool actor lifetime: do six removed rigs leave no engine errors and three preexisting owners retain their locks/models/masks" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --actor-lifetime
+run "whirlpool Inventory suspension: do all three actors in spiral/vanish remain unchanged behind actual Escape menus and resume exactly once" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --menu-matrix
+run "whirlpool battle ownership: do six real reveal/Battle handoffs cancel suction without late resource mutation or warnings" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --battle-matrix
+run "whirlpool embedded Inventory: does actual area handoff and Escape reading retain a caught actor then resume one completion" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --maze-menu
+run "whirlpool paused first map: does actual L hide root warnings and retain suction through paused lesson and unpaused overview reading" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --map-pause
+run "whirlpool Save reading: does real W contact and P freeze suction/warnings then resume once without writing player slots" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --save-menu
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
 run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd
@@ -308,6 +315,8 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	run "whirlpool native menu pixels: does retained suction leave actual readable Inventory foreground after a completed render frame" "$GODOT" --path . --resolution 1280x720 --script verify/whirlpool_safety.gd -- --menu --capture
+	run "whirlpool Compatibility menu pixels: does the web renderer preserve visible modal text and normal suction resume" "$GODOT" --path . --rendering-method gl_compatibility --resolution 1280x720 --script verify/whirlpool_safety.gd -- --menu --capture
 	run "Marc swirl native visibility: do revealed foreground rocks leave the controlled diver readable at column-aligned camera angles" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_swirl_occlusion.gd
 	run "maze overview native presentation: do title/help/legend fit actual rendered wide/short/portrait windows without HUD bleed-through" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_maze_map_presentation.gd
 	run "maze first-open native discovery: do paused lesson, map and discovered-only legend fit actual rendered viewports" "$GODOT" --path . --rendering-method gl_compatibility --script verify/maze_map_discovery.gd -- --legend --layout --persistence
