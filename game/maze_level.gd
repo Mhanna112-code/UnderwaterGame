@@ -2219,7 +2219,7 @@ func _show_map_item_popup() -> void:
 		return
 	var pages: Array[Dictionary] = [{
 		"title": "Key Item Acquired",
-		"body": "Maze Navigation Map\n\nWhile you're within the maze, press %s to open the Maze Navigation map - any diver can. On it you can pick a hallway or a current and rotate it. The %s in the top-left flashes whenever the map can be opened." % [Slot._badge("L"), Slot._badge("L: Map")],
+		"body": "While you're within the maze, press %s to open the Maze Navigation Map as any diver. On it you can control the geometry of the nearby maze." % Slot._badge("L"),
 		"slot": null,
 	}]
 	popup.call("open", pages)
