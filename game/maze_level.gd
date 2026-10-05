@@ -5582,7 +5582,8 @@ func _build_hall_gauntlet() -> void:
 			var spot := Vector3(xs[g] + HALL_COLUMN_RADIUS * 1.3 + 0.55, _floor_top_y + 0.55, col_z)
 			var rock := CrackedWall.new()
 			rock.span = Vector3(1.1, 1.1, 1.1)
-			rock.disguised_as_scenery_rock = true
+			# Round and brown, like the main game's breakable rocks.
+			rock.sphere_shaped = true
 			rock.position = spot
 			# Every other one is a fake: enemies hiding in it, not a potion.
 			var reward := "ambush" if g % 4 == 2 else "potion"
