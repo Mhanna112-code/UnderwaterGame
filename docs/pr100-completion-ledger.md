@@ -25,7 +25,7 @@ queue or Sonar batch; they require explicit subsequent integration/verification.
 | Latest underpass, outgoing/return drafts, barriers and riders | October 5 draft batch carries the one-way Break Room passage, automatic swung-wall return, latest 10/11 alignment and state barriers. Three outgoing actors, 12 incoming direction/state cases, whole-motion surface/solid-volume checks, outside-floor preservation, blocked exits, all three teardown cases, six JSON restores and cold legacy Title Load pass. Native 1280x720/360x640 question/motion/exit inspected. Full moving-wall rider, floor, whirlpool and normal-route geometry acceptance remains open. Sphere spacing/occlusion/vortex solidity already in 0561454. |
 | Earned Control Room map and exclusive chest | Carried in 6cc66c7 and reconciled through b916637. October 5 map batch adds actual shared-World ramp and actual review-flag swimming/E/L acquisition/return with the same party; cold title Load retains embedded owner/selected slot/map/key/relic separation. Six chest capsule/input/pause and 72 regional availability cases rerun clean. Exact 2054d11 local browser export earns the map with real swimming/E/L, no grant. Hosted-current/full-route/human discoverability acceptance remains open. |
 | Discovery-only map and responsive first-open | Runtime 2054d11 implements external discovered-only legend, visited-boss POIs/icons, boxed room labels and synchronous first-open projection before the lesson pauses. 64 discovery subsets, full-to-empty replacement, 12 paused native viewport sizes, optional new/legacy JSON lesson history/five invalid types and public later-media transition pass. Exact local pack hash and real browser swimming/E/L/first lesson/repeat open pass at wide/short/narrow sizes; captures inspected. Hosted-current acceptance and human/full-route discoverability remain open. |
-| F abilities / E interaction / Ctrl currents / Shift sink / Tab / Q | World/Maze F binding and Maze interaction-only E repaired; public help/keycaps/HUD/README reconciled. 86 real-input/zero-Oxygen/ownership checks plus real map E/Ctrl+E and chest regressions pass. Maze first-person aim, final embedded routing, review guide and historical video inspection remain pending. |
+| F abilities / E interaction / Ctrl currents / Shift sink / Tab / Q | World/Maze F binding and Maze interaction-only E repaired; public help/keycaps/HUD/README reconciled. October 5 aim batch adds real F → first-person → left fire/right or Esc cancel, scene-owned reticle and surviving shared-model cleanup. Nine generated cancel cases, anchor/item/wall shots, actual P/L owners and JSON restore pass headless/native; actual aimed ramp departure passes. 88 control/zero-Oxygen checks plus Sonar/map/chest/checkpoint preservation pass. Required-anchor normal route, browser aim, review guide and historical video inspection remain pending. |
 | Item-orb reel versus anchor pull, free environmental abilities | Real ORB-1 red captured; local repair passes 59 real-physics checks including six shapes, scene teardown, moving shooter and retry after shooter deletion. World aim, swimming and animation regressions pass. No hosted claim. See verify/marc_orb_reel.bug-catalog.md. |
 | Sonar-following Vision and save compatibility | October 5 bounded port makes active Maxilani's Q reveal hazards without a pickup/G toggle; old ownership/equipment flags remain round-trippable but inert. Fresh Q red reproduced. Four legacy flag pairs × three selected actors pass JSON decode/restore without resource/key resets; actual Q/G/Tab, inside/outside, active/inactive, reading-menu and zero-O2 checks pass headless/native. Sonar/R feedback coalesces independently, preserving rewards. Full embedded/browser/campaign acceptance remains open. |
 | Radius special spots, discovery/toggle and encounter ownership | Pending latest port and live-area checks; preserve strong-room intent. |
@@ -73,6 +73,17 @@ visibility now synchronously hands off Maze-owned captions, preserving unread
 time. Evidence and corrected-observer disclosures are in
 docs/evidence/sonar-vision-oct5. New #97 bba8b80 intake remains separately pending;
 no current-browser, full campaign, export or release-readiness claim is made.
+
+October 5 first-person Maze grapple batch: actual F enters aim without firing
+or spending cooldown/Oxygen; only Musashi's mesh is hidden. Left click retains
+anchor traversal versus item reeling; right click/Escape cancels without opening
+a second modal. Blocked controls are not advertised in the aiming HUD. Physical
+departure exposed a composition bug: the save-stability guard prevented area
+handoff and stranded the diver at the boundary. Transient aim/Swap ownership is
+now relinquished before testing the remaining stable-state locks. Native ring
+orientation and surviving shared-model teardown are verified. Evidence and
+rejected observer disclosures: docs/evidence/maze-grapple-aim-oct5. The public
+alias still serves bffe1b5; no browser/full-suite or merge-readiness claim.
 
 October 5 draft passage batch: a dark marker is not a physical hole. Actual
 motion exposed the solid floor/skirt, shared-actor teardown and concave CSG

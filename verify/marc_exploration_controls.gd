@@ -106,6 +106,8 @@ func _ability_controls(owner: Node, is_world: bool) -> void:
 		else:
 			var camera := owner.get_node("Camera3D") as Camera3D
 			camera.look_at(camera.global_position + Vector3(0, 0, 1), Vector3.UP)
+			owner._yaw = 0.0
+			owner._pitch = 0.0
 		await physics_frame
 		await _tap(KEY_E)
 		_check(not owner.target_selector.selecting and not diver.is_grappling() and probe.hits == before
@@ -137,13 +139,12 @@ func _ability_controls(owner: Node, is_world: bool) -> void:
 						and target.global_position.is_equal_approx(start) and diver.stats.oxygen == 0,
 						"CTL-1: confirmed %s Swap trades real positions at zero Oxygen" % area)
 			"grapple":
-				if is_world:
-					_check(owner.aiming and not diver.is_grappling(), "CTL-1: World F enters aim without firing")
-					await _tap(KEY_ESCAPE)
-					_check(not owner.aiming and not owner.inventory_menu.visible and diver.can_use_ability(),
-						"CTL-3: aim Escape cancels without stacking pause or cooldown")
-					await _tap(KEY_F)
-					await _click(MOUSE_BUTTON_LEFT)
+				_check(owner.aiming and not diver.is_grappling(), "CTL-1: %s F enters aim without firing" % area)
+				await _tap(KEY_ESCAPE)
+				_check(not owner.aiming and not owner.inventory_menu.visible and diver.can_use_ability(),
+					"CTL-3: %s aim Escape cancels without stacking pause or cooldown" % area)
+				await _tap(KEY_F)
+				await _click(MOUSE_BUTTON_LEFT)
 				_check(diver.is_grappling(), "CTL-1: %s F flow hits actual anchor at zero Oxygen" % area)
 				await create_timer(0.5).timeout
 				_check(diver.global_position.distance_to(start) > 4.0 and not diver.is_grappling() and diver.stats.oxygen == 0,

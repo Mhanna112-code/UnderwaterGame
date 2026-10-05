@@ -1,0 +1,95 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+PASS: CTL-1: actual F starts zero-Oxygen World Swap
+PASS: CTL-4: exploration popup keycap teaches F, not E
+PASS: CTL-4: exploration popup keycap teaches F, not E
+PASS: CTL-4: exploration popup keycap teaches F, not E
+PASS: CTL-4: exploration reference teaches F for swap
+PASS: CTL-4: exploration reference teaches F for grapple
+PASS: CTL-4: exploration reference teaches F for shockwave
+PASS: CTL-4: paged lesson body and badges agree on F for swap
+PASS: CTL-4: paged lesson body and badges agree on F for grapple
+PASS: CTL-4: paged lesson body and badges agree on F for shockwave
+PASS: CTL-3: optional lesson relinquishes pause ownership
+PASS: CTL-5: special minigame E instructions remain distinct
+PASS: CTL-1: actual Tab selects World diver 0
+PASS: CTL-2: empty-context E cannot use World swap
+PASS: CTL-1: release/echo cannot fire World swap
+PASS: CTL-1: F selects zero-Oxygen World Swap
+PASS: CTL-3: F/E cannot restart or consume World Swap selection
+PASS: CTL-1: actual arrow selects another World Swap target
+PASS: CTL-1: confirmed World Swap trades real positions at zero Oxygen
+PASS: CTL-1: World swap cooldown eventually releases
+PASS: CTL-3: actual World Escape acquires menu ownership
+PASS: CTL-3: World pause blocks real F ability/diver leakage
+PASS: CTL-3: World pause blocks real E ability/diver leakage
+PASS: CTL-3: World pause blocks real Tab ability/diver leakage
+PASS: CTL-3: closing World pause restores usable ability without firing
+PASS: CTL-1: actual Tab selects World diver 1
+PASS: CTL-2: empty-context E cannot use World grapple
+PASS: CTL-1: release/echo cannot fire World grapple
+PASS: CTL-1: World F enters aim without firing
+PASS: CTL-3: World aim Escape cancels without stacking pause or cooldown
+PASS: CTL-1: World F flow hits actual anchor at zero Oxygen
+PASS: CTL-1: World anchor completes actual traversal without Oxygen
+PASS: CTL-1: World grapple cooldown eventually releases
+PASS: CTL-3: actual World Escape acquires menu ownership
+PASS: CTL-3: World pause blocks real F ability/diver leakage
+PASS: CTL-3: World pause blocks real E ability/diver leakage
+PASS: CTL-3: World pause blocks real Tab ability/diver leakage
+PASS: CTL-3: closing World pause restores usable ability without firing
+PASS: CTL-1: actual Tab selects World diver 2
+PASS: CTL-2: empty-context E cannot use World shockwave
+PASS: CTL-1: release/echo cannot fire World shockwave
+PASS: CTL-1: World F delivers one real Shockwave at zero Oxygen
+PASS: CTL-1: World Shockwave cooldown prevents repeated F
+PASS: CTL-1: World shockwave cooldown eventually releases
+PASS: CTL-3: actual World Escape acquires menu ownership
+PASS: CTL-3: World pause blocks real F ability/diver leakage
+PASS: CTL-3: World pause blocks real E ability/diver leakage
+PASS: CTL-3: World pause blocks real Tab ability/diver leakage
+PASS: CTL-3: closing World pause restores usable ability without firing
+PASS: CTL-2: empty-context E does not fire Maze Swap
+PASS: CTL-1: actual F starts zero-Oxygen Maze Swap
+PASS: CTL-1: actual Tab selects Maze diver 0
+PASS: CTL-2: empty-context E cannot use Maze swap
+PASS: CTL-1: release/echo cannot fire Maze swap
+PASS: CTL-1: F selects zero-Oxygen Maze Swap
+PASS: CTL-3: F/E cannot restart or consume Maze Swap selection
+PASS: CTL-1: actual arrow selects another Maze Swap target
+PASS: CTL-1: confirmed Maze Swap trades real positions at zero Oxygen
+PASS: CTL-1: Maze swap cooldown eventually releases
+PASS: CTL-3: actual Maze Escape acquires menu ownership
+PASS: CTL-3: Maze pause blocks real F ability/diver leakage
+PASS: CTL-3: Maze pause blocks real E ability/diver leakage
+PASS: CTL-3: Maze pause blocks real Tab ability/diver leakage
+PASS: CTL-3: closing Maze pause restores usable ability without firing
+PASS: CTL-1: actual Tab selects Maze diver 1
+PASS: CTL-2: empty-context E cannot use Maze grapple
+PASS: CTL-1: release/echo cannot fire Maze grapple
+PASS: CTL-1: Maze F enters aim without firing
+PASS: CTL-3: Maze aim Escape cancels without stacking pause or cooldown
+PASS: CTL-1: Maze F flow hits actual anchor at zero Oxygen
+PASS: CTL-1: Maze anchor completes actual traversal without Oxygen
+PASS: CTL-1: Maze grapple cooldown eventually releases
+PASS: CTL-3: actual Maze Escape acquires menu ownership
+PASS: CTL-3: Maze pause blocks real F ability/diver leakage
+PASS: CTL-3: Maze pause blocks real E ability/diver leakage
+PASS: CTL-3: Maze pause blocks real Tab ability/diver leakage
+PASS: CTL-3: closing Maze pause restores usable ability without firing
+PASS: CTL-1: actual Tab selects Maze diver 2
+PASS: CTL-2: empty-context E cannot use Maze shockwave
+PASS: CTL-1: release/echo cannot fire Maze shockwave
+PASS: CTL-1: Maze F delivers one real Shockwave at zero Oxygen
+PASS: CTL-1: Maze Shockwave cooldown prevents repeated F
+PASS: CTL-1: Maze shockwave cooldown eventually releases
+PASS: CTL-3: actual Maze Escape acquires menu ownership
+PASS: CTL-3: Maze pause blocks real F ability/diver leakage
+PASS: CTL-3: Maze pause blocks real E ability/diver leakage
+PASS: CTL-3: Maze pause blocks real Tab ability/diver leakage
+PASS: CTL-3: closing Maze pause restores usable ability without firing
+MARC EXPLORATION CONTROLS: clean|checks=88

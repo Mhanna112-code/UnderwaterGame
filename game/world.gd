@@ -2245,7 +2245,7 @@ func _physics_process(dt: float) -> void:
 		if not embedded_maze._battling:
 			for diver in divers:
 				diver.exploration_paused = not embedded_maze.contains_point(diver.global_position)
-		if not embedded_maze.contains_point((divers[active] as Diver).global_position) and embedded_maze.can_capture_campaign_snapshot():
+		if not embedded_maze.contains_point((divers[active] as Diver).global_position) and embedded_maze.prepare_area_exit():
 			_set_maze_ownership(false)
 		# The Maze owns this frame even on departure: never swim twice.
 		return

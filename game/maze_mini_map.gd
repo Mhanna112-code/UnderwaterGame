@@ -1460,7 +1460,7 @@ func _layout_overview() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
 		return
-	if maze_level != null and (maze_level._battling or maze_level.any_modal_open() or maze_level._chest_reward_pending):
+	if maze_level != null and (maze_level._battling or maze_level.any_modal_open() or maze_level._chest_reward_pending or maze_level.aiming):
 		return
 	if maze_level != null and maze_level.target_selector != null and maze_level.target_selector.selecting:
 		return

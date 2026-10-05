@@ -147,6 +147,28 @@ func _run() -> void:
 	sink.keycode = KEY_SHIFT
 	Input.parse_input_event(sink)
 	print("EMBED_FLOOR|sink-held descent and uphill return physically traversed")
+	# AIM-2: the shared Musashi must not remain invisible when first-person
+	# swimming crosses the ramp boundary and World resumes its ownership.
+	actors[0].sonar_active = false
+	actors[0].global_position = Vector3(220, 1.8, 16)
+	actors[1].global_position = Vector3(263, 1.8, 16)
+	actors[1].velocity = Vector3.ZERO
+	await _key(KEY_TAB)
+	for frame in 3:
+		await physics_frame
+	await _key(KEY_TAB)
+	for frame in 3:
+		await physics_frame
+	print("EMBED_AIM_SELECTED|world=", world.active, "|maze=", maze.active, "|owner=", maze.maze_active,
+		"|world_battle=", world.battling, "|maze_battle=", maze._battling, "|paused=", paused)
+	_expect(world.active == 1 and maze.maze_active, "AIM-2 actual Tab did not select shared maze Musashi")
+	await _key(KEY_F)
+	_expect(not actors[1].model.visible and actors[1].get_parent() == world, "AIM-2 embedded F did not hide only the shared model")
+	await _swim_to(actors[1], 225.0, KEY_A)
+	_expect(not maze.maze_active and not maze.aiming and actors[1].model.visible
+		and world.divers[1] == actors[1] and actors[1].get_parent() == world,
+		"AIM-2 actual first-person ramp departure leaves invisible/replaced shared actor")
+	print("EMBED_AIM_HANDOFF|actual_ramp_swim=true|same_actor=true|model_restored=true")
 	_finish()
 
 func _key(code: Key) -> void:

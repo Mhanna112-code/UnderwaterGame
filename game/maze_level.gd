@@ -178,6 +178,8 @@ func contains_point(point: Vector3) -> bool:
 		and point.y >= _floor_top_y - 1.0 and point.y <= _floor_top_y + 40.0
 
 func set_maze_active(on: bool) -> void:
+	if not on:
+		_cancel_aim()
 	maze_active = on
 	# Disabling only this script leaves maps, hazards and child input owners
 	# running. The three shared actors stay under World, outside this subtree.
@@ -214,6 +216,15 @@ func leave_to_world() -> void:
 	world.random_encounters_enabled = random_encounters_enabled
 	world.cam.global_transform = ($Camera3D as Camera3D).global_transform
 	set_maze_active(false)
+
+func prepare_area_exit() -> bool:
+	# Aim is unsaveable but not an obstacle to physically leaving the area.
+	# Relinquish transient input/model ownership before the stable-state guard;
+	# moving geometry, rewards and battle locks still prevent unsafe handoff.
+	_cancel_aim()
+	if target_selector != null and target_selector.selecting:
+		target_selector.cancel_selection()
+	return can_capture_campaign_snapshot()
 
 func _play_maze_music(method: StringName) -> void:
 	var audio := get_node_or_null("/root/GameAudio")
@@ -807,7 +818,7 @@ func _refresh_announcement_visibility() -> void:
 	for caption in ["Controls", "GoalLabel"]:
 		var node := get_node_or_null("HUD/" + caption) as CanvasItem
 		if node != null:
-			node.visible = captions_allowed and not notice_visible
+			node.visible = captions_allowed and not notice_visible and not aiming
 
 var _responsive_captions: Array[Label] = []
 
@@ -868,6 +879,7 @@ func _on_diver_encounter(d: Diver) -> void:
 func _start_battle(kind := "strong") -> void:
 	if not maze_active or _battling or _chest_reward_pending:
 		return
+	_cancel_aim()
 	_battling = true
 	_battle_kind = kind
 	_play_maze_music(&"play_cordys_music" if kind == "main_boss" else &"play_battle_music")
@@ -1919,6 +1931,7 @@ var _chest_reward_pending := false
 var _chest_tween: Tween
 
 func _begin_chest_cutscene() -> Tween:
+	_cancel_aim()
 	_chest_reward_pending = true
 	if target_selector != null and target_selector.selecting:
 		target_selector.cancel_selection()
@@ -2758,18 +2771,25 @@ func _update_world_hud() -> void:
 	if _world_hud_name == null or _diver == null:
 		return
 	_world_hud_name.text = Cast.display_name(_diver.model_name)
+	_refresh_announcement_visibility()
+	(_world_hud_tab.get_parent() as Control).visible = not aiming
 	if target_selector != null and target_selector.selecting:
 		var t := target_selector.current_target() as Diver
 		_world_hud_name.text = "Swap with %s?   Left/Right: cycle  ·  Enter: confirm  ·  Esc: cancel" % (Cast.display_name(t.model_name) if t != null else "...")
+	elif aiming:
+		_world_hud_name.text = "Grapple aim   Left click: fire  ·  Right click / Esc: cancel"
 	var after := ""
-	if _diver.ability_id != "":
+	if aiming:
+		after = "WASD swim  ·  Space/Shift depth  ·  Mouse aim"
+	elif _diver.ability_id != "":
 		after += "  ·  F: %s" % String(_diver.ability_id).capitalize()
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
-	after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
+	if not aiming:
+		after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
 	_world_hud_after.text = after
 	var map_ok := can_open_nav_map()
-	_world_hud_map.visible = map_ok
+	_world_hud_map.visible = map_ok and not aiming
 	var goal := get_node_or_null("HUD/GoalLabel") as Label
 	if goal != null:
 		goal.text = "Open the hallway. Follow the channel to the relic.\nE: interact  ·  F: ability." if key_items.has(MAP_ITEM) \
@@ -4189,6 +4209,7 @@ func _spawn_divers() -> void:
 
 # Tab: control the next diver (World's same cycle order).
 func _switch_diver() -> void:
+	_cancel_aim()
 	if target_selector != null and target_selector.selecting:
 		target_selector.cancel_selection()
 	active = (active + 1) % divers.size()
@@ -4238,6 +4259,8 @@ func _physics_process(dt: float) -> void:
 	_update_campaign_checkpoint()
 	if _diver == null:
 		return
+	if aiming and _aim_blocked():
+		_cancel_aim()
 	for orb in goldenOrbs:
 		if orb.position.y > _floor_top_y:
 			orb.position.y = maxf(orb.position.y - GOLDEN_ORB_FALL_SPEED * dt, _floor_top_y)
@@ -4267,6 +4290,7 @@ func _physics_process(dt: float) -> void:
 	_check_split_rock()
 	draft_passages.update()
 	_move_camera(dt)
+	_update_aim_marker()
 
 # Wall-rotation "cutscene": while any walls are rotating the camera pans up
 # and over to look down on them, and frames them until they stop, then eases
@@ -4313,6 +4337,12 @@ func _cutscene_camera(cam: Camera3D, frame: Array, dt: float) -> void:
 
 func _move_camera(dt: float) -> void:
 	var cam: Camera3D = $Camera3D
+	if aiming:
+		var eye := _diver.global_position + Vector3(0, _diver.height * 0.4, 0)
+		cam.global_position = eye
+		_cam_look = eye + _aim_dir() * 10.0
+		cam.look_at(_cam_look, Vector3.UP)
+		return
 	if _gate_cutscene and _gate != null:
 		if _cam_look == Vector3.ZERO:
 			_cam_look = _diver.global_position
@@ -4355,6 +4385,29 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	# Aim owns fire/cancel and look. Do not let one key save, select another
+	# diver, open a map or interact while its shooter is hidden.
+	if aiming:
+		if _aim_blocked():
+			_cancel_aim()
+			return
+		if e is InputEventMouseButton and e.pressed:
+			if e.button_index == MOUSE_BUTTON_LEFT:
+				_fire_aim()
+			elif e.button_index == MOUSE_BUTTON_RIGHT:
+				_cancel_aim()
+			get_viewport().set_input_as_handled()
+			return
+		if e is InputEventKey:
+			if e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
+				_cancel_aim()
+			get_viewport().set_input_as_handled()
+			return
+		if e is InputEventMouseMotion:
+			_yaw -= e.relative.x * 0.004
+			_pitch = clampf(_pitch - e.relative.y * 0.003, -1.1, 0.7)
+			get_viewport().set_input_as_handled()
+			return
 	# The sibling map has the same guard. Escape alone keeps its established
 	# inventory/pause behavior; held movement is blocked in physics separately.
 	if _chest_reward_pending and not (e is InputEventKey and e.keycode == KEY_ESCAPE):
@@ -4487,14 +4540,96 @@ func _handle_e(e: InputEventKey) -> void:
 func _use_active_ability() -> void:
 	match _diver.ability_id:
 		"grapple":
-			var cam := $Camera3D as Camera3D
-			_diver.use_ability(-cam.global_transform.basis.z)
+			if _diver.can_use_ability() and not _aim_blocked():
+				_start_aim()
 		"swap":
 			# Same as the main game: pick who to swap with first.
 			if not target_selector.selecting and _diver.can_use_ability():
 				target_selector.start_selection(_diver)
 		_:
 			_diver.use_ability()
+
+# Scene-owned aim; shared Divers outlive the embedded maze on teardown.
+var aiming := false
+var _aiming_diver: Diver
+var _aim_model_was_visible := true
+var _aim_marker: MeshInstance3D
+var _aim_marker_mat: StandardMaterial3D
+
+func _aim_dir() -> Vector3:
+	return Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
+
+func _aim_blocked() -> bool:
+	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+	return not maze_active or _battling or any_modal_open() or _chest_reward_pending \
+		or _gate_cutscene or not _moving_wall_sets.is_empty() or _free_map_open \
+		or (map != null and map.main_map != null and map.main_map.visible)
+
+func _start_aim() -> void:
+	aiming = true
+	_aiming_diver = _diver
+	_aim_model_was_visible = _diver.model.visible
+	_diver.set_model_visible(false)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_mouse_look = true
+	_move_camera(0.0)
+	_update_world_hud()
+
+func _fire_aim() -> void:
+	if not is_instance_valid(_aiming_diver):
+		_cancel_aim()
+		return
+	var shooter := _aiming_diver
+	var direction := _aim_dir()
+	_cancel_aim()
+	if is_instance_valid(shooter):
+		shooter.use_ability(direction)
+
+func _cancel_aim() -> void:
+	aiming = false
+	if is_instance_valid(_aiming_diver):
+		_aiming_diver.set_model_visible(_aim_model_was_visible)
+	_aiming_diver = null
+	if is_instance_valid(_aim_marker):
+		_aim_marker.visible = false
+
+func _update_aim_marker() -> void:
+	if not aiming:
+		return
+	if _aim_marker == null:
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.22
+		ring.outer_radius = 0.32
+		_aim_marker = MeshInstance3D.new()
+		_aim_marker.name = "GrappleAimReticle"
+		_aim_marker.mesh = ring
+		_aim_marker_mat = StandardMaterial3D.new()
+		_aim_marker_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_aim_marker_mat.emission_enabled = true
+		_aim_marker.material_override = _aim_marker_mat
+		add_child(_aim_marker)
+	var from := _diver.global_position + Vector3(0, _diver.height * 0.4, 0)
+	var query := PhysicsRayQueryParameters3D.create(from, from + _aim_dir() * Diver.GRAPPLE_RANGE, Diver.GRAPPLE_COLLISION_MASK)
+	query.exclude = [_diver.get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var point: Vector3 = query.to if hit.is_empty() else hit.position
+	var on_target: bool = not hit.is_empty() and (hit.collider as Node).is_in_group("grapple_anchor")
+	_aim_marker.visible = true
+	_aim_marker.global_position = point
+	# Preserve World's near-surface readability rather than copying the old
+	# screen-filling close-wall marker from upstream unchanged.
+	_aim_marker.scale = Vector3.ONE * clampf(from.distance_to(point) / 3.0, 0.04, 1.0)
+	_aim_marker.look_at(from, Vector3.UP)
+	# TorusMesh's normal is local Y, not the -Z used by look_at. Face the
+	# ring toward the eye instead of showing its edge as a green dash.
+	_aim_marker.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	var color := Color(0.35, 0.95, 0.4) if on_target else Color(0.75, 0.78, 0.8)
+	_aim_marker_mat.albedo_color = color
+	_aim_marker_mat.emission = color
+	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
+
+func _exit_tree() -> void:
+	_cancel_aim()
 
 # --- Keys ---------------------------------------------------------------------
 # Keys aren't tied to doors: each key opens any one door (KeyDoor spends it),
@@ -5556,7 +5691,7 @@ const CAMPAIGN_FLAGS := ["_completed", "_hallway_1_2_swung", "_walls_14_15_open"
 
 func can_capture_campaign_snapshot() -> bool:
 	return _moving_wall_sets.is_empty() and not _gate_cutscene and not _chest_reward_pending \
-		and not _battling and not get_tree().paused and not any_modal_open()
+		and not _battling and not aiming and not get_tree().paused and not any_modal_open()
 
 var _checkpoint: SavePoint
 var _save_menu: SavePointMenu
@@ -5805,6 +5940,7 @@ func _restore_wall_homes(homes: Array) -> Array:
 	return out
 
 func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> void:
+	_cancel_aim()
 	# Translate every spatial field together, without mutating the saved
 	# checkpoint. Same-frame and legacy standalone restores remain identity.
 	data = MazeCoordinateFrame.rebase(data, coordinate_origin)
