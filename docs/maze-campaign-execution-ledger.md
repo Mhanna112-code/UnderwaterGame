@@ -2,6 +2,15 @@
 
 ## Current authoritative status
 
+October 4 delivery audit: pushed source `2559d97` was exported, but its immutable
+preview was rejected before alias assignment because browser arrow badges showed
+broken glyphs. The strengthened exported-browser gate reproduces the failure
+against that exact old pack. Portable Left/Right words, compact narrow wording
+and native 12-shape verification now pass; fresh browser acceptance is pending.
+See MAP-8 receipts in `verify/marc_maze_map_contract.bug-catalog.md`.
+Latest remote refresh is unchanged at `c035c20` / `86878fa`. Stable review still
+serves `b0bee59`; neither main nor the public deployment has changed.
+
 Ready-door admission is locally verified: real map E opens a nearby eligible
 door before walls; Ctrl+E still moves currents. Physical-surface reach also fixes
 top-of-door interaction. 27 generated actor/input cases, controlled native keys,

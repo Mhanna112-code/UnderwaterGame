@@ -50,6 +50,9 @@ func _run() -> void:
 		_expect(diagram.encloses(legend.get_global_rect()) and diagram.encloses(title.get_global_rect()), "MAP-5 legend/title clipped at " + str(shape))
 		_expect(copy.get_content_width() <= copy.size.x + 1 and copy.get_content_height() <= copy.size.y + 1, "MAP-5 help text overflows its panel at " + str(shape))
 		_expect(copy.get_parsed_text().contains("Ctrl") and copy.get_parsed_text().contains("Encounters"), "MAP-5 help omits current/encounter keys")
+		_expect(copy.get_parsed_text().contains("Left") and copy.get_parsed_text().contains("Right")
+			and not copy.get_parsed_text().contains("←") and not copy.get_parsed_text().contains("→"),
+			"MAP-8 help relies on nonportable arrow glyphs instead of named keys")
 		if not capture_dir.is_empty():
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png(capture_dir.path_join("map-%dx%d.png" % [shape.x, shape.y]))

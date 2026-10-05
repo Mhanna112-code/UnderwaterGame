@@ -70,6 +70,7 @@ try {
       await page.waitForTimeout(1000);
       const map = await capture(page, 'maze-map');
       if (map === world || !/MAZE NAVIGATION/i.test(map) || !/rotate/i.test(map)) findings.push('Real L did not reveal exported maze map controls');
+      if (!/Left/i.test(map) || !/Right/i.test(map) || !/Ctrl/i.test(map) || !/Encounters/i.test(map)) findings.push('MAP-8 exported map keys are unreadable or missing portable Left/Right/Ctrl/R controls');
       console.log('EXPORTED MAZE MAP|' + map.replaceAll('\n', ' | '));
       await page.keyboard.press('KeyL');
     }

@@ -21,6 +21,7 @@ Branch inventory: battle/modal/Swap reject map keys; a visible overview rejects 
 | MAP-5 | The overview/help run below a short window or beyond its right edge; its legend/title are clipped; exploration HUD shows through. | High: correct keys exist but cannot be read. Fixed 500px map plus long help exceeds supported viewports. | Actual widget bounds/text extents at four fixed and eight generated desktop/portrait shapes; native rendered inspection catches HUD bleed-through and narrow orphaned R copy. | repaired; native 12 shapes pass; wide/short/portrait captures inspected |
 | MAP-6 | Holding Ctrl sinks a diver while selecting a current or after closing the map. | High: new input silently changes depth. | Actual held-key differential over physics frames in both World and Maze; Shift must still descend. | valid old Ctrl red; repaired two-owner test passes |
 | MAP-7 | Restored discovered rooms draw before reveal groups exist and emit a script error. | High: cold/restored overview may be broken despite printed clean result. | Public restore-discovery followed by actual rendered frames, rejecting script errors. | reproduced during layout gate; initialize reveal groups before restoring rooms; clean native rerun |
+| MAP-8 | Unicode arrow badges are broken glyphs in web export despite correct native rendering and OCR smoke pass. | High: player cannot read new controls. | Inspect actual exported-browser help; use portable Left/Right words, remeasure native wrapping, strengthen browser OCR to require those words. | valid exported negative reproduced; portable native repair passes 12 shapes; fresh browser acceptance pending |
 
 ## Skipped / suspect boundaries
 
@@ -57,6 +58,24 @@ Current-order coverage is initial geometry; a generated sequence after every
 current relocation is a worthwhile additional adversarial case, not yet covered.
 Native map checks are not a browser or earned-chest test. No whole-maze clean
 polish round or deployment acceptance follows from this bounded admission.
+
+Subsequent 2559d97 local export: checksum/title/L smoke printed clean, but visual
+inspection of `local-browser/maze-map.png` exposed MAP-8 arrow glyphs. That artifact
+is NOT accepted for the stable alias. Native system font fallback had concealed
+the export defect. Portable Left/Right badges replace those glyphs; fresh
+responsive and exported-browser runs are required. A checksum/OCR smoke is not
+an adequate visual glyph oracle by itself.
+
+The strengthened browser test fails against that unchanged 2559d97 export:
+`/tmp/underwater-marc-feedback-portable-red.log` records unreadable Left/Right
+controls, with correct source and pack checksum. This is a valid artifact red,
+not a parse failure. Portable labels and compact narrow-width wording pass
+`/tmp/underwater-marc-map-portable-final.log` on all 12 native shapes; 360x640
+and 720x480 captures were inspected. Compact copy keeps E and Rotate together.
+The rejected preview is deployment `dpl_5mubSd5LF3hj8dY7DESpnQSedgwM`,
+source 2559d979376a854da7472a543ee213c96254eaf4, pack 93,214,600 bytes,
+SHA256 d1d6110bfe71f6cfc44823769a10e3fdc942a45b13705af6800c38dee00db1b5.
+It was never assigned to the stable alias. A fresh export is required.
 
 ## Subsequent intake: c035c20 / 86878fa
 

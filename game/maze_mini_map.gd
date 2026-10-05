@@ -1224,8 +1224,8 @@ func _build_map_help() -> void:
 	_map_help_label.add_theme_font_size_override("normal_font_size", 16)
 	_map_help_label.add_theme_color_override("default_color", Color(0.92, 0.97, 1.0))
 	_map_help_label.text = "%s / %s  Select walls   ·   %s  Rotate\n%s + %s / %s  Select currents\n%s  Move current   ·   %s  Encounters" % [
-		Slot._badge("←"), Slot._badge("→"), Slot._badge("E"),
-		Slot._badge("Ctrl"), Slot._badge("←"), Slot._badge("→"),
+		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"),
+		Slot._badge("Ctrl"), Slot._badge("Left"), Slot._badge("Right"),
 		Slot._badge("Ctrl+E"), Slot._badge("R"),
 	]
 	_map_help.add_child(_map_help_label)
@@ -1265,9 +1265,11 @@ func _layout_overview() -> void:
 	main_map.position = Vector2(18, 16)
 	var width := minf(MAIN_MAP_SIZE, viewport.x - 36.0)
 	var last_separator := "\n" if width < 400 else "   ·   "
-	var help_copy := "%s / %s  Select walls   ·   %s  Rotate\n%s + %s / %s  Select currents\n%s  Move current%s%s  Encounters" % [
-		Slot._badge("←"), Slot._badge("→"), Slot._badge("E"),
-		Slot._badge("Ctrl"), Slot._badge("←"), Slot._badge("→"),
+	var wall_copy := "Walls" if width < 400 else "Select walls"
+	var current_copy := "Currents" if width < 400 else "Select currents"
+	var help_copy := "%s / %s  %s   ·   %s  Rotate\n%s + %s / %s  %s\n%s  Move current%s%s  Encounters" % [
+		Slot._badge("Left"), Slot._badge("Right"), wall_copy, Slot._badge("E"),
+		Slot._badge("Ctrl"), Slot._badge("Left"), Slot._badge("Right"), current_copy,
 		Slot._badge("Ctrl+E"), last_separator, Slot._badge("R"),
 	]
 	if _map_help_label.text != help_copy:

@@ -13,8 +13,12 @@ until a new, identified export passes its delivery checks. Main is untouched.
 Latest bounded refresh: #97 `c035c206db2ce67732f68fb57923ac1403b73c15`,
 #99 `86878faedb71e81072b1d200f4ccbfc6f0507210`. Nine additional maze and
 three shared commits are classified below. A second fetch after map verification
-found the same heads. Shared batches are pushed through `5a21f80`; the map batch
-is locally verified, not yet hosted. Preview remains `b0bee59`.
+found the same heads, including another fetch after the ready-door batch.
+Bounded integration is pushed through `2559d97`. A new preview of that source
+was rejected during browser inspection: arrow-key badges rendered as broken
+glyphs despite a passing initial smoke. Portable-word repair passes native
+layout and a strengthened browser test reproduces the old artifact failure.
+Fresh export/browser acceptance is pending. Stable preview remains `b0bee59`.
 
 ## Authored deltas and ownership
 
@@ -84,13 +88,17 @@ is locally verified, not yet hosted. Preview remains `b0bee59`.
   before the earlier persistent port; those expectations are reconciled explicitly,
   not counted as a newly fixed product tooltip. Detailed receipt catalog:
   `verify/marc_evasion_pool.bug-catalog.md`. No hosted acceptance implied.
-- Current ready-door batch: 27 actual input cases plus controlled native rerun,
+- 2559d97 ready-door batch: 27 actual input cases plus controlled native rerun,
   input-owner and checkpoint regressions pass. Reach uses physical door surface;
   semantic eligibility avoids depending on prompt punctuation. First direct port
   exposed a different locked door stealing the ready-door interaction; fixed
   with ready-only dispatch. Native camera/selection fixture mistakes and a
   rejected extra-input run remain recorded in `verify/marc_map_door.bug-catalog.md`.
   Actual puzzle entrance and real puppet reward/Cordys victories pass. Not hosted yet.
+- MAP-8 portable control repair: native 12-shape run and inspected narrow/short
+  captures pass; the strengthened browser gate fails against the unchanged
+  2559d97 pack for missing Left/Right controls. The rejected immutable deployment
+  was not assigned to the review alias. Fresh export/browser acceptance pending.
 - All other maze rows above remain pending. In particular, a new branch snapshot
   is not evidence that seamless geometry, acquired-map behavior or underpass
   traversal has been integrated or verified.
