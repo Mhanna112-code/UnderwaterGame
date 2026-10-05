@@ -1509,6 +1509,8 @@ func _build_stage() -> void:
 		count = ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
+		if encounter_source == "lab_boss":
+			boss.model_scene = preload("res://characters/Freak_Mermaid-Weirdo.fbx")
 		# Keep the boss close to the party's depth plane. At the grunt row's
 		# -2.7 z position, perspective made a four-metre creature read smaller
 		# on screen than the divers despite its measured native scale.

@@ -170,6 +170,7 @@ run "combat Quick Read: do result choices, context, and all-target previews agre
 run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd
 run "initially downed combat: do real potions and earned revival restore normal actors, cards, resources and usable turns" "$GODOT" --headless --path . --script verify/combat_initially_downed.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
+run "Tethys laboratory variant: does the delivered Weirdo mesh preserve rig clips facing and attack behavior" "$GODOT" --headless --path . --script verify/tethys_boss.gd -- --laboratory-variant
 run "effect feedback: report actual EVA changes without inventing progress at zero or on a miss" "$GODOT" --headless --path . --script verify/combat_effect_feedback.gd
 run "heavy payoff: can normal and earned heavy moves hit exhausted EVA, still miss unprepared EVA and spend real Oxygen" "$GODOT" --headless --path . --script verify/earned_heavy_slam.gd
 GATE_TIMEOUT_SECONDS="${LAB_BALANCE_GATE_TIMEOUT_SECONDS:-600}" run "lab attainable victory: do three real earned-kit policies win through actual Battle outcomes" "$GODOT" --headless --path . --script verify/lab_boss_balance.gd
@@ -353,8 +354,8 @@ if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "tutorial QTE handoff narrow: do success and miss retain stage and Continue" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_qte_handoff_layout.gd
 	run "Frilled Shark framing wide: do real mesh bounds clear the party" "$GODOT" --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
 	run "Frilled Shark framing narrow: does the long rig remain readable" "$GODOT" --path . --resolution 720x480 --script verify/frilled_shark_framing.gd
-	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd
-	run "lab composition narrow: is the Tethys arena still readable at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/lab_battle_composition.gd
+	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd -- --laboratory-variant
+	run "lab composition narrow: is the Tethys arena still readable at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/lab_battle_composition.gd -- --laboratory-variant
 else
 	echo
 	echo "=== stage framing and lab composition: skipped, need a display ==="

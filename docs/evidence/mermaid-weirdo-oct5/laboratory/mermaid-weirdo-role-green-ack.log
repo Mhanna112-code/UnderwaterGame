@@ -1,0 +1,6 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TETHYS PROBE|laboratory=true|actor_ready=true
+TETHYS PROBE|pose_and_skin_samples_complete=true
+TETHYS PROBE|swim_intro_complete=true
+TETHYS BOSS: clean — laboratory_variant=true; 13 distinct character motions deform a 311-bone skinned rig; six attacks production-called; 6 base/helper takes excluded

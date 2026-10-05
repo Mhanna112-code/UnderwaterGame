@@ -51,6 +51,14 @@ See `evidence/campaign-ending-oct5/browser-local`; the reproducible browser
 gate is now part of the runner. This is not hosted acceptance or earned balance.
 Lab/variant live presentation and matching candidate/canonical delivery remain.
 
+Mermaid-Weirdo is now locally wired into the existing laboratory Tethys role
+only, with original reference actor/material fallback/combat rules preserved.
+Red old-mesh witness and green311-bone/13-motion/78-pair/six-attack/facing tests,
+real12-action lab win/payoff/Load and1280×720/720×480 Metal scene acceptance are
+recorded in `mermaid-weirdo-inspection-oct5.md`. No opening or Cordys change.
+Actual browser lab presentation and matching candidate/canonical delivery are
+the next batch checks; no runtime push/publication is claimed yet.
+
 ## Authority and baseline
 
 Miguel requested a systematic audit of the remaining comprehensive plan and

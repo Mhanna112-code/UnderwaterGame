@@ -36,6 +36,8 @@ func _run() -> void:
 	battle.party_source = sources
 	battle.boss_encounter = true
 	battle.boss_intro_enabled = false
+	if "--laboratory-variant" in OS.get_cmdline_user_args():
+		battle.encounter_source = "lab_boss"
 	root.add_child(battle)
 	for _frame in range(SETTLE_FRAMES):
 		await process_frame
@@ -155,6 +157,12 @@ func _run() -> void:
 					String(first_entry.display_name), String(second_entry.display_name),
 					100.0 * overlap_area / maxf(1.0, smaller_area)])
 
+	if "--capture" in OS.get_cmdline_user_args():
+		await RenderingServer.frame_post_draw
+		DirAccess.make_dir_recursive_absolute("/private/tmp/mermaid-weirdo-lab-render-oct5")
+		var suffix := "%dx%d" % [int(screen.x), int(screen.y)]
+		_expect(root.get_texture().get_image().save_png("/private/tmp/mermaid-weirdo-lab-render-oct5/lab-" + suffix + ".png") == OK,
+			"LAB RENDER: cannot capture actual production laboratory scene")
 	battle.queue_free()
 	for diver in sources:
 		diver.queue_free()

@@ -6,10 +6,28 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var boss := TethysBoss.new()
-	root.add_child(boss)
+	Engine.time_scale = 5.0
+	seed(77124)
+	var laboratory := "--laboratory-variant" in OS.get_cmdline_user_args()
+	var source_battle: Battle
+	var boss: TethysBoss
+	if laboratory:
+		source_battle = Battle.new()
+		source_battle.boss_encounter = true
+		source_battle.boss_intro_enabled = false
+		source_battle.encounter_source = "lab_boss"
+		root.add_child(source_battle)
+		await process_frame
+		boss = source_battle.enemies[0].actor as TethysBoss
+	else:
+		boss = TethysBoss.new()
+		root.add_child(boss)
 	await process_frame
 	await process_frame
+	print("TETHYS PROBE|laboratory=", laboratory, "|actor_ready=true")
+	if laboratory:
+		_expect(_meshes(boss).any(func(mesh: MeshInstance3D) -> bool: return mesh.name == "Tethys3"),
+			"LAB VARIANT NOT PRESENT: real laboratory Battle still renders the older FemaleBase mesh")
 
 	_expect(boss.height >= 3.5, "BOSS SHRUNK: measured height is %.2f, expected a massive final boss" % boss.height)
 	_expect(boss.radius >= 0.8, "BOSS TOO NARROW: measured radius is %.2f" % boss.radius)
@@ -36,10 +54,12 @@ func _run() -> void:
 		"Aquaticus_rig|Base_pose", "Aquaticus_rig|CameraAction",
 		"Aquaticus_rig|LightAction", "Aquaticus_rig|Plane_032Action",
 	]
-	_expect(imported_clips.size() == 17,
-		"RAW TAKE INVENTORY: expected the delivered 17 takes, imported %d" % imported_clips.size())
+	if laboratory:
+		expected_excluded.append_array(["Aquaticus_rig|Plane_032Action_001", "Aquaticus_rig|Plane_032Action_002"])
+	_expect(imported_clips.size() == required.size() + expected_excluded.size(),
+		"RAW TAKE INVENTORY: expected thirteen motions plus %d helper/base takes, imported %d" % [expected_excluded.size(), imported_clips.size()])
 	_expect(excluded_clips.size() == expected_excluded.size(),
-		"TAKE CLASSIFICATION: expected four base/helper takes, observed %s" % str(excluded_clips))
+		"TAKE CLASSIFICATION: expected %d base/helper takes, observed %s" % [expected_excluded.size(), str(excluded_clips)])
 	for clip in expected_excluded:
 		_expect(excluded_clips.has(clip),
 			"HELPER MISCLASSIFIED: expected '%s' outside the thirteen gameplay motions" % clip)
@@ -95,12 +115,14 @@ func _run() -> void:
 		var swim := boss.anim.get_animation(boss.clip_name("swim_loop"))
 		_expect(swim != null and swim.loop_mode == Animation.LOOP_LINEAR, "SWIM LOOP DOES NOT LOOP")
 
+	print("TETHYS PROBE|pose_and_skin_samples_complete=true")
 	# Tethys: encounter entrance starts Swim Start, Loop, End, then Idle —
 	# guards against the direct idle/loop transition Glassgoat reported.
 	var intro_sequence: Array[String] = []
 	boss.anim.animation_started.connect(
 		func(name: StringName) -> void: intro_sequence.append(String(name)))
 	await boss.play_swim_intro()
+	print("TETHYS PROBE|swim_intro_complete=true")
 	var expected_intro := [
 		boss.clip_name("swim_start"), boss.clip_name("swim_loop"),
 		boss.clip_name("swim_end"), boss.clip_name("idle"),
@@ -151,9 +173,12 @@ func _run() -> void:
 	var battle := Battle.new()
 	battle.boss_encounter = true
 	battle.boss_intro_enabled = false
+	if laboratory:
+		battle.encounter_source = "lab_boss"
 	root.add_child(battle)
 	await process_frame
 	await process_frame
+	_acknowledge_qte_lessons(battle)
 	_expect(battle.enemies.size() == 1, "BOSS ENCOUNTER: expected exactly one enemy, got %d" % battle.enemies.size())
 	if battle.enemies.size() == 1:
 		_expect(battle.enemies[0].actor is TethysBoss, "BOSS ENCOUNTER: enemy is not Tethys")
@@ -211,10 +236,13 @@ func _run() -> void:
 		_expect(started_clips.has(clip), "PRODUCTION TURN NEVER PLAYED: %s (%s)" % [move.name, clip])
 
 	battle.queue_free()
-	boss.queue_free()
+	if source_battle != null:
+		source_battle.queue_free()
+	else:
+		boss.queue_free()
 	await process_frame
 	if findings.is_empty():
-		print("TETHYS BOSS: clean — 13 distinct character motions deform a %d-bone skinned rig; six attacks production-called; four base/helper takes excluded" % skeleton_bone_count)
+		print("TETHYS BOSS: clean — laboratory_variant=%s; 13 distinct character motions deform a %d-bone skinned rig; six attacks production-called; %d base/helper takes excluded" % [laboratory, skeleton_bone_count, expected_excluded.size()])
 		quit(0)
 		return
 	for finding in findings:
@@ -225,6 +253,20 @@ func _run() -> void:
 func _expect(ok: bool, message: String) -> void:
 	if not ok:
 		findings.append(message)
+		print("TETHYS WITNESS|", message)
+
+# The real first-QTE lesson legitimately waits for Enter. Reading that lesson
+# is not skipping the attack or setting a game flag; issue its actual key input
+# so the animation observer cannot hang on a randomly selected lesson.
+func _acknowledge_qte_lessons(battle: Battle) -> void:
+	while is_instance_valid(battle):
+		if battle._tutorial_awaiting_enter:
+			for down in [true, false]:
+				var event := InputEventKey.new()
+				event.keycode = KEY_ENTER
+				event.pressed = down
+				Input.parse_input_event(event)
+		await process_frame
 
 func _meshes(node: Node) -> Array:
 	var out: Array = []
