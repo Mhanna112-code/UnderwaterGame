@@ -1,0 +1,1561 @@
+{
+	"ability_puzzle_solved": false,
+	"active": 0,
+	"campaign_checkpoint": {
+		"maze": {
+			"boss_triggers": [
+				"secret_boss",
+				"main_boss"
+			],
+			"broken_rocks": [],
+			"coordinate_origin": [
+				300.0,
+				0.0,
+				20.7627105712891
+			],
+			"currents": [
+				{
+					"area": "WindCorridor1",
+					"orientation": [
+						0.0,
+						0.0,
+						-1.0
+					],
+					"strength": 7.0
+				},
+				{
+					"area": "WindCorridor3",
+					"orientation": [
+						0.0,
+						0.0,
+						-1.0
+					],
+					"strength": 7.0
+				},
+				{
+					"area": "WindCorridor5",
+					"orientation": [
+						-1.0,
+						0.0,
+						0.0
+					],
+					"strength": 7.0
+				},
+				{
+					"area": "WindCorridor7",
+					"orientation": [
+						0.0,
+						0.0,
+						-1.0
+					],
+					"strength": 7.0
+				}
+			],
+			"doors": [],
+			"flags": {
+				"_completed": false,
+				"_current_1_in_2": false,
+				"_current_3_in_4": false,
+				"_current_5_in_6": false,
+				"_current_7_in_8": false,
+				"_gate_lowered": false,
+				"_hallway_1_2_swung": false,
+				"_path_opened": true,
+				"_rock_split": false,
+				"_strong_room_seen": false,
+				"_switch_explained": false,
+				"_vortex_chest_open": false,
+				"_walls_10_11_swung": false,
+				"_walls_14_15_open": false,
+				"has_sonar_vision": true,
+				"room_encounters_enabled": false,
+				"sonar_vision_equipped": true
+			},
+			"key_items": [
+				"maze_nav_map"
+			],
+			"keys_held": 3,
+			"levers": [],
+			"loose_keys": [],
+			"map": {
+				"corridors": [
+					"WindCorridor5"
+				],
+				"count": 1,
+				"halls": [
+					{
+						"corridor": "WindCorridor5",
+						"name": "WindCorridor1",
+						"walls": [
+							"CSGBox3D8",
+							"CSGBox3D9"
+						]
+					}
+				],
+				"intro_seen": false,
+				"pois": [],
+				"rooms": [],
+				"walls": [
+					"CSGBox3D8",
+					"CSGBox3D9"
+				]
+			},
+			"orbs": [],
+			"pitch": -0.16,
+			"positions": [
+				[
+					335.532501220703,
+					1.79999995231628,
+					10.2864751815796
+				],
+				[
+					335.411285400391,
+					1.79999995231628,
+					12.3751411437988
+				],
+				[
+					335.411285400391,
+					1.79999995231628,
+					13.8751411437988
+				]
+			],
+			"posters": [
+				{
+					"diver": 2,
+					"number": 3,
+					"portrait": "res://portraits/musashi_pool/cyclops_06_surprised.png",
+					"seed": 3097805093,
+					"seen": false
+				},
+				{
+					"diver": 1,
+					"number": 1,
+					"portrait": "res://portraits/bucky_pool/bucky_06_frown.png",
+					"seed": 3908484843,
+					"seen": false
+				},
+				{
+					"diver": 0,
+					"number": 2,
+					"portrait": "res://portraits/maxilani_pool/maxilani_02_smile.png",
+					"seed": 2621210399,
+					"seen": false
+				}
+			],
+			"rocks": [
+				[
+					351.463989257812,
+					0.773515999317169,
+					65.8950119018555
+				],
+				[
+					352.885803222656,
+					8.8320198059082,
+					71.6992111206055
+				],
+				[
+					348.032409667969,
+					0.773515999317169,
+					68.7317123413086
+				],
+				[
+					356.150695800781,
+					0.773515999317169,
+					65.8950119018555
+				],
+				[
+					352.885803222656,
+					8.8320198059082,
+					65.8950119018555
+				],
+				[
+					349.010803222656,
+					4.06831979751587,
+					58.8271102905273
+				],
+				[
+					348.032409667969,
+					0.773515999317169,
+					61.1367111206055
+				],
+				[
+					336.455474853516,
+					-1.05879008769989,
+					28.2321090698242
+				],
+				[
+					324.537017822266,
+					-1.05879008769989,
+					105.445945739746
+				],
+				[
+					330.034088134766,
+					-1.05879008769989,
+					103.936859130859
+				],
+				[
+					335.531127929688,
+					-1.05879008769989,
+					118.234786987305
+				],
+				[
+					341.028198242188,
+					-1.05879008769989,
+					103.89599609375
+				]
+			],
+			"rotation_homes": {
+				"hallway_a": [
+					0.0,
+					0.0,
+					0.0
+				],
+				"hallway_b": [
+					0.0,
+					0.0,
+					0.0
+				],
+				"hallway_yaw_a": 0.0,
+				"hallway_yaw_b": 0.0,
+				"walls_10_11": [],
+				"walls_14_15": []
+			},
+			"special_sites": [
+				{
+					"consumed": false,
+					"enemy": "swordfish_duelist",
+					"id": "maze_special_0",
+					"item": "spell_shard",
+					"position": [
+						364.0,
+						-1.60879004001617,
+						72.7627105712891
+					],
+					"revealed": false
+				},
+				{
+					"consumed": false,
+					"enemy": "angler",
+					"id": "maze_special_1",
+					"item": "attack_up",
+					"position": [
+						355.506683349609,
+						-1.60879004001617,
+						24.8655853271484
+					],
+					"revealed": false
+				},
+				{
+					"consumed": false,
+					"enemy": "swordfish_duelist",
+					"id": "maze_special_2",
+					"item": "defense_up",
+					"position": [
+						355.479522705078,
+						-1.60879004001617,
+						35.8447303771973
+					],
+					"revealed": false
+				},
+				{
+					"consumed": false,
+					"enemy": "angler",
+					"id": "maze_special_3",
+					"item": "oxygen_cell",
+					"position": [
+						354.613555908203,
+						-1.60879004001617,
+						50.1516342163086
+					],
+					"revealed": false
+				},
+				{
+					"consumed": false,
+					"enemy": "angler",
+					"id": "maze_special_4",
+					"item": "spell_shard",
+					"position": [
+						331.494110107422,
+						-1.60879004001617,
+						39.3942642211914
+					],
+					"revealed": false
+				},
+				{
+					"consumed": false,
+					"enemy": "swordfish_duelist",
+					"id": "maze_special_5",
+					"item": "attack_up",
+					"position": [
+						328.993621826172,
+						-1.60879004001617,
+						47.3045349121094
+					],
+					"revealed": false
+				},
+				{
+					"consumed": false,
+					"enemy": "angler",
+					"id": "maze_special_6",
+					"item": "potion",
+					"position": [
+						329.025390625,
+						-1.60879004001617,
+						54.5136947631836
+					],
+					"revealed": false
+				}
+			],
+			"version": 1,
+			"walls": {
+				"Box30DoorLintel": {
+					"collision": true,
+					"position": [
+						320.212768554688,
+						8.42473983764648,
+						111.252220153809
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						2.29999995231628,
+						9.93294048309326,
+						1.0
+					],
+					"visible": true
+				},
+				"Box30DoorWallA": {
+					"collision": true,
+					"position": [
+						320.212768554688,
+						6.39121007919312,
+						105.43189239502
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						9.34065437316895,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"Box30DoorWallB": {
+					"collision": true,
+					"position": [
+						320.212768554688,
+						6.39121007919312,
+						117.072547912598
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						9.34065437316895,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D": {
+					"collision": true,
+					"position": [
+						295.408996582031,
+						1.42021000385284,
+						20.7285709381104
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						9.79150009155273,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D10": {
+					"collision": true,
+					"position": [
+						376.598297119141,
+						1.42040002346039,
+						9.60190963745117
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						33.660400390625,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D11": {
+					"collision": true,
+					"position": [
+						368.074768066406,
+						1.42040002346039,
+						16.6819591522217
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						31.9193000793457,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D12": {
+					"collision": true,
+					"position": [
+						327.371795654297,
+						1.42040002346039,
+						-6.72829055786133
+					],
+					"rotation": [
+						0.0,
+						0.0000000437113882867379,
+						0.0
+					],
+					"size": [
+						18.0790004730225,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D13": {
+					"collision": true,
+					"position": [
+						336.900451660156,
+						1.42040002346039,
+						1.22230958938599
+					],
+					"rotation": [
+						0.0,
+						-3.14159274101257,
+						0.0
+					],
+					"size": [
+						10.128399848938,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D14": {
+					"collision": true,
+					"position": [
+						380.379821777344,
+						1.42040002346039,
+						33.1416091918945
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						25.6100997924805,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D15": {
+					"collision": true,
+					"position": [
+						388.736389160156,
+						1.42040002346039,
+						26.9321098327637
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						25.2761993408203,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D16": {
+					"collision": true,
+					"position": [
+						401.874481201172,
+						1.42040002346039,
+						35.654109954834
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						18.4440002441406,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D16North": {
+					"collision": true,
+					"position": [
+						401.874481201172,
+						1.42040002346039,
+						56.3981094360352
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						18.4440002441406,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D18": {
+					"collision": true,
+					"position": [
+						391.438323974609,
+						1.42040002346039,
+						66.1201095581055
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						21.8722991943359,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D19": {
+					"collision": true,
+					"position": [
+						382.323883056641,
+						1.42040002346039,
+						57.830509185791
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						23.9193000793457,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D20": {
+					"collision": true,
+					"position": [
+						369.940551757812,
+						1.42040002346039,
+						76.9243621826172
+					],
+					"rotation": [
+						0.0,
+						-1.56679952144623,
+						0.0
+					],
+					"size": [
+						39.1879997253418,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D21": {
+					"collision": true,
+					"position": [
+						380.076782226562,
+						1.42040002346039,
+						84.7861099243164
+					],
+					"rotation": [
+						0.0,
+						-1.56679952144623,
+						0.0
+					],
+					"size": [
+						38.3322982788086,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D22": {
+					"collision": true,
+					"position": [
+						369.337829589844,
+						1.42040002346039,
+						104.452095031738
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						22.6350994110107,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D23": {
+					"collision": true,
+					"position": [
+						357.520294189453,
+						1.42040002346039,
+						92.5672454833984
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						24.7696990966797,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D24": {
+					"collision": true,
+					"position": [
+						347.191680908203,
+						6.3915901184082,
+						69.0607452392578
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						22.2432994842529,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D25": {
+					"collision": true,
+					"position": [
+						352.855987548828,
+						6.3915901184082,
+						79.6823959350586
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						10.3285999298096,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D27": {
+					"collision": true,
+					"position": [
+						393.705230712891,
+						1.42040002346039,
+						44.9860610961914
+					],
+					"rotation": [
+						0.0,
+						-1.56679952144623,
+						0.0
+					],
+					"size": [
+						24.6888999938965,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D29": {
+					"collision": true,
+					"position": [
+						334.361755371094,
+						6.39121007919312,
+						101.261474609375
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						20.9813995361328,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D30": {
+					"collision": true,
+					"position": [
+						309.526123046875,
+						6.39121007919312,
+						101.261566162109
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						20.3733005523682,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D32": {
+					"collision": true,
+					"position": [
+						322.69970703125,
+						6.39121007919312,
+						122.242874145508
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						46.3055000305176,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D33": {
+					"collision": true,
+					"position": [
+						345.352447509766,
+						6.39121007919312,
+						105.431846618652
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						9.34074592590332,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D33Lintel": {
+					"collision": true,
+					"position": [
+						345.352447509766,
+						8.42473983764648,
+						111.252220153809
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						2.29999995231628,
+						9.93294048309326,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D33North": {
+					"collision": true,
+					"position": [
+						345.352447509766,
+						6.39121007919312,
+						117.072547912598
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						9.34065437316895,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D6": {
+					"collision": true,
+					"position": [
+						319.212768554688,
+						1.42021000385284,
+						60.4950714111328
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						80.5329971313477,
+						4.05800008773804,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D7": {
+					"collision": true,
+					"position": [
+						324.371063232422,
+						1.42021000385284,
+						60.4950218200684
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						80.5328979492188,
+						4.05800008773804,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D8": {
+					"collision": true,
+					"position": [
+						356.254791259766,
+						1.42040002346039,
+						-6.72829055786133
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						39.6870002746582,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3D9": {
+					"collision": true,
+					"position": [
+						354.769714355469,
+						1.42040002346039,
+						1.22230958938599
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						25.6100997924805,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3DConnector": {
+					"collision": true,
+					"position": [
+						342.464660644531,
+						1.42040002346039,
+						10.4754409790039
+					],
+					"rotation": [
+						0.0,
+						-1.57079637050629,
+						0.0
+					],
+					"size": [
+						17.5062637329102,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CSGBox3DConnectorStub": {
+					"collision": true,
+					"position": [
+						333.414581298828,
+						1.42040002346039,
+						19.728572845459
+					],
+					"rotation": [
+						0.0,
+						3.14159250259399,
+						0.0
+					],
+					"size": [
+						19.1001434326172,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CurrentWall1": {
+					"collision": true,
+					"position": [
+						300.804748535156,
+						1.42021000385284,
+						29.4325714111328
+					],
+					"rotation": [
+						0.0,
+						-1.570796251297,
+						0.0
+					],
+					"size": [
+						18.4080009460449,
+						4.05800008773804,
+						1.0
+					],
+					"visible": true
+				},
+				"CurrentWall2": {
+					"collision": true,
+					"position": [
+						309.011993408203,
+						1.42021000385284,
+						24.824800491333
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						27.889799118042,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"CurrentWall3": {
+					"collision": true,
+					"position": [
+						299.614776611328,
+						1.42040002346039,
+						11.3507108688354
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						17.8134994506836,
+						4.05800008773804,
+						1.0
+					],
+					"visible": true
+				},
+				"HallwayEndWall": {
+					"collision": true,
+					"position": [
+						304.908386230469,
+						1.42021000385284,
+						39.1365737915039
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						9.20724487304688,
+						4.05800008773804,
+						1.0
+					],
+					"visible": true
+				},
+				"MainBossRoomEast": {
+					"collision": true,
+					"position": [
+						369.852447509766,
+						6.39121007919312,
+						114.09748840332
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						17.2907791137695,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"MainBossRoomNorth": {
+					"collision": true,
+					"position": [
+						357.852447509766,
+						6.39121007919312,
+						122.242874145508
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						24.0,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"MainBossRoomSouth": {
+					"collision": true,
+					"position": [
+						357.852447509766,
+						6.39121007919312,
+						105.952095031738
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						24.0,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"PathWallNorth": {
+					"collision": true,
+					"position": [
+						309.498229980469,
+						1.42040002346039,
+						1.22230958938599
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						44.6760520935059,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"PathWallSouth": {
+					"collision": true,
+					"position": [
+						302.746246337891,
+						1.42040002346039,
+						-6.72829055786133
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						31.1720771789551,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"RewardChamberWestWall": {
+					"collision": true,
+					"position": [
+						360.691680908203,
+						6.3915901184082,
+						57.439094543457
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						28.0,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"Room16Back": {
+					"collision": true,
+					"position": [
+						427.874481201172,
+						1.42040002346039,
+						46.0261077880859
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						27.0,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"Room16North": {
+					"collision": true,
+					"position": [
+						415.124481201172,
+						1.42040002346039,
+						59.0261077880859
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						25.5,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"Room16South": {
+					"collision": true,
+					"position": [
+						415.124481201172,
+						1.42040002346039,
+						33.0261077880859
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						25.5,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"RoomWallA": {
+					"collision": true,
+					"position": [
+						360.691680908203,
+						6.3915901184082,
+						44.7903518676758
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						24.2974853515625,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"RoomWallB": {
+					"collision": true,
+					"position": [
+						363.883239746094,
+						6.3915901184082,
+						33.1416091918945
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						7.38308715820312,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"SecretBossRoomBack": {
+					"collision": true,
+					"position": [
+						299.339477539062,
+						6.39121007919312,
+						111.752220153809
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						21.9813079833984,
+						14.0,
+						1.0
+					],
+					"visible": true
+				},
+				"Wall10Closer": {
+					"collision": true,
+					"position": [
+						338.546691894531,
+						1.42040002346039,
+						26.9321098327637
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						7.78242492675781,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"Wall11Closer": {
+					"collision": true,
+					"position": [
+						338.546691894531,
+						1.42040002346039,
+						33.1416091918945
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						7.78243064880371,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"Wall11EndCap": {
+					"collision": true,
+					"position": [
+						335.155456542969,
+						1.42040002346039,
+						30.0368595123291
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						7.20949935913086,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"Wall15ToReward": {
+					"collision": true,
+					"position": [
+						376.598297119141,
+						1.42040002346039,
+						54.8236999511719
+					],
+					"rotation": [
+						0.0,
+						1.57079637050629,
+						0.0
+					],
+					"size": [
+						5.23078536987305,
+						4.05762004852295,
+						1.0
+					],
+					"visible": true
+				},
+				"Wall7ToReward": {
+					"collision": true,
+					"position": [
+						335.781372070312,
+						1.42021000385284,
+						57.439094543457
+					],
+					"rotation": [
+						0.0,
+						0.0,
+						0.0
+					],
+					"size": [
+						21.8206176757812,
+						4.05800008773804,
+						1.0
+					],
+					"visible": true
+				}
+			},
+			"yaw": 0.0
+		},
+		"party": [
+			{
+				"ability_locked": false,
+				"equipped_spells": [],
+				"known_spells": [],
+				"model": "Staff_Diver",
+				"sonar_active": false,
+				"sonar_drain_timer": 0.0,
+				"sonar_timer": 0.0,
+				"stats": {
+					"accuracy": 3,
+					"agility": 3,
+					"defense": 0,
+					"evasion": 3,
+					"evasion_current": 3,
+					"hp": 6,
+					"hp_max": 10,
+					"level": 1,
+					"oxygen": 11.25,
+					"oxygen_max": 100.0,
+					"spell_points": 0,
+					"stat_floor": {},
+					"statuses": {},
+					"strength": 1,
+					"temporary_modifiers": {
+						"accuracy": 0,
+						"evasion": 0
+					},
+					"xp": 0,
+					"xp_to_next": 30
+				}
+			},
+			{
+				"ability_locked": false,
+				"equipped_spells": [],
+				"known_spells": [],
+				"model": "Prototype_1(1910)",
+				"sonar_active": false,
+				"sonar_drain_timer": 0.0,
+				"sonar_timer": 0.0,
+				"stats": {
+					"accuracy": 2,
+					"agility": 2,
+					"defense": 2,
+					"evasion": 2,
+					"evasion_current": 2,
+					"hp": 7,
+					"hp_max": 10,
+					"level": 1,
+					"oxygen": 12.25,
+					"oxygen_max": 100.0,
+					"spell_points": 0,
+					"stat_floor": {},
+					"statuses": {},
+					"strength": 2,
+					"temporary_modifiers": {
+						"accuracy": 0,
+						"evasion": 0
+					},
+					"xp": 0,
+					"xp_to_next": 30
+				}
+			},
+			{
+				"ability_locked": false,
+				"equipped_spells": [],
+				"known_spells": [],
+				"model": "Prototype_V(1922)",
+				"sonar_active": false,
+				"sonar_drain_timer": 0.0,
+				"sonar_timer": 0.0,
+				"stats": {
+					"accuracy": 1,
+					"agility": 1,
+					"defense": 4,
+					"evasion": 0,
+					"evasion_current": 0,
+					"hp": 8,
+					"hp_max": 10,
+					"level": 1,
+					"oxygen": 13.25,
+					"oxygen_max": 100.0,
+					"spell_points": 0,
+					"stat_floor": {},
+					"statuses": {},
+					"strength": 4,
+					"temporary_modifiers": {
+						"accuracy": 0,
+						"evasion": 0
+					},
+					"xp": 0,
+					"xp_to_next": 30
+				}
+			}
+		],
+		"version": 1
+	},
+	"campaign_scene": "maze",
+	"consumed_world_ids": [],
+	"divers": [
+		{
+			"equipped_spells": [],
+			"known_spells": [],
+			"position": [
+				335.532501220703,
+				1.79999995231628,
+				10.2864751815796
+			],
+			"sonar_active": false,
+			"stats": {
+				"accuracy": 3,
+				"agility": 3,
+				"defense": 0,
+				"evasion": 3,
+				"evasion_current": 3,
+				"hp": 6,
+				"hp_max": 10,
+				"level": 1,
+				"oxygen": 11.25,
+				"oxygen_max": 100.0,
+				"spell_points": 0,
+				"stat_floor": {},
+				"statuses": {},
+				"strength": 1,
+				"temporary_modifiers": {
+					"accuracy": 0,
+					"evasion": 0
+				},
+				"xp": 0,
+				"xp_to_next": 30
+			}
+		},
+		{
+			"equipped_spells": [],
+			"known_spells": [],
+			"position": [
+				335.411285400391,
+				1.79999995231628,
+				12.3751411437988
+			],
+			"sonar_active": false,
+			"stats": {
+				"accuracy": 2,
+				"agility": 2,
+				"defense": 2,
+				"evasion": 2,
+				"evasion_current": 2,
+				"hp": 7,
+				"hp_max": 10,
+				"level": 1,
+				"oxygen": 12.25,
+				"oxygen_max": 100.0,
+				"spell_points": 0,
+				"stat_floor": {},
+				"statuses": {},
+				"strength": 2,
+				"temporary_modifiers": {
+					"accuracy": 0,
+					"evasion": 0
+				},
+				"xp": 0,
+				"xp_to_next": 30
+			}
+		},
+		{
+			"equipped_spells": [],
+			"known_spells": [],
+			"position": [
+				335.411285400391,
+				1.79999995231628,
+				13.8751411437988
+			],
+			"sonar_active": false,
+			"stats": {
+				"accuracy": 1,
+				"agility": 1,
+				"defense": 4,
+				"evasion": 0,
+				"evasion_current": 0,
+				"hp": 8,
+				"hp_max": 10,
+				"level": 1,
+				"oxygen": 13.25,
+				"oxygen_max": 100.0,
+				"spell_points": 0,
+				"stat_floor": {},
+				"statuses": {},
+				"strength": 4,
+				"temporary_modifiers": {
+					"accuracy": 0,
+					"evasion": 0
+				},
+				"xp": 0,
+				"xp_to_next": 30
+			}
+		}
+	],
+	"inventory": {
+		"potion": 5
+	},
+	"key_items": [],
+	"maze_entry_source": "deep_landmark",
+	"pending_world_drops": {},
+	"random_encounters_enabled": false,
+	"revealed_key_items": [],
+	"route_state": {
+		"bomb_bot_state": "available",
+		"deep_warning_seen": true,
+		"encounter_source": "maze_door",
+		"lab_state": "locked",
+		"maze_door_state": "entered",
+		"objective_id": "find_lab",
+		"octopus_state": "available",
+		"opening_video_seen": true,
+		"prologue_complete": true,
+		"sword_slayer_state": "available",
+		"tethys_state": "locked",
+		"tutorial_complete": true,
+		"zone_id": "maze"
+	},
+	"save_point_tutorial_seen": false
+}

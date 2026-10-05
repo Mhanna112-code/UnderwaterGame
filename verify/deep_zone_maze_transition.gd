@@ -1,7 +1,5 @@
-# Normal-play handoff from the separate deep-zone landmark to the current
-# standalone maze. This is explicitly independent of the laboratory blockers
-# and Tethys: the plan defines two branches after the blockade, not a maze
-# reward for clearing the lab.
+# Area entry after the lab-side ramp remains independent of laboratory victory.
+# The embedded physical ramp itself is traversed by embedded_maze.gd.
 # Usage: godot --headless --path . --script verify/deep_zone_maze_transition.gd
 extends SceneTree
 
@@ -27,17 +25,14 @@ func _run() -> void:
 	world.route_state.set_tethys_state("locked")
 	world.route_state.set_maze_door_state("available")
 	world.route_state.set_objective("defeat_bomb_bot")
-	(world.divers[world.active] as Diver).global_position = world.deep_zone_layout.route_points().maze_transition
-	world._update_maze_transition()
+	(world.divers[world.active] as Diver).global_position = Vector3(world.embedded_maze.embedded_bounds.position.x + 4.0, 2.0, 16.0)
 	for _frame in range(5):
-		await process_frame
-	_expect(current_scene is MazeLevel,
-		"DZ-MAZE-001: separate maze branch incorrectly requires lab/Tethys completion")
-	if current_scene is MazeLevel:
-		var maze := current_scene as MazeLevel
-		_expect(maze.get_node_or_null("HUD") != null,
-			"DZ-MAZE-001: maze handoff loaded a non-playable scene without its HUD")
-		maze.queue_free()
+		await physics_frame
+	_expect(current_scene == world and world.embedded_maze.maze_active,
+		"DZ-MAZE-001: embedded maze entry incorrectly requires lab/Tethys completion")
+	_expect(world.embedded_maze.get_node("HUD").visible and not world.get_node("HUD").visible,
+		"DZ-MAZE-001: maze area did not receive exclusive HUD ownership")
+	world.queue_free()
 	await process_frame
 	var audio_owner := root.get_node_or_null("GameAudio")
 	if audio_owner != null:

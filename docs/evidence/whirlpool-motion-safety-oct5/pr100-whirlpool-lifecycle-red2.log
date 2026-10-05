@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=5|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=scheduler|release=(226.0, 2.0, 16.0)|hp=5|lock=false
+FINDING WHIRL-3 spiral/scheduler leaves lock/hidden/pose/resource corruption
+WHIRLPOOL SAFETY: findings=1

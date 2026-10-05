@@ -103,6 +103,7 @@ func _run() -> void:
 	if minimap == null:
 		findings.append("MazeLevel does not expose a named MazeMiniMap to review")
 	else:
+		minimap.intro_seen = true # Post-lesson widget fixture; dedicated first-open gate teaches it.
 		# MAP-FOG-06: before exploration, no current information should leak.
 		var initial_current_lines: Variant = minimap.get("_main_map_current_lines")
 		if initial_current_lines != null and not (initial_current_lines as Dictionary).is_empty():

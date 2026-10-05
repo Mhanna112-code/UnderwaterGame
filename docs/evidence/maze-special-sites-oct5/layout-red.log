@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE SITE TRIGGERS|wall_blocked=true|height_blocked=true|inactive_blocked=true|modal_blocked=true|R_inside=true|actual_reentry=true
+FINDING SITE-7 special chooser action is outside viewport (720, 480): > [P: (710.0, 53.0), S: (50.0, 260.0)]
+FINDING SITE-7 special chooser action is outside viewport (360, 640): Enter [P: (0.0, 365.0), S: (420.0, 44.0)]
+FINDING SITE-7 special chooser action is outside viewport (360, 640): Not Now [P: (0.0, 423.0), S: (420.0, 40.0)]
+FINDING SITE-7 special chooser action is outside viewport (360, 640): > [P: (710.0, 133.0), S: (50.0, 260.0)]
+FINDING SITE-7 special chooser action is outside viewport (360, 640): Send Them In [P: (371.0, 500.0), S: (180.0, 40.0)]
+MAZE SPECIAL SITES: failed

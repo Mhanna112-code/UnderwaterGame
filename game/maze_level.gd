@@ -29,6 +29,18 @@ var route_state: RouteState
 # Retain the world preference. Marc's strong room still forces its encounters;
 # this preference is not an override of that authored local policy.
 var random_encounters_enabled := true
+# The standalone/review frame is zero. The embedded owner sets the authored
+# translation before construction; saves carry it to avoid double-shifting on
+# repeated load or placing old checkpoints in the former standalone layout.
+var coordinate_origin := Vector3.ZERO
+var world: World
+var maze_active := true
+var embedded_bounds := Rect2()
+var _entry_physics_frame := -1
+const EMBED_PASSAGE_HALF_WIDTH := 4.0
+var draft_passages: Node3D
+var special_sites: Node3D
+var _potion_rock_spot := Vector3.ZERO
 
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
 # frame rather than baked into fixed [start, end] segments the way
@@ -55,7 +67,15 @@ func _collect_corridors() -> Array[Area3D]:
 
 
 func _ready() -> void:
-	campaign_session = SceneHandoff.take_campaign_session()
+	if world == null:
+		campaign_session = SceneHandoff.take_campaign_session()
+	else:
+		for child in get_children():
+			if child is WorldEnvironment or child is DirectionalLight3D:
+				remove_child(child)
+				child.queue_free()
+			elif child is Node3D:
+				(child as Node3D).position += coordinate_origin
 	if campaign_session != null:
 		active = campaign_session.active
 		inventory = campaign_session.inventory
@@ -76,13 +96,14 @@ func _ready() -> void:
 	_setup_walls()
 	# After _setup_walls() so it uses both walls' placed positions (and
 	# overrides any debug move of the diver during wall placement).
-	_place_diver_between($CSGBox3D, $CurrentWall3)
-	if dev_spawn_at_sphere_room:
-		_dev_spawn_at_sphere_room()
-	elif dev_spawn_at_boss_rooms:
-		_dev_spawn_at_boss_rooms()
-	elif dev_spawn_at_switch:
-		_dev_spawn_at_switch()
+	if world == null:
+		_place_diver_between($CSGBox3D, $CurrentWall3)
+		if dev_spawn_at_sphere_room:
+			_dev_spawn_at_sphere_room()
+		elif dev_spawn_at_boss_rooms:
+			_dev_spawn_at_boss_rooms()
+		elif dev_spawn_at_switch:
+			_dev_spawn_at_switch()
 	_corridor_walls = {
 		$WindCorridor3: [$CSGBox3D6, $CSGBox3D7],
 		$WindCorridor4: [$CSGBox3D12, $CSGBox3D13],
@@ -113,15 +134,24 @@ func _ready() -> void:
 	_build_start_area_barriers()
 	_build_progress_gate()
 	_build_split_rock()
-	_build_secret_wall_entrance()
+	if world == null:
+		_build_secret_wall_entrance()
 	_build_wall_10_11_extras()
+	draft_passages = preload("res://game/maze_draft_passages.gd").new()
+	draft_passages.name = "DraftPassages"
+	add_child(draft_passages)
+	draft_passages.setup(self)
 	_build_hall_gauntlet()
 	_build_inventory_menu()
 	_build_campaign_checkpoint()
 	_build_campaign_exit()
 	_add_wall_skirts()
+	special_sites = preload("res://game/maze_special_sites.gd").new()
+	special_sites.name = "SpecialSites"
+	add_child(special_sites)
+	special_sites.setup(self)
 	$HUD/Controls.text = "Find the navigation map in the Control Room."
-	if campaign_session != null and not campaign_session.maze_snapshot.is_empty():
+	if world == null and campaign_session != null and not campaign_session.maze_snapshot.is_empty():
 		if not snapshot_matches_runtime(campaign_session.maze_snapshot):
 			SceneHandoff.checkpoint_load_error = "Could not load the maze checkpoint. Choose another save or start a new game."
 			get_tree().change_scene_to_file.call_deferred("res://game/world.tscn")
@@ -130,9 +160,80 @@ func _ready() -> void:
 	if SceneHandoff.returning_from_secret_wall:
 		SceneHandoff.returning_from_secret_wall = false
 		_place_divers_at_secret_entrance()
+	if route_state != null and world == null:
+		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
+	if world == null:
+		_play_maze_music(&"play_exploration_music")
+	else:
+		var points := _collect_bounds_points()
+		var lo: Vector3 = points[0]
+		var hi := lo
+		for point in points:
+			lo = lo.min(point)
+			hi = hi.max(point)
+		embedded_bounds = Rect2(lo.x - _PERIMETER_MARGIN, lo.z - _PERIMETER_MARGIN,
+			hi.x - lo.x + _PERIMETER_MARGIN * 2.0, hi.z - lo.z + _PERIMETER_MARGIN * 2.0)
+		set_maze_active(false)
+
+func entrance_point() -> Vector3:
+	return ($DiverEntry as Node3D).global_position
+
+func contains_point(point: Vector3) -> bool:
+	return embedded_bounds.has_point(Vector2(point.x, point.z)) \
+		and point.y >= _floor_top_y - 1.0 and point.y <= _floor_top_y + 40.0
+
+func set_maze_active(on: bool) -> void:
+	if not on:
+		_cancel_aim()
+		_cancel_wall_motion()
+		Whirlpool.cancel_in(self)
+		if special_sites != null:
+			special_sites.cancel()
+	maze_active = on
+	# Disabling only this script leaves maps, hazards and child input owners
+	# running. The three shared actors stay under World, outside this subtree.
+	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	$HUD.visible = on
+	($Camera3D as Camera3D).current = on
+	_update_sonar_vision() # Clear stale reveal before an inactive subtree stops.
+
+func enter_from_world() -> void:
 	if route_state != null:
 		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
-	_play_maze_music(&"play_exploration_music")
+	# World already swam the party before detecting entry. This child becomes
+	# active later in the same frame; it must not run a second movement step.
+	_entry_physics_frame = Engine.get_physics_frames()
+	inventory = world.inventory
+	campaign_key_items = world.key_items
+	active = world.active
+	_diver = divers[active]
+	_yaw = world.yaw
+	_pitch = world.pitch
+	_mouse_look = world.mouse_look
+	random_encounters_enabled = world.random_encounters_enabled
+	($Camera3D as Camera3D).global_transform = world.cam.global_transform
+	_cam_look = Vector3.ZERO
+	set_maze_active(true)
+
+func leave_to_world() -> void:
+	if target_selector != null and target_selector.selecting:
+		target_selector.cancel_selection()
+	world.active = active
+	world.yaw = _yaw
+	world.pitch = _pitch
+	world.mouse_look = _mouse_look
+	world.random_encounters_enabled = random_encounters_enabled
+	world.cam.global_transform = ($Camera3D as Camera3D).global_transform
+	set_maze_active(false)
+
+func prepare_area_exit() -> bool:
+	# Aim is unsaveable but not an obstacle to physically leaving the area.
+	# Relinquish transient input/model ownership before the stable-state guard;
+	# moving geometry, rewards and battle locks still prevent unsafe handoff.
+	_cancel_aim()
+	if target_selector != null and target_selector.selecting:
+		target_selector.cancel_selection()
+	return can_capture_campaign_snapshot()
 
 func _play_maze_music(method: StringName) -> void:
 	var audio := get_node_or_null("/root/GameAudio")
@@ -250,8 +351,7 @@ func _setup_walls():
 	_build_boss_triggers()
 	_build_vortex_chest()
 	_build_map_chest()
-	_build_sonar_vision_pickup()
-	_build_path_button()
+	_build_box_8_dome_barrier()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -687,6 +787,8 @@ var _room_warning_fade: Tween
 # --- Announcements (World's orange banner) -------------------------------
 var _banner: Label
 var _banner_timer := 0.0
+var _announcements := preload("res://game/orange_message_queue.gd").new()
+var _announcement_revision := 0
 
 # Set when E on something brings up orange text: until that text is gone,
 # the white "Press E to interact" stays hidden and E interacts with nothing.
@@ -695,24 +797,37 @@ var _interact_cooldown := false
 func _announce(text: String, seconds := 4.0) -> void:
 	if _banner == null:
 		_banner = _make_caption(-170.0, -130.0, 20, Color(1.0, 0.6, 0.45))
-	_banner.text = text
-	_banner.visible = true
-	_banner_timer = seconds
+	_announcements.push(text, seconds)
+	_announcement_revision += 1
+	_banner.text = _announcements.current_text()
+	_banner_timer = _announcements.seconds_left()
+	_refresh_announcement_visibility()
 
 func _update_announce(dt: float) -> void:
 	if _banner == null:
 		return
-	_banner_timer = maxf(_banner_timer - dt, 0.0)
+	if _announcement_readable():
+		_announcements.advance(dt)
+	_banner.text = _announcements.current_text()
+	_banner_timer = _announcements.seconds_left()
+	_refresh_announcement_visibility()
+
+func _announcement_readable() -> bool:
 	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
 	var map_open := map != null and map.main_map != null and map.main_map.visible
-	var captions_allowed := not any_modal_open() and not _battling and not map_open
-	_banner.visible = _banner_timer > 0.0 and captions_allowed
+	return maze_active and $HUD.visible and not any_modal_open() and not _battling and not map_open
+
+func _refresh_announcement_visibility() -> void:
+	var captions_allowed := _announcement_readable()
+	var notice_visible := _banner != null and _banner_timer > 0.0 and captions_allowed
+	if _banner != null:
+		_banner.visible = notice_visible
 	# Status/goal and an announcement share the bottom reading area. Give
 	# only one surface ownership rather than painting text on top of text.
 	for caption in ["Controls", "GoalLabel"]:
 		var node := get_node_or_null("HUD/" + caption) as CanvasItem
 		if node != null:
-			node.visible = captions_allowed and not _banner.visible
+			node.visible = captions_allowed and not notice_visible and not aiming
 
 var _responsive_captions: Array[Label] = []
 
@@ -771,8 +886,9 @@ func _on_diver_encounter(d: Diver) -> void:
 # kind: "strong" (the strong-enemy room's random encounters), "secret_boss"
 # or "main_boss".
 func _start_battle(kind := "strong") -> void:
-	if _chest_reward_pending:
+	if not maze_active or _battling or _chest_reward_pending:
 		return
+	_cancel_aim()
 	_battling = true
 	_battle_kind = kind
 	_play_maze_music(&"play_cordys_music" if kind == "main_boss" else &"play_battle_music")
@@ -797,9 +913,15 @@ func _start_battle(kind := "strong") -> void:
 				route_state.set_encounter_source("maze_cordys")
 		"ambush":
 			_announce("Something was hiding in the rock!")
+		"special":
+			_announce("A guarded item challenge begins.")
 		_:
 			_announce("Strong enemies emerge from the murk!")
 	_battle.party_source = divers
+	if kind == "special":
+		special_sites.configure_battle(_battle)
+		if route_state != null:
+			route_state.set_encounter_source("maze_special")
 	_battle.inventory_source = inventory
 	_battle.campaign_key_items_source = campaign_key_items
 	_battle.finished.connect(_on_battle_finished)
@@ -835,6 +957,12 @@ func _on_battle_finished(result: String) -> void:
 	# out later fights until a potion or a revive brings them back.
 	var kind := _battle_kind
 	_battle_kind = "strong"
+	if kind == "special":
+		special_sites.finish(result)
+		_play_maze_music(&"play_exploration_music")
+		if route_state != null:
+			route_state.set_encounter_source("random")
+		return
 	if kind == "main_boss" and route_state != null:
 		route_state.set_octopus_state("defeated" if result == "won" else "available")
 	if result in ["won", "fled", "skipped"]:
@@ -980,7 +1108,7 @@ func _update_room_switch() -> void:
 	for p in _posters:
 		p.set_highlight(p == poster)
 	var at_chest := _vortex_chest_in_reach() or _map_chest_in_reach()
-	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _secret_entrance_in_reach() or at_chest or _split_rock_in_reach()
+	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _secret_entrance_in_reach() or at_chest or _split_rock_in_reach()
 	if _interact_cooldown and (_banner == null or _banner_timer <= 0.0):
 		_interact_cooldown = false
 	if _interact_cooldown:
@@ -1098,7 +1226,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt))
+	return _wall_riders.busy() or (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -1411,12 +1539,13 @@ func _place_divers_at_secret_entrance() -> void:
 # --- Sphere room and Sonar Vision ---------------------------------------------
 # The room behind wall 16's door is a big room full of hidden spheres
 # swirling around its centre (SwirlRoom). They're invisible to the eye; the
-# minimap always shows them as red circles. The Sonar Vision item (picked up
-# in the room behind the Box30/32 door, toggled with Q) shows them in 3D
-# while the active diver is inside the sphere room.
+# sonar minimap shows them as red circles. Maxilani's Q also shows them in
+# 3D while she is the active diver inside the sphere room. No pickup or G.
 var _swirl_room: SwirlRoom
-var has_sonar_vision := false
-var sonar_vision_equipped := false   # G, once you have it
+# Legacy checkpoint fields remain round-trippable but no longer gate vision.
+# New runs have vision as part of Q; old false values must not disable it.
+var has_sonar_vision := true
+var sonar_vision_equipped := true
 
 func _build_sphere_room() -> void:
 	var back := get_node_or_null("Room16Back") as CSGBox3D
@@ -1440,67 +1569,9 @@ func _build_sphere_room() -> void:
 	_swirl_room.setup(interior, wall_bottom - _FLOOR_CLEARANCE, wall_top + _CEILING_CLEARANCE)
 	add_child(_swirl_room)
 	_swirl_room.diver_hit.connect(func(d: Diver) -> void:
-		# Only while the rocks are unseen - with sonar on and Sonar Vision
-		# equipped the player can see what hit them.
+		# Q reveals the rocks; no separate equipment is needed to see a hit.
 		if d == _diver and not sonar_vision_active():
 			_announce("Some hidden items in this room seem to be doing damage...", 2.5))
-
-# The Sonar Vision pickup: a spinning cyan lens in the middle of the room
-# behind the Box30/32 door. Swim into it to take it (it's switched on).
-func _build_sonar_vision_pickup() -> void:
-	if _door30_center == Vector3.ZERO:
-		return
-	# In the hall between the two boss doors, a little north of their line.
-	var box33 := $CSGBox3D33 as CSGBox3D
-	var spot := Vector3((_door30_center.x + box33.global_position.x) * 0.5, ($DiverEntry as Node3D).global_position.y + 0.3, _door30_center.z + 6.0)
-	var pickup := Area3D.new()
-	pickup.name = "SonarVisionPickup"
-	pickup.collision_mask = 2   # divers
-	var shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = 1.3
-	shape.shape = sphere
-	pickup.add_child(shape)
-	var lens := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.35
-	torus.outer_radius = 0.6
-	lens.mesh = torus
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.3, 0.95, 1.0)
-	mat.emission_enabled = true
-	mat.emission = Color(0.3, 0.95, 1.0)
-	mat.emission_energy_multiplier = 2.5
-	lens.material_override = mat
-	lens.rotation.x = PI * 0.5
-	pickup.add_child(lens)
-	var label := Label3D.new()
-	label.text = "Sonar Vision"
-	label.font_size = 48
-	label.pixel_size = 0.008
-	label.outline_size = 8
-	label.modulate = Color(0.6, 0.97, 1.0)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.position = Vector3(0, 1.2, 0)
-	pickup.add_child(label)
-	add_child(pickup)
-	pickup.global_position = spot
-	var spin := create_tween().set_loops()
-	spin.tween_property(lens, "rotation:y", TAU, 2.0).from(0.0)
-	pickup.body_entered.connect(func(body: Node3D) -> void:
-		if body is Diver and not has_sonar_vision:
-			has_sonar_vision = true
-			sonar_vision_equipped = true
-			_announce("Sonar Vision acquired (equipped). To see invisible objects: Sonar Vision equipped (G) and Maxilani's sonar on (Q).", 8.0)
-			var popup := get_node_or_null("/root/CharacterAbilityPopup")
-			if popup != null:
-				var pages: Array[Dictionary] = [{
-					"title": "Sonar Vision",
-					"body": "A key item that lets you see invisible objects. To see them you need to have sonar on and the Sonar Vision equipped: play as Maxilani and switch her sonar on with Q, and keep Sonar Vision equipped (G equips or unequips it). It's equipped now.",
-					"slot": null,
-				}]
-				popup.call("open", pages, self)
-			pickup.queue_free())
 
 # --- Boss rooms ------------------------------------------------------------------
 # Secret boss room: the whole space between Box30 and Box32 behind the
@@ -1652,7 +1723,7 @@ func _build_puppet_patrol() -> void:
 	area.add_child(shape)
 	_puppet_patrol.add_child(area)
 	area.body_entered.connect(func(body: Node3D) -> void:
-		if body == _diver and not _battling and not any_modal_open() and _puppet_prompt_cooldown <= 0.0:
+		if maze_active and body == _diver and not _battling and not any_modal_open() and _puppet_prompt_cooldown <= 0.0:
 			_open_puppet_prompt())
 	_boss_triggers["secret_boss"] = _puppet_patrol
 
@@ -1881,6 +1952,7 @@ var _chest_reward_pending := false
 var _chest_tween: Tween
 
 func _begin_chest_cutscene() -> Tween:
+	_cancel_aim()
 	_chest_reward_pending = true
 	if target_selector != null and target_selector.selecting:
 		target_selector.cancel_selection()
@@ -2152,11 +2224,10 @@ func _update_sonar_vision() -> void:
 		return
 	_swirl_room.set_revealed(sonar_vision_active() and _swirl_room.contains(_diver.global_position))
 
-# Invisible objects show only while all of this holds: Sonar Vision owned and
-# equipped, and the diver being played has the sonar passive (Maxilani) with
-# her sonar switched on.
+# Vision follows the live area's active sonar diver, not obsolete saved item
+# or equipment flags. Q still consumes Oxygen through Diver's existing timer.
 func sonar_vision_active() -> bool:
-	return has_sonar_vision and sonar_vision_equipped and _diver != null and _diver.passive_id == "sonar" and _diver.sonar_active
+	return maze_active and _diver != null and _diver.passive_id == "sonar" and _diver.sonar_active
 
 # Hidden things the minimap tracks as red circles.
 # The secret item room's rocks that haven't been broken yet, within
@@ -2167,7 +2238,7 @@ var _secret_room_rocks: Array[Node3D] = []
 
 func sonar_rock_positions() -> PackedVector3Array:
 	var out := PackedVector3Array()
-	if _diver == null or _diver.passive_id != "sonar" or not _diver.sonar_active:
+	if not sonar_vision_active():
 		return out
 	for rock in _secret_room_rocks:
 		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and rock.global_position.distance_to(_diver.global_position) <= SONAR_ROCK_RADIUS:
@@ -2176,7 +2247,7 @@ func sonar_rock_positions() -> PackedVector3Array:
 
 # Only while the diver being played has sonar on (Maxilani, Q).
 func hidden_marker_positions() -> PackedVector3Array:
-	if _swirl_room == null or _diver == null or _diver.passive_id != "sonar" or not _diver.sonar_active:
+	if _swirl_room == null or not sonar_vision_active():
 		return PackedVector3Array()
 	return _swirl_room.positions()
 
@@ -2291,7 +2362,7 @@ func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: 
 	# by half wall_to_place's length so its near end meets the reference
 	# wall's end instead of straddling it.
 	wall_to_place.global_position = reference_outer_end
-	if _diver != null:
+	if _diver != null and world == null:
 		_diver.global_position = reference_outer_end + Vector3(10,10,10)
 	#wall_to_place.global_position += reference_outward_axis * wall_to_place.size.x * 0.5
 
@@ -2316,7 +2387,7 @@ func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: 
 # Where the CSGBox3D34/35/36 U of walls stood there's a dome instead: a big
 # dome on a raised round plinth, with two porch doorways and steps up to
 # each - one facing north (+Z, back toward the maze entrance) and one facing
-# east (+X), where the path from walls 12/13 arrives (_build_path_button()).
+# east (+X), toward the water reached by the one-way Box12 draft.
 # The plinth top is above the divers' normal swim height, so they have to
 # swim up the steps to get in. The ceiling over it is raised to fit (see
 # _build_ceiling()). Inside are the two green levers (Lever1 left = walls,
@@ -2360,7 +2431,7 @@ var _lever_map_controls: Label     # controls list beside the map
 
 # Removes the CSGBox3D34/35/36 walls (before wall_boxes is collected) and
 # notes roughly where the dome goes: centred between 34 and 36.
-# _settle_dome_site() then lines it up with the walls 12/13 path.
+# _settle_dome_site() lines its east door up with the Box12 draft waterway.
 func _clear_dome_site() -> void:
 	var w34 := get_node_or_null("CSGBox3D34") as CSGBox3D
 	var w35 := get_node_or_null("CSGBox3D35") as CSGBox3D
@@ -2373,8 +2444,7 @@ func _clear_dome_site() -> void:
 		w.queue_free()
 
 # After the walls are placed: centre the dome (north-south) on the passage
-# between CSGBox3D8 and CSGBox3D9, so the path from walls 12/13 runs
-# straight into its east door.
+# between CSGBox3D8 and CSGBox3D9, aligned with the Box12 draft waterway.
 func _settle_dome_site() -> void:
 	if _dome_site == Vector3.ZERO:
 		return
@@ -2721,20 +2791,25 @@ func _update_world_hud() -> void:
 	if _world_hud_name == null or _diver == null:
 		return
 	_world_hud_name.text = Cast.display_name(_diver.model_name)
+	_refresh_announcement_visibility()
+	(_world_hud_tab.get_parent() as Control).visible = not aiming
 	if target_selector != null and target_selector.selecting:
 		var t := target_selector.current_target() as Diver
 		_world_hud_name.text = "Swap with %s?   Left/Right: cycle  ·  Enter: confirm  ·  Esc: cancel" % (Cast.display_name(t.model_name) if t != null else "...")
+	elif aiming:
+		_world_hud_name.text = "Grapple aim   Left click: fire  ·  Right click / Esc: cancel"
 	var after := ""
-	if _diver.ability_id != "":
+	if aiming:
+		after = "WASD swim  ·  Space/Shift depth  ·  Mouse aim"
+	elif _diver.ability_id != "":
 		after += "  ·  F: %s" % String(_diver.ability_id).capitalize()
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
-	after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
-	if has_sonar_vision:
-		after += "  ·  G: Sonar Vision (%s)" % ("Equipped" if sonar_vision_equipped else "Off")
+	if not aiming:
+		after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
 	_world_hud_after.text = after
 	var map_ok := can_open_nav_map()
-	_world_hud_map.visible = map_ok
+	_world_hud_map.visible = map_ok and not aiming
 	var goal := get_node_or_null("HUD/GoalLabel") as Label
 	if goal != null:
 		goal.text = "Open the hallway. Follow the channel to the relic.\nE: interact  ·  F: ability." if key_items.has(MAP_ITEM) \
@@ -2757,131 +2832,23 @@ func _update_world_hud() -> void:
 		_tab_flash = null
 		_world_hud_tab.modulate.a = 1.0
 
-# --- Path button: walls 12/13 into line, path to the dome --------------------
-# A red button on CSGBox3D8's inner face, near its west end, flashing until
-# pressed (E within reach). Pressing it (once - it stays pressed, turns
-# green) swings CSGBox3D12 into a straight line with CSGBox3D8 and
-# CSGBox3D13 into a straight line with CSGBox3D9, each about its end at that
-# corner - extending the Box8/Box9 passage west - and raises two walls that
-# carry that passage on to the dome's east door. The passage is closed on
-# both sides, so it only leads to the dome (and out its north door back
-# toward the maze entrance), not into the open water around it.
-# WindCorridor4 (and its whirlpool) stay where they are once 12/13 swing.
-const PATH_BUTTON_REACH := 2.5
-const PATH_BUTTON_FROM_END := 6.0     # along Box8 from its west end
-var _path_button: Node3D
-var _path_button_mat: StandardMaterial3D
-var _path_button_glow: OmniLight3D
-var _path_button_blink: Tween
+# Legacy saves retain this flag, but it no longer controls a route or input.
 var _path_opened := false
+var _control_route_homes: Dictionary = {}
 
-func _build_path_button() -> void:
-	var box8 := $CSGBox3D8 as CSGBox3D
-	var box9 := $CSGBox3D9 as CSGBox3D
-	var g8: Dictionary = _wall_geometry(box8)
-	var west: Vector3 = g8["negative_end"] if (g8["negative_end"] as Vector3).x < (g8["positive_end"] as Vector3).x else g8["positive_end"]
-	var normal := Vector3(0, 0, 1) if box9.global_position.z > box8.global_position.z else Vector3(0, 0, -1)
-	_path_button = Node3D.new()
-	_path_button.name = "PathButton"
-	add_child(_path_button)
-	_path_button.global_position = Vector3(west.x + PATH_BUTTON_FROM_END, ($DiverEntry as Node3D).global_position.y + 1.0, box8.global_position.z) + normal * (box8.size.z * 0.5 + 0.06)
-	_path_button.global_basis = Basis.looking_at(-normal, Vector3.UP)
-	var plate := MeshInstance3D.new()
-	var plate_mesh := BoxMesh.new()
-	plate_mesh.size = Vector3(1.0, 1.0, 0.14)
-	plate.mesh = plate_mesh
-	plate.material_override = _stone(Color(0.12, 0.13, 0.15))
-	_path_button.add_child(plate)
-	var cap := MeshInstance3D.new()
-	var cap_mesh := CylinderMesh.new()
-	cap_mesh.top_radius = 0.3
-	cap_mesh.bottom_radius = 0.33
-	cap_mesh.height = 0.18
-	cap.mesh = cap_mesh
-	cap.rotation.x = PI * 0.5   # face out of the wall
-	cap.position = Vector3(0, 0, 0.14)
-	_path_button_mat = StandardMaterial3D.new()
-	_path_button_mat.emission_enabled = true
-	_path_button_mat.emission_energy_multiplier = 3.0
-	cap.material_override = _path_button_mat
-	_path_button.add_child(cap)
-	_path_button_glow = OmniLight3D.new()
-	_path_button_glow.omni_range = 2.5
-	_path_button_glow.light_energy = 1.4
-	_path_button_glow.position = Vector3(0, 0, 0.5)
-	_path_button.add_child(_path_button_glow)
-	_set_path_button_color(Color(1.0, 0.1, 0.1))
-	_path_button_blink = create_tween().set_loops()
-	_path_button_blink.tween_callback(func() -> void:
-		cap.visible = not cap.visible
-		_path_button_glow.visible = cap.visible)
-	_path_button_blink.tween_interval(0.4)
-
-func _set_path_button_color(c: Color) -> void:
-	_path_button_mat.albedo_color = c
-	_path_button_mat.emission = c
-	_path_button_glow.light_color = c
-
-func _path_button_in_reach() -> bool:
-	if _path_button == null or _path_opened or _diver == null:
-		return false
-	var offset := _diver.global_position - _path_button.global_position
-	offset.y = 0.0
-	return offset.length() <= PATH_BUTTON_REACH and offset.dot(_path_button.global_basis.z) > 0.0
-
-func _press_path_button() -> void:
-	_path_opened = true
-	_path_button_blink.kill()
-	for c in _path_button.get_children():
-		(c as Node3D).visible = true
-	_set_path_button_color(Color(0.2, 1.0, 0.35))
-	# Corridor4 no longer follows 12/13 once they swing (see above).
-	_corridor_walls.erase($WindCorridor4)
-	var tweens: Array = [
-		_swing_wall_in_line_with($CSGBox3D12 as CSGBox3D, $CSGBox3D8 as CSGBox3D),
-		_swing_wall_in_line_with($CSGBox3D13 as CSGBox3D, $CSGBox3D9 as CSGBox3D),
-	]
-	tweens.append_array(_raise_path_walls())
-	_track_wall_set_motion("CSGBox3D12/13", tweens, [$CSGBox3D12, $CSGBox3D13])
-	_announce("Walls 12 and 13 swing into line - a path opens toward the dome.")
-
-# Swings `wall` a quarter turn about its end nearest `line_wall`'s west end
-# so it ends up continuing line_wall's line westward from that end.
-func _swing_wall_in_line_with(wall: CSGBox3D, line_wall: CSGBox3D) -> Tween:
-	var gl: Dictionary = _wall_geometry(line_wall)
-	var west: Vector3 = gl["negative_end"] if (gl["negative_end"] as Vector3).x < (gl["positive_end"] as Vector3).x else gl["positive_end"]
-	var target := Vector3(west.x - wall.size.x * 0.5, wall.global_position.y, line_wall.global_position.z)
-	var gw: Dictionary = _wall_geometry(wall)
-	var hinge_end: Vector3 = gw["negative_end"] if (gw["negative_end"] as Vector3).distance_to(west) < (gw["positive_end"] as Vector3).distance_to(west) else gw["positive_end"]
-	var from_dir := wall.global_position - hinge_end
-	from_dir.y = 0.0
-	from_dir = from_dir.normalized()
-	var to_dir := Vector3(-1, 0, 0)
-	var delta := atan2(from_dir.cross(to_dir).y, from_dir.dot(to_dir))
-	return _tween_wall_to_transform_about_hinge(wall, target, wall.rotation.y + delta, 1.6)
-
-# The two walls carrying the Box8/Box9 passage on to the dome: on Box9's
-# line from where swung Box13 will end, and on Box8's line from where swung
-# Box12 will end, each to the dome's plinth edge. They rise out of the floor.
-func _raise_path_walls() -> Array:
-	var tweens: Array = []
-	for pair in [[$CSGBox3D9, $CSGBox3D13, "PathWallNorth"], [$CSGBox3D8, $CSGBox3D12, "PathWallSouth"]]:
-		var line_wall := pair[0] as CSGBox3D
-		var swung := pair[1] as CSGBox3D
-		var gl: Dictionary = _wall_geometry(line_wall)
-		var west_x := minf((gl["negative_end"] as Vector3).x, (gl["positive_end"] as Vector3).x)
-		var east_x := west_x - swung.size.x
-		var z := line_wall.global_position.z
-		var dz := z - _dome_site.z
-		var plinth_x := _dome_site.x + sqrt(maxf(PLINTH_RADIUS * PLINTH_RADIUS - dz * dz, 0.0)) - 0.4
-		var y := line_wall.global_position.y
-		var wall := _spawn_wall(String(pair[2]), Vector3((east_x + plinth_x) * 0.5, y - line_wall.size.y - 1.2, z), 0.0, Vector3(east_x - plinth_x, line_wall.size.y, line_wall.size.z))
-		wall_boxes.append(wall)
-		_add_wall_skirt(wall)
-		var tw := create_tween()
-		tw.tween_property(wall, "global_position:y", y, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tweens.append(tw)
-	return tweens
+# bba8b80 fences Box8's line to the Control Room rim. Box12's new draft
+# reaches the water south of this fence; the north doorway remains reachable.
+func _build_box_8_dome_barrier() -> void:
+	for wall in [$CSGBox3D12, $CSGBox3D13]:
+		_control_route_homes[String(wall.name)] = {"position": wall.position, "rotation": wall.rotation, "size": wall.size}
+	var box := $CSGBox3D8 as CSGBox3D
+	var ends := _wall_geometry(box)
+	var west := minf(ends.negative_end.x, ends.positive_end.x)
+	var z := box.global_position.z
+	var dz := z - _dome_site.z
+	var rim := _dome_site.x + sqrt(maxf(PLINTH_RADIUS * PLINTH_RADIUS - dz * dz, 0.0)) - 0.4
+	if west - rim > 0.5:
+		_spawn_barrier("Box8DomeBarrier", Vector3((west + rim) * 0.5, 0, z), Vector3(west - rim, 0, box.size.z))
 
 # --- Walls 17/27 -------------------------------------------------------------
 # CSGBox3D17 and CSGBox3D27 (and the door gap that was between them) become
@@ -2967,6 +2934,10 @@ func _build_minimap() -> void:
 	minimap.offset_bottom = 166.0
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(minimap)
+	# L's first-open lesson pauses the tree in the same input dispatch. The
+	# maze owns its captions and must relinquish them synchronously, not wait
+	# for a physics update that the lesson has just prevented from running.
+	minimap.main_map.visibility_changed.connect(_refresh_announcement_visibility)
 
 # A persistent on-screen hint for _rotate_left_currents_left()/_right()
 # below - kept as its own label rather than reusing $HUD/Controls, since
@@ -3086,6 +3057,7 @@ func _wall_motion_hinge(start: Vector3, target: Vector3, yaw_delta: float) -> Ve
 	)
 
 func _tween_wall_to_transform_about_hinge(wall: CSGBox3D, target_position: Vector3, target_yaw: float, duration := 1.2) -> Tween:
+	_wall_motion_targets[wall] = wall.get_parent().global_transform.affine_inverse() * Transform3D(Basis(Vector3.UP, target_yaw), target_position)
 	var start_position := wall.global_position
 	var start_yaw := wall.rotation.y
 	var yaw_delta := wrapf(target_yaw - start_yaw, -PI, PI)
@@ -3107,6 +3079,7 @@ func _tween_wall_to_transform_about_hinge(wall: CSGBox3D, target_position: Vecto
 # Straight motion remains useful for a no-turn caller. Hallway motion never
 # reaches this fallback: opening and closing both rotate 90 degrees.
 func _tween_wall_to(wall: CSGBox3D, position: Vector3, yaw: float, duration := 1.2) -> Tween:
+	_wall_motion_targets[wall] = wall.get_parent().global_transform.affine_inverse() * Transform3D(Basis(Vector3.UP, yaw), position)
 	var tw := create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(wall, "global_position", position, duration)
@@ -3180,6 +3153,10 @@ func rotatable_wall_sets() -> Array[Dictionary]:
 # is still moving is ignored, so it can't be sent back the other way before
 # it reaches the position it's rotating to.
 var _moving_wall_sets: Dictionary = {}
+var _wall_motion_tweens: Dictionary = {}
+var _wall_motion_targets: Dictionary = {}
+var _wall_motion_collision: Dictionary = {}
+var _wall_riders = preload("res://game/maze_wall_riders.gd").new(self)
 
 func _wall_set_moving(set_name: String) -> bool:
 	return _moving_wall_sets.has(set_name)
@@ -3197,25 +3174,91 @@ func _track_wall_set_motion(set_name: String, tweens: Array, walls: Array = []) 
 			d.velocity = Vector3.ZERO
 	_moving_wall_sets[set_name] = pending.size()
 	_moving_wall_nodes[set_name] = walls
+	_wall_motion_tweens[set_name] = pending.duplicate()
 	for tw in pending:
 		(tw as Tween).finished.connect(func() -> void:
-			_moving_wall_sets[set_name] = int(_moving_wall_sets.get(set_name, 1)) - 1
+			# A checkpoint restore may have cancelled this whole set. A late
+			# completion may not recreate ownership or rewrite loaded geometry.
+			if not _moving_wall_sets.has(set_name):
+				return
+			(_wall_motion_tweens[set_name] as Array).erase(tw)
+			_moving_wall_sets[set_name] = int(_moving_wall_sets[set_name]) - 1
 			if int(_moving_wall_sets[set_name]) <= 0:
-				_moving_wall_sets.erase(set_name)
-				_moving_wall_nodes.erase(set_name))
+				_finish_wall_motion(set_name))
+
+func _finish_wall_motion(set_name: String, interrupted := false) -> void:
+	if interrupted:
+		for tw in _wall_motion_tweens.get(set_name, []):
+			if tw is Tween and (tw as Tween).is_valid():
+				(tw as Tween).kill()
+	for wall in _moving_wall_nodes.get(set_name, []):
+		if not is_instance_valid(wall):
+			continue
+		# Flags already describe the requested destination. On interruption
+		# settle there, never leave half-rotated unsaveable geometry behind.
+		if interrupted and _wall_motion_targets.has(wall):
+			(wall as CSGBox3D).transform = _wall_motion_targets[wall]
+		_wall_riders.finish(wall)
+		_restore_motion_collision(wall)
+		_wall_motion_targets.erase(wall)
+		_wall_last_xf.erase(wall)
+	_moving_wall_sets.erase(set_name)
+	_moving_wall_nodes.erase(set_name)
+	_wall_motion_tweens.erase(set_name)
+
+func _cancel_wall_motion(preserve_rider_positions := false) -> void:
+	# Do this before removing target transforms used for clearance queries.
+	_wall_riders.cancel(preserve_rider_positions)
+	for set_name in _moving_wall_sets.keys():
+		_finish_wall_motion(String(set_name), true)
+	# Defensive cleanup for a request which was cancelled before tracking.
+	for wall in _wall_motion_collision.keys():
+		_restore_motion_collision(wall)
+	_wall_motion_targets.clear()
+	_wall_last_xf.clear()
+
+func _suspend_motion_collision(wall: CSGBox3D) -> void:
+	if _wall_motion_collision.has(wall):
+		return
+	var saved := {"wall": wall.collision_layer, "bodies": {}}
+	# The split rock is parented to wall10 and moves with it too. Suspending
+	# only Skirt leaves that solid child shoving C5 occupants during the swing.
+	for child in wall.find_children("*", "CollisionObject3D", true, false):
+		var body := child as CollisionObject3D
+		saved.bodies[body] = body.collision_layer
+		body.collision_layer = 0
+	_wall_motion_collision[wall] = saved
+	wall.collision_layer = 0
+
+func _restore_motion_collision(wall: Variant) -> void:
+	if not _wall_motion_collision.has(wall):
+		return
+	var saved: Dictionary = _wall_motion_collision[wall]
+	if is_instance_valid(wall):
+		wall.collision_layer = int(saved.wall)
+	for body in saved.bodies:
+		if is_instance_valid(body):
+			(body as CollisionObject3D).collision_layer = int(saved.bodies[body])
+	_wall_motion_collision.erase(wall)
 
 var _moving_wall_nodes: Dictionary = {}   # set name -> Array of the walls it's moving
 
 # Moving walls are static colliders that a tween repositions every frame, so
 # physics never pushes anything out of their way - a long wall swinging about
 # one end (Box14's far end covers ~0.5m a frame) just passes through divers.
-# Instead, every physics frame, any diver a moving wall now overlaps is
-# pushed out of it to the side that wall is moving toward (so the wall drags
-# it along), using where that part of the wall was last frame.
+# Intercepted divers become retained passengers on the wall's moving face.
+# Their transient owner keeps a rigid local offset, then releases a clear
+# capsule on that face. C5 occupants remain exempt from walls10/11.
 const SWEEP_MARGIN := 0.05
 var _wall_last_xf: Dictionary = {}   # moving wall -> its transform last physics frame
 
 func _sweep_divers_with_moving_walls() -> void:
+	# Tween.kill() does not emit finished. Detect the interrupted set before
+	# sweeping or deciding that input/checkpoints must remain locked forever.
+	for set_name in _wall_motion_tweens.keys():
+		if (_wall_motion_tweens[set_name] as Array).any(func(t: Tween) -> bool: return not t.is_valid()):
+			_finish_wall_motion(String(set_name), true)
+	_wall_riders.update()
 	var still_moving: Dictionary = {}
 	for set_name in _moving_wall_nodes:
 		for w in _moving_wall_nodes[set_name]:
@@ -3227,6 +3270,16 @@ func _sweep_divers_with_moving_walls() -> void:
 			var last: Transform3D = _wall_last_xf.get(wall, xf)
 			var half := wall.size * 0.5
 			for d in divers:
+				if not is_instance_valid(d):
+					continue
+				# bba8b80: C5 occupants are not passengers on walls 10/11.
+				# Collision is also suspended so physics cannot shove them out.
+				if set_name == "CSGBox3D10/11" and _c5_zone().has_point(Vector2(d.global_position.x, d.global_position.z)):
+					_wall_riders.detach_in_place(d, wall)
+					continue
+				if _wall_riders.owns(d):
+					_wall_riders.carry(d, wall)
+					continue
 				var r := d.radius + SWEEP_MARGIN
 				var local := xf.affine_inverse() * d.global_position
 				if absf(local.x) > half.x + r or absf(local.z) > half.z + r or absf(local.y) > half.y + d.height * 0.5:
@@ -3241,10 +3294,29 @@ func _sweep_divers_with_moving_walls() -> void:
 					side = signf(local.z) if local.z != 0.0 else 1.0
 				var pushed := Vector3(local.x, local.y, side * (half.z + r))
 				var target := xf * pushed
-				d.global_position = Vector3(target.x, d.global_position.y, target.z)
+				if _wall_riders.capture(d, wall, pushed,
+					wall.get_parent().global_transform * (_wall_motion_targets[wall] as Transform3D)):
+					d.global_position = Vector3(target.x, d.global_position.y, target.z)
 	_wall_last_xf.clear()
 	for wall in still_moving:
 		_wall_last_xf[wall] = (wall as CSGBox3D).global_transform
+
+func _c5_zone() -> Rect2:
+	var cs := _corridor_shape($WindCorridor5)
+	if cs == null or not cs.shape is BoxShape3D:
+		return Rect2()
+	var half := (cs.shape as BoxShape3D).size * 0.5
+	var west := INF
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			west = minf(west, (cs.global_transform * Vector3(half.x * sx, 0, half.z * sz)).x)
+	var b8 := $CSGBox3D8 as CSGBox3D
+	var b9 := $CSGBox3D9 as CSGBox3D
+	var t := b9.size.z * 0.5
+	var east := maxf(_wall_11_joint.x, _wall_10_joint.x) + t
+	var z0 := minf(b8.global_position.z, b9.global_position.z) - t
+	var z1 := maxf(b8.global_position.z, b9.global_position.z) + t
+	return Rect2(west, z0, east - west, z1 - z0)
 
 func _rotate_hallway_1_2() -> void:
 	if _wall_set_moving("CurrentWall1/2"):
@@ -3608,7 +3680,7 @@ static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
 # instead.
 func _setup_whirlpool() -> void:
 	var whirlpool := Whirlpool.new()
-	whirlpool.position = Vector3(35.99, -4.12, 71.67)
+	whirlpool.position = Vector3(35.99, -4.12, 71.67) + coordinate_origin
 	whirlpool.reset_to = $DiverEntry.position
 	whirlpool.warned.connect(_on_whirlpool_warned)
 	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
@@ -3825,9 +3897,15 @@ func _build_floor() -> void:
 	# _physics_process()'s golden-orb fall).
 	_floor_top_y = floor_y + _FLOOR_THICKNESS * 0.5
 
-	_build_invisible_wall(
-		Vector3(center_x, floor_y, center_z),
-		Vector3(span_x, _FLOOR_THICKNESS, span_z))
+	var floor_body := StaticBody3D.new()
+	floor_body.name = "MazeFloorCollision"
+	floor_body.position = Vector3(center_x, floor_y, center_z)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(span_x, _FLOOR_THICKNESS, span_z)
+	shape.shape = box
+	floor_body.add_child(shape)
+	add_child(floor_body)
 
 # A perimeter around the whole level, same idea as world.gd's own
 # _build_boundary_walls() for the open dive site - invisible collision
@@ -3898,9 +3976,18 @@ func _build_perimeter_walls() -> void:
 	_build_invisible_wall(
 		Vector3(center_x, wall_y, padded_max.z + _PERIMETER_THICKNESS * 0.5),
 		Vector3(span_x + _PERIMETER_THICKNESS * 2.0, _PERIMETER_WALL_HEIGHT, _PERIMETER_THICKNESS))
-	_build_invisible_wall(
-		Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
-		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
+	if world == null:
+		_build_invisible_wall(
+			Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
+			Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
+	else:
+		var z_lo := padded_min.z - _PERIMETER_THICKNESS
+		var z_hi := padded_max.z + _PERIMETER_THICKNESS
+		var gap := entrance_point().z
+		for span in [[z_lo, gap - EMBED_PASSAGE_HALF_WIDTH], [gap + EMBED_PASSAGE_HALF_WIDTH, z_hi]]:
+			_build_invisible_wall(Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5,
+				wall_y, (float(span[0]) + float(span[1])) * 0.5),
+				Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, float(span[1]) - float(span[0])))
 	_build_invisible_wall(
 		Vector3(padded_max.x + _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
 		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
@@ -4113,6 +4200,15 @@ func _gap_width_between(wall_a: CSGBox3D, wall_b: CSGBox3D) -> float:
 	return separation - (wall_a.size.z + wall_b.size.z) * 0.5
 
 func _spawn_divers() -> void:
+	if world != null:
+		divers.assign(world.divers)
+		inventory = world.inventory
+		campaign_key_items = world.key_items
+		active = world.active
+		_diver = divers[active]
+		for diver in divers:
+			diver.encounter_triggered.connect(_on_diver_encounter.bind(diver))
+		return
 	for model in MAZE_CAST:
 		var d := Diver.new()
 		d.model_name = String(model)
@@ -4126,11 +4222,14 @@ func _spawn_divers() -> void:
 
 # Tab: control the next diver (World's same cycle order).
 func _switch_diver() -> void:
+	_cancel_aim()
 	if target_selector != null and target_selector.selecting:
 		target_selector.cancel_selection()
 	active = (active + 1) % divers.size()
 	_diver = divers[active]
 	_announce("Now playing %s." % Cast.display_name(_diver.model_name))
+	if world != null:
+		world.active = active
 
 func _player_dir() -> Vector3:
 	var f := Vector2.ZERO
@@ -4165,12 +4264,16 @@ func _player_rise() -> float:
 const GOLDEN_ORB_FALL_SPEED := 1.5
 
 func _physics_process(dt: float) -> void:
+	if not maze_active or Engine.get_physics_frames() == _entry_physics_frame:
+		return
 	_update_chest_pause()
 	_align_corridors_to_walls()
 	_update_strong_room_warning()
 	_update_campaign_checkpoint()
 	if _diver == null:
 		return
+	if aiming and _aim_blocked():
+		_cancel_aim()
 	for orb in goldenOrbs:
 		if orb.position.y > _floor_top_y:
 			orb.position.y = maxf(orb.position.y - GOLDEN_ORB_FALL_SPEED * dt, _floor_top_y)
@@ -4179,10 +4282,12 @@ func _physics_process(dt: float) -> void:
 		_swirl_room.hit_divers(divers, dt)
 	if not _battling and not any_modal_open() and not _chest_reward_pending:
 		for d in divers:
+			if world != null and not contains_point(d.global_position):
+				continue
 			# Inactive divers still run swim() with no input, so currents and
 			# drag keep acting on them (World does the same).
 			# No steering while any walls are mid-rotation (_moving_wall_sets).
-			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _gate_cutscene:
+			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _wall_riders.busy() and not _gate_cutscene:
 				d.swim(_player_dir(), _player_rise(), dt)
 			else:
 				d.swim(Vector3.ZERO, 0.0, dt)
@@ -4196,7 +4301,10 @@ func _physics_process(dt: float) -> void:
 	_update_puppet_patrol(dt)
 	_update_announce(dt)
 	_check_split_rock()
+	draft_passages.update()
+	special_sites.update()
 	_move_camera(dt)
+	_update_aim_marker()
 
 # Wall-rotation "cutscene": while any walls are rotating the camera pans up
 # and over to look down on them, and frames them until they stop, then eases
@@ -4243,6 +4351,16 @@ func _cutscene_camera(cam: Camera3D, frame: Array, dt: float) -> void:
 
 func _move_camera(dt: float) -> void:
 	var cam: Camera3D = $Camera3D
+	if draft_passages != null and draft_passages.busy:
+		_cutscene_camera(cam, draft_passages.camera_frame(), dt)
+		_cutscene_return = CUTSCENE_RETURN_TIME
+		return
+	if aiming:
+		var eye := _diver.global_position + Vector3(0, _diver.height * 0.4, 0)
+		cam.global_position = eye
+		_cam_look = eye + _aim_dir() * 10.0
+		cam.look_at(_cam_look, Vector3.UP)
+		return
 	if _gate_cutscene and _gate != null:
 		if _cam_look == Vector3.ZERO:
 			_cam_look = _diver.global_position
@@ -4285,6 +4403,29 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	# Aim owns fire/cancel and look. Do not let one key save, select another
+	# diver, open a map or interact while its shooter is hidden.
+	if aiming:
+		if _aim_blocked():
+			_cancel_aim()
+			return
+		if e is InputEventMouseButton and e.pressed:
+			if e.button_index == MOUSE_BUTTON_LEFT:
+				_fire_aim()
+			elif e.button_index == MOUSE_BUTTON_RIGHT:
+				_cancel_aim()
+			get_viewport().set_input_as_handled()
+			return
+		if e is InputEventKey:
+			if e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
+				_cancel_aim()
+			get_viewport().set_input_as_handled()
+			return
+		if e is InputEventMouseMotion:
+			_yaw -= e.relative.x * 0.004
+			_pitch = clampf(_pitch - e.relative.y * 0.003, -1.1, 0.7)
+			get_viewport().set_input_as_handled()
+			return
 	# The sibling map has the same guard. Escape alone keeps its established
 	# inventory/pause behavior; held movement is blocked in physics separately.
 	if _chest_reward_pending and not (e is InputEventKey and e.keycode == KEY_ESCAPE):
@@ -4298,6 +4439,8 @@ func _unhandled_input(e: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 			random_encounters_enabled = not random_encounters_enabled
+			if world != null:
+				world.random_encounters_enabled = random_encounters_enabled
 			if campaign_session != null:
 				campaign_session.random_encounters_enabled = random_encounters_enabled
 			_announce("Random encounters %s." % ("on" if random_encounters_enabled else "off"))
@@ -4364,9 +4507,6 @@ func _unhandled_input(e: InputEvent) -> void:
 			_announce("Sonar %s." % ("on" if _diver.toggle_sonar() else "off"))
 		else:
 			_announce("Only Maxilani has sonar.")
-	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_G and has_sonar_vision:
-		sonar_vision_equipped = not sonar_vision_equipped
-		_announce("Sonar Vision %s." % ("equipped" if sonar_vision_equipped else "unequipped"))
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_TAB:
 		_switch_diver()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_F:
@@ -4376,11 +4516,11 @@ func _unhandled_input(e: InputEvent) -> void:
 		# cooldown (see _interact_cooldown).
 		if _interact_cooldown:
 			return
-		var banner_text := _banner.text if _banner != null else ""
-		var banner_time := _banner_timer
+		var notice_before := _announcement_revision
 		_handle_e(e as InputEventKey)
-		# This press put up (or renewed) orange text: cool down until it's gone.
-		if _banner != null and _banner_timer > 0.0 and (_banner.text != banner_text or _banner_timer > banner_time):
+		# A queued notice may not change the currently visible text/timer.
+		# Preserve E cooldown for accepted interaction feedback as well.
+		if _announcement_revision != notice_before:
 			_interact_cooldown = true
 
 # E owns nearby context interactions only. F remains available independently
@@ -4390,8 +4530,6 @@ func _handle_e(e: InputEventKey) -> void:
 		_return_to_campaign_world()
 	elif _lever_e_pressed():
 		pass
-	elif _path_button_in_reach():
-		_press_path_button()
 	elif _try_open_door():
 		pass
 	elif _vortex_chest_in_reach():
@@ -4400,6 +4538,8 @@ func _handle_e(e: InputEventKey) -> void:
 		_open_map_chest()
 	elif _secret_entrance_in_reach():
 		_enter_secret_wall()
+	elif draft_passages != null and draft_passages.outgoing_in_reach():
+		draft_passages.open_outgoing_prompt()
 	elif _split_rock_in_reach():
 		_announce("This rock looks broken in half. I wonder if something could split it open...", 5.0)
 	elif _diver_near_switch() and (e as InputEventKey).shift_pressed:
@@ -4416,14 +4556,97 @@ func _handle_e(e: InputEventKey) -> void:
 func _use_active_ability() -> void:
 	match _diver.ability_id:
 		"grapple":
-			var cam := $Camera3D as Camera3D
-			_diver.use_ability(-cam.global_transform.basis.z)
+			if _diver.can_use_ability() and not _aim_blocked():
+				_start_aim()
 		"swap":
 			# Same as the main game: pick who to swap with first.
 			if not target_selector.selecting and _diver.can_use_ability():
 				target_selector.start_selection(_diver)
 		_:
 			_diver.use_ability()
+
+# Scene-owned aim; shared Divers outlive the embedded maze on teardown.
+var aiming := false
+var _aiming_diver: Diver
+var _aim_model_was_visible := true
+var _aim_marker: MeshInstance3D
+var _aim_marker_mat: StandardMaterial3D
+
+func _aim_dir() -> Vector3:
+	return Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
+
+func _aim_blocked() -> bool:
+	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+	return not maze_active or _battling or any_modal_open() or _chest_reward_pending \
+		or _gate_cutscene or not _moving_wall_sets.is_empty() or _free_map_open \
+		or (map != null and map.main_map != null and map.main_map.visible)
+
+func _start_aim() -> void:
+	aiming = true
+	_aiming_diver = _diver
+	_aim_model_was_visible = _diver.model.visible
+	_diver.set_model_visible(false)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_mouse_look = true
+	_move_camera(0.0)
+	_update_world_hud()
+
+func _fire_aim() -> void:
+	if not is_instance_valid(_aiming_diver):
+		_cancel_aim()
+		return
+	var shooter := _aiming_diver
+	var direction := _aim_dir()
+	_cancel_aim()
+	if is_instance_valid(shooter):
+		shooter.use_ability(direction)
+
+func _cancel_aim() -> void:
+	aiming = false
+	if is_instance_valid(_aiming_diver):
+		_aiming_diver.set_model_visible(_aim_model_was_visible)
+	_aiming_diver = null
+	if is_instance_valid(_aim_marker):
+		_aim_marker.visible = false
+
+func _update_aim_marker() -> void:
+	if not aiming:
+		return
+	if _aim_marker == null:
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.22
+		ring.outer_radius = 0.32
+		_aim_marker = MeshInstance3D.new()
+		_aim_marker.name = "GrappleAimReticle"
+		_aim_marker.mesh = ring
+		_aim_marker_mat = StandardMaterial3D.new()
+		_aim_marker_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_aim_marker_mat.emission_enabled = true
+		_aim_marker.material_override = _aim_marker_mat
+		add_child(_aim_marker)
+	var from := _diver.global_position + Vector3(0, _diver.height * 0.4, 0)
+	var query := PhysicsRayQueryParameters3D.create(from, from + _aim_dir() * Diver.GRAPPLE_RANGE, Diver.GRAPPLE_COLLISION_MASK)
+	query.exclude = [_diver.get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var point: Vector3 = query.to if hit.is_empty() else hit.position
+	var on_target: bool = not hit.is_empty() and (hit.collider as Node).is_in_group("grapple_anchor")
+	_aim_marker.visible = true
+	_aim_marker.global_position = point
+	# Preserve World's near-surface readability rather than copying the old
+	# screen-filling close-wall marker from upstream unchanged.
+	_aim_marker.scale = Vector3.ONE * clampf(from.distance_to(point) / 3.0, 0.04, 1.0)
+	_aim_marker.look_at(from, Vector3.UP)
+	# TorusMesh's normal is local Y, not the -Z used by look_at. Face the
+	# ring toward the eye instead of showing its edge as a green dash.
+	_aim_marker.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	var color := Color(0.35, 0.95, 0.4) if on_target else Color(0.75, 0.78, 0.8)
+	_aim_marker_mat.albedo_color = color
+	_aim_marker_mat.emission = color
+	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
+
+func _exit_tree() -> void:
+	_cancel_aim()
+	_cancel_wall_motion()
 
 # --- Keys ---------------------------------------------------------------------
 # Keys aren't tied to doors: each key opens any one door (KeyDoor spends it),
@@ -4446,6 +4669,7 @@ func _gain_key(id := "", text := "You've obtained a key") -> void:
 const BARRIER_HEIGHT := 9.0
 var _hallway_barriers: Array[CollisionShape3D] = []
 var _walls_14_15_barriers: Array[CollisionShape3D] = []
+var _walls_10_11_home_barriers: Array[CollisionShape3D] = []
 var _wall_11_joint := Vector3.ZERO   # north end of wall 11 - where 14 meets it
 var _wall_10_joint := Vector3.ZERO   # north end of wall 10 - where 15 meets it
 var _walls_14_15_rest: Array = []    # [[wall, position, yaw]] at start
@@ -4549,6 +4773,26 @@ func _build_start_area_barriers() -> void:
 		far_z = maxf(far_z, p.z)
 	far_z += _PERIMETER_MARGIN
 	_spawn_barrier("StartBarrierSouth", Vector3(start_west.x - t * 0.5, 0, (start_west.z + far_z) * 0.5), Vector3(t, 0, far_z - start_west.z))
+	# Marc's poster boundary closes both ends of the hallway cap. The west
+	# extension reaches the perimeter, but stays south of the lab-side entry
+	# gap; do not replace that deliberate opening with a full west fence.
+	var end_wall := get_node_or_null("HallwayEndWall") as CSGBox3D
+	if end_wall != null:
+		var g: Dictionary = _wall_geometry(end_wall)
+		var a := g["negative_end"] as Vector3
+		var b := g["positive_end"] as Vector3
+		var west_end := a if a.x < b.x else b
+		var east_end := b if a.x < b.x else a
+		var line_z := end_wall.global_position.z
+		var b6 := $CSGBox3D6 as CSGBox3D
+		var b6_face := b6.global_position.x - b6.size.z * 0.5
+		if b6_face >= east_end.x:
+			_spawn_barrier("PosterWallBarrierEast", Vector3((east_end.x + b6_face) * 0.5, 0, line_z), Vector3(b6_face - east_end.x + t, 0, t))
+		var edge_x := west_end.x
+		for p in _collect_bounds_points():
+			edge_x = minf(edge_x, p.x)
+		edge_x -= _PERIMETER_MARGIN
+		_spawn_barrier("PosterWallBarrierWest", Vector3((edge_x + west_end.x) * 0.5, 0, line_z), Vector3(west_end.x - edge_x + t, 0, t))
 
 # An invisible wall (floor to well above the walls) centred at `center`'s
 # x/z, `footprint` x/z in size.
@@ -4569,28 +4813,31 @@ func _update_state_barriers() -> void:
 		s.set_deferred("disabled", _hallway_1_2_swung)
 	for s in _walls_14_15_barriers:
 		s.set_deferred("disabled", not _walls_14_15_open)
+	for s in _walls_10_11_home_barriers:
+		s.set_deferred("disabled", _walls_10_11_swung)
 
 # --- Walls 10/11 ---------------------------------------------------------------
-# The L map's third wall set. Each swings a quarter turn about its north end
-# (where it meets 14 / 15) to run west, dead in line with 14's / 15's home
-# line and flush against its end. Two more walls close off where their far
-# ends land when swung - one down from swung 11's end to 10's line, one
-# along that line to swung 10's end - and stay up either way. A potion rock
-# sits in the corner they make.
+# The L map's third wall set. Wall 10 continues wall 15's home line west;
+# wall 11 follows wall 14's home line but shares swung wall 10's west end.
+# The fixed Break Room endcap/closers remain in place in either state.
+# Its outgoing draft is separate from the incoming draft under swung 11.
 var _walls_10_11_swung := false
 var _walls_10_11_home: Array = []   # [[wall, position, yaw]]
 var _wall_10_11_extras: Array[CSGBox3D] = []
 
 func _walls_10_11_targets() -> Array:
-	var out := []
-	for pair in [[$CSGBox3D11, 0], [$CSGBox3D10, 1]]:
-		var w := pair[0] as CSGBox3D
-		var rest: Array = _walls_14_15_rest[pair[1]]
-		var line_wall := rest[0] as CSGBox3D
-		var line_pos := rest[1] as Vector3
-		var west_x := line_pos.x - line_wall.size.x * 0.5
-		out.append([w, Vector3(west_x - w.size.x * 0.5, w.global_position.y, line_pos.z), 0.0])
-	return out
+	var w10 := $CSGBox3D10 as CSGBox3D
+	var w11 := $CSGBox3D11 as CSGBox3D
+	var rest15: Array = _walls_14_15_rest[1]
+	var rest14: Array = _walls_14_15_rest[0]
+	var west15 := (rest15[1] as Vector3).x - (rest15[0] as CSGBox3D).size.x * 0.5
+	var west10 := west15 - w10.size.x
+	return [[w11, Vector3(west10 + w11.size.x * 0.5, w11.global_position.y, (rest14[1] as Vector3).z), 0.0],
+		[w10, Vector3(west15 - w10.size.x * 0.5, w10.global_position.y, (rest15[1] as Vector3).z), 0.0]]
+
+func _draft_wall_line_x() -> float:
+	var rest14: Array = _walls_14_15_rest[0]
+	return (rest14[1] as Vector3).x - (rest14[0] as CSGBox3D).size.x * 0.5 - ($CSGBox3D11 as CSGBox3D).size.x
 
 func _rotate_walls_10_11() -> void:
 	if _wall_set_moving("CSGBox3D10/11"):
@@ -4609,13 +4856,19 @@ func _rotate_walls_10_11() -> void:
 			tweens.append(_tween_wall_to_transform_about_hinge(target[0], target[1], target[2]))
 		_walls_10_11_swung = true
 		$HUD/Controls.text = "Walls 10/11 swinging..."
+	_update_state_barriers()
+	for wall in [$CSGBox3D10, $CSGBox3D11]:
+		_suspend_motion_collision(wall)
 	_track_wall_set_motion("CSGBox3D10/11", tweens, [$CSGBox3D10, $CSGBox3D11])
+	if not tweens.is_empty():
+		(tweens[-1] as Tween).finished.connect(func() -> void:
+			$HUD/Controls.text = "Walls 10/11: OPEN." if _walls_10_11_swung else "Walls 10/11: CLOSED.")
 
 func _build_wall_10_11_extras() -> void:
 	var targets := _walls_10_11_targets()
 	var w11 := $CSGBox3D11 as CSGBox3D
 	var t := w11.size.z
-	var end11_x := (targets[0][1] as Vector3).x - w11.size.x * 0.5   # swung 11's west end
+	var end11_x := _draft_wall_line_x()
 	var line10_z := (targets[1][1] as Vector3).z
 	var line11_z := (targets[0][1] as Vector3).z
 	var end10_x := (targets[1][1] as Vector3).x - ($CSGBox3D10 as CSGBox3D).size.x * 0.5
@@ -4627,20 +4880,30 @@ func _build_wall_10_11_extras() -> void:
 	# Along 10's line from that wall to swung 10's end.
 	var b_x0 := a_x - t * 0.5
 	var wall_b := _spawn_wall("Wall10Closer", Vector3((b_x0 + end10_x) * 0.5, y, line10_z), 0.0, Vector3(absf(end10_x - b_x0), w11.size.y, t))
+	var end11_swung_x := (targets[0][1] as Vector3).x - w11.size.x * 0.5
+	var wall_c := _spawn_wall("Wall11Closer", Vector3((b_x0 + end11_swung_x) * 0.5, y, line11_z), 0.0, Vector3(absf(end11_swung_x - b_x0), w11.size.y, t))
 	# Always standing, whichever way walls 10/11 face.
-	for wall in [wall_a, wall_b]:
+	for wall in [wall_a, wall_b, wall_c]:
 		_wall_10_11_extras.append(wall)
 		wall_boxes.append(wall)
 	# The potion rock, in the inside corner of the two.
 	var r := 0.55
 	var inward_z := signf(line11_z - line10_z)
 	var spot := Vector3(a_x + t * 0.5 + r + 0.25, _floor_top_y + r, line10_z + inward_z * (t * 0.5 + r + 0.25))
+	_potion_rock_spot = spot
 	var rock := CrackedWall.new()
 	rock.span = Vector3(1.1, 1.1, 1.1)
 	rock.disguised_as_scenery_rock = true
 	rock.position = spot
 	rock.broken.connect(_on_secret_rock_broken.bind("potion", spot + Vector3(0, 0.6, 0)))
 	add_child(rock)
+	var gc: Dictionary = _wall_geometry(wall_b)
+	var west := maxf(gc.negative_end.x, gc.positive_end.x)
+	var east := _wall_11_joint.x - wall_b.size.z * 0.5
+	if east > west + 0.5:
+		var barrier := _spawn_barrier("Wall10LineBarrier", Vector3((west + east) * 0.5, 0, wall_b.global_position.z), Vector3(east - west, 0, wall_b.size.z))
+		_walls_10_11_home_barriers.append(barrier.get_child(0) as CollisionShape3D)
+	_update_state_barriers()
 
 # --- Progress gate (switch puzzle) --------------------------------------------
 # Bars across the passage between CSGBox3D20 and CSGBox3D21, halfway along
@@ -5107,7 +5370,7 @@ func _spawn_key_pickup(key: Node3D) -> void:
 	var spin := key.create_tween().set_loops()
 	spin.tween_property(key, "rotation:y", key.rotation.y + TAU, 2.5).from(key.rotation.y)
 	area.body_entered.connect(func(body: Node3D) -> void:
-		if body is Diver and is_instance_valid(key) and not key.is_queued_for_deletion():
+		if maze_active and body is Diver and is_instance_valid(key) and not key.is_queued_for_deletion():
 			key.queue_free()
 			_gain_key("split_rock_key"))
 
@@ -5118,6 +5381,8 @@ func _spawn_key_pickup(key: Node3D) -> void:
 # Kinds: poster, chest, switch, rock, room_label.
 func map_points_of_interest() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if special_sites != null:
+		out.append_array(special_sites.points_of_interest())
 	for p in _posters:
 		out.append({"id": String(p.name), "kind": "poster", "pos": p.global_position, "radius": 7.0, "done": p.seen, "texture": p.portrait})
 	for k in key_pickups:
@@ -5129,6 +5394,12 @@ func map_points_of_interest() -> Array[Dictionary]:
 		out.append({"id": "vortex_chest", "kind": "chest", "pos": _vortex_chest.global_position, "radius": 9.0, "done": _vortex_chest_open})
 	if _map_chest != null and is_instance_valid(_map_chest):
 		out.append({"id": "map_chest", "kind": "chest", "pos": _map_chest.global_position, "radius": 9.0, "done": _map_chest_open})
+	# A boss is not a global map spoiler: entry into its interior discovers it.
+	for boss_room in [{"id": "boss_secret", "rect": _secret_boss_room_rect(true)}, {"id": "boss_main", "rect": _main_boss_room_rect()}]:
+		var rect: Rect2 = boss_room.rect
+		if rect.size != Vector2.ZERO:
+			var center := rect.get_center()
+			out.append({"id": boss_room.id, "kind": "boss", "pos": Vector3(center.x, 0, center.y), "radius": 0.0, "rect": rect})
 	if _switch_node != null:
 		out.append({"id": "room_switch", "kind": "switch", "pos": _switch_node.global_position, "radius": 7.0, "done": _gate_lowered})
 	if _split_rock != null and is_instance_valid(_split_rock):
@@ -5136,11 +5407,25 @@ func map_points_of_interest() -> Array[Dictionary]:
 	var item_room := _secret_item_room_rect()
 	if item_room.size != Vector2.ZERO:
 		var c := item_room.get_center()
-		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret Item Room"})
+		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret\nItem Room"})
 	if _dome_site != Vector3.ZERO:
-		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0)
-		out.append({"id": "control_room", "kind": "room_label", "pos": _dome_site, "radius": 0.0, "rect": dome, "label": "Control Room"})
+		# f698bee: do not expand the box east into the entrance walls.
+		var depth := PLINTH_RADIUS * 2 + STEP_COUNT * STEP_DEPTH * 0.6
+		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2, depth)
+		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z + PLINTH_RADIUS * 0.7), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
 	return out
+
+func _main_boss_room_rect() -> Rect2:
+	var north := get_node_or_null("MainBossRoomNorth") as CSGBox3D
+	var south := get_node_or_null("MainBossRoomSouth") as CSGBox3D
+	var east := get_node_or_null("MainBossRoomEast") as CSGBox3D
+	if north == null or south == null or east == null:
+		return Rect2()
+	var x0 := north.global_position.x - north.size.x * 0.5
+	var x1 := east.global_position.x - east.size.z * 0.5
+	var z0 := minf(north.global_position.z, south.global_position.z) + north.size.z * 0.5
+	var z1 := maxf(north.global_position.z, south.global_position.z) - south.size.z * 0.5
+	return Rect2(x0, z0, x1 - x0, z1 - z0)
 
 # One half of a broken rock: a lumpy, faceted dome (+Y) over a rough,
 # jagged fracture face (around y = 0, facing -Y). Dome faces are weathered
@@ -5446,8 +5731,9 @@ const CAMPAIGN_FLAGS := ["_completed", "_hallway_1_2_swung", "_walls_14_15_open"
 	"room_encounters_enabled", "_strong_room_seen", "_switch_explained"]
 
 func can_capture_campaign_snapshot() -> bool:
-	return _moving_wall_sets.is_empty() and not _gate_cutscene and not _chest_reward_pending \
-		and not _battling and not get_tree().paused and not any_modal_open()
+	return _moving_wall_sets.is_empty() and not _wall_riders.busy() and not Whirlpool.busy_in(self) and not _gate_cutscene and not _chest_reward_pending \
+		and not _battling and not aiming and not get_tree().paused and not any_modal_open() \
+		and special_sites != null and special_sites.initialized
 
 var _checkpoint: SavePoint
 var _save_menu: SavePointMenu
@@ -5460,6 +5746,8 @@ var _campaign_exit_prompt: Label3D
 var _campaign_exit_pending := false
 
 func _build_campaign_exit() -> void:
+	if world != null:
+		return # Swim back through the physical opening; no E portal.
 	if campaign_session == null or campaign_session.outer_world_checkpoint.is_empty():
 		return
 	_campaign_exit = Node3D.new()
@@ -5586,6 +5874,9 @@ func _on_campaign_save_requested(_actor: Diver, slot: int) -> void:
 	campaign_session.capture_party(divers, active)
 	campaign_session.inventory = inventory
 	campaign_session.maze_snapshot = campaign_snapshot()
+	if world != null:
+		campaign_session.outer_world_checkpoint = world._serialize_world_state()
+		campaign_session.random_encounters_enabled = random_encounters_enabled
 	_checkpoint_saving = true
 	var existed := SaveManager.slot_exists(slot)
 	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
@@ -5604,6 +5895,8 @@ func _on_campaign_save_requested(_actor: Diver, slot: int) -> void:
 		_announce("Could not save. Your last checkpoint is unchanged. Please retry.")
 		return
 	campaign_session.selected_slot = slot
+	if world != null:
+		world._current_slot = slot
 	_announce("Maze progress saved to Slot %d." % (slot + 1))
 
 func _show_campaign_game_over() -> void:
@@ -5628,7 +5921,8 @@ func _return_campaign_title() -> void:
 	get_tree().change_scene_to_file("res://game/world.tscn")
 
 func campaign_snapshot() -> Dictionary:
-	var data := {"version": 1, "flags": {}, "walls": {}, "currents": [],
+	var data := {"version": 1, "coordinate_origin": CampaignSession.vector_data(coordinate_origin),
+		"flags": {}, "walls": {}, "currents": [],
 		"doors": [], "rocks": [], "orbs": [], "loose_keys": [], "posters": [],
 		"positions": [], "levers": [], "broken_rocks": [], "keys_held": keys_held,
 		"key_items": key_items.duplicate(), "boss_triggers": _boss_triggers.keys(),
@@ -5672,6 +5966,8 @@ func campaign_snapshot() -> Dictionary:
 		data.broken_rocks.append(CampaignSession.vector_data(spot))
 	var map := get_node("HUD/MazeMiniMap") as MazeMiniMap
 	data.map = map.campaign_discovery()
+	if special_sites != null and special_sites.initialized:
+		data.special_sites = special_sites.snapshot()
 	return data
 
 func _wall_home_data(homes: Array) -> Array:
@@ -5687,7 +5983,19 @@ func _restore_wall_homes(homes: Array) -> Array:
 		out.append([get_node(String(entry.wall)), CampaignSession.vector_from(entry.position), float(entry.yaw)])
 	return out
 
-func restore_campaign_snapshot(data: Dictionary) -> void:
+func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> void:
+	_cancel_aim()
+	if draft_passages != null:
+		draft_passages.cancel()
+	# Translate every spatial field together, without mutating the saved
+	# checkpoint. Same-frame and legacy standalone restores remain identity.
+	data = MazeCoordinateFrame.rebase(data, coordinate_origin)
+	if data.is_empty():
+		return
+	# Cancel only after valid coordinate preflight. Old Tweens must not keep
+	# moving walls after applying the checkpoint, or retain disabled skirts.
+	_cancel_wall_motion(true)
+	Whirlpool.cancel_in(self, not restore_positions)
 	for flag in CAMPAIGN_FLAGS:
 		set(flag, bool(data.flags.get(flag, false)))
 	keys_held = int(data.keys_held)
@@ -5701,22 +6009,30 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 	_hallway_1_2_home_yaw_b = float(homes.hallway_yaw_b)
 	_walls_14_15_home = _restore_wall_homes(homes.walls_14_15)
 	_walls_10_11_home = _restore_wall_homes(homes.walls_10_11)
-	# Recreate only the two runtime path extensions; every other structural
-	# node must already exist in Marc's authored initialization.
+	# Old opened-path saves contain raised extensions and swung 12/13. Their
+	# route is superseded, not an alternate unlock. Keep all other saved walls.
+	var retired_route: bool = _path_opened or data.walls.has("PathWallNorth") or data.walls.has("PathWallSouth")
 	for wall_name in data.walls:
+		if wall_name in ["PathWallNorth", "PathWallSouth"] or (retired_route and _control_route_homes.has(wall_name)):
+			continue
 		var spec: Dictionary = data.walls[wall_name]
 		var wall := get_node_or_null(String(wall_name)) as CSGBox3D
-		if wall == null and wall_name in ["PathWallNorth", "PathWallSouth"]:
-			wall = _spawn_wall(String(wall_name), CampaignSession.vector_from(spec.position),
-				float(spec.rotation[1]), CampaignSession.vector_from(spec.size))
-			wall_boxes.append(wall)
-			_add_wall_skirt(wall)
 		if wall != null:
 			wall.position = CampaignSession.vector_from(spec.position)
 			wall.rotation = CampaignSession.vector_from(spec.rotation)
 			wall.size = CampaignSession.vector_from(spec.size)
 			wall.visible = bool(spec.visible)
 			wall.use_collision = bool(spec.collision)
+	if retired_route:
+		for name_value in _control_route_homes:
+			var wall := get_node(String(name_value)) as CSGBox3D
+			var home: Dictionary = _control_route_homes[name_value]
+			wall.position = home.position
+			wall.rotation = home.rotation
+			wall.size = home.size
+			wall.visible = true
+			wall.use_collision = true
+	var draft_layout_migrated := _reconcile_legacy_draft_walls()
 	for current in _currents_by_corridor.values():
 		(current as WaterCurrent).teardown()
 		(current as WaterCurrent).queue_free()
@@ -5737,6 +6053,19 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 				still_present = still_present or (child as Node3D).global_position.distance_to(CampaignSession.vector_from(spot)) < 0.01
 			if not still_present:
 				child.queue_free()
+	# Replace pending drops, do not append them. Repeated restore into an
+	# embedded scene must not duplicate a key/item or keep an unsaved reward.
+	# Queue deletion before detaching so late overlap callbacks are inert.
+	for child in get_children():
+		if child is ItemOrb:
+			child.queue_free()
+			remove_child(child)
+	for key in key_pickups:
+		if is_instance_valid(key) and not key is ItemOrb and not key.is_queued_for_deletion():
+			key.queue_free()
+			if key.get_parent() != null:
+				key.get_parent().remove_child(key)
+	key_pickups.clear()
 	for spec in data.orbs:
 		_spawn_secret_reward_orb(String(spec.item), CampaignSession.vector_from(spec.position),
 			bool(spec.golden), bool(spec.grappleable), bool(spec.grapple_only))
@@ -5767,8 +6096,13 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 		if bool(spec.seen):
 			poster.mark_seen()
 		poster_clues.append({"diver": poster.diver_index, "number": poster.number})
-	for i in range(divers.size()):
-		divers[i].position = CampaignSession.vector_from(data.positions[i])
+	if restore_positions:
+		for i in range(divers.size()):
+			divers[i].position = CampaignSession.vector_from(data.positions[i])
+	if draft_layout_migrated:
+		_clear_party_from_migrated_draft_wall()
+	if retired_route:
+		_clear_party_from_retired_control_route()
 	for holder in data.levers:
 		var index := int(holder.lever)
 		# Old checkpoints may name the dome levers Marc has removed. Their
@@ -5779,12 +6113,6 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 		_lever_holders[lever] = divers[int(holder.diver)]
 		lever.pull()
 		_set_lever_light(index, true)
-	if _path_opened:
-		_path_button_blink.kill()
-		for child in _path_button.get_children():
-			(child as Node3D).visible = true
-		_set_path_button_color(Color(0.2, 1.0, 0.35))
-		_corridor_walls.erase($WindCorridor4)
 	if _gate_lowered:
 		_mark_switch_done()
 		_gate.visible = false
@@ -5797,25 +6125,93 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 	if _rock_split and is_instance_valid(_split_rock):
 		_split_rock.queue_free()
 		_split_rock = null
-	if has_sonar_vision:
-		var pickup := get_node_or_null("SonarVisionPickup")
-		if pickup != null:
-			pickup.queue_free()
 	for kind in _boss_triggers.keys():
 		if not data.boss_triggers.has(kind):
 			_remove_boss_trigger(String(kind))
 	if route_state != null:
 		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
 	_update_state_barriers()
+	if data.has("special_sites"):
+		special_sites.restore(data.special_sites)
+	else:
+		special_sites.restore_legacy()
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = ("Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L).") \
 		if key_items.has(MAP_ITEM) else "Find the navigation map in the Control Room."
+
+func _clear_party_from_retired_control_route() -> void:
+	# A position clear between the old swung walls can overlap a restored
+	# home wall. Only move overlapping capsules, to a validated nearby side;
+	# keep inventory, map discoveries, puzzle flags and HP/Oxygen untouched.
+	for diver in divers:
+		for name_value in _control_route_homes:
+			var wall := get_node(String(name_value)) as CSGBox3D
+			var local: Vector3 = wall.global_transform.affine_inverse() * diver.global_position
+			var half := wall.size * 0.5
+			var segment := maxf(diver.height * 0.5 - diver.radius, 0.0)
+			var gap := Vector3(maxf(absf(local.x) - half.x, 0.0),
+				maxf(absf(local.y) - half.y - segment, 0.0), maxf(absf(local.z) - half.z, 0.0))
+			if gap.length_squared() >= diver.radius * diver.radius:
+				continue
+			var side := signf(diver.global_position.x - wall.global_position.x)
+			if side == 0.0:
+				side = signf(_dome_site.x - wall.global_position.x)
+			for direction in [side, -side]:
+				var preferred := diver.global_position
+				preferred.x = wall.global_position.x + direction * (wall.size.z * 0.5 + diver.radius + 0.15)
+				var clear: Variant = draft_passages._clear_exit(diver, preferred, wall, Vector3(direction, 0, 0), true)
+				if clear != null:
+					diver.global_position = clear
+					diver.velocity = Vector3.ZERO
+					break
+
+func _reconcile_legacy_draft_walls() -> bool:
+	# Pre-draft saves used wall 14's west end for swung wall 11. Latest
+	# authored geometry aligns 11 with swung 10 instead. Recognize only that
+	# exact obsolete transform, preserving home states and unrelated saved
+	# walls, keys, discoveries and party positions. Coordinate rebasing has
+	# already happened, so standalone and embedded checkpoints share this.
+	if not _walls_10_11_swung:
+		return false
+	var wall11 := $CSGBox3D11 as CSGBox3D
+	var rest14: Array = _walls_14_15_rest[0]
+	var old := Vector3((rest14[1] as Vector3).x - (rest14[0] as CSGBox3D).size.x * 0.5 - wall11.size.x * 0.5,
+		wall11.global_position.y, (rest14[1] as Vector3).z)
+	if wall11.global_position.distance_to(old) < 0.02 and absf(wall11.rotation.y) < 0.01:
+		var latest: Array = _walls_10_11_targets()[0]
+		wall11.global_position = latest[1]
+		wall11.rotation.y = float(latest[2])
+		return true
+	return false
+
+func _clear_party_from_migrated_draft_wall() -> void:
+	# A previously clear saved position can now be inside relocated wall 11.
+	# Its concave CSG surface does not eject a wholly buried capsule. Move
+	# only overlapping party members to the nearest hall side, preserving
+	# their resources, height, progress and the rest of the saved placement.
+	var wall := $CSGBox3D11 as CSGBox3D
+	var half := wall.size * 0.5
+	for diver in divers:
+		var local: Vector3 = wall.global_transform.affine_inverse() * diver.global_position
+		var segment_half: float = maxf(diver.height * 0.5 - diver.radius, 0.0)
+		var gap := Vector3(maxf(absf(local.x) - half.x, 0.0),
+			maxf(absf(local.y) - half.y - segment_half, 0.0), maxf(absf(local.z) - half.z, 0.0))
+		if gap.length_squared() >= diver.radius * diver.radius:
+			continue
+		var side := signf(local.z)
+		if side == 0.0:
+			side = signf(($CSGBox3D10 as CSGBox3D).global_position.z - wall.global_position.z)
+		local.z = side * (half.z + diver.radius + 0.12)
+		diver.global_position = wall.global_transform * local
+		diver.velocity = Vector3.ZERO
 
 # All names are resolved against the freshly authored scene before applying
 # any puzzle mutations. Corrupt IO may not reach get_node/indexing halfway
 # through a restore. The two path walls are the only runtime extensions.
 func snapshot_matches_runtime(data: Dictionary) -> bool:
-	if not CampaignCheckpoint.valid_maze(data):
+	# Preflight must accept the destination frame, not only the saved one.
+	# Otherwise Load can release gameplay after restore rejects an overflow.
+	if MazeCoordinateFrame.rebase(data, coordinate_origin).is_empty():
 		return false
 	for wall_name in data.walls:
 		if wall_name not in ["PathWallNorth", "PathWallSouth"] and not get_node_or_null(String(wall_name)) is CSGBox3D:

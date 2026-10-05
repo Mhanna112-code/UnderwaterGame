@@ -1,0 +1,35 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+EMBED_LAYOUT|bounds=[P: (256.3036, -23.75299), S: (182.0708, 156.4959)]|entry=(286.609, 0.0, 16.0)
+PASS|EMBED-1 shared actors, unchanged spawn, title camera/HUD ownership
+EMBED_SWIM|key=68|end=(263.1659, 1.8, 16.0)|target=263.0
+EMBED_FRAME_STEP|crossing_max=0.08334350585938
+EMBED_SWIM|key=65|end=(224.8872, 1.8, 16.0)|target=225.0
+EMBED_FRAME_STEP|crossing_max=0.08334350585938
+EMBED_TRAVERSAL|lab_first_requirement=false|outbound_x=263|return_x=225|no_save_writes
+EMBED_TAB|world=1|maze=1|owner=true
+EMBED_INPUT|Tab_once=true|R_save_conserved=true|inactive_encounters=false|inactive_Oxygen_drain=false
+EMBED_SWIM|key=68|end=(262.096, -0.239987, 15.99996)|target=262.0
+EMBED_FRAME_STEP|crossing_max=0.08346557617188
+EMBED_SWIM|key=65|end=(224.8926, 1.368803, 15.99995)|target=225.0
+EMBED_FRAME_STEP|crossing_max=0.08331298828125
+EMBED_FLOOR|sink-held descent and uphill return physically traversed
+EMBED_AIM_SELECTED|world=1|maze=1|owner=true|world_battle=false|maze_battle=false|paused=false
+EMBED_SWIM|key=65|end=(256.2501, 1.8, 16.0)|target=225.0
+EMBED_FRAME_STEP|crossing_max=0.08331298828125
+ERROR: EMBED-4 actual key movement blocked on ramp/perimeter
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _expect (res://verify/embedded_maze.gd:214)
+       [1] _swim_to (res://verify/embedded_maze.gd:209)
+ERROR: AIM-2 actual first-person ramp departure leaves invisible/replaced shared actor
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _expect (res://verify/embedded_maze.gd:214)
+       [1] _run (res://verify/embedded_maze.gd:168)
+       [2] _swim_to (res://verify/embedded_maze.gd:209)
+EMBED_AIM_HANDOFF|actual_ramp_swim=true|same_actor=true|model_restored=true
+EMBEDDED MAZE: 2 findings

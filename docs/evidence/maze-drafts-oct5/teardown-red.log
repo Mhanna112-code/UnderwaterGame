@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+DRAFT_COLLISION|position=(336.0634, -2.739533, 30.23211)|shape=():<CapsuleShape3D#-9223371932919919719>|colliders=["/root/World/MazeLevel/MazeFloorCollision"]
+DRAFT_TEARDOWN|diver=0|departure=(336.8555, 1.8, 30.23211)|released_at=(336.0634, -2.739533, 30.23211)
+FINDING DRAFT-4 interrupted owner leaves the shared actor locked or buried below resealed floor
+MAZE DRAFT PASSAGES: 1 findings

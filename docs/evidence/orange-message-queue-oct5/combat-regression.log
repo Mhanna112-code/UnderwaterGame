@@ -1,0 +1,11 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STUN DISPATCH|side=party|duration=1|skips=1|restored=true
+STUN DISPATCH|side=party|duration=2|skips=2|restored=true
+STUN DISPATCH|side=party|duration=3|skips=3|restored=true
+STUN DISPATCH|side=enemy|duration=1|skips=1|restored=true
+STUN DISPATCH|side=enemy|duration=2|skips=2|restored=true
+STUN DISPATCH|side=enemy|duration=3|skips=3|restored=true
+ANGLER PROPERTIES|seeds=128|low_hp_headbutts=50|streak_reset=true|forced_species_preserved=true
+ANGLER LIVE|button_damage=[1, 3]|retaliation=50|miss_then_party_flash=true
+AUTHORED COMBAT TURNS: clean

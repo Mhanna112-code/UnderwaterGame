@@ -1,0 +1,13 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SWIRL ACTUAL ROOM|rocks=124|bounds=(102.3745, -1.60841, 12.7634)..(127.3745, 4.44921, 37.7634)
+SWIRL INPUT TRACE|Staff_Diver|ticks=60|W=true|yaw=0.53798282518472|look=true|modal=false|position=(109.7669, 0.0, 17.91584)
+SWIRL INPUT TRACE|Staff_Diver|ticks=120|W=true|yaw=0.5147553570862|look=true|modal=false|position=(112.3179, 0.0, 22.10831)
+SWIRL INPUT TRACE|Staff_Diver|ticks=180|W=true|yaw=-0.72569023044185|look=true|modal=false|position=(113.9349, 0.0, 23.6251)
+SWIRL PHYSICAL SWIM|Staff_Diver|arrived=true|HP=10->6|hits=2|position=(113.8888, 0.0, 23.68721)
+SWIRL INPUT TRACE|Prototype_1(1910)|ticks=60|W=true|yaw=0.89737139149242|look=true|modal=false|position=(109.6123, 0.0, 21.06497)
+SWIRL PHYSICAL SWIM|Prototype_1(1910)|arrived=true|HP=10->10|hits=0|position=(112.9985, 0.0, 23.7666)
+SWIRL INPUT TRACE|Prototype_V(1922)|ticks=60|W=true|yaw=0.49388193279094|look=true|modal=false|position=(110.2556, 0.0, 18.14129)
+SWIRL INPUT TRACE|Prototype_V(1922)|ticks=120|W=true|yaw=1.04320900475568|look=true|modal=false|position=(109.7055, 0.0, 21.96734)
+SWIRL PHYSICAL SWIM|Prototype_V(1922)|arrived=true|HP=10->6|hits=2|position=(112.8702, 0.0, 23.85104)
+MARC SWIRL ROUTE: clean

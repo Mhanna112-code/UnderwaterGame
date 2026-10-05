@@ -15,7 +15,11 @@ const DEEP_HUB := Vector3(90.0, 2.0, 10.0)
 const BOMB_BOT := Vector3(120.0, 2.0, 16.0)
 const SWORD_SLAYER := Vector3(145.0, 2.0, 16.0)
 const LAB := Vector3(175.0, 2.0, 16.0)
-const MAZE_TRANSITION := Vector3(125.0, 2.0, -34.0)
+# The approach is beyond the laboratory, not an exit at the shallow blockade.
+# Location is not a victory gate: explorers may reach it around the lab route.
+const MAZE_TRANSITION := Vector3(215.0, 2.0, 16.0)
+const MAZE_ORIGIN := Vector3(300.0, 0.0, 20.76271)
+const MAZE_APPROACH_HALF_WIDTH := 4.0
 
 func route_points() -> Dictionary:
 	return {
@@ -45,6 +49,7 @@ func maze_route() -> PackedVector3Array:
 		DEEP_ENTRY,
 		DEEP_HUB,
 		Vector3(104.0, 2.0, -4.0),
+		Vector3(200.0, 2.0, -4.0),
 		MAZE_TRANSITION,
 	])
 
@@ -85,7 +90,10 @@ func _protected_corridors() -> Array[Dictionary]:
 		{"a": DEEP_ENTRY, "b": DEEP_HUB, "radius": 7.0},
 		{"a": DEEP_HUB, "b": BOMB_BOT, "radius": 7.0},
 		{"a": BOMB_BOT, "b": LAB, "radius": 8.0},
-		{"a": DEEP_HUB, "b": MAZE_TRANSITION, "radius": 7.0},
+		{"a": DEEP_HUB, "b": Vector3(104.0, 2.0, -4.0), "radius": 7.0},
+		{"a": Vector3(104.0, 2.0, -4.0), "b": Vector3(200.0, 2.0, -4.0), "radius": 7.0},
+		{"a": Vector3(200.0, 2.0, -4.0), "b": MAZE_TRANSITION, "radius": 7.0},
+		{"a": MAZE_TRANSITION, "b": Vector3(270.0, 2.0, 16.0), "radius": 7.0},
 	]
 
 func _horizontal_distance(a: Vector3, b: Vector3) -> float:

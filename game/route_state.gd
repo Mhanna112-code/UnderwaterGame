@@ -26,7 +26,7 @@ const OCTOPUS_STATES := ["unavailable", "available", "in_progress", "defeated"]
 const ENCOUNTER_SOURCES := [
 	"random", "lab_blocker", "lab_boss", "maze_door",
 	"prologue_angler", "prologue_octopus",
-	"maze_puppets", "maze_cordys",
+	"maze_puppets", "maze_cordys", "maze_special",
 ]
 const PROLOGUE_PHASES := [
 	"title",

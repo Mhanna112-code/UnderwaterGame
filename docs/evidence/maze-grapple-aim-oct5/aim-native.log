@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+MAZE AIM CANCEL|generated=9
+MAZE AIM TARGETS|anchor_travel=true|layer5_reel=true|wall_occlusion=true|zero_O2=true
+MAZE AIM OWNERS|blocked_keys=7|post_cancel_map=true
+MAZE AIM CHECKPOINT|no_file_write=true|contact_P_after_cancel=true|restore_cancels=true
+MAZE AIM TEARDOWN|surviving_actor=true|model_restored=true|resources_unchanged=true
+MAZE GRAPPLE AIM: clean

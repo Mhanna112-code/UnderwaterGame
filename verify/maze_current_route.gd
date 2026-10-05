@@ -234,7 +234,10 @@ func _earn_map_and_return() -> void:
 	if maze.random_encounters_enabled:
 		await _key(KEY_R)
 	var chest := maze.get_node("MapChest") as Node3D
-	var goal := chest.global_position + Vector3(0, 1.0, 1.8)
+	# The raised plinth sets the tall diver's actual centre higher than this
+	# nominal rise target. Stay comfortably within the3D interaction radius;
+	# ARRIVAL permits .45m early stopping, not an exact endpoint.
+	var goal := chest.global_position + Vector3(0, 1.0, 1.4)
 	var route := _no_current_path(goal)
 	_expect(not route.is_empty(), "ROUTE no normal pre-map path to the actual chest")
 	var rise := InputEventKey.new()
@@ -256,12 +259,18 @@ func _earn_map_and_return() -> void:
 		await _swim(point)
 		if not findings.is_empty():
 			return
+	print("ROUTE CHEST APPROACH|actor=", maze._diver.global_position, "|chest=", chest.global_position,
+		"|distance=", maze._diver.global_position.distance_to(chest.global_position + Vector3(0, 0.6, 0)))
 	await _key(KEY_E)
 	await create_timer(2.2).timeout
 	_expect(maze.key_items.count("maze_nav_map") == 1, "ROUTE actual chest did not supply the earned map")
 	var popup := root.get_node("CharacterAbilityPopup")
 	if (popup.get_node("%AbilityExplanationPanel") as Control).visible:
 		await _key(KEY_ESCAPE)
+	await _key(KEY_L)
+	_expect(paused and (popup.get_node("%AbilityExplanationPanel") as Control).visible, "ROUTE first earned L does not present navigation lesson")
+	await _key(KEY_ESCAPE)
+	await _key(KEY_L)
 	var back := _no_current_path(Vector3(entry.x, maze._diver.global_position.y, entry.z))
 	_expect(not back.is_empty(), "ROUTE acquired map has no collision/current-valid return path")
 	for point in back:

@@ -61,7 +61,7 @@ func _run() -> void:
 	quit(0 if findings.is_empty() else 1)
 
 func _empty_discovery() -> Dictionary:
-	return {"walls": [], "rooms": [], "corridors": [], "halls": [], "count": 0, "pois": []}
+	return {"walls": [], "rooms": [], "corridors": [], "halls": [], "count": 0, "pois": [], "intro_seen": true}
 
 func _prepare(data: Dictionary) -> void:
 	if map.main_map.visible:

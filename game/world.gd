@@ -77,6 +77,7 @@ func _tutorial_skip_requested() -> bool:
 # freezes the dive while game/battle.gd runs it.
 var banner: Label
 var _banner_timer := 0.0
+var _announcements := preload("res://game/orange_message_queue.gd").new()
 var route_objective_panel: PanelContainer
 var route_objective_label: Label
 var battling := false
@@ -273,7 +274,6 @@ const LAB_TRIGGER_RADIUS := 4.0
 const MAZE_TRANSITION_RADIUS := 5.0
 const PUZZLE_MAZE_EXIT := Vector3(47.0, 2.0, 10.0)
 const PUZZLE_MAZE_EXIT_RADIUS := 2.5
-var _maze_transition_started := false
 var _maze_entry_source := "deep_landmark"
 
 # One-time authored blocker trigger ownership. `_inside_route_blocker_id` is a
@@ -296,6 +296,7 @@ var _route_blocker_gates: Dictionary = {}
 static var _restart_slot := -1
 var _loaded_maze_session: CampaignSession
 var _campaign_session: CampaignSession
+var embedded_maze: MazeLevel
 
 # Full state: per-diver position/stats/spells plus the world-level
 # inventory/key_items/active - everything _write_save()'s caller (a save
@@ -337,15 +338,18 @@ func _serialize_world_state() -> Dictionary:
 
 func _serialize_state() -> Dictionary:
 	var data := _serialize_world_state()
-	if _campaign_session == null or _campaign_session.maze_snapshot.is_empty():
+	# An uncompleted opening still uses the legacy World checkpoint contract.
+	if _campaign_session == null or not route_state.prologue_complete:
 		return data
+	if embedded_maze != null:
+		_campaign_session.maze_snapshot = embedded_maze.campaign_snapshot()
 	_campaign_session.capture_party(divers, active)
 	_campaign_session.inventory = inventory
 	_campaign_session.campaign_key_items.assign(key_items)
 	_campaign_session.route_state = route_state
 	_campaign_session.random_encounters_enabled = random_encounters_enabled
 	_campaign_session.outer_world_checkpoint = data
-	return CampaignCheckpoint.encode(_campaign_session, "world")
+	return CampaignCheckpoint.encode(_campaign_session, "maze" if embedded_maze != null and embedded_maze.maze_active else "world")
 
 func _write_save() -> Error:
 	if _current_slot < 0:
@@ -368,6 +372,8 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	if data.has("campaign_scene") or data.has("campaign_checkpoint"):
 		maze_session = CampaignCheckpoint.decode(data)
 		if maze_session == null:
+			return false
+		if embedded_maze != null and not embedded_maze.snapshot_matches_runtime(maze_session.maze_snapshot):
 			return false
 	var raw_divers: Variant = data.get("divers", [])
 	if not raw_divers is Array or raw_divers.size() != divers.size():
@@ -423,8 +429,11 @@ func restore_checkpoint(data: Dictionary) -> bool:
 			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
 				return false
 	var divers_data := raw_divers as Array
+	# Preflight is complete. Old hazard timers must relinquish shared actors
+	# before the loaded pose/resources replace them, never after that point.
+	Whirlpool.cancel_in(self)
 	_loaded_maze_session = maze_session if data.get("campaign_scene") == "maze" else null
-	_campaign_session = maze_session if data.get("campaign_scene") == "world" else null
+	_campaign_session = maze_session
 	_cancel_random_encounter_reveal()
 	if is_instance_valid(escape_encounter_hint):
 		escape_encounter_hint.dismiss()
@@ -506,6 +515,20 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	if _campaign_session != null:
 		_campaign_session.restore_party(divers)
 		_campaign_session.route_state = route_state
+	if embedded_maze != null:
+		embedded_maze.inventory = inventory
+		embedded_maze.campaign_key_items = key_items
+		embedded_maze.route_state = route_state
+		if maze_session != null:
+			embedded_maze.campaign_session = maze_session
+			embedded_maze.restore_campaign_snapshot(maze_session.maze_snapshot, _loaded_maze_session != null)
+		elif _campaign_session == null:
+			_campaign_session = CampaignSession.new()
+			_campaign_session.route_state = route_state
+			embedded_maze.campaign_session = _campaign_session
+		# Restore the saved active diver, not the construction-time choice.
+		embedded_maze.active = active
+		embedded_maze._diver = divers[active]
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
@@ -549,6 +572,9 @@ func _audio_call(method: StringName) -> void:
 
 func _show_title_screen() -> void:
 	_cancel_random_encounter_reveal()
+	if embedded_maze != null:
+		embedded_maze.set_maze_active(false)
+	cam.current = true
 	if is_instance_valid(escape_encounter_hint):
 		escape_encounter_hint.dismiss()
 	# The title owns the entire cold-launch surface. Keeping it on a separate
@@ -634,18 +660,13 @@ func _on_title_load_game(slot: int) -> bool:
 	title_screen.close()
 	if _loaded_maze_session != null:
 		_loaded_maze_session.selected_slot = slot
-		SceneHandoff.campaign_session = _loaded_maze_session
 		_loaded_maze_session = null
 		get_tree().paused = false
-		_audio_call(&"stop_music")
-		var error := get_tree().change_scene_to_file("res://game/maze_level.tscn")
-		if error != OK:
-			SceneHandoff.campaign_session = null
-			get_tree().paused = true
-			title_screen.open()
-			title_screen.show_load_error("Could not open the saved maze. Please retry.")
-			return false
+		_set_maze_ownership(true, true)
+		_audio_call(&"play_exploration_music")
 		return true
+	if _campaign_session != null:
+		_campaign_session.selected_slot = slot
 	await _play_opening_if_needed()
 	_begin_quiet_spawn_if_needed()
 	$HUD.visible = true
@@ -700,6 +721,7 @@ func _begin_quiet_spawn_if_needed() -> void:
 		return
 	_intro_active = false
 	_camera_look_override = null
+	_announcements.clear()
 	banner.text = ""
 	route_state.set_objective("")
 	route_state.set_prologue_phase("spawn_exploration")
@@ -786,6 +808,7 @@ func _recover_from_prologue() -> void:
 	route_state.set_encounter_source("random")
 	random_encounters_enabled = true
 	route_state.set_objective("")
+	_announcements.clear()
 	banner.text = ""
 	_banner_timer = 0.0
 	recovery.show_saving()
@@ -1208,6 +1231,7 @@ func _ready() -> void:
 	# This cannot live under HUD: _show_game_over() deliberately hides HUD as
 	# one unit. Keep both exclusive, paused menu surfaces on the overlay layer.
 	title_layer.add_child(game_over_screen)
+	_build_embedded_maze()
 
 	# A game-over restart must rebuild the scene before applying its save so
 	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
@@ -1376,7 +1400,11 @@ func _build_boundary_walls() -> void:
 	var span_z := DeepZoneLayoutScript.WORLD_HALF_Z * 2.0
 	_build_invisible_wall(Vector3(center_x, WALL_Y, DeepZoneLayoutScript.WORLD_HALF_Z + THICKNESS * 0.5), Vector3(span_x + THICKNESS * 2.0, WALL_HEIGHT, THICKNESS))
 	_build_invisible_wall(Vector3(center_x, WALL_Y, -DeepZoneLayoutScript.WORLD_HALF_Z - THICKNESS * 0.5), Vector3(span_x + THICKNESS * 2.0, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MAX_X + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
+	# Only the lab-side ramp opening leaves the World perimeter.
+	var gap := DeepZoneLayoutScript.MAZE_TRANSITION.z
+	var half_width := DeepZoneLayoutScript.MAZE_APPROACH_HALF_WIDTH
+	for limits in [[-DeepZoneLayoutScript.WORLD_HALF_Z - THICKNESS, gap - half_width], [gap + half_width, DeepZoneLayoutScript.WORLD_HALF_Z + THICKNESS]]:
+		_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MAX_X + THICKNESS * 0.5, WALL_Y, (float(limits[0]) + float(limits[1])) * 0.5), Vector3(THICKNESS, WALL_HEIGHT, float(limits[1]) - float(limits[0])))
 	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MIN_X - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
@@ -1807,7 +1835,7 @@ func _build_highway() -> void:
 	add_child(_puzzle_goal)
 	_puzzle_exit_label = Label3D.new()
 	_puzzle_exit_label.name = "PuzzleMazeEntranceLabel"
-	_puzzle_exit_label.text = "MAZE ENTRANCE"
+	_puzzle_exit_label.text = "DEEP WATER\nLaboratory and maze beyond"
 	_puzzle_exit_label.position = PUZZLE_MAZE_EXIT + Vector3(0, 2.8, 0)
 	_puzzle_exit_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_puzzle_exit_label.font_size = 48
@@ -1912,6 +1940,8 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 		})
 
 func _unhandled_input(e: InputEvent) -> void:
+	if embedded_maze != null and embedded_maze.maze_active:
+		return
 	if battling or _transitioning_to_encounter:
 		return
 	# These menus freeze exploration through this owner rather than pausing
@@ -2163,7 +2193,7 @@ func _update_save_point_prompt() -> void:
 			banner.text = ""
 			_showing_save_prompt = false
 		return
-	if on_point and not _showing_save_prompt:
+	if on_point and not _showing_save_prompt and _announcements.current_text().is_empty():
 		if not _save_point_tutorial_seen:
 			_save_point_tutorial_seen = true
 			var pages: Array[Dictionary] = [{
@@ -2213,6 +2243,15 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	if embedded_maze != null and embedded_maze.maze_active:
+		active = embedded_maze.active
+		if not embedded_maze._battling:
+			for diver in divers:
+				diver.exploration_paused = not embedded_maze.contains_point(diver.global_position)
+		if not embedded_maze.contains_point((divers[active] as Diver).global_position) and embedded_maze.prepare_area_exit():
+			_set_maze_ownership(false)
+		# The Maze owns this frame even on departure: never swim twice.
+		return
 	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
@@ -2231,6 +2270,12 @@ func _physics_process(dt: float) -> void:
 
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
+		# Movement pauses for the active diver while picking a swap target
+		if embedded_maze != null and embedded_maze.contains_point(d.global_position):
+			# Parked actors cannot drift or spend Oxygen in an inactive area.
+			d.exploration_paused = true
+			continue
+		d.exploration_paused = false
 		# Movement pauses for the active diver while picking a swap target
 		# too - the camera's busy showing an ally, swimming around blind
 		# to where your own diver actually is would be confusing controls.
@@ -2419,53 +2464,127 @@ func _sync_lab_staging() -> void:
 
 # Independent world-to-maze branch. Lab victory is not a prerequisite.
 func _update_maze_transition() -> void:
-	if _maze_transition_started or battling or divers.is_empty() or not route_state.prologue_complete:
+	if embedded_maze == null or battling or divers.is_empty() or not route_state.prologue_complete:
 		return
-	var position := (divers[active] as Diver).global_position
-	# Primary campaign route: a solved shallow puzzle's opened exit. Merely
-	# approaching/going over an unsolved gate never grants maze entry.
-	if _puzzle_solved and position.x >= 45.5 and absf(position.y - PUZZLE_MAZE_EXIT.y) <= 2.5 \
-			and Vector2(position.x, position.z).distance_to(Vector2(PUZZLE_MAZE_EXIT.x, PUZZLE_MAZE_EXIT.z)) <= PUZZLE_MAZE_EXIT_RADIUS:
-		_maze_entry_source = "puzzle_exit"
-		route_state.set_maze_door_state("available")
-		_maze_transition_started = true
-		call_deferred("_enter_maze_scene", false)
-		return
-	if route_state.maze_door_state != "available":
-		return
-	var target := deep_zone_layout.route_points().maze_transition as Vector3
-	if Vector2(position.x, position.z).distance_to(Vector2(target.x, target.z)) <= MAZE_TRANSITION_RADIUS:
+	if embedded_maze.contains_point((divers[active] as Diver).global_position):
 		_maze_entry_source = "deep_landmark"
-		_maze_transition_started = true
-		call_deferred("_enter_maze_scene", false)
+		_set_maze_ownership(true)
 
 func _enter_maze_scene(review_route: bool = false) -> void:
-	if not review_route:
-		if route_state.maze_door_state != "available":
-			_maze_transition_started = false
-			return
-		route_state.set_maze_door_state("entered")
+	if embedded_maze == null:
+		return
+	if review_route:
+		title_screen.close()
+		get_tree().paused = false
+		for i in range(divers.size()):
+			(divers[i] as Diver).global_position = embedded_maze.entrance_point() + Vector3(0, 2, (i - active) * 2.0)
+		_set_maze_ownership(true)
+	else:
+		_update_maze_transition()
+
+func _set_maze_ownership(on: bool, restored := false) -> void:
+	if on:
+		_campaign_session.selected_slot = _current_slot
+		if aiming:
+			_cancel_aim()
+		if target_selector.selecting:
+			target_selector.cancel_selection()
+		if restored:
+			embedded_maze.set_maze_active(true)
+		else:
+			embedded_maze.enter_from_world()
 		route_state.set_zone("maze")
+		route_state.set_maze_door_state("entered")
 		route_state.set_encounter_source("maze_door")
-		_write_save()
-	var session := _campaign_session if _campaign_session != null else CampaignSession.new()
-	session.capture_party(divers, active)
-	session.inventory = inventory
-	session.campaign_key_items.assign(key_items)
-	session.route_state = route_state
-	session.random_encounters_enabled = random_encounters_enabled
-	session.selected_slot = _current_slot
-	session.outer_world_checkpoint = _serialize_world_state()
-	SceneHandoff.campaign_session = session
-	get_tree().paused = false
-	_audio_call(&"stop_music")
-	var transition_error := get_tree().change_scene_to_file("res://game/maze_level.tscn")
-	if transition_error != OK:
-		SceneHandoff.campaign_session = null
-		_maze_transition_started = false
-		route_state.set_maze_door_state("available")
+		cam.current = false
+	else:
+		embedded_maze.leave_to_world()
+		cam.current = true
 		route_state.set_zone("deep")
-		_announce("The maze could not open. Try again.")
+		route_state.set_maze_door_state("available")
+	$HUD.visible = not on
+	$HUD.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT
+	_active_cursor.visible = false if on else _active_cursor.visible
+
+func _build_embedded_maze() -> void:
+	_campaign_session = CampaignSession.new()
+	_campaign_session.capture_party(divers, active)
+	_campaign_session.inventory = inventory
+	_campaign_session.campaign_key_items = key_items
+	_campaign_session.route_state = route_state
+	_campaign_session.outer_world_checkpoint = _serialize_world_state()
+	embedded_maze = preload("res://game/maze_level.tscn").instantiate() as MazeLevel
+	embedded_maze.name = "MazeLevel"
+	embedded_maze.world = self
+	embedded_maze.coordinate_origin = DeepZoneLayoutScript.MAZE_ORIGIN
+	embedded_maze.campaign_session = _campaign_session
+	add_child(embedded_maze)
+	_build_lab_maze_ramp()
+
+func _build_lab_maze_ramp() -> void:
+	var start := Vector3(DeepZoneLayoutScript.WORLD_MAX_X, 0, DeepZoneLayoutScript.MAZE_TRANSITION.z)
+	var finish := Vector3(embedded_maze.embedded_bounds.position.x, embedded_maze._floor_top_y, start.z)
+	var span := finish - start
+	var root := Node3D.new()
+	root.name = "LabMazeRamp"
+	add_child(root)
+	# Match collision and visible slab. The top face joins both existing floors;
+	# rotating a flat box instead of stacking steps keeps the return traversable.
+	var slope := atan2(span.y, span.x)
+	var floor := CSGBox3D.new()
+	floor.name = "RampFloor"
+	floor.size = Vector3(span.length() + 0.1, 0.4, DeepZoneLayoutScript.MAZE_APPROACH_HALF_WIDTH * 2.0)
+	floor.rotation.z = slope
+	floor.position = (start + finish) * 0.5 - floor.basis.y * 0.2
+	floor.use_collision = true
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.16, 0.27, 0.31)
+	floor.material = material
+	root.add_child(floor)
+	# Tall side collision closes the gap between the two enclosing perimeters.
+	for side in [-1.0, 1.0]:
+		var rail := CSGBox3D.new()
+		rail.size = Vector3(span.x + 8.0, 8.0, 0.5)
+		rail.position = Vector3((start.x + finish.x) * 0.5, 3.0, start.z + side * (DeepZoneLayoutScript.MAZE_APPROACH_HALF_WIDTH + 0.25))
+		rail.material = material
+		rail.use_collision = true
+		root.add_child(rail)
+		var edge := CSGBox3D.new()
+		edge.size = Vector3(0.12, 2.5, 0.12)
+		edge.position = Vector3(start.x + 1.0, 1.8, start.z + side * 3.6)
+		var glow := StandardMaterial3D.new()
+		glow.albedo_color = Color("65b9df")
+		glow.emission_enabled = true
+		glow.emission = Color("65b9df")
+		glow.emission_energy_multiplier = 2.0
+		edge.material = glow
+		root.add_child(edge)
+		var light := OmniLight3D.new()
+		light.position = edge.position
+		light.light_color = Color("65b9df")
+		light.light_energy = 1.4
+		light.omni_range = 12.0
+		root.add_child(light)
+		_build_invisible_wall(Vector3(rail.position.x, 30.0, rail.position.z), Vector3(rail.size.x, 80.0, rail.size.z))
+	# Preserve Marc's ceiling plug: no swimming over the maze ceiling into a
+	# sealed interior. Its lower ceiling has a visible face.
+	var reference := embedded_maze.get_node("CurrentWall1") as CSGBox3D
+	var ceiling := reference.position.y + reference.size.y * 0.5 + embedded_maze._CEILING_CLEARANCE
+	_build_invisible_wall(Vector3((start.x + finish.x) * 0.5, (ceiling + 80.0) * 0.5, start.z), Vector3(span.x + 8.0, 80.0 - ceiling, DeepZoneLayoutScript.MAZE_APPROACH_HALF_WIDTH * 2.0))
+	var roof := CSGBox3D.new()
+	roof.name = "RampCeiling"
+	roof.size = Vector3(span.x + 8.0, 0.3, DeepZoneLayoutScript.MAZE_APPROACH_HALF_WIDTH * 2.0)
+	roof.position = Vector3((start.x + finish.x) * 0.5, ceiling + 0.15, start.z)
+	roof.material = material
+	root.add_child(roof)
+	var label := Label3D.new()
+	label.text = "MAZE"
+	label.position = Vector3(start.x - 7.0, 6.0, start.z)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 80
+	label.outline_size = 8
+	label.pixel_size = 0.008
+	root.add_child(label)
 
 func _build_deep_zone_blocker_staging() -> void:
 	var definitions := [
@@ -3127,10 +3246,14 @@ func _update_aim_marker() -> void:
 # fade the banner. Only called while not battling: _physics_process skips
 # this whole side of the world once a fight is up.
 func _update_banner(dt: float) -> void:
-	if _banner_timer > 0.0:
-		_banner_timer -= dt
-		if _banner_timer <= 0.0:
-			banner.text = ""
+	if _announcements.current_text().is_empty():
+		return # Held intro/save-point prompts are not transient announcements.
+	# SavePointMenu does not pause the tree, unlike a lesson; neither reading
+	# menu may consume the exploration banner's allotted time underneath it.
+	if $HUD.visible and not save_point_menu.visible and not inventory_menu.visible:
+		_announcements.advance(dt)
+	_banner_timer = _announcements.seconds_left()
+	banner.text = _announcements.current_text()
 
 # Entering a guarded item's site starts its encounter directly; Sonar and
 # random-encounter rolls are not prerequisites, but the R encounter toggle
@@ -3176,6 +3299,8 @@ func _try_trigger_item_site(d: Diver) -> bool:
 # _physics_process() and here, since a movement roll may land on the same
 # frame the active diver crosses a site boundary.
 func _on_encounter_triggered(d: Diver) -> void:
+	if embedded_maze != null and embedded_maze.maze_active:
+		return
 	if not route_state.prologue_complete or battling or _transitioning_to_encounter or d != divers[active] or _intro_active or not random_encounters_enabled:
 		return
 	if _try_trigger_item_site(d):
@@ -3284,6 +3409,8 @@ func _on_special_encounter_cancelled() -> void:
 # _on_encounter_triggered, so a background diver's stray signal (there
 # shouldn't be one, but nothing enforces that) can't hijack the camera.
 func _on_diver_swapped(target: Diver, d: Diver) -> void:
+	if embedded_maze != null and embedded_maze.maze_active:
+		return
 	if d != divers[active]:
 		return
 	focus_camera_on(target, 1.1)
@@ -3701,10 +3828,14 @@ func _grant_reward_item(item_id: String) -> void:
 	_add_to_inventory(item_id)
 
 func _announce(text: String) -> void:
-	banner.text = text
-	_banner_timer = 4.0
+	_announcements.push(text)
+	_showing_save_prompt = false
+	banner.text = _announcements.current_text()
+	_banner_timer = _announcements.seconds_left()
 
 func _intro_announce(text: String) -> void:
+	_announcements.clear()
+	_banner_timer = 0.0
 	banner.text = text
 
 

@@ -39,7 +39,7 @@ run() {
 		local command_pid=$!
 		local stopped_on_script_error=0
 		while kill -0 "$command_pid" 2>/dev/null; do
-			if grep -q "SCRIPT ERROR:" "$gate_log"; then
+			if rg -q '(^|[[:space:]])ERROR:|Infinite loop detected' "$gate_log"; then
 				# A SceneTree verifier can throw before reaching quit(), leaving
 				# Godot alive forever. Stop immediately instead of waiting out the
 				# full timeout; the captured error is already the useful evidence.
@@ -60,8 +60,8 @@ run() {
 	fi
 	cat "$gate_log"
 	local script_error=0
-	if rg -q 'SCRIPT ERROR:|Infinite loop detected' "$gate_log"; then
-		echo "GATE ERROR: Godot reported a script error or a release-blocking infinite tween loop despite the exit status"
+	if rg -q '(^|[[:space:]])ERROR:|Infinite loop detected' "$gate_log"; then
+		echo "GATE ERROR: an engine/script error or release-blocking infinite tween loop invalidates the exit status"
 		script_error=1
 	fi
 	if [ "$command_status" -eq 124 ]; then
@@ -74,6 +74,20 @@ run() {
 	fails=$((fails + 1))
 	return 0
 }
+
+# Public runner probes exercise log/exit handling without importing the
+# wrapper into a second script or starting every gameplay gate.
+case "${1:-}" in
+	--probe-engine-error)
+		run "expected engine ERROR witness" /bin/echo 'ERROR: Lambda capture at index 0 was freed.'
+		exit "$fails" ;;
+	--probe-script-error)
+		run "expected script ERROR witness" /bin/echo 'SCRIPT ERROR: invalid instance'
+		exit "$fails" ;;
+	--probe-healthy)
+		run "healthy runner witness" /bin/echo 'healthy child'
+		exit "$fails" ;;
+esac
 
 # Project-wide script classes are cached by the Godot editor and that cache is
 # intentionally ignored. A brand-new worktree therefore needs one ordinary
@@ -94,9 +108,13 @@ prepare_godot_classes() {
 }
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
+run "verification runner: are engine/script errors rejected even when the child exits0" bash verify/gate_error_detection.sh
 run "authored combat turns: do real stun skips and Angler damage/Bite history reach live Battle" "$GODOT" --headless --path . --script verify/authored_combat_turns.gd
 run "Marc pause port: do all four tabs fit and block exploration without losing audio/training" "$GODOT" --headless --path . --script verify/marc_pause_presentation.gd
 run "Marc popup port: do real battles defer lessons and resume surviving callers safely" "$GODOT" --headless --path . --script verify/marc_popup_ownership.gd
+run "orange notice queue: do newest-four FIFO, duplicates and encounter toggles preserve readable notices" "$GODOT" --headless --path . --script verify/orange_message_model.gd
+run "orange live owners: do R/Q, map/menus, save contact and queued E preserve notices and usable controls" "$GODOT" --headless --path . --script verify/orange_messages.gd
+run "Sonar Vision: do actual Q/Tab, old flags and active-area ownership reveal hazards without pickup or G" "$GODOT" --headless --path . --script verify/marc_sonar_vision.gd
 run "Marc status port: does authored Bleed persist/cap while timed statuses and readable units remain real" "$GODOT" --headless --path . --script verify/marc_status_contract.gd
 run "Marc status layout: do all six multi-status cards fit through actual viewport resizing" "$GODOT" --headless --path . --script verify/marc_status_presentation.gd
 
@@ -183,15 +201,52 @@ run "local world guidance: do lab and Bucky wall hints follow location, active d
 run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip" "$GODOT" --headless --path . --script verify/lab_tethys_route.gd
 run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "maze campaign handoff: do six real entrance cases retain party, kit, inventory and progress" "$GODOT" --headless --path . --script verify/maze_campaign_handoff.gd
-run "puzzle maze exit: does real plate completion and normal swimming enter the maze and return safely without lab victory" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd
-run "puzzle maze saved exit: do saved solved doors reopen and normal exit movement reach the maze" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd -- --cold-load
+run "puzzle Deep exit: do real plate completion and normal swimming open Deep water without an obsolete maze portal" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd
+run "puzzle saved Deep exit: do saved solved doors reopen without an obsolete maze portal" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd -- --cold-load
+run "embedded maze ownership and ramp: does actual bidirectional swimming retain one party/input/camera/HUD owner without inactive encounters or Oxygen drain" "$GODOT" --headless --path . --script verify/embedded_maze.gd
+run "embedded maze saves: do 48 generated World/maze cases and cold legacy Title Load preserve frames, resources and independent progress" "$GODOT" --headless --path . --script verify/embedded_maze_checkpoint.gd
+run "maze drafts: do three capsules traverse real outgoing/return paths without clipping, reversing, or racing moving walls" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd
+run "C5 wall safety: do all three capsules avoid wall/attached-rock shoves and regain stable collision after restore/interruption" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd
+run "C5 active current: does live water push remain distinct from moving-wall carry" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd -- --currents
+run "moving-wall teardown: are surviving shared actors and non-default wall/skirt/rock layers preserved" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd -- --teardown
+run "retained wall riders: do six walls carry three capsules both ways and release to real swimming" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --matrix
+run "retained rider lifecycle: do restore, killed Tween, inactive/removed owner and C5 arrival relinquish safe poses/locks" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --lifecycle
+run "retained rider ownership: do downed bodies retain resources and other motion owners keep their locks" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --ownership
+run "retained rider landing: does a new CSG obstruction plus real current preserve carry and clear release" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --blocked --currents
+run "poster boundary captured bypass: does real swimming stop before the western poster fence" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd
+run "poster boundary coverage: do three capsules stop at both ends in both directions and below the actual ceiling" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --matrix
+run "poster fence saved placements: do old/current-frame JSON restores retain resources and swimmable party positions" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --restore
+run "poster fence downed party: do overlapping saved downed bodies clear without revival, refill or effect loss" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --restore --downed
+run "whirlpool wall safety: does a real wall prevent suction without disabling an open-water catch" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd
+run "whirlpool wall safety family: do three capsules, static/CSG walls, sphere/cylinder suction and both orientations obey physical occlusion" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --matrix
+run "whirlpool owner teardown: does a caught shared diver survive hazard removal and really swim" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --teardown
+run "whirlpool interruption family: do three actors survive spiral/vanish owner loss, stopped timers and live JSON restore" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --lifecycle
+run "whirlpool inactive owner: does the actual disabled maze remain quiet for parked shared actors" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --inactive
+run "whirlpool active deactivation: does real maze handoff release six interrupted actors and refuse transient snapshots" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --deactivate
+run "whirlpool blocked return: do24 capsule/solid/yaw/phase cases release outside new solids and permit actual clear-direction swimming" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --blocked-matrix
+run "whirlpool actual damage: do36 completed overlaps keep downed HP0, living HP1 and nonnegative loss without O2 cost" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --damage
+run "whirlpool actor lifetime: do six removed rigs leave no engine errors and three preexisting owners retain their locks/models/masks" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --actor-lifetime
+run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
+run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
+run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd
+run "Box12 blocked exit: does a solid CSG exit reject motion without opening the floor" "$GODOT" --headless --path . --script verify/maze_box12_route.gd -- --blocked
+for box12_diver in 0 1 2; do
+	run "Box12 teardown diver $box12_diver: does removing the transient owner restore the shared capsule and seal the floor" "$GODOT" --headless --path . --script verify/maze_box12_route.gd -- --cancel "--diver=$box12_diver"
+done
+for draft_diver in 0 1 2; do
+	run "maze draft teardown diver $draft_diver: does owner removal restore a clear actor and sealed floor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --cancel "--diver=$draft_diver"
+done
 run "maze secret continuity: do real E/Esc transitions retain resources, doors, walls and pending rewards" "$GODOT" --headless --path . --script verify/maze_secret_continuity.gd
 run "maze checkpoint: do cold Load, failed writes and real defeat/Restart conserve saved puzzle and campaign state" "$GODOT" --headless --path . --script verify/maze_checkpoint.gd
 run "maze checkpoint IO: do generated saves round-trip and malformed saves return an actionable title without mutation" "$GODOT" --headless --path . --script verify/maze_checkpoint_io.gd
+run "maze checkpoint coordinates: do legacy/framed JSON restores preserve puzzle placement and replace pending rewards once" "$GODOT" --headless --path . --script verify/maze_coordinate_frame.gd
 run "maze World return: do live exit and cold World save/re-entry retain party and independent maze/lab history" "$GODOT" --headless --path . --script verify/maze_world_return.gd
 run "maze relic consumers: do real victories unlock owned campaign spells without using or consuming maze keys" "$GODOT" --headless --path . --script verify/maze_relic_consumers.gd
 run "maze input ownership: do real map/save/swap keys stay exclusive while Marc's local encounter policy remains independent" "$GODOT" --headless --path . --script verify/maze_input_ownership.gd
 run "Marc earned map: can real pre-map swimming reach/open the chest, use L and return without geometry or current shortcuts" "$GODOT" --headless --path . --script verify/marc_earned_map.gd
+run "Marc shared-World earned map: does real ramp entry, swimming, E acquisition and return retain the same party" "$GODOT" --headless --path . --script verify/marc_earned_map.gd -- --world-acquisition
+run "Marc review earned map: does the actual diagnostic flag retain unearned L rejection and real chest acquisition" "$GODOT" --headless --path . --script verify/marc_earned_map.gd -- --maze-playtest
+run "map discovery and first open: do discovered-only legend, paused responsive layout, new/legacy lesson saves and later media agree" "$GODOT" --headless --path . --script verify/maze_map_discovery.gd -- --legend --layout --persistence --media-transition
 run "Marc chest ownership: do both chests block real actions but pause/resume safely for every diver" "$GODOT" --headless --path . --script verify/marc_chest_ownership.gd
 run "Marc earned-map persistence: do actual save/cold Load/legacy Load preserve map, spent door keys and spell relics independently" "$GODOT" --headless --path . --script verify/marc_earned_map_persistence.gd
 run "Marc map region: do generated real L/badge/closure cases respect acquired-map availability for every diver" "$GODOT" --headless --path . --script verify/marc_earned_map_region.gd
@@ -205,10 +260,13 @@ run "audio settings UI: can players independently persist music and SFX volume/m
 run "persistence: do inventory and world rewards round-trip through a save" "$GODOT" --headless --path . --script verify/persistence.gd
 run "environmental oxygen: can an empty tank still complete the route" "$GODOT" --headless --path . --script verify/environmental_oxygen.gd
 run "special encounters: do solo loss/win contracts hold" "$GODOT" --headless --path . --script verify/special_encounters.gd
+run "maze radius specials: do actual Q/R, exclusive ownership, seven rewards and saved sites retain shared actors/resources" "$GODOT" --headless --path . --script verify/maze_special_sites.gd
+run "maze site placement: do twelve fresh/cold layouts retain all seven reachable sites and persisted locations" "$GODOT" --headless --path . --script verify/maze_special_sites.gd -- --placement-only
 run "special dispatch: do swap and shockwave launch and restore" "$GODOT" --headless --path . --script verify/special_minigame_dispatch.gd
 run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headless --path . --script verify/grapple_intercept.gd
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd
 run "world grapple aim: is the first-person target unobstructed and safely restored" "$GODOT" --headless --path . --script verify/world_grapple_aim.gd
+run "maze grapple aim: do real F/fire/cancel, layer-5 targets, map/save ownership and shared-model teardown remain safe" "$GODOT" --headless --path . --script verify/maze_grapple_aim.gd
 run "Marc light item grapple: do real layer-5 shots reel once to the shooter without changing anchor traversal" "$GODOT" --headless --path . --script verify/marc_orb_reel.gd
 run "Marc exploration controls: do real F/E keys, all zero-Oxygen abilities, modal owners and help agree" "$GODOT" --headless --path . --script verify/marc_exploration_controls.gd
 run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
@@ -242,6 +300,7 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "Marc swirl native visibility: do revealed foreground rocks leave the controlled diver readable at column-aligned camera angles" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_swirl_occlusion.gd
 	run "maze overview native presentation: do title/help/legend fit actual rendered wide/short/portrait windows without HUD bleed-through" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_maze_map_presentation.gd
+	run "maze first-open native discovery: do paused lesson, map and discovered-only legend fit actual rendered viewports" "$GODOT" --path . --rendering-method gl_compatibility --script verify/maze_map_discovery.gd -- --legend --layout --persistence
 	run "maze native ready-door input: do eligible door/current/wall priorities survive rendered frame dispatch" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_map_door.gd
 	for shape in 1280x720 720x480; do
 		for phase in 0.35 0.65 0.8; do
@@ -310,7 +369,7 @@ else
 	# animation despite doing nothing. Current L-map proof needs an identified
 	# export; don't silently accept a stale generated docs pack.
 	if [ -f "$WEB_DIR/build-info.json" ]; then
-		run "identified feedback export: do served checksum, ordinary title and real L-map agree" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback
+		run "identified feedback export: do served checksum, title and actual swim/E acquisition/first earned L-map agree" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback
 	else
 		echo "=== identified maze feedback webcheck: skipped, no build-info.json ==="
 		skips=$((skips + 1))

@@ -108,6 +108,12 @@ static func decode(data: Dictionary) -> CampaignSession:
 static func valid_maze(value: Variant) -> bool:
 	if not value is Dictionary or value.get("version") != 1 or not value.get("flags") is Dictionary:
 		return false
+	# Optional for old standalone saves; present metadata must be checked before
+	# any live restore can translate part of the maze into a different frame.
+	if value.has("coordinate_origin") and not MazeCoordinateFrame.valid_origin(value.coordinate_origin):
+		return false
+	if value.has("special_sites") and not preload("res://game/maze_special_sites.gd").valid_snapshot(value.special_sites):
+		return false
 	for flag in MazeLevel.CAMPAIGN_FLAGS:
 		if not value.flags.get(flag) is bool:
 			return false
@@ -171,6 +177,8 @@ static func valid_maze(value: Variant) -> bool:
 	if value.flags._walls_10_11_swung and homes.walls_10_11.size() != 2:
 		return false
 	var map: Variant = value.get("map")
+	if map is Dictionary and map.has("intro_seen") and not map.intro_seen is bool:
+		return false
 	if not map is Dictionary or not _strings(map.get("walls")) or not _strings(map.get("corridors")) \
 		or not _strings(map.get("pois")) or not _integer(map.get("count"), 0, 256) \
 		or not map.get("rooms") is Array or not map.get("halls") is Array or map.halls.size() > 256:

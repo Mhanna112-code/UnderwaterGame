@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+POSTER_APPROACH|edge=256.303634643555|poster_west=300.304748535156|line=39.1365737915039|start=(278.3042, 2.0, 37.13657)
+POSTER_SWIM|end=(278.3042, 2.0, 43.05341)|owner=true|velocity=(0.0, 0.0, 4.998908)
+FINDING POSTER-1 real W swimming bypasses the poster wall's western end
+MAZE POSTER BARRIERS: findings=1

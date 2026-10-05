@@ -1,6 +1,7 @@
 extends "res://verify/maze_current_route.gd"
 ## EARN-1: the map is earned through normal no-map swimming, not a bootstrap trap.
 var capture_dir := ""
+var embedded_world: World
 
 func _initialize() -> void:
 	if DisplayServer.get_name() != "headless":
@@ -12,9 +13,42 @@ func _run() -> void:
 		if arg.begins_with("--capture-dir="):
 			capture_dir = arg.trim_prefix("--capture-dir=")
 	root.size = Vector2i(1280, 720)
-	maze = (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
-	root.add_child(maze)
-	current_scene = maze
+	var review_entry := "--maze-playtest" in OS.get_cmdline_user_args()
+	if "--world-acquisition" in OS.get_cmdline_user_args() or review_entry:
+		embedded_world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
+		embedded_world.skip_intro_for_test = true
+		embedded_world.skip_tutorial_for_test = true
+		root.add_child(embedded_world)
+		current_scene = embedded_world
+		await process_frame
+		embedded_world.title_screen.close()
+		paused = false
+		embedded_world.random_encounters_enabled = false
+		maze = embedded_world.embedded_maze
+		if not review_entry:
+			for i in 3:
+				embedded_world.divers[i].global_position = Vector3(maze.embedded_bounds.position.x - 1.5 - i * 2, 1.8, 16)
+			embedded_world.yaw = PI * 0.5
+			var swim := InputEventKey.new()
+			swim.keycode = KEY_W
+			swim.pressed = true
+			Input.parse_input_event(swim)
+			for frame in 45:
+				await physics_frame
+				if maze.maze_active:
+					break
+			swim = InputEventKey.new()
+			swim.keycode = KEY_W
+			Input.parse_input_event(swim)
+		else:
+			for frame in 4:
+				await process_frame
+		_expect(maze.maze_active and current_scene == embedded_world, "EARN-1 real ramp approach did not enter shared maze")
+		_expect(maze.divers == embedded_world.divers, "EARN-1 map route replaced the World party")
+	else:
+		maze = (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
+		root.add_child(maze)
+		current_scene = maze
 	for frame in range(15):
 		await physics_frame
 	var entry := maze._diver.global_position
@@ -32,8 +66,10 @@ func _run() -> void:
 		await _finish_earned()
 		return
 	# R is a genuine preference input, not disabling currents or wall collision.
-	await _key(KEY_R)
+	if maze.random_encounters_enabled:
+		await _key(KEY_R)
 	var goal := chest.global_position + Vector3(0, 1.0, 1.8)
+	print("EARNED MAP ENTRY|position=", entry, "|goal=", goal, "|yaw=", maze._yaw)
 	var route := _no_current_path(goal)
 	_expect(not route.is_empty(), "EARN-1 no capsule-clear no-current route to chest before earning map")
 	if not findings.is_empty():
@@ -88,6 +124,8 @@ func _run() -> void:
 			await _key(KEY_ESCAPE)
 		await _key(KEY_L)
 		_expect(map.main_map.visible, "EARN-1 acquired map cannot be opened with real L")
+		_expect((popup.get_node("%AbilityExplanationPanel") as Control).visible and paused, "EARN-1 earned first L does not teach navigation")
+		await _key(KEY_ESCAPE)
 		await _capture("earned-map")
 		await _key(KEY_L)
 		var back := _no_current_path(Vector3(entry.x, maze._diver.global_position.y, entry.z))
@@ -107,7 +145,10 @@ func _finish_earned() -> void:
 	for finding in findings:
 		print("FINDING ", finding)
 	print("MARC EARNED MAP: clean" if findings.is_empty() else "MARC EARNED MAP: %d findings" % findings.size())
-	maze.queue_free()
+	if embedded_world != null:
+		embedded_world.queue_free()
+	else:
+		maze.queue_free()
 	await process_frame
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	quit(0 if findings.is_empty() else 1)

@@ -32,16 +32,16 @@ func _run() -> void:
 	world.key_items.assign(["current_pearl"])
 	world.divers[1].stats.hp = 0
 	world.divers[2].stats.oxygen = 23.5
-	world.divers[0].global_position = world.deep_zone_layout.route_points().maze_transition
+	world.divers[0].global_position = Vector3(263, 2, 16)
 	for frame in range(14):
 		await physics_frame
-		if current_scene is MazeLevel:
+		if world.embedded_maze.maze_active:
 			break
-	if not current_scene is MazeLevel:
+	if current_scene != world or not world.embedded_maze.maze_active:
 		findings.append("INT-04 setup: normal entrance did not reach MazeLevel")
 		await _finish()
 		return
-	var maze := current_scene as MazeLevel
+	var maze := world.embedded_maze
 	var point: SavePoint
 	for child in maze.get_children():
 		if child is SavePoint:
@@ -95,12 +95,17 @@ func _run() -> void:
 		_expect(FileAccess.get_file_as_bytes(SaveManager.slot_path(SLOT)) == checkpoint_bytes,
 			"INT-04 rejected save replaces the last usable checkpoint")
 		_expect(maze.campaign_session.selected_slot == SLOT, "INT-04 rejected save changes selected checkpoint")
+		# Orange FIFO preserves earlier contact/success notices. The denied
+		# save's warning must become readable, not overwrite them instantly.
+		var failure_deadline := Time.get_ticks_msec() + 18000
+		while not _save_failure(maze) and Time.get_ticks_msec() < failure_deadline:
+			await physics_frame
 		_expect(_save_failure(maze), "INT-04 rejected save has no visible failure explanation")
 		DirAccess.remove_absolute(pending_path)
 	maze.inventory = {"potion": 99}
 	maze.divers[1].stats.hp = 0
 	maze.keys_held = 99
-	maze.queue_free()
+	world.queue_free()
 	await process_frame
 	var cold := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	root.add_child(cold)
@@ -109,12 +114,12 @@ func _run() -> void:
 	cold.title_screen.load_game_chosen.emit(SLOT)
 	for frame in range(16):
 		await process_frame
-		if current_scene is MazeLevel:
+		if cold.embedded_maze.maze_active:
 			break
-	if not current_scene is MazeLevel:
-		findings.append("INT-04: cold Load discards the saved maze and returns to World")
+	if current_scene != cold or not cold.embedded_maze.maze_active:
+		findings.append("INT-04: cold Load discards the saved embedded maze")
 	else:
-		var loaded := current_scene as MazeLevel
+		var loaded := cold.embedded_maze
 		print("MAZE CHECKPOINT RESTORED|inventory=", loaded.inventory, "|keys=", loaded.keys_held)
 		_expect(loaded.inventory.size() == 1 and int(loaded.inventory.get("potion", 0)) == 3 and loaded.keys_held == 0,
 			"INT-04: saved inventory and spent keys do not roll back together")
@@ -151,8 +156,16 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 	seed(loss_seed)
 	maze.inventory = {"potion": 99}
 	maze.keys_held = 99
+	# Bucky's zero evasion makes this a reliable real-damage loss fixture,
+	# unlike three evasive survivors who can legitimately win a seeded fight.
+	# The other two are already downed; their checkpoint health must still
+	# return after Restart. Never inject a battle outcome or alter boss stats.
 	for diver in maze.divers:
-		diver.stats.hp = 1
+		diver.stats.hp = 0
+	maze.active = 2
+	maze._diver = maze.divers[2]
+	maze.world.active = 2
+	maze.divers[2].stats.hp = 1
 	var sigil := maze.get_node("BossSigil_main_boss") as Node3D
 	maze.divers[maze.active].global_position = sigil.global_position + Vector3.UP
 	var screen: GameOverScreen
@@ -169,6 +182,10 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 		for child in maze.get_children():
 			if child is Battle:
 				battle = child as Battle
+		if battle != null and observed_battle != battle:
+			observed_battle = battle
+			_expect(battle.encounter_source == "maze_cordys", "INT-04: loss fixture entered an unrelated fight rather than Cordys")
+			battle.finished.connect(func(result: String) -> void: outcomes.append(result))
 		# Ordinary enemy QTEs can expose a one-time Continue explanation.
 		# Read/continue it through the real button, but never press the QTE:
 		# its normal timeout still delivers damage. Ignoring this legitimate
@@ -179,9 +196,6 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 			captions += 1
 			await process_frame
 		if battle != null and battle.main_menu.is_visible_in_tree() and not battle.attack_btn.disabled:
-			if observed_battle != battle:
-				observed_battle = battle
-				battle.finished.connect(func(result: String) -> void: outcomes.append(result))
 			battle.attack_btn.pressed.emit()
 			await process_frame
 			for button in battle.move_buttons:
@@ -203,12 +217,12 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 	screen.restart_chosen.emit()
 	for frame in range(24):
 		await process_frame
-		if current_scene is MazeLevel and current_scene != maze:
+		if current_scene is World and (current_scene as World).embedded_maze.maze_active and (current_scene as World).embedded_maze != maze:
 			break
-	if not current_scene is MazeLevel or current_scene == maze:
+	if not current_scene is World or not (current_scene as World).embedded_maze.maze_active:
 		findings.append("INT-04: Restart does not rebuild the saved maze")
 		return
-	var restored := current_scene as MazeLevel
+	var restored := (current_scene as World).embedded_maze
 	_expect(restored.route_state.prologue_complete and not paused, "INT-04: Restart replays opening or leaves maze frozen")
 	_expect(restored.keys_held == 0 and int(restored.inventory.get("potion", 0)) == 3,
 		"INT-04: Restart retains unsaved inventory/key changes")

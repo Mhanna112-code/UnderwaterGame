@@ -1,0 +1,7 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE COORDINATE FRAME|generated_party_frame_cases=144
+MAZE COORDINATE FRAME|invalid_frames=10|invalid_destinations=3|range_overflow=1
+FINDING  FRAME-4 repeated live restore duplicates pending orb/key rewards
+FINDING  FRAME-4 empty checkpoint leaves unsaved collectible rewards
+MAZE COORDINATE FRAME: 2 finding(s)

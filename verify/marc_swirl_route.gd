@@ -22,8 +22,7 @@ func _run() -> void:
 		await physics_frame
 	maze.random_encounters_enabled = false
 	maze.room_encounters_enabled = false
-	maze.has_sonar_vision = true
-	maze.sonar_vision_equipped = true
+	# Vision is part of Q now; no separate item/equipment grant in this route.
 	var room := maze.get_node("SphereRoom") as SwirlRoom
 	room.diver_hit.connect(func(diver: Diver) -> void:
 		hit_counts[diver.model_name] = int(hit_counts.get(diver.model_name, 0)) + 1)

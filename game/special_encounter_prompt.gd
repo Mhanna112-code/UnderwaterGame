@@ -34,6 +34,10 @@ var _preview_diver: Diver
 var _name_label: Label
 var _ability_label: Label
 var _media_frame: PanelContainer
+var _confirm_column: VBoxContainer
+var _select_column: VBoxContainer
+var _showcase: GridContainer
+var _preview_container: SubViewportContainer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -47,7 +51,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.08, 0.96)
+	bg.color = Color(0.02, 0.05, 0.08, 1.0)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -57,6 +61,8 @@ func _ready() -> void:
 	_select_panel = _build_select_panel()
 	_select_panel.visible = false
 	add_child(_select_panel)
+	get_viewport().size_changed.connect(_layout)
+	_layout()
 
 func open() -> void:
 	visible = true
@@ -67,6 +73,50 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+	_stop_media()
+
+func _layout() -> void:
+	var available := get_viewport_rect().size - Vector2(32, 32)
+	_confirm_column.custom_minimum_size.x = clampf(available.x, 240, 420)
+	available.x = minf(available.x, 760)
+	_select_column.custom_minimum_size.x = maxf(240, available.x)
+	_showcase.columns = 1 if available.x < 620 else 2
+	var portrait := available.x < 620
+	var preview_height := 150.0 if portrait else clampf(available.y - 230.0, 150.0, 260.0)
+	_preview_container.custom_minimum_size = Vector2(minf(280, available.x), preview_height)
+	var video_width := minf(320, available.x)
+	if not portrait:
+		video_width = minf(video_width, (available.x - 20) * 0.5)
+	_media_frame.custom_minimum_size = Vector2(video_width, video_width * 9.0 / 16.0)
+
+func _stop_media() -> void:
+	if _media_frame != null:
+		for player in _media_frame.find_children("*", "VideoStreamPlayer", true, false):
+			(player as VideoStreamPlayer).stop()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible or not event is InputEventKey or not event.pressed or event.echo:
+		return
+	match event.keycode:
+		KEY_ESCAPE:
+			if _mode == "select":
+				_on_back_pressed()
+			else:
+				cancelled.emit()
+		KEY_ENTER:
+			if _mode == "confirm":
+				_on_enter_pressed()
+			else:
+				diver_chosen.emit(String(ROSTER[_carousel_index]))
+		KEY_LEFT:
+			if _mode == "select":
+				_cycle(-1)
+		KEY_RIGHT:
+			if _mode == "select":
+				_cycle(1)
+		_:
+			return
+	get_viewport().set_input_as_handled()
 
 func _build_confirm_panel() -> Control:
 	var center := CenterContainer.new()
@@ -80,6 +130,7 @@ func _build_confirm_panel() -> Control:
 	center.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	var col := VBoxContainer.new()
+	_confirm_column = col
 	col.custom_minimum_size = Vector2(420, 0)
 	col.add_theme_constant_override("separation", 14)
 	col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -102,13 +153,13 @@ func _build_confirm_panel() -> Control:
 
 	var enter_btn := Button.new()
 	enter_btn.text = "Enter"
-	enter_btn.custom_minimum_size = Vector2(420, 44)
+	enter_btn.custom_minimum_size = Vector2(0, 44)
 	enter_btn.pressed.connect(_on_enter_pressed)
 	col.add_child(enter_btn)
 
 	var not_now_btn := Button.new()
 	not_now_btn.text = "Not Now"
-	not_now_btn.custom_minimum_size = Vector2(420, 40)
+	not_now_btn.custom_minimum_size = Vector2(0, 40)
 	not_now_btn.pressed.connect(func() -> void: cancelled.emit())
 	col.add_child(not_now_btn)
 
@@ -122,8 +173,17 @@ func _on_enter_pressed() -> void:
 	_refresh_carousel()
 
 func _build_select_panel() -> Control:
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.offset_left = 16
+	center.offset_top = 16
+	center.offset_right = -16
+	center.offset_bottom = -16
 	var col := VBoxContainer.new()
-	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_select_column = col
+	col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	center.add_child(col)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_theme_constant_override("separation", 10)
 
@@ -133,24 +193,28 @@ func _build_select_panel() -> Control:
 	heading.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	col.add_child(heading)
 
-	# Left arrow / 3D preview / right arrow, side by side - the preview
+	# Responsive preview/video grid; carousel arrows live in their own row.
+	# The preview
 	# itself is a small SubViewport with its own camera and one live Diver
 	# instance, same recipe battle.gd's own stage uses (SubViewportContainer
 	# + SubViewport + Camera3D + Diver.new()), just facing the camera
 	# instead of facing away (battle's party puppets show their backs to
 	# the camera on purpose - a showcase screen wants the opposite).
-	var row := HBoxContainer.new()
+	var row := GridContainer.new()
+	_showcase = row
+	row.columns = 2
 	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	row.add_theme_constant_override("separation", 20)
+	row.add_theme_constant_override("h_separation", 20)
+	row.add_theme_constant_override("v_separation", 12)
 	col.add_child(row)
 
 	var left_btn := Button.new()
 	left_btn.text = "<"
-	left_btn.custom_minimum_size = Vector2(50, 220)
+	left_btn.custom_minimum_size = Vector2(44, 40)
 	left_btn.pressed.connect(_cycle.bind(-1))
-	row.add_child(left_btn)
 
 	var preview_container := SubViewportContainer.new()
+	_preview_container = preview_container
 	preview_container.custom_minimum_size = Vector2(280, 260)
 	preview_container.stretch = true
 	row.add_child(preview_container)
@@ -197,15 +261,20 @@ func _build_select_panel() -> Control:
 
 	var right_btn := Button.new()
 	right_btn.text = ">"
-	right_btn.custom_minimum_size = Vector2(50, 220)
+	right_btn.custom_minimum_size = Vector2(44, 40)
 	right_btn.pressed.connect(_cycle.bind(1))
-	row.add_child(right_btn)
+	var carousel_controls := HBoxContainer.new()
+	carousel_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(carousel_controls)
+	carousel_controls.add_child(left_btn)
 
 	_name_label = Label.new()
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name_label.add_theme_font_size_override("font_size", 20)
 	_name_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
-	col.add_child(_name_label)
+	_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	carousel_controls.add_child(_name_label)
+	carousel_controls.add_child(right_btn)
 
 	_ability_label = Label.new()
 	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -214,7 +283,7 @@ func _build_select_panel() -> Control:
 	# actual tutorial sentence - without autowrap this would just run off
 	# the edges of the screen instead of wrapping under the diver preview.
 	_ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_ability_label.custom_minimum_size = Vector2(360, 0)
+	_ability_label.custom_minimum_size = Vector2.ZERO
 	col.add_child(_ability_label)
 
 	var button_row := HBoxContainer.new()
@@ -224,23 +293,24 @@ func _build_select_panel() -> Control:
 
 	var back_btn := Button.new()
 	back_btn.text = "< Back"
-	back_btn.custom_minimum_size = Vector2(150, 40)
+	back_btn.custom_minimum_size = Vector2(140, 40)
 	back_btn.pressed.connect(_on_back_pressed)
 	button_row.add_child(back_btn)
 
 	var confirm_btn := Button.new()
 	confirm_btn.text = "Send Them In"
-	confirm_btn.custom_minimum_size = Vector2(180, 40)
+	confirm_btn.custom_minimum_size = Vector2(160, 40)
 	confirm_btn.pressed.connect(func() -> void: diver_chosen.emit(String(ROSTER[_carousel_index])))
 	button_row.add_child(confirm_btn)
 
-	return col
+	return center
 
 func _cycle(dir: int) -> void:
 	_carousel_index = (_carousel_index + dir + ROSTER.size()) % ROSTER.size()
 	_refresh_carousel()
 
 func _on_back_pressed() -> void:
+	_stop_media()
 	_mode = "confirm"
 	_select_panel.visible = false
 	_confirm_panel.visible = true

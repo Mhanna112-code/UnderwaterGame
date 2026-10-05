@@ -652,6 +652,8 @@ func _physics_process(delta: float) -> void:
 func update_sonar() -> void:
 	if world == null:
 		return
+	if world.embedded_maze != null and world.embedded_maze.maze_active:
+		return # MazeMiniMap owns local Sonar discoveries in this active area.
 	var s_items := []
 	for item in ItemGuardian.spots():
 		if world.key_items.has(String(item.item)):

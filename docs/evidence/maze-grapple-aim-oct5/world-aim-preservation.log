@@ -1,0 +1,28 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+PASS: world_grapple_aim: fixture selects the aimed Grapple diver
+PASS: world_grapple_aim: Musashi begins visible in third-person world play
+PASS: world_grapple_aim: production route owns a Whirlpool hazard
+PASS: world_grapple_aim: Whirlpool has a player-visible hazard surface
+PASS: world_grapple_aim: Whirlpool visual stays floor-aligned instead of forming an opaque wall across the required target line
+PASS: world_grapple_aim: production route owns three pressure plates
+PASS: world_grapple_aim: pressure plate 1 has a visible surface
+PASS: world_grapple_aim: pressure plate 1 visual lies on its real floor trigger instead of standing upright on the wall
+PASS: world_grapple_aim: pressure plate 2 has a visible surface
+PASS: world_grapple_aim: pressure plate 2 visual lies on its real floor trigger instead of standing upright on the wall
+PASS: world_grapple_aim: pressure plate 3 has a visible surface
+PASS: world_grapple_aim: pressure plate 3 visual lies on its real floor trigger instead of standing upright on the wall
+PASS: world_grapple_aim: aim reticle owns distance-aware sizing — guards against a close wall filling the whole first-person view
+PASS: world_grapple_aim: a 10 cm ray hit keeps the gray miss reticle below 5% world scale
+PASS: world_grapple_aim: a normal route target retains the authored full-size reticle
+PASS: world_grapple_aim: Grapple enters first-person aim mode
+PASS: world_grapple_aim: entering aim hides the active diver mesh — guards against the body covering the crosshair and far anchor
+PASS: world_grapple_aim: cancel exits aim mode
+PASS: world_grapple_aim: cancel restores the active diver mesh — guards against an invisible player after backing out
+PASS: world_grapple_aim: firing exits aim mode
+PASS: world_grapple_aim: firing restores the active diver mesh — guards against an invisible player after a grapple attempt
+WORLD GRAPPLE AIM: clean

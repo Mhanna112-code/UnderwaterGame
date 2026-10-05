@@ -1,4 +1,4 @@
-# INT-01: real scene replacement must not reconstruct the campaign party.
+# INT-01: embedded area entry must preserve the live campaign party.
 # Six bounded cases cover every active diver, with/without a downed member.
 # Fixture skips onboarding and places the party near the normal entrance;
 # this proves live state conservation, not navigation or cold-load persistence.
@@ -67,17 +67,17 @@ func _case(selected: int, downed: bool) -> void:
 			"known": diver.known_spells.duplicate(), "equipped": diver.equipped_spells.duplicate(),
 			"sonar": diver.sonar_active})
 	# Physics owns the transition, not a direct call to its private helper.
-	(world.divers[selected] as Diver).global_position = world.deep_zone_layout.route_points().maze_transition
+	(world.divers[selected] as Diver).global_position = Vector3(263, 2, 16)
 	for frame in range(12):
 		await physics_frame
-		if current_scene is MazeLevel:
+		if world.embedded_maze.maze_active:
 			break
 	await process_frame
 	var label := "INT-01 active=%d downed=%s" % [selected, downed]
-	if not current_scene is MazeLevel:
-		findings.append(label + ": normal proximity entrance did not load MazeLevel")
+	if current_scene != world or not world.embedded_maze.maze_active:
+		findings.append(label + ": normal area entry did not activate embedded MazeLevel")
 	else:
-		var maze := current_scene as MazeLevel
+		var maze := world.embedded_maze
 		_expect(maze.active == selected, label + ": selected diver reset")
 		_expect(maze.inventory == {"potion": 3, "oxygen_cell": 2}, label + ": inventory reset")
 		_expect(maze.get("campaign_key_items") == ["current_pearl", "reef_plate"], label + ": campaign relics lost/mixed with door keys")

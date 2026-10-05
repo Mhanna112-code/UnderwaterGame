@@ -1,5 +1,5 @@
 extends SceneTree
-## PX-01: real plate completion + normal movement must reach the maze.
+## PX-01: real plate completion + movement opens Deep; the maze ramp is after lab.
 const SLOT := 918349
 var findings: Array[String] = []
 var world: World
@@ -74,41 +74,18 @@ func _run() -> void:
 		print("PUZZLE EXIT VIEW|diver=", world.divers[world.active].global_position, "|camera=", world.cam.global_position)
 		await RenderingServer.frame_post_draw
 		_expect(root.get_texture().get_image().save_png("res://docs/evidence/maze-campaign-integration/puzzle-maze-exit.png") == OK, "PX exit capture failed")
-	await _swim(Vector3(48, 2, 10), true)
+	await _swim(Vector3(48, 2, 10), false)
 	for frame in range(16):
 		await physics_frame
-		if current_scene is MazeLevel:
-			break
-	_expect(current_scene is MazeLevel, "PX-01 solved puzzle exit movement never loads Marc's maze")
-	if current_scene is MazeLevel:
-		var maze := current_scene as MazeLevel
-		for index in range(3):
-			_expect(maze.divers[index].stats == expected_stats[index], "PX entry recreated party resources")
-		_expect(maze.route_state.lab_state == "locked" and maze.route_state.tethys_state == "locked",
-			"PX entry required/changed independent laboratory completion")
-		print("PUZZLE MAZE ARRIVAL|", maze._diver.global_position)
-		if "--capture-exit" in OS.get_cmdline_user_args():
-			await create_timer(1.2).timeout
-			await RenderingServer.frame_post_draw
-			_expect(root.get_texture().get_image().save_png("res://docs/evidence/maze-campaign-integration/puzzle-maze-arrival.png") == OK, "PX arrival capture failed")
-		# Fixture positions at the actual return surface. Real E must restore
-		# the appropriate World entry, not reconstruct a fresh opener or party.
-		maze._diver.global_position = maze.get_node("CampaignExit").global_position + Vector3.UP
-		await _key(KEY_E)
-		for frame in range(16):
-			await physics_frame
-			if current_scene is World:
-				break
-		_expect(current_scene is World, "PX-03 actual maze exit did not return to World")
-		if current_scene is World:
-			var returned := current_scene as World
-			var spot: Vector3 = returned.divers[returned.active].global_position
-			_expect(spot.distance_to(Vector3(55, 2, 10)) < 2, "PX-03 return used the unrelated Deep landmark")
-			_expect(returned._puzzle_solved and returned.opening_video == null and not paused,
-				"PX-03 return lost puzzle progress or replayed opening")
-			for frame in range(16):
-				await physics_frame
-			_expect(current_scene == returned, "PX-03 World return immediately bounced into maze")
+	_expect(current_scene == world and not world.embedded_maze.maze_active,
+		"PX-01 blockade exit still teleports to the maze instead of leading toward lab-side ramp")
+	_expect(world.divers[world.active].global_position.distance_to(Vector3(48, 2, 10)) < 1.0,
+		"PX-01 solved blockade exit remains physically obstructed")
+	for index in range(3):
+		_expect(world.divers[index].stats == expected_stats[index], "PX exit replaced party resources")
+	_expect(world._puzzle_solved and world.route_state.lab_state == "locked" and world.route_state.tethys_state == "locked",
+		"PX exit lost puzzle progress or changed independent laboratory completion")
+	print("PUZZLE EXIT|Deep passage opened|maze entrance relocated beyond laboratory|party preserved")
 	await _finish()
 
 func _world_fixture() -> World:
