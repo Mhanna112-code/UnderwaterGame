@@ -48,12 +48,17 @@ Do not convert these focused receipts into a full runner/normal campaign claim.
 
 ## Still required
 
-Approved Angler→overwhelming Tethys opening and maze Cordys introduction;
-state-aware lab/computer/controller goals and clear durable completion;
+State-aware lab/computer/controller goals and clear durable completion;
 actual earned-resource casual/skilled lab-first/maze-first routes with removed
 victory-healing assumptions; Mermaid-Weirdo inspection; full current suite,
 browser persistence/Bomb Bot/audio/six-area visuals; current README flow and
 matching native packages. Fixed75HP Cordys/generic puppet key/early maze stay.
+
+Miguel subsequently moved the Angler→overwhelming Tethys opening and maze
+Cordys film relocation to the end of all other work. Keep the existing opening
+unchanged in intervening releases. The final isolated review candidate requires
+his explicit approval before main or canonical publication; earlier design
+approval/general direct-main authorization is not approval for that delivery.
 
 ## Delivery
 

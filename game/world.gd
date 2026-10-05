@@ -134,6 +134,7 @@ const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
 const OpeningVideoScript := preload("res://game/opening_video.gd")
 const OpeningTriggerScript := preload("res://game/opening_prologue_trigger.gd")
 const PrologueRecoveryScript := preload("res://game/prologue_recovery.gd")
+const CampaignCompletionScript := preload("res://game/campaign_completion.gd")
 const PrologueCinematicScript := preload("res://game/prologue_cinematic.gd")
 
 var key_items: Array[String] = []
@@ -264,6 +265,60 @@ const AUTOSAVE_INTERVAL := 180.0
 var _autosave_timer := 0.0
 var _autosave_writing := false
 var _checkpoint_saving := false
+var _completion_screen: CanvasLayer
+var _completion_checkpoint: Dictionary = {}
+var _completion_saving := false
+
+func _show_campaign_completion(already_saved := false) -> void:
+	if is_instance_valid(_completion_screen) or route_state.octopus_state != "defeated":
+		return
+	# The actual battle result has already paid XP and removed the station.
+	# Freeze this boundary before yielding; retries must not replay rewards or
+	# silently restore/heal the party. This does not relax ordinary save guards.
+	_checkpoint_saving = true
+	$HUD.visible = false
+	if embedded_maze != null:
+		embedded_maze.get_node("HUD").visible = false
+	for diver in divers:
+		diver.velocity = Vector3.ZERO
+		diver.exploration_paused = true
+	_completion_checkpoint = _serialize_state()
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_completion_screen = CampaignCompletionScript.new()
+	_completion_screen.retry_chosen.connect(_save_campaign_completion)
+	_completion_screen.title_chosen.connect(_on_game_over_title)
+	add_child(_completion_screen)
+	if already_saved:
+		_completion_screen.show_saved(_current_slot)
+	else:
+		_save_campaign_completion()
+
+func _save_campaign_completion() -> void:
+	if _completion_saving or not is_instance_valid(_completion_screen):
+		return
+	if _current_slot < 0:
+		_completion_screen.show_failure("No save slot is selected. Keep this game open; completion has not been saved.")
+		return
+	_completion_saving = true
+	_completion_screen.show_saving()
+	var slot := _current_slot
+	var existed := SaveManager.slot_exists(slot)
+	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
+	var error := SaveManager.write_slot(slot, _completion_checkpoint)
+	var written := error == OK
+	if written:
+		error = await BrowserCheckpoint.confirm_slot(slot)
+	var rollback_error := OK
+	if error != OK and written:
+		rollback_error = SaveManager.rollback_slot(slot, existed, previous)
+	_completion_saving = false
+	if error == OK:
+		_completion_screen.show_saved(slot)
+	elif rollback_error == OK:
+		_completion_screen.show_failure("Completion could not be saved. Your previous checkpoint is unchanged. Enable saving or free storage, then retry before leaving.")
+	else:
+		_completion_screen.show_failure("Saving failed and the previous checkpoint could not be restored. Keep this game open and retry before leaving.")
 
 func _autosave_safe() -> bool:
 	if _checkpoint_saving:
@@ -728,6 +783,7 @@ func _on_title_load_game(slot: int, from_autosave := false) -> bool:
 		get_tree().paused = false
 		_set_maze_ownership(true, true)
 		_audio_call(&"play_exploration_music")
+		_show_campaign_completion(true)
 		return true
 	if _campaign_session != null:
 		_campaign_session.selected_slot = slot
@@ -736,6 +792,9 @@ func _on_title_load_game(slot: int, from_autosave := false) -> bool:
 	$HUD.visible = true
 	get_tree().paused = false
 	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+	if route_state.octopus_state == "defeated":
+		_show_campaign_completion(true)
+		return true
 	if route_state.prologue_complete:
 		_build_optional_training()
 	return true
@@ -2683,6 +2742,7 @@ func _build_embedded_maze() -> void:
 	embedded_maze.world = self
 	embedded_maze.coordinate_origin = DeepZoneLayoutScript.MAZE_ORIGIN
 	embedded_maze.campaign_session = _campaign_session
+	embedded_maze.campaign_completed.connect(_show_campaign_completion)
 	add_child(embedded_maze)
 	_build_lab_maze_ramp()
 

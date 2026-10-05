@@ -1,6 +1,8 @@
 class_name MazeLevel
 extends Node3D
 
+signal campaign_completed
+
 # A wall's physical ends.  These names are intentionally kept at the API
 # boundary: callers choose a named authored exit only when the level design
 # explicitly requires one; automatic continuations never expose these signs.
@@ -980,6 +982,7 @@ func _on_battle_finished(result: String) -> void:
 	if result == "won" and kind == "main_boss":
 		_remove_boss_trigger("main_boss")
 		_announce("Cordys is defeated. You have overcome the creature that broke you.", 8.0)
+		campaign_completed.emit()
 		return
 	match result:
 		"won":

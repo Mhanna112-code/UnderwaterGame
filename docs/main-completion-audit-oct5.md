@@ -14,11 +14,25 @@ canonical denied Save/rollback/retry/cold Load passes in a fresh browser profile
 This does not complete the
 opening, goals/ending, earned balance or full campaign acceptance batches.
 
-Next implementation is batch2: keep Angler, replace opening Cordys with
-overwhelming Tethys without altering laboratory balance, retain durable recovery,
-and move Cordys's film to his actual maze encounter. The visible stationed
-Cordys/requested confirmation is already implemented and must be retained.
-Do not repeat it or confuse it with the still-missing film relocation.
+Miguel's latest instruction supersedes the former batch2 sequence: defer the
+Tethys opening and Cordys film relocation until all other remaining work is
+finished. That change requires Miguel's explicit review and approval before
+any of it is pushed to main or published at the canonical URL. Earlier campaign
+design approval and general direct-main authorization do not satisfy this gate.
+Do not implement that change during the intervening batches.
+
+Next implementation is campaign goals/payoff/completion, followed by earned
+route balance and current-flow acceptance/delivery. Preserve the existing
+opening meanwhile. The visible stationed Cordys/requested confirmation is
+already implemented and must be retained; it is not the deferred film relocation.
+
+Local follow-up: the real Cordys win reproduced four missing ending guarantees.
+A native-tested completion screen/checkpoint repair now passes actual win,
+denied-write/retry, Title Load/resource conservation and narrow rendering.
+See `campaign-ending-local-oct5.md`; it has not been pushed or published.
+Next within this batch: state-aware objectives and lab computer/controller payoff,
+then browser durability/presentation and batch delivery. Earned balance remains
+unproven by this granted-kit completion fixture.
 
 ## Authority and baseline
 
@@ -26,6 +40,9 @@ Miguel requested a systematic audit of the remaining comprehensive plan and
 direct-main incremental delivery: no more PRs, retain the canonical game URL.
 This supersedes the old plan's PR100-only/no-main deployment restriction.
 It does not discard the approved campaign or acceptance requirements.
+Exception added by Miguel after the safety delivery: the opening Tethys swap
+and relocated Cordys introduction are a final, separately reviewed candidate,
+not an automatically authorized direct-main batch.
 
 Audited main: `73c2d725c5cfc693bd47451ba9e7994fb481e87c`.
 PR100 merged as `ab9e409`; later runtime repair `97bd48f` and generated pack
@@ -72,10 +89,10 @@ Those are not current-main packages and have not been target-launched here.
 | Authored combat repairs | Present; current live stun/Angler-turn gate passes | Full current combat suite: multi-hit/target, reductions, persistent Bleed, animations, feedback, downed actors and QTEs. |
 | Learned scaling/no ordinary refill | Now implemented, not still missing; focused scaling passes | Production-consumer and route balance with real recovery access. Tethys receives the small authored learned bonus; fixed75HP Cordys does not. |
 | Initial Angler | Implemented and must remain | Preserve genuine actions, ordinary rules and no accidental lab-victory milestone. |
-| Unwinnable opening Tethys instead of Cordys | Not implemented; explicitly deadline-deferred | Replace presentation/dispatch identity without changing laboratory Tethys tuning; retire opening Cordys movie; preserve real effects, safe defeat, durable recovery and optional training. |
+| Unwinnable opening Tethys instead of Cordys | Not implemented; deferred to the very end and requires Miguel's explicit approval before main | Final isolated candidate only after other work: replace presentation/dispatch identity without changing laboratory Tethys tuning; retire opening Cordys movie; preserve real effects, safe defeat, durable recovery and optional training. |
 | State-aware goals, independent lab, early maze | Partial: regional guidance, blockade waypoint, lab objective and post-lab ramp already exist | Completion-aware lab/maze/return guidance and puzzle suggestion. Lab victory must never become a maze lock. Do not build a new dialogue tutorial. |
 | Lab computer/controller payoff | Lab movie and Tethys route exist; explicit post-victory computer/controller payoff not established | Reuse available authored presentation to clearly communicate recovery/reveal before suggesting the puzzle/maze. No invented narration project. |
-| Cordys introduction at maze | Not implemented: Cordys presentation movie still runs after opening Angler | Move the existing intro to the real maze encounter, with persisted once-only/skip/interrupted behavior. |
+| Cordys introduction at maze | Not implemented; final review-gated change alongside the Tethys opening | After other work, move the existing intro to the real maze encounter, with persisted once-only/skip/interrupted behavior. No main push or canonical publication without Miguel's explicit approval. |
 | Cordys victory completes game | Partial: real boss, fixed75HP, saved defeated state and trigger removal exist | Add clear game-completion presentation and durable final checkpoint; victory → save → cold Load/title cannot replay boss/reward/intro. Existing relic `_completed` is not final-boss completion. |
 | Mermaid-Weirdo | Dropbox source exists and differs from current Mermaid_Freak; no runtime reference found | Inspect/import rig, materials, clips, facing and bounds; choose appropriate existing role without extra mandatory boss or indiscriminate validated-asset replacement. |
 | Puppets/generic key/fixed Cordys | Implemented | Preserve two waves, one final key/XP outcome, generic keys and independent lab progress. No unapproved Cordys weakening/unique-key prerequisite. |
@@ -132,27 +149,37 @@ as part of the matching delivery, not another runtime redesign.
    exact rollback bytes and selected-slot retention. Preserve shafts/rests/
    autosaves/current/orb systems. Push and update canonical after this bounded
    batch, not after the whole campaign rewrite.
-2. **Approved opening + finale identity:** Angler → overwhelming Tethys →
-   safe saved recovery; move existing Cordys intro to maze. Separate prologue
-   stats from lab stats. Test old/interrupted milestones, skip/failure paths,
-   real moves and no ordinary Game Over/no false lab victory.
-3. **Campaign goals/payoff/completion:** finish state-aware goals, lab
+2. **Campaign goals/payoff/completion:** finish state-aware goals, lab
    computer/controller communication, suggested puzzle/ramp, early-maze/return
    guidance and durable clear Cordys completion. Preserve generic key/fixed
    boss contracts; inspect Mermaid-Weirdo before choosing the bounded role.
-4. **Actual route attainability:** fix obsolete healing assumptions and run
+3. **Actual route attainability:** fix obsolete healing assumptions and run
    genuine lab-first/maze-first casual/skilled journeys, normal hall avoidance
    and required anchor movement, real resource earning/recovery, no perfect
    QTE or pregranted level5 substitute. Repair real failing production
    scenarios explicitly, without artificial success or weakened thresholds.
-5. **Final acceptance/delivery:** full runner with engine/script-error rejection,
+4. **Current-flow acceptance/delivery:** full runner with engine/script-error rejection,
    current browser persistence/Chrome Bomb Bot/audio, opening/map/chest/casts/
    recovery/completion visuals; final current dispositions/docs and matching
    native packages. Run this acceptance again after fixes, not as a stale
-   screenshot checklist.
+   screenshot checklist. Test and document the actual unchanged opening rather
+   than claiming the deferred Tethys/Cordys sequence already ships.
+5. **Final isolated opening candidate — explicit approval required:** only
+   after batches2–4, implement Angler → overwhelming Tethys → safe saved
+   recovery and move existing Cordys intro to the maze. Keep it off main and
+   canonical while preparing a separate review build and visual evidence,
+   without creating a PR. Separate opening stats from laboratory stats; test
+   old/interrupted milestones, skip/failure, real moves and no ordinary Game
+   Over/no false lab victory. Miguel must explicitly review and approve this
+   specific change before its main push. After approval, rerun affected campaign,
+   persistence, balance and presentation acceptance, refresh same-source
+   exports/packages and only then publish through the normal release discipline.
 
 ## Every accepted batch uses the same release discipline
 
+- The final opening/intro candidate is the exception to automatic direct-main
+  delivery: no push or canonical promotion before Miguel's explicit approval.
+  Completing tests or reaching the end of the plan is not that approval.
 - Keep implementation isolated from the shared main checkout and its current
   uncommitted loot-rock guidance work. Re-read origin/main immediately before
   push; if advanced, reconcile and rerun affected checks. Never force push.
