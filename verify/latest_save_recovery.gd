@@ -1,5 +1,5 @@
 # SAVE-1: ordinary Load silently discards newer autosaved progress.
-# Disposable slot only; exercise the actual title button, not a mocked writer.
+# Disposable slot only; real chosen-slot signal and recovery buttons/writers.
 extends SceneTree
 
 const SLOT := 918527
@@ -14,7 +14,7 @@ func _expect(ok: bool, bug: String) -> void:
 
 func _run() -> void:
 	for path in [SaveManager.slot_path(SLOT), SaveManager.autosave_path(SLOT)]:
-		if FileAccess.file_exists(path) or FileAccess.file_exists(path + ".pending"):
+		if FileAccess.file_exists(path) or FileAccess.file_exists(path + ".pending") or DirAccess.dir_exists_absolute(path + ".pending"):
 			print("Refusing existing disposable fixture: ", path)
 			quit(1)
 			return
@@ -81,6 +81,15 @@ func _run() -> void:
 	_expect(await world._on_title_load_latest(SLOT) and int(world.inventory.get("potion", 0)) == 9, "SAVE-6 failed write advanced newest snapshot")
 	# SAVE-2: actual recovery UI button -> scene reload -> latest persisted data.
 	world._show_game_over()
+	for shape in [Vector2i(1280, 720), Vector2i(720, 360), Vector2i(360, 640)]:
+		root.size = shape
+		for frame in range(4):
+			await process_frame
+		var viewport := Rect2(Vector2.ZERO, Vector2(shape))
+		for name in ["ContinueLatestSave", "RestartSavePoint"]:
+			var button := world.game_over_screen.find_child(name, true, false) as Button
+			_expect(viewport.encloses(button.get_global_rect()), "SAVE-5 recovery button clipped at " + str(shape))
+	root.size = Vector2i(1280, 720)
 	(world.game_over_screen.find_child("ContinueLatestSave", true, false) as Button).pressed.emit()
 	await _wait_reload(world)
 	world = current_scene as World
@@ -107,8 +116,11 @@ func _run() -> void:
 	# Both invalid: retain title/error, never invent a fresh run or change files.
 	SaveManager.write_slot(SLOT, {"divers": "bad"})
 	SaveManager.write_autosave(SLOT, {"divers": []})
+	var invalid_manual := FileAccess.get_file_as_bytes(SaveManager.slot_path(SLOT))
+	var invalid_auto := FileAccess.get_file_as_bytes(SaveManager.autosave_path(SLOT))
 	_expect(not await world._on_title_load_latest(SLOT), "SAVE-4 both-invalid load accepted")
 	_expect(world.title_screen.visible and paused and world._current_slot == -1, "SAVE-4 both-invalid load has no actionable title")
+	_expect(FileAccess.get_file_as_bytes(SaveManager.slot_path(SLOT)) == invalid_manual and FileAccess.get_file_as_bytes(SaveManager.autosave_path(SLOT)) == invalid_auto, "SAVE-4 failed load rewrote invalid evidence")
 	world.queue_free()
 	await process_frame
 	paused = false

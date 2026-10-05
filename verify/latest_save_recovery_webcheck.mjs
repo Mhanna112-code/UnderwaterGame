@@ -32,7 +32,9 @@ manual.route_state.opening_video_seen = true;
 manual.inventory = { potion: 1 };
 manual.save_sequence = 10;
 manual.divers.forEach((diver, i) => {
-  diver.position = [10, 2, 10 + i * 2]; diver.sonar_active = false;
+  // Stay away from save points: current main restores HP/O2 on contact, which
+  // would legitimately heal the injured fixture before we inspect its HUD.
+  diver.position = [30, 3, 30 + i * 2]; diver.sonar_active = false;
   Object.assign(diver.stats, { hp: 10, hp_max: 10, evasion: 0, defense: 0, agility: 0, oxygen: 60 });
 });
 const automatic = structuredClone(manual);
@@ -94,8 +96,10 @@ try {
     if (rows.some(row => /Continue from Latest Save/i.test(row.text))) { death = true; break; }
     const next = rows.find(row => /^Continue(?:\s|$)/i.test(row.text.trim()))
       || rows.find(row => /^Attack$/i.test(row.text.trim()))
-      || rows.find(row => /^(Precise Tap|Electric Touch|Guard Bash|Sonic Lance)/i.test(row.text.trim()))
-      || rows.find(row => /^(Angler|Frilled Shark|Swordfish)(?:\s*\d)?$/i.test(row.text.trim()) && row.y > 480);
+      // A selected move's readout remains on screen during target selection.
+      // Choose the actual target button before that non-interactive readout.
+      || rows.find(row => /^(Angler|Frilled Shark|Swordfish(?: Duelist)?)(?:\s*\d)?$/i.test(row.text.trim()) && row.y > 480)
+      || rows.find(row => /^(Precise Tap|Electric Touch|Guard Bash|Sonic Lance)/i.test(row.text.trim()) && row.y > 580);
     if (next) await page.mouse.click(next.x, next.y);
     await page.waitForTimeout(650);
   }

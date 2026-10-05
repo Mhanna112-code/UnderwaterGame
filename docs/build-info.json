@@ -1,15 +1,15 @@
 {
-  "source_commit": "6b8ea078a53891f44213764d6212a921f24d67a7",
-  "pck_sha256": "0c947735cd5ee96230be8fbe2319abb5a6d5e403f938254d8217621facd21696",
-  "pck_bytes": 94956208,
+  "source_commit": "e74fcc55d1dd75339dd8ad3a8d05680ac8cbc61c",
+  "pck_sha256": "16af7928a5180284e63fa2a2659d04e2c4802640c6fe292bea3bed1bb9fee2a4",
+  "pck_bytes": 94973920,
   "engine": "Godot 4.7.1",
-  "status": "Goals, laboratory payoff/model and ending follow-up; focused acceptance, not earned-route or full-campaign readiness",
+  "status": "Newest valid autosave/manual recovery; latest main including Marc f457098; focused verification, not full-campaign readiness",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Milestone-aware independent lab/maze/return goals; actual lab computer/controller payoff and laboratory-only Mermaid-Weirdo variant with existing red fallback; exclusive durable Cordys ending with rejection/rollback/Retry/cold Load; obsolete lab-arrival notice removed after victory. Existing main credits, safety, stationed Cordys, recovery, scaling and guidance retained",
-  "deferred": "Earned-resource lab-first/maze-first journeys; full campaign/browser/Bomb Bot/audio/polish acceptance; matching Windows/Linux packages. Tethys opening and Cordys film relocation remain unchanged and require Miguel's explicit review/approval last",
+  "change": "Default selected-slot Load and World/maze Continue choose newest valid snapshot with fallback; explicit manual checkpoint remains available; atomic rollback and old save compatibility preserved. Includes latest origin/main f457098 combat, tutorial, blockade and guidance changes without reverting them",
+  "deferred": "Full earned campaign/browser/audio/polish acceptance; same-source Windows/Linux packages. Native download source below is older than this web build",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
 }
