@@ -2197,7 +2197,8 @@ func _build_ui() -> void:
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(log_label)
+	# Marc's reading order: narration/level-up first, the current turn below.
+	# Added after those surfaces below, not ahead of a blocking explanation.
 
 	# A second, wrapping line above the normal one-line log - the log's
 	# combat messages ("You strike for 12.") are too short-lived and terse
@@ -2262,6 +2263,7 @@ func _build_ui() -> void:
 	_levelup_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_levelup_caption.install_effect(PulseTextEffect.new())
 	col.add_child(_levelup_caption)
+	col.add_child(log_label)
 
 	main_menu = HFlowContainer.new()
 	main_menu.add_theme_constant_override("h_separation", 12)
@@ -2411,6 +2413,17 @@ func _build_ui() -> void:
 # instant a property changes, so reading it immediately after flipping
 # .visible can still return the previous, stale size.
 func _fit_panel_height() -> void:
+	# A live window resize must update the status-band widths too, not retain
+	# the wide bars created at battle start. Short ordinary fights use a
+	# compact turn unit (t) while the full wording remains in the same label's
+	# tooltip; wide/tutorial cards retain Marc's full duration wording.
+	for entry in party + enemies:
+		if entry.has("hp_bar"):
+			var width := 72.0 if _uses_narrow_info_band() else float(OVERHEAD_BAR_WIDTH)
+			(entry.hp_bar as ProgressBar).custom_minimum_size.x = width
+			if entry.has("oxygen_bar"):
+				(entry.oxygen_bar as ProgressBar).custom_minimum_size.x = width
+			_refresh_bar(entry)
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
 	_fit_party_status_cards_above_panel()
@@ -2855,6 +2868,11 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 
 	var status_label := Label.new()
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Readable "N turns left" summaries can contain several conditions. Wrap
+	# inside the actual card allocation instead of expanding its minimum width
+	# across neighbouring actors or past the right side of the viewport.
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_label.add_theme_font_size_override("font_size", 11)
 	status_label.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
 	status_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
@@ -2900,8 +2918,13 @@ func _refresh_bar(entry: Dictionary) -> void:
 			s.evasion_current, s.effective_evasion(),
 			"   " + status_text if status_text != "" else "",
 		]
-	(entry.status_label as Label).text = status_text
-	(entry.status_label as Label).visible = status_text != ""
+	var label := entry.status_label as Label
+	label.tooltip_text = status_text
+	var font_size := 10 if _uses_narrow_info_band() else 11
+	if label.get_theme_font_size("font_size") != font_size:
+		label.add_theme_font_size_override("font_size", font_size)
+	label.text = status_text.replace(" turns left", "t").replace(" turn left", "t") if _uses_narrow_info_band() else status_text
+	label.visible = status_text != ""
 	# A killing blow starts the actor's own death/fade animation on the
 	# stage - its status card shouldn't outlive that, or survive as a
 	# lingering "0/X" card in the side column. Replaces the same check
@@ -3580,6 +3603,13 @@ func _play_special_encounter_intro() -> void:
 # actor.actor is always the Diver battle-stage instance built in
 # _build_stage(), never a Goblin, so no type check needed before the cast.
 func _process(_delta: float) -> void:
+	# Reconcile Marc's caption gate with our mouse/Space/Enter Continue action.
+	# A literal "Press Enter" string would miss our current instructions.
+	if is_instance_valid(log_label):
+		var show_log := not _tutorial_awaiting_enter
+		if log_label.visible != show_log:
+			log_label.visible = show_log
+			call_deferred("_fit_panel_height")
 	if not is_instance_valid(_turn_cursor) or not _turn_cursor.visible:
 		return
 	if not is_instance_valid(_turn_cursor_target):
@@ -4602,7 +4632,7 @@ func _explain_other_stats() -> void:
 	# TutorialContent's shared page body - that same "Every Other Stat"
 	# text is also what the F1 general tutorial book shows outside of any
 	# fight, where "the status panels on either side" wouldn't mean anything.
-	var text := "HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. %s" % TutorialContent.page_body("Every Other Stat")
+	var text := "Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. %s" % TutorialContent.page_body("Every Other Stat")
 	await _tutorial_show_step(
 		text,
 		func() -> void:
@@ -5303,7 +5333,8 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 				var poison_level := maxi(1, int(round(float(target_stats.hp_max) * float(move.poison_fraction))))
 				target_stats.add_status("poison", poison_level, int(move.get("poison_turns", 3)))
 				var effects := result.get("effects", []) as Array
-				effects.append("Poison %d·%d" % [poison_level, int(move.get("poison_turns", 3))])
+				var poison_turns := int(move.get("poison_turns", 3))
+				effects.append("Poison %d (%d %s left)" % [poison_level, poison_turns, "turn" if poison_turns == 1 else "turns"])
 				result["effects"] = effects
 			_react(target, result)
 			_show_combat_feedback(target, result)

@@ -102,4 +102,4 @@ static func _result(hit: bool, damage: int, evasion_spent: int) -> Dictionary:
 
 static func _status_text(status: String, level: int, duration: int) -> String:
 	var label := status.capitalize() + " %d" % level
-	return label if duration <= 0 else "%s (%d turns)" % [label, duration]
+	return label if duration <= 0 else "%s (%d %s left)" % [label, duration, "turn" if duration == 1 else "turns"]

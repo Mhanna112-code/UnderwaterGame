@@ -33,6 +33,7 @@ audio_manager covers isolated preference round trips.
 | M99-P2 | Copying Marc's three-tab menu removes Music/SFX or existing replay/help actions. | High: upstream has no Audio tab and differs from our reviewed owner. | Select all four real tabs and assert their consumer controls; pending. |
 | M99-P3 | Pause backdrop has zero size or input passes into the world. | Medium: previous CanvasLayer anchor-only regression. | Actual Escape + full overlay rect and blocked movement; pending. |
 | M99-P4 | Exploration HP/O2 bars paint above the modal and cover Audio/Help. | High: World builds those siblings after the menu; native capture exposed this despite passing bounds. | Actual Escape + HUD paint ordering, inspected native captures; caught during visual review. |
+| M99-P5 | Latest removal of the redundant guide button also removes F1 or the two actual practice actions. | Medium: 659ff69/7a27230 intentionally remove only Reopen Tutorial Guide. | Real Help buttons plus keyboard F1 opening the existing book, no forced tutorial; pending latest refresh. |
 
 ## Test design and self-critique
 
@@ -69,3 +70,11 @@ Spells and portrait Items. Existing menus_spell_title passed real item use,
 practice handoff, learned spells and title-route composition. M99-P2/3 were
 characterized; M99-P1 and M99-P4 required fixes. No browser/deployment acceptance
 is claimed for this local batch.
+
+Later 659ff69/7a27230 intentionally remove Reopen Tutorial Guide. The updated
+contract failed against the retained button, then passed after the shared
+removal. Actual F1 still opens the existing book; its real Close button exits.
+Both practice buttons and Audio remain across all 12 viewport shapes. An initial
+test called a nonexistent `close()` on TutorialBook; that harness failure was
+rejected and replaced with the real Close-button event before the red baseline.
+The updated menus_spell_title item/practice/spell/title regression also passes.

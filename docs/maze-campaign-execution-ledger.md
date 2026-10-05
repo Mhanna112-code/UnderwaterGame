@@ -2,7 +2,8 @@
 
 ## Current authoritative status
 
-Newest intake (October 4): PR97 ebcb22e / PR99 d5134bf are frozen in
+Newest intake (October 4): subsequent refresh found PR97 659ff69 / PR99 7a27230;
+the earlier ebcb22e / d5134bf batch and every later authored delta are recorded in
 `marc-oct4-integration-intake.md`. The Wall11EndCap underpass supersedes the
 earlier Wall27 draft; two dome levers are removed upstream. Shared pause-menu
 style is adapted locally, retaining Audio and training. Red baseline caught
@@ -21,6 +22,26 @@ writing into freed UI despite a printed clean result; repaired and rerun with
 script-error rejection. Real ownership, native embedded video and tutorial
 victory handoff pass. Native captures inspected in
 `/Volumes/Totallynotaharddrive/underwater-marc-popup.V6EPiq`.
+
+Shared status/caption batch is locally adapted: authored Stabbing Bleed persists
+for the battle; an initial-stack cap defect was reproduced and repaired; timed
+effects retain expiry and use readable remaining-turn units. Six-card native
+layout exposed live-resize bar widths that headless missed, now adaptive.
+Tutorial captions remain above the temporarily hidden log with usable Continue.
+Latest shared commits also remove only the redundant guide button, retaining
+F1, practice buttons and the optional beacon. These changes are not deployed.
+Actual puppet/Cordys wins pass. First Tethys run timed out after 32 wins; the
+fresh longer run completed all 48 real fights at levels 2/3 with legal kits and
+normal HP. Narrow Heavy Slam framing and real Mending/Revival effect, O2 cost,
+clip completion and usable next turn pass; captures inspected. This does not
+accept a full earned route, every clip on the web or a clean whole-game polish round.
+
+Latest maze deltas add an earned navigation-map chest, discovery-only legend,
+Shift+E current rotation, chest collision and encounter toggle/owner repairs.
+They are intake-only at this point. Seamless maze/world ownership, actual new
+underpass traversal, map acquisition and complete campaign save reconciliation
+still require implementation and end-to-end verification. No stale test or
+earlier forced-room assumption substitutes for reading the new handlers.
 
 October 4 character-delivery artifact: b0bee59 now serves the existing stable
 feedback alias, not main/public. PCK 93,209,800 bytes / SHA256

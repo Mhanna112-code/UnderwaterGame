@@ -10,17 +10,27 @@ const TIMEOUT_MS := 12000
 const SETTLE_FRAMES := 12
 
 var findings: Array[String] = []
+var capture_dir := ""
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	if DisplayServer.get_name() == "headless":
+		root.size = Vector2i(1280, 720)
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--capture-dir="):
+			capture_dir = arg.trim_prefix("--capture-dir=")
 	var world: World = (load("res://game/world.tscn") as PackedScene).instantiate()
 	world.skip_intro_for_test = true
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(3)
+	# This layout gate must never overwrite the player's real save slot 3.
+	# Open the real world without New Game/save creation, then start practice.
+	world.title_screen.close()
+	world.get_node("HUD").visible = true
+	paused = false
 	await process_frame
 	world._first_encounter_started = true
 	world._intro_active = false
@@ -47,6 +57,18 @@ func _run() -> void:
 				for _frame in range(SETTLE_FRAMES):
 					await process_frame
 				_check_visible_cards(battle)
+				if battle.log_label.visible:
+					findings.append("M99-C1 TURN LOG OVER NARRATION: turn prompt is visible while Continue owns the lesson")
+				if not capture_dir.is_empty():
+					await RenderingServer.frame_post_draw
+					root.get_texture().get_image().save_png(capture_dir.path_join("tutorial-caption-%dx%d.png" % [root.size.x, root.size.y]))
+				# Real player-visible Continue releases narration and returns to
+				# the scripted attack-choice instruction; text wording is not a gate.
+				continue_button.pressed.emit()
+				for _frame in range(SETTLE_FRAMES):
+					await process_frame
+				if not battle._tutorial_awaiting_enter and not battle.log_label.visible:
+					findings.append("M99-C1 TURN LOG LOST: instruction/action state still hides the turn line")
 
 	for finding in findings:
 		push_error(finding)

@@ -24,8 +24,10 @@ visible and readable above it.
 
 - **Window/layout:** Godot container sorting is deferred across process frames.
 - **Input:** the visible Continue action changes narration and panel height.
-- **No filesystem, HTTP, randomness, or persistence:** the assertion is solely
-  on rendered UI geometry after the real layout settles.
+- **No save writes:** October 4 audit found the old harness emitted New Game
+  for real slot 3, contradicting its claim of no persistence. Replaced with a
+  save-free real World entry; no player slot is overwritten. Optional native
+  screenshot output is explicit. Assertions use settled rendered UI geometry.
 
 ## Branching points examined
 
@@ -47,6 +49,7 @@ visible and readable above it.
 | --- | --- | --- | --- | --- | --- |
 | 1 | The long turn-order explanation raises the opaque bottom panel over Bucky's status rows, leaving only his name visible. | High: the first lesson hides live HP/Oxygen/Evasion information while teaching the player how to read combat. | Observed in the hosted normal-entry build; panel height is dynamic while the party stack had a fixed top and width. | Captured rendered-layout invariant | Fixed |
 | 2 | The combined Combat Basics and turn-order lesson appears to cover all three party cards after a reviewer changes browser dimensions without reloading Godot. | Review hazard: a stale/clipped internal canvas can be misreported as a product regression and prompt an unnecessary design change. | Observed after resetting the external browser viewport from 803x893 to 1280x720 while the live Godot canvas retained its old backing size. | Exact canvas/client-size check plus a fresh reload and the rendered invariant at both supported viewport shapes | Retracted as product bug; confirmed harness defect |
+| M99-C1 | The turn log appears over mandatory narration or stays hidden after Continue. | Medium: Marc's new caption-hiding patch checks a literal Enter string that differs from our Space/Enter/Continue text. | Existing real Continue/wait state, not source strings; semantic visible log before/after narration. | Pending red baseline |
 
 ## Test plan
 
@@ -100,3 +103,13 @@ visible and readable above it.
   row above the panel. The aggregate runner still executes the rendered
   invariant at both review shapes so real future regressions fail directly.
 - **Tests removed:** none.
+
+October 4 PR99 admission: M99-C1 reproduced the turn log over a narration gate;
+the headless first run also had a harness 64x64 viewport, not a product-sized
+screen. Explicit headless 1280x720, fresh native 1280x720/803x893 now pass real
+Continue, hidden narration log, returned action-state log, card bounds and
+non-overlap. Captures inspected in
+`/Volumes/Totallynotaharddrive/underwater-marc-caption.GzKfxI`.
+Use actual `_tutorial_awaiting_enter`, not Marc's literal text predicate: our
+caption says Space/Enter/click Continue and must keep its existing mouse action.
+New Game slot3 save-writing side effect was removed from the harness.

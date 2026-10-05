@@ -35,7 +35,6 @@ func _test_combat_help_surface(world: World) -> void:
 	for action in [
 		"Replay Tutorial Fight",
 		"Replay Special Encounter Tutorial",
-		"Reopen Tutorial Guide",
 	]:
 		_expect(_button_named(world.inventory_menu, action) != null,
 			"MENU-HELP-2: Combat Help is missing action: %s" % action)

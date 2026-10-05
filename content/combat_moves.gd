@@ -16,13 +16,10 @@ const SCUBA := [
 	{
 		"name": "Scuba Stabbing", "formula": {"strength": 1},
 		"target": "one_enemy", "effects": [
-			# Bleed used to have no duration at all (persisted until the
-			# fight ended). Capped at 3 turns to match Poison's own
-			# duration - one shared "DoTs last 3 turns" rule instead of two
-			# different expiry stories for the player to track. Repeat hits
-			# still only stack the level, never reset this clock - see
-			# CombatantStats.add_status()'s own bleed-specific branch.
-			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}, "duration": 3},
+			# Marc's final contract matches enemy Bleed: persistent for the
+			# rest of battle. Poison remains timed. Subsequent damaging hits
+			# stack Bleed, with the shared CombatantStats cap of 10.
+			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
 		],
 		"hint": "1 STR damage; applies 1 + STR Bleed",
 		"text": "Scuba Stabbing opens a wound",

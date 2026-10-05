@@ -96,6 +96,8 @@ prepare_godot_classes() {
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
 run "Marc pause port: do all four tabs fit and block exploration without losing audio/training" "$GODOT" --headless --path . --script verify/marc_pause_presentation.gd
 run "Marc popup port: do real battles defer lessons and resume surviving callers safely" "$GODOT" --headless --path . --script verify/marc_popup_ownership.gd
+run "Marc status port: does authored Bleed persist/cap while timed statuses and readable units remain real" "$GODOT" --headless --path . --script verify/marc_status_contract.gd
+run "Marc status layout: do all six multi-status cards fit through actual viewport resizing" "$GODOT" --headless --path . --script verify/marc_status_presentation.gd
 
 run "opening migration: do all durable milestones normalize interrupted phases" "$GODOT" --headless --path . --script verify/opening_prologue_state.gd
 run "opening video: are production and lab policies independent" "$GODOT" --headless --path . --script verify/opening_video.gd
@@ -245,6 +247,7 @@ if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "stage framing: can you see the fight past the HUD" "$GODOT" --path . --resolution 1280x720 --script verify/stage_framing.gd
 	run "stage framing narrow: does responsive combat remain visible at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/stage_framing.gd
 	run "tutorial status layout wide: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_status_layout.gd
+	run "Marc status layout rendered: do duration labels remain readable at wide/narrow/short sizes" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_status_presentation.gd
 	run "tutorial status layout narrow: do all status cards remain readable above long captions" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_status_layout.gd
 	run "tutorial QTE handoff wide: do success and miss retain stage and Continue" "$GODOT" --path . --resolution 1280x720 --script verify/tutorial_qte_handoff_layout.gd
 	run "tutorial QTE handoff narrow: do success and miss retain stage and Continue" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_qte_handoff_layout.gd

@@ -32,7 +32,7 @@ var stat_floor: Dictionary = {}
 
 # Status entries are {level, turns}. A turns value of 0 means persistent for
 # the battle; positive durations tick after this combatant's turn. Current
-# Bleed content supplies a three-turn duration.
+# Bleed is authored as persistent; Poison and other timed statuses expire.
 var statuses: Dictionary = {}
 var temporary_modifiers := {"accuracy": 0, "evasion": 0}
 
@@ -177,6 +177,10 @@ func add_temporary_modifier(stat: String, amount: int) -> void:
 func add_status(status: String, level: int, turns: int = 0) -> void:
 	if status == "" or level <= 0:
 		return
+	# The advertised Bleed cap applies to the first wound too. A high-STR
+	# Stabbing must not start above the cap that repeat hits enforce.
+	if status == "bleed":
+		level = mini(10, level)
 	if status == "bleed" and statuses.has(status):
 		(statuses[status] as Dictionary).level = mini(10, status_level(status) + level)
 		return
@@ -197,7 +201,13 @@ func status_summary() -> String:
 	for status in statuses.keys():
 		var level := status_level(String(status))
 		var turns := status_turns(String(status))
-		parts.append("%s %d%s" % [String(status).capitalize(), level, "·%d" % turns if turns > 0 else ""])
+		var name := String(status).capitalize()
+		var left := " (%d %s left)" % [turns, "turn" if turns == 1 else "turns"] if turns > 0 else ""
+		# Marc's readable duration units, separate from damage/debuff amount.
+		if String(status) == "stun":
+			parts.append(name + (left if turns > 0 else " (%d %s left)" % [level, "turn" if level == 1 else "turns"]))
+		else:
+			parts.append("%s %d%s" % [name, level, left])
 	return "  ".join(parts)
 
 # Adds XP and applies every level-up it crosses (a big win can jump more

@@ -70,8 +70,10 @@ func _run() -> void:
 				_expect(_button_containing(menu, "Mending Current") != null,
 					"M99-P2 learned spells lost during pause-menu port")
 			if tab_name == "Combat Help":
-				for action in ["Replay Tutorial Fight", "Replay Special Encounter Tutorial", "Reopen Tutorial Guide"]:
+				for action in ["Replay Tutorial Fight", "Replay Special Encounter Tutorial"]:
 					_expect(_button(menu, action) != null, "M99-P2 lost existing Help action " + action)
+				_expect(_button(menu, "Reopen Tutorial Guide") == null,
+					"M99-P5 superseded guide button still appears after Marc's removal")
 			if tab_name == "Audio":
 				for slider_name in ["MusicVolumeSlider", "SFXVolumeSlider"]:
 					var slider := menu.find_child(slider_name, true, false) as HSlider
@@ -89,6 +91,13 @@ func _run() -> void:
 				root.get_texture().get_image().save_png(capture_dir.path_join("pause-%dx%d-%s.png" % [shape.x, shape.y, tab_name.replace(" ", "-")]))
 		await _escape()
 		_expect(not menu.visible, "M99-P3 Escape did not return to exploration")
+	var guide_key := InputEventKey.new()
+	guide_key.keycode = KEY_F1
+	guide_key.pressed = true
+	Input.parse_input_event(guide_key)
+	await _settle()
+	_expect(world.tutorial_book.visible, "M99-P5 removing the guide button also disabled F1")
+	world.tutorial_book._close_btn.pressed.emit()
 	world.queue_free()
 	await process_frame
 	var audio := root.get_node_or_null("GameAudio")

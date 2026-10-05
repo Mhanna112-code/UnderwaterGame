@@ -459,18 +459,6 @@ func _on_replay_special_encounter_tutorial_pressed() -> void:
 	if world != null:
 		world._replay_special_encounter_tutorial("attack_up", "angler")
 
-# The F1 walkthrough (world.gd's _unhandled_input(), TutorialContent.
-# GENERAL_PAGES) was only ever reachable by that keybind - this gives it a
-# discoverable, mouse-only way back in too, right next to the button that
-# replays the scripted fight itself.
-func _on_replay_tutorial_guide_pressed() -> void:
-	if world != null:
-		# Do not stack two full-screen modal surfaces. Closing this menu restores
-		# the world for one instant; TutorialBook.open() immediately owns the
-		# pause again and presents the guide by itself.
-		close()
-		world.tutorial_book.open(TutorialContent.GENERAL_PAGES)
-
 # One button per living diver x their inventory-tagged spells (see
 # World._inventory_spells_for()) - disabled rather than hidden when that
 # diver can't currently afford it, same "show what you can't afford yet"
@@ -562,12 +550,6 @@ func _refresh_help() -> void:
 		replay_special_btn.custom_minimum_size = Vector2(0, 40)
 		replay_special_btn.pressed.connect(_on_replay_special_encounter_tutorial_pressed)
 		_list.add_child(replay_special_btn)
-	if world != null and world.get("tutorial_book") != null:
-		var replay_guide_btn := Button.new()
-		replay_guide_btn.text = "Reopen Tutorial Guide"
-		replay_guide_btn.custom_minimum_size = Vector2(0, 40)
-		replay_guide_btn.pressed.connect(_on_replay_tutorial_guide_pressed)
-		_list.add_child(replay_guide_btn)
 	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
 	var effect_entries: Array[Dictionary] = []
 	for kind in TutorialContent.EFFECT_KIND_EXPLANATIONS:

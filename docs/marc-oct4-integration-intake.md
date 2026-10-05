@@ -4,8 +4,10 @@
 
 Refreshed October 4, 2026. PR #100 starts this intake at f25d2bf (runtime
 b0bee59). Marc's PR #97 is ebcb22ec24045b14ecedf4e16bd5c9876eab527a;
-PR #99 is d5134bf293487cbae8b8f8cdeaf0fb1c2233dfd9. Both were fetched again
-and unchanged before implementation. The existing preview remains b0bee59
+PR #99 was d5134bf293487cbae8b8f8cdeaf0fb1c2233dfd9. Both were fetched again
+and unchanged before the first implementation batch. A subsequent refresh found
+#97 659ff6962543206e7651f22a1ee79df4c4007610 and #99
+7a27230e01c07358d50c49f2dca36421508dcdf4. The existing preview remains b0bee59
 until a new, identified export passes its delivery checks. Main is untouched.
 
 ## Authored deltas and ownership
@@ -31,6 +33,31 @@ until a new, identified export passes its delivery checks. Main is untouched.
 | #99 542c456 / 2c1be2b / 91757e3 | Status summaries, HP/queue wording | Use final text and status labels; the added status tutorial page is removed by d5134bf and must not be resurrected. |
 | #99 de5f079 | Bleed lasts the rest of battle | Port move + rules/help contract together; verify actual hit, four turns, stacking cap and normal campaign combat. |
 | Earlier #99 11857ae pending subset | Learned-spell stat bonus and blockade guidance | Separate remaining admission; apply to intended consumers without double-scaling authored bosses or changing prologue/tutorial contracts. |
+| #97 64c778a / c65cf93 / 1a9ba39 | Navigation map earned from Control Room chest, including dev start | Persist actual maze_map key item; L requires earned map, inventory explains ownership; do not grant via ordinary/dev initialization. Chest access must remain possible without already owning L. |
+| #97 f58b4ce / 2d60a03 / 4f3cc97 | Right-side discovery-only map legend, chest and visited-boss icons | No undiscovered boss spoilers; right-side panel fits small viewports and updates on discovery. |
+| #97 2a41c0f / 65c3f70 | Shift+E rotates selected current, E rotates hallway; readable current strokes | R remains encounter toggle even with map open. Update actual input, HUD/help and route tests together, not just displayed text. |
+| #97 2c32467 | Solid chests, Press E to open | Verify physical collision and reachable interaction; no player overlaps chest or infinite regrant. |
+| #97 f5a8a97 / ef99337 | Encounter owner/toggle synchronization; special/item spots respect R | Latest Marc decision replaces earlier assumptions: inactive embedded maze must not start World fights; maze special sites require encounters on. Do not silently change authored boss gating. Strong-room forcing still needs inspection against the exact new handlers. |
+| #97 818e2ab / #99 7c34be2 / 1b43949 | Status cards and applied messages use remaining-turn units | Deduplicate shared changes; preserve responsive labels and persistent Bleed cap. |
+| #97 659ff69 / #99 7a27230 | Remove Reopen Tutorial Guide button; retain F1 | One shared removal; two practice buttons and optional world beacon remain. This does not remove the tutorial content. |
+
+## Admission receipts
+
+- 21b84d5: shared pause styling, four tabs including Audio, responsive bounds and
+  HUD ordering; 12 shapes and inspected native views pass.
+- 3d69a5b: Battle/popup ownership, FIFO remaining lessons, live scene owners,
+  stopped hidden decoder and safe late text continuation; actual Battle/native
+  video/tutorial handoff gates pass.
+- Current status/caption batch: persistent authored Bleed, capped initial stacks,
+  readable status durations, responsive six-card layout, caption/log ownership,
+  latest applied-message wording and redundant guide-button removal. Actual
+  puppet/Cordys combat, all 48 bounded Tethys fights, narrow delivered attack and
+  heal/revive checks pass. Final shared status, actual F1/practice/menu and tutorial
+  caption regressions pass without captured script errors. No hosted acceptance
+  is implied by this local admission.
+- All other maze rows above remain pending. In particular, a new branch snapshot
+  is not evidence that seamless geometry, acquired-map behavior or underpass
+  traversal has been integrated or verified.
 
 ## Sequence and acceptance
 
