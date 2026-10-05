@@ -377,6 +377,35 @@ func _validate_selection() -> void:
 	if selectedCurrentCorridor != null and (not is_instance_valid(selectedCurrentCorridor) or not maze_level._currents_by_corridor.has(selectedCurrentCorridor) or not _is_discovered_corridor(selectedCurrentCorridor)):
 		selectedCurrentCorridor = null
 
+# Wall sets and currents are stepped through clockwise round the maze as
+# it's drawn on the map (screen right is +x, screen down is +z), so going
+# round the map in one direction meets them in the order you'd swim past
+# them - the walls in line with one current before those round the next
+# turn - instead of in their scene/name order.
+func _clockwise_angle(p: Vector3) -> float:
+	var middle := _maze_middle()
+	return fposmod(atan2(p.z - middle.y, p.x - middle.x), TAU)
+
+func _maze_middle() -> Vector2:
+	var points: Array[Vector3] = maze_level._collect_bounds_points()
+	if points.is_empty():
+		return Vector2.ZERO
+	var lo: Vector3 = points[0]
+	var hi: Vector3 = points[0]
+	for p in points:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	return Vector2((lo.x + hi.x) * 0.5, (lo.z + hi.z) * 0.5)
+
+func _set_centre(wall_set: Dictionary) -> Vector3:
+	var sum := Vector3.ZERO
+	var n := 0
+	for box in wall_set["walls"]:
+		if is_instance_valid(box):
+			sum += (box as Node3D).global_position
+			n += 1
+	return sum / maxf(n, 1)
+
 # Left/Right on the open map: step through the rotatable wall sets the diver
 # has revealed (at least one wall seen), the way Shift+Left/Right steps
 # through currents.
@@ -389,6 +418,7 @@ func _cycle_selected_set(direction: int) -> void:
 				break
 	if sets.is_empty():
 		return
+	sets.sort_custom(func(a, b) -> bool: return _clockwise_angle(_set_centre(a)) < _clockwise_angle(_set_centre(b)))
 	var index := -1
 	for i in sets.size():
 		if sets[i]["name"] == selected_rotatable_set.get("name", ""):
@@ -1320,7 +1350,7 @@ func _cycle_selected_current(direction: int) -> void:
 	for corridor in maze_level._currents_by_corridor:
 		if _is_discovered_corridor(corridor as Area3D):
 			corridors.append(corridor)
-	corridors.sort_custom(func(a, b) -> bool: return String((a as Node).name) < String((b as Node).name))
+	corridors.sort_custom(func(a, b) -> bool: return _clockwise_angle(_corridor_center(a as Area3D)) < _clockwise_angle(_corridor_center(b as Area3D)))
 	if corridors.is_empty():
 		return
 	var index := corridors.find(selectedCurrentCorridor)
