@@ -1,14 +1,14 @@
 {
-  "source_commit": "138ca535c3a5d8d174225eb109b56b35ea190be0",
-  "pck_sha256": "e5f790f1a30bc3390a1006784257ac1957c8998ec53fcc672bc8ed723c527de9",
-  "pck_bytes": 93321284,
+  "source_commit": "7330d5ce32a8d3a48ce9e41cdbe995b1762f5ce9",
+  "pck_sha256": "dd6080ba2441cb43738cad6efc745f64e70da148ca2c22aae43e69a26bb8bc86",
+  "pck_bytes": 93321476,
   "engine": "Godot 4.7.1",
   "status": "Main follow-up: focused regression checks, not full campaign acceptance",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Preserved main/rock guidance and stationed maze Cordys/confirmation plus whirlpool reading/battle/area ownership, safe Corridor4 return and stable browser-confirmed World manual saves",
+  "change": "Opening credits now include game developers ImmortalDemonGod and Mhanna alongside Glass_Goat and Phoenix Down Music; narrow title sizing repaired; all previously delivered main safety, Cordys station and rock guidance retained",
   "deferred": "Approved Tethys opening pivot; complete campaign/browser persistence/audio listening/polish acceptance; refreshed Windows/Linux packages",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
