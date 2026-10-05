@@ -38,3 +38,23 @@ Remote intake was rechecked: #97 bba8b80337c07298763a28c9c1109382091bc480
 and #99 86878faedb71e81072b1d200f4ccbfc6f0507210 are unchanged from the
 PR100 deadline intake. No newly pushed remote commit was silently excluded
 at this check.
+
+## Delivery confirmed
+
+Source repair 97bd48f and fresh generated Web artifact a8bc4e9 are pushed
+to main. The exported-build browser check passed normal title, diagnostic
+maze entrance, actual swimming/E chest acquisition, earned L controls and
+lesson/map layouts at 1280x720, 720x480 and 360x640 with no captured script
+errors. Small-layout frames were inspected. This is scoped acceptance,
+not a complete campaign or browser checkpoint test.
+
+The same inspected pack was promoted to production deployment
+`dpl_4vRT6zsVn9Dff4sAvnk9F3Hx5jCn`. Both existing URLs are updated:
+https://underwatergame.vercel.app/ and
+https://underwatergame-maze-campaign-review.vercel.app/.
+Both actual hosted PCK endpoints were downloaded and hashed, matching
+93,316,404 bytes and SHA256
+`189095a31249e420b3db142e9aa2c0b9be41e7a7392eeb92970e5b31396eec5a`.
+Hosted metadata identifies runtime source
+`97bd48fb4f4c28f45fb2e55e9095b41a2b8691ba`; the main delivery commit
+includes the generated pack rather than leaving Git hosting on stale assets.
