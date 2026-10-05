@@ -158,6 +158,7 @@ func spend_evasion(amount: int) -> int:
 # reduce_defense, the Blindness/Evasion Down/Defense Down statuses and the
 # legacy Weaken/Slow-style debuffs. Bleed, Poison and Stun still apply.
 var immune_to_stat_loss := false
+const BLEED_MAX_STACKS := 3
 const STAT_LOSS_STATUSES := ["blindness", "evasion_down", "defense_down"]
 
 func reduce_evasion(amount: int) -> int:
@@ -199,7 +200,16 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 	if status == "bleed":
 		level = mini(10, level)
 	if status == "bleed" and statuses.has(status):
-		(statuses[status] as Dictionary).level = mini(10, status_level(status) + level)
+		# After the first wound, Bleed can grow at most BLEED_MAX_STACKS more
+		# times in a fight (a later damaging hit or another Bleed move each
+		# count once), and never past 10. Statuses clear when a battle ends,
+		# so the count resets every fight.
+		var bleed := statuses[status] as Dictionary
+		var stacks := int(bleed.get("stacks", 0))
+		if stacks >= BLEED_MAX_STACKS:
+			return
+		bleed.stacks = stacks + 1
+		bleed.level = mini(10, status_level(status) + level)
 		return
 	var existing := statuses.get(status, {}) as Dictionary
 	statuses[status] = {

@@ -1881,7 +1881,9 @@ func _build_highway() -> void:
 	# on the floor, not across the player's torso at that same two-metre height.
 	save_point.footprint_offset_y = -1.8
 	add_child(save_point)
-	_save_points.append(save_point)
+	# First in the list: the Deep Zone's lab save point is built earlier but
+	# this shallows one stays _save_points[0].
+	_save_points.push_front(save_point)
 
 	_build_wall(
 		Vector3(center_x, WALL_HEIGHT * 0.5, LANE_Z - LANE_HALF_WIDTH),
@@ -3687,6 +3689,8 @@ func _on_battle_finished(result: String) -> void:
 	if result == "prologue_defeat" and battle.encounter_source == "prologue_octopus":
 		_recover_from_prologue()
 		return
+	for diver in divers:
+		(diver as Diver).reset_passives_after_battle()
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
 	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"

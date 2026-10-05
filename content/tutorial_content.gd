@@ -212,7 +212,7 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 	},
 	{
 		"title": "Bleed",
-		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight - it never wears off on its own. Every later damaging hit on a bleeding character adds 1 more to the stack (up to 10). Scuba Stabbing applies 1 plus the caster's Strength.",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight - it never wears off on its own. Every later damaging hit on a bleeding character adds 1 more, and another Bleed move adds its full amount again - but it can only stack up 3 times per fight (and never past 10). Scuba Stabbing applies 1 plus the caster's Strength.",
 	},
 	{
 		"title": "Poison",

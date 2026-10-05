@@ -4233,10 +4233,10 @@ func _on_item_chosen(item_id: String) -> void:
 	if _busy:
 		return
 	item_menu.visible = false
-	var heals := String(Items.ITEMS.get(item_id, {}).get("kind", "")) == "heal"
+	# Items only ever target living divers - a Potion no longer revives.
 	var targets: Array = party.filter(func(e: Dictionary) -> bool:
 		var s := e.stats as CombatantStats
-		return (s.hp > 0 or heals) and Items.would_help(item_id, s))
+		return s.hp > 0 and Items.would_help(item_id, s))
 	if targets.is_empty():
 		item_menu.visible = true
 		call_deferred("_fit_panel_height")

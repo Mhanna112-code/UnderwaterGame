@@ -128,7 +128,8 @@ static func is_key_item(item_id: String) -> bool:
 static func would_help(item_id: String, s: CombatantStats) -> bool:
 	match String(ITEMS.get(item_id, {}).get("kind", "")):
 		"heal":
-			return s.hp < s.hp_max
+			# Potions heal the living only; a downed diver needs a revive.
+			return s.hp > 0 and s.hp < s.hp_max
 		"oxygen":
 			return s.oxygen < s.oxygen_max
 		"attack_up", "defense_up", "accuracy_up", "evasion_up":
@@ -154,6 +155,8 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 	var display := String(def.display)
 	match String(def.kind):
 		"heal":
+			if s.hp <= 0:
+				return ""   # never revives; would_help() already refuses this
 			var before := s.hp
 			s.hp = mini(s.hp_max, s.hp + int(def.amount))
 			var gained := s.hp - before
