@@ -1,0 +1,17 @@
+{
+  "verified_at": "2026-10-05",
+  "source_commit": "8605058f410f0a2fe5f562661fa06660b1543e08",
+  "artifact_commit": "7d0a47d",
+  "pck_sha256": "b743c909331d48d33ba9f2d0b74758ab46e685cec0994416b3ad4cfd5398a4f2",
+  "pck_bytes": 94984476,
+  "preview_deployment_id": "dpl_FZqkk94tDgiSbSXF4q1YSzZN8okW",
+  "production_deployment_id": "dpl_BNBE1b3W8sYYUkDM3dEyZctKHxtZ",
+  "production_status": "READY",
+  "canonical_url": "https://underwatergame.vercel.app/",
+  "review_url": "https://underwatergame-maze-campaign-review.vercel.app/",
+  "both_aliases_actual_pack_hash_verified": true,
+  "canonical_fresh_browser_title_rendered": true,
+  "canonical_captured_script_errors": [],
+  "hosted_access_receipt": "browser-result.json",
+  "scope": "Affordable sonar and guarded-site access with R off. Native World/Maze physics, save/ownership/reward regressions and actual hosted browser World entry/cancel/reentry/solo dispatch. Not full-campaign or minigame-balance acceptance; Marc's forced maze strong-room encounters remain unchanged. Existing native release packages are older than this web export."
+}
