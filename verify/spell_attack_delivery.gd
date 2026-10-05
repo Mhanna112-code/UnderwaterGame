@@ -138,6 +138,8 @@ func _capture(actor: Diver, battle: Battle) -> void:
 		if not String(actor.anim.current_animation).begins_with("spells/"):
 			findings.append("SPELL-ANIM-05 requested phase missed the actual cast: " + case_name)
 		var captured_image := root.get_texture().get_image()
+		if battle._turn_cursor.visible:
+			findings.append("SPELL-ANIM-05 cast leaves an origin-anchored cursor clipping the turn bar")
 		var time_scale := Engine.time_scale
 		Engine.time_scale = 0.0
 		var actor_rect := _skin_rect(actor, battle)

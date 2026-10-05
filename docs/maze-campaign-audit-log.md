@@ -1,5 +1,38 @@
 # Maze and campaign integration audit log
 
+## October 4, 20:10 CDT hosted-cast attempt and small cursor follow-up
+
+cb57436 exports cleanly: PCK 93,209,848 bytes, SHA256
+3f77381e2a29e8958f0a4e6a4aa8ea5d7e9073d720eef18f7b1fc522f00d9592.
+Local served bytes/title/map and actual mouse-selected Swift Strike pass;
+actual hit 4, O2 100→92, moving early/impact/late frames inspected. The actual
+Bomb Bot fight passes 19 inputs through enemy turns, party damage, victory,
+World return and R. This is bundled Chromium/Metal, not Marc's Chrome hardware.
+Immutable ovhstmqkd is READY and its live served bytes/title/map pass. Hosted
+spell rerun failed ENOSPC while writing a screenshot; do not count it as a pass
+or update the stable alias on that evidence.
+
+Observed remaining visual defect: wide cast screenshots retain a tiny clipped
+turn-arrow tip at the header because it follows actor origin rather than its
+moving head. Delivered casts now hide this selection-only cursor; NOW still
+names the actor and the next usable turn restores its own cursor. New wide/
+narrow mid-pose checks require it hidden. This is not a combat-rule change.
+
+Four validated task-generated historical release-copy directories were moved
+recoverably from /private/tmp into the existing external archive
+/Volumes/Totallynotaharddrive/underwater-generated-archive.YZPzri:
+underwater-victory-release.X6TiI2, underwater-escape-release.loR9Qh,
+underwater-angler-release.UNTQXD, underwater-shallows-release.AnWnmO.
+None contained .git; no active source checkout, original asset or user save was
+deleted. Old failed receipts remain. Browser checks will run serially to avoid
+temporary resource pressure. New cursor-source export/host acceptance pending.
+
+Cursor follow-up: all seven offensive casts pass the actual live mid-pose
+check at 1280×720 and 720×480 with the cursor hidden; no model clipping or
+rendered teammate occlusion observed. Actual support and menu lifecycle
+regressions also pass. This is fourteen new mid-pose views, not a claim that
+the earlier forty-two-pose run was repeated on the cursor-only source.
+
 ## October 4, 19:56 CDT exported cast inspection and independent occlusion oracle
 
 446b6b9 export was verified on immutable ffw6phbxh, not assigned to the stable

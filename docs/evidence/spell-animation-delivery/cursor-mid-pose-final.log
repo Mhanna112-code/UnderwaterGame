@@ -1,0 +1,66 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+SPELL STAGED|Swift Strike|spells/Scuba_(Attack) Swift Slash
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Swift Strike|Musashi|0.65|overlap=0.00
+SPELL SILHOUETTE|Swift Strike|Bucky|0.65|overlap=0.00
+SPELL STAGED|Riptide Slash|spells/Scuba_(Attack) Riptide Slash
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Riptide Slash|Musashi|0.65|overlap=0.00
+SPELL SILHOUETTE|Riptide Slash|Bucky|0.65|overlap=0.00
+SPELL STAGED|Blinding Silt|spells/Proto1_(Attack)Blinding)Silt
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Blinding Silt|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Blinding Silt|Bucky|0.65|overlap=0.00
+SPELL STAGED|Exploit Opening|spells/Proto1_(Attack)Blinding)Exploit_Opening
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Exploit Opening|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Exploit Opening|Bucky|0.65|overlap=0.00
+SPELL STAGED|Precise Jab|spells/Proto1_(Attack)Precise_Jab
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Precise Jab|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Precise Jab|Bucky|0.65|overlap=0.00
+SPELL STAGED|Guard Break|spells/Proto5_Guard_Break
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Guard Break|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Guard Break|Musashi|0.65|overlap=0.40
+SPELL PIXEL OCCLUSION|Guard Break|0.65|0.000
+SPELL STAGED|Heavy Slam|spells/Proto5_Heavy_Slam
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Heavy Slam|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Heavy Slam|Musashi|0.65|overlap=0.00
+SPELL ATTACK DELIVERY: clean
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+SPELL STAGED|Swift Strike|spells/Scuba_(Attack) Swift Slash
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Swift Strike|Musashi|0.65|overlap=0.00
+SPELL SILHOUETTE|Swift Strike|Bucky|0.65|overlap=0.00
+SPELL STAGED|Riptide Slash|spells/Scuba_(Attack) Riptide Slash
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Riptide Slash|Musashi|0.65|overlap=0.00
+SPELL SILHOUETTE|Riptide Slash|Bucky|0.65|overlap=0.00
+SPELL STAGED|Blinding Silt|spells/Proto1_(Attack)Blinding)Silt
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Blinding Silt|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Blinding Silt|Bucky|0.65|overlap=0.00
+SPELL STAGED|Exploit Opening|spells/Proto1_(Attack)Blinding)Exploit_Opening
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Exploit Opening|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Exploit Opening|Bucky|0.65|overlap=0.00
+SPELL STAGED|Precise Jab|spells/Proto1_(Attack)Precise_Jab
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Precise Jab|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Precise Jab|Bucky|0.65|overlap=0.00
+SPELL STAGED|Guard Break|spells/Proto5_Guard_Break
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Guard Break|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Guard Break|Musashi|0.65|overlap=0.42
+SPELL PIXEL OCCLUSION|Guard Break|0.65|0.000
+SPELL STAGED|Heavy Slam|spells/Proto5_Heavy_Slam
+SPELL CAST FRAME|0.65|visible=1.00
+SPELL SILHOUETTE|Heavy Slam|Maxilani|0.65|overlap=0.00
+SPELL SILHOUETTE|Heavy Slam|Musashi|0.65|overlap=0.00
+SPELL ATTACK DELIVERY: clean

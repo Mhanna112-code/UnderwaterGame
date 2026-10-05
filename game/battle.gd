@@ -4974,6 +4974,10 @@ func _swing(entry: Dictionary, mv: Dictionary, target: Dictionary = {}) -> void:
 		return
 	if String(d.anim.current_animation).begins_with("spells/"):
 		d.framing_clip = String(d.anim.current_animation)
+		# The selection cursor follows the actor origin, not the animated
+		# head. Diving poses leave only its tip under the turn bar. NOW still
+		# identifies the caster; restore the cursor for the next usable turn.
+		_turn_cursor.visible = false
 		_frame_stage_camera()
 	if target.has("actor") and is_instance_valid(target.actor) and target.actor is Node3D:
 		player_swing_staged.emit(d, target.actor as Node3D)
