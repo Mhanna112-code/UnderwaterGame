@@ -5723,11 +5723,12 @@ func map_points_of_interest() -> Array[Dictionary]:
 		var c := item_room.get_center()
 		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret\nItem Room"})
 	if _dome_site != Vector3.ZERO:
-		# The plinth and its steps, so there's room for both the name (low in
-		# the box) and the chest (just behind the dome's middle, above it).
-		var steps_out := PLINTH_RADIUS + STEP_COUNT * STEP_DEPTH
-		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS + steps_out, PLINTH_RADIUS + steps_out)
-		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(dome.get_center().x, 0, _dome_site.z + steps_out * 0.55), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
+		# As wide as the dome (so it stays clear of the maze's walls to its
+		# east), and a little deeper down its steps, so there's room for the
+		# chest (just behind the dome's middle) and its name below it.
+		var depth := PLINTH_RADIUS * 2.0 + STEP_COUNT * STEP_DEPTH * 0.6
+		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, depth)
+		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z + PLINTH_RADIUS * 0.7), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
 	return out
 
 # The main boss room's floor plan (inside its North/South/East walls).
