@@ -984,7 +984,8 @@ func _player_rise() -> float:
 	var r := 0.0
 	if Input.is_key_pressed(KEY_SPACE):
 		r += 1.0
-	if Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_CTRL):
+	# Shift only - Ctrl is the map's current key.
+	if Input.is_key_pressed(KEY_SHIFT):
 		r -= 1.0
 	return r
 
