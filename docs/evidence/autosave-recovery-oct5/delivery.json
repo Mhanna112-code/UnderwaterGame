@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-05",
+  "source_commit": "e74fcc55d1dd75339dd8ad3a8d05680ac8cbc61c",
+  "artifact_commit": "2a9de40",
+  "canonical_url": "https://underwatergame.vercel.app/",
+  "review_url": "https://underwatergame-maze-campaign-review.vercel.app/",
+  "canonical_deployment_id": "dpl_HzqJBViaY7mxqHCL5hTVNwK9Ucsx",
+  "canonical_deployment_url": "https://underwatergame-i5novyy8b-immortaldemongods-projects.vercel.app/",
+  "accepted_preview_id": "dpl_CFfjpmFus1CL5UbtVAT2Bn7VP8Cs",
+  "accepted_preview_url": "https://underwatergame-mta3wmguu-immortaldemongods-projects.vercel.app/",
+  "project_id": "prj_lmBlQo6J11hkjA5tjmHIlhiPAr5e",
+  "scope": "immortaldemongods-projects",
+  "actual_canonical_pck_sha256": "16af7928a5180284e63fa2a2659d04e2c4802640c6fe292bea3bed1bb9fee2a4",
+  "pck_bytes": 94973920,
+  "canonical_and_review_metadata": "Both HTTP 200 and matching source/pack metadata. Independently streamed and hashed preview and canonical index.pck; both match committed pack.",
+  "local_browser_findings": [],
+  "hosted_browser_findings": [],
+  "canonical_boot": "Fresh browser boots and draws 233 distinct colors, without captured console errors. Full recovery acceptance ran against the identical hosted candidate, not repeated as a full campaign on canonical.",
+  "retained_main_changes": "f457098 plus its dc9f8f7 and 90b2a73 ancestors; no revert of Marc's concurrent changes",
+  "rollback_deployment_id": "dpl_7agdKH32cNfrxHYVdX3qNTPwbrXr",
+  "limitations": "Declared save fixtures in new disposable browser profiles; unchanged 180-second safe-play interval; no full campaign/balance or same-source Windows/Linux acceptance. Existing player saves untouched.",
+  "automatic_git_deployment": false
+}

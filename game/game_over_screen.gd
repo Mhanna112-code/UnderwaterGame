@@ -1,11 +1,12 @@
 # Shown by World._show_game_over() the instant a battle ends "lost" (see
 # _on_battle_finished()), instead of the old silent auto-restore. Same
 # paused-but-interactive shape as TitleScreen - process_mode ALWAYS so its
-# two buttons still work while get_tree().paused freezes everything else.
+# recovery buttons still work while get_tree().paused freezes everything else.
 class_name GameOverScreen
 extends Control
 
 signal restart_chosen
+signal continue_chosen
 signal title_chosen
 
 func _ready() -> void:
@@ -27,28 +28,41 @@ func _ready() -> void:
 	add_child(center)
 
 	var col := VBoxContainer.new()
-	col.custom_minimum_size = Vector2(360, 0)
+	col.custom_minimum_size = Vector2(minf(360, maxf(180, get_viewport_rect().size.x - 40)), 0)
 	col.add_theme_constant_override("separation", 14)
 	center.add_child(col)
 
 	var title := Label.new()
 	title.text = "The party is overwhelmed..."
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	col.add_child(title)
 
+	var continue_btn := Button.new()
+	continue_btn.name = "ContinueLatestSave"
+	continue_btn.text = "Continue from Latest Save"
+	continue_btn.custom_minimum_size = Vector2(0, 44)
+	continue_btn.tooltip_text = "Use the newest valid autosave or manual checkpoint."
+	continue_btn.pressed.connect(func() -> void: continue_chosen.emit())
+	col.add_child(continue_btn)
+
 	var restart_btn := Button.new()
+	restart_btn.name = "RestartSavePoint"
 	restart_btn.text = "Restart from Save Point"
-	restart_btn.custom_minimum_size = Vector2(360, 44)
+	restart_btn.tooltip_text = "Return to the manual checkpoint, even if an autosave is newer."
+	restart_btn.custom_minimum_size = Vector2(0, 44)
 	restart_btn.pressed.connect(func() -> void: restart_chosen.emit())
 	col.add_child(restart_btn)
 
 	var title_btn := Button.new()
 	title_btn.text = "Return to Title"
-	title_btn.custom_minimum_size = Vector2(360, 44)
+	title_btn.custom_minimum_size = Vector2(0, 44)
 	title_btn.pressed.connect(func() -> void: title_chosen.emit())
 	col.add_child(title_btn)
+	resized.connect(func() -> void:
+		col.custom_minimum_size.x = minf(360, maxf(180, get_viewport_rect().size.x - 40)))
 
 func open() -> void:
 	visible = true

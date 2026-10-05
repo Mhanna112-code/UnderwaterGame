@@ -21,7 +21,38 @@ static func autosave_path(slot: int) -> String:
 	return SAVE_DIR + "slot_%d_auto.json" % slot
 
 static func write_autosave(slot: int, data: Dictionary) -> Error:
-	return _write_path(autosave_path(slot), JSON.stringify(data).to_utf8_buffer())
+	return _write_path(autosave_path(slot), JSON.stringify(_ordered_snapshot(slot, data)).to_utf8_buffer())
+
+# Both files belong to the same slot/run. Ordering must survive a cold load,
+# same-second writes, and clock changes; never infer that autosave always wins.
+static func _ordered_snapshot(slot: int, data: Dictionary) -> Dictionary:
+	var snapshot := data.duplicate(true)
+	snapshot["save_sequence"] = maxi(_sequence(read_slot(slot)), _sequence(read_autosave(slot))) + 1
+	return snapshot
+
+static func _sequence(data: Dictionary) -> int:
+	var value: Variant = data.get("save_sequence", 0)
+	if typeof(value) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(value)) or float(value) < 0.0 or float(value) > 9007199254740990.0 or float(value) != floorf(float(value)):
+		return 0
+	return int(value)
+
+# Shape validation remains with World/CampaignCheckpoint. Try each candidate
+# in this order, falling back if the newest parsed dictionary is incompatible.
+static func latest_candidates(slot: int) -> Array[Dictionary]:
+	var manual := read_slot(slot)
+	var automatic := read_autosave(slot)
+	var manual_order := _sequence(manual)
+	var auto_order := _sequence(automatic)
+	# Pre-metadata saves retain their existing file times. A tie favors the safe
+	# manual checkpoint. Never rewrite a legacy save merely to inspect/load it.
+	if manual_order == 0 and auto_order == 0:
+		manual_order = FileAccess.get_modified_time(slot_path(slot)) if not manual.is_empty() else 0
+		auto_order = FileAccess.get_modified_time(autosave_path(slot)) if not automatic.is_empty() else 0
+	var candidates: Array[Dictionary] = [
+		{"autosave": false, "data": manual}, {"autosave": true, "data": automatic}]
+	if auto_order > manual_order:
+		candidates.reverse()
+	return candidates
 
 static func read_autosave(slot: int) -> Dictionary:
 	return _read_path(autosave_path(slot))
@@ -40,7 +71,7 @@ static func slot_exists(slot: int) -> bool:
 # already exists, so this is safe to call before every write rather than
 # needing a one-time setup step anywhere.
 static func write_slot(slot: int, data: Dictionary) -> Error:
-	return _write_bytes(slot, JSON.stringify(data).to_utf8_buffer())
+	return _write_bytes(slot, JSON.stringify(_ordered_snapshot(slot, data)).to_utf8_buffer())
 
 # A web durable-sync rejection must roll the RAM filesystem back too. Keep
 # exact previous bytes, including a previously corrupt file; never delete an
