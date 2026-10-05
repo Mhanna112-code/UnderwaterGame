@@ -48,7 +48,7 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 		_expect(tooltip_view != null and tooltip_view.get_child_count() == 1,
 			"TOOLTIP RENDER MISSING: contextual move detail has no custom readable surface")
 		if tooltip_view != null and tooltip_view.get_child_count() == 1:
-			var tooltip_label := tooltip_view.get_child(0) as Label
+			var tooltip_label := tooltip_view.get_child(0) as RichTextLabel
 			_expect(tooltip_label != null and tooltip_label.autowrap_mode != TextServer.AUTOWRAP_OFF and tooltip_label.custom_minimum_size.x > 0.0,
 				"TOOLTIP CLIPS: contextual move detail is not constrained to a wrapped width")
 		if tooltip_view != null:

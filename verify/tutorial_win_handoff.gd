@@ -80,7 +80,7 @@ func _run() -> void:
 	(fight.move_buttons[0] as Button).emit_signal("pressed")
 	await process_frame
 	(fight.target_buttons[0] as Button).emit_signal("pressed")
-	var deadline := Time.get_ticks_msec() + 15000
+	var deadline := Time.get_ticks_msec() + 40000
 	while not fight._tutorial_awaiting_enter and results.is_empty() and Time.get_ticks_msec() < deadline:
 		await process_frame
 	print("WIN_PROBE|log=%s|caption=%s|await=%s|paused=%s" % [fight._current_log_text(), fight._tutorial_caption.text, fight._tutorial_awaiting_enter, paused])

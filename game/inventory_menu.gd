@@ -455,6 +455,10 @@ func _on_replay_tutorial_pressed() -> void:
 # Replay the first special-encounter lesson from Combat Help without needing
 # to discover a sonar site first. This is the Maxilani practice encounter;
 # its tutorial path never grants the guarded item.
+func _on_character_abilities_pressed() -> void:
+	close()
+	world._show_ability_popups()
+
 func _on_replay_special_encounter_tutorial_pressed() -> void:
 	if world != null:
 		world._replay_special_encounter_tutorial("attack_up", "angler")
@@ -474,11 +478,35 @@ func _refresh_spells_root() -> void:
 			any = true
 			var label: String = String(spell.get("display", spell.get("name", "")))
 			var cost: float = float(spell.get("oxygen_cost", 0.0))
-			var btn := Button.new()
+			# Same word-wrapped tooltip panel the battle menu uses.
+			var btn := TooltipButton.new()
 			btn.text = "%s: %s%s" % [
 				world._display_name((d as Diver).model_name), label,
-				"" if cost <= 0.0 else " (%d O2)" % int(cost),
+				" (downed)" if (d as Diver).stats.hp <= 0 else "",
 			]
+			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			if cost > 0.0:
+				# Same blue "16O2" badge as the battle move menu.
+				var plate := PanelContainer.new()
+				plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				var plate_style := StyleBoxFlat.new()
+				plate_style.bg_color = Color(0.05, 0.08, 0.1, 0.85)
+				plate_style.set_corner_radius_all(4)
+				plate_style.content_margin_left = 4
+				plate_style.content_margin_right = 4
+				plate.add_theme_stylebox_override("panel", plate_style)
+				plate.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+				plate.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+				plate.grow_vertical = Control.GROW_DIRECTION_BOTH
+				plate.offset_right = -8
+				plate.offset_left = -8
+				btn.add_child(plate)
+				var badge := Label.new()
+				badge.text = "%dO2" % int(cost)
+				badge.add_theme_font_size_override("font_size", 14)
+				badge.add_theme_color_override("font_color", Color(0.35, 0.75, 1.0))
+				badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				plate.add_child(badge)
 			btn.tooltip_text = String(spell.get("description", spell.get("hint", "")))
 			btn.custom_minimum_size = Vector2(0, 40)
 			btn.disabled = not world.can_afford_party_spell(spell, d as Diver)
@@ -507,7 +535,8 @@ func _valid_targets_for(spell: Dictionary) -> Array:
 	var effect := String(spell.get("effect", ""))
 	if effect == "revive":
 		return world.divers.filter(func(d: Diver) -> bool: return d.stats.hp <= 0)
-	return world.divers.filter(func(d: Diver) -> bool: return d.stats.hp > 0)
+	# Heals: living and not already at full health.
+	return world.divers.filter(func(d: Diver) -> bool: return d.stats.hp > 0 and d.stats.hp < d.stats.hp_max)
 
 func _refresh_spells_target() -> void:
 	_hint.text = "Choose who this lands on."
@@ -544,7 +573,14 @@ func _refresh_help() -> void:
 		replay_btn.custom_minimum_size = Vector2(0, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
-	if world != null and world.has_method("_replay_special_encounter_tutorial"):
+	if world != null and world.has_method("_show_ability_popups") and bool(world.get("ability_popups_seen")):
+		var abilities_btn := Button.new()
+		abilities_btn.text = "Character Abilities"
+		abilities_btn.custom_minimum_size = Vector2(0, 40)
+		abilities_btn.pressed.connect(_on_character_abilities_pressed)
+		_list.add_child(abilities_btn)
+	# Only once the party has left a special encounter in any way.
+	if world != null and world.has_method("_replay_special_encounter_tutorial") and bool(world.get("special_encounter_left")):
 		var replay_special_btn := Button.new()
 		replay_special_btn.text = "Replay Special Encounter Tutorial"
 		replay_special_btn.custom_minimum_size = Vector2(0, 40)

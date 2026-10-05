@@ -114,7 +114,7 @@ static func stat_glossary_body(title: String) -> String:
 const WORLD_ABILITY_BLURBS := {
 	"swap": "Instantly trades places with another party member - press F, cycle who with Left/Right, confirm with Enter. Escape cancels. Uses no Oxygen. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
 	"grapple": "Press F to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. Anchors pull Musashi toward them; floating light items reel toward him instead. Uses no Oxygen. Firing at open water or a wall does nothing and can be retried immediately.",
-	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks nearby obstacles built to be shockwaved open. Uses no Oxygen and has a short cooldown.",
+	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks nearby obstacles built to be shockwaved open. Costs 20 Oxygen and has a short cooldown.",
 	"sonar": "Toggled with Q, not F - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
 }
 

@@ -9,7 +9,7 @@ const MOVES := [
 	{"name": "Octo Stab", "clip": "octo_stab", "target": "single", "hits": 1,
 		"formula": {"strength": 1}, "acc_mod": 1},
 	{"name": "Head Bash", "clip": "head_bash", "target": "single", "hits": 1,
-		"power": 3, "acc_mod": 0, "quick_time_bool": true},
+		"power": 3, "acc_mod": 1, "quick_time_bool": true},   # +1 (was 0) so it lands on Musashi
 	{"name": "Electric Shooting", "clip": "electric_shooting", "target": "all", "hits": 1,
 		"formula": {"strength": 1}, "acc_mod": 0},
 	# 'finish' is the validated framing key for the same Poison Breath take.
@@ -27,6 +27,7 @@ func make_stats() -> CombatantStats:
 	stats.agility = 2
 	stats.evasion = 2
 	stats.accuracy = 3
+	stats.immune_to_stat_loss = true   # like Tethys: stat-lowering effects don't stick
 	stats.fill()
 	return stats
 

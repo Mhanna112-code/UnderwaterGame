@@ -124,20 +124,18 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 		if world.key_items.has(item_id) or not world.revealed_key_items.has(item_id):
 			continue
 		var pos: Vector3 = entry.at
-		# A special site triggers inside a 3D sphere of its radius. Above or
+		# An item site triggers inside a 3D sphere of its radius. Above or
 		# below that band it can't be entered, so it isn't shown either.
-		if bool(entry.get("special", false)) and absf(center.y - pos.y) > float(entry.get("radius", 0.0)):
+		if absf(center.y - pos.y) > float(entry.get("radius", 0.0)):
 			continue
 		var rel := Vector2(pos.x, pos.z) - Vector2(center.x, center.z)
 		var dist: float = maxf(rel.length(), 0.01)   # guards the /dist normalize below
 		if dist <= view_radius:
 			# Same two sizes as maze_mini_map.gd and the Sonar ability page:
-			# small solid circle = hidden item, larger outlined = special encounter.
-			if bool(entry.get("special", false)):
-				draw_circle(mid + rel * px_per_unit, 5.5, marker_color)
-				draw_arc(mid + rel * px_per_unit, 5.5, 0.0, TAU, 20, Color(1.0, 0.75, 0.75, pulse), 1.2)
-			else:
-				draw_circle(mid + rel * px_per_unit, 3.5, marker_color)
+			# Every item encounter (special minigame or regular item fight) is
+			# the larger outlined circle; small solid circles are item rocks.
+			draw_circle(mid + rel * px_per_unit, 5.5, marker_color)
+			draw_arc(mid + rel * px_per_unit, 5.5, 0.0, TAU, 20, Color(1.0, 0.75, 0.75, pulse), 1.2)
 		else:
 			# RESTORED: this branch had gone missing, leaving
 			# _draw_marker_arrow() defined but never called - an

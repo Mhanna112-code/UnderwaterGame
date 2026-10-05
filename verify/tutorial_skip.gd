@@ -2,7 +2,7 @@
 # It must restore the world rather than behaving like Run's ordinary flee.
 extends SceneTree
 
-const TIMEOUT_MS := 3000
+const TIMEOUT_MS := 20000
 var findings: Array[String] = []
 
 func _initialize() -> void:

@@ -79,6 +79,22 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 		result["immune"] = true
 	return result
 
+# Stat losses ("EVA -3", "DEF -2", "ACC -1") shown in red wherever combat
+# text is rich text: the battle log, move hint lines and move tooltips.
+const STAT_LOSS_COLOR := "ff5a5a"
+static var _stat_loss_regex: RegEx
+
+static func red_stat_losses_bbcode(text: String) -> String:
+	if _stat_loss_regex == null:
+		_stat_loss_regex = RegEx.create_from_string("[A-Z]{3}(?:/[A-Z]{3})* -[0-9]+")
+	var safe := text.replace("[", "[lb]")
+	return _stat_loss_regex.sub(safe, "[color=#%s]$0[/color]" % STAT_LOSS_COLOR, true)
+
+static func has_stat_loss(text: String) -> bool:
+	if _stat_loss_regex == null:
+		_stat_loss_regex = RegEx.create_from_string("[A-Z]{3}(?:/[A-Z]{3})* -[0-9]+")
+	return _stat_loss_regex.search(text) != null
+
 static func formula_value(wielder: CombatantStats, formula: Variant) -> int:
 	if not formula is Dictionary:
 		return int(formula)

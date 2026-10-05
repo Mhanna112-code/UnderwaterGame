@@ -120,6 +120,11 @@ var _save_points: Array = []
 var _showing_save_prompt := false
 var _save_point_contact_active := false
 var _save_point_tutorial_seen := false
+# Combat Help unlocks (both saved): the special-encounter replay appears only
+# after the party has left a special encounter in any way (win, loss, Skip),
+# and the character-ability pages only after they've been shown once.
+var special_encounter_left := false
+var ability_popups_seen := false
 
 # Party-wide, not per-diver - key items unlock spells in whichever diver's
 # tree requires them, they aren't "held" by whoever found one or won the
@@ -278,6 +283,56 @@ var _completion_screen: CanvasLayer
 var _completion_checkpoint: Dictionary = {}
 var _completion_saving := false
 
+# The state captured when the player confirmed the Cordys fight (see
+# MazeLevel.cordys_fight_starting). Static so it survives the scene reload a
+# restart performs; also written as the slot's autosave when a slot exists.
+static var _pre_boss_checkpoint: Dictionary = {}
+static var _restart_checkpoint: Dictionary = {}
+
+func _capture_pre_boss_autosave() -> void:
+	_pre_boss_checkpoint = _serialize_state()
+	if _current_slot < 0:
+		return
+	var slot := _current_slot
+	var error := SaveManager.write_autosave(slot, _pre_boss_checkpoint)
+	if error == OK:
+		await BrowserCheckpoint.confirm_slot(slot, true)
+
+func _restart_from_pre_boss_autosave() -> void:
+	var data := _pre_boss_checkpoint
+	if data.is_empty() and _current_slot >= 0:
+		data = SaveManager.read_autosave(_current_slot)
+	if data.is_empty():
+		return
+	_restart_checkpoint = data
+	_restart_slot = -1
+	_resume_slot_after_restart = _current_slot
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+static var _resume_slot_after_restart := -1
+
+# Like a Title Load, but from an in-memory checkpoint (the pre-boss autosave).
+func _resume_from_checkpoint(data: Dictionary, slot: int) -> void:
+	_current_slot = slot
+	if not restore_checkpoint(data):
+		_current_slot = -1
+		_show_title_screen()
+		title_screen.show_load_error("Could not restart from the autosave.")
+		return
+	title_screen.close()
+	if _loaded_maze_session != null:
+		_loaded_maze_session.selected_slot = slot
+		_loaded_maze_session = null
+		get_tree().paused = false
+		_set_maze_ownership(true, true)
+		_audio_call(&"play_exploration_music")
+	else:
+		$HUD.visible = true
+		get_tree().paused = false
+		_audio_call(&"play_exploration_music")
+	_announce("Restarted from the autosave before the Cordys fight.")
+
 func _show_campaign_completion(already_saved := false) -> void:
 	if is_instance_valid(_completion_screen) or route_state.octopus_state != "defeated":
 		return
@@ -295,39 +350,13 @@ func _show_campaign_completion(already_saved := false) -> void:
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_completion_screen = CampaignCompletionScript.new()
-	_completion_screen.retry_chosen.connect(_save_campaign_completion)
+	_completion_screen.restart_chosen.connect(_restart_from_pre_boss_autosave)
 	_completion_screen.title_chosen.connect(_on_game_over_title)
 	add_child(_completion_screen)
-	if already_saved:
-		_completion_screen.show_saved(_current_slot)
-	else:
-		_save_campaign_completion()
-
-func _save_campaign_completion() -> void:
-	if _completion_saving or not is_instance_valid(_completion_screen):
-		return
-	if _current_slot < 0:
-		_completion_screen.show_failure("No save slot is selected. Keep this game open; completion has not been saved.")
-		return
-	_completion_saving = true
-	_completion_screen.show_saving()
-	var slot := _current_slot
-	var existed := SaveManager.slot_exists(slot)
-	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
-	var error := SaveManager.write_slot(slot, _completion_checkpoint)
-	var written := error == OK
-	if written:
-		error = await BrowserCheckpoint.confirm_slot(slot)
-	var rollback_error := OK
-	if error != OK and written:
-		rollback_error = SaveManager.rollback_slot(slot, existed, previous)
-	_completion_saving = false
-	if error == OK:
-		_completion_screen.show_saved(slot)
-	elif rollback_error == OK:
-		_completion_screen.show_failure("Completion could not be saved. Your previous checkpoint is unchanged. Enable saving or free storage, then retry before leaving.")
-	else:
-		_completion_screen.show_failure("Saving failed and the previous checkpoint could not be restored. Keep this game open and retry before leaving.")
+	# The ending no longer writes a completion save; it offers the autosave
+	# taken right before the Cordys fight instead.
+	var has_autosave := not _pre_boss_checkpoint.is_empty() 		or (_current_slot >= 0 and FileAccess.file_exists(SaveManager.autosave_path(_current_slot)))
+	_completion_screen.show_options(has_autosave)
 
 func _autosave_safe() -> bool:
 	if _checkpoint_saving:
@@ -444,6 +473,8 @@ func _serialize_world_state() -> Dictionary:
 		"revealed_key_items": revealed_key_items.duplicate(),
 		"consumed_world_ids": consumed_world_ids.duplicate(),
 		"save_point_tutorial_seen": _save_point_tutorial_seen,
+		"special_encounter_left": special_encounter_left,
+		"ability_popups_seen": ability_popups_seen,
 		"route_state": route_state.to_save_data(),
 		"divers": divers_data,
 	}
@@ -599,6 +630,10 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
 	active = int(data.get("active", 0))
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
+	special_encounter_left = bool(data.get("special_encounter_left", false))
+	ability_popups_seen = bool(data.get("ability_popups_seen", false))
+	# The forced first special encounter (Maxilani's tutorial) only happens once.
+	player_first_special_encounter = not special_encounter_left
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
 	random_encounters_enabled = data.get("random_encounters_enabled", true)
 	_puzzle_solved = data.get("ability_puzzle_solved", false)
@@ -1434,6 +1469,12 @@ func _ready() -> void:
 		if not _restore_campaign_return(returned):
 			_show_title_screen()
 			title_screen.show_load_error("Could not restore the open-water route. Choose a saved game.")
+	elif not _restart_checkpoint.is_empty():
+		var data := _restart_checkpoint
+		_restart_checkpoint = {}
+		var slot := _resume_slot_after_restart
+		_resume_slot_after_restart = -1
+		_resume_from_checkpoint.call_deferred(data, slot)
 	elif _restart_slot >= 0:
 		var restart_slot := _restart_slot
 		var restart_latest := _restart_latest
@@ -1477,11 +1518,57 @@ func _start_dev_mode() -> void:
 	if OS.get_cmdline_user_args().has("--secret-room"):
 		var room := embedded_maze._secret_item_room_rect().abs()
 		front = Vector3(room.get_center().x, embedded_maze._floor_top_y + 1.2, room.get_center().y)
+	elif OS.get_cmdline_user_args().has("--octopus-front"):
+		# Diagnostic shortcut: everything unlocked, standing just inside the
+		# main boss room's door facing the stationed Cordys (outside his
+		# prompt radius, so you walk up to start the fight yourself).
+		if not key_items.has("maze_nav_map"):
+			key_items.append("maze_nav_map")
+		embedded_maze.key_items = key_items
+		for d in divers:
+			var diver := d as Diver
+			diver.unlock_ability()
+			diver.stats.spell_points = 99
+			SpellTree.learn_all_available(diver, key_items)
+			diver.stats.fill()
+		var b33 := embedded_maze.get_node("CSGBox3D33") as Node3D
+		front = Vector3(b33.global_position.x + 3.0, embedded_maze._floor_top_y + 1.2, embedded_maze._main_boss_door_z)
+		yaw = -PI * 0.5   # face east, into the room toward Cordys
 	for i in divers.size():
 		(divers[i] as Diver).global_position = front + Vector3(-float(i) * 1.5, 0, float(i) * 1.5)
 		(divers[i] as Diver).velocity = Vector3.ZERO
 	_set_maze_ownership(true)
 	_announce("DEV MODE: temporary items and maze keys. No player save is written.")
+
+var _maze_hidden_hud: Array[CanvasItem] = []
+
+func _maze_hud_keep() -> Array:
+	var keep: Array = []
+	if hp_bar != null:
+		keep.append(hp_bar.get_parent())
+	if oxygen_bar != null:
+		keep.append(oxygen_bar.get_parent())
+	if _party_bars_box != null:
+		keep.append(_party_bars_box)
+	return keep
+
+func _apply_maze_hud(on: bool) -> void:
+	$HUD.visible = true
+	$HUD.process_mode = Node.PROCESS_MODE_INHERIT
+	if on:
+		var keep := _maze_hud_keep()
+		_maze_hidden_hud.clear()
+		for child in $HUD.get_children():
+			var item := child as CanvasItem
+			if item != null and item.visible and not keep.has(item):
+				item.visible = false
+				_maze_hidden_hud.append(item)
+	else:
+		for item in _maze_hidden_hud:
+			if is_instance_valid(item):
+				item.visible = true
+		_maze_hidden_hud.clear()
+		_refresh_world_guidance()
 
 func _restore_campaign_return(session: CampaignSession) -> bool:
 	if session == null or session.outer_world_checkpoint.is_empty():
@@ -1840,7 +1927,8 @@ func _party_spell_label(spell: Dictionary) -> String:
 # inventory_menu.gd's caster-picker, which disables anyone who can't
 # currently afford it, same as battle.gd's move menu already does.
 func can_afford_party_spell(spell: Dictionary, caster: Diver) -> bool:
-	return caster.stats.oxygen >= float(spell.get("oxygen_cost", 0.0))
+	# A downed diver can't cast anything, in or out of battle.
+	return caster.stats.hp > 0 and caster.stats.oxygen >= float(spell.get("oxygen_cost", 0.0))
 
 # Resolves a "heal"/"revive" party spell straight against target.stats,
 # same math battle.gd's _apply_heal()/_apply_revive() use, just without a
@@ -1854,11 +1942,23 @@ func can_afford_party_spell(spell: Dictionary, caster: Diver) -> bool:
 func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 	if not can_afford_party_spell(spell, caster):
 		return
-	caster.stats.oxygen -= float(spell.get("oxygen_cost", 0.0))
 	var s := target.stats
+	var effect := String(spell.get("effect", ""))
+	# Validate the target before spending Oxygen: heals only touch the living
+	# (they never revive), and a revive only works on someone who is down.
+	if effect == "heal" and s.hp <= 0:
+		_announce("%s is down - only a revive can help." % _display_name(target.model_name))
+		return
+	if effect == "heal" and s.hp >= s.hp_max:
+		_announce("%s is already at full health." % _display_name(target.model_name))
+		return
+	if effect == "revive" and s.hp > 0:
+		_announce("%s isn't down." % _display_name(target.model_name))
+		return
+	caster.stats.oxygen -= float(spell.get("oxygen_cost", 0.0))
 	var amount := int(spell.get("amount", 0))
 	var label := _party_spell_label(spell)
-	match String(spell.get("effect", "")):
+	match effect:
 		"heal":
 			var before := s.hp
 			s.hp = mini(s.hp_max, s.hp + amount)
@@ -1868,9 +1968,6 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 			else:
 				_announce("%s - %s is already at full health." % [label, _display_name(target.model_name)])
 		"revive":
-			if s.hp > 0:
-				_announce("%s isn't down." % _display_name(target.model_name))
-				return
 			s.hp = mini(s.hp_max, amount)
 			_announce("%s - %s is back up!" % [label, _display_name(target.model_name)])
 		_:
@@ -2315,6 +2412,9 @@ func _start_ability() -> void:
 	if not route_state.prologue_complete or aiming or target_selector.selecting:
 		return
 	var d: Diver = divers[active]
+	if d.shockwave_needs_oxygen() and not _intro_active:
+		_announce("Not enough Oxygen for Shockwave (needs %d)." % int(Diver.SHOCKWAVE_OXYGEN_COST))
+		return
 	if not d.can_use_ability() or _intro_active:
 		return
 	if d.ability_id == "swap":
@@ -2555,6 +2655,9 @@ func _physics_process(dt: float) -> void:
 		if not embedded_maze._battling:
 			for diver in divers:
 				diver.exploration_paused = not embedded_maze.contains_point(diver.global_position)
+		# Keep the shared HP/O2 and party bars current while the maze plays.
+		_update_hp_bar()
+		_update_oxygen_bar()
 		if not embedded_maze.contains_point((divers[active] as Diver).global_position) and embedded_maze.prepare_area_exit():
 			_set_maze_ownership(false)
 		# The Maze owns this frame even on departure: never swim twice.
@@ -2835,8 +2938,10 @@ func _set_maze_ownership(on: bool, restored := false) -> void:
 		cam.current = true
 		route_state.set_zone("deep")
 		route_state.set_maze_door_state("available")
-	$HUD.visible = not on
-	$HUD.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT
+	# The maze brings its own controls line, minimap and captions, so only the
+	# overworld-only HUD pieces hide there. The HP/O2 bars (with the Random
+	# Encounters badge) and the other divers' side bars stay on screen.
+	_apply_maze_hud(on)
 	_active_cursor.visible = false if on else _active_cursor.visible
 	Whirlpool.refresh_in(self)
 
@@ -2853,6 +2958,7 @@ func _build_embedded_maze() -> void:
 	embedded_maze.coordinate_origin = DeepZoneLayoutScript.MAZE_ORIGIN
 	embedded_maze.campaign_session = _campaign_session
 	embedded_maze.campaign_completed.connect(_show_campaign_completion)
+	embedded_maze.cordys_fight_starting.connect(_capture_pre_boss_autosave)
 	add_child(embedded_maze)
 	_build_lab_maze_ramp()
 
@@ -3881,6 +3987,8 @@ func _on_battle_finished(result: String) -> void:
 		(diver as Diver).reset_passives_after_battle()
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	if was_special:
+		special_encounter_left = true
 	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
 	var route_blocker_id := _active_route_blocker_id
 	battle.queue_free()
@@ -4027,7 +4135,8 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 		"fled":
 			_announce("You successfully ran away.")
-			escape_encounter_hint.show_after_escape(random_encounters_enabled)
+			# The post-escape "R: Encounters" box was removed on request; the
+			# HUD badge by the HP bar already shows the setting.
 		"skipped":
 			# The "Skip Tutorial" in-battle menu option (see battle.gd's
 			# _on_skip_tutorial_pressed()) - Run itself stays disabled for the
@@ -4342,6 +4451,7 @@ func _show_ability_popups() -> void:
 	# with nothing left to run and no reachable quit(). The NodePath lookup
 	# is a runtime call, not a parse-time identifier, so it works either way.
 	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages, self)
+	ability_popups_seen = true
 
 func _build_route_objective_hud() -> void:
 	route_objective_panel = PanelContainer.new()
@@ -4385,19 +4495,38 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	hud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hud.add_theme_font_size_override("font_size", 14 if viewport_size.x < 900.0 else 16)
 
+	_layout_route_objective_panel()
+
+# Guidance panel: centred, out of the minimap's corner, and never over the
+# other divers' side bars - slid right of them when there's room for a
+# readable panel, otherwise dropped below them.
+func _layout_route_objective_panel() -> void:
 	if route_objective_panel == null:
 		return
+	var viewport_size := get_viewport().get_visible_rect().size
+	var compact := viewport_size.x < 600.0
+	var right_limit := maxf(160.0 if compact else 304.0, viewport_size.x - 176.0)
 	var panel_width := viewport_size.x - 32.0 if compact else minf(570.0, maxf(288.0, right_limit - 32.0))
 	var panel_left := clampf(
 		(viewport_size.x - panel_width) * 0.5,
 		16.0,
 		maxf(16.0, right_limit - panel_width)
 	)
+	var panel_top := maxf(176.0, _controls_text_bottom() + 8.0) if compact else 74.0
+	if _party_bars_box != null and _party_bars_box.is_visible_in_tree():
+		var bars := _party_bars_box.get_global_rect()
+		var bars_right := bars.end.x + 12.0
+		if panel_left < bars_right:
+			if right_limit - bars_right >= 280.0:
+				panel_left = bars_right
+				panel_width = minf(panel_width, right_limit - bars_right)
+			else:
+				panel_top = maxf(panel_top, bars.end.y + 8.0)
 	route_objective_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	route_objective_panel.offset_left = panel_left
-	route_objective_panel.offset_top = 176.0 if compact else 74.0
+	route_objective_panel.offset_top = panel_top
 	route_objective_panel.offset_right = panel_left + panel_width
-	route_objective_panel.offset_bottom = route_objective_panel.offset_top + 44.0
+	route_objective_panel.offset_bottom = panel_top + 44.0
 
 func _show_lab_payoff() -> void:
 	if route_state.lab_state != "cleared" or route_state.tethys_state != "defeated":
@@ -4442,18 +4571,7 @@ func _refresh_world_guidance() -> void:
 			text = "Explore the deep sea."
 	route_objective_label.text = text
 	route_objective_panel.visible = text != ""
-	var compact := get_viewport().get_visible_rect().size.x < 600.0
-	var objective_top := maxf(176.0, hud.get_rect().end.y + 8.0) if compact else 74.0
-	if _party_bars_box != null:
-		# At narrow/medium widths the centered objective shares the left-party
-		# column. Reserve its full height; otherwise HP/O2 paint over both the
-		# destination text and the compass beneath it.
-		var party_bounds := _party_bars_box.get_global_rect()
-		var objective_bounds := route_objective_panel.get_global_rect()
-		if objective_bounds.position.x < party_bounds.end.x and objective_bounds.end.x > party_bounds.position.x:
-			objective_top = maxf(objective_top, party_bounds.end.y + 8.0)
-	route_objective_panel.offset_top = objective_top
-	route_objective_panel.offset_bottom = objective_top + 44.0
+	_layout_route_objective_panel()
 
 
 func _update_hud() -> void:
@@ -4637,11 +4755,32 @@ func _party_bar_label() -> Label:
 	label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
 	return label
 
+# Bottom edge of whatever controls/character text sits top-left right now: the
+# maze's controls block while it owns the screen, otherwise the world's
+# Controls label measured by its real wrapped lines (its rect is fixed in the
+# scene and doesn't grow when the text wraps on narrow screens).
+func _controls_text_bottom() -> float:
+	if embedded_maze != null and embedded_maze.maze_active:
+		var block := embedded_maze.get_node_or_null("HUD/MazeExplorationControls") as Control
+		if block != null:
+			var bottom := block.get_global_rect().end.y
+			for child in block.get_children():
+				if child is Control and (child as Control).visible:
+					bottom = maxf(bottom, (child as Control).get_global_rect().end.y)
+			return bottom
+	if hud == null or not hud.visible:
+		return 0.0
+	var lines := maxi(1, hud.get_line_count())
+	var spacing := float(hud.get_theme_constant("line_spacing"))
+	var text_height := lines * hud.get_line_height() + maxi(0, lines - 1) * spacing
+	return hud.global_position.y + maxf(text_height, 0.0)
+
 func _update_party_bars() -> void:
 	if _party_bars_box == null:
 		return
-	# Follow the controls text down if it wraps onto more lines.
-	_party_bars_box.position.y = maxf(76.0, hud.get_rect().end.y + 6.0) if hud != null else 76.0
+	# Follow the controls text down if it wraps onto more lines - the maze's
+	# own controls block while it owns the screen, the world's otherwise.
+	_party_bars_box.position.y = maxf(76.0, _controls_text_bottom() + 10.0)
 	for i in range(_party_bar_rows.size()):
 		var row := _party_bar_rows[i]
 		var d := divers[i] as Diver
