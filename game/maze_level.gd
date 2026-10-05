@@ -5614,6 +5614,17 @@ func map_points_of_interest() -> Array[Dictionary]:
 		out.append({"id": "broken_rock_%d" % i, "kind": "broken_rock", "pos": broken_rock_spots[i], "radius": INF})
 	if _vortex_chest != null and is_instance_valid(_vortex_chest):
 		out.append({"id": "vortex_chest", "kind": "chest", "pos": _vortex_chest.global_position, "radius": 9.0, "done": _vortex_chest_open})
+	if _map_chest != null and is_instance_valid(_map_chest):
+		out.append({"id": "map_chest", "kind": "chest", "pos": _map_chest.global_position, "radius": 9.0, "done": _map_chest_open})
+	# A boss icon in each boss room, once you've been through its door.
+	var secret_boss := _secret_boss_room_rect(true)
+	if secret_boss.size != Vector2.ZERO:
+		var sc := secret_boss.get_center()
+		out.append({"id": "boss_secret", "kind": "boss", "pos": Vector3(sc.x, 0, sc.y), "radius": 0.0, "rect": secret_boss})
+	var main_boss := _main_boss_room_rect()
+	if main_boss.size != Vector2.ZERO:
+		var mc := main_boss.get_center()
+		out.append({"id": "boss_main", "kind": "boss", "pos": Vector3(mc.x, 0, mc.y), "radius": 0.0, "rect": main_boss})
 	if _switch_node != null:
 		out.append({"id": "room_switch", "kind": "switch", "pos": _switch_node.global_position, "radius": 7.0, "done": _gate_lowered})
 	if _split_rock != null and is_instance_valid(_split_rock):
@@ -5626,6 +5637,17 @@ func map_points_of_interest() -> Array[Dictionary]:
 		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0)
 		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
 	return out
+
+# The main boss room's floor plan (inside its North/South/East walls).
+func _main_boss_room_rect() -> Rect2:
+	var mn := get_node_or_null("MainBossRoomNorth") as CSGBox3D
+	var ms := get_node_or_null("MainBossRoomSouth") as CSGBox3D
+	var me := get_node_or_null("MainBossRoomEast") as CSGBox3D
+	if mn == null or ms == null or me == null:
+		return Rect2()
+	var x0 := mn.global_position.x - mn.size.x * 0.5
+	var z0 := minf(ms.global_position.z, mn.global_position.z)
+	return Rect2(x0, z0, me.global_position.x - x0, absf(mn.global_position.z - ms.global_position.z))
 
 # One half of a broken rock: a lumpy, faceted dome (+Y) over a rough,
 # jagged fracture face (around y = 0, facing -Y). Dome faces are weathered

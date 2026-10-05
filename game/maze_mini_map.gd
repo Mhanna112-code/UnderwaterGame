@@ -1090,13 +1090,82 @@ func _build_main_map_copy() -> void:
 	legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	legend.z_index = 3
 	legend.position = Vector2(16, MAIN_MAP_SIZE - 26)
-	legend.size = Vector2(468, 22)
-	legend.draw.connect(_draw_legend.bind(legend))
+	legend.size = Vector2(0, 0)
 	main_map.add_child(legend)
+	_build_side_legend()
 	_build_map_help()
 
 const LEGEND_TEXT_COLOR := Color(0.73, 0.87, 0.96)
 const LEGEND_FONT_SIZE := 13
+
+# The legend: a panel to the right of the map, every symbol the map draws
+# shown as it appears there, with what it is in words beside it. Its own
+# node next to the map (the map clips whatever it draws to its square), shown
+# and hidden with it.
+const SIDE_LEGEND_ENTRIES := [
+	["wall", "Walls"],
+	["current", "Current"],
+	["you", "You"],
+	["room", "Visited room"],
+	["poster", "Poster (clue)"],
+	["chest", "Chest"],
+	["switch", "Map Control switch"],
+	["key", "Key"],
+	["rock", "Mysterious Rock"],
+	["broken_rock", "Broken rock"],
+	["boss", "Boss"],
+]
+const SIDE_LEGEND_WIDTH := 210.0
+const SIDE_LEGEND_ROW := 30.0
+var _side_legend: Control
+
+func _build_side_legend() -> void:
+	_side_legend = Control.new()
+	_side_legend.name = "MazeMapSideLegend"
+	_side_legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_side_legend.z_index = 4
+	_side_legend.position = main_map.position + Vector2(MAIN_MAP_SIZE + 6.0, 0.0)
+	_side_legend.size = Vector2(SIDE_LEGEND_WIDTH, 44.0 + SIDE_LEGEND_ROW * SIDE_LEGEND_ENTRIES.size())
+	_side_legend.visible = false
+	_side_legend.draw.connect(_draw_side_legend)
+	main_map.get_parent().add_child.call_deferred(_side_legend)
+
+func _draw_side_legend() -> void:
+	var ci := _side_legend
+	ci.draw_rect(Rect2(Vector2.ZERO, ci.size), Color(0.03, 0.06, 0.08, 0.94))
+	ci.draw_rect(Rect2(Vector2.ZERO, ci.size), Color(0.3, 0.55, 0.95), false, 2.0)
+	var font := ThemeDB.fallback_font
+	ci.draw_string(font, Vector2(14, 26), "LEGEND", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.94, 1.0))
+	for i in SIDE_LEGEND_ENTRIES.size():
+		var entry: Array = SIDE_LEGEND_ENTRIES[i]
+		var mid := Vector2(30.0, 44.0 + SIDE_LEGEND_ROW * (i + 0.5))
+		_draw_legend_icon(ci, String(entry[0]), mid)
+		ci.draw_string(font, Vector2(58.0, mid.y + 5.0), String(entry[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, LEGEND_TEXT_COLOR)
+
+func _draw_legend_icon(ci: CanvasItem, kind: String, c: Vector2) -> void:
+	match kind:
+		"wall":
+			ci.draw_line(c + Vector2(-12, 0), c + Vector2(12, 0), WALL_COLOR, 2.0)
+		"current":
+			var pts := PackedVector2Array()
+			for k in 9:
+				var u := k / 8.0
+				pts.append(Vector2(c.x - 12.0 + u * 18.0, c.y + sin(u * TAU * 1.5) * 2.5))
+			ci.draw_polyline(pts, FLOW_COLOR, 2.0)
+			var tip := c + Vector2(12, 0)
+			ci.draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-6, -4), tip + Vector2(-6, 4)]), FLOW_COLOR)
+		"you":
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -7), c + Vector2(-5.5, 5), c + Vector2(5.5, 5)]), Color(0.35, 0.95, 0.55))
+		"room":
+			ci.draw_rect(Rect2(c - Vector2(10, 6), Vector2(20, 12)), ROOM_COLOR, false, 2.0)
+		"switch":
+			# The map's switch, without its "Map Control" caption.
+			var sz := Vector2(8, 8)
+			ci.draw_rect(Rect2(c - sz * 0.5, sz), Color(0.05, 0.05, 0.05))
+			ci.draw_circle(c, 2.2, Color(1.0, 0.2, 0.2))
+			ci.draw_rect(Rect2(c - sz * 0.5, sz), Color(0.7, 0.7, 0.7), false, 1.0)
+		_:
+			_draw_poi(ci, c, {"kind": kind, "done": false}, 1.0)
 
 func _draw_legend(legend: Control) -> void:
 	var font := ThemeDB.fallback_font
@@ -1186,6 +1255,9 @@ func _refresh_map_copy() -> void:
 		if _map_help != null:
 			# The lever map has its own controls list under the map instead.
 			_map_help.visible = main_map.visible and legend.visible
+			if _side_legend != null:
+				_side_legend.visible = main_map.visible and legend.visible
+				_side_legend.queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
@@ -1576,6 +1648,15 @@ func _draw_poi(ci: CanvasItem, p: Vector2, poi: Dictionary, k: float) -> void:
 		"rock":
 			ci.draw_circle(p, 5.0 * k, Color(0.45, 0.42, 0.38))
 			ci.draw_line(p + Vector2(-1, -5) * k, p + Vector2(1, 5) * k, Color(0.08, 0.08, 0.08), 1.5)
+		"boss":
+			# A red skull: dome, two dark eyes, a jaw.
+			var red := Color(0.95, 0.25, 0.3)
+			ci.draw_circle(p + Vector2(0, -1.0) * k, 6.0 * k, red)
+			ci.draw_rect(Rect2(p + Vector2(-3.5, 3.0) * k, Vector2(7.0, 4.0) * k), red)
+			ci.draw_circle(p + Vector2(-2.3, -1.2) * k, 1.6 * k, Color(0.05, 0.02, 0.04))
+			ci.draw_circle(p + Vector2(2.3, -1.2) * k, 1.6 * k, Color(0.05, 0.02, 0.04))
+			for tx in [-1.8, 0.0, 1.8]:
+				ci.draw_line(p + Vector2(tx, 4.0) * k, p + Vector2(tx, 7.0) * k, Color(0.05, 0.02, 0.04), 1.0)
 		"room_label":
 			var font := ThemeDB.fallback_font
 			var size := int(12 * k)
