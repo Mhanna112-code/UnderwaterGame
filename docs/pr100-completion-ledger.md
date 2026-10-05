@@ -5,6 +5,10 @@ This ledger retains the full scope; a green focused batch is not release readine
 No new PR, main push, canonical-main promotion, or merge is authorized by this work.
 
 Frozen intake: main f9ae00c, integration e7072ab, #97 4ec6598, #99 86878fa.
+Later reconciliation: earned-map batch `6cc66c7` and incoming orb batch
+`b064f99` combined in `b916637`, preserving the incoming Stun/Angler patch.
+Miguel explicitly confirmed the Tethys opening pivot in this task; the plan
+addendum records that authority. It is not implemented by the orb merge.
 Late changes need a separately recorded intake rather than silent scope expansion.
 
 | Requirement | Current proof / remaining acceptance |
@@ -12,7 +16,7 @@ Late changes need a separately recorded intake rather than silent scope expansio
 | Complete #97/#99 behavioral dispositions | Existing intake plus latest f698bee/4ec6598 deltas require final exhaustive reconciliation. |
 | Embedded World/maze, one party/camera/input/HUD | Pending implementation and actual traversal, inactive-area and state-conservation checks. Separate-scene compatibility is not completion. |
 | Latest underpass, outgoing/return drafts, barriers and riders | Pending latest geometry admission; sphere spacing/occlusion/vortex solidity already in 0561454. |
-| Earned Control Room map and exclusive chest | Local 6cc66c7/b916637 batch reconciled in isolated checkout; actual acquisition/return, six chest pause/input cases including F, 72 region samples and disposable-slot cold/legacy Load rerun clean. Full embedded/browser acquisition acceptance remains pending. |
+| Earned Control Room map and exclusive chest | Carried in 6cc66c7 and reconciled through b916637: real pre-map acquisition/return, six chest capsule/input/pause cases (now including F), 72 regional L cases, disposable-slot cold/legacy Load and door-key/relic separation rerun clean. Earlier native frames inspected. Full embedded/browser acquisition/discoverability remains open; no dev grant. |
 | Discovery-only map and responsive first-open | Pending full earned-map/discovery admission and browser inspection. Existing map styling is not the whole requirement. |
 | F abilities / E interaction / Ctrl currents / Shift sink / Tab / Q | World/Maze F binding and Maze interaction-only E repaired; public help/keycaps/HUD/README reconciled. 86 real-input/zero-Oxygen/ownership checks plus real map E/Ctrl+E and chest regressions pass. Maze first-person aim, final embedded routing, review guide and historical video inspection remain pending. |
 | Item-orb reel versus anchor pull, free environmental abilities | Real ORB-1 red captured; local repair passes 59 real-physics checks including six shapes, scene teardown, moving shooter and retry after shooter deletion. World aim, swimming and animation regressions pass. No hosted claim. See verify/marc_orb_reel.bug-catalog.md. |

@@ -19,7 +19,8 @@ repair without discarding the local earned-map batch. Fresh authored-combat,
 actual puppet reward, actual defeat/checkpoint recovery, six chest, cold/legacy
 map Load and 72 region checks pass on the combined working source.
 PR100 then advanced again to `b064f99`, a shooter-owned orb-reel subset with
-59 checks; its complete diff was inspected and is next to reconcile. Its new
+59 checks; its complete diff was inspected and merged with earned-map 6cc66c7
+in b916637. Fresh combined checks are recorded below. Its new
 completion ledger references an opening Tethys pivot. Miguel explicitly
 confirmed that change was approved in another chat. It supersedes the older
 Cordys-opening identity while preserving completion/recovery/optional-training
@@ -77,7 +78,7 @@ below are not admitted by this bounded delivery; full route/polish remains open.
 | #97 f698bee | Control Room map box narrower, deeper down steps | Read completely. Pending coordinated room-box/legend rendering admission, not carried by the acquired chest alone. Preserve clear maze-wall strokes and chest/name separation. |
 | #97 4ec6598: radius special sites | Seven invisible radius sites replace guardians; Sonar red markers; R gates entry, once per visit | Read completely. Pending: retain chosen-diver minigames/rewards and actual resource owner; persist consumed/revealed sites and randomized positions instead of replaying rewards on cold Load. Check radius through walls/height and R-on while already inside. Not a replacement for puppet/Cordys authored bosses. |
 | #97 4ec6598: underpass/geometry | Outbound Break Room draft; automatic inbound wall-11 draft; new state barriers and wall alignment | Read completely. Supersedes earlier bidirectional underpass assumption. Pending actual capsules in both directions, all wall states, no trap or world-wide barrier; reconcile embedded lab/maze geometry. |
-| #97 4ec6598: E/F, Swap, orb | F uses abilities, E only interacts; Swap free; grapple reels item to Musashi | Read completely. Pending coordinated World/Maze/tutorial/help/contextual-hint migration and real input; author's onboarding key arrays still say E while bodies say F, so a raw diff port would teach contradictory controls. Reeling must follow the actual caster, not nearest diver, and cancel safely on scene change. |
+| #97 4ec6598: E/F, Swap, orb | F uses abilities, E only interacts; Swap free; grapple reels item to Musashi | Orb b064f99 merged with earned-map batch; F/E dispatch, help/keycaps/HUD/README and exclusive World menu ownership admitted in 133f715 with 86 checks. Existing environmental verbs remain free. Final embedded/first-person Maze integration and historical media/hosted guide reconciliation still pending. |
 | #97 4ec6598: recovery economy | Touch restores at maze save pads; only level-up refills after a battle, no ordinary victory heal | Save-contact restoration already exists in our campaign checkpoint. Other pads pending. Removing the current 30% regroup changes route attrition: must re-prove legal-resource puppet/Cordys/lab wins and recovery availability before admission; not a cosmetic merge. Preserve prologue/optional-training recovery contracts. |
 | #97 4ec6598: first map / marker copy | Synchronous first-open map layout before paused intro; inline hidden-item icon | Pending coordinated introduction/legend layout and existing popup ownership/lifetime repair. Do not overwrite the previously fixed freed-label await or FIFO caller ownership. |
 
@@ -214,3 +215,11 @@ Sonar Vision, latest underpass and embedded ownership still need admission.
 The existing public bffe1b5 preview has NOT been refreshed by these source
 repairs. Historical media/review controls and final matching exports are still
 required; no normal campaign completion or merge-ready claim is made.
+
+Reconciled receipt: earned-map 6cc66c7 and this b064f99 subset combine in
+b916637. Fresh real-physics reel/World aim/swim/animation, real puppet reward,
+six chest and acquired-map cold/legacy persistence gates pass without script
+errors (`/tmp/underwater-late-orb-*.log`). No fresh export has been delivered;
+the unchanged stable artifact remains bffe1b5, and pending table rows remain
+open. Miguel's confirmed Tethys opening amendment is saved in the plan, not
+implemented by this orb/chest integration.
