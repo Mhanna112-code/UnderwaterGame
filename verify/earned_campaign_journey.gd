@@ -8,12 +8,14 @@ var findings: Array[String] = []
 var policy := "skilled"
 var run_seed := 64000
 var recovery_policy := "none"
+var opening_contract := "retained-angler"
 var owned_slot := false
 var fight_count := 0
 var action_count := 0
 var rng := RandomNumberGenerator.new()
 var lab_party_receipt: Array[Dictionary] = []
 var lab_payoff_seen := false
+var last_tutorial_hover: Button
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -23,6 +25,8 @@ func _initialize() -> void:
 			run_seed = int(arg.trim_prefix("--seed="))
 		if arg.begins_with("--recovery="):
 			recovery_policy = arg.trim_prefix("--recovery=")
+		if arg.begins_with("--opening-contract="):
+			opening_contract = arg.trim_prefix("--opening-contract=")
 	call_deferred("_run")
 
 func _run() -> void:
@@ -30,6 +34,8 @@ func _run() -> void:
 		findings.append("EARN observer: unsupported policy")
 	if recovery_policy not in ["none", "existing-save-point", "existing-save-point-safe-return"]:
 		findings.append("EARN observer: unsupported recovery policy")
+	if opening_contract not in ["retained-angler", "observe-current-cordys"]:
+		findings.append("EARN observer: unsupported opening contract")
 	for file in _owned_paths():
 		if FileAccess.file_exists(file) or DirAccess.dir_exists_absolute(file):
 			findings.append("EARN observer: slot file already exists; refusing overwrite: " + file)
@@ -70,8 +76,15 @@ func _run() -> void:
 	# used the old prologue_angler source for one frame.
 	if world.battle != null:
 		var roster := world.battle.enemies.map(func(e: Dictionary) -> String: return String(e.display_name))
-		print("EARN INITIAL ROSTER|actual=%s|required_initial_angler=true" % [roster])
-		_expect(roster == ["Angler"], "EARN-1 initial Angler missing; actual opening roster: " + str(roster))
+		print("EARN INITIAL ROSTER|actual=%s|required_initial_angler=true|opening_contract=%s" % [roster, opening_contract])
+		if opening_contract == "retained-angler":
+			_expect(roster == ["Angler"], "EARN-1 initial Angler missing; actual opening roster: " + str(roster))
+		else:
+			# Explicit exploratory observer, never acceptance of this opener.
+			# Keep the default failing contract intact while measuring real
+			# downstream earned combat on Marc's currently published design.
+			_expect(roster == ["Cordys"], "EARN observer: current-Cordys observation saw an unexpected opening roster: " + str(roster))
+			print("EARN OPENING OBSERVATION|required_angler_missing=true|opening_approved=false|not_campaign_acceptance=true")
 	if not findings.is_empty():
 		await _finish()
 		return
@@ -134,19 +147,33 @@ func _service_gameplay() -> void:
 
 func _play_fight() -> void:
 	var battle := world.battle as Battle
+	var was_special := battle.special_encounter
+	var was_tutorial := battle.tutorial_encounter
 	fight_count += 1
 	var result: Array[String] = []
 	battle.finished.connect(func(value: String) -> void:
 		result.append(value)
 		if value == "won" and battle.encounter_source == "lab_boss":
 			lab_party_receipt = _observe_party())
-	print("EARN FIGHT START|index=%d|source=%s|enemy=%s" % [fight_count, battle.encounter_source, battle.enemies.map(func(e: Dictionary) -> String: return String(e.display_name))])
+	print("EARN FIGHT START|index=%d|source=%s|tutorial=%s|special=%s|enemy=%s" % [fight_count,
+		battle.encounter_source, was_tutorial, was_special, battle.enemies.map(func(e: Dictionary) -> String: return String(e.display_name))])
 	_record_party("fight-%d-entry" % fight_count)
 	var deadline := Time.get_ticks_msec() + 150000
 	var turns := 0
+	var next_ui_receipt := Time.get_ticks_msec() + 5000
 	while result.is_empty() and Time.get_ticks_msec() < deadline and turns < 100:
 		await _ack_visible_reading()
-		if (is_instance_valid(battle) and battle.main_menu.is_visible_in_tree() and not battle.attack_btn.disabled
+		if is_instance_valid(battle) and turns == 0 and Time.get_ticks_msec() >= next_ui_receipt:
+			print("EARN WAITING UI|fight=%d|paused=%s|busy=%s|main_visible=%s|attack_disabled=%s|acting_keys=%s|buttons=%s" % [fight_count,
+				paused, battle._busy, battle.main_menu.is_visible_in_tree(), battle.attack_btn.disabled,
+				battle._acting.keys(), battle.find_children("*", "Button", true, false).filter(func(node: Node) -> bool:
+					return (node as Button).is_visible_in_tree()).map(func(node: Node) -> String: return (node as Button).text)])
+			next_ui_receipt += 30000
+		if is_instance_valid(battle) and battle.tutorial_encounter:
+			if await _drive_visible_tutorial(battle):
+				turns += 1
+				action_count += 1
+		elif (is_instance_valid(battle) and battle.main_menu.is_visible_in_tree() and not battle.attack_btn.disabled
 			and not battle._busy and battle._acting.has("model_name")):
 			var choice := _choice(battle)
 			if not await _choose(battle, choice):
@@ -157,10 +184,47 @@ func _play_fight() -> void:
 		await process_frame
 	var terminal := result[0] if not result.is_empty() else "timeout"
 	print("EARN FIGHT END|index=%d|result=%s|actions=%d|phase=%s" % [fight_count, terminal, turns, world.route_state.prologue_phase])
-	_expect(terminal in ["won", "prologue_defeat"], "EARN-2 actual earned fight ended " + terminal)
+	if terminal == "lost" and was_special:
+		findings.append("EARN observer: optional special/minigame outcome needs actual minigame and public return handling; not an ordinary-party balance defeat (tutorial=%s)" % was_tutorial)
+	else:
+		_expect(terminal in ["won", "prologue_defeat"], "EARN-2 actual earned fight ended " + terminal)
 	for frame in range(10):
 		await process_frame
 	_record_party("fight-%d-exit" % fight_count)
+
+func _drive_visible_tutorial(battle: Battle) -> bool:
+	# Guided combat opens its move list directly. Follow the enabled public
+	# controls instead of waiting for a hidden Attack menu or editing its step.
+	# Hover-only targets must actually be inspected before a click is accepted.
+	if battle._tutorial_awaiting_enter or battle._qte_active:
+		return false # reading uses the real Enter path; never auto-win a QTE.
+	if battle.target_menu.is_visible_in_tree():
+		for candidate in battle.target_buttons:
+			var button := candidate as Button
+			if not button.is_visible_in_tree():
+				continue
+			if button.disabled or button.button_mask == 0:
+				if button != last_tutorial_hover:
+					last_tutorial_hover = button
+					button.mouse_entered.emit()
+					print("EARN TUTORIAL INSPECT|fight=%d|target=%s" % [fight_count, button.text])
+			else:
+				print("EARN TUTORIAL ACTION|fight=%d|actor=%s|target=%s|no_QTE_success_input=true" % [fight_count, battle._acting.display_name, button.text])
+				button.pressed.emit()
+				last_tutorial_hover = null
+				return true
+			break
+	elif not battle._busy and battle.move_menu.is_visible_in_tree():
+		for candidate in battle.move_buttons:
+			var button := candidate as Button
+			if button.is_visible_in_tree() and not button.disabled:
+				print("EARN TUTORIAL CHOICE|fight=%d|move=%s" % [fight_count, button.text.get_slice("\n", 0)])
+				button.pressed.emit()
+				break
+	elif not battle._busy and battle.main_menu.is_visible_in_tree() and not battle.attack_btn.disabled:
+		battle.attack_btn.pressed.emit()
+	await process_frame
+	return false
 
 func _choice(battle: Battle) -> Dictionary:
 	var entry := battle._acting
@@ -249,9 +313,14 @@ func _ack_visible_reading() -> void:
 		var title := popup.get_node_or_null("%Title") as Label
 		if title != null and title.is_visible_in_tree() and title.text == "Computer recovered":
 			lab_payoff_seen = true
-		var close := _visible_button(popup, "Close")
-		if close != null:
-			close.pressed.emit()
+		# Ability teaching is paged: Next becomes Close only on the final
+		# page. Follow the visible button instead of waiting forever for a
+		# Close label that the current page intentionally does not expose.
+		var acknowledgment := _visible_button(popup, "Next")
+		if acknowledgment == null:
+			acknowledgment = _visible_button(popup, "Close")
+		if acknowledgment != null:
+			acknowledgment.pressed.emit()
 			await process_frame
 
 func _visible_button(node: Node, text: String) -> Button:
@@ -495,5 +564,5 @@ func _finish() -> void:
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	for finding in findings:
 		print("FINDING " + finding)
-	print("EARNED LAB-FIRST SLICE: " + ("clean (not full campaign)" if findings.is_empty() else "failed"))
+	print("EARNED LAB-FIRST SLICE: " + ("clean (not full campaign; opening contract=%s)" % opening_contract if findings.is_empty() else "failed"))
 	quit(0 if findings.is_empty() else 1)

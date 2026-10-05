@@ -160,3 +160,50 @@ The existing historical lab receipts apply only to runtime6b8ea07, not these
 new combat/recovery/tutorial/geometry changes. Source snapshots preserve that
 distinction. A future intentionally approved opening-contract change must be
 explicitly reconciled, not silently weaken this assertion.
+
+## Current downstream observation, not opening approval
+
+`--opening-contract=observe-current-cordys` is a separately labelled diagnostic:
+it demands the actual current Cordys roster, plays its real defeat/recovery,
+and measures downstream lab-first combat using only genuinely earned resources.
+Every receipt explicitly records the retained Angler missing and the opening
+unapproved. The default `retained-angler` assertion is unchanged and still
+fails current main. Unsupported contracts fail before scene/slot mutation.
+This avoids both fabrication of opening milestones and treating the postponed
+opening review as a reason not to investigate current downstream balance.
+It is not full campaign acceptance or a replacement for the eventual approved
+opening plus eight-seed-per-policy maze-first/lab-first completion matrix.
+
+First current-source observation on343e37c reaches genuine Cordys defeat and
+full production recovery (level1/XP0/no spells), but the first ordinary Angler
+fight times out before any move action. No loss or balance win is inferred
+from that stalled boundary. Retain the raw failed receipt and investigate the
+actual visible action/reading owners before changing combat balance. The
+observer now records paused/busy/menu/actor state and visible buttons while
+waiting; this diagnostic does not mutate the game or acknowledge unseen UI.
+
+The follow-up UI receipt identifies an observer defect: the actual first
+post-recovery fight is the guided tutorial, with its move list open directly.
+The old driver waits for a hidden main menu. Follow enabled visible move
+buttons and target inspection/click masks, as the standalone full-lesson
+verifier does, without assigning a tutorial step or making a perfect X dodge.
+Keep both timed-out receipts; do not label them combat losses. Normal battle
+choice policies and the default retained-Angler opening failure stay intact.
+
+The guided observer completes all real teaching moves and wins with no X input,
+then exposes a second observer defect: post-combat ability pages offer Next
+before Close. Waiting for Close alone leaves legitimate reading pause active
+and falsely reports blocked swimming. Acknowledge the actual visible Next/Close
+buttons page by page; do not close the modal by private method, change pause,
+or supply movement/progression. Preserve this failed receipt as well.
+
+Paged current observer reaches genuine level3/XP58 and defeats Bomb Bot after
+seven ordinary random-fight wins, but then enters a first-special practice
+site before Sword Slayer. The driver follows combat teaching but supplies no
+minigame inputs and treats its soft loss as an ordinary party defeat. Two
+overworld party members are still alive; this is not evidence that the party
+cannot beat normal enemies. Record tutorial/special flags as well as the stale
+`random` encounter-source label; fail explicitly at the unsupported special
+boundary until genuine minigame or normal public return handling is added.
+The raw original loss receipt is retained, not counted as a campaign pass,
+ordinary-loss rate, lab victory, or whole-campaign balance result.

@@ -1,6 +1,33 @@
 # Remaining campaign plan: current main audit, October 5
 
-## Latest published bounded batch — cb607cf runtime / d08478c main
+## Latest published bounded batch — 7336611 runtime / 2c7637f main
+
+The Sonar pickup lifetime repair is pushed to main and published at
+https://underwatergame.vercel.app/. Marc's concurrent rare boosts, automatic
+Oxygen Cells, Escape map close, rewarded-win site clearing and ambush-marker
+changes are preserved. Six native pickup/owned-Load lifetime cases and twelve
+existing Sonar reveal cases pass without the captured infinite-Tween error.
+The final hosted source passes actual map earning, first-map lesson, three
+destination widths and exclusive Inventory/aim ownership. Candidate and
+independent canonical checks match all four game assets byte-for-byte and
+fresh title has no captured errors. See
+[the delivery record](sonar-pickup-lifetime-delivery-oct5.md).
+
+The current full suite remains in progress, with explicit retained-Angler/
+opening failures; no full-suite pass. Current earned observation wins seven
+ordinary encounters and Bomb Bot, then stops because its driver supplies no
+input at the first special minigame. That is an observer gap, not proof of an
+unbeatable ordinary encounter. No current full-route balance percentage is
+established. Historical lab receipts below do not verify this newer runtime.
+
+Remaining: exhaustive upstream dispositions; casual/skilled lab-first and
+maze-first earned completion; current browser persistence/Bomb Bot/audio and
+broader visual review; matching current native packages. The production opening
+still lacks the retained Angler. Tethys opening/relocated Cordys introduction
+stays LAST and requires Miguel's isolated-preview approval before main/canonical.
+Marc's pre-boss-only ending remains binding. Git deployments are not automatic.
+
+## Previous published bounded batch — cb607cf runtime / d08478c main
 
 Main push and canonical delivery are complete for this repair batch. The actual
 canonical HTML/JS/Wasm/PCK all match the accepted export byte-for-byte; fresh

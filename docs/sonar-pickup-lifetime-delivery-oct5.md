@@ -38,9 +38,26 @@ Sonar cases successfully. The earlier343e37c candidate was not promoted.
 Exact earlier343e37c local browser acceptance passes: source/pack checksum, actual map earning
 through swim/E, unearned-map rejection, L, Inventory, three destination widths,
 real pointer lock/aim/cancel, no captured errors. Inspected narrow goal and
-Inventory pictures. Hosted publication is pending. The canonical URL still
-serves the previous `cb607cf` until this candidate is accepted and promoted.
-Current7336611 hosted acceptance is pending. No automatic Git deployment is claimed.
+Inventory pictures. These earlier receipts are not substituted for the final
+source's acceptance.
+
+The final `7336611` export is published on the canonical URL. Main artifact
+commit `2c7637faebe62e5703e640c17e218a99855d3ebc` pushed successfully after
+preserving Marc's concurrent main change. Accepted deployment:
+`dpl_arNd3AbjZjyLbVGua8KPKkD5gmVm`,
+https://underwatergame-2yw377qon-immortaldemongods-projects.vercel.app/.
+Candidate four-asset identity/cold title, headed actual map/menu/aim checks,
+promotion, and independent canonical four-asset identity/cold title all exit0.
+Hosted map acceptance has no findings; actual canvas pointer lock is required,
+not suppressed. Final narrow goal, Inventory and canonical title pictures were
+inspected. The narrow HUD remains dense; this is bounded readability/ownership
+acceptance, not a claim that every presentation surface is polished.
+
+Raw receipts/screenshots and promotion output are in
+`evidence/sonar-pickup-lifetime-oct5/published/`. The deployed `build-info.json`
+was frozen before acceptance and still uses pending-status wording; its source,
+pack digest and size are correct. These later receipts supersede that wording.
+No automatic Git deployment is claimed.
 
 ## Full-suite and scope limits
 
@@ -49,6 +66,19 @@ data. It failed the Sonar engine-error gate, retained-Angler/free-swim opening
 checks, then was deliberately stopped before this source repair. It is a
 partial failed run, not a full-suite pass. Raw log is retained under
 `evidence/sonar-pickup-lifetime-oct5` with the captured red and green receipts.
+
+A fresh fixed-source full suite is running in isolated native user data. It
+passes the repaired Sonar checks but still reports the retained-Angler/opening
+contract failures. No terminal full-suite verdict or all-green claim yet.
+
+Current earned observation follows actual tutorial move/target and paged
+reading controls. One exploratory run wins seven ordinary random encounters
+and Bomb Bot with earned level3/XP58, then stops at the first optional-special
+practice minigame: the observer supplied no minigame input. That failed receipt
+is retained under `evidence/earned-balance-oct5/current-opening-observation`.
+It is neither a lab victory nor an ordinary-party balance defeat. The default
+required-Angler opening assertion remains failing; explicitly observing the
+current Cordys opener is not approval of that opening.
 
 Earned lab-first/maze-first casual/skilled full-route balance, current browser
 persistence/Bomb Bot/audio acceptance, upstream completion accounting and

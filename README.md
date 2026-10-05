@@ -31,8 +31,12 @@ and outstanding campaign acceptance; it is not a full-game readiness claim.
 records the next runtime/export identity, hosted/canonical checks and remaining
 earned-route/full-campaign limits.
 The later [pre-boss ending and maze UI repair](docs/pre-boss-maze-ui-delivery-oct5.md)
-preserves Marc's pre-boss-only ending and records the current matching canonical
+preserves Marc's pre-boss-only ending and records its matching canonical
 artifact, reading-layout fixes and remaining acceptance work.
+The newest [Sonar pickup lifetime delivery](docs/sonar-pickup-lifetime-delivery-oct5.md)
+records runtime `7336611`, the current canonical export, preserved concurrent
+main changes, native regression and actual hosted map/menu/aim evidence.
+Full earned campaigns and matching current Windows/Linux packages remain unverified.
 
 ## Controls
 
@@ -76,8 +80,8 @@ starts.
 At a cold launch, a first-time player sees one primary **New Game** action. If
 a valid save exists, **Load Game** appears as a secondary action and opens the
 three-slot picker, with separate manual and autosave choices. A normal new run
-plays the opening movie and credited title handoff, then allows quiet swimming
-before the current Cordys opening fight and scripted defeat, followed by a
+plays the opening movie and credited title handoff, then briefly enters the
+world before automatically starting the current Cordys fight and scripted defeat, followed by a
 durable recovery checkpoint. The earlier retained-Angler requirement is not
 met by this upstream opening; it remains explicitly tracked in the plan.
 Replacing that opening with Tethys and relocating Cordys's introduction are

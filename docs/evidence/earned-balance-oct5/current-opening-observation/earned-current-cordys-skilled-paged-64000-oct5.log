@@ -1,0 +1,224 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+EARN NEW GAME|policy=skilled|recovery=none|seed=64000|real_opening_seen=true
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+EARN INITIAL ROSTER|actual=["Cordys"]|required_initial_angler=true|opening_contract=observe-current-cordys
+EARN OPENING OBSERVATION|required_angler_missing=true|opening_approved=false|not_campaign_acceptance=true
+EARN FIGHT START|index=1|source=prologue_octopus|enemy=["Cordys"]
+EARN PARTY|stage=fight-1-entry|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-entry|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-entry|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+PROLOGUE_PHASE|octopus_response
+EARN ACTION|fight=1|actor=Maxilani|move=Scuba Stabbing|target=Cordys
+PROLOGUE_HIT|move=Scuba Stabbing|damage=1|hit=true|hp=999|effects=["Bleed 2"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+EARN ACTION|fight=1|actor=Musashi|move=Precise Tap|target=Cordys
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=994|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+EARN ACTION|fight=1|actor=Bucky|move=Guard Bash|target=Cordys
+PROLOGUE_HIT|move=Guard Bash|damage=8|hit=true|hp=984|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+EARN FIGHT END|index=1|result=prologue_defeat|actions=3|phase=scripted_defeat
+EARN PARTY|stage=fight-1-exit|name=Staff_Diver|level=1|xp=0|hp=0|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-exit|name=Prototype_1(1910)|level=1|xp=0|hp=0|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-exit|name=Prototype_V(1922)|level=1|xp=0|hp=0|o2=100.0|spells=[]
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+EARN PARTY|stage=real-recovery|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=real-recovery|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=real-recovery|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN FIGHT START|index=2|source=random|enemy=["Angler"]
+EARN PARTY|stage=fight-2-entry|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-entry|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-entry|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN TUTORIAL CHOICE|fight=2|move=Electric Touch
+EARN TUTORIAL INSPECT|fight=2|target=Angler
+EVA 1/1  HP 15/15
+EARN TUTORIAL ACTION|fight=2|actor=Maxilani|target=Angler
+EVA 1/1  HP 15/15|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=2|move=Precise Tap
+EARN TUTORIAL INSPECT|fight=2|target=Angler
+EVA 0/0  HP 14/15
+EARN TUTORIAL ACTION|fight=2|actor=Musashi|target=Angler
+EVA 0/0  HP 14/15|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=2|move=Crushing Haymaker
+EARN TUTORIAL INSPECT|fight=2|target=Angler
+EVA 0/0  HP 11/15
+EARN TUTORIAL ACTION|fight=2|actor=Bucky|target=Angler
+EVA 0/0  HP 11/15|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=2|move=Weaken
+EARN TUTORIAL INSPECT|fight=2|target=Angler
+EVA 0/0  HP 11/15
+EARN TUTORIAL ACTION|fight=2|actor=Musashi|target=Angler
+EVA 0/0  HP 11/15|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=2|move=Flash Blast
+EARN TUTORIAL INSPECT|fight=2|target=All enemies
+Angler
+EARN TUTORIAL ACTION|fight=2|actor=Maxilani|target=All enemies
+Angler|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=2|move=Guard Bash
+EARN TUTORIAL ACTION|fight=2|actor=Bucky|target=Angler
+EVA 2/0  HP 11/15|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=2|move=Electric Touch
+EARN TUTORIAL ACTION|fight=2|actor=Maxilani|target=Angler
+EVA 0/0  HP 4/15|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=2|move=Precise Tap
+EARN TUTORIAL ACTION|fight=2|actor=Musashi|target=Angler
+EVA 0/0  HP 3/15|no_QTE_success_input=true
+RANDOM_REVEAL|enemies=angler|duration=1.5
+EARN FIGHT END|index=2|result=won|actions=8|phase=complete
+EARN PARTY|stage=fight-2-exit|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-exit|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-exit|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+RANDOM_COMBAT|enemies=angler
+EARN FIGHT START|index=3|source=random|enemy=["Angler"]
+EARN PARTY|stage=fight-3-entry|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-3-entry|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-3-entry|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN ACTION|fight=3|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=3|actor=Musashi|move=Precise Tap|target=Angler
+EARN ACTION|fight=3|actor=Bucky|move=Guard Bash|target=Angler
+EARN FIGHT END|index=3|result=won|actions=3|phase=complete
+EARN PARTY|stage=fight-3-exit|name=Staff_Diver|level=1|xp=10|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-3-exit|name=Prototype_1(1910)|level=1|xp=10|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-3-exit|name=Prototype_V(1922)|level=1|xp=10|hp=10|o2=100.0|spells=[]
+RANDOM_REVEAL|enemies=frilled_shark,angler|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark,angler
+EARN FIGHT START|index=4|source=random|enemy=["Frilled Shark 1", "Angler 2"]
+EARN PARTY|stage=fight-4-entry|name=Staff_Diver|level=1|xp=10|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-4-entry|name=Prototype_1(1910)|level=1|xp=10|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-4-entry|name=Prototype_V(1922)|level=1|xp=10|hp=10|o2=100.0|spells=[]
+EARN ACTION|fight=4|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=4|actor=Musashi|move=Precise Tap|target=Frilled Shark 1
+EARN ACTION|fight=4|actor=Bucky|move=Guard Bash|target=Frilled Shark 1
+EARN ACTION|fight=4|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=4|actor=Musashi|move=Precise Tap|target=Angler 2
+EARN ACTION|fight=4|actor=Bucky|move=Guard Bash|target=Angler 2
+EARN FIGHT END|index=4|result=won|actions=6|phase=complete
+EARN PARTY|stage=fight-4-exit|name=Staff_Diver|level=2|xp=0|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-4-exit|name=Prototype_1(1910)|level=2|xp=0|hp=10|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-4-exit|name=Prototype_V(1922)|level=2|xp=0|hp=10|o2=100.0|spells=["heavy_slam"]
+RANDOM_REVEAL|enemies=swordfish_duelist,swordfish_duelist,frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist,swordfish_duelist,frilled_shark
+EARN FIGHT START|index=5|source=random|enemy=["Swordfish Duelist 1", "Swordfish Duelist 2", "Frilled Shark 3"]
+EARN PARTY|stage=fight-5-entry|name=Staff_Diver|level=2|xp=0|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-5-entry|name=Prototype_1(1910)|level=2|xp=0|hp=10|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-5-entry|name=Prototype_V(1922)|level=2|xp=0|hp=10|o2=100.0|spells=["heavy_slam"]
+EARN ACTION|fight=5|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=5|actor=Musashi|move=Precise Jab|target=Swordfish Duelist 1
+EARN ACTION|fight=5|actor=Bucky|move=Guard Bash|target=Swordfish Duelist 1
+EARN ACTION|fight=5|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=5|actor=Musashi|move=Precise Jab|target=Swordfish Duelist 2
+EARN ACTION|fight=5|actor=Bucky|move=Guard Bash|target=Swordfish Duelist 2
+EARN ACTION|fight=5|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=5|actor=Musashi|move=Precise Jab|target=Frilled Shark 3
+EARN FIGHT END|index=5|result=won|actions=8|phase=complete
+EARN PARTY|stage=fight-5-exit|name=Staff_Diver|level=2|xp=33|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-5-exit|name=Prototype_1(1910)|level=2|xp=33|hp=7|o2=76.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-5-exit|name=Prototype_V(1922)|level=2|xp=33|hp=7|o2=100.0|spells=["heavy_slam"]
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark
+EARN FIGHT START|index=6|source=random|enemy=["Frilled Shark"]
+EARN PARTY|stage=fight-6-entry|name=Staff_Diver|level=2|xp=33|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-6-entry|name=Prototype_1(1910)|level=2|xp=33|hp=7|o2=76.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-6-entry|name=Prototype_V(1922)|level=2|xp=33|hp=7|o2=100.0|spells=["heavy_slam"]
+EARN ACTION|fight=6|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=6|actor=Musashi|move=Precise Jab|target=Frilled Shark
+EARN FIGHT END|index=6|result=won|actions=2|phase=complete
+EARN PARTY|stage=fight-6-exit|name=Staff_Diver|level=2|xp=44|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-6-exit|name=Prototype_1(1910)|level=2|xp=44|hp=7|o2=68.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-6-exit|name=Prototype_V(1922)|level=2|xp=44|hp=7|o2=100.0|spells=["heavy_slam"]
+RANDOM_REVEAL|enemies=angler|duration=1.5
+RANDOM_COMBAT|enemies=angler
+EARN FIGHT START|index=7|source=random|enemy=["Angler"]
+EARN PARTY|stage=fight-7-entry|name=Staff_Diver|level=2|xp=44|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-7-entry|name=Prototype_1(1910)|level=2|xp=44|hp=7|o2=68.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-7-entry|name=Prototype_V(1922)|level=2|xp=44|hp=7|o2=100.0|spells=["heavy_slam"]
+EARN ACTION|fight=7|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=7|actor=Musashi|move=Precise Jab|target=Angler
+EARN FIGHT END|index=7|result=won|actions=2|phase=complete
+EARN PARTY|stage=fight-7-exit|name=Staff_Diver|level=2|xp=55|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-7-exit|name=Prototype_1(1910)|level=2|xp=55|hp=7|o2=60.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-7-exit|name=Prototype_V(1922)|level=2|xp=55|hp=7|o2=100.0|spells=["heavy_slam"]
+EARN PHYSICAL ARRIVAL|goal=(55.0, 2.0, -5.0)|actual=(55.00031, 2.0, -4.824815)
+RANDOM_REVEAL|enemies=frilled_shark,swordfish_duelist,angler|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark,swordfish_duelist,angler
+EARN FIGHT START|index=8|source=random|enemy=["Frilled Shark 1", "Swordfish Duelist 2", "Angler 3"]
+EARN PARTY|stage=fight-8-entry|name=Staff_Diver|level=2|xp=55|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-8-entry|name=Prototype_1(1910)|level=2|xp=55|hp=7|o2=60.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-8-entry|name=Prototype_V(1922)|level=2|xp=55|hp=7|o2=100.0|spells=["heavy_slam"]
+EARN ACTION|fight=8|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=8|actor=Musashi|move=Precise Jab|target=Frilled Shark 1
+EARN ACTION|fight=8|actor=Bucky|move=Guard Bash|target=Swordfish Duelist 2
+EARN ACTION|fight=8|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=8|actor=Musashi|move=Precise Jab|target=Angler 3
+EARN FIGHT END|index=8|result=won|actions=5|phase=complete
+EARN PARTY|stage=fight-8-exit|name=Staff_Diver|level=3|xp=3|hp=10|o2=100.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-8-exit|name=Prototype_1(1910)|level=3|xp=3|hp=10|o2=100.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-8-exit|name=Prototype_V(1922)|level=3|xp=3|hp=10|o2=100.0|spells=["heavy_slam", "mending_current"]
+RANDOM_REVEAL|enemies=swordfish_duelist,swordfish_duelist,frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist,swordfish_duelist,frilled_shark
+EARN FIGHT START|index=9|source=random|enemy=["Swordfish Duelist 1", "Swordfish Duelist 2", "Frilled Shark 3"]
+EARN PARTY|stage=fight-9-entry|name=Staff_Diver|level=3|xp=3|hp=10|o2=100.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-9-entry|name=Prototype_1(1910)|level=3|xp=3|hp=10|o2=100.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-9-entry|name=Prototype_V(1922)|level=3|xp=3|hp=10|o2=100.0|spells=["heavy_slam", "mending_current"]
+EARN ACTION|fight=9|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=9|actor=Musashi|move=Precise Jab|target=Swordfish Duelist 1
+EARN ACTION|fight=9|actor=Bucky|move=Guard Bash|target=Swordfish Duelist 1
+EARN ACTION|fight=9|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=9|actor=Musashi|move=Precise Jab|target=Swordfish Duelist 2
+EARN ACTION|fight=9|actor=Bucky|move=Mending Current|target=Maxilani
+EARN ACTION|fight=9|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=9|actor=Bucky|move=Guard Bash|target=Swordfish Duelist 2
+EARN ACTION|fight=9|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=9|actor=Bucky|move=Mending Current|target=Maxilani
+EARN ACTION|fight=9|actor=Maxilani|move=Swift Strike|target=Frilled Shark 3
+EARN FIGHT END|index=9|result=won|actions=11|phase=complete
+EARN PARTY|stage=fight-9-exit|name=Staff_Diver|level=3|xp=39|hp=10|o2=92.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-9-exit|name=Prototype_1(1910)|level=3|xp=39|hp=0|o2=84.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-9-exit|name=Prototype_V(1922)|level=3|xp=39|hp=8|o2=84.0|spells=["heavy_slam", "mending_current"]
+EARN PHYSICAL ARRIVAL|goal=(68.0, 2.0, 10.0)|actual=(68.00104, 2.0, 10.24884)
+EARN PHYSICAL ARRIVAL|goal=(90.0, 2.0, 10.0)|actual=(90.20313, 2.0, 9.999963)
+EARN FIGHT START|index=10|source=lab_blocker|enemy=["Bomb Bot"]
+EARN PARTY|stage=fight-10-entry|name=Staff_Diver|level=3|xp=39|hp=10|o2=92.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-10-entry|name=Prototype_1(1910)|level=3|xp=39|hp=0|o2=84.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-10-entry|name=Prototype_V(1922)|level=3|xp=39|hp=8|o2=84.0|spells=["heavy_slam", "mending_current"]
+EARN ACTION|fight=10|actor=Maxilani|move=Flash Blast|target=All enemies
+EARN ACTION|fight=10|actor=Bucky|move=Guard Bash|target=Bomb Bot
+EARN ACTION|fight=10|actor=Maxilani|move=Swift Strike|target=Bomb Bot
+EARN ACTION|fight=10|actor=Bucky|move=Guard Bash|target=Bomb Bot
+EARN FIGHT END|index=10|result=won|actions=4|phase=complete
+EARN PARTY|stage=fight-10-exit|name=Staff_Diver|level=3|xp=58|hp=10|o2=84.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-10-exit|name=Prototype_1(1910)|level=3|xp=58|hp=0|o2=84.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-10-exit|name=Prototype_V(1922)|level=3|xp=58|hp=7|o2=84.0|spells=["heavy_slam", "mending_current"]
+EARN PHYSICAL ARRIVAL|goal=(117.0, 2.0, 16.0)|actual=(117.0306, 2.0, 16.03478)
+EARN FIGHT START|index=11|source=random|enemy=["Angler"]
+EARN PARTY|stage=fight-11-entry|name=Staff_Diver|level=3|xp=58|hp=10|o2=84.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-11-entry|name=Prototype_1(1910)|level=3|xp=58|hp=0|o2=84.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-11-entry|name=Prototype_V(1922)|level=3|xp=58|hp=7|o2=84.0|spells=["heavy_slam", "mending_current"]
+EARN TUTORIAL CHOICE|fight=11|move=Electric Touch
+EARN TUTORIAL ACTION|fight=11|actor=Maxilani|target=Angler
+EVA 1/1  HP 15/15|no_QTE_success_input=true
+EARN TUTORIAL CHOICE|fight=11|move=Precise Tap
+EARN TUTORIAL ACTION|fight=11|actor=Musashi|target=Angler
+EVA 0/0  HP 14/15|no_QTE_success_input=true
+EARN FIGHT END|index=11|result=lost|actions=2|phase=complete
+EARN PARTY|stage=fight-11-exit|name=Staff_Diver|level=3|xp=58|hp=1|o2=84.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-11-exit|name=Prototype_1(1910)|level=3|xp=58|hp=0|o2=100.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-11-exit|name=Prototype_V(1922)|level=3|xp=58|hp=7|o2=84.0|spells=["heavy_slam", "mending_current"]
+EARN PARTY|stage=lab-terminal|name=Staff_Diver|level=3|xp=58|hp=1|o2=84.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=lab-terminal|name=Prototype_1(1910)|level=3|xp=58|hp=0|o2=100.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=lab-terminal|name=Prototype_V(1922)|level=3|xp=58|hp=7|o2=84.0|spells=["heavy_slam", "mending_current"]
+EARNED LAB-FIRST SLICE|policy=skilled|recovery=none|seed=64000|fights=11|actions=54|lab=locked|NOT_FULL_CAMPAIGN
+FINDING EARN-2 actual earned fight ended lost
+FINDING EARN-2 earned lab-first route did not finish actual blockers/Tethys
+EARNED LAB-FIRST SLICE: failed
