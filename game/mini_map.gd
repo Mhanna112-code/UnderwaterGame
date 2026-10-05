@@ -118,15 +118,26 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 		return
 	var pulse: float = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 1000.0 * MARKER_PULSE_SPEED)
 	var marker_color := Color(0.95, 0.15, 0.15, pulse)
+	_draw_item_rock_markers(center, px_per_unit, mid, marker_color)
 	for entry in ItemGuardian.spots():
 		var item_id := String(entry.item)
 		if world.key_items.has(item_id) or not world.revealed_key_items.has(item_id):
 			continue
 		var pos: Vector3 = entry.at
+		# A special site triggers inside a 3D sphere of its radius. Above or
+		# below that band it can't be entered, so it isn't shown either.
+		if bool(entry.get("special", false)) and absf(center.y - pos.y) > float(entry.get("radius", 0.0)):
+			continue
 		var rel := Vector2(pos.x, pos.z) - Vector2(center.x, center.z)
 		var dist: float = maxf(rel.length(), 0.01)   # guards the /dist normalize below
 		if dist <= view_radius:
-			draw_circle(mid + rel * px_per_unit, 5.0, marker_color)
+			# Same two sizes as maze_mini_map.gd and the Sonar ability page:
+			# small solid circle = hidden item, larger outlined = special encounter.
+			if bool(entry.get("special", false)):
+				draw_circle(mid + rel * px_per_unit, 5.5, marker_color)
+				draw_arc(mid + rel * px_per_unit, 5.5, 0.0, TAU, 20, Color(1.0, 0.75, 0.75, pulse), 1.2)
+			else:
+				draw_circle(mid + rel * px_per_unit, 3.5, marker_color)
 		else:
 			# RESTORED: this branch had gone missing, leaving
 			# _draw_marker_arrow() defined but never called - an
@@ -134,6 +145,21 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 			# the rim arrow the comment above already promised.
 			var dir := rel / dist
 			_draw_marker_arrow(mid + dir * (r - 8.0), dir, marker_color)
+
+# Unbroken breakable rocks that hold an item (the random-drop rocks and the
+# airborne key-item rocks - not the ambush rocks), as the same small 3.5 px
+# red circle the maze uses for its sonar rocks. Sonar-gated like every other
+# red marker here; only drawn inside the minimap's own radius.
+func _draw_item_rock_markers(center: Vector3, px_per_unit: float, mid: Vector2, color: Color) -> void:
+	for id in world._cracked_walls:
+		if not String(id).begins_with("rock_") or id in World.ROCK_AMBUSH_IDS:
+			continue
+		var rock := world._cracked_walls[id] as Node3D
+		if not is_instance_valid(rock) or rock.is_queued_for_deletion():
+			continue
+		var rel := Vector2(rock.global_position.x, rock.global_position.z) - Vector2(center.x, center.z)
+		if rel.length() <= view_radius:
+			draw_circle(mid + rel * px_per_unit, 3.5, color)
 
 # Same small-triangle shape _draw_arrow() below uses for the active
 # diver, just parameterized on color/facing instead of hardcoded green

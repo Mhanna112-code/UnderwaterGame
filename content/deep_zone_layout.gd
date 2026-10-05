@@ -15,6 +15,9 @@ const DEEP_HUB := Vector3(90.0, 2.0, 10.0)
 const BOMB_BOT := Vector3(120.0, 2.0, 16.0)
 const SWORD_SLAYER := Vector3(145.0, 2.0, 16.0)
 const LAB := Vector3(175.0, 2.0, 16.0)
+# Rest stop inside the lab cave corridor: past Sword Slayer's exit volume
+# (x<=151) and short of the lab entry trigger (x>=171).
+const LAB_SAVE_POINT := Vector3(163.0, 2.0, 16.0)
 # The approach is beyond the laboratory, not an exit at the shallow blockade.
 # Location is not a victory gate: explorers may reach it around the lab route.
 const MAZE_TRANSITION := Vector3(215.0, 2.0, 16.0)

@@ -561,6 +561,11 @@ func _shockwave_vfx() -> void:
 # oxygen actually runs out it also turns itself back off (rather than
 # leaving it "on" but silently inert), so a player checking sonar_active
 # always gets an honest answer about whether pings are still happening.
+# Battles end with every passive switched back off (Sonar is the only one
+# today), so the player re-enables it deliberately afterwards.
+func reset_passives_after_battle() -> void:
+	sonar_active = false
+
 func toggle_sonar() -> bool:
 	if passive_id != "sonar":
 		return false

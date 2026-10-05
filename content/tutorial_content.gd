@@ -192,9 +192,7 @@ const SPECIAL_ENCOUNTER_VIDEO_CROPS := {
 # numbers only ever have to be right in one place. Blindness's numbers were
 # read straight out of the code that applies them (combatant_stats.gd's
 # effective_accuracy()/effective_agility()/effective_defense(), all three
-# reading status_level("blindness") the same way) - Stun has no move that
-# inflicts it yet, so its entry describes the intended design rather than
-# something presently reachable in a fight.
+# reading status_level("blindness") the same way).
 const STATUS_CONDITIONS: Array[Dictionary] = [
 	{
 		"title": "Blindness",
@@ -202,19 +200,23 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 	},
 	{
 		"title": "Stun",
-		"body": "Skips the combatant's turn entirely. Its number is how many turns get skipped, not a stat penalty.",
+		"body": "Skips the combatant's turn entirely. Its number is how many turns get skipped, not a stat penalty. Bleed and Poison still deal their damage on a stunned turn. The Angler's Headbutt stuns for 2 turns.",
 	},
 	{
 		"title": "Evasion Down",
 		"body": "Temporarily subtracts its level from Evasion. Flash Blast sets both its level and duration from the caster's Accuracy.",
 	},
 	{
+		"title": "Defense Down",
+		"body": "Temporarily subtracts its level from Defense, then wears off after 3 turns. The Swordfish's Spinning Slayer and the Frilled Shark's Tail Spin set its level from the attacker's own Defense. Hitting again refreshes it rather than stacking.",
+	},
+	{
 		"title": "Bleed",
-		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight - it never wears off on its own. Every later damaging hit on a bleeding character adds 1 more to the stack (up to 10). Scuba Stabbing applies 1 plus the caster's Strength.",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight - it never wears off on its own. Every later damaging hit on a bleeding character adds 1 more, and another Bleed move adds its full amount again - but it can only stack up 3 times per fight (and never past 10). Scuba Stabbing applies 1 plus the caster's Strength.",
 	},
 	{
 		"title": "Poison",
-		"body": "Deals its level as damage when the poisoned character's turn ends, then fades after its duration. Poison Breath applies 15% of max HP to the whole party for 3 turns.",
+		"body": "Poison applies a percentage of max health as damage for 3 turns, dealt at the end of each of the poisoned character's turns. Being poisoned again resets it to 3 turns rather than stacking the damage.",
 	},
 ]
 

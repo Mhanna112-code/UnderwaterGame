@@ -168,15 +168,15 @@ func _ready() -> void:
 	# still consumed by _input() below, then the overlay returns to IGNORE.
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
-	# Keep the stage visually clean between waves. The one piece of information
-	# players need immediately is shown only as a short center-stage sequence
-	# when a wave begins: GRAPPLE -> [required color] -> NOW.
+	# The one thing players need each wave - which color to grapple - shown
+	# as steady big text across the top of the stage for the whole wave
+	# (previously a flashing center-stage GRAPPLE -> color -> NOW sequence).
 	_wave_callout = Label.new()
-	_wave_callout.set_anchors_preset(Control.PRESET_CENTER)
-	_wave_callout.offset_left = -250.0
-	_wave_callout.offset_top = -54.0
-	_wave_callout.offset_right = 250.0
-	_wave_callout.offset_bottom = 54.0
+	_wave_callout.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_wave_callout.offset_left = -360.0
+	_wave_callout.offset_top = 16.0
+	_wave_callout.offset_right = 360.0
+	_wave_callout.offset_bottom = 84.0
 	_wave_callout.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_wave_callout.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_wave_callout.add_theme_font_size_override("font_size", 44)
@@ -185,7 +185,6 @@ func _ready() -> void:
 	_wave_callout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_wave_callout.z_index = 4096
 	_wave_callout.z_as_relative = false
-	_wave_callout.pivot_offset = Vector2(250.0, 54.0)
 	_wave_callout.visible = false
 	add_child(_wave_callout)
 
@@ -866,36 +865,17 @@ func launch_vortex() -> void:
 # understand the wave in under a second, then clear the view before the wave
 # reaches its close-range phase. The color name is always text as well as tint,
 # so this is not color-only communication.
+# Steady (no flashing/scale pop) and stays up until the next wave replaces
+# it or the minigame ends (_hide_wave_callout()). Drawn in the safe color.
 func _show_wave_callout(safe_is_yellow: bool) -> void:
 	_wave_callout_generation += 1
-	var generation := _wave_callout_generation
-	_show_wave_callout_word("GRAPPLE", Color(0.55, 0.9, 1.0))
-	await get_tree().create_timer(WAVE_CALLOUT_GRAPPLE_TIME).timeout
-	if generation != _wave_callout_generation or not is_instance_valid(_wave_callout):
-		return
-	var color := VORTEX_SAFE_COLOR if safe_is_yellow else VORTEX_DANGER_COLOR
-	_show_wave_callout_word(wave_instruction, color)
-	await get_tree().create_timer(WAVE_CALLOUT_COLOR_TIME).timeout
-	if generation != _wave_callout_generation or not is_instance_valid(_wave_callout):
-		return
-	_show_wave_callout_word("NOW", Color(0.92, 0.98, 1.0))
-	await get_tree().create_timer(WAVE_CALLOUT_NOW_TIME).timeout
-	if generation == _wave_callout_generation and is_instance_valid(_wave_callout):
-		_wave_callout.visible = false
-
-func _show_wave_callout_word(word: String, color: Color) -> void:
 	if _wave_callout_tween != null and _wave_callout_tween.is_valid():
 		_wave_callout_tween.kill()
-	_wave_callout.text = word
-	_wave_callout.add_theme_color_override("font_color", color)
+	_wave_callout.text = "GRAPPLE %s" % wave_instruction
+	_wave_callout.add_theme_color_override("font_color", VORTEX_SAFE_COLOR if safe_is_yellow else VORTEX_DANGER_COLOR)
 	_wave_callout.modulate = Color.WHITE
-	_wave_callout.scale = Vector2(0.76, 0.76)
+	_wave_callout.scale = Vector2.ONE
 	_wave_callout.visible = true
-	_wave_callout_tween = create_tween()
-	_wave_callout_tween.set_trans(Tween.TRANS_BACK)
-	_wave_callout_tween.set_ease(Tween.EASE_OUT)
-	_wave_callout_tween.tween_property(_wave_callout, "scale", Vector2(1.08, 1.08), 0.11)
-	_wave_callout_tween.tween_property(_wave_callout, "scale", Vector2.ONE, 0.08)
 
 func _hide_wave_callout() -> void:
 	_wave_callout_generation += 1

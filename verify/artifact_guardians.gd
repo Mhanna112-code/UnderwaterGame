@@ -17,9 +17,10 @@ func _run() -> void:
 	var expected := {
 		"current_pearl": "angler", "reef_plate": "swordfish_duelist",
 		"attack_up": "angler", "defense_up": "swordfish_duelist",
+		"accuracy_up": "angler", "evasion_up": "swordfish_duelist",
 	}
 	var guarded := ItemGuardian.spots()
-	_expect(guarded.size() == 4, "ARTIFACT GUARDIANS: expected exactly four guarded items — guards against an art/site change deleting a progression or special-encounter location")
+	_expect(guarded.size() == 6, "ARTIFACT GUARDIANS: expected exactly six guarded items — guards against an art/site change deleting a progression or special-encounter location")
 	for spot_value in guarded:
 		var spot := spot_value as Dictionary
 		var item := String(spot.get("item", ""))
@@ -74,7 +75,7 @@ func _run() -> void:
 		await process_frame
 
 	if findings.is_empty():
-		print("ARTIFACT GUARDIANS: clean — all four guarded items keep their assigned enemy as one-enemy guardian encounters")
+		print("ARTIFACT GUARDIANS: clean — all six guarded items keep their assigned enemy as one-enemy guardian encounters")
 		quit(0)
 		return
 	for finding in findings:

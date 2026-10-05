@@ -6,6 +6,10 @@
 class_name EnemyMoves
 extends RefCounted
 
+# How long Spinning Slayer's and Tail Spin's Defense Down lasts, counted in the
+# target's own turns (it wears off at the end of its last one).
+const DEFENSE_DOWN_TURNS := 3
+
 # `clip` is a case-insensitive fragment of the FBX animation take. Glassgoat's
 # final Angler table names exactly Bite, Headbutt and Shine (Flash Blast); the
 # legacy Ramming Bite is not an authored attack and is intentionally absent.
@@ -104,8 +108,10 @@ const SWORDFISH_DUELIST := [
 		"finisher_weight": 0.67, "verb": "drills into",
 		"combat": {
 			"formula": {"strength": 1, "defense": 1}, "acc_mod": 1,
+			# Temporary: a timed status, not a cut to the diver's saved base
+			# Defense (reduce_defense) - that used to persist after the fight.
 			"effects": [
-				{"kind": "reduce_defense", "amount": {"defense": 1}},
+				{"kind": "status", "status": "defense_down", "level": {"defense": 1}, "duration": DEFENSE_DOWN_TURNS},
 			],
 		},
 	},
@@ -138,8 +144,10 @@ const FRILLED_SHARK := [
 		"finisher_weight": 40.0, "verb": "spins its tail into",
 		"combat": {
 			"formula": {"strength": 1}, "acc_mod": 1,
+			# Temporary: a timed status, not a cut to the diver's saved base
+			# Defense (reduce_defense) - that used to persist after the fight.
 			"effects": [
-				{"kind": "reduce_defense", "amount": {"defense": 1}},
+				{"kind": "status", "status": "defense_down", "level": {"defense": 1}, "duration": DEFENSE_DOWN_TURNS},
 			],
 		},
 	},

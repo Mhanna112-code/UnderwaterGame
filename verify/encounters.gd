@@ -145,7 +145,8 @@ func _check_spots_are_reachable() -> void:
 		if not overlaps.is_empty():
 			findings.append("BURIED: the %s spot is inside %d piece(s) of level geometry" % [
 				String(entry.item), overlaps.size()])
-		if not blocked.is_empty():
+		# Deep Zone sites sit past the corridor walls; they're reached by route.
+		if not blocked.is_empty() and not bool(entry.get("deep", false)):
 			findings.append("WALLED OFF: nothing can swim straight from the start to the %s spot" % String(entry.item))
 
 func _run(spot: Dictionary) -> void:

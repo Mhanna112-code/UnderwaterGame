@@ -10,10 +10,14 @@ func _run() -> void:
 	# Native screenshots use production timing; PNG/readback overhead must
 	# not consume a one-second text lifetime at accelerated game time.
 	Engine.time_scale = 1.0 if "--capture-revival" in OS.get_cmdline_user_args() else 8.0
-	for downed in range(3):
-		await _case(downed, "potion")
-		if downed != 2:
-			await _case(downed, "spell")
+	# Potions no longer revive: only Tidal Revival can bring a downed diver back.
+	var downed_stats := CombatantStats.new()
+	downed_stats.fill()
+	downed_stats.hp = 0
+	_expect(not Items.would_help("potion", downed_stats), "INT-07 a Potion is still offered to a downed diver")
+	_expect(Items.grant("potion", downed_stats) == "" and downed_stats.hp == 0, "INT-07 a Potion revived a downed diver")
+	for downed in range(2):
+		await _case(downed, "spell")
 	Engine.time_scale = 1.0
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	for finding in findings:

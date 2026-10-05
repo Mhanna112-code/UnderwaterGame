@@ -14,7 +14,7 @@ const MOVES := [
 		"formula": {"strength": 1}, "acc_mod": 0},
 	# 'finish' is the validated framing key for the same Poison Breath take.
 	{"name": "Poison Breath", "clip": "finish", "target": "all", "hits": 1,
-		"formula": {}, "acc_mod": 1, "poison_fraction": 0.1, "poison_turns": 2},
+		"formula": {}, "acc_mod": 1, "poison_fraction": 0.1, "poison_turns": 3},
 ]
 
 var _move_index := 0

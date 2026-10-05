@@ -21,13 +21,21 @@ static func _badge(key: String) -> String:
 # left-aligned like the surrounding text, wrapping onto its own line only if
 # it doesn't fit next to whatever text precedes it.
 const WASD_MARKER := "{{WASD}}"
+# Inline minimap-marker swatches for the Sonar page, drawn by
+# character_ability_popup.gd to match mini_map.gd/maze_mini_map.gd exactly.
+const SMALL_MARKER := "{{SMALL_RED}}"
+const SPECIAL_MARKER := "{{SPECIAL_RED}}"
 
-var worldExplanation := "In the world map, divers can freely swim around encountering enemies, finding items and progressing to new areas. Use %s and move the camera around with the mouse to swim and look around. Use %s to switch between active divers. Divers also have special abilities they can use to interact with the world." % [WASD_MARKER, _badge("Tab")]
+var worldExplanation := "In the world map, divers can freely swim around encountering enemies, finding items and progressing to new areas. Use %s and move the camera around with the mouse to swim and look around. Use %s to switch between active divers. Divers also have special abilities they can use to interact with the world. Press %s to turn random encounters on or off - the blue Random Encounters indicator to the left of your health bar shows which." % [WASD_MARKER, _badge("Tab"), _badge("R")]
 
 var maxilaniSwapTitle := "Maxilani: Swap"
 var maxilaniSwapBody := "Press %s while Maxilani is the active diver to choose a teammate. Use A/D or Left/Right to choose, then Space or Enter to swap positions. Escape cancels. Use %s to position the other divers first. Swap uses no Oxygen." % [_badge("F"), _badge("Tab")]
 var maxilaniSonarTitle := "Maxilani: Sonar"
-var maxilaniSonarBody := "Maxilani has a built in sonar she can use to find hidden items in the world that appear as red circles in the minimap on the top-right of the screen. Toggle Sonar On/Off with %s to consume 3 oxygen after every 3 seconds which will reveal hidden items on the minimap as you swim around. Swim close enough to the red circles to trigger random encounters with enemies who hold the hidden items." % _badge("Q")
+var maxilaniSonarBody := "Maxilani has a built in sonar she can use to find hidden things in the world, which appear as red circles in the minimap on the top-right of the screen. Toggle Sonar On/Off with %s to consume 3 oxygen after every 3 seconds; anything hidden near you is revealed on the minimap as you swim around.
+
+%s  [b]Small red circles[/b] mark hidden items - some are under rocks you can break, others are held by enemies you fight by swimming close. Random Encounters must be turned on (%s) for these item fights to trigger.
+
+%s  [b]Larger red circles with a light outline[/b] mark special encounters - one-diver challenges like the combat tutorial that award key items and stat boosts." % [_badge("Q"), SMALL_MARKER, _badge("R"), SPECIAL_MARKER]
 
 var musashiAbilityTitle := "Musashi: Grapple"
 var musashiGrappleBody:= "Press %s while Musashi is active to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. An anchor pulls Musashi toward it; a floating light item reels toward Musashi instead. Grapple uses no Oxygen, and a miss can be retried immediately." % _badge("F")

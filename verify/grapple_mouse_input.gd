@@ -50,12 +50,12 @@ func _run() -> void:
 		return
 	var expected_instruction := "YELLOW" if minigame._vortex_safe_is_yellow else "GREEN"
 	_check(minigame.wave_instruction == expected_instruction, "grapple_mouse_input: central prompt names this wave's safe color — guards against log-only or mismatched instructions")
-	_check(minigame._wave_callout.visible and minigame._wave_callout.text == "GRAPPLE", "grapple_mouse_input: first central callout is GRAPPLE — guards against forcing players to scan the battle log")
+	_check(minigame._wave_callout.visible and minigame._wave_callout.text == "GRAPPLE " + expected_instruction, "grapple_mouse_input: top callout names GRAPPLE plus the safe color - guards against forcing players to scan the battle log")
 	var callout_rect := minigame._wave_callout.get_global_rect()
-	var stage_center := minigame.get_global_rect().get_center()
-	_check(absf(callout_rect.get_center().x - stage_center.x) < 1.0 and absf(callout_rect.get_center().y - stage_center.y) < 1.0, "grapple_mouse_input: instruction is centered over the playable stage — guards against lower-HUD eye travel")
-	await create_timer(GrappleInterceptMinigame.WAVE_CALLOUT_GRAPPLE_TIME + 0.04).timeout
-	_check(minigame._wave_callout.visible and minigame._wave_callout.text == expected_instruction, "grapple_mouse_input: central callout advances to the required color word — guards against ambiguous color-only cues")
+	var stage_rect := minigame.get_global_rect()
+	_check(absf(callout_rect.get_center().x - stage_rect.get_center().x) < 1.0 and callout_rect.position.y < stage_rect.position.y + stage_rect.size.y * 0.3, "grapple_mouse_input: instruction sits at the top center of the playable stage")
+	await create_timer(1.0).timeout
+	_check(minigame._wave_callout.visible and minigame._wave_callout.text == "GRAPPLE " + expected_instruction and minigame._wave_callout.scale == Vector2.ONE, "grapple_mouse_input: callout stays steady (no flashing sequence) for the wave")
 	await physics_frame
 	_check(minigame.vortex_targets_are_aimable(), "grapple_mouse_input: generated target fits bounded mouse look — guards against off-cone targets")
 	var web_safe := _first_target(minigame, true)

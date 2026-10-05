@@ -41,7 +41,7 @@ func _ready() -> void:
 	_mat = StandardMaterial3D.new()
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mat.emission_enabled = true
-	# Key items never drop from a rock (see Items.RANDOM_DROP_TABLE) - orbs
+	# Key items never drop from a rock (see Items.EVEN_DROP_ORDER) - orbs
 	# only ever carry a consumable, so there's no "key item" color case to
 	# handle here at all, unlike Items.grant()'s match.
 	var c := Color(0.95, 0.85, 0.3) if item_id == "potion" else Color(0.4, 0.85, 0.95)

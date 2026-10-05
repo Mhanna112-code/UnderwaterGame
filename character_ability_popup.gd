@@ -275,7 +275,7 @@ func _build_paragraph(body: String) -> void:
 	var label := _rich_label()
 	paragraph.add_child(label)
 	var parts := body.split(Slot.WASD_MARKER)
-	label.append_text(parts[0])
+	_append_with_markers(label, parts[0])
 	if parts.size() > 1:
 		var tex := await _wasd_cluster_texture()
 		# Next/Close or battle suspension may replace this paragraph while its
@@ -292,7 +292,55 @@ func _build_paragraph(body: String) -> void:
 		# manual newline needed, which would otherwise break "Use [WASD] and
 		# move..." across a line for no reason.
 		label.add_image(tex, int(WASD_CLUSTER_SIZE.x), int(WASD_CLUSTER_SIZE.y))
-		label.append_text(parts[1])
+		_append_with_markers(label, parts[1])
+
+# Body text with Slot.SMALL_MARKER/SPECIAL_MARKER swapped for inline swatches
+# of the two minimap red-circle markers.
+func _append_with_markers(label: RichTextLabel, text: String) -> void:
+	var rest := text
+	while true:
+		var small_at := rest.find(Slot.SMALL_MARKER)
+		var special_at := rest.find(Slot.SPECIAL_MARKER)
+		if small_at < 0 and special_at < 0:
+			break
+		var special := small_at < 0 or (special_at >= 0 and special_at < small_at)
+		var at := special_at if special else small_at
+		var marker := Slot.SPECIAL_MARKER if special else Slot.SMALL_MARKER
+		label.append_text(rest.substr(0, at))
+		var tex := _marker_swatch(special)
+		label.add_image(tex, tex.get_width(), tex.get_height(), Color.WHITE, INLINE_ALIGNMENT_CENTER)
+		rest = rest.substr(at + marker.length())
+	label.append_text(rest)
+
+# Minimap red circles at popup scale, keeping their real size ratio (small
+# 3.5 px vs special 5.5 px radius on the map) and the special marker's light
+# outline. Built from an Image, so no SubViewport frames are needed.
+const _MARKER_RED := Color(1.0, 0.18, 0.18)
+const _MARKER_OUTLINE := Color(1.0, 0.75, 0.75)
+var _marker_swatches := {}
+
+func _marker_swatch(special: bool) -> ImageTexture:
+	if _marker_swatches.has(special):
+		return _marker_swatches[special]
+	var radius := 9.0 if special else 5.7
+	var size := 22
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := (size - 1) * 0.5
+	for y in size:
+		for x in size:
+			var d := Vector2(x - c, y - c).length()
+			var fill := clampf(radius + 0.5 - d, 0.0, 1.0)
+			if fill <= 0.0:
+				continue
+			var col := _MARKER_RED
+			if special and d > radius - 1.6:
+				col = _MARKER_OUTLINE
+			col.a = fill
+			img.set_pixel(x, y, col)
+	var tex := ImageTexture.create_from_image(img)
+	_marker_swatches[special] = tex
+	return tex
 
 func _rich_label() -> RichTextLabel:
 	var label := RichTextLabel.new()

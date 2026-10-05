@@ -831,10 +831,13 @@ func _refresh_announcement_visibility() -> void:
 		_banner.visible = notice_visible
 	# Status/goal and an announcement share the bottom reading area. Give
 	# only one surface ownership rather than painting text on top of text.
+	# The bottom-left status/goal hints ("Find the navigation map...",
+	# "E: interact · F: ability", hallway/current notes) were removed on
+	# request; the labels still exist for state, they are just never shown.
 	for caption in ["Controls", "GoalLabel"]:
 		var node := get_node_or_null("HUD/" + caption) as CanvasItem
 		if node != null:
-			node.visible = captions_allowed and not notice_visible and not aiming
+			node.visible = false
 
 var _responsive_captions: Array[Label] = []
 
@@ -958,11 +961,12 @@ func _boost_enemies(battle: Battle, boost_min := ENEMY_BOOST_MIN, boost_max := E
 func _on_battle_finished(result: String) -> void:
 	for diver in divers:
 		diver.exploration_paused = false
+		diver.reset_passives_after_battle()
 	_battle.queue_free()
 	_battle = null
 	_battling = false
 	# Divers knocked out in a fight the party won stay down (0 HP): they sit
-	# out later fights until a potion or a revive brings them back.
+	# out later fights until a revive (or a save/rest point) brings them back.
 	var kind := _battle_kind
 	_battle_kind = "strong"
 	if kind == "special":
@@ -1862,7 +1866,7 @@ const SECRET_ITEM_ROCKS := {
 	"ItemRock2": "sphere_room_key",
 	"ItemRock3": "attack_up",
 	"Marker3D2": "defense_up",
-	"Marker3D4": "spell_shard",
+	"Marker3D4": "evasion_up",
 	"Marker3D5": "ambush",
 	"Marker3D7": "ambush",
 }
@@ -5211,11 +5215,20 @@ func _split_rock_in_reach() -> bool:
 	var b := _diver.global_position
 	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z)) <= SPLIT_ROCK_RADIUS + SPLIT_ROCK_REACH
 
+# _walls_10_11_swung flips true when the swing starts, so also require the
+# wall set to have stopped moving - otherwise the rock could split mid-swing.
+func _rock_over_currents() -> bool:
+	return _walls_10_11_swung and not _wall_set_moving("CSGBox3D10/11")
+
 func _check_split_rock() -> void:
 	if _rock_split or _split_rock == null or _battling or any_modal_open():
 		return
 	var break_rock := get_node_or_null("WindCorridorBreakRock") as Area3D
 	if break_rock == null:
+		return
+	# Only once the rock's hallway (walls 10/11) has swung over and come to
+	# rest on the line where the two currents meet (Marc's 647e900).
+	if not _rock_over_currents():
 		return
 	var a: WaterCurrent = _currents_by_corridor.get($WindCorridor4, null)
 	var b: WaterCurrent = _currents_by_corridor.get(break_rock, null)

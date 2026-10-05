@@ -40,9 +40,13 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 			defender.add_status("bleed", 1, 0)
 
 	var applied: Array[String] = []
+	var immune := false
 	for effect in move.get("effects", []):
 		var kind := String(effect.get("kind", ""))
 		if kind == "self_temporary":
+			continue
+		if defender.immune_to_stat_loss and (kind in ["reduce_evasion", "reduce_defense"] 				or (kind == "status" and String(effect.get("status", "")) in CombatantStats.STAT_LOSS_STATUSES)):
+			immune = true
 			continue
 		if kind == "reduce_evasion":
 			var amount := formula_value(attacker, effect.get("amount", {}))
@@ -71,6 +75,8 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 
 	var result := _result(true, damage, 0)
 	result.effects = applied
+	if immune:
+		result["immune"] = true
 	return result
 
 static func formula_value(wielder: CombatantStats, formula: Variant) -> int:

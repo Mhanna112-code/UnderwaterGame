@@ -33,6 +33,8 @@ func _run() -> void:
 			for remaining in range(duration, 0, -1):
 				battle._queue = [victim, next]
 				battle._advance_turn()
+				# A stunned turn holds its log line for LOG_READ_DELAY first.
+				await create_timer(Battle.LOG_READ_DELAY + 0.1).timeout
 				_expect(battle._acting == next and battle.main_menu.visible and not battle.attack_btn.disabled,
 					"TURN-01 %s stun %d: real dispatch did not hand control to next healthy actor" % [side, remaining])
 				_expect(stats.status_turns("stun") == remaining - 1,
@@ -56,6 +58,7 @@ func _run() -> void:
 	(battle.party[1].stats as CombatantStats).add_status("stun", 1, 1)
 	battle._queue = [battle.party[0], battle.party[1], battle.party[2]]
 	battle._advance_turn()
+	await create_timer(Battle.LOG_READ_DELAY + 0.1).timeout
 	_expect(battle._acting == battle.party[0] and not (battle.party[1].stats as CombatantStats).is_stunned(),
 		"TURN-01 forced tutorial initiative bypassed stun skip")
 	battle.tutorial_encounter = false
@@ -242,6 +245,7 @@ func _live_angler_history() -> void:
 		"AI-01 live retaliation hit a different or additional diver")
 	battle._queue = [battle.party[1], battle.party[0]]
 	battle._advance_turn()
+	await create_timer(Battle.LOG_READ_DELAY + 0.1).timeout
 	_expect(battle._acting == battle.party[0] and (battle.party[1].stats as CombatantStats).status_turns("stun") == 1,
 		"TURN-01 actual landed Headbutt did not skip the victim's next real turn")
 	if "--capture-authored-turns" in OS.get_cmdline_user_args():
