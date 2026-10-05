@@ -957,8 +957,11 @@ const MAIN_MAP_SIZE := 500.0
 const MAIN_MAP_MARGIN := 14.0
 # Room kept clear at the top for the title and at the bottom for the legend,
 # so the whole maze is drawn between them.
-const MAIN_MAP_HEADER := 44.0
-const MAIN_MAP_FOOTER := 30.0
+# The title has a band of its own above the map (see _build_main_map_copy());
+# the footer only needs a margin now the legend is a panel to the right.
+const MAIN_MAP_HEADER := 56.0
+const MAIN_MAP_FOOTER := 12.0
+const MAIN_MAP_TITLE_BAND := 48.0
 var main_map: Control
 var _main_map_px_per_unit := 1.0
 var _main_map_origin := Vector2.ZERO
@@ -1119,6 +1122,24 @@ func _make_map_label(node_name: String, text: String, position: Vector2, label_s
 	return label
 
 func _build_main_map_copy() -> void:
+	# The title's own band: an opaque strip with a divider under it, drawn
+	# over the map, so nothing on the map (a room's box or name) can run into
+	# the title - the map itself starts below it (MAIN_MAP_HEADER).
+	var band := ColorRect.new()
+	band.name = "MazeMapTitleBand"
+	band.color = Color(0.03, 0.06, 0.08, 1.0)
+	band.position = Vector2.ZERO
+	band.size = Vector2(MAIN_MAP_SIZE, MAIN_MAP_TITLE_BAND)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.z_index = 2
+	main_map.add_child(band)
+	var divider := ColorRect.new()
+	divider.color = Color(0.3, 0.55, 0.95, 0.8)
+	divider.position = Vector2(0, MAIN_MAP_TITLE_BAND - 2.0)
+	divider.size = Vector2(MAIN_MAP_SIZE, 2.0)
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	divider.z_index = 2
+	main_map.add_child(divider)
 	_make_map_label("MazeMapTitle", "MAZE NAVIGATION   [L] Close", Vector2(16, 10), Vector2(468, 28), 19, Color(0.86, 0.94, 1.0))
 	# The legend: each map symbol drawn as it appears on the map, with what
 	# it means to its right.

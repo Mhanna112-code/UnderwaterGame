@@ -5715,10 +5715,11 @@ func map_points_of_interest() -> Array[Dictionary]:
 		var c := item_room.get_center()
 		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret\nItem Room"})
 	if _dome_site != Vector3.ZERO:
-		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0)
-		# Its name sits low in the box, so the chest (just behind the dome's
-		# middle) shows clear above it.
-		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z + PLINTH_RADIUS * 0.4), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
+		# The plinth and its steps, so there's room for both the name (low in
+		# the box) and the chest (just behind the dome's middle, above it).
+		var steps_out := PLINTH_RADIUS + STEP_COUNT * STEP_DEPTH
+		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS + steps_out, PLINTH_RADIUS + steps_out)
+		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(dome.get_center().x, 0, _dome_site.z + steps_out * 0.55), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
 	return out
 
 # The main boss room's floor plan (inside its North/South/East walls).
@@ -6506,7 +6507,7 @@ func show_map_intro_once() -> void:
 	_map_intro_shown = true
 	var pages: Array[Dictionary] = [{
 		"title": "Maze Navigation",
-		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with Ctrl+E to new areas and halls. R still turns random encounters on or off. Previously visited locations are marked on the map.",
+		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with Ctrl+E to new areas and halls. Previously visited locations are marked on the map.",
 		"slot": null,
 	}]
 	popup.call("open", pages)
