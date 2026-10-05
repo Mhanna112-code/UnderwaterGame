@@ -321,7 +321,6 @@ func _setup_walls():
 	_build_main_boss_room()
 	_build_boss_triggers()
 	_build_vortex_chest()
-	_build_sonar_vision_pickup()
 	_build_path_button()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
@@ -1534,13 +1533,12 @@ func _place_divers_at_secret_entrance() -> void:
 # --- Sphere room and Sonar Vision ---------------------------------------------
 # The room behind wall 16's door is a big room full of hidden spheres
 # swirling around its centre (SwirlRoom). They're invisible to the eye; the
-# minimap always shows them as red circles. The Sonar Vision item (picked up
-# in the room behind the Box30/32 door, toggled with Q) shows them in 3D
+# minimap always shows them as red circles. Sonar Vision shows them in 3D
 # while the active diver is inside the sphere room.
 var _swirl_room: SwirlRoom
-# Once picked up it's always equipped: it works whenever Maxilani's sonar is
-# on - no separate toggle.
-var has_sonar_vision := false
+# Part of Maxilani's sonar from the start (there's no pickup any more): it
+# works whenever her sonar is on (Q) - no separate item or toggle.
+var has_sonar_vision := true
 
 func _build_sphere_room() -> void:
 	var back := get_node_or_null("Room16Back") as CSGBox3D
@@ -1570,8 +1568,8 @@ func _build_sphere_room() -> void:
 		if d == _diver and not sonar_vision_active():
 			_announce("Some hidden items in this room seem to be doing damage...", 2.5))
 
-# The Sonar Vision pickup: a spinning cyan lens in the middle of the room
-# behind the Box30/32 door. Swim into it to take it (it's switched on).
+# The old Sonar Vision pickup (a spinning cyan lens in the hall between the
+# boss doors). Not built any more - Sonar Vision is part of the sonar now.
 func _build_sonar_vision_pickup() -> void:
 	if _door30_center == Vector3.ZERO:
 		return
