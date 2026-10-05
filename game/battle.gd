@@ -2105,7 +2105,7 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(bar)
 
-	# Hidden until _win()'s post-victory regroup actually restores something -
+	# Hidden until a level-up in _win() actually refills something -
 	# _show_heal_overlay() positions/sizes this to span exactly the gap
 	# between whatever HP a diver had before that restore and whatever they
 	# have after, in green, rather than the bar just silently jumping to a
@@ -4968,7 +4968,18 @@ func _win() -> void:
 		# just make leveling slower for the same fights without adding a
 		# meaningful choice anywhere.
 		for entry in party:
+			var before_hp := float((entry.stats as CombatantStats).hp)
+			var before_o2 := (entry.stats as CombatantStats).oxygen
 			var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
+			# A level-up is a full HP/Oxygen refill - shown as a green fill
+			# over the diver's own bars rather than them just jumping to full.
+			if not levels.is_empty():
+				var s := entry.stats as CombatantStats
+				if entry.has("hp_heal_overlay"):
+					_show_heal_overlay(entry.hp_heal_overlay as ColorRect, before_hp, float(s.hp), float(s.hp_max))
+				if entry.has("oxygen_heal_overlay"):
+					_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
+				_refresh_all_bars()
 			for lv in levels:
 				_log("%s reached level %d!" % [String(entry.display_name), int((lv as Dictionary).level)])
 				await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -5001,24 +5012,10 @@ func _win() -> void:
 		_levelup_caption.text = "\n\n".join(levelup_blocks)
 		_levelup_caption.visible = true
 		call_deferred("_fit_panel_height")
-	# The map has repeated random battles plus two guardians and no guaranteed
-	# healer between them. A partial regroup prevents one victory from leaving
-	# the next encounter mathematically decided while preserving attrition.
-	# Shown as a green fill over each diver's own HP/Oxygen bar (any win,
-	# including the tutorial's - this is the real, ungated partial heal, not
-	# a stand-in for a level-up that isn't happening here), from wherever it
-	# sat before this restore up to wherever it lands after - see
-	# _show_heal_overlay() - rather than the bars just silently jumping to
-	# new numbers.
+	# Winning gives no HP/Oxygen back (only a level-up, above, or a save
+	# point does) - it just clears the fight's statuses and buffs/debuffs.
 	for entry in party:
-		var s := entry.stats as CombatantStats
-		var before_hp := float(s.hp)
-		var before_o2 := s.oxygen
-		s.recover_after_victory()
-		if entry.has("hp_heal_overlay"):
-			_show_heal_overlay(entry.hp_heal_overlay as ColorRect, before_hp, float(s.hp), float(s.hp_max))
-		if entry.has("oxygen_heal_overlay"):
-			_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
+		(entry.stats as CombatantStats).recover_after_victory()
 	_refresh_all_bars()
 	# One extra beat only for the choreographed first fight - explains that
 	# THIS win didn't grant XP, then describes what winning normally does

@@ -245,7 +245,7 @@ func _build_paragraph(body: String) -> void:
 	var label := _rich_label()
 	paragraph.add_child(label)
 	var parts := body.split(Slot.WASD_MARKER)
-	label.append_text(parts[0])
+	_append_with_icons(label, parts[0])
 	if parts.size() > 1:
 		var tex := await _wasd_cluster_texture()
 		# Native size, not squashed to fit a single text line - add_image()
@@ -257,7 +257,34 @@ func _build_paragraph(body: String) -> void:
 		# manual newline needed, which would otherwise break "Use [WASD] and
 		# move..." across a line for no reason.
 		label.add_image(tex, int(WASD_CLUSTER_SIZE.x), int(WASD_CLUSTER_SIZE.y))
-		label.append_text(parts[1])
+		_append_with_icons(label, parts[1])
+
+# append_text(), with each Slot.HIDDEN_ITEM_MARKER drawn as the maps' red
+# hidden-item circle, inline like a character.
+func _append_with_icons(label: RichTextLabel, text: String) -> void:
+	var pieces := text.split(Slot.HIDDEN_ITEM_MARKER)
+	for i in pieces.size():
+		if i > 0:
+			label.add_image(_hidden_item_icon(), 18, 18)
+		label.append_text(pieces[i])
+
+# The minimap / Maze Navigation map's hidden-item marker: a red dot with a
+# pale rim (mini_map.gd's guarded-site marker, maze_mini_map.gd's "special").
+var _hidden_item_tex: ImageTexture
+func _hidden_item_icon() -> Texture2D:
+	if _hidden_item_tex != null:
+		return _hidden_item_tex
+	var n := 36
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c := Vector2(n, n) * 0.5
+	for y in n:
+		for x in n:
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+			if d <= n * 0.5 - 1.0:
+				var rim := d >= n * 0.5 - 4.0
+				img.set_pixel(x, y, Color(1.0, 0.75, 0.75) if rim else Color(0.95, 0.15, 0.15))
+	_hidden_item_tex = ImageTexture.create_from_image(img)
+	return _hidden_item_tex
 
 func _rich_label() -> RichTextLabel:
 	var label := RichTextLabel.new()

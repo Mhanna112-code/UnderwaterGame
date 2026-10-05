@@ -186,7 +186,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "swap-sonar",
 			"title": "%s · Swap and Sonar" % maxilani,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]E[/color] to choose a teammate, use [color=#79c7e8]Left / Right[/color] to choose, then [color=#79c7e8]Enter[/color] to swap places. Press [color=#79c7e8]Q[/color] to toggle Sonar when %s is active; it reveals nearby hidden sites and spends [color=#79c7e8]3 O2 every 3 seconds[/color] while on." % [maxilani, maxilani],
+			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]F[/color] to choose a teammate, use [color=#79c7e8]Left / Right[/color] to choose, then [color=#79c7e8]Enter[/color] to swap places. Press [color=#79c7e8]Q[/color] to toggle Sonar when %s is active; it reveals nearby hidden sites and spends [color=#79c7e8]3 O2 every 3 seconds[/color] while on." % [maxilani, maxilani],
 			"keys": ["TAB  %s" % maxilani, "E  Swap", "Left / Right  Choose", "Enter  Confirm", "Q  Sonar"],
 			"ability_id": "swap",
 			"passive_id": "sonar",
@@ -198,7 +198,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "grapple",
 			"title": "%s · Grapple" % musashi,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]E[/color] to enter aim mode, look at a golden grapple anchor, then [color=#79c7e8]left-click[/color] to fire. [color=#79c7e8]Right-click[/color] cancels aim. A missed grapple costs no oxygen, so try again if the beam does not connect." % musashi,
+			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]F[/color] to enter aim mode, look at a golden grapple anchor, then [color=#79c7e8]left-click[/color] to fire. [color=#79c7e8]Right-click[/color] cancels aim. A missed grapple costs no oxygen, so try again if the beam does not connect." % musashi,
 			"keys": ["TAB  %s" % musashi, "E  Aim", "Left click  Fire", "Right click  Cancel"],
 			"ability_id": "grapple",
 			"passive_id": "",
@@ -208,7 +208,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "shockwave",
 			"title": "%s · Shockwave" % bucky,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color], then press [color=#79c7e8]E[/color] to send a shockwave in every direction. It breaks nearby objects built to respond to it, including route blockades. Shockwave has a short cooldown, but it does [color=#79c7e8]not use oxygen[/color]." % bucky,
+			"body": "Switch to %s with [color=#79c7e8]TAB[/color], then press [color=#79c7e8]F[/color] to send a shockwave in every direction. It breaks nearby objects built to respond to it, including route blockades. Shockwave has a short cooldown, but it does [color=#79c7e8]not use oxygen[/color]." % bucky,
 			"keys": ["TAB  %s" % bucky, "E  Shockwave"],
 			"ability_id": "shockwave",
 			"passive_id": "",

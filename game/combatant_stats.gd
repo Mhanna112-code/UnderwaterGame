@@ -77,20 +77,11 @@ func fill() -> void:
 	statuses.clear()
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
 
-# A short post-victory regroup. Without a camp/healer between the two artifact
-# sites, even a won encounter could leave a diver at 0 HP and turn the next
-# legal pack into a foregone conclusion. This restores only a fraction, so
-# damage still matters across the route; a level-up remains the only free
-# full refill. Called by Battle after XP and mirrored by the campaign balance
-# gate. Skips the HP restore entirely for anyone already at 0 - a downed
-# diver doesn't get back up just because the party won; only a level-up
-# (fill(), above) or an actual Revive spell (battle.gd's "revive" effect,
-# world.gd's out-of-battle version) brings them back.
-func recover_after_victory(fraction: float = 0.30) -> void:
-	var amount := clampf(fraction, 0.0, 1.0)
-	if hp > 0:
-		hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
-	oxygen = minf(oxygen_max, oxygen + oxygen_max * amount)
+# After a won fight. Winning doesn't give back any HP or Oxygen - only a
+# level-up (fill(), above, via gain_xp()) or a save point does - it just
+# drops the fight's statuses and temporary buffs/debuffs. Called by Battle
+# after XP and mirrored by the campaign balance gate.
+func recover_after_victory() -> void:
 	statuses.clear()
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
 	evasion_current = effective_evasion()

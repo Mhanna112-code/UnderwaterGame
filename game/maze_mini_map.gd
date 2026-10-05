@@ -1172,6 +1172,7 @@ const SIDE_LEGEND_ENTRIES := [
 	["rock", "Mysterious Rock"],
 	["broken_rock", "Broken rock"],
 	["boss", "Boss"],
+	["special", "Special encounter"],
 ]
 const SIDE_LEGEND_WIDTH := 210.0
 const SIDE_LEGEND_ROW := 30.0
@@ -1324,7 +1325,16 @@ func _build_map_help() -> void:
 	_map_help.add_child(_map_help_label)
 	main_map.get_parent().add_child(_map_help)
 	_map_help.visible = false
-	main_map.visibility_changed.connect(_refresh_map_copy)
+	main_map.visibility_changed.connect(_on_main_map_visibility_changed)
+
+# Lays the map out the moment it opens, not on the next _process(): the first
+# open shows the Maze Navigation intro, which pauses the game straight away -
+# without this everything was drawn with the not-yet-computed origin/scale
+# (bunched up into the title band) until the intro was closed.
+func _on_main_map_visibility_changed() -> void:
+	if main_map.visible and maze_level != null:
+		_refresh_main_map()
+	_refresh_map_copy()
 
 func _refresh_map_copy() -> void:
 	if main_map == null:
@@ -1757,6 +1767,11 @@ func _draw_poi(ci: CanvasItem, p: Vector2, poi: Dictionary, k: float) -> void:
 			var a := 3.5 * k
 			ci.draw_line(p + Vector2(-a, -a), p + Vector2(a, a), blue, 2.2)
 			ci.draw_line(p + Vector2(-a, a), p + Vector2(a, -a), blue, 2.2)
+		"special":
+			# The open world minimap's guarded-site marker: a pulsing red dot.
+			var pulse := 0.55 + 0.45 * sin(Time.get_ticks_msec() / 1000.0 * 3.0)
+			ci.draw_circle(p, 5.5 * k, Color(0.95, 0.15, 0.15, pulse))
+			ci.draw_arc(p, 5.5 * k, 0.0, TAU, 20, Color(1.0, 0.75, 0.75, pulse), 1.2)
 		"rock":
 			ci.draw_circle(p, 5.0 * k, Color(0.45, 0.42, 0.38))
 			ci.draw_line(p + Vector2(-1, -5) * k, p + Vector2(1, 5) * k, Color(0.08, 0.08, 0.08), 1.5)

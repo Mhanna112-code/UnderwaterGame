@@ -1569,7 +1569,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			if not aiming and not target_selector.selecting and not _intro_active:
 				active = (active + 1) % divers.size()
 				_update_hud()
-		elif k == KEY_E:
+		elif k == KEY_F:
+			# The diver's ability is F (E is for interacting).
 			_start_ability()
 		elif k == KEY_P:
 			_toggle_save_menu()
@@ -2938,7 +2939,7 @@ func _update_hud() -> void:
 	var d: Diver = divers[active]
 	var line := "%s\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % _display_name(d.model_name)
 	if d.ability_id != "":
-		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+		line += "  ·  F: %s" % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the E: hint above already follows for
