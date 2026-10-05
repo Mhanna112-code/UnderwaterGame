@@ -1201,6 +1201,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if keycode == KEY_L:
+		# Needs the Maze Navigation Map (control room chest) and the diver
+		# within the maze - closing always works.
+		if not main_map.visible and maze_level != null and not maze_level.can_open_nav_map():
+			return
 		main_map.visible = not main_map.visible
 		_selection_manual = false
 		if main_map.visible:

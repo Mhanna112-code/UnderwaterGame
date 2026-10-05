@@ -321,6 +321,7 @@ func _setup_walls():
 	_build_main_boss_room()
 	_build_boss_triggers()
 	_build_vortex_chest()
+	_build_map_chest()
 	_build_path_button()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
@@ -2125,6 +2126,126 @@ func _build_vortex_chest() -> void:
 	glow.position = Vector3(0, 1.6, 0)
 	_vortex_chest.add_child(glow)
 
+# --- The map chest (Control Room) ---------------------------------------------------
+# A chest in the Control Room - the lever dome, where the map switches were -
+# no key needed. Opening it gives
+# the party the Maze Navigation Map (a key item); with it, L opens the maze
+# nav map anywhere within the maze (nav_map_area()), and the top-left "L: Map"
+# flashes while it can.
+const MAP_ITEM := "maze_nav_map"
+var _map_chest: Node3D
+var _map_chest_lid: Node3D
+var _map_chest_open := false
+
+func _build_map_chest() -> void:
+	if _dome_site == Vector3.ZERO:
+		return
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.42, 0.24, 0.12)
+	wood.roughness = 0.8
+	var gold := StandardMaterial3D.new()
+	gold.albedo_color = Color(1.0, 0.8, 0.25)
+	gold.metallic = 0.8
+	gold.roughness = 0.3
+	gold.emission_enabled = true
+	gold.emission = Color(1.0, 0.7, 0.2)
+	gold.emission_energy_multiplier = 0.6
+	_map_chest = Node3D.new()
+	_map_chest.name = "MapChest"
+	add_child(_map_chest)
+	# On the dome's floor, a little back from its middle, facing the door.
+	_map_chest.global_position = Vector3(_dome_site.x, PLINTH_TOP_Y, _dome_site.z - 3.0)
+	var size := Vector3(1.4, 0.8, 0.9)
+	_map_chest.add_child(_chest_box(Vector3(size.x, size.y, size.z), Vector3(0, size.y * 0.5, 0), wood))
+	for band_x in [-0.5, 0.5]:
+		_map_chest.add_child(_chest_box(Vector3(0.1, size.y + 0.02, size.z + 0.04), Vector3(band_x, size.y * 0.5, 0), gold))
+	_map_chest_lid = Node3D.new()
+	_map_chest_lid.position = Vector3(0, size.y, -size.z * 0.5)
+	_map_chest.add_child(_map_chest_lid)
+	_map_chest_lid.add_child(_chest_box(Vector3(size.x + 0.04, 0.28, size.z + 0.04), Vector3(0, 0.14, size.z * 0.5), wood))
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.8, 0.4)
+	glow.light_energy = 1.2
+	glow.omni_range = 3.5
+	glow.position = Vector3(0, 1.6, 0)
+	_map_chest.add_child(glow)
+	if key_items.has(MAP_ITEM):
+		_map_chest_open = true
+		_map_chest_lid.rotation.x = -deg_to_rad(110.0)
+
+func _map_chest_in_reach() -> bool:
+	if _map_chest == null or _map_chest_open or _diver == null:
+		return false
+	var offset := _diver.global_position - _map_chest.global_position
+	offset.y = 0.0
+	return offset.length() <= CHEST_REACH
+
+func _open_map_chest() -> void:
+	_map_chest_open = true
+	var tw := create_tween()
+	tw.tween_property(_map_chest_lid, "rotation:x", -deg_to_rad(110.0), 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# A rolled map rises out of it and is taken.
+	var scroll := MeshInstance3D.new()
+	var roll := CylinderMesh.new()
+	roll.top_radius = 0.12
+	roll.bottom_radius = 0.12
+	roll.height = 0.9
+	scroll.mesh = roll
+	var paper := StandardMaterial3D.new()
+	paper.albedo_color = Color(0.93, 0.87, 0.7)
+	paper.emission_enabled = true
+	paper.emission = Color(1.0, 0.9, 0.6)
+	paper.emission_energy_multiplier = 0.6
+	scroll.material_override = paper
+	scroll.rotation.z = PI * 0.5
+	_map_chest.add_child(scroll)
+	scroll.position = Vector3(0, 0.6, 0)
+	tw.tween_property(scroll, "position:y", 2.2, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(scroll, "rotation:y", TAU, 0.9)
+	tw.tween_interval(0.3)
+	tw.tween_callback(func() -> void:
+		scroll.queue_free()
+		if not key_items.has(MAP_ITEM):
+			key_items.append(MAP_ITEM)
+		_show_map_item_popup())
+
+func _show_map_item_popup() -> void:
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup == null:
+		_announce("Key Item Acquired: Maze Navigation Map. Press L within the maze to open it.", 6.0)
+		return
+	var pages: Array[Dictionary] = [{
+		"title": "Key Item Acquired",
+		"body": "Maze Navigation Map\n\nWhile you're within the maze, press %s to open the Maze Navigation map - any diver can. On it you can pick a hallway or a current and rotate it. The %s in the top-left flashes whenever the map can be opened." % [Slot._badge("L"), Slot._badge("L: Map")],
+		"slot": null,
+	}]
+	popup.call("open", pages)
+
+# Where L opens the nav map once you have it ("within the maze"): from the
+# Control Room's -x side east to behind the sphere room, and from the Control
+# Room's far end to box 32.
+var _nav_area := Rect2()
+
+func nav_map_area() -> Rect2:
+	if _nav_area.size != Vector2.ZERO:
+		return _nav_area
+	var b32 := get_node_or_null("CSGBox3D32") as CSGBox3D
+	var back := get_node_or_null("Room16Back") as CSGBox3D
+	if _dome_site == Vector3.ZERO or b32 == null or back == null:
+		return Rect2()
+	var x0 := _dome_site.x - PLINTH_RADIUS - 1.0
+	var x1 := back.global_position.x + back.size.z * 0.5 + 1.0
+	var z0 := _dome_site.z - PLINTH_RADIUS - 1.0
+	var z1 := b32.global_position.z + b32.size.z * 0.5
+	_nav_area = Rect2(x0, z0, x1 - x0, z1 - z0)
+	return _nav_area
+
+# L works: the party has the map and the diver being played is within the maze.
+func can_open_nav_map() -> bool:
+	if not key_items.has(MAP_ITEM) or _diver == null:
+		return false
+	return nav_map_area().has_point(Vector2(_diver.global_position.x, _diver.global_position.z))
+
 func _chest_box(box_size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
@@ -2738,6 +2859,7 @@ var _world_hud_tab: Label
 var _world_hud_after: Label
 var _world_hud_encounters: Label
 var _world_hud_tail: Label
+var _map_flash: Tween
 var _tab_flash: Tween
 
 func _build_world_hud() -> void:
@@ -2797,7 +2919,16 @@ func _update_world_hud() -> void:
 	# you left it on, and turns white again once you're out.
 	_world_hud_encounters.text = "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
 	_world_hud_encounters.modulate = Color(0.55, 0.57, 0.6) if is_diver_in_strong_room() else Color.WHITE
-	_world_hud_tail.text = "  ·  L: Map"
+	var map_ok := can_open_nav_map()
+	_world_hud_tail.text = "  ·  L: Map" if map_ok else ""
+	if map_ok and _map_flash == null:
+		_map_flash = create_tween().set_loops()
+		_map_flash.tween_property(_world_hud_tail, "modulate:a", 0.25, 0.45)
+		_map_flash.tween_property(_world_hud_tail, "modulate:a", 1.0, 0.45)
+	elif not map_ok and _map_flash != null:
+		_map_flash.kill()
+		_map_flash = null
+		_world_hud_tail.modulate.a = 1.0
 	var flash := _tab_should_flash()
 	if flash and _tab_flash == null:
 		_tab_flash = create_tween().set_loops()
@@ -4356,6 +4487,10 @@ func _physics_process(dt: float) -> void:
 	_update_room_switch()
 	_update_lever_ui()
 	_update_world_hud()
+	# Swum out of the maze with the nav map up: it closes.
+	var nav := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+	if nav != null and nav.main_map.visible and not levers_map_mode() and not can_open_nav_map():
+		nav.main_map.visible = false
 	_update_sonar_vision()
 	_update_tethys_patrol(dt)
 	_update_special_reveal()
@@ -4576,6 +4711,8 @@ func _handle_e(e: InputEventKey) -> void:
 		pass
 	elif _vortex_chest_in_reach():
 		_open_vortex_chest()
+	elif _map_chest_in_reach():
+		_open_map_chest()
 	elif _secret_entrance_in_reach():
 		_enter_secret_wall()
 	elif _underpass_side() != 0.0:
@@ -4973,12 +5110,16 @@ func _build_progress_gate() -> void:
 	_gate_view_spot = Vector3(centre.x, _floor_top_y + 3.2, centre.z) + along * 9.0
 
 const DEV_KEYS := ["sphere_room_key", "vortex_key", "split_rock_key", "abyss_key"]
+const DEV_ITEMS := ["maze_nav_map"]
 
 func _apply_dev_unlocks() -> void:
 	for id in DEV_KEYS:
 		if not key_items.has(id):
 			key_items.append(id)
 	keys_held = DEV_KEYS.size()
+	for id in DEV_ITEMS:
+		if not key_items.has(id):
+			key_items.append(id)
 	# The gate, down with no cutscene.
 	if _gate != null and not _gate_lowered:
 		_gate_lowered = true
@@ -5481,6 +5622,9 @@ func map_points_of_interest() -> Array[Dictionary]:
 	if item_room.size != Vector2.ZERO:
 		var c := item_room.get_center()
 		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret\nItem Room"})
+	if _dome_site != Vector3.ZERO:
+		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0)
+		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
 	return out
 
 # One half of a broken rock: a lumpy, faceted dome (+Y) over a rough,
