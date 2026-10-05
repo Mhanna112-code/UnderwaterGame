@@ -1,15 +1,15 @@
 {
-  "source_commit": "7330d5ce32a8d3a48ce9e41cdbe995b1762f5ce9",
-  "pck_sha256": "dd6080ba2441cb43738cad6efc745f64e70da148ca2c22aae43e69a26bb8bc86",
-  "pck_bytes": 93321476,
+  "source_commit": "6b8ea078a53891f44213764d6212a921f24d67a7",
+  "pck_sha256": "0c947735cd5ee96230be8fbe2319abb5a6d5e403f938254d8217621facd21696",
+  "pck_bytes": 94956208,
   "engine": "Godot 4.7.1",
-  "status": "Main follow-up: focused regression checks, not full campaign acceptance",
+  "status": "Goals, laboratory payoff/model and ending follow-up; focused acceptance, not earned-route or full-campaign readiness",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Opening credits now include game developers ImmortalDemonGod and Mhanna alongside Glass_Goat and Phoenix Down Music; narrow title sizing repaired; all previously delivered main safety, Cordys station and rock guidance retained",
-  "deferred": "Approved Tethys opening pivot; complete campaign/browser persistence/audio listening/polish acceptance; refreshed Windows/Linux packages",
+  "change": "Milestone-aware independent lab/maze/return goals; actual lab computer/controller payoff and laboratory-only Mermaid-Weirdo variant with existing red fallback; exclusive durable Cordys ending with rejection/rollback/Retry/cold Load; obsolete lab-arrival notice removed after victory. Existing main credits, safety, stationed Cordys, recovery, scaling and guidance retained",
+  "deferred": "Earned-resource lab-first/maze-first journeys; full campaign/browser/Bomb Bot/audio/polish acceptance; matching Windows/Linux packages. Tethys opening and Cordys film relocation remain unchanged and require Miguel's explicit review/approval last",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
 }
