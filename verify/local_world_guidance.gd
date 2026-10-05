@@ -109,7 +109,9 @@ func _spatial_cases() -> void:
 	# Load a valid unfinished checkpoint through the public path, rather than
 	# mutating a milestone in a completed running session without its handoff.
 	var completed := world._serialize_state()
-	var unfinished := completed.duplicate(true)
+	# Unfinished openings serialize the plain World contract. Mutating only
+	# top-level milestones in a completed campaign envelope is invalid IO.
+	var unfinished := world._serialize_world_state()
 	unfinished.route_state.prologue_complete = false
 	unfinished.route_state.tutorial_complete = false
 	unfinished.route_state.objective_id = ""

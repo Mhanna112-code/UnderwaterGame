@@ -114,6 +114,7 @@ run "Marc learned-spell scaling: do authored thresholds preserve EVA and tutoria
 run "Marc base enemy boosts: do public factories cap rolls at 10% and preserve authored EVA" "$GODOT" --headless --path . --script verify/marc_enemy_boosts.gd
 run "Marc legacy enemy boosts: does the explicit comparison mode preserve reference EVA" "$GODOT" --headless --path . --script verify/marc_enemy_boosts.gd -- --legacy-enemy-scaling
 run "Marc blockade waypoint: do real World frames, Tab/F and cold Load preserve direction and cleanup" "$GODOT" --headless --path . --script verify/marc_blockade_waypoint.gd
+run "reward rock guidance: do actual approach/Tab/F, item collection and cold Load preserve actionable hints" "$GODOT" --headless --path . --script verify/reward_rock_guidance.gd -- --extended
 run "victory cue: does actual combat replace battle music before exploration" "$GODOT" --headless --path . --script verify/battle_victory_timing.gd
 run "ordinary victory attrition: do real attacks finish without the retired resource refill" "$GODOT" --headless --path . --script verify/battle_victory_timing.gd -- --no-refill
 run "welcome centering: do twelve real viewports keep text in the middle" "$GODOT" --headless --path . --script verify/welcome_center.gd

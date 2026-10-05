@@ -4118,18 +4118,19 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	# The top-right minimap owns 166 px. Keep both text surfaces out of that
 	# rectangle at narrow browser widths instead of letting readable text exist
 	# underneath an opaque navigation control.
-	var right_limit := maxf(304.0, viewport_size.x - 176.0)
+	var compact := viewport_size.x < 600.0
+	var right_limit := maxf(160.0 if compact else 304.0, viewport_size.x - 176.0)
 	hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	hud.offset_left = 16.0
 	hud.offset_top = 12.0
 	hud.offset_right = right_limit
-	hud.offset_bottom = 68.0
+	hud.offset_bottom = 166.0 if compact else 68.0
 	hud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hud.add_theme_font_size_override("font_size", 14 if viewport_size.x < 900.0 else 16)
 
 	if route_objective_panel == null:
 		return
-	var panel_width := minf(570.0, maxf(288.0, right_limit - 32.0))
+	var panel_width := viewport_size.x - 32.0 if compact else minf(570.0, maxf(288.0, right_limit - 32.0))
 	var panel_left := clampf(
 		(viewport_size.x - panel_width) * 0.5,
 		16.0,
@@ -4137,9 +4138,9 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	)
 	route_objective_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	route_objective_panel.offset_left = panel_left
-	route_objective_panel.offset_top = 74.0
+	route_objective_panel.offset_top = 176.0 if compact else 74.0
 	route_objective_panel.offset_right = panel_left + panel_width
-	route_objective_panel.offset_bottom = 118.0
+	route_objective_panel.offset_bottom = route_objective_panel.offset_top + 44.0
 
 func _on_route_objective_changed(_objective_id: String) -> void:
 	_refresh_world_guidance()
@@ -4156,10 +4157,32 @@ func _refresh_world_guidance() -> void:
 			text = "The way is open. Explore the deep sea."
 		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
 			text = "Use Bucky's Shockwave to break the wall. (TAB)"
+		elif _near_reward_rock(position):
+			if (divers[active] as Diver).ability_id == "shockwave":
+				text = "Break this rock for items: (F) Shockwave."
+			else:
+				text = "Break rocks for items: (TAB) Bucky, (F) Shockwave."
 		else:
 			text = "Shallows: fight to grow stronger."
 	route_objective_label.text = text
 	route_objective_panel.visible = text != ""
+	if get_viewport().get_visible_rect().size.x < 600.0:
+		# Compact controls can wrap below the map. Keep proximity prompts
+		# below both surfaces instead of allowing the map to obscure the keys.
+		route_objective_panel.offset_top = maxf(176.0, hud.get_rect().end.y + 8.0)
+		route_objective_panel.offset_bottom = route_objective_panel.offset_top + 44.0
+
+func _near_reward_rock(position: Vector3) -> bool:
+	# Guidance belongs to actual, unbroken loot rocks, never scenery, the
+	# route blockade or ambush rocks. Full 3D distance prevents seabed hints
+	# while swimming high overhead; the prompt appears within Shockwave reach.
+	for id in _cracked_walls:
+		if not String(id).begins_with("rock_") or id in ROCK_AMBUSH_IDS:
+			continue
+		var rock := _cracked_walls[id] as CrackedWall
+		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and position.distance_to(rock.global_position) <= Diver.SHOCKWAVE_RADIUS:
+			return true
+	return false
 
 func _route_objective_text(objective_id: String) -> String:
 	match objective_id:
