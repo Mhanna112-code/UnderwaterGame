@@ -31,8 +31,11 @@ func _run() -> void:
 	var text := world.route_objective_label.text.to_lower()
 	_expect(world.route_objective_panel.visible and "shallows" in text and "stronger" in text,
 		"SHALLOW-001 post-opening Shallows has no visible zone/purpose instruction: " + text)
-	_expect(not "laboratory" in text and not "wall" in text,
-		"SHALLOW-001 Shallows shows an unrelated contextual instruction")
+	# GOAL-2 adds the wider destination explicitly in deeper water. A stale
+	# immediate Deep instruction is still wrong; mentioning where to go next
+	# while preserving Shallows/growth context is now the intended contract.
+	_expect("laboratory" in text and "deeper water" in text and not "wall" in text,
+		"SHALLOW-001 Shallows loses its contextual next-destination instruction")
 	_expect(world.route_state.objective_id == "find_lab", "SHALLOW-002 Shallows instruction erases lab progression")
 	if OS.get_cmdline_user_args().has("--capture"):
 		await create_timer(0.5).timeout

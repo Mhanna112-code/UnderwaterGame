@@ -155,7 +155,7 @@ func _ready() -> void:
 	special_sites.name = "SpecialSites"
 	add_child(special_sites)
 	special_sites.setup(self)
-	$HUD/Controls.text = "Find the navigation map in the Control Room."
+	$HUD/Controls.text = "Navigation map: not acquired."
 	if world == null and campaign_session != null and not campaign_session.maze_snapshot.is_empty():
 		if not snapshot_matches_runtime(campaign_session.maze_snapshot):
 			SceneHandoff.checkpoint_load_error = "Could not load the maze checkpoint. Choose another save or start a new game."
@@ -2831,8 +2831,9 @@ func _update_world_hud() -> void:
 	_world_hud_map.visible = map_ok and not aiming
 	var goal := get_node_or_null("HUD/GoalLabel") as Label
 	if goal != null:
-		goal.text = "Open the hallway. Follow the channel to the relic.\nE: interact  ·  F: ability." if key_items.has(MAP_ITEM) \
-			else "E: interact  ·  F: ability."
+		var purpose := route_state.exploration_goal("maze", key_items.has(MAP_ITEM), _completed) if route_state != null \
+			else "Find the navigation map in the Control Room."
+		goal.text = purpose + "\nE: interact  ·  F: ability."
 	if map_ok and _map_flash == null:
 		_map_flash = create_tween().set_loops()
 		_map_flash.tween_property(_world_hud_map, "modulate:a", 0.25, 0.45)
@@ -6381,7 +6382,7 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 		special_sites.restore_legacy()
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = ("Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L).") \
-		if key_items.has(MAP_ITEM) else "Find the navigation map in the Control Room."
+		if key_items.has(MAP_ITEM) else "Navigation map: not acquired."
 
 func _clear_party_from_retired_control_route() -> void:
 	# A position clear between the old swung walls can overlap a restored

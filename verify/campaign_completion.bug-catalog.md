@@ -39,8 +39,8 @@ existing completion UI/first victory/completed load/legacy incomplete load.
 | END-2 | Failed ending write falsely offers saved exit or destroys previous checkpoint | World write and async browser boundary; denied staging then actual Retry, exact bytes/slot checks; hosted IDB rejection separately | Native denied IO/retry characterized; browser pending |
 | END-3 | Title Load resurrects boss or rewards/opening, or completed save lacks ending | Cross-scene restoration; actual Return to Title/Load and resource/conservation checks | Native public title boundary characterized |
 | END-4 | Completion screen leaks swimming/input or clips narrow choices | Existing shared party/HUD ownership; held W/Tab/P and 1280/720/360 rendered controls | Native held controls/bounds characterized; rendered images inspected |
-| GOAL-1 | Maze-first/return/completed routes display stale laboratory/relic goals | Existing location/objective split; generated meaningful campaign state combinations and actual handoffs | Planned |
-| LAB-1 | Lab victory never acknowledges recovered computer/controller before suggested maze | Current post-victory handler; actual lab victory presentation/progression and persistence | Planned |
+| GOAL-1 | Maze-first/return/completed routes display stale laboratory/relic goals | Existing location/objective split; generated meaningful campaign state combinations and actual handoffs | Local native repair/evidence in campaign_goals.bug-catalog.md |
+| LAB-1 | Lab victory never acknowledges recovered computer/controller before suggested maze | Current post-victory handler; actual lab victory presentation/progression and persistence | Local native real-win/Close/Load repair in campaign_goals.bug-catalog.md |
 
 ## Test design and self-critique
 

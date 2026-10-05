@@ -34,6 +34,15 @@ Next within this batch: state-aware objectives and lab computer/controller payof
 then browser durability/presentation and batch delivery. Earned balance remains
 unproven by this granted-kit completion fixture.
 
+Next local follow-up is implemented and native-verified: generated state-aware
+goals (40 milestone/stale-ID combinations), physical early maze/return, recovered
+Shallows direction and actual lab computer/controller payoff/Close/cold Load.
+Rendered inspection repaired competing HUD and duplicate map copy. Details:
+`campaign-goals-local-oct5.md`. Mermaid-Weirdo imports in isolation with matching
+rig/clips; actual material/role/live-combat validation and browser ending
+durability/presentation remain before batch publication. No deferred opening
+change was implemented and no new runtime has been pushed in this follow-up.
+
 ## Authority and baseline
 
 Miguel requested a systematic audit of the remaining comprehensive plan and

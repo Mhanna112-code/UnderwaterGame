@@ -3820,6 +3820,7 @@ func _on_battle_finished(result: String) -> void:
 		_sync_lab_staging()
 		if result == "won":
 			_write_save()
+			call_deferred("_show_lab_payoff")
 	match result:
 		"won":
 			if was_special and _special_encounter_diver != null:
@@ -4268,6 +4269,29 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	route_objective_panel.offset_right = panel_left + panel_width
 	route_objective_panel.offset_bottom = route_objective_panel.offset_top + 44.0
 
+func _show_lab_payoff() -> void:
+	if route_state.lab_state != "cleared" or route_state.tethys_state != "defeated":
+		return
+	# The meeting requested a brief computer/controller message, not new
+	# narration or another compulsory encounter. Reuse the input-exclusive
+	# paged surface and its scene-owner/battle-deferral protection. `cleared`
+	# already persists this payoff; loading never repays or replays victory.
+	var pages: Array[Dictionary] = [{
+		"slot": null,
+		"title": "Computer recovered",
+		"body": "Tethys is defeated. You recovered the computer she swallowed. Another being is controlling these creatures.\n\nSuggested next step: explore the maze via the ramp beyond the laboratory. Use the divers' abilities for its puzzles.",
+	}]
+	$HUD.visible = false
+	var popup := get_node("/root/CharacterAbilityPopup")
+	if not popup.closed.is_connected(_on_lab_payoff_closed):
+		popup.closed.connect(_on_lab_payoff_closed, CONNECT_ONE_SHOT)
+	popup.call("open", pages, self)
+
+func _on_lab_payoff_closed() -> void:
+	if not battling and not embedded_maze.maze_active and not is_instance_valid(_completion_screen):
+		$HUD.visible = true
+		_refresh_world_guidance()
+
 func _on_route_objective_changed(_objective_id: String) -> void:
 	_refresh_world_guidance()
 
@@ -4278,7 +4302,7 @@ func _refresh_world_guidance() -> void:
 	if route_state.prologue_complete and not divers.is_empty():
 		var position := (divers[active] as Diver).global_position
 		if deep_zone_layout.zone_for_position(position) == "deep":
-			text = _route_objective_text(route_state.objective_id)
+			text = route_state.exploration_goal("deep")
 		elif _puzzle_solved and _puzzle_hint_bounds.has_point(position):
 			text = "The way is open. Explore the deep sea."
 		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
@@ -4289,7 +4313,7 @@ func _refresh_world_guidance() -> void:
 			else:
 				text = "Break rocks for items: (TAB) Bucky, (F) Shockwave."
 		else:
-			text = "Shallows: fight to grow stronger."
+			text = route_state.exploration_goal("shallows")
 	route_objective_label.text = text
 	route_objective_panel.visible = text != ""
 	if get_viewport().get_visible_rect().size.x < 600.0:
@@ -4309,23 +4333,6 @@ func _near_reward_rock(position: Vector3) -> bool:
 		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and position.distance_to(rock.global_position) <= Diver.SHOCKWAVE_RADIUS:
 			return true
 	return false
-
-func _route_objective_text(objective_id: String) -> String:
-	match objective_id:
-		"find_lab":
-			return "Deep Zone: find the laboratory."
-		"defeat_bomb_bot":
-			return "Deep Zone: disable Bomb Bot."
-		"defeat_sword_slayer":
-			return "Deep Zone: defeat Sword Slayer."
-		"enter_lab":
-			return "Laboratory: enter the Broken Office."
-		"defeat_tethys":
-			return "Laboratory: confront Tethys."
-		"enter_maze":
-			return "Deep Zone: take the blue-lit passage to the maze."
-		_:
-			return ""
 
 func _update_hud() -> void:
 	_refresh_world_guidance()

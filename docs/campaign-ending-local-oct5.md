@@ -32,7 +32,9 @@ Evidence: [ending screenshots/logs](evidence/campaign-ending-oct5/README.md).
 ## Still required for this batch
 
 State-aware objectives/early maze/return and laboratory computer/controller
-payoff; Mermaid-Weirdo inspection. Browser durable-IDB failure/retry and real
+payoff now pass local native tests; see `campaign-goals-local-oct5.md`.
+Mermaid-Weirdo isolated import inspection is recorded, but actual material/
+role/live-combat validation remains. Browser durable-IDB failure/retry and real
 browser completion presentation before export/publish. Full earned balance and
 full campaign acceptance remain later plan batches. This granted-kit fixture
 does not prove ordinary players can earn their way through the maze/boss.

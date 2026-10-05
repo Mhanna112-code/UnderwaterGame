@@ -160,7 +160,8 @@ func _expect(condition: bool, message: String) -> void:
 
 func _expect_shallows(message: String) -> void:
 	var text := world.route_objective_label.text.to_lower()
-	_expect(world.route_objective_panel.visible and "shallows" in text and "stronger" in text and not "laboratory" in text and not "wall" in text, message + ": " + text)
+	_expect(world.route_objective_panel.visible and "shallows" in text and "stronger" in text
+		and "laboratory" in text and "deeper water" in text and not "wall" in text, message + ": " + text)
 
 func _finish() -> void:
 	world.queue_free()

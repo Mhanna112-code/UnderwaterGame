@@ -300,6 +300,8 @@ run "maze Cordys station: do visible stationary actor, real approach, decline an
 run "maze Cordys confirmation: does real Yes start Cordys and preserve independent completion through a snapshot" "$GODOT" --headless --path . --script verify/maze_cordys_trigger.gd -- --real-win
 run "campaign ending: does actual Cordys victory checkpoint completion and conserve rewards through Title Load" "$GODOT" --headless --path . --script verify/campaign_completion.gd
 run "campaign ending denied write: does real Retry preserve previous bytes and block exit until saved" "$GODOT" --headless --path . --script verify/campaign_completion.gd -- --denied
+run "campaign goals: do generated saved milestones, early maze, return and Shallows purpose replace stale guidance" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --shallows
+run "lab payoff: does real Tethys victory acknowledge the computer/controller and preserve independent progress through Load" "$GODOT" --headless --path . --script verify/lab_payoff.gd
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze portrait lanes: does a real two-lane rung carry the portrait without changing direction" "$GODOT" --headless --path . --script verify/maze_latest_switch.gd

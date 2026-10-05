@@ -111,6 +111,32 @@ func normalize_prologue_phase() -> void:
 func mark_deep_warning_seen() -> void:
 	deep_warning_seen = true
 
+func exploration_goal(area: String, has_maze_map := false, has_relic := false) -> String:
+	# Old objective strings describe a moment, not a durable destination.
+	# Use earned milestones and the current owner; entering the independent
+	# maze must neither complete the laboratory nor keep its HUD instructions.
+	if not prologue_complete:
+		return ""
+	if octopus_state == "defeated":
+		return "Journey complete. Cordys is defeated."
+	if area == "maze":
+		if not has_maze_map:
+			return "Maze: find the navigation map in the Control Room."
+		if has_relic:
+			return "Ancient Relic recovered. Explore the maze and prepare to confront Cordys."
+		return "Open the hallway. Follow the channel to the relic. Prepare to confront Cordys."
+	if area == "deep":
+		if lab_state == "cleared" or tethys_state == "defeated":
+			return "Laboratory cleared. Take the ramp beyond it to explore the maze."
+		if lab_state in ["cutscene", "boss"] or tethys_state == "in_progress":
+			return "Laboratory: confront Tethys. The maze ramp is also open beyond the lab."
+		if lab_state == "available":
+			return "Laboratory: enter the Broken Office. Or explore the maze via the ramp beyond it."
+		return "Deep Zone: find the laboratory. The maze ramp beyond it is also open."
+	if lab_state != "cleared" and tethys_state != "defeated":
+		return "Shallows: fight to grow stronger. Seek the laboratory in deeper water."
+	return "Shallows: recover and prepare. The maze ramp lies beyond the laboratory."
+
 func _allowed_or(value: String, allowed: Array, fallback: String) -> String:
 	return value if allowed.has(value) else fallback
 
