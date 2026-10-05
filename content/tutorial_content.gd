@@ -17,7 +17,7 @@ const VIDEO_FRAME_SIZE := Vector2(320, 180)
 const GENERAL_PAGES: Array[Dictionary] = [
 	{
 		"title": "Combat Basics",
-		"body": "A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order; the log above your menu says what just happened.",
+		"body": "A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order.",
 	},
 	{
 		"title": "Dodging: Accuracy vs. Evasion",
