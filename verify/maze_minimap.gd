@@ -95,6 +95,7 @@ func _run() -> void:
 	maze.dev_spawn_at_boss_rooms = false
 	maze.dev_spawn_at_switch = false
 	root.add_child(maze)
+	maze.key_items.append("maze_nav_map") # Post-acquisition widget fixture.
 	for _frame in range(4):
 		await process_frame
 	var minimap := maze.get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
@@ -108,7 +109,7 @@ func _run() -> void:
 			findings.append("undiscovered maze exposes current overlays before a corridor is seen")
 		minimap._unhandled_input(_key(KEY_L))
 		if minimap.main_map == null or not minimap.main_map.visible:
-			findings.append("M does not open the large maze map")
+			findings.append("Earned L does not open the large maze map")
 		await _reveal_all(minimap, maze)
 		_assert_current_truth(minimap, maze, findings, "closed")
 		if minimap.main_map.get_node_or_null("MazeMapTitle") == null or minimap.main_map.get_node_or_null("MazeMapLegend") == null:

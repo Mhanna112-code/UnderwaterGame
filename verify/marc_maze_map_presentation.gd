@@ -15,7 +15,8 @@ func _run() -> void:
 	current_scene = maze
 	await process_frame
 	maze.set_physics_process(false)
-	maze._diver.global_position = Vector3(2000, 0, 2000)
+	maze.key_items.append("maze_nav_map") # Post-acquisition layout fixture.
+	maze._diver.global_position = maze.get_node("MapChest").global_position + Vector3(0, 1.5, 1.8)
 	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
 	var discovery := {"walls": [], "rooms": [0, 1, 2, 3], "corridors": [], "halls": [], "count": 0, "pois": []}
 	for wall in maze.wall_boxes:

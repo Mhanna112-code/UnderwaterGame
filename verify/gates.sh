@@ -191,6 +191,10 @@ run "maze checkpoint IO: do generated saves round-trip and malformed saves retur
 run "maze World return: do live exit and cold World save/re-entry retain party and independent maze/lab history" "$GODOT" --headless --path . --script verify/maze_world_return.gd
 run "maze relic consumers: do real victories unlock owned campaign spells without using or consuming maze keys" "$GODOT" --headless --path . --script verify/maze_relic_consumers.gd
 run "maze input ownership: do real map/save/swap keys stay exclusive while Marc's local encounter policy remains independent" "$GODOT" --headless --path . --script verify/maze_input_ownership.gd
+run "Marc earned map: can real pre-map swimming reach/open the chest, use L and return without geometry or current shortcuts" "$GODOT" --headless --path . --script verify/marc_earned_map.gd
+run "Marc chest ownership: do both chests block real actions but pause/resume safely for every diver" "$GODOT" --headless --path . --script verify/marc_chest_ownership.gd
+run "Marc earned-map persistence: do actual save/cold Load/legacy Load preserve map, spent door keys and spell relics independently" "$GODOT" --headless --path . --script verify/marc_earned_map_persistence.gd
+run "Marc map region: do generated real L/badge/closure cases respect acquired-map availability for every diver" "$GODOT" --headless --path . --script verify/marc_earned_map_region.gd
 run "maze ready-door priority: does real E unlock first on the map, reach the door top and preserve Ctrl/current/key ownership" "$GODOT" --headless --path . --script verify/marc_map_door.gd
 run "maze modifier: does Ctrl avoid sinking while Shift sinks in World and Maze" "$GODOT" --headless --path . --script verify/marc_current_modifier.gd
 run "maze clockwise selection: do real arrow cycles obey geometry across generated discovery subsets" "$GODOT" --headless --path . --script verify/marc_maze_map_order.gd

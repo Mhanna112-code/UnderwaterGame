@@ -10,11 +10,22 @@ and unchanged before the first implementation batch. A subsequent refresh found
 7a27230e01c07358d50c49f2dca36421508dcdf4. The existing preview remains b0bee59
 until a new, identified export passes its delivery checks. Main is untouched.
 
-Latest bounded refresh: #97 `c035c206db2ce67732f68fb57923ac1403b73c15`,
+Latest bounded refresh: #97 `4ec659870c09ad95b9d14fc689c1712b57b95a50`,
 #99 `86878faedb71e81072b1d200f4ccbfc6f0507210`. Nine additional maze and
-three shared commits are classified below. A second fetch after map verification
-found the same heads, including another fetch after the ready-door batch.
-Bounded integration is pushed through `2559d97`. A new preview of that source
+three shared commits plus the later f698bee/4ec6598 range are classified below.
+Repeated fetches, including after earned-map verification, found those same heads.
+The checkout also fast-forwarded the new PR100 `e7072ab` authored Stun/Angler
+repair without discarding the local earned-map batch. Fresh authored-combat,
+actual puppet reward, actual defeat/checkpoint recovery, six chest, cold/legacy
+map Load and 72 region checks pass on the combined working source.
+PR100 then advanced again to `b064f99`, a shooter-owned orb-reel subset with
+59 checks; its complete diff was inspected and is next to reconcile. Its new
+completion ledger references an opening Tethys pivot. Miguel explicitly
+confirmed that change was approved in another chat. It supersedes the older
+Cordys-opening identity while preserving completion/recovery/optional-training
+contracts; campaign Cordys remains the defeatable maze finale. Orb code does
+not itself implement the pivot. The updated plan addendum governs that batch.
+Earlier bounded integration was pushed through `2559d97`. A preview of that source
 was rejected during browser inspection: arrow-key badges rendered as broken
 glyphs despite a passing initial smoke. Portable-word repair passes native
 layout and a strengthened browser test reproduces the old artifact failure.
@@ -47,14 +58,14 @@ below are not admitted by this bounded delivery; full route/polish remains open.
 | #99 542c456 / 2c1be2b / 91757e3 | Status summaries, HP/queue wording | Use final text and status labels; the added status tutorial page is removed by d5134bf and must not be resurrected. |
 | #99 de5f079 | Bleed lasts the rest of battle | Port move + rules/help contract together; verify actual hit, four turns, stacking cap and normal campaign combat. |
 | Earlier #99 11857ae pending subset | Learned-spell stat bonus and blockade guidance | Separate remaining admission; apply to intended consumers without double-scaling authored bosses or changing prologue/tutorial contracts. |
-| #97 64c778a / c65cf93 / 1a9ba39 | Navigation map earned from Control Room chest, including dev start | Persist actual maze_map key item; L requires earned map, inventory explains ownership; do not grant via ordinary/dev initialization. Chest access must remain possible without already owning L. |
+| #97 64c778a / c65cf93 / 1a9ba39 | Navigation map earned from Control Room chest, including dev start | Local earned-map batch: actual `maze_nav_map` party item; real SPACE/W/mouse/E acquisition and return, regional L availability, cold Load/legacy Load and door-key separation pass. Native acquisition/map frames inspected. No dev or spell-sandbox grant. Still not hosted. |
 | #97 f58b4ce / 2d60a03 / 4f3cc97 | Right-side discovery-only map legend, chest and visited-boss icons | No undiscovered boss spoilers; right-side panel fits small viewports and updates on discovery. |
 | #97 2a41c0f / 65c3f70 | Intermediate Shift current binding; readable current strokes | Shift superseded by 04bc26e Ctrl; readable strokes admitted with actual input, HUD/help and physical route verification. |
-| #97 2c32467 | Solid chests, Press E to open | Vortex subset locally carried/verified after native clipping discovery; Control Room chest counterpart pending. Physical capsule stops outside, real E/Tween/key and caption pass. |
+| #97 2c32467 | Solid chests, Press E to open | Vortex and Control Room counterparts carried locally. Measured real actor capsules stop outside both; real E/Tween/reward/caption pass. |
 | #97 f5a8a97 / ef99337 | Encounter owner/toggle synchronization; special/item spots respect R | Latest Marc decision replaces earlier assumptions: inactive embedded maze must not start World fights; maze special sites require encounters on. Do not silently change authored boss gating. Strong-room forcing still needs inspection against the exact new handlers. |
 | #97 818e2ab / #99 7c34be2 / 1b43949 | Status cards and applied messages use remaining-turn units | Deduplicate shared changes; preserve responsive labels and persistent Bleed cap. |
 | #97 659ff69 / #99 7a27230 | Remove Reopen Tutorial Guide button; retain F1 | One shared removal; two practice buttons and optional world beacon remain. This does not remove the tutorial content. |
-| #97 1ec8be0 | Chest cutscene excludes movement/aim/Swap/map until real reward | Pending earned-chest admission; retain pause/scene-teardown safety, no stranded cutscene flag. |
+| #97 1ec8be0 | Chest cutscene excludes movement/aim/Swap/map until real reward | Adapted locally to existing reward lock and modal pause model. Both chests × all three divers block actions, pause/resume safely, grant once and release snapshot lock. Bound Tween teardown remains scene-owned. |
 | #97 04bc26e | Ctrl current controls; boxed room labels | Ctrl controls admitted locally; room labels pending with earned-map/discovery legend. Supersedes 2a41c0f Shift controls. |
 | #97 6f4cca8 / #99 6ea109f | Evasion Down immediately caps remaining dodge pool | Admitted: existing effective subtraction retained, immediate cap added. Actual Flash Blast/follow-up wrong dodge reproduced; repaired sequence and 1,260 generated cases pass without refilling spent EVA. |
 | #97 3d55fb8 | Embedded maze caption above World HP/O2 | Pending measured embedded ownership/layout, not a fixed-coordinate raw port. |
@@ -63,6 +74,12 @@ below are not admitted by this bounded delivery; full route/polish remains open.
 | #97 0d55685 / #99 86878fa | Only Shift sinks; Ctrl is available for map | Admitted in both World and Maze; actual held-key physics checks pass. |
 | #97 6758afb | E unlocks nearby ready door before rotating a wall on open map | Admitted: 27 real-input cases pass; Ctrl+E current behavior retained, door top reachable, one key consumed and relics unchanged. Ready-only dispatch also fixes overlapping eligible-door mismatch reproduced during port. |
 | #97 c035c20 | Half sphere-room rock columns, room to swim through | Locally carried: six independent chord checks, actual three-diver swimming and preserved contact damage pass. Native inspection required near-camera presentation fade and missing vortex solidity. Settled native approach/key/collision and checkpoint checks pass; fresh export/browser admission pending, not yet hosted. |
+| #97 f698bee | Control Room map box narrower, deeper down steps | Read completely. Pending coordinated room-box/legend rendering admission, not carried by the acquired chest alone. Preserve clear maze-wall strokes and chest/name separation. |
+| #97 4ec6598: radius special sites | Seven invisible radius sites replace guardians; Sonar red markers; R gates entry, once per visit | Read completely. Pending: retain chosen-diver minigames/rewards and actual resource owner; persist consumed/revealed sites and randomized positions instead of replaying rewards on cold Load. Check radius through walls/height and R-on while already inside. Not a replacement for puppet/Cordys authored bosses. |
+| #97 4ec6598: underpass/geometry | Outbound Break Room draft; automatic inbound wall-11 draft; new state barriers and wall alignment | Read completely. Supersedes earlier bidirectional underpass assumption. Pending actual capsules in both directions, all wall states, no trap or world-wide barrier; reconcile embedded lab/maze geometry. |
+| #97 4ec6598: E/F, Swap, orb | F uses abilities, E only interacts; Swap free; grapple reels item to Musashi | Read completely. Pending coordinated World/Maze/tutorial/help/contextual-hint migration and real input; author's onboarding key arrays still say E while bodies say F, so a raw diff port would teach contradictory controls. Reeling must follow the actual caster, not nearest diver, and cancel safely on scene change. |
+| #97 4ec6598: recovery economy | Touch restores at maze save pads; only level-up refills after a battle, no ordinary victory heal | Save-contact restoration already exists in our campaign checkpoint. Other pads pending. Removing the current 30% regroup changes route attrition: must re-prove legal-resource puppet/Cordys/lab wins and recovery availability before admission; not a cosmetic merge. Preserve prologue/optional-training recovery contracts. |
+| #97 4ec6598: first map / marker copy | Synchronous first-open map layout before paused intro; inline hidden-item icon | Pending coordinated introduction/legend layout and existing popup ownership/lifetime repair. Do not overwrite the previously fixed freed-label await or FIFO caller ownership. |
 
 ## Admission receipts
 
@@ -106,7 +123,13 @@ below are not admitted by this bounded delivery; full route/polish remains open.
   pack-title-L checks pass with inspected control screenshots. Same-source
   Windows/Linux archives are published and integrity/hash checked; target
   launches are not claimed. See runtime manifest for exact source/artifacts.
-- All other maze rows above remain pending. In particular, a new branch snapshot
+- The c035c20 sphere/solid-vortex batch is pushed as `0561454`, subsequently
+  preserved by PR100 `e7072ab`. The local earned-map batch supplies real
+  acquisition/return, both solid chests, exclusive cutscene/pause ownership,
+  independent map/key/relic persistence and regional L availability. Receipts,
+  generated cases, native captures and invalid-oracle exclusions are in
+  `verify/marc_earned_map.bug-catalog.md`. It is not in the hosted bffe1b5 pack.
+- All explicitly pending maze rows above remain pending. In particular, a new branch snapshot
   is not evidence that seamless geometry, acquired-map behavior or underpass
   traversal has been integrated or verified.
 
@@ -117,8 +140,10 @@ Near-camera fade leaves hazard state intact; eight repaired views show zero
 skin coverage. Marc's vortex collision/caption subset repairs genuine capsule
 penetration and real E/Tween/reward checks pass. Read
 `verify/marc_swirl_spacing.bug-catalog.md` for failed native timing, invalid
-observer/fixture exclusions and exact scope. This does not admit the earned
-map chest, all chest cutscene input, normal room access or browser rendering.
+observer/fixture exclusions and exact scope. That sphere-only receipt did not
+admit earned-map/cutscene input; the subsequent local earned-map batch above
+now covers those separate surfaces. Neither admits normal access to all rooms,
+embedded geometry or browser rendering.
 
 ## Sequence and acceptance
 

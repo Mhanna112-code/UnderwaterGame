@@ -139,7 +139,12 @@ func _test_spell_review_route(world: World) -> void:
 		and world.get_node("HUD").visible and not paused,
 		"MENU-SPELL-3: spell review did not enter save-free free roam")
 	for item_id in Items.ITEMS:
-		if Items.is_key_item(String(item_id)):
+		if item_id == "maze_nav_map":
+			# Marc's navigation item must still be earned, even when the
+			# review route supplies prerequisites for every combat spell.
+			_expect(not world.key_items.has("maze_nav_map"),
+				"EARN-1 spell sandbox bypasses the Control Room map chest")
+		elif Items.is_key_item(String(item_id)):
 			_expect(world.key_items.has(String(item_id)),
 				"MENU-SPELL-3: spell review omitted key item %s" % item_id)
 	for diver_value in world.divers:

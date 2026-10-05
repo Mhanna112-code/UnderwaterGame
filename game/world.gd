@@ -877,7 +877,7 @@ func _on_title_spell_playtest() -> void:
 	get_tree().paused = false
 	_audio_call(&"play_exploration_music")
 	for item_id in Items.ITEMS:
-		if Items.is_key_item(String(item_id)) and not key_items.has(item_id):
+		if item_id != "maze_nav_map" and Items.is_key_item(String(item_id)) and not key_items.has(item_id):
 			key_items.append(item_id)
 	for d in divers:
 		var diver := d as Diver

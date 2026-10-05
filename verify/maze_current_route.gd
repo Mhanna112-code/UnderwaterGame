@@ -17,6 +17,7 @@ func _run() -> void:
 	for frame in range(12):
 		await physics_frame
 	print("ROUTE START|", maze._diver.global_position)
+	await _earn_map_and_return()
 	for name in ["CSGBox3D", "CurrentWall1", "CurrentWall2", "CurrentWall3", "CSGBox3D6", "CSGBox3D7"]:
 		var wall := maze.get_node(name) as CSGBox3D
 		print("ROUTE WALL|", name, "|position=", wall.global_position, "|size=", wall.size, "|yaw=", wall.rotation.y)
@@ -226,3 +227,106 @@ func _key(code: Key, ctrl := false) -> void:
 func _expect(ok: bool, message: String) -> void:
 	if not ok:
 		findings.append(message)
+
+func _earn_map_and_return() -> void:
+	# No acquisition shortcut in the physical first-channel acceptance.
+	var entry := maze._diver.global_position
+	if maze.random_encounters_enabled:
+		await _key(KEY_R)
+	var chest := maze.get_node("MapChest") as Node3D
+	var goal := chest.global_position + Vector3(0, 1.0, 1.8)
+	var route := _no_current_path(goal)
+	_expect(not route.is_empty(), "ROUTE no normal pre-map path to the actual chest")
+	var rise := InputEventKey.new()
+	rise.keycode = KEY_SPACE
+	rise.pressed = true
+	Input.parse_input_event(rise)
+	var deadline := Time.get_ticks_msec() + 10000
+	while maze._diver.global_position.y < goal.y - 0.12 and Time.get_ticks_msec() < deadline:
+		await physics_frame
+	rise = InputEventKey.new()
+	rise.keycode = KEY_SPACE
+	Input.parse_input_event(rise)
+	for frame in 10:
+		await physics_frame
+	goal.y = maze._diver.global_position.y
+	route = _no_current_path(goal)
+	_expect(not route.is_empty(), "ROUTE no chest path at actual settled swim height")
+	for point in route:
+		await _swim(point)
+		if not findings.is_empty():
+			return
+	await _key(KEY_E)
+	await create_timer(2.2).timeout
+	_expect(maze.key_items.count("maze_nav_map") == 1, "ROUTE actual chest did not supply the earned map")
+	var popup := root.get_node("CharacterAbilityPopup")
+	if (popup.get_node("%AbilityExplanationPanel") as Control).visible:
+		await _key(KEY_ESCAPE)
+	var back := _no_current_path(Vector3(entry.x, maze._diver.global_position.y, entry.z))
+	_expect(not back.is_empty(), "ROUTE acquired map has no collision/current-valid return path")
+	for point in back:
+		await _swim(point)
+		if not findings.is_empty():
+			return
+	_expect(Vector2(maze._diver.global_position.x-entry.x, maze._diver.global_position.z-entry.z).length() < 0.8,
+		"ROUTE failed to swim back after actual map acquisition")
+
+func _no_current_path(goal: Vector3) -> Array[Vector3]:
+	var shape: Shape3D
+	for child in maze._diver.get_children():
+		if child is CollisionShape3D:
+			shape = child.shape
+	if shape == null:
+		return []
+	var active_areas: Array[RID] = []
+	for current in maze._currents_by_corridor.values():
+		active_areas.append((current as WaterCurrent).area.get_rid())
+	var exclusions: Array[RID] = []
+	for diver in maze.divers:
+		exclusions.append(diver.get_rid())
+	var start := Vector2i(roundi(maze._diver.global_position.x / STEP), roundi(maze._diver.global_position.z / STEP))
+	var queue: Array[Vector2i] = [start]
+	var parent := {start: start}
+	var found := Vector2i(999999, 999999)
+	var head := 0
+	var space := maze.get_world_3d().direct_space_state
+	while head < queue.size() and head < 80000:
+		var cell := queue[head]
+		head += 1
+		if Vector3(cell.x * STEP, goal.y, cell.y * STEP).distance_to(goal) < 0.75:
+			found = cell
+			break
+		for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next: Vector2i = cell + offset
+			if parent.has(next):
+				continue
+			var pos := Vector3(next.x * STEP, goal.y, next.y * STEP)
+			if absf(pos.x-goal.x) > 100 or absf(pos.z-goal.z) > 100:
+				continue
+			var query := PhysicsShapeQueryParameters3D.new()
+			query.shape = shape
+			query.transform = Transform3D(Basis.IDENTITY, pos)
+			query.collision_mask = 1
+			query.exclude = exclusions
+			if not space.intersect_shape(query, 1).is_empty():
+				continue
+			query.collide_with_bodies = false
+			query.collide_with_areas = true
+			var blocked := false
+			for overlap in space.intersect_shape(query, 64):
+				if active_areas.has(overlap.rid):
+					blocked = true
+					break
+			if blocked:
+				continue
+			parent[next] = cell
+			queue.append(next)
+	if found.x == 999999:
+		return []
+	var route: Array[Vector3] = [goal]
+	var cursor := found
+	while cursor != start:
+		route.append(Vector3(cursor.x * STEP, goal.y, cursor.y * STEP))
+		cursor = parent[cursor]
+	route.reverse()
+	return route

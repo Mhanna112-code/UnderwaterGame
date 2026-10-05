@@ -41,6 +41,15 @@ func _run() -> void:
 		if maze.any_modal_open():
 			break
 	var yes := InputEventKey.new()
+	# Freeze combat randomness at the interaction boundary, independently of
+	# procedural scenery/poster RNG consumed during World/Maze construction.
+	# This is one attainable reward-consumer victory, not all-roll balance proof.
+	var battle_seed := 64222
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--battle-seed="):
+			battle_seed = int(arg.trim_prefix("--battle-seed="))
+	seed(battle_seed)
+	print("PUPPET REWARD SEED|", battle_seed)
 	yes.keycode = KEY_Y
 	yes.pressed = true
 	Input.parse_input_event(yes)
@@ -96,6 +105,7 @@ func _run() -> void:
 					print("MOVE BUTTON|", (button as Button).text, "|disabled=", (button as Button).disabled)
 				break
 			actions += 1
+			print("PUPPET REWARD ACTION|", actions, "|move=", move, "|target=", target, "|state=", _state(battle))
 		await process_frame
 	_expect(outcomes == ["won"], "INT-13 actual maze waves did not win: " + str(outcomes))
 	await process_frame

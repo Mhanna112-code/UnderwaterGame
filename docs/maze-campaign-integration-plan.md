@@ -4,6 +4,26 @@ Source: https://chatgpt.com/space/page_ad5d8bc76f5481918cbf545ccce5fc58
 
 Page revision: 5. Captured October 4, 2026. This is the approved decision snapshot, not completion evidence. The Page remains the decision overview; execution status belongs in the companion ledger and audit log. Reconcile future decisions explicitly.
 
+## Later approved opening amendment — October 4
+
+Miguel explicitly confirmed in this task that the Tethys opening change was
+approved in another chat. This supersedes the earlier snapshot's instruction
+to preserve Cordys as the overwhelming opening opponent. Keep the Angler beat;
+use Tethys for the opening defeat and safe recovery. Do not mark the independent
+laboratory Tethys encounter defeated by that scripted opening. Cordys remains
+the genuinely defeatable maze finale, with introduction/payoff reconciled at
+the maze instead of an obsolete opening-specific promise.
+
+Preserve durable `prologue_complete` versus optional `tutorial_complete`,
+normal New Game/Load/Restart semantics, the existing party/inventory owners,
+volume settings and independent maze/lab access. A defeated opening party must
+reach the authored recovery handoff, not ordinary Game Over or lab rewards.
+Code, clips, objective copy, audio cues, checkpoints and old saves require one
+coordinated pivot with real opening/death/cold-load verification; swapping a
+boss flag alone is not acceptance. Existing historical Cordys-opening evidence
+does not verify the new Tethys sequence. No implementation or deployment of
+this amendment is claimed by saving it here.
+
 # UnderwaterGame Maze and Campaign Integration Plan
 
 Status: planning document, not an implementation or merge report. Updated October 4, 2026 to include Miguel's approved Cordys puppet encounter, following comparison with the earlier plans and executable roster/dispatch checks. The immediate goal is a combined feedback build, followed by final verification and approval. This document update changes no game code and creates no new playable build.

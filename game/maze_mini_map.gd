@@ -1299,7 +1299,7 @@ func _layout_overview() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):
 		return
-	if maze_level != null and (maze_level._battling or maze_level.any_modal_open()):
+	if maze_level != null and (maze_level._battling or maze_level.any_modal_open() or maze_level._chest_reward_pending):
 		return
 	if maze_level != null and maze_level.target_selector != null and maze_level.target_selector.selecting:
 		return
@@ -1312,6 +1312,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if keycode == KEY_L:
+		if not main_map.visible and maze_level != null and not maze_level.can_open_nav_map():
+			return
 		main_map.visible = not main_map.visible
 		_selection_manual = false
 		if main_map.visible:

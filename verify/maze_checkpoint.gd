@@ -144,6 +144,11 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 	# Trigger placement is a fixture; the production boss resolves all damage.
 	var previous_speed := Engine.time_scale
 	Engine.time_scale = 8.0
+	var loss_seed := 970405
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--loss-seed="):
+			loss_seed = int(arg.trim_prefix("--loss-seed="))
+	seed(loss_seed)
 	maze.inventory = {"potion": 99}
 	maze.keys_held = 99
 	for diver in maze.divers:
@@ -152,6 +157,9 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 	maze.divers[maze.active].global_position = sigil.global_position + Vector3.UP
 	var screen: GameOverScreen
 	var attacks := 0
+	var outcomes: Array[String] = []
+	var observed_battle: Battle
+	var captions := 0
 	var deadline := Time.get_ticks_msec() + 45000
 	while Time.get_ticks_msec() < deadline:
 		screen = _recovery_screen(maze)
@@ -161,7 +169,19 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 		for child in maze.get_children():
 			if child is Battle:
 				battle = child as Battle
+		# Ordinary enemy QTEs can expose a one-time Continue explanation.
+		# Read/continue it through the real button, but never press the QTE:
+		# its normal timeout still delivers damage. Ignoring this legitimate
+		# input owner made a waiting fight look like broken death recovery.
+		if battle != null and battle._tutorial_continue_btn.is_visible_in_tree() \
+			and not battle._tutorial_continue_btn.disabled:
+			battle._tutorial_continue_btn.pressed.emit()
+			captions += 1
+			await process_frame
 		if battle != null and battle.main_menu.is_visible_in_tree() and not battle.attack_btn.disabled:
+			if observed_battle != battle:
+				observed_battle = battle
+				battle.finished.connect(func(result: String) -> void: outcomes.append(result))
 			battle.attack_btn.pressed.emit()
 			await process_frame
 			for button in battle.move_buttons:
@@ -176,7 +196,8 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 	Engine.time_scale = previous_speed
 	_expect(screen != null and screen.visible and paused, "INT-04: real maze defeat has no exclusive checkpoint recovery screen")
 	_expect(maze.divers.all(func(d: Diver) -> bool: return d.stats.hp == 0), "INT-04: defeat silently revives party instead of awaiting recovery")
-	print("MAZE CHECKPOINT REAL LOSS|player_actions=", attacks)
+	print("MAZE CHECKPOINT REAL LOSS|player_actions=", attacks, "|captions_continued=", captions, "|outcomes=", outcomes,
+		"|HP=", maze.divers.map(func(d: Diver) -> int: return d.stats.hp), "|battle_kind=", maze._battle_kind)
 	if screen == null or not screen.visible:
 		return
 	screen.restart_chosen.emit()

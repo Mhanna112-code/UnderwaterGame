@@ -49,6 +49,9 @@ func _enter(selected: int) -> MazeLevel:
 		findings.append("INT-06 fixture actual World entrance did not reach Maze")
 		return null
 	var maze := current_scene as MazeLevel
+	# Input composition fixture after acquisition; marc_earned_map exercises
+	# earning the map through actual swimming/E rather than this grant.
+	maze.key_items.append("maze_nav_map")
 	maze.divers[selected].global_position = maze.get_node("MazeCheckpoint").global_position + Vector3.UP
 	for frame in range(8):
 		await physics_frame

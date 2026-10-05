@@ -7,7 +7,31 @@ review alias is updated and locally/immutable/stable checksum-title-L checks
 pass; portable control screenshots inspected. PCK and deployment identifiers
 are in the runtime manifest. Same-source Windows/Linux prerelease is published,
 ZIP/architecture/published hashes pass, target launches still unverified.
-Main/public untouched. Current bounded next admission: c035c20 sphere-room gaps.
+Main/public untouched. Source includes pushed `0561454` sphere-room gaps and
+newly fetched PR100 `e7072ab` Stun/Angler repair. Marc's latest heads are
+#97 `4ec6598` and #99 `86878fa`; f698bee/4ec6598 are read and classified,
+not silently admitted. Local earned-map/chest admission is undergoing final
+merged-source consumer checks. Real acquisition/return, six capsule/input/pause
+cases, 72 map boundaries, isolated-slot cold/legacy Load and actual door-key
+separation pass. Native acquisition/map frames inspected; external Control Room
+discoverability and browser acquisition remain open.
+
+Approved later decision: Miguel confirmed the Tethys opening pivot. It replaces
+the older Cordys-opening opponent, not durable completion/optional training/
+recovery or the independent lab encounter. Cordys remains the maze finale.
+Plan addendum records scope and required cold-load/progression/media checks;
+no code/deployment acceptance of the pivot is implied by that decision.
+
+Puppet reward exposed legitimate losing rolls and a scenery-dependent global
+seed; one explicit combat-boundary seed wins through legal attacks/heals with
+no consumables. That witness does not prove all-roll balance or a full earned
+route. Native return observer used desired rather than actual height; corrected
+plane queries pass without changing collision. Checkpoint driver previously
+waited at QTE Continue, not completed defeat; actual loss/Restart/Load passes,
+while that Continue branch is not claimed newly covered. Exact receipts and
+exclusions are in the earned-map catalog.
+
+Earlier sphere admission:
 Old spacing fails six generated geometry checks; local three-diver swimming,
 actual hazard damage, rendered occlusion repair and vortex-chest solidity now
 pass bounded checks. Final settled native capture shows readable Press E to open
@@ -15,7 +39,7 @@ and the diver beside the solid chest; current checkpoint recovery also passes.
 This source batch is ready for review, not yet export/browser-hosted. See
 marc_swirl_spacing.bug-catalog.md for invalid observers and the earlier unaccepted
 native timeout. No complete normal-access/resource/polish claim is implied.
-Earned chest/legend, underpass, queue, embedded
+Discovery legend, underpass, queue, embedded
 geometry and complete route/storage/audio/polish acceptance remain open.
 
 ## Earlier batch receipts (historical, not latest hosted status)

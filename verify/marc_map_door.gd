@@ -35,6 +35,7 @@ func _case(active: int, mode: String) -> void:
 	current_scene = maze
 	await process_frame
 	maze.set_physics_process(false)
+	maze.key_items.append("maze_nav_map") # Post-acquisition door/input fixture.
 	maze.random_encounters_enabled = false
 	for actor in maze.divers:
 		actor.global_position = Vector3(2000, 0, 2000)

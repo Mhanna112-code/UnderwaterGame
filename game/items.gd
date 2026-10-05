@@ -57,6 +57,10 @@ const ITEMS := {
 		"display": "Abyss Key", "kind": "key",
 		"description": "Dropped by the secret boss. Opens the door to the main boss.",
 	},
+	"maze_nav_map": {
+		"display": "Maze Navigation Map", "kind": "key",
+		"description": "From the chest in the Control Room. Press L while within the maze to open the Maze Navigation Map.",
+	},
 	# battle_only, same as the old Blast Rocks move used to be flagged -
 	# these raise strength/defense only for the fight they're used in.
 	# grant() still just adds `amount` straight onto the stat like every

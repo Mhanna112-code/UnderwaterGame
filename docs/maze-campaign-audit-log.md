@@ -1,5 +1,54 @@
 # Maze and campaign integration audit log
 
+## October 4 late intake: earned map, new upstream range and PR100 combat repair
+
+Bounded refresh finds #97 `4ec6598` and unchanged #99 `86878fa`.
+f698bee/4ec6598 were read completely and classified, NOT raw-replaced into
+integrated files. F/E controls, free Swap, caster-directed orb reel, radius
+special sites, one-way drafts/barriers and removing ordinary victory recovery
+affect multiple consumers. Author's onboarding bodies say F but key arrays
+still say E; repair the contradiction during coordinated admission.
+
+PR100 independently advanced to `e7072ab` while this batch was local. Read its
+complete diff/tests/evidence, then fast-forwarded intact, preserving earned-map
+changes and registering both sets of gates. Fresh merged-source checks are
+required; another commit's old green log is not this batch's acceptance.
+Later PR100 `b064f99` adds shooter-owned orb reeling and a completion ledger.
+Read the full delta. The ledger references an opening Tethys pivot; rather
+than assuming its prose grants authority, asked Miguel. He explicitly confirmed
+approval. Added the plan amendment preserving completion/recovery/training and
+independent lab ownership; Cordys remains the defeatable maze finale. Pivot
+implementation and fresh evidence remain required.
+
+Real no-map swimming/SPACE/mouse/E reaches the Control Room chest, one Tween
+grants one map and no spendable key, real L opens and swimming returns to entry.
+Both chests × three divers are solid and block movement/aim/Tab/Q/R/L/E/save
+until reward; Escape pauses/resumes without duplicate/lost items. Seventy-two
+generated region/badge/input cases, actual save/cold Load/legacy Load and door
+key/relic separation pass. Initial footers taught unavailable L and typed popup
+call threw; repaired, not accepted just because a driver printed clean.
+Rendered acquisition/popup/map frames inspected; browser acquisition, external
+room discovery, legend, embedding/new underpass/full polish remain open.
+
+Rejected observers remain recorded: overstated fixed capsule clearance,
+puppet prompt moving a boundary fixture, and a native path planned at Y=2 while
+the actual diver swam near Y=2.6. Queries now use measured capsule/settled height;
+no collision was removed to get green. Native rise warm-up is an inference.
+Checkpoint driver's missing QTE Continue did not prove broken defeat recovery.
+Actual loss/Restart/Load passes, but current seeds do not cover that explanation.
+
+Puppet consumer losses are retained: global scene seed depends on procedural
+rock RNG, and explicit combat seed 64221 also loses. Boundary 64222 produces a
+real 14-action win with zero consumables, one downed diver, one maze key and
+unchanged lab progress. This is an attainable consumer witness, not all-roll/
+full-route balance. No combat stats changed. Fresh e7072ab merged-source
+authored-combat, puppet reward, checkpoint, six chest, map persistence and
+72 generated region gates pass without script errors. Remaining final
+affected gates run separately; none implies a full route/polish approval.
+
+No new web/native export or public/main promotion. Artifacts remain bffe1b5.
+Detailed receipts/exclusions: `verify/marc_earned_map.bug-catalog.md`.
+
 ## October 4, sphere-room intake after bffe1b5 delivery
 
 c035c20's 4m column spacing is carried: six generated room sizes fail old ~2m

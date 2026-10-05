@@ -17,7 +17,8 @@ func _run() -> void:
 	await process_frame
 	# Presentation fixture, not claimed as physical traversal. No save IO.
 	maze.set_physics_process(false)
-	maze._diver.global_position = Vector3(2000, 0, 2000)
+	maze.key_items.append("maze_nav_map") # Post-acquisition selection fixture.
+	maze._diver.global_position = maze.get_node("MapChest").global_position + Vector3(0, 1.5, 1.8)
 	map = maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
 	# Independent spatial origin: the continuous physical floor is centered
 	# on the complete maze footprint. Do not call the map's angle/sort helper.

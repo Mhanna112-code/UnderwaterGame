@@ -15,8 +15,9 @@ This is still partial upstream integration, not full route/polish acceptance.
 | PR96 campaign parent | 27a5b5253256a26733f8a320c3c6b4f97c64dece | Remote PR head checked |
 | PR98 reviewed opening | c3da257d115385b423306ef61e0214ebf7416f0c | Remote PR head checked |
 | PR97 integrated maze | 58c6ed07944676631002794e4649220d3c5bf264 | Initial 55e8515 plus d5bf893/58c6ed0 integrated deliberately; later work pending |
-| PR97 refreshed remote | c035c206db2ce67732f68fb57923ac1403b73c15 | Each authored delta classified in marc-oct4-integration-intake.md; remaining geometry/chest/legend/underpass work pending |
+| PR97 refreshed remote | 4ec659870c09ad95b9d14fc689c1712b57b95a50 | New f698bee/4ec6598 range read/classified; radius sites, new underpass/barriers, F/Swap/orb, no ordinary victory restore and first-map changes remain separate admissions |
 | PR99 refreshed remote | 86878faedb71e81072b1d200f4ccbfc6f0507210 | Shared pause/popup/caption/status/Bleed/EVA admitted; remaining message queue/learned-stat/guidance subset pending |
+| Current source boundary | e7072ab13aeaccb7516f95b2cc8bc1890219eb0c plus local earned-map batch | PR100 authored Stun/Angler commit fast-forwarded intact; sphere gaps already pushed. Acquired-map/chest verification is local, not the deployed build |
 | Latest combined web export | bffe1b50edd23199d346fac6b4ca71903b70acc0 | Exported pack, ordinary title, actual L controls and portable badges checked locally/immutable/stable; screenshots inspected |
 | Review documentation | e28b20149be0f8bf79ca17376b5546829f0264b4 | Same-source native links, partial integration limits and current controls |
 | Windows x86_64 | bffe1b50edd23199d346fac6b4ca71903b70acc0 | Exported, PE32+ identified, ZIP integrity and published digest match; not target-launched/playtested |

@@ -120,7 +120,7 @@ func _ready() -> void:
 	_build_campaign_checkpoint()
 	_build_campaign_exit()
 	_add_wall_skirts()
-	$HUD/Controls.text = "Hallway: CLOSED. Open the map (L), pick the hallway walls and press E."
+	$HUD/Controls.text = "Find the navigation map in the Control Room."
 	if campaign_session != null and not campaign_session.maze_snapshot.is_empty():
 		if not snapshot_matches_runtime(campaign_session.maze_snapshot):
 			SceneHandoff.checkpoint_load_error = "Could not load the maze checkpoint. Choose another save or start a new game."
@@ -249,6 +249,7 @@ func _setup_walls():
 	_build_main_boss_room()
 	_build_boss_triggers()
 	_build_vortex_chest()
+	_build_map_chest()
 	_build_sonar_vision_pickup()
 	_build_path_button()
 
@@ -763,13 +764,15 @@ var _battle: Battle
 var _encounter_status: Label
 
 func _on_diver_encounter(d: Diver) -> void:
-	if _battling or any_modal_open() or d != _diver or not room_encounters_enabled or not is_diver_in_strong_room():
+	if _battling or any_modal_open() or _chest_reward_pending or d != _diver or not room_encounters_enabled or not is_diver_in_strong_room():
 		return
 	_start_battle()
 
 # kind: "strong" (the strong-enemy room's random encounters), "secret_boss"
 # or "main_boss".
 func _start_battle(kind := "strong") -> void:
+	if _chest_reward_pending:
+		return
 	_battling = true
 	_battle_kind = kind
 	_play_maze_music(&"play_cordys_music" if kind == "main_boss" else &"play_battle_music")
@@ -976,7 +979,7 @@ func _update_room_switch() -> void:
 		poster = null
 	for p in _posters:
 		p.set_highlight(p == poster)
-	var at_chest := _vortex_chest_in_reach()
+	var at_chest := _vortex_chest_in_reach() or _map_chest_in_reach()
 	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _secret_entrance_in_reach() or at_chest or _split_rock_in_reach()
 	if _interact_cooldown and (_banner == null or _banner_timer <= 0.0):
 		_interact_cooldown = false
@@ -1875,6 +1878,26 @@ var _vortex_chest: Node3D
 var _vortex_chest_lid: Node3D
 var _vortex_chest_open := false
 var _chest_reward_pending := false
+var _chest_tween: Tween
+
+func _begin_chest_cutscene() -> Tween:
+	_chest_reward_pending = true
+	if target_selector != null and target_selector.selecting:
+		target_selector.cancel_selection()
+	for diver in divers:
+		diver.velocity = Vector3.ZERO
+	_chest_tween = create_tween()
+	return _chest_tween
+
+func _update_chest_pause() -> void:
+	# Inventory's existing pause model stops exploration without pausing the
+	# SceneTree. Pause the bound animation too, so no reward arrives behind it.
+	if not _chest_reward_pending or _chest_tween == null or not _chest_tween.is_valid():
+		return
+	if inventory_menu != null and inventory_menu.visible:
+		_chest_tween.pause()
+	elif not _chest_tween.is_running():
+		_chest_tween.play()
 
 func _build_vortex_chest() -> void:
 	if _swirl_room == null:
@@ -1924,6 +1947,118 @@ func _add_chest_collision(chest: Node3D, size: Vector3) -> void:
 	body.add_child(shape)
 	chest.add_child(body)
 
+# Marc's Control Room chest makes navigation an acquired party item, not a
+# spendable maze-door key. Ownership, not a new save flag, restores its lid.
+const MAP_ITEM := "maze_nav_map"
+var _map_chest: Node3D
+var _map_chest_lid: Node3D
+var _map_chest_open := false
+
+func _build_map_chest() -> void:
+	if _dome_site == Vector3.ZERO:
+		return
+	var wood := _stone(Color(0.42, 0.24, 0.12))
+	var gold := StandardMaterial3D.new()
+	gold.albedo_color = Color(1.0, 0.8, 0.25)
+	gold.metallic = 0.8
+	gold.roughness = 0.3
+	gold.emission_enabled = true
+	gold.emission = Color(1.0, 0.7, 0.2)
+	gold.emission_energy_multiplier = 0.6
+	_map_chest = Node3D.new()
+	_map_chest.name = "MapChest"
+	add_child(_map_chest)
+	_map_chest.global_position = Vector3(_dome_site.x, PLINTH_TOP_Y, _dome_site.z - 3.0)
+	var size := Vector3(1.4, 0.8, 0.9)
+	_map_chest.add_child(_chest_box(size, Vector3(0, size.y * 0.5, 0), wood))
+	_add_chest_collision(_map_chest, size + Vector3(0.04, 0.3, 0.04))
+	for band_x in [-0.5, 0.5]:
+		_map_chest.add_child(_chest_box(Vector3(0.1, size.y + 0.02, size.z + 0.04), Vector3(band_x, size.y * 0.5, 0), gold))
+	_map_chest_lid = Node3D.new()
+	_map_chest_lid.position = Vector3(0, size.y, -size.z * 0.5)
+	_map_chest.add_child(_map_chest_lid)
+	_map_chest_lid.add_child(_chest_box(Vector3(size.x + 0.04, 0.28, size.z + 0.04), Vector3(0, 0.14, size.z * 0.5), wood))
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.8, 0.4)
+	glow.light_energy = 1.2
+	glow.omni_range = 3.5
+	glow.position = Vector3(0, 1.6, 0)
+	_map_chest.add_child(glow)
+	var room_label := Label3D.new()
+	room_label.name = "ControlRoomLabel"
+	room_label.text = "Control Room"
+	room_label.font_size = 38
+	room_label.pixel_size = 0.012
+	room_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	room_label.position = Vector3(0, 3.4, DOME_RADIUS + 3.3)
+	add_child(room_label)
+	room_label.global_position = _dome_site + room_label.position
+	_restore_map_chest_ownership()
+
+func _restore_map_chest_ownership() -> void:
+	_map_chest_open = key_items.has(MAP_ITEM)
+	if _map_chest_lid != null:
+		_map_chest_lid.rotation.x = -deg_to_rad(110.0) if _map_chest_open else 0.0
+
+func _map_chest_in_reach() -> bool:
+	if _map_chest == null or _map_chest_open or _diver == null:
+		return false
+	# Unlike the old planar chest check, a diver under the raised plinth
+	# cannot open its chest through the floor.
+	return _diver.global_position.distance_to(_map_chest.global_position + Vector3(0, 0.6, 0)) <= CHEST_REACH
+
+func _open_map_chest() -> void:
+	_map_chest_open = true
+	var tw := _begin_chest_cutscene()
+	tw.tween_property(_map_chest_lid, "rotation:x", -deg_to_rad(110.0), 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var scroll := MeshInstance3D.new()
+	var roll := CylinderMesh.new()
+	roll.top_radius = 0.12
+	roll.bottom_radius = 0.12
+	roll.height = 0.9
+	scroll.mesh = roll
+	var paper := StandardMaterial3D.new()
+	paper.albedo_color = Color(0.93, 0.87, 0.7)
+	paper.emission_enabled = true
+	paper.emission = Color(1.0, 0.9, 0.6)
+	paper.emission_energy_multiplier = 0.6
+	scroll.material_override = paper
+	scroll.rotation.z = PI * 0.5
+	_map_chest.add_child(scroll)
+	scroll.position = Vector3(0, 0.6, 0)
+	tw.tween_property(scroll, "position:y", 2.2, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(scroll, "rotation:y", TAU, 0.9)
+	tw.tween_interval(0.3)
+	tw.tween_callback(func() -> void:
+		scroll.queue_free()
+		if not key_items.has(MAP_ITEM):
+			key_items.append(MAP_ITEM)
+		_chest_reward_pending = false
+		$HUD/Controls.text = "Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L), pick the hallway walls and press E."
+		var popup := get_node_or_null("/root/CharacterAbilityPopup")
+		if popup != null:
+			var pages: Array[Dictionary] = [{"title": "Key Item Acquired", "body":
+				"While you're within the maze, press %s to open the Maze Navigation Map as any diver. On it you can control the geometry of the nearby maze." % Slot._badge("L"),
+				"slot": null}]
+			popup.call("open", pages, self)
+		else:
+			_announce("Maze Navigation Map acquired. Press L within the maze.", 6.0))
+
+func nav_map_area() -> Rect2:
+	var b32 := get_node_or_null("CSGBox3D32") as CSGBox3D
+	var back := get_node_or_null("Room16Back") as CSGBox3D
+	if _dome_site == Vector3.ZERO or b32 == null or back == null:
+		return Rect2()
+	var x0 := _dome_site.x - PLINTH_RADIUS - 1.0
+	var x1 := back.global_position.x + back.size.z * 0.5 + 1.0
+	var z0 := _dome_site.z - PLINTH_RADIUS - 1.0
+	var z1 := b32.global_position.z + b32.size.z * 0.5
+	return Rect2(x0, z0, x1 - x0, z1 - z0)
+
+func can_open_nav_map() -> bool:
+	return key_items.has(MAP_ITEM) and _diver != null \
+		and nav_map_area().has_point(Vector2(_diver.global_position.x, _diver.global_position.z))
+
 func _chest_box(box_size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
@@ -1942,8 +2077,7 @@ func _vortex_chest_in_reach() -> bool:
 
 func _open_vortex_chest() -> void:
 	_vortex_chest_open = true
-	_chest_reward_pending = true
-	var tw := create_tween()
+	var tw := _begin_chest_cutscene()
 	tw.tween_property(_vortex_chest_lid, "rotation:x", -deg_to_rad(110.0), 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# The key rises out of it and is taken.
 	var key := _make_key_mesh()
@@ -2330,46 +2464,8 @@ func _build_lever_dome() -> void:
 	lamp.position = Vector3(0, DOME_HEIGHT - 1.5, 0)
 	dome.add_child(lamp)
 
-	# Levers toward the back (south), facing the north door: left (-X)
-	# walls, right (+X) currents.
-	for i in 2:
-		var lever := Lever.new()
-		lever.name = "Lever%d" % (i + 1)
-		lever.handles_input = false
-		lever.color_by_state = false
-		add_child(lever)
-		var side := -1.0 if i == 0 else 1.0
-		lever.global_position = Vector3(_dome_site.x + side * 2.0, PLINTH_TOP_Y, _dome_site.z - 4.5)
-		_dome_levers.append(lever)
-		# Red light on a short post just outside the lever.
-		var post := MeshInstance3D.new()
-		var post_mesh := CylinderMesh.new()
-		post_mesh.top_radius = 0.05
-		post_mesh.bottom_radius = 0.07
-		post_mesh.height = 0.9
-		post.mesh = post_mesh
-		post.material_override = _stone(Color(0.2, 0.22, 0.24))
-		add_child(post)
-		post.global_position = lever.global_position + Vector3(side * 0.9, 0.45, 0)
-		var light := MeshInstance3D.new()
-		var bulb := SphereMesh.new()
-		bulb.radius = 0.14
-		bulb.height = 0.28
-		light.mesh = bulb
-		var mat := StandardMaterial3D.new()
-		mat.emission_enabled = true
-		mat.emission_energy_multiplier = 3.0
-		light.material_override = mat
-		add_child(light)
-		light.global_position = post.global_position + Vector3(0, 0.55, 0)
-		var glow := OmniLight3D.new()
-		glow.omni_range = 2.0
-		glow.light_energy = 1.2
-		add_child(glow)
-		glow.global_position = light.global_position + Vector3(0, 0, 0.3)
-		_lever_lights.append(light)
-		_lever_glows.append(glow)
-		_set_lever_light(i, false)
+	# Marc ebcb22e removes both dome levers. Navigation is now earned from
+	# its chest; keeping those levers would provide a second, free map path.
 
 func _set_lever_light(i: int, on: bool) -> void:
 	var c := Color(0.2, 1.0, 0.35) if on else Color(1.0, 0.1, 0.1)
@@ -2575,6 +2671,8 @@ const WORLD_CONTROLS_TAB := "TAB switch diver"
 var _world_hud_name: Label
 var _world_hud_tab: Label
 var _world_hud_after: Label
+var _world_hud_map: Label
+var _map_flash: Tween
 var _tab_flash: Tween
 
 func _build_world_hud() -> void:
@@ -2611,6 +2709,11 @@ func _build_world_hud() -> void:
 	_world_hud_after = Label.new()
 	_world_hud_after.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_world_hud_after)
+	_world_hud_map = Label.new()
+	_world_hud_map.name = "MazeMapAvailability"
+	_world_hud_map.text = "L: Map"
+	column.add_child(_world_hud_map)
+	_world_hud_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for l in [_world_hud_name, _world_hud_tab, _world_hud_after]:
 		(l as Label).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -2626,11 +2729,24 @@ func _update_world_hud() -> void:
 		after += "  ·  E: %s" % String(_diver.ability_id).capitalize()
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
-	after += "  ·  L: Map"
 	after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
 	if has_sonar_vision:
 		after += "  ·  G: Sonar Vision (%s)" % ("Equipped" if sonar_vision_equipped else "Off")
 	_world_hud_after.text = after
+	var map_ok := can_open_nav_map()
+	_world_hud_map.visible = map_ok
+	var goal := get_node_or_null("HUD/GoalLabel") as Label
+	if goal != null:
+		goal.text = "Open the hallway. Follow the channel to the relic.\nE: interact or use ability." if key_items.has(MAP_ITEM) \
+			else "E: interact or use ability."
+	if map_ok and _map_flash == null:
+		_map_flash = create_tween().set_loops()
+		_map_flash.tween_property(_world_hud_map, "modulate:a", 0.25, 0.45)
+		_map_flash.tween_property(_world_hud_map, "modulate:a", 1.0, 0.45)
+	elif not map_ok and _map_flash != null:
+		_map_flash.kill()
+		_map_flash = null
+		_world_hud_map.modulate.a = 1.0
 	var flash := _tab_should_flash()
 	if flash and _tab_flash == null:
 		_tab_flash = create_tween().set_loops()
@@ -2861,7 +2977,7 @@ func _build_minimap() -> void:
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
 	label.name = "GoalLabel"
-	label.text = "Open the hallway. Follow the channel to the relic.\nL: map and wall/current controls. E: interact or use ability."
+	label.text = "E: interact or use ability."
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_left = 16.0
 	label.offset_top = -100.0
@@ -4049,6 +4165,7 @@ func _player_rise() -> float:
 const GOLDEN_ORB_FALL_SPEED := 1.5
 
 func _physics_process(dt: float) -> void:
+	_update_chest_pause()
 	_align_corridors_to_walls()
 	_update_strong_room_warning()
 	_update_campaign_checkpoint()
@@ -4058,9 +4175,9 @@ func _physics_process(dt: float) -> void:
 		if orb.position.y > _floor_top_y:
 			orb.position.y = maxf(orb.position.y - GOLDEN_ORB_FALL_SPEED * dt, _floor_top_y)
 	_sweep_divers_with_moving_walls()
-	if _swirl_room != null and not _battling and not any_modal_open():
+	if _swirl_room != null and not _battling and not any_modal_open() and not _chest_reward_pending:
 		_swirl_room.hit_divers(divers, dt)
-	if not _battling and not any_modal_open():
+	if not _battling and not any_modal_open() and not _chest_reward_pending:
 		for d in divers:
 			# Inactive divers still run swim() with no input, so currents and
 			# drag keep acting on them (World does the same).
@@ -4072,6 +4189,9 @@ func _physics_process(dt: float) -> void:
 	_update_room_switch()
 	_update_lever_ui()
 	_update_world_hud()
+	var nav := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+	if nav != null and nav.main_map.visible and not can_open_nav_map():
+		nav.main_map.visible = false
 	_update_sonar_vision()
 	_update_puppet_patrol(dt)
 	_update_announce(dt)
@@ -4165,6 +4285,11 @@ func _move_camera(dt: float) -> void:
 	cam.look_at(_cam_look, Vector3.UP)
 
 func _unhandled_input(e: InputEvent) -> void:
+	# The sibling map has the same guard. Escape alone keeps its established
+	# inventory/pause behavior; held movement is blocked in physics separately.
+	if _chest_reward_pending and not (e is InputEventKey and e.keycode == KEY_ESCAPE):
+		get_viewport().set_input_as_handled()
+		return
 	# R keeps its campaign meaning even on the overview. Exclusive owners
 	# still block it; changing this preference never overrides the strong room.
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_R:
@@ -4221,7 +4346,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			_mouse_look = false
 			get_viewport().set_input_as_handled()
 			return
-	if _battling or any_modal_open():
+	if _battling or any_modal_open() or _chest_reward_pending:
 		return
 	if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -4269,6 +4394,8 @@ func _handle_e(e: InputEventKey) -> void:
 		pass
 	elif _vortex_chest_in_reach():
 		_open_vortex_chest()
+	elif _map_chest_in_reach():
+		_open_map_chest()
 	elif _secret_entrance_in_reach():
 		_enter_secret_wall()
 	elif _split_rock_in_reach():
@@ -5000,6 +5127,8 @@ func map_points_of_interest() -> Array[Dictionary]:
 		out.append({"id": "broken_rock_%d" % i, "kind": "broken_rock", "pos": broken_rock_spots[i], "radius": INF})
 	if _vortex_chest != null and is_instance_valid(_vortex_chest):
 		out.append({"id": "vortex_chest", "kind": "chest", "pos": _vortex_chest.global_position, "radius": 9.0, "done": _vortex_chest_open})
+	if _map_chest != null and is_instance_valid(_map_chest):
+		out.append({"id": "map_chest", "kind": "chest", "pos": _map_chest.global_position, "radius": 9.0, "done": _map_chest_open})
 	if _switch_node != null:
 		out.append({"id": "room_switch", "kind": "switch", "pos": _switch_node.global_position, "radius": 7.0, "done": _gate_lowered})
 	if _split_rock != null and is_instance_valid(_split_rock):
@@ -5008,6 +5137,9 @@ func map_points_of_interest() -> Array[Dictionary]:
 	if item_room.size != Vector2.ZERO:
 		var c := item_room.get_center()
 		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret Item Room"})
+	if _dome_site != Vector3.ZERO:
+		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0)
+		out.append({"id": "control_room", "kind": "room_label", "pos": _dome_site, "radius": 0.0, "rect": dome, "label": "Control Room"})
 	return out
 
 # One half of a broken rock: a lumpy, faceted dome (+Y) over a rough,
@@ -5639,6 +5771,10 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 		divers[i].position = CampaignSession.vector_from(data.positions[i])
 	for holder in data.levers:
 		var index := int(holder.lever)
+		# Old checkpoints may name the dome levers Marc has removed. Their
+		# obsolete hold ownership must not index absent scene nodes.
+		if index >= _dome_levers.size():
+			continue
 		var lever := _dome_levers[index]
 		_lever_holders[lever] = divers[int(holder.diver)]
 		lever.pull()
@@ -5657,6 +5793,7 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 				(child as CollisionShape3D).set_deferred("disabled", true)
 	if _vortex_chest_open:
 		_vortex_chest_lid.rotation.x = -deg_to_rad(110.0)
+	_restore_map_chest_ownership()
 	if _rock_split and is_instance_valid(_split_rock):
 		_split_rock.queue_free()
 		_split_rock = null
@@ -5671,7 +5808,8 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
 	_update_state_barriers()
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
-	$HUD/Controls.text = "Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L)."
+	$HUD/Controls.text = ("Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L).") \
+		if key_items.has(MAP_ITEM) else "Find the navigation map in the Control Room."
 
 # All names are resolved against the freshly authored scene before applying
 # any puzzle mutations. Corrupt IO may not reach get_node/indexing halfway
