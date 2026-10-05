@@ -1,5 +1,5 @@
 extends Node3D
-# Authored 4ec6598 passage pair, adapted to shared World ownership. This
+# Authored 4ec6598 passage pair and bba8b80 Box12 route, adapted to World ownership. This
 # component owns only transient prompt/motion; the maze snapshot owns walls.
 const WIDTH := 2.6
 const REACH := 1.6
@@ -17,10 +17,16 @@ var return_latched := false
 var actor: Diver
 var motion: Tween
 var departure := Vector3.ZERO
+var landing := Vector3.ZERO
 var return_visuals: Array[Node3D] = []
 var floor_shape: CollisionShape3D
 var floor_pieces: Array[StaticBody3D] = []
 var outgoing_slot: MeshInstance3D
+var box12: CSGBox3D
+var box12_z := 0.0
+var box12_outside := 0.0
+var box12_latched := false
+var box12_slot: MeshInstance3D
 
 func setup(owner_maze: MazeLevel) -> void:
 	maze = owner_maze
@@ -53,6 +59,17 @@ func setup(owner_maze: MazeLevel) -> void:
 	return_visuals.append(_streaks(Vector3(return_x, maze._floor_top_y + 0.5, return_z + return_side * (wall11.size.z * 0.5 + 1.2)),
 		Vector3(0, -0.35, -return_side).normalized()))
 	_show_return(false)
+	# bba8b80 replaces the raised 12/13 path with this one-way draft. Reuse
+	# the safe bounded tunnel and teardown lifecycle, not an independent tween.
+	box12 = maze.get_node("CSGBox3D12") as CSGBox3D
+	var ends := maze._wall_geometry(box12)
+	box12_z = clampf(maze._dome_site.z, minf(ends.negative_end.z, ends.positive_end.z) + WIDTH,
+		maxf(ends.negative_end.z, ends.positive_end.z) - WIDTH)
+	box12_outside = signf(maze._dome_site.x - box12.global_position.x)
+	box12_slot = _slot_visual(Vector3(box12.global_position.x, maze._floor_top_y, box12_z),
+		Vector3(box12.size.z + REACH * 2.0, 2.0, WIDTH))
+	_streaks(Vector3(box12.global_position.x - box12_outside * (box12.size.z * 0.5 + 1.2),
+		maze._floor_top_y + 0.5, box12_z), Vector3(box12_outside, -0.35, 0).normalized())
 
 func _slot_visual(at: Vector3, size: Vector3) -> MeshInstance3D:
 	var pit := MeshInstance3D.new()
@@ -116,15 +133,29 @@ func outgoing_in_reach() -> bool:
 		and absf(p.z - outgoing_z) <= WIDTH * 0.5 + 1.0 \
 		and p.y >= maze._floor_top_y and p.y <= maze._floor_top_y + 4.0
 
+func box12_in_reach() -> bool:
+	if not maze.maze_active or not is_instance_valid(maze._diver):
+		return false
+	var p := maze._diver.global_position
+	var off := (p.x - box12.global_position.x) * box12_outside
+	return off < 0.0 and off >= -(box12.size.z * 0.5 + REACH + 1.2) \
+		and absf(p.z - box12_z) <= WIDTH * 0.5 + 1.0 \
+		and p.y >= maze._floor_top_y and p.y <= maze._floor_top_y + 4.0
+
 func update() -> void:
+	if not maze.maze_active or not is_instance_valid(maze._diver) or get_tree().paused:
+		return
 	var open := maze._walls_10_11_swung and not maze._wall_set_moving("CSGBox3D10/11")
 	_show_return(open)
 	# The dark marker suggests a slot, but must not visually bury the actor
 	# while the bounded floor tunnel is open. Keep the authored water streaks.
 	outgoing_slot.visible = not busy
+	box12_slot.visible = not busy
 	(return_visuals[0] as MeshInstance3D).visible = open and not busy
 	if not outgoing_in_reach():
 		latched = false
+	if not box12_in_reach():
+		box12_latched = false
 	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
 	if busy or maze._battling or maze.any_modal_open() or maze._chest_reward_pending \
 		or maze._gate_cutscene or not maze._moving_wall_sets.is_empty() \
@@ -133,6 +164,10 @@ func update() -> void:
 		return
 	if outgoing_in_reach() and not latched:
 		open_outgoing_prompt()
+		return
+	if box12_in_reach() and not box12_latched:
+		box12_latched = true
+		_open_one_way_prompt(box12, box12_z, -box12_outside)
 		return
 	var p := maze._diver.global_position
 	var wall := maze.get_node("CSGBox3D11") as CSGBox3D
@@ -160,23 +195,26 @@ func open_outgoing_prompt() -> void:
 	if not outgoing_in_reach() or modal_open() or maze.any_modal_open():
 		return
 	latched = true
+	_open_one_way_prompt(end_cap, outgoing_z, break_side)
+
+func _open_one_way_prompt(wall: CSGBox3D, z: float, side: float) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	maze._mouse_look = false
 	maze._diver.velocity = Vector3.ZERO
 	prompt = ConfirmPromptModal.new("A draft leads under the wall. Explore the other side?")
 	prompt.answered.connect(func(yes: bool) -> void:
 		prompt = null
-		if yes and outgoing_in_reach():
+		if yes and maze.maze_active and (outgoing_in_reach() if wall == end_cap else box12_in_reach()):
 			var p := maze._diver.global_position
-			var x := end_cap.global_position.x
-			var t := end_cap.size.z
+			var x := wall.global_position.x
+			var t := wall.size.z
 			var low := maze._floor_top_y - 0.4
-			_start_passage(Vector3(x + break_side * (t * 0.5 + 0.6), low, outgoing_z),
-				Vector3(x - break_side * (t * 0.5 + 0.6), low, outgoing_z),
-				Vector3(x - break_side * (t * 0.5 + REACH + 0.8), p.y, outgoing_z), end_cap, Vector3(-break_side, 0, 0)))
+			_start_passage(Vector3(x + side * (t * 0.5 + 0.6), low, z),
+				Vector3(x - side * (t * 0.5 + 0.6), low, z),
+				Vector3(x - side * (t * 0.5 + REACH + 0.8), p.y, z), wall, Vector3(-side, 0, 0)))
 	add_child(prompt)
 
-func _clear_exit(d: Diver, preferred: Vector3, wall: CSGBox3D, axis: Vector3) -> Variant:
+func _clear_exit(d: Diver, preferred: Vector3, wall: CSGBox3D, axis: Vector3, avoid_hazards := false) -> Variant:
 	var shape: CollisionShape3D
 	for child in d.get_children():
 		if child is CollisionShape3D:
@@ -191,6 +229,8 @@ func _clear_exit(d: Diver, preferred: Vector3, wall: CSGBox3D, axis: Vector3) ->
 			var at := preferred + Vector3.FORWARD.rotated(Vector3.UP, TAU * k / 24.0) * ring * 0.25
 			if (at - wall.global_position).dot(axis) < wall.size.z * 0.5 + d.radius + 0.05:
 				continue
+			if avoid_hazards and _inside_active_pull_zone(at, d.radius):
+				continue
 			var query := PhysicsShapeQueryParameters3D.new()
 			query.shape = shape.shape
 			query.transform = Transform3D(Basis.IDENTITY, at) * shape.transform
@@ -200,6 +240,18 @@ func _clear_exit(d: Diver, preferred: Vector3, wall: CSGBox3D, axis: Vector3) ->
 			if not _inside_solid_wall(query.transform.origin, capsule) and space.intersect_shape(query, 1).is_empty():
 				return at
 	return null
+
+func _inside_active_pull_zone(at: Vector3, radius: float) -> bool:
+	for child in maze.get_children():
+		if not child is Whirlpool:
+			continue
+		var whirl := child as Whirlpool
+		if not whirl.armed or (whirl.bypass.is_valid() and bool(whirl.bypass.call())):
+			continue
+		var distance := Vector2(at.x - whirl.global_position.x, at.z - whirl.global_position.z).length()
+		if distance < maxf(whirl.suction_radius, whirl.pull_radius) + radius + 0.2:
+			return true
+	return false
 
 func _inside_solid_wall(center: Vector3, capsule: CapsuleShape3D) -> bool:
 	# CSG collision consists of triangle surfaces, so intersect_shape alone
@@ -227,6 +279,7 @@ func _start_passage(near: Vector3, far: Vector3, preferred: Vector3, wall: CSGBo
 		return
 	busy = true
 	departure = actor.global_position
+	landing = destination
 	# The upstream visual slot alone does not cut the global invisible floor.
 	# Open only this actor's bounded tunnel while its motion owns all input;
 	# retain solid floor everywhere else and seal it once the clear exit is
@@ -253,6 +306,14 @@ func _start_passage(near: Vector3, far: Vector3, preferred: Vector3, wall: CSGBo
 	motion.tween_property(actor, "global_position", far, 0.5)
 	motion.tween_property(actor, "global_position", destination, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	motion.tween_callback(_release)
+
+func camera_frame() -> Array:
+	# The ordinary chase ray starts below the floor during a tunnel and
+	# collapses the camera into the model. Frame the whole short passage
+	# above the walls, keeping the same camera/input owner throughout.
+	var center := (departure + landing) * 0.5
+	center.y = maze._floor_top_y + 0.6
+	return [center, 8.0]
 
 func _release() -> void:
 	_seal_floor()

@@ -8,13 +8,14 @@ frozen #97 4ec6598 intake. PR97 is now
 316 insertions/146 deletions in maze_level, save_manager, title_screen and World.
 
 This is a separate intake, not code silently added to a source batch under
-verification. It is not yet admitted by the current PR100 source/evidence.
+verification. The Box12/retired Control Room route portion is now admitted by
+`docs/evidence/maze-box12-route-oct5`; the remaining rows below stay pending.
 Existing frozen-intake requirements and verified campaign/save repairs remain.
 
 | Authored behavior | Disposition / next admission requirements |
 |---|---|
-| One-way Box12 draft from 12/13 hall to water outside Control Room | Pending geometry batch. Reuse the collision-safe draft adapter, actor-height clearance, paused prompt/teardown and saved-state locks; native travel for three actors. A dark pit plus direct tween through solid CSG is insufficient. |
-| Remove PathButton and rotating/raised 12/13 path; add Box8-to-dome fence | Pending semantic replacement, not two competing routes. Preserve reachable earned chest; migrate old `_path_opened`/PathWall saves and actor placements without deleting progress or stranding a party. Re-prove Control Room approach and both entry routes. |
+| One-way Box12 draft from 12/13 hall to water outside Control Room | Admitted using shared safe-tunnel owner. Actual No/reapproach/Yes, three capsules/240 motion samples, high/wrong-side/paused negatives, three blocked exits and three owner removals pass. Native wide/true narrow visuals inspected; overhead framing fixes below-floor chase-camera collapse. Browser/human full-route acceptance remains open. |
+| Remove PathButton and rotating/raised 12/13 path; add Box8-to-dome fence | Admitted semantic replacement. Captured old actual-E JSON, 36 generated old/current-frame × actor × map × placement cases, raw old cold Title Load and swimming pass. Overlapping migrated capsules avoid both solids and active pull zones. Actual Box12-to-chest E/L plus normal pre-map shared-entry/chest/return pass. Full campaign/browser acceptance remains open. |
 | Swung 10/11 do not carry divers out of C5; collision disabled during movement, restored afterward | Pending rider/physics reconciliation. All three actors inside C5 stay safely within it; actors outside ride where intended. Verify actual capsule behavior, moving skirts/state barriers, intermediate motion, teardown and cold restore. Do not copy an unguarded finished callback that leaves collision off after interruption. |
 | Poster-wall western barrier extends to maze edge | Pending continuous-boundary traversal checks; must not block independent lab/ramp or intended new Box12 path after embedding/rebasing. |
 | Hall whirlpools spread across safe lanes with smaller/gentler pull | Pending deterministic lane/column clearance, actual approach/avoidance/suction, damage and recovery checks. Retain independent positions in save handling if randomness is persisted. |
@@ -26,4 +27,5 @@ Existing frozen-intake requirements and verified campaign/save repairs remain.
 No Sonar/G/pickup changes in this late delta; the bounded Sonar port continues
 to reconcile the already-authorized 4ec6598 behavior. Main/canonical deployment
 remain untouched. The full completion ledger must include this intake visibly;
-no claim that PR100 now contains bba8b80 is made.
+only the explicitly verified Box12/retired-route behavior is admitted. PR100
+does not yet contain the complete bba8b80 scope.

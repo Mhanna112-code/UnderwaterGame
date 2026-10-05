@@ -349,7 +349,7 @@ func _setup_walls():
 	_build_boss_triggers()
 	_build_vortex_chest()
 	_build_map_chest()
-	_build_path_button()
+	_build_box_8_dome_barrier()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -1106,7 +1106,7 @@ func _update_room_switch() -> void:
 	for p in _posters:
 		p.set_highlight(p == poster)
 	var at_chest := _vortex_chest_in_reach() or _map_chest_in_reach()
-	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _secret_entrance_in_reach() or at_chest or _split_rock_in_reach()
+	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _secret_entrance_in_reach() or at_chest or _split_rock_in_reach()
 	if _interact_cooldown and (_banner == null or _banner_timer <= 0.0):
 		_interact_cooldown = false
 	if _interact_cooldown:
@@ -2385,7 +2385,7 @@ func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: 
 # Where the CSGBox3D34/35/36 U of walls stood there's a dome instead: a big
 # dome on a raised round plinth, with two porch doorways and steps up to
 # each - one facing north (+Z, back toward the maze entrance) and one facing
-# east (+X), where the path from walls 12/13 arrives (_build_path_button()).
+# east (+X), toward the water reached by the one-way Box12 draft.
 # The plinth top is above the divers' normal swim height, so they have to
 # swim up the steps to get in. The ceiling over it is raised to fit (see
 # _build_ceiling()). Inside are the two green levers (Lever1 left = walls,
@@ -2429,7 +2429,7 @@ var _lever_map_controls: Label     # controls list beside the map
 
 # Removes the CSGBox3D34/35/36 walls (before wall_boxes is collected) and
 # notes roughly where the dome goes: centred between 34 and 36.
-# _settle_dome_site() then lines it up with the walls 12/13 path.
+# _settle_dome_site() lines its east door up with the Box12 draft waterway.
 func _clear_dome_site() -> void:
 	var w34 := get_node_or_null("CSGBox3D34") as CSGBox3D
 	var w35 := get_node_or_null("CSGBox3D35") as CSGBox3D
@@ -2442,8 +2442,7 @@ func _clear_dome_site() -> void:
 		w.queue_free()
 
 # After the walls are placed: centre the dome (north-south) on the passage
-# between CSGBox3D8 and CSGBox3D9, so the path from walls 12/13 runs
-# straight into its east door.
+# between CSGBox3D8 and CSGBox3D9, aligned with the Box12 draft waterway.
 func _settle_dome_site() -> void:
 	if _dome_site == Vector3.ZERO:
 		return
@@ -2831,131 +2830,23 @@ func _update_world_hud() -> void:
 		_tab_flash = null
 		_world_hud_tab.modulate.a = 1.0
 
-# --- Path button: walls 12/13 into line, path to the dome --------------------
-# A red button on CSGBox3D8's inner face, near its west end, flashing until
-# pressed (E within reach). Pressing it (once - it stays pressed, turns
-# green) swings CSGBox3D12 into a straight line with CSGBox3D8 and
-# CSGBox3D13 into a straight line with CSGBox3D9, each about its end at that
-# corner - extending the Box8/Box9 passage west - and raises two walls that
-# carry that passage on to the dome's east door. The passage is closed on
-# both sides, so it only leads to the dome (and out its north door back
-# toward the maze entrance), not into the open water around it.
-# WindCorridor4 (and its whirlpool) stay where they are once 12/13 swing.
-const PATH_BUTTON_REACH := 2.5
-const PATH_BUTTON_FROM_END := 6.0     # along Box8 from its west end
-var _path_button: Node3D
-var _path_button_mat: StandardMaterial3D
-var _path_button_glow: OmniLight3D
-var _path_button_blink: Tween
+# Legacy saves retain this flag, but it no longer controls a route or input.
 var _path_opened := false
+var _control_route_homes: Dictionary = {}
 
-func _build_path_button() -> void:
-	var box8 := $CSGBox3D8 as CSGBox3D
-	var box9 := $CSGBox3D9 as CSGBox3D
-	var g8: Dictionary = _wall_geometry(box8)
-	var west: Vector3 = g8["negative_end"] if (g8["negative_end"] as Vector3).x < (g8["positive_end"] as Vector3).x else g8["positive_end"]
-	var normal := Vector3(0, 0, 1) if box9.global_position.z > box8.global_position.z else Vector3(0, 0, -1)
-	_path_button = Node3D.new()
-	_path_button.name = "PathButton"
-	add_child(_path_button)
-	_path_button.global_position = Vector3(west.x + PATH_BUTTON_FROM_END, ($DiverEntry as Node3D).global_position.y + 1.0, box8.global_position.z) + normal * (box8.size.z * 0.5 + 0.06)
-	_path_button.global_basis = Basis.looking_at(-normal, Vector3.UP)
-	var plate := MeshInstance3D.new()
-	var plate_mesh := BoxMesh.new()
-	plate_mesh.size = Vector3(1.0, 1.0, 0.14)
-	plate.mesh = plate_mesh
-	plate.material_override = _stone(Color(0.12, 0.13, 0.15))
-	_path_button.add_child(plate)
-	var cap := MeshInstance3D.new()
-	var cap_mesh := CylinderMesh.new()
-	cap_mesh.top_radius = 0.3
-	cap_mesh.bottom_radius = 0.33
-	cap_mesh.height = 0.18
-	cap.mesh = cap_mesh
-	cap.rotation.x = PI * 0.5   # face out of the wall
-	cap.position = Vector3(0, 0, 0.14)
-	_path_button_mat = StandardMaterial3D.new()
-	_path_button_mat.emission_enabled = true
-	_path_button_mat.emission_energy_multiplier = 3.0
-	cap.material_override = _path_button_mat
-	_path_button.add_child(cap)
-	_path_button_glow = OmniLight3D.new()
-	_path_button_glow.omni_range = 2.5
-	_path_button_glow.light_energy = 1.4
-	_path_button_glow.position = Vector3(0, 0, 0.5)
-	_path_button.add_child(_path_button_glow)
-	_set_path_button_color(Color(1.0, 0.1, 0.1))
-	_path_button_blink = create_tween().set_loops()
-	_path_button_blink.tween_callback(func() -> void:
-		cap.visible = not cap.visible
-		_path_button_glow.visible = cap.visible)
-	_path_button_blink.tween_interval(0.4)
-
-func _set_path_button_color(c: Color) -> void:
-	_path_button_mat.albedo_color = c
-	_path_button_mat.emission = c
-	_path_button_glow.light_color = c
-
-func _path_button_in_reach() -> bool:
-	if _path_button == null or _path_opened or _diver == null:
-		return false
-	var offset := _diver.global_position - _path_button.global_position
-	offset.y = 0.0
-	return offset.length() <= PATH_BUTTON_REACH and offset.dot(_path_button.global_basis.z) > 0.0
-
-func _press_path_button() -> void:
-	_path_opened = true
-	_path_button_blink.kill()
-	for c in _path_button.get_children():
-		(c as Node3D).visible = true
-	_set_path_button_color(Color(0.2, 1.0, 0.35))
-	# Corridor4 no longer follows 12/13 once they swing (see above).
-	_corridor_walls.erase($WindCorridor4)
-	var tweens: Array = [
-		_swing_wall_in_line_with($CSGBox3D12 as CSGBox3D, $CSGBox3D8 as CSGBox3D),
-		_swing_wall_in_line_with($CSGBox3D13 as CSGBox3D, $CSGBox3D9 as CSGBox3D),
-	]
-	tweens.append_array(_raise_path_walls())
-	_track_wall_set_motion("CSGBox3D12/13", tweens, [$CSGBox3D12, $CSGBox3D13])
-	_announce("Walls 12 and 13 swing into line - a path opens toward the dome.")
-
-# Swings `wall` a quarter turn about its end nearest `line_wall`'s west end
-# so it ends up continuing line_wall's line westward from that end.
-func _swing_wall_in_line_with(wall: CSGBox3D, line_wall: CSGBox3D) -> Tween:
-	var gl: Dictionary = _wall_geometry(line_wall)
-	var west: Vector3 = gl["negative_end"] if (gl["negative_end"] as Vector3).x < (gl["positive_end"] as Vector3).x else gl["positive_end"]
-	var target := Vector3(west.x - wall.size.x * 0.5, wall.global_position.y, line_wall.global_position.z)
-	var gw: Dictionary = _wall_geometry(wall)
-	var hinge_end: Vector3 = gw["negative_end"] if (gw["negative_end"] as Vector3).distance_to(west) < (gw["positive_end"] as Vector3).distance_to(west) else gw["positive_end"]
-	var from_dir := wall.global_position - hinge_end
-	from_dir.y = 0.0
-	from_dir = from_dir.normalized()
-	var to_dir := Vector3(-1, 0, 0)
-	var delta := atan2(from_dir.cross(to_dir).y, from_dir.dot(to_dir))
-	return _tween_wall_to_transform_about_hinge(wall, target, wall.rotation.y + delta, 1.6)
-
-# The two walls carrying the Box8/Box9 passage on to the dome: on Box9's
-# line from where swung Box13 will end, and on Box8's line from where swung
-# Box12 will end, each to the dome's plinth edge. They rise out of the floor.
-func _raise_path_walls() -> Array:
-	var tweens: Array = []
-	for pair in [[$CSGBox3D9, $CSGBox3D13, "PathWallNorth"], [$CSGBox3D8, $CSGBox3D12, "PathWallSouth"]]:
-		var line_wall := pair[0] as CSGBox3D
-		var swung := pair[1] as CSGBox3D
-		var gl: Dictionary = _wall_geometry(line_wall)
-		var west_x := minf((gl["negative_end"] as Vector3).x, (gl["positive_end"] as Vector3).x)
-		var east_x := west_x - swung.size.x
-		var z := line_wall.global_position.z
-		var dz := z - _dome_site.z
-		var plinth_x := _dome_site.x + sqrt(maxf(PLINTH_RADIUS * PLINTH_RADIUS - dz * dz, 0.0)) - 0.4
-		var y := line_wall.global_position.y
-		var wall := _spawn_wall(String(pair[2]), Vector3((east_x + plinth_x) * 0.5, y - line_wall.size.y - 1.2, z), 0.0, Vector3(east_x - plinth_x, line_wall.size.y, line_wall.size.z))
-		wall_boxes.append(wall)
-		_add_wall_skirt(wall)
-		var tw := create_tween()
-		tw.tween_property(wall, "global_position:y", y, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tweens.append(tw)
-	return tweens
+# bba8b80 fences Box8's line to the Control Room rim. Box12's new draft
+# reaches the water south of this fence; the north doorway remains reachable.
+func _build_box_8_dome_barrier() -> void:
+	for wall in [$CSGBox3D12, $CSGBox3D13]:
+		_control_route_homes[String(wall.name)] = {"position": wall.position, "rotation": wall.rotation, "size": wall.size}
+	var box := $CSGBox3D8 as CSGBox3D
+	var ends := _wall_geometry(box)
+	var west := minf(ends.negative_end.x, ends.positive_end.x)
+	var z := box.global_position.z
+	var dz := z - _dome_site.z
+	var rim := _dome_site.x + sqrt(maxf(PLINTH_RADIUS * PLINTH_RADIUS - dz * dz, 0.0)) - 0.4
+	if west - rim > 0.5:
+		_spawn_barrier("Box8DomeBarrier", Vector3((west + rim) * 0.5, 0, z), Vector3(west - rim, 0, box.size.z))
 
 # --- Walls 17/27 -------------------------------------------------------------
 # CSGBox3D17 and CSGBox3D27 (and the door gap that was between them) become
@@ -4357,6 +4248,10 @@ func _cutscene_camera(cam: Camera3D, frame: Array, dt: float) -> void:
 
 func _move_camera(dt: float) -> void:
 	var cam: Camera3D = $Camera3D
+	if draft_passages != null and draft_passages.busy:
+		_cutscene_camera(cam, draft_passages.camera_frame(), dt)
+		_cutscene_return = CUTSCENE_RETURN_TIME
+		return
 	if aiming:
 		var eye := _diver.global_position + Vector3(0, _diver.height * 0.4, 0)
 		cam.global_position = eye
@@ -4532,8 +4427,6 @@ func _handle_e(e: InputEventKey) -> void:
 		_return_to_campaign_world()
 	elif _lever_e_pressed():
 		pass
-	elif _path_button_in_reach():
-		_press_path_button()
 	elif _try_open_door():
 		pass
 	elif _vortex_chest_in_reach():
@@ -5966,6 +5859,8 @@ func _restore_wall_homes(homes: Array) -> Array:
 
 func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> void:
 	_cancel_aim()
+	if draft_passages != null:
+		draft_passages.cancel()
 	# Translate every spatial field together, without mutating the saved
 	# checkpoint. Same-frame and legacy standalone restores remain identity.
 	data = MazeCoordinateFrame.rebase(data, coordinate_origin)
@@ -5984,22 +5879,29 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	_hallway_1_2_home_yaw_b = float(homes.hallway_yaw_b)
 	_walls_14_15_home = _restore_wall_homes(homes.walls_14_15)
 	_walls_10_11_home = _restore_wall_homes(homes.walls_10_11)
-	# Recreate only the two runtime path extensions; every other structural
-	# node must already exist in Marc's authored initialization.
+	# Old opened-path saves contain raised extensions and swung 12/13. Their
+	# route is superseded, not an alternate unlock. Keep all other saved walls.
+	var retired_route: bool = _path_opened or data.walls.has("PathWallNorth") or data.walls.has("PathWallSouth")
 	for wall_name in data.walls:
+		if wall_name in ["PathWallNorth", "PathWallSouth"] or (retired_route and _control_route_homes.has(wall_name)):
+			continue
 		var spec: Dictionary = data.walls[wall_name]
 		var wall := get_node_or_null(String(wall_name)) as CSGBox3D
-		if wall == null and wall_name in ["PathWallNorth", "PathWallSouth"]:
-			wall = _spawn_wall(String(wall_name), CampaignSession.vector_from(spec.position),
-				float(spec.rotation[1]), CampaignSession.vector_from(spec.size))
-			wall_boxes.append(wall)
-			_add_wall_skirt(wall)
 		if wall != null:
 			wall.position = CampaignSession.vector_from(spec.position)
 			wall.rotation = CampaignSession.vector_from(spec.rotation)
 			wall.size = CampaignSession.vector_from(spec.size)
 			wall.visible = bool(spec.visible)
 			wall.use_collision = bool(spec.collision)
+	if retired_route:
+		for name_value in _control_route_homes:
+			var wall := get_node(String(name_value)) as CSGBox3D
+			var home: Dictionary = _control_route_homes[name_value]
+			wall.position = home.position
+			wall.rotation = home.rotation
+			wall.size = home.size
+			wall.visible = true
+			wall.use_collision = true
 	var draft_layout_migrated := _reconcile_legacy_draft_walls()
 	for current in _currents_by_corridor.values():
 		(current as WaterCurrent).teardown()
@@ -6069,6 +5971,8 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 			divers[i].position = CampaignSession.vector_from(data.positions[i])
 	if draft_layout_migrated:
 		_clear_party_from_migrated_draft_wall()
+	if retired_route:
+		_clear_party_from_retired_control_route()
 	for holder in data.levers:
 		var index := int(holder.lever)
 		# Old checkpoints may name the dome levers Marc has removed. Their
@@ -6079,12 +5983,6 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 		_lever_holders[lever] = divers[int(holder.diver)]
 		lever.pull()
 		_set_lever_light(index, true)
-	if _path_opened:
-		_path_button_blink.kill()
-		for child in _path_button.get_children():
-			(child as Node3D).visible = true
-		_set_path_button_color(Color(0.2, 1.0, 0.35))
-		_corridor_walls.erase($WindCorridor4)
 	if _gate_lowered:
 		_mark_switch_done()
 		_gate.visible = false
@@ -6110,6 +6008,32 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = ("Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L).") \
 		if key_items.has(MAP_ITEM) else "Find the navigation map in the Control Room."
+
+func _clear_party_from_retired_control_route() -> void:
+	# A position clear between the old swung walls can overlap a restored
+	# home wall. Only move overlapping capsules, to a validated nearby side;
+	# keep inventory, map discoveries, puzzle flags and HP/Oxygen untouched.
+	for diver in divers:
+		for name_value in _control_route_homes:
+			var wall := get_node(String(name_value)) as CSGBox3D
+			var local: Vector3 = wall.global_transform.affine_inverse() * diver.global_position
+			var half := wall.size * 0.5
+			var segment := maxf(diver.height * 0.5 - diver.radius, 0.0)
+			var gap := Vector3(maxf(absf(local.x) - half.x, 0.0),
+				maxf(absf(local.y) - half.y - segment, 0.0), maxf(absf(local.z) - half.z, 0.0))
+			if gap.length_squared() >= diver.radius * diver.radius:
+				continue
+			var side := signf(diver.global_position.x - wall.global_position.x)
+			if side == 0.0:
+				side = signf(_dome_site.x - wall.global_position.x)
+			for direction in [side, -side]:
+				var preferred := diver.global_position
+				preferred.x = wall.global_position.x + direction * (wall.size.z * 0.5 + diver.radius + 0.15)
+				var clear: Variant = draft_passages._clear_exit(diver, preferred, wall, Vector3(direction, 0, 0), true)
+				if clear != null:
+					diver.global_position = clear
+					diver.velocity = Vector3.ZERO
+					break
 
 func _reconcile_legacy_draft_walls() -> bool:
 	# Pre-draft saves used wall 14's west end for swung wall 11. Latest

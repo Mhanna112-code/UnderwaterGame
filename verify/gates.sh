@@ -193,6 +193,11 @@ run "embedded maze saves: do 48 generated World/maze cases and cold legacy Title
 run "maze drafts: do three capsules traverse real outgoing/return paths without clipping, reversing, or racing moving walls" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
+run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd
+run "Box12 blocked exit: does a solid CSG exit reject motion without opening the floor" "$GODOT" --headless --path . --script verify/maze_box12_route.gd -- --blocked
+for box12_diver in 0 1 2; do
+	run "Box12 teardown diver $box12_diver: does removing the transient owner restore the shared capsule and seal the floor" "$GODOT" --headless --path . --script verify/maze_box12_route.gd -- --cancel "--diver=$box12_diver"
+done
 for draft_diver in 0 1 2; do
 	run "maze draft teardown diver $draft_diver: does owner removal restore a clear actor and sealed floor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --cancel "--diver=$draft_diver"
 done

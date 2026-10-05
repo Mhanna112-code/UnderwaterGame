@@ -2,6 +2,18 @@
 
 Contract: user-authorized comprehensive plan in the October 4 conversation.
 This ledger retains the full scope; a green focused batch is not release readiness.
+
+October 5 Box12 follow-up admits only the Control Room route portion of bba8b80:
+three real capsule traversals/240 independently queried motion frames, blocked
+exits, three interrupted owners, paused lessons, actual chest E/L and normal
+pre-map approach/return pass. Raw captured old E-path JSON covers36 actor/frame/
+map/placement cases and raw historical cold Title Load/real swimming. Migration
+avoids active pull zones as well as solids; native inspection caught and repaired
+the below-floor chase camera. Wide/true360×640 visuals and source receipts are in
+`docs/evidence/maze-box12-route-oct5`. C5 wall collision/riders, poster-west
+extension, hall whirlpools and autosaves remain pending late intake. The overall
+maze row below retains its full-route/browser acceptance; no hosted update,
+full-suite or merge-ready claim is made by this batch.
 No new PR, main push, canonical-main promotion, or merge is authorized by this work.
 
 Frozen intake: main f9ae00c, integration e7072ab, #97 4ec6598, #99 86878fa.
