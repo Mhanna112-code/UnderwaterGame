@@ -1296,9 +1296,20 @@ func _spawn_key_door(door_name: String, floor_point: Vector3, approach: Vector3,
 	_maze_doors.append(door)
 	return door
 
-# E for the doors: the first one in reach that takes it.
-func _try_open_door() -> bool:
+# A door the active diver could unlock with E right now.
+func door_ready_to_unlock() -> bool:
 	for door in _maze_doors:
+		if is_instance_valid(door) and door.can_unlock(_diver):
+			return true
+	return false
+
+# E for the doors: the first one in reach that takes it.
+func _try_open_door(ready_only := false) -> bool:
+	for door in _maze_doors:
+		# Map priority must interact with the same eligible door it found,
+		# not a different nearby door whose missing-key message swallows E.
+		if ready_only and (not is_instance_valid(door) or not door.can_unlock(_diver)):
+			continue
 		if is_instance_valid(door) and door.interact(_diver):
 			return true
 	return false

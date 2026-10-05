@@ -2,6 +2,19 @@
 
 ## Current authoritative status
 
+Ready-door admission is locally verified: real map E opens a nearby eligible
+door before walls; Ctrl+E still moves currents. Physical-surface reach also fixes
+top-of-door interaction. 27 generated actor/input cases, controlled native keys,
+input-owner/checkpoint and actual shallow puzzle entrance pass. Direct port
+exposed an overlapping locked door swallowing a ready door; ready-only dispatch
+repairs that reproduced case. Fixture wall-selection/camera errors and a rejected
+native extra-input run are disclosed in `verify/marc_map_door.bug-catalog.md`.
+This is not a full traversal/chase-camera/polish acceptance. Immediate EVA cap is
+now pushed as `46260a6`; actual puppet reward and defeatable Cordys wins also pass
+after it. Fresh remote fetch still finds `c035c20` / `86878fa`.
+Preparing a new identified preview; existing hosted source remains `b0bee59`
+until served-byte/browser checks pass and the existing alias is explicitly updated.
+
 Next bounded admission: Marc's immediate Evasion Down cap. Our effective-EVA
 subtraction already existed, but a real authored Flash Blast/follow-up attack
 reproduced a wrong dodge from the oversized remaining pool. Immediate min-cap

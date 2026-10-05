@@ -114,7 +114,26 @@ func interact(actor: Diver) -> bool:
 func is_in_range(actor: Diver) -> bool:
 	if actor == null or not is_instance_valid(actor):
 		return false
-	return actor.global_position.distance_to(global_position) <= interaction_radius
+	# Marc's reach uses the visible door surface, not its floor-level origin.
+	if _collision == null or not (_collision.shape is BoxShape3D):
+		return actor.global_position.distance_to(global_position) <= interaction_radius
+	var half := (_collision.shape as BoxShape3D).size * 0.5
+	var local := _collision.global_transform.affine_inverse() * actor.global_position
+	var nearest := local.clamp(-half, half)
+	return (_collision.global_transform * nearest).distance_to(actor.global_position) <= interaction_radius * 0.8
+
+# Plain map E takes a reachable ready door before the selected hallway.
+# Read actual key eligibility, not player-facing prompt punctuation.
+func can_unlock(actor: Diver) -> bool:
+	if _opened or _opening or not is_in_range(actor):
+		return false
+	if required_key_id.is_empty():
+		return true
+	if key_count_source.is_valid():
+		return int(key_count_source.call()) > 0
+	if actor.world != null:
+		return actor.world.key_items.has(required_key_id)
+	return key_source.is_valid() and (key_source.call() as Array).has(required_key_id)
 
 func is_open() -> bool:
 	return _opened

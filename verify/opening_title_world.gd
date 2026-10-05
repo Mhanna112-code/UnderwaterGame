@@ -1,18 +1,24 @@
-# TITLE-002: actual movie/title with real W held; isolated user dir required.
+# TITLE-002: actual movie/title with real W held; fresh owned slot only.
 extends SceneTree
 
 var findings: Array[String] = []
+var slot := 1918312
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	slot += OS.get_process_id()
+	if SaveManager.slot_exists(slot) or FileAccess.file_exists(SaveManager.slot_path(slot) + ".pending"):
+		print("FINDING TITLE fixture slot exists; refusing overwrite")
+		quit(1)
+		return
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
 	root.add_child(world)
 	current_scene = world
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(918312)
+	world.title_screen.new_game_chosen.emit(slot)
 	var diver := world.divers[world.active] as Diver
 	var origin := diver.position
 	var deadline := Time.get_ticks_msec() + 45000
@@ -50,6 +56,10 @@ func _run() -> void:
 	paused = false
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	await process_frame
+	for suffix in ["", ".pending"]:
+		var path: String = ProjectSettings.globalize_path(SaveManager.slot_path(slot)) + String(suffix)
+		if FileAccess.file_exists(path):
+			_expect(DirAccess.remove_absolute(path) == OK, "TITLE fixture could not remove its newly owned slot")
 	for finding in findings:
 		print("FINDING  " + finding)
 	print("OPENING TITLE WORLD: clean" if findings.is_empty() else "OPENING TITLE WORLD: failed")
