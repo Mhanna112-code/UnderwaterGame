@@ -1,0 +1,14 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+EARN NEW GAME|policy=skilled|recovery=none|seed=64101|real_opening_seen=true
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+EARN INITIAL ROSTER|actual=["Cordys"]|required_initial_angler=true
+FINDING EARN-1 initial Angler missing; actual opening roster: ["Cordys"]
+EARNED LAB-FIRST SLICE: failed

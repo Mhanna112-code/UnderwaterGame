@@ -148,3 +148,15 @@ risks remain preexisting-slot ownership and frame/RNG cross-feature timing.
 The former is guarded for files and directories; the latter is disclosed,
 not described as deterministic roster reproduction. Complete route/matrix
 and browser durability acceptance remain unproven.
+
+Fresh upstream f457098 changes the opening to direct Cordys and removes the
+retained initial Angler. A current-runtime exploratory run exposed a false
+positive in EARN-1: dispatch briefly labels the direct boss `prologue_angler`,
+so source-only observation accepted it. Strengthen the boundary to observe
+the actual visible roster before any action; Cordys-only must fail explicitly.
+This pins Miguel's retained-Angler requirement, not the dispatch implementation.
+No production opening repair is permitted during these intervening batches.
+The existing historical lab receipts apply only to runtime6b8ea07, not these
+new combat/recovery/tutorial/geometry changes. Source snapshots preserve that
+distinction. A future intentionally approved opening-contract change must be
+explicitly reconciled, not silently weaken this assertion.

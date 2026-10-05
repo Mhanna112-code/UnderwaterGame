@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=swordfish_duelist,swordfish_duelist|duration=1.5
+WHIRL_REVEAL_HANDOFF|at=(28.0, 2.0, 10.0)|lock=false|visible=true|clear=true|hp=7|oxygen=0.0|warning=false
+RANDOM_COMBAT|enemies=swordfish_duelist,swordfish_duelist
+WHIRL_BATTLE|actual_reveal=true|battle=true|hp=0|caught=0|warning=false|actor=0|phase=spiral
+WHIRL_BATTLE_CASES|completed=1
+WHIRLPOOL SAFETY: clean
