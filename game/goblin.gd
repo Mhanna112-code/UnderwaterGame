@@ -19,8 +19,8 @@ const COMBAT_FRONT_AXIS := Vector3.FORWARD
 # CombatantStats) plus a random 8-35% "edge" on top, so no two fights
 # against the same enemy type played out quite the same and difficulty
 # implicitly tracked the party's own growth. Replaced with Angler's own
-# fixed, real stats instead - every fight against a plain Angler now uses
-# exactly these numbers, no scaling and no per-fight variance.
+# authored species base instead, with a 5-10% rounded encounter roll on
+# non-Evasion stats and a separate learned-spell bonus owned by Battle.
 const BASE_STATS := {
 	"hp": 5, "strength": 2, "defense": 0, "agility": 2,
 	"evasion": 1, "accuracy": 3,
@@ -31,7 +31,7 @@ const BASE_STATS := {
 # back the exact old floor+random-edge formula below instead of BASE_STATS/
 # SwordDuelist.DUELIST_BASE_STATS, purely so old vs. new balance can be
 # compared side by side while testing. Off by default; a real player always
-# gets the new fixed stats.
+# gets the authored species stats with the smaller encounter roll.
 static func legacy_scaling_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--legacy-enemy-scaling"):
 		return true
@@ -58,7 +58,8 @@ func _legacy_stats_from(ref: CombatantStats) -> CombatantStats:
 	s.strength = maxi(1, int(round(maxf(float(LEGACY_FLOOR_STATS.strength), float(ref.strength)) * _legacy_edge())))
 	s.defense = maxi(0, int(round(maxf(float(LEGACY_FLOOR_STATS.defense), float(ref.defense)) * _legacy_edge())))
 	s.agility = maxi(1, int(round(maxf(float(LEGACY_FLOOR_STATS.agility), float(ref.agility)) * _legacy_edge())))
-	s.evasion = maxi(0, int(round(maxf(float(LEGACY_FLOOR_STATS.evasion), float(ref.evasion)) * _legacy_edge())))
+	# Marc's no-Evasion-boost rule also applies to the optional legacy route.
+	s.evasion = maxi(0, maxi(int(LEGACY_FLOOR_STATS.evasion), ref.evasion))
 	s.accuracy = maxi(0, int(round(maxf(float(LEGACY_FLOOR_STATS.accuracy), float(ref.accuracy)) * _legacy_edge())))
 	s.fill()
 	return s
@@ -169,13 +170,13 @@ func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 		return _legacy_stats_from(ref)
 	return _stats_from(BASE_STATS)
 
-# A per-stat 5-25% boost on top of `base`, independently rolled per stat -
+# A per-stat 5-10% boost on top of `base`, independently rolled per stat -
 # same "no two fights play out quite the same, one stat might land tougher
 # than another" flavor the old floor+edge formula had, just a smaller,
 # tighter range now that `base` is each enemy's own real stats rather than
 # a bare-minimum floor under the party's own (usually much higher) numbers.
 const BOOST_MIN := 1.05
-const BOOST_MAX := 1.25
+const BOOST_MAX := 1.10
 func _boost() -> float:
 	return randf_range(BOOST_MIN, BOOST_MAX)
 
@@ -190,7 +191,8 @@ func _stats_from(base: Dictionary) -> CombatantStats:
 	s.strength = int(round(float(base.strength) * _boost()))
 	s.defense = int(round(float(base.defense) * _boost()))
 	s.agility = int(round(float(base.agility) * _boost()))
-	s.evasion = int(round(float(base.evasion) * _boost()))
+	# Evasion stays authored, independently of the other encounter rolls.
+	s.evasion = int(base.evasion)
 	s.accuracy = int(round(float(base.accuracy) * _boost()))
 	s.fill()
 	s.stat_floor = {

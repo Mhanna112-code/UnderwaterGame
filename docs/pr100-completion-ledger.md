@@ -1,5 +1,15 @@
 # PR #100 full-scope completion ledger
 
+## Main follow-up after merge
+
+PR100 merged as ab9e409 at 09:51 Chicago, October 5. A subsequent audit
+found two confirmed #99 omissions despite the earlier broad integration
+summary: the 10% random-stat ceiling/no-Evasion-boost rule and the light-blue
+blockade waypoint. Miguel authorized direct main repairs. The scoped changes,
+reproduction, checks and remaining verification limits are documented in
+`docs/marc-main-followup.md`. Earlier deadline artifact details below are
+historical; `docs/build-info.json` identifies the current exported runtime.
+
 ## Deadline delivery artifact
 
 The fresh Web export identifies runtime source

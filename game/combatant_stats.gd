@@ -26,7 +26,7 @@ var evasion_current: int = 5
 # enemy with its own species BASE_STATS (Goblin._stats_from()). A stat can
 # be debuffed down to this floor and no further, even though the enemy's
 # actual starting value this fight is usually higher (make_stats()'s own
-# 5-25% roll on top of it) - the species' real base stays a hard bottom
+# 5-10% roll on top of it) - the species' real base stays a hard bottom
 # regardless of how much of that roll a Weaken/Slow strips back off.
 var stat_floor: Dictionary = {}
 

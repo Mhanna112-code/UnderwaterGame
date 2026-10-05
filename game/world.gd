@@ -19,6 +19,8 @@ const CAST := [
 var divers: Array = []
 var active := 0
 var _intro_arrow: MeshInstance3D
+var _blockade_arrow: MeshInstance3D
+const BLOCKADE_ARROW_HIDE_DIST := 6.0
 
 # Gates TAB/random-encounters and holds the camera on the light beam from
 # the moment the world loads until the active diver actually reaches it -
@@ -2340,6 +2342,9 @@ func _on_swap_target_cancelled() -> void:
 func _physics_process(dt: float) -> void:
 	_t += dt
 	_tick_autosave(dt)
+	# Run before combat/maze early returns so the old world waypoint cannot
+	# remain visible after another owner takes control of this frame.
+	_update_blockade_arrow()
 	if embedded_maze != null and embedded_maze.maze_active:
 		active = embedded_maze.active
 		if not embedded_maze._battling:
@@ -3239,7 +3244,12 @@ func intro_arrow() -> void:
 	if _intro_arrow != null or light_beam == null:
 		return
 	var d: Diver = divers[active]
+	_intro_arrow = _make_waypoint_arrow()
+	_intro_arrow.position = Vector3(0, d.height * 0.6, -1.0)
+	d.add_child(_intro_arrow)
+	_point_arrow_at(light_beam.global_position)
 
+func _make_waypoint_arrow() -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Tip along local -Z (the axis look_at() aims at a target) with the base
@@ -3255,12 +3265,45 @@ func intro_arrow() -> void:
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	st.set_material(material)
 
-	_intro_arrow = MeshInstance3D.new()
-	_intro_arrow.mesh = st.commit()
-	_intro_arrow.scale = Vector3.ONE * 0.6
-	_intro_arrow.position = Vector3(0, d.height * 0.6, -1.0)
-	d.add_child(_intro_arrow)
-	_point_arrow_at(light_beam.global_position)
+	var arrow := MeshInstance3D.new()
+	arrow.mesh = st.commit()
+	arrow.scale = Vector3.ONE * 0.6
+	return arrow
+
+# Marc's post-tutorial waypoint, adapted to the campaign's completed prologue:
+# optional training must not become a prerequisite for finding the blockade.
+# Physical target existence (including loaded consumed geometry) owns cleanup.
+func _update_blockade_arrow() -> void:
+	var wall := _cracked_walls.get("entrance_blockade") as Node3D
+	if not is_instance_valid(wall) or wall.is_queued_for_deletion():
+		if is_instance_valid(_blockade_arrow):
+			_blockade_arrow.queue_free()
+		_blockade_arrow = null
+		return
+	var available := route_state.prologue_complete and route_state.prologue_phase == "complete" and not divers.is_empty()
+	var blocked := battling or is_instance_valid(random_encounter_reveal) or _transitioning_to_encounter or aiming
+	blocked = blocked or (embedded_maze != null and embedded_maze.maze_active)
+	blocked = blocked or not $HUD.visible or title_screen.visible or game_over_screen.visible
+	blocked = blocked or inventory_menu.visible or save_point_menu.visible or target_selector.selecting
+	if not available or blocked:
+		if is_instance_valid(_blockade_arrow):
+			_blockade_arrow.visible = false
+		return
+	var d := divers[active] as Diver
+	if not is_instance_valid(_blockade_arrow):
+		_blockade_arrow = _make_waypoint_arrow()
+		_blockade_arrow.name = "BlockadeWaypoint"
+	if _blockade_arrow.get_parent() != d:
+		if _blockade_arrow.get_parent() != null:
+			_blockade_arrow.get_parent().remove_child(_blockade_arrow)
+		d.add_child(_blockade_arrow)
+	_blockade_arrow.position = Vector3(0, d.height * 0.6, -1.0)
+	var near := Vector2(d.global_position.x, d.global_position.z).distance_to(Vector2(wall.global_position.x, wall.global_position.z)) <= BLOCKADE_ARROW_HIDE_DIST
+	_blockade_arrow.visible = not near
+	if _blockade_arrow.visible:
+		var to_target := wall.global_position - _blockade_arrow.global_position
+		var up := Vector3.FORWARD if absf(to_target.normalized().dot(Vector3.UP)) > 0.999 else Vector3.UP
+		_blockade_arrow.look_at(wall.global_position, up)
 
 
 # Pairs with intro_arrow() - called at the same moment (world _ready()) so
