@@ -73,7 +73,7 @@ func _case(active: int, mode: String) -> void:
 		maze.keys_held = 0
 		eligible = maze._spawn_key_door("ReadyDoorFixture", door.global_position, door.global_basis.z, "")
 	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
-	var discovery := {"walls": [], "rooms": [], "corridors": [], "halls": [], "count": 0, "pois": []}
+	var discovery := {"walls": [], "rooms": [], "corridors": [], "halls": [], "count": 0, "pois": [], "intro_seen": true}
 	for wall in maze.wall_boxes:
 		discovery.walls.append(String(wall.name))
 	for corridor in maze.corridors:

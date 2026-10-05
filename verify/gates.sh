@@ -201,6 +201,9 @@ run "maze World return: do live exit and cold World save/re-entry retain party a
 run "maze relic consumers: do real victories unlock owned campaign spells without using or consuming maze keys" "$GODOT" --headless --path . --script verify/maze_relic_consumers.gd
 run "maze input ownership: do real map/save/swap keys stay exclusive while Marc's local encounter policy remains independent" "$GODOT" --headless --path . --script verify/maze_input_ownership.gd
 run "Marc earned map: can real pre-map swimming reach/open the chest, use L and return without geometry or current shortcuts" "$GODOT" --headless --path . --script verify/marc_earned_map.gd
+run "Marc shared-World earned map: does real ramp entry, swimming, E acquisition and return retain the same party" "$GODOT" --headless --path . --script verify/marc_earned_map.gd -- --world-acquisition
+run "Marc review earned map: does the actual diagnostic flag retain unearned L rejection and real chest acquisition" "$GODOT" --headless --path . --script verify/marc_earned_map.gd -- --maze-playtest
+run "map discovery and first open: do discovered-only legend, paused responsive layout, new/legacy lesson saves and later media agree" "$GODOT" --headless --path . --script verify/maze_map_discovery.gd -- --legend --layout --persistence --media-transition
 run "Marc chest ownership: do both chests block real actions but pause/resume safely for every diver" "$GODOT" --headless --path . --script verify/marc_chest_ownership.gd
 run "Marc earned-map persistence: do actual save/cold Load/legacy Load preserve map, spent door keys and spell relics independently" "$GODOT" --headless --path . --script verify/marc_earned_map_persistence.gd
 run "Marc map region: do generated real L/badge/closure cases respect acquired-map availability for every diver" "$GODOT" --headless --path . --script verify/marc_earned_map_region.gd
@@ -251,6 +254,7 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "Marc swirl native visibility: do revealed foreground rocks leave the controlled diver readable at column-aligned camera angles" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_swirl_occlusion.gd
 	run "maze overview native presentation: do title/help/legend fit actual rendered wide/short/portrait windows without HUD bleed-through" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_maze_map_presentation.gd
+	run "maze first-open native discovery: do paused lesson, map and discovered-only legend fit actual rendered viewports" "$GODOT" --path . --rendering-method gl_compatibility --script verify/maze_map_discovery.gd -- --legend --layout --persistence
 	run "maze native ready-door input: do eligible door/current/wall priorities survive rendered frame dispatch" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_map_door.gd
 	for shape in 1280x720 720x480; do
 		for phase in 0.35 0.65 0.8; do
@@ -319,7 +323,7 @@ else
 	# animation despite doing nothing. Current L-map proof needs an identified
 	# export; don't silently accept a stale generated docs pack.
 	if [ -f "$WEB_DIR/build-info.json" ]; then
-		run "identified feedback export: do served checksum, ordinary title and real L-map agree" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback
+		run "identified feedback export: do served checksum, title and actual swim/E acquisition/first earned L-map agree" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback
 	else
 		echo "=== identified maze feedback webcheck: skipped, no build-info.json ==="
 		skips=$((skips + 1))

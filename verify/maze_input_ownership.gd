@@ -63,6 +63,7 @@ func _enter(selected: int) -> MazeLevel:
 	# Input composition fixture after acquisition; marc_earned_map exercises
 	# earning the map through actual swimming/E rather than this grant.
 	maze.key_items.append("maze_nav_map")
+	(maze.get_node("HUD/MazeMiniMap") as MazeMiniMap).intro_seen = true # Post-lesson ownership fixture.
 	for i in range(3):
 		maze.divers[i].global_position = maze.get_node("MazeCheckpoint").global_position + Vector3(3 * (i - selected), 1.8, 0)
 		maze.divers[i].velocity = Vector3.ZERO

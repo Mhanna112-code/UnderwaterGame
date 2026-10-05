@@ -262,6 +262,10 @@ func _earn_map_and_return() -> void:
 	var popup := root.get_node("CharacterAbilityPopup")
 	if (popup.get_node("%AbilityExplanationPanel") as Control).visible:
 		await _key(KEY_ESCAPE)
+	await _key(KEY_L)
+	_expect(paused and (popup.get_node("%AbilityExplanationPanel") as Control).visible, "ROUTE first earned L does not present navigation lesson")
+	await _key(KEY_ESCAPE)
+	await _key(KEY_L)
 	var back := _no_current_path(Vector3(entry.x, maze._diver.global_position.y, entry.z))
 	_expect(not back.is_empty(), "ROUTE acquired map has no collision/current-valid return path")
 	for point in back:

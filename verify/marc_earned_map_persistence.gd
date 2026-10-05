@@ -81,7 +81,9 @@ func _run() -> void:
 		_expect(loaded._map_chest_open and loaded._dome_levers.is_empty(), "EARN-2 cold Load closes earned chest or resurrects obsolete levers")
 		await _key(KEY_L)
 		_expect(loaded.get_node("HUD/MazeMiniMap").main_map.visible, "EARN-2 cold Load cannot use acquired map")
-		loaded.queue_free()
+		await _key(KEY_ESCAPE) # First-open lesson; does not close the underlying map.
+		await _key(KEY_L)
+		loaded.world.queue_free()
 		await process_frame
 	# Explicit old-save migration: no map item, old lever references. New map
 	# ownership has no required extra flag, so this must load, not index absent
@@ -105,12 +107,13 @@ func _cold_load() -> MazeLevel:
 	world.title_screen.load_game_chosen.emit(SLOT)
 	for frame in 20:
 		await process_frame
-		if current_scene is MazeLevel:
+		if world.embedded_maze.maze_active:
 			break
-	if not current_scene is MazeLevel:
+	if current_scene != world or not world.embedded_maze.maze_active:
 		findings.append("EARN-2 cold title Load did not restore maze")
 		return null
-	return current_scene as MazeLevel
+	_expect(world._current_slot == SLOT, "EARN-2 cold Load changed selected disposable slot")
+	return world.embedded_maze
 
 func _key(code: Key) -> void:
 	var event := InputEventKey.new()

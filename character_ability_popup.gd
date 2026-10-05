@@ -52,6 +52,7 @@ func _ready() -> void:
 	(%PopupClose as Button).pressed.connect(_on_next_pressed)
 	_style_panel()
 	_build_close_button()
+	get_viewport().size_changed.connect(_layout_text_page)
 	# PanelContainer defaults to visible, unlike a PopupPanel (which starts
 	# hidden until .popup() is called) - hide it up front so it isn't just
 	# sitting on screen from the moment the game boots, before open() is
@@ -229,6 +230,22 @@ func _refresh() -> void:
 		return
 	var media_key: String = String(page.get("media", page_slot.diver.ability_id if is_instance_valid(page_slot) and is_instance_valid(page_slot.diver) else ""))
 	_refresh_media(media_key)
+	_layout_text_page()
+
+func _layout_text_page() -> void:
+	# Text-only lessons (including first map open) must fit while paused.
+	# Keep the established media layout unchanged for authored video pages.
+	if (%MediaFrame as Control).visible:
+		return
+	var viewport := get_viewport_rect().size
+	var width := minf(720, viewport.x - 32)
+	var height := minf(340, viewport.y - 32)
+	var panel := %AbilityExplanationPanel as Control
+	panel.offset_left = -width * 0.5
+	panel.offset_right = width * 0.5
+	panel.offset_top = -height * 0.5
+	panel.offset_bottom = height * 0.5
+	(%Title as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _show_media_control(media: Control) -> void:
 	var frame := %MediaFrame as PanelContainer

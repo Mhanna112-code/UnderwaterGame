@@ -5262,6 +5262,12 @@ func map_points_of_interest() -> Array[Dictionary]:
 		out.append({"id": "vortex_chest", "kind": "chest", "pos": _vortex_chest.global_position, "radius": 9.0, "done": _vortex_chest_open})
 	if _map_chest != null and is_instance_valid(_map_chest):
 		out.append({"id": "map_chest", "kind": "chest", "pos": _map_chest.global_position, "radius": 9.0, "done": _map_chest_open})
+	# A boss is not a global map spoiler: entry into its interior discovers it.
+	for boss_room in [{"id": "boss_secret", "rect": _secret_boss_room_rect(true)}, {"id": "boss_main", "rect": _main_boss_room_rect()}]:
+		var rect: Rect2 = boss_room.rect
+		if rect.size != Vector2.ZERO:
+			var center := rect.get_center()
+			out.append({"id": boss_room.id, "kind": "boss", "pos": Vector3(center.x, 0, center.y), "radius": 0.0, "rect": rect})
 	if _switch_node != null:
 		out.append({"id": "room_switch", "kind": "switch", "pos": _switch_node.global_position, "radius": 7.0, "done": _gate_lowered})
 	if _split_rock != null and is_instance_valid(_split_rock):
@@ -5269,11 +5275,25 @@ func map_points_of_interest() -> Array[Dictionary]:
 	var item_room := _secret_item_room_rect()
 	if item_room.size != Vector2.ZERO:
 		var c := item_room.get_center()
-		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret Item Room"})
+		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret\nItem Room"})
 	if _dome_site != Vector3.ZERO:
-		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0)
-		out.append({"id": "control_room", "kind": "room_label", "pos": _dome_site, "radius": 0.0, "rect": dome, "label": "Control Room"})
+		# f698bee: do not expand the box east into the entrance walls.
+		var depth := PLINTH_RADIUS * 2 + STEP_COUNT * STEP_DEPTH * 0.6
+		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2, depth)
+		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z + PLINTH_RADIUS * 0.7), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
 	return out
+
+func _main_boss_room_rect() -> Rect2:
+	var north := get_node_or_null("MainBossRoomNorth") as CSGBox3D
+	var south := get_node_or_null("MainBossRoomSouth") as CSGBox3D
+	var east := get_node_or_null("MainBossRoomEast") as CSGBox3D
+	if north == null or south == null or east == null:
+		return Rect2()
+	var x0 := north.global_position.x - north.size.x * 0.5
+	var x1 := east.global_position.x - east.size.z * 0.5
+	var z0 := minf(north.global_position.z, south.global_position.z) + north.size.z * 0.5
+	var z1 := maxf(north.global_position.z, south.global_position.z) - south.size.z * 0.5
+	return Rect2(x0, z0, x1 - x0, z1 - z0)
 
 # One half of a broken rock: a lumpy, faceted dome (+Y) over a rough,
 # jagged fracture face (around y = 0, facing -Y). Dome faces are weathered

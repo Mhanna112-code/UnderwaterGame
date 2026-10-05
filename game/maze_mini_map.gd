@@ -745,7 +745,18 @@ func _draw() -> void:
 		var crel := Vector2(cc.x - center.x, cc.z - center.z)
 		if crel.length() <= view_radius - 2.0:
 			_draw_corridor_tag(self, crel * px_per_unit + mid, corridor, 10)
-	for poi in _found_pois():
+	for poi in _found_pois_rooms_first():
+		if poi.kind == "room_label" and poi.has("rect"):
+			var room_rect: Rect2 = poi.rect
+			var corners := PackedVector2Array()
+			for corner in [room_rect.position, Vector2(room_rect.end.x, room_rect.position.y), room_rect.end, Vector2(room_rect.position.x, room_rect.end.y)]:
+				corners.append((corner - Vector2(center.x, center.z)) * px_per_unit + mid)
+			var radar := PackedVector2Array()
+			for i in 32:
+				radar.append(mid + Vector2.from_angle(TAU * i / 32) * (r - 2))
+			for piece in Geometry2D.intersect_polygons(corners, radar):
+				piece.append(piece[0])
+				draw_polyline(piece, ROOM_COLOR, 1.5)
 		var prel := Vector2((poi["pos"] as Vector3).x - center.x, (poi["pos"] as Vector3).z - center.z)
 		if prel.length() <= view_radius - 2.0:
 			_draw_poi(self, prel * px_per_unit + mid, poi, 0.8)
@@ -853,7 +864,7 @@ func _at_least_long(start: Vector2, end: Vector2, min_len: float) -> Array:
 # identities, and discovering the return panel must not erase earlier halls.
 func campaign_discovery() -> Dictionary:
 	var data := {"walls": [], "rooms": _revealed_rooms.keys(), "corridors": [],
-		"halls": [], "count": _hall_discovery_count, "pois": _found_poi_ids.keys()}
+		"halls": [], "count": _hall_discovery_count, "pois": _found_poi_ids.keys(), "intro_seen": intro_seen}
 	for wall in _revealed_walls:
 		if is_instance_valid(wall):
 			data.walls.append(String((wall as Node).name))
@@ -871,6 +882,7 @@ func campaign_discovery() -> Dictionary:
 	return data
 
 func restore_campaign_discovery(data: Dictionary) -> void:
+	intro_seen = bool(data.get("intro_seen", false))
 	# A restored room can draw before the first discovery process tick.
 	if not _reveal_groups_built:
 		_build_reveal_groups()
@@ -881,6 +893,16 @@ func restore_campaign_discovery(data: Dictionary) -> void:
 	_hall_corridors.clear()
 	_wall_to_hall.clear()
 	_found_poi_ids.clear()
+	# Replacing discovery must replace its drawing too, not leave lines from
+	# a previous restore visible and spoil rooms that this save never visited.
+	for drawing in [_main_map_hall_lines, _main_map_lone_lines, _main_map_room_lines, _main_map_current_lines, _main_map_current_heads]:
+		for value in drawing.values():
+			var nodes: Array = value if value is Array else [value]
+			for node in nodes:
+				if is_instance_valid(node):
+					main_map.remove_child(node)
+					node.queue_free()
+		drawing.clear()
 	for name_value in data.walls:
 		var wall := maze_level.get_node_or_null(String(name_value)) as CSGBox3D
 		if wall != null:
@@ -906,6 +928,8 @@ func restore_campaign_discovery(data: Dictionary) -> void:
 		_found_poi_ids[String(id)] = true
 	_main_map_bounds_computed = false
 	_corridor_wall_pairs_computed = false
+	if main_map.visible:
+		_refresh_main_map()
 
 func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3, mid: Vector2, px_per_unit: float) -> void:
 	var path := _flow_path_for_corridor(corridor, current)
@@ -1000,6 +1024,9 @@ var _main_map_diver_pos := Vector2.ZERO
 # Draws the diver arrow + border above every wall Line2D - see its own
 # z_index comment in _build_main_map().
 var _main_map_overlay: Control
+# Presentation history is optional in old checkpoints, not a new mandatory
+# progression flag. Ownership of the map remains the earned party item.
+var intro_seen := false
 
 # The blink tween currently animating whichever hall is selectedHallName's
 # own Line2D nodes on the main map - re-created (not reused) every time
@@ -1155,7 +1182,108 @@ func _build_main_map_copy() -> void:
 	legend.size = Vector2(468, 22)
 	legend.draw.connect(_draw_legend.bind(legend))
 	main_map.add_child(legend)
+	_build_side_legend()
 	_build_map_help()
+
+const SIDE_LEGEND_ENTRIES := [
+	["wall", "Walls"], ["current", "Current"], ["you", "You"], ["room", "Visited room"],
+	["poster", "Poster"], ["chest", "Chest"], ["switch", "Map Control switch"], ["key", "Key"],
+	["rock", "Mysterious Rock"], ["broken_rock", "Broken rock"], ["boss", "Boss"], ["special", "Special encounter"]]
+var _side_legend: PanelContainer
+var _legend_rows: VBoxContainer
+var _legend_kinds: Array[String] = []
+
+func _build_side_legend() -> void:
+	_side_legend = PanelContainer.new()
+	_side_legend.name = "MazeMapSideLegend"
+	_side_legend.z_index = 4
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.03, 0.06, 0.08, 1)
+	style.border_color = Color(0.3, 0.55, 0.95)
+	style.set_border_width_all(2)
+	style.set_content_margin_all(10)
+	_side_legend.add_theme_stylebox_override("panel", style)
+	_side_legend.visible = false
+	main_map.get_parent().add_child(_side_legend)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	_side_legend.add_child(column)
+	var heading := Label.new()
+	heading.text = "LEGEND"
+	heading.add_theme_font_size_override("font_size", 16)
+	heading.add_theme_color_override("font_color", Color(0.86, 0.94, 1))
+	column.add_child(heading)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	_legend_rows = VBoxContainer.new()
+	_legend_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_legend_rows.add_theme_constant_override("separation", 4)
+	scroll.add_child(_legend_rows)
+
+func _legend_entries_found() -> Array:
+	var kinds := {"you": true}
+	if not _revealed_walls.is_empty():
+		kinds.wall = true
+	if not _revealed_rooms.is_empty():
+		kinds.room = true
+	if maze_level != null:
+		for corridor in maze_level._currents_by_corridor:
+			if _is_discovered_corridor(corridor as Area3D):
+				kinds.current = true
+		for poi in _found_pois():
+			kinds[String(poi.kind)] = true
+			if poi.has("rect"):
+				kinds.room = true
+	var found: Array = []
+	for entry in SIDE_LEGEND_ENTRIES:
+		if kinds.has(entry[0]):
+			found.append(entry)
+	return found
+
+func _refresh_side_legend() -> void:
+	var found := _legend_entries_found()
+	var kinds: Array[String] = []
+	for entry in found:
+		kinds.append(entry[0])
+	if kinds == _legend_kinds:
+		return
+	_legend_kinds = kinds
+	for child in _legend_rows.get_children():
+		_legend_rows.remove_child(child)
+		child.queue_free()
+	for entry in found:
+		var row := HBoxContainer.new()
+		row.custom_minimum_size.y = 26
+		_legend_rows.add_child(row)
+		var icon := Control.new()
+		icon.custom_minimum_size = Vector2(28, 26)
+		icon.draw.connect(_draw_legend_icon.bind(icon, String(entry[0])))
+		row.add_child(icon)
+		var label := Label.new()
+		label.text = entry[1]
+		label.add_theme_font_size_override("font_size", 14)
+		label.add_theme_color_override("font_color", LEGEND_TEXT_COLOR)
+		row.add_child(label)
+
+func _draw_legend_icon(icon: Control, kind: String) -> void:
+	var center := Vector2(14, 13)
+	match kind:
+		"wall":
+			icon.draw_line(center + Vector2(-12, 0), center + Vector2(12, 0), WALL_COLOR, 2)
+		"current":
+			var points := PackedVector2Array()
+			for i in 9:
+				points.append(center + Vector2(-12 + i * 2.25, sin(i / 8.0 * TAU * 1.5) * 2.5))
+			icon.draw_polyline(points, FLOW_COLOR, 2)
+			icon.draw_colored_polygon(PackedVector2Array([center + Vector2(12, 0), center + Vector2(6, -4), center + Vector2(6, 4)]), FLOW_COLOR)
+		"you":
+			icon.draw_colored_polygon(PackedVector2Array([center + Vector2(0, -7), center + Vector2(-5.5, 5), center + Vector2(5.5, 5)]), Color(0.35, 0.95, 0.55))
+		"room":
+			icon.draw_rect(Rect2(center - Vector2(10, 6), Vector2(20, 12)), ROOM_COLOR, false, 2)
+		_:
+			_draw_poi(icon, center, {"kind": kind}, 1)
 
 const LEGEND_TEXT_COLOR := Color(0.73, 0.87, 0.96)
 const LEGEND_FONT_SIZE := 13
@@ -1231,7 +1359,31 @@ func _build_map_help() -> void:
 	_map_help.add_child(_map_help_label)
 	main_map.get_parent().add_child(_map_help)
 	_map_help.visible = false
-	main_map.visibility_changed.connect(_refresh_map_copy)
+	main_map.visibility_changed.connect(_on_map_visibility_changed)
+	get_viewport().size_changed.connect(_on_map_viewport_changed)
+
+func _on_map_visibility_changed() -> void:
+	_refresh_map_copy()
+	if main_map.visible:
+		_update_revealed()
+		_refresh_main_map()
+
+func _on_map_viewport_changed() -> void:
+	if main_map.visible:
+		_refresh_main_map()
+
+func _show_intro_once() -> void:
+	if intro_seen:
+		return
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup == null:
+		return
+	intro_seen = true
+	var pages: Array[Dictionary] = [{"title": "Maze Navigation", "body":
+		"The map shows places you have discovered. %s / %s select hallway walls; %s rotates them. %s + %s / %s select currents; %s moves the selected current. %s toggles encounters; %s closes the map." % [
+		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"), Slot._badge("Ctrl"),
+		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("Ctrl+E"), Slot._badge("R"), Slot._badge("L")], "slot": null}]
+	popup.call("open", pages, maze_level)
 
 func _refresh_map_copy() -> void:
 	if main_map == null:
@@ -1248,10 +1400,12 @@ func _refresh_map_copy() -> void:
 		title.text = "MAZE NAVIGATION   " + (maze_level.lever_map_close_hint() if maze_level != null and maze_level.levers_map_mode() else "[L] Close")
 	var legend := main_map.get_node_or_null("MazeMapLegend") as Control
 	if legend != null:
-		legend.visible = maze_level == null or not maze_level.levers_map_mode()
+		legend.visible = false # Superseded by the discovery-only external legend.
+		var ordinary := maze_level == null or not maze_level.levers_map_mode()
+		_side_legend.visible = main_map.visible and ordinary
 		if _map_help != null:
 			# The lever map has its own controls list under the map instead.
-			_map_help.visible = main_map.visible and legend.visible
+			_map_help.visible = main_map.visible and ordinary
 			# The bottom-left HUD captions sit where the help panel goes.
 			for caption in ["Controls", "GoalLabel"]:
 				var node := get_parent().get_node_or_null(caption) as CanvasItem
@@ -1263,7 +1417,9 @@ func _layout_overview() -> void:
 		return
 	var viewport := get_viewport_rect().size
 	main_map.position = Vector2(18, 16)
-	var width := minf(MAIN_MAP_SIZE, viewport.x - 36.0)
+	_refresh_side_legend()
+	var side_by_side := viewport.x >= 700
+	var width := minf(MAIN_MAP_SIZE, viewport.x - (252.0 if side_by_side else 36.0))
 	var last_separator := "\n" if width < 400 else "   ·   "
 	var wall_copy := "Walls" if width < 400 else "Select walls"
 	var current_copy := "Currents" if width < 400 else "Select currents"
@@ -1274,14 +1430,19 @@ func _layout_overview() -> void:
 	]
 	if _map_help_label.text != help_copy:
 		_map_help_label.text = help_copy
-	var help_height := maxf(90.0, _map_help_label.get_content_height() + 24.0)
+	# Stable first-frame reserve: measuring a zero-width RichTextLabel here
+	# reports the previous wrap, and the intro pauses before it can settle.
+	var help_height := 144.0 if width < 400 else 112.0
 	_map_help.size = Vector2(width, help_height)
-	var height := minf(MAIN_MAP_SIZE, viewport.y - 16.0 - help_height - 18.0)
+	var legend_height := minf(58 + _legend_kinds.size() * 30, 128 if not side_by_side else viewport.y - 32)
+	var height := minf(MAIN_MAP_SIZE, viewport.y - 34 - help_height - (legend_height + 6 if not side_by_side else 0))
 	var desired := Vector2(width, maxf(160.0, height))
 	if not main_map.size.is_equal_approx(desired):
 		main_map.size = desired
 		_main_map_bounds_computed = false
 	_map_help.position = main_map.position + Vector2(0, main_map.size.y + 6)
+	_side_legend.position = main_map.position + Vector2(main_map.size.x + 6, 0) if side_by_side else _map_help.position + Vector2(0, help_height + 6)
+	_side_legend.size = Vector2(210 if side_by_side else width, legend_height)
 	var title := main_map.get_node("MazeMapTitle") as Label
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.size = Vector2(width - 32, 38)
@@ -1291,8 +1452,8 @@ func _layout_overview() -> void:
 	(main_map.get_node("MazeMapTitleBand") as Control).size.x = width
 	(main_map.get_node("MazeMapTitleDivider") as Control).size.x = width
 	var legend := main_map.get_node("MazeMapLegend") as Control
-	legend.size = Vector2(width - 32, 44 if width < 472 else 22)
-	_main_map_footer = legend.size.y + 8
+	legend.size = Vector2.ZERO
+	_main_map_footer = 12
 	legend.position = Vector2(16, main_map.size.y - _main_map_footer)
 	legend.queue_redraw()
 
@@ -1319,6 +1480,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if main_map.visible:
 			_update_selected_rotatable_set()
 			main_map.queue_redraw()
+			# Visibility lays out and projects synchronously before the lesson
+			# pauses normal processing. No later frame may be needed to fix it.
+			_show_intro_once()
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode == KEY_E and key_event.ctrl_pressed:
 		_rotate_selected_current()
@@ -1357,6 +1521,7 @@ func _project_to_main_map(pos: Vector3) -> Vector2:
 # open after its hall was first found, and a stale cached Line2D would
 # silently lie about where it is.
 func _refresh_main_map() -> void:
+	_layout_overview()
 	if not _main_map_bounds_computed:
 		_compute_main_map_bounds()
 		if not _main_map_bounds_computed:
@@ -1575,7 +1740,12 @@ func _on_main_map_overlay_draw() -> void:
 		for corridor in maze_level.corridors:
 			if _is_discovered_corridor(corridor):
 				_draw_corridor_tag(_main_map_overlay, _project_to_main_map(_corridor_center(corridor)), corridor, 11)
-		for poi in _found_pois():
+		for poi in _found_pois_rooms_first():
+			if poi.kind == "room_label" and poi.has("rect"):
+				var room_rect: Rect2 = poi.rect
+				var top := _project_to_main_map(Vector3(room_rect.position.x, 0, room_rect.position.y))
+				var bottom := _project_to_main_map(Vector3(room_rect.end.x, 0, room_rect.end.y))
+				_main_map_overlay.draw_rect(Rect2(top, bottom - top), ROOM_COLOR, false, 2.0)
 			_draw_poi(_main_map_overlay, _project_to_main_map(poi["pos"] as Vector3), poi, 1.0)
 	# _main_map_diver_pos is already an absolute panel-space point (see
 	# _project_to_main_map()), not relative to panel center.
@@ -1597,6 +1767,16 @@ func _on_main_map_overlay_draw() -> void:
 # each appears on both maps once the diver has been within its radius (or
 # inside its rect), and stays.
 var _found_poi_ids: Dictionary = {}
+
+func _found_pois_rooms_first() -> Array[Dictionary]:
+	var rooms: Array[Dictionary] = []
+	var icons: Array[Dictionary] = []
+	for poi in _found_pois():
+		if poi.kind == "room_label":
+			rooms.append(poi)
+		else:
+			icons.append(poi)
+	return rooms + icons
 
 func _update_found_pois(diver_pos: Vector3) -> void:
 	if not maze_level.has_method("map_points_of_interest"):
@@ -1670,10 +1850,24 @@ func _draw_poi(ci: CanvasItem, p: Vector2, poi: Dictionary, k: float) -> void:
 		"rock":
 			ci.draw_circle(p, 5.0 * k, Color(0.45, 0.42, 0.38))
 			ci.draw_line(p + Vector2(-1, -5) * k, p + Vector2(1, 5) * k, Color(0.08, 0.08, 0.08), 1.5)
+		"boss":
+			var red := Color(0.95, 0.25, 0.3)
+			ci.draw_circle(p + Vector2(0, -1) * k, 6 * k, red)
+			ci.draw_rect(Rect2(p + Vector2(-3.5, 3) * k, Vector2(7, 4) * k), red)
+			for eye in [-2.3, 2.3]:
+				ci.draw_circle(p + Vector2(eye, -1.2) * k, 1.6 * k, Color(0.05, 0.02, 0.04))
+			for tooth in [-1.8, 0.0, 1.8]:
+				ci.draw_line(p + Vector2(tooth, 4) * k, p + Vector2(tooth, 7) * k, Color(0.05, 0.02, 0.04), 1)
+		"special":
+			ci.draw_circle(p, 5.5 * k, HIDDEN_MARKER_COLOR)
+			ci.draw_arc(p, 5.5 * k, 0, TAU, 20, Color(1, 0.75, 0.75), 1.2)
 		"room_label":
 			var font := ThemeDB.fallback_font
 			var size := int(12 * k)
-			var text := String(poi.get("label", ""))
-			var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-			ci.draw_string_outline(font, p + Vector2(-w * 0.5, size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 3, Color(0.01, 0.04, 0.07, 0.95))
-			ci.draw_string(font, p + Vector2(-w * 0.5, size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ROOM_COLOR)
+			var lines := String(poi.get("label", "")).split("\n")
+			var line_height := font.get_height(size)
+			for i in lines.size():
+				var width := font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+				var at := p + Vector2(-width * 0.5, line_height * (i - (lines.size() - 1) * 0.5) + size * 0.35)
+				ci.draw_string_outline(font, at, lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, 3, Color(0.01, 0.04, 0.07, 0.95))
+				ci.draw_string(font, at, lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, ROOM_COLOR)

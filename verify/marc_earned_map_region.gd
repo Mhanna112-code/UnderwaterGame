@@ -25,6 +25,7 @@ func _run() -> void:
 	# Boundary fixture, NOT acquisition or traversal proof. EARN-1 earns it.
 	maze.key_items.append("maze_nav_map")
 	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	map.intro_seen = true # Post-lesson boundary fixture; first-open has its own real-E/L test.
 	var badge := maze.get_node("HUD/MazeExplorationControls").find_child("MazeMapAvailability", true, false) as Label
 	var bounds := maze.nav_map_area()
 	print("EARNED MAP REGION|bounds=", bounds)

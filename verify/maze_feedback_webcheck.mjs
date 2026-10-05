@@ -1,5 +1,5 @@
-// Feedback artifact boundary: exact downloaded pack, real title and L-map UI.
-// This is NOT full maze navigation, combat, persistence or listening acceptance.
+// Exact export, real title, and earned map through actual browser swim/E/L.
+// Diagnostic entrance only: NOT New Game, full navigation, combat or persistence.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -65,14 +65,75 @@ try {
       console.log('EXPORTED TITLE|' + text.replaceAll('\n', ' | '));
     } else {
       const world = await capture(page, 'maze-entry');
-      if (!/Hallway|Open the map|Shallows|L: map/i.test(world)) findings.push('Export direct maze route did not render gameplay controls');
+      if (!/navigation map|WASD|Hallway|L: map/i.test(world)) throw new Error('Export direct maze route did not render gameplay controls');
       await page.keyboard.press('KeyL');
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(500);
+      const unearned = await capture(page, 'map-unearned');
+      if (/MAZE NAVIGATION/i.test(unearned)) throw new Error('Diagnostic entrance fabricated navigation map ownership');
+      // The authored entrance faces +Z. Real D/S follows the clear west/north
+      // approach into the Control Room; no item/state grant or engine injection.
+      await page.keyboard.press('KeyR');
+      await page.keyboard.down('KeyD');
+      await page.waitForTimeout(1800);
+      await page.keyboard.up('KeyD');
+      await page.waitForTimeout(200);
+      // This diagnostic entrance already starts at Y=2; rising again can
+      // hit the door lintel. Native real-key reproduction confirms the
+      // route at Y=2. Stop on the actual reach prompt, not wall-clock travel:
+      // heavily contended browser rendering can advance fewer physics ticks.
+      let reached = false;
+      for (let step = 0; step < 14; step++) {
+        await page.keyboard.down('KeyS');
+        await page.waitForTimeout(500);
+        await page.keyboard.up('KeyS');
+        await page.waitForTimeout(300);
+        const text = await capture(page, 'chest-step-' + step);
+        if (/Press E to open/i.test(text)) { reached = true; break; }
+      }
+      const approach = await capture(page, 'chest-approach');
+      console.log('EXPORTED CHEST APPROACH|' + approach.replaceAll('\n', ' | '));
+      if (!reached) throw new Error('Browser route did not reach the actual chest interaction prompt');
+      await page.keyboard.press('KeyE');
+      await page.waitForTimeout(2500);
+      const reward = await capture(page, 'map-acquired');
+      if (!/Key Item Acquired/i.test(reward)) throw new Error('Browser swimming/E did not earn the Control Room navigation map');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('KeyL');
+      await page.waitForTimeout(700);
+      const intro = await capture(page, 'map-first-open');
+      const strictIntro = process.env.EXPECT_MAP_INTRO !== '0';
+      if (strictIntro && !/discovered/i.test(intro)) throw new Error('First earned L did not teach discovered-only navigation');
+      if (/Maze Navigation/i.test(intro) && /discovered|select hallway/i.test(intro)) {
+        for (const [width, height] of [[720, 480], [360, 640]]) {
+          await page.setViewportSize({ width, height });
+          await page.waitForTimeout(500);
+          const lesson = await capture(page, `map-first-open-${width}x${height}`);
+          if (!/Maze Navigation/i.test(lesson) || !/discovered/i.test(lesson) || !/closes the map/i.test(lesson))
+            throw new Error('Paused navigation lesson clipped or missing at ' + width + 'x' + height);
+        }
+        await page.setViewportSize({ width: 1280, height: 720 });
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+      }
       const map = await capture(page, 'maze-map');
-      if (map === world || !/MAZE NAVIGATION/i.test(map) || !/rotate/i.test(map)) findings.push('Real L did not reveal exported maze map controls');
-      if (!/Left/i.test(map) || !/Right/i.test(map) || !/Ctrl/i.test(map) || !/Encounters/i.test(map)) findings.push('MAP-8 exported map keys are unreadable or missing portable Left/Right/Ctrl/R controls');
+      if (!/MAZE NAVIGATION/i.test(map) || !/rotate/i.test(map)) throw new Error('Real earned L did not reveal exported maze map controls');
+      if (!/Left/i.test(map) || !/Right/i.test(map) || !/Ctrl/i.test(map) || !/Encounters/i.test(map)) throw new Error('MAP-8 exported map keys are unreadable or missing portable Left/Right/Ctrl/R controls');
+      if (strictIntro && (!/LEGEND/i.test(map) || !/Chest/i.test(map) || /Boss|Special encounter/i.test(map)))
+        throw new Error('Earned map legend is absent, omits the discovered chest or reveals unknown boss/site types');
       console.log('EXPORTED MAZE MAP|' + map.replaceAll('\n', ' | '));
+      for (const [width, height] of [[720, 480], [360, 640]]) {
+        await page.setViewportSize({ width, height });
+        await page.waitForTimeout(500);
+        const overview = await capture(page, `maze-map-${width}x${height}`);
+        if (!/MAZE NAVIGATION/i.test(overview) || !/Left/i.test(overview) || !/Right/i.test(overview)
+          || !/Ctrl/i.test(overview) || !/Encounters/i.test(overview) || (strictIntro && !/LEGEND/i.test(overview)))
+          throw new Error('Actual earned map/help/legend is unreadable at ' + width + 'x' + height);
+      }
       await page.keyboard.press('KeyL');
+      await page.keyboard.press('KeyL');
+      await page.waitForTimeout(500);
+      const reopened = await capture(page, 'maze-map-repeat');
+      if (/discovered|closes the map/i.test(reopened)) throw new Error('Navigation lesson repeated on the next L open');
     }
     await context.close();
   }
@@ -80,7 +141,7 @@ try {
 findings.push(...errors);
 await browser.close();
 if (!live) await new Promise(resolve => server.close(resolve));
-const receipt = { source_commit: metadata.source_commit, downloads, findings, scope: 'served pack checksum, completed browser pack requests, rendered ordinary title and real direct-maze L controls only' };
+const receipt = { source_commit: metadata.source_commit, downloads, findings, scope: 'served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection and actual swimming/E acquisition/earned L controls; no full campaign or durability claim' };
 fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2));
 console.log(JSON.stringify(receipt));
 console.log(findings.length ? 'MAZE FEEDBACK WEB: failed' : 'MAZE FEEDBACK WEB: clean');
