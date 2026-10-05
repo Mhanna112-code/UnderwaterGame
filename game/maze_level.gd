@@ -5108,16 +5108,12 @@ func _build_progress_gate() -> void:
 	_gate_view_spot = Vector3(centre.x, _floor_top_y + 3.2, centre.z) + along * 9.0
 
 const DEV_KEYS := ["sphere_room_key", "vortex_key", "split_rock_key", "abyss_key"]
-const DEV_ITEMS := ["maze_nav_map"]
 
 func _apply_dev_unlocks() -> void:
 	for id in DEV_KEYS:
 		if not key_items.has(id):
 			key_items.append(id)
 	keys_held = DEV_KEYS.size()
-	for id in DEV_ITEMS:
-		if not key_items.has(id):
-			key_items.append(id)
 	# The gate, down with no cutscene.
 	if _gate != null and not _gate_lowered:
 		_gate_lowered = true

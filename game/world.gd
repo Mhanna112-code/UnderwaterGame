@@ -804,7 +804,9 @@ func _start_dev_mode() -> void:
 	for id in Items.ITEMS:
 		var item_id := String(id)
 		if Items.is_key_item(item_id):
-			if not key_items.has(item_id):
+			# Not the maze map: L's map still has to be earned from the
+			# Control Room chest, even in dev mode.
+			if item_id != "maze_nav_map" and not key_items.has(item_id):
 				key_items.append(item_id)
 		else:
 			inventory[item_id] = int(inventory.get(item_id, 0)) + DEV_ITEM_COUNT
