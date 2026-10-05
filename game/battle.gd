@@ -4488,7 +4488,9 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 				var poison_level := maxi(1, int(round(float(target_stats.hp_max) * float(move.poison_fraction))))
 				target_stats.add_status("poison", poison_level, int(move.get("poison_turns", 3)))
 				var effects := result.get("effects", []) as Array
-				effects.append("Poison %d·%d" % [poison_level, int(move.get("poison_turns", 3))])
+				# Same wording as the status cards: "Poison 2 (3 turns left)".
+				var poison_turns := int(move.get("poison_turns", 3))
+				effects.append("Poison %d (%d %s left)" % [poison_level, poison_turns, "turn" if poison_turns == 1 else "turns"])
 				result["effects"] = effects
 			_react(target, result)
 			_show_combat_feedback(target, result)
