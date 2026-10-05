@@ -1,7 +1,7 @@
 {
-  "source_commit": "dbfd4cba1a9e504bf69eded16f04d9596832de85",
-  "pck_sha256": "33b88b1c034ed66dcca171d11267d158792d6270b4816331cf08bf56d4f6d95c",
-  "pck_bytes": 94990620,
+  "source_commit": "cb607cf7b27ccca844d643ba5b74e2dca1e1f385",
+  "pck_sha256": "10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031",
+  "pck_bytes": 94990924,
   "engine": "Godot 4.7.1",
   "status": "Pre-boss-only ending and unobscured maze destination candidate, reconciled with latest Sonar/site main; final same-export acceptance/publication pending, not full-campaign readiness",
   "upstream_intake": {

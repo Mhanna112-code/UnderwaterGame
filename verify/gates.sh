@@ -400,7 +400,14 @@ else
 	# animation despite doing nothing. Current L-map proof needs an identified
 	# export; don't silently accept a stale generated docs pack.
 	if [ -f "$WEB_DIR/build-info.json" ]; then
-		run "identified feedback export: do served checksum, title and actual swim/E acquisition/first earned L-map agree" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback
+		# Chromium's headless Mac view rejects even a focused bare canvas lock.
+		# Use a real window on this display-bearing platform; the observer must
+		# prove actual pointer capture, never filter its failed request error.
+		maze_browser_options=()
+		if [ "$(uname)" = "Darwin" ]; then
+			maze_browser_options+=(--headed)
+		fi
+		GATE_TIMEOUT_SECONDS=420 run "identified feedback export: do actual swim/E/map/Inventory/aim owners agree without browser errors" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback "${maze_browser_options[@]}"
 	else
 		echo "=== identified maze feedback webcheck: skipped, no build-info.json ==="
 		skips=$((skips + 1))

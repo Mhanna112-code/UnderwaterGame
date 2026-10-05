@@ -1,5 +1,27 @@
 # Remaining campaign plan: current main audit, October 5
 
+## Latest unpublished batch checkpoint — cb607cf
+
+Origin main remains2456b28; this checkout has not pushed the current batch.
+The final candidate runtime is cb607cf, actual served PCK
+`10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031`
+(94,990,924bytes), on an unpromoted deployment. Canonical is unchanged.
+Current hosted success acceptance completed15 actual fight actions, responsive
+exclusive ending, actual Title exit, destroyed-page latest pre-boss Load and
+unchanged manual/autosave bytes. Granted legal level5 fixture: not earned
+balance. The denied-storage profile timed out taking a screenshot at boot,
+before testing persistence; its failure is retained and a fresh run is pending.
+
+GOAL-8 additionally failed after earned first-L-close because its fixed-height
+caption overlapped the newly wrapped party HUD. cb607cf uses actual wrapped
+text height; native first-map-close red1 -> green0, all40 generated cases and
+actual reading owners pass at desktop/short/narrow sizes. Final Metal narrow
+rendering was inspected. Actual Inventory now has readable title/tabs/body
+without retained health painting above them. However the exact final local
+browser reports WrongDocumentError during the aiming segment, so acceptance
+and publication remain blocked pending a traced request/focus investigation.
+This is not a full-suite, earned-route or full-campaign readiness claim.
+
 ## Latest instruction and local follow-up (supersedes ending contract below)
 
 Miguel explicitly chose **Preserve Marc's pre-boss-only ending** on October 5.

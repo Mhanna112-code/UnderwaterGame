@@ -56,8 +56,9 @@ earned-route/full-campaign limits.
 
 These controls describe the current main source. Older hosted feedback exports
 can still use the previous E ability binding; check their `build-info.json`.
-Swap, Grapple and Shockwave use no Oxygen during exploration. Sonar and
-combat spells retain their separate costs. Special minigames retain the E
+Swap and Grapple use no Oxygen during exploration. Shockwave currently needs
+12 Oxygen; Sonar costs 1 Oxygen every 6 seconds while active. Combat spells
+retain their separate costs. Special minigames retain the E
 controls shown by their own instructions.
 
 ### Combat and tutorials
@@ -73,15 +74,19 @@ At a cold launch, a first-time player sees one primary **New Game** action. If
 a valid save exists, **Load Game** appears as a secondary action and opens the
 three-slot picker, with separate manual and autosave choices. A normal new run
 plays the opening movie and credited title handoff, then allows quiet swimming
-before the initial Angler encounter. The current opening still introduces
-Cordys and a scripted defeat, followed by a durable recovery checkpoint.
+before the current Cordys opening fight and scripted defeat, followed by a
+durable recovery checkpoint. The earlier retained-Angler requirement is not
+met by this upstream opening; it remains explicitly tracked in the plan.
 Replacing that opening with Tethys and relocating Cordys's introduction are
 deferred until all other work is finished and require Miguel's explicit review
 and approval before main/canonical publication.
 
-After recovery, the light-beam combat training is optional. It explains turn
-order, Accuracy/Evasion, Defense, statuses, move trade-offs, dodging and growth;
-it is not a compulsory gate before ordinary exploration.
+After recovery, the current upstream build directs the player to the light-beam
+combat tutorial before ordinary exploration. It explains turn order,
+Accuracy/Evasion, Defense, statuses, move trade-offs, dodging and growth.
+The lesson itself offers a **Skip Tutorial** button.
+This restored forced onboarding differs from the earlier optional-training
+build; full current-flow playtesting remains tracked in the completion plan.
 
 During ordinary exploration:
 
@@ -107,10 +112,11 @@ During ordinary exploration:
 - The maze remains an independent branch: lab victory is not an access lock.
   Earn its navigation map from the Control Room chest; goal text follows
   acquired map/relic and completed laboratory milestones.
-- Actual maze Cordys victory completes the journey. The exclusive ending
-  confirms the selected checkpoint; a failed durable save offers Retry and
-  prevents title exit until confirmed. Cold Load restores the completed ending
-  without replaying the boss or duplicating rewards.
+- Actual maze Cordys victory shows the exclusive ending, with **Restart from
+  Auto Save** and **Return to Title**. As requested, the game does not save
+  completion: a confirmed autosave restores the party before Cordys. If saving
+  fails, the ending warns that Restart is available only in that session.
+  Closing the game may lose that unsaved checkpoint; Title remains available.
 
 The Tethys boss and direct guardian/special-encounter routes remain explicit
 review surfaces rather than shortcuts in an ordinary new game. They can be

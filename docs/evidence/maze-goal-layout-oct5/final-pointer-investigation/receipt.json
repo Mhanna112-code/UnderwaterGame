@@ -1,0 +1,14 @@
+{
+  "source_commit": "cb607cf7b27ccca844d643ba5b74e2dca1e1f385",
+  "downloads": [
+    {
+      "bytes": 94990924,
+      "sha256": "10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031",
+      "endpoint": "http://127.0.0.1:57943/index.pck"
+    }
+  ],
+  "findings": [
+    "goal-aim-owner|WrongDocumentError: The root document of this element is not valid for pointer lock."
+  ],
+  "scope": "served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection, actual swimming/E map acquisition, earned L controls and next destination at three widths, actual Inventory/aim/cancel reading ownership; no New Game full campaign or durability claim"
+}

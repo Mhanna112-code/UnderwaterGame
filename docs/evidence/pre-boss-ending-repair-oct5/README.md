@@ -1,5 +1,26 @@
 # Pre-boss-only ending repair — October 5
 
+## Final cb607cf hosted ending acceptance
+
+Runtime cb607cf after latest main2456b28 intake, actual served pack
+10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031,
+94,990,924bytes, on the unpromoted1lugjcqye deployment:
+
+- browser-final-success:15 actual fight actions, terminal0, no findings;
+  actual Title exit/destroyed page/latest Load conserve exact pre-boss and
+  manual bytes. Inspected360px ending and restored boss-confirmation views.
+- browser-final-denied:14 actual actions, terminal0, no findings; actual IDB
+  fault witnessed, clear session-only warning at desktop/720/360, actual
+  Restart returns to the playable unfinished maze and leaves manual bytes
+  unchanged with no unconfirmed persistent autosave.
+- browser-final-denied-boot-failure: retained first attempt's screenshot
+  timeout on Godot splash. It never reached persistence; it is not a product
+  save failure or a passing receipt. Rerun only after terminal failure.
+
+These are separate fresh-profile legal-kit ending checks, NOT earned campaign
+or balance proof. No completed-game save was written. Publication awaits the
+separate real-browser maze mouse-capture check; canonical is not yet changed.
+
 Miguel explicitly chose to preserve Marc's pre-boss-only ending. Final victory
 must show completion, but not save a completed campaign. Restart returns to
 the checkpoint before Cordys; Title stays available. Opening replacement and

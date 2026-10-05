@@ -69,6 +69,31 @@ remain in the subsequent balance batch.
 
 ## Skipped
 
+Browser investigation (cb607 export): all maze reading-owner checks completed,
+but Chromium reported WrongDocumentError during the grapple segment. The error
+remains a failing finding. The observer now traces the unmodified platform
+request's document/focus/attachment state and brings its tab to the foreground
+before actual F input. This is an investigation, not yet a production fix or a
+claim of benign teardown. A green rerun alone cannot prove focus was causal:
+inspect the before/after focus and request/error timing receipts first.
+
+The traced same-pack hosted rerun still fails while document.hasFocus is true
+before and after bringToFront; its real canvas is attached and owns the document.
+A separate actual-click canvas probe with Chromium151.0.7922.34 rejects in
+headless mode with the identical error and locks successfully in headed mode.
+This agrees with the [Playwright upstream report](https://github.com/microsoft/playwright/issues/20956)
+about native Mac view focus. Retain both red receipts. The actual game headed
+observer now additionally requires document.pointerLockElement to be its canvas;
+it must pass separately before treating game aim as accepted. No rejected promise
+is caught/hidden and no lock success is fabricated.
+
+First headed game rerun also fails its real lock assertion when the diagnostic
+entrance is driven only by keys (no normal first gameplay click). This result
+is retained as headed-key-only-receipt.json; switching launch mode alone is not
+a fix. Next use the real first-click gameplay capture before F, as normal
+players do, and continue requiring real canvas lock/no page errors. No game
+code or engine pointer-lock adapter is modified by this diagnostic.
+
 Final opening swap/Cordys film is review-gated. No final narration rewrite,
 new dialogue tutorial, boss/key/geometry tuning, compulsory laboratory lock,
 new map spoiler, or audio change. Browser/layout and actual lab-result checks
