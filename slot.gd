@@ -33,15 +33,15 @@ var maxilaniSwapBody := "Press %s while Maxilani is the active diver to choose a
 var maxilaniSonarTitle := "Maxilani: Sonar"
 var maxilaniSonarBody := "Maxilani has a built in sonar she can use to find hidden things in the world, which appear as red circles in the minimap on the top-right of the screen. Toggle Sonar On/Off with %s to consume 3 oxygen after every 3 seconds; anything hidden near you is revealed on the minimap as you swim around.
 
-%s  [b]Small red circles[/b] mark hidden items - some are under rocks you can break, others are held by enemies you fight by swimming close. Random Encounters must be turned on (%s) for these item fights to trigger.
+%s  [b]Small red circles[/b] mark hidden items, often under rocks you can break to gain them.
 
-%s  [b]Larger red circles with a light outline[/b] mark special encounters - one-diver challenges like the combat tutorial that award key items and stat boosts." % [_badge("Q"), SMALL_MARKER, _badge("R"), SPECIAL_MARKER]
+%s  [b]Large red circles[/b] mark item encounters. These are either special encounters where you use one diver's ability to play minigames against the enemy or regular random encounters where you gain items by defeating the enemy. Random encounters must be turned on to trigger these item fights." % [_badge("Q"), SMALL_MARKER, SPECIAL_MARKER]
 
 var musashiAbilityTitle := "Musashi: Grapple"
 var musashiGrappleBody:= "Press %s while Musashi is active to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. An anchor pulls Musashi toward it; a floating light item reels toward Musashi instead. Grapple uses no Oxygen, and a miss can be retried immediately." % _badge("F")
 
 var buckyAbilityTitle := "Bucky: Shockwave"
-var buckyShockwaveBody:= "Press %s while Bucky is active to send out a shockwave that breaks nearby brown objects (rocks, doors, etc.). Broken objects may reveal items. Shockwave has a short cooldown but uses no Oxygen." % _badge("F")
+var buckyShockwaveBody:= "Press %s while Bucky is active to send out a shockwave that breaks nearby brown objects (rocks, doors, etc.). Broken objects may reveal items. Shockwave has a short cooldown and costs 20 Oxygen." % _badge("F")
 
 
 # One per diver, laid out in a row by World._build_diver_slots() - purely a

@@ -93,7 +93,9 @@ func _ability_controls(owner: Node, is_world: bool) -> void:
 		_check(owner.active == selected, "CTL-1: actual Tab selects %s diver %d" % [area, selected])
 		for i in roster.size():
 			roster[i].global_position = Vector3(2000 + selected * 40 + i * 4, 2, 2000)
-			roster[i].stats.oxygen = 0.0
+			# Grapple/Swap stay free at zero Oxygen; Shockwave now costs
+			# Diver.SHOCKWAVE_OXYGEN_COST, so give Bucky enough for two uses.
+			roster[i].stats.oxygen = Diver.SHOCKWAVE_OXYGEN_COST * 2.0 if roster[i].ability_id == "shockwave" else 0.0
 		var diver := roster[selected] as Diver
 		var start := diver.global_position
 		var before := probe.hits
@@ -150,8 +152,8 @@ func _ability_controls(owner: Node, is_world: bool) -> void:
 				_check(diver.global_position.distance_to(start) > 4.0 and not diver.is_grappling() and diver.stats.oxygen == 0,
 					"CTL-1: %s anchor completes actual traversal without Oxygen" % area)
 			"shockwave":
-				_check(probe.hits == before + 1 and diver.stats.oxygen == 0,
-					"CTL-1: %s F delivers one real Shockwave at zero Oxygen" % area)
+				_check(probe.hits == before + 1 and is_equal_approx(diver.stats.oxygen, Diver.SHOCKWAVE_OXYGEN_COST),
+					"CTL-1: %s F delivers one real Shockwave and spends its Oxygen" % area)
 				await _tap(KEY_F)
 				_check(probe.hits == before + 1, "CTL-1: %s Shockwave cooldown prevents repeated F" % area)
 		anchor.queue_free()

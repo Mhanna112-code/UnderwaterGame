@@ -95,24 +95,21 @@ func _run() -> void:
 		return
 	var screen := screens[0] as CanvasLayer
 	if denied_staging:
-		_expect(FileAccess.get_file_as_bytes(path) == initial_bytes and world._current_slot == SLOT,
-			"END-2 denied completion write destroyed previous bytes or selected slot")
-		_expect(screen.retry_button.visible and screen.title_button.disabled and "could not be saved" in screen.status.text,
-			"END-2 denied write falsely promises saved exit or offers no retry")
-		await _capture("denied")
-		_expect(DirAccess.remove_absolute(path + ".pending") == OK, "END-2 cannot release owned denied staging")
+		DirAccess.remove_absolute(path + ".pending")
 		denied_staging = false
-		screen.retry_button.pressed.emit()
-		for frame in 12:
-			await process_frame
-		_expect(not screen.title_button.disabled and not screen.retry_button.visible,
-			"END-2 actual Retry cannot durably save the completed live party")
-	var saved := SaveManager.read_slot(SLOT)
-	_expect(saved.get("route_state", {}).get("octopus_state", "") == "defeated", "END-1 victory did not durably record completion")
-	_expect(saved.get("campaign_checkpoint", {}).get("maze", {}).get("boss_triggers", []).has("main_boss") == false,
-		"END-1 ending checkpoint retains the live boss station")
+	# Requested contract: the ending writes no completion save; it offers the
+	# autosave taken the moment the Cordys fight was confirmed.
+	_expect(not screen.restart_button.disabled and "autosaved right before" in screen.status.text,
+		"END-1 ending offers no Restart from Auto Save")
+	var auto := SaveManager.read_autosave(SLOT)
+	_expect(not auto.is_empty() and auto.get("route_state", {}).get("octopus_state", "") != "defeated",
+		"END-1 pre-boss autosave missing or already records the win")
+	_expect(auto.get("campaign_checkpoint", {}).get("maze", {}).get("boss_triggers", []).has("main_boss"),
+		"END-1 pre-boss autosave lost the Cordys station")
+	_expect(SaveManager.read_slot(SLOT).get("route_state", {}).get("octopus_state", "") != "defeated",
+		"END-1 ending still wrote a completion save")
 	_expect(world.route_state.tethys_state == "locked" and maze._boss_triggers.has("secret_boss"), "END-1 victory incorrectly completed lab or puppets")
-	print("CAMPAIGN ENDING|actions=", actions, "|outcomes=", outcomes, "|visible_screens=", screens.size(), "|durable=", saved.get("route_state", {}).get("octopus_state", ""))
+	print("CAMPAIGN ENDING|actions=", actions, "|outcomes=", outcomes, "|visible_screens=", screens.size(), "|pre_boss_autosave=", not auto.is_empty())
 	# END-4: actual held movement/selection/menu keys cannot change the frozen party.
 	var positions := world.divers.map(func(d: Diver) -> Vector3: return d.global_position)
 	var active_before := world.active
@@ -138,31 +135,18 @@ func _run() -> void:
 		_expect(bounds.position.x >= 0 and bounds.end.x <= width and bounds.end.y <= 720,
 			"END-4 title choice clips viewport width " + str(width))
 		await _capture("saved-%d" % width)
-	# END-3: actual title button destroys World; chosen-slot Load must conserve
-	# the exact earned state and show completion without writing/rewarding again.
-	var completed_bytes := FileAccess.get_file_as_bytes(path)
-	screen.title_button.pressed.emit()
-	for frame in 16:
+	# END-3: Restart from Auto Save reloads the scene and resumes right before
+	# the Cordys fight - station back, not defeated, exploration running.
+	screen.restart_button.pressed.emit()
+	for frame in 30:
 		await process_frame
 	world = current_scene as World
-	_expect(world != null and world.title_screen.visible and paused, "END-3 Return to Title failed actual scene boundary")
-	world.title_screen.load_game_chosen.emit(SLOT)
-	for frame in 16:
-		await process_frame
-	maze = world.embedded_maze
-	screens = get_nodes_in_group("campaign_completion")
-	_expect(screens.size() == 1 and paused and not world.title_screen.visible,
-		"END-3 cold Title Load resumes gameplay instead of showing saved ending")
-	_expect(not maze._boss_triggers.has("main_boss") and not maze._battling
-		and world.route_state.prologue_complete and world.route_state.octopus_state == "defeated",
-		"END-3 cold Load resurrects boss or rewinds opening")
-	_expect(FileAccess.get_file_as_bytes(path) == completed_bytes, "END-3 loading ending rewrites checkpoint or duplicates rewards")
-	for index in 3:
-		var stats := world.divers[index].stats as CombatantStats
-		var expected: Dictionary = saved.campaign_checkpoint.party[index].stats
-		_expect(stats.hp == expected.hp and stats.xp == expected.xp and stats.level == expected.level
-			and is_equal_approx(stats.oxygen, expected.oxygen), "END-3 Load refills or duplicates party resources/XP")
-	print("CAMPAIGN ENDING|denied_retry=", "--denied" in OS.get_cmdline_user_args(), "|held_input=true|widths=1280,720,360|Title_Load=true|rewards_conserved=true")
+	_expect(world != null and not world.title_screen.visible and not paused, "END-3 restart did not resume gameplay")
+	maze = world.embedded_maze if world != null else null
+	_expect(maze != null and maze.maze_active and maze._boss_triggers.has("main_boss")
+		and world.route_state.octopus_state != "defeated",
+		"END-3 restart did not return to just before the Cordys fight")
+	_expect(get_nodes_in_group("campaign_completion").is_empty(), "END-3 restart left the ending screen up")
 	await _capture("loaded")
 	await _finish()
 
@@ -221,7 +205,7 @@ func _finish() -> void:
 	if owns_slot:
 		if denied_staging:
 			DirAccess.remove_absolute(SaveManager.slot_path(SLOT) + ".pending")
-		for path in [SaveManager.slot_path(SLOT), SaveManager.slot_path(SLOT) + ".pending"]:
+		for path in [SaveManager.slot_path(SLOT), SaveManager.slot_path(SLOT) + ".pending", SaveManager.autosave_path(SLOT)]:
 			if FileAccess.file_exists(path):
 				DirAccess.remove_absolute(path)
 	for finding in findings:

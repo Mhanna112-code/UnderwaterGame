@@ -26,9 +26,24 @@ func _run() -> void:
 	await _finish(world)
 
 func _test_combat_help_surface(world: World) -> void:
+	# Unlock-gated actions: hidden until earned, then offered.
+	world.special_encounter_left = false
+	world.ability_popups_seen = false
 	world.inventory_menu.open()
 	world.inventory_menu.call("_switch_to", "help")
 	await process_frame
+	_expect(_button_named(world.inventory_menu, "Replay Special Encounter Tutorial") == null,
+		"MENU-HELP-2: special-encounter replay offered before leaving a special encounter")
+	_expect(_button_named(world.inventory_menu, "Character Abilities") == null,
+		"MENU-HELP-2: Character Abilities offered before the popups were seen")
+	world.inventory_menu.close()
+	world.special_encounter_left = true
+	world.ability_popups_seen = true
+	world.inventory_menu.open()
+	world.inventory_menu.call("_switch_to", "help")
+	await process_frame
+	_expect(_button_named(world.inventory_menu, "Character Abilities") != null,
+		"MENU-HELP-2: Character Abilities missing after the popups were seen")
 	var scroll := world.inventory_menu.find_child("ContentScroll", true, false) as ScrollContainer
 	_expect(scroll != null and scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED,
 		"MENU-HELP-2: Combat Help has no scrollable reading surface")
