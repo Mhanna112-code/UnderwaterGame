@@ -94,6 +94,7 @@ prepare_godot_classes() {
 }
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
+run "Marc pause port: do all four tabs fit and block exploration without losing audio/training" "$GODOT" --headless --path . --script verify/marc_pause_presentation.gd
 
 run "opening migration: do all durable milestones normalize interrupted phases" "$GODOT" --headless --path . --script verify/opening_prologue_state.gd
 run "opening video: are production and lab policies independent" "$GODOT" --headless --path . --script verify/opening_video.gd

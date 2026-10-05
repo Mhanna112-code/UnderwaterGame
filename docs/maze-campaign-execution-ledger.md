@@ -2,6 +2,16 @@
 
 ## Current authoritative status
 
+Newest intake (October 4): PR97 ebcb22e / PR99 d5134bf are frozen in
+`marc-oct4-integration-intake.md`. The Wall11EndCap underpass supersedes the
+earlier Wall27 draft; two dome levers are removed upstream. Shared pause-menu
+style is adapted locally, retaining Audio and training. Red baseline caught
+narrow overflow; native inspection caught foreground exploration bars over the
+menu. Both repaired. Twelve viewport shapes, sixteen native tab captures and
+the real menu/spell/title regression pass. Evidence directory:
+`/Volumes/Totallynotaharddrive/underwater-marc-pause.zxKiXs`.
+This is NOT a new deployed build or acceptance of the remaining maze changes.
+
 October 4 character-delivery artifact: b0bee59 now serves the existing stable
 feedback alias, not main/public. PCK 93,209,800 bytes / SHA256
 de249eed5c6a1db0074c608c23738df1159b59b27034d2184ae10ffd0b014132.

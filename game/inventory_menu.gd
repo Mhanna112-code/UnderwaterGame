@@ -48,6 +48,10 @@ var _items_tab: Button
 var _spells_tab: Button
 var _help_tab: Button
 var _audio_tab: Button
+var _content: VBoxContainer
+var _scroll: ScrollContainer
+var _shade: TextureRect
+var _header_rule: ColorRect
 
 func _ready() -> void:
 	visible = false
@@ -56,15 +60,33 @@ func _ready() -> void:
 	# every browser size; anchor-only sizing can leave a zero-width hit/backdrop
 	# rectangle even though descendants happen to draw outside it.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var bg := ColorRect.new()
 	bg.name = "Backdrop"
-	bg.color = Color(0.02, 0.05, 0.08, 0.92)
+	bg.color = Color(0.0, 0.02, 0.04, 0.72)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	# Marc's dimmed world and left-to-right shade, kept within the viewport.
+	_shade = TextureRect.new()
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.01, 0.04, 0.07, 0.9))
+	grad.set_color(1, Color(0.01, 0.04, 0.07, 0.0))
+	grad.add_point(0.45, Color(0.01, 0.04, 0.07, 0.75))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill_from = Vector2.ZERO
+	tex.fill_to = Vector2.RIGHT
+	_shade.texture = tex
+	_shade.stretch_mode = TextureRect.STRETCH_SCALE
+	_shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_shade.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_shade)
 
 	var root := VBoxContainer.new()
+	_content = root
 	root.name = "MenuContent"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# MODIFIED (changed): offset_top was 50 - the world HUD's own diver-name/
@@ -73,19 +95,34 @@ func _ready() -> void:
 	# SavePointMenu uses the same offsets so both menu surfaces line up.
 	root.offset_left = 12.0
 	root.offset_top = 75.0
-	root.offset_right = -50.0
-	root.offset_bottom = -50.0
+	root.offset_right = -12.0
+	root.offset_bottom = -12.0
 	root.add_theme_constant_override("separation", 18)
 	add_child(root)
 
+	var header := VBoxContainer.new()
+	header.add_theme_constant_override("separation", 0)
+	root.add_child(header)
+	var paused := Label.new()
+	paused.text = "PAUSED  ·  Esc to resume"
+	paused.add_theme_font_size_override("font_size", 14)
+	paused.add_theme_color_override("font_color", Color(0.55, 0.8, 0.95))
+	header.add_child(paused)
 	var title := Label.new()
 	title.text = "Inventory"
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
-	root.add_child(title)
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_color", Color(0.92, 0.98, 1.0))
+	header.add_child(title)
+	_header_rule = ColorRect.new()
+	_header_rule.color = Color(0.45, 0.75, 0.95, 0.6)
+	_header_rule.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	header.add_child(_header_rule)
 
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 10)
+	# Four campaign tabs, not Marc's three-tab baseline. Wrap rather than
+	# dropping Audio or extending hit targets beyond a narrow browser screen.
+	var tabs := HFlowContainer.new()
+	tabs.add_theme_constant_override("h_separation", 10)
+	tabs.add_theme_constant_override("v_separation", 8)
 	root.add_child(tabs)
 	_items_tab = Button.new()
 	_items_tab.text = "Items"
@@ -108,11 +145,13 @@ func _ready() -> void:
 	_audio_tab.toggle_mode = true
 	_audio_tab.pressed.connect(_switch_to.bind("audio"))
 	tabs.add_child(_audio_tab)
+	for tab in [_items_tab, _spells_tab, _help_tab, _audio_tab]:
+		_style_tab(tab)
 
 	_hint = Label.new()
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hint.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
+	_hint.add_theme_color_override("font_color", Color(0.72, 0.82, 0.88))
 	root.add_child(_hint)
 
 	# ScrollContainer, not _list added straight to root - Combat Help's own
@@ -124,6 +163,7 @@ func _ready() -> void:
 	# scroll within, rather than just growing to fit its content like any
 	# other container would.
 	var scroll := ScrollContainer.new()
+	_scroll = scroll
 	scroll.name = "ContentScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# A floor, not the actual size - size_flags_vertical above still lets it
@@ -144,8 +184,50 @@ func _ready() -> void:
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 6)
 	scroll.add_child(_list)
+	resized.connect(_sync_layout)
+	_sync_layout()
+
+func _sync_layout() -> void:
+	if not is_instance_valid(_content):
+		return
+	_content.offset_top = 20.0 if size.y < 600.0 else 75.0
+	_content.add_theme_constant_override("separation", 10 if size.y < 600.0 else 18)
+	_scroll.custom_minimum_size = Vector2(0, clampf(size.y * 0.27, 100.0, 240.0))
+	_shade.offset_right = minf(760.0, size.x)
+	_header_rule.custom_minimum_size = Vector2(minf(320.0, maxf(0.0, size.x - 24.0)), 2.0)
+
+# Marc's selected cyan tile; all four tabs share the same accessible states.
+func _style_tab(tab: Button) -> void:
+	tab.add_theme_font_size_override("font_size", 17)
+	var states := {
+		"normal": [Color(0.1, 0.17, 0.22, 0.95), Color(0.3, 0.45, 0.55)],
+		"hover": [Color(0.16, 0.26, 0.33, 0.95), Color(0.55, 0.8, 0.95)],
+		"pressed": [Color(0.45, 0.78, 0.95), Color(0.75, 0.92, 1.0)],
+		"hover_pressed": [Color(0.55, 0.85, 1.0), Color(0.85, 0.96, 1.0)],
+		"focus": [Color(0, 0, 0, 0), Color(0.75, 0.92, 1.0)],
+	}
+	for state in states:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = states[state][0]
+		sb.border_color = states[state][1]
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(5)
+		sb.content_margin_left = 14
+		sb.content_margin_right = 14
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		sb.draw_center = state != "focus"
+		tab.add_theme_stylebox_override(state, sb)
+	tab.add_theme_color_override("font_color", Color(0.85, 0.93, 1.0))
+	tab.add_theme_color_override("font_hover_color", Color.WHITE)
+	tab.add_theme_color_override("font_pressed_color", Color(0.02, 0.07, 0.1))
+	tab.add_theme_color_override("font_hover_pressed_color", Color(0.02, 0.07, 0.1))
 
 func open() -> void:
+	# World creates its HP/O2 bars after this menu. Paint the modal over those
+	# siblings as well, not just over the 3D world; otherwise bars cover Help
+	# text and Audio controls even when all rectangles pass layout checks.
+	move_to_front()
 	visible = true
 	_switch_to("items")
 
@@ -228,7 +310,7 @@ func _add_audio_channel(
 	slider.max_value = 100.0
 	slider.step = 1.0
 	slider.value = clampf(volume, 0.0, 1.0) * 100.0
-	slider.custom_minimum_size = Vector2(340.0, 36.0)
+	slider.custom_minimum_size = Vector2(120.0, 36.0)
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slider.tooltip_text = "%s level" % label_text
 	row.add_child(slider)
@@ -301,7 +383,7 @@ func _refresh_items() -> void:
 		btn.text = String(def.get("display", item_id))
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.tooltip_text = String(def.get("description", ""))
-		btn.custom_minimum_size = Vector2(340, 40)
+		btn.custom_minimum_size = Vector2(0, 40)
 		# MODIFIED (fixed): the count tile is correctly anchored inside this
 		# button's own rect (8px in from its true right edge), but Godot's
 		# default Button theme has no visible background in its normal
@@ -410,7 +492,7 @@ func _refresh_spells_root() -> void:
 				"" if cost <= 0.0 else " (%d O2)" % int(cost),
 			]
 			btn.tooltip_text = String(spell.get("description", spell.get("hint", "")))
-			btn.custom_minimum_size = Vector2(340, 40)
+			btn.custom_minimum_size = Vector2(0, 40)
 			btn.disabled = not world.can_afford_party_spell(spell, d as Diver)
 			btn.pressed.connect(_on_spell_chosen.bind(spell, d as Diver))
 			_list.add_child(btn)
@@ -443,7 +525,7 @@ func _refresh_spells_target() -> void:
 	_hint.text = "Choose who this lands on."
 	var back := Button.new()
 	back.text = "< Back"
-	back.custom_minimum_size = Vector2(340, 36)
+	back.custom_minimum_size = Vector2(0, 36)
 	back.pressed.connect(_switch_to.bind("spells_root"))
 	_list.add_child(back)
 
@@ -452,7 +534,7 @@ func _refresh_spells_target() -> void:
 		var s := diver.stats
 		var btn := Button.new()
 		btn.text = "%s (%d / %d HP)" % [world._display_name(diver.model_name), s.hp, s.hp_max]
-		btn.custom_minimum_size = Vector2(340, 40)
+		btn.custom_minimum_size = Vector2(0, 40)
 		btn.pressed.connect(_on_target_chosen.bind(diver))
 		_list.add_child(btn)
 
@@ -471,19 +553,19 @@ func _refresh_help() -> void:
 	if world != null and world.has_method("_replay_tutorial_battle"):
 		var replay_btn := Button.new()
 		replay_btn.text = "Replay Tutorial Fight"
-		replay_btn.custom_minimum_size = Vector2(340, 40)
+		replay_btn.custom_minimum_size = Vector2(0, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
 	if world != null and world.has_method("_replay_special_encounter_tutorial"):
 		var replay_special_btn := Button.new()
 		replay_special_btn.text = "Replay Special Encounter Tutorial"
-		replay_special_btn.custom_minimum_size = Vector2(340, 40)
+		replay_special_btn.custom_minimum_size = Vector2(0, 40)
 		replay_special_btn.pressed.connect(_on_replay_special_encounter_tutorial_pressed)
 		_list.add_child(replay_special_btn)
 	if world != null and world.get("tutorial_book") != null:
 		var replay_guide_btn := Button.new()
 		replay_guide_btn.text = "Reopen Tutorial Guide"
-		replay_guide_btn.custom_minimum_size = Vector2(340, 40)
+		replay_guide_btn.custom_minimum_size = Vector2(0, 40)
 		replay_guide_btn.pressed.connect(_on_replay_tutorial_guide_pressed)
 		_list.add_child(replay_guide_btn)
 	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
