@@ -832,6 +832,13 @@ func _toggle_random_encounters() -> void:
 	random_encounters_enabled = not random_encounters_enabled
 	if world != null:
 		world.random_encounters_enabled = random_encounters_enabled
+	# Turned back on while already standing in a special/item spot: it goes
+	# off now, rather than only once you've swum out and back in.
+	if random_encounters_enabled and _diver != null:
+		for spot in _special_spots:
+			if is_instance_valid(spot) and spot.overlaps_body(_diver):
+				_on_special_triggered.call_deferred(spot.item_id, spot)
+				break
 	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
 
 # kind: "strong" (the strong-enemy room's random encounters), "secret_boss"
@@ -6128,6 +6135,10 @@ func _update_special_reveal() -> void:
 
 func _on_special_triggered(_item_id: String, guardian: MazeItemGuardian) -> void:
 	if _battling or any_modal_open() or not bool(guardian.get_meta("revealed", false)):
+		return
+	# Like the open world's guarded/special sites: only while random
+	# encounters are on (R).
+	if not random_encounters_enabled or (world != null and not maze_active):
 		return
 	_special_spot = guardian
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
