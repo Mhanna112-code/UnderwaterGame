@@ -207,6 +207,10 @@ func _goal_ownership() -> void:
 	await _key(KEY_L)
 	_expect(not map.main_map.visible and goal.is_visible_in_tree() and not controls.visible,
 		"GOAL-4 closing overview loses goal or restores generic controls")
+	for row in world._party_bars_box.get_children():
+		if row is Control and row.is_visible_in_tree():
+			_expect(not goal.get_global_rect().intersects(row.get_global_rect()),
+				"GOAL-8 first earned-map close overlaps side party labels")
 	await _key(KEY_TAB)
 	_expect(maze._diver.ability_id == "grapple", "GOAL-4 actual Tab did not select grapple diver")
 	# Switching divers legitimately owns the caption with 'Now playing'. Let

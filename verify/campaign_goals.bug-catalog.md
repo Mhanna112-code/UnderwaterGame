@@ -49,6 +49,14 @@ assertion. Changing the layout without hiding destinations or moving painted
 content over them should pass. Earned-map browser screenshots are required
 separately; this fixture matrix does not establish route balance.
 
+The dbfd4cb earned-map browser additionally exposes GOAL-8 after the longer
+Random Encounters text and earned L line wrap: the destination's fixed92px
+allocation starts in the last party label. Extend the native oracle through
+the actual first-L-close transition, not only the early restored-state frame.
+Use actual font/text height to reserve enough readable caption space without
+unnecessarily occupying blank rows. The browser red360 picture is retained;
+do not weaken its complete hallway/relic/Cordys semantic assertion.
+
 GOAL-1 semantic words/destinations, not exact punctuation. Wrong-but-stable E/F
 or find-lab text after clearance fails. Concrete input product gives independent
 oracles: cleared Deep points to maze ramp; uncleared Deep keeps laboratory and

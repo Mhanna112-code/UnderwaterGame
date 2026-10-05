@@ -2973,6 +2973,10 @@ func _layout_destination_label(goal: Label) -> void:
 		var left := party_bounds.end.x + 12.0
 		if bounds.intersects(party_bounds) and viewport_size.x - left - 16.0 >= 300.0:
 			goal.offset_left = left
+	# Do not reserve an arbitrary92px block on narrow screens. Earned L and
+	# longer controls can push the last party label into that blank space.
+	# Label's wrapped minimum follows its actual font/text and chosen width.
+	goal.offset_top = bottom - maxf(24.0, goal.get_minimum_size().y)
 
 # Legacy saves retain this flag, but it no longer controls a route or input.
 var _path_opened := false
