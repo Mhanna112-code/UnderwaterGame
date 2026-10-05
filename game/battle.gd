@@ -2874,7 +2874,12 @@ func _process(_delta: float) -> void:
 	# ("X's turn.") stays hidden - it's not that turn yet until Enter is
 	# pressed. Captions that are just instructions keep it showing under them.
 	if is_instance_valid(log_label):
-		log_label.visible = not (_caption_awaits_enter(_tutorial_caption) or _caption_awaits_enter(_levelup_caption))
+		var show_log := not (_caption_awaits_enter(_tutorial_caption) or _caption_awaits_enter(_levelup_caption))
+		if log_label.visible != show_log:
+			log_label.visible = show_log
+			# A line more or less in the panel: refit it, or the bottom row
+			# (e.g. the enemy to click) gets pushed off the screen.
+			call_deferred("_fit_panel_height")
 	if not is_instance_valid(_turn_cursor) or not _turn_cursor.visible:
 		return
 	if not is_instance_valid(_turn_cursor_target):
@@ -3891,34 +3896,6 @@ func _explain_other_stats() -> void:
 	var text := "Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. %s" % TutorialContent.page_body("Every Other Stat")
 	await _tutorial_show_step(
 		text,
-		func() -> void:
-			if player_card != null:
-				_set_row_highlight(player_card, true, Color(0.65, 0.3, 0.9))
-			if enemy_card != null:
-				_set_row_highlight(enemy_card, true, Color(0.65, 0.3, 0.9))
-	)
-	if player_card != null:
-		_set_row_highlight(player_card, false)
-	if enemy_card != null:
-		_set_row_highlight(enemy_card, false)
-	await _explain_status_effects(player_card, enemy_card)
-
-# The page right after the HP/oxygen one: the same status cards boxed in
-# purple, now about the line under the bars - EVA and any status effects -
-# one short line each (the full rules stay in Combat Help, so the caption
-# doesn't crowd the fight off the screen).
-const STATUS_EFFECTS_PAGE := [
-	"Under the bars is a status line. [b]EVA[/b] is the dodge pool: left now / full - an attack whose Accuracy is no higher than what's left is dodged and uses it up, and it refills each turn. Status effects show beside it:",
-	"[b]Bleed 4[/b] - takes 4 damage at the end of each of its turns for the rest of the fight; every hit while bleeding adds 1 more.",
-	"[b]Poison 2 (3 turns left)[/b] - takes 2 damage at the end of each turn until it wears off.",
-	"[b]Stun (2 turns left)[/b] - skips its turns until it wears off.",
-	"[b]Blindness 2[/b] - Agility, Accuracy and Defense are each 2 lower until it wears off.",
-	"Full details are in Combat Help in the Esc menu.",
-]
-
-func _explain_status_effects(player_card: PanelContainer, enemy_card: PanelContainer) -> void:
-	await _tutorial_show_step(
-		"\n".join(STATUS_EFFECTS_PAGE),
 		func() -> void:
 			if player_card != null:
 				_set_row_highlight(player_card, true, Color(0.65, 0.3, 0.9))
