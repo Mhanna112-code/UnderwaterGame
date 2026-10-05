@@ -56,19 +56,15 @@ func _case(selected: int, downed: bool, lab_first: bool) -> void:
 		SpellTree.learn_all_available(world.divers[i], world.key_items)
 	if downed:
 		world.divers[downed_index].stats.hp = 0
-	world.divers[selected].global_position = world.deep_zone_layout.route_points().maze_transition
+	world.divers[selected].global_position = Vector3(263, 2, 16)
 	for frame in range(16):
 		await physics_frame
-		if current_scene is MazeLevel:
+		if world.embedded_maze.maze_active:
 			break
-	if not current_scene is MazeLevel:
+	if current_scene != world or not world.embedded_maze.maze_active:
 		findings.append("INT-04 return setup: actual World entrance did not reach Maze")
 		return
-	var maze := current_scene as MazeLevel
-	var exit := maze.get_node_or_null("CampaignExit") as Node3D
-	if exit == null:
-		findings.append("INT-04: maze has no explicit normally reachable World return")
-		return
+	var maze := world.embedded_maze
 	maze.keys_held = 1
 	maze.key_items.assign(["vortex_key"])
 	var door := maze.get_node("MazeDoor16") as KeyDoor
@@ -81,13 +77,14 @@ func _case(selected: int, downed: bool, lab_first: bool) -> void:
 	for diver in maze.divers:
 		resources.append(diver.stats)
 		kit.append(diver.known_spells.duplicate())
-	maze.divers[selected].global_position = exit.global_position + Vector3.UP
-	await _key(KEY_E)
+	# Boundary placement isolates persisted state. Real bidirectional capsule
+	# traversal and key input are proved independently by embedded_maze.gd.
+	maze.divers[selected].global_position = Vector3(225, 2, 16)
 	for frame in range(16):
 		await physics_frame
-		if current_scene is World:
+		if current_scene == world and not maze.maze_active:
 			break
-	if not current_scene is World:
+	if current_scene != world or maze.maze_active:
 		findings.append("INT-04: E at the maze exit does not restore World")
 		return
 	var returned := current_scene as World
@@ -127,15 +124,15 @@ func _case(selected: int, downed: bool, lab_first: bool) -> void:
 		"INT-04: World checkpoint with maze history loads wrong scene/opening")
 	_expect(cold.route_state.tethys_state == ("defeated" if lab_first else "locked"),
 		"INT-04: World history Load changes independent lab state")
-	cold.divers[selected].global_position = cold.deep_zone_layout.route_points().maze_transition
+	cold.divers[selected].global_position = Vector3(263, 2, 16)
 	for frame in range(16):
 		await physics_frame
-		if current_scene is MazeLevel:
+		if cold.embedded_maze.maze_active:
 			break
-	if not current_scene is MazeLevel:
+	if current_scene != cold or not cold.embedded_maze.maze_active:
 		findings.append("INT-04: cold World continuation cannot re-enter Maze")
 		return
-	var reentered := current_scene as MazeLevel
+	var reentered := cold.embedded_maze
 	var reloaded_door := reentered.get_node("MazeDoor16") as KeyDoor
 	_expect(reloaded_door.is_open() and not reloaded_door.is_collision_blocking() and reentered.keys_held == 0,
 		"INT-04: saved World history forgets open door/spent key on re-entry")

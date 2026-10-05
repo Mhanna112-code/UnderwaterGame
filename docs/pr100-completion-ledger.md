@@ -14,7 +14,7 @@ Late changes need a separately recorded intake rather than silent scope expansio
 | Requirement | Current proof / remaining acceptance |
 |---|---|
 | Complete #97/#99 behavioral dispositions | Existing intake plus latest f698bee/4ec6598 deltas require final exhaustive reconciliation. |
-| Embedded World/maze, one party/camera/input/HUD | Pending implementation and actual traversal, inactive-area and state-conservation checks. Separate-scene compatibility is not completion. |
+| Embedded World/maze, one party/camera/input/HUD | October 5 batch embeds authored geometry and shares the same three live actors/inventory/session. Real bidirectional ramp movement, floor seams, one-step boundary movement, camera/HUD/Tab/R ownership and parked Sonar checks pass. 48 generated checkpoint cases, legacy cold Title Load and 12 World-return cases pass. Full embedded hazards/map/browser/campaign acceptance remains open. |
 | Latest underpass, outgoing/return drafts, barriers and riders | Pending latest geometry admission; sphere spacing/occlusion/vortex solidity already in 0561454. |
 | Earned Control Room map and exclusive chest | Carried in 6cc66c7 and reconciled through b916637: real pre-map acquisition/return, six chest capsule/input/pause cases (now including F), 72 regional L cases, disposable-slot cold/legacy Load and door-key/relic separation rerun clean. Earlier native frames inspected. Full embedded/browser acquisition/discoverability remains open; no dev grant. |
 | Discovery-only map and responsive first-open | Pending full earned-map/discovery admission and browser inspection. Existing map styling is not the whole requirement. |
@@ -29,7 +29,7 @@ Late changes need a separately recorded intake rather than silent scope expansio
 | Suggested lab/puzzle/maze goals with early maze allowed | Pending phase-specific guidance, no lab-victory maze lock, no new dialogue teaching. |
 | Cordys introduction at maze, real victory and durable completion | Pending relocated presentation, completion screen and victory/save/cold-load proof. |
 | Dropbox Mermaid variant | Pending import/rig/material/animation/framing inspection and justified encounter placement. |
-| Saves, resources, keys/doors/map/geometry/discoveries | Existing checkpoint framework preserved. October 5 frame boundary now translates legacy/framed spatial state together and replaces pending rewards; 144 generated cases and existing actual IO/cold Load/loss/return gates pass. Full embedded, interrupted and completed-save acceptance remains pending. Disposable slots only. |
+| Saves, resources, keys/doors/map/geometry/discoveries | Existing checkpoint framework preserved. October 5 frame boundary translates legacy/framed spatial state together and replaces pending rewards; 144 generated cases pass. Embedded batch adds 48 JSON cases, actual legacy Title Load, checkpoint write rejection and real Cordys loss/Restart. Updated 12 World save/re-entry cases pass. Full browser, interrupted and completed-save acceptance remains pending. Disposable slots only. |
 | Puppet waves / one reward / generic keys / fixed Cordys | Existing behavior retained. No new puppet-weakening or unique-key lock requirement. Full normal route still unproven. |
 | Full gates and ordinary earned-resource campaigns | Pending; repair obsolete tests honestly. Fixture boss wins are not normal progression proof. |
 | Browser durability, Chrome Bomb Bot, casual/skilled trials | Pending explicit reproduction and normal-route results with environment/policy details. |
@@ -47,4 +47,13 @@ restore carry explicit origin metadata. Missing metadata remains compatible
 with existing standalone saves. Real restore reds caught saved-frame placement,
 duplicate/retained rewards and untranslatable preflight. Repairs and preserved
 save/input/orb receipts are in docs/evidence/maze-coordinate-frame-oct5.
-This does not close the embedded-ownership row or authorize a release.
+The following embedded batch builds on that boundary; neither authorizes a release.
+
+October 5 lab-side ramp/shared ownership batch: the old shallow-puzzle portal
+and embedded Wall27 side excursion are removed from the normal campaign route.
+The solved shallow puzzle still opens Deep water. An actual floor ramp beyond
+the laboratory leads to the live maze and back with no scene replacement or
+lab-victory prerequisite. Standalone maze review/legacy compatibility remains.
+Evidence and disclosed fixture limits: docs/evidence/lab-maze-ramp-oct5.
+The current preview must not be treated as this source until rebuilt and checked;
+final browser/exports remain open. No full-suite or merge-ready claim is made.

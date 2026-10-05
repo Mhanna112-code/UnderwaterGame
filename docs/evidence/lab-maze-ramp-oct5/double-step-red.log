@@ -1,0 +1,18 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+EMBED_LAYOUT|bounds=[P: (256.3036, -23.75299), S: (182.0708, 156.4959)]|entry=(286.609, 0.0, 16.0)
+PASS|EMBED-1 shared actors, unchanged spawn, title camera/HUD ownership
+EMBED_SWIM|key=68|end=(263.1659, 1.8, 16.0)|target=263.0
+EMBED_FRAME_STEP|crossing_max=0.16668701171875
+ERROR: EMBED-2 both areas swim the actor in the entry frame
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _expect (res://verify/embedded_maze.gd:168)
+       [1] _swim_to (res://verify/embedded_maze.gd:161)
+EMBED_SWIM|key=65|end=(224.8872, 1.8, 16.0)|target=225.0
+EMBED_FRAME_STEP|crossing_max=0.08334350585938
+EMBED_TRAVERSAL|lab_first_requirement=false|outbound_x=263|return_x=225|no_save_writes
+EMBEDDED MAZE: 1 findings

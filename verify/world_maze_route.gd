@@ -41,18 +41,19 @@ func _run() -> void:
 	# Travel beside the shallow puzzle rather than claiming to solve it. This
 	# retains its collision and every lab gate while testing the independent path.
 	for goal in [Vector3(55, 2, -5), DeepZoneLayout.DEEP_ENTRY,
-		DeepZoneLayout.DEEP_HUB, Vector3(104, 2, -4), DeepZoneLayout.MAZE_TRANSITION]:
-		if not findings.is_empty() or current_scene is MazeLevel:
+		DeepZoneLayout.DEEP_HUB, Vector3(104, 2, -4), Vector3(160, 2, -4),
+		Vector3(200, 2, -4), DeepZoneLayout.MAZE_TRANSITION, Vector3(263, 2, 16)]:
+		if not findings.is_empty() or world.embedded_maze.maze_active:
 			break
 		await _walk_route(goal)
 	await _release_movement()
 	for frame in range(16):
 		await physics_frame
-		if current_scene is MazeLevel:
+		if world.embedded_maze.maze_active:
 			break
-	_expect(current_scene is MazeLevel, "WR-01 actual world travel did not load the maze")
-	if current_scene is MazeLevel:
-		var maze := current_scene as MazeLevel
+	_expect(current_scene == world and world.embedded_maze.maze_active, "WR-01 actual world travel did not reach the lab-side embedded maze")
+	if world.embedded_maze.maze_active:
+		var maze := world.embedded_maze
 		_expect(maze.route_state.bomb_bot_state == "available" and maze.route_state.sword_slayer_state == "available"
 			and maze.route_state.tethys_state == "locked" and maze.route_state.lab_state == "locked",
 			"WR-02 independent entry required or changed laboratory victories")
@@ -117,11 +118,11 @@ func _walk_route(goal: Vector3) -> void:
 	route.reverse()
 	for waypoint in route:
 		await _swim(waypoint)
-		if not findings.is_empty() or current_scene is MazeLevel:
+		if not findings.is_empty() or world.embedded_maze.maze_active:
 			break
 
 func _swim(goal: Vector3) -> void:
-	if current_scene is MazeLevel:
+	if world.embedded_maze.maze_active:
 		return
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
@@ -135,7 +136,7 @@ func _swim(goal: Vector3) -> void:
 	var arrived := false
 	var deadline := Time.get_ticks_msec() + 10000
 	while Time.get_ticks_msec() < deadline and is_instance_valid(world):
-		if current_scene is MazeLevel:
+		if world.embedded_maze.maze_active:
 			arrived = true
 			break
 		var diver := world.divers[world.active] as Diver

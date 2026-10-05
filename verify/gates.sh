@@ -183,8 +183,10 @@ run "local world guidance: do lab and Bucky wall hints follow location, active d
 run "lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip" "$GODOT" --headless --path . --script verify/lab_tethys_route.gd
 run "deep-zone maze entry: does normal progression reach the current maze without a query flag" "$GODOT" --headless --path . --script verify/deep_zone_maze_transition.gd
 run "maze campaign handoff: do six real entrance cases retain party, kit, inventory and progress" "$GODOT" --headless --path . --script verify/maze_campaign_handoff.gd
-run "puzzle maze exit: does real plate completion and normal swimming enter the maze and return safely without lab victory" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd
-run "puzzle maze saved exit: do saved solved doors reopen and normal exit movement reach the maze" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd -- --cold-load
+run "puzzle Deep exit: do real plate completion and normal swimming open Deep water without an obsolete maze portal" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd
+run "puzzle saved Deep exit: do saved solved doors reopen without an obsolete maze portal" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd -- --cold-load
+run "embedded maze ownership and ramp: does actual bidirectional swimming retain one party/input/camera/HUD owner without inactive encounters or Oxygen drain" "$GODOT" --headless --path . --script verify/embedded_maze.gd
+run "embedded maze saves: do 48 generated World/maze cases and cold legacy Title Load preserve frames, resources and independent progress" "$GODOT" --headless --path . --script verify/embedded_maze_checkpoint.gd
 run "maze secret continuity: do real E/Esc transitions retain resources, doors, walls and pending rewards" "$GODOT" --headless --path . --script verify/maze_secret_continuity.gd
 run "maze checkpoint: do cold Load, failed writes and real defeat/Restart conserve saved puzzle and campaign state" "$GODOT" --headless --path . --script verify/maze_checkpoint.gd
 run "maze checkpoint IO: do generated saves round-trip and malformed saves return an actionable title without mutation" "$GODOT" --headless --path . --script verify/maze_checkpoint_io.gd

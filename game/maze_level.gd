@@ -33,6 +33,11 @@ var random_encounters_enabled := true
 # translation before construction; saves carry it to avoid double-shifting on
 # repeated load or placing old checkpoints in the former standalone layout.
 var coordinate_origin := Vector3.ZERO
+var world: World
+var maze_active := true
+var embedded_bounds := Rect2()
+var _entry_physics_frame := -1
+const EMBED_PASSAGE_HALF_WIDTH := 4.0
 
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
 # frame rather than baked into fixed [start, end] segments the way
@@ -59,7 +64,15 @@ func _collect_corridors() -> Array[Area3D]:
 
 
 func _ready() -> void:
-	campaign_session = SceneHandoff.take_campaign_session()
+	if world == null:
+		campaign_session = SceneHandoff.take_campaign_session()
+	else:
+		for child in get_children():
+			if child is WorldEnvironment or child is DirectionalLight3D:
+				remove_child(child)
+				child.queue_free()
+			elif child is Node3D:
+				(child as Node3D).position += coordinate_origin
 	if campaign_session != null:
 		active = campaign_session.active
 		inventory = campaign_session.inventory
@@ -80,13 +93,14 @@ func _ready() -> void:
 	_setup_walls()
 	# After _setup_walls() so it uses both walls' placed positions (and
 	# overrides any debug move of the diver during wall placement).
-	_place_diver_between($CSGBox3D, $CurrentWall3)
-	if dev_spawn_at_sphere_room:
-		_dev_spawn_at_sphere_room()
-	elif dev_spawn_at_boss_rooms:
-		_dev_spawn_at_boss_rooms()
-	elif dev_spawn_at_switch:
-		_dev_spawn_at_switch()
+	if world == null:
+		_place_diver_between($CSGBox3D, $CurrentWall3)
+		if dev_spawn_at_sphere_room:
+			_dev_spawn_at_sphere_room()
+		elif dev_spawn_at_boss_rooms:
+			_dev_spawn_at_boss_rooms()
+		elif dev_spawn_at_switch:
+			_dev_spawn_at_switch()
 	_corridor_walls = {
 		$WindCorridor3: [$CSGBox3D6, $CSGBox3D7],
 		$WindCorridor4: [$CSGBox3D12, $CSGBox3D13],
@@ -117,7 +131,8 @@ func _ready() -> void:
 	_build_start_area_barriers()
 	_build_progress_gate()
 	_build_split_rock()
-	_build_secret_wall_entrance()
+	if world == null:
+		_build_secret_wall_entrance()
 	_build_wall_10_11_extras()
 	_build_hall_gauntlet()
 	_build_inventory_menu()
@@ -125,7 +140,7 @@ func _ready() -> void:
 	_build_campaign_exit()
 	_add_wall_skirts()
 	$HUD/Controls.text = "Find the navigation map in the Control Room."
-	if campaign_session != null and not campaign_session.maze_snapshot.is_empty():
+	if world == null and campaign_session != null and not campaign_session.maze_snapshot.is_empty():
 		if not snapshot_matches_runtime(campaign_session.maze_snapshot):
 			SceneHandoff.checkpoint_load_error = "Could not load the maze checkpoint. Choose another save or start a new game."
 			get_tree().change_scene_to_file.call_deferred("res://game/world.tscn")
@@ -134,9 +149,64 @@ func _ready() -> void:
 	if SceneHandoff.returning_from_secret_wall:
 		SceneHandoff.returning_from_secret_wall = false
 		_place_divers_at_secret_entrance()
+	if route_state != null and world == null:
+		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
+	if world == null:
+		_play_maze_music(&"play_exploration_music")
+	else:
+		var points := _collect_bounds_points()
+		var lo: Vector3 = points[0]
+		var hi := lo
+		for point in points:
+			lo = lo.min(point)
+			hi = hi.max(point)
+		embedded_bounds = Rect2(lo.x - _PERIMETER_MARGIN, lo.z - _PERIMETER_MARGIN,
+			hi.x - lo.x + _PERIMETER_MARGIN * 2.0, hi.z - lo.z + _PERIMETER_MARGIN * 2.0)
+		set_maze_active(false)
+
+func entrance_point() -> Vector3:
+	return ($DiverEntry as Node3D).global_position
+
+func contains_point(point: Vector3) -> bool:
+	return embedded_bounds.has_point(Vector2(point.x, point.z)) \
+		and point.y >= _floor_top_y - 1.0 and point.y <= _floor_top_y + 40.0
+
+func set_maze_active(on: bool) -> void:
+	maze_active = on
+	# Disabling only this script leaves maps, hazards and child input owners
+	# running. The three shared actors stay under World, outside this subtree.
+	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	$HUD.visible = on
+	($Camera3D as Camera3D).current = on
+
+func enter_from_world() -> void:
 	if route_state != null:
 		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
-	_play_maze_music(&"play_exploration_music")
+	# World already swam the party before detecting entry. This child becomes
+	# active later in the same frame; it must not run a second movement step.
+	_entry_physics_frame = Engine.get_physics_frames()
+	inventory = world.inventory
+	campaign_key_items = world.key_items
+	active = world.active
+	_diver = divers[active]
+	_yaw = world.yaw
+	_pitch = world.pitch
+	_mouse_look = world.mouse_look
+	random_encounters_enabled = world.random_encounters_enabled
+	($Camera3D as Camera3D).global_transform = world.cam.global_transform
+	_cam_look = Vector3.ZERO
+	set_maze_active(true)
+
+func leave_to_world() -> void:
+	if target_selector != null and target_selector.selecting:
+		target_selector.cancel_selection()
+	world.active = active
+	world.yaw = _yaw
+	world.pitch = _pitch
+	world.mouse_look = _mouse_look
+	world.random_encounters_enabled = random_encounters_enabled
+	world.cam.global_transform = ($Camera3D as Camera3D).global_transform
+	set_maze_active(false)
 
 func _play_maze_music(method: StringName) -> void:
 	var audio := get_node_or_null("/root/GameAudio")
@@ -775,7 +845,7 @@ func _on_diver_encounter(d: Diver) -> void:
 # kind: "strong" (the strong-enemy room's random encounters), "secret_boss"
 # or "main_boss".
 func _start_battle(kind := "strong") -> void:
-	if _chest_reward_pending:
+	if not maze_active or _battling or _chest_reward_pending:
 		return
 	_battling = true
 	_battle_kind = kind
@@ -1492,7 +1562,7 @@ func _build_sonar_vision_pickup() -> void:
 	var spin := create_tween().set_loops()
 	spin.tween_property(lens, "rotation:y", TAU, 2.0).from(0.0)
 	pickup.body_entered.connect(func(body: Node3D) -> void:
-		if body is Diver and not has_sonar_vision:
+		if maze_active and body is Diver and not has_sonar_vision:
 			has_sonar_vision = true
 			sonar_vision_equipped = true
 			_announce("Sonar Vision acquired (equipped). To see invisible objects: Sonar Vision equipped (G) and Maxilani's sonar on (Q).", 8.0)
@@ -1656,7 +1726,7 @@ func _build_puppet_patrol() -> void:
 	area.add_child(shape)
 	_puppet_patrol.add_child(area)
 	area.body_entered.connect(func(body: Node3D) -> void:
-		if body == _diver and not _battling and not any_modal_open() and _puppet_prompt_cooldown <= 0.0:
+		if maze_active and body == _diver and not _battling and not any_modal_open() and _puppet_prompt_cooldown <= 0.0:
 			_open_puppet_prompt())
 	_boss_triggers["secret_boss"] = _puppet_patrol
 
@@ -2295,7 +2365,7 @@ func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: 
 	# by half wall_to_place's length so its near end meets the reference
 	# wall's end instead of straddling it.
 	wall_to_place.global_position = reference_outer_end
-	if _diver != null:
+	if _diver != null and world == null:
 		_diver.global_position = reference_outer_end + Vector3(10,10,10)
 	#wall_to_place.global_position += reference_outward_axis * wall_to_place.size.x * 0.5
 
@@ -3612,7 +3682,7 @@ static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
 # instead.
 func _setup_whirlpool() -> void:
 	var whirlpool := Whirlpool.new()
-	whirlpool.position = Vector3(35.99, -4.12, 71.67)
+	whirlpool.position = Vector3(35.99, -4.12, 71.67) + coordinate_origin
 	whirlpool.reset_to = $DiverEntry.position
 	whirlpool.warned.connect(_on_whirlpool_warned)
 	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
@@ -3902,9 +3972,18 @@ func _build_perimeter_walls() -> void:
 	_build_invisible_wall(
 		Vector3(center_x, wall_y, padded_max.z + _PERIMETER_THICKNESS * 0.5),
 		Vector3(span_x + _PERIMETER_THICKNESS * 2.0, _PERIMETER_WALL_HEIGHT, _PERIMETER_THICKNESS))
-	_build_invisible_wall(
-		Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
-		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
+	if world == null:
+		_build_invisible_wall(
+			Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
+			Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
+	else:
+		var z_lo := padded_min.z - _PERIMETER_THICKNESS
+		var z_hi := padded_max.z + _PERIMETER_THICKNESS
+		var gap := entrance_point().z
+		for span in [[z_lo, gap - EMBED_PASSAGE_HALF_WIDTH], [gap + EMBED_PASSAGE_HALF_WIDTH, z_hi]]:
+			_build_invisible_wall(Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5,
+				wall_y, (float(span[0]) + float(span[1])) * 0.5),
+				Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, float(span[1]) - float(span[0])))
 	_build_invisible_wall(
 		Vector3(padded_max.x + _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
 		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
@@ -4117,6 +4196,15 @@ func _gap_width_between(wall_a: CSGBox3D, wall_b: CSGBox3D) -> float:
 	return separation - (wall_a.size.z + wall_b.size.z) * 0.5
 
 func _spawn_divers() -> void:
+	if world != null:
+		divers.assign(world.divers)
+		inventory = world.inventory
+		campaign_key_items = world.key_items
+		active = world.active
+		_diver = divers[active]
+		for diver in divers:
+			diver.encounter_triggered.connect(_on_diver_encounter.bind(diver))
+		return
 	for model in MAZE_CAST:
 		var d := Diver.new()
 		d.model_name = String(model)
@@ -4135,6 +4223,8 @@ func _switch_diver() -> void:
 	active = (active + 1) % divers.size()
 	_diver = divers[active]
 	_announce("Now playing %s." % Cast.display_name(_diver.model_name))
+	if world != null:
+		world.active = active
 
 func _player_dir() -> Vector3:
 	var f := Vector2.ZERO
@@ -4169,6 +4259,8 @@ func _player_rise() -> float:
 const GOLDEN_ORB_FALL_SPEED := 1.5
 
 func _physics_process(dt: float) -> void:
+	if not maze_active or Engine.get_physics_frames() == _entry_physics_frame:
+		return
 	_update_chest_pause()
 	_align_corridors_to_walls()
 	_update_strong_room_warning()
@@ -4183,6 +4275,8 @@ func _physics_process(dt: float) -> void:
 		_swirl_room.hit_divers(divers, dt)
 	if not _battling and not any_modal_open() and not _chest_reward_pending:
 		for d in divers:
+			if world != null and not contains_point(d.global_position):
+				continue
 			# Inactive divers still run swim() with no input, so currents and
 			# drag keep acting on them (World does the same).
 			# No steering while any walls are mid-rotation (_moving_wall_sets).
@@ -4302,6 +4396,8 @@ func _unhandled_input(e: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 			random_encounters_enabled = not random_encounters_enabled
+			if world != null:
+				world.random_encounters_enabled = random_encounters_enabled
 			if campaign_session != null:
 				campaign_session.random_encounters_enabled = random_encounters_enabled
 			_announce("Random encounters %s." % ("on" if random_encounters_enabled else "off"))
@@ -5111,7 +5207,7 @@ func _spawn_key_pickup(key: Node3D) -> void:
 	var spin := key.create_tween().set_loops()
 	spin.tween_property(key, "rotation:y", key.rotation.y + TAU, 2.5).from(key.rotation.y)
 	area.body_entered.connect(func(body: Node3D) -> void:
-		if body is Diver and is_instance_valid(key) and not key.is_queued_for_deletion():
+		if maze_active and body is Diver and is_instance_valid(key) and not key.is_queued_for_deletion():
 			key.queue_free()
 			_gain_key("split_rock_key"))
 
@@ -5464,6 +5560,8 @@ var _campaign_exit_prompt: Label3D
 var _campaign_exit_pending := false
 
 func _build_campaign_exit() -> void:
+	if world != null:
+		return # Swim back through the physical opening; no E portal.
 	if campaign_session == null or campaign_session.outer_world_checkpoint.is_empty():
 		return
 	_campaign_exit = Node3D.new()
@@ -5590,6 +5688,9 @@ func _on_campaign_save_requested(_actor: Diver, slot: int) -> void:
 	campaign_session.capture_party(divers, active)
 	campaign_session.inventory = inventory
 	campaign_session.maze_snapshot = campaign_snapshot()
+	if world != null:
+		campaign_session.outer_world_checkpoint = world._serialize_world_state()
+		campaign_session.random_encounters_enabled = random_encounters_enabled
 	_checkpoint_saving = true
 	var existed := SaveManager.slot_exists(slot)
 	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
@@ -5608,6 +5709,8 @@ func _on_campaign_save_requested(_actor: Diver, slot: int) -> void:
 		_announce("Could not save. Your last checkpoint is unchanged. Please retry.")
 		return
 	campaign_session.selected_slot = slot
+	if world != null:
+		world._current_slot = slot
 	_announce("Maze progress saved to Slot %d." % (slot + 1))
 
 func _show_campaign_game_over() -> void:
@@ -5692,7 +5795,7 @@ func _restore_wall_homes(homes: Array) -> Array:
 		out.append([get_node(String(entry.wall)), CampaignSession.vector_from(entry.position), float(entry.yaw)])
 	return out
 
-func restore_campaign_snapshot(data: Dictionary) -> void:
+func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> void:
 	# Translate every spatial field together, without mutating the saved
 	# checkpoint. Same-frame and legacy standalone restores remain identity.
 	data = MazeCoordinateFrame.rebase(data, coordinate_origin)
@@ -5790,8 +5893,9 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 		if bool(spec.seen):
 			poster.mark_seen()
 		poster_clues.append({"diver": poster.diver_index, "number": poster.number})
-	for i in range(divers.size()):
-		divers[i].position = CampaignSession.vector_from(data.positions[i])
+	if restore_positions:
+		for i in range(divers.size()):
+			divers[i].position = CampaignSession.vector_from(data.positions[i])
 	for holder in data.levers:
 		var index := int(holder.lever)
 		# Old checkpoints may name the dome levers Marc has removed. Their

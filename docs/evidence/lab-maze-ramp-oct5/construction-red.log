@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+LAYOUT_MEASURE|low=(-33.69635, -4.12, -34.5157)|high=(128.3745, 8.83202, 101.9802)|entry=(-13.391, 0.0, -4.76271)|floor=-1.60879004001617
+ERROR: EMBED-1: normal World has no embedded maze; entry still replaces the scene/party
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/embedded_maze.gd:30)

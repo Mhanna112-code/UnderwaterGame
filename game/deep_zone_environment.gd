@@ -203,14 +203,14 @@ func _build_maze_landmark() -> void:
 	var landmark := _landmark("maze")
 	landmark.name = "MazeLandmark"
 	var center: Vector3 = Layout.MAZE_TRANSITION
-	_add_rocks(landmark, center + Vector3(-6.0, 0.0, 0.0), Vector3(1.25, 2.8, 1.25), 0.2, 7)
-	_add_rocks(landmark, center + Vector3(6.0, 0.0, 0.0), Vector3(1.25, 2.7, 1.25), -0.55, 8)
-	_add_rocks(landmark, center + Vector3(0.0, 7.0, 2.0), Vector3(1.75, 0.72, 1.0), PI * 0.5, 9, false)
-	_add_crystal_cluster(landmark, center + Vector3(-4.6, 0.0, -0.5), Color("718cff"), 2.6, -0.18)
-	_add_crystal_cluster(landmark, center + Vector3(4.6, 0.0, -0.5), Color("718cff"), 2.6, 0.18)
-	_add_crystal_cluster(landmark, center + Vector3(0.0, 0.0, 2.5), Color("9daeff"), 1.8, 0.0)
-	_add_glow(landmark, center + Vector3(-5.0, 3.8, 0.0), Color("718cff"), 9.0, 0.32, false)
-	_add_glow(landmark, center + Vector3(5.0, 3.8, 0.0), Color("718cff"), 9.0, 0.32, false)
+	# Flank the east/west approach instead of obstructing the swim lane.
+	_add_rocks(landmark, center + Vector3(0.0, 0.0, -6.0), Vector3(1.25, 2.8, 1.25), 0.2, 7)
+	_add_rocks(landmark, center + Vector3(0.0, 0.0, 6.0), Vector3(1.25, 2.7, 1.25), -0.55, 8)
+	_add_rocks(landmark, center + Vector3(0.0, 7.0, 0.0), Vector3(1.75, 0.72, 1.0), 0.0, 9, false)
+	_add_crystal_cluster(landmark, center + Vector3(0.0, 0.0, -4.6), Color("718cff"), 2.6, -0.18)
+	_add_crystal_cluster(landmark, center + Vector3(0.0, 0.0, 4.6), Color("718cff"), 2.6, 0.18)
+	_add_glow(landmark, center + Vector3(0.0, 3.8, -5.0), Color("718cff"), 9.0, 0.32, false)
+	_add_glow(landmark, center + Vector3(0.0, 3.8, 5.0), Color("718cff"), 9.0, 0.32, false)
 
 func _landmark(id: String) -> Node3D:
 	var landmark := Node3D.new()

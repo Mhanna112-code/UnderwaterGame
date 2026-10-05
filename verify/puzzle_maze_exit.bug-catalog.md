@@ -1,5 +1,18 @@
 # Shallow puzzle → maze integration
 
+## October 5 superseding topology
+
+Mhanna's requested lab-side ramp replaces the shallow-exit maze portal.
+The earlier October 4 contract and evidence below are retained as history,
+not current acceptance. The shallow puzzle still solves its physical sliding
+doors; normal swimming now reaches Deep water, not a replacement maze scene.
+`puzzle_maze_exit.gd` retains real plate, cold-save door, unsolved-gate and invalid
+field checks while rejecting the obsolete portal. `embedded_maze.gd` and
+`world_maze_route.gd` prove the current physical maze entry beyond the laboratory,
+including both-way floor traversal and access without laboratory victory.
+Historical PX-03 E-return behavior is superseded by swimming back on the ramp.
+These changes do not claim that all maze puzzles or a full earned campaign pass.
+
 October 4, 2026. World/party/checkpoint modules read completely earlier; current
 puzzle, plate/door, normal input, transition and restoration consumers reread.
 
