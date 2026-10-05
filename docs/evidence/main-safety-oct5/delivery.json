@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-05",
+  "runtime_source": "138ca535c3a5d8d174225eb109b56b35ea190be0",
+  "main_artifact_commit": "279dd5ef2830f008f452830041f9c4cf1e228b44",
+  "preserved_concurrent_main": "afdbd4540d88e6c4ade088d61f1c553c29950426",
+  "deployment": "dpl_d9oHJxziYwgsNCiePwX5h9gCH7tY",
+  "candidate": "https://underwatergame-6v7bqw56y-immortaldemongods-projects.vercel.app/",
+  "canonical": "https://underwatergame.vercel.app/",
+  "review_alias": "https://underwatergame-maze-campaign-review.vercel.app/",
+  "pck_sha256": "e5f790f1a30bc3390a1006784257ac1957c8998ec53fcc672bc8ed723c527de9",
+  "pck_bytes": 93321284,
+  "canonical_actual_pck_download_matches": true,
+  "both_alias_build_info_matches": true,
+  "candidate_save_fault_retry_cold_load": "clean",
+  "candidate_cordys_approach_decline_reapproach_confirm_responsive": "clean",
+  "canonical_save_fault_retry_cold_load": "clean",
+  "storage_fixture": "fresh disposable browser contexts, declared recovered saves; not earned campaign routes",
+  "publish_method": "non-force main push, exact inspected READY candidate promotion, existing review alias assignment",
+  "automatic_git_deployment": false,
+  "full_campaign_acceptance": false,
+  "native_downloads_current": false
+}

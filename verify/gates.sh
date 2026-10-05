@@ -147,6 +147,8 @@ run "opening training continuity: does voluntary Skip preserve completion throug
 run "opening save denial: does failed recovery retain the previous checkpoint and allow Retry Save" "$GODOT" --headless --path . --script verify/opening_prologue_journey.gd -- --opening-save-failure
 run "checkpoint invalid load: do missing and malformed saves retain an actionable title instead of replaying opening" "$GODOT" --headless --path . --script verify/checkpoint_load_failures.gd
 run "checkpoint slot switch: does denied replacement retain the active save and retry correctly" "$GODOT" --headless --path . --script verify/checkpoint_slot_switch.gd
+run "World manual checkpoint: does real caught-actor rejection preserve bytes and stable/denied retries retain the correct slot" "$GODOT" --headless --path . --script verify/world_manual_save.gd
+run "World Save reading: do actual P and held W retain poses and restore swimming after close" "$GODOT" --headless --path . --script verify/world_manual_save.gd -- --reading
 run "optional training: do ignore, Retry, Return and Skip retain normal control" "$GODOT" --headless --path . --script verify/optional_training.gd
 run "opening exploration: do Sonar/encounters enable at recovery and saved manual choices survive Load" "$GODOT" --headless --path . --script verify/opening_exploration_defaults.gd
 run "menu audio comfort: is hover brief, rate-limited and subordinate to confirmations" "$GODOT" --headless --path . --script verify/menu_audio_comfort.gd -- --interaction --preferences
@@ -168,6 +170,7 @@ run "combat Quick Read: do result choices, context, and all-target previews agre
 run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd
 run "initially downed combat: do real potions and earned revival restore normal actors, cards, resources and usable turns" "$GODOT" --headless --path . --script verify/combat_initially_downed.gd
 run "Tethys boss: does Glassgoat's final boss import and fight separately" "$GODOT" --headless --path . --script verify/tethys_boss.gd
+run "Tethys laboratory variant: does the delivered Weirdo mesh preserve rig clips facing and attack behavior" "$GODOT" --headless --path . --script verify/tethys_boss.gd -- --laboratory-variant
 run "effect feedback: report actual EVA changes without inventing progress at zero or on a miss" "$GODOT" --headless --path . --script verify/combat_effect_feedback.gd
 run "heavy payoff: can normal and earned heavy moves hit exhausted EVA, still miss unprepared EVA and spend real Oxygen" "$GODOT" --headless --path . --script verify/earned_heavy_slam.gd
 GATE_TIMEOUT_SECONDS="${LAB_BALANCE_GATE_TIMEOUT_SECONDS:-600}" run "lab attainable victory: do three real earned-kit policies win through actual Battle outcomes" "$GODOT" --headless --path . --script verify/lab_boss_balance.gd
@@ -236,6 +239,11 @@ run "whirlpool active deactivation: does real maze handoff release six interrupt
 run "whirlpool blocked return: do24 capsule/solid/yaw/phase cases release outside new solids and permit actual clear-direction swimming" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --blocked-matrix
 run "whirlpool actual damage: do36 completed overlaps keep downed HP0, living HP1 and nonnegative loss without O2 cost" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --damage
 run "whirlpool actor lifetime: do six removed rigs leave no engine errors and three preexisting owners retain their locks/models/masks" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --actor-lifetime
+run "whirlpool Inventory suspension: do all three actors in spiral/vanish remain unchanged behind actual Escape menus and resume exactly once" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --menu-matrix
+run "whirlpool battle ownership: do six real reveal/Battle handoffs cancel suction without late resource mutation or warnings" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --battle-matrix
+run "whirlpool embedded Inventory: does actual area handoff and Escape reading retain a caught actor then resume one completion" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --maze-menu
+run "whirlpool paused first map: does actual L hide root warnings and retain suction through paused lesson and unpaused overview reading" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --map-pause
+run "whirlpool Save reading: does real W contact and P freeze suction/warnings then resume once without writing player slots" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --save-menu
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
 run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd
@@ -289,7 +297,12 @@ run "maze puppet approach: does real proximity/confirmation start puppets instea
 run "maze puppet waves: do real moves carry resources/effects into wave two with one final outcome and reward" "$GODOT" --headless --path . --script verify/maze_puppet_waves.gd
 run "maze puppet reward: does a real carried-party win give one maze key without changing lab progress or restarting music" "$GODOT" --headless --path . --script verify/maze_puppet_reward.gd
 run "maze Cordys: does the campaign rematch use normal combat and admit a real legal-kit win" "$GODOT" --headless --path . --script verify/maze_cordys.gd
-run "maze Cordys sigil: does real contact start Cordys and preserve independent completion through a snapshot" "$GODOT" --headless --path . --script verify/maze_cordys_trigger.gd -- --real-win
+run "maze Cordys station: do visible stationary actor, real approach, decline and modal ownership work for every diver" "$GODOT" --headless --path . --script verify/maze_cordys_station.gd
+run "maze Cordys confirmation: does real Yes start Cordys and preserve independent completion through a snapshot" "$GODOT" --headless --path . --script verify/maze_cordys_trigger.gd -- --real-win
+run "campaign ending: does actual Cordys victory checkpoint completion and conserve rewards through Title Load" "$GODOT" --headless --path . --script verify/campaign_completion.gd
+run "campaign ending denied write: does real Retry preserve previous bytes and block exit until saved" "$GODOT" --headless --path . --script verify/campaign_completion.gd -- --denied
+run "campaign goals: do generated saved milestones, early maze, return and Shallows purpose replace stale guidance" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --shallows
+run "lab payoff: does real Tethys victory acknowledge the computer/controller and preserve independent progress through Load" "$GODOT" --headless --path . --script verify/lab_payoff.gd
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze portrait lanes: does a real two-lane rung carry the portrait without changing direction" "$GODOT" --headless --path . --script verify/maze_latest_switch.gd
@@ -308,6 +321,8 @@ run "fight: play one to the end and come back"        "$GODOT" --headless --path
 # screen-space number it produces meaningless. Skipped rather than failed
 # where no display is available, so CI does not report a false problem.
 if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
+	run "whirlpool native menu pixels: does retained suction leave actual readable Inventory foreground after a completed render frame" "$GODOT" --path . --resolution 1280x720 --script verify/whirlpool_safety.gd -- --menu --capture
+	run "whirlpool Compatibility menu pixels: does the web renderer preserve visible modal text and normal suction resume" "$GODOT" --path . --rendering-method gl_compatibility --resolution 1280x720 --script verify/whirlpool_safety.gd -- --menu --capture
 	run "Marc swirl native visibility: do revealed foreground rocks leave the controlled diver readable at column-aligned camera angles" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_swirl_occlusion.gd
 	run "maze overview native presentation: do title/help/legend fit actual rendered wide/short/portrait windows without HUD bleed-through" "$GODOT" --path . --rendering-method gl_compatibility --script verify/marc_maze_map_presentation.gd
 	run "maze first-open native discovery: do paused lesson, map and discovered-only legend fit actual rendered viewports" "$GODOT" --path . --rendering-method gl_compatibility --script verify/maze_map_discovery.gd -- --legend --layout --persistence
@@ -339,8 +354,8 @@ if [ -n "${DISPLAY:-}" ] || [ "$(uname)" = "Darwin" ]; then
 	run "tutorial QTE handoff narrow: do success and miss retain stage and Continue" "$GODOT" --path . --resolution 803x893 --script verify/tutorial_qte_handoff_layout.gd
 	run "Frilled Shark framing wide: do real mesh bounds clear the party" "$GODOT" --path . --resolution 1280x720 --script verify/frilled_shark_framing.gd
 	run "Frilled Shark framing narrow: does the long rig remain readable" "$GODOT" --path . --resolution 720x480 --script verify/frilled_shark_framing.gd
-	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd
-	run "lab composition narrow: is the Tethys arena still readable at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/lab_battle_composition.gd
+	run "lab composition wide: does the Broken Office contain a readable Tethys fight" "$GODOT" --path . --resolution 1280x720 --script verify/lab_battle_composition.gd -- --laboratory-variant
+	run "lab composition narrow: is the Tethys arena still readable at 720x480" "$GODOT" --path . --resolution 720x480 --script verify/lab_battle_composition.gd -- --laboratory-variant
 else
 	echo
 	echo "=== stage framing and lab composition: skipped, need a display ==="
@@ -387,6 +402,10 @@ else
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
 	if [ -x /tmp/underwater-screen-ocr ]; then
+		run "laboratory browser fixture: disclosed legal kit/cleared blockers before actual swim" "$GODOT" --headless --path . --script verify/lab_payoff_browser_fixture.gd
+		GATE_TIMEOUT_SECONDS=360 run "laboratory browser payoff: actual swim/movie/fight/Close/cold Load, no stale boss arrival" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-laboratory-payoff --laboratory
+		run "ending browser fixture: supply a disclosed legal kit and spend the room key through E" "$GODOT" --headless --path . --script verify/maze_cordys_browser_fixture.gd -- --ending
+		GATE_TIMEOUT_SECONDS=360 run "campaign ending browser: actual fight, rejected IndexedDB, Retry and cold Load preserve completion" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-campaign-ending
 		GATE_TIMEOUT_SECONDS=300 run "Bomb Bot browser progress: do actual mouse actions reach enemy attacks, victory and restored World controls" node verify/bomb_bot_browser_progress.mjs "$WEB_DIR" /tmp/gate-bomb-progress
 		if [ -f "$WEB_DIR/build-info.json" ]; then
 			run "delivered spell browser: do real world input and mouse targeting animate/resolve an authored cast" node verify/spell_animation_browser.mjs "$WEB_DIR" /tmp/gate-spell-animation

@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CAMPAIGN ENDING|actions=12|outcomes=["won"]|visible_screens=0|durable=available
+FINDING END-1 real victory has no single visible game-completion screen
+FINDING END-1 victory leaves exploration running instead of completing
+FINDING END-1 victory did not durably record completion
+FINDING END-1 ending checkpoint retains the live boss station
+CAMPAIGN COMPLETION: 4 findings

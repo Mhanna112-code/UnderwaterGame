@@ -1,6 +1,8 @@
 class_name MazeLevel
 extends Node3D
 
+signal campaign_completed
+
 # A wall's physical ends.  These names are intentionally kept at the API
 # boundary: callers choose a named authored exit only when the level design
 # explicitly requires one; automatic continuations never expose these signs.
@@ -153,7 +155,7 @@ func _ready() -> void:
 	special_sites.name = "SpecialSites"
 	add_child(special_sites)
 	special_sites.setup(self)
-	$HUD/Controls.text = "Find the navigation map in the Control Room."
+	$HUD/Controls.text = "Navigation map: not acquired."
 	if world == null and campaign_session != null and not campaign_session.maze_snapshot.is_empty():
 		if not snapshot_matches_runtime(campaign_session.maze_snapshot):
 			SceneHandoff.checkpoint_load_error = "Could not load the maze checkpoint. Choose another save or start a new game."
@@ -193,6 +195,7 @@ func set_maze_active(on: bool) -> void:
 		if special_sites != null:
 			special_sites.cancel()
 	maze_active = on
+	Whirlpool.refresh_in(self)
 	# Disabling only this script leaves maps, hazards and child input owners
 	# running. The three shared actors stay under World, outside this subtree.
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
@@ -821,6 +824,7 @@ func _announcement_readable() -> bool:
 	return maze_active and $HUD.visible and not any_modal_open() and not _battling and not map_open
 
 func _refresh_announcement_visibility() -> void:
+	Whirlpool.refresh_in(self)
 	var captions_allowed := _announcement_readable()
 	var notice_visible := _banner != null and _banner_timer > 0.0 and captions_allowed
 	if _banner != null:
@@ -896,6 +900,7 @@ func _start_battle(kind := "strong") -> void:
 		return
 	_cancel_aim()
 	_battling = true
+	Whirlpool.refresh_in(self)
 	_battle_kind = kind
 	_play_maze_music(&"play_cordys_music" if kind == "main_boss" else &"play_battle_music")
 	for d in divers:
@@ -981,6 +986,7 @@ func _on_battle_finished(result: String) -> void:
 	if result == "won" and kind == "main_boss":
 		_remove_boss_trigger("main_boss")
 		_announce("Cordys is defeated. You have overcome the creature that broke you.", 8.0)
+		campaign_completed.emit()
 		return
 	match result:
 		"won":
@@ -1232,8 +1238,15 @@ func _poster_in_reach() -> MazePoster:
 func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
+func whirlpool_activity() -> int:
+	if not maze_active or _battling:
+		return Whirlpool.Activity.INACTIVE
+	if not _announcement_readable() or _chest_reward_pending or _gate_cutscene:
+		return Whirlpool.Activity.SUSPENDED
+	return Whirlpool.Activity.EXPLORING
+
 func any_modal_open() -> bool:
-	return _wall_riders.busy() or (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
+	return _wall_riders.busy() or (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (_cordys_prompt != null and is_instance_valid(_cordys_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -1585,20 +1598,22 @@ func _build_sphere_room() -> void:
 # Secret boss room: the whole space between Box30 and Box32 behind the
 # Box30/32 door (which needs the Vortex Key, found in the eye of the sphere
 # vortex), closed at its far end by a wall as tall as Box30/32. The maze's
-# invisible ceiling closes it over the top. A red sigil in the middle starts
-# the secret boss fight: a lone Swordfish Duelist guardian with stats boosted
-# 40-60%. Beating it drops the Abyss Key.
+# invisible ceiling closes it over the top. Approaching the patrolling puppets
+# asks for confirmation; beating both waves drops the Abyss Key.
 #
 # Main boss room: across the hall, through a door in Box33 directly opposite
 # the Box30/32 door (it needs the Abyss Key), a room east of Box33 between
-# Box32's line and just north of Box22. A purple sigil in the middle starts
-# the Tethys fight.
+# Box32's line and just north of Box22. Cordys is stationed inside, facing the
+# doorway; approach and confirmation start the campaign rematch, not Tethys.
 const SECRET_BOSS_BOOST := Vector2(1.4, 1.6)
-const BOSS_TRIGGER_RADIUS := 3.0
 var key_items: Array[String] = []
 var _battle_kind := "strong"
-var _boss_triggers: Dictionary = {}   # "secret_boss" / "main_boss" -> Area3D
+var _boss_triggers: Dictionary = {}   # persisted boss identity -> staged Node3D
 var _main_boss_door_z := 0.0
+const BOSS_DANGER_PROMPT := "A great danger is detected here. Are you sure you would like to proceed?"
+const CORDYS_PROMPT_RADIUS := 6.0
+var _cordys_prompt: ConfirmPromptModal
+var _cordys_prompt_armed := true
 
 func _build_secret_boss_room() -> void:
 	var box30 := $CSGBox3D30 as CSGBox3D
@@ -1663,7 +1678,7 @@ const PUPPET_REACH := 4.4
 const PUPPET_HEADROOM := 1.5
 const PUPPET_SPEED := 2.2
 const PUPPET_PROMPT_RADIUS := 3.8
-const PUPPET_PROMPT_TEXT := "Cordys's puppets guard the way. Break their hold and face their master?"
+const PUPPET_PROMPT_TEXT := BOSS_DANGER_PROMPT
 var _puppet_patrol: Node3D
 var _puppet_guard_actors: Array[Goblin] = []
 var _puppet_route: Array[Vector3] = []
@@ -1782,60 +1797,60 @@ func _open_puppet_prompt() -> void:
 		_puppet_prompt_cooldown = 2.0)
 	add_child(_puppet_prompt)
 
-# The two sigils that start the boss fights when the active diver swims onto them.
+# Keep completion IDs stable so old checkpoints retain both boss-room outcomes.
 func _build_boss_triggers() -> void:
-	var box30 := $CSGBox3D30 as CSGBox3D
-	var box32 := $CSGBox3D32 as CSGBox3D
 	_build_puppet_patrol()
 	var north := get_node_or_null("MainBossRoomNorth") as CSGBox3D
 	var south := get_node_or_null("MainBossRoomSouth") as CSGBox3D
 	if north != null and south != null:
-		var main_spot := Vector3(north.global_position.x, 0, (north.global_position.z + south.global_position.z) * 0.5)
-		_boss_triggers["main_boss"] = _make_boss_sigil(main_spot, Color(0.65, 0.25, 1.0), "Cordys waits. Face your old enemy.", "main_boss")
+		var station := Node3D.new()
+		station.name = "StationedCordys"
+		add_child(station)
+		var actor := PrologueOctopus.new()
+		actor.name = "Cordys"
+		station.add_child(actor)
+		# Normalize the imported skin at the origin, as Battle does, before
+		# translating its floor-aligned presentation into the authored room.
+		station.global_position = Vector3(north.global_position.x, _maze_floor_top() + 0.3,
+			clampf(_main_boss_door_z, _main_boss_room_rect().position.y + actor.radius + 0.5,
+				_main_boss_room_rect().end.y - actor.radius - 0.5))
+		actor.face_toward(Vector3(($CSGBox3D33 as Node3D).global_position.x, station.global_position.y, _main_boss_door_z))
+		var label := Label3D.new()
+		label.text = "Cordys"
+		label.font_size = 40
+		label.pixel_size = 0.012
+		label.outline_size = 5
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.position = Vector3(0, actor.height + 0.7, 0)
+		station.add_child(label)
+		_boss_triggers["main_boss"] = station
 
-func _make_boss_sigil(spot: Vector3, color: Color, caption: String, kind: String) -> Area3D:
-	var area := Area3D.new()
-	area.name = "BossSigil_" + kind
-	area.collision_mask = 2   # divers
-	var shape := CollisionShape3D.new()
-	var cyl := CylinderShape3D.new()
-	cyl.radius = BOSS_TRIGGER_RADIUS
-	cyl.height = 8.0
-	shape.shape = cyl
-	area.add_child(shape)
-	var disc := MeshInstance3D.new()
-	var disc_mesh := CylinderMesh.new()
-	disc_mesh.top_radius = BOSS_TRIGGER_RADIUS
-	disc_mesh.bottom_radius = BOSS_TRIGGER_RADIUS
-	disc_mesh.height = 0.05
-	disc.mesh = disc_mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(color, 0.55)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.emission_enabled = true
-	mat.emission = color
-	mat.emission_energy_multiplier = 1.5
-	disc.material_override = mat
-	area.add_child(disc)
-	var label := Label3D.new()
-	label.text = caption
-	label.font_size = 56
-	label.pixel_size = 0.008
-	label.outline_size = 10
-	label.modulate = color.lightened(0.4)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.position = Vector3(0, 3.0, 0)
-	area.add_child(label)
-	add_child(area)
-	var floor_y := ($CSGBox3D16 as CSGBox3D).global_position.y - ($CSGBox3D16 as CSGBox3D).size.y * 0.5 - _FLOOR_CLEARANCE
-	area.global_position = Vector3(spot.x, floor_y + 0.05, spot.z)
-	var pulse := create_tween().set_loops()
-	pulse.tween_property(mat, "emission_energy_multiplier", 3.0, 0.8).set_trans(Tween.TRANS_SINE)
-	pulse.tween_property(mat, "emission_energy_multiplier", 1.0, 0.8).set_trans(Tween.TRANS_SINE)
-	area.body_entered.connect(func(body: Node3D) -> void:
-		if body == _diver and not _battling and not any_modal_open():
-			_start_battle(kind))
-	return area
+func _update_cordys_station() -> void:
+	var station := _boss_triggers.get("main_boss") as Node3D
+	if not is_instance_valid(station) or station.is_queued_for_deletion():
+		return
+	var distance := _diver.global_position.distance_to(station.global_position + Vector3(0, 2, 0))
+	# Declining leaves the player in place. Leave the vicinity before asking
+	# again, rather than repeatedly interrupting or teleporting them backwards.
+	if distance > CORDYS_PROMPT_RADIUS + 1.0:
+		_cordys_prompt_armed = true
+		return
+	if not _cordys_prompt_armed or distance > CORDYS_PROMPT_RADIUS \
+		or not can_capture_campaign_snapshot() or not _announcement_readable():
+		return
+	if not _main_boss_room_rect().has_point(Vector2(_diver.global_position.x, _diver.global_position.z)):
+		return # Never ask through a wall or from the opposite secret room.
+	_cancel_aim()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_mouse_look = false
+	_diver.velocity = Vector3.ZERO
+	_cordys_prompt_armed = false
+	_cordys_prompt = ConfirmPromptModal.new(BOSS_DANGER_PROMPT)
+	_cordys_prompt.answered.connect(func(yes: bool) -> void:
+		_cordys_prompt = null
+		if yes and _boss_triggers.has("main_boss"):
+			_start_battle("main_boss"))
+	add_child(_cordys_prompt)
 
 # --- Secret item room (the reward chamber) ------------------------------------------
 # Rocks on the markers placed in the reward chamber (north of
@@ -2820,8 +2835,9 @@ func _update_world_hud() -> void:
 	_world_hud_map.visible = map_ok and not aiming
 	var goal := get_node_or_null("HUD/GoalLabel") as Label
 	if goal != null:
-		goal.text = "Open the hallway. Follow the channel to the relic.\nE: interact  ·  F: ability." if key_items.has(MAP_ITEM) \
-			else "E: interact  ·  F: ability."
+		var purpose := route_state.exploration_goal("maze", key_items.has(MAP_ITEM), _completed) if route_state != null \
+			else "Find the navigation map in the Control Room."
+		goal.text = purpose + "\nE: interact  ·  F: ability."
 	if map_ok and _map_flash == null:
 		_map_flash = create_tween().set_loops()
 		_map_flash.tween_property(_world_hud_map, "modulate:a", 0.25, 0.45)
@@ -3838,6 +3854,16 @@ func _place_corridor_4_whirlpool() -> void:
 	var spot := back + into * (_corridor_4_whirlpool.suction_radius + 0.5)
 	_corridor_4_whirlpool.global_position = Vector3(spot.x, floor_y, spot.z)
 	var reset := start - into * 1.5
+	# The old corridor-end return is still inside the extended pull zone:
+	# even without input it drags the diver straight into another catch.
+	# Return on the approach side outside that influence for every party
+	# capsule. Deliberate reentry still requires the current/grapple crossing.
+	var largest_radius := 0.0
+	for actor in divers:
+		largest_radius = maxf(largest_radius, actor.radius)
+	var safe_distance := maxf(_corridor_4_whirlpool.suction_radius, _corridor_4_whirlpool.pull_radius) + largest_radius + 0.75
+	if (reset - spot).dot(into) < safe_distance:
+		reset = spot + into * safe_distance
 	_corridor_4_whirlpool.reset_to = Vector3(reset.x, floor_y, reset.z)
 
 func _on_whirlpool_warned() -> void:
@@ -4309,6 +4335,7 @@ func _physics_process(dt: float) -> void:
 		nav.main_map.visible = false
 	_update_sonar_vision()
 	_update_puppet_patrol(dt)
+	_update_cordys_station()
 	_update_announce(dt)
 	_check_split_rock()
 	draft_passages.update()
@@ -5722,6 +5749,7 @@ func _build_inventory_menu() -> void:
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
 	$HUD.add_child(inventory_menu)
+	inventory_menu.visibility_changed.connect(_refresh_announcement_visibility)
 
 func use_inventory_item(item_id: String) -> void:
 	var count: int = int(inventory.get(item_id, 0))
@@ -6033,6 +6061,7 @@ func _build_campaign_checkpoint() -> void:
 	_save_menu = SavePointMenu.new()
 	_save_menu.save_requested.connect(_on_campaign_save_requested)
 	$HUD.add_child(_save_menu)
+	_save_menu.visibility_changed.connect(_refresh_announcement_visibility)
 	var layer := CanvasLayer.new()
 	layer.name = "MazeRecoveryLayer"
 	layer.layer = 20
@@ -6366,7 +6395,7 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 		special_sites.restore_legacy()
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = ("Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L).") \
-		if key_items.has(MAP_ITEM) else "Find the navigation map in the Control Room."
+		if key_items.has(MAP_ITEM) else "Navigation map: not acquired."
 
 func _clear_party_from_retired_control_route() -> void:
 	# A position clear between the old swung walls can overlap a restored

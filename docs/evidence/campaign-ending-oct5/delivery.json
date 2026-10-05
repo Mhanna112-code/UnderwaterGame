@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-05",
+  "canonical_url": "https://underwatergame.vercel.app/",
+  "review_url": "https://underwatergame-maze-campaign-review.vercel.app/",
+  "source_commit": "6b8ea078a53891f44213764d6212a921f24d67a7",
+  "artifact_commit": "c98490b117e7c22bdd8c88908b573198e0aa2525",
+  "deployment_id": "dpl_7agdKH32cNfrxHYVdX3qNTPwbrXr",
+  "deployment_url": "https://underwatergame-f4saq8313-immortaldemongods-projects.vercel.app/",
+  "project_id": "prj_lmBlQo6J11hkjA5tjmHIlhiPAr5e",
+  "scope": "immortaldemongods-projects",
+  "canonical_metadata_http_status": 200,
+  "actual_pack_http_status": 200,
+  "actual_pck_sha256": "0c947735cd5ee96230be8fbe2319abb5a6d5e403f938254d8217621facd21696",
+  "actual_pck_bytes": 94956208,
+  "promotion": "Exact previously accepted READY artifact; no rebuild. Promote and existing review alias assignment each exited0; canonical inspect resolves the same deployment ID.",
+  "hosted_candidate_lab": {"actions": 12, "observations": 84, "findings": []},
+  "hosted_candidate_ending": {"actions": 14, "observations": 106, "findings": []},
+  "canonical_lab": {
+    "actions": 12,
+    "observations": 87,
+    "findings": [],
+    "exit_code": 0,
+    "receipt": "../campaign-goals-oct5/canonical/receipt.json",
+    "previous_slot_sha256": "592dada7781d35ebc7bfa6e1e2c1db724d29c6b52c18079d2fdca4caf72d2921",
+    "cleared_slot_sha256": "e7efec0ba80d7667bffb92680a3357f3e98aeef2103fc93767739d90bfcf1038"
+  },
+  "canonical_ending": {
+    "actions": 13,
+    "observations": 106,
+    "findings": [],
+    "exit_code": 0,
+    "receipt": "canonical/receipt.json",
+    "previous_slot_sha256": "ffff3fcdcddf6866328ffe71ea7df26cbb60448c9224afbca08e4bc692da9ad1",
+    "completed_slot_sha256": "158d36b05d6ebc629c7e16e5607f76631a28705d64a4e297b29d71b2db6e1b46",
+    "checks": ["actual legal-move win", "completed-slot IDB rejection", "exact previous durable bytes", "disabled exit", "Retry", "durable acknowledgment", "responsive exclusive ending", "Return to Title", "destroyed-page cold selected Load", "exact completed bytes preserved"]
+  },
+  "observer_failures_preserved": ["hosted-qte-observer/receipt.json", "canonical-boot-observer/receipt.json"],
+  "limits": "New disposable profiles; supplied legal level-five kit/key/room/checkpoint fixtures. Actual input/fight/storage/Load evidence, NOT earned campaign, measured human balance, final textures/color or full readiness.",
+  "rollback_deployment_id": "dpl_3dBeXccJK6ymWxxeic9FouHVqBJS",
+  "rollback_url": "https://underwatergame-ht7tga3dc-immortaldemongods-projects.vercel.app/",
+  "deferred": "Genuine earned lab-first/maze-first journeys; full gates, browser Bomb Bot/audio/six-area review/upstream disposition; same-source native packages. Tethys opening and Cordys intro relocation LAST with Miguel explicit review/approval before main/canonical.",
+  "automatic_git_deployment": false
+}

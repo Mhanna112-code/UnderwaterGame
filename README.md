@@ -22,6 +22,15 @@ to this GitHub repository for automatic deployments. Until that connection is
 enabled, verify the deployed build after a merge instead of assuming that the
 alias advanced with the branch.
 
+The remaining campaign work is tracked in
+[the direct-main completion plan](docs/main-completion-audit-oct5.md).
+Each accepted batch is explicitly exported, deployed and checked at the same
+URL. [The safety batch](docs/main-safety-batch-oct5.md) records its evidence
+and outstanding campaign acceptance; it is not a full-game readiness claim.
+[The goals, laboratory and ending batch](docs/main-goals-ending-batch-oct5.md)
+records the next runtime/export identity, hosted/canonical checks and remaining
+earned-route/full-campaign limits.
+
 ## Controls
 
 ### Exploration
@@ -45,7 +54,7 @@ alias advanced with the branch.
 | `F1` | Open the general tutorial book |
 | `Esc` | Open or close Inventory, Party Spells and Combat Help |
 
-These controls describe the current PR source. Older hosted feedback exports
+These controls describe the current main source. Older hosted feedback exports
 can still use the previous E ability binding; check their `build-info.json`.
 Swap, Grapple and Shockwave use no Oxygen during exploration. Sonar and
 combat spells retain their separate costs. Special minigames retain the E
@@ -62,25 +71,29 @@ starts.
 
 At a cold launch, a first-time player sees one primary **New Game** action. If
 a valid save exists, **Load Game** appears as a secondary action and opens the
-three-slot picker. A new run shows the temporary scrolling introduction; press
-`E` or click to skip it.
+three-slot picker, with separate manual and autosave choices. A normal new run
+plays the opening movie and credited title handoff, then allows quiet swimming
+before the initial Angler encounter. The current opening still introduces
+Cordys and a scripted defeat, followed by a durable recovery checkpoint.
+Replacing that opening with Tethys and relocating Cordys's introduction are
+deferred until all other work is finished and require Miguel's explicit review
+and approval before main/canonical publication.
 
-The opening world sequence points the player toward a light beam and starts a
-choreographed combat tutorial. It teaches turn order, Accuracy versus Evasion,
-damage and Defense, status effects, move trade-offs, quick-time dodging, XP and
-level growth before releasing the party into the wider map. Switching divers,
-using abilities and saving remain gated until that first encounter ends.
+After recovery, the light-beam combat training is optional. It explains turn
+order, Accuracy/Evasion, Defense, statuses, move trade-offs, dodging and growth;
+it is not a compulsory gate before ordinary exploration.
 
-After the tutorial:
+During ordinary exploration:
 
 - Maxilani, Musashi and Bucky can be switched at any time with `Tab`.
 - Their exploration abilities are swap, grapple and shockwave respectively.
 - Sonar reveals hidden guarded locations and drains oxygen while active.
-- Lit beacon routes connect the anchor, shallows and trench combat sites.
+- Visible guarded sites and sonar discovery provide exploration destinations;
+  the old beacon graph is not instantiated by the current World.
 - The shallows artifact is guarded by an Angler; the trench artifact is
   guarded by the Swordfish Duelist.
-- Ordinary encounters independently choose Anglers and Swordfish, so mixed
-  groups are possible.
+- Ordinary encounters independently choose Anglers, Swordfish and Frilled
+  Sharks, so mixed groups are possible.
 - The active diver checks for a random encounter after travelling 8–16 metres,
   with a 50% trigger chance at each check—about one encounter per 24 metres on
   average.
@@ -88,6 +101,16 @@ After the tutorial:
   access to learning and equipping spells.
 - The corridor gate combines a breakable blockade, grapple crossing,
   whirlpool hazard and a three-diver pressure-plate lock.
+- The Deep laboratory route has Bomb Bot and Sword Slayer blockers, then
+  Tethys. Victory acknowledges the recovered computer and controlling being
+  before suggesting the maze ramp beyond the lab.
+- The maze remains an independent branch: lab victory is not an access lock.
+  Earn its navigation map from the Control Room chest; goal text follows
+  acquired map/relic and completed laboratory milestones.
+- Actual maze Cordys victory completes the journey. The exclusive ending
+  confirms the selected checkpoint; a failed durable save offers Retry and
+  prevents title exit until confirmed. Cold Load restores the completed ending
+  without replaying the boss or duplicating rewards.
 
 The Tethys boss and direct guardian/special-encounter routes remain explicit
 review surfaces rather than shortcuts in an ordinary new game. They can be
@@ -109,7 +132,8 @@ The battle UI includes:
 - target stat comparison;
 - result-first move summaries, with optional formula details;
 - items, running, equipped spells and status-effect feedback;
-- XP, level growth, spell points and post-fight recovery.
+- XP, level growth and spell points. Ordinary victory does not refill HP/Oxygen;
+  earned level-ups and authored rest pads do.
 
 Maxilani currently has Glass_Goat's five-move V2 kit: Electric Touch, Scuba
 Stabbing, Flash Blast, Multiple Knee Combo and Axe Kick. The formulas live in
@@ -120,6 +144,9 @@ Ordinary enemies use reusable, data-driven move definitions from
 `content/enemy_moves.gd`. The Angler and Swordfish actors share a stable enemy
 contract while retaining their own models, animation mappings and attacks.
 Tethys is a separate boss actor with six authored attack animations.
+The delivered Mermaid-Weirdo model is used only for laboratory Tethys; the
+original reference actor is retained. Its existing red fallback materials are
+not a claim that final artist textures/color approval have been completed.
 
 ## Special encounters
 

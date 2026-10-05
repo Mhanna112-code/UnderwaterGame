@@ -730,6 +730,13 @@ func _ready() -> void:
 	elif prologue_direct_cordys:
 		_set_all_buttons(false)
 		main_menu.visible = false
+		# The Angler is only the stage placeholder this battle is built
+		# around - never let it (or its card) appear, even for a frame.
+		for placeholder in enemies:
+			if placeholder.has("actor") and is_instance_valid(placeholder.actor):
+				(placeholder.actor as Node3D).visible = false
+			if placeholder.has("card") and is_instance_valid(placeholder.card):
+				(placeholder.card as Control).visible = false
 		reveal_prologue_octopus()
 	else:
 		var intro := encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies)
@@ -1102,7 +1109,9 @@ func reveal_prologue_octopus() -> void:
 	_audio_call(&"fade_music_out", [0.15])
 	# The preceding film already supplied the anticipation. Avoid another
 	# empty hold before the visible reveal; preserve the complete reveal clip.
-	await get_tree().create_timer(0.25).timeout
+	# Going straight to Cordys there is no Angler to interrupt at all.
+	if not prologue_direct_cordys:
+		await get_tree().create_timer(0.25).timeout
 	prologue_angler_encounter = false
 	prologue_octopus_encounter = true
 	encounter_source = "prologue_octopus"
@@ -1514,6 +1523,8 @@ func _build_stage() -> void:
 		count = ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
+		if encounter_source == "lab_boss":
+			boss.model_scene = preload("res://characters/Freak_Mermaid-Weirdo.fbx")
 		# Keep the boss close to the party's depth plane. At the grunt row's
 		# -2.7 z position, perspective made a four-metre creature read smaller
 		# on screen than the divers despite its measured native scale.

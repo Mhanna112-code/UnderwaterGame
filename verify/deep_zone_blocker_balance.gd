@@ -15,6 +15,7 @@ const MIN_SEQUENCE_HP_LOSS := 2.0
 var findings: Array[String] = []
 
 func _init() -> void:
+	print("DZ-FID-1 no-refill blocker screen: no victory healing; actual XP/spells/navigation/rest journey still unverified")
 	var results := {}
 	for policy in ["casual", "skilled"]:
 		for blocker_id in ["bomb_bot", "sword_slayer"]:
@@ -73,8 +74,6 @@ func _measure_sequence(policy: String) -> Dictionary:
 		var first := _fight(party, "bomb_bot", policy, 810000 + seed_value)
 		if not bool(first.win):
 			continue
-		for entry_value in party:
-			(entry_value as Dictionary).stats.recover_after_victory()
 		var second := _fight(party, "sword_slayer", policy, 910000 + seed_value)
 		if bool(second.win):
 			wins += 1
@@ -127,6 +126,14 @@ func _fight(party: Array, blocker_id: String, policy: String, seed_value: int) -
 				_enemy_turn(enemy, party, rng)
 			stats.end_turn()
 	var won := (enemy.stats as CombatantStats).hp <= 0
+	# Battle-only statuses end on the real scene's exit; normal victory does
+	# not restore HP/O2. This screen still omits earned XP/spells/rest access
+	# and must not be presented as actual laboratory-route acceptance.
+	for entry_value in party:
+		var stats := (entry_value as Dictionary).stats as CombatantStats
+		stats.statuses.clear()
+		stats.temporary_modifiers = {"accuracy": 0, "evasion": 0}
+		stats.evasion_current = stats.effective_evasion()
 	return {"win": won, "rounds": rounds, "hp_lost": starting_hp - _party_hp(party)}
 
 func _party_turn(actor: Dictionary, enemy: Dictionary, policy: String, rng: RandomNumberGenerator) -> void:

@@ -16,8 +16,31 @@ func _run() -> void:
 	current_scene = world
 	await process_frame
 	world.title_screen.close()
+	# No player slot is claimed by this diagnostic fixture; represent the
+	# running exploration surface, not the cold title's hidden gameplay HUD.
+	world.get_node("HUD").show()
 	world.random_encounters_enabled = false
 	paused = false
+	if "--save-menu" in OS.get_cmdline_user_args():
+		await _save_menu()
+		await _finish()
+		return
+	if "--map-pause" in OS.get_cmdline_user_args():
+		await _map_pause()
+		await _finish()
+		return
+	if "--maze-menu" in OS.get_cmdline_user_args():
+		await _maze_menu()
+		await _finish()
+		return
+	if "--battle" in OS.get_cmdline_user_args() or "--battle-matrix" in OS.get_cmdline_user_args():
+		await _battle_ownership()
+		await _finish()
+		return
+	if "--menu" in OS.get_cmdline_user_args() or "--menu-matrix" in OS.get_cmdline_user_args():
+		await _menu()
+		await _finish()
+		return
 	if "--actor-lifetime" in OS.get_cmdline_user_args():
 		await _actor_lifetime()
 		await _finish()
@@ -116,6 +139,422 @@ func _run() -> void:
 			"WHIRL-1 unobstructed real suction fails reset/damage/release")
 		print("WHIRL_OPEN|end=", actor.global_position, "|hp=", actor.stats.hp, "|caught=", caught)
 	await _finish()
+
+func _press(code: int) -> void:
+	_key(code, true)
+	await process_frame
+	_key(code, false)
+	await process_frame
+
+func _warning_visible() -> bool:
+	for node in root.find_children("*", "Label", true, false):
+		if node.text == "Danger: Whirlpool ahead" and node.is_visible_in_tree():
+			return true
+	return false
+
+func _menu() -> void:
+	var cases := 0
+	for selected in (3 if "--menu-matrix" in OS.get_cmdline_user_args() else 1):
+		for phase in (["spiral", "vanish"] if "--menu-matrix" in OS.get_cmdline_user_args() else ["spiral"]):
+			if cases > 0:
+				await _fresh_world()
+			world.active = selected
+			await _menu_case(selected, phase)
+			cases += 1
+			if not findings.is_empty():
+				return
+	print("WHIRL_MENU_CASES|completed=", cases)
+
+func _fresh_world() -> void:
+	world.queue_free()
+	await process_frame
+	world = load("res://game/world.tscn").instantiate() as World
+	world.skip_intro_for_test = true
+	world.skip_tutorial_for_test = true
+	root.add_child(world)
+	current_scene = world
+	await process_frame
+	world.title_screen.close()
+	world.get_node("HUD").show()
+	world.random_encounters_enabled = false
+	paused = false
+	caught = 0
+
+func _menu_case(selected: int, phase: String) -> void:
+	var whirl: Whirlpool
+	for child in world.get_children():
+		if child is Whirlpool:
+			whirl = child
+	_expect(whirl != null, "WHIRL-2 fixture has no authored World hazard")
+	if whirl == null:
+		return
+	var actor := world.divers[selected] as Diver
+	actor.global_position = whirl.global_position + Vector3.RIGHT
+	actor.velocity = Vector3.ZERO
+	actor.sonar_active = false
+	actor.stats.hp = 7
+	actor.stats.oxygen = 0.0
+	whirl.damage_min = 2
+	whirl.damage_max = 2
+	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
+	_expect(_clear(actor), "WHIRL-2 authored approach is not capsule-clear")
+	for frame in 12:
+		await physics_frame
+		await process_frame
+	if phase == "vanish":
+		for frame in 120:
+			if not actor.model.visible:
+				break
+			await physics_frame
+			await process_frame
+		_expect(not actor.model.visible and actor.is_suction_locked(), "WHIRL-2 generated vanish fixture missed caught beat")
+	_expect(actor.is_suction_locked() and _warning_visible(), "WHIRL-2 real overlap did not catch/warn before Inventory")
+	if not findings.is_empty():
+		return
+	await _press(KEY_ESCAPE)
+	_expect(world.inventory_menu.visible and not paused, "WHIRL-2 Escape did not open actual unpaused Inventory")
+	var pose := actor.global_transform
+	var roll := actor.model.rotation.z
+	var visible := actor.model.visible
+	for frame in 150:
+		await physics_frame
+		await process_frame
+	print("WHIRL_MENU|start=", pose.origin, "|end=", actor.global_position,
+		"|hp=", actor.stats.hp, "|caught=", caught, "|warning=", _warning_visible())
+	if "--capture" in OS.get_cmdline_user_args():
+		await RenderingServer.frame_post_draw
+		var rendered := root.get_texture().get_image()
+		var capture_path := OS.get_cache_dir().path_join("underwater-whirl-menu-%d.png" % OS.get_process_id())
+		_expect(rendered.save_png(capture_path) == OK, "WHIRL-7 native capture could not be saved")
+		print("WHIRL_MENU_CAPTURE|path=", capture_path)
+		var title: Label
+		for control in world.inventory_menu.find_children("*", "Label", true, false):
+			if control.text == "Inventory":
+				title = control
+		_expect(title != null, "WHIRL-7 actual Inventory has no heading to inspect")
+		if title != null:
+			var rect := Rect2i(title.get_global_rect()).intersection(Rect2i(Vector2i.ZERO, rendered.get_size()))
+			var foreground := 0
+			for y in range(rect.position.y, rect.end.y):
+				for x in range(rect.position.x, rect.end.x):
+					if rendered.get_pixel(x, y).get_luminance() > 0.35:
+						foreground += 1
+			print("WHIRL_MENU_RENDER|heading_foreground_pixels=", foreground)
+			_expect(foreground > 100, "WHIRL-7 native Inventory heading is undrawn despite valid visible/layout state")
+	_expect(actor.global_transform.is_equal_approx(pose) and is_equal_approx(actor.model.rotation.z, roll)
+		and actor.model.visible == visible and actor.stats.hp == 7 and actor.stats.oxygen == 0.0
+		and caught == 0 and not _warning_visible(),
+		"WHIRL-2 Inventory reading still moves/damages shared actor or draws root warning")
+	if not findings.is_empty():
+		return
+	await _press(KEY_ESCAPE)
+	_expect(not world.inventory_menu.visible, "WHIRL-2 Escape failed to close Inventory")
+	for frame in 180:
+		await physics_frame
+		await process_frame
+	print("WHIRL_MENU_COMPLETION|reset=", whirl.reset_to, "|clear=", _clear(actor),
+		"|lock=", actor.is_suction_locked(), "|visible=", actor.model.visible, "|oxygen=", actor.stats.oxygen)
+	_expect(caught == 1 and actor.stats.hp == 5 and actor.stats.oxygen == 0.0
+		and not actor.is_suction_locked() and actor.model.visible and _clear(actor)
+		and actor.global_position.distance_to(whirl.reset_to) < 0.55,
+		"WHIRL-2 closing Inventory does not resume exactly one normal catch/reset")
+	print("WHIRL_MENU_RESUMED|end=", actor.global_position, "|hp=", actor.stats.hp, "|caught=", caught)
+	var returned := actor.global_position
+	_key(KEY_W, true)
+	for frame in 30:
+		await physics_frame
+		await process_frame
+	_key(KEY_W, false)
+	_expect(actor.global_position.distance_to(returned) > 0.75,
+		"WHIRL-2 Inventory-resumed completion leaves actual swimming locked")
+	print("WHIRL_MENU_CASE|actor=", selected, "|phase=", phase, "|returned_clear=true|swim=true")
+
+func _maze_menu() -> void:
+	var maze := world.embedded_maze
+	var whirl := maze._corridor_4_whirlpool
+	var actor := world.divers[0] as Diver
+	for index in 3:
+		world.divers[index].global_position = Vector3(210, 2, 16 + index * 2)
+		world.divers[index].velocity = Vector3.ZERO
+	actor.global_position = Vector3(whirl.global_position.x, 1.8, whirl.global_position.z)
+	actor.stats.hp = 7
+	actor.stats.oxygen = 0.0
+	whirl.damage_min = 2
+	whirl.damage_max = 2
+	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
+	_expect(_clear(actor) and whirl.armed and not bool(whirl.bypass.call()),
+		"WHIRL-2 Maze fixture lacks clear armed corridor without current bypass")
+	# World detects the live actor inside the embedded bounds and hands off;
+	# neither the private transition helper nor maze_active is spoofed.
+	for frame in 160:
+		await physics_frame
+		await process_frame
+		if maze.maze_active and actor.is_suction_locked():
+			break
+	_expect(maze.maze_active and actor.is_suction_locked() and _warning_visible(),
+		"WHIRL-2 actual embedded-area handoff did not catch/warn")
+	if not findings.is_empty():
+		return
+	await _press(KEY_ESCAPE)
+	_expect(maze.inventory_menu.visible and not world.inventory_menu.visible,
+		"WHIRL-2 actual Maze Escape opened wrong or no Inventory owner")
+	var pose := actor.global_transform
+	var visible := actor.model.visible
+	var roll := actor.model.rotation.z
+	for frame in 180:
+		await physics_frame
+		await process_frame
+	_expect(actor.global_transform.is_equal_approx(pose) and actor.model.visible == visible
+		and is_equal_approx(actor.model.rotation.z, roll) and actor.stats.hp == 7
+		and actor.stats.oxygen == 0.0 and caught == 0 and not _warning_visible(),
+		"WHIRL-2 embedded Inventory still moves/damages actor or draws root warning")
+	if not findings.is_empty():
+		return
+	await _press(KEY_ESCAPE)
+	for frame in 200:
+		await physics_frame
+		await process_frame
+	print("WHIRL_MAZE_RETURN|at=", actor.global_position, "|reset=", whirl.reset_to,
+		"|visible=", actor.model.visible, "|locked=", actor.is_suction_locked(), "|clear=", _clear(actor))
+	_expect(caught == 1 and actor.stats.hp == 5 and actor.stats.oxygen == 0.0
+		and actor.model.visible and not actor.is_suction_locked() and _clear(actor),
+		"WHIRL-2 embedded Inventory fails exactly one resumed completion/release")
+	var returned := actor.global_position
+	var from_hazard := Vector2(returned.x - whirl.global_position.x, returned.z - whirl.global_position.z).length()
+	_expect(from_hazard > whirl.pull_radius + actor.radius,
+		"WHIRL-6 authored return still sits within the idle pull influence")
+	_key(KEY_S, true)
+	for frame in 30:
+		await physics_frame
+		await process_frame
+	_key(KEY_S, false)
+	_expect(actor.global_position.distance_to(returned) > 0.75 and not actor.is_suction_locked(),
+		"WHIRL-6 actual returned diver cannot swim away from the corridor hazard")
+	# Reentering the real core must catch again; an always-immune release is
+	# not an acceptable fix for the immediate-reset loop.
+	actor.global_position = Vector3(whirl.global_position.x, 1.8, whirl.global_position.z)
+	actor.velocity = Vector3.ZERO
+	for frame in 20:
+		await physics_frame
+		await process_frame
+	_expect(actor.is_suction_locked(), "WHIRL-6 release permanently disarms normal deliberate reentry")
+	print("WHIRL_MAZE_MENU|actual_area_handoff=true|hp=", actor.stats.hp,
+		"|caught=", caught, "|warning=", _warning_visible())
+
+func _save_menu() -> void:
+	var point := world._save_points[0] as SavePoint
+	var actor := world.divers[0] as Diver
+	world._save_point_tutorial_seen = true # Isolate actual P from the unrelated first-contact lesson.
+	world.yaw = 0.0
+	actor.global_position = point.global_position + Vector3(0, 0, -3.5)
+	actor.velocity = Vector3.ZERO
+	actor.sonar_active = false
+	for frame in 5:
+		await physics_frame
+	_expect(not point.has_diver(actor), "WHIRL-2 Save fixture already has contact before real W")
+	_key(KEY_W, true)
+	for frame in 120:
+		if point.has_diver(actor):
+			break
+		await physics_frame
+	_key(KEY_W, false)
+	for frame in 6:
+		await physics_frame
+		await process_frame
+	_expect(point.has_diver(actor) and actor.stats.hp == actor.stats.hp_max,
+		"WHIRL-2 real W failed to enter and recover at the authored Save Point")
+	if not findings.is_empty():
+		return
+	var before_hp := actor.stats.hp
+	var before_oxygen := actor.stats.oxygen
+	var whirl := Whirlpool.new()
+	whirl.position = actor.global_position
+	whirl.reset_to = actor.global_position
+	whirl.suction_radius = 0.9
+	whirl.warning_radius = 3.0
+	whirl.pull_duration = 0.6
+	whirl.vanish_duration = 0.2
+	whirl.sink_depth = 0.5 # Keep actual contact: a separate contact reentry legitimately heals.
+	whirl.damage_min = 2
+	whirl.damage_max = 2
+	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
+	world.add_child(whirl)
+	for frame in 6:
+		await physics_frame
+		await process_frame
+	_expect(actor.is_suction_locked() and _warning_visible(), "WHIRL-2 Save fixture never caught/warned")
+	await _press(KEY_P)
+	_expect(world.save_point_menu.visible and not paused, "WHIRL-2 actual contact P did not open Save reading")
+	var pose := actor.global_transform
+	for frame in 120:
+		await physics_frame
+		await process_frame
+	_expect(actor.global_transform.is_equal_approx(pose) and actor.stats.hp == before_hp
+		and actor.stats.oxygen == before_oxygen and caught == 0 and not _warning_visible(),
+		"WHIRL-2 actual Save menu moves/damages actor or paints danger warnings")
+	await _press(KEY_P)
+	for frame in 160:
+		await physics_frame
+		await process_frame
+	_expect(not world.save_point_menu.visible and caught == 1 and actor.stats.hp == before_hp - 2
+		and actor.stats.oxygen == before_oxygen and actor.model.visible
+		and not actor.is_suction_locked() and _clear(actor),
+		"WHIRL-2 closing actual P fails one normal suction completion")
+	print("WHIRL_SAVE_MENU|actual_W_contact_and_P=true|no_writes=true|caught=", caught)
+
+func _map_pause() -> void:
+	var maze := world.embedded_maze
+	var actor := world.divers[0] as Diver
+	actor.global_position = maze.get_node("MapChest").global_position + Vector3(0, 3, 1.8)
+	actor.velocity = Vector3.ZERO
+	actor.stats.hp = 7
+	actor.stats.oxygen = 0.0
+	for frame in 12:
+		await physics_frame
+		await process_frame
+	# Map ownership is an explicit presentation fixture. This does not claim
+	# earned acquisition; the separate current/chest route exercises real E.
+	maze.key_items.append(MazeLevel.MAP_ITEM)
+	_expect(maze.maze_active and maze.can_open_nav_map() and _clear(actor),
+		"WHIRL-2 map-pause fixture is not a clear eligible embedded-map location")
+	if not findings.is_empty():
+		return
+	var whirl := Whirlpool.new()
+	whirl.position = actor.global_position
+	whirl.reset_to = actor.global_position
+	whirl.suction_radius = 0.9
+	whirl.warning_radius = 3.0
+	whirl.pull_duration = 0.6
+	whirl.vanish_duration = 0.2
+	whirl.damage_min = 2
+	whirl.damage_max = 2
+	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
+	maze.add_child(whirl)
+	for frame in 6:
+		await physics_frame
+		await process_frame
+	_expect(actor.is_suction_locked() and _warning_visible(), "WHIRL-2 map-pause actual overlap did not catch/warn")
+	_key(KEY_L, true)
+	await process_frame # First dispatched frame, not a later ALWAYS-physics correction.
+	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	var popup := root.get_node("CharacterAbilityPopup")
+	var panel := popup.get_node("%AbilityExplanationPanel") as Control
+	_expect(map.main_map.visible and panel.visible and paused and not _warning_visible(),
+		"WHIRL-2 first L leaves a root danger caption through its actual paused navigation lesson")
+	_key(KEY_L, false)
+	await process_frame
+	var pose := actor.global_transform
+	for frame in 120:
+		await physics_frame
+		await process_frame
+	_expect(actor.global_transform.is_equal_approx(pose) and actor.stats.hp == 7
+		and actor.stats.oxygen == 0.0 and caught == 0 and not _warning_visible(),
+		"WHIRL-2 paused map lesson advances an ALWAYS hazard motion/resource/warning")
+	await _press(KEY_ESCAPE)
+	_expect(not paused and map.main_map.visible and not _warning_visible(),
+		"WHIRL-2 dismissing the lesson resumes suction/warning behind the still-open map")
+	for frame in 90:
+		await physics_frame
+		await process_frame
+	_expect(actor.global_transform.is_equal_approx(pose) and actor.stats.hp == 7 and caught == 0,
+		"WHIRL-2 unpaused map reading resumes physical hazard ownership")
+	await _press(KEY_L)
+	for frame in 160:
+		await physics_frame
+		await process_frame
+	_expect(caught == 1 and actor.stats.hp == 5 and actor.stats.oxygen == 0.0
+		and actor.model.visible and not actor.is_suction_locked() and _clear(actor),
+		"WHIRL-2 closing the actual overview fails one resumed normal completion")
+	print("WHIRL_MAP_PAUSE|actual_L_lesson=true|pause_and_unpaused_reading=true|caught=", caught)
+
+func _battle_ownership() -> void:
+	var cases := 0
+	for selected in (3 if "--battle-matrix" in OS.get_cmdline_user_args() else 1):
+		for phase in (["spiral", "vanish"] if "--battle-matrix" in OS.get_cmdline_user_args() else ["spiral"]):
+			if cases > 0:
+				await _fresh_world()
+			world.active = selected
+			await _battle_case(selected, phase)
+			cases += 1
+			if not findings.is_empty():
+				return
+	print("WHIRL_BATTLE_CASES|completed=", cases)
+
+func _battle_case(selected: int, phase: String) -> void:
+	var whirl: Whirlpool
+	for child in world.get_children():
+		if child is Whirlpool:
+			whirl = child
+	_expect(whirl != null, "WHIRL-2 battle fixture has no actual World hazard")
+	if whirl == null:
+		return
+	var actor := world.divers[selected] as Diver
+	actor.global_position = whirl.global_position + Vector3.RIGHT
+	actor.velocity = Vector3.ZERO
+	actor.stats.hp = 7
+	actor.stats.oxygen = 0.0
+	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
+	for frame in 12:
+		await physics_frame
+		await process_frame
+	if phase == "vanish":
+		for frame in 120:
+			if not actor.model.visible:
+				break
+			await physics_frame
+			await process_frame
+		_expect(not actor.model.visible and actor.is_suction_locked(), "WHIRL-2 battle vanish fixture missed caught beat")
+	_expect(actor.is_suction_locked() and _warning_visible(), "WHIRL-2 battle overlap never caught/warned")
+	if not findings.is_empty():
+		return
+	world.random_encounters_enabled = true
+	# Public actor encounter signal follows the real preview -> Battle route;
+	# no private battle callback or synthetic battling flag is invoked.
+	actor.encounter_triggered.emit()
+	await process_frame
+	_expect(is_instance_valid(world.random_encounter_reveal) and paused,
+		"WHIRL-2 public encounter signal did not start actual paused reveal")
+	print("WHIRL_REVEAL_HANDOFF|at=", actor.global_position, "|lock=", actor.is_suction_locked(),
+		"|visible=", actor.model.visible, "|clear=", _clear(actor), "|hp=", actor.stats.hp,
+		"|oxygen=", actor.stats.oxygen, "|warning=", _warning_visible())
+	_expect(not actor.is_suction_locked() and actor.model.visible and _clear(actor)
+		and actor.stats.hp == 7 and actor.stats.oxygen == 0.0 and not _warning_visible(),
+		"WHIRL-2 encounter reveal retains suction lock/model/resource/warning ownership")
+	if not findings.is_empty():
+		return
+	for frame in 240:
+		if is_instance_valid(world.battle):
+			break
+		await physics_frame
+		await process_frame
+	_expect(is_instance_valid(world.battle), "WHIRL-2 reveal did not hand off to a real Battle")
+	if not findings.is_empty():
+		return
+	# Some real enemy kits act before the first player. Their authored damage
+	# is not a whirlpool defect. Observe at the first playable menu, while no
+	# move is chosen, with the hazard's completion signal independently at0.
+	for frame in 600:
+		if world.battle.main_menu.visible and not world.battle.run_btn.disabled:
+			break
+		await physics_frame
+		await process_frame
+	_expect(world.battle.main_menu.visible and not world.battle.run_btn.disabled,
+		"WHIRL-2 battle never reached actual player input for the ownership window")
+	if not findings.is_empty():
+		return
+	var pose := actor.global_transform
+	var battle_hp := actor.stats.hp
+	var battle_oxygen := actor.stats.oxygen
+	for frame in 180:
+		await physics_frame
+		await process_frame
+	_expect(actor.global_transform.is_equal_approx(pose) and actor.stats.hp == battle_hp
+		and actor.stats.oxygen == battle_oxygen and caught == 0 and not _warning_visible()
+		and not actor.is_suction_locked() and actor.model.visible,
+		"WHIRL-2 real battle resumes old suction or overlays hazard warning")
+	print("WHIRL_BATTLE|actual_reveal=true|battle=", world.battling,
+		"|hp=", actor.stats.hp, "|caught=", caught, "|warning=", _warning_visible(),
+		"|actor=", selected, "|phase=", phase)
 
 func _teardown() -> void:
 	var whirl: Whirlpool
@@ -278,6 +717,7 @@ func _deactivate() -> void:
 				current_scene = world
 				await process_frame
 				world.title_screen.close()
+				world.get_node("HUD").show()
 				world.random_encounters_enabled = false
 				paused = false
 			var maze := world.embedded_maze

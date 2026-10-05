@@ -1,0 +1,347 @@
+{
+  "target": "https://underwatergame-f4saq8313-immortaldemongods-projects.vercel.app/",
+  "scenario": "laboratory",
+  "fixture": "new disposable profile, supplied legal level-five kit/cleared blockers; actual swim/movie/fight/payoff/Close/cold Load; NOT earned route",
+  "actions": 12,
+  "previous_sha256": "592dada7781d35ebc7bfa6e1e2c1db724d29c6b52c18079d2fdca4caf72d2921",
+  "completed_sha256": "d8fbf9fb69349ce82d0bb991441c41aac9fdd68f38bbcb2980ac54dbfdc2fe2d",
+  "observations": [
+    {
+      "name": "cold-title",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "fixture-load-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "fixture-load-slot",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 5 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "approach-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\nLaboratory: enter the Broken Office. Or explore the maze via\nthe ramp beyond it.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-1",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\nLaboratory: enter the Broken Office. Or explore the maze via\nthe ramp beyond it.\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "approach-2",
+      "text": "The Broken Office\nSkip Cutscene\nEscape skips. Press Continue when the scene ends."
+    },
+    {
+      "name": "actual-lab-movie-skip",
+      "text": "The Broken Office\nSkip Cutscene\nEscape skips. Press Continue when the scene ends."
+    },
+    {
+      "name": "fight-0-7",
+      "text": "Next\nMaxilani\nMusashi\nTethys\nBucky\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nTethys rises from the deep.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\n67 / 67"
+    },
+    {
+      "name": "fight-0-8",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nTethys\nBucky\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\n67 / 67"
+    },
+    {
+      "name": "moves-0-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nTethys\nBucky\nMaxilani\n10/10 Lv5\n100 / 100 02\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nTethys\n67 / 67\nMaxilani's turn.\nYou\nSTR\nACC\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nAxe Kick\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nSwift Strike\nFast, reliable - 8 02\n5\nFlash Blast\n2 Blindness\nE Up\nDown\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nBack"
+    },
+    {
+      "name": "targets-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nTethys\nBucky\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nTethys\n67 / 67\nMaxilani's turn.\nFlash Blast 0\nYou\nSTR\nACC\nDEF\nEVA\n3\nAll enemies\nTethys\nBack"
+    },
+    {
+      "name": "fight-1-11",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nDess de very\nMaxilani\n10/10 Lv5\n100 / 100 02\nEVA 2/2\nMusashi\n10/10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nTethys\n67 / 67\nBlindness 2(3 turns left)\nFlash Blast: Tethys affected.\nFlash Blast 0\nYou\nSTR\nACC\nDEF\nEVA\n2"
+    },
+    {
+      "name": "fight-1-12",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n67 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "moves-1-0",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10/10 Lv Lv5\n100 / 100 02\nEVA 2/2\nMusashi\n-10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nTethys\n67 / 67\nBlindness 2(3 turns left)\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\n1\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-1",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nTethys\n67 / 67\nBlindness 2(3 turns left)\nMusashi's turn.\nWeaken 2\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\nEVA 2/2 HP 67/67\nBack"
+    },
+    {
+      "name": "fight-2-15",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nDEFENSE =U\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nTethys\n67 / 67\nBlindness 2 (3 turns left)\nYou strike a nerve - its defense drops on Tethys by 1.\nWeaken 2\nYou\nSTR\nACC\nDEF\nEVA\n2\n2"
+    },
+    {
+      "name": "fight-2-16",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10/10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\nRun\nMight not escape\nItems\nTethys\n67 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "moves-2-0",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv5\n100 / 100 02\nEVA 2/2\nMusashi\n10/10\nLv 5\n90 / 100 02\nTethys\n67 / 67\nBlindness 2(3 turns left)\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-2",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10/10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nTethys\n67 / 67\nBlindness 2(3 turns left)\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nTethys\nEVA 2/2 HP 67/67\nBack"
+    },
+    {
+      "name": "fight-3-19",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 9.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\nTethys\n58 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-3-20",
+      "text": "NOW\nTethys\nNext\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10/10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 9.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\nTethys\n58 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-3-21",
+      "text": "NOW\nTethys\nNext\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 2/2\nMusashi\n10/10\nLv 5\n90 / 100 02\nEVA 0/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nTethys uses Double Scratch: Musashi evades/evades.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\nTethys\n58 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-3-22",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10/10 Lv5\n100 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n90 / 100 02\nEVA 0/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\n58 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "moves-3-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10/10 Lv5\n100 / 100 02\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n90 / 100 02\nEVA 0/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nTethys\n58 / 67\nBlindness 2(2 turns left)\nMaxilani's turn.\nYou\nSTR\nACC\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nAxe Kick\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nSwift Strike\nFast, reliable - 8 02\n5\nFlash Blast\n2 Blindness\nE Up\nDown\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nBack"
+    },
+    {
+      "name": "targets-3",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10/10 Lv5\n100 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n90 / 100 02\nEVA 0/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nTethys\n58 / 67\nBlindness 2(2 turns left)\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\nEVA 2/2 HP 58/67\nBack"
+    },
+    {
+      "name": "fight-4-25",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\nTethys\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n90 / 100 02\nEVA 0/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\n58/67\nBlindness 2(2 turns left)\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "fight-4-26",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n90 / 100 02\nEVA 0/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou lash out in a burst of speed for 7.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\n51 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-4-27",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n51 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "moves-4-0",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\nTethys\n10/10 Lv Lv5\n92 / 100 02\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\n51 / 67\nBlindness 2(2 turns left)\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\n1\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-4",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\nTethys\n10 / 10\nLv 5\n92 / 100 02\n51 / 67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n90 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nTethys\nEVA 2/2 HP 51/67\nBack"
+    },
+    {
+      "name": "fight-5-30",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n51 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-5-31",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 6.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n45 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-5-32",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 6.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n45 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-5-33",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\nRun\nMight not escape\nItems\nTethys\n45 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "moves-5-0",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv 5\n92 / 100 02\nTethys\n45 / 67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n10/10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-5",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\nTethys\n10/10 Lv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\n45 / 67\nBlindness 2(2 turns left)\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nTethys\nEVA 2/2 HP 45/67\nBack"
+    },
+    {
+      "name": "fight-6-36",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 10.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\n-10\nTethys\n35 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-6-37",
+      "text": "NOW\nTethys\nNext\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 10.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\nTethys\n35 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-6-38",
+      "text": "NOW\nTethys\nNext\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 1/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nTethys uses Tail Sweep: Maxilani evades; Musashi evades; Bucky -3.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\nTethys\n35 / 67\nBlindness 2 (1 turn left)"
+    },
+    {
+      "name": "fight-6-39",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 1/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\n35 / 67\nBlindness 2(1 turn left)"
+    },
+    {
+      "name": "moves-6-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10/10 Lv5\n92 / 100 02\nTethys\n35 / 67\nBlindness 2(1 turn left)\nEVA 3/3\nMusashi\n10/10 Lv 5\n82 / 100 02\nEVA 1/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nYou\nSTR\nACC\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nAxe Kick\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nSwift Strike\nFast, reliable - 8 02\n5\nFlash Blast\n2 Blindness\nE Up\nDown\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nBack"
+    },
+    {
+      "name": "targets-6",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\nTethys\n10 / 10\nLv 5\n92 / 100 02\n35 / 67\nBlindness 2(1 turn left)\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 1/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nFlash Blast 0\nYou\nSTR\nACC\nDEF\nEVA\n3\nAll enemies\nTethys\nBack"
+    },
+    {
+      "name": "fight-7-42",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nDetess to cans tel\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nTethys\n35 / 67\nBlindness 2(3 turns left)\nEVA 1/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nFlash Blast: Tethys affected.\nFlash Blast 0\nYou\nSTR\nACC\nDEF\nEVA\n2"
+    },
+    {
+      "name": "fight-7-43",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n35 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "moves-7-0",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\nTethys\n10/10 Lv Lv5\n92 / 100 02\n35 / 67\nBlindness 2(3 turns left)\nEVA 2/2\nMusashi\n10/10\nLv 5\n82 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\n1\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-7",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\nTethys\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n82 / 100 02\n35 / 67\nBlindness 2(3 turns left)\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nTethys\nEVA 2/2 HP 35/67\nBack"
+    },
+    {
+      "name": "fight-8-46",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n35 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-8-47",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n35 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-8-48",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10/10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 5.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n30 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-8-49",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10/10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 5.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n30 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-8-50",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv 5\n92 / 100 02\nEVA 2/2\nMusashi\n-10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\n4\nRun\nMight not escape\nItems\nTethys\n30 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "moves-8-0",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\nTethys\n10/10 Lv 5\n92 / 100 02\n30 / 67\nBlindness 2(3 turns left)\nEVA 2/2\nMusashi\n10/10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-8",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\nTethys\n10/10 Lv 5\n92 / 100 02\nEVA 2/2\nMusashi\n-10 / 10\nLv 5\n74 / 100 02\n30 / 67\nBlindness 2(3 turns left)\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nTethys\nEVA 2/2 HP 30/67\nBack"
+    },
+    {
+      "name": "fight-9-53",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 11.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\n-11\nTethys\n19 / 67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-9-54",
+      "text": "NOW\nTethys\nNext\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nMusashi\n10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 11.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\nTethys\n19/67\nBlindness 2(3 turns left)"
+    },
+    {
+      "name": "fight-9-55",
+      "text": "NOW\nTethys\nNext\nMaxilani\n10/10\nLv 5\n92 / 100 02\nEVA 0/2\nMusashi\n10 / 10\nLv 5\n74 / 100 02\nEVA 0/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2 (3 turns left)\nTethys uses Poison Breath: Maxilani evades; Musashi evades; Bucky affected.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\n4\nTethys\n19/67\nBlindness 2 (2 turns left)"
+    },
+    {
+      "name": "fight-9-56",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 5\n74 / 100 02\nEVA 0/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\n19 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "moves-9-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10/10 Lv5\n92 / 100 02\nTethys\n19 / 67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n10/10 Lv 5\n74 / 100 02\nEVA 0/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMaxilani's turn.\nYou\nSTR\nACC\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nAxe Kick\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nSwift Strike\nFast, reliable - 8 02\n5\nFlash Blast\n2 Blindness\nE Up\nDown\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nBack"
+    },
+    {
+      "name": "targets-9",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\nTethys\n10 / 10\nLv 5\n92 / 100 02\n19 / 67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n10/10 Lv 5\n74 / 100 02\nEVA 0/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\nEVA 2/2 HP 19/67\nBack"
+    },
+    {
+      "name": "fight-10-59",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\nTethys\n10 / 10\nLv 5\n84 / 100 02\n19 / 67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n74 / 100 02\nEVA 0/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "fight-10-60",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n74 / 100 02\nEVA 0/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nYou lash out in a burst of speed for 6.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nTethys\n13 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-10-61",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10/10 Lv 5\n84 / 100 02\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n13 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "moves-10-0",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\nTethys\n10/10 Lv 5\n84 / 100 02\n13 / 67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n10/10 Lv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\n1\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-10",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\nTethys\n10/10 Lv 5\n84 / 100 02\n13 / 67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n74 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nTethys\nEVA 2/2 HP 13/67\nBack"
+    },
+    {
+      "name": "fight-11-64",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n66 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n13 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-11-65",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n66 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n13 / 67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-11-66",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n66 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nYou land a precise jab for 6.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n7/67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-11-67",
+      "text": "NOW\nMusashi\nNext\nBucky\nTethys\nMaxilani\n10 / 10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n66 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nYou land a precise jab for 6.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nTethys\n7/67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "fight-11-68",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10/10 Lv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n66 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\n4\nRun\nMight not escape\nItems\nTethys\n7/67\nBlindness 2(2 turns left)"
+    },
+    {
+      "name": "moves-11-0",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\nTethys\n10/10 Lv 5\n84 / 100 02\n7/67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n10/10 Lv 5\n66 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-11",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\nTethys\n10/10 Lv 5\n84 / 100 02\n7/67\nBlindness 2(2 turns left)\nEVA 3/3\nMusashi\n10/10\nLv 5\n66 / 100 02\nEVA 2/2\nBucky\n7/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(3 turns left)\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nTethys\nEVA 2/2 HP 7/67\nBack"
+    },
+    {
+      "name": "fight-12-71",
+      "text": "NOW\nBucky\nNext\nTethys\nMaxilani\n10 / 10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n66 / 100 02\nPOISON -2\nEVA 2/2\nBucky\n5/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2 (2 turns left)\nYou bash it with your guard for 9. • Bucky takes 2 poison damage.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "fight-12-72",
+      "text": "Victory\nMaxilani\n10 / 10 Lv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 5\n66 / 100 02\nEVA 2/2\nBucky\nEVA 0/0\n5/10\nLv 5\n100 / 100 02\nPoison 2(2 turns left)\nTethys sinks back into the dark, beaten."
+    },
+    {
+      "name": "fight-12-73",
+      "text": "Victory\nMaxilani\n10 / 10 Lv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 5\n66 / 100 02\nEVA 2/2\nBucky\nEVA 0/0\n5/10\nLv 5\n100 / 100 02\nPoison 2(2 turns left)\nTethys sinks back into the dark, beaten."
+    },
+    {
+      "name": "fight-12-74",
+      "text": "Victory\nMaxilani\n10 / 10 Lv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 5\n66 / 100 02\nEVA 2/2\nBucky\n5/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 2(2 turns left)\nTethys sinks back into the dark, beaten."
+    },
+    {
+      "name": "fight-12-75",
+      "text": "Computer recovered\nTethys is defeated. You recovered the computer she swallowed. Another being is\ncontrolling these creatures.\nSuggested next step: explore the maze via the ramp beyond the laboratory. Use the\ndivers' abilities for its puzzles.\nClose"
+    },
+    {
+      "name": "laboratory-payoff",
+      "text": "Computer recovered\nTethys is defeated. You recovered the computer she swallowed. Another being is\ncontrolling these creatures.\nSuggested next step: explore the maze via the ramp beyond the laboratory. Use the\ndivers' abilities for its puzzles.\nClose"
+    },
+    {
+      "name": "lab-payoff-720",
+      "text": "Computer recovered\nTethys is defeated. You recovered the computer she swallowed. Another being is\ncontrolling these creatures.\nSuggested next step: explore the maze via the ramp beyond the laboratory. Use the\ndivers' abilities for its puzzles.\nClose"
+    },
+    {
+      "name": "lab-payoff-360",
+      "text": "Computer recovered\nTethys is defeated. You recovered\nthe computer she swallowed.\nAnother being is controlling these\ncreatures.\nSuggested next step: explore the\nmaze via the ramp beyond the\nlaboratory. Use the divers' abilities\nfor its puzzles.\nClose"
+    },
+    {
+      "name": "actual-lab-payoff-close",
+      "text": "Computer recovered\nTethys is defeated. You recovered the computer she swallowed. Another being is\ncontrolling these creatures.\nSuggested next step: explore the maze via the ramp beyond the laboratory. Use the\ndivers' abilities for its puzzles.\nClose"
+    },
+    {
+      "name": "lab-resumed-guidance",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nTethys is defeated. The blue-lit maze passage is now your next\nroute.\n02 84 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "cold-lab-load-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "cold-lab-load-slot",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 5 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "cold-lab-completed",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\n02 84 / 100\nMaxilani\n10 / 10"
+    }
+  ],
+  "findings": []
+}

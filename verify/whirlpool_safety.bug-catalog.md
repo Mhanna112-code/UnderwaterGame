@@ -27,10 +27,12 @@ motion owner or cancellation boundary; that must be investigated explicitly.
 | ID | Failure | Impact/plausibility | Test and status |
 |---|---|---|---|
 | WHIRL-1 | A warning/suction shape crossing a solid wall catches or drags a diver in the adjacent passage. | High: unavoidable damage/reset bypasses physical corridors; both callbacks lack upstream line-of-sight protection. | Fixed: original real World overlap red,24 generated obstructed/open pairs and native Metal repeat. |
-| WHIRL-2 | Inactive maze, battle or exclusive reading/menu state still pulls actors or draws root-owned warnings. | High: two input/resource/HUD owners; scene-child areas/Tweens/static labels can outlive owning gameplay. | Actual shared area handoff, battle/modal and paused-warning checks. Pending. |
+| WHIRL-2 | Inactive maze, battle or exclusive reading/menu state still pulls actors or draws root-owned warnings. | High: two input/resource/HUD owners; scene-child areas/Tweens/static labels can outlive owning gameplay. | Original revision reading/reveal reds fixed; six World Inventory, six Battle and actual embedded Inventory/first-L/Save compositions pass. Final browser/campaign acceptance remains separate. |
 | WHIRL-3 | Restore, killed Tween or owner/actor teardown leaves a shared model hidden, rolled or suction-locked, or emits freed-reference errors. | High: irreversible gameplay stall; the original Tween was local/untracked and exit only cleared captions. | Captured reds repaired:18 World interruptions,6 active-maze handoffs,24 blocked returns,6 actor deletions and3 external-owner cases. Standalone restore/World save guard and battle/modal ownership acceptance remain separate. |
 | WHIRL-4 | Nonlethal damage revives a downed diver or reports negative damage. | High: corrupts combat/resource contract; max(1,hp-damage) unconditionally raises0HP. | Actual0HP→1HP/−1loss red repaired;36 completed overlap/resource/signal cases pass. |
 | WHIRL-5 | Hall layout/deep-shaft port blocks all safe lanes or regresses grapple visibility. | High: final route becomes impossible; current hall tuning/layout and deep visuals differ upstream. | Real avoidance/arrival/reset traversal plus physical columns/ceilings, native shaft/floor/ring/anchor view. Pending after first safety red. |
+| WHIRL-6 | A normal Corridor4 reset immediately catches the actor again before they can swim away. | High: inevitable idle HP drain/stall; the authored reset is within its outer pull and completion lacked cancellation's reentry grace. | Actual embedded overlap/menu/resume red fixed: settled safe return, actual escape and deliberate reentry pass; final whole-route matrix remains separate. |
+| WHIRL-7 | A visual observer mistakes a scaled preview for missing native Inventory foreground. | Medium: false bug/repair claims and unreliable visual acceptance; node-visible/layout alone still cannot prove pixels. | Production-bug claim retracted: both allegedly missing and final PNGs independently contain1128 opaque heading pixels; original-size/cropped inspection confirms readable UI. Render witness characterized. |
 
 ## First test / self-critique
 
@@ -56,7 +58,47 @@ separate height/deep-hall generator belongs to WHIRL-5.
 - No new narration, enemy kit or ordinary victory recovery in this module.
 - Final browser/campaign/audio and desktop packages remain in the full ledger.
 
+## WHIRL-2 exclusive-screen probe
+
+First reproduce actual World suction, then press Escape to open the real
+Inventory. Snapshot the caught actor's pose, model visibility and HP/Oxygen
+after opening. Wait beyond the original pull/vanish deadline: none may change,
+and the root warning must be hidden. Close with Escape; the same catch must
+resume, finish exactly once with the authored damage and return, and permit
+real swimming. This pins a reading suspension, not an invisible cancellation.
+Always-disabled hazards fail the initial catch and resumed completion;
+unconditionally canceled motion fails the resumed completion; mutable resources
+or a drawing warning fail exclusive ownership. No private hazard callback or
+synthetic menu visibility assignment is used. Start with one captured case;
+only after fixing it generate three actors, spiral/vanish, and other actual
+modal/battle/area handoffs. Layout, autosaves and full campaign remain deferred
+to their ledger rows, not counted as coverage from this ownership test.
+
+The next public-signal test enters the actual paused random encounter reveal
+and real Battle while caught. It requires cancellation before that new owner
+can use the party, no delayed HP/O2 mutation or warning during the battle,
+and cleared model/lock at the checked departure. This is not a battle win or
+balance proof. A separate real embedded-Maze handoff/Inventory test checks the
+same caption/suspension contract in the other exploration owner.
+
+The first-map test uses explicit owned-map/near-chest presentation state,
+not a claim of earning that item. Actual L opens the real paused lesson;
+Escape dismisses only the lesson, leaving the unpaused map as an exclusive
+reader until another L. Both phases must retain caught pose/HP/O2 and hide
+the root warning, then one normal completion follows closing the map.
+The separate Save case physically swims into the authored Save Point and
+presses P while a real local hazard owns the actor. It opens/closes reading
+without issuing any save request or writing a player slot.
+
 ## WHIRL-3 first interruption probe
+
+WHIRL-7 native self-critique: sample the rendered Inventory title's actual
+rectangle after frame_post_draw, not a golden snapshot. At least100 visible
+foreground pixels must contrast against this dark reading surface. Blank menu
+passes every node-visible/layout check but fails this pixel witness. The title
+is independently located by its public text; no internal menu field is used.
+Cosmetic reflow/position/font refactors preserve the rendered contrast witness;
+an empty or invisible heading cannot masquerade as completed visual evidence.
 
 Use the actual authored World whirlpool and a capsule-clear shared actor.
 Wait for a real Area3D catch, remove only the hazard owner mid-spiral, then
@@ -68,6 +110,66 @@ fixed, generate all three capsules and spiral/vanish interruption phases,
 then test live restore, killed scheduler, inactive area and blocked approaches.
 
 ## Evaluation / investigation
+
+Current-main integration, October5:
+
+Five actual reading/reveal probes independently fail on73c2d72. The pending
+repair was semantically ported onto17e4705, then artifact-only1dc675c, preserving
+deep shafts/down-current particles, global Battle warning suppression, recent
+autosaves/rests/scaling and reward-rock guidance. Six Inventory and six Battle
+handoff cases, actual embedded Inventory, first-L and Save reading pass on
+the combined source. Native Metal captures a readable1128-pixel title witness
+and no danger warning behind Inventory. This is local verification, not yet
+canonical promotion or whole-route acceptance. Later final-source receipts
+must identify their exact commit/pack rather than reuse the earlier green.
+
+October5 ownership follow-up:
+
+- Admitted red comparisons repeat all five public reading/handoff flags against
+  a separate unmodified-production a37253e checkout with visible gameplay HUD.
+  All exit1 with real findings and no engine/script ERROR, including the first
+  dispatched L frame. Final repair source passes13 headless ownership/safety
+  commands plus native Metal; four independent preservation scripts pass too.
+
+- Actual Escape/Inventory red: pose advanced to the return, HP7 became5,
+  caught count1 and the root danger warning remained visible behind reading.
+  Activity ownership now pauses the owned Tween for reading and synchronously
+  hides the warning; actual battle/area handoff cancels instead of resuming it.
+- Six Inventory cases cover three live capsules × spiral/vanish, followed by
+  one exact damage completion, capsule-clear nearby return and real W.
+- Six public encounter-signal cases enter the actual paused preview and real
+  Battle in both phases. Release happens before preview; the first playable
+  menu retains a settled actor/resource baseline and no hazard completion.
+  This is not combat/balance acceptance or a real campaign fight win.
+- Actual embedded-area handoff and Escape reading caught WHIRL-6: the old
+  Corridor4 return was inside the outer pull, so the actor completed once
+  then immediately spiraled/vanished again. A broad protective outer-zone
+  grace was rejected because it could become an immunity route through the
+  obstacle. The authored reset now lies outside pull influence for all party
+  capsules; ordinary core grace remains bounded. The returned actor can swim,
+  and deliberate reentry still catches. This is not a hall-layout port.
+- Observer corrections, not product repairs: cold-title-close fixtures left
+  HUD hidden; the active diagnostic fixture now explicitly shows gameplay
+  HUD without claiming New Game or writing slots. Exact World reset-marker
+  equality ignored valid capsule-clear nearby fallback (up to0.5m for these
+  three capsules); the test requires a bounded clear return plus actual swim.
+  A Swordfish can act before the first player and deal genuine battle damage;
+  observe resource conservation at the first playable menu rather than
+  demanding invulnerability from actual combat. The hazard completion signal
+  still must remain0 throughout. A duplicate test-key helper/indentation
+  parse error was corrected before runtime evidence was accepted.
+- Native Metal Inventory capture is inspected for absence of the danger
+  caption and accompanies the actual freeze/resume run. The existing dim HUD
+  behind Inventory is visible in that capture; this is not final UI polish,
+  browser proof, hall safety, stable-save admission or campaign readiness.
+- Native adversarial inspection initially mistook scaled previews for missing
+  menu foreground. Reopening the saved PNG independently finds1128 opaque
+  heading pixels even in the alleged rejected capture, and original-size plus
+  cropped inspection visibly confirms the title/tabs. Retract the production
+  renderer-regression claim, not merely its supposed cause. The new rendered
+  witness still usefully guards real blank UI that visibility/rectangles would
+  miss, and repeated Metal plus Compatibility draws pass. The warning canvas
+  now follows its label's visibility as explicit ownership, not a renderer fix.
 
 Final-source rerun: nine commands exit0 and logs contain no engine/script
 ERROR, infinite loop or FINDING. The complete actor/source hash receipt and

@@ -1,0 +1,69 @@
+{
+  "target": "https://underwatergame-6v7bqw56y-immortaldemongods-projects.vercel.app/",
+  "fixture": "new disposable browser context, recovered World checkpoint at authored Save Point; not full campaign route",
+  "observations": [
+    {
+      "name": "cold-title",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "load-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "load-slot",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party\nSlot 1 Autosave - Empty\nSlot 2 - Lv 1 party\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "save-menu",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (On) • R: Encounters (Off)\nSave Point\nShallows: fight to grow stronger.\nSave\nSave-Press-R\n02 97 / 100\nMaxilani |\n10 / 10"
+    },
+    {
+      "name": "save-target",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (On) • R: Encounters (Off)\nChoose a slot to save to\nShallows: fight to grow stronger.\nSlot 1 - Lv 1 party\nSlot 2 - Lv 1 party\nSlot 3 - Empty\n< Back\nprone\nSave - Press-P\n02 97 / 100\nMaxilani |\n10 / 10"
+    },
+    {
+      "name": "overwrite-confirm",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (On) • R: Encounters (Off)\nSlot 2 already has progress. Are you sure you want to overwrite this save progress?\ngrow stronger.\nOptIone\nYes\nNo\nSave-Press-R\n02 97 / 100\nMaxilani |\n10 / 10"
+    },
+    {
+      "injectedStorageError": "Failed to save IDB file system: Failed to execute 'put' on 'IDBObjectStore': The transaction has finished."
+    },
+    {
+      "injectedStorageError": "Failed to save IDB file system: Failed to execute 'put' on 'IDBObjectStore': The transaction has finished."
+    },
+    {
+      "name": "rejected-save",
+      "text": "Maxilani\nWASD swim - SPACE/SHIFT depth • mouse/arrows look TAB diver • F: Swap ; Q: Sonar (On) • R: Encounters (Off)\nShallows: fight to grow stronger.\nCould not save. Your previous checkpoint is unchanged. Please\nretry\n02 97/100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "retry-menu",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (On) • R: Encounters (Off)\nSave Point\nShallows: fight to grow stronger.\nSave\nSave-Press-R\n02 94/100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "retry-target",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (On) • R: Encounters (Off)\nChoose a slot to save to\nShallows: fight to grow stronger.\nSlot 1 - Lv 1 party\nSlot 2 - Lv 1 party\nSlot 3 - Empty\n< Back\nprone\nSave-Press-R\n02 94 / 100\nMaxilani |\n10 / 10"
+    },
+    {
+      "name": "retry-confirm",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q›Sonar (On) • R: Encounters (Off)\nSlot 2 already has progress. Are you sure you want to overwrite this save progress?\ngrow stronger.\nYes\nNo\nSave-Press-R\n02 94/100\nMaxilani |\n10 / 10"
+    },
+    {
+      "name": "confirmed-save-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar(On) • R: Encounters (Off)\nShallows: fight to grow stronger.\nProgress saved to Slot 2\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "cold-reload-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "cold-reload-target",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party\nSlot 1 Autosave - Empty\nSlot 2 - Lv 1 party\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "cold-loaded-save-point",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (On) • R: Encounters (Off)\nSave Point\nShallows: fight to grow stronger.\nSave\nSave-Press-R\n02 97 / 100\nMaxilani |\n10 / 10"
+    }
+  ],
+  "findings": []
+}

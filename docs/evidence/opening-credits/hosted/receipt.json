@@ -1,0 +1,15 @@
+{
+  "source_commit": "7330d5ce32a8d3a48ce9e41cdbe995b1762f5ce9",
+  "observations": [
+    {
+      "name": "title",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "credits",
+      "text": "UNDERWATER\nCan you survive the deep?\nGame development: ImmortalDemonGod and Mhanna\nArt and cinematics: Glass_Goat\nMusic: Phoenix Down Music"
+    }
+  ],
+  "findings": [],
+  "scope": "Normal hosted New Game and complete Mermaid movie to visible credits; no full campaign claim"
+}

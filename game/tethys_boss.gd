@@ -1,4 +1,4 @@
-# Glassgoat's Mermaid Freak is Tethys, the final boss. It is deliberately a
+# Glassgoat's Mermaid Freak is Tethys, an authored boss. It is deliberately a
 # separate combatant from Goblin: the meeting clarified that normal grunts
 # will eventually be replaced by fish, while this four-armed creature is the
 # massive authored boss. Godot does not expose usable surface materials from
@@ -9,6 +9,11 @@ class_name TethysBoss
 extends Node3D
 
 const SRC := preload("res://characters/Mermaid_Freak.fbx")
+
+# Laboratory presentation can select a compatible delivered variant while
+# keeping one animation/combat adapter. Default/reference presentation stays
+# unchanged; this is not the review-gated opening identity/film change.
+var model_scene: PackedScene = SRC
 
 const DISPLAY_NAME := "Tethys"
 const BASE_XP := 75
@@ -86,7 +91,7 @@ var _clips: Dictionary = {}
 var _move_index := 0
 
 func _ready() -> void:
-	var model: Node3D = SRC.instantiate()
+	var model: Node3D = model_scene.instantiate()
 	model.name = "Model"
 	add_child(model)
 

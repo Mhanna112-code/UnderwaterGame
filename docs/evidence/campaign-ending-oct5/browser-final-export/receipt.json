@@ -1,0 +1,366 @@
+{
+  "target": "http://127.0.0.1:52435/",
+  "scenario": "ending",
+  "fixture": "new disposable profile, supplied legal level-five kit, supplied key spent through E, isolated recovered room; NOT earned route",
+  "actions": 12,
+  "previous_sha256": "ffff3fcdcddf6866328ffe71ea7df26cbb60448c9224afbca08e4bc692da9ad1",
+  "completed_sha256": "f7c03bbc0ee84e811338347e693cc6eba2fd0e63e10d2033ec4081365830b61b",
+  "observations": [
+    {
+      "name": "cold-title",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "fixture-load-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "fixture-load-slot",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 5 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "approach-0",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nNavigation map: not acquired.\nMaze: find the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "approach-1",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nNavigation map: not acquired.\nMaze: find the navigation map in the Control Room.\nE: interact • F: ability."
+    },
+    {
+      "name": "approach-2",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (On)\nCordys\nA great danger is detected here. Are you sure\nyou would like to proceed?\nYes (Y)\nNo (N)"
+    },
+    {
+      "name": "fight-0-6",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n10/10 Lv Lv5\n100 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n75 / 75"
+    },
+    {
+      "name": "moves-0-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n10/10 Lv 5\n100 / 100 02\nEVA 3/3\nMusashi\n- 10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nCordys\n75 / 75\nMaxilani's turn.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nFlash Blast\n2 Blindness\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nAxe Kick\nStrength Damage • EVA -3\nSwift Strike\nFast, reliable - 8 02\n5\nE Up\nDown\nBack"
+    },
+    {
+      "name": "targets-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n10/10 Lv Lv5\n100 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nCordys\n75 / 75\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\nEVA 2/2 HP 75/75\nBack"
+    },
+    {
+      "name": "fight-1-9",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n10/10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n- 10/10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\n75 / 75\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "fight-1-10",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n10/10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n- 10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou lash out in a burst of speed for 5.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n- 70 / 75"
+    },
+    {
+      "name": "fight-1-11",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n10/10 Lv Lv5\n92 / 100 02\nEVA 3/3\nMusashi\n- 10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n- 70 / 75"
+    },
+    {
+      "name": "moves-1-0",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n10/10 Lv5\n92 / 100 02\nEVA 3/3\nMusashi\n- 10 / 10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\n- 70 / 75\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-1",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n10/10 Lv Lv5\n92 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\n- 70 / 75\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nCordys\nEVA 2/2 HP 70/75\nBack"
+    },
+    {
+      "name": "fight-2-14",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n- 70 / 75"
+    },
+    {
+      "name": "fight-2-15",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n10 / 10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n- 70 / 75"
+    },
+    {
+      "name": "fight-2-16",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n10/10 Lv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 6.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n64 / 75"
+    },
+    {
+      "name": "fight-2-17",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n10/10 Lv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 /10 Lv 5\n100 / 100 02\nEVA O/0\nCordys prepares Octo Stab.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n64 / 75"
+    },
+    {
+      "name": "fight-2-18",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n8/10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA O/0\nCordys uses Octo Stab: Maxilani -2.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n64 / 75"
+    },
+    {
+      "name": "fight-2-19",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n- 10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\nRun\nMight not escape\nItems\nCordys\n64 / 75"
+    },
+    {
+      "name": "moves-2-0",
+      "text": "NOW\nBucky\nNext\nMaxilani\nCordys\n8/10\nLv 5\n92 / 100 02\n64 / 75\nEVA 3/3\nMusashi\n10/10 Lv 5\n92 / 100 02\nEVA 212\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-2",
+      "text": "NOW\nBucky\nNext\nMaxilani\nCordys\n8/10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n- 10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nCordys\nEVA 2/2 HP 64/75\nBack\n64 / 75"
+    },
+    {
+      "name": "fight-3-22",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 8.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA\nCordys\n56 / 75"
+    },
+    {
+      "name": "fight-3-23",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n92 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n56 / 75"
+    },
+    {
+      "name": "moves-3-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n92 / 100 02\n56 / 75\nEVA 3/3\nMusashi\n10/10 Lv5\n92 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nFlash Blast\n2 Blindness\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nAxe Kick\nStrength Damage • EVA -3\nSwift Strike\nFast, reliable - 8 02\n5\nE Up\nDown\nBack"
+    },
+    {
+      "name": "targets-3",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n92 / 100 02\n56 / 75\nEVA 3/3\nMusashi\n10/10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\nEVA 2/2 HP 56/75\nBack"
+    },
+    {
+      "name": "fight-4-26",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n84 / 100 02\n56 / 75\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "fight-4-27",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n52 / 75"
+    },
+    {
+      "name": "moves-4-0",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n84 / 100 02\n52 / 75\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-4",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n84 / 10002\n52 / 75\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n92 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nCordys\nEVA 2/2 HP 52/75\nBack"
+    },
+    {
+      "name": "fight-5-30",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n52 / 75"
+    },
+    {
+      "name": "fight-5-31",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n52 / 75"
+    },
+    {
+      "name": "fight-5-32",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 5.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n47 / 75"
+    },
+    {
+      "name": "fight-5-33",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA O/0\nCordys prepares Head Bash.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n47 / 75"
+    },
+    {
+      "name": "fight-5-34",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nCordys prepares Head Bash.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n47 / 75"
+    },
+    {
+      "name": "fight-5-35",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 0/3\nMusashi\n10 / 10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA O/0\nCordys uses Head Bash: Maxilani evades.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nDODGE\nCordys\n47 / 75"
+    },
+    {
+      "name": "fight-5-36",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 0/3\nMusashi\n-10 / 10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\nRun\nMight not escape\nItems\nCordys\n47 / 75"
+    },
+    {
+      "name": "moves-5-0",
+      "text": "NOW\nBucky\nNext\nMaxilani\nCordys\n8/10\nLv 5\n84 / 100 02\n47 / 75\nEVA 0/3\nMusashi\n10/10 Lv 5\n84 / 100 02\nEVA 212\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-5",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n84 / 10002\nEVA 0/3\nMusashi\n- 10 / 10\nLv 5\n84 / 100 02\nes\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nCordys\nEVA 2/2 HP 47/75\nBack\nCordys\n47 / 75"
+    },
+    {
+      "name": "fight-6-39",
+      "text": "NOW\nBucky\nNext\n-TO\nMaxilani\nCordys\n8/10\nLv 5\n84 / 100 02\n37 / 75\nEVA 0/3\nMusashi\n10 / 10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 10.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "fight-6-40",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n84 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n37 / 75"
+    },
+    {
+      "name": "moves-6-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n84 / 100 02\n37 / 75\nEVA 3/3\nMusashi\n10/10 Lv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nFlash Blast\n2 Blindness\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nAxe Kick\nStrength Damage • EVA -3\nSwift Strike\nFast, reliable - 8 02\n5\nE Up\nDown\nBack"
+    },
+    {
+      "name": "targets-6",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n84 / 100 02\n37 / 75\nEVA 3/3\nMusashi\n10/10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\nEVA 2/2 HP 37/75\nBack"
+    },
+    {
+      "name": "fight-7-43",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n76 / 100 02\n37 / 75\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "fight-7-44",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n-10 / 10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou lash out in a burst of speed for 4.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n33 / 75"
+    },
+    {
+      "name": "fight-7-45",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n33 / 75"
+    },
+    {
+      "name": "moves-7-0",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n76 / 100 02\n33 / 75\nEVA 3/3\nMusashi\n10/10 Lv 5\n84 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-7",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n76 / 100 02\n33 / 75\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n84 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nCordys\nEVA 2/2 HP 33/75\nBack"
+    },
+    {
+      "name": "fight-8-48",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n10/10 Lv5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n33 / 75"
+    },
+    {
+      "name": "fight-8-49",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n33 / 75"
+    },
+    {
+      "name": "fight-8-50",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n10 / 10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 5.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n28 / 75"
+    },
+    {
+      "name": "fight-8-51",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 5.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n28 / 75"
+    },
+    {
+      "name": "fight-8-52",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n10/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n10 / 10 Lv 5\n100 / 100 02\nEVA O/0\nCordys prepares Electric Shooting.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n28 / 75"
+    },
+    {
+      "name": "fight-8-53",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 0/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nCordys uses Electric Shooting: Maxilani evades; Musashi -1; Bucky -1.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n28 / 75"
+    },
+    {
+      "name": "fight-8-54",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 0/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\nRun\nMight not escape\nItems\nCordys\n28 / 75"
+    },
+    {
+      "name": "moves-8-0",
+      "text": "NOW\nBucky\nNext\nMaxilani\nCordys\n8/10\nLv 5\n76 / 100 02\n28 / 75\nEVA 0/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-8",
+      "text": "NOW\nBucky\nNext\nMaxilani\nCordys\n8/10\nLv 5\n76 / 100 02\nEVA 0/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nCordys\nEVA 2/2 HP 28/75\nBack\n28 / 75"
+    },
+    {
+      "name": "fight-9-57",
+      "text": "NOW\nBucky\nNext\n- TU\nMaxilani\nCordys\n8/10\nLv 5\n76 / 100 02\n18 / 75\nEVA 0/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 10.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "fight-9-58",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n18 / 75"
+    },
+    {
+      "name": "moves-9-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n76 / 100 02\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nCordys\n18 / 75\nMaxilani's turn.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3\nElectric Touch\nStrength Damage • EVA -3\nAxe Kick\nStrength Damage • EVA -3\nScuba Stabbing\nStrength Damage • 2 Bleed\nSwift Strike\nFast, reliable - 8 02\n5\nFlash Blast\n2 Blindness\nE Up\nDown\nMultiple Knee Combo\nStrength Damage all • ACC/EVA -1\nBack"
+    },
+    {
+      "name": "targets-9",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n76 / 100 02\n18 / 75\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\nEVA 2/2 HP 18/75\nBack"
+    },
+    {
+      "name": "fight-10-61",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n68 / 100 02\n18 / 75\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "fight-10-62",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nYou lash out in a burst of speed for 5.\nSwift Strike 6\nYou\nSTR\nACC\nDEF\nEVA\n3\nCordys\n13 / 75"
+    },
+    {
+      "name": "fight-10-63",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n13 / 75"
+    },
+    {
+      "name": "moves-10-0",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n68 / 100 02\n13 / 75\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\n1\nPrecise Tap\nWeaken Empowered\nDEF -2 - 8 02\nWeaken\nDEF -2 - 10 02\nSlow Empowered\nAGI -2 - 8 02\nSlow\nAGI -2 - 10 02\nPrecise Jab\nNearly unmissable - 8 02\n4\nBack"
+    },
+    {
+      "name": "targets-10",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\nCordys\n8/10\nLv 5\n68 / 100 02\n13 / 75\nEVA 3/3\nMusashi\n9/10\nLv 5\n76 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nCordys\nEVA 2/2 HP 13/75\nBack"
+    },
+    {
+      "name": "fight-11-66",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n13 / 75"
+    },
+    {
+      "name": "fight-11-67",
+      "text": "NOW\nMusashi\nNext\nCordys\nBucky\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nYou land a precise jab for 5.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n8 / 75"
+    },
+    {
+      "name": "fight-11-68",
+      "text": "NOW\nCordys\nNext\nBucky\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nBucky\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nCordys prepares Poison Breath.\nPrecise Jab 6\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nCordys\n8 / 75"
+    },
+    {
+      "name": "fight-11-69",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3 Poison 1(2 turns left)\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nPoison 1(2 turns left)\nBucky\n_9/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 1(2 turns left)\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\n4\nRun\nMight not escape\nItems\nCordys\n8 / 75"
+    },
+    {
+      "name": "moves-11-0",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3 Poison 1(2 turns left)\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nPoison 1(2 turns left)\nBucky\nCordys\n8 / 75\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 1(2 turns left)\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nGuard Bash\nSturdy, reliable\nMending Current\nRestores an ally's HP - 8 02\nHeavy Kick\nBalanced, heavier - 10 02\n10\nCrushing Haymaker\n15\nVery heavy, exhaust enemy EVA first -\nHeavy Slam\nVery heavy, slow to land - 8 02\n14\nBack"
+    },
+    {
+      "name": "targets-11",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3 Poison 1(2 turns left)\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nPoison 1(2 turns left)\nBucky\nCordys\n9/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 1(2 turns left)\nBucky's turn.\nGuard Bash 10\nYou\nSTR\nACC\n4\nDEF\nEVA\nCordys\nEVA 2/2 HP 8/75\nBack\n8 / 75"
+    },
+    {
+      "name": "fight-12-72",
+      "text": "NOW\nBucky\nNext\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3 Poison 1 (2 turns left)\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nPoison 1 (2 turns left)\nBucky\nPOISON -1\n8/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 1 (1 turn left)\nYou bash it with your guard for 9. • Bucky takes 1 poison damage.\nGuard Bash 10\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "fight-12-73",
+      "text": "Victory\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3 Poison 1 (2 turns left)\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2 Poison 1 (2 turns left)\nBucky\n8/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 1 (1 turn left)\nCordys falls. You have defeated the creature that broke you."
+    },
+    {
+      "name": "fight-12-74",
+      "text": "Victory\nMaxilani\n8/10\nLv 5\n68 / 100 02\nEVA 3/3 Poison 1 (2 turns left)\nMusashi\n9/10\nLv 5\n68 / 100 02\nEVA 2/2\nPoison 1 (2 turns left)\nBucky\n8/10\nLv 5\n100 / 100 02\nEVA 0/0\nPoison 1 (1 turn left)\nCordys falls. You have defeated the creature that broke you."
+    },
+    {
+      "name": "fight-12-75",
+      "text": "Game complete\nCordys is defeated.\nSaving your completed journey...\nReturn to Title"
+    },
+    {
+      "injectedStorageError": "Failed to save IDB file system: Failed to execute 'put' on 'IDBObjectStore': The transaction has finished."
+    },
+    {
+      "name": "rejected-ending",
+      "text": "Game complete\nCordys is defeated.\nCompletion could not be saved. Your previous checkpoint is unchanged.\nEnable saving or free storage, then retry before leaving.\nRetry Save\nReturn to Title"
+    },
+    {
+      "name": "disabled-title",
+      "text": "Game complete\nCordys is defeated.\nCompletion could not be saved. Your previous checkpoint is unchanged.\nEnable saving or free storage, then retry before leaving.\nRetry Save\nReturn to Title"
+    },
+    {
+      "name": "title-still-disabled",
+      "text": "Game complete\nCordys is defeated.\nCompletion could not be saved. Your previous checkpoint is unchanged.\nEnable saving or free storage, then retry before leaving.\nRetry Save\nReturn to Title"
+    },
+    {
+      "name": "retry-ending",
+      "text": "Game complete\nCordys is defeated.\nCompletion could not be saved. Your previous checkpoint is unchanged.\nEnable saving or free storage, then retry before leaving.\nRetry Save\nReturn to Title"
+    },
+    {
+      "name": "confirmed-ending",
+      "text": "Game complete\nCordys is defeated.\nCompleted journey saved to Slot 1. You can safely return to the title.\nReturn to Title"
+    },
+    {
+      "name": "ending-720",
+      "text": "Game complete\nCordys is defeated.\nCompleted journey saved to Slot 1. You can safely return to the title.\nReturn to Title"
+    },
+    {
+      "name": "ending-360",
+      "text": "Game complete\nCordys is defeated.\nCompleted journey saved to Slot 1. You\ncan safely return to the title.\nReturn to Title"
+    },
+    {
+      "name": "actual-title-exit",
+      "text": "Game complete\nCordys is defeated.\nCompleted journey saved to Slot 1. You can safely return to the title.\nReturn to Title"
+    },
+    {
+      "name": "returned-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "cold-load-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "cold-load-slot",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 5 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "cold-completed",
+      "text": "Game complete\nCordys is defeated.\nCompleted journey saved to Slot 1. You can safely return to the title.\nReturn to Title"
+    }
+  ],
+  "findings": []
+}

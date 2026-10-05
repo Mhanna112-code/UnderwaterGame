@@ -13,7 +13,9 @@ extends SceneTree
 var findings: Array[String] = []
 
 func _initialize() -> void:
-	var tethys := TethysBoss.new().make_stats(CombatantStats.new())
+	var boss := TethysBoss.new()
+	var tethys := boss.make_stats(CombatantStats.new())
+	boss.free()
 	_expect(tethys.immune_to_stat_loss, "IMMUNE-01 Tethys stats are not flagged immune")
 	var attacker := CombatantStats.new()
 	attacker.strength = 3

@@ -1,0 +1,52 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_MENU|start=(27.69625, 1.992409, 10.63341)|end=(27.69625, 1.992409, 10.63341)|hp=7|caught=0|warning=false
+WHIRL_MENU_COMPLETION|reset=(20.0, 2.0, 10.0)|clear=true|lock=false|visible=true|oxygen=0.0
+WHIRL_MENU_RESUMED|end=(19.76903, 2.0, 9.904329)|hp=5|caught=1
+WHIRL_MENU_CASE|actor=0|phase=spiral|returned_clear=true|swim=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_MENU|start=(27.0, -0.2, 10.0)|end=(27.0, -0.2, 10.0)|hp=7|caught=0|warning=false
+WHIRL_MENU_COMPLETION|reset=(20.0, 2.0, 10.0)|clear=true|lock=false|visible=true|oxygen=0.0
+WHIRL_MENU_RESUMED|end=(19.76903, 2.0, 9.904329)|hp=5|caught=1
+WHIRL_MENU_CASE|actor=0|phase=vanish|returned_clear=true|swim=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_MENU|start=(27.96043, 1.999359, 10.20914)|end=(27.96043, 1.999359, 10.20914)|hp=7|caught=0|warning=false
+WHIRL_MENU_COMPLETION|reset=(20.0, 2.0, 10.0)|clear=true|lock=false|visible=true|oxygen=0.0
+WHIRL_MENU_RESUMED|end=(19.90433, 2.0, 9.769031)|hp=5|caught=1
+WHIRL_MENU_CASE|actor=1|phase=spiral|returned_clear=true|swim=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_MENU|start=(27.0, -0.2, 10.0)|end=(27.0, -0.2, 10.0)|hp=7|caught=0|warning=false
+WHIRL_MENU_COMPLETION|reset=(20.0, 2.0, 10.0)|clear=true|lock=false|visible=true|oxygen=0.0
+WHIRL_MENU_RESUMED|end=(19.90433, 2.0, 9.769031)|hp=5|caught=1
+WHIRL_MENU_CASE|actor=1|phase=vanish|returned_clear=true|swim=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_MENU|start=(27.95391, 1.999222, 10.22977)|end=(27.95391, 1.999222, 10.22977)|hp=7|caught=0|warning=false
+WHIRL_MENU_COMPLETION|reset=(20.0, 2.0, 10.0)|clear=true|lock=false|visible=true|oxygen=0.0
+WHIRL_MENU_RESUMED|end=(19.64645, 2.0, 9.646446)|hp=5|caught=1
+WHIRL_MENU_CASE|actor=2|phase=spiral|returned_clear=true|swim=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_MENU|start=(27.0, -0.2, 10.0)|end=(27.0, -0.2, 10.0)|hp=7|caught=0|warning=false
+WHIRL_MENU_COMPLETION|reset=(20.0, 2.0, 10.0)|clear=true|lock=false|visible=true|oxygen=0.0
+WHIRL_MENU_RESUMED|end=(19.64645, 2.0, 9.646446)|hp=5|caught=1
+WHIRL_MENU_CASE|actor=2|phase=vanish|returned_clear=true|swim=true
+WHIRL_MENU_CASES|completed=6
+WHIRLPOOL SAFETY: clean

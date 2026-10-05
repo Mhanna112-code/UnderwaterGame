@@ -27,6 +27,21 @@ var _confirm_panel: Control
 var _slots_list: VBoxContainer
 var _confirm_label: Label
 var _pending_slot := -1
+var _saving_label: Label
+
+# Confirmation owns the same reading surface until durable storage replies.
+# Navigation and repeated clicks cannot start a second writer in that interval.
+func set_saving(on: bool, slot := -1) -> void:
+	if _saving_label == null:
+		_saving_label = Label.new()
+		_saving_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_panel_column(_root_panel).add_child(_saving_label)
+	_saving_label.text = "Saving to Slot %d… Please wait." % (slot + 1)
+	_saving_label.visible = on
+	if on:
+		_show_root()
+	for button in find_children("*", "Button", true, false):
+		(button as Button).disabled = on
 
 func _ready() -> void:
 	visible = false

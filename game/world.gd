@@ -134,6 +134,7 @@ const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
 const OpeningVideoScript := preload("res://game/opening_video.gd")
 const OpeningTriggerScript := preload("res://game/opening_prologue_trigger.gd")
 const PrologueRecoveryScript := preload("res://game/prologue_recovery.gd")
+const CampaignCompletionScript := preload("res://game/campaign_completion.gd")
 const PrologueCinematicScript := preload("res://game/prologue_cinematic.gd")
 
 var key_items: Array[String] = []
@@ -143,6 +144,9 @@ const WORLD_CEILING_Y := BLOCKADE_HEIGHT * 4.0
 # _build_highway()'s entrance_rocks x (START_X + 1). West of it is the
 # tutorial side of the shallows.
 const ENTRANCE_BLOCKADE_X := 16.0
+# _build_highway()'s three lock-plate doors (plate_x + 3.0, plate_x = 39).
+# "Explore the deep sea" only shows once the party is past them.
+const PUZZLE_DOORS_X := 42.0
 const CEILING_THICKNESS := 2.0
 const ROCK_KEY_ITEM_REWARDS := {
 	"rock_7": "abyssal_lens",
@@ -268,8 +272,65 @@ var _current_slot := -1
 const AUTOSAVE_INTERVAL := 180.0
 var _autosave_timer := 0.0
 var _autosave_writing := false
+var _checkpoint_saving := false
+var _completion_screen: CanvasLayer
+var _completion_checkpoint: Dictionary = {}
+var _completion_saving := false
+
+func _show_campaign_completion(already_saved := false) -> void:
+	if is_instance_valid(_completion_screen) or route_state.octopus_state != "defeated":
+		return
+	# The actual battle result has already paid XP and removed the station.
+	# Freeze this boundary before yielding; retries must not replay rewards or
+	# silently restore/heal the party. This does not relax ordinary save guards.
+	_checkpoint_saving = true
+	$HUD.visible = false
+	if embedded_maze != null:
+		embedded_maze.get_node("HUD").visible = false
+	for diver in divers:
+		diver.velocity = Vector3.ZERO
+		diver.exploration_paused = true
+	_completion_checkpoint = _serialize_state()
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_completion_screen = CampaignCompletionScript.new()
+	_completion_screen.retry_chosen.connect(_save_campaign_completion)
+	_completion_screen.title_chosen.connect(_on_game_over_title)
+	add_child(_completion_screen)
+	if already_saved:
+		_completion_screen.show_saved(_current_slot)
+	else:
+		_save_campaign_completion()
+
+func _save_campaign_completion() -> void:
+	if _completion_saving or not is_instance_valid(_completion_screen):
+		return
+	if _current_slot < 0:
+		_completion_screen.show_failure("No save slot is selected. Keep this game open; completion has not been saved.")
+		return
+	_completion_saving = true
+	_completion_screen.show_saving()
+	var slot := _current_slot
+	var existed := SaveManager.slot_exists(slot)
+	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
+	var error := SaveManager.write_slot(slot, _completion_checkpoint)
+	var written := error == OK
+	if written:
+		error = await BrowserCheckpoint.confirm_slot(slot)
+	var rollback_error := OK
+	if error != OK and written:
+		rollback_error = SaveManager.rollback_slot(slot, existed, previous)
+	_completion_saving = false
+	if error == OK:
+		_completion_screen.show_saved(slot)
+	elif rollback_error == OK:
+		_completion_screen.show_failure("Completion could not be saved. Your previous checkpoint is unchanged. Enable saving or free storage, then retry before leaving.")
+	else:
+		_completion_screen.show_failure("Saving failed and the previous checkpoint could not be restored. Keep this game open and retry before leaving.")
 
 func _autosave_safe() -> bool:
+	if _checkpoint_saving:
+		return false
 	if _current_slot < 0 or title_screen.visible or get_tree().paused or not route_state.prologue_complete:
 		return false
 	if battling or _intro_active or _transitioning_to_encounter or aiming or target_selector.selecting:
@@ -638,6 +699,7 @@ func _show_title_screen() -> void:
 	# Cold title must remain silent until a trusted browser gesture. Any return
 	# from gameplay also retires the prior world/battle/result cue here.
 	_audio_call(&"stop_music")
+	Whirlpool.refresh_in(self)
 	get_tree().paused = true
 	title_screen.open()
 
@@ -737,6 +799,7 @@ func _on_title_load_game(slot: int, from_autosave := false) -> bool:
 		get_tree().paused = false
 		_set_maze_ownership(true, true)
 		_audio_call(&"play_exploration_music")
+		_show_campaign_completion(true)
 		return true
 	if _campaign_session != null:
 		_campaign_session.selected_slot = slot
@@ -745,6 +808,9 @@ func _on_title_load_game(slot: int, from_autosave := false) -> bool:
 	$HUD.visible = true
 	get_tree().paused = false
 	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+	if route_state.octopus_state == "defeated":
+		_show_campaign_completion(true)
+		return true
 	if route_state.prologue_complete:
 		_build_forced_tutorial_beam()
 	return true
@@ -1239,6 +1305,8 @@ func _ready() -> void:
 	inventory_menu = InventoryMenu.new()
 	inventory_menu.world = self
 	$HUD.add_child(inventory_menu)
+	inventory_menu.visibility_changed.connect(_refresh_world_reading)
+	save_point_menu.visibility_changed.connect(_refresh_world_reading)
 
 	_build_hp_bar()
 	_build_oxygen_bar()
@@ -1905,11 +1973,10 @@ func _build_highway() -> void:
 	# (and accept, since going over a wall to cut a corner isn't the same
 	# problem as skipping a gate entirely).
 	entrance_rocks.collision_height = 40.0
-	# Collision stays the same width as the visible formation. Extending it
-	# across open water prevents a bypass, but does so with an invisible wall
-	# that blocks ordinary travel far outside the authored corridor. The
-	# visible side walls and route staging must communicate/contain the gate;
-	# collision cannot silently reach beyond what the player can see.
+	# Restored on request: the invisible collision extends 60 m wide in line
+	# with the blockade, so nobody can swim around the corridor's open ends
+	# and cut back in past the gate without breaking it.
+	entrance_rocks.collision_width = 60.0
 	entrance_rocks.position = Vector3(START_X + 1.0, WALL_HEIGHT * 0.5, LANE_Z)
 	add_child(entrance_rocks)
 	entrance_rocks.broken.connect(_on_world_object_consumed.bind("entrance_blockade"))
@@ -2091,7 +2158,28 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 			"line_b": Vector3.ZERO,
 		})
 
+func _refresh_world_reading() -> void:
+	Whirlpool.refresh_in(self)
+	if embedded_maze != null and embedded_maze.maze_active:
+		return # Its own reading/input owner controls the shared party.
+	var reading := _checkpoint_saving or inventory_menu.visible or save_point_menu.visible
+	for actor in divers:
+		# Sonar owns a separate physics clock; stopping World.swim alone would
+		# keep billing Oxygen behind this exclusive reading surface.
+		actor.exploration_paused = reading or (embedded_maze != null and embedded_maze.contains_point(actor.global_position))
+
+func whirlpool_activity() -> int:
+	if battling or _transitioning_to_encounter or (embedded_maze != null and embedded_maze.maze_active):
+		return Whirlpool.Activity.INACTIVE
+	if _checkpoint_saving or not $HUD.visible or (inventory_menu != null and inventory_menu.visible) \
+		or (save_point_menu != null and save_point_menu.visible):
+		return Whirlpool.Activity.SUSPENDED
+	return Whirlpool.Activity.EXPLORING
+
 func _unhandled_input(e: InputEvent) -> void:
+	if _checkpoint_saving:
+		get_viewport().set_input_as_handled()
+		return
 	if embedded_maze != null and embedded_maze.maze_active:
 		return
 	if battling or _transitioning_to_encounter:
@@ -2304,7 +2392,26 @@ func _diver_on_save_point(d: Diver) -> bool:
 # across all three divers, so a rest stop patching up only the one you
 # happened to be steering would leave the other two stuck damaged/
 # drained with no other way to recover.
+func _manual_save_safe() -> bool:
+	if battling or _transitioning_to_encounter or _intro_active or aiming or target_selector.selecting or get_tree().paused:
+		return false
+	if not route_state.prologue_complete or title_screen.visible or is_instance_valid(random_encounter_reveal) or is_instance_valid(_lab_video_cutscene):
+		return false
+	if special_encounter_prompt.visible or _special_encounter_item != "" or _special_encounter_diver != null or tutorial_result_popup.visible:
+		return false
+	if Whirlpool.busy_in(self) or divers.any(func(d: Diver) -> bool: return d.is_grappling() or d.is_suction_locked()):
+		return false
+	# The menu requesting this save is allowed. The other area's puzzle and
+	# reward state must still be stable, even though its shared actors live here.
+	return embedded_maze == null or (not embedded_maze.maze_active and embedded_maze.can_capture_campaign_snapshot())
+
 func _on_save_requested(_d: Diver, slot: int) -> void:
+	if _checkpoint_saving or _autosave_writing:
+		return
+	if slot < 0 or not _manual_save_safe():
+		save_point_menu.close()
+		_announce("Wait for the movement or encounter to finish, then save.")
+		return
 	for other in divers:
 		var s: CombatantStats = (other as Diver).stats
 		s.hp = s.hp_max
@@ -2315,14 +2422,30 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 	# list. Make the chosen slot this run's active checkpoint too, so future
 	# save-point visits and "Restart from Save Point" continue from the same
 	# destination rather than silently returning to the slot New Game chose.
-	var previous_slot := _current_slot
-	_current_slot = slot
-	var save_error := _write_save()
+	var existed := SaveManager.slot_exists(slot)
+	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
+	_checkpoint_saving = true
+	save_point_menu.set_saving(true, slot)
+	_refresh_world_reading()
+	var save_error := SaveManager.write_slot(slot, _serialize_state())
+	var written := save_error == OK
+	if written:
+		save_error = await BrowserCheckpoint.confirm_slot(slot)
+	if save_error != OK and written:
+		if SaveManager.rollback_slot(slot, existed, previous) != OK:
+			save_point_menu.set_saving(false)
+			_checkpoint_saving = false
+			save_point_menu.close()
+			_announce("Saving failed and recovery could not be confirmed. Please retry before leaving.")
+			return
+	save_point_menu.set_saving(false)
+	_checkpoint_saving = false
+	_refresh_world_reading()
 	if save_error != OK:
-		_current_slot = previous_slot
 		_announce("Could not save. Your previous checkpoint is unchanged. Please retry.")
 		save_point_menu.close()
 		return
+	_current_slot = slot
 	_announce("Progress saved to Slot %d." % (slot + 1))
 	save_point_menu.close()
 
@@ -2408,7 +2531,7 @@ func _physics_process(dt: float) -> void:
 			_set_maze_ownership(false)
 		# The Maze owns this frame even on departure: never swim twice.
 		return
-	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible:
+	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible or save_point_menu.visible or _checkpoint_saving:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
 	# browser, and a build nobody can steer is a build nobody plays.
@@ -2661,6 +2784,7 @@ func _set_maze_ownership(on: bool, restored := false) -> void:
 	$HUD.visible = not on
 	$HUD.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT
 	_active_cursor.visible = false if on else _active_cursor.visible
+	Whirlpool.refresh_in(self)
 
 func _build_embedded_maze() -> void:
 	_campaign_session = CampaignSession.new()
@@ -2674,6 +2798,7 @@ func _build_embedded_maze() -> void:
 	embedded_maze.world = self
 	embedded_maze.coordinate_origin = DeepZoneLayoutScript.MAZE_ORIGIN
 	embedded_maze.campaign_session = _campaign_session
+	embedded_maze.campaign_completed.connect(_show_campaign_completion)
 	add_child(embedded_maze)
 	_build_lab_maze_ramp()
 
@@ -2936,6 +3061,7 @@ func _start_first_encounter(d: Diver) -> void:
 	_first_encounter_started = true
 	light_beam.visible = false
 	_transitioning_to_encounter = true
+	Whirlpool.refresh_in(self)
 	var target_pos := Vector3(light_beam.global_position.x, d.global_position.y, light_beam.global_position.z)
 	var tw := create_tween()
 	tw.tween_property(d, "global_position", target_pos, 0.5)
@@ -3507,6 +3633,7 @@ func _on_encounter_triggered(d: Diver) -> void:
 func _begin_random_encounter_reveal() -> void:
 	var selected := Battle.select_ordinary_enemies((divers[0] as Diver).stats.level)
 	_transitioning_to_encounter = true
+	Whirlpool.refresh_in(self)
 	if aiming:
 		_cancel_aim()
 	if target_selector.selecting:
@@ -3625,6 +3752,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	_cancel_random_encounter_reveal()
 	escape_encounter_hint.dismiss()
 	battling = true
+	Whirlpool.refresh_in(self)
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
 	elif route_state.encounter_source == "prologue_angler" and not _next_battle_direct_cordys:
@@ -3636,7 +3764,12 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
 	if boss_encounter:
-		_announce("Tethys rises from the deep!")
+		# Laboratory Battle already owns this arrival in its intro/log. A
+		# World announcement freezes underneath battle and the payoff popup,
+		# then falsely re-announces Tethys after she has been defeated.
+		# Preserve other queued exploration feedback; don't clear the FIFO.
+		if route_state.encounter_source != "lab_boss":
+			_announce("Tethys rises from the deep!")
 	elif tutorial:
 		# No announce line for the tutorial fight itself (removed on
 		# purpose), but _show_intro_text()'s "Swim over to the light beam."
@@ -3765,6 +3898,7 @@ func _on_battle_finished(result: String) -> void:
 		_sync_lab_staging()
 		if result == "won":
 			_write_save()
+			call_deferred("_show_lab_payoff")
 	match result:
 		"won":
 			if was_special and _special_encounter_diver != null:
@@ -4210,6 +4344,29 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	route_objective_panel.offset_right = panel_left + panel_width
 	route_objective_panel.offset_bottom = route_objective_panel.offset_top + 44.0
 
+func _show_lab_payoff() -> void:
+	if route_state.lab_state != "cleared" or route_state.tethys_state != "defeated":
+		return
+	# The meeting requested a brief computer/controller message, not new
+	# narration or another compulsory encounter. Reuse the input-exclusive
+	# paged surface and its scene-owner/battle-deferral protection. `cleared`
+	# already persists this payoff; loading never repays or replays victory.
+	var pages: Array[Dictionary] = [{
+		"slot": null,
+		"title": "Computer recovered",
+		"body": "Tethys is defeated. You recovered the computer she swallowed. Another being is controlling these creatures.\n\nSuggested next step: explore the maze via the ramp beyond the laboratory. Use the divers' abilities for its puzzles.",
+	}]
+	$HUD.visible = false
+	var popup := get_node("/root/CharacterAbilityPopup")
+	if not popup.closed.is_connected(_on_lab_payoff_closed):
+		popup.closed.connect(_on_lab_payoff_closed, CONNECT_ONE_SHOT)
+	popup.call("open", pages, self)
+
+func _on_lab_payoff_closed() -> void:
+	if not battling and not embedded_maze.maze_active and not is_instance_valid(_completion_screen):
+		$HUD.visible = true
+		_refresh_world_guidance()
+
 func _on_route_objective_changed(_objective_id: String) -> void:
 	_refresh_world_guidance()
 
@@ -4220,10 +4377,11 @@ func _refresh_world_guidance() -> void:
 	if route_state.prologue_complete and not divers.is_empty():
 		var position := (divers[active] as Diver).global_position
 		if deep_zone_layout.zone_for_position(position) == "deep":
-			text = _route_objective_text(route_state.objective_id)
+			text = route_state.exploration_goal("deep")
 		elif not route_state.tutorial_complete:
 			text = ""   # the forced tutorial's light-beam arrow owns guidance
-		elif position.x < ENTRANCE_BLOCKADE_X:
+		elif position.x < PUZZLE_DOORS_X:
+			# Until the party is through the ringed lock-plate doors.
 			text = "Explore the mysterious blockade."
 		else:
 			text = "Explore the deep sea."
@@ -4235,22 +4393,6 @@ func _refresh_world_guidance() -> void:
 		route_objective_panel.offset_top = maxf(176.0, hud.get_rect().end.y + 8.0)
 		route_objective_panel.offset_bottom = route_objective_panel.offset_top + 44.0
 
-func _route_objective_text(objective_id: String) -> String:
-	match objective_id:
-		"find_lab":
-			return "Deep Zone: find the laboratory."
-		"defeat_bomb_bot":
-			return "Deep Zone: disable Bomb Bot."
-		"defeat_sword_slayer":
-			return "Deep Zone: defeat Sword Slayer."
-		"enter_lab":
-			return "Laboratory: enter the Broken Office."
-		"defeat_tethys":
-			return "Laboratory: confront Tethys."
-		"enter_maze":
-			return "Deep Zone: take the blue-lit passage to the maze."
-		_:
-			return ""
 
 func _update_hud() -> void:
 	_refresh_world_guidance()
@@ -4395,38 +4537,43 @@ func _build_party_bars() -> void:
 	_party_bars_box = VBoxContainer.new()
 	_party_bars_box.name = "PartyBars"
 	_party_bars_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_party_bars_box.add_theme_constant_override("separation", 8)
+	_party_bars_box.add_theme_constant_override("separation", 14)
 	_party_bars_box.position = Vector2(16.0, 76.0)
 	$HUD.add_child(_party_bars_box)
 	for i in range(divers.size()):
+		# Same shape and look as the active diver's bottom-centre pair: the O2
+		# bar with its "O2   x / y" label, then the HP bar with "Name   x / y".
 		var row := VBoxContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 2)
-		var label := Label.new()
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.add_theme_font_size_override("font_size", 12)
-		label.add_theme_color_override("font_outline_color", Color.BLACK)
-		label.add_theme_constant_override("outline_size", 4)
-		row.add_child(label)
-		var hp := _small_party_bar(Color(0.78, 0.15, 0.15), 8.0)
-		row.add_child(hp)
-		var o2 := _small_party_bar(Color(0.25, 0.65, 0.9), 5.0)
+		row.add_theme_constant_override("separation", 4)
+		var o2 := _party_bar(Color(0.25, 0.65, 0.85), 14.0)
 		row.add_child(o2)
+		var o2_label := _party_bar_label()
+		row.add_child(o2_label)
+		var hp := _party_bar(Color(0.78, 0.15, 0.15), 20.0)
+		row.add_child(hp)
+		var hp_label := _party_bar_label()
+		row.add_child(hp_label)
 		_party_bars_box.add_child(row)
-		_party_bar_rows.append({"row": row, "label": label, "hp": hp, "o2": o2})
+		_party_bar_rows.append({"row": row, "hp": hp, "hp_label": hp_label, "o2": o2, "o2_label": o2_label})
 
-func _small_party_bar(fill_color: Color, height: float) -> ProgressBar:
+func _party_bar(fill_color: Color, height: float) -> ProgressBar:
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(150.0, height)
+	bar.custom_minimum_size = Vector2(220.0, height)
 	bar.show_percentage = false
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = fill_color
 	bar.add_theme_stylebox_override("fill", fill)
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.03, 0.06, 0.08, 0.75)
-	bar.add_theme_stylebox_override("background", bg)
 	return bar
+
+func _party_bar_label() -> Label:
+	var label := Label.new()
+	label.custom_minimum_size.x = 220.0
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
+	return label
 
 func _update_party_bars() -> void:
 	if _party_bars_box == null:
@@ -4439,13 +4586,14 @@ func _update_party_bars() -> void:
 		(row.row as Control).visible = i != active
 		if i == active:
 			continue
-		(row.label as Label).text = "%s   HP %d/%d   O2 %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max, int(round(d.stats.oxygen))]
 		var hp := row.hp as ProgressBar
 		hp.max_value = d.stats.hp_max
 		hp.value = d.stats.hp
+		(row.hp_label as Label).text = "%s   %d / %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max]
 		var o2 := row.o2 as ProgressBar
 		o2.max_value = d.stats.oxygen_max
 		o2.value = d.stats.oxygen
+		(row.o2_label as Label).text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
 
 func _update_hp_bar() -> void:
 	_update_encounter_indicator()

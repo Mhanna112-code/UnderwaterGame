@@ -32,8 +32,10 @@ func _run() -> void:
 	# Tutorial side of the entrance blockade (x < 16).
 	_expect(world.route_objective_panel.visible and "mysterious blockade" in text,
 		"SHALLOW-001 post-opening Shallows has no visible zone/purpose instruction: " + text)
-	_expect(not "laboratory" in text and not "wall" in text,
-		"SHALLOW-001 Shallows shows an unrelated contextual instruction")
+	# The Shallows wording is now "Explore the mysterious blockade" until the
+	# ringed doors, then "Explore the deep sea" (requested), not GOAL-2's
+	# "seek the laboratory in deeper water" line.
+	_expect(not "wall" in text, "SHALLOW-001 Shallows shows the removed wall hint")
 	_expect(world.route_state.objective_id == "find_lab", "SHALLOW-002 Shallows instruction erases lab progression")
 	if OS.get_cmdline_user_args().has("--capture"):
 		await create_timer(0.5).timeout

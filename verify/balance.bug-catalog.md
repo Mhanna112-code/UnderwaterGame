@@ -1,5 +1,52 @@
 # Campaign balance bug catalog
 
+## October 5 no-refill fidelity re-audit (supersedes historical green below)
+
+Public CLI: `godot --headless --path . --script verify/balance.gd`.
+Read all 576 lines and the production victory/turn/status/stat-construction
+consumers. This is a math policy screen, not an actual New Game campaign.
+Inputs are persistent level-one stats, current Sites coordinates, policy,
+local RNG seeds and production move/AI functions; outputs are win/route cells,
+pressure and terminal stages. IO is stdout/exit plus deterministic randomness;
+it writes no player saves. Branches include policy, pack size/species, alive/
+stunned/formula/legacy/target scope, affordability, win/XP/level-up and each
+guardian exclusion. Species strings are owned by EnemyRoster/actor contracts;
+status strings by CombatantStats and authored move effects.
+
+The original catalog's recovery/scaling/results are historical, not current
+acceptance. Production Battle now gives no ordinary victory refill; level-up
+`gain_xp()` remains a legitimate earned refill. Before correction the gate
+printed 91.2% casual/100% skilled route success while injecting that removed
+healing. This does not establish current-game balance.
+
+| ID | Failure mode | Impact / plausibility | Test / disposition |
+|---|---|---|---|
+| BAL-17 | Removed victory healing is injected after every simulated route win, hiding cumulative HP/O2 loss. | Critical / confirmed call at original line291. | Remove only that allowance, retain actual gain_xp and all fixed bands, rerun the same seeds and capture resource/terminal outcomes. |
+| BAL-18 | Copied enemy stat/XP/scaling construction omits current species floors, actor rewards and learned scaling. | High / current copied factory and shared BASE_XP. | Follow-up: consume production actor stats/rewards and learned kit; do not treat the no-heal-only pass as full fidelity. |
+| BAL-19 | Raw agility order and omitted earned spells/recovery access model a different sustained campaign. | High / current raw comparator/base-only policy and straight-line route. | Follow-up actual earned campaign plus current consumer fidelity; no pregranted level-five substitute. |
+
+BAL-17 is a differential fidelity repair: same route inputs/bands before/after,
+with the removed benefit absent. A behavior-preserving production refactor
+does not alter this resource contract. Wrong-but-stable percentages alone do
+not prove attainability; terminal state and subsequent actual journey are
+required. This is correction of misleading evidence, not a claim that a new
+runtime healing bug was found. No bands are weakened to obtain green.
+
+Skipped at this first repair: BAL-18/19, real path/navigation/oxygen regeneration,
+rest access, spell earning, lab/maze boss journeys, human QTE measurements.
+These remain required later; this math screen cannot replace them.
+
+Corrected no-heal run exits0, no engine/script error: casual route89.6%
+(215/240), skilled100% (240/240), unchanged thresholds. Successful remaining
+HP falls from28.6/29.5 to25.7/27.2. This catches/removes the confirmed evidence
+defect, not a new runtime defeat wall. Baseline/corrected logs are retained in
+`docs/evidence/earned-balance-oct5/no-refill`. Full-fidelity/earned acceptance
+remains unproven. Adversarial follow-up classes identified while green: species
+stat floors/XP, status-adjusted turn order, auto-learning/rest/navigation.
+The actor factories and real lab-route fixture have been inspected: old live
+route teleports between blockers and old boss balance grants XP to a target
+level, so neither qualifies as the requested New Game earned journey.
+
 Scope: whether a new party can leave the save point, traverse the linked map
 from `anchor` through `shallows` to the farthest `trench` artifact, survive the
 random encounters and both guardians produced by the game, and exhibit a real

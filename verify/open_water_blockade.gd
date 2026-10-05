@@ -26,9 +26,11 @@ func _run() -> void:
 		diver.swim(Vector3.RIGHT, 0.0, 1.0 / 60.0)
 		await physics_frame
 
-	if diver.global_position.x < 22.0:
+	# The invisible wall in line with the blockade entrance was restored on
+	# request: swimming past beside the rocks must now be stopped at the gate.
+	if diver.global_position.x > 16.0:
 		findings.append(
-			"INVISIBLE OPEN-WATER BLOCKADE: diver stopped at x=%.2f beside the visible entrance rocks" % diver.global_position.x
+			"BLOCKADE BYPASS: diver swam past the entrance line to x=%.2f beside the rocks" % diver.global_position.x
 		)
 
 	# A later PR #96 change reintroduced the same player-facing failure class
@@ -64,7 +66,7 @@ func _run() -> void:
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
-		print("OPEN WATER: horizontal traversal is free; vertical is free up to the world ceiling")
+		print("OPEN WATER: blockade line blocks the bypass; vertical is free up to the world ceiling")
 	world.queue_free()
 	await process_frame
 	var audio := root.get_node_or_null("GameAudio")

@@ -1,0 +1,19 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=find_lab before entry => deep zone: find the laboratory.
+FINDING GOAL-1 missing-map maze offers no actionable map goal: lab=false map=false relic=false stale=find_lab
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=find_lab after return => deep zone: find the laboratory.
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=enter_lab before entry => deep zone: find the laboratory.
+FINDING GOAL-1 missing-map maze offers no actionable map goal: lab=false map=false relic=false stale=enter_lab
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=enter_lab after return => deep zone: find the laboratory.
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=defeat_tethys before entry => laboratory: confront tethys.
+FINDING GOAL-1 missing-map maze offers no actionable map goal: lab=false map=false relic=false stale=defeat_tethys
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=defeat_tethys after return => laboratory: confront tethys.
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=enter_maze before entry => deep zone: take the blue-lit passage to the maze.
+FINDING GOAL-1 missing-map maze offers no actionable map goal: lab=false map=false relic=false stale=enter_maze
+FINDING GOAL-1 independent destinations lost to stale objective: lab=false map=false relic=false stale=enter_maze after return => deep zone: take the blue-lit passage to the maze.
+CAMPAIGN GOALS|generated_cases=40|findings=136|no_save_files=true

@@ -1,0 +1,10 @@
+{
+  "checked_on": "2026-10-05",
+  "runtime_source_commit": "6e6a70f",
+  "export_directory": "/private/tmp/underwater-ending-web.yyMlOL",
+  "pck_sha256": "c1af39925557ca0330b9a268f756a0a2c618ffe73b9acecfe9339aa5f8cdc662",
+  "pck_bytes": 93327396,
+  "engine": "Godot 4.7.1",
+  "method": "Godot release export to isolated directory; static server streams this exact PCK; shasum -a 256 verifies local artifact",
+  "scope": "Local Chromium/Metal real ending and durable IndexedDB rejection/retry/cold Load; not hosted release or earned balance"
+}

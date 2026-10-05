@@ -168,6 +168,37 @@ Adversarial follow-up probed three initially omitted classes: duplicate action c
 
 ## Notes
 
+### October5 delivered laboratory variant
+
+New role contract is deliberately bounded: Freak_Mermaid-Weirdo's Tethys3 mesh
+appears in existing `lab_boss` fights, not ordinary enemies, Cordys or a new
+mandatory boss. The ordinary Tethys adapter remains available for comparison.
+Native FBX inspection established thirteen motions and six excluded helper/base
+takes, same311-bone rig, +Z visible front and slightly shorter artist-scale body.
+Neither import exposes embedded textures; existing red validation treatment is
+retained, not claimed as newly delivered textured materials.
+
+Bug9: imported new asset is silently unused or breaks clips/skin/facing when the
+lab selects it. High impact: artist evaluates the wrong mesh or a rigid/backward
+boss. `--laboratory-variant` creates the real laboratory Battle, requires the
+delivered visible mesh, classifies all takes and repeats thirteen pose/skin and
+six attack/facing checks. Pairwise bounded motion checks cover all78 pairs.
+This source/role contract necessarily updates on a deliberate artist re-export;
+it does not pin private node paths. Existing default actor test plus actual
+legal-button laboratory win are complementary preservation checks. First run
+must expose the old mesh/missing two helper takes before wiring the asset.
+No full campaign balance or final artistic color claim from this test.
+
+Evaluation: baseline role probe failed5 old-mesh/helper-take findings. Both
+final default and lab-variant probes pass13 distinct311-bone motions and78
+pairwise comparisons, skin bindings, all six attack clips and facing. Real
+laboratory legal-button win/payoff/Load plus production scene rendering pass.
+No attack/stat/XP contract changed. Initial unseeded observers timed out on the
+first QTE tutorial's legitimate Enter wait; reproducible seed and actual input
+acknowledgment repaired this test-harness gap (not a production attack defect).
+Native composition's transient indentation error was also repaired before
+acceptance. Remaining exported/hosted checks are explicit, not counted green.
+
 - Update this catalog if a later asset export exposes an authored Godot
   material and replaces the validation fallback.
 - The claim we need is not “17 names exist.” It is “thirteen character gameplay motions deform the non-humanoid skinned model, and production combat calls every attack.”

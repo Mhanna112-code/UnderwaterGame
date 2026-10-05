@@ -1,0 +1,16 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TETHYS PROBE|laboratory=true|actor_ready=true
+TETHYS WITNESS|LAB VARIANT NOT PRESENT: real laboratory Battle still renders the older FemaleBase mesh
+TETHYS WITNESS|RAW TAKE INVENTORY: expected thirteen motions plus 6 helper/base takes, imported 17
+TETHYS WITNESS|TAKE CLASSIFICATION: expected four base/helper takes, observed ["Aquaticus_rig|Base_pose", "Aquaticus_rig|CameraAction", "Aquaticus_rig|LightAction", "Aquaticus_rig|Plane_032Action"]
+TETHYS WITNESS|HELPER MISCLASSIFIED: expected 'Aquaticus_rig|Plane_032Action_001' outside the thirteen gameplay motions
+TETHYS WITNESS|HELPER MISCLASSIFIED: expected 'Aquaticus_rig|Plane_032Action_002' outside the thirteen gameplay motions
+TETHYS PROBE|pose_and_skin_samples_complete=true
+TETHYS PROBE|swim_intro_complete=true
+FINDING  LAB VARIANT NOT PRESENT: real laboratory Battle still renders the older FemaleBase mesh
+FINDING  RAW TAKE INVENTORY: expected thirteen motions plus 6 helper/base takes, imported 17
+FINDING  TAKE CLASSIFICATION: expected four base/helper takes, observed ["Aquaticus_rig|Base_pose", "Aquaticus_rig|CameraAction", "Aquaticus_rig|LightAction", "Aquaticus_rig|Plane_032Action"]
+FINDING  HELPER MISCLASSIFIED: expected 'Aquaticus_rig|Plane_032Action_001' outside the thirteen gameplay motions
+FINDING  HELPER MISCLASSIFIED: expected 'Aquaticus_rig|Plane_032Action_002' outside the thirteen gameplay motions
+TETHYS BOSS: 5 finding(s)

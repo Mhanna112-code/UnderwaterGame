@@ -42,10 +42,17 @@ func _run() -> void:
 		var card := owner.get_node_or_null("InputBlocker/OpeningTitle") as Control
 		_expect(card != null and card.is_visible_in_tree(), "TITLE-001 title is not rendered")
 		if card != null:
+			var visible_copy := ""
 			for child in card.find_children("*", "Label", true, false):
 				var label := child as Label
+				if label.is_visible_in_tree():
+					visible_copy += label.text + "\n"
 				var rect := label.get_global_rect()
 				_expect(Rect2(Vector2.ZERO, root.get_visible_rect().size).encloses(rect), "TITLE-005 label outside viewport: " + label.text)
+				if label.text == "UNDERWATER":
+					_expect(label.get_line_count() == 1, "TITLE-005 title splits mid-word on narrow screens")
+			for contributor in ["ImmortalDemonGod", "Mhanna", "Glass_Goat", "Phoenix Down Music"]:
+				_expect(visible_copy.contains(contributor), "TITLE-008 opening credit missing: " + contributor)
 		if OS.get_cmdline_user_args().has("--capture") and card != null:
 			# macOS suspends drawing for occluded verification windows. Force a
 			# real draw rather than accept a stale gray texture or wait forever.
