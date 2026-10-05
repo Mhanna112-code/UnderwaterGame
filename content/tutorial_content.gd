@@ -106,16 +106,16 @@ static func stat_glossary_body(title: String) -> String:
 # diver, when world.gd's _show_ability_popups() first walks the party.
 # Distinct from ABILITY_BLURBS below: that one describes the special-
 # encounter minigame's own reflex-test version of an ability, this one
-# describes what pressing E (or Q, for the sonar passive) actually does
+# describes what pressing F (or Q, for the sonar passive) actually does
 # while exploring - a different context with a different payoff, read
 # straight out of diver.gd's _grapple()/_shockwave()/_swap()/sonar handling
 # rather than guessed at (same "never describe a mechanic wrong" rule as
 # GENERAL_PAGES above).
 const WORLD_ABILITY_BLURBS := {
-	"swap": "Instantly trades places with another party member - press E, cycle who with Left/Right, confirm with Enter. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
-	"grapple": "Press E to aim, then click to fire a beam in that direction. Pulls you to wherever it connects, but only if that point is actually a grapple anchor - firing at open water or a wall does nothing.",
-	"shockwave": "Press E to fire instantly in every direction at once - no aiming needed. Breaks any nearby obstacle that's built to be shockwaved open.",
-	"sonar": "Toggled with Q, not E - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
+	"swap": "Instantly trades places with another party member - press F, cycle who with Left/Right, confirm with Enter. Escape cancels. Uses no Oxygen. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
+	"grapple": "Press F to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. Anchors pull Musashi toward them; floating light items reel toward him instead. Uses no Oxygen. Firing at open water or a wall does nothing and can be retried immediately.",
+	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks nearby obstacles built to be shockwaved open. Uses no Oxygen and has a short cooldown.",
+	"sonar": "Toggled with Q, not F - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
 }
 
 const ABILITY_BLURBS := {

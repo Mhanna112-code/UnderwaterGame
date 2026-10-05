@@ -1914,6 +1914,20 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 func _unhandled_input(e: InputEvent) -> void:
 	if battling or _transitioning_to_encounter:
 		return
+	# These menus freeze exploration through this owner rather than pausing
+	# the entire SceneTree. Physics already respects them; keyboard/mouse
+	# dispatch must do the same or F/Tab can act behind a reading screen.
+	if inventory_menu.visible or save_point_menu.visible:
+		if e is InputEventKey and e.pressed and not e.echo:
+			if e.keycode == KEY_ESCAPE:
+				if save_point_menu.visible:
+					save_point_menu.close()
+				else:
+					inventory_menu.close()
+			elif e.keycode == KEY_P and save_point_menu.visible:
+				save_point_menu.close()
+		get_viewport().set_input_as_handled()
+		return
 
 	# Aim mode intercepts clicks before the normal "first click captures
 	# the mouse" handling below - a click here means fire/cancel, not
@@ -1985,7 +1999,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			if route_state.prologue_complete and not aiming and not target_selector.selecting and not _intro_active:
 				active = (active + 1) % divers.size()
 				_update_hud()
-		elif k == KEY_E:
+		elif k == KEY_F:
 			_start_ability()
 		elif k == KEY_P:
 			_toggle_save_menu()
@@ -1996,7 +2010,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif k == KEY_F1:
 			tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
-# E's actual behavior depends on the active diver's ability: shockwave has
+# F's actual behavior depends on the active diver's ability: shockwave has
 # nothing to aim, fires immediately. Grapple enters first-person aim mode.
 # Swap goes through TargetSelector's cycle-through-candidates flow instead
 # of either - see target_selector.gd.
@@ -2020,7 +2034,7 @@ func _start_ability() -> void:
 	else:
 		d.use_ability(_aim_dir())
 
-# Q, separate from E - sonar isn't the active diver's "ability" (that slot
+# Q, separate from F - sonar isn't the active diver's "ability" (that slot
 # is swap, on this same diver), it's a passive being switched on and off,
 # so it gets its own key rather than competing with _start_ability(). Only
 # does anything for whichever diver actually has the sonar passive; a
@@ -3920,10 +3934,10 @@ func _update_hud() -> void:
 	else:
 		line = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look · TAB diver" % _display_name(d.model_name)
 	if d.ability_id != "":
-		line += (" · E:%s" if narrow else "  ·  E: %s") % String(d.ability_id).capitalize()
+		line += (" · F:%s" if narrow else "  ·  F: %s") % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
-	# it'd do something" rule the E: hint above already follows for
+	# it'd do something" rule the F: hint above already follows for
 	# ability_id.
 	if d.passive_id == "sonar":
 		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")

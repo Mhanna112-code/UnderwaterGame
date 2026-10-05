@@ -241,7 +241,7 @@ func _show_media_control(media: Control) -> void:
 	frame.add_child(media)
 
 # Rebuilds %Paragraph's one RichTextLabel from scratch every call. The
-# inline [E]/[Q]/[Tab] badges are BBCode baked straight into the body string
+# inline [F]/[Q]/[Tab] badges are BBCode baked straight into the body string
 # by slot.gd's _badge(), so a plain .text = body handles those. The WASD
 # cluster can't be BBCode text (it's a 2D arrangement, not a run of
 # characters), so a body containing Slot.WASD_MARKER is instead built with

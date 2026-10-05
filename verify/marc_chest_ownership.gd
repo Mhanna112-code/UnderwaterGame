@@ -71,7 +71,7 @@ func _case(kind: String, active: int) -> void:
 	var item := "maze_nav_map" if kind == "MapChest" else "vortex_key"
 	await _key(KEY_E)
 	_expect(not maze.can_capture_campaign_snapshot(), "EARN-3 in-flight chest can become a saved empty reward")
-	var actions := [KEY_W, KEY_SPACE, KEY_TAB, KEY_Q, KEY_R, KEY_L, KEY_E, KEY_RIGHT, KEY_P]
+	var actions := [KEY_W, KEY_SPACE, KEY_TAB, KEY_Q, KEY_R, KEY_L, KEY_E, KEY_F, KEY_RIGHT, KEY_P]
 	for code in actions:
 		await _key(code, true, code in [KEY_W, KEY_SPACE])
 	var click := InputEventMouseButton.new()

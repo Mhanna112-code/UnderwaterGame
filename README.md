@@ -30,16 +30,26 @@ alias advanced with the branch.
 |---|---|
 | `W` `A` `S` `D` | Swim relative to the camera |
 | `Space` | Rise |
-| `Shift` or `Ctrl` | Sink |
+| `Shift` | Sink (`Ctrl` is reserved for maze current controls) |
 | Mouse or arrow keys | Look around |
 | `Tab` | Switch the active diver |
-| `E` | Use the active diver's ability or confirm a selected target |
+| `F` | Use the active diver's exploration ability |
+| `E` | Interact with a nearby maze object; rotate selected walls on the map |
+| `Space` or `Enter` | Confirm a selected Swap target |
 | Left click | Fire Musashi's grapple while aiming |
 | Right click or `Esc` | Cancel grapple aiming |
 | `Q` | Toggle Maxilani's sonar |
+| `L` | Open/close the maze map after earning it from the Control Room chest |
+| `Ctrl` + Left/Right; `Ctrl` + `E` | Select and move currents on the maze map |
 | `P` | Open the save/spell menu while standing on a save point |
 | `F1` | Open the general tutorial book |
 | `Esc` | Open or close Inventory, Party Spells and Combat Help |
+
+These controls describe the current PR source. Older hosted feedback exports
+can still use the previous E ability binding; check their `build-info.json`.
+Swap, Grapple and Shockwave use no Oxygen during exploration. Sonar and
+combat spells retain their separate costs. Special minigames retain the E
+controls shown by their own instructions.
 
 ### Combat and tutorials
 

@@ -210,6 +210,7 @@ run "grapple intercept: can aimed shots clear every projectile" "$GODOT" --headl
 run "grapple battle: do HP, camera, and actor contracts hold" "$GODOT" --headless --path . --script verify/grapple_battle_integration.gd
 run "world grapple aim: is the first-person target unobstructed and safely restored" "$GODOT" --headless --path . --script verify/world_grapple_aim.gd
 run "Marc light item grapple: do real layer-5 shots reel once to the shooter without changing anchor traversal" "$GODOT" --headless --path . --script verify/marc_orb_reel.gd
+run "Marc exploration controls: do real F/E keys, all zero-Oxygen abilities, modal owners and help agree" "$GODOT" --headless --path . --script verify/marc_exploration_controls.gd
 run "imported enemy presentation: are bounds and idle behavior durable" "$GODOT" --headless --path . --script verify/imported_enemy_presentation.gd
 run "maze: do both walls rotate 90 degrees and meet their targets" "$GODOT" --headless --path . --script verify/maze.gd
 run "maze current route: do normal movement and actual L/E/Ctrl+E traverse the first channel without bypassing collision or currents" "$GODOT" --headless --path . --script verify/maze_current_route.gd

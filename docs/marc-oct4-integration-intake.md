@@ -191,3 +191,26 @@ Captured red ORB-1 and final 59 real-physics checks are documented in
 `verify/marc_orb_reel.bug-catalog.md`; ordinary World aim, three-character
 swimming and delivered animation regressions pass. No updated preview, normal
 campaign completion, embedded World/maze, or full-suite claim is made here.
+
+## October 5 control and earned-map reconciliation
+
+The isolated integration checkout now includes the local earned-map/chest batch
+6cc66c7 through b916637, without overwriting the shared checkout's later edits.
+Actual no-map chest swimming/acquisition/return, both solid chest input/pause
+sequences, acquired-map boundaries and disposable-slot cold/legacy Load have
+been rerun against the reconciled source. This does not admit the discovery-only
+right legend, embedded ownership or hosted acquisition.
+
+Latest 4ec6598 F/E subset: F starts the active environmental ability in both
+exploration owners; Maze E only interacts. Map E/Ctrl+E and minigame E remain
+their separate contextual controls. Real zero-Oxygen Swap/anchor/Shockwave,
+cooldowns, cancel, menu/selection ownership and public help pass 86 checks.
+The real input expansion caught a separate World Inventory leak, now blocked
+before exploration dispatch. Slot/optional lesson/reference/HUD/README use F.
+See `verify/marc_exploration_controls.bug-catalog.md` for valid reds, rejected
+parse/fixture assumptions, generated cases and limits. First-person maze aim,
+Sonar Vision, latest underpass and embedded ownership still need admission.
+
+The existing public bffe1b5 preview has NOT been refreshed by these source
+repairs. Historical media/review controls and final matching exports are still
+required; no normal campaign completion or merge-ready claim is made.

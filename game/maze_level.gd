@@ -2726,7 +2726,7 @@ func _update_world_hud() -> void:
 		_world_hud_name.text = "Swap with %s?   Left/Right: cycle  ·  Enter: confirm  ·  Esc: cancel" % (Cast.display_name(t.model_name) if t != null else "...")
 	var after := ""
 	if _diver.ability_id != "":
-		after += "  ·  E: %s" % String(_diver.ability_id).capitalize()
+		after += "  ·  F: %s" % String(_diver.ability_id).capitalize()
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
 	after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
@@ -2737,8 +2737,8 @@ func _update_world_hud() -> void:
 	_world_hud_map.visible = map_ok
 	var goal := get_node_or_null("HUD/GoalLabel") as Label
 	if goal != null:
-		goal.text = "Open the hallway. Follow the channel to the relic.\nE: interact or use ability." if key_items.has(MAP_ITEM) \
-			else "E: interact or use ability."
+		goal.text = "Open the hallway. Follow the channel to the relic.\nE: interact  ·  F: ability." if key_items.has(MAP_ITEM) \
+			else "E: interact  ·  F: ability."
 	if map_ok and _map_flash == null:
 		_map_flash = create_tween().set_loops()
 		_map_flash.tween_property(_world_hud_map, "modulate:a", 0.25, 0.45)
@@ -2977,7 +2977,7 @@ func _build_minimap() -> void:
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
 	label.name = "GoalLabel"
-	label.text = "E: interact or use ability."
+	label.text = "E: interact  ·  F: ability."
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_left = 16.0
 	label.offset_top = -100.0
@@ -4369,6 +4369,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		_announce("Sonar Vision %s." % ("equipped" if sonar_vision_equipped else "unequipped"))
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_TAB:
 		_switch_diver()
+	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_F:
+		_use_active_ability()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_E:
 		# While orange text from the last E interaction is up, E is on
 		# cooldown (see _interact_cooldown).
@@ -4381,8 +4383,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		if _banner != null and _banner_timer > 0.0 and (_banner.text != banner_text or _banner_timer > banner_time):
 			_interact_cooldown = true
 
-# What E does where the diver is: the nearest thing to interact with, or
-# else the active diver's ability.
+# E owns nearby context interactions only. F remains available independently
+# of an orange interaction caption's cooldown; never fall back to an ability.
 func _handle_e(e: InputEventKey) -> void:
 	if _campaign_exit_in_reach():
 		_return_to_campaign_world()
@@ -4406,10 +4408,8 @@ func _handle_e(e: InputEventKey) -> void:
 		_open_switch_minigame()
 	elif _poster_in_reach() != null:
 		_open_poster(_poster_in_reach())
-	else:
-		_use_active_ability()
 
-# E away from the switch: the active diver's own ability, the same three
+# F: the active diver's own ability, the same three
 # World offers. Shockwave fires in place (and is how the relic is broken);
 # grapple aims where the camera faces; swap trades places with the nearest
 # other diver (World picks the target with TargetSelector instead).

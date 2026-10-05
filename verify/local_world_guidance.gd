@@ -61,7 +61,7 @@ func _puzzle() -> void:
 	(world.divers[2] as Diver).position = Vector3(14.2, 2.0, 10.0)
 	await _tap(KEY_TAB)
 	await _tap(KEY_TAB)
-	await _tap(KEY_E) # real Bucky Shockwave; no injected broken signal
+	await _tap(KEY_F) # real Bucky Shockwave; no injected broken signal
 	await create_timer(0.4).timeout
 	_expect(world.consumed_world_ids.has("entrance_blockade"), "OPEN-044 real Bucky Shockwave did not break entrance")
 	_expect_shallows("SHALLOW-003 successful Shockwave must retire wall hint in favor of Shallows purpose")

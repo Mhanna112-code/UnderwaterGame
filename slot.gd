@@ -1,11 +1,11 @@
 class_name Slot
 extends PanelContainer
 
-# A "[ E ]"-style keycap baked directly into the body text via BBCode
+# A "[ F ]"-style keycap baked directly into the body text via BBCode
 # ([bgcolor]+[outline_*]+[color], closed in reverse/LIFO order) rather than
 # a separate widget - CharacterAbilityPopup's %Body is a bbcode_enabled
 # RichTextLabel specifically so this renders right where the word actually
-# falls in the sentence ("Press [E] to..."), not in a disconnected row
+# falls in the sentence ("Press [F] to..."), not in a disconnected row
 # underneath. Plain-text keys elsewhere (WASD's own diamond arrangement,
 # which can't be inline since it's a 2D layout, not a run of text) still go
 # through CharacterAbilityPopup's _key_badge()/_wasd_cluster() instead.
@@ -25,15 +25,15 @@ const WASD_MARKER := "{{WASD}}"
 var worldExplanation := "In the world map, divers can freely swim around encountering enemies, finding items and progressing to new areas. Use %s and move the camera around with the mouse to swim and look around. Use %s to switch between active divers. Divers also have special abilities they can use to interact with the world." % [WASD_MARKER, _badge("Tab")]
 
 var maxilaniSwapTitle := "Maxilani: Swap"
-var maxilaniSwapBody := "Press %s while Maxilani is the active diver to swap positions with other divers, then use A/D or the left and right arrow keys to switch to the diver you want to swap with and press Space or Enter to confirm. You can first swap to the other divers with %s and favorably position them to strategically set up their positions to solve puzzles and other mechanics you encounter while swimming around, then swap back to Maxilani and activate her swap ability." % [_badge("E"), _badge("Tab")]
+var maxilaniSwapBody := "Press %s while Maxilani is the active diver to choose a teammate. Use A/D or Left/Right to choose, then Space or Enter to swap positions. Escape cancels. Use %s to position the other divers first. Swap uses no Oxygen." % [_badge("F"), _badge("Tab")]
 var maxilaniSonarTitle := "Maxilani: Sonar"
 var maxilaniSonarBody := "Maxilani has a built in sonar she can use to find hidden items in the world that appear as red circles in the minimap on the top-right of the screen. Toggle Sonar On/Off with %s to consume 3 oxygen after every 3 seconds which will reveal hidden items on the minimap as you swim around. Swim close enough to the red circles to trigger random encounters with enemies who hold the hidden items." % _badge("Q")
 
 var musashiAbilityTitle := "Musashi: Grapple"
-var musashiGrappleBody:= "Press %s while Musashi is the active diver to switch into a first person Grapple mode where you can aim at golden objects then left click to grapple them (flashing them green on successful grapples) to launch Musashi towards the grapple points." % _badge("E")
+var musashiGrappleBody:= "Press %s while Musashi is active to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. An anchor pulls Musashi toward it; a floating light item reels toward Musashi instead. Grapple uses no Oxygen, and a miss can be retried immediately." % _badge("F")
 
 var buckyAbilityTitle := "Bucky: Shockwave"
-var buckyShockwaveBody:= "Press %s while Bucky is the active diver to send out a shockwave that can break any brown colored objects (rocks, doors, etc.). In some cases, breaking these objects will reveal items or other objects underneath them." % _badge("E")
+var buckyShockwaveBody:= "Press %s while Bucky is active to send out a shockwave that breaks nearby brown objects (rocks, doors, etc.). Broken objects may reveal items. Shockwave has a short cooldown but uses no Oxygen." % _badge("F")
 
 
 # One per diver, laid out in a row by World._build_diver_slots() - purely a

@@ -70,6 +70,9 @@ func _map_checkpoint(maze: MazeLevel) -> void:
 	var active := maze.active
 	await _key(KEY_TAB)
 	_expect(maze.active == active, "INT-06 map Tab steals active diver")
+	await _key(KEY_F)
+	_expect(not maze.target_selector.selecting and maze.divers[active].can_use_ability(),
+		"CTL-3 map F leaks exploration ability through overview ownership")
 	await _key(KEY_L)
 	_expect(not map.main_map.visible, "INT-06 map cannot relinquish ownership with L")
 	print("MAZE INPUT CASE|active=", active, "|owner=map")
@@ -81,6 +84,7 @@ func _save_owner(maze: MazeLevel, selected: int) -> void:
 	await _key(KEY_L)
 	await _key(KEY_TAB)
 	await _key(KEY_E)
+	await _key(KEY_F)
 	await _key(KEY_R)
 	_expect(maze._save_menu.visible and not map.main_map.visible and maze.active == selected
 		and not maze.target_selector.selecting and not maze.inventory_menu.visible and not maze.random_encounters_enabled,
@@ -99,6 +103,7 @@ func _swap_owner(maze: MazeLevel, selected: int) -> void:
 	await _key(KEY_P)
 	await _key(KEY_TAB)
 	await _key(KEY_R)
+	await _key(KEY_F)
 	_expect(maze.target_selector.selecting and not map.main_map.visible and not maze._save_menu.visible
 		and not maze.inventory_menu.visible and maze.active == selected and not maze.random_encounters_enabled,
 		"INT-06 Swap owner leaked map/save/diver input")

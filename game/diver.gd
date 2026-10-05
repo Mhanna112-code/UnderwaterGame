@@ -503,7 +503,7 @@ var external_push := Vector3.ZERO
 var current_axis := Vector3.ZERO
 
 # Which abilities need a deliberate aim step (first-person raycast, click
-# to fire) vs firing the instant E is pressed. Shockwave is omnidirectional,
+# to fire) vs firing the instant F is pressed. Shockwave is omnidirectional,
 # nothing to aim. Swap used to be raycast-aimed too, but now goes through
 # TargetSelector's cycle-through-candidates flow instead (see world.gd),
 # so it's no longer in this list - world.gd checks ability_id == "swap"
@@ -769,7 +769,7 @@ func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
 	tw.tween_callback(beam.queue_free)
 
 # Not aimed at all - the target comes pre-selected from TargetSelector's
-# cycle-through-candidates flow (world.gd routes E through
+# cycle-through-candidates flow (world.gd routes F through
 # target_selector.start_selection() for "swap" instead of first-person
 # aim; see ability_needs_aim()). Swaps this diver's position with
 # `target` outright: instant, not a tween like grapple's pull - "switch
