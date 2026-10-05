@@ -1,5 +1,5 @@
 extends SceneTree
-## INT-15: actual final sigil must start Cordys, not another laboratory Tethys.
+## INT-15: confirmed final approach starts Cordys, not laboratory Tethys.
 var findings: Array[String] = []
 
 func _initialize() -> void:
@@ -17,25 +17,36 @@ func _run() -> void:
 		while diver.stats.level < 5:
 			diver.stats.gain_xp(10)
 		SpellTree.learn_all_available(diver, [])
-	var sigil := maze._boss_triggers.get("main_boss") as Area3D
-	if sigil == null:
-		findings.append("INT-15 no authored finale sigil")
+	var station := maze._boss_triggers.get("main_boss") as Node3D
+	if station == null:
+		findings.append("INT-15 no authored finale station")
 	else:
-		# Location fixture, not navigation/key proof. Real Area contact owns start.
-		maze.divers[maze.active].global_position = sigil.global_position + Vector3.UP
+		# Location fixture, not navigation/key proof. Real proximity and Y own start.
+		maze.divers[maze.active].global_position = station.global_position + Vector3(-4, 1.2, 0)
 		for frame in range(20):
 			await physics_frame
-			if not maze.find_children("*", "Battle", false, false).is_empty():
+			if maze.any_modal_open():
 				break
+		if not maze.any_modal_open() or maze._battling:
+			findings.append("INT-15 approach did not wait for confirmation")
+		var yes := InputEventKey.new()
+		yes.keycode = KEY_Y
+		yes.pressed = true
+		Input.parse_input_event(yes)
+		await process_frame
+		yes = InputEventKey.new()
+		yes.keycode = KEY_Y
+		Input.parse_input_event(yes)
+		await process_frame
 		var battles := maze.find_children("*", "Battle", false, false)
 		if battles.size() != 1:
-			findings.append("INT-15 sigil contact did not start exactly one fight")
+			findings.append("INT-15 confirmation did not start exactly one fight")
 		else:
 			var battle := battles[0] as Battle
 			var enemy := battle.enemies[0] as Dictionary
 			if battle.encounter_source != "maze_cordys" or not enemy.actor is PrologueOctopus or String(enemy.display_name) != "Cordys":
-				findings.append("INT-15 real sigil dispatched " + String(enemy.display_name) + " source=" + battle.encounter_source)
-			print("CORDYS SIGIL|source=", battle.encounter_source, "|actor=", enemy.display_name)
+				findings.append("INT-15 confirmed approach dispatched " + String(enemy.display_name) + " source=" + battle.encounter_source)
+			print("CORDYS CONFIRMED|source=", battle.encounter_source, "|actor=", enemy.display_name)
 			var audio := root.get_node("GameAudio") as UnderwaterAudioManager
 			if String(audio.get_music_state().cue_id) != "cordys":
 				findings.append("INT-16 real Cordys start did not select Final Boss music")
@@ -66,7 +77,7 @@ func _run() -> void:
 						actions += 1
 					await process_frame
 				if outcomes != ["won"]:
-					findings.append("INT-15 actual sigil fight did not win: " + str(outcomes))
+					findings.append("INT-15 actual confirmed fight did not win: " + str(outcomes))
 				await process_frame
 				var snapshot := maze.campaign_snapshot()
 				if String(audio.get_music_state().cue_id) != "exploration":
@@ -85,6 +96,8 @@ func _run() -> void:
 					await process_frame
 					if restored.campaign_snapshot().boss_triggers.has("main_boss"):
 						findings.append("INT-15 restored maze resurrected defeated Cordys")
+					if not restored.find_children("*", "PrologueOctopus", true, false).is_empty():
+						findings.append("INT-15 restored completed room resurrected Cordys model")
 				print("CORDYS MAZE WIN|actions=", actions, "|outcomes=", outcomes, "|remaining=", snapshot.boss_triggers)
 				restored.queue_free()
 	maze.queue_free()

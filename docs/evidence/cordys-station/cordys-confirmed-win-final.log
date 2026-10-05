@@ -1,0 +1,5 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+CORDYS CONFIRMED|source=maze_cordys|actor=Cordys
+CORDYS MAZE WIN|actions=12|outcomes=["won"]|remaining=["secret_boss"]
+MAZE CORDYS TRIGGER: clean
