@@ -263,7 +263,11 @@ func _reward_matrix() -> void:
 		battle.finished.emit("won") # Reward lifecycle fixture, not minigame completion.
 		await _settle()
 		var expected := before.duplicate(true)
-		expected[items[site_index]] = int(expected.get(items[site_index], 0)) + 1
+		# Oxygen Cells are used on pickup when someone needs Oxygen; only a
+		# full party banks one in the inventory.
+		var cell_used: bool = items[site_index] == "oxygen_cell" and maze.inventory.get("oxygen_cell", 0) == before.get("oxygen_cell", 0)
+		if not cell_used:
+			expected[items[site_index]] = int(expected.get(items[site_index], 0)) + 1
 		_expect(maze.inventory == expected and not chooser.visible,
 			"SITE-3 site reward is wrong, duplicated or immediately retriggered")
 		var won := maze.campaign_snapshot()

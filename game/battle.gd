@@ -3170,6 +3170,7 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_in
 
 func _finish_actor_turn(entry: Dictionary) -> void:
 	_show_damage_over_time(entry, (entry.stats as CombatantStats).end_turn())
+	_tick_timed_buffs(entry)
 
 # Floating text, log line, bar refresh and death for one Bleed/Poison tick.
 # stack_base lifts the labels above anything already shown this turn (the
@@ -4306,6 +4307,10 @@ func _populate_item_menu() -> void:
 				continue   # explanatory items (Sonar Vision) have no battle use
 			var b := _menu_button("%s (x%d)" % [String(def.get("display", item_id)), count],
 				String(def.get("description", "")))
+			# Focus Tonic / Slipstream Oil: one between them per battle.
+			if bool(def.get("one_per_battle", false)) and _one_per_battle_used:
+				b.disabled = true
+				b.tooltip_text = "Already used a Focus Tonic or Slipstream Oil this battle."
 			b.pressed.connect(_on_item_chosen.bind(item_id))
 			item_menu.add_child(b)
 			item_buttons.append(b)
@@ -4365,7 +4370,13 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	# just another kind -> field mapping.
 	var temp_field: String = {"attack_up": "strength", "defense_up": "defense", "accuracy_up": "accuracy", "evasion_up": "evasion"}.get(kind, "")
 	if temp_field != "":
-		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount})
+		var item_def: Dictionary = Items.ITEMS.get(item_id, {})
+		# turns 0 = rest of the fight; a timed boost counts down on the
+		# target's own turns (the turn it was used on doesn't count).
+		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount,
+			"turns": int(item_def.get("turns", 0)), "fresh": true, "display": String(item_def.get("display", item_id))})
+		if bool(item_def.get("one_per_battle", false)):
+			_one_per_battle_used = true
 	var inv := _party_inventory()
 	var count: int = int(inv.get(item_id, 0))
 	inv[item_id] = count - 1
@@ -4384,6 +4395,30 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 # than one of these across a single fight and each application needs its
 # own amount subtracted back off independently.
 var _temp_buffs: Array[Dictionary] = []
+# Set once a Focus Tonic or Slipstream Oil has been used this battle.
+var _one_per_battle_used := false
+
+# Counts down timed item boosts on the owner's own turn end and removes any
+# that run out ("Focus Tonic wore off.").
+func _tick_timed_buffs(entry: Dictionary) -> void:
+	var stats := entry.get("stats") as CombatantStats
+	if stats == null:
+		return
+	for i in range(_temp_buffs.size() - 1, -1, -1):
+		var buff := _temp_buffs[i]
+		if buff.stats != stats or int(buff.get("turns", 0)) <= 0:
+			continue
+		if bool(buff.get("fresh", false)):
+			buff.fresh = false
+			continue
+		buff.turns = int(buff.turns) - 1
+		if int(buff.turns) <= 0:
+			var field := String(buff.field)
+			stats.set(field, int(stats.get(field)) - int(buff.amount))
+			if field == "evasion":
+				stats.evasion_current = mini(stats.evasion_current, stats.effective_evasion())
+			_temp_buffs.remove_at(i)
+			_log_append("  %s wore off for %s." % [String(buff.get("display", "The boost")), String(entry.get("display_name", ""))])
 
 # Called from every one of this battle's three end points (_win(), _lose(),
 # the flee handler) right before finished.emit() - a temporary buff is

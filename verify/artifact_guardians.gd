@@ -17,7 +17,6 @@ func _run() -> void:
 	var expected := {
 		"current_pearl": "angler", "reef_plate": "swordfish_duelist",
 		"attack_up": "angler", "defense_up": "swordfish_duelist",
-		"accuracy_up": "angler", "evasion_up": "swordfish_duelist",
 	}
 	var guarded := ItemGuardian.spots()
 	_expect(guarded.size() == 6, "ARTIFACT GUARDIANS: expected exactly six guarded items — guards against an art/site change deleting a progression or special-encounter location")

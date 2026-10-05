@@ -125,6 +125,12 @@ var _save_point_tutorial_seen := false
 # and the character-ability pages only after they've been shown once.
 var special_encounter_left := false
 var ability_popups_seen := false
+# Item encounter sites (guarded items and special encounters) the party has
+# beaten AND won the item from. Only this removes a site: its fight stops
+# triggering and its red minimap circle goes away. Saved.
+var cleared_item_sites: Array[String] = []
+var _pending_reward_site := ""   # site whose fight is being offered/started
+var _battle_reward_site := ""    # site the current battle was started from
 
 # Party-wide, not per-diver - key items unlock spells in whichever diver's
 # tree requires them, they aren't "held" by whoever found one or won the
@@ -527,6 +533,7 @@ func _serialize_world_state() -> Dictionary:
 		"save_point_tutorial_seen": _save_point_tutorial_seen,
 		"special_encounter_left": special_encounter_left,
 		"ability_popups_seen": ability_popups_seen,
+		"cleared_item_sites": cleared_item_sites.duplicate(),
 		"route_state": route_state.to_save_data(),
 		"divers": divers_data,
 	}
@@ -684,6 +691,15 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	_save_point_tutorial_seen = bool(data.get("save_point_tutorial_seen", false))
 	special_encounter_left = bool(data.get("special_encounter_left", false))
 	ability_popups_seen = bool(data.get("ability_popups_seen", false))
+	cleared_item_sites.clear()
+	for site_value in data.get("cleared_item_sites", []):
+		cleared_item_sites.append(String(site_value))
+	# Older saves predate the list: a key-item site whose item is owned was
+	# necessarily beaten and won, so it stays cleared.
+	if not data.has("cleared_item_sites"):
+		for spot in ItemGuardian.spots():
+			if Items.is_key_item(String(spot.item)) and key_items.has(String(spot.item)):
+				cleared_item_sites.append(String(spot.get("site", spot.item)))
 	# The forced first special encounter (Maxilani's tutorial) only happens once.
 	player_first_special_encounter = not special_encounter_left
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
@@ -1915,6 +1931,12 @@ func _on_item_orb_collected(item_id: String, _d: Diver, drop_id: String) -> void
 # why an item sits in the inventory until the player chooses to use it
 # instead of applying itself the instant it's picked up.
 func _add_to_inventory(item_id: String) -> void:
+	if item_id == "oxygen_cell":
+		var used := Items.auto_use_oxygen_cell(divers)
+		if used != "":
+			_announce(used)
+			_update_oxygen_bar()
+			return
 	inventory[item_id] = int(inventory.get(item_id, 0)) + 1
 	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 	_announce("Picked up a %s." % display)
@@ -3823,8 +3845,10 @@ func _try_trigger_item_site(d: Diver) -> bool:
 	if site_id == _inside_item_site_id:
 		return true
 	_inside_item_site_id = site_id
-	if key_items.has(item_id):
+	# Gone only once beaten and won (not merely because the item is owned).
+	if cleared_item_sites.has(site_id):
 		return false
+	_pending_reward_site = site_id
 	var enemy_id := String(found.get("enemy", "angler"))
 	if bool(found.get("special", false)):
 		_pending_guardian_enemy_id = enemy_id
@@ -3980,6 +4004,10 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		_audio_call(&"play_battle_music")
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
+	# Remember which site (if any) this fight belongs to, only when it
+	# carries that site's reward.
+	_battle_reward_site = _pending_reward_site if reward_item != "" else ""
+	_pending_reward_site = ""
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
 	if boss_encounter:
@@ -4160,6 +4188,8 @@ func _on_battle_finished(result: String) -> void:
 				pass
 			elif _pending_reward_item != "":
 				_grant_reward_item(_pending_reward_item)
+				if _battle_reward_site != "" and not cleared_item_sites.has(_battle_reward_site):
+					cleared_item_sites.append(_battle_reward_site)
 			elif was_tutorial:
 				_announce("You won! You can replay this fight any time from the Esc menu's Combat Help tab.")
 			elif was_lab_boss:
@@ -4839,10 +4869,20 @@ func _controls_text_bottom() -> float:
 func _sync_overlay_hud() -> void:
 	if not is_inside_tree() or hp_bar == null:
 		return
-	var covered := (inventory_menu != null and inventory_menu.visible) 		or (save_point_menu != null and save_point_menu.visible) 		or _maze_nav_map_open()
+	var covered := (inventory_menu != null and inventory_menu.visible) \
+		or (save_point_menu != null and save_point_menu.visible) \
+		or _maze_nav_map_open() or _maze_menu_open()
 	for wrap in [hp_bar.get_parent(), oxygen_bar.get_parent() if oxygen_bar != null else null, _party_bars_box]:
 		if wrap != null and is_instance_valid(wrap):
 			(wrap as CanvasItem).visible = not covered
+
+# The maze runs its own Esc inventory menu and save menu instances.
+func _maze_menu_open() -> bool:
+	if embedded_maze == null or not embedded_maze.maze_active:
+		return false
+	var menu := embedded_maze.get("inventory_menu") as Control
+	var save_menu := embedded_maze.get("_save_menu") as Control
+	return (menu != null and menu.visible) or (save_menu != null and save_menu.visible)
 
 func _maze_nav_map_open() -> bool:
 	if embedded_maze == null or not embedded_maze.maze_active:

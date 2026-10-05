@@ -128,7 +128,8 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 	_draw_item_rock_markers(center, px_per_unit, mid, marker_color)
 	for entry in ItemGuardian.spots():
 		var item_id := String(entry.item)
-		if world.key_items.has(item_id) or not world.revealed_key_items.has(item_id):
+		# Only beating the site's enemy and winning its item clears the circle.
+		if world.cleared_item_sites.has(String(entry.get("site", item_id))) or not world.revealed_key_items.has(item_id):
 			continue
 		var pos: Vector3 = entry.at
 		if not within_marker_height(center.y, pos.y):
