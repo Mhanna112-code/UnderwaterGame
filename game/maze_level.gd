@@ -3005,13 +3005,21 @@ func _sweep_divers_with_moving_walls() -> void:
 			var last: Transform3D = _wall_last_xf.get(wall, xf)
 			var half := wall.size * 0.5
 			for d in divers:
+				if _wall_riders.has(d):
+					# Already riding a wall: it turns with that wall, holding its
+					# place against the face it was on.
+					if _wall_riders[d] == wall:
+						var carried := xf * (_rider_offsets[d] as Vector3)
+						carried.y = d.global_position.y
+						d.global_position = carried
+					continue
 				var r := d.radius + SWEEP_MARGIN
 				var local := xf.affine_inverse() * d.global_position
 				if absf(local.x) > half.x + r or absf(local.z) > half.z + r or absf(local.y) > half.y + d.height * 0.5:
 					continue
 				# Which way is this bit of the wall moving across its own
-				# thickness? Push the diver out on that side; if it isn't
-				# moving sideways (e.g. a wall rising), out the nearer side.
+				# thickness? The diver goes on that face; if it isn't moving
+				# sideways (e.g. a wall rising), the nearer face.
 				var motion := xf * local - last * local
 				var across := xf.basis.z.normalized()
 				var side := signf(motion.dot(across))
@@ -3020,35 +3028,54 @@ func _sweep_divers_with_moving_walls() -> void:
 				var pushed := Vector3(local.x, local.y, side * (half.z + r))
 				var target := xf * pushed
 				target.y = d.global_position.y
-				# No room ahead (it'd be crushed into another wall - e.g. Box13,
-				# or the end cap as 11 lands): the diver rides along with this
-				# wall, ignoring the other walls, until it stops.
-				if not _wall_riders.has(d) and _diver_spot_blocked(d, target, wall):
-					_wall_riders[d] = wall
+				# From here on the diver rides this wall - turning with it, held
+				# against that face, passing through any other wall, rock or
+				# invisible barrier in the way - until it stops.
+				_wall_riders[d] = wall
+				_rider_offsets[d] = pushed
+				d.velocity = Vector3.ZERO
 				d.global_position = target
 	_wall_last_xf.clear()
 	for wall in still_moving:
 		_wall_last_xf[wall] = (wall as CSGBox3D).global_transform
-	# Riders whose wall has stopped get set down in the nearest clear spot.
+	# Riders whose wall has stopped are set down where it left them, or if
+	# that's inside something, the nearest clear spot on the same side of the
+	# wall that can be reached from there without crossing a wall or barrier.
 	for d in _wall_riders.keys():
 		if not still_moving.has(_wall_riders[d]):
+			var wall := _wall_riders[d] as CSGBox3D
+			var side := signf((_rider_offsets[d] as Vector3).z)
 			_wall_riders.erase(d)
+			_rider_offsets.erase(d)
 			if is_instance_valid(d):
-				d.global_position = _nearest_clear_spot(d, d.global_position)
+				d.global_position = _nearest_clear_spot(d, d.global_position, wall, side)
 				d.velocity = Vector3.ZERO
 
-var _wall_riders: Dictionary = {}   # diver -> the moving wall carrying it
+var _wall_riders: Dictionary = {}     # diver -> the moving wall carrying it
+var _rider_offsets: Dictionary = {}   # diver -> its spot in that wall's own frame
 
-# `pos`, or the closest spot around it where the diver touches no wall.
-func _nearest_clear_spot(d: Diver, pos: Vector3) -> Vector3:
+# `pos`, or the closest spot around it where the diver touches nothing. With
+# `wall`, only spots on its `side` (the face the diver rode on) count, and
+# only ones reachable from `pos` in a straight line without passing through a
+# wall or barrier - so a diver is never set down on the far side of one.
+func _nearest_clear_spot(d: Diver, pos: Vector3, wall: CSGBox3D = null, side := 0.0) -> Vector3:
 	if not _diver_spot_blocked(d, pos, null):
 		return pos
+	var space := get_world_3d().direct_space_state
 	for ring in range(1, 21):
 		var dist := ring * 0.25
 		for k in 24:
 			var at := pos + Vector3.FORWARD.rotated(Vector3.UP, TAU * k / 24.0) * dist
-			if not _diver_spot_blocked(d, at, null):
-				return at
+			if wall != null and is_instance_valid(wall) and side != 0.0:
+				if signf((wall.global_transform.affine_inverse() * at).z) != side:
+					continue
+			if _diver_spot_blocked(d, at, null):
+				continue
+			var ray := PhysicsRayQueryParameters3D.create(pos, at, 1)
+			ray.exclude = [d.get_rid()]
+			if not space.intersect_ray(ray).is_empty():
+				continue
+			return at
 	return pos
 
 # Would a diver at `pos` overlap anything solid other than `except` and the
