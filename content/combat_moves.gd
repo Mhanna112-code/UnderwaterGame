@@ -16,13 +16,11 @@ const SCUBA := [
 	{
 		"name": "Scuba Stabbing", "formula": {"strength": 1},
 		"target": "one_enemy", "effects": [
-			# Bleed used to have no duration at all (persisted until the
-			# fight ended). Capped at 3 turns to match Poison's own
-			# duration - one shared "DoTs last 3 turns" rule instead of two
-			# different expiry stories for the player to track. Repeat hits
-			# still only stack the level, never reset this clock - see
-			# CombatantStats.add_status()'s own bleed-specific branch.
-			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}, "duration": 3},
+			# No duration: Bleed lasts the rest of the fight - the same as the
+			# enemies' own Bleed moves (enemy_moves.gd) - unlike Poison, which
+			# wears off after its turns. Repeat hits only stack the level (see
+			# CombatantStats.add_status()'s bleed-specific branch).
+			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
 		],
 		"hint": "1 STR damage; applies 1 + STR Bleed",
 		"text": "Scuba Stabbing opens a wound",

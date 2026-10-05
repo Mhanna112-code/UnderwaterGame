@@ -25,7 +25,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Every Other Stat",
-		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0 - your party's bars stack down the left side of the screen, the enemies' down the right. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.",
+		"body": "HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.",
 	},
 	{
 		"title": "Special Encounters",
@@ -206,7 +206,7 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 	},
 	{
 		"title": "Bleed",
-		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, then fades after 3 turns. Another Bleed hit only adds to that damage stack - it does not restart the 3-turn clock, so a bleed about to expire won't get more time from a fresh hit, just a harder tick before it does. Scuba Stabbing applies 1 plus the caster's Strength.",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight - it never wears off on its own. Every later damaging hit on a bleeding character adds 1 more to the stack (up to 10). Scuba Stabbing applies 1 plus the caster's Strength.",
 	},
 	{
 		"title": "Poison",

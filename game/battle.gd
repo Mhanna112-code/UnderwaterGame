@@ -3909,7 +3909,7 @@ func _explain_other_stats() -> void:
 # doesn't crowd the fight off the screen).
 const STATUS_EFFECTS_PAGE := [
 	"Under the bars is a status line. [b]EVA[/b] is the dodge pool: left now / full - an attack whose Accuracy is no higher than what's left is dodged and uses it up, and it refills each turn. Status effects show beside it:",
-	"[b]Bleed 4[/b] - takes 4 damage at the end of each of its turns; every hit while bleeding adds 1 more.",
+	"[b]Bleed 4[/b] - takes 4 damage at the end of each of its turns for the rest of the fight; every hit while bleeding adds 1 more.",
 	"[b]Poison 2 (3 turns left)[/b] - takes 2 damage at the end of each turn until it wears off.",
 	"[b]Stun (2 turns left)[/b] - skips its turns until it wears off.",
 	"[b]Blindness 2[/b] - Agility, Accuracy and Defense are each 2 lower until it wears off.",
