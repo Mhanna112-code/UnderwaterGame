@@ -1,0 +1,14 @@
+{
+  "checked_on": "2026-10-05",
+  "method": "Fetch each alias build-info.json and stream each actual index.pck through SHA256; no existing player saves accessed",
+  "runtime_source_commit": "138ca535c3a5d8d174225eb109b56b35ea190be0",
+  "generated_export_commit": "279dd5e",
+  "pck_bytes": 93321284,
+  "pck_sha256": "e5f790f1a30bc3390a1006784257ac1957c8998ec53fcc672bc8ed723c527de9",
+  "aliases": [
+    {"url": "https://underwatergame.vercel.app/", "metadata_matches": true, "actual_pack_matches": true},
+    {"url": "https://underwatergame-maze-campaign-review.vercel.app/", "metadata_matches": true, "actual_pack_matches": true}
+  ],
+  "browser_behavior_receipt": "docs/evidence/main-safety-oct5/combined-hosted-cordys/receipt.json",
+  "scope": "Focused real-input Cordys station confirmation plus matching hosted artifacts; not full campaign or refreshed native package acceptance"
+}
