@@ -8,3 +8,7 @@ extends RefCounted
 
 static var diver_model := ""
 static var returning_from_secret_wall := false
+# The maze when it's part of the open world (MazeLevel.world set): the secret
+# scene is then shown over the paused world instead of replacing it, and
+# hands back to this maze when it's done (see MazeLevel._enter_secret_wall()).
+static var embedded_maze: Node = null

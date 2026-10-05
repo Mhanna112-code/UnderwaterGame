@@ -686,6 +686,7 @@ func _ready() -> void:
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
 	_build_diver_slots()
+	_build_maze()
 	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
 	# reach a save point immediately, same reason it also grants max spell
 	# points/every key item - fighting through the scripted first battle
@@ -844,7 +845,13 @@ func _build_boundary_walls() -> void:
 	const SPAN := BOUND * 2.0 + THICKNESS * 2.0
 	_build_invisible_wall(Vector3(0.0, WALL_Y, BOUND + THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
 	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+	# East: open where the highway's line meets it - the way on to the maze
+	# (see _build_maze_passage()).
+	var east_x := BOUND + THICKNESS * 0.5
+	var g_lo := MAZE_PASSAGE_Z - MAZE_PASSAGE_HALF_WIDTH
+	var g_hi := MAZE_PASSAGE_Z + MAZE_PASSAGE_HALF_WIDTH
+	_build_invisible_wall(Vector3(east_x, WALL_Y, (-SPAN * 0.5 + g_lo) * 0.5), Vector3(THICKNESS, WALL_HEIGHT, g_lo + SPAN * 0.5))
+	_build_invisible_wall(Vector3(east_x, WALL_Y, (g_hi + SPAN * 0.5) * 0.5), Vector3(THICKNESS, WALL_HEIGHT, SPAN * 0.5 - g_hi))
 	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
 	# Collision-only roof; its underside is exactly four blockade-heights
 	# above the floor. Airborne reward rocks at 3x height stay reachable.
@@ -853,6 +860,87 @@ func _build_boundary_walls() -> void:
 		Vector3(0.0, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
 		Vector3(BOUND * 2.0, CEILING_THICKNESS, BOUND * 2.0)
 	)
+
+# --- The maze, east past the blockade exit ---------------------------------------
+# The maze level is built into this scene, out in the deep water east of the
+# highway's exit, not loaded as a level of its own: past the opened doors
+# you swim on east, through an opening in the site's east edge and down a
+# short slope, into the open water around the maze's start corridor. While
+# the active diver is inside the maze's bounds the maze runs everything
+# (MazeLevel.enter_from_world()/leave_to_world()); out here, World does.
+const MAZE_SCENE := preload("res://game/maze_level.tscn")
+# Puts the maze's start corridor on the highway's line, its west perimeter
+# just past this site's east edge.
+const MAZE_OFFSET := Vector3(110.0, 0.0, 14.73)
+const MAZE_PASSAGE_Z := 10.0            # the highway's lane line
+const MAZE_PASSAGE_HALF_WIDTH := 4.0
+var maze: MazeLevel
+var _in_maze := false
+
+func _build_maze() -> void:
+	maze = MAZE_SCENE.instantiate() as MazeLevel
+	maze.world = self
+	maze.embed_offset = MAZE_OFFSET
+	add_child(maze)
+	_build_maze_passage()
+
+# From the site's east edge (floor at y=0) down to the maze's lower floor:
+# a sloped floor the width of the opening, and above it a plug filling the
+# opening from the maze's ceiling height up, so the only way through is
+# along the bottom and nobody can swim in over the maze's ceiling.
+func _build_maze_passage() -> void:
+	var x0 := 60.0
+	var x1 := maze._embed_bounds.position.x
+	var y1 := maze._floor_top_y
+	var width := MAZE_PASSAGE_HALF_WIDTH * 2.0 + 2.0
+	var run := Vector2(x1 - x0, y1)
+	var slope := StaticBody3D.new()
+	add_child(slope)
+	slope.position = Vector3((x0 + x1) * 0.5, y1 * 0.5 - 0.2, MAZE_PASSAGE_Z)
+	slope.rotation.z = atan2(run.y, run.x)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(run.length() + 1.0, 0.4, width)
+	shape.shape = box
+	slope.add_child(shape)
+	var mesh := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = box.size
+	mesh.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.16, 0.24, 0.24)
+	mat.roughness = 1.0
+	mesh.material_override = mat
+	slope.add_child(mesh)
+	var plug_bottom := maze.ceiling_bottom_y()
+	var plug_top := 80.0
+	_build_invisible_wall(
+		Vector3((x0 + x1) * 0.5, (plug_bottom + plug_top) * 0.5, MAZE_PASSAGE_Z),
+		Vector3(x1 - x0 + 4.0, plug_top - plug_bottom, width))
+
+func _set_in_maze(on: bool) -> void:
+	_in_maze = on
+	if on:
+		if aiming:
+			_cancel_aim()
+		if target_selector.selecting:
+			target_selector.cancel_selection()
+		hud.visible = false
+		minimap.visible = false
+		banner.text = ""
+		maze.enter_from_world(active, yaw, pitch, mouse_look, cam.global_transform, random_encounters_enabled)
+	else:
+		var s := maze.leave_to_world()
+		active = int(s["active"])
+		yaw = float(s["yaw"])
+		pitch = float(s["pitch"])
+		mouse_look = bool(s["mouse_look"])
+		cam.global_transform = s["cam_xf"]
+		random_encounters_enabled = bool(s["encounters"])
+		cam.make_current()
+		hud.visible = true
+		minimap.visible = true
+		_update_hud()
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -1360,7 +1448,7 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 		})
 
 func _unhandled_input(e: InputEvent) -> void:
-	if battling:
+	if battling or _in_maze:
 		return
 
 	# Aim mode intercepts clicks before the normal "first click captures
@@ -1633,6 +1721,15 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	if maze != null and not divers.is_empty():
+		var inside := maze.contains_point((divers[active] as Diver).global_position)
+		if inside != _in_maze:
+			_set_in_maze(inside)
+		if _in_maze:
+			# The maze runs everything in there; the HP/Oxygen bars stay ours.
+			_update_hp_bar()
+			_update_oxygen_bar()
+			return
 	if battling or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
@@ -2227,7 +2324,7 @@ func _try_trigger_item_site(d: Diver) -> bool:
 # _physics_process() and here, since a movement roll may land on the same
 # frame the active diver crosses a site boundary.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active] or _intro_active or not random_encounters_enabled:
+	if battling or _in_maze or d != divers[active] or _intro_active or not random_encounters_enabled:
 		return
 	if _try_trigger_item_site(d):
 		return

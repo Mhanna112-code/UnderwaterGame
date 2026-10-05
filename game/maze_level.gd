@@ -52,6 +52,7 @@ func _collect_corridors() -> Array[Area3D]:
 
 
 func _ready() -> void:
+	_embed_shift()
 	_clear_dome_site()
 	for child in get_children():
 		if child is Marker3D:
@@ -65,14 +66,16 @@ func _ready() -> void:
 	_build_target_selector()
 	_setup_walls()
 	# After _setup_walls() so it uses both walls' placed positions (and
-	# overrides any debug move of the diver during wall placement).
-	_place_diver_between($CSGBox3D, $CurrentWall3)
-	if dev_spawn_at_sphere_room:
-		_dev_spawn_at_sphere_room()
-	elif dev_spawn_at_boss_rooms:
-		_dev_spawn_at_boss_rooms()
-	elif dev_spawn_at_switch:
-		_dev_spawn_at_switch()
+	# overrides any debug move of the diver during wall placement). Part of
+	# the world, the divers are the world's and stay where they are.
+	if world == null:
+		_place_diver_between($CSGBox3D, $CurrentWall3)
+		if dev_spawn_at_sphere_room:
+			_dev_spawn_at_sphere_room()
+		elif dev_spawn_at_boss_rooms:
+			_dev_spawn_at_boss_rooms()
+		elif dev_spawn_at_switch:
+			_dev_spawn_at_switch()
 	_corridor_walls = {
 		$WindCorridor3: [$CSGBox3D6, $CSGBox3D7],
 		$WindCorridor4: [$CSGBox3D12, $CSGBox3D13],
@@ -118,6 +121,94 @@ func _ready() -> void:
 	if SceneHandoff.returning_from_secret_wall:
 		SceneHandoff.returning_from_secret_wall = false
 		_place_divers_at_secret_entrance()
+	if world != null:
+		_finish_embedding()
+
+# --- Part of the open world ------------------------------------------------------
+# World builds the maze into its own scene, east past the blockade exit,
+# rather than it being a level of its own. Everything the maze authored is
+# shifted by `embed_offset` before anything else is built (so the maze's own
+# root stays at the origin and every global position in this file still
+# means what it says), its light and environment give way to World's, and it
+# runs on World's divers, items and keys. While the active diver is out in
+# the open water World is in charge; once they swim inside the maze's bounds
+# World hands over (enter_from_world()) and the maze runs everything - its
+# camera, HUD, input, battles - until they swim back out (leave_to_world()).
+var world: Node = null
+var embed_offset := Vector3.ZERO
+const EMBED_PASSAGE_HALF_WIDTH := 4.0   # the way in through the west perimeter
+var _embed_bounds := Rect2()   # x/z inside the maze's perimeter walls
+var maze_active := true
+
+func _embed_shift() -> void:
+	if world == null:
+		return
+	for child in get_children():
+		if child is WorldEnvironment or child is DirectionalLight3D:
+			remove_child(child)
+			child.queue_free()
+		elif child is Node3D:
+			(child as Node3D).position += embed_offset
+
+func _finish_embedding() -> void:
+	var points := _collect_bounds_points()
+	var lo: Vector3 = points[0]
+	var hi: Vector3 = points[0]
+	for p in points:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	_embed_bounds = Rect2(lo.x - _PERIMETER_MARGIN, lo.z - _PERIMETER_MARGIN, hi.x - lo.x + _PERIMETER_MARGIN * 2.0, hi.z - lo.z + _PERIMETER_MARGIN * 2.0)
+	SceneHandoff.embedded_maze = self
+	_set_maze_active(false)
+
+# Where the world's way in meets the maze: the open water just west of the
+# start corridor, on its line.
+func entrance_point() -> Vector3:
+	return ($DiverEntry as Node3D).global_position
+
+# The underside of the maze's main invisible ceiling (see _build_ceiling()).
+func ceiling_bottom_y() -> float:
+	var wall_a := $CurrentWall1 as CSGBox3D
+	return wall_a.position.y + wall_a.size.y * 0.5 + _CEILING_CLEARANCE
+
+func contains_point(p: Vector3) -> bool:
+	return _embed_bounds.has_point(Vector2(p.x, p.z))
+
+func _set_maze_active(on: bool) -> void:
+	maze_active = on
+	set_physics_process(on)
+	set_process_unhandled_input(on)
+	set_process_input(on)
+	$HUD.visible = on
+	$HUD.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	($Camera3D as Camera3D).current = on
+
+# World -> maze: same diver, same view, same encounter setting.
+func enter_from_world(world_active: int, yaw: float, pitch: float, mouse_look: bool, cam_xf: Transform3D, encounters: bool) -> void:
+	active = world_active
+	_diver = divers[active]
+	_yaw = yaw
+	_pitch = pitch
+	_mouse_look = mouse_look
+	($Camera3D as Camera3D).global_transform = cam_xf
+	_cam_look = Vector3.ZERO
+	_cutscene_return = 0.0
+	random_encounters_enabled = encounters
+	_set_maze_active(true)
+
+# Maze -> world: hands back what World needs to carry on seamlessly.
+func leave_to_world() -> Dictionary:
+	if _aiming:
+		_cancel_aim()
+	if target_selector != null and target_selector.selecting:
+		target_selector.cancel_selection()
+	var state := {
+		"active": active, "yaw": _yaw, "pitch": _pitch, "mouse_look": _mouse_look,
+		"cam_xf": ($Camera3D as Camera3D).global_transform,
+		"encounters": random_encounters_enabled,
+	}
+	_set_maze_active(false)
+	return state
 
 # Reward rocks scattered through the maze - the same disguised-as-scenery
 # CrackedWall world.gd's own _build_breakable_rocks() spawns at a hardcoded
@@ -1323,7 +1414,31 @@ func _secret_entrance_in_reach() -> bool:
 
 func _enter_secret_wall() -> void:
 	SceneHandoff.diver_model = _diver.model_name
-	get_tree().change_scene_to_file.call_deferred(SECRET_WALL_SCENE)
+	if world == null:
+		get_tree().change_scene_to_file.call_deferred(SECRET_WALL_SCENE)
+		return
+	# Part of the world: show the secret level over it instead of replacing
+	# it, the world (this maze included) paused and hidden underneath, so
+	# coming back finds everything as it was left.
+	var secret := (load(SECRET_WALL_SCENE) as PackedScene).instantiate()
+	get_tree().root.add_child(secret)
+	world.process_mode = Node.PROCESS_MODE_DISABLED
+	world.visible = false
+	($HUD as CanvasLayer).visible = false
+	(world.get_node("HUD") as CanvasLayer).visible = false
+	for cam in secret.find_children("*", "Camera3D", true, false):
+		(cam as Camera3D).make_current()
+		break
+
+func _return_from_secret_wall(secret: Node) -> void:
+	if is_instance_valid(secret):
+		secret.queue_free()
+	world.process_mode = Node.PROCESS_MODE_INHERIT
+	world.visible = true
+	($HUD as CanvasLayer).visible = true
+	(world.get_node("HUD") as CanvasLayer).visible = true
+	($Camera3D as Camera3D).make_current()
+	_place_divers_at_secret_entrance()
 
 # Back from the secret scene: the diver who went in is active again, and the
 # party stands in the passage in front of the entrance.
@@ -2078,7 +2193,7 @@ func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: 
 	# by half wall_to_place's length so its near end meets the reference
 	# wall's end instead of straddling it.
 	wall_to_place.global_position = reference_outer_end
-	if _diver != null:
+	if _diver != null and world == null:
 		_diver.global_position = reference_outer_end + Vector3(10,10,10)
 	#wall_to_place.global_position += reference_outward_axis * wall_to_place.size.x * 0.5
 	
@@ -3508,7 +3623,7 @@ static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
 # instead.
 func _setup_whirlpool() -> void:
 	var whirlpool := Whirlpool.new()
-	whirlpool.position = Vector3(35.99, -4.12, 71.67)
+	whirlpool.position = Vector3(35.99, -4.12, 71.67) + embed_offset
 	whirlpool.reset_to = $DiverEntry.position
 	whirlpool.warned.connect(_on_whirlpool_warned)
 	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
@@ -3800,9 +3915,21 @@ func _build_perimeter_walls() -> void:
 	_build_invisible_wall(
 		Vector3(center_x, wall_y, padded_max.z + _PERIMETER_THICKNESS * 0.5),
 		Vector3(span_x + _PERIMETER_THICKNESS * 2.0, _PERIMETER_WALL_HEIGHT, _PERIMETER_THICKNESS))
-	_build_invisible_wall(
-		Vector3(padded_min.x - _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
-		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
+	var west_x := padded_min.x - _PERIMETER_THICKNESS * 0.5
+	var z_lo := padded_min.z - _PERIMETER_THICKNESS
+	var z_hi := padded_max.z + _PERIMETER_THICKNESS
+	if world != null:
+		# Part of the world: an opening on the start corridor's line, where
+		# the way in from the open water arrives (see World's maze passage).
+		var gap_z := ($DiverEntry as Node3D).global_position.z
+		var g_lo := gap_z - EMBED_PASSAGE_HALF_WIDTH
+		var g_hi := gap_z + EMBED_PASSAGE_HALF_WIDTH
+		_build_invisible_wall(Vector3(west_x, wall_y, (z_lo + g_lo) * 0.5), Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, g_lo - z_lo))
+		_build_invisible_wall(Vector3(west_x, wall_y, (g_hi + z_hi) * 0.5), Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, z_hi - g_hi))
+	else:
+		_build_invisible_wall(
+			Vector3(west_x, wall_y, center_z),
+			Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
 	_build_invisible_wall(
 		Vector3(padded_max.x + _PERIMETER_THICKNESS * 0.5, wall_y, center_z),
 		Vector3(_PERIMETER_THICKNESS, _PERIMETER_WALL_HEIGHT, span_z + _PERIMETER_THICKNESS * 2.0))
@@ -4015,6 +4142,17 @@ func _gap_width_between(wall_a: CSGBox3D, wall_b: CSGBox3D) -> float:
 	return separation - (wall_a.size.z + wall_b.size.z) * 0.5
 
 func _spawn_divers() -> void:
+	if world != null:
+		# Part of the world: its divers, and its items and keys (the same
+		# dictionary/array, so whatever the maze adds or uses is the world's).
+		for d in world.divers:
+			divers.append(d as Diver)
+			(d as Diver).encounter_triggered.connect(_on_diver_encounter.bind(d))
+		inventory = world.inventory
+		key_items = world.key_items
+		active = int(world.active)
+		_diver = divers[active]
+		return
 	for model in MAZE_CAST:
 		var d := Diver.new()
 		d.model_name = String(model)
@@ -4030,6 +4168,8 @@ func _switch_diver() -> void:
 		target_selector.cancel_selection()
 	active = (active + 1) % divers.size()
 	_diver = divers[active]
+	if world != null:
+		world.active = active
 	_announce("Now playing %s." % Cast.display_name(_diver.model_name))
 
 func _player_dir() -> Vector3:
@@ -5522,6 +5662,10 @@ func _build_special_encounters() -> void:
 				continue
 			entry = entry.duplicate()
 			entry["at"] = between.pop_front()
+		else:
+			# An authored spot: shifted with the rest of the maze.
+			entry = entry.duplicate()
+			entry["at"] = (entry["at"] as Vector3) + embed_offset
 		var guardian := MazeItemGuardian.new()
 		guardian.item_id = String(entry["item"])
 		guardian.look = String(entry["look"])
@@ -5851,6 +5995,13 @@ func _update_save_point_prompt() -> void:
 		_showing_save_prompt = false
 
 func _on_save_requested(_d: Diver, _slot: int = 0) -> void:
+	if world != null:
+		# Part of the world: one save, the world's (party, items, keys, slot).
+		world._on_save_requested(_d, _slot)
+		save_point_menu.close()
+		_showing_save_prompt = false
+		_announce("Progress saved.")
+		return
 	for other in divers:
 		other.stats.hp = other.stats.hp_max
 		other.stats.oxygen = other.stats.oxygen_max

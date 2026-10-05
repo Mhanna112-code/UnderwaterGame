@@ -344,6 +344,11 @@ func _leave() -> void:
 	if _leaving:
 		return
 	_leaving = true
+	var maze := SceneHandoff.embedded_maze
+	if maze != null and is_instance_valid(maze):
+		# Shown over the world: hand back to the maze, which frees this.
+		maze.call_deferred("_return_from_secret_wall", self)
+		return
 	SceneHandoff.returning_from_secret_wall = true
 	get_tree().change_scene_to_file.call_deferred(MAZE_SCENE)
 		

@@ -256,17 +256,21 @@ func _show_missing_key() -> void:
 	if _prompt != null:
 		_prompt.text = text
 		_prompt.visible = true
-	if _world != null:
-		_world._announce(text)
-	elif announce.is_valid():
+	# The maze's own hooks first: inside the world the maze still runs its
+	# own HUD, and World's banner is hidden.
+	if announce.is_valid():
 		announce.call(text)
+	elif _world != null:
+		_world._announce(text)
 
 func _key_display_name() -> String:
 	return String(Items.ITEMS.get(required_key_id, {}).get("display", required_key_id))
 
 func _active_world_diver() -> Diver:
+	if active_diver_source.is_valid():
+		return active_diver_source.call() as Diver
 	if _world == null:
-		return active_diver_source.call() as Diver if active_diver_source.is_valid() else null
+		return null
 	if _world.active < 0 or _world.active >= _world.divers.size():
 		return null
 	var candidate: Variant = _world.divers[_world.active]
