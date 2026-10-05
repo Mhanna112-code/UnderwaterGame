@@ -47,6 +47,7 @@ const SKILLED_QTE_DODGE := 0.80
 var findings: Array = []
 
 func _init() -> void:
+	print("BAL-17 no-refill policy screen: persistent resources/earned XP, no victory healing; NOT full earned campaign acceptance")
 	var casual := _run_policy("casual")
 	var skilled := _run_policy("skilled")
 	_print_result("casual", casual)
@@ -287,8 +288,14 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 		var per_grunt := maxi(1, int(round(float(Goblin.BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
 		for actor in party:
 			(actor.stats as CombatantStats).gain_xp(per_grunt * enemy_count)
-		for actor in party:
-			(actor.stats as CombatantStats).recover_after_victory()
+	# Current Battle._exit_tree ends battle-only effects, but grants no HP/O2
+	# regroup. Only the earned gain_xp level-up above may fill these resources.
+	# Keep cleanup separate so removing a heal does not invent cross-fight DOT.
+	for member in party:
+		var stats := member.stats as CombatantStats
+		stats.statuses.clear()
+		stats.temporary_modifiers = {"accuracy": 0, "evasion": 0}
+		stats.evasion_current = stats.effective_evasion()
 	for member in party:
 		(member.actor as Node).free()
 		member.erase("actor")

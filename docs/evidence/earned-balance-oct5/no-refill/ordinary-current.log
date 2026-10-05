@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+casual   99.2% wins,  1.8 rounds,  4.2 HP lost  (1 enemy 92/93, 1.5 r, 2 enemy 27/27, 2.7 r, 3 enemy 0/0, 0.0 r)
+skilled 100.0% wins,  1.2 rounds,  1.5 HP lost  (1 enemy 93/93, 1.0 r, 2 enemy 27/27, 1.8 r, 3 enemy 0/0, 0.0 r)
+casual  route  89.6% reach trench | 1.7 random + 1.9 guardian fights/run | 4.0 enemies/run | successes: 3.7 battles, 25.7 HP, level 1.9
+casual  route terminal stages: guardian:shallows:angler=2, guardian:trench:swordfish_duelist=4, random:shallows:angler+swordfish_duelist=5, random:shallows:swordfish_duelist+swordfish_duelist=4, random:trench:angler+swordfish_duelist=4, random:trench:frilled_shark+swordfish_duelist=2, random:trench:swordfish_duelist=1, random:trench:swordfish_duelist+swordfish_duelist=3, success=215
+skilled route 100.0% reach trench | 1.9 random + 2.0 guardian fights/run | 4.3 enemies/run | successes: 3.9 battles, 27.2 HP, level 1.9
+skilled route terminal stages: success=240
+BALANCE: clean
