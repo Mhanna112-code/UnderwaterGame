@@ -40,3 +40,5 @@ The first latest-source browser observer reached the maze in its retained frame 
 ## Accepted hosted artifact
 
 Source `153b2a59275969fb05e683b26141a48ef42e1182`, pack SHA-256 `f9264ce939a6c1d3d781ca4313d70859985edc3968df85dae609e694a9c09082`, 94,984,492 bytes. The streamed hosted pack matches. `hosted-final/receipt.json` has no findings; the rendered-arrow/W route counts down from 83 metres to 9 metres then hands off to the actual maze Control Room. Inspected retained frames show readable guidance at 1280/720/360 widths and a visible ramp corridor without the central rock blackout. The post-victory browser fixture is disclosed in the receipt; the separate native actual Tethys victory and cold Title Load check also pass.
+
+`delivery.json` records the READY production promotion and retained review alias. Both existing domains report the verified source and stream the identical pack checksum; main contains the generated artifact at `a1fc0cc`. Native download links still refer to the older, explicitly labelled release.
