@@ -6055,6 +6055,7 @@ func _build_campaign_checkpoint() -> void:
 	add_child(layer)
 	_game_over = GameOverScreen.new()
 	_game_over.restart_chosen.connect(_restart_campaign_checkpoint)
+	_game_over.continue_chosen.connect(_continue_campaign_checkpoint)
 	_game_over.title_chosen.connect(_return_campaign_title)
 	layer.add_child(_game_over)
 
@@ -6154,7 +6155,14 @@ func _show_campaign_game_over() -> void:
 	_game_over.open()
 
 func _restart_campaign_checkpoint() -> void:
+	_reload_campaign_checkpoint(false)
+
+func _continue_campaign_checkpoint() -> void:
+	_reload_campaign_checkpoint(true)
+
+func _reload_campaign_checkpoint(latest: bool) -> void:
 	World._restart_slot = campaign_session.selected_slot if campaign_session != null else -1
+	World._restart_latest = latest
 	if World._restart_slot < 0:
 		SceneHandoff.checkpoint_load_error = "No checkpoint exists yet. Choose a saved game or start a new game."
 	get_tree().paused = false
@@ -6162,6 +6170,7 @@ func _restart_campaign_checkpoint() -> void:
 
 func _return_campaign_title() -> void:
 	World._restart_slot = -1
+	World._restart_latest = false
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://game/world.tscn")
 
