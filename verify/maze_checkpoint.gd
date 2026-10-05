@@ -166,8 +166,22 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 	maze._diver = maze.divers[2]
 	maze.world.active = 2
 	maze.divers[2].stats.hp = 1
-	var sigil := maze.get_node("BossSigil_main_boss") as Node3D
-	maze.divers[maze.active].global_position = sigil.global_position + Vector3.UP
+	var station := maze._boss_triggers.get("main_boss") as Node3D
+	maze.divers[maze.active].global_position = station.global_position + Vector3(-4, 1.2, 0)
+	for frame in 20:
+		await physics_frame
+		if maze.any_modal_open():
+			break
+	_expect(maze.any_modal_open() and not maze._battling, "INT-04: finale loss fixture bypasses confirmation")
+	var yes := InputEventKey.new()
+	yes.keycode = KEY_Y
+	yes.pressed = true
+	Input.parse_input_event(yes)
+	await process_frame
+	yes = InputEventKey.new()
+	yes.keycode = KEY_Y
+	Input.parse_input_event(yes)
+	await process_frame
 	var screen: GameOverScreen
 	var attacks := 0
 	var outcomes: Array[String] = []
