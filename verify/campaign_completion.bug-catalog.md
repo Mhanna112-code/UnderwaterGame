@@ -7,9 +7,11 @@ PrologueRecovery. Unrelated World movement/minigame code is outside this slice.
 
 ## Contract and interface
 
-Actual confirmed campaign Cordys victory completes the game visibly and saves
-the existing independent `octopus_state=defeated` plus removed `main_boss`
-station. Title Load must not replay the encounter or duplicate XP/rewards.
+Current approved contract: confirmed Cordys victory completes the game visibly
+but does **not** save completion. The pre-Cordys autosave is the durable restart
+when its actual browser bytes confirm. Failed confirmation offers only an
+honestly labelled session restart. Title remains available; cold Load restores
+the pre-boss checkpoint. The older completed-save design is historical below.
 The opening and Cordys film relocation are explicitly deferred for Miguel's
 final review. Fixed75HP boss, generic keys, independent laboratory and no
 ordinary victory refill remain unchanged.
@@ -58,7 +60,10 @@ not the new autosave path; it was replaced in the runner with actual denied
 autosave staging and session Restart. Native red reproduces the false claim;
 green preserves previous exact bytes, reports session-only failure and restores
 the captured3HP party rather than silently using the older saved party.
-Exported-browser rejected durability remains required.
+Exported-browser rejected durability now passes on identified6606c5b:12 legal
+actions win; injected unfinished-maze IDB transaction rejection is witnessed;
+the status says session-only, prior manual bytes are unchanged, and actual
+Restart restores the playable pre-boss party. This is not earned-route proof.
 
 END-7: a completed/open-water/missing-boss/corrupt autosave enables a purported
 pre-Cordys restart. Generated scene×victory×station candidates (eight shapes)
@@ -74,9 +79,15 @@ Title autosave Load pass with HP/O2/XP/level conserved, no completion write and
 unchanged saved bytes. These are native-focused receipts, not a full-suite or
 earned balance claim. END-7 is characterized after the defensive validation.
 
-Skipped here: genuine final-boss win, earned navigation, native packaging and
-browser cold persistence; the slot fixture cannot establish these. Do not
+The separate actual legal-kit browser win uses13 moves and verifies Title exit,
+destroyed-page cold pre-boss Load and unchanged manual/exact autosave bytes.
+Final same-export/hosted acceptance after newer Sonar/site intake remains pending.
+Skipped in the slot fixture: genuine final-boss win, earned navigation, native
+packaging and browser persistence; its injected ending cannot establish these.
+The separate real-win native/browser verifiers supply only ending evidence. Do not
 count the older durable-completion receipts as current pre-boss acceptance.
+
+## Historical completed-save contract (superseded by explicit user decision)
 
 | ID | Failure and impact | Why plausible / cheapest test | Status |
 |---|---|---|---|

@@ -1,15 +1,15 @@
 {
-  "source_commit": "8605058f410f0a2fe5f562661fa06660b1543e08",
-  "pck_sha256": "b743c909331d48d33ba9f2d0b74758ab46e685cec0994416b3ad4cfd5398a4f2",
-  "pck_bytes": 94984476,
+  "source_commit": "5fe504d7a489bcaba6af2884ff12b3c0b94fbfea",
+  "pck_sha256": "a6e8793e9da23fea4b4703328df3ae5e1f902e4b9ab09c9c6388de62fd0b5d8b",
+  "pck_bytes": 94990284,
   "engine": "Godot 4.7.1",
-  "status": "Affordable Sonar and guarded sites independent of random combat; focused access/billing verification, not full-campaign readiness",
+  "status": "Pre-boss-only ending and unobscured maze destination candidate, reconciled with latest Sonar/site main; final same-export acceptance/publication pending, not full-campaign readiness",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Sonar costs 1 O2 per 6 seconds. World/Maze guarded sites work with R off. Marc's forced strong-room encounters, active-diver maze vision, current combat rules and post-lab maze navigation remain unchanged",
-  "deferred": "Full earned campaign/browser/audio/polish acceptance; same-source Windows/Linux packages. Native download source below is older than this web build",
+  "change": "Pre-boss Restart is scoped to the current run and failed browser durability is reported honestly. Maze destinations avoid visible shared HP/Oxygen. Sonar 1 O2 per 6 seconds, R-independent guarded sites, post-lab navigation, forced strong-room encounters, combat pacing and authored spell rules are retained",
+  "deferred": "Tethys opening/Cordys introduction LAST with explicit Miguel review before main/canonical. Full earned campaign/browser/audio/polish acceptance and same-source Windows/Linux packages remain. Native download source below is older than this web build",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
 }

@@ -829,6 +829,15 @@ func _announcement_readable() -> bool:
 
 func _refresh_announcement_visibility() -> void:
 	Whirlpool.refresh_in(self)
+	# Shared World HP/O2 are exploration HUD, not reading-menu content.
+	# Inventory is a child of the maze's separate CanvasLayer, so moving it
+	# to front cannot cover the later World HUD's siblings. Relinquish that
+	# shared layer while a maze reading/battle owner is active; restore it
+	# on close without dropping Marc's health display during exploration.
+	if world != null and maze_active:
+		var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+		var map_open := map != null and map.main_map != null and map.main_map.visible
+		world.get_node("HUD").visible = not _battling and not any_modal_open() and not map_open
 	var captions_allowed := _announcement_readable()
 	var notice_visible := _banner != null and _banner_timer > 0.0 and captions_allowed
 	if _banner != null:

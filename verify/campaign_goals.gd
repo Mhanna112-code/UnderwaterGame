@@ -186,9 +186,14 @@ func _goal_ownership() -> void:
 	await _key(KEY_ESCAPE)
 	_expect(maze.inventory_menu.visible and not goal.is_visible_in_tree(),
 		"GOAL-4 destination competes with actual Inventory reading")
+	_expect(not world.hp_bar.is_visible_in_tree() and not world.oxygen_bar.is_visible_in_tree()
+		and not world._party_bars_box.is_visible_in_tree(),
+		"GOAL-9 shared health paints above embedded Inventory reading")
 	await _key(KEY_ESCAPE)
 	_expect(not maze.inventory_menu.visible and goal.is_visible_in_tree(),
 		"GOAL-4 closing Inventory loses destination")
+	_expect(world.hp_bar.is_visible_in_tree() and world.oxygen_bar.is_visible_in_tree(),
+		"GOAL-9 closing embedded Inventory loses shared exploration health")
 	await _key(KEY_L)
 	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
 	_expect(map.main_map.visible and not goal.is_visible_in_tree(),

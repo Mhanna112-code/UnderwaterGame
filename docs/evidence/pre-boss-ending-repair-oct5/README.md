@@ -41,8 +41,17 @@ completion, responsive exclusive ending, actual Return to Title, destroyed-page
 cold Load of the durable pre-boss autosave, and unchanged manual/exact autosave
 bytes. Receipt and inspected ending360/cold-Load pictures are in browser-success.
 This supplied legal-kit fight does not establish earned campaign balance.
-Rejected-IDB verification, latest-main intake, final identified export/hosted
-acceptance and publication are still pending. Canonical's
+Rejected-IDB also passes on that same identified pack:12 actual actions win,
+the injected unfinished-maze autosave transaction is rejected, the ending
+reports session-only failure, the prior manual bytes are unchanged and actual
+Restart restores the playable pre-boss party. No completed-game save is added.
+The browser-denied receipt/images retain the injected error observations.
+
+Latest main through7d0a47d is now merged: affordable Sonar and guarded-site
+access, current post-lab navigation and Marc's shared health/combat rules are
+preserved. Native real-win/restart/cold-Load, goal owners and Sonar/site probes
+pass again on the merged source. Final identified export/hosted acceptance
+and publication are still pending. Canonical's
 separate navigation deployment remains intact; these local fixes are not yet
 represented as live. Full earned routes, integration accounting, browser/Bomb
 Bot/audio/visual acceptance and matching native packages remain separate work.

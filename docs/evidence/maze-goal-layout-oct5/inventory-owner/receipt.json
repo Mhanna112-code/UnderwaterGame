@@ -1,0 +1,14 @@
+{
+  "source_commit": "5fe504d7a489bcaba6af2884ff12b3c0b94fbfea",
+  "downloads": [
+    {
+      "bytes": 94990284,
+      "sha256": "a6e8793e9da23fea4b4703328df3ae5e1f902e4b9ab09c9c6388de62fd0b5d8b",
+      "endpoint": "http://127.0.0.1:57472/index.pck"
+    }
+  ],
+  "findings": [
+    "Error: GOAL-4 actual Inventory does not exclusively own the reading screen"
+  ],
+  "scope": "served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection, actual swimming/E map acquisition, earned L controls and next destination at three widths, actual Inventory/aim/cancel reading ownership; no New Game full campaign or durability claim"
+}

@@ -12,8 +12,16 @@ retired generic hint, change milestones, or grant campaign state.
 
 Native generated milestone/legacy-ID cases and actual R/Escape/L/Tab/F owners
 pass at360x640 and720x480. Actual Metal360x640 rendering passed and the retained
-map/after-owner images were inspected. Desktop1280x720 and a matching exported
-earned-map browser run are still required before publication.
+map/after-owner images were inspected. Desktop1280x720 native bounds pass too.
+Matching5fe504d/a6e8793e export earns the map through browser swim/E, verifies
+discovered-only overview/lesson and all three destination widths, but then
+fails Inventory: retained World bars paint above its title and tabs.
+
+GOAL-9 is a separate real cross-CanvasLayer defect. The screenshot and native
+red one-finding receipt are under inventory-owner. Maze reading ownership now
+hides the shared World exploration layer while its modal/battle/map owns the
+screen, restoring it on close. Native generated40 cases and actual owners
+pass after this change; matching browser re-export acceptance remains pending.
 
 Two observer issues are recorded rather than called production bugs: the
 party VBox retains blank space for its hidden active-member row (bounds log),

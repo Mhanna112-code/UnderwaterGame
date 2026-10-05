@@ -23,8 +23,11 @@ honest session-only failure status and failed-sync rollback now pass native
 cross-slot, eight-candidate matrix and denied-write/actual-restart checks.
 A real12-action Cordys win then Restart and fresh Title autosave Load preserve
 HP/O2/XP/level and exact autosave bytes. This uses a supplied legal level5 kit;
-it is ending proof, **not earned campaign/balance proof**. Browser rejection/
-cold durability and matching publication remain unverified for this repair.
+it is ending proof, **not earned campaign/balance proof**. Both browser
+contracts pass on the exact6606c5b export:13-action real win, actual Title exit
+and fresh-page pre-boss Load;12-action real win with rejected IndexedDB autosave
+and honest session-only Restart. Neither writes completion. The final reconciled
+export still requires same-artifact acceptance/publication.
 
 The current full native runner was intentionally stopped before merging new
 main sources; its partial result is not a full-suite pass. The native tutorial
@@ -35,9 +38,18 @@ The previous local maze browser run reached/earned its actual map and checked
 owners/layout, but reported WrongDocumentError; retain it as failed, with a
 stage/stack observer added for the next identified export.
 
-Fresh main/canonical have since advanced to the separate post-Tethys maze
-navigation batch (published runtime153b2a5, delivery8ad75fb). Its compass and
-cleared exit must be merged and reverified before publishing this candidate.
+Fresh main through7d0a47d is merged locally into5fe504d: post-Tethys compass/
+cleared exit and affordable Sonar/R-independent guarded sites are retained.
+Native real-win/pre-boss cold Load, goal ownership and Sonar/site checks pass
+again. New same-artifact browser acceptance/publication is in progress.
+
+The retained health HUD exposed a real destination-overlap regression in the
+actual earned-map browser screenshot. GOAL-8 now reserves actual HP/Oxygen
+bands and visible side-party rows;40 generated milestone cases plus actual
+owners pass at1280x720,720x480 and360x640, with inspected Metal narrow rendering.
+The initially oversized hidden-row/headless-default observer failures are
+retained and identified, not counted as production bugs. Browser final export
+must still pass before deployment. Canonical was not repointed to an old pack.
 The Tethys opening/Cordys introduction remains **LAST**, with Miguel's explicit
 review/approval required before main or canonical. No opening actor/sequence
 change is included here. Full earned routes, remaining integration dispositions,
