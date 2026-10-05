@@ -37,7 +37,7 @@ const observePage = active => {
   active.on('pageerror', error => errors.push(String(error)));
   active.on('console', message => {
     const text = message.text();
-    if (text.includes('Failed to save IDB file system:')) { observations.push({ injectedStorageError: text }); return; }
+    if (!laboratory && text.includes('Failed to save IDB file system:')) { observations.push({ injectedStorageError: text }); return; }
     if (message.type() === 'error' || /SCRIPT ERROR:|^ERROR:/.test(text)) errors.push(text);
   });
 };
@@ -83,8 +83,22 @@ const load = async label => {
   await clickText(/^Slot 1\s*[-–]/, label + '-slot');
   await page.waitForTimeout(2000);
 };
+// BOOT-1: network/asset import time is variable. Do not click a nonexistent
+// Load control on the Godot splash just because a fixed delay elapsed.
+const waitTitle = async (label, needsLoad = false) => {
+  const deadline = Date.now() + 90000;
+  await page.waitForTimeout(4000);
+  for (let poll = 0; Date.now() < deadline; poll++) {
+    const rows = await capture(label + '-boot-' + poll);
+    if (rows.some(row => /^New Game$/.test(row.text.trim()))
+      && (!needsLoad || rows.some(row => /^Load Game$/.test(row.text.trim())))) return;
+    expect(errors.length === 0, 'BOOT-1 browser/script error before title: ' + errors.join(' | '));
+    await page.waitForTimeout(3000);
+  }
+  throw new Error('BOOT-1 title controls never became ready within 90 seconds');
+};
 try {
-  await page.goto(url, { waitUntil: 'load' }); await page.waitForTimeout(24000);
+  await page.goto(url, { waitUntil: 'load' }); await waitTitle('cold');
   await clickText(/^New Game$/, 'cold-title'); await page.waitForTimeout(2000);
   await page.evaluate(async record => {
     const db = await new Promise((resolve, reject) => { const request = indexedDB.open(record.database); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
@@ -94,7 +108,7 @@ try {
       tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
     }); db.close();
   }, record);
-  await page.reload(); await page.waitForTimeout(22000);
+  await page.reload(); await waitTitle('fixture', true);
   await load('fixture-load'); before = await readSlot();
   expect(before && JSON.parse(before).route_state.octopus_state !== 'defeated', 'No incomplete durable baseline');
   for (let step = 0; step < 16; step++) {
@@ -116,7 +130,10 @@ try {
     const text = rows.map(row => row.text).join('\n');
     if (laboratory ? /Computer recovered/i.test(text) : /Game complete/i.test(text)) { ending = true; break; }
     expect(!/party is overwhelmed/i.test(text), 'END-1 supplied legal-kit browser strategy lost; ending not reached');
-    if (/Press Enter to continue/i.test(text)) { await page.keyboard.press('Enter'); await page.waitForTimeout(800); continue; }
+    // The current lesson says "Press Space, Enter, or click Continue";
+    // older lessons say "Press Enter to continue". Both are a reading
+    // acknowledgment, not an X timing success or a game-state injection.
+    if (rows.some(row => /Press.*Enter/i.test(row.text))) { await page.keyboard.press('Enter'); await page.waitForTimeout(800); continue; }
     const attack = rows.find(row => /^Attack$/.test(row.text.trim()) && row.y > 400);
     if (!attack) { await page.waitForTimeout(800); continue; }
     const who = /Maxilani.s turn/i.test(text) ? 'Maxilani' : /Musashi.s turn/i.test(text) ? 'Musashi' : /Bucky.s turn/i.test(text) ? 'Bucky' : '';
@@ -173,7 +190,7 @@ try {
     expect(/Laboratory cleared/i.test(resumed) && /maze/i.test(resumed) && !/Computer recovered/i.test(resumed), 'LAB-W2 Close does not resume useful maze direction');
     expect(!/Tethys rises/i.test(resumed), 'LAB-W4 payoff Close replays the obsolete boss-arrival notice');
     await page.close(); page = await context.newPage(); observePage(page);
-    await page.goto(url, { waitUntil: 'load' }); await page.waitForTimeout(23000);
+    await page.goto(url, { waitUntil: 'load' }); await waitTitle('cold-lab', true);
     await load('cold-lab-load');
     const loaded = (await capture('cold-lab-completed')).map(row => row.text).join('\n');
     expect(/Laboratory cleared/i.test(loaded) && /maze/i.test(loaded) && !/Computer recovered|Your turn|Broken Office/i.test(loaded), 'LAB-W3 cold Load replays lab fight/payoff or loses maze direction');
@@ -203,7 +220,7 @@ try {
   await clickText(/^Return to Title$/, 'actual-title-exit'); await page.waitForTimeout(2000);
   expect((await capture('returned-title')).some(row => /^Load Game$/.test(row.text)), 'END-3 actual title exit did not return to title');
   await page.close(); page = await context.newPage(); observePage(page);
-  await page.goto(url, { waitUntil: 'load' }); await page.waitForTimeout(23000);
+  await page.goto(url, { waitUntil: 'load' }); await waitTitle('cold-ending', true);
   await load('cold-load');
   const loaded = (await capture('cold-completed')).map(row => row.text).join('\n');
   expect(/Game complete/i.test(loaded) && /Completed journey saved to Slot 1/i.test(loaded), 'END-3 cold Load did not restore completed ending');

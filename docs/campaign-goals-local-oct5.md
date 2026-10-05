@@ -1,6 +1,10 @@
 # Local campaign goals/payoff follow-up — October 5
 
-Not published. Canonical remains runtime138ca53/PCKe5f790f1. Latest concurrent
+Historical local-stage report; its publication statements describe that stage.
+The follow-up was subsequently pushed as runtime6b8ea07/exportc98490b and
+hosted acceptance passed. See the current [batch delivery](main-goals-ending-batch-oct5.md).
+
+At this report's original stage, canonical remained runtime138ca53/PCKe5f790f1. Latest concurrent
 mainf0f14ff is evidence-only and was reconciled without dropping its files.
 Opening Tethys swap/Cordys film relocation remain unchanged and review-gated.
 

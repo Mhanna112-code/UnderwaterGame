@@ -1,5 +1,30 @@
 # Remaining campaign plan: current main audit, October 5
 
+## Current checkpoint (supersedes historical stage notes below)
+
+Safety is delivered. Goals/lab payoff/durable completion plus the inspected
+laboratory-only Mermaid-Weirdo presentation are now pushed in source6b8ea07/
+exportc98490b. Hosted lab and ending acceptance passed before exact READY
+deployment7agdKH32 was promoted to the canonical and existing review aliases.
+Actual canonical PCK matches0c947735/94,956,208 bytes, and its fresh-profile
+lab fight/payoff/Close/cold Load passed. Canonical ending also passes actual
+victory, denied durable save/exact previous bytes, blocked exit, Retry,
+confirmed completion, title exit and exact-byte cold Load (13 actions,
+106 observations, no findings/exit0).
+See [current batch delivery](main-goals-ending-batch-oct5.md).
+
+Next is actual earned-resource route acceptance, not another opening redesign.
+The no-refill math-verifier repair now passes unchanged bands: casual/skilled
+two-artifact route89.6%/100%, blocker sequence98%/100%, no injected ordinary
+victory heal. Production battle-only status cleanup and earned XP level-up
+fills are retained. This corrects misleading evidence, not full current
+consumer fidelity or actual earned travel. Old live route teleports and boss
+balance grants target-level XP; they cannot close the New Game journey work.
+Full browser/Bomb Bot/audio/
+six-area acceptance, upstream dispositions and native packages remain.
+The Tethys opening/Cordys film relocation remains the final isolated candidate
+and requires Miguel's explicit review/approval before main/canonical.
+
 ## Execution status after the audit
 
 The original73c2d72 findings below are historical evidence. Main subsequently
@@ -118,22 +143,22 @@ Those are not current-main packages and have not been target-launched here.
 | Earned map/chest/discovery legend and first L | Implemented, recent exact-export browser chest/L/responsive checks recorded | Normal discoverability and full-route/cold-save use; preserve exclusive chest input and undiscovered boss privacy. |
 | F/E/Ctrl/Shift/Tab/Q, free environmental abilities, anchor versus orb | Implemented | Current browser aim/cancel/required-anchor and help/media consistency; retain free zero-O2 escape behavior. |
 | Sonar, seven radius sites, toggle ownership and message queues | Implemented | Normal-route discovery/completion, cross-area/fight queue and no duplicate reward after browser reload. |
-| Whirlpool movement/modal/battle ownership | Confirmed current-main defects; local repair exists but not integrated | Semantic port of the ownership repair onto main, retaining newly added deep shafts and Battle integration. Recheck every actual menu/reveal/handoff and native warning ownership. |
+| Whirlpool movement/modal/battle ownership | Safety batch delivered with focused current native/exported-browser evidence | Retain the repaired ownership rules and repeat affected combinations in full campaign acceptance. Historical five failures below describe the original audit, not the delivered runtime. |
 | Autosaves and interior recovery pads | Now implemented; focused current commands pass | Real 180-active-second cadence, browser rejected/confirmed durability and readable usable Load rows, no writes during transient movement. |
-| Manual save/load durability | Existing atomic IO, selected-slot and malformed-load protection; current invalid-load gate passes | World manual save has no stable-capture guard and declares success without awaiting BrowserCheckpoint confirmation. Audit/fix the actual save request; preserve checkpoint bytes, slot and retry on web failure. Distinguish this code gap from a demonstrated IndexedDB loss, which this audit did not inject. |
+| Manual save/load durability | Safety batch delivered: stable capture, actual web durability acknowledgment, rejected-save rollback/Retry/cold Load | Full current manual/auto timing, interior/loss/return combinations remain; retain exact previous bytes and selected-slot ownership. |
 | Authored combat repairs | Present; current live stun/Angler-turn gate passes | Full current combat suite: multi-hit/target, reductions, persistent Bleed, animations, feedback, downed actors and QTEs. |
 | Learned scaling/no ordinary refill | Now implemented, not still missing; focused scaling passes | Production-consumer and route balance with real recovery access. Tethys receives the small authored learned bonus; fixed75HP Cordys does not. |
 | Initial Angler | Implemented and must remain | Preserve genuine actions, ordinary rules and no accidental lab-victory milestone. |
 | Unwinnable opening Tethys instead of Cordys | Not implemented; deferred to the very end and requires Miguel's explicit approval before main | Final isolated candidate only after other work: replace presentation/dispatch identity without changing laboratory Tethys tuning; retire opening Cordys movie; preserve real effects, safe defeat, durable recovery and optional training. |
-| State-aware goals, independent lab, early maze | Partial: regional guidance, blockade waypoint, lab objective and post-lab ramp already exist | Completion-aware lab/maze/return guidance and puzzle suggestion. Lab victory must never become a maze lock. Do not build a new dialogue tutorial. |
-| Lab computer/controller payoff | Lab movie and Tethys route exist; explicit post-victory computer/controller payoff not established | Reuse available authored presentation to clearly communicate recovery/reveal before suggesting the puzzle/maze. No invented narration project. |
+| State-aware goals, independent lab, early maze | Delivered:40 generated combinations, physical early maze/return and real lab guidance/Close/cold Load | Verify discoverability in actual earned routes; keep lab victory independent of maze access. No new dialogue tutorial. |
+| Lab computer/controller payoff | Delivered: real laboratory win, exclusive responsive recovered-computer/controller/ramp popup and no stale arrival after Close | Keep actual earned lab route and broader presentation checks; positive durable browser acceptance is recorded, not blanket save-failure coverage. |
 | Cordys introduction at maze | Not implemented; final review-gated change alongside the Tethys opening | After other work, move the existing intro to the real maze encounter, with persisted once-only/skip/interrupted behavior. No main push or canonical publication without Miguel's explicit approval. |
-| Cordys victory completes game | Partial: real boss, fixed75HP, saved defeated state and trigger removal exist | Add clear game-completion presentation and durable final checkpoint; victory → save → cold Load/title cannot replay boss/reward/intro. Existing relic `_completed` is not final-boss completion. |
-| Mermaid-Weirdo | Dropbox source exists and differs from current Mermaid_Freak; no runtime reference found | Inspect/import rig, materials, clips, facing and bounds; choose appropriate existing role without extra mandatory boss or indiscriminate validated-asset replacement. |
+| Cordys victory completes game | Delivered: exclusive ending, removed station, real durable confirmation/denied rollback/Retry/completed cold Load | Granted-kit receipts isolate completion, not earned boss attainability. Keep existing relic completion distinct from final victory. |
+| Mermaid-Weirdo | Imported/inspected and delivered for laboratory Tethys only; rig/13 motions/six attacks/facing/rendered real fight accepted | Existing red fallback retained; no final textured-color or artist approval claim. Original reference actor stays. Deferred opening/intro stays separate. |
 | Puppets/generic key/fixed Cordys | Implemented | Preserve two waves, one final key/XP outcome, generic keys and independent lab progress. No unapproved Cordys weakening/unique-key prerequisite. |
 | Earned casual/skilled campaigns | Not established by current tests | Real New Game lab-first and maze-first policies, earned XP/spells/items, reachable rests and documented non-perfect QTE assumptions. |
 | Browser saves/Bomb Bot/audio/polish | Focused/historical receipts only | Current Chrome Bomb Bot reproduction, actual browser manual/auto saves and denial/reload/loss, listening and six-area visual inspection. |
-| Matching export/release docs | Web current, native stale; README flow stale | Refresh current flow/controls/recovery/normal versus diagnostic guide. Same-source native archives if retained in scope; label target-launch limits honestly. |
+| Matching export/release docs | Web updated to runtime6b8ea07/PCK0c947735; README/review guide current; native still bffe1b5 | Final full acceptance/docs and same-source Windows/Linux archives remain; label target-launch limits honestly. Git integration remains disconnected. |
 
 ## Newly confirmed failure and misleading evidence
 

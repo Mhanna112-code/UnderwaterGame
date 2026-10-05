@@ -1,5 +1,10 @@
 # Local ending evidence
 
+The local-stage publication limits below are historical. Matching final export
+and hosted-candidate receipts now live in `browser-final-export/` and
+`hosted-candidate/`; the captured earlier hosted observer stall is retained in
+`hosted-qte-observer/`. See [current delivery](../../main-goals-ending-batch-oct5.md).
+
 Baseline `red.log` records the real victory's four absent ending guarantees.
 `green.log`, `denied.log`, `visual.log` record the corresponding native repaired
 flows. `checkpoint-preservation.log` and `cordys-preservation.log` cover existing

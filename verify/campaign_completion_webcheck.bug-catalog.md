@@ -41,3 +41,25 @@ denial with exact-byte comparison, attempted exit while unsaved, and destroyed
 page/cold Load rather than same-scene restoration. All passed, no script or
 browser error; injected IDB storage-error messages are recorded separately.
 No tests removed. Full acceptance/release remains unproven.
+
+Matching-release follow-up on6b8ea07 passes all ending/durable/cold-Load checks
+locally. First hosted run encountered the real randomized QTE reading lesson;
+the observer's legacy-only `Press Enter to continue` match missed the current
+`Press Space, Enter, or click Continue` caption. This was an observer stall,
+not a combat crash. It now acknowledges the visible Enter instruction with a
+real key press; no X/perfect timing or production flag is injected. Corrected
+hosted acceptance is required before canonical promotion.
+
+October5 delivery follow-up: corrected hosted ending passed14 real actions/
+106 observations with no findings before promotion. Canonical laboratory
+passed12 actions/87 observations. A subsequent canonical ending run stopped
+before combat: after a22-second fixed reload delay the actual screenshot still
+showed Godot's loading splash/progress, not Load Game; no script/browser error
+was reported. This is BOOT-1, an observer's readiness race, not evidence of a
+combat regression. Preserve its zero-action receipt/screenshot. Replace fixed
+boot assumptions with bounded rendered New Game/title readiness (and actual
+Load Game when a fixture exists), retain normal input and all storage checks.
+If the title never appears within the bound, fail explicitly rather than
+silently treating that as success. Corrected canonical acceptance passes13
+actual actions/106 observations, exit0/no findings, rejected-save rollback/
+disabled exit/Retry/confirmed completed cold Load. No runtime pack changed.

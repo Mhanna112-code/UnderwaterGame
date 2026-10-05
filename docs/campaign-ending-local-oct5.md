@@ -1,6 +1,10 @@
 # Local campaign-ending repair — 2026-10-05
 
-Not a published release. Main/canonical remain runtime138ca53. Opening Tethys
+Historical local-stage report; its publication statements describe that stage.
+The follow-up was subsequently pushed as runtime6b8ea07/exportc98490b and
+hosted acceptance passed. See the current [batch delivery](main-goals-ending-batch-oct5.md).
+
+At this report's original stage, main/canonical remained runtime138ca53. Opening Tethys
 and Cordys film relocation remain unchanged and explicitly review-gated last.
 
 The baseline actual Cordys win (12 normal UI actions, supplied legal level5

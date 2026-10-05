@@ -1,5 +1,10 @@
 # Mermaid-Weirdo isolated import inspection — October 5
 
+Historical inspection/local-stage report. The laboratory-only role was
+subsequently delivered in runtime6b8ea07/exportc98490b with actual hosted lab
+fight acceptance. See [batch delivery](main-goals-ending-batch-oct5.md).
+Final texture/color approval and the deferred opening remain outside this claim.
+
 Delivered source `/Users/tomriddle1/Dropbox/Freak_Mermaid-Weirdo.fbx`, 30MB,
 SHA256 `7d0606ec980cddfdd7e686bedf709a45370c92e73643215bfe6c324b7efc7014`.
 Current Mermaid_Freak SHA256

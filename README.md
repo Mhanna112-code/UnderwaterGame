@@ -27,6 +27,9 @@ The remaining campaign work is tracked in
 Each accepted batch is explicitly exported, deployed and checked at the same
 URL. [The safety batch](docs/main-safety-batch-oct5.md) records its evidence
 and outstanding campaign acceptance; it is not a full-game readiness claim.
+[The goals, laboratory and ending batch](docs/main-goals-ending-batch-oct5.md)
+records the next runtime/export identity, hosted/canonical checks and remaining
+earned-route/full-campaign limits.
 
 ## Controls
 

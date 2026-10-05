@@ -49,6 +49,11 @@ Native red reproduced exactly one LAB-3 finding. The local repair omits only
 the laboratory World arrival message (Battle owns it), preserving the FIFO's
 other messages and reference boss behavior; native real win/Close/Load is green.
 Matching exported/hosted LAB-W4 acceptance remains pending.
+Subsequent matching6b8ea07/c98490b export and actual READY hosted candidate
+dpl_7agdKH32cNfrxHYVdX3qNTPwbrXr each won in12 ordinary actions, passed Close
+without obsolete arrival and cold-loaded exact completed bytes. No script,
+browser or IDB errors in the lab receipts. Images inspected; canonical delivery
+remains conditional on the separate corrected hosted ending check.
 Stop at the first broken boundary and distinguish setup from production.
 If no new defect is caught, adversarial probes include held gameplay keys,
 360-wide presentation and destroyed-page cold restore, not same-scene reload.

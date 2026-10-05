@@ -1,0 +1,19 @@
+{
+  "target": "https://underwatergame.vercel.app/",
+  "scenario": "ending",
+  "fixture": "new disposable profile, supplied legal level-five kit, supplied key spent through E, isolated recovered room; NOT earned route",
+  "actions": 0,
+  "observations": [
+    {
+      "name": "cold-title",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "fixture-load-title",
+      "text": "GODOT\nGame engine"
+    }
+  ],
+  "findings": [
+    "Error: Missing /^Load Game$/: GODOT | Game engine"
+  ]
+}
