@@ -26,3 +26,13 @@ The first REST P observer checked before deferred input dispatched; two frames
 now observe actual input. Hall cutouts count cylinder subtractors rather than
 unrelated draft cutouts. Autosave rows use removed-before-free old controls so
 duplicate widget names/minimum-size measurements cannot retain stale rows.
+
+# Web observer correction
+
+The first exact-export browser run reached the chest and earned map through
+real D/S/E input, then rejected the 720x480 lesson. Inspection of the raw OCR
+and screenshot shows the complete sentence wrapping between "closes" and
+"the map". The observer now accepts whitespace at both word boundaries;
+required title, discovered explanation and close instruction remain required.
+This is an observer repair, not a game layout fix. Original receipt is retained
+at `/tmp/pr100-deadline-browser/receipt.json`; the rerun is separate.
