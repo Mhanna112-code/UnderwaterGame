@@ -33,12 +33,15 @@ earned-route/full-campaign limits.
 The later [pre-boss ending and maze UI repair](docs/pre-boss-maze-ui-delivery-oct5.md)
 preserves Marc's pre-boss-only ending and records its matching canonical
 artifact, reading-layout fixes and remaining acceptance work.
-The newest [Sonar pickup lifetime delivery](docs/sonar-pickup-lifetime-delivery-oct5.md)
-records runtime `7336611`, the current canonical export, preserved concurrent
+The [Sonar pickup lifetime delivery](docs/sonar-pickup-lifetime-delivery-oct5.md)
+records runtime `7336611`, its earlier canonical export, preserved concurrent
 main changes, native regression and actual hosted map/menu/aim evidence.
-Full earned campaigns remain unverified. Matching-source
+The latest [emergency opener rollback](docs/evidence/opening-rollback-oct5/README.md)
+removes the automatic Cordys handoff and restores actual swimming before a
+visible Angler encounter. Full earned campaigns remain unverified. Earlier-source
 [Windows/Linux feedback packages](https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/main-feedback-7336611)
-are now available; exports and downloaded archive checksums pass, but target-machine
+are available for runtime `7336611` (without the opener rollback); exports and
+downloaded archive checksums pass, but target-machine
 launches/playtests are not verified. [Native instructions and limits](docs/maze-campaign-native-review.md).
 
 ## Controls
@@ -83,13 +86,13 @@ starts.
 At a cold launch, a first-time player sees one primary **New Game** action. If
 a valid save exists, **Load Game** appears as a secondary action and opens the
 three-slot picker, with separate manual and autosave choices. A normal new run
-plays the opening movie and credited title handoff, then briefly enters the
-world before automatically starting the current Cordys fight and scripted defeat, followed by a
-durable recovery checkpoint. The earlier retained-Angler requirement is not
-met by this upstream opening; it remains explicitly tracked in the plan.
-Replacing that opening with Tethys and relocating Cordys's introduction are
-deferred until all other work is finished and require Miguel's explicit review
-and approval before main/canonical publication.
+plays the opening movie and credited title handoff, then enters controllable
+exploration. Waiting or looking around does not start combat. At least four
+seconds of actual horizontal swimming and three metres of displacement start
+one Angler. Only after defeating that Angler does the existing Cordys
+interruption and scripted defeat play, followed by a durable recovery
+checkpoint. The emergency rollback does not implement the proposed Tethys
+opener or relocate Cordys's introduction.
 
 After recovery, the current upstream build directs the player to the light-beam
 combat tutorial before ordinary exploration. It explains turn order,

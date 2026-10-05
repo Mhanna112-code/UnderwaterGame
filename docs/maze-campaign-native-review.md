@@ -1,7 +1,7 @@
 # Current-main feedback build: Windows and Linux
 
 Extract the entire ZIP before launching. Keep the executable and its .pck file
-together. Current 7336611 packages: Windows double-click Play.bat; Linux x86_64
+together. Available 7336611 packages: Windows double-click Play.bat; Linux x86_64
 run ./Play.sh (mark it executable if your archive utility dropped the
 permission). These launchers select the Compatibility/OpenGL renderer used for
 our native captures, not an unverified Forward+ default.
@@ -12,8 +12,10 @@ an earned campaign kit or prove normal progression. Controls: WASD, Space/Shift,
 Tab. L opens the maze map; use its displayed hallway/current controls.
 
 Download: https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/main-feedback-7336611
-Runtime source 7336611fcaeed8e03c875fdb3e0118facd7737df matches the current
-canonical web runtime. Both macOS cross-exports, ZIP integrity and downloaded
+Runtime source 7336611fcaeed8e03c875fdb3e0118facd7737df matches the earlier
+canonical web runtime, not the newer e54e7ce emergency opener rollback. These
+packages still have the immediate Cordys opener; use the canonical web link for
+the repaired opening. Both macOS cross-exports, ZIP integrity and downloaded
 archive SHA256 checks pass. Windows/Linux have the same native PCK; the Web
 platform's PCK differs. Manifest/export logs are under
 `evidence/native-main-7336611`; SHA256SUMS and BUILD-INFO ship with the release.

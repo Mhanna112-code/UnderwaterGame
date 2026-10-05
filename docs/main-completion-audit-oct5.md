@@ -1,6 +1,21 @@
 # Remaining campaign plan: current main audit, October 5
 
-## Latest published bounded batch — 7336611 runtime / 2c7637f main
+## Emergency opener rollback — e54e7ce runtime
+
+After stopping the larger plan, Miguel separately authorized removal of the
+broken automatic Cordys opener. The narrow rollback restores actual swimming
+before a visible Angler and removes the direct-Cordys bypass. Native idle/look,
+trigger properties, save migration, actual Angler victory → later Cordys
+responses → recovery → fresh completed Load pass. This is not the Tethys
+redesign and does not resume or complete the larger campaign plan.
+
+Candidate/canonical web delivery is tracked in
+[the opener rollback evidence](evidence/opening-rollback-oct5/README.md).
+The existing Windows/Linux 7336611 packages do **not** contain this newer repair.
+The earlier current-source/status claims below describe their historical batch,
+not acceptance of the newer opener or a full campaign.
+
+## Previously published bounded batch — 7336611 runtime / 2c7637f main
 
 The Sonar pickup lifetime repair is pushed to main and published at
 https://underwatergame.vercel.app/. Marc's concurrent rare boosts, automatic
