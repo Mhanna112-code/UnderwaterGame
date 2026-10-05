@@ -108,7 +108,7 @@ try {
           await page.setViewportSize({ width, height });
           await page.waitForTimeout(500);
           const lesson = await capture(page, `map-first-open-${width}x${height}`);
-          if (!/Maze Navigation/i.test(lesson) || !/discovered/i.test(lesson) || !/closes the map/i.test(lesson))
+          if (!/Maze Navigation/i.test(lesson) || !/discovered/i.test(lesson) || !/closes the\s+map/i.test(lesson))
             throw new Error('Paused navigation lesson clipped or missing at ' + width + 'x' + height);
         }
         await page.setViewportSize({ width: 1280, height: 720 });
@@ -133,7 +133,7 @@ try {
       await page.keyboard.press('KeyL');
       await page.waitForTimeout(500);
       const reopened = await capture(page, 'maze-map-repeat');
-      if (/discovered|closes the map/i.test(reopened)) throw new Error('Navigation lesson repeated on the next L open');
+      if (/discovered|closes the\s+map/i.test(reopened)) throw new Error('Navigation lesson repeated on the next L open');
     }
     await context.close();
   }

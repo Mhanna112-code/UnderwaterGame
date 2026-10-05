@@ -66,5 +66,10 @@ grant fails; implementation refactors preserving these public behaviors pass.
   stops on the real E prompt. Neither failed driver attempt is a product red.
   This baseline does not admit the new legend/intro; fresh export acceptance
   remains a separate requirement.
+- Fresh `2054d11` local exported pack passes actual browser acquisition,
+  first/repeat L, paused lesson and overview at 1280x720, 720x480 and 360x640.
+  Rendered captures inspected. Initial narrow OCR rejection split intact prose
+  across two lines; whitespace-aware assertion fixes that observer, not UI.
+  Receipt and identified PCK hash: `docs/evidence/maze-map-discovery-oct5/browser`.
 - No tests removed. No whole campaign, human discoverability, hosted-current
   build or target-platform launch claim follows from this bounded batch.

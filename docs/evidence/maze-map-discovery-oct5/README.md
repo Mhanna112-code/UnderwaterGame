@@ -37,6 +37,19 @@ not reach the interaction correctly; these are excluded as product defects.
 The observer now requires the real E prompt and the fresh batch requires
 first-open lesson and wide/short/narrow browser evidence separately.
 
+## Current batch browser acceptance
+
+`browser/receipt.json` identifies runtime `2054d11`, 93,267,452-byte PCK,
+SHA-256 `2030c084ebfb77242c93e899b468cbdd5f51dd34e192800c54cde2569bf49a1a`.
+Chromium 151 / macOS M1 / Metal completes the identified pack request, ordinary
+title, actual swimming to the E prompt, acquisition, first earned L lesson,
+paused lesson resizing, discovered-only legend and repeat-open behavior.
+1280x720, 720x480 and 360x640 screenshots inspected. No console script errors.
+Narrow prose wraps “closes the map” over two OCR lines; the observer accepts
+whitespace without weakening the semantic assertion. The initial OCR rejection
+is not a clipped UI or product defect. This exact export remains local;
+public review alias and final same-source platform exports are still pending.
+
 Captured genuine reds: absent legend/visited-boss POI and narrow text lesson
 clipping. Full catalog: `verify/maze_map_discovery.bug-catalog.md`.
 
