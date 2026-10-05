@@ -15,6 +15,17 @@ and merge confirmation are separate delivery operations, not assertions of
 full acceptance. Earlier bffe1b5 references below describe historical receipts.
 Windows/Linux packages remain on that earlier source, not this artifact.
 
+The immutable deployment
+`https://underwatergame-hyefi93u3-immortaldemongods-projects.vercel.app/`
+passed the exact-pack browser check: ordinary title, diagnostic entrance,
+unearned map rejection, actual swimming/E chest acquisition, earned L map,
+discovery-only legend, responsive lesson/map at 1280x720, 720x480 and 360x640,
+and no repeated first-open lesson or captured script errors. Narrow lesson/map
+frames inspected. The first run's whitespace-sensitive OCR rejection is
+preserved separately from the repaired observer's passing run. Neither run
+establishes a full campaign or browser persistence acceptance.
+Receipt: `docs/evidence/pr100-deadline-delivery/browser-receipt.json`.
+
 ## Current deadline disposition, October 5
 
 At 09:12 Chicago Miguel explicitly required the remaining Marc changes, local
