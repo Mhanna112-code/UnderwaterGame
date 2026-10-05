@@ -462,9 +462,6 @@ var route_state := RouteState.new()
 var _prologue_trigger := OpeningTriggerScript.new()
 var _prologue_spawn_delay := 0.0
 var _prologue_cinematic: CanvasLayer
-# One-shot flag read by _start_battle(): open the prologue battle directly on
-# Cordys (see _start_prologue_cordys()).
-var _next_battle_direct_cordys := false
 var deep_zone_layout := DeepZoneLayoutScript.new()
 var deep_zone_environment: DeepZoneEnvironment
 var _lab_video_cutscene: LabVideoCutscene
@@ -989,31 +986,13 @@ func _update_prologue_trigger(dt: float) -> void:
 	if _prologue_spawn_delay > 0.0:
 		_prologue_spawn_delay = maxf(0.0, _prologue_spawn_delay - dt)
 		return
-	# The opening cutscene hands straight off to Cordys - no swim trigger and
-	# no Angler warm-up fight first.
-	if not _transitioning_to_encounter:
-		_start_prologue_cordys()
-
-# Cordys's introduction film, then the unwinnable Cordys fight. The battle is
-# still built as the prologue encounter (party stage, prologue rules), but
-# Battle.prologue_direct_cordys makes its _ready() go straight to
-# reveal_prologue_octopus() instead of opening on an Angler. Losing hands off
-# to _recover_from_prologue() exactly as before (the cinematic's aftermath,
-# recovery, then the forced tutorial beam).
-func _start_prologue_cordys() -> void:
-	_transitioning_to_encounter = true
-	_audio_call(&"stop_music")
-	route_state.set_encounter_source("prologue_octopus")
-	route_state.set_prologue_phase("octopus_introduction")
-	_prologue_cinematic = PrologueCinematicScript.new() as CanvasLayer
-	title_layer.add_child(_prologue_cinematic)
-	await _prologue_cinematic.introduction_finished
-	get_tree().paused = false
-	_transitioning_to_encounter = false
-	route_state.set_prologue_phase("octopus_reveal")
-	route_state.set_encounter_source("prologue_angler")
-	_next_battle_direct_cordys = true
-	_start_battle("", false, "angler", divers, false, false, "", true)
+	# Revealing the world is not consent to a boss fight. Preserve a usable
+	# exploration beat, then start the authored Angler only after real swimming.
+	var swimming := _player_dir().length_squared() > 0.0 and not target_selector.selecting and not _transitioning_to_encounter
+	if _prologue_trigger.update((divers[active] as Diver).position, dt, swimming):
+		route_state.set_prologue_phase("angler")
+		route_state.set_encounter_source("prologue_angler")
+		_start_battle("", false, "angler", divers, false, false, "An Angler darts out of the murk.", true)
 
 func _on_prologue_angler_defeated() -> void:
 	if route_state.prologue_phase != "angler" or not is_instance_valid(battle) or not battle.prologue_angler_encounter:
@@ -3998,7 +3977,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	Whirlpool.refresh_in(self)
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
-	elif route_state.encounter_source == "prologue_angler" and not _next_battle_direct_cordys:
+	elif route_state.encounter_source == "prologue_angler":
 		_audio_call(&"play_prologue_battle_music")
 	else:
 		_audio_call(&"play_battle_music")
@@ -4054,8 +4033,6 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	if battle.prologue_angler_encounter:
 		battle.prologue_angler_defeated.connect(_on_prologue_angler_defeated)
 		battle.prologue_phase_changed.connect(_on_prologue_phase_changed)
-	battle.prologue_direct_cordys = battle.prologue_angler_encounter and _next_battle_direct_cordys
-	_next_battle_direct_cordys = false
 	battle.tutorial_encounter = tutorial
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text

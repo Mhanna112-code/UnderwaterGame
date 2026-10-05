@@ -47,6 +47,17 @@ func _run() -> void:
 		_expect(elapsed >= 4.0, "OPEN-035 prior idle time consumed the four-second swimming window")
 		_expect(elapsed < 8.5 and world.route_state.prologue_phase == "angler", "OPEN-026 opening does not progress after usable swimming")
 		_expect(world.route_state.encounter_source == "prologue_angler", "OPEN-035 swim started an ordinary/random encounter")
+		await process_frame
+		if is_instance_valid(world.battle):
+			var enemies: Array = world.battle.enemies
+			_expect(enemies.size() == 1, "OPEN-043 swimming did not start one authored Angler")
+			if enemies.size() == 1:
+				var enemy: Dictionary = enemies[0]
+				_expect(String(enemy.get("display_name", "")) == "Angler", "OPEN-043 Angler dispatch label masks the wrong visible enemy")
+				_expect(is_instance_valid(enemy.get("actor")) and (enemy.actor as Node3D).is_visible_in_tree(), "OPEN-043 opening Angler is only a hidden placeholder")
+			print("FREE_SWIM_ROSTER|", enemies.map(func(enemy: Dictionary) -> String: return String(enemy.get("display_name", ""))))
+		else:
+			_expect(false, "OPEN-043 swimming never created a playable Angler Battle")
 	world.queue_free()
 	await process_frame
 	paused = false

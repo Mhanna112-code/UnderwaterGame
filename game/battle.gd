@@ -101,8 +101,6 @@ var _puppet_completed_xp := 0
 var prologue_angler_encounter := false
 var _prologue_angler_interrupted := false
 var prologue_octopus_encounter := false
-# Set by World for the opening: skip the Angler and reveal Cordys right away.
-var prologue_direct_cordys := false
 var _prologue_response_resolved := false
 var _prologue_strike_index := 0
 
@@ -731,17 +729,6 @@ func _ready() -> void:
 			_begin_boss_encounter()
 	elif encounter_source == "maze_cordys":
 		_begin_campaign_cordys()
-	elif prologue_direct_cordys:
-		_set_all_buttons(false)
-		main_menu.visible = false
-		# The Angler is only the stage placeholder this battle is built
-		# around - never let it (or its card) appear, even for a frame.
-		for placeholder in enemies:
-			if placeholder.has("actor") and is_instance_valid(placeholder.actor):
-				(placeholder.actor as Node3D).visible = false
-			if placeholder.has("card") and is_instance_valid(placeholder.card):
-				(placeholder.card as Control).visible = false
-		reveal_prologue_octopus()
 	else:
 		var intro := encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies)
 		# The guardian flag also identifies rewardless lab blockers. Only a
@@ -1115,9 +1102,7 @@ func reveal_prologue_octopus() -> void:
 	_audio_call(&"fade_music_out", [0.15])
 	# The preceding film already supplied the anticipation. Avoid another
 	# empty hold before the visible reveal; preserve the complete reveal clip.
-	# Going straight to Cordys there is no Angler to interrupt at all.
-	if not prologue_direct_cordys:
-		await get_tree().create_timer(0.25).timeout
+	await get_tree().create_timer(0.25).timeout
 	prologue_angler_encounter = false
 	prologue_octopus_encounter = true
 	encounter_source = "prologue_octopus"
