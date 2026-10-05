@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+FINDING  FRAME-1 real restore leaves positions in saved frame instead of playable local frame
+FINDING  FRAME-1 real restore leaves walls in saved frame instead of playable local frame
+FINDING  FRAME-1 real restore leaves rotation_homes in saved frame instead of playable local frame
+FINDING  FRAME-1 real restore leaves broken_rocks in saved frame instead of playable local frame
+FINDING  FRAME-1 pending grapple reward restores outside its room
+FINDING  FRAME-1 pending consumable key restores outside its room
+MAZE COORDINATE FRAME: 6 finding(s)

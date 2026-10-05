@@ -108,6 +108,10 @@ static func decode(data: Dictionary) -> CampaignSession:
 static func valid_maze(value: Variant) -> bool:
 	if not value is Dictionary or value.get("version") != 1 or not value.get("flags") is Dictionary:
 		return false
+	# Optional for old standalone saves; present metadata must be checked before
+	# any live restore can translate part of the maze into a different frame.
+	if value.has("coordinate_origin") and not MazeCoordinateFrame.valid_origin(value.coordinate_origin):
+		return false
 	for flag in MazeLevel.CAMPAIGN_FLAGS:
 		if not value.flags.get(flag) is bool:
 			return false

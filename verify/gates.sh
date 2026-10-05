@@ -188,6 +188,7 @@ run "puzzle maze saved exit: do saved solved doors reopen and normal exit moveme
 run "maze secret continuity: do real E/Esc transitions retain resources, doors, walls and pending rewards" "$GODOT" --headless --path . --script verify/maze_secret_continuity.gd
 run "maze checkpoint: do cold Load, failed writes and real defeat/Restart conserve saved puzzle and campaign state" "$GODOT" --headless --path . --script verify/maze_checkpoint.gd
 run "maze checkpoint IO: do generated saves round-trip and malformed saves return an actionable title without mutation" "$GODOT" --headless --path . --script verify/maze_checkpoint_io.gd
+run "maze checkpoint coordinates: do legacy/framed JSON restores preserve puzzle placement and replace pending rewards once" "$GODOT" --headless --path . --script verify/maze_coordinate_frame.gd
 run "maze World return: do live exit and cold World save/re-entry retain party and independent maze/lab history" "$GODOT" --headless --path . --script verify/maze_world_return.gd
 run "maze relic consumers: do real victories unlock owned campaign spells without using or consuming maze keys" "$GODOT" --headless --path . --script verify/maze_relic_consumers.gd
 run "maze input ownership: do real map/save/swap keys stay exclusive while Marc's local encounter policy remains independent" "$GODOT" --headless --path . --script verify/maze_input_ownership.gd

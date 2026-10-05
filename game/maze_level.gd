@@ -29,6 +29,10 @@ var route_state: RouteState
 # Retain the world preference. Marc's strong room still forces its encounters;
 # this preference is not an override of that authored local policy.
 var random_encounters_enabled := true
+# The standalone/review frame is zero. The embedded owner sets the authored
+# translation before construction; saves carry it to avoid double-shifting on
+# repeated load or placing old checkpoints in the former standalone layout.
+var coordinate_origin := Vector3.ZERO
 
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
 # frame rather than baked into fixed [start, end] segments the way
@@ -5628,7 +5632,8 @@ func _return_campaign_title() -> void:
 	get_tree().change_scene_to_file("res://game/world.tscn")
 
 func campaign_snapshot() -> Dictionary:
-	var data := {"version": 1, "flags": {}, "walls": {}, "currents": [],
+	var data := {"version": 1, "coordinate_origin": CampaignSession.vector_data(coordinate_origin),
+		"flags": {}, "walls": {}, "currents": [],
 		"doors": [], "rocks": [], "orbs": [], "loose_keys": [], "posters": [],
 		"positions": [], "levers": [], "broken_rocks": [], "keys_held": keys_held,
 		"key_items": key_items.duplicate(), "boss_triggers": _boss_triggers.keys(),
@@ -5688,6 +5693,11 @@ func _restore_wall_homes(homes: Array) -> Array:
 	return out
 
 func restore_campaign_snapshot(data: Dictionary) -> void:
+	# Translate every spatial field together, without mutating the saved
+	# checkpoint. Same-frame and legacy standalone restores remain identity.
+	data = MazeCoordinateFrame.rebase(data, coordinate_origin)
+	if data.is_empty():
+		return
 	for flag in CAMPAIGN_FLAGS:
 		set(flag, bool(data.flags.get(flag, false)))
 	keys_held = int(data.keys_held)
@@ -5737,6 +5747,19 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 				still_present = still_present or (child as Node3D).global_position.distance_to(CampaignSession.vector_from(spot)) < 0.01
 			if not still_present:
 				child.queue_free()
+	# Replace pending drops, do not append them. Repeated restore into an
+	# embedded scene must not duplicate a key/item or keep an unsaved reward.
+	# Queue deletion before detaching so late overlap callbacks are inert.
+	for child in get_children():
+		if child is ItemOrb:
+			child.queue_free()
+			remove_child(child)
+	for key in key_pickups:
+		if is_instance_valid(key) and not key is ItemOrb and not key.is_queued_for_deletion():
+			key.queue_free()
+			if key.get_parent() != null:
+				key.get_parent().remove_child(key)
+	key_pickups.clear()
 	for spec in data.orbs:
 		_spawn_secret_reward_orb(String(spec.item), CampaignSession.vector_from(spec.position),
 			bool(spec.golden), bool(spec.grappleable), bool(spec.grapple_only))
@@ -5815,7 +5838,9 @@ func restore_campaign_snapshot(data: Dictionary) -> void:
 # any puzzle mutations. Corrupt IO may not reach get_node/indexing halfway
 # through a restore. The two path walls are the only runtime extensions.
 func snapshot_matches_runtime(data: Dictionary) -> bool:
-	if not CampaignCheckpoint.valid_maze(data):
+	# Preflight must accept the destination frame, not only the saved one.
+	# Otherwise Load can release gameplay after restore rejects an overflow.
+	if MazeCoordinateFrame.rebase(data, coordinate_origin).is_empty():
 		return false
 	for wall_name in data.walls:
 		if wall_name not in ["PathWallNorth", "PathWallSouth"] and not get_node_or_null(String(wall_name)) is CSGBox3D:

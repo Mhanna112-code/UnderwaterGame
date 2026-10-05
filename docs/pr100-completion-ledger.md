@@ -29,7 +29,7 @@ Late changes need a separately recorded intake rather than silent scope expansio
 | Suggested lab/puzzle/maze goals with early maze allowed | Pending phase-specific guidance, no lab-victory maze lock, no new dialogue teaching. |
 | Cordys introduction at maze, real victory and durable completion | Pending relocated presentation, completion screen and victory/save/cold-load proof. |
 | Dropbox Mermaid variant | Pending import/rig/material/animation/framing inspection and justified encounter placement. |
-| Saves, resources, keys/doors/map/geometry/discoveries | Existing checkpoint framework preserved; legacy, interrupted, embedded and completed-save acceptance pending. Disposable slots only. |
+| Saves, resources, keys/doors/map/geometry/discoveries | Existing checkpoint framework preserved. October 5 frame boundary now translates legacy/framed spatial state together and replaces pending rewards; 144 generated cases and existing actual IO/cold Load/loss/return gates pass. Full embedded, interrupted and completed-save acceptance remains pending. Disposable slots only. |
 | Puppet waves / one reward / generic keys / fixed Cordys | Existing behavior retained. No new puppet-weakening or unique-key lock requirement. Full normal route still unproven. |
 | Full gates and ordinary earned-resource campaigns | Pending; repair obsolete tests honestly. Fixture boss wins are not normal progression proof. |
 | Browser durability, Chrome Bomb Bot, casual/skilled trials | Pending explicit reproduction and normal-route results with environment/policy details. |
@@ -41,3 +41,10 @@ Excluded: new dialogue tutorial, victory-theme redesign, resolved environment-ro
 misunderstanding, unrelated features. Ordinary audio ownership/regressions remain
 required. All pending rows must be resolved or explicitly accepted as limitations
 before merge readiness is claimed; difficult integration is not a reason to omit it.
+
+October 5 ownership preparation: MazeCoordinateFrame and public snapshot
+restore carry explicit origin metadata. Missing metadata remains compatible
+with existing standalone saves. Real restore reds caught saved-frame placement,
+duplicate/retained rewards and untranslatable preflight. Repairs and preserved
+save/input/orb receipts are in docs/evidence/maze-coordinate-frame-oct5.
+This does not close the embedded-ownership row or authorize a release.
