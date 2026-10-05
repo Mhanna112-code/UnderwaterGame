@@ -130,7 +130,7 @@ func _ready() -> void:
 	_items_tab.pressed.connect(_switch_to.bind("items"))
 	tabs.add_child(_items_tab)
 	_spells_tab = Button.new()
-	_spells_tab.text = "Party Spells"
+	_spells_tab.text = "Party members' known spells"
 	_spells_tab.toggle_mode = true
 	_spells_tab.pressed.connect(_switch_to.bind("spells_root"))
 	tabs.add_child(_spells_tab)

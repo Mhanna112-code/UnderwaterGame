@@ -41,7 +41,7 @@ var musashiAbilityTitle := "Musashi: Grapple"
 var musashiGrappleBody:= "Press %s while Musashi is active to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. An anchor pulls Musashi toward it; a floating light item reels toward Musashi instead. Grapple uses no Oxygen, and a miss can be retried immediately." % _badge("F")
 
 var buckyAbilityTitle := "Bucky: Shockwave"
-var buckyShockwaveBody:= "Press %s while Bucky is active to send out a shockwave that breaks nearby brown objects (rocks, doors, etc.). Broken objects may reveal items. Shockwave has a short cooldown and costs 20 Oxygen." % _badge("F")
+var buckyShockwaveBody:= "Press %s while Bucky is active to send out a shockwave that breaks nearby brown objects (rocks, doors, etc.). Broken objects may reveal items. Shockwave has a short cooldown and costs 12 Oxygen." % _badge("F")
 
 
 # One per diver, laid out in a row by World._build_diver_slots() - purely a

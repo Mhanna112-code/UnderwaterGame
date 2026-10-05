@@ -413,10 +413,10 @@ const GRAPPLE_COLLISION_MASK := 1 | (1 << 4)
 # aimed like grapple (a whiff costs nothing) but a hit is a bigger, more
 # game-changing move than a simple pull, so it sits between the two.
 const SHOCKWAVE_COOLDOWN := 2.5
-# Shockwave costs Oxygen again (the original 20 from 743b279, removed in
+# Shockwave costs Oxygen again (12; originally 20 in 743b279, removed in
 # ee883d8 so an empty tank could never block progress). Grapple and Swap
 # stay free. Save points and Oxygen Cells refill the tank.
-const SHOCKWAVE_OXYGEN_COST := 20.0
+const SHOCKWAVE_OXYGEN_COST := 12.0
 const GRAPPLE_COOLDOWN := 1.2
 const SWAP_COOLDOWN := 2.0
 

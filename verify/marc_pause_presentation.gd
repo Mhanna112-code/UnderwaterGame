@@ -52,21 +52,23 @@ func _run() -> void:
 		Input.parse_input_event(move)
 		_expect(world.divers[world.active].global_position.distance_to(before) < 0.01,
 			"M99-P3 exploration moved behind the menu at " + str(shape))
-		for tab_name in ["Items", "Party Spells", "Combat Help", "Audio"]:
+		# The special-encounter replay is unlock-gated; this fixture has left one.
+		world.special_encounter_left = true
+		for tab_name in ["Items", "Party members' known spells", "Combat Help", "Audio"]:
 			var tab := _button(menu, tab_name)
 			_expect(tab != null and tab.is_visible_in_tree(), "M99-P2 missing tab " + tab_name)
 			if tab == null:
 				continue
 			tab.pressed.emit()
 			await _settle()
-			for other_name in ["Items", "Party Spells", "Combat Help", "Audio"]:
+			for other_name in ["Items", "Party members' known spells", "Combat Help", "Audio"]:
 				var other := _button(menu, other_name)
 				_expect(other != null and _inside(other.get_global_rect(), bounds),
 					"M99-P1 inaccessible %s tab at %s" % [other_name, shape])
 			var scroll := menu.find_child("ContentScroll", true, false) as ScrollContainer
 			_expect(scroll != null and _inside(scroll.get_global_rect(), bounds)
 				and scroll.size.y >= 100, "M99-P1 reading window clipped/collapsed at " + str(shape))
-			if tab_name == "Party Spells":
+			if tab_name == "Party members' known spells":
 				_expect(_button_containing(menu, "Mending Current") != null,
 					"M99-P2 learned spells lost during pause-menu port")
 			if tab_name == "Combat Help":

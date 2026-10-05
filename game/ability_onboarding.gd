@@ -208,12 +208,12 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "shockwave",
 			"title": "%s · Shockwave" % bucky,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color], then press [color=#79c7e8]F[/color] to send a shockwave in every direction. It breaks nearby objects built to respond to it, including route blockades. Shockwave has a short cooldown and costs [color=#79c7e8]20 oxygen[/color]." % bucky,
+			"body": "Switch to %s with [color=#79c7e8]TAB[/color], then press [color=#79c7e8]F[/color] to send a shockwave in every direction. It breaks nearby objects built to respond to it, including route blockades. Shockwave has a short cooldown and costs [color=#79c7e8]12 oxygen[/color]." % bucky,
 			"keys": ["TAB  %s" % bucky, "F  Shockwave"],
 			"ability_id": "shockwave",
 			"passive_id": "",
 			"requires_aim": false,
-			"environmental_oxygen_cost": 20,
+			"environmental_oxygen_cost": 12,
 		},
 	]
 
