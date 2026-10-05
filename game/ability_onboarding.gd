@@ -186,7 +186,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "swap-sonar",
 			"title": "%s · Swap and Sonar" % maxilani,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]F[/color] to choose a teammate, then [color=#79c7e8]Space / Enter[/color] to swap places. Swap uses no Oxygen. Press [color=#79c7e8]Q[/color] when %s is active to reveal nearby red-dot sites. Sonar costs [color=#79c7e8]%.0f O2 every %.0f seconds[/color]. Turn it off after finding a site. [color=#79c7e8]R[/color] switches random fights off; guarded sites still work." % [maxilani, maxilani, Diver.SONAR_OXYGEN_PER_TICK, Diver.SONAR_DRAIN_INTERVAL],
+			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]F[/color] to choose a teammate, then [color=#79c7e8]Space / Enter[/color] to swap places. Swap uses no Oxygen. Press [color=#79c7e8]Q[/color] when %s is active to show nearby red-dot sites. Sonar costs [color=#79c7e8]%.0f O2 every %.0f seconds[/color]. Red dots are visible only while Sonar is on. [color=#79c7e8]R[/color] switches random fights off; guarded sites still work." % [maxilani, maxilani, Diver.SONAR_OXYGEN_PER_TICK, Diver.SONAR_DRAIN_INTERVAL],
 			"keys": ["TAB  %s" % maxilani, "F  Swap", "A / D or Arrows  Choose", "Space / Enter  Confirm", "Q  Sonar"],
 			"ability_id": "swap",
 			"passive_id": "sonar",

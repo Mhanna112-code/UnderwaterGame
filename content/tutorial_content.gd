@@ -115,7 +115,7 @@ const WORLD_ABILITY_BLURBS := {
 	"swap": "Instantly trades places with another party member - press F, cycle who with Left/Right, confirm with Enter. Escape cancels. Uses no Oxygen. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
 	"grapple": "Press F to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. Anchors pull Musashi toward them; floating light items reel toward him instead. Uses no Oxygen. Firing at open water or a wall does nothing and can be retried immediately.",
 	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks nearby obstacles built to be shockwaved open. Costs 12 Oxygen and has a short cooldown.",
-	"sonar": "Press Q as Maxilani to reveal nearby hidden sites as red dots. Costs 1 Oxygen every 6 seconds while on. Discovered sites remain marked when Sonar is off. Swim into the site to trigger it; R only switches random fights off, not guarded-site challenges.",
+	"sonar": "Press Q as Maxilani to show nearby hidden sites as red dots. Costs 1 Oxygen every 6 seconds while on. Red dots are visible only while Sonar is on. Swim into a site to trigger it even with Sonar off; R only switches random fights off, not guarded-site challenges.",
 }
 
 const ABILITY_BLURBS := {

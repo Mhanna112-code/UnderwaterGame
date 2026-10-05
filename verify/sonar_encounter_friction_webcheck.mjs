@@ -1,5 +1,6 @@
 // Owned fresh-profile checkpoint supplies completed opening/first-site lesson
-// and a nearby reef position. After Load, only real Q/R/W/S and modal inputs;
+// and a nearby reef position. Cold World Load faces +Z, so S approaches
+// this checkpoint's -Z site and W leaves. Only real Q/R/W/S and modal inputs;
 // no special URL flag, engine calls, teleports or authored victory injection.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -57,15 +58,15 @@ const title = async label => {
 };
 const swimToPrompt = async label => {
   let found = false;
-  await page.keyboard.down('KeyW');
+  await page.keyboard.down('KeyS');
   try {
     for (let step = 0; step < 12; step++) {
       await page.waitForTimeout(250);
       const rows = await capture(label + '-' + step);
       if (rows.some(row => /Something Guards This Place/i.test(row.text))) { found = true; break; }
     }
-  } finally { await page.keyboard.up('KeyW'); }
-  expect(found, 'FR-2 real W approach with Q/R off failed to open the guarded site');
+  } finally { await page.keyboard.up('KeyS'); }
+  expect(found, 'FR-2 real S approach with Q/R off failed to open the guarded site');
 };
 try {
   if (process.env.EXPECTED_SOURCE_SHA) expect(metadata.source_commit === process.env.EXPECTED_SOURCE_SHA, 'Stale exported source');
@@ -96,7 +97,7 @@ try {
   await page.waitForTimeout(900);
   const canceled = (await capture('no-prompt-loop')).map(row => row.text).join('\n');
   expect(!/Something Guards This Place/i.test(canceled) && /Random Encounters \(Off\)/i.test(canceled), 'FR-3 cancel immediately retriggers or loses quiet travel');
-  await page.keyboard.down('KeyS'); await page.waitForTimeout(1200); await page.keyboard.up('KeyS');
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(1200); await page.keyboard.up('KeyW');
   await swimToPrompt('real-reentry');
   await click(/^Enter$/i, 'enter-site');
   const chooser = (await capture('real-diver-chooser')).map(row => row.text).join('\n');
@@ -105,12 +106,13 @@ try {
   await click(/^Send Them In$/i, 'send-musashi');
   await page.waitForTimeout(1800);
   const battle = (await capture('actual-special-battle')).map(row => row.text).join('\n');
-  expect(/Musashi|Grapple/i.test(battle) && !/Choose who goes/i.test(battle), 'FR-2 site selection failed to enter the actual solo challenge');
+  expect(/Musashi's turn/i.test(battle) && /NOW/.test(battle) && /Angler/.test(battle)
+    && !/Choose who goes/i.test(battle) && !/Maxilani|Bucky/.test(battle), 'FR-2 site selection failed to enter the actual solo challenge');
   expect(errors.length === 0, 'Exported route has script/browser errors');
 } catch (error) { findings.push(String(error)); }
 findings.push(...errors);
 await browser.close(); if (server) server.close();
 fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ source_commit: metadata.source_commit, pck_sha256: metadata.pck_sha256, observations, findings,
-  scope: 'Fresh-profile supplied completed opening/first-site lesson checkpoint near reef. Normal Title Load, Q-on one actual 6-second billing interval, Q-off/R-off real W approach, cancel/no-loop, S exit/W reentry, visible chooser and real solo dispatch. No earned campaign/minigame victory or two-minute browser measurement claim.' }, null, 2));
+  scope: 'Fresh-profile supplied completed opening/first-site lesson checkpoint near reef. Normal Title Load, Q-on one actual 6-second billing interval, Q-off/R-off real S approach (cold Load faces +Z), cancel/no-loop, W exit/S reentry, visible chooser and real solo dispatch. No earned campaign/minigame victory or two-minute browser measurement claim.' }, null, 2));
 console.log(findings.length ? 'SONAR FRICTION WEB: failed' : 'SONAR FRICTION WEB: clean');
 process.exit(findings.length ? 1 : 0);

@@ -98,6 +98,7 @@ func _world_site() -> void:
 	var page := onboarding.current_page_data()
 	_expect(page.get("sonar_oxygen_per_tick") == 1 and page.get("sonar_tick_seconds") == 6
 		and "1 O2 every 6 seconds" in String(page.body)
+		and "Red dots are visible only while Sonar is on" in String(page.body)
 		and "guarded sites still work" in String(page.body), "FR-5 actual onboarding retains old drain/access rules")
 	onboarding.dismiss()
 	onboarding.queue_free()
