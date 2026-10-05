@@ -1,0 +1,60 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+EARN NEW GAME|policy=skilled|seed=64000|real_opening_seen=true
+PROLOGUE_PHASE|angler
+EARN FIGHT START|index=1|source=prologue_angler|enemy=["Angler"]
+EARN PARTY|stage=fight-1-entry|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-entry|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-entry|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Scuba Stabbing|damage=1|hit=true|hp=999|effects=["Bleed 2"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=994|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=11|hit=true|hp=981|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+EARN FIGHT END|index=1|result=prologue_defeat|actions=5|phase=scripted_defeat
+EARN PARTY|stage=fight-1-exit|name=Staff_Diver|level=1|xp=0|hp=0|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-exit|name=Prototype_1(1910)|level=1|xp=0|hp=0|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-exit|name=Prototype_V(1922)|level=1|xp=0|hp=0|o2=100.0|spells=[]
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+SCRIPT ERROR: Invalid type in function '_visible_button' in base 'SceneTree (earned_campaign_journey.gd)'. The Object-derived class of argument 1 (previously freed) is not a subclass of the expected argument class.
+          at: _ack_visible_reading (res://verify/earned_campaign_journey.gd:202)
+          GDScript backtrace (most recent call first):
+              [0] _ack_visible_reading (res://verify/earned_campaign_journey.gd:202)
+EARN PARTY|stage=real-recovery|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=real-recovery|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=real-recovery|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist
+EARN FIGHT START|index=2|source=random|enemy=["Swordfish Duelist"]
+EARN PARTY|stage=fight-2-entry|name=Staff_Diver|level=1|xp=0|hp=10|o2=97.0|spells=[]
+EARN PARTY|stage=fight-2-entry|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-entry|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN FIGHT END|index=2|result=timeout|actions=0|phase=complete
+EARN PARTY|stage=fight-2-exit|name=Staff_Diver|level=1|xp=0|hp=10|o2=97.0|spells=[]
+EARN PARTY|stage=fight-2-exit|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-exit|name=Prototype_V(1922)|level=1|xp=0|hp=7|o2=100.0|spells=[]
+EARN PHYSICAL ARRIVAL|goal=(55.0, 2.0, -5.0)|actual=(16.69655, 2.0, -0.0)
+EARN PARTY|stage=lab-terminal|name=Staff_Diver|level=1|xp=0|hp=10|o2=97.0|spells=[]
+EARN PARTY|stage=lab-terminal|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=lab-terminal|name=Prototype_V(1922)|level=1|xp=0|hp=7|o2=100.0|spells=[]
+EARNED LAB-FIRST SLICE|policy=skilled|seed=64000|fights=2|actions=5|lab=locked|NOT_FULL_CAMPAIGN
+FINDING EARN observer: chosen real move/target not accessible: Flash Blast
+FINDING EARN-2 actual earned fight ended timeout
+FINDING EARN-2 earned lab-first route did not finish actual blockers/Tethys
+EARNED LAB-FIRST SLICE: failed

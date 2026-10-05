@@ -1,0 +1,112 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|opening_handoff
+PROLOGUE_PHASE|spawn_exploration
+EARN NEW GAME|policy=casual|seed=64001|real_opening_seen=true
+PROLOGUE_PHASE|angler
+EARN FIGHT START|index=1|source=prologue_angler|enemy=["Angler"]
+EARN PARTY|stage=fight-1-entry|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-entry|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-entry|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+PROLOGUE_PHASE|angler_victory
+PROLOGUE_PHASE|octopus_notice
+PROLOGUE_PHASE|octopus_omen
+PROLOGUE_PHASE|octopus_introduction
+PROLOGUE_PHASE|octopus_reveal
+PROLOGUE_PHASE|octopus_response
+PROLOGUE_HIT|move=Scuba Stabbing|damage=1|hit=true|hp=999|effects=["Bleed 2"]
+PROLOGUE_PHASE|scripted_defeat
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=994|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1
+PROLOGUE_HIT|move=Guard Bash|damage=11|hit=true|hp=981|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0
+EARN FIGHT END|index=1|result=prologue_defeat|actions=5|phase=scripted_defeat
+EARN PARTY|stage=fight-1-exit|name=Staff_Diver|level=1|xp=0|hp=0|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-exit|name=Prototype_1(1910)|level=1|xp=0|hp=0|o2=100.0|spells=[]
+EARN PARTY|stage=fight-1-exit|name=Prototype_V(1922)|level=1|xp=0|hp=0|o2=100.0|spells=[]
+PROLOGUE_PHASE|octopus_aftermath
+PROLOGUE_PHASE|recovery
+PROLOGUE_PHASE|complete
+EARN PARTY|stage=real-recovery|name=Staff_Diver|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=real-recovery|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=real-recovery|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+RANDOM_REVEAL|enemies=angler|duration=1.5
+RANDOM_COMBAT|enemies=angler
+EARN FIGHT START|index=2|source=random|enemy=["Angler"]
+EARN PARTY|stage=fight-2-entry|name=Staff_Diver|level=1|xp=0|hp=10|o2=97.0|spells=[]
+EARN PARTY|stage=fight-2-entry|name=Prototype_1(1910)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-entry|name=Prototype_V(1922)|level=1|xp=0|hp=10|o2=100.0|spells=[]
+EARN FIGHT END|index=2|result=won|actions=3|phase=complete
+EARN PARTY|stage=fight-2-exit|name=Staff_Diver|level=1|xp=10|hp=10|o2=97.0|spells=[]
+EARN PARTY|stage=fight-2-exit|name=Prototype_1(1910)|level=1|xp=10|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-2-exit|name=Prototype_V(1922)|level=1|xp=10|hp=6|o2=100.0|spells=[]
+RANDOM_REVEAL|enemies=frilled_shark|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark
+EARN FIGHT START|index=3|source=random|enemy=["Frilled Shark"]
+EARN PARTY|stage=fight-3-entry|name=Staff_Diver|level=1|xp=10|hp=10|o2=94.0|spells=[]
+EARN PARTY|stage=fight-3-entry|name=Prototype_1(1910)|level=1|xp=10|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-3-entry|name=Prototype_V(1922)|level=1|xp=10|hp=6|o2=100.0|spells=[]
+EARN FIGHT END|index=3|result=won|actions=3|phase=complete
+EARN PARTY|stage=fight-3-exit|name=Staff_Diver|level=1|xp=20|hp=10|o2=94.0|spells=[]
+EARN PARTY|stage=fight-3-exit|name=Prototype_1(1910)|level=1|xp=20|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-3-exit|name=Prototype_V(1922)|level=1|xp=20|hp=6|o2=100.0|spells=[]
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist
+EARN FIGHT START|index=4|source=random|enemy=["Swordfish Duelist"]
+EARN PARTY|stage=fight-4-entry|name=Staff_Diver|level=1|xp=20|hp=10|o2=91.0|spells=[]
+EARN PARTY|stage=fight-4-entry|name=Prototype_1(1910)|level=1|xp=20|hp=10|o2=100.0|spells=[]
+EARN PARTY|stage=fight-4-entry|name=Prototype_V(1922)|level=1|xp=20|hp=6|o2=100.0|spells=[]
+EARN FIGHT END|index=4|result=won|actions=3|phase=complete
+EARN PARTY|stage=fight-4-exit|name=Staff_Diver|level=2|xp=0|hp=10|o2=100.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-4-exit|name=Prototype_1(1910)|level=2|xp=0|hp=10|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-4-exit|name=Prototype_V(1922)|level=2|xp=0|hp=10|o2=100.0|spells=["heavy_slam"]
+RANDOM_REVEAL|enemies=swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist
+EARN FIGHT START|index=5|source=random|enemy=["Swordfish Duelist"]
+EARN PARTY|stage=fight-5-entry|name=Staff_Diver|level=2|xp=0|hp=10|o2=97.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-5-entry|name=Prototype_1(1910)|level=2|xp=0|hp=10|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-5-entry|name=Prototype_V(1922)|level=2|xp=0|hp=10|o2=100.0|spells=["heavy_slam"]
+EARN FIGHT END|index=5|result=won|actions=3|phase=complete
+EARN PARTY|stage=fight-5-exit|name=Staff_Diver|level=2|xp=11|hp=10|o2=97.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-5-exit|name=Prototype_1(1910)|level=2|xp=11|hp=7|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-5-exit|name=Prototype_V(1922)|level=2|xp=11|hp=10|o2=100.0|spells=["heavy_slam"]
+EARN PHYSICAL ARRIVAL|goal=(55.0, 2.0, -5.0)|actual=(55.05322, 2.0, -5.239124)
+EARN PHYSICAL ARRIVAL|goal=(68.0, 2.0, 10.0)|actual=(68.00074, 2.0, 10.14232)
+EARN PHYSICAL ARRIVAL|goal=(90.0, 2.0, 10.0)|actual=(90.27158, 2.0, 10.00003)
+EARN FIGHT START|index=6|source=lab_blocker|enemy=["Bomb Bot"]
+EARN PARTY|stage=fight-6-entry|name=Staff_Diver|level=2|xp=11|hp=10|o2=79.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-6-entry|name=Prototype_1(1910)|level=2|xp=11|hp=7|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-6-entry|name=Prototype_V(1922)|level=2|xp=11|hp=10|o2=100.0|spells=["heavy_slam"]
+EARN FIGHT END|index=6|result=won|actions=6|phase=complete
+EARN PARTY|stage=fight-6-exit|name=Staff_Diver|level=2|xp=28|hp=10|o2=79.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-6-exit|name=Prototype_1(1910)|level=2|xp=28|hp=7|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-6-exit|name=Prototype_V(1922)|level=2|xp=28|hp=6|o2=100.0|spells=["heavy_slam"]
+EARN PHYSICAL ARRIVAL|goal=(117.0, 2.0, 16.0)|actual=(117.0277, 2.0, 16.0365)
+EARN FIGHT START|index=7|source=lab_blocker|enemy=["Sword Slayer"]
+EARN PARTY|stage=fight-7-entry|name=Staff_Diver|level=2|xp=28|hp=10|o2=70.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-7-entry|name=Prototype_1(1910)|level=2|xp=28|hp=7|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-7-entry|name=Prototype_V(1922)|level=2|xp=28|hp=6|o2=100.0|spells=["heavy_slam"]
+EARN FIGHT END|index=7|result=won|actions=6|phase=complete
+EARN PARTY|stage=fight-7-exit|name=Staff_Diver|level=2|xp=47|hp=10|o2=70.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-7-exit|name=Prototype_1(1910)|level=2|xp=47|hp=4|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-7-exit|name=Prototype_V(1922)|level=2|xp=47|hp=4|o2=100.0|spells=["heavy_slam"]
+EARN PHYSICAL ARRIVAL|goal=(142.0, 2.0, 16.0)|actual=(142.0148, 2.0, 15.99998)
+EARN FIGHT START|index=8|source=lab_boss|enemy=["Tethys"]
+EARN PARTY|stage=fight-8-entry|name=Staff_Diver|level=2|xp=47|hp=10|o2=64.0|spells=["swift_strike"]
+EARN PARTY|stage=fight-8-entry|name=Prototype_1(1910)|level=2|xp=47|hp=4|o2=100.0|spells=["precise_jab"]
+EARN PARTY|stage=fight-8-entry|name=Prototype_V(1922)|level=2|xp=47|hp=4|o2=100.0|spells=["heavy_slam"]
+EARN FIGHT END|index=8|result=won|actions=12|phase=complete
+EARN PARTY|stage=fight-8-exit|name=Staff_Diver|level=3|xp=49|hp=10|o2=100.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=fight-8-exit|name=Prototype_1(1910)|level=3|xp=49|hp=10|o2=100.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=fight-8-exit|name=Prototype_V(1922)|level=3|xp=49|hp=10|o2=100.0|spells=["heavy_slam", "mending_current"]
+EARN PHYSICAL ARRIVAL|goal=(172.0, 2.0, 16.0)|actual=(171.7797, 2.0, 16.0)
+EARN PARTY|stage=lab-terminal|name=Staff_Diver|level=3|xp=49|hp=10|o2=100.0|spells=["swift_strike", "current_snare"]
+EARN PARTY|stage=lab-terminal|name=Prototype_1(1910)|level=3|xp=49|hp=10|o2=100.0|spells=["precise_jab", "weaken"]
+EARN PARTY|stage=lab-terminal|name=Prototype_V(1922)|level=3|xp=49|hp=10|o2=100.0|spells=["heavy_slam", "mending_current"]
+EARNED LAB-FIRST SLICE|policy=casual|seed=64001|fights=8|actions=41|lab=cleared|NOT_FULL_CAMPAIGN
+EARNED LAB-FIRST SLICE: clean (not full campaign)

@@ -22,6 +22,14 @@ consumer fidelity or actual earned travel. Old live route teleports and boss
 balance grants target-level XP; they cannot close the New Game journey work.
 Full browser/Bomb Bot/audio/
 six-area acceptance, upstream dispositions and native packages remain.
+Actual New Game lab-first exploratory probes now retain successes and real
+attrition losses; the final scheduled-rest run physically visits the existing
+shallow point, restores HP/O2 on contact, swims back with defeated guards
+preserved and R/Q preferences restored, wins Tethys, and conserves the actual
+earned level3/XP60/kit/manual bytes through native cold Title Load. Eight
+fights/39 moves, exit0/no script errors. This is a native lab-only slice, not
+a calibrated casual/skilled matrix, browser durability or full campaign.
+See [retained earned journey receipts](evidence/earned-balance-oct5/newgame-lab/README.md).
 The Tethys opening/Cordys film relocation remains the final isolated candidate
 and requires Miguel's explicit review/approval before main/canonical.
 
