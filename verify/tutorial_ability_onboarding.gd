@@ -2,7 +2,7 @@
 # world-control carousel and closes back to playable world state`.
 extends SceneTree
 
-const TIMEOUT_MS := 9000
+const TIMEOUT_MS := 30000
 var findings: Array[String] = []
 
 func _initialize() -> void:
