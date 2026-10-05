@@ -87,6 +87,8 @@ func fill() -> void:
 # diver doesn't get back up just because the party won; only a level-up
 # (fill(), above) or an actual Revive spell (battle.gd's "revive" effect,
 # world.gd's out-of-battle version) brings them back.
+# Legacy helper used by older math-only verification. Production Battle no
+# longer calls this: Marc's current recovery comes from rest points/level-ups.
 func recover_after_victory(fraction: float = 0.30) -> void:
 	var amount := clampf(fraction, 0.0, 1.0)
 	if hp > 0:

@@ -13,6 +13,13 @@ func _run() -> void:
 	world.title_screen.close()
 	paused = false
 	world.random_encounters_enabled = false
+	var no_refill := "--no-refill" in OS.get_cmdline_user_args()
+	if no_refill:
+		for diver in world.divers:
+			while diver.stats.level < 5:
+				diver.stats.gain_xp(10)
+			diver.stats.hp = 6
+			diver.stats.oxygen = 50.0
 	# Fixed real ordinary roster; baseline stats, normal damage, no injected win.
 	world._start_battle("", false, "angler", [], false, false, "", false, ["angler"])
 	var battle := world.battle
@@ -20,6 +27,7 @@ func _run() -> void:
 	var outcomes: Array[String] = []
 	battle.finished.connect(func(result: String) -> void: outcomes.append(result))
 	var observed_victory := false
+	var victory_resources: Array = []
 	var actions := 0
 	var deadline := Time.get_ticks_msec() + 30000
 	while outcomes.is_empty() and Time.get_ticks_msec() < deadline:
@@ -32,6 +40,8 @@ func _run() -> void:
 			if node is Label and node.text == "Victory" and node.is_visible_in_tree():
 				if not observed_victory:
 					observed_victory = true
+					for entry in battle.party:
+						victory_resources.append([entry.stats.hp, entry.stats.oxygen, entry.stats.level])
 					_expect(audio.get_music_state().cue_id == "victory",
 						"END-1 Victory is on screen but main battle music is still playing")
 					_expect(world.battle == battle and world.battling, "END-1 cue was observed only after leaving Battle")
@@ -44,6 +54,12 @@ func _run() -> void:
 	_expect(observed_victory and outcomes == ["won"], "END fixture never reached actual Victory: " + str(outcomes))
 	await process_frame
 	_expect(audio.get_music_state().cue_id == "exploration", "END-1 victory music starts/persists after returning to World")
+	if no_refill and victory_resources.size() == world.divers.size():
+		for i in world.divers.size():
+			var stats: CombatantStats = world.divers[i].stats
+			_expect(stats.level == victory_resources[i][2], "END-2 fixture unexpectedly leveled up")
+			_expect(stats.hp == victory_resources[i][0] and stats.oxygen < float(victory_resources[i][1]) + 0.2,
+				"END-2 ordinary victory still refills HP/Oxygen")
 	print("VICTORY TIMING|actions=", actions, "|outcomes=", outcomes, "|visible_victory=", observed_victory)
 	world.queue_free()
 	await process_frame

@@ -41,6 +41,8 @@ signal diver_sucked_in(d: Diver, amount: int)
 @export var spin_turns := 2.0
 @export var sink_depth := 2.2
 @export var vanish_duration := 0.35
+@export var deep_hole_radius := 0.0
+const DEEP_SHAFT_DEPTH := 9.0
 
 var armed := true
 
@@ -52,6 +54,12 @@ var armed := true
 const WARNING_TEXT := "Danger: Whirlpool ahead"
 const WARNING_COLOR := Color(1.0, 0.6, 0.45)
 static var _warning_caption: Label
+static var _battle_running := false
+
+static func set_battle_running(on: bool) -> void:
+	_battle_running = on
+	if is_instance_valid(_warning_caption):
+		_warning_caption.visible = not _warning_whirlpools.is_empty() and not on
 static var _warning_whirlpools: Dictionary = {}   # Whirlpool -> true while a diver is inside its warning radius
 var _divers_in_warning: Dictionary = {}           # Diver -> true
 # Optional: returns true when something (e.g. a current running through
@@ -124,6 +132,77 @@ func _build_visual() -> void:
 
 	var tw := create_tween().set_loops()
 	tw.tween_property(mesh_inst, "rotation:y", TAU, 4.0).from(0.0)
+	if deep_hole_radius > 0.0:
+		ring.inner_radius = deep_hole_radius * 0.92
+		ring.outer_radius = deep_hole_radius * 1.12
+		tw.set_speed_scale(2.0)
+		_build_deep_shaft()
+		_build_down_current()
+
+func _build_deep_shaft() -> void:
+	var tube := CylinderMesh.new()
+	tube.top_radius = deep_hole_radius
+	tube.bottom_radius = deep_hole_radius * 0.7
+	tube.height = DEEP_SHAFT_DEPTH
+	tube.cap_top = false
+	tube.radial_segments = 24
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.02, 0.06, 0.11)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var shaft := MeshInstance3D.new()
+	shaft.mesh = tube
+	shaft.material_override = mat
+	shaft.position.y = -DEEP_SHAFT_DEPTH * 0.5
+	add_child(shaft)
+
+# The current: pale streaks circling in from just around the hole and
+# pouring down into it, spiralling as they go.
+func _build_down_current() -> void:
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3.UP
+	pm.emission_ring_radius = deep_hole_radius * 1.8
+	pm.emission_ring_inner_radius = deep_hole_radius * 0.6
+	pm.emission_ring_height = 1.6
+	pm.direction = Vector3.DOWN
+	pm.spread = 8.0
+	pm.initial_velocity_min = 1.2
+	pm.initial_velocity_max = 2.2
+	pm.gravity = Vector3(0, -4.0, 0)
+	pm.radial_accel_min = -2.5   # drawn in toward the middle
+	pm.radial_accel_max = -1.5
+	pm.tangential_accel_min = 3.0   # and around it
+	pm.tangential_accel_max = 4.5
+	pm.particle_flag_align_y = true
+	pm.scale_min = 0.7
+	pm.scale_max = 1.2
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.75, 0.92, 1.0, 0.0))
+	fade.set_color(1, Color(0.75, 0.92, 1.0, 0.0))
+	fade.add_point(0.15, Color(0.75, 0.92, 1.0, 0.75))
+	fade.add_point(0.75, Color(0.55, 0.8, 1.0, 0.5))
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = fade
+	pm.color_ramp = ramp
+
+	var streak := BoxMesh.new()
+	streak.size = Vector3(0.035, 0.45, 0.035)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	streak.material = mat
+
+	var current := GPUParticles3D.new()
+	current.amount = 90
+	current.lifetime = 1.8
+	current.preprocess = 2.0
+	current.process_material = pm
+	current.draw_pass_1 = streak
+	current.position.y = 0.9
+	current.visibility_aabb = AABB(Vector3(-4, -DEEP_SHAFT_DEPTH - 1.0, -4), Vector3(8, DEEP_SHAFT_DEPTH + 4.0, 8))
+	add_child(current)
 
 func _on_warning_entered(body: Node3D) -> void:
 	if not (body is Diver):
@@ -255,7 +334,7 @@ func _update_warning_caption() -> void:
 		if _warning_whirlpools.is_empty() or not is_inside_tree():
 			return
 		_build_warning_caption()
-	_warning_caption.visible = not _warning_whirlpools.is_empty()
+	_warning_caption.visible = not _warning_whirlpools.is_empty() and not _battle_running
 
 func _build_warning_caption() -> void:
 	var layer := CanvasLayer.new()

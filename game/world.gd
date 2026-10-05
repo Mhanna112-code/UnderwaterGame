@@ -258,6 +258,45 @@ var _special_playtest_active := false
 # over's "restart from save point" and an actual save-point visit are the
 # same real file, and it all survives closing the game entirely.
 var _current_slot := -1
+const AUTOSAVE_INTERVAL := 180.0
+var _autosave_timer := 0.0
+var _autosave_writing := false
+
+func _autosave_safe() -> bool:
+	if _current_slot < 0 or title_screen.visible or get_tree().paused or not route_state.prologue_complete:
+		return false
+	if battling or _intro_active or _transitioning_to_encounter or aiming or target_selector.selecting:
+		return false
+	if is_instance_valid(random_encounter_reveal) or is_instance_valid(_lab_video_cutscene):
+		return false
+	if special_encounter_prompt.visible or _special_encounter_item != "" or _special_encounter_diver != null:
+		return false
+	if save_point_menu.visible or inventory_menu.visible or tutorial_result_popup.visible:
+		return false
+	if embedded_maze != null and embedded_maze.maze_active and not embedded_maze.can_capture_campaign_snapshot():
+		return false
+	return not Whirlpool.busy_in(self)
+
+func _tick_autosave(dt: float) -> void:
+	if _current_slot < 0 or title_screen.visible or get_tree().paused or not route_state.prologue_complete:
+		return
+	_autosave_timer += dt
+	if _autosave_timer < AUTOSAVE_INTERVAL or _autosave_writing or not _autosave_safe():
+		return
+	_autosave_writing = true
+	var slot := _current_slot
+	var path := SaveManager.autosave_path(slot)
+	var existed := FileAccess.file_exists(path)
+	var previous := FileAccess.get_file_as_bytes(path) if existed else PackedByteArray()
+	var error := SaveManager.write_autosave(slot, _serialize_state())
+	var written := error == OK
+	if written:
+		error = await BrowserCheckpoint.confirm_slot(slot, true)
+	if error != OK and written:
+		SaveManager.rollback_autosave(slot, existed, previous)
+	_autosave_writing = false
+	_autosave_timer = 0.0
+	_announce("Game autosaved." if error == OK else "Autosave failed. Your last checkpoint is unchanged.")
 
 # One public source of truth for authored progression beyond the existing
 # free-roam/tutorial state. RouteState owns JSON-safe data and its objective
@@ -361,8 +400,8 @@ func _write_save() -> Error:
 # back as {} from SaveManager, whose "divers" key then defaults to []) -
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
-func _load_save() -> bool:
-	return restore_checkpoint(SaveManager.read_slot(_current_slot))
+func _load_save(from_autosave := false) -> bool:
+	return restore_checkpoint(SaveManager.read_autosave(_current_slot) if from_autosave else SaveManager.read_slot(_current_slot))
 
 # Shared validated restore used by disk Load and a live campaign return.
 # Neither consumer needs to write a temporary save or discard live stats.
@@ -594,7 +633,22 @@ func _show_title_screen() -> void:
 # real file instead of an in-memory snapshot.
 func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
-	_write_save()
+	_autosave_timer = 0.0
+	var existed := SaveManager.slot_exists(slot)
+	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
+	var error := _write_save()
+	var written := error == OK
+	if written:
+		error = await BrowserCheckpoint.confirm_slot(slot)
+	if error != OK:
+		if written:
+			SaveManager.rollback_slot(slot, existed, previous)
+		_current_slot = -1
+		title_screen.show_load_error("Could not start this saved run. Your previous saves are unchanged. Please retry.")
+		return
+	SaveManager.clear_autosave(slot)
+	if OS.has_feature("web"):
+		JavaScriptBridge.force_fs_sync()
 	title_screen.close()
 	await _play_opening_if_needed()
 	_begin_quiet_spawn_if_needed()
@@ -647,10 +701,14 @@ func _on_title_skip_tutorial(slot: int = 0) -> void:
 	_first_encounter_done = true
 	await _on_title_new_game(slot)
 
-func _on_title_load_game(slot: int) -> bool:
+func _on_title_load_autosave(slot: int) -> void:
+	await _on_title_load_game(slot, true)
+
+func _on_title_load_game(slot: int, from_autosave := false) -> bool:
 	_cancel_random_encounter_reveal()
 	_current_slot = slot
-	if not _load_save():
+	_autosave_timer = 0.0
+	if not _load_save(from_autosave):
 		_current_slot = -1
 		$HUD.visible = false
 		get_tree().paused = true
@@ -1081,6 +1139,9 @@ var scripted_rise := 0.0
 var _active_cursor: MeshInstance3D
 
 func _ready() -> void:
+	if OS.get_cmdline_user_args().has("--dev"):
+		skip_intro_for_test = true
+		skip_tutorial_for_test = true
 	# Read-only trace synchronizes exported playtests to real gameplay without
 	# query shortcuts or commands that mutate state.
 	route_state.phase_changed.connect(_report_prologue_phase)
@@ -1193,6 +1254,7 @@ func _ready() -> void:
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_screen.load_autosave_chosen.connect(_on_title_load_autosave)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
 	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
@@ -1252,8 +1314,42 @@ func _ready() -> void:
 		if not SceneHandoff.checkpoint_load_error.is_empty():
 			title_screen.show_load_error(SceneHandoff.checkpoint_load_error)
 			SceneHandoff.checkpoint_load_error = ""
-	if _maze_playtest_requested():
+	if OS.get_cmdline_user_args().has("--dev"):
+		_start_dev_mode.call_deferred()
+	elif _maze_playtest_requested():
 		call_deferred("_enter_maze_scene", true)
+
+func _start_dev_mode() -> void:
+	# Explicit command-line diagnostics never claim or write a player slot.
+	_current_slot = -1
+	route_state.opening_video_seen = true
+	route_state.prologue_complete = true
+	route_state.set_prologue_phase("complete")
+	for id in Items.ITEMS:
+		if Items.is_key_item(String(id)):
+			if id != "maze_nav_map" and not key_items.has(id):
+				key_items.append(id)
+		else:
+			inventory[id] = 5
+	title_screen.close()
+	get_tree().paused = false
+	$HUD.visible = true
+	embedded_maze.keys_held = 99
+	if embedded_maze._gate != null:
+		embedded_maze._gate_lowered = true
+		embedded_maze._gate.visible = false
+		for child in embedded_maze._gate.get_children():
+			if child is CollisionShape3D:
+				child.disabled = true
+	var front := Vector3(263, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
+	if OS.get_cmdline_user_args().has("--secret-room"):
+		var room := embedded_maze._secret_item_room_rect().abs()
+		front = Vector3(room.get_center().x, embedded_maze._floor_top_y + 1.2, room.get_center().y)
+	for i in divers.size():
+		(divers[i] as Diver).global_position = front + Vector3(-float(i) * 1.5, 0, float(i) * 1.5)
+		(divers[i] as Diver).velocity = Vector3.ZERO
+	_set_maze_ownership(true)
+	_announce("DEV MODE: temporary items and maze keys. No player save is written.")
 
 func _restore_campaign_return(session: CampaignSession) -> bool:
 	if session == null or session.outer_world_checkpoint.is_empty():
@@ -1868,8 +1964,8 @@ func _check_gap_puzzle() -> void:
 	_sync_puzzle_maze_exit()
 	var cutscene := Cutscene.new()
 	add_child(cutscene)
-	cutscene.play_scroll_text("The maze is open")
-	_announce("Maze entrance open. Swim through the doorway.")
+	cutscene.play_scroll_text("Welcome to the deep sea")
+	_announce("The way is open. Explore the deep sea.")
 
 func _sync_puzzle_maze_exit() -> void:
 	if is_instance_valid(_puzzle_exit_label):
@@ -2243,6 +2339,7 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	_tick_autosave(dt)
 	if embedded_maze != null and embedded_maze.maze_active:
 		active = embedded_maze.active
 		if not embedded_maze._battling:
@@ -4013,7 +4110,7 @@ func _refresh_world_guidance() -> void:
 		if deep_zone_layout.zone_for_position(position) == "deep":
 			text = _route_objective_text(route_state.objective_id)
 		elif _puzzle_solved and _puzzle_hint_bounds.has_point(position):
-			text = "Maze entrance open. Swim through the doorway."
+			text = "The way is open. Explore the deep sea."
 		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
 			text = "Use Bucky's Shockwave to break the wall. (TAB)"
 		else:

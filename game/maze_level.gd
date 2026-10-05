@@ -142,6 +142,9 @@ func _ready() -> void:
 	add_child(draft_passages)
 	draft_passages.setup(self)
 	_build_hall_gauntlet()
+	_build_visible_floors()
+	_carve_hall_whirlpool_holes()
+	_carve_draft_visual_floor()
 	_build_inventory_menu()
 	_build_campaign_checkpoint()
 	_build_campaign_exit()
@@ -1566,6 +1569,7 @@ func _build_sphere_room() -> void:
 	# above the normal walls (see _build_floor() / _build_ceiling()).
 	var wall_bottom := w16.global_position.y - w16.size.y * 0.5
 	var wall_top := w16.global_position.y + w16.size.y * 0.5
+	_sphere_room_interior = interior
 	_swirl_room.setup(interior, wall_bottom - _FLOOR_CLEARANCE, wall_top + _CEILING_CLEARANCE)
 	add_child(_swirl_room)
 	_swirl_room.diver_hit.connect(func(d: Diver) -> void:
@@ -3929,6 +3933,8 @@ func _collect_bounds_points() -> Array[Vector3]:
 	for child in get_children():
 		if child is CSGBox3D:
 			var box := child as CSGBox3D
+			if String(box.name).begins_with("Floor_"):
+				continue # Decorative coverage must not expand the physical entrance/ramp.
 			var half: Vector3 = box.size * 0.5
 			for sx in [-1.0, 1.0]:
 				for sz in [-1.0, 1.0]:
@@ -4471,7 +4477,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if (e as InputEventKey).keycode == KEY_P and not _battling and not any_modal_open() \
-			and _checkpoint != null and _checkpoint.has_diver(_diver):
+			and _contacted_campaign_checkpoint() != null:
 			_save_menu.open_for(_diver)
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			_mouse_look = false
@@ -5577,39 +5583,84 @@ func _build_hall_gauntlet() -> void:
 		xs.append(lerpf(hall.position.x + margin, hall.end.x - margin, float(i) / float(HALL_ROWS - 1)))
 	var z_mid := hall.get_center().y
 	var quarter := hall.size.y * 0.25
+	var row_zs: Array = []
 	for i in HALL_ROWS:
 		var zs: Array = [z_mid - quarter, z_mid + quarter] if i % 2 == 0 else [z_mid]
+		row_zs.append(zs)
 		for z in zs:
 			_build_rock_column(Vector3(xs[i], 0, float(z)), rng)
 	# The hall's way in, at its north-west corner - where a whirlpool drops you.
 	var entrance := Vector3(hall.position.x + 1.8, ($DiverEntry as Node3D).global_position.y, hall.position.y + 1.6)
+	# Whirlpools spread across the hall rather than all down one side: each
+	# takes the next of these spots across the hall's width (fractions of it
+	# from the middle). Columns stand at the middle and at +-quarter, so
+	# these sit in the clear lanes between them - by a wall (+-0.42) or
+	# between a side column and the middle one (+-0.13) - zigzagging so no
+	# two line up.
+	var whirl_spread := [-0.42, 0.13, 0.42, -0.13]
+	var whirl_n := 0
+	var gap_half := (xs[1] - xs[0]) * 0.5 if xs.size() > 1 else 2.0
 	for g in HALL_ROWS - 1:
 		var x := (xs[g] + xs[g + 1]) * 0.5
 		# Off to one side or the other, out of the columns' way.
 		var side := 1.0 if rng.randf() < 0.5 else -1.0
 		var z := z_mid + side * hall.size.y * rng.randf_range(0.3, 0.4)
 		if g % 2 == 0:
-			var spot := Vector3(x, _floor_top_y + 0.55, z)
+			# Tucked in right behind one of this row's columns, on the side
+			# away from the hall's entrance (west): coming in, the column hides
+			# it - you have to swing the camera round to spot it.
+			var col_zs: Array = row_zs[g]
+			var col_z := float(col_zs[rng.randi() % col_zs.size()])
+			var spot := Vector3(xs[g] + HALL_COLUMN_RADIUS * 1.3 + 0.55, _floor_top_y + 0.55, col_z)
 			var rock := CrackedWall.new()
 			rock.span = Vector3(1.1, 1.1, 1.1)
-			rock.disguised_as_scenery_rock = true
+			# Round and brown, like the main game's breakable rocks.
+			rock.sphere_shaped = true
 			rock.position = spot
-			rock.broken.connect(_on_secret_rock_broken.bind("potion", spot + Vector3(0, 0.6, 0)))
+			# Every other one is a fake: enemies hiding in it, not a potion.
+			var reward := "ambush" if g % 4 == 2 else "potion"
+			rock.broken.connect(_on_secret_rock_broken.bind(reward, spot + Vector3(0, 0.6, 0)))
 			add_child(rock)
 		else:
 			var w := Whirlpool.new()
 			w.suction_radius = 0.9
 			w.suction_height = 12.0
-			w.warning_radius = 3.6
-			w.pull_radius = 3.4
-			w.pull_speed = 3.2
+			# Only pulls right at the hole's edge (about half a metre out),
+			# and gently - swimming past close by is safe.
+			w.warning_radius = 2.6
+			w.pull_radius = 1.6
+			w.pull_speed = 2.4
 			w.damage_min = 3
 			w.damage_max = 6
 			w.reset_to = entrance
+			# Down into the deep: an open shaft under it, no floor, with the
+			# current pouring down it (_carve_hall_whirlpool_holes() cuts the
+			# floor once it's built).
+			w.deep_hole_radius = w.suction_radius + 0.1
 			w.diver_sucked_in.connect(_on_deep_whirlpool)
 			add_child(w)
-			w.global_position = Vector3(x, ($DiverEntry as Node3D).global_position.y, z)
+			var frac: float = whirl_spread[whirl_n % whirl_spread.size()]
+			whirl_n += 1
+			var wz := z_mid + frac * hall.size.y
+			var wx := x + rng.randf_range(-1.0, 1.0) * maxf(0.0, gap_half - HALL_COLUMN_RADIUS - w.pull_radius - 0.3)
+			w.global_position = Vector3(wx, _floor_top_y + FLOOR_THICKNESS_VISUAL + 0.01, wz)
 			_hall_whirlpools.append(w)
+
+# A round hole through the hall's visible floor under each deep whirlpool
+# (the invisible slab stays - the whirlpool catches anyone that close first).
+func _carve_hall_whirlpool_holes() -> void:
+	for floor_name in ["Floor_BossHall", "Floor_Base"]:
+		var floor_box := get_node_or_null(floor_name) as CSGBox3D
+		if floor_box == null:
+			continue
+		for w in _hall_whirlpools:
+			var hole := CSGCylinder3D.new()
+			hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+			hole.radius = w.deep_hole_radius
+			hole.height = FLOOR_THICKNESS_VISUAL * 4.0
+			hole.sides = 24
+			floor_box.add_child(hole)
+			hole.global_position = Vector3(w.global_position.x, floor_box.global_position.y, w.global_position.z)
 
 func _on_deep_whirlpool(_d: Diver, amount: int) -> void:
 	_announce("You were sucked to the ocean deep.. (-%d HP)" % amount)
@@ -5736,6 +5787,8 @@ func can_capture_campaign_snapshot() -> bool:
 		and special_sites != null and special_sites.initialized
 
 var _checkpoint: SavePoint
+var _campaign_save_points: Array[SavePoint] = []
+var _checkpoint_contact_point: SavePoint
 var _save_menu: SavePointMenu
 var _checkpoint_prompt: Label3D
 var _checkpoint_contact := false
@@ -5807,6 +5860,131 @@ func _return_to_campaign_world() -> void:
 		_campaign_exit_pending = false
 		_announce("Open water could not load. Please retry.")
 
+const HALLWAY_PAIRS := [
+	["CSGBox3D", "CurrentWall3"],
+	["CSGBox3D6", "CSGBox3D7"],
+	["CSGBox3D12", "CSGBox3D13"],
+	["CSGBox3D8", "CSGBox3D9"],
+	["CSGBox3D18", "CSGBox3D19"],
+	["CSGBox3D20", "CSGBox3D21"],
+	["CSGBox3D23", "CSGBox3D20"],
+	["CSGBox3D16", "CSGBox3D27"],
+]
+const FLOOR_THICKNESS_VISUAL := 0.12
+var _sphere_room_interior := Rect2()
+
+func _build_visible_floors() -> void:
+	var n := 0
+	# One seafloor under the whole level first, so nowhere between the
+	# hallway/room floors below (e.g. the corner of walls 15/16, or round the
+	# sphere room's door) is left with no floor. A little lower than those,
+	# so where they overlap they don't flicker against it.
+	var points := _collect_bounds_points()
+	if not points.is_empty():
+		var lo: Vector3 = points[0]
+		var hi: Vector3 = points[0]
+		for p in points:
+			lo = lo.min(p)
+			hi = hi.max(p)
+		lo -= Vector3(_PERIMETER_MARGIN, 0, _PERIMETER_MARGIN)
+		hi += Vector3(_PERIMETER_MARGIN, 0, _PERIMETER_MARGIN)
+		_floor_box("Floor_Base", Vector3((lo.x + hi.x) * 0.5, 0, (lo.z + hi.z) * 0.5), 0.0, Vector2(hi.x - lo.x, hi.z - lo.z), -0.05)
+	# Hallways between walls that stay put.
+	for pair in HALLWAY_PAIRS:
+		var a := get_node_or_null(String(pair[0])) as CSGBox3D
+		var b := get_node_or_null(String(pair[1])) as CSGBox3D
+		if a != null and b != null:
+			n += int(_hallway_floor("Floor_%s_%s" % [pair[0], pair[1]], _footprint(a), _footprint(b)))
+	# Rotating halls: where their walls start, and where they swing to.
+	var w1 := $CurrentWall1 as CSGBox3D
+	var w2 := $CurrentWall2 as CSGBox3D
+	n += int(_hallway_floor("Floor_Hallway12", _footprint(w1), _footprint(w2)))
+	var c1: Dictionary = _nearest_wall_continuation(w1, $CSGBox3D)
+	var c2: Dictionary = _nearest_wall_continuation(w2, $CurrentWall3)
+	n += int(_hallway_floor("Floor_Hallway12Swung", {"centre": c1.position, "yaw": float(c1.yaw), "length": w1.size.x}, {"centre": c2.position, "yaw": float(c2.yaw), "length": w2.size.x}))
+	var w10 := $CSGBox3D10 as CSGBox3D
+	var w11 := $CSGBox3D11 as CSGBox3D
+	n += int(_hallway_floor("Floor_10_11", _footprint(w10), _footprint(w11)))
+	var t1011 := _walls_10_11_targets()
+	n += int(_hallway_floor("Floor_10_11Swung", {"centre": t1011[0][1], "yaw": float(t1011[0][2]), "length": w11.size.x}, {"centre": t1011[1][1], "yaw": float(t1011[1][2]), "length": w10.size.x}))
+	if _walls_14_15_rest.size() == 2:
+		var w14 := _walls_14_15_rest[0][0] as CSGBox3D
+		var w15 := _walls_14_15_rest[1][0] as CSGBox3D
+		n += int(_hallway_floor("Floor_14_15", {"centre": _walls_14_15_rest[0][1], "yaw": float(_walls_14_15_rest[0][2]), "length": w14.size.x}, {"centre": _walls_14_15_rest[1][1], "yaw": float(_walls_14_15_rest[1][2]), "length": w15.size.x}))
+		n += int(_hallway_floor("Floor_14_15Swung", {"centre": Vector3(_wall_11_joint.x, 0, _wall_11_joint.z + w14.size.x * 0.5), "yaw": -PI * 0.5, "length": w14.size.x}, {"centre": Vector3(_wall_10_joint.x, 0, _wall_10_joint.z + w15.size.x * 0.5), "yaw": -PI * 0.5, "length": w15.size.x}))
+	# Rooms: one box each.
+	var main_boss := Rect2()
+	var mn := get_node_or_null("MainBossRoomNorth") as CSGBox3D
+	var ms := get_node_or_null("MainBossRoomSouth") as CSGBox3D
+	var me := get_node_or_null("MainBossRoomEast") as CSGBox3D
+	if mn != null and ms != null and me != null:
+		var x0 := mn.global_position.x - mn.size.x * 0.5
+		main_boss = Rect2(x0, ms.global_position.z, me.global_position.x - x0, mn.global_position.z - ms.global_position.z)
+	for room in [
+		["Floor_SecretItemRoom", _secret_item_room_rect()],
+		["Floor_StrongRoom", _strong_room_rect()],
+		["Floor_SecretBossRoom", _secret_boss_room_rect(false)],
+		["Floor_BossHall", _hall_rect()],
+		["Floor_MainBossRoom", main_boss],
+		["Floor_SphereRoom", _sphere_room_interior],
+	]:
+		var r: Rect2 = room[1]
+		if r.size.x > 0.5 and r.size.y > 0.5:
+			_floor_box(String(room[0]), Vector3(r.get_center().x, 0, r.get_center().y), 0.0, Vector2(r.size.x + 1.0, r.size.y + 1.0))
+			n += 1
+
+# A wall's footprint: centre, yaw and length.
+func _footprint(w: CSGBox3D) -> Dictionary:
+	return {"centre": w.global_position, "yaw": w.rotation.y, "length": w.size.x}
+
+# The strip between two parallel wall footprints, where they overlap.
+# false if they don't overlap enough (or aren't side by side).
+func _hallway_floor(floor_name: String, a: Dictionary, b: Dictionary) -> bool:
+	var axis := Basis(Vector3.UP, float(a["yaw"])).x
+	axis.y = 0.0
+	axis = axis.normalized()
+	var side := Vector3(-axis.z, 0, axis.x)
+	var ca: Vector3 = a["centre"]
+	var cb: Vector3 = b["centre"]
+	var ha := float(a["length"]) * 0.5
+	var hb := float(b["length"]) * 0.5
+	var b_along := (cb - ca).dot(axis)
+	var lo := maxf(-ha, b_along - hb)
+	var hi := minf(ha, b_along + hb)
+	if hi - lo < 1.0:
+		return false
+	var gap := (cb - ca).dot(side)
+	if absf(gap) < 1.5:
+		return false
+	var centre := ca + axis * (lo + hi) * 0.5 + side * gap * 0.5
+	# As wide as the gap, reaching under both walls (1 m thick).
+	_floor_box(floor_name, centre, atan2(-axis.z, axis.x), Vector2(hi - lo, absf(gap) + 1.0))
+	return true
+
+func _floor_box(floor_name: String, centre: Vector3, yaw: float, footprint: Vector2, lift := 0.0) -> void:
+	var box := CSGBox3D.new()
+	box.name = floor_name
+	box.size = Vector3(footprint.x, FLOOR_THICKNESS_VISUAL, footprint.y)
+	# No material: the same default look as the maze's walls.
+	box.use_collision = false
+	add_child(box)
+	box.rotation.y = yaw
+	box.global_position = Vector3(centre.x, _floor_top_y + FLOOR_THICKNESS_VISUAL * 0.5 + 0.01 + lift, centre.z)
+
+func _carve_draft_visual_floor() -> void:
+	# The collision-safe tunnel remains owned by DraftPassages. These holes
+	# affect presentation only, so the new seafloor cannot hide its three slots.
+	var slots: Array = [draft_passages.outgoing_slot, draft_passages.return_visuals[0], draft_passages.box12_slot]
+	for child in get_children():
+		if not child is CSGBox3D or not String(child.name).begins_with("Floor_"):
+			continue
+		for slot in slots:
+			var hole := CSGBox3D.new()
+			hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+			hole.size = (slot.mesh as BoxMesh).size
+			child.add_child(hole)
+			hole.global_position = Vector3(slot.global_position.x, child.global_position.y, slot.global_position.z)
+
 func _build_campaign_checkpoint() -> void:
 	_checkpoint = SavePoint.new()
 	_checkpoint.name = "MazeCheckpoint"
@@ -5823,6 +6001,22 @@ func _build_campaign_checkpoint() -> void:
 	_checkpoint_prompt.pixel_size = 0.002
 	_checkpoint_prompt.position = Vector3(0, 3.2, 0)
 	_checkpoint.add_child(_checkpoint_prompt)
+	_campaign_save_points.append(_checkpoint)
+	# Marc's two interior recovery stops, using the shared campaign saver.
+	var into := signf(($CSGBox3D10 as CSGBox3D).global_position.x - ($CSGBox3D11 as CSGBox3D).global_position.x)
+	var interior: Array[Vector3] = [Vector3(_wall_11_joint.x + into * 2.4, _floor_top_y, _wall_11_joint.z - 2.2)]
+	var hall := _hall_rect()
+	if hall.size != Vector2.ZERO:
+		interior.append(Vector3(hall.position.x + 2.0, _floor_top_y, hall.position.y + 2.2))
+	for place in interior:
+		var point := SavePoint.new()
+		point.name = "MazeCheckpoint%d" % _campaign_save_points.size()
+		add_child(point)
+		point.global_position = place
+		point.global_position.y = _visible_floor_top_at(place)
+		var caption := _checkpoint_prompt.duplicate() as Label3D
+		point.add_child(caption)
+		_campaign_save_points.append(point)
 	_save_menu = SavePointMenu.new()
 	_save_menu.save_requested.connect(_on_campaign_save_requested)
 	$HUD.add_child(_save_menu)
@@ -5835,21 +6029,43 @@ func _build_campaign_checkpoint() -> void:
 	_game_over.title_chosen.connect(_return_campaign_title)
 	layer.add_child(_game_over)
 
+func _visible_floor_top_at(p: Vector3) -> float:
+	var top := _floor_top_y
+	for child in get_children():
+		var box := child as CSGBox3D
+		if box == null or not String(box.name).begins_with("Floor_"):
+			continue
+		var local := box.global_transform.affine_inverse() * Vector3(p.x, box.global_position.y, p.z)
+		if absf(local.x) <= box.size.x * 0.5 and absf(local.z) <= box.size.z * 0.5:
+			top = maxf(top, box.global_position.y + box.size.y * 0.5)
+	return top
+
+func _contacted_campaign_checkpoint() -> SavePoint:
+	for point in _campaign_save_points:
+		if point.has_diver(_diver):
+			return point
+	return null
+
 func _update_campaign_checkpoint() -> void:
 	if _checkpoint == null or _diver == null or _battling:
 		return
-	var contact := _checkpoint.has_diver(_diver)
+	var point := _contacted_campaign_checkpoint()
+	var contact := point != null
 	# Contact has a clear screen-space recovery caption. Do not also draw
 	# its floating label through the top HUD/minimap at close camera angles.
-	_checkpoint_prompt.visible = not contact and not any_modal_open() and not _battling and _landmark_caption_clear(_checkpoint_prompt)
+	for stop in _campaign_save_points:
+		var caption := stop.get_child(stop.get_child_count() - 1) as Label3D
+		if caption != null:
+			caption.visible = not contact and not any_modal_open() and not _battling and _landmark_caption_clear(caption)
 	if _campaign_exit_prompt != null:
 		_campaign_exit_prompt.visible = not any_modal_open() and not _battling and _landmark_caption_clear(_campaign_exit_prompt)
-	if contact and not _checkpoint_contact:
+	if contact and point != _checkpoint_contact_point:
 		for diver in divers:
 			diver.stats.hp = diver.stats.hp_max
 			diver.stats.oxygen = diver.stats.oxygen_max
 		_announce("Party restored. P: save your maze progress.")
 	_checkpoint_contact = contact
+	_checkpoint_contact_point = point
 
 func _on_campaign_save_requested(_actor: Diver, slot: int) -> void:
 	if _checkpoint_saving:

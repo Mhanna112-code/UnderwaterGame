@@ -641,16 +641,61 @@ func _register_stat_effects(attack: Dictionary) -> void:
 						stat_effects[attack_name]["player"]["evasion"] = \
 							effect["evasion"]
 
-# Marc's info-popup/combat ownership contract. Enter-tree runs before Battle
-# builds UI, so an interrupted explainer cannot leave the new fight paused.
+# Marc's authored learned-spell bonus, applied once to ordinary enemies and
+# Tethys. Campaign Cordys keeps its fixed authored balance; tutorial/prologue
+# Angler stats remain unchanged. Evasion is deliberately not scaled.
+const UNLOCK_BONUS_SOME := 0.01
+const UNLOCK_BONUS_HALF := 0.025
+const UNLOCK_BONUS_ALL := 0.05
+
+func _unlock_bonus() -> float:
+	var known := 0
+	var total := 0
+	for d in party_source:
+		var diver := d as Diver
+		if diver == null:
+			continue
+		var tree: Dictionary = SpellTree.tree_for(diver.model_name)
+		for branch in tree:
+			total += (tree[branch] as Dictionary).size()
+		known += diver.known_spells.size()
+	if total == 0:
+		return 0.0
+	if known >= total:
+		return UNLOCK_BONUS_ALL
+	if known * 2 >= total:
+		return UNLOCK_BONUS_HALF
+	return UNLOCK_BONUS_SOME
+
+func _with_unlock_bonus(s: CombatantStats) -> CombatantStats:
+	if tutorial_encounter or prologue_angler_encounter or s == null:
+		return s
+	var k := 1.0 + _unlock_bonus()
+	s.hp_max = int(round(float(s.hp_max) * k))
+	s.strength = int(round(float(s.strength) * k))
+	s.defense = int(round(float(s.defense) * k))
+	s.agility = int(round(float(s.agility) * k))
+	s.accuracy = int(round(float(s.accuracy) * k))
+	s.fill()
+	return s
+
+# Suspend teaching before this fight builds UI; retain queued lesson ownership.
 func _enter_tree() -> void:
 	add_to_group("battle")
+	Whirlpool.set_battle_running(true)
 	var popup := get_node_or_null("/root/CharacterAbilityPopup")
 	if popup != null and popup.has_method("suspend_for_battle"):
 		popup.call("suspend_for_battle")
 
 func _exit_tree() -> void:
 	remove_from_group("battle")
+	Whirlpool.set_battle_running(not get_tree().get_nodes_in_group("battle").is_empty())
+	# Battle-only effects must still end when the old regroup heal is removed.
+	for entry in party:
+		var stats := entry.stats as CombatantStats
+		stats.statuses.clear()
+		stats.temporary_modifiers = {"accuracy": 0, "evasion": 0}
+		stats.evasion_current = stats.effective_evasion()
 
 func _ready() -> void:
 	for diver in BASE_MOVES:
@@ -1487,7 +1532,7 @@ func _build_stage() -> void:
 			party_actor_count += 1
 		party_centre /= maxf(1.0, float(party_actor_count))
 		boss.face_toward(party_centre)
-		var boss_stats := boss.make_stats(ref_stats, lvl)
+		var boss_stats := _with_unlock_bonus(boss.make_stats(ref_stats, lvl))
 		enemies.append({
 			"kind": "enemy", "stats": boss_stats,
 			"display_name": TethysBoss.DISPLAY_NAME,
@@ -1550,7 +1595,7 @@ func _build_ordinary_enemy_wave(vp: SubViewport, enemy_z: float, lvl: int, ref_s
 			party_actor_count += 1
 		party_centre /= maxf(1.0, float(party_actor_count))
 		g.face_toward(party_centre)
-		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		var st: CombatantStats = _with_unlock_bonus(g.make_stats(ref_stats, lvl))
 		if prologue_angler_encounter:
 			# Shorter fight, not different combat. Preserve the species' actual
 			# offense, defense, turn order and evasion; weak/utility moves and
@@ -5939,24 +5984,9 @@ func _win() -> void:
 		_levelup_caption.text = "\n\n".join(levelup_blocks)
 		_levelup_caption.visible = true
 		call_deferred("_fit_panel_height")
-	# The map has repeated random battles plus two guardians and no guaranteed
-	# healer between them. A partial regroup prevents one victory from leaving
-	# the next encounter mathematically decided while preserving attrition.
-	# Shown as a green fill over each diver's own HP/Oxygen bar (any win,
-	# including the tutorial's - this is the real, ungated partial heal, not
-	# a stand-in for a level-up that isn't happening here), from wherever it
-	# sat before this restore up to wherever it lands after - see
-	# _show_heal_overlay() - rather than the bars just silently jumping to
-	# new numbers.
-	for entry in party:
-		var s := entry.stats as CombatantStats
-		var before_hp := float(s.hp)
-		var before_o2 := s.oxygen
-		s.recover_after_victory()
-		if entry.has("hp_heal_overlay"):
-			_show_heal_overlay(entry.hp_heal_overlay as ColorRect, before_hp, float(s.hp), float(s.hp_max))
-		if entry.has("oxygen_heal_overlay"):
-			_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
+	# Marc's recovery economy: normal victories do not refill resources.
+	# Level-up fills remain in gain_xp; authored training/prologue recovery
+	# stays with World, and each maze rest point restores the shared party.
 	_refresh_all_bars()
 	# One extra beat only for the choreographed first fight - explains that
 	# THIS win didn't grant XP, then describes what winning normally does

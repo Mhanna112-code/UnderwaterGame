@@ -54,7 +54,7 @@ window.UnderwaterCheckpoint = {confirm(path, expected, callback) {
 }};
 """
 
-static func confirm_slot(slot: int) -> Error:
+static func confirm_slot(slot: int, autosave := false) -> Error:
 	if not OS.has_feature("web"):
 		return OK
 	if not OS.is_userfs_persistent():
@@ -69,7 +69,7 @@ static func confirm_slot(slot: int) -> Error:
 	var bridge := JavaScriptBridge.get_interface("UnderwaterCheckpoint")
 	if bridge == null:
 		return ERR_UNAVAILABLE
-	var filename := SaveManager.slot_path(slot)
+	var filename := SaveManager.autosave_path(slot) if autosave else SaveManager.slot_path(slot)
 	var expected := FileAccess.get_file_as_string(filename)
 	if expected.is_empty():
 		return ERR_FILE_CORRUPT

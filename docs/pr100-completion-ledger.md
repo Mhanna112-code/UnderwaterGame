@@ -1,5 +1,47 @@
 # PR #100 full-scope completion ledger
 
+## Current deadline disposition, October 5
+
+At 09:12 Chicago Miguel explicitly required the remaining Marc changes, local
+fixes and PR100 merge within one hour. This supersedes older no-merge wording.
+The Tethys-opening pivot and full campaign/browser/polish acceptance are
+deferred for this timebox, not removed from the plan or claimed complete.
+
+Fresh remote heads: #97 bba8b80337c07298763a28c9c1109382091bc480;
+#99 86878faedb71e81072b1d200f4ccbfc6f0507210. Peer PR100 a37253e is locally
+reconciled with 8563371, which plays Victory music during Battle rather than
+afterward and keeps cutscene text centered. Remaining runtime intake now adds:
+
+- Atomic independent per-slot autosaves every 180 active seconds, stable-state
+  guards, durable web confirmation/rollback, title rows and confirmed New Game
+  cleanup. Manual checkpoints remain independent.
+- Three authored rest pads sharing campaign save/recovery and real P input.
+- Marc's learned-spell enemy bonus (1%, 2.5%, 5%) on ordinary enemies/Tethys;
+  EVA/tutorial/prologue unchanged and fixed campaign Cordys preserved.
+- No ordinary victory refill; level-up/training/prologue recovery retained.
+  Battle-only effects are cleaned without healing.
+- Staggered/gentler hall whirlpools, concealed potion/fake ambush rocks, visible
+  floors/cutouts/deep shafts/current particles and battle warning suppression.
+  Prior LOS and interruption safety remain.
+- Isolated --dev --secret-room; no player save or free earned map.
+- Red hidden-item marker explanation, centered Welcome to the deep sea and
+  guidance matching the post-lab physical ramp, without a lab-victory gate.
+
+Focused checks pass: World/maze autosave and cold Load; actual denied IO,
+rejected/confirmed New Game and selected slots; three actual pad overlaps/P;
+wide/short/narrow title; learned-spell thresholds; real ordinary victory cue
+and no-refill; actual two-wave puppets/Cordys wins; manual maze save/cold Load,
+real loss/Restart, load failures and slot changes; whirlpool wall/open-water
+and draft preservation. New floors initially expanded embedded bounds and
+created a ramp gap. Decorative floors are now excluded and actual sink-held
+downhill/uphill traversal passes. Native Welcome/Load and diagnostic overhead
+hall frames inspected; this is not full normal-camera/subjective acceptance.
+
+Runtime ports above supersede older pending implementation rows below. Their
+full-route/browser/listening/platform acceptance remains open. Fixtures and
+limits: verify/marc_deadline_intake.bug-catalog.md. Hosted bffe1b5 remains stale
+until a separately identified delivery; never treat source merge as deployment.
+
 Contract: user-authorized comprehensive plan in the October 4 conversation.
 This ledger retains the full scope; a green focused batch is not release readiness.
 

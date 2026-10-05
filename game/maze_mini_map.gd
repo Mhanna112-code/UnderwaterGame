@@ -1380,7 +1380,7 @@ func _show_intro_once() -> void:
 		return
 	intro_seen = true
 	var pages: Array[Dictionary] = [{"title": "Maze Navigation", "body":
-		"The map shows places you have discovered. %s / %s select hallway walls; %s rotates them. %s + %s / %s select currents; %s moves the selected current. %s toggles encounters; %s closes the map." % [
+		"The map shows places you have discovered. Red circles mark hidden items revealed by Sonar. %s / %s select hallway walls; %s rotates them. %s + %s / %s select currents; %s moves the selected current. %s toggles encounters; %s closes the map." % [
 		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"), Slot._badge("Ctrl"),
 		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("Ctrl+E"), Slot._badge("R"), Slot._badge("L")], "slot": null}]
 	popup.call("open", pages, maze_level)

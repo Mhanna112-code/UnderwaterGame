@@ -108,6 +108,12 @@ prepare_godot_classes() {
 }
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
+run "Marc autosaves: do safe World/maze saves preserve manual checkpoints and rejected writes" "$GODOT" --headless --path . --script verify/marc_autosaves.gd
+run "Marc recovery/hall/title: do all three real pads accept P and latest lanes/autosave rows exist" "$GODOT" --headless --path . --script verify/marc_maze_recovery_hall.gd
+run "Marc learned-spell scaling: do authored thresholds preserve EVA and tutorial" "$GODOT" --headless --path . --script verify/marc_unlock_scaling.gd
+run "victory cue: does actual combat replace battle music before exploration" "$GODOT" --headless --path . --script verify/battle_victory_timing.gd
+run "ordinary victory attrition: do real attacks finish without the retired resource refill" "$GODOT" --headless --path . --script verify/battle_victory_timing.gd -- --no-refill
+run "welcome centering: do twelve real viewports keep text in the middle" "$GODOT" --headless --path . --script verify/welcome_center.gd
 run "verification runner: are engine/script errors rejected even when the child exits0" bash verify/gate_error_detection.sh
 run "authored combat turns: do real stun skips and Angler damage/Bite history reach live Battle" "$GODOT" --headless --path . --script verify/authored_combat_turns.gd
 run "Marc pause port: do all four tabs fit and block exploration without losing audio/training" "$GODOT" --headless --path . --script verify/marc_pause_presentation.gd

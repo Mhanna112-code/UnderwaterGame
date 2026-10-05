@@ -1,5 +1,12 @@
 # October 5 separate late intake — PR97 bba8b80
 
+Current deadline update: the remaining hall/floor/rocks, autosaves/title,
+diagnostic secret-room and marker-copy runtime ports are now included with
+focused checks. Miguel authorizes PR100 merge within the hour and defers the
+Tethys-opening pivot/full acceptance. Historical pending rows below describe
+earlier admission; current dispositions are at the top of
+docs/pr100-completion-ledger.md, with proof limits retained.
+
 Observed during verification of the bounded Sonar Vision batch, after the
 frozen #97 4ec6598 intake. PR97 is now
 `bba8b80337c07298763a28c9c1109382091bc480`; PR99 remains
