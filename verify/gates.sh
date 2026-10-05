@@ -126,6 +126,7 @@ run "Marc popup port: do real battles defer lessons and resume surviving callers
 run "orange notice queue: do newest-four FIFO, duplicates and encounter toggles preserve readable notices" "$GODOT" --headless --path . --script verify/orange_message_model.gd
 run "orange live owners: do R/Q, map/menus, save contact and queued E preserve notices and usable controls" "$GODOT" --headless --path . --script verify/orange_messages.gd
 run "Sonar Vision: do actual Q/Tab, old flags and active-area ownership reveal hazards without pickup or G" "$GODOT" --headless --path . --script verify/marc_sonar_vision.gd
+run "Sonar/site friction: does two-minute navigation preserve Oxygen and real Q/R-off approaches reach guarded challenges" "$GODOT" --headless --path . --script verify/sonar_encounter_friction.gd
 run "Marc status port: does authored Bleed persist/cap while timed statuses and readable units remain real" "$GODOT" --headless --path . --script verify/marc_status_contract.gd
 run "Marc status layout: do all six multi-status cards fit through actual viewport resizing" "$GODOT" --headless --path . --script verify/marc_status_presentation.gd
 

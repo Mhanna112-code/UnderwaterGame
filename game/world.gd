@@ -1442,6 +1442,9 @@ func _ready() -> void:
 		target_selector.register_character(d)
 	_build_diver_slots()
 	_build_party_bars()   # needs the divers that were just created
+	# SceneTree.process_frame fires even while paused, which is exactly when
+	# the Esc/save menus and the maze map are up.
+	get_tree().process_frame.connect(_sync_overlay_hud)
 	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
 	# reach a save point immediately, same reason it also grants max spell
 	# points/every key item - fighting through the scripted first battle
@@ -1556,8 +1559,14 @@ func _start_dev_mode() -> void:
 		if Items.is_key_item(String(id)):
 			if id != "maze_nav_map" and not key_items.has(id):
 				key_items.append(id)
+		elif String(Items.ITEMS[id].get("kind", "")) == "info":
+			inventory[id] = 1
 		else:
 			inventory[id] = 5
+	# Every Combat Help tutorial/replay is unlocked in dev mode.
+	special_encounter_left = true
+	ability_popups_seen = true
+	route_state.tutorial_complete = true
 	title_screen.close()
 	get_tree().paused = false
 	$HUD.visible = true
@@ -3791,8 +3800,8 @@ func _update_banner(dt: float) -> void:
 	banner.text = _announcements.current_text()
 
 # Entering a guarded item's site starts its encounter directly; Sonar and
-# random-encounter rolls are not prerequisites, but the R encounter toggle
-# still gates it. Only the active diver can trigger one. A per-site latch
+# random-encounter rolls and the R toggle are not prerequisites. R only
+# controls ordinary travel fights. Only the active diver can trigger one. A per-site latch
 # prevents reopening a prompt or battle while the diver remains inside the
 # same radius; leaving and re-entering can trigger a repeatable special
 # reward site again.
@@ -3809,11 +3818,6 @@ func _try_trigger_item_site(d: Diver) -> bool:
 	if found.is_empty():
 		_inside_item_site_id = ""
 		return false
-	if not random_encounters_enabled:
-		# Clear the latch while encounters are off, so switching them back on
-		# while still inside this radius can trigger the site immediately.
-		_inside_item_site_id = ""
-		return true
 	var item_id := String(found.item)
 	var site_id := String(found.get("site", item_id))
 	if site_id == _inside_item_site_id:
@@ -4658,7 +4662,7 @@ func _update_hud() -> void:
 	# ability_id.
 	if d.passive_id == "sonar":
 		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
-	line += (" · R:Random %s" if narrow else "  ·  R: Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
+	line += (" · R:Random %s" if narrow else "  ·  R: Random Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during
@@ -4828,6 +4832,23 @@ func _controls_text_bottom() -> float:
 	var spacing := float(hud.get_theme_constant("line_spacing"))
 	var text_height := lines * hud.get_line_height() + maxi(0, lines - 1) * spacing
 	return hud.global_position.y + maxf(text_height, 0.0)
+
+# The HP/O2 bars and the other divers' side bars step aside whenever a
+# full-screen surface is open (Esc menu, save menu, maze navigation map), so
+# they never draw over or show through it.
+func _sync_overlay_hud() -> void:
+	if not is_inside_tree() or hp_bar == null:
+		return
+	var covered := (inventory_menu != null and inventory_menu.visible) 		or (save_point_menu != null and save_point_menu.visible) 		or _maze_nav_map_open()
+	for wrap in [hp_bar.get_parent(), oxygen_bar.get_parent() if oxygen_bar != null else null, _party_bars_box]:
+		if wrap != null and is_instance_valid(wrap):
+			(wrap as CanvasItem).visible = not covered
+
+func _maze_nav_map_open() -> bool:
+	if embedded_maze == null or not embedded_maze.maze_active:
+		return false
+	var nav := embedded_maze.get_node_or_null("HUD/MazeMiniMap")
+	return nav != null and nav.get("main_map") != null and (nav.main_map as Control).visible
 
 func _update_party_bars() -> void:
 	if _party_bars_box == null:

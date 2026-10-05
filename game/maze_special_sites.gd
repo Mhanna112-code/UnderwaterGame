@@ -141,7 +141,8 @@ func update() -> void:
 			and Vector2(at.x, at.z).distance_to(Vector2(point.x, point.z)) <= RADIUS:
 			inside = site
 			break
-	if inside.is_empty() or not maze.random_encounters_enabled:
+	# R suppresses ordinary travel fights, never authored site challenges.
+	if inside.is_empty():
 		_inside_id = ""
 		return
 	if _inside_id == String(inside.id) or maze._battling or maze.any_modal_open() \

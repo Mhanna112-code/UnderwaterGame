@@ -279,7 +279,7 @@ const BASE_MOVES := {
 		{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers a target's agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
 	],
 	"Prototype_V(1922)": [
-		{"name": "Guard Bash", "power": 6, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
+		{"name": "Guard Bash", "power": 4, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
 		{"name": "Heavy Kick", "power": 10, "acc_mod": 0, "hint": "Balanced, heavier", "text": "You drive a heavy kick home", "oxygen_cost": 10.0},
 		{"name": "Crushing Haymaker", "power": 15, "acc_mod": 0, "hint": "Very heavy, slow", "text": "You wind up and crush it", "oxygen_cost": 16.0},
 	],
@@ -392,11 +392,11 @@ const FEEDBACK_IMMUNE_COLOR := Color(0.62, 0.2, 1.0)
 # file uses this same constant now (they used to be separate 0.7/0.8/0.9
 # magic numbers, all too short to actually read a sentence in) so pacing
 # stays consistent and only needs tuning in one place.
-# Combat log lines stay up long enough to read: at least LOG_MIN_READ_SECONDS,
-# plus 1-3 s more for longer lines (see _log_read_delay()). LOG_READ_DELAY is
-# the longest possible hold, kept for callers/tests that need an upper bound.
-const LOG_MIN_READ_SECONDS := 5.0
-const LOG_READ_DELAY := 8.0
+# Combat log lines stay up long enough to read: LOG_MIN_READ_SECONDS, plus
+# 1-3 s more for longer lines (see _log_read_delay()). LOG_READ_DELAY is the
+# longest possible hold, kept for callers/tests that need an upper bound.
+const LOG_MIN_READ_SECONDS := 3.0
+const LOG_READ_DELAY := 6.0
 # Extra seconds the first combat tutorial holds "The enemies back off, beaten."
 const TUTORIAL_WIN_EXTRA_HOLD := 6.0
 
@@ -1204,8 +1204,9 @@ func _resolve_prologue_finisher() -> void:
 	(_player_stats_ui.panel as Control).visible = false
 	(_enemy_stats_ui.panel as Control).visible = false
 	var entry := _acting
-	# Let the real damage/status result remain readable before the response.
-	await get_tree().create_timer(0.75).timeout
+	# Let the real damage/status result remain readable before the response
+	# (same 5-8 s combat-text hold as every other fight).
+	await get_tree().create_timer(_log_read_delay()).timeout
 	prologue_phase_changed.emit("scripted_defeat")
 	var cordys := enemies[0].actor as PrologueOctopus
 	var attacker := enemies[0].stats as CombatantStats
@@ -1243,7 +1244,7 @@ func _resolve_prologue_finisher() -> void:
 	_log("%s: %s %s.%s" % [move.name, target_name, summary, " %s falls." % target_name if (entry.stats as CombatantStats).hp <= 0 else ""])
 	print("PROLOGUE_STRIKE|move=%s|target=%s|damage=%d|hit=%s|hp=%d|living=%d" % [move.name, target_name, result.damage, str(result.hit), (entry.stats as CombatantStats).hp, _living(party).size()])
 	prologue_strike_resolved.emit(String(move.name), target_name, result.duplicate(true))
-	await get_tree().create_timer(maxf(0.75, length * (1.0 - IMPACT_FRACTION))).timeout
+	await get_tree().create_timer(maxf(_log_read_delay(), length * (1.0 - IMPACT_FRACTION))).timeout
 	cordys.play("idle")
 	_finish_actor_turn(enemies[0])
 	_refresh_all_bars()
@@ -3072,11 +3073,18 @@ func _move_is_heavy(move: Dictionary) -> bool:
 	return power >= 10 or move_name.contains("heavy") or move_name.contains("crushing") \
 		or move_name.contains("great") or move_name.contains("spinning")
 
-# 5 s for a short line, +1 s per ~40 characters beyond the first 50, capped
-# at +3 s (8 s total).
+# 3 s base; by word count: 10 words +1 s, 11-19 words +2 s, 20+ words +3 s
+# (so 3-6 s).
 func _log_read_delay() -> float:
-	var length := _current_log_text().length()
-	return LOG_MIN_READ_SECONDS + clampf(ceilf((length - 50) / 40.0), 0.0, 3.0)
+	var words := _current_log_text().split(" ", false).size()
+	var extra := 0.0
+	if words >= 20:
+		extra = 3.0
+	elif words > 10:
+		extra = 2.0
+	elif words == 10:
+		extra = 1.0
+	return LOG_MIN_READ_SECONDS + extra
 
 func _current_log_text() -> String:
 	return log_label.get_parsed_text()
@@ -4294,6 +4302,8 @@ func _populate_item_menu() -> void:
 			if count <= 0:
 				continue
 			var def: Dictionary = Items.ITEMS.get(item_id, {})
+			if String(def.get("kind", "")) == "info":
+				continue   # explanatory items (Sonar Vision) have no battle use
 			var b := _menu_button("%s (x%d)" % [String(def.get("display", item_id)), count],
 				String(def.get("description", "")))
 			b.pressed.connect(_on_item_chosen.bind(item_id))

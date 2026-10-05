@@ -32,10 +32,18 @@ func _run() -> void:
 	# comparison must not mistake a transition camera for normal presentation.
 	for frame in 45:
 		await physics_frame
+	# Requested rule: Sonar alone shows minimap markers but no 3D reveal
+	# until the Sonar Vision item is owned.
+	maze.inventory.erase("sonar_vision")
 	await _key(KEY_Q)
 	await _settle()
+	_expect(maze.divers[0].sonar_active and not maze.sonar_vision_active() and not mesh.visible
+		and not maze.hidden_marker_positions().is_empty(),
+		"SV-1 Sonar without the Sonar Vision item revealed hazards in 3D (or lost its minimap markers)")
+	maze.inventory["sonar_vision"] = 1
+	await _settle()
 	_expect(maze.divers[0].sonar_active and maze.sonar_vision_active() and mesh.visible,
-		"SV-1 actual Q cannot reveal hazards without a separate vision pickup/G")
+		"SV-1 Sonar plus the Sonar Vision item does not reveal hazards")
 	if not findings.is_empty():
 		await _finish()
 		return
@@ -53,7 +61,7 @@ func _run() -> void:
 
 func _legacy_cases() -> void:
 	maze.keys_held = 2
-	maze.inventory = {"potion": 3}
+	maze.inventory = {"potion": 3, "sonar_vision": 1}
 	maze.campaign_key_items.assign(["current_pearl"])
 	for owned in [false, true]:
 		for equipped in [false, true]:
@@ -78,7 +86,7 @@ func _legacy_cases() -> void:
 			for i in maze.divers.size():
 				_expect(maze.divers[i].stats.hp == 4 + i and maze.divers[i].stats.oxygen == 17.5 + i * 2.5,
 					"SV-2 legacy vision restore heals/refills a saved party member")
-			_expect(maze.keys_held == 2 and decoded.inventory == {"potion": 3} and decoded.campaign_key_items == ["current_pearl"],
+			_expect(maze.keys_held == 2 and decoded.inventory == {"potion": 3, "sonar_vision": 1} and decoded.campaign_key_items == ["current_pearl"],
 				"SV-2 legacy vision restore resets keys/items/relics")
 			# Four pairs cycle through all three real Tab-selected actors.
 			for selected in 3:

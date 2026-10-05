@@ -42,7 +42,7 @@ func _run() -> void:
 	var frame_number := 0
 	var choices := 1
 	var ready_since := 0
-	while outcomes.is_empty() and Time.get_ticks_msec() - started < 35000:
+	while outcomes.is_empty() and Time.get_ticks_msec() - started < 90000:
 		await process_frame
 		if not output.is_empty() and Time.get_ticks_msec() >= next_capture:
 			await RenderingServer.frame_post_draw

@@ -130,7 +130,7 @@ func _ready() -> void:
 	_items_tab.pressed.connect(_switch_to.bind("items"))
 	tabs.add_child(_items_tab)
 	_spells_tab = Button.new()
-	_spells_tab.text = "Party members' known spells"
+	_spells_tab.text = "Party Spells"
 	_spells_tab.toggle_mode = true
 	_spells_tab.pressed.connect(_switch_to.bind("spells_root"))
 	tabs.add_child(_spells_tab)
@@ -373,7 +373,8 @@ func _refresh_items() -> void:
 		if count <= 0:
 			continue
 		var def: Dictionary = Items.ITEMS.get(item_id, {})
-		var btn := Button.new()
+		# Same word-wrapped blue-bordered tooltip panel as the battle menu.
+		var btn := TooltipButton.new()
 		# MODIFIED (changed): was "Use %s (x%d)" as the button's own text -
 		# the count now lives in its own tile at the button's right edge
 		# instead (see the plate/badge built below, same "opaque plate
@@ -383,6 +384,8 @@ func _refresh_items() -> void:
 		btn.text = String(def.get("display", item_id))
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.tooltip_text = String(def.get("description", ""))
+		if bool(def.get("battle_only", false)):
+			btn.tooltip_text = "This item can only be used in battle. " + btn.tooltip_text
 		btn.custom_minimum_size = Vector2(0, 40)
 		# MODIFIED (fixed): the count tile is correctly anchored inside this
 		# button's own rect (8px in from its true right edge), but Godot's
@@ -408,7 +411,9 @@ func _refresh_items() -> void:
 		# doesn't just vanish from the list, and world.use_inventory_item()
 		# refuses the same way if this were ever somehow clicked anyway.
 		if not world.divers.is_empty():
-			btn.disabled = not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
+			# Battle-only boosts (and anything that does nothing right now) are
+			# greyed out here - this menu only ever opens outside battle.
+			btn.disabled = bool(def.get("battle_only", false)) 				or not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
 		btn.pressed.connect(_on_use_item_pressed.bind(item_id))
 		# A black tile pinned to the button's own right edge, vertically
 		# centered - same "opaque plate behind a number" idea as battle.gd's
@@ -469,7 +474,7 @@ func _on_replay_special_encounter_tutorial_pressed() -> void:
 # convention spell_tree_ui.gd already uses, so a low-oxygen diver's spells
 # don't just silently vanish from the list.
 func _refresh_spells_root() -> void:
-	_hint.text = "Any party member's known heal/revive spells - pick who casts, then who it lands on."
+	_hint.text = "Party members' known spells"
 	if world == null:
 		return
 	var any := false

@@ -373,7 +373,7 @@ try {
     const offRows = await rowsFor('22-escape-cue-off');
     // The three-second cue may expire while diagnostic OCR runs. The
     // persistent HUD is the setting oracle, not a longer-lived hint demand.
-    if (!offRows.some(row => /R: Encounters \(Off\)/i.test(row.text))) throw new Error('ESC-005 real R did not change the encounter setting');
+    if (!offRows.some(row => /R: (?:Random )?Encounters \(Off\)/i.test(row.text))) throw new Error('ESC-005 real R did not change the encounter setting');
     await page.waitForTimeout(3300);
     const expired = await rowsFor('23-escape-cue-expired');
     if (expired.some(row => /heading to a save point|Head to a save point/i.test(row.text))) throw new Error('ESC-002 escape cue failed to expire');

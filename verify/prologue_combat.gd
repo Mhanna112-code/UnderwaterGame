@@ -97,7 +97,7 @@ func _retaliation_rule_witnesses() -> void:
 		(fight.move_buttons[0] as Button).pressed.emit()
 		await process_frame
 		(fight.target_buttons[0] as Button).pressed.emit()
-		var deadline := Time.get_ticks_msec() + 12000
+		var deadline := Time.get_ticks_msec() + 40000
 		while (strikes.is_empty() or fight.attack_btn.disabled) and Time.get_ticks_msec() < deadline:
 			await process_frame
 		_expect(stats.hp == stats.hp_max and outcomes.is_empty() and not fight.attack_btn.disabled, "SOLO-004 %s bypassed normal rules or did not return a surviving turn" % scenario)
@@ -113,7 +113,7 @@ func _choice_matrix() -> void:
 		["Electric Touch", 1, 3, 0, 0, 1, 0, 0, 0, 0],
 		["Axe Kick", 1, 3, 0, 0, 4, 0, 0, 0, -3],
 		["Scuba Stabbing", 1, 3, 0, 0, 1, 2, 0, 0, 0],
-		["Flash Blast", 1, 3, 0, 0, 0, 0, 2, -1, -1],
+		["Flash Blast", 1, 3, 0, 0, 0, 0, 0, -1, -1],   # Cordys is immune to Blindness,
 		["Multiple Knee Combo", 1, 3, 0, 0, 1, 0, 0, -1, -1],
 		["Axe Kick", 7, 4, 2, 0, 9, 0, 0, 0, -3],
 		["Electric Touch", 7, 4, 2, 0, 5, 0, 0, 0, 0],
@@ -134,6 +134,7 @@ func _choice_matrix() -> void:
 		boss.hp_max = 1000
 		boss.defense = rng.randi_range(0, 10)
 		boss.evasion = rng.randi_range(0, 6)
+		boss.immune_to_stat_loss = true   # the real prologue Cordys shrugs off stat losses
 		boss.fill()
 		var original_evasion := boss.evasion
 		var result := CombatRules.resolve(actor, boss, move)
@@ -172,7 +173,7 @@ func _choice_matrix() -> void:
 			await process_frame
 			(fight.target_buttons[0] as Button).emit_signal("pressed")
 			var elapsed := 0.0
-			while outcomes.is_empty() and elapsed < 12.0:
+			while outcomes.is_empty() and elapsed < 40.0:
 				await create_timer(0.1).timeout
 				elapsed += 0.1
 			_expect(observed.size() == 1, "OPEN-037 no single real impact for %s" % row[0])

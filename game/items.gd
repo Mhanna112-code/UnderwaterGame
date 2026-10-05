@@ -75,6 +75,13 @@ const ITEMS := {
 		"description": "Raises defense for the rest of this fight.",
 		"battle_only": true,
 	},
+	# Owning this is what lets Maxilani's sonar reveal invisible objects in 3D
+	# (MazeLevel.sonar_vision_active()). Never "used" - it works passively and
+	# sits greyed out in the items menu. Picked up in the maze.
+	"sonar_vision": {
+		"display": "Sonar Vision", "kind": "info",
+		"description": "This item works automatically. Make sure Sonar is toggled on and in certain places you can see hidden items.",
+	},
 	"accuracy_up": {
 		"display": "Focus Tonic", "kind": "accuracy_up", "amount": 2,
 		"description": "Raises accuracy for the rest of this fight.",
