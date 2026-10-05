@@ -1,0 +1,695 @@
+
+=== Godot class cache: can direct gates resolve project scripts ===
+
+=== Marc autosaves: do safe World/maze saves preserve manual checkpoints and rejected writes ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MARC AUTOSAVES: clean
+
+=== Latest save recovery: do title and World/maze death recovery prefer newest valid snapshots with manual fallback ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_GAME_OVER|slot=918527|complete=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_GAME_OVER|slot=918527|complete=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LOAD_FAILED|slot=918527
+LATEST SAVE RECOVERY: clean
+
+=== Marc recovery/hall/title: do all three real pads accept P and latest lanes/autosave rows exist ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+REST INPUT|MazeCheckpoint|active=true|modal=true|contact=MazeCheckpoint:<Area3D#139167011498>|menu=true
+REST INPUT|MazeCheckpoint1|active=true|modal=true|contact=MazeCheckpoint1:<Area3D#139401892536>|menu=true
+REST INPUT|MazeCheckpoint2|active=true|modal=true|contact=MazeCheckpoint2:<Area3D#139636773574>|menu=true
+MARC RECOVERY/HALL/TITLE: clean
+
+=== Marc learned-spell scaling: do authored thresholds preserve EVA and tutorial ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC UNLOCK SCALING: clean
+
+=== Marc base enemy boosts: do public factories cap rolls at 10% and preserve authored EVA ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC ENEMY BOOSTS: clean|legacy=false|samples=96
+
+=== Marc legacy enemy boosts: does the explicit comparison mode preserve reference EVA ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC ENEMY BOOSTS: clean|legacy=true|samples=96
+
+=== Marc blockade waypoint: do real World frames, Tab/F and cold Load preserve direction and cleanup ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MARC BLOCKADE WAYPOINT: clean
+
+=== reward rock guidance: do actual approach/Tab/F, item collection and cold Load preserve actionable hints ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+REWARD ROCK GUIDANCE: clean
+
+=== victory cue: does actual combat replace battle music before exploration ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+VICTORY TIMING|actions=3|outcomes=["won"]|visible_victory=true
+BATTLE VICTORY TIMING: clean
+
+=== ordinary victory attrition: do real attacks finish without the retired resource refill ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+VICTORY TIMING|actions=3|outcomes=["won"]|visible_victory=true
+BATTLE VICTORY TIMING: clean
+
+=== welcome centering: do twelve real viewports keep text in the middle ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+WELCOME CENTER: clean|sizes=12
+
+=== verification runner: are engine/script errors rejected even when the child exits0 ===
+GATE ERROR DETECTION: clean (engine/script witnesses rejected, healthy child accepted)
+
+=== authored combat turns: do real stun skips and Angler damage/Bite history reach live Battle ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STUN DISPATCH|side=party|duration=1|skips=1|restored=true
+STUN DISPATCH|side=party|duration=2|skips=2|restored=true
+STUN DISPATCH|side=party|duration=3|skips=3|restored=true
+STUN DISPATCH|side=enemy|duration=1|skips=1|restored=true
+STUN DISPATCH|side=enemy|duration=2|skips=2|restored=true
+STUN DISPATCH|side=enemy|duration=3|skips=3|restored=true
+ANGLER PROPERTIES|seeds=128|low_hp_headbutts=50|streak_reset=true|forced_species_preserved=true
+ANGLER LIVE|button_damage=[1, 3]|retaliation=50|miss_then_party_flash=true
+AUTHORED COMBAT TURNS: clean
+
+=== Marc pause port: do all four tabs fit and block exploration without losing audio/training ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+MARC PAUSE PRESENTATION: clean
+
+=== Marc popup port: do real battles defer lessons and resume surviving callers safely ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+MARC POPUP OWNERSHIP: clean
+
+=== orange notice queue: do newest-four FIFO, duplicates and encounter toggles preserve readable notices ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ORANGE MODEL: clean|generated=484
+
+=== orange live owners: do R/Q, map/menus, save contact and queued E preserve notices and usable controls ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+ORANGE INPUT|World|R/Q FIFO, twenty R coalescing and hidden-owner preservation
+ORANGE INPUT|World|actual W save contact restores all resources behind two notices; persistent P returns
+ORANGE INPUT|Maze|R/Q FIFO, twenty R coalescing and hidden-owner preservation
+ORANGE INPUT|Maze|queued real E hides prompt, repeated E cannot prolong notice, next E works after drain
+ORANGE MESSAGES: clean
+
+=== Sonar Vision: do actual Q/Tab, old flags and active-area ownership reveal hazards without pickup or G ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ERROR: Infinite loop detected. Check set_loops() description for more info.
+   at: step (scene/animation/tween.cpp:420)
+GATE ERROR: an engine/script error or release-blocking infinite tween loop invalidates the exit status
+
+=== Sonar/site friction: does two-minute navigation preserve Oxygen and real Q/R-off approaches reach guarded challenges ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR BUDGET|seconds=120|used=19.0|active=true
+SONAR TIME PARTITIONS|generated=48|paused_off_zero=true|partial_interval_handoff=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FR WORLD|R=false|Q=false|position=(-45.0, 2.6, 23.10961)
+FR MAZE|R=false|Q=false|position=(64.0, -0.10879, 55.26189)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FR WORLD VARIANTS|first_special_lesson_R_off=true|plain_guardian_R_off=true|reward_preserved=true
+SONAR ENCOUNTER FRICTION: clean
+
+=== Marc status port: does authored Bleed persist/cap while timed statuses and readable units remain real ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC STATUS CONTRACT: clean
+
+=== Marc status layout: do all six multi-status cards fit through actual viewport resizing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC STATUS PRESENTATION: clean
+
+=== opening migration: do all durable milestones normalize interrupted phases ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING PROLOGUE STATE: clean
+
+=== opening video: are production and lab policies independent ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING VIDEO: clean
+
+=== opening video persistence: do success and decoder failure restore safely ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+OPENING VIDEO WORLD: clean
+
+=== opening trigger: does only actual horizontal swimming start once, without banking idle time ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING TRIGGER: clean
+
+=== opening free swim: do idle and camera-only stay free before four seconds of real swimming ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FREE_SWIM|prior_idle_seconds=15|swimming_seconds=0.000|distance_m=0.000|phase=octopus_introduction
+FINDING  OPEN-035 Angler starts without swimming after 15 seconds idle
+FINDING  OPEN-026 real W input cannot swim three metres
+FINDING  OPEN-035 prior idle time consumed the four-second swimming window
+FINDING  OPEN-026 opening does not progress after usable swimming
+FINDING  OPEN-035 swim started an ordinary/random encounter
+OPENING FREE SWIM: 5 finding(s)
+
+=== opening world: are authored encounters protected and real-input reachable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-007 movement did not start prologue Angler
+FINDING  OPEN-007 Battle start did not publish Angler phase
+FINDING  OPEN-007 Battle source is not prologue_angler
+OPENING PROLOGUE WORLD: 3 finding(s)
+
+=== opening Angler: do normal damage/miss/utility choices and real defeat preserve ordinary rules and rewards ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Scuba Stabbing", 1, 2]|HP=2|log=Scuba Stabbing opens a wound for 1.  Bleed 2
+ANGLER BUTTON|["Staff_Diver", "Flash Blast", 0, 0]|HP=3|log=Flash Blast: Angler affected.
+ANGLER BUTTON|["Staff_Diver", "Multiple Knee Combo", 1, 0]|HP=2|log=Multiple Knee Combo: Angler -1.
+ANGLER BUTTON|["Staff_Diver", "Axe Kick", 3, 0]|HP=0|log=Axe Kick crashes down for 4.
+ANGLER BUTTON|["Prototype_1(1910)", "Precise Tap", 3, 0]|HP=0|log=You land a precise tap for 3.
+ANGLER BUTTON|["Prototype_1(1910)", "Weaken", 0, 0]|HP=3|log=This enemy's Defense can't be lowered any further!
+ANGLER BUTTON|["Prototype_1(1910)", "Slow", 0, 0]|HP=3|log=This enemy's Agility can't be lowered any further!
+ANGLER BUTTON|["Prototype_V(1922)", "Guard Bash", 3, 0]|HP=0|log=You bash it with your guard for 8.
+ANGLER BUTTON|["Prototype_V(1922)", "Heavy Kick", 0, 0]|HP=3|log=You drive a heavy kick home - Angler evades!
+ANGLER BUTTON|["Prototype_V(1922)", "Crushing Haymaker", 0, 0]|HP=3|log=You wind up and crush it - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 0]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 3]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 2, 9]|HP=3|log=Electric Touch shocks the target for 0.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 0]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 3]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 5, 9]|HP=3|log=Electric Touch shocks the target for 0.  EVA -1
+FINDING  ANGLE-004 real kill failed single interruption
+FINDING  ANGLE-004 real kill failed single interruption
+FINDING  ANGLE-004 real kill failed single interruption
+FINDING  ANGLE-003 nonlethal action never returned usable combat controls
+PROLOGUE ANGLER: 4 findings
+
+=== opening Cordys: do actual stats, move effects and survivor outcomes remain real ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=120|living=3
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=122|living=3
+PROLOGUE_HIT|move=Guard Bash|damage=8|hit=true|hp=988|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=124|living=3
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=false|hp=10|living=1
+RETALIATION WITNESS|evasion|[{ "hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 30, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=true|hp=10|living=1
+RETALIATION WITNESS|defense|[{ "hit": true, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 0, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=4|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 4, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=1|hit=true|hp=999|effects=["Bleed 2"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 2, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=9|hit=true|hp=991|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 9, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=5|hit=true|hp=995|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 5, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=0|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=7|ACC=3|DEF=0|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=3|hit=true|hp=997|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=12|ACC=1|DEF=10|EVA=0|[{ "damage": 3, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=3|ACC=0|DEF=10|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=12|ACC=0|DEF=7|EVA=5|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=9|ACC=6|DEF=5|EVA=1|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=10|hit=true|hp=990|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=12|ACC=6|DEF=2|EVA=5|[{ "damage": 10, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=2|hit=true|hp=998|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=2|EVA=0|[{ "damage": 2, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE COMBAT: clean
+
+=== opening Cordys: does the skinned actor preserve authored poses and facing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE OCTOPUS: clean
+
+=== opening mix: do cue envelopes preserve user preferences ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE ENVELOPE: clean
+
+=== opening split video: is one decoder retained silently across combat ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SPLIT CINEMATIC: clean
+
+=== opening cinematic edit: is the approved title ending retained without the monologue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE CINEMATIC ASSET: clean
+
+=== opening journey: do real moves reach atomic recovery and ordinary encounters ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening fallback recovery: do death restart and title load preserve completed play without falsifying video viewing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening real death: do enemy attacks and actual defeat preserve completed play across Restart and Load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening training continuity: does voluntary Skip preserve completion through actual later death ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening save denial: does failed recovery retain the previous checkpoint and allow Retry Save ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== checkpoint invalid load: do missing and malformed saves retain an actionable title instead of replaying opening ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+PROLOGUE_PHASE|complete
+CHECKPOINT LOAD FAILURES: clean
+
+=== checkpoint slot switch: does denied replacement retain the active save and retry correctly ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FINDING  OPEN-030 denied save falsely announces success
+FINDING  OPEN-030 retry does not select a successful target
+FINDING  OPEN-030 cross-slot retry loses opening completion
+FINDING  MSG-6 successful retry overwrites unread failure
+FINDING  MSG-6 committed retry never announces success after failure
+CHECKPOINT SLOT SWITCH: 5 finding(s)
+
+=== World manual checkpoint: does real caught-actor rejection preserve bytes and stable/denied retries retain the correct slot ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WORLD_MANUAL_SAVE|caught=true|selected=918422|target_unchanged=true|notice=Wait for the movement or encounter to finish, then save.
+SAVE_STABILITY_OBSERVER|maze_stable=true|maze_active=false|paused=false|locks=[false, false, false]|grapples=[false, false, false]|whirl_busy=false|intro=false|title=false|special=false|popup=false
+WORLD_MANUAL_SAVE|stable_retry=true|denied_staging=true|source_preserved=true|permission_retry=true
+WORLD MANUAL SAVE: clean
+
+=== World Save reading: do actual P and held W retain poses and restore swimming after close ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WORLD_SAVE_READING|actual_P_and_W=true|no_files_written=true|resumed_swim=true
+WORLD MANUAL SAVE: clean
+
+=== optional training: do ignore, Retry, Return and Skip retain normal control ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FINDING  OPEN-017 optional label absent
+FINDING  OPEN-018 ignoring training locks TAB switching
+FINDING  OPEN-017 Skip did not return world control
+OPTIONAL TRAINING: 3 finding(s)
+
+=== opening exploration: do Sonar/encounters enable at recovery and saved manual choices survive Load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=1
+PROLOGUE_PHASE|spawn_exploration
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+PROLOGUE_PHASE|complete
+OPENING EXPLORATION DEFAULTS: clean
+
+=== menu audio comfort: is hover brief, rate-limited and subordinate to confirmations ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MENU HOVER MEASURE|audible_span=0.000|peak_db=-120.00|samples=16384
+MENU HOVER PREFERENCE|volume=0.5|muted=false|peak=0.000000
+MENU HOVER PREFERENCE|volume=1.0|muted=true|peak=0.000000
+MENU HOVER PREFERENCE|volume=0.0|muted=false|peak=0.000000
+MENU AUDIO COMFORT: clean
+
+=== tutorial actual win: does menu replacement remain error-free and victory expose Continue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+WIN_PROBE|log=The enemies back off, beaten.|caption=You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|await=true|paused=false
+TUTORIAL WIN HANDOFF: clean
+
+=== tutorial full lesson: do all five real guided moves and a real victory finish without infinite tweens ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|0|Maxilani's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|0|Maxilani's turn.|A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|Electric Touch's own power is 0. This raw power number is shown in yellow at the top-right of its attack menu button before any stats are added. Add Maxilani's Strength, then subtract Angler's Defense (1-1 = 0), and this attack will deal 1 damage.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Click the highlighted Angler to attack.|false
+LESSON|0|Electric Touch shocks the target for 1.  EVA -1|Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Electric Touch shocks the target for 1.  EVA -1|Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|1|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|1|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|1|Musashi's turn.|Precise Tap temporarily boosts Musashi's Accuracy stat for this one turn, making the attack much harder to dodge - that's why its ACC number is shown in [color=66e666]green[/color], with the white (+X) next to it showing the increase.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|2|You land a precise tap for 3.|Click the highlighted Angler to attack.|false
+LESSON|2|Bucky's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|2|Bucky's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|2|Bucky's turn.|Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|2|Bucky's turn.|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Angler uses Bite: Musashi QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|3|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|3|Musashi's turn.|Weaken deals no damage at all - its power is 0, so there's nothing to subtract from Angler's HP. What it does instead is lower their Defense, which is why its DEF number is shown in [color=e65959]red[/color], with the white (-2) next to it. Some moves only ever affect an enemy's stats like this, with no damage of their own, but they're worth using to weaken enemies for greater party hits.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|3|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|4|This enemy's Defense can't be lowered any further!|Click the highlighted Angler to attack.|false
+LESSON|4|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|4|Maxilani's turn.|Hover over the highlighted button to see what Flash Blast does.|false
+LESSON|4|Maxilani's turn.|Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, which lowers Agility, Accuracy, and Defense all by the same amount at once. That's why the enemy's ACC and DEF numbers are both shown in [color=e65959]red[/color] here: lower Accuracy means their own attacks miss more, and lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three, for as many turns as Maxilani's own Accuracy. Blindness is only one of several status conditions moves can inflict - hover over any attack that names one on its own button (like Scuba Stabbing's Bleed) to see exactly what it does, or find full details on all of them, including ones not shown in this fight, from the Combat Help tab of the Esc menu out in the world.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|4|Maxilani's turn.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Flash Blast: Angler affected.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Bucky's turn.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 9.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 9.|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|5|You bash it with your guard for 9.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Angler uses Bite: Maxilani QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Maxilani's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Electric Touch shocks the target for 1.  EVA unchanged|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Musashi's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|You land a precise tap for 3.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+FULL_LESSON_RESULT|["won"]
+
+=== tutorial world win: does actual optional beacon entry and victory restore movement and persist both milestones ===

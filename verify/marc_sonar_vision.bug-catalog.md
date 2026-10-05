@@ -1,5 +1,18 @@
 # Sonar-following hidden-hazard vision
 
+## Current contract clarification — October 5 follow-up
+
+The historical no-pickup port below is not the current item contract. Current
+main restores Marc's spinning Sonar Vision lens: Q alone provides map markers;
+Q plus the owned item reveals 3D hazards. G remains inert. The current verifier
+explicitly checks both unowned/owned cases and twelve legacy flag/actor cases.
+Its raw "clean" originally concealed a freed-lens infinite Tween error; the
+strict gate rejected that error. `sonar_pickup_lifetime.bug-catalog.md` records
+the captured failure and all six green real-contact/fresh-restore cases after
+binding the lens spin to the pickup's lifetime. No item gate was removed.
+
+## Historical port evidence (not a current no-pickup requirement)
+
 October 5, 2026. Authored #97 c943218/bbadaaf retained in 4ec6598 makes
 Sonar Vision part of Maxilani's Q sonar: no pickup and no separate G toggle.
 

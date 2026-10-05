@@ -1,0 +1,8 @@
+
+=== Sonar pickup lifetime: do actual collection and cold owned-item restore avoid freed-target animation errors ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ERROR: Infinite loop detected. Check set_loops() description for more info.
+   at: step (scene/animation/tween.cpp:420)
+SONAR PICKUP COLLECTED|actor=0
+GATE ERROR: an engine/script error or release-blocking infinite tween loop invalidates the exit status

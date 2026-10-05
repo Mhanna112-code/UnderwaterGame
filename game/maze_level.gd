@@ -2299,7 +2299,9 @@ func _build_sonar_vision_pickup() -> void:
 	pickup.add_child(label)
 	add_child(pickup)
 	pickup.global_position = spot
-	var spin := create_tween().set_loops()
+	# Collection and an owned-item Load both free the lens while the maze
+	# survives. Bind its animation to the pickup so it ends with that target.
+	var spin := pickup.create_tween().set_loops()
 	spin.tween_property(lens, "rotation:y", TAU, 2.0).from(0.0)
 	pickup.body_entered.connect(_on_sonar_vision_pickup)
 	_sonar_vision_pickup = pickup

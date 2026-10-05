@@ -1,0 +1,9 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ERROR: Infinite loop detected. Check set_loops() description for more info.
+   at: step (scene/animation/tween.cpp:420)
+SONAR LEGACY|owned=false|equipped=false|three_actors=true
+SONAR LEGACY|owned=false|equipped=true|three_actors=true
+SONAR LEGACY|owned=true|equipped=false|three_actors=true
+SONAR LEGACY|owned=true|equipped=true|three_actors=true
+SONAR VISION: clean|legacy_actor_cases=12
