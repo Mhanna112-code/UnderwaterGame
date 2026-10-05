@@ -9,6 +9,9 @@ var policy := "skilled"
 var run_seed := 64000
 var recovery_policy := "none"
 var opening_contract := "retained-angler"
+var special_policy := "reject-unsupported"
+var special_return_count := 0
+var special_decline_count := 0
 var owned_slot := false
 var fight_count := 0
 var action_count := 0
@@ -16,6 +19,8 @@ var rng := RandomNumberGenerator.new()
 var lab_party_receipt: Array[Dictionary] = []
 var lab_payoff_seen := false
 var last_tutorial_hover: Button
+var flash_resistance_seen: Array[String] = []
+const STRATEGY_REVISION := "visible-feedback-heavy-v1"
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -27,6 +32,8 @@ func _initialize() -> void:
 			recovery_policy = arg.trim_prefix("--recovery=")
 		if arg.begins_with("--opening-contract="):
 			opening_contract = arg.trim_prefix("--opening-contract=")
+		if arg.begins_with("--special-policy="):
+			special_policy = arg.trim_prefix("--special-policy=")
 	call_deferred("_run")
 
 func _run() -> void:
@@ -36,6 +43,8 @@ func _run() -> void:
 		findings.append("EARN observer: unsupported recovery policy")
 	if opening_contract not in ["retained-angler", "observe-current-cordys"]:
 		findings.append("EARN observer: unsupported opening contract")
+	if special_policy not in ["reject-unsupported", "miss-and-return"]:
+		findings.append("EARN observer: unsupported special policy")
 	for file in _owned_paths():
 		if FileAccess.file_exists(file) or DirAccess.dir_exists_absolute(file):
 			findings.append("EARN observer: slot file already exists; refusing overwrite: " + file)
@@ -63,7 +72,7 @@ func _run() -> void:
 	if not findings.is_empty():
 		await _finish()
 		return
-	print("EARN NEW GAME|policy=%s|recovery=%s|seed=%d|real_opening_seen=%s" % [policy, recovery_policy, run_seed, world.route_state.opening_video_seen])
+	print("EARN NEW GAME|policy=%s|strategy=%s|recovery=%s|special_policy=%s|seed=%d|real_opening_seen=%s" % [policy, STRATEGY_REVISION, recovery_policy, special_policy, run_seed, world.route_state.opening_video_seen])
 	await _hold(KEY_W, true)
 	deadline = Time.get_ticks_msec() + 20000
 	while world.battle == null and Time.get_ticks_msec() < deadline:
@@ -130,7 +139,7 @@ func _run() -> void:
 	if findings.is_empty():
 		_expect(lab_payoff_seen, "EARN-4 real earned lab victory never presented the computer payoff")
 		await _cold_load_earned_lab()
-	print("EARNED LAB-FIRST SLICE|policy=%s|recovery=%s|seed=%d|fights=%d|actions=%d|lab=%s|NOT_FULL_CAMPAIGN" % [policy, recovery_policy, run_seed, fight_count, action_count, world.route_state.lab_state])
+	print("EARNED LAB-FIRST SLICE|policy=%s|recovery=%s|special_policy=%s|special_returns=%d|special_declines=%d|seed=%d|fights=%d|actions=%d|lab=%s|NOT_FULL_CAMPAIGN" % [policy, recovery_policy, special_policy, special_return_count, special_decline_count, run_seed, fight_count, action_count, world.route_state.lab_state])
 	await _finish()
 
 func _service_gameplay() -> void:
@@ -144,11 +153,23 @@ func _service_gameplay() -> void:
 		await _play_fight()
 	else:
 		await _ack_visible_reading()
+		if special_policy == "miss-and-return":
+			var decline := _visible_button(world.special_encounter_prompt, "Not Now")
+			if decline != null:
+				special_decline_count += 1
+				print("EARN SPECIAL DECLINE|actual_Not_Now=true|count=%d|no_training_replay=true" % special_decline_count)
+				decline.pressed.emit()
+				await process_frame
 
 func _play_fight() -> void:
 	var battle := world.battle as Battle
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	flash_resistance_seen.clear()
+	var special_entry := _observe_party()
+	var keys_entry := world.key_items.duplicate()
+	var inventory_entry := world.inventory.duplicate(true)
+	var blocker_entry := [world.route_state.bomb_bot_state, world.route_state.sword_slayer_state, world.route_state.tethys_state]
 	fight_count += 1
 	var result: Array[String] = []
 	battle.finished.connect(func(value: String) -> void:
@@ -163,6 +184,13 @@ func _play_fight() -> void:
 	var next_ui_receipt := Time.get_ticks_msec() + 5000
 	while result.is_empty() and Time.get_ticks_msec() < deadline and turns < 100:
 		await _ack_visible_reading()
+		if is_instance_valid(battle) and battle.log_label.is_visible_in_tree():
+			var visible_feedback := battle.log_label.get_parsed_text()
+			for foe in battle.enemies:
+				var foe_name := String(foe.display_name)
+				if "%s is immune to Flash Blast" % foe_name in visible_feedback and not flash_resistance_seen.has(foe_name):
+					flash_resistance_seen.append(foe_name)
+					print("EARN OBSERVED IMMUNITY|enemy=%s|move=Flash Blast|actual_visible_feedback=%s" % [foe_name, visible_feedback])
 		if is_instance_valid(battle) and turns == 0 and Time.get_ticks_msec() >= next_ui_receipt:
 			print("EARN WAITING UI|fight=%d|paused=%s|busy=%s|main_visible=%s|attack_disabled=%s|acting_keys=%s|buttons=%s" % [fight_count,
 				paused, battle._busy, battle.main_menu.is_visible_in_tree(), battle.attack_btn.disabled,
@@ -185,12 +213,49 @@ func _play_fight() -> void:
 	var terminal := result[0] if not result.is_empty() else "timeout"
 	print("EARN FIGHT END|index=%d|result=%s|actions=%d|phase=%s" % [fight_count, terminal, turns, world.route_state.prologue_phase])
 	if terminal == "lost" and was_special:
-		findings.append("EARN observer: optional special/minigame outcome needs actual minigame and public return handling; not an ordinary-party balance defeat (tutorial=%s)" % was_tutorial)
+		if was_tutorial and special_policy == "miss-and-return":
+			await _return_from_missed_special(special_entry, keys_entry, inventory_entry, blocker_entry)
+		else:
+			findings.append("EARN observer: optional special/minigame outcome needs actual minigame and public return handling; not an ordinary-party balance defeat (tutorial=%s)" % was_tutorial)
 	else:
 		_expect(terminal in ["won", "prologue_defeat"], "EARN-2 actual earned fight ended " + terminal)
 	for frame in range(10):
 		await process_frame
 	_record_party("fight-%d-exit" % fight_count)
+
+func _return_from_missed_special(entry: Array[Dictionary], keys: Array, inventory: Dictionary, blockers: Array) -> void:
+	# This is the production first-special soft return, not a fabricated win
+	# or an on-demand training heal. The no-timing policy is explicit in every
+	# receipt; later optional offers are declined with their public button.
+	_expect(special_return_count == 0, "EARN-6 repeated special recovery cannot count as the disclosed one-time strategy")
+	var deadline := Time.get_ticks_msec() + 2000
+	var exit_button: Button
+	while exit_button == null and Time.get_ticks_msec() < deadline:
+		exit_button = _visible_button(world.tutorial_result_popup, "Exit to World")
+		await process_frame
+	_expect(exit_button != null, "EARN-6 missed special has no enabled public Exit to World")
+	if exit_button == null or not findings.is_empty():
+		return
+	_record_party("missed-special-before-public-exit")
+	exit_button.pressed.emit()
+	special_return_count += 1
+	# Observe immediately after the synchronous production return; the next
+	# world frame can legitimately consume Sonar Oxygen again.
+	var returned := _observe_party()
+	for index in world.divers.size():
+		var diver := world.divers[index] as Diver
+		_expect(diver.stats.hp == diver.stats.hp_max and is_equal_approx(diver.stats.oxygen, diver.stats.oxygen_max),
+			"EARN-6 public tutorial return failed production recovery for " + diver.model_name)
+		for field in ["level", "xp", "known_spells", "equipped_spells"]:
+			_expect(returned[index][field] == entry[index][field], "EARN-6 missed special fabricated earned " + field)
+	_expect(world.key_items == keys and world.inventory == inventory, "EARN-6 missed special granted an unearned reward")
+	_expect([world.route_state.bomb_bot_state, world.route_state.sword_slayer_state, world.route_state.tethys_state] == blockers,
+		"EARN-6 missed special fabricated a mandatory guard victory")
+	_expect(not paused and world.battle == null and not world.tutorial_result_popup.is_visible_in_tree(),
+		"EARN-6 public special return retained battle or reading ownership")
+	print("EARN SPECIAL RETURN|actual_Exit_to_World=true|result=lost|timed_inputs=none|production_full_recovery=true|not_ordinary_victory=true|count=%d" % special_return_count)
+	_record_party("missed-special-after-public-exit")
+	await process_frame
 
 func _drive_visible_tutorial(battle: Battle) -> bool:
 	# Guided combat opens its move list directly. Follow the enabled public
@@ -236,20 +301,25 @@ func _choice(battle: Battle) -> Dictionary:
 		return {"move": move, "target": target}
 	if policy == "skilled":
 		if who == "Staff_Diver":
-			if enemy.stats.status_turns("blindness") <= 1:
+			if enemy.stats.status_turns("blindness") <= 1 and not flash_resistance_seen.has(target):
 				move = "Flash Blast"
+			elif flash_resistance_seen.has(target) and enemy.stats.status_level("bleed") == 0:
+				move = "Scuba Stabbing"
 			elif entry.equipped_spells.has("swift_strike") and entry.stats.oxygen >= 8.0:
 				move = "Swift Strike"
 			else:
 				move = "Axe Kick"
 		elif who == "Prototype_1(1910)":
 			move = "Precise Jab" if entry.equipped_spells.has("precise_jab") and entry.stats.oxygen >= 8.0 else "Precise Tap"
-		elif entry.equipped_spells.has("mending_current") and entry.stats.oxygen >= 8.0:
+		else:
+			if entry.equipped_spells.has("heavy_slam") and entry.stats.oxygen >= 8.0 and enemy.stats.evasion_current < entry.stats.effective_accuracy():
+				move = "Heavy Slam"
+			var lowest_living_hp := 5
 			for ally in battle.party:
-				if ally.stats.hp > 0 and ally.stats.hp <= 5:
+				if entry.equipped_spells.has("mending_current") and entry.stats.oxygen >= 8.0 and ally.stats.hp > 0 and ally.stats.hp < lowest_living_hp:
 					move = "Mending Current"
 					target = String(ally.display_name)
-					break
+					lowest_living_hp = ally.stats.hp
 	else:
 		# Casual usually uses the first damaging base move, occasionally trying
 		# another visible affordable base attack. No perfect timing assumption.

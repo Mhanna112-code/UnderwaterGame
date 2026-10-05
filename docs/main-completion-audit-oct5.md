@@ -20,9 +20,17 @@ input at the first special minigame. That is an observer gap, not proof of an
 unbeatable ordinary encounter. No current full-route balance percentage is
 established. Historical lab receipts below do not verify this newer runtime.
 
+One revised skilled lab-first observation now wins Tethys and conserves earned
+level3/XP127 party/manual bytes through fresh native Title Load. It reacts to
+visible immunity and uses earned attacks, with one disclosed missed-special
+public return; previous losses are retained. This is not a full campaign/matrix.
+Matching-source Windows/Linux feedback ZIPs are now cross-exported, integrity-
+checked and published, including downloaded SHA256 verification. Target-machine
+launches/playtests are not verified. See the native delivery record.
+
 Remaining: exhaustive upstream dispositions; casual/skilled lab-first and
 maze-first earned completion; current browser persistence/Bomb Bot/audio and
-broader visual review; matching current native packages. The production opening
+broader visual review; target-machine native acceptance. The production opening
 still lacks the retained Angler. Tethys opening/relocated Cordys introduction
 stays LAST and requires Miguel's isolated-preview approval before main/canonical.
 Marc's pre-boss-only ending remains binding. Git deployments are not automatic.
@@ -292,7 +300,7 @@ PR100 merged as `ab9e409`; later runtime repair `97bd48f` and generated pack
 the pending a37253e-based whirlpool repair and concurrent main-checkout edits
 untouched. This document is an audit, not a runtime fix or release claim.
 
-## Current delivery, independently checked
+## Original audit delivery, independently checked (historical)
 
 Canonical URL: https://underwatergame.vercel.app/.
 Vercel project `immortaldemongods-projects/underwatergame`,
@@ -313,7 +321,7 @@ do not claim a Git push automatically updated the game.
 Windows/Linux download metadata still identifies `bffe1b5`, older than Web.
 Those are not current-main packages and have not been target-launched here.
 
-## Requirement dispositions
+## Requirement dispositions — reconciled with published 7336611
 
 | Original requirement | Current status | Remaining work / acceptance |
 |---|---|---|
@@ -331,17 +339,17 @@ Those are not current-main packages and have not been target-launched here.
 | Learned scaling/no ordinary refill | Now implemented, not still missing; focused scaling passes | Production-consumer and route balance with real recovery access. Tethys receives the small authored learned bonus; fixed75HP Cordys does not. |
 | Initial Angler | Removed by fresh upstream f457098; actual New Game first roster is Cordys and retained-Angler gate fails | Reconcile with Miguel's explicit keep instruction. Preserve genuine actions, ordinary rules and no accidental lab-victory milestone; deferred Tethys redesign still waits for final explicit review. |
 | Unwinnable opening Tethys instead of Cordys | Not implemented; deferred to the very end and requires Miguel's explicit approval before main | Final isolated candidate only after other work: replace presentation/dispatch identity without changing laboratory Tethys tuning; retire opening Cordys movie; preserve real effects, safe defeat, durable recovery and optional training. |
-| State-aware goals, independent lab, early maze | Prior batch delivered; latest f457098 hides maze GoalLabel and current40-case gate fails40 times; Deep direction remains | Restore visible non-competing milestone guidance and verify actual earned routes; keep lab victory independent of maze access. No new dialogue tutorial. |
+| State-aware goals, independent lab, early maze | Restored and published; all40 generated milestone cases and actual reading/input owners pass, with current hosted earned-map goal at three sizes | Verify actual full earned routes; keep lab victory independent of maze access. No new dialogue tutorial. |
 | Lab computer/controller payoff | Delivered: real laboratory win, exclusive responsive recovered-computer/controller/ramp popup and no stale arrival after Close | Keep actual earned lab route and broader presentation checks; positive durable browser acceptance is recorded, not blanket save-failure coverage. |
 | Cordys introduction at maze | Not implemented; final review-gated change alongside the Tethys opening | After other work, move the existing intro to the real maze encounter, with persisted once-only/skip/interrupted behavior. No main push or canonical publication without Miguel's explicit approval. |
-| Cordys victory completes game | Delivered: exclusive ending, removed station, real durable confirmation/denied rollback/Retry/completed cold Load | Granted-kit receipts isolate completion, not earned boss attainability. Keep existing relic completion distinct from final victory. |
+| Cordys victory completes game | Delivered under Miguel's later pre-boss-only contract: exclusive ending, per-run pre-boss Restart, confirmed pre-boss autosave or honest session-only restart after denied storage; no completed-game save | Granted-kit native/browser receipts prove ending ownership/persistence, not earned boss attainability. Current full earned finale remains unverified. Do not restore completed-save/Retry design. |
 | Mermaid-Weirdo | Imported/inspected and delivered for laboratory Tethys only; rig/13 motions/six attacks/facing/rendered real fight accepted | Existing red fallback retained; no final textured-color or artist approval claim. Original reference actor stays. Deferred opening/intro stays separate. |
 | Puppets/generic key/fixed Cordys | Implemented | Preserve two waves, one final key/XP outcome, generic keys and independent lab progress. No unapproved Cordys weakening/unique-key prerequisite. |
 | Earned casual/skilled campaigns | Not established by current tests | Real New Game lab-first and maze-first policies, earned XP/spells/items, reachable rests and documented non-perfect QTE assumptions. |
 | Browser saves/Bomb Bot/audio/polish | Focused/historical receipts only | Current Chrome Bomb Bot reproduction, actual browser manual/auto saves and denial/reload/loss, listening and six-area visual inspection. |
-| Matching export/release docs | Fresh canonical actual pack matches runtimee74fcc5/PCK16af7928 and main2a9de40 recovery delivery; new runtime includes Marc f457098; native still bffe1b5 | Resolve fresh plan conflicts and complete full acceptance/docs/same-source Windows/Linux archives; label target-launch limits honestly. Git integration remains disconnected. |
+| Matching export/release docs | Canonical actual HTML/JS/Wasm/PCK match runtime7336611/PCKae9f15f6; export pushed in2c7637f and publication receipts/docs in1186d95; same-source Windows/Linux7336611 ZIPs published and downloaded digests checked | Current package metadata publication and full acceptance remain; native target launches not verified. Refresh packages after any future runtime repair. Git integration remains disconnected. |
 
-## Newly confirmed failure and misleading evidence
+## Original audit failures and misleading evidence (historical; repairs above)
 
 The pending public-input whirlpool verifier was ported **alone** into an
 isolated current-main checkout. Production files remain unmodified.
@@ -377,7 +385,7 @@ current no-refill campaign is attainable. Repair the observers to use current
 production rules, retain meaningful success/pressure thresholds and add an
 actual earned-resource journey; do not tune tests merely to pass.
 
-README still describes temporary crawl → compulsory beam tutorial and old
+At the original audit, README described temporary crawl → compulsory beam tutorial and old
 ordinary roster; current main instead has cinematic/swimming/Angler/Cordys/
 recovery with optional training and additional enemy types. Fix documentation
 as part of the matching delivery, not another runtime redesign.
@@ -392,7 +400,8 @@ as part of the matching delivery, not another runtime redesign.
    batch, not after the whole campaign rewrite.
 2. **Campaign goals/payoff/completion:** finish state-aware goals, lab
    computer/controller communication, suggested puzzle/ramp, early-maze/return
-   guidance and durable clear Cordys completion. Preserve generic key/fixed
+   guidance and clear Cordys completion using Marc's pre-boss-only restart
+   contract (no completed-game save). Preserve generic key/fixed
    boss contracts; inspect Mermaid-Weirdo before choosing the bounded role.
 3. **Actual route attainability:** fix obsolete healing assumptions and run
    genuine lab-first/maze-first casual/skilled journeys, normal hall avoidance

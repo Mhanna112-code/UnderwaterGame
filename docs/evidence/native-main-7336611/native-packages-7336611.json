@@ -1,0 +1,14 @@
+{
+  "runtime_source_commit": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+  "engine": "Godot 4.7.1",
+  "cross_export_host": "macOS",
+  "target_launch_verified": false,
+  "full_campaign_verified": false,
+  "native_pck": {"bytes": 84990336, "sha256": "7a4e883fe5e4445ac5f753879c6e657a61ae7f1aac90feb3b4a9b600bfa03349"},
+  "web_pck": {"bytes": 94993548, "sha256": "ae9f15f6d3716c75b69c6f46fa1db243ca57a6d05e50374201407a3fb0ac1984"},
+  "packages": [
+    {"platform": "Windows x86_64", "archive": "UnderwaterGame-Windows-7336611.zip", "bytes": 112883423, "sha256": "bab8f81841727c3f40d50db6e6776099c7d6ce32d3a86a5a7a980e7f3958b519", "executable_bytes": 109071360, "executable_sha256": "04baf75cc1d69dd93eb709533ecab4fd7770bb8a530645717017a06a9d9809fc", "zip_integrity_verified": true},
+    {"platform": "Linux x86_64", "archive": "UnderwaterGame-Linux-7336611.zip", "bytes": 103282044, "sha256": "d1fe6938ca43bf1ff657ff78968aff6a3763db590d2d7e77995ba2c2c2441da9", "executable_bytes": 73470264, "executable_sha256": "2cb27aee3f7fdf763d0ae16972f6975606959a071f4cd33f6ef1429eb8385049", "zip_integrity_verified": true}
+  ],
+  "limits": "Game source matches current canonical runtime; platform-specific packs differ. Unsigned feedback exports, not target-machine launch/playtest proof or full-game readiness. Opening redesign remains deferred and explicitly review-gated."
+}

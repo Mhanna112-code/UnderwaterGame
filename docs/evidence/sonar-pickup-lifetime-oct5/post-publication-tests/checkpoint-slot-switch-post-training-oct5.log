@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+SLOT_SWITCH_OBSERVATION|loaded_complete=true|tutorial_complete=true|paused=false|title=false|battle=false|popup=false|special=false|whirlpool=false|intro=false|transition=false|maze_active=false|maze_stable=true
+SLOT_SWITCH_OBSERVATION|denied_notice=Could not save. Your previous checkpoint is unchanged. Please retry.|selected=918306
+SLOT_SWITCH_OBSERVATION|retry_notice=Could not save. Your previous checkpoint is unchanged. Please retry.|selected=918307
+CHECKPOINT SLOT SWITCH: clean

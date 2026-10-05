@@ -207,3 +207,94 @@ cannot beat normal enemies. Record tutorial/special flags as well as the stale
 boundary until genuine minigame or normal public return handling is added.
 The raw original loss receipt is retained, not counted as a campaign pass,
 ordinary-loss rate, lab victory, or whole-campaign balance result.
+
+## EARN-6 — disclosed missed-special/public-return strategy
+
+The next observer variant is `--special-policy=miss-and-return`; default remains
+`reject-unsupported`. This variant intentionally supplies **no timed minigame
+inputs**, plays the naturally encountered first-special lesson, then uses its
+visible **Exit to World** if it loses. Later optional prompts use visible
+**Not Now**. It never opens Combat Help or replays training for recovery.
+The production first-special return heals the party; disclose and record that
+recovery rather than pretending this is the earlier no-training-recovery route.
+Combat `casual`/`skilled` policies are unchanged. This is a zero-timing/decline
+optional-challenges strategy, not evidence of skilled minigame performance.
+
+Public/module audit: read TutorialResultPopup end-to-end, World first-special
+offer, actual battle-result/tutorial-loss-exit consumers, and the visible
+confirm portion of SpecialEncounterPrompt. The popup emits public exit_chosen
+after closing/unpausing; World owns recovery. No private minigame resolver or
+fill/recovery handler is invoked. Branches: unsupported policy before New Game;
+ordinary loss; first-special tutorial loss; absent/disabled Exit; repeat return;
+later optional Not Now; unchanged XP/learned kit/keys/inventory and route blockers.
+
+Failure being caught: a missed optional tutorial silently counts as an ordinary
+party wipe, or the observer bypasses the real return/borrows hidden rewards to
+claim an earned laboratory win. Assertions require the actual lost result,
+visible enabled public Exit, closed popup/no battle/unpaused World, immediate
+production full HP/O2, unchanged earned level/XP/spells/keys/inventory and no
+invented blocker victory. Limit this return to once; retain a separate counter
+and party receipts. Later optional offers must be publicly declined, not enter
+and heal on repeat. Actual mandatory losses still fail the lab slice.
+
+Self-critique: unchanged milestone alone is insufficient; the public return and
+all carried resources/rewards are observed. No private-heal count assertion.
+This can adapt to a behavior-preserving UI rename without changing the outcome
+assertions. A pass remains one downstream diagnostic slice with an unapproved
+opening, not full campaign acceptance or a pooled baseline win-rate sample.
+Skipped: actual minigame skill/timing, not needed for this explicitly no-timing
+strategy; all-three-minigame/browser acceptance remains separate required work.
+
+First no-timing/return-policy run (skilled64000, direct/no rest) terminates
+before reaching the special branch: four genuine random wins leave Maxilani
+downed/Bucky3HP, then Bomb Bot defeats the remaining party. Preserve this real
+ordinary loss; `special_returns=0`, so it neither proves nor disproves the
+public-return observer. No game tuning was changed to make it pass. Next
+predetermined exploratory seed64001 checks the downstream boundary; a seed is
+not a deterministic roster guarantee because shared frame/RNG use varies.
+Unsupported special policy exits1 before scene/save ownership without script
+errors. Full-route/matrix acceptance is still absent.
+
+Skilled64001 reaches the missed-special boundary: actual lost result, visible
+Exit to World, one production full-party recovery with unchanged earned kit/
+rewards/blockers. It subsequently defeats Sword Slayer but loses to Tethys
+after22 moves. Twelve fight owners/70 actions; the return passed EARN-6 but
+the lab slice still exits1. Retain this real loss, not a lab/campaign pass.
+
+## Skilled policy revision — react to public immunity feedback
+
+Read the current CombatantStats immunity/evasion/resource contracts, SpellTree
+authored moves, and Battle's actual single/all-target immunity log and damage
+consumer. The prior skilled observer keeps casting Flash Blast against Tethys,
+which is immune to stat loss; that is not an adequate current strategy. Do NOT
+remove boss immunity or change damage/HP to rescue an obsolete policy.
+
+`visible-feedback-heavy-v1` learns resistance only when the actual visible
+battle log says that named enemy is immune to Flash Blast. It then stops
+trying that debuff, establishes authored Bleed if absent, and uses earned
+Swift Strike when affordable. Bucky uses an actually earned Heavy Slam when
+the displayed remaining EVA is below her effective Accuracy, otherwise her
+base move; heals the lowest living HP ally when at most4HP. No perfect QTE,
+privately resolved attack, previewed RNG, supplied kit or immunity-flag read.
+Normal move/target/page buttons still execute the chosen action. Reset observed
+feedback between fights and record the strategy revision; do not pool old and
+new strategies into a success rate or change matrix floors after outcomes.
+
+Specific observer failure: repeated visibly ineffective debuffs and ignoring
+an earned heavy payoff falsely support a broad “skilled cannot win” claim.
+Self-critique: a test result is still actual earned outcomes, not an assertion
+that the chosen policy must win. Retain losses, carried HP/O2, all input actions
+and actual visible immunity receipts. Correct strategy is characterized by
+public feedback/controls, not by reading the hidden boss immunity flag.
+Full casual/skilled eight-seed route matrix and actual maze completion remain
+required; an exploratory revised-policy win cannot substitute for them.
+
+Revised skilled64002 passes the actual lab-first slice: visible Tethys immunity
+observed, legal base Bleed/earned reliable attacks and Heavy Slam through real
+controls; ten fight owners/56 actions, one missed-special public return and one
+later Not Now, genuine level3/XP127 party. Actual Tethys victory/payoff and fresh
+Title Load conserve party HP/O2/XP/spells and exact native manual bytes. Exit0,
+no engine/script errors. Retain the two prior ordinary losses and the default
+missing-Angler failure. This is current-runtime native lab-only acceptance for
+this disclosed strategy, NOT eight-seed rates, browser durability, actual
+minigame skill, maze-first or full-campaign readiness.

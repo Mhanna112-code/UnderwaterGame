@@ -36,7 +36,10 @@ artifact, reading-layout fixes and remaining acceptance work.
 The newest [Sonar pickup lifetime delivery](docs/sonar-pickup-lifetime-delivery-oct5.md)
 records runtime `7336611`, the current canonical export, preserved concurrent
 main changes, native regression and actual hosted map/menu/aim evidence.
-Full earned campaigns and matching current Windows/Linux packages remain unverified.
+Full earned campaigns remain unverified. Matching-source
+[Windows/Linux feedback packages](https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/main-feedback-7336611)
+are now available; exports and downloaded archive checksums pass, but target-machine
+launches/playtests are not verified. [Native instructions and limits](docs/maze-campaign-native-review.md).
 
 ## Controls
 

@@ -20,8 +20,20 @@ func _run() -> void:
 	SaveManager.write_slot(TARGET, world._serialize_state())
 	world.route_state.prologue_complete = true
 	world.route_state.opening_video_seen = true
+	# This test starts at a stable post-training checkpoint. A completed
+	# opening alone deliberately restores the forced beam's intro ownership,
+	# where current World correctly rejects manual saving before any IO.
+	world.route_state.tutorial_complete = true
 	SaveManager.write_slot(SOURCE, world._serialize_state())
 	await world._on_title_load_game(SOURCE)
+	print("SLOT_SWITCH_OBSERVATION|loaded_complete=", world.route_state.prologue_complete,
+		"|tutorial_complete=", world.route_state.tutorial_complete, "|paused=", paused,
+		"|title=", world.title_screen.visible, "|battle=", world.battling,
+		"|popup=", world.tutorial_result_popup.visible, "|special=", world.special_encounter_prompt.visible,
+		"|whirlpool=", Whirlpool.busy_in(world), "|intro=", world._intro_active,
+		"|transition=", world._transitioning_to_encounter,
+		"|maze_active=", world.embedded_maze.maze_active,
+		"|maze_stable=", world.embedded_maze.can_capture_campaign_snapshot())
 	var source_bytes := FileAccess.get_file_as_bytes(SaveManager.slot_path(SOURCE))
 	var target_bytes := FileAccess.get_file_as_bytes(SaveManager.slot_path(TARGET))
 	# Deny the real atomic writer's staging file, not a mocked return value.
@@ -32,6 +44,7 @@ func _run() -> void:
 	FileAccess.set_unix_permissions(pending, 256)
 	world.save_point_menu.save_requested.emit(world.divers[0], TARGET)
 	await process_frame
+	print("SLOT_SWITCH_OBSERVATION|denied_notice=", world.banner.text, "|selected=", world._current_slot)
 	_expect(world._current_slot == SOURCE, "OPEN-030 denied save selects the old target checkpoint")
 	_expect("Could not save" in world.banner.text and not "Progress saved" in world.banner.text, "OPEN-030 denied save falsely announces success")
 	_expect(FileAccess.get_file_as_bytes(SaveManager.slot_path(SOURCE)) == source_bytes, "OPEN-030 denied target write changes source checkpoint")
@@ -39,6 +52,7 @@ func _run() -> void:
 	FileAccess.set_unix_permissions(pending, 384)
 	world.save_point_menu.save_requested.emit(world.divers[0], TARGET)
 	await process_frame
+	print("SLOT_SWITCH_OBSERVATION|retry_notice=", world.banner.text, "|selected=", world._current_slot)
 	_expect(world._current_slot == TARGET, "OPEN-030 retry does not select a successful target")
 	_expect((SaveManager.read_slot(TARGET).get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-030 cross-slot retry loses opening completion")
 	# MSG-6: the real retry commits immediately, but its notice follows the
