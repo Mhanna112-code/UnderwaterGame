@@ -763,19 +763,53 @@ var _banner_timer := 0.0
 # the white "Press E to interact" stays hidden and E interacts with nothing.
 var _interact_cooldown := false
 
+# Orange messages queue rather than wipe each other out: one already up gets
+# its full time, then the next shows. The same message isn't queued twice
+# (it just stays up a little longer), and an encounters on/off message only
+# ever replaces another one, so toggling R quickly doesn't build a backlog.
+const ANNOUNCE_QUEUE_MAX := 4
+var _announce_queue: Array = []   # [[text, seconds], ...]
+
 func _announce(text: String, seconds := 4.0) -> void:
 	if _banner == null:
 		_banner = _make_caption(-170.0, -130.0, 20, Color(1.0, 0.6, 0.45))
+	# Nothing (or an empty line) showing: straight up.
+	if not (_banner.visible and _banner_timer > 0.0 and _banner.text != ""):
+		_show_announce(text, seconds)
+		return
+	if _banner.text == text:
+		_banner_timer = maxf(_banner_timer, seconds)
+		return
+	if _is_encounters_message(text):
+		_announce_queue = _announce_queue.filter(func(q) -> bool: return not _is_encounters_message(String(q[0])))
+		if _is_encounters_message(_banner.text):
+			_show_announce(text, seconds)
+			return
+	for queued in _announce_queue:
+		if String(queued[0]) == text:
+			return
+	_announce_queue.append([text, seconds])
+	while _announce_queue.size() > ANNOUNCE_QUEUE_MAX:
+		_announce_queue.pop_front()
+
+func _show_announce(text: String, seconds: float) -> void:
 	_banner.text = text
 	_banner.visible = true
 	_banner_timer = seconds
+
+func _is_encounters_message(text: String) -> bool:
+	return text.begins_with("Random encounters on") or text.begins_with("Random encounters off")
 
 func _update_announce(dt: float) -> void:
 	if _banner == null or _banner_timer <= 0.0:
 		return
 	_banner_timer -= dt
 	if _banner_timer <= 0.0:
-		_banner.visible = false
+		if _announce_queue.is_empty():
+			_banner.visible = false
+		else:
+			var next: Array = _announce_queue.pop_front()
+			_show_announce(String(next[0]), float(next[1]))
 
 func _make_caption(top: float, bottom: float, font_size: int, color: Color) -> Label:
 	var label := Label.new()
