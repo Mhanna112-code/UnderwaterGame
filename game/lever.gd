@@ -14,6 +14,12 @@ extends Area3D
 signal pulled(is_up: bool)
 
 @export var is_up := true
+# false: the scene adding this lever drives pull() itself (MazeLevel's dome
+# levers), so this lever ignores E on its own.
+@export var handles_input := true
+# false: the handle stays green whichever way it's thrown (the dome levers
+# show their state with a separate red/green light instead).
+@export var color_by_state := true
 
 var _handle: MeshInstance3D
 var _handle_mat: StandardMaterial3D
@@ -78,7 +84,7 @@ func _on_body_exited(body: Node3D) -> void:
 		_diver_in_range = null
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _diver_in_range == null or not is_instance_valid(_diver_in_range):
+	if not handles_input or _diver_in_range == null or not is_instance_valid(_diver_in_range):
 		return
 	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_E:
 		# E already means "use your diver's special ability" everywhere a
@@ -100,7 +106,7 @@ func pull() -> void:
 	pulled.emit(is_up)
 
 func _refresh_color() -> void:
-	var c: Color = Color(0.35, 0.95, 0.5) if is_up else Color(0.9, 0.35, 0.3)
+	var c: Color = Color(0.35, 0.95, 0.5) if is_up or not color_by_state else Color(0.9, 0.35, 0.3)
 	_handle_mat.albedo_color = c
 	_handle_mat.emission = c
 	_handle_mat.emission_energy_multiplier = 1.3

@@ -77,20 +77,11 @@ func fill() -> void:
 	statuses.clear()
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
 
-# A short post-victory regroup. Without a camp/healer between the two artifact
-# sites, even a won encounter could leave a diver at 0 HP and turn the next
-# legal pack into a foregone conclusion. This restores only a fraction, so
-# damage still matters across the route; a level-up remains the only free
-# full refill. Called by Battle after XP and mirrored by the campaign balance
-# gate. Skips the HP restore entirely for anyone already at 0 - a downed
-# diver doesn't get back up just because the party won; only a level-up
-# (fill(), above) or an actual Revive spell (battle.gd's "revive" effect,
-# world.gd's out-of-battle version) brings them back.
-func recover_after_victory(fraction: float = 0.30) -> void:
-	var amount := clampf(fraction, 0.0, 1.0)
-	if hp > 0:
-		hp = mini(hp_max, hp + maxi(1, int(ceil(float(hp_max) * amount))))
-	oxygen = minf(oxygen_max, oxygen + oxygen_max * amount)
+# After a won fight. Winning doesn't give back any HP or Oxygen - only a
+# level-up (fill(), above, via gain_xp()) or a save point does - it just
+# drops the fight's statuses and temporary buffs/debuffs. Called by Battle
+# after XP and mirrored by the campaign balance gate.
+func recover_after_victory() -> void:
 	statuses.clear()
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
 	evasion_current = effective_evasion()
@@ -99,7 +90,8 @@ func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 
 func effective_evasion() -> int:
-	return maxi(0, evasion + int(temporary_modifiers.evasion))
+	# Evasion Down lowers it by its level for as long as it lasts.
+	return maxi(0, evasion + int(temporary_modifiers.evasion) - status_level("evasion_down"))
 
 func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
@@ -166,6 +158,9 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 		"level": maxi(level, int(existing.get("level", 0))),
 		"turns": maxi(turns, int(existing.get("turns", 0))),
 	}
+	# The dodge pool shrinks with it straight away, not only next turn.
+	if status == "evasion_down":
+		evasion_current = mini(evasion_current, effective_evasion())
 
 func status_level(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("level", 0))
@@ -178,7 +173,15 @@ func status_summary() -> String:
 	for status in statuses.keys():
 		var level := status_level(String(status))
 		var turns := status_turns(String(status))
-		parts.append("%s %d%s" % [String(status).capitalize(), level, "·%d" % turns if turns > 0 else ""])
+		var name := String(status).capitalize()
+		var left := " (%d %s left)" % [turns, "turn" if turns == 1 else "turns"] if turns > 0 else ""
+		# Stun's level is just how many turns it skips, so it reads as the
+		# turns left alone: "Stun (2 turns left)". The rest keep their amount:
+		# "Bleed 4", "Poison 2 (3 turns left)".
+		if String(status) == "stun":
+			parts.append(name + (left if turns > 0 else " (%d %s left)" % [level, "turn" if level == 1 else "turns"]))
+		else:
+			parts.append("%s %d%s" % [name, level, left])
 	return "  ".join(parts)
 
 # Adds XP and applies every level-up it crosses (a big win can jump more

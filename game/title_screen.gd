@@ -19,6 +19,8 @@ const COVER_ART: Texture2D = preload("res://docs/underwater-cover.png")
 
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
+# The autosave under `slot` (SaveManager.read_autosave()).
+signal load_autosave_chosen(slot: int)
 signal boss_playtest_chosen
 signal special_playtest_chosen
 signal spell_playtest_chosen
@@ -237,7 +239,7 @@ func _has_any_save() -> bool:
 		# A corrupt/empty file is treated as an empty slot everywhere else in
 		# this screen, so it must not resurrect a Load Game action with no
 		# enabled destination.
-		if not SaveManager.read_slot(slot).is_empty():
+		if not SaveManager.read_slot(slot).is_empty() or not SaveManager.read_autosave(slot).is_empty():
 			return true
 	return false
 
@@ -273,6 +275,19 @@ func _refresh_slots() -> void:
 			]
 		btn.pressed.connect(_on_slot_pressed.bind(slot))
 		_list.add_child(btn)
+		# Load Game: that slot's autosave on its own row underneath.
+		if _pending_action == "load":
+			var auto := Button.new()
+			auto.custom_minimum_size = Vector2(360, 34)
+			auto.add_theme_font_size_override("font_size", 14)
+			var auto_data: Dictionary = SaveManager.read_autosave(slot)
+			if auto_data.is_empty():
+				auto.text = "   \u21b3 Slot %d Autosave - Empty" % (slot + 1)
+				auto.disabled = true
+			else:
+				auto.text = "   \u21b3 Slot %d Autosave - %s" % [slot + 1, _summarize(auto_data)]
+			auto.pressed.connect(func() -> void: load_autosave_chosen.emit(slot))
+			_list.add_child(auto)
 
 	var back := Button.new()
 	back.text = "< Back"

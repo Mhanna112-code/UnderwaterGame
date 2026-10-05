@@ -39,6 +39,11 @@ func _ready() -> void:
 	# click-to-skip events while the panel is hidden. The panel and its child
 	# buttons still receive input when the modal is open.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The modal's own CanvasLayer defaults to layer 1 - the same as a scene's
+	# HUD layer - and the HUD is added after this autoload, so HUD captions
+	# (e.g. the maze's orange warnings) drew on top of the open modal. Put
+	# the modal above every HUD layer.
+	($UI as CanvasLayer).layer = 100
 	(%PopupClose as Button).pressed.connect(_on_next_pressed)
 	_style_panel()
 	_build_close_button()
@@ -110,6 +115,8 @@ func _build_close_button() -> void:
 # as [pulse] BBCode text elsewhere (pulse_text_effect.gd) and TutorialBook's
 # own Next/Close pulse (tutorial_book.gd) rather than a third effect system.
 func _process(_delta: float) -> void:
+	if not _queue.is_empty() and not _battle_running() and not get_tree().paused and not (%AbilityExplanationPanel as PanelContainer).visible:
+		open(_queue.pop_front())
 	if not (%AbilityExplanationPanel as PanelContainer).visible:
 		return
 	var flash := 0.35 + 0.65 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0))
@@ -146,12 +153,41 @@ func _style_panel() -> void:
 	media_style.set_border_width_all(1)
 	(%MediaFrame as PanelContainer).add_theme_stylebox_override("panel", media_style)
 
+var _mouse_mode_before := Input.MOUSE_MODE_VISIBLE
+
+# Popups queue: one that would show during a battle, or while another popup
+# is up, waits its turn (in order) instead of replacing what's on screen; one
+# already open when a battle starts is put away and comes back first, from
+# the page it was on, once the battle's over.
+var _queue: Array = []   # of Array[Dictionary] page lists
+
+func _battle_running() -> bool:
+	return is_inside_tree() and get_tree().get_first_node_in_group("battle") != null
+
+func suspend_for_battle() -> void:
+	if not (%AbilityExplanationPanel as PanelContainer).visible:
+		return
+	var rest: Array[Dictionary] = _pages.slice(_index)
+	_queue.push_front(rest)
+	(%AbilityExplanationPanel as PanelContainer).hide()
+	get_tree().paused = false
+
 # `pages` entries: {"slot": Slot (or null), "title": String, "body": String}.
 func open(pages: Array[Dictionary]) -> void:
 	if pages.is_empty():
 		return
+	# Never over a battle, and never over another popup: it waits its turn
+	# (see _process()).
+	if _battle_running() or (%AbilityExplanationPanel as PanelContainer).visible:
+		_queue.append(pages)
+		return
 	_pages = pages
 	_index = 0
+	# A free cursor to click Next/Close with; whatever mouse mode play was in
+	# (usually captured mouse-look) comes back when it closes.
+	if not (%AbilityExplanationPanel as PanelContainer).visible:
+		_mouse_mode_before = Input.mouse_mode
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = true
 	_refresh()
 	(%AbilityExplanationPanel as PanelContainer).show()
@@ -173,8 +209,23 @@ func _refresh() -> void:
 	# can't tell those two pages apart on its own. Falls back to that same
 	# ability_id-derived lookup for a diver with only one page (Musashi,
 	# Bucky), so they don't need to pass it explicitly.
+	# "media_control": a Callable returning a Control to show in the media
+	# frame instead of a clip file (e.g. a live-drawn demo animation).
+	if page.get("media_control") is Callable:
+		_show_media_control((page["media_control"] as Callable).call())
+		return
 	var media_key: String = String(page.get("media", page_slot.diver.ability_id if page_slot != null else ""))
 	_refresh_media(media_key)
+
+func _show_media_control(media: Control) -> void:
+	var frame := %MediaFrame as PanelContainer
+	frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	for child in frame.get_children():
+		child.queue_free()
+	frame.show()
+	media.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(media)
 
 # Rebuilds %Paragraph's one RichTextLabel from scratch every call. The
 # inline [E]/[Q]/[Tab] badges are BBCode baked straight into the body string
@@ -194,7 +245,7 @@ func _build_paragraph(body: String) -> void:
 	var label := _rich_label()
 	paragraph.add_child(label)
 	var parts := body.split(Slot.WASD_MARKER)
-	label.append_text(parts[0])
+	_append_with_icons(label, parts[0])
 	if parts.size() > 1:
 		var tex := await _wasd_cluster_texture()
 		# Native size, not squashed to fit a single text line - add_image()
@@ -206,7 +257,34 @@ func _build_paragraph(body: String) -> void:
 		# manual newline needed, which would otherwise break "Use [WASD] and
 		# move..." across a line for no reason.
 		label.add_image(tex, int(WASD_CLUSTER_SIZE.x), int(WASD_CLUSTER_SIZE.y))
-		label.append_text(parts[1])
+		_append_with_icons(label, parts[1])
+
+# append_text(), with each Slot.HIDDEN_ITEM_MARKER drawn as the maps' red
+# hidden-item circle, inline like a character.
+func _append_with_icons(label: RichTextLabel, text: String) -> void:
+	var pieces := text.split(Slot.HIDDEN_ITEM_MARKER)
+	for i in pieces.size():
+		if i > 0:
+			label.add_image(_hidden_item_icon(), 18, 18)
+		label.append_text(pieces[i])
+
+# The minimap / Maze Navigation map's hidden-item marker: a red dot with a
+# pale rim (mini_map.gd's guarded-site marker, maze_mini_map.gd's "special").
+var _hidden_item_tex: ImageTexture
+func _hidden_item_icon() -> Texture2D:
+	if _hidden_item_tex != null:
+		return _hidden_item_tex
+	var n := 36
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c := Vector2(n, n) * 0.5
+	for y in n:
+		for x in n:
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+			if d <= n * 0.5 - 1.0:
+				var rim := d >= n * 0.5 - 4.0
+				img.set_pixel(x, y, Color(1.0, 0.75, 0.75) if rim else Color(0.95, 0.15, 0.15))
+	_hidden_item_tex = ImageTexture.create_from_image(img)
+	return _hidden_item_tex
 
 func _rich_label() -> RichTextLabel:
 	var label := RichTextLabel.new()
@@ -404,4 +482,7 @@ func _close() -> void:
 			slot.set_highlighted(false)
 	(%AbilityExplanationPanel as PanelContainer).hide()
 	get_tree().paused = false
+	# Before `closed`, so a listener that opens another modal can still free
+	# the mouse again for it.
+	Input.mouse_mode = _mouse_mode_before
 	closed.emit()

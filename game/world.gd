@@ -59,7 +59,7 @@ var skip_intro_for_test := false
 var skip_tutorial_for_test := false
 
 func _tutorial_skip_requested() -> bool:
-	if OS.get_cmdline_user_args().has("--skip-tutorial"):
+	if OS.get_cmdline_user_args().has("--skip-tutorial") or _dev_requested():
 		return true
 	if OS.has_feature("web"):
 		var search: Variant = JavaScriptBridge.eval("window.location.search", true)
@@ -288,13 +288,46 @@ func _write_save() -> void:
 		return
 	SaveManager.write_slot(_current_slot, _serialize_state())
 
+# Autosave: every AUTOSAVE_INTERVAL of play, the run is written to the
+# autosave under the slot it was started (New Game) or loaded from - not
+# over the slot itself, which only save points write. Waits for a calm
+# moment (no fight, menu, popup, cutscene or transition) when one is due.
+const AUTOSAVE_INTERVAL := 180.0
+var _autosave_timer := 0.0
+
+func _tick_autosave(dt: float) -> void:
+	if _current_slot < 0 or title_screen.visible or get_tree().paused:
+		return
+	_autosave_timer += dt
+	if _autosave_timer < AUTOSAVE_INTERVAL or not _autosave_safe():
+		return
+	_autosave_timer = 0.0
+	SaveManager.write_autosave(_current_slot, _serialize_state())
+	_announce("Game autosaved.")
+
+# Never mid-fight: no battle (world or maze), no special encounter at any
+# step (the "choose who goes" screen, its battle, or right after), and no
+# menu, popup, cutscene or encounter transition.
+func _autosave_safe() -> bool:
+	if battling or _intro_active or _transitioning_to_encounter:
+		return false
+	if special_encounter_prompt.visible or _special_encounter_item != "" or _special_encounter_diver != null:
+		return false
+	if save_point_menu.visible or inventory_menu.visible:
+		return false
+	if maze != null and (maze._battling or maze.any_modal_open() or maze._chest_cutscene):
+		return false
+	if maze != null and (maze.special_encounter_prompt.visible or not maze._special_spot.is_empty() or maze._special_diver != null):
+		return false
+	return true
+
 # Bails out and does nothing rather than a half-restore if the save data
 # doesn't actually match divers[] one-to-one (a missing/corrupt slot reads
 # back as {} from SaveManager, whose "divers" key then defaults to []) -
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
-func _load_save() -> void:
-	var data: Dictionary = SaveManager.read_slot(_current_slot)
+func _load_save(from_autosave := false) -> void:
+	var data: Dictionary = SaveManager.read_autosave(_current_slot) if from_autosave else SaveManager.read_slot(_current_slot)
 	var divers_data: Array = data.get("divers", [])
 	if divers_data.size() != divers.size():
 		return
@@ -380,6 +413,8 @@ func _show_title_screen() -> void:
 # real file instead of an in-memory snapshot.
 func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
+	SaveManager.clear_autosave(slot)
+	_autosave_timer = 0.0
 	_write_save()
 	title_screen.close()
 	# This is the draft narration under review. It intentionally plays before
@@ -427,9 +462,16 @@ func _on_title_skip_tutorial(slot: int = 0) -> void:
 	_first_encounter_done = true
 	await _on_title_new_game(slot)
 
-func _on_title_load_game(slot: int) -> void:
+# The autosave under `slot`: from here on that slot is the one being played,
+# so its autosave keeps being the one written.
+func _on_title_load_autosave(slot: int) -> void:
+	_autosave_timer = 0.0
+	_on_title_load_game(slot, true)
+
+func _on_title_load_game(slot: int, from_autosave := false) -> void:
 	_current_slot = slot
-	_load_save()
+	_autosave_timer = 0.0
+	_load_save(from_autosave)
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
@@ -686,6 +728,7 @@ func _ready() -> void:
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
 	_build_diver_slots()
+	_build_maze()
 	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
 	# reach a save point immediately, same reason it also grants max spell
 	# points/every key item - fighting through the scripted first battle
@@ -722,6 +765,7 @@ func _ready() -> void:
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_screen.load_autosave_chosen.connect(_on_title_load_autosave)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
 	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
@@ -772,8 +816,74 @@ func _ready() -> void:
 		$HUD.visible = true
 		get_tree().paused = false
 		_announce("You wake back at your last save.")
+	elif _dev_requested():
+		call_deferred("_start_dev_mode")
 	else:
 		_show_title_screen()
+
+# Developer mode ("-- --dev" on the command line): straight into play, no
+# title/intro/tutorial and no save slot (nothing is ever written), with every
+# key item, a few of every other item, and the party just outside the way
+# into the maze, facing it. The maze's own --dev handling (MazeLevel.
+# _apply_dev_unlocks()) gives all its door keys and lowers its gate.
+func _dev_requested() -> bool:
+	return OS.get_cmdline_user_args().has("--dev")
+
+const DEV_ITEM_COUNT := 5
+
+func _start_dev_mode() -> void:
+	_current_slot = -1
+	if is_instance_valid(light_beam):
+		light_beam.queue_free()
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.queue_free()
+	_intro_active = false
+	_camera_look_override = null
+	_first_encounter_started = true
+	_first_encounter_done = true
+	title_screen.close()
+	$HUD.visible = true
+	get_tree().paused = false
+	for id in Items.ITEMS:
+		var item_id := String(id)
+		if Items.is_key_item(item_id):
+			# Not the maze map: L's map still has to be earned from the
+			# Control Room chest, even in dev mode.
+			if item_id != "maze_nav_map" and not key_items.has(item_id):
+				key_items.append(item_id)
+		else:
+			inventory[item_id] = int(inventory.get(item_id, 0)) + DEV_ITEM_COUNT
+	# In the open water just west of the opening in the site's east edge,
+	# lined up on the passage, the camera looking east down it.
+	# The others a little behind and to either side, out of the camera's way.
+	var front := Vector3(52.0, 2.0, MAZE_PASSAGE_Z)
+	var offsets := [Vector3.ZERO, Vector3(-1.5, 0.0, -2.5), Vector3(-1.5, 0.0, 2.5)]
+	for i in divers.size():
+		var slot: int = (i - active + divers.size()) % divers.size()
+		(divers[i] as Diver).global_position = front + (offsets[slot % offsets.size()] as Vector3)
+		(divers[i] as Diver).velocity = Vector3.ZERO
+	yaw = PI * 0.5
+	pitch = -0.12
+	_update_hud()
+	if OS.get_cmdline_user_args().has("--secret-room") and maze != null:
+		_dev_spawn_in_secret_room.call_deferred()
+		return
+	_announce("DEV MODE: every item, all maze keys, maze gate open - the maze is straight ahead.")
+
+# `-- --dev --secret-room`: the whole party in the maze's secret item room
+# (the one with the chest and the ambush rocks) instead of outside the maze.
+func _dev_spawn_in_secret_room() -> void:
+	var room: Rect2 = maze._secret_item_room_rect().abs()
+	if room.size == Vector2.ZERO:
+		return
+	var c := room.get_center()
+	var y: float = maze._floor_top_y + 1.2
+	var offsets := [Vector3.ZERO, Vector3(-1.5, 0.0, -1.5), Vector3(1.5, 0.0, -1.5)]
+	for i in divers.size():
+		var slot: int = (i - active + divers.size()) % divers.size()
+		(divers[i] as Diver).global_position = Vector3(c.x, y, c.y) + (offsets[slot % offsets.size()] as Vector3)
+		(divers[i] as Diver).velocity = Vector3.ZERO
+	_announce("DEV MODE: every item, all maze keys, maze gate open - the party is in the secret item room.")
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -844,7 +954,13 @@ func _build_boundary_walls() -> void:
 	const SPAN := BOUND * 2.0 + THICKNESS * 2.0
 	_build_invisible_wall(Vector3(0.0, WALL_Y, BOUND + THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
 	_build_invisible_wall(Vector3(0.0, WALL_Y, -BOUND - THICKNESS * 0.5), Vector3(SPAN, WALL_HEIGHT, THICKNESS))
-	_build_invisible_wall(Vector3(BOUND + THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
+	# East: open where the highway's line meets it - the way on to the maze
+	# (see _build_maze_passage()).
+	var east_x := BOUND + THICKNESS * 0.5
+	var g_lo := MAZE_PASSAGE_Z - MAZE_PASSAGE_HALF_WIDTH
+	var g_hi := MAZE_PASSAGE_Z + MAZE_PASSAGE_HALF_WIDTH
+	_build_invisible_wall(Vector3(east_x, WALL_Y, (-SPAN * 0.5 + g_lo) * 0.5), Vector3(THICKNESS, WALL_HEIGHT, g_lo + SPAN * 0.5))
+	_build_invisible_wall(Vector3(east_x, WALL_Y, (g_hi + SPAN * 0.5) * 0.5), Vector3(THICKNESS, WALL_HEIGHT, SPAN * 0.5 - g_hi))
 	_build_invisible_wall(Vector3(-BOUND - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, SPAN))
 	# Collision-only roof; its underside is exactly four blockade-heights
 	# above the floor. Airborne reward rocks at 3x height stay reachable.
@@ -853,6 +969,87 @@ func _build_boundary_walls() -> void:
 		Vector3(0.0, BLOCKADE_HEIGHT * 4.0 + CEILING_THICKNESS * 0.5, 0.0),
 		Vector3(BOUND * 2.0, CEILING_THICKNESS, BOUND * 2.0)
 	)
+
+# --- The maze, east past the blockade exit ---------------------------------------
+# The maze level is built into this scene, out in the deep water east of the
+# highway's exit, not loaded as a level of its own: past the opened doors
+# you swim on east, through an opening in the site's east edge and down a
+# short slope, into the open water around the maze's start corridor. While
+# the active diver is inside the maze's bounds the maze runs everything
+# (MazeLevel.enter_from_world()/leave_to_world()); out here, World does.
+const MAZE_SCENE := preload("res://game/maze_level.tscn")
+# Puts the maze's start corridor on the highway's line, its west perimeter
+# just past this site's east edge.
+const MAZE_OFFSET := Vector3(110.0, 0.0, 14.73)
+const MAZE_PASSAGE_Z := 10.0            # the highway's lane line
+const MAZE_PASSAGE_HALF_WIDTH := 4.0
+var maze: MazeLevel
+var _in_maze := false
+
+func _build_maze() -> void:
+	maze = MAZE_SCENE.instantiate() as MazeLevel
+	maze.world = self
+	maze.embed_offset = MAZE_OFFSET
+	add_child(maze)
+	_build_maze_passage()
+
+# From the site's east edge (floor at y=0) down to the maze's lower floor:
+# a sloped floor the width of the opening, and above it a plug filling the
+# opening from the maze's ceiling height up, so the only way through is
+# along the bottom and nobody can swim in over the maze's ceiling.
+func _build_maze_passage() -> void:
+	var x0 := 60.0
+	var x1 := maze._embed_bounds.position.x
+	var y1 := maze._floor_top_y
+	var width := MAZE_PASSAGE_HALF_WIDTH * 2.0 + 2.0
+	var run := Vector2(x1 - x0, y1)
+	var slope := StaticBody3D.new()
+	add_child(slope)
+	slope.position = Vector3((x0 + x1) * 0.5, y1 * 0.5 - 0.2, MAZE_PASSAGE_Z)
+	slope.rotation.z = atan2(run.y, run.x)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(run.length() + 1.0, 0.4, width)
+	shape.shape = box
+	slope.add_child(shape)
+	var mesh := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = box.size
+	mesh.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.16, 0.24, 0.24)
+	mat.roughness = 1.0
+	mesh.material_override = mat
+	slope.add_child(mesh)
+	var plug_bottom := maze.ceiling_bottom_y()
+	var plug_top := 80.0
+	_build_invisible_wall(
+		Vector3((x0 + x1) * 0.5, (plug_bottom + plug_top) * 0.5, MAZE_PASSAGE_Z),
+		Vector3(x1 - x0 + 4.0, plug_top - plug_bottom, width))
+
+func _set_in_maze(on: bool) -> void:
+	_in_maze = on
+	if on:
+		if aiming:
+			_cancel_aim()
+		if target_selector.selecting:
+			target_selector.cancel_selection()
+		hud.visible = false
+		minimap.visible = false
+		banner.text = ""
+		maze.enter_from_world(active, yaw, pitch, mouse_look, cam.global_transform, random_encounters_enabled)
+	else:
+		var s := maze.leave_to_world()
+		active = int(s["active"])
+		yaw = float(s["yaw"])
+		pitch = float(s["pitch"])
+		mouse_look = bool(s["mouse_look"])
+		cam.global_transform = s["cam_xf"]
+		random_encounters_enabled = bool(s["encounters"])
+		cam.make_current()
+		hud.visible = true
+		minimap.visible = true
+		_update_hud()
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -1277,7 +1474,9 @@ func _build_highway() -> void:
 	add_child(_puzzle_goal)
 
 func _on_whirlpool_warned() -> void:
-	_announce("Danger - a whirlpool lies just ahead!")
+	# The whirlpool shows its own "Danger: Whirlpool ahead" caption while
+	# the diver is within its warning radius (see whirlpool.gd).
+	pass
 
 func _on_diver_sucked_in(d: Diver, amount: int) -> void:
 	_announce("You were sucked into the whirlpool! (-%d HP)" % amount)
@@ -1358,7 +1557,7 @@ func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void
 		})
 
 func _unhandled_input(e: InputEvent) -> void:
-	if battling:
+	if battling or _in_maze:
 		return
 
 	# Aim mode intercepts clicks before the normal "first click captures
@@ -1431,7 +1630,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			if not aiming and not target_selector.selecting and not _intro_active:
 				active = (active + 1) % divers.size()
 				_update_hud()
-		elif k == KEY_E:
+		elif k == KEY_F:
+			# The diver's ability is F (E is for interacting).
 			_start_ability()
 		elif k == KEY_P:
 			_toggle_save_menu()
@@ -1504,6 +1704,8 @@ func _toggle_sonar() -> void:
 # tutorial fight as after it.
 func _toggle_random_encounters() -> void:
 	random_encounters_enabled = not random_encounters_enabled
+	if maze != null:
+		maze.random_encounters_enabled = random_encounters_enabled
 	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
 	_update_hud()   # refreshes the "R: Encounters (On/Off)" hint immediately
 
@@ -1631,6 +1833,16 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	_tick_autosave(dt)
+	if maze != null and not divers.is_empty():
+		var inside := maze.contains_point((divers[active] as Diver).global_position)
+		if inside != _in_maze:
+			_set_in_maze(inside)
+		if _in_maze:
+			# The maze runs everything in there; the HP/Oxygen bars stay ours.
+			_update_hp_bar()
+			_update_oxygen_bar()
+			return
 	if battling or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
@@ -1886,7 +2098,8 @@ func _player_rise() -> float:
 	var r := 0.0
 	if Input.is_key_pressed(KEY_SPACE):
 		r += 1.0
-	if Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_CTRL):
+	# Shift only - Ctrl is the map's current key (Ctrl+Left/Right, Ctrl+E).
+	if Input.is_key_pressed(KEY_SHIFT):
 		r -= 1.0
 	return r
 
@@ -2180,6 +2393,9 @@ func _update_banner(dt: float) -> void:
 		_banner_timer -= dt
 		if _banner_timer <= 0.0:
 			banner.text = ""
+			if not _announce_queue.is_empty():
+				banner.text = _announce_queue.pop_front()
+				_banner_timer = ANNOUNCE_SECONDS
 
 # Entering a guarded item's site starts its encounter directly; Sonar and
 # random-encounter rolls are not prerequisites, but the R encounter toggle
@@ -2225,7 +2441,7 @@ func _try_trigger_item_site(d: Diver) -> bool:
 # _physics_process() and here, since a movement roll may land on the same
 # frame the active diver crosses a site boundary.
 func _on_encounter_triggered(d: Diver) -> void:
-	if battling or d != divers[active] or _intro_active or not random_encounters_enabled:
+	if battling or _in_maze or d != divers[active] or _intro_active or not random_encounters_enabled:
 		return
 	if _try_trigger_item_site(d):
 		return
@@ -2640,9 +2856,36 @@ func _grant_reward_item(item_id: String) -> void:
 		return
 	_add_to_inventory(item_id)
 
+# Orange messages queue rather than wipe each other out: one already up gets
+# its full time, then the next shows. The same message isn't queued twice,
+# and an encounters on/off message only ever replaces another one, so
+# toggling R quickly doesn't build a backlog.
+const ANNOUNCE_SECONDS := 4.0
+const ANNOUNCE_QUEUE_MAX := 4
+var _announce_queue: Array[String] = []
+
 func _announce(text: String) -> void:
-	banner.text = text
-	_banner_timer = 4.0
+	if _banner_timer <= 0.0 or banner.text == "":
+		banner.text = text
+		_banner_timer = ANNOUNCE_SECONDS
+		return
+	if banner.text == text:
+		_banner_timer = maxf(_banner_timer, ANNOUNCE_SECONDS)
+		return
+	if _is_encounters_message(text):
+		_announce_queue = _announce_queue.filter(func(q: String) -> bool: return not _is_encounters_message(q))
+		if _is_encounters_message(banner.text):
+			banner.text = text
+			_banner_timer = ANNOUNCE_SECONDS
+			return
+	if _announce_queue.has(text):
+		return
+	_announce_queue.append(text)
+	while _announce_queue.size() > ANNOUNCE_QUEUE_MAX:
+		_announce_queue.pop_front()
+
+func _is_encounters_message(text: String) -> bool:
+	return text.begins_with("Random encounters on") or text.begins_with("Random encounters off")
 
 func _intro_announce(text: String) -> void:
 	banner.text = text
@@ -2758,7 +3001,7 @@ func _update_hud() -> void:
 	var d: Diver = divers[active]
 	var line := "%s\nWASD swim · SPACE up · SHIFT down · mouse or arrows look · TAB switch diver" % _display_name(d.model_name)
 	if d.ability_id != "":
-		line += "  ·  E: %s" % String(d.ability_id).capitalize()
+		line += "  ·  F: %s" % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the E: hint above already follows for

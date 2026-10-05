@@ -14,6 +14,14 @@ extends StaticBody3D
 
 var _shape: CollisionShape3D
 var _opened := false
+func find_mesh_instance(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node
+	for child in node.get_children():
+		var found := find_mesh_instance(child)
+		if found:
+			return found
+	return null
 
 func _ready() -> void:
 	var box := BoxMesh.new()
@@ -26,7 +34,11 @@ func _ready() -> void:
 	mat.roughness = 0.3
 	mesh.material_override = mat
 	add_child(mesh)
-
+	var door_scene := preload("res://game/door.fbx")
+	var door_instance := door_scene.instantiate()
+	add_child(door_instance)
+	var mesh_instance := find_mesh_instance(door_instance)  # from the recursive search I gave earlier
+	print(mesh_instance.get_aabb().size)	
 	_shape = CollisionShape3D.new()
 	var col := BoxShape3D.new()
 	col.size = span

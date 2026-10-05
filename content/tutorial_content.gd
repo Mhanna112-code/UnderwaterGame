@@ -112,9 +112,9 @@ static func stat_glossary_body(title: String) -> String:
 # rather than guessed at (same "never describe a mechanic wrong" rule as
 # GENERAL_PAGES above).
 const WORLD_ABILITY_BLURBS := {
-	"swap": "Instantly trades places with another party member - press E, cycle who with Left/Right, confirm with Enter. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
-	"grapple": "Press E to aim, then click to fire a beam in that direction. Pulls you to wherever it connects, but only if that point is actually a grapple anchor - firing at open water or a wall does nothing.",
-	"shockwave": "Press E to fire instantly in every direction at once - no aiming needed. Breaks any nearby obstacle that's built to be shockwaved open.",
+	"swap": "Instantly trades places with another party member - press F, cycle who with Left/Right, confirm with Enter. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
+	"grapple": "Press F to aim, then click to fire a beam in that direction. Pulls you to wherever it connects, but only if that point is actually a grapple anchor - firing at open water or a wall does nothing.",
+	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks any nearby obstacle that's built to be shockwaved open.",
 	"sonar": "Toggled with Q, not E - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
 }
 

@@ -44,6 +44,23 @@ const ITEMS := {
 		"display": "Sunken Core", "kind": "key",
 		"description": "A key item. Unlocks Prototype_V(1922)'s Guard Break and Prototype_1(1910)'s Blinding Silt.",
 	},
+	# Maze keys (used as KeyDoor.required_key_id / the vortex chest).
+	"sphere_room_key": {
+		"display": "Sphere Room Key", "kind": "key",
+		"description": "Blasted out of a rock in the secret item room. Opens the room of swirling spheres.",
+	},
+	"vortex_key": {
+		"display": "Vortex Key", "kind": "key",
+		"description": "Found in the eye of the sphere vortex. Opens the sealed room between Box30 and Box32.",
+	},
+	"abyss_key": {
+		"display": "Abyss Key", "kind": "key",
+		"description": "Dropped by the secret boss. Opens the door to the main boss.",
+	},
+	"maze_nav_map": {
+		"display": "Maze Navigation Map", "kind": "key",
+		"description": "From the chest in the control room. Press L while within the maze to open the Maze Navigation map.",
+	},
 	# battle_only, same as the old Blast Rocks move used to be flagged -
 	# these raise strength/defense only for the fight they're used in.
 	# grant() still just adds `amount` straight onto the stat like every

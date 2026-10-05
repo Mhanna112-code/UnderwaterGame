@@ -393,11 +393,12 @@ const SHOCKWAVE_COOLDOWN := 2.5
 const GRAPPLE_COOLDOWN := 1.2
 const SWAP_COOLDOWN := 2.0
 
-# Swap costs less than the other two - it's a reposition, not a combat move
-# (see the cooldown comment above for the same distinction). Keyed by
-# ability_id rather than three separate consts so _ability_oxygen_cost()
-# stays a one-line lookup no matter how many abilities this ever grows to.
-const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0, "swap": 15.0}
+# Swap is free - it's a reposition, not a combat move (see the cooldown
+# comment above for the same distinction), so it works even at 0 Oxygen.
+# Keyed by ability_id rather than three separate consts so
+# _ability_oxygen_cost() stays a one-line lookup no matter how many
+# abilities this ever grows to.
+const ABILITY_OXYGEN_COST := {"shockwave": 20.0, "grapple": 20.0}
 
 # No passive regen at all - a save point (world.gd's _on_save_requested())
 # is the only way oxygen comes back, so every ability use and every tick
@@ -681,6 +682,11 @@ func _grapple(aim_dir: Vector3) -> void:
 		return
 
 	_ability_cooldown = GRAPPLE_COOLDOWN
+	# Something light (an item orb - see item_orb.gd's GrappleTarget) comes
+	# to the diver instead: the diver stays put and reels it in.
+	if (result.collider as Node).has_method("reel_in_to"):
+		(result.collider as Node).call("reel_in_to", self)
+		return
 	_is_grappling = true
 	var target: Vector3 = (result.collider as Node3D).global_position
 

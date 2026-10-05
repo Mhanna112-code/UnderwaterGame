@@ -40,8 +40,9 @@ func _ready() -> void:
 		ring.outer_radius = 1.4
 		var ring_mesh := MeshInstance3D.new()
 		ring_mesh.mesh = ring
-		ring_mesh.rotation_degrees.x = 90.0
-		ring_mesh.position.y = 0.05
+		# TorusMesh already lies flat (its axis is Y). Lifted by the tube's
+		# own half-thickness so the whole ring sits on top of the floor.
+		ring_mesh.position.y = (ring.outer_radius - ring.inner_radius) * 0.5 + 0.02
 		ring_mesh.material_override = _mat
 		add_child(ring_mesh)
 

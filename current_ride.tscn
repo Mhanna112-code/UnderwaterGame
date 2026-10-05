@@ -1,0 +1,69 @@
+[gd_scene load_steps=4 format=3 uid="uid://bx3jlurgxe7vc"]
+
+[ext_resource type="Script" uid="uid://bej6jowc3myek" path="res://CurrentRide.gd" id="2_84h7w"]
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 1
+background_color = Color(0.04, 0.12, 0.16, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.32, 0.5, 0.56, 1)
+ambient_light_energy = 1.1
+fog_enabled = true
+fog_light_color = Color(0.05, 0.16, 0.2, 1)
+fog_density = 0.035
+
+[sub_resource type="Curve3D" id="Curve3D_84h7w"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -0.929203, 0.630094, 2.83364, 0, 0, 0, 0, 0, 0, -1.96943, 1.92555, 2.90721, 0, 0, 0, 0, 0, 0, -2.9453, 2.61171, 3.04216, 0, 0, 0, 0, 0, 0, -4.43826, 3.00386, 2.95265, 0, 0, 0, 0, 0, 0, -5.30692, 3.23202, 2.90057, 0, 0, 0, 0, 0, 0, -5.2772, 3.85068, 2.57133, 0, 0, 0, 0, 0, 0, -5.74696, 3.79372, 1.72873, 0, 0, 0, 0, 0, 0, -5.68237, 3.60077, 1.38805, 0, 0, 0, 0, 0, 0, -5.47247, 3.31148, 1.16129, 0, 0, 0, 0, 0, 0, -5.33515, 3.24574, 0.857734, 0, 0, 0, 0, 0, 0, -5.26254, 3.30089, 0.711509, 0, 0, 0, 0, 0, 0, -5.20766, 3.28513, 0.591864, 0, 0, 0, 0, 0, 0, -4.75936, 3.35817, 0.118094, 0, 0, 0, 0, 0, 0, -4.47799, 3.52521, -0.184316, 0, 0, 0, 0, 0, 0, -4.2355, 3.67964, -0.445379, 0, 0, 0, 0, 0, 0, -3.07609, 4.26348, -1.46221, 0, 0, 0, 0, 0, 0, 0.358512, 4.54017, -4.82635, 0, 0, 0, 0, 0, 0, 2.8053, 4.45114, -7.66015, 0, 0, 0, 0, 0, 0, 3.31016, 5.19257, -9.6903, 0, 0, 0, 0, 0, 0, 0.964306, 6.42177, -9.89044, 0, 0, 0, 0, 0, 0, -0.797121, 6.91105, -7.6805, 0, 0, 0, 0, 0, 0, 3.77913, 7.84327, -9.39199, 0, 0, 0, 0, 0, 0, 3.504, 8.79265, -11.0302, 0, 0, 0, 0, 0, 0, 1.78314, 8.98273, -13.8069, 0, 0, 0, 0, 0, 0, 1.1037, 8.96105, -10.6194, 0, 0, 0, 0, 0, 0, 0.765488, 8.77122, -8.87604, 0, 0, 0, 0, 0, 0, 4.27881, 9.06238, -8.36448, 0, 0, 0, 0, 0, 0, 10.8866, 10.2787, -7.39995, 0, 0, 0, 0, 0, 0, 11.1524, 11.0039, -5.71305, 0, 0, 0, 0, 0, 0, 11.175, 10.8114, -5.51003, 0, 0, 0, 0, 0, 0, 14.5803, 8.79307, -3.08548, 0, 0, 0, 0, 0, 0, 16.6303, 8.18735, 0.0667806),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 32
+
+[node name="CurrentRide" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 20, 0)
+light_color = Color(0.72, 0.88, 1, 1)
+light_energy = 1.6
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Controls" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 900.0
+offset_bottom = 70.0
+text = "loading"
+
+[node name="Distance" type="Label" parent="."]
+unique_name_in_owner = true
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="CurrentPath" type="Path3D" parent="."]
+curve = SubResource("Curve3D_84h7w")
+script = ExtResource("2_84h7w")
+
+[node name="CSGPolygon3D" type="CSGPolygon3D" parent="CurrentPath"]
+mode = 2
+path_node = NodePath("..")
+path_interval_type = 0
+path_interval = 1.0
+path_simplify_angle = 0.0
+path_rotation = 2
+path_rotation_accurate = false
+path_local = false
+path_continuous_u = true
+path_u_distance = 1.0
+path_joined = false
+
+[node name="StartTrigger" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
+
+[node name="Camera3D" type="Camera3D" parent="StartTrigger"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2, 4)
+fov = 65.0
+far = 200.0

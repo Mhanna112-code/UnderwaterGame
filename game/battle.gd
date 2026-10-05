@@ -33,6 +33,13 @@ var party_source: Array = []
 # _show_items()/_populate_item_menu()). Nothing else in this file touches
 # world at all.
 var world: World
+# Without a World (the standalone maze), the party's items come from here
+# instead - MazeLevel hands over its own inventory dictionary, shared, so
+# what gets used here comes off the maze's count.
+var inventory_source: Dictionary = {}
+
+func _party_inventory() -> Dictionary:
+	return world.inventory if world != null else inventory_source
 var reward_item_on_win := ""
 var encounter_intro_override := ""
 
@@ -540,6 +547,19 @@ func _register_stat_effects(attack: Dictionary) -> void:
 						stat_effects[attack_name]["player"]["evasion"] = \
 							effect["evasion"]
 
+# Overlays that draw above the battle screen - the whirlpool's "Danger"
+# warning, info popups - keep out of the way for as long as a battle runs.
+func _enter_tree() -> void:
+	add_to_group("battle")
+	Whirlpool.set_battle_running(true)
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup != null and popup.has_method("suspend_for_battle"):
+		popup.call("suspend_for_battle")
+
+func _exit_tree() -> void:
+	remove_from_group("battle")
+	Whirlpool.set_battle_running(not get_tree().get_nodes_in_group("battle").is_empty())
+
 func _ready() -> void:
 	for diver in BASE_MOVES:
 		for attack in BASE_MOVES[diver]:
@@ -564,8 +584,18 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log(encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies))
+		if guardian_encounter:
+			_intro_hold = ITEM_CARRIER_INTRO
+		if not encounter_intro_override.is_empty():
+			_log(encounter_intro_override)
+		else:
+			_log(ITEM_CARRIER_INTRO if guardian_encounter else encounter_intro(enemies))
 		_advance_turn()
+
+# The opening combat text for an enemy guarding an item. Kept above the
+# first "X's turn." line (which would otherwise replace it at once).
+const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
+var _intro_hold := ""
 
 static func encounter_intro(entries: Array) -> String:
 	if entries.size() != 1:
@@ -1065,8 +1095,10 @@ func _build_stage() -> void:
 	var enemy_z := -9.0 if is_swap_encounter else (-4.6 if special_encounter else -2.2)
 	var pn := party.size()
 	for i in range(pn):
-		if (party[i].stats as CombatantStats).hp <= 0:
-			continue
+		# Every party member gets a fighter on stage, so nothing that reads
+		# "where the party is" finds one missing. One that's knocked out
+		# starts hidden and sits the fight out (no turns - see
+		# _advance_turn()) unless revived.
 		var actor := Diver.new()
 		actor.model_name = String(party[i].model_name)
 		vp.add_child(actor)
@@ -1077,6 +1109,8 @@ func _build_stage() -> void:
 		var floor_y := -actor.foot_offset() if boss_encounter else 0.0
 		actor.position = Vector3(_spread(i, pn, 2.9) - 0.4, floor_y, diver_z - _spread(i, pn, 0.7))
 		party[i]["actor"] = actor
+		if (party[i].stats as CombatantStats).hp <= 0:
+			actor.visible = false
 		# Where this one stands when it is not swinging. Attacks step in
 		# toward whoever they are aimed at and come back here afterwards.
 		party[i]["home_pos"] = actor.position
@@ -1539,7 +1573,11 @@ func _build_ui() -> void:
 		_build_overhead_bar(entry)
 
 	log_label = RichTextLabel.new()
-	log_label.custom_minimum_size = Vector2(0, 36)
+	# Always room for two lines (e.g. "This enemy is carrying an item!..."
+	# above "X's turn."), and it grows for more - the panel refits around it
+	# (see _log()), moving the buttons down instead of covering the text.
+	log_label.custom_minimum_size = Vector2(0, LOG_MIN_HEIGHT)
+	log_label.fit_content = true
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2067,7 +2105,7 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	bar.add_theme_stylebox_override("background", hp_track)
 	bar_row.add_child(bar)
 
-	# Hidden until _win()'s post-victory regroup actually restores something -
+	# Hidden until a level-up in _win() actually refills something -
 	# _show_heal_overlay() positions/sizes this to span exactly the gap
 	# between whatever HP a diver had before that restore and whatever they
 	# have after, in green, rather than the bar just silently jumping to a
@@ -2211,9 +2249,12 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	overlay.size.x = ((after - before) / max_value) * OVERHEAD_BAR_WIDTH
 	overlay.visible = true
 
+const LOG_MIN_HEIGHT := 56.0   # two lines of combat text
+
 func _log(text: String) -> void:
 	log_label.clear()
 	log_label.add_text(text)
+	call_deferred("_fit_panel_height")
 
 func _current_log_text() -> String:
 	return log_label.get_parsed_text()
@@ -2234,6 +2275,8 @@ func _log_grapple_wave(safe_is_yellow: bool, wave_index: int, total_waves: int) 
 # fast-moving sentence at the bottom of the screen. Label3D keeps the proof
 # next to the model inside Battle's isolated viewport.
 func _show_combat_feedback(entry: Dictionary, result: Dictionary) -> void:
+	if String(result.get("debuff", "")) == "revive":
+		_return_to_stage(entry)
 	if not entry.has("actor") or not is_instance_valid(entry.actor):
 		return
 	var messages: Array[Dictionary] = []
@@ -2735,7 +2778,12 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
 	_show_turn_cursor_on(actor)
-	_log("%s's turn." % String(actor.display_name))
+	var turn_text := "%s's turn." % String(actor.display_name)
+	if _intro_hold != "":
+		turn_text = "%s
+%s" % [_intro_hold, turn_text]
+		_intro_hold = ""
+	_log(turn_text)
 	_set_all_buttons(true)
 	# Run stays off for the entire tutorial fight, not just its scripted
 	# steps - _set_all_buttons(true) just re-enabled it above like every
@@ -3291,9 +3339,10 @@ func _populate_item_menu() -> void:
 	for b in item_buttons:
 		(b as Button).queue_free()
 	item_buttons.clear()
-	if world != null:
-		for item_id in world.inventory.keys():
-			var count: int = int(world.inventory[item_id])
+	var inv := _party_inventory()
+	if not inv.is_empty():
+		for item_id in inv.keys():
+			var count: int = int(inv[item_id])
 			if count <= 0:
 				continue
 			var def: Dictionary = Items.ITEMS.get(item_id, {})
@@ -3321,8 +3370,10 @@ func _on_item_chosen(item_id: String) -> void:
 	if _busy:
 		return
 	item_menu.visible = false
-	var targets: Array = _living(party).filter(func(e: Dictionary) -> bool:
-		return Items.would_help(item_id, e.stats as CombatantStats))
+	var heals := String(Items.ITEMS.get(item_id, {}).get("kind", "")) == "heal"
+	var targets: Array = party.filter(func(e: Dictionary) -> bool:
+		var s := e.stats as CombatantStats
+		return (s.hp > 0 or heals) and Items.would_help(item_id, s))
 	if targets.is_empty():
 		item_menu.visible = true
 		call_deferred("_fit_panel_height")
@@ -3337,15 +3388,15 @@ func _on_item_chosen(item_id: String) -> void:
 # Mirrors _resolve_party_move()'s tail exactly (log, refresh bars, advance
 # turn) so an item-use turn reads identically to a move turn.
 func _resolve_item(item_id: String, target: Dictionary) -> void:
-	if world == null:
-		_advance_turn()
-		return
 	_busy = true
 	_set_all_buttons(false)
 	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 	var kind := String(Items.ITEMS.get(item_id, {}).get("kind", ""))
 	var amount := int(Items.ITEMS.get(item_id, {}).get("amount", 0))
+	var was_down := (target.stats as CombatantStats).hp <= 0
 	var msg := Items.grant(item_id, target.stats as CombatantStats)
+	if was_down and (target.stats as CombatantStats).hp > 0:
+		_return_to_stage(target)
 	# MODIFIED (added): attack_up/defense_up are battle_only and only
 	# supposed to last THIS fight - Items.grant() above already applied the
 	# raw stat increase (same as any other consumable), so this just
@@ -3357,10 +3408,11 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	var temp_field: String = {"attack_up": "strength", "defense_up": "defense"}.get(kind, "")
 	if temp_field != "":
 		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount})
-	var count: int = int(world.inventory.get(item_id, 0))
-	world.inventory[item_id] = count - 1
-	if world.inventory[item_id] <= 0:
-		world.inventory.erase(item_id)
+	var inv := _party_inventory()
+	var count: int = int(inv.get(item_id, 0))
+	inv[item_id] = count - 1
+	if inv[item_id] <= 0:
+		inv.erase(item_id)
 	_refresh_bar(target)
 	_log(msg if msg != "" else "%s - nothing happened." % display)
 	_finish_actor_turn(_acting)
@@ -4041,6 +4093,21 @@ func _apply_heal(target: CombatantStats, amount: int) -> Dictionary:
 # they had, since a downed target always has exactly 0. Capped at hp_max
 # same as a heal, in case amount was ever tuned above what a low-level
 # reviver's hp_max could actually hold.
+# A knocked-out party member back on their feet: a fresh fighter in their
+# spot (the old one was hidden, or faded out when they went down).
+func _return_to_stage(entry: Dictionary) -> void:
+	if String(entry.get("kind", "")) != "party" or _stage_vp == null:
+		return
+	var old: Node3D = entry.get("actor")
+	var actor := Diver.new()
+	actor.model_name = String(entry.model_name)
+	actor.position = entry.get("home_pos", old.position if old != null and is_instance_valid(old) else Vector3.ZERO)
+	actor.rotation.y = float(entry.get("home_rot", 0.0))
+	if old != null and is_instance_valid(old):
+		old.queue_free()
+	_stage_vp.add_child(actor)
+	entry["actor"] = actor
+
 func _apply_revive(target: CombatantStats, amount: int) -> Dictionary:
 	target.hp = mini(target.hp_max, amount)
 	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "revive", "changed": target.hp}
@@ -4401,7 +4468,9 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 				var poison_level := maxi(1, int(round(float(target_stats.hp_max) * float(move.poison_fraction))))
 				target_stats.add_status("poison", poison_level, int(move.get("poison_turns", 3)))
 				var effects := result.get("effects", []) as Array
-				effects.append("Poison %d·%d" % [poison_level, int(move.get("poison_turns", 3))])
+				# Same wording as the status cards: "Poison 2 (3 turns left)".
+				var poison_turns := int(move.get("poison_turns", 3))
+				effects.append("Poison %d (%d %s left)" % [poison_level, poison_turns, "turn" if poison_turns == 1 else "turns"])
 				result["effects"] = effects
 			_react(target, result)
 			_show_combat_feedback(target, result)
@@ -4899,7 +4968,18 @@ func _win() -> void:
 		# just make leveling slower for the same fights without adding a
 		# meaningful choice anywhere.
 		for entry in party:
+			var before_hp := float((entry.stats as CombatantStats).hp)
+			var before_o2 := (entry.stats as CombatantStats).oxygen
 			var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
+			# A level-up is a full HP/Oxygen refill - shown as a green fill
+			# over the diver's own bars rather than them just jumping to full.
+			if not levels.is_empty():
+				var s := entry.stats as CombatantStats
+				if entry.has("hp_heal_overlay"):
+					_show_heal_overlay(entry.hp_heal_overlay as ColorRect, before_hp, float(s.hp), float(s.hp_max))
+				if entry.has("oxygen_heal_overlay"):
+					_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
+				_refresh_all_bars()
 			for lv in levels:
 				_log("%s reached level %d!" % [String(entry.display_name), int((lv as Dictionary).level)])
 				await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -4932,24 +5012,10 @@ func _win() -> void:
 		_levelup_caption.text = "\n\n".join(levelup_blocks)
 		_levelup_caption.visible = true
 		call_deferred("_fit_panel_height")
-	# The map has repeated random battles plus two guardians and no guaranteed
-	# healer between them. A partial regroup prevents one victory from leaving
-	# the next encounter mathematically decided while preserving attrition.
-	# Shown as a green fill over each diver's own HP/Oxygen bar (any win,
-	# including the tutorial's - this is the real, ungated partial heal, not
-	# a stand-in for a level-up that isn't happening here), from wherever it
-	# sat before this restore up to wherever it lands after - see
-	# _show_heal_overlay() - rather than the bars just silently jumping to
-	# new numbers.
+	# Winning gives no HP/Oxygen back (only a level-up, above, or a save
+	# point does) - it just clears the fight's statuses and buffs/debuffs.
 	for entry in party:
-		var s := entry.stats as CombatantStats
-		var before_hp := float(s.hp)
-		var before_o2 := s.oxygen
-		s.recover_after_victory()
-		if entry.has("hp_heal_overlay"):
-			_show_heal_overlay(entry.hp_heal_overlay as ColorRect, before_hp, float(s.hp), float(s.hp_max))
-		if entry.has("oxygen_heal_overlay"):
-			_show_heal_overlay(entry.oxygen_heal_overlay as ColorRect, before_o2, s.oxygen, s.oxygen_max)
+		(entry.stats as CombatantStats).recover_after_victory()
 	_refresh_all_bars()
 	# One extra beat only for the choreographed first fight - explains that
 	# THIS win didn't grant XP, then describes what winning normally does
