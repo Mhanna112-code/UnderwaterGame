@@ -1,0 +1,61 @@
+{
+  "log": [
+    "IDB_OPEN|[\"/userfs\",21]",
+    "Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org",
+    "OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL",
+    "Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.",
+    "(0.03911, 0.017409, 0.065218)",
+    "(0.03911, 0.017409, 0.065218)",
+    "(0.03911, 0.017409, 0.065218)",
+    "CHECKPOINT_REQUEST|/userfs/godot/app_userdata/UnderwaterGame/saves/slot_0.json|bytes=1563",
+    "IDB_OPEN|[\"/userfs\"]",
+    "IDB_OPEN|[\"/userfs\"]",
+    "CHECKPOINT_RESULT|true",
+    "PROLOGUE_PHASE|opening_video",
+    "IDB_OPEN|[\"/userfs\"]"
+  ],
+  "databases": [
+    {
+      "name": "/userfs",
+      "keys": [
+        "/userfs/godot",
+        "/userfs/godot/app_userdata",
+        "/userfs/godot/app_userdata/UnderwaterGame",
+        "/userfs/godot/app_userdata/UnderwaterGame/saves",
+        "/userfs/godot/app_userdata/UnderwaterGame/saves/slot_0.json",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CanvasOcclusionShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CanvasOcclusionShaderGLES3/f818a8f730d58a711992c8a4e0128943b6de769e22c755bf25fa9b2c91eb797a",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CanvasSdfShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CanvasSdfShaderGLES3/bb66bedc1351d45606a9e7a58d673d19a5dcf38d178d630d1254904a435ccd11",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CanvasShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CanvasShaderGLES3/e8f6bc68bb89fb4a47d590b1849654313c820ea1cf3db591a2bd0a0ab967893f",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CopyShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CopyShaderGLES3/227703cbe4dbfc7cd2037ec10eef081d3f1f5593f23f5be9a7adb858e12a0b59",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CubemapFilterShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/CubemapFilterShaderGLES3/b6ae124cd1d4a7e561bd528bd4a77c138ee3a3ecec10dff52834da05a584150b",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/FeedShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/FeedShaderGLES3/bf3e769fb9cccb160c1455e48ff14753cb627a350dd01a48eb0f0c360453e632",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/GlowShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/GlowShaderGLES3/451048476e1fd0d1e3d2ee406829fdfa053b6cd3cd83ca130a227981bae863d2",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/ParticlesCopyShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/ParticlesCopyShaderGLES3/5a972e52ef34baa6d9112f5010053a97977d72e736e5df0bdaf9397b3f4235ad",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/ParticlesShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/ParticlesShaderGLES3/f214330bd79fb762157c96bdfee38537c739e4c46a27337eee2cd92c69e5f3fd",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/PostShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/PostShaderGLES3/729cdac5e0043b26c3ab71ce2dd86ddffee039defeae03f3ef5a0caa17ef0345",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/SceneShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/SceneShaderGLES3/81fd88adc17955a891cb1328d77f82f2b14140dac9c8cf7d6d86f91312221718",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/SkeletonShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/SkeletonShaderGLES3/4d6fb1c1f824f2814a65e4f43bf7c7d011ecfa4b240872b642ed708dce520009",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/SkyShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/SkyShaderGLES3/d030fd8e6c7c05254b38b058d2bfe8373638ee5d4e13abfc4957c6e2b708bef8",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/TexBlitShaderGLES3",
+        "/userfs/godot/app_userdata/UnderwaterGame/shader_cache/TexBlitShaderGLES3/b314a86ef543f95f31f3abeafa04de0fb5d0bc188a65b08a74fdd40c707e1ed3"
+      ]
+    }
+  ],
+  "phases": [
+    "PROLOGUE_PHASE|opening_video"
+  ]
+}

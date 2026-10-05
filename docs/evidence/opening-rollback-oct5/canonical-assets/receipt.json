@@ -1,0 +1,52 @@
+{
+  "base": "https://underwatergame.vercel.app/",
+  "expected_source": "e54e7ce4b0a261079b588c6609fdf5c803d9c53c",
+  "scope": "exact four served game assets and fresh ordinary title; not full campaign or browser pickup/persistence acceptance",
+  "assets": [
+    {
+      "file": "index.html",
+      "bytes": 6387,
+      "sha256": "91f52a8c31cdfd9ef66e1be89c9b399d9fab4b5de61da9e99f8999fae906b68e",
+      "matches_local": true
+    },
+    {
+      "file": "index.js",
+      "bytes": 279815,
+      "sha256": "68586d6daafc93c6e697b3fb258976874aa7459b8931165ebb1dc3c9614cc42c",
+      "matches_local": true
+    },
+    {
+      "file": "index.wasm",
+      "bytes": 39513091,
+      "sha256": "35116f68540ac41acf7d71ea457added91b5e960a9cca3e2acc72918eaf01277",
+      "matches_local": true
+    },
+    {
+      "file": "index.pck",
+      "bytes": 94993116,
+      "sha256": "42d6a9fc9e79b93ddd87b04eb65fb75c1a089a35a567140b2d33d2ec7dc5f5a5",
+      "matches_local": true
+    }
+  ],
+  "errors": [],
+  "metadata": {
+    "source_commit": "e54e7ce4b0a261079b588c6609fdf5c803d9c53c",
+    "pck_sha256": "42d6a9fc9e79b93ddd87b04eb65fb75c1a089a35a567140b2d33d2ec7dc5f5a5",
+    "pck_bytes": 94993116,
+    "engine": "Godot 4.7.1",
+    "status": "Automatic Cordys opener removed. Native idle/look/swim, visible Angler, recovery and completed-save Load pass; browser/canonical acceptance recorded separately. Full campaign and balance remain incomplete",
+    "upstream_intake": {
+      "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
+      "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
+    },
+    "change": "Restores opening movie to controllable exploration, then one Angler only after four seconds and three metres of actual swimming. Removes the direct-Cordys bypass; preserves the older Cordys interruption after Angler defeat, saved full recovery and existing tutorial. All unrelated main fixes are retained",
+    "deferred": "No Tethys opener redesign or relocated introduction in this emergency rollback. Full earned campaign/browser/audio/polish acceptance remains. Available Windows/Linux feedback packages are the older 7336611 runtime, without this rollback; not target-machine launch-tested",
+    "native_download_source_commit": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+    "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/main-feedback-7336611",
+    "native_target_launch_verified": false,
+    "native_download_matches_web_runtime": false
+  },
+  "metadata_matches_local": true,
+  "title_text": "Underwater\nNew Game",
+  "passed": true
+}

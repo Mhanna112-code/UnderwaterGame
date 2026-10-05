@@ -1,0 +1,22 @@
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_CvXtKRopw2XpHb1dQun2CJVBNUnt",
+    "url": "https://underwatergame-9xma17t3d-immortaldemongods-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/immortaldemongods-projects/underwatergame/CvXtKRopw2XpHb1dQun2CJVBNUnt",
+    "readyState": "READY",
+    "target": "production",
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_CvXtKRopw2XpHb1dQun2CJVBNUnt"
+  },
+  "message": "Deployment underwatergame-9xma17t3d-immortaldemongods-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel inspect underwatergame-9xma17t3d-immortaldemongods-projects.vercel.app --scope immortaldemongods-projects",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod --scope immortaldemongods-projects",
+      "when": "Promote to production"
+    }
+  ]
+}

@@ -60,4 +60,10 @@ Recovery journey used two Angler actions and three genuine Cordys responses;
 all party members recovered, no progression was granted, fresh title Load did
 not replay the movies or combat. Exported browser and canonical identity
 acceptance remain required before delivery; native video fast-forward is not
-proof of real decoder playback.
+proof of real decoder playback. Independent canonical Chromium now plays the
+complete movie/title, retains 15 seconds idle plus camera-only control, and
+starts one visible Angler only after real W; raw keys/public phases recorded,
+errors=[], terminal0. Candidate and canonical metadata/four-file bytes match.
+Two failed browser observations (initial save acknowledgement; unexpected
+headed idle trigger) remain documented, with causes unproven; neither was
+counted as green. The packed trigger independently rejects stationary input.

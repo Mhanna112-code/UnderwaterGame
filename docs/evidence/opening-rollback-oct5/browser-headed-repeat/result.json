@@ -1,0 +1,15 @@
+{
+  "target": "https://underwatergame-9xma17t3d-immortaldemongods-projects.vercel.app/",
+  "browserEngine": "chromium",
+  "recording": "/private/tmp/opening-rollback-candidate-browser-repeat-oct5/page@079cf28661b4e9939f8f6e90cc936cae.webm",
+  "recordingStarted": 1791239472683,
+  "idleSeconds": 15.633,
+  "timestamps": {
+    "opening_video": 1791239531132,
+    "opening_handoff": 1791239564883,
+    "spawn_exploration": 1791239568546,
+    "angler": 1791239581831
+  },
+  "errors": [],
+  "failure": "Error: OPEN-042 combat or Cordys introduction started while stationary before swimming"
+}

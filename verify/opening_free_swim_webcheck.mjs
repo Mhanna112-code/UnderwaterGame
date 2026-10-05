@@ -20,6 +20,12 @@ const context = await browser.newContext({
   recordVideo: { dir: output, size: { width: 1280, height: 720 } },
 });
 const page = await context.newPage();
+const keyboardEvents = [];
+await page.exposeFunction('recordOpeningKey', event => keyboardEvents.push(event));
+await page.addInitScript(() => {
+  for (const type of ['keydown', 'keyup'])
+    window.addEventListener(type, event => window.recordOpeningKey({ type, key: event.key, code: event.code, time: Date.now(), trusted: event.isTrusted }), true);
+});
 const recordingStarted = Date.now();
 const timestamps = {}, errors = [];
 page.on('console', message => {
@@ -38,7 +44,12 @@ let failure, keydownAt, idleSeconds, swimmingSeconds, recording, anglerText;
 try {
   await page.goto(target, { waitUntil: 'load' });
   await page.waitForTimeout(25000);
-  await page.mouse.click(640, 367);
+  const titlePicture = path.join(output, 'new-game-button.png');
+  await page.screenshot({ path: titlePicture });
+  const titleRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [titlePicture], { encoding: 'utf8' }));
+  const start = titleRows.find(row => row.text.trim() === 'New Game');
+  if (!start) throw new Error('Fresh profile has no visible New Game');
+  await page.mouse.click(start.x, start.y);
   await waitPhase('opening_video');
   await waitPhase('opening_handoff');
   await page.waitForTimeout(800);
@@ -79,7 +90,7 @@ finally {
   await context.close();
   recording = await page.video().path();
   fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({
-    target, browserEngine, recording, recordingStarted, keydownAt, idleSeconds, swimmingSeconds, anglerText, timestamps, errors, failure: failure || null,
+    target, browserEngine, recording, recordingStarted, keydownAt, idleSeconds, swimmingSeconds, anglerText, timestamps, keyboardEvents, errors, failure: failure || null,
   }, null, 2));
   await browser.close();
 }

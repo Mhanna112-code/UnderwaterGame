@@ -11,6 +11,11 @@ redesign and does not resume or complete the larger campaign plan.
 
 Candidate/canonical web delivery is tracked in
 [the opener rollback evidence](evidence/opening-rollback-oct5/README.md).
+Main `43e76b6` includes the rebuilt artifact; the exact candidate is now promoted
+to the canonical link. Independent public metadata and all four assets match,
+and a fresh browser full-movie/idle/look/actual-W/visible-Angler journey passes.
+Two failed browser attempts and their unproven causes are retained separately;
+this is not a full-game or browser recovery/Load acceptance claim.
 The existing Windows/Linux 7336611 packages do **not** contain this newer repair.
 The earlier current-source/status claims below describe their historical batch,
 not acceptance of the newer opener or a full campaign.

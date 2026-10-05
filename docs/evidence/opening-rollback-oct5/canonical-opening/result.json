@@ -1,0 +1,62 @@
+{
+  "target": "https://underwatergame.vercel.app/",
+  "browserEngine": "chromium",
+  "recording": "/private/tmp/opening-rollback-canonical-headless-oct5/page@7ce499ad7c6d3d09cf253452b36a378a.webm",
+  "recordingStarted": 1791239703807,
+  "keydownAt": 1791239793156,
+  "idleSeconds": 15.731,
+  "swimmingSeconds": 4.005,
+  "anglerText": "NOW\nMaxilani\nNext\nMusashi\nAngler\nBucky\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nAngler\n3/3\nMaxilani's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\n3",
+  "timestamps": {
+    "opening_video": 1791239737145,
+    "opening_handoff": 1791239771434,
+    "spawn_exploration": 1791239775302,
+    "angler": 1791239797161
+  },
+  "keyboardEvents": [
+    {
+      "type": "keydown",
+      "key": "ArrowRight",
+      "code": "ArrowRight",
+      "time": 1791239791316,
+      "trusted": true
+    },
+    {
+      "type": "keyup",
+      "key": "ArrowRight",
+      "code": "ArrowRight",
+      "time": 1791239792202,
+      "trusted": true
+    },
+    {
+      "type": "keydown",
+      "key": "ArrowLeft",
+      "code": "ArrowLeft",
+      "time": 1791239792232,
+      "trusted": true
+    },
+    {
+      "type": "keyup",
+      "key": "ArrowLeft",
+      "code": "ArrowLeft",
+      "time": 1791239793037,
+      "trusted": true
+    },
+    {
+      "type": "keydown",
+      "key": "w",
+      "code": "KeyW",
+      "time": 1791239793152,
+      "trusted": true
+    },
+    {
+      "type": "keyup",
+      "key": "w",
+      "code": "KeyW",
+      "time": 1791239797523,
+      "trusted": true
+    }
+  ],
+  "errors": [],
+  "failure": null
+}

@@ -1,0 +1,9 @@
+{
+  "target": "https://underwatergame-9xma17t3d-immortaldemongods-projects.vercel.app/",
+  "browserEngine": "chromium",
+  "recording": "/private/tmp/opening-rollback-candidate-browser-oct5/page@5fbe77274eb058efd3f36759f2c1e3b0.webm",
+  "recordingStarted": 1791239163171,
+  "timestamps": {},
+  "errors": [],
+  "failure": "Error: Missing opening_video"
+}
