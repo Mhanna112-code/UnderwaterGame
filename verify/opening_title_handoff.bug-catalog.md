@@ -43,6 +43,12 @@ showed all credits readable. The 360x640 capture caught an inherited title
 mid-word wrap despite passing viewport bounds. TITLE-005 now also checks the
 single-word headline stays on one line; responsive font size repairs that
 observed presentation defect rather than treating bounds alone as acceptance.
+The repaired 360x640 capture and single-line invariant both pass. Actual World
+movie/title handoff still returns control and requires 4.122 seconds of swimming
+before its first encounter. Hosted ordinary New Game with full movie playback
+visibly shows all four names (OCR plus independent screenshot inspection), with
+no captured script/page errors. Evidence is in `docs/evidence/opening-credits/`;
+this is not a new claim of complete campaign acceptance.
 
 Tests use decoder EOF and public signals rather than a fake win or phase
 injection. Fast lifecycle tests are not proof of a polished transition: rendered

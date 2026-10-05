@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-05",
+  "runtime_source": "7330d5ce32a8d3a48ce9e41cdbe995b1762f5ce9",
+  "main_artifact_commit": "c9e6ef255a47bc97e11ebec96ef15e6fcb5fdc7e",
+  "candidate_deployment": "dpl_DfruFgu1YHqzg1MgbY7bL6YM9Mkx",
+  "production_deployment": "dpl_3dBeXccJK6ymWxxeic9FouHVqBJS",
+  "production_status": "READY",
+  "framework": "Godot 4.7.1 static Web export",
+  "candidate_build_duration_ms": 275,
+  "canonical": "https://underwatergame.vercel.app/",
+  "review_alias": "https://underwatergame-maze-campaign-review.vercel.app/",
+  "pck_bytes": 93321476,
+  "pck_sha256": "dd6080ba2441cb43738cad6efc745f64e70da148ca2c22aae43e69a26bb8bc86",
+  "actual_downloads_and_metadata_match_both_aliases": true,
+  "ordinary_hosted_new_game_full_movie_visible_credits": "clean",
+  "hosted_browser_script_and_page_errors": [],
+  "native_capture_sizes": ["1280x720", "720x480", "360x640"],
+  "regression": "Both missing developer credits reproduced before repair; inherited portrait headline wrap repaired; actual World handoff and four-second movement gating preserved",
+  "native_download_packages_updated": false,
+  "scope": "Intro credits and responsive handoff only, not full campaign acceptance"
+}
