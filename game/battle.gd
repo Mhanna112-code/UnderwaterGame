@@ -3888,7 +3888,7 @@ func _explain_other_stats() -> void:
 	# TutorialContent's shared page body - that same "Every Other Stat"
 	# text is also what the F1 general tutorial book shows outside of any
 	# fight, where "the status panels on either side" wouldn't mean anything.
-	var text := "HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. %s" % TutorialContent.page_body("Every Other Stat")
+	var text := "Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. %s" % TutorialContent.page_body("Every Other Stat")
 	await _tutorial_show_step(
 		text,
 		func() -> void:
