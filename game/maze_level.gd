@@ -943,7 +943,9 @@ func _update_encounter_status(inside: bool) -> void:
 	if _encounter_status == null:
 		if not inside:
 			return
-		_encounter_status = _make_caption(-90.0, -62.0, 15, Color(0.6, 0.62, 0.65))
+		# Part of the world, the HP/Oxygen bars fill the bottom: above the
+		# danger room's warning instead.
+		_encounter_status = _make_caption(-280.0, -252.0, 15, Color(0.6, 0.62, 0.65)) if world != null else _make_caption(-90.0, -62.0, 15, Color(0.6, 0.62, 0.65))
 	_encounter_status.visible = inside
 	_encounter_status.text = "Random encounters: ON (can't be turned off here)" if room_encounters_enabled else "Random encounters: OFF (developer switch)"
 
@@ -1064,7 +1066,9 @@ func _update_room_switch() -> void:
 	if _switch_prompt == null:
 		if not near:
 			return
-		_switch_prompt = _make_caption(-128.0, -96.0, 18, Color(1, 1, 1))
+		# Part of the world: in the gap between its Oxygen bar and the orange
+		# message line, clear of the bars.
+		_switch_prompt = _make_caption(-130.0, -105.0, 18, Color(1, 1, 1)) if world != null else _make_caption(-128.0, -96.0, 18, Color(1, 1, 1))
 	_switch_prompt.text = "Press E to open" if at_chest else "Press E to interact"
 	_switch_prompt.visible = near
 
