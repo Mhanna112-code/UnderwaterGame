@@ -94,6 +94,12 @@ a fix. Next use the real first-click gameplay capture before F, as normal
 players do, and continue requiring real canvas lock/no page errors. No game
 code or engine pointer-lock adapter is modified by this diagnostic.
 
+Final same-pack headed first-click run passes, terminal0/no findings, with
+pointerLocked true after the actual mouse click and still true during real F
+aim. Actual E map acquisition, three widths, Inventory and cancel remain
+strict. Receipt and inspected pictures are in browser-final-headed. This
+corrects the observer's omitted ordinary click, not the production game.
+
 Final opening swap/Cordys film is review-gated. No final narration rewrite,
 new dialogue tutorial, boss/key/geometry tuning, compulsory laboratory lock,
 new map spoiler, or audio change. Browser/layout and actual lab-result checks

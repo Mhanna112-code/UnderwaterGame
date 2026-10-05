@@ -1,5 +1,27 @@
 # Maze destination versus retained health HUD — October 5
 
+## Final cb607cf hosted acceptance
+
+browser-final-headed identifies the actually served94,990,924byte pack,
+SHA25610be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031.
+Actual swimming/E earns the map, L teaches discovery only once, all three
+viewport sizes show the complete hallway/relic/Cordys destination, Inventory
+remains readable, and real first gameplay click acquires canvas pointer lock.
+F retains that actual lock, presents grapple aim and Escape restores the goal
+without opening Inventory. Terminal0/no findings; narrow goal, Inventory and
+aim pictures inspected. A close parked Bucky occupies part of this diagnostic
+aim view; these captions/mouse-owner checks are not full-route framing proof.
+
+All rejected mouse-capture receipts remain in final-pointer-investigation.
+Both headless and headed key-only game observers failed. A separate canvas
+probe isolates headless Mac Chromium's rejection; the actual game requires
+the normal first gameplay click to acquire its native view. The final observer
+uses actual click and demands real pointerLockElement, with no promise catch,
+error suppression or fabricated lock. No production pointer-lock code changed.
+
+This accepts this identified map/reading/aim scope only, not New Game earned
+campaigns, battle balance, comprehensive browser persistence or whole-game art.
+
 The actual earned-map browser run on source6606c5b, pack5098f894, failed:
 the Oxygen bar painted over the destination's final Cordys line. The rejected
 1280x720 screenshot is retained. This was a real rendering bug, not a desired

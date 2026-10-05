@@ -1,0 +1,61 @@
+{
+  "source_commit": "cb607cf7b27ccca844d643ba5b74e2dca1e1f385",
+  "downloads": [
+    {
+      "bytes": 94990924,
+      "sha256": "10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031",
+      "endpoint": "https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/index.pck"
+    }
+  ],
+  "findings": [],
+  "scope": "served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection, actual swimming/E map acquisition, earned L controls and next destination at three widths, actual Inventory/aim/cancel reading ownership; no New Game full campaign or durability claim",
+  "pointerObservations": [
+    {
+      "stage": "before-bring-to-front",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": false,
+      "href": "https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/?maze=1&entry=entrance"
+    },
+    {
+      "stage": "after-bring-to-front",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": false,
+      "href": "https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/?maze=1&entry=entrance"
+    },
+    {
+      "stage": "first-gameplay-click",
+      "focused": true,
+      "visibility": "visible",
+      "connected": true,
+      "ownsDocument": true,
+      "tag": "CANVAS",
+      "href": "https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/?maze=1&entry=entrance",
+      "stack": "Error\n    at Element.requestPointerLock (<anonymous>:8:58)\n    at Object.lockPointer (https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/index.js:1:163501)\n    at _godot_js_display_cursor_lock_set (https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/index.js:1:179903)\n    at wasm://wasm/096bb00e:wasm-function[14435]:0x845781\n    at wasm://wasm/096bb00e:wasm-function[66388]:0x1f47f05\n    at wasm://wasm/096bb00e:wasm-function[46048]:0x1b322d7\n    at wasm://wasm/096bb00e:wasm-function[17350]:0xa176ca\n    at wasm://wasm/096bb00e:wasm-function[488]:0x62b62\n    at wasm://wasm/096bb00e:wasm-function[11474]:0x6f651f\n    at wasm://wasm/096bb00e:wasm-function[1142]:0xb0237"
+    },
+    {
+      "stage": "after-gameplay-click",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": true,
+      "href": "https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/?maze=1&entry=entrance"
+    },
+    {
+      "stage": "actual-grapple-lock",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": true,
+      "href": "https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/?maze=1&entry=entrance"
+    }
+  ],
+  "browserMode": "headed Chromium; actual canvas pointer lock required"
+}

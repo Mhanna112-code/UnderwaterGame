@@ -2,6 +2,18 @@
 
 ## Latest unpublished batch checkpoint — cb607cf
 
+Final acceptance now passes on this same artifact: hosted first-click headed
+Chromium gives actual canvas mouse capture, E-earned map, discovery-only first
+L lesson/reopen, complete destinations at three sizes, exclusive Inventory and
+F/cancel. Both durable/cold-Load and injected-denial/session-Restart ending
+profiles exit0 without findings. Rejected boot/mouse observers remain retained;
+the normal click correction does not change production pointer-lock handling.
+This bounded batch can publish. Full earned campaigns, exhaustive integration
+dispositions, current full suite/Bomb Bot/audio/six-area review/native packages
+and review-gated opening remain incomplete. Publication is separately recorded
+in pre-boss-maze-ui-delivery-oct5.md; older pending paragraphs below describe
+the investigation history, not unresolved final mouse/save checks.
+
 Origin main remains2456b28; this checkout has not pushed the current batch.
 The final candidate runtime is cb607cf, actual served PCK
 `10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031`
