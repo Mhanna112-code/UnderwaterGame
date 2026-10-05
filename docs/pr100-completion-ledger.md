@@ -28,7 +28,7 @@ queue or Sonar batch; they require explicit subsequent integration/verification.
 | F abilities / E interaction / Ctrl currents / Shift sink / Tab / Q | World/Maze F binding and Maze interaction-only E repaired; public help/keycaps/HUD/README reconciled. October 5 aim batch adds real F → first-person → left fire/right or Esc cancel, scene-owned reticle and surviving shared-model cleanup. Nine generated cancel cases, anchor/item/wall shots, actual P/L owners and JSON restore pass headless/native; actual aimed ramp departure passes. 88 control/zero-Oxygen checks plus Sonar/map/chest/checkpoint preservation pass. Required-anchor normal route, browser aim, review guide and historical video inspection remain pending. |
 | Item-orb reel versus anchor pull, free environmental abilities | Real ORB-1 red captured; local repair passes 59 real-physics checks including six shapes, scene teardown, moving shooter and retry after shooter deletion. World aim, swimming and animation regressions pass. No hosted claim. See verify/marc_orb_reel.bug-catalog.md. |
 | Sonar-following Vision and save compatibility | October 5 bounded port makes active Maxilani's Q reveal hazards without a pickup/G toggle; old ownership/equipment flags remain round-trippable but inert. Fresh Q red reproduced. Four legacy flag pairs × three selected actors pass JSON decode/restore without resource/key resets; actual Q/G/Tab, inside/outside, active/inactive, reading-menu and zero-O2 checks pass headless/native. Sonar/R feedback coalesces independently, preserving rewards. Full embedded/browser/campaign acceptance remains open. |
-| Radius special spots, discovery/toggle and encounter ownership | Pending latest port and live-area checks; preserve strong-room intent. |
+| Radius special spots, discovery/toggle and encounter ownership | October 5 port carries all seven authored invisible sites, actual Q discovery/R entry, chosen live actor/minigame dispatch and persisted randomized/revealed/consumed state. Headless/native twelve lifecycle cases, seven enemy/reward pairs, 384 full checkpoint JSON/frame cases, twelve layouts/252 capsule approaches and three cold restores pass. A paused-lesson mid-frame overlap was caught and repaired. Responsive chooser wide/short/narrow captures inspected; strong-room, shared ramp, checkpoint, puppet/Cordys and existing minigame preservation rerun. Normal-route discovery/minigame completion, browser and hosted acceptance remain pending. |
 | Orange FIFO/coalescing | October 5 scene-owned shared FIFO carries one current/four waiting messages, duplicate renewal and independent latest-only Q/R toggles. Original overwrite/Save-menu reds repaired; Sonar follow-up catches contradictory Q-off feedback and paused first-L banner leakage. 484 generated cases and actual World/Maze R/Q, Inventory/map/Save-menu preservation, physical save-point contact/whole-party restoration/held P prompt, queued E cooldown and real denied save/retry pass; native captures inspected. Existing WeakRef tutorial FIFO remains preserved. Full fight/cross-area/campaign reset and hosted acceptance remain required. |
 | Combat mechanics and authored animations | e7072ab preserves stun/Angler repairs; full regression rerun required after subsequent integration. |
 | Learned-spell enemy scaling / no normal victory refill | Pending production consumers, clear recovery UX and old/new route balance comparison. Do not indiscriminately scale bosses. |
@@ -94,3 +94,14 @@ without changing their resources or other puzzle progress. Existing input-owner
 fixture now swims through the embedded entrance instead of requiring a removed
 scene-changing portal. Evidence: docs/evidence/maze-drafts-oct5. The hosted
 artifact remains bffe1b5, not this source; the full objective stays active.
+
+October 5 radius-site batch: all seven authored entries remain distinct from
+ordinary encounters, lab blockers, puppets and Cordys. New-run placement waits
+for CSG collision; its initialized flag guards stable saves. Saved sites override
+randomization on cold restore and migrate with all maze coordinates. Sonar reveals
+only active-player proximity; R controls entry and cancellation latches a visit.
+An in-flight shared lesson now prevents a second modal from taking pause/input.
+Authored Maze-special wins fully recover the chosen diver; losses/flee restore
+entry HP/Oxygen. This is not admission of ordinary victory healing/scaling.
+Evidence/observer exclusions: docs/evidence/maze-special-sites-oct5. The existing
+review alias still serves bffe1b5, not this source. No full-suite/readiness claim.

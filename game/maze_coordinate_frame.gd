@@ -28,6 +28,9 @@ static func rebase(source: Dictionary, destination: Vector3) -> Dictionary:
 	for field in ["orbs", "loose_keys"]:
 		for reward in data[field]:
 			reward.position = _point(reward.position, shift)
+	if data.has("special_sites"):
+		for site in data.special_sites:
+			site.position = _point(site.position, shift)
 	for field in ["hallway_a", "hallway_b"]:
 		data.rotation_homes[field] = _point(data.rotation_homes[field], shift)
 	for field in ["walls_14_15", "walls_10_11"]:

@@ -1,0 +1,7 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MAZE SITE TRIGGERS|wall_blocked=true|height_blocked=true|inactive_blocked=true|modal_blocked=true|R_inside=true|actual_reentry=true
+MAZE SITE OUTCOMES|generated=12|public_result_fixture=true|three_actual_actors=true
+MAZE SITE REWARDS|authored_items_and_enemies=7|public_result_fixture=true|consumed_reentry=true
+MAZE SITE PERSISTENCE|generated_frames=384|full_checkpoint_JSON=384|invalid_optional=10|legacy=true|live_restore=true
+MAZE SPECIAL SITES: clean

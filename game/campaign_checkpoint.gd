@@ -112,6 +112,8 @@ static func valid_maze(value: Variant) -> bool:
 	# any live restore can translate part of the maze into a different frame.
 	if value.has("coordinate_origin") and not MazeCoordinateFrame.valid_origin(value.coordinate_origin):
 		return false
+	if value.has("special_sites") and not preload("res://game/maze_special_sites.gd").valid_snapshot(value.special_sites):
+		return false
 	for flag in MazeLevel.CAMPAIGN_FLAGS:
 		if not value.flags.get(flag) is bool:
 			return false

@@ -10,7 +10,7 @@ ZIP/architecture/published hashes pass, target launches still unverified.
 Main/public untouched. Source includes `0561454` sphere-room gaps,
 PR100 `e7072ab` Stun/Angler repair, earned-map `6cc66c7` and incoming shooter-
 owned orb `b064f99`, combined in `b916637`. Marc's latest heads are
-#97 `4ec6598` and #99 `86878fa`; f698bee/4ec6598 are read and classified,
+#97 `bba8b80` and #99 `86878fa`; frozen f698bee/4ec6598 are read and classified,
 not silently admitted (orb subset is carried separately). Earned-map/chest
 affected gates passed on the Stun/Angler source. Orb-combined real-physics reel,
 World aim, swimming, animation, puppet reward, six chest and map persistence
@@ -57,6 +57,16 @@ native timeout. No complete normal-access/resource/polish claim is implied.
 Discovery legend, queue, remaining embedded hazards/riders and complete
 route/storage/audio/polish acceptance remain open. The later October 5 batches
 above supersede this historical underpass/embedded-ownership status.
+
+October 5 radius special sites: focused source carries all seven frozen-4ec6598
+sites with R-radius entry, Q discovery, chosen live actor, persisted positions
+and consumed rewards. Headless/native lifecycle/JSON/placement preservation
+and inspected responsive chooser evidence are in
+`docs/evidence/maze-special-sites-oct5`. The puppet reward test now crosses the
+actual embedded ramp and retains a real two-wave seeded victory; its level-5
+kit remains a disclosed fixture, NOT normal campaign acceptance. The late
+bba8b80 geometry/autosave delta stays separately pending, as do combat recovery,
+campaign pivot, full ordinary routes/browser and exact-source delivery.
 
 ## Earlier batch receipts (historical, not latest hosted status)
 

@@ -1,10 +1,12 @@
 extends "res://verify/maze_puppet_waves.gd"
 ## INT-13: a real two-wave maze win earns one maze key, never lab completion.
+var _reward_world: World
 
 func _run() -> void:
-	Engine.time_scale = 10.0
+	Engine.time_scale = 1.0
 	seed(64221)
 	var world := (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	_reward_world = world
 	world.skip_intro_for_test = true
 	world.skip_tutorial_for_test = true
 	root.add_child(world)
@@ -19,18 +21,28 @@ func _run() -> void:
 		while diver.stats.level < 5:
 			diver.stats.gain_xp(10)
 		SpellTree.learn_all_available(diver, [])
-	# Disclosed location fixtures: actual entrance/contact/Yes own transitions.
+	# Disclosed location fixtures: actual ramp swimming/contact/Yes own transitions.
 	# XP establishes a legal consumer kit, not earned progression/navigation.
-	world.divers[0].global_position = world.deep_zone_layout.route_points().maze_transition
-	for frame in range(20):
+	var maze := world.embedded_maze
+	world.divers[0].global_position = Vector3(maze.embedded_bounds.position.x - 1.5, 1.8, 16)
+	world.yaw = PI * 0.5
+	var swim := InputEventKey.new()
+	swim.keycode = KEY_W
+	swim.pressed = true
+	Input.parse_input_event(swim)
+	for frame in range(35):
 		await physics_frame
-		if current_scene is MazeLevel:
+		if maze.maze_active:
 			break
-	if not current_scene is MazeLevel:
+	swim = InputEventKey.new()
+	swim.keycode = KEY_W
+	Input.parse_input_event(swim)
+	await physics_frame
+	if current_scene != world or not maze.maze_active or maze.divers[0] != world.divers[0]:
 		findings.append("INT-13 actual campaign entrance did not reach maze")
 		await _finish_reward()
 		return
-	var maze := current_scene as MazeLevel
+	Engine.time_scale = 10.0
 	var lab_before := [maze.route_state.bomb_bot_state, maze.route_state.sword_slayer_state, maze.route_state.lab_state, maze.route_state.tethys_state]
 	var keys_before := maze.keys_held
 	var sonar_before := maze.divers[0].sonar_active
@@ -62,7 +74,6 @@ func _run() -> void:
 			if (button as Button).is_visible_in_tree():
 				print("VISIBLE BUTTON|", (button as Button).text)
 		findings.append("INT-13 actual puppet approach did not start one fight")
-		maze.queue_free()
 		await _finish_reward()
 		return
 	var battle := battles[0] as Battle
@@ -127,19 +138,22 @@ func _run() -> void:
 		"INT-13 puppet win did not complete only its own guardian")
 	var restored := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
 	root.add_child(restored)
-	await process_frame
 	_expect(restored.snapshot_matches_runtime(snapshot), "INT-13 actual puppet-win snapshot invalid")
 	if restored.snapshot_matches_runtime(snapshot):
+		# Supply the cold checkpoint before asynchronous site placement. This
+		# concurrent fixture shares World's physics space, unlike normal Load.
 		restored.restore_campaign_snapshot(snapshot)
-		await process_frame
+		for frame in 4:
+			await physics_frame
 		_expect(restored.keys_held == keys_before + 1 and not restored.campaign_snapshot().boss_triggers.has("secret_boss"),
 			"INT-13 restored maze repeated guardian or lost its key")
 	print("PUPPET MAZE WIN|actions=", actions, "|outcomes=", outcomes, "|keys=", maze.keys_held, "|remaining=", snapshot.boss_triggers, "|lab=", lab_before)
 	restored.queue_free()
-	maze.queue_free()
 	await _finish_reward()
 
 func _finish_reward() -> void:
+	if is_instance_valid(_reward_world):
+		_reward_world.queue_free()
 	await process_frame
 	Engine.time_scale = 1.0
 	paused = false

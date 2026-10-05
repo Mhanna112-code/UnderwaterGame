@@ -39,6 +39,7 @@ var embedded_bounds := Rect2()
 var _entry_physics_frame := -1
 const EMBED_PASSAGE_HALF_WIDTH := 4.0
 var draft_passages: Node3D
+var special_sites: Node3D
 var _potion_rock_spot := Vector3.ZERO
 
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
@@ -145,6 +146,10 @@ func _ready() -> void:
 	_build_campaign_checkpoint()
 	_build_campaign_exit()
 	_add_wall_skirts()
+	special_sites = preload("res://game/maze_special_sites.gd").new()
+	special_sites.name = "SpecialSites"
+	add_child(special_sites)
+	special_sites.setup(self)
 	$HUD/Controls.text = "Find the navigation map in the Control Room."
 	if world == null and campaign_session != null and not campaign_session.maze_snapshot.is_empty():
 		if not snapshot_matches_runtime(campaign_session.maze_snapshot):
@@ -180,6 +185,8 @@ func contains_point(point: Vector3) -> bool:
 func set_maze_active(on: bool) -> void:
 	if not on:
 		_cancel_aim()
+		if special_sites != null:
+			special_sites.cancel()
 	maze_active = on
 	# Disabling only this script leaves maps, hazards and child input owners
 	# running. The three shared actors stay under World, outside this subtree.
@@ -904,9 +911,15 @@ func _start_battle(kind := "strong") -> void:
 				route_state.set_encounter_source("maze_cordys")
 		"ambush":
 			_announce("Something was hiding in the rock!")
+		"special":
+			_announce("A guarded item challenge begins.")
 		_:
 			_announce("Strong enemies emerge from the murk!")
 	_battle.party_source = divers
+	if kind == "special":
+		special_sites.configure_battle(_battle)
+		if route_state != null:
+			route_state.set_encounter_source("maze_special")
 	_battle.inventory_source = inventory
 	_battle.campaign_key_items_source = campaign_key_items
 	_battle.finished.connect(_on_battle_finished)
@@ -942,6 +955,12 @@ func _on_battle_finished(result: String) -> void:
 	# out later fights until a potion or a revive brings them back.
 	var kind := _battle_kind
 	_battle_kind = "strong"
+	if kind == "special":
+		special_sites.finish(result)
+		_play_maze_music(&"play_exploration_music")
+		if route_state != null:
+			route_state.set_encounter_source("random")
+		return
 	if kind == "main_boss" and route_state != null:
 		route_state.set_octopus_state("defeated" if result == "won" else "available")
 	if result in ["won", "fled", "skipped"]:
@@ -1205,7 +1224,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open())
+	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -4289,6 +4308,7 @@ func _physics_process(dt: float) -> void:
 	_update_announce(dt)
 	_check_split_rock()
 	draft_passages.update()
+	special_sites.update()
 	_move_camera(dt)
 	_update_aim_marker()
 
@@ -5342,6 +5362,8 @@ func _spawn_key_pickup(key: Node3D) -> void:
 # Kinds: poster, chest, switch, rock, room_label.
 func map_points_of_interest() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if special_sites != null:
+		out.append_array(special_sites.points_of_interest())
 	for p in _posters:
 		out.append({"id": String(p.name), "kind": "poster", "pos": p.global_position, "radius": 7.0, "done": p.seen, "texture": p.portrait})
 	for k in key_pickups:
@@ -5691,7 +5713,8 @@ const CAMPAIGN_FLAGS := ["_completed", "_hallway_1_2_swung", "_walls_14_15_open"
 
 func can_capture_campaign_snapshot() -> bool:
 	return _moving_wall_sets.is_empty() and not _gate_cutscene and not _chest_reward_pending \
-		and not _battling and not aiming and not get_tree().paused and not any_modal_open()
+		and not _battling and not aiming and not get_tree().paused and not any_modal_open() \
+		and special_sites != null and special_sites.initialized
 
 var _checkpoint: SavePoint
 var _save_menu: SavePointMenu
@@ -5924,6 +5947,8 @@ func campaign_snapshot() -> Dictionary:
 		data.broken_rocks.append(CampaignSession.vector_data(spot))
 	var map := get_node("HUD/MazeMiniMap") as MazeMiniMap
 	data.map = map.campaign_discovery()
+	if special_sites != null and special_sites.initialized:
+		data.special_sites = special_sites.snapshot()
 	return data
 
 func _wall_home_data(homes: Array) -> Array:
@@ -6078,6 +6103,10 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	if route_state != null:
 		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
 	_update_state_barriers()
+	if data.has("special_sites"):
+		special_sites.restore(data.special_sites)
+	else:
+		special_sites.restore_legacy()
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = ("Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L).") \
 		if key_items.has(MAP_ITEM) else "Find the navigation map in the Control Room."
