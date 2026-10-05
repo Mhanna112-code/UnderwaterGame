@@ -115,6 +115,7 @@ func _ready() -> void:
 	_carve_hall_whirlpool_holes()
 	_build_underpass()
 	_build_wall_10_draft()
+	_build_box_12_draft()
 	_build_save_points()
 	_add_wall_skirts()
 	if dev_all_keys_gate_open or OS.get_cmdline_user_args().has("--dev"):
@@ -323,7 +324,7 @@ func _setup_walls():
 	_build_boss_triggers()
 	_build_vortex_chest()
 	_build_map_chest()
-	_build_path_button()
+	_build_box_8_dome_barrier()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
 # ONCE, here, at the position/rotation CurrentWall1 WOULD end up at if the
@@ -1090,7 +1091,7 @@ func _update_room_switch() -> void:
 	for p in _posters:
 		p.set_highlight(p == poster)
 	var at_chest := _vortex_chest_in_reach() or _map_chest_in_reach()
-	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or at_chest or _split_rock_in_reach()
+	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or at_chest or _split_rock_in_reach()
 	if _interact_cooldown and (_banner == null or _banner_timer <= 0.0):
 		_interact_cooldown = false
 	if _interact_cooldown:
@@ -1696,6 +1697,119 @@ func _swim_under_wall_10() -> void:
 		d.set_suction_locked(false)
 		d.velocity = Vector3.ZERO
 		_wall_10_draft_busy = false)
+
+# --- The draft under Box 12 ----------------------------------------------------
+# A slot under CSGBox3D12, level with the Control Room's east door: from the
+# 12/13 hallway side, swimming up to it asks the same thing the Break Room's
+# draft does (SECRET_DRAFT_PROMPT_TEXT); yes takes you under the wall to the
+# open water outside (west of) it. One way only. Asked once per approach.
+# From there the water between Box 8's line (fenced - see
+# _build_box_8_dome_barrier()) and wall 9's line leads to the Control Room.
+var _box12_draft := {}   # {"wall", "at" (slot centre), "out" (unit, toward outside)}
+var _box12_draft_busy := false
+var _box12_prompt_latched := false
+
+func _build_box_12_draft() -> void:
+	var w12 := $CSGBox3D12 as CSGBox3D
+	var g: Dictionary = _wall_geometry(w12)
+	var z_lo := minf((g["negative_end"] as Vector3).z, (g["positive_end"] as Vector3).z)
+	var z_hi := maxf((g["negative_end"] as Vector3).z, (g["positive_end"] as Vector3).z)
+	var z := clampf(_dome_site.z, z_lo + UNDERPASS_WIDTH, z_hi - UNDERPASS_WIDTH)
+	var x := w12.global_position.x
+	var out := Vector3(signf(_dome_site.x - x), 0, 0)   # toward the dome = outside
+	var at := Vector3(x, _floor_top_y, z)
+	_box12_draft = {"wall": w12, "at": at, "out": out}
+	var t := w12.size.z
+	var span_x := t + UNDERPASS_REACH * 2.0
+	for child in get_children():
+		var floor_box := child as CSGBox3D
+		if floor_box == null or not String(floor_box.name).begins_with("Floor_"):
+			continue
+		var local := floor_box.global_transform.affine_inverse() * Vector3(x, floor_box.global_position.y, z)
+		if absf(local.x) > floor_box.size.x * 0.5 + span_x or absf(local.z) > floor_box.size.z * 0.5 + span_x:
+			continue
+		var hole := CSGBox3D.new()
+		hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+		hole.size = Vector3(span_x, FLOOR_THICKNESS_VISUAL * 4.0, UNDERPASS_WIDTH)
+		floor_box.add_child(hole)
+		hole.global_position = Vector3(x, floor_box.global_position.y, z)
+		hole.global_rotation = Vector3.ZERO
+	var pit := MeshInstance3D.new()
+	var pit_mesh := BoxMesh.new()
+	pit_mesh.size = Vector3(span_x, 2.0, UNDERPASS_WIDTH)
+	pit.mesh = pit_mesh
+	var pit_mat := StandardMaterial3D.new()
+	pit_mat.albedo_color = Color(0.02, 0.06, 0.11)
+	pit_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pit_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	pit.material_override = pit_mat
+	add_child(pit)
+	pit.global_position = Vector3(x, _floor_top_y - 1.0, z)
+	# Streaks drawn in from the hallway side, down into the slot and away
+	# under the wall.
+	_build_underpass_draft(Vector3(x - out.x * (t * 0.5 + 1.2), _floor_top_y + 0.5, z), out.x)
+	(get_child(get_child_count() - 1) as Node).name = "Box12Draft"
+
+func _update_box_12_draft() -> void:
+	if _box12_draft.is_empty() or _box12_draft_busy or _diver == null:
+		return
+	var at := _box12_draft["at"] as Vector3
+	var out := _box12_draft["out"] as Vector3
+	var t := (_box12_draft["wall"] as CSGBox3D).size.z
+	var off := (_diver.global_position - at).dot(out)
+	# Hallway side only, near the slot (same reach as the Break Room's).
+	var near := off < 0.0 and off >= -(t * 0.5 + UNDERPASS_REACH + 1.2) and absf(_diver.global_position.z - at.z) <= UNDERPASS_WIDTH * 0.5 + 1.0
+	if not near:
+		_box12_prompt_latched = false
+		return
+	if _box12_prompt_latched or _battling or any_modal_open() or _chest_cutscene:
+		return
+	_box12_prompt_latched = true
+	if _draft_prompt != null and is_instance_valid(_draft_prompt):
+		return
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_mouse_look = false
+	_diver.velocity = Vector3.ZERO
+	_draft_prompt = ConfirmPromptModal.new(SECRET_DRAFT_PROMPT_TEXT)
+	_draft_prompt.answered.connect(func(yes: bool) -> void:
+		_draft_prompt = null
+		if yes:
+			_swim_under_box_12())
+	add_child(_draft_prompt)
+
+func _swim_under_box_12() -> void:
+	var at := _box12_draft["at"] as Vector3
+	var out := _box12_draft["out"] as Vector3
+	var t := (_box12_draft["wall"] as CSGBox3D).size.z
+	_box12_draft_busy = true
+	var d := _diver
+	var low := _floor_top_y - 0.4
+	var near_mouth := Vector3(at.x - out.x * (t * 0.5 + 0.6), low, at.z)
+	var far_mouth := Vector3(at.x + out.x * (t * 0.5 + 0.6), low, at.z)
+	var land := _nearest_clear_spot(d, Vector3(at.x + out.x * (t * 0.5 + UNDERPASS_REACH + 0.8), d.global_position.y, at.z), _box12_draft["wall"], out.x)
+	d.velocity = Vector3.ZERO
+	d.set_suction_locked(true)
+	var tw := create_tween()
+	tw.tween_property(d, "global_position", near_mouth, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(d, "global_position", far_mouth, 0.5)
+	tw.tween_property(d, "global_position", land, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void:
+		d.set_suction_locked(false)
+		d.velocity = Vector3.ZERO
+		_box12_draft_busy = false)
+
+# Box 8's line carried west from its west end to the Control Room's rim, so
+# the water outside Box 12 leads only to the Control Room, not out into the
+# open water north of it.
+func _build_box_8_dome_barrier() -> void:
+	var b8 := $CSGBox3D8 as CSGBox3D
+	var g: Dictionary = _wall_geometry(b8)
+	var west_x := minf((g["negative_end"] as Vector3).x, (g["positive_end"] as Vector3).x)
+	var z := b8.global_position.z
+	var dz := z - _dome_site.z
+	var rim_x := _dome_site.x + sqrt(maxf(PLINTH_RADIUS * PLINTH_RADIUS - dz * dz, 0.0)) - 0.4
+	if west_x - rim_x > 0.5:
+		_spawn_barrier("Box8DomeBarrier", Vector3((west_x + rim_x) * 0.5, 0, z), Vector3(west_x - rim_x, 0, b8.size.z))
 
 # Swimming up to the draft asks whether to follow it. Asked once per approach:
 # say no and it waits until you've swum away and come back.
@@ -2706,7 +2820,7 @@ func _place_wall_straight_to_reference(wall_to_place: CSGBox3D, reference_wall: 
 # Where the CSGBox3D34/35/36 U of walls stood there's a dome instead: a big
 # dome on a raised round plinth, with two porch doorways and steps up to
 # each - one facing north (+Z, back toward the maze entrance) and one facing
-# east (+X), where the path from walls 12/13 arrives (_build_path_button()).
+# east (+X), toward the water outside Box 12 (see _build_box_12_draft()).
 # The plinth top is above the divers' normal swim height, so they have to
 # swim up the steps to get in. The ceiling over it is raised to fit (see
 # _build_ceiling()). Inside are the two green levers (Lever1 left = walls,
@@ -3143,132 +3257,6 @@ func _update_world_hud() -> void:
 		_tab_flash = null
 		_world_hud_tab.modulate.a = 1.0
 
-# --- Path button: walls 12/13 into line, path to the dome --------------------
-# A red button on CSGBox3D8's inner face, near its west end, flashing until
-# pressed (E within reach). Pressing it (once - it stays pressed, turns
-# green) swings CSGBox3D12 into a straight line with CSGBox3D8 and
-# CSGBox3D13 into a straight line with CSGBox3D9, each about its end at that
-# corner - extending the Box8/Box9 passage west - and raises two walls that
-# carry that passage on to the dome's east door. The passage is closed on
-# both sides, so it only leads to the dome (and out its north door back
-# toward the maze entrance), not into the open water around it.
-# WindCorridor4 (and its whirlpool) stay where they are once 12/13 swing.
-const PATH_BUTTON_REACH := 2.5
-const PATH_BUTTON_FROM_END := 6.0     # along Box8 from its west end
-var _path_button: Node3D
-var _path_button_mat: StandardMaterial3D
-var _path_button_glow: OmniLight3D
-var _path_button_blink: Tween
-var _path_opened := false
-
-func _build_path_button() -> void:
-	var box8 := $CSGBox3D8 as CSGBox3D
-	var box9 := $CSGBox3D9 as CSGBox3D
-	var g8: Dictionary = _wall_geometry(box8)
-	var west: Vector3 = g8["negative_end"] if (g8["negative_end"] as Vector3).x < (g8["positive_end"] as Vector3).x else g8["positive_end"]
-	var normal := Vector3(0, 0, 1) if box9.global_position.z > box8.global_position.z else Vector3(0, 0, -1)
-	_path_button = Node3D.new()
-	_path_button.name = "PathButton"
-	add_child(_path_button)
-	_path_button.global_position = Vector3(west.x + PATH_BUTTON_FROM_END, ($DiverEntry as Node3D).global_position.y + 1.0, box8.global_position.z) + normal * (box8.size.z * 0.5 + 0.06)
-	_path_button.global_basis = Basis.looking_at(-normal, Vector3.UP)
-	var plate := MeshInstance3D.new()
-	var plate_mesh := BoxMesh.new()
-	plate_mesh.size = Vector3(1.0, 1.0, 0.14)
-	plate.mesh = plate_mesh
-	plate.material_override = _stone(Color(0.12, 0.13, 0.15))
-	_path_button.add_child(plate)
-	var cap := MeshInstance3D.new()
-	var cap_mesh := CylinderMesh.new()
-	cap_mesh.top_radius = 0.3
-	cap_mesh.bottom_radius = 0.33
-	cap_mesh.height = 0.18
-	cap.mesh = cap_mesh
-	cap.rotation.x = PI * 0.5   # face out of the wall
-	cap.position = Vector3(0, 0, 0.14)
-	_path_button_mat = StandardMaterial3D.new()
-	_path_button_mat.emission_enabled = true
-	_path_button_mat.emission_energy_multiplier = 3.0
-	cap.material_override = _path_button_mat
-	_path_button.add_child(cap)
-	_path_button_glow = OmniLight3D.new()
-	_path_button_glow.omni_range = 2.5
-	_path_button_glow.light_energy = 1.4
-	_path_button_glow.position = Vector3(0, 0, 0.5)
-	_path_button.add_child(_path_button_glow)
-	_set_path_button_color(Color(1.0, 0.1, 0.1))
-	_path_button_blink = create_tween().set_loops()
-	_path_button_blink.tween_callback(func() -> void:
-		cap.visible = not cap.visible
-		_path_button_glow.visible = cap.visible)
-	_path_button_blink.tween_interval(0.4)
-
-func _set_path_button_color(c: Color) -> void:
-	_path_button_mat.albedo_color = c
-	_path_button_mat.emission = c
-	_path_button_glow.light_color = c
-
-func _path_button_in_reach() -> bool:
-	if _path_button == null or _path_opened or _diver == null:
-		return false
-	var offset := _diver.global_position - _path_button.global_position
-	offset.y = 0.0
-	return offset.length() <= PATH_BUTTON_REACH and offset.dot(_path_button.global_basis.z) > 0.0
-
-func _press_path_button() -> void:
-	_path_opened = true
-	_path_button_blink.kill()
-	for c in _path_button.get_children():
-		(c as Node3D).visible = true
-	_set_path_button_color(Color(0.2, 1.0, 0.35))
-	# Corridor4 no longer follows 12/13 once they swing (see above).
-	_corridor_walls.erase($WindCorridor4)
-	var tweens: Array = [
-		_swing_wall_in_line_with($CSGBox3D12 as CSGBox3D, $CSGBox3D8 as CSGBox3D),
-		_swing_wall_in_line_with($CSGBox3D13 as CSGBox3D, $CSGBox3D9 as CSGBox3D),
-	]
-	tweens.append_array(_raise_path_walls())
-	_track_wall_set_motion("CSGBox3D12/13", tweens, [$CSGBox3D12, $CSGBox3D13])
-	_announce("Walls 12 and 13 swing into line - a path opens toward the dome.")
-
-# Swings `wall` a quarter turn about its end nearest `line_wall`'s west end
-# so it ends up continuing line_wall's line westward from that end.
-func _swing_wall_in_line_with(wall: CSGBox3D, line_wall: CSGBox3D) -> Tween:
-	var gl: Dictionary = _wall_geometry(line_wall)
-	var west: Vector3 = gl["negative_end"] if (gl["negative_end"] as Vector3).x < (gl["positive_end"] as Vector3).x else gl["positive_end"]
-	var target := Vector3(west.x - wall.size.x * 0.5, wall.global_position.y, line_wall.global_position.z)
-	var gw: Dictionary = _wall_geometry(wall)
-	var hinge_end: Vector3 = gw["negative_end"] if (gw["negative_end"] as Vector3).distance_to(west) < (gw["positive_end"] as Vector3).distance_to(west) else gw["positive_end"]
-	var from_dir := wall.global_position - hinge_end
-	from_dir.y = 0.0
-	from_dir = from_dir.normalized()
-	var to_dir := Vector3(-1, 0, 0)
-	var delta := atan2(from_dir.cross(to_dir).y, from_dir.dot(to_dir))
-	return _tween_wall_to_transform_about_hinge(wall, target, wall.rotation.y + delta, 1.6)
-
-# The two walls carrying the Box8/Box9 passage on to the dome: on Box9's
-# line from where swung Box13 will end, and on Box8's line from where swung
-# Box12 will end, each to the dome's plinth edge. They rise out of the floor.
-func _raise_path_walls() -> Array:
-	var tweens: Array = []
-	for pair in [[$CSGBox3D9, $CSGBox3D13, "PathWallNorth"], [$CSGBox3D8, $CSGBox3D12, "PathWallSouth"]]:
-		var line_wall := pair[0] as CSGBox3D
-		var swung := pair[1] as CSGBox3D
-		var gl: Dictionary = _wall_geometry(line_wall)
-		var west_x := minf((gl["negative_end"] as Vector3).x, (gl["positive_end"] as Vector3).x)
-		var east_x := west_x - swung.size.x
-		var z := line_wall.global_position.z
-		var dz := z - _dome_site.z
-		var plinth_x := _dome_site.x + sqrt(maxf(PLINTH_RADIUS * PLINTH_RADIUS - dz * dz, 0.0)) - 0.4
-		var y := line_wall.global_position.y
-		var wall := _spawn_wall(String(pair[2]), Vector3((east_x + plinth_x) * 0.5, y - line_wall.size.y - 1.2, z), 0.0, Vector3(east_x - plinth_x, line_wall.size.y, line_wall.size.z))
-		wall_boxes.append(wall)
-		_add_wall_skirt(wall)
-		var tw := create_tween()
-		tw.tween_property(wall, "global_position:y", y, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tweens.append(tw)
-	return tweens
-
 # --- Walls 17/27 -------------------------------------------------------------
 # CSGBox3D17 and CSGBox3D27 (and the door gap that was between them) become
 # one solid straight wall along their shared line: Box27 is stretched from
@@ -3614,6 +3602,11 @@ func _sweep_divers_with_moving_walls() -> void:
 			var last: Transform3D = _wall_last_xf.get(wall, xf)
 			var half := wall.size * 0.5
 			for d in divers:
+				# Walls 10/11 swinging past a diver in or around C5 go straight
+				# through them rather than carrying them out of the passage into
+				# the open water beyond it.
+				if set_name == "CSGBox3D10/11" and _c5_zone().has_point(Vector2(d.global_position.x, d.global_position.z)):
+					continue
 				if _wall_riders.has(d):
 					# Already riding a wall: it turns with that wall, holding its
 					# place against the face it was on.
@@ -4150,6 +4143,39 @@ func _turn_corridor_along_walls(shape_node: CollisionShape3D, wall: CSGBox3D) ->
 	var xf := shape_node.global_transform
 	xf.basis = Basis(Vector3.UP, angle) * xf.basis
 	shape_node.global_transform = xf
+
+# The passage C5 runs along - between Box 8's and Box 9's lines, from C5's
+# west end east to the barrier in front of wall 9 (where 10/11's hallway was
+# before they swung) - where swinging walls 10/11 never move a diver.
+var _c5_zone_rect := Rect2()
+func _c5_zone() -> Rect2:
+	if _c5_zone_rect.size != Vector2.ZERO:
+		return _c5_zone_rect
+	var cs := _corridor_shape($WindCorridor5)
+	var b8 := $CSGBox3D8 as CSGBox3D
+	var b9 := $CSGBox3D9 as CSGBox3D
+	if cs == null or not cs.shape is BoxShape3D:
+		return Rect2()
+	var half := (cs.shape as BoxShape3D).size * 0.5
+	var west := INF
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			west = minf(west, (cs.global_transform * Vector3(half.x * sx, 0, half.z * sz)).x)
+	var t := b9.size.z * 0.5
+	var east := maxf(_wall_11_joint.x, _wall_10_joint.x) + t
+	var z0 := minf(b8.global_position.z, b9.global_position.z) - t
+	var z1 := maxf(b8.global_position.z, b9.global_position.z) + t
+	_c5_zone_rect = Rect2(west, z0, east - west, z1 - z0)
+	return _c5_zone_rect
+
+# Whether `at` is inside a corridor's push zone (its box shape).
+func _in_corridor(corridor: Area3D, at: Vector3) -> bool:
+	var shape_node := _corridor_shape(corridor)
+	if shape_node == null or not shape_node.shape is BoxShape3D:
+		return false
+	var half := (shape_node.shape as BoxShape3D).size * 0.5
+	var local := shape_node.global_transform.affine_inverse() * at
+	return absf(local.x) <= half.x and absf(local.z) <= half.z
 
 func _corridor_shape(corridor: Area3D) -> CollisionShape3D:
 	for child in corridor.get_children():
@@ -4704,6 +4730,7 @@ func _physics_process(dt: float) -> void:
 	_update_announce(dt)
 	_check_split_rock()
 	_update_secret_draft_prompt()
+	_update_box_12_draft()
 	_update_wall_10_draft()
 	if _aiming and (_battling or any_modal_open() or _gate_cutscene or not _moving_wall_sets.is_empty() or _free_map_open):
 		_cancel_aim()
@@ -4918,8 +4945,6 @@ func _unhandled_input(e: InputEvent) -> void:
 func _handle_e(e: InputEventKey) -> void:
 	if _lever_e_pressed():
 		pass
-	elif _path_button_in_reach():
-		_press_path_button()
 	elif _try_open_door():
 		pass
 	elif _vortex_chest_in_reach():
@@ -5175,10 +5200,10 @@ func _build_start_area_barriers() -> void:
 	for p in _collect_bounds_points():
 		far_z = maxf(far_z, p.z)
 	far_z += _PERIMETER_MARGIN
-	var fence := _spawn_barrier("StartBarrierSouth", Vector3(start_west.x - t * 0.5, 0, (start_west.z + far_z) * 0.5), Vector3(t, 0, far_z - start_west.z))
+	_spawn_barrier("StartBarrierSouth", Vector3(start_west.x - t * 0.5, 0, (start_west.z + far_z) * 0.5), Vector3(t, 0, far_z - start_west.z))
 	# On the poster wall's (HallwayEndWall's) line, past both its ends: east
-	# over to wall 6's side, west to the fence above - so the open water
-	# beyond it, between wall 6 and that fence, can't be swum into.
+	# over to wall 6's side, west all the way to the maze's west edge - so
+	# the open water south of it can't be swum into from anywhere.
 	var end_wall := get_node_or_null("HallwayEndWall") as CSGBox3D
 	if end_wall != null:
 		var g: Dictionary = _wall_geometry(end_wall)
@@ -5190,8 +5215,11 @@ func _build_start_area_barriers() -> void:
 		var b6 := $CSGBox3D6 as CSGBox3D
 		var b6_face := b6.global_position.x - b6.size.z * 0.5
 		_spawn_barrier("PosterWallBarrierEast", Vector3((east_end.x + b6_face) * 0.5, 0, line_z), Vector3(b6_face - east_end.x + t, 0, t))
-		var fence_x := fence.global_position.x
-		_spawn_barrier("PosterWallBarrierWest", Vector3((fence_x + west_end.x) * 0.5, 0, line_z), Vector3(west_end.x - fence_x + t, 0, t))
+		var edge_x := west_end.x
+		for p in _collect_bounds_points():
+			edge_x = minf(edge_x, p.x)
+		edge_x -= _PERIMETER_MARGIN
+		_spawn_barrier("PosterWallBarrierWest", Vector3((edge_x + west_end.x) * 0.5, 0, line_z), Vector3(west_end.x - edge_x + t, 0, t))
 
 # An invisible wall (floor to well above the walls) centred at `center`'s
 # x/z, `footprint` x/z in size.
@@ -5270,7 +5298,26 @@ func _rotate_walls_10_11() -> void:
 		_walls_10_11_swung = true
 		$HUD/Controls.text = "Walls 10/11 swinging..."
 	_update_state_barriers()
+	# No physical collision while they swing - _sweep_divers_with_moving_walls()
+	# moves whoever they should carry, and a diver in the C5 passage isn't
+	# shoved out of it by the physics engine either.
+	for w in [$CSGBox3D10, $CSGBox3D11]:
+		_set_wall_collision(w, false)
 	_track_wall_set_motion("CSGBox3D10/11", tweens, [$CSGBox3D10, $CSGBox3D11])
+	for tw in tweens:
+		if tw is Tween and (tw as Tween).is_valid():
+			(tw as Tween).finished.connect(func() -> void:
+				if not _wall_set_moving("CSGBox3D10/11"):
+					for w in [$CSGBox3D10, $CSGBox3D11]:
+						_set_wall_collision(w, true))
+
+# A wall's own collision and its skirt's (the strip under it - see
+# _add_wall_skirt()) on or off together.
+func _set_wall_collision(wall: CSGBox3D, on: bool) -> void:
+	wall.collision_layer = 1 if on else 0
+	var skirt := wall.get_node_or_null("Skirt") as StaticBody3D
+	if skirt != null:
+		skirt.collision_layer = 1 if on else 0
 
 func _build_wall_10_11_extras() -> void:
 	var targets := _walls_10_11_targets()
@@ -6087,6 +6134,15 @@ func _build_hall_gauntlet() -> void:
 			_build_rock_column(Vector3(xs[i], 0, float(z)), rng)
 	# The hall's way in, at its north-west corner - where a whirlpool drops you.
 	var entrance := Vector3(hall.position.x + 1.8, ($DiverEntry as Node3D).global_position.y, hall.position.y + 1.6)
+	# Whirlpools spread across the hall rather than all down one side: each
+	# takes the next of these spots across the hall's width (fractions of it
+	# from the middle). Columns stand at the middle and at +-quarter, so
+	# these sit in the clear lanes between them - by a wall (+-0.42) or
+	# between a side column and the middle one (+-0.13) - zigzagging so no
+	# two line up.
+	var whirl_spread := [-0.42, 0.13, 0.42, -0.13]
+	var whirl_n := 0
+	var gap_half := (xs[1] - xs[0]) * 0.5 if xs.size() > 1 else 2.0
 	for g in HALL_ROWS - 1:
 		var x := (xs[g] + xs[g + 1]) * 0.5
 		# Off to one side or the other, out of the columns' way.
@@ -6112,9 +6168,11 @@ func _build_hall_gauntlet() -> void:
 			var w := Whirlpool.new()
 			w.suction_radius = 0.9
 			w.suction_height = 12.0
-			w.warning_radius = 3.6
-			w.pull_radius = 3.4
-			w.pull_speed = 3.2
+			# Only pulls right at the hole's edge (about half a metre out),
+			# and gently - swimming past close by is safe.
+			w.warning_radius = 2.6
+			w.pull_radius = 1.6
+			w.pull_speed = 2.4
 			w.damage_min = 3
 			w.damage_max = 6
 			w.reset_to = entrance
@@ -6124,7 +6182,11 @@ func _build_hall_gauntlet() -> void:
 			w.deep_hole_radius = w.suction_radius + 0.1
 			w.diver_sucked_in.connect(_on_deep_whirlpool)
 			add_child(w)
-			w.global_position = Vector3(x, _floor_top_y + FLOOR_THICKNESS_VISUAL + 0.01, z)
+			var frac: float = whirl_spread[whirl_n % whirl_spread.size()]
+			whirl_n += 1
+			var wz := z_mid + frac * hall.size.y
+			var wx := x + rng.randf_range(-1.0, 1.0) * maxf(0.0, gap_half - HALL_COLUMN_RADIUS - w.pull_radius - 0.3)
+			w.global_position = Vector3(wx, _floor_top_y + FLOOR_THICKNESS_VISUAL + 0.01, wz)
 			_hall_whirlpools.append(w)
 
 # A round hole through the hall's visible floor under each deep whirlpool
@@ -6759,7 +6821,7 @@ func show_map_intro_once() -> void:
 	_map_intro_shown = true
 	var pages: Array[Dictionary] = [{
 		"title": "Maze Navigation",
-		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with Ctrl+E to new areas and halls. Previously visited locations are marked on the map. A red circle %s on the map is a hidden item location that Maxilani's sonar has found - swim into it with random encounters on to start its special encounter for the item." % Slot.HIDDEN_ITEM_MARKER,
+		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with Ctrl+E to new areas and halls. Previously visited locations are marked on the map. A red circle %s on the map is a hidden item location that Maxilani's sonar has found." % Slot.HIDDEN_ITEM_MARKER,
 		"slot": null,
 	}]
 	popup.call("open", pages)

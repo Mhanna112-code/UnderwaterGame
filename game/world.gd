@@ -288,13 +288,46 @@ func _write_save() -> void:
 		return
 	SaveManager.write_slot(_current_slot, _serialize_state())
 
+# Autosave: every AUTOSAVE_INTERVAL of play, the run is written to the
+# autosave under the slot it was started (New Game) or loaded from - not
+# over the slot itself, which only save points write. Waits for a calm
+# moment (no fight, menu, popup, cutscene or transition) when one is due.
+const AUTOSAVE_INTERVAL := 180.0
+var _autosave_timer := 0.0
+
+func _tick_autosave(dt: float) -> void:
+	if _current_slot < 0 or title_screen.visible or get_tree().paused:
+		return
+	_autosave_timer += dt
+	if _autosave_timer < AUTOSAVE_INTERVAL or not _autosave_safe():
+		return
+	_autosave_timer = 0.0
+	SaveManager.write_autosave(_current_slot, _serialize_state())
+	_announce("Game autosaved.")
+
+# Never mid-fight: no battle (world or maze), no special encounter at any
+# step (the "choose who goes" screen, its battle, or right after), and no
+# menu, popup, cutscene or encounter transition.
+func _autosave_safe() -> bool:
+	if battling or _intro_active or _transitioning_to_encounter:
+		return false
+	if special_encounter_prompt.visible or _special_encounter_item != "" or _special_encounter_diver != null:
+		return false
+	if save_point_menu.visible or inventory_menu.visible:
+		return false
+	if maze != null and (maze._battling or maze.any_modal_open() or maze._chest_cutscene):
+		return false
+	if maze != null and (maze.special_encounter_prompt.visible or not maze._special_spot.is_empty() or maze._special_diver != null):
+		return false
+	return true
+
 # Bails out and does nothing rather than a half-restore if the save data
 # doesn't actually match divers[] one-to-one (a missing/corrupt slot reads
 # back as {} from SaveManager, whose "divers" key then defaults to []) -
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
-func _load_save() -> void:
-	var data: Dictionary = SaveManager.read_slot(_current_slot)
+func _load_save(from_autosave := false) -> void:
+	var data: Dictionary = SaveManager.read_autosave(_current_slot) if from_autosave else SaveManager.read_slot(_current_slot)
 	var divers_data: Array = data.get("divers", [])
 	if divers_data.size() != divers.size():
 		return
@@ -380,6 +413,8 @@ func _show_title_screen() -> void:
 # real file instead of an in-memory snapshot.
 func _on_title_new_game(slot: int) -> void:
 	_current_slot = slot
+	SaveManager.clear_autosave(slot)
+	_autosave_timer = 0.0
 	_write_save()
 	title_screen.close()
 	# This is the draft narration under review. It intentionally plays before
@@ -427,9 +462,16 @@ func _on_title_skip_tutorial(slot: int = 0) -> void:
 	_first_encounter_done = true
 	await _on_title_new_game(slot)
 
-func _on_title_load_game(slot: int) -> void:
+# The autosave under `slot`: from here on that slot is the one being played,
+# so its autosave keeps being the one written.
+func _on_title_load_autosave(slot: int) -> void:
+	_autosave_timer = 0.0
+	_on_title_load_game(slot, true)
+
+func _on_title_load_game(slot: int, from_autosave := false) -> void:
 	_current_slot = slot
-	_load_save()
+	_autosave_timer = 0.0
+	_load_save(from_autosave)
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
@@ -723,6 +765,7 @@ func _ready() -> void:
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_screen.load_autosave_chosen.connect(_on_title_load_autosave)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
 	title_screen.spell_playtest_chosen.connect(_on_title_spell_playtest)
@@ -822,7 +865,25 @@ func _start_dev_mode() -> void:
 	yaw = PI * 0.5
 	pitch = -0.12
 	_update_hud()
+	if OS.get_cmdline_user_args().has("--secret-room") and maze != null:
+		_dev_spawn_in_secret_room.call_deferred()
+		return
 	_announce("DEV MODE: every item, all maze keys, maze gate open - the maze is straight ahead.")
+
+# `-- --dev --secret-room`: the whole party in the maze's secret item room
+# (the one with the chest and the ambush rocks) instead of outside the maze.
+func _dev_spawn_in_secret_room() -> void:
+	var room: Rect2 = maze._secret_item_room_rect().abs()
+	if room.size == Vector2.ZERO:
+		return
+	var c := room.get_center()
+	var y: float = maze._floor_top_y + 1.2
+	var offsets := [Vector3.ZERO, Vector3(-1.5, 0.0, -1.5), Vector3(1.5, 0.0, -1.5)]
+	for i in divers.size():
+		var slot: int = (i - active + divers.size()) % divers.size()
+		(divers[i] as Diver).global_position = Vector3(c.x, y, c.y) + (offsets[slot % offsets.size()] as Vector3)
+		(divers[i] as Diver).velocity = Vector3.ZERO
+	_announce("DEV MODE: every item, all maze keys, maze gate open - the party is in the secret item room.")
 
 # A floor and some rock so there is parallax to swim past: without something
 # to move relative to, motion at this scale reads as standing still.
@@ -1772,6 +1833,7 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	_tick_autosave(dt)
 	if maze != null and not divers.is_empty():
 		var inside := maze.contains_point((divers[active] as Diver).global_position)
 		if inside != _in_maze:
