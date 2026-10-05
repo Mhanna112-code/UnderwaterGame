@@ -1363,6 +1363,7 @@ func _ready() -> void:
 	# happened to sit under the cursor - none of them are meant to be
 	# clickable in the first place.
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_theme_stylebox_override("normal", preload("res://game/exploration_hud.gd").panel_style())
 	banner = Label.new()
 	banner.name = "Banner"
 	# Bottom-center, hugging the bottom edge of its own box so the text sits
@@ -1602,12 +1603,8 @@ var _maze_hidden_hud: Array[CanvasItem] = []
 
 func _maze_hud_keep() -> Array:
 	var keep: Array = []
-	if hp_bar != null:
-		keep.append(hp_bar.get_parent())
-	if oxygen_bar != null:
-		keep.append(oxygen_bar.get_parent())
-	if _party_bars_box != null:
-		keep.append(_party_bars_box)
+	if exploration_hud != null:
+		keep.append(exploration_hud)
 	return keep
 
 func _apply_maze_hud(on: bool) -> void:
@@ -4547,19 +4544,33 @@ func _build_route_objective_hud() -> void:
 	route_objective_panel.add_child(route_objective_label)
 
 func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
-	# The top-right minimap owns 166 px. Keep both text surfaces out of that
-	# rectangle at narrow browser widths instead of letting readable text exist
-	# underneath an opaque navigation control.
+	# Wide desktop: controls and active resources share the bottom band.
+	# Narrow windows stack them; the minimap moves below the compact party.
 	var compact := viewport_size.x < 600.0
-	var right_limit := maxf(160.0 if compact else 304.0, viewport_size.x - 176.0)
+	minimap.offset_top = 112.0 if compact else 10.0
+	minimap.offset_bottom = minimap.offset_top + 156.0
+	if exploration_hud != null:
+		exploration_hud.layout_for(viewport_size, minimap.get_global_rect(), _controls_text_bottom())
 	hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	var controls_width := 440.0 if viewport_size.x >= 1280 else viewport_size.x - 32.0
 	hud.offset_left = 16.0
-	hud.offset_top = 12.0
-	hud.offset_right = right_limit
-	hud.offset_bottom = 166.0 if compact else 68.0
+	hud.offset_right = 16.0 + controls_width
 	hud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hud.add_theme_font_size_override("font_size", 14 if viewport_size.x < 900.0 else 16)
-
+	hud.add_theme_font_size_override("font_size", 12 if compact else 13)
+	var bottom := viewport_size.y - (16.0 if viewport_size.x >= 1280 else 120.0)
+	var text_height := maxf(44.0, hud.get_minimum_size().y)
+	hud.offset_top = bottom - text_height
+	hud.offset_bottom = bottom
+	# Orange messages use their actual wrapped height, above the controls/card
+	# band rather than spilling through it at narrow browser sizes.
+	banner.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	var banner_width := minf(640.0, viewport_size.x - 32.0)
+	banner.offset_left = (viewport_size.x - banner_width) * 0.5
+	banner.offset_right = banner.offset_left + banner_width
+	banner.add_theme_font_size_override("font_size", 14 if compact else 20)
+	var banner_bottom := (hud.offset_top if hud.visible else viewport_size.y - 108.0) - 10.0
+	banner.offset_top = banner_bottom - maxf(28.0, banner.get_minimum_size().y)
+	banner.offset_bottom = banner_bottom
 	_layout_route_objective_panel()
 
 # Guidance panel: centred, out of the minimap's corner, and never over the
@@ -4577,9 +4588,9 @@ func _layout_route_objective_panel() -> void:
 		16.0,
 		maxf(16.0, right_limit - panel_width)
 	)
-	var panel_top := maxf(176.0, _controls_text_bottom() + 8.0) if compact else 74.0
+	var panel_top := maxf(302.0, _controls_text_bottom() + 8.0) if compact else 16.0
 	if _party_bars_box != null and _party_bars_box.is_visible_in_tree():
-		var bars := _party_bars_box.get_global_rect()
+		var bars: Rect2 = exploration_hud.party_panel.get_global_rect()
 		var bars_right := bars.end.x + 12.0
 		if panel_left < bars_right:
 			if right_limit - bars_right >= 280.0:
@@ -4653,23 +4664,18 @@ func _update_hud() -> void:
 		return
 	var d: Diver = divers[active]
 	if not route_state.prologue_complete:
-		hud.text = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look" % _display_name(d.model_name)
+		hud.text = "WASD  Swim · SPACE / SHIFT  Depth\nMouse / Arrow keys  Look"
 		return
-	var narrow := get_viewport().get_visible_rect().size.x < 900.0
-	var line := ""
-	if narrow:
-		line = "%s · WASD swim · SPACE/SHIFT depth\nmouse/arrows look · TAB diver" % _display_name(d.model_name)
-	else:
-		line = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look · TAB diver" % _display_name(d.model_name)
+	var line := "WASD  Swim · SPACE / SHIFT  Depth\nMouse / Arrow keys  Look"
 	if d.ability_id != "":
-		line += (" · F:%s" if narrow else "  ·  F: %s") % String(d.ability_id).capitalize()
+		line += "\nF: %s" % String(d.ability_id).capitalize()
 	# Only shows for whichever diver actually has the passive (see
 	# _toggle_sonar()'s own passive_id check) - same "only mention it if
 	# it'd do something" rule the F: hint above already follows for
 	# ability_id.
 	if d.passive_id == "sonar":
-		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
-	line += (" · R:Random %s" if narrow else "  ·  R: Random Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
+		line += " · Q: Sonar %s" % ("On" if d.sonar_active else "Off")
+	line += "\nR: Toggle encounters · Esc: Menu · F1: Guide"
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during
@@ -4688,172 +4694,68 @@ var _hp_bar_mat: StyleBoxFlat
 const WORLD_HUD_LABEL_FONT_SIZE := 14
 
 func _build_hp_bar() -> void:
-	var wrap := VBoxContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	wrap.offset_top = -56.0
-	wrap.offset_bottom = -10.0
-	wrap.add_theme_constant_override("separation", 4)
-	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	# MODIFIED (added): this spans the full WIDTH of the screen (BOTTOM_WIDE)
-	# and defaulted to STOP - a special-encounter minigame's own aim-down
-	# input landed right in this strip and got eaten here instead of
-	# reaching it. Purely informational, nothing here is ever clicked.
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(wrap)
+	exploration_hud = preload("res://game/exploration_hud.gd").new()
+	$HUD.add_child(exploration_hud)
+	hp_bar = exploration_hud.hp_bar
+	hp_bar_label = exploration_hud.hp_label
+	_hp_bar_mat = exploration_hud.health_fill
 
-	hp_bar = ProgressBar.new()
-	hp_bar.custom_minimum_size = Vector2(220, 20)
-	hp_bar.show_percentage = false
-	hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# MODIFIED (added): wrap's own IGNORE (above) only applies to wrap
-	# itself - hp_bar/hp_bar_label are separate nodes that each still
-	# defaulted to STOP independently, which is what was actually still
-	# blocking this strip regardless of the outer wrap's own filter.
-	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hp_bar_mat = StyleBoxFlat.new()
-	_hp_bar_mat.bg_color = Color(0.78, 0.15, 0.15)
-	hp_bar.add_theme_stylebox_override("fill", _hp_bar_mat)
-	wrap.add_child(hp_bar)
-
-	# Blue Random Encounters On/Off badge, pinned just left of the HP bar
-	# (a child of it, so it tracks the centered bar without shifting it).
-	encounter_indicator = PanelContainer.new()
-	encounter_indicator.name = "EncounterIndicator"
-	encounter_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	encounter_indicator.anchor_left = 0.0
-	encounter_indicator.anchor_right = 0.0
-	encounter_indicator.anchor_top = 0.5
-	encounter_indicator.anchor_bottom = 0.5
-	encounter_indicator.offset_left = -8.0
-	encounter_indicator.offset_right = -8.0
-	encounter_indicator.offset_top = -11.0
-	encounter_indicator.offset_bottom = 11.0
-	encounter_indicator.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	encounter_indicator.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_encounter_indicator_style = StyleBoxFlat.new()
-	_encounter_indicator_style.set_corner_radius_all(4)
-	_encounter_indicator_style.set_border_width_all(1)
-	_encounter_indicator_style.content_margin_left = 7.0
-	_encounter_indicator_style.content_margin_right = 7.0
-	_encounter_indicator_style.content_margin_top = 1.0
-	_encounter_indicator_style.content_margin_bottom = 1.0
-	encounter_indicator.add_theme_stylebox_override("panel", _encounter_indicator_style)
-	encounter_indicator_label = Label.new()
-	encounter_indicator_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	encounter_indicator_label.add_theme_font_size_override("font_size", 12)
-	encounter_indicator.add_child(encounter_indicator_label)
-	hp_bar.add_child(encounter_indicator)
-	_update_encounter_indicator()
-
-	hp_bar_label = Label.new()
-	hp_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hp_bar_label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
-	wrap.add_child(hp_bar_label)
-
-var encounter_indicator: PanelContainer
-var encounter_indicator_label: Label
-var _encounter_indicator_style: StyleBoxFlat
-var _encounter_indicator_state := ""
-
-# Bright blue when random encounters are on, dim blue when off. Narrow
-# screens get a shorter label so it stays on-screen beside the centered bar.
-func _update_encounter_indicator() -> void:
-	if encounter_indicator == null:
-		return
-	var narrow := get_viewport().get_visible_rect().size.x < 640.0
-	var state := "%s|%s" % [random_encounters_enabled, narrow]
-	if state == _encounter_indicator_state:
-		return
-	_encounter_indicator_state = state
-	var on := random_encounters_enabled
-	encounter_indicator_label.text = ("Enc %s" if narrow else "Random Encounters: %s") % ("ON" if on else "OFF")
-	_encounter_indicator_style.bg_color = Color(0.13, 0.42, 0.85, 0.92) if on else Color(0.08, 0.14, 0.26, 0.85)
-	_encounter_indicator_style.border_color = Color(0.55, 0.78, 1.0) if on else Color(0.25, 0.36, 0.55)
-	encounter_indicator_label.add_theme_color_override("font_color", Color.WHITE if on else Color(0.55, 0.65, 0.8))
-
-# The non-active divers' HP and O2, stacked down the left edge just under the
-# top-left controls text. Rebuilt per diver on TAB (whoever is active owns the
-# big bottom-center bars instead), refreshed with the main bars every frame.
+var exploration_hud: Control
+var oxygen_bar: ProgressBar
+var oxygen_bar_label: Label
+# Kept as the shared maze-caption geometry seam; these are numeric rows now.
 var _party_bars_box: VBoxContainer
-var _party_bar_rows: Array[Dictionary] = []
+
+func _build_oxygen_bar() -> void:
+	oxygen_bar = exploration_hud.oxygen_bar
+	oxygen_bar_label = exploration_hud.oxygen_label
 
 func _build_party_bars() -> void:
-	_party_bars_box = VBoxContainer.new()
-	_party_bars_box.name = "PartyBars"
-	_party_bars_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_party_bars_box.add_theme_constant_override("separation", 14)
-	_party_bars_box.position = Vector2(16.0, 76.0)
-	$HUD.add_child(_party_bars_box)
-	for i in range(divers.size()):
-		# Same shape and look as the active diver's bottom-centre pair: the O2
-		# bar with its "O2   x / y" label, then the HP bar with "Name   x / y".
-		var row := VBoxContainer.new()
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 4)
-		var o2 := _party_bar(Color(0.25, 0.65, 0.85), 14.0)
-		row.add_child(o2)
-		var o2_label := _party_bar_label()
-		row.add_child(o2_label)
-		var hp := _party_bar(Color(0.78, 0.15, 0.15), 20.0)
-		row.add_child(hp)
-		var hp_label := _party_bar_label()
-		row.add_child(hp_label)
-		_party_bars_box.add_child(row)
-		_party_bar_rows.append({"row": row, "hp": hp, "hp_label": hp_label, "o2": o2, "o2_label": o2_label})
+	_party_bars_box = exploration_hud.party_rows
+	_refresh_exploration_hud()
 
-func _party_bar(fill_color: Color, height: float) -> ProgressBar:
-	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(220.0, height)
-	bar.show_percentage = false
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = fill_color
-	bar.add_theme_stylebox_override("fill", fill)
-	return bar
+func _refresh_exploration_hud() -> void:
+	if exploration_hud == null or divers.is_empty():
+		return
+	var party: Array[Dictionary] = []
+	for actor in divers:
+		var d := actor as Diver
+		party.append({"name": _display_name(d.model_name), "stats": d.stats})
+	exploration_hud.refresh(party, active, random_encounters_enabled, _first_encounter_done)
 
-func _party_bar_label() -> Label:
-	var label := Label.new()
-	label.custom_minimum_size.x = 220.0
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
-	return label
-
-# Bottom edge of whatever controls/character text sits top-left right now: the
-# maze's controls block while it owns the screen, otherwise the world's
-# Controls label measured by its real wrapped lines (its rect is fixed in the
-# scene and doesn't grow when the text wraps on narrow screens).
+# Only the maze still has top-left controls. World controls have moved to the
+# bottom-left; counting that bottom edge as a top margin would bury goals.
 func _controls_text_bottom() -> float:
 	if embedded_maze != null and embedded_maze.maze_active:
 		var block := embedded_maze.get_node_or_null("HUD/MazeExplorationControls") as Control
-		if block != null:
-			var bottom := block.get_global_rect().end.y
-			for child in block.get_children():
-				if child is Control and (child as Control).visible:
-					bottom = maxf(bottom, (child as Control).get_global_rect().end.y)
-			return bottom
-	if hud == null or not hud.visible:
-		return 0.0
-	var lines := maxi(1, hud.get_line_count())
-	var spacing := float(hud.get_theme_constant("line_spacing"))
-	var text_height := lines * hud.get_line_height() + maxi(0, lines - 1) * spacing
-	return hud.global_position.y + maxf(text_height, 0.0)
+		if block != null and block.is_visible_in_tree():
+			return block.get_global_rect().end.y
+	return 0.0
 
-# The HP/O2 bars and the other divers' side bars step aside whenever a
-# full-screen surface is open (Esc menu, save menu, maze navigation map), so
-# they never draw over or show through it.
+# Exclusive screens own their input and pixels, including paused frames.
+# World/Battle mechanics are unchanged; no exploration resources paint over combat.
 func _sync_overlay_hud() -> void:
-	if not is_inside_tree() or hp_bar == null:
+	if not is_inside_tree() or exploration_hud == null:
 		return
-	var covered := (inventory_menu != null and inventory_menu.visible) \
+	var maze_on := embedded_maze != null and embedded_maze.maze_active
+	var covered := get_tree().paused or battling or is_instance_valid(random_encounter_reveal) \
+		or (maze_on and embedded_maze._battling) \
+		or (inventory_menu != null and inventory_menu.visible) \
 		or (save_point_menu != null and save_point_menu.visible) \
 		or _maze_nav_map_open() or _maze_menu_open()
-	for wrap in [hp_bar.get_parent(), oxygen_bar.get_parent() if oxygen_bar != null else null, _party_bars_box]:
-		if wrap != null and is_instance_valid(wrap):
-			(wrap as CanvasItem).visible = not covered
+	exploration_hud.visible = not covered
+	exploration_hud.encounter_label.visible = not maze_on
+	hud.visible = not covered and not maze_on
+	minimap.visible = not covered and not maze_on
+	banner.visible = not covered and not maze_on
+	if covered:
+		route_objective_panel.visible = false
+	if not covered:
+		_refresh_exploration_hud()
+		_layout_world_hud_for_size(get_viewport().get_visible_rect().size)
+		if not maze_on:
+			_refresh_world_guidance()
 
-# The maze runs its own Esc inventory menu and save menu instances.
 func _maze_menu_open() -> bool:
 	if embedded_maze == null or not embedded_maze.maze_active:
 		return false
@@ -4867,85 +4769,11 @@ func _maze_nav_map_open() -> bool:
 	var nav := embedded_maze.get_node_or_null("HUD/MazeMiniMap")
 	return nav != null and nav.get("main_map") != null and (nav.main_map as Control).visible
 
-func _update_party_bars() -> void:
-	if _party_bars_box == null:
-		return
-	# Follow the controls text down if it wraps onto more lines - the maze's
-	# own controls block while it owns the screen, the world's otherwise.
-	_party_bars_box.position.y = maxf(76.0, _controls_text_bottom() + 10.0)
-	for i in range(_party_bar_rows.size()):
-		var row := _party_bar_rows[i]
-		var d := divers[i] as Diver
-		(row.row as Control).visible = i != active
-		if i == active:
-			continue
-		var hp := row.hp as ProgressBar
-		hp.max_value = d.stats.hp_max
-		hp.value = d.stats.hp
-		(row.hp_label as Label).text = "%s   %d / %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max]
-		var o2 := row.o2 as ProgressBar
-		o2.max_value = d.stats.oxygen_max
-		o2.value = d.stats.oxygen
-		(row.o2_label as Label).text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
-
 func _update_hp_bar() -> void:
-	_update_encounter_indicator()
-	_update_party_bars()
-	var d: Diver = divers[active]
-	hp_bar.max_value = d.stats.hp_max
-	hp_bar.value = d.stats.hp
-	hp_bar_label.text = "%s   %d / %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max]
-
-# Same wrap/bar/label shape as the HP bar, stacked just above it - O2 is
-# read continuously (sonar drains it every frame while active - see
-# Diver._physics_process()) so it's updated every physics frame right
-# alongside HP rather than only on discrete events like the HP bar's other
-# callers do. No regen to show ticking here - the only thing that ever
-# moves this bar back up is a save point (_on_save_requested()).
-var oxygen_bar: ProgressBar
-var oxygen_bar_label: Label
-
-func _build_oxygen_bar() -> void:
-	var wrap := VBoxContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	# MODIFIED: this band (offset_top to offset_bottom) used to be only 24px
-	# tall (-82 to -58), with just 2px of clearance above the HP bar's own
-	# band starting at -56 - nowhere near enough to fit a 14px bar plus a
-	# label on top of it, so the label routinely overflowed straight down
-	# onto the HP bar below. Now 40px tall with an 8px real gap above the
-	# HP bar's own top edge (-56).
-	wrap.offset_top = -104.0
-	wrap.offset_bottom = -64.0
-	wrap.add_theme_constant_override("separation", 4)
-	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	# MODIFIED (added): same full-width STOP-by-default bug as the HP bar's
-	# own wrap just above.
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(wrap)
-
-	oxygen_bar = ProgressBar.new()
-	oxygen_bar.custom_minimum_size = Vector2(220, 14)
-	oxygen_bar.show_percentage = false
-	oxygen_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# MODIFIED (added): same reasoning as the HP bar's own fix just above -
-	# wrap's IGNORE doesn't cascade to its children.
-	oxygen_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mat := StyleBoxFlat.new()
-	mat.bg_color = Color(0.25, 0.65, 0.85)
-	oxygen_bar.add_theme_stylebox_override("fill", mat)
-	wrap.add_child(oxygen_bar)
-
-	oxygen_bar_label = Label.new()
-	oxygen_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	oxygen_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	oxygen_bar_label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
-	wrap.add_child(oxygen_bar_label)
+	_refresh_exploration_hud()
 
 func _update_oxygen_bar() -> void:
-	var d: Diver = divers[active]
-	oxygen_bar.max_value = d.stats.oxygen_max
-	oxygen_bar.value = d.stats.oxygen
-	oxygen_bar_label.text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
+	_refresh_exploration_hud()
 
 # Same downward-pointing cone TargetSelector's own cursor uses, same green,
 # built once here rather than in TargetSelector since this one's purpose is
@@ -4987,7 +4815,7 @@ func _update_active_cursor() -> void:
 func _flash_hp_bar() -> void:
 	var tw := create_tween()
 	tw.tween_property(_hp_bar_mat, "bg_color", Color(1.0, 0.9, 0.85), 0.1)
-	tw.tween_property(_hp_bar_mat, "bg_color", Color(0.78, 0.15, 0.15), 0.3)
+	tw.tween_property(_hp_bar_mat, "bg_color", Color(0.96, 0.43, 0.36), 0.3)
 
 func _find(n: Node, nm: String) -> MeshInstance3D:
 	if n is MeshInstance3D and String(n.name) == nm:
