@@ -2,7 +2,7 @@
 
 ## Fix
 
-- Screen-space, camera-relative **Maze ramp** arrow plus distance points at the actual ramp mouth (x=231, z=16), not the earlier decorative landmark.
+- Screen-space, camera-relative **Maze ramp** arrow plus distance points just inside the actual shared maze boundary, along the central ramp (z=16), not the earlier decorative landmark or ramp mouth.
 - It derives from persisted lab/Tethys completion, so saved completed runs also receive it. It is restricted to Deep exploration; battle, menu, aim, maze and completed-campaign owners do not share the guide.
 - The two large visual exit-cover formations disappear only in `cleared` lab state. Physical side shell, pre-fight hiding rocks/door, independent maze access and collision rules are retained.
 - Objective/compass layout reserves the party-bars column where their horizontal areas overlap.
@@ -24,3 +24,5 @@ The compass-only native run exposed a blacked-out exit, prompting the geometry c
 The first narrow render exposed health-bar overlap even though the initial bounds check passed. The final intersection assertions and inspected images use the repaired layout. Green tests alone were not accepted as visual proof.
 
 This is focused navigation/recovery verification, not a full earned campaign/balance or all-platform audit. No existing player saves were modified; any test slot is uniquely owned and removed by its harness.
+
+The first exported browser route succeeded at movement/entry but its distance rose after passing the ramp mouth (56→4→9→20). It is rejected as acceptance: following that arrow would turn a player back. `ramp-mouth-red.log` captures the strengthened failing native test. Final verification must use the corrected boundary target, require a forward pointer through the native crossing and decreasing browser distance until maze entry. The provisional preview was never promoted.

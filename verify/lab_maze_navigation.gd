@@ -49,8 +49,13 @@ func _run() -> void:
 	await _hold(KEY_W, true)
 	var deadline := Time.get_ticks_msec() + 24000
 	var captured := false
+	var reversed_before_entry := false
 	while not world.embedded_maze.maze_active and Time.get_ticks_msec() < deadline:
 		await physics_frame
+		if guide.is_visible_in_tree():
+			var direction := guide.find_child("Direction", true, false) as Polygon2D
+			if Vector2.UP.rotated(direction.rotation).dot(Vector2.UP) < 0.9:
+				reversed_before_entry = true
 		if "--visual" in OS.get_cmdline_user_args() and not captured and world.divers[world.active].global_position.x > 195:
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("/tmp/lab-maze-navigation-swim.png")
@@ -58,6 +63,7 @@ func _run() -> void:
 	await _hold(KEY_W, false)
 	_expect(world.embedded_maze.maze_active,
 		"NAV-2 following the compass from lab cannot reach the actual maze: " + str(world.divers[world.active].global_position))
+	_expect(not reversed_before_entry, "NAV-6 compass turns the player back at the ramp mouth before entering the maze")
 	_expect(not guide.is_visible_in_tree(), "NAV-3 lab compass leaks into maze ownership")
 	print("NAV-2 actual W swim|position=", world.divers[world.active].global_position, "|maze=", world.embedded_maze.maze_active)
 	world.queue_free()
@@ -89,9 +95,9 @@ func _run() -> void:
 			and not world.route_objective_panel.get_global_rect().intersects(world._party_bars_box.get_global_rect()),
 			"NAV-4 party HP/O2 obscures maze compass or destination text at width " + str(root.size.x))
 		var pointer := guide.find_child("Direction", true, false) as Polygon2D
-		var diver := world.divers[world.active] as Diver
-		var east := Vector3(231, 2, 16) - diver.global_position
-		east.y = 0
+		# The actual central passage runs east throughout this fixed lab pose.
+		# Independent compass oracle, not the implementation's waypoint value.
+		var east := Vector3.RIGHT
 		var view_forward := -world.cam.global_basis.z
 		view_forward.y = 0
 		view_forward = view_forward.normalized()

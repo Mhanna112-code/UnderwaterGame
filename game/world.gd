@@ -2645,8 +2645,9 @@ func _update_maze_route_guide() -> void:
 		and $HUD.visible and cam.current
 	)
 	if maze_route_guide.visible:
-		# Point at the real ramp mouth, not the earlier decorative landmark.
-		var ramp := Vector3(DeepZoneLayoutScript.WORLD_MAX_X + 1, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
+		# Aim just inside the real maze boundary. A marker at the ramp mouth
+		# turns backwards halfway across it, before maze ownership can begin.
+		var ramp := Vector3(embedded_maze.embedded_bounds.position.x + 1, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
 		maze_route_guide.update_bearing(cam, (divers[active] as Diver).global_position,
 			ramp, maxf(route_objective_panel.get_rect().end.y, hud.get_rect().end.y))
 

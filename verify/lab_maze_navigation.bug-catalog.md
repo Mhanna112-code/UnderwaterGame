@@ -21,6 +21,7 @@ Branches: incomplete prologue; lab not cleared; post-victory Deep exploration; S
 | NAV-3 | Guide leaks into battle/maze/menus or is lost on Load. | Medium: multiple navigation/input owners; victory-only activation would fail cold Load. | World state transitions and checkpoint round-trip, observe rendered HUD visibility. | Characterized |
 | NAV-4 | Arrow direction/layout breaks with camera rotation or narrow screens. | Medium: pointing east in screen space regardless of camera would send players backwards. | Seeded camera-angle/viewport invariant: displayed pointer agrees with physical destination; card remains in view and below controls/objective. | Fixed party-bar overlap; direction characterized |
 | NAV-5 | The collision-clear exit still runs through opaque rock meshes, blacking out the camera. | High: a compass-only fix is navigable but visually broken; native swim capture exposed it. | Inspect actual exit swim render, and retain pre-victory concealment; cleared-state Load rebuilds the open sight line. | Fixed after rendered defect |
+| NAV-6 | Compass reverses at the ramp mouth before maze ownership starts. | High: a player following the pointer would never finish entry. The first actual-input test held W regardless of the pointer, masking the incorrect target. | Pointer must remain forward during the whole actual native crossing; browser distance must decrease until maze HUD owns the screen. | Caught by strengthened test |
 
 ## Self-critique
 
@@ -44,3 +45,5 @@ Native rendered review additionally found NAV-4: party HP/O2 overlapped navigati
 Adversarial checks: 18 seeded camera/width combinations agree with the physical ramp bearing; ordinary W swimming reaches the same embedded maze without teleporting; actual legal-kit Tethys victory and cold Title Load retain guidance; inventory, actual battle and maze ownership remove it. No fake won result is used in the separate Tethys regression.
 
 Scope: the route fixture supplies lab completion. It does not prove earned campaign balance or subjective whole-game polish. Browser/export acceptance is recorded separately in the evidence receipt.
+
+NAV-6 was discovered adversarially while reviewing the first browser receipt: 56→4→9→20 metres before maze entry. That provisional web run is rejected as acceptance despite its original green exit status. A strengthened native test fails on the ramp-mouth target. The target is now one metre inside the actual shared maze boundary, not a hardcoded mouth/decorative landmark. Native pointer and browser monotonic-distance checks cover the entire approach, not just the existence of input/entry.

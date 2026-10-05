@@ -85,10 +85,17 @@ try {
   await page.keyboard.down('KeyA');
   const deadline = Date.now() + 25000;
   let entered = false;
+  let previousDistance = Infinity;
   for (let step = 0; Date.now() < deadline; step++) {
     await page.waitForTimeout(1600);
     const rows = await capture('actual-swim-' + step), text = rows.map(row => row.text).join('\n');
     if (!/Maze ramp|Laboratory cleared/i.test(text)) { entered = true; break; }
+    const label = rows.find(row => /^Maze ramp$/i.test(row.text.trim()));
+    const distance = label && rows.find(row => /^\d+\s*m/i.test(row.text.trim()) && row.y > label.y && row.y < label.y + 40);
+    expect(distance, 'NAV-W6 visible compass lost its distance during the approach');
+    const metres = Number(distance.text.match(/^\d+/)[0]);
+    expect(metres <= previousDistance + 1, 'NAV-W6 distance increases before entry: compass points back to the ramp mouth');
+    previousDistance = metres;
   }
   await page.keyboard.up('KeyA');
   expect(entered, 'NAV-W2 actual lab-to-ramp swimming never relinquished World HUD to the maze');
