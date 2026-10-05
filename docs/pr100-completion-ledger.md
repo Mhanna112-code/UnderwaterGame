@@ -1,5 +1,20 @@
 # PR #100 full-scope completion ledger
 
+## Deadline delivery artifact
+
+The fresh Web export identifies runtime source
+`aab7a69b79f03bdef0f149ee92fa14257c1a2140`, after integrating #97
+`bba8b80337c07298763a28c9c1109382091bc480` and #99
+`86878faedb71e81072b1d200f4ccbfc6f0507210`. The exported pack is
+93,314,360 bytes, SHA256
+`7f5ddc73f1dc8a4165f63f17d6ac44bd1c3761f10f1558ea07681962caeb46b4`.
+`docs/build-info.json` identifies the artifact and `docs/review.html` gives
+current route instructions. Generated files are committed so merging source
+does not leave Git-based Web hosting serving the old pack. Hosted deployment
+and merge confirmation are separate delivery operations, not assertions of
+full acceptance. Earlier bffe1b5 references below describe historical receipts.
+Windows/Linux packages remain on that earlier source, not this artifact.
+
 ## Current deadline disposition, October 5
 
 At 09:12 Chicago Miguel explicitly required the remaining Marc changes, local

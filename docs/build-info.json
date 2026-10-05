@@ -1,0 +1,15 @@
+{
+  "source_commit": "aab7a69b79f03bdef0f149ee92fa14257c1a2140",
+  "pck_sha256": "7f5ddc73f1dc8a4165f63f17d6ac44bd1c3761f10f1558ea07681962caeb46b4",
+  "pck_bytes": 93314360,
+  "engine": "Godot 4.7.1",
+  "status": "Deadline integration: focused checks, not full campaign acceptance",
+  "upstream_intake": {
+    "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
+    "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
+  },
+  "change": "Shared world/maze integration, earned map, wall/current/whirlpool safety, autosaves, three recovery pads, learned-spell enemy scaling, no ordinary victory refill, in-battle victory music and centered welcome text",
+  "deferred": "Approved Tethys opening pivot; complete campaign/browser persistence/audio listening/polish acceptance; refreshed Windows/Linux packages",
+  "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
+  "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
+}
