@@ -3287,18 +3287,26 @@ func _advance_turn() -> void:
 	# disturbed - everyone else just waits their actual turn once the
 	# scripted portion (_tutorial_step < _TUTORIAL_SCRIPT.size()) ends.
 	var forced_index := _tutorial_party_index_for_step(_tutorial_step) if tutorial_encounter else -1
+	var forced_actor := {}
 	if forced_index >= 0:
 		var forced: Dictionary = party[forced_index]
 		if _living(party).has(forced) and _queue.has(forced):
 			_queue.erase(forced)
-			_acting = forced
-			_refresh_queue_row()
-			_start_party_turn(_acting)
-			return
-	_acting = _queue.pop_front()
+			forced_actor = forced
+	# Scripted initiative still passes through the same status boundary.
+	_acting = forced_actor if not forced_actor.is_empty() else _queue.pop_front()
 	_refresh_queue_row()
 	if (_acting.stats as CombatantStats).hp <= 0:
 		_advance_turn()   # downed since the queue was built - skip them
+		return
+	if (_acting.stats as CombatantStats).is_stunned():
+		# Consume only the skipped Stun turn: neither action path, begin_turn()
+		# nor end_turn() runs, matching the authored combat/balance contract.
+		(_acting.stats as CombatantStats).consume_status_turn("stun")
+		_show_floating_text(_acting, "STUNNED", FEEDBACK_NEGATIVE_COLOR)
+		_log("%s is stunned and can't move!" % String(_acting.display_name))
+		_refresh_bar(_acting)
+		_advance_turn()
 		return
 	if String(_acting.kind) == "enemy":
 		var forced_target := {}
@@ -5149,6 +5157,8 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	(_acting.stats as CombatantStats).oxygen -= float(mv.get("oxygen_cost", 0.0))
 	await _swing(_acting, mv, target)
 	var r: Dictionary = await _resolve_move(_acting.stats, target.stats, mv)
+	if target.get("actor") is Goblin:
+		(target.actor as Goblin).record_damage_taken(_acting.actor, int(r.get("damage", 0)))
 	_react(target, r)
 	_show_combat_feedback(target, r)
 	var applied_effects := r.get("effects", []) as Array
@@ -5217,6 +5227,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 		if (target.stats as CombatantStats).hp <= 0:
 			continue
 		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
+		if target.get("actor") is Goblin:
+			(target.actor as Goblin).record_damage_taken(_acting.actor, int(result.get("damage", 0)))
 		if prologue_octopus_encounter:
 			print("PROLOGUE_HIT|move=%s|damage=%d|hit=%s|hp=%d|effects=%s" % [String(mv.name), int(result.damage), str(result.hit), (target.stats as CombatantStats).hp, str(result.get("effects", []))])
 		first = false
@@ -5397,7 +5409,11 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 				return
 
 	var enemy_actor := actor.actor as Goblin
-	var move := enemy_actor.choose_move(target_stats)
+	var decision := enemy_actor.choose_move_and_target(actor.stats as CombatantStats, alive_party, target,
+		not forced_target.is_empty() or tutorial_encounter or prologue_angler_encounter)
+	var move := decision.move as Dictionary
+	target = decision.target as Dictionary
+	target_stats = target.stats as CombatantStats
 	# The tutorial just named one defender and promised a timing dodge against
 	# this swing. An all-party move can resolve another diver first, consume the
 	# one-shot force flag on that unrelated result, and never show the promised
@@ -5462,6 +5478,8 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 		var target_results: Array[String] = []
 		for result_value in results:
 			var result := result_value as Dictionary
+			if String(move.get("id", "")) == "bite":
+				enemy_actor.record_bite_result(bool(result.get("hit", false)) and not bool(result.get("dodged", false)))
 			_refresh_bar(resolved_target)
 			_react(resolved_target, result)
 			_show_combat_feedback(resolved_target, result)

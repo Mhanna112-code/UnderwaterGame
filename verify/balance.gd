@@ -235,6 +235,10 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 		roster_rng = RandomNumberGenerator.new()
 		roster_rng.randomize()
 	var enemies: Array = []
+	# Identity-only Nodes let the actual Angler AI retain per-diver damage
+	# history without importing/rendering meshes. Fresh for each fight.
+	for member in party:
+		member["actor"] = Node.new()
 	var resolved_ids: Array[String] = []
 	var reference := _average(party)
 	for i in range(enemy_count):
@@ -285,6 +289,11 @@ func _fight_party(party: Array, enemy_count: int, policy: String, rng: RandomNum
 			(actor.stats as CombatantStats).gain_xp(per_grunt * enemy_count)
 		for actor in party:
 			(actor.stats as CombatantStats).recover_after_victory()
+	for member in party:
+		(member.actor as Node).free()
+		member.erase("actor")
+	for enemy in enemies:
+		(enemy.actor as Goblin).free()
 	return {"win": won, "rounds": rounds, "hp_lost": hp_lost, "enemies": enemy_count, "enemy_ids": resolved_ids}
 
 func _party_turn(actor: Dictionary, party: Array, enemies: Array, policy: String, rng: RandomNumberGenerator) -> void:
@@ -333,16 +342,11 @@ func _party_turn(actor: Dictionary, party: Array, enemies: Array, policy: String
 		var result := _apply_move(actor.stats as CombatantStats, target.stats as CombatantStats, move, rng)
 		_record_damage_dealt(target, actor, result)
 
-# Mirrors Goblin.record_damage_taken() - keyed by model name (stable and
-# unique per party slot here) rather than the actor Node production keys on,
-# since this simulator's party entries never hold a real actor.
+# Use production's state, not a second copy of its history/decision rules.
 func _record_damage_dealt(enemy: Dictionary, attacker: Dictionary, result: Dictionary) -> void:
 	if not (bool(result.get("hit", false)) and int(result.get("damage", 0)) > 0):
 		return
-	var by: Dictionary = enemy.get("damage_taken_by", {})
-	var key := String(attacker.model)
-	by[key] = int(by.get(key, 0)) + int(result.damage)
-	enemy["damage_taken_by"] = by
+	(enemy.actor as Goblin).record_damage_taken(attacker.actor, int(result.damage))
 
 func _best_move(attacker: CombatantStats, defender: CombatantStats, moves: Array) -> Dictionary:
 	var best := {}
@@ -384,8 +388,14 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 	if living_party.is_empty():
 		return
 	var target := _pick_enemy_target(living_party, rng)
+	# Seed the production selector from this simulation's local RNG. This
+	# preserves reproducibility without copying the Angler state machine or
+	# pretending the retired independent weighted picker tests current AI.
+	seed(rng.randi())
+	var decision := (actor.actor as Goblin).choose_move_and_target(actor.stats, living_party, target, false)
+	target = decision.target as Dictionary
 	var target_stats := target.stats as CombatantStats
-	var move := _pick_enemy_move(String(actor.get("enemy_id", "angler")), target_stats, rng)
+	var move := decision.move as Dictionary
 	var combat := move.combat as Dictionary
 	# Headbutt/Flash Blast (content/enemy_moves.gd) carry a "formula" key the
 	# same way a player's V2 moves do - mirrors Battle._resolve_attack()'s own
@@ -396,7 +406,10 @@ func _enemy_turn(actor: Dictionary, party: Array, policy: String, rng: RandomNum
 		var targets := Battle.enemy_targets_for_scope(target, living_party, String(move.get("target", "single")))
 		var apply_self_effects := true
 		for target_entry in targets:
-			Battle.resolve_formula_hits(actor.stats as CombatantStats, (target_entry as Dictionary).stats as CombatantStats, combat, apply_self_effects)
+			var results := Battle.resolve_formula_hits(actor.stats as CombatantStats, (target_entry as Dictionary).stats as CombatantStats, combat, apply_self_effects)
+			if String(move.get("id", "")) == "bite":
+				for result in results:
+					(actor.actor as Goblin).record_bite_result(bool(result.get("hit", false)))
 			apply_self_effects = false
 		return
 	var heavy := String(combat.get("effect", "")) == "heavy"
@@ -512,12 +525,9 @@ func _enemy(reference: CombatantStats, rng: RandomNumberGenerator, enemy_id: Str
 		stats.evasion = int(round(float(floor.evasion) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
 		stats.accuracy = int(round(float(floor.accuracy) * rng.randf_range(Goblin.BOOST_MIN, Goblin.BOOST_MAX)))
 	stats.fill()
-	# damage_taken_by/bite_hits/bite_misses/use_flash_blast_next mirror the
-	# per-instance state Goblin now carries for the Angler's move AI - unused
-	# by Swordfish, which still goes through the plain _pick_enemy_move() path.
+	var actor := Battle.actor_for_enemy_id(enemy_id)
 	return {
-		"kind": "enemy", "enemy_id": enemy_id, "stats": stats,
-		"damage_taken_by": {}, "bite_hits": 0, "bite_misses": 0, "use_flash_blast_next": false,
+		"kind": "enemy", "enemy_id": enemy_id, "stats": stats, "actor": actor,
 	}
 
 func _living(side: Array) -> Array:

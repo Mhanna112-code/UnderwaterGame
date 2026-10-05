@@ -24,6 +24,7 @@ casual-to-skilled strategy curve.
 | BAL-13 | The former 30% post-victory regroup was calibrated before the authored 10-HP roster and mixed enemy move set; winning a fight can still leave the next mandatory fight mathematically decided. | High: a player who wins does not receive enough recovery to keep trying the intended route. | Current route failures still cluster after multiple legal encounters even after zone exclusion. | Increase only the existing, visible post-victory recovery and require the fixed-seed campaign to retain HP pressure while meeting both route success floors. | fixed — visible recovery is now 40%. |
 | BAL-14 | The average-duration gate treats a single Glassgoat-authored 5–8 HP fish and a multi-enemy formation as identical evidence of combat depth. | Medium: it pressures the team to inflate authored low-HP enemy stats just to satisfy an aggregate. | Observed: skilled average is 2.3 rounds, but the aggregate includes intentionally quick solo enemies. | Report wins and rounds by formation; require the two-enemy formation—not every fish—to meet the tactical-duration floor. | fixed — skilled two-enemy wins average 2.8 rounds. |
 | BAL-15 | Early random formations give solo and two-enemy packs equal probability even though the first two artifact sites are the onboarding route for a new mixed roster. | High: casual players repeatedly meet the high-attrition formation before they can learn the enemy identities, while a single-enemy fight has no automatic-loss tail. | Observed. | Bias level 1 toward solo enemies while retaining a material two-enemy chance; keep the multi-enemy duration and route-success gates. | fixed — 75% solo / 25% two-enemy at level 1; level 2 consolidates as solo before level-3 three-packs. |
+| BAL-16 | A green weighted-only simulation conceals restored Angler retaliation and Bite history. | High: balance evidence describes obsolete AI. | Observed during PR100 focused repair. | Use production Goblin joint decisions and history with identity-only party Nodes and seeded RNG inputs; pair with actual Battle regressions. | Fixed; 90.4% casual / 100% skilled route completion, with unchanged thresholds. |
 
 ## Invariants fixed before tuning
 
@@ -71,3 +72,10 @@ take 1.9 rounds and cost party HP; the gate now protects that concrete pressure
 instead of manufacturing novice failures against Glassgoat's deliberately
 small authored fish. The route keeps the 8–16 m / 50% cadence, a 25% level-1
 two-pack challenge, solo level 2, and level-3 three-packs.
+
+PR100's focused stun/Angler repair supersedes that weighted-only AI result:
+production `Goblin.choose_move_and_target()` now owns the simulation's choices,
+with actual per-fight damage and Bite outcome recording. The seeded result is
+99.2% casual / 100% skilled isolated wins and 90.4% / 100% route completion.
+Skilled two-enemy wins take 1.9 rounds. These are declared policy simulations,
+not observed human playtesting, and no acceptance band was relaxed.

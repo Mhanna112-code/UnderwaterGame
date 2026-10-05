@@ -94,6 +94,7 @@ prepare_godot_classes() {
 }
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
+run "authored combat turns: do real stun skips and Angler damage/Bite history reach live Battle" "$GODOT" --headless --path . --script verify/authored_combat_turns.gd
 run "Marc pause port: do all four tabs fit and block exploration without losing audio/training" "$GODOT" --headless --path . --script verify/marc_pause_presentation.gd
 run "Marc popup port: do real battles defer lessons and resume surviving callers safely" "$GODOT" --headless --path . --script verify/marc_popup_ownership.gd
 run "Marc status port: does authored Bleed persist/cap while timed statuses and readable units remain real" "$GODOT" --headless --path . --script verify/marc_status_contract.gd
