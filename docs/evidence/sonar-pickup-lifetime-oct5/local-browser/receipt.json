@@ -1,0 +1,61 @@
+{
+  "source_commit": "343e37c8a11ddf26f08eef0375bc80b6f3008838",
+  "downloads": [
+    {
+      "bytes": 94993724,
+      "sha256": "def184f6bba9892f86546e1a89eaaef2df9e25dced1556ef6ed7a39634176881",
+      "endpoint": "http://127.0.0.1:60223/index.pck"
+    }
+  ],
+  "findings": [],
+  "scope": "served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection, actual swimming/E map acquisition, earned L controls and next destination at three widths, actual Inventory/aim/cancel reading ownership; no New Game full campaign or durability claim",
+  "pointerObservations": [
+    {
+      "stage": "before-bring-to-front",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": false,
+      "href": "http://127.0.0.1:60223/?maze=1&entry=entrance"
+    },
+    {
+      "stage": "after-bring-to-front",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": false,
+      "href": "http://127.0.0.1:60223/?maze=1&entry=entrance"
+    },
+    {
+      "stage": "first-gameplay-click",
+      "focused": true,
+      "visibility": "visible",
+      "connected": true,
+      "ownsDocument": true,
+      "tag": "CANVAS",
+      "href": "http://127.0.0.1:60223/?maze=1&entry=entrance",
+      "stack": "Error\n    at Element.requestPointerLock (<anonymous>:8:58)\n    at Object.lockPointer (http://127.0.0.1:60223/index.js:1:163501)\n    at _godot_js_display_cursor_lock_set (http://127.0.0.1:60223/index.js:1:179903)\n    at wasm://wasm/096bb00e:wasm-function[14435]:0x845781\n    at wasm://wasm/096bb00e:wasm-function[66388]:0x1f47f05\n    at wasm://wasm/096bb00e:wasm-function[46048]:0x1b322d7\n    at wasm://wasm/096bb00e:wasm-function[17350]:0xa176ca\n    at wasm://wasm/096bb00e:wasm-function[488]:0x62b62\n    at wasm://wasm/096bb00e:wasm-function[11474]:0x6f651f\n    at wasm://wasm/096bb00e:wasm-function[1142]:0xb0237"
+    },
+    {
+      "stage": "after-gameplay-click",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": true,
+      "href": "http://127.0.0.1:60223/?maze=1&entry=entrance"
+    },
+    {
+      "stage": "actual-grapple-lock",
+      "focused": true,
+      "visibility": "visible",
+      "canvasConnected": true,
+      "canvasOwnsDocument": true,
+      "pointerLocked": true,
+      "href": "http://127.0.0.1:60223/?maze=1&entry=entrance"
+    }
+  ],
+  "browserMode": "headed Chromium; actual canvas pointer lock required"
+}

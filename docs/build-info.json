@@ -1,14 +1,14 @@
 {
-  "source_commit": "cb607cf7b27ccca844d643ba5b74e2dca1e1f385",
-  "pck_sha256": "10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031",
-  "pck_bytes": 94990924,
+  "source_commit": "343e37c8a11ddf26f08eef0375bc80b6f3008838",
+  "pck_sha256": "def184f6bba9892f86546e1a89eaaef2df9e25dced1556ef6ed7a39634176881",
+  "pck_bytes": 94993724,
   "engine": "Godot 4.7.1",
-  "status": "Accepted bounded pre-boss-only ending and maze reading-layout repair, reconciled with Sonar/site main; full campaign acceptance remains incomplete",
+  "status": "Sonar lifetime native and exact-export local browser checks accepted; reconciled with Marc main 10ba148; hosted candidate acceptance pending, full campaign incomplete",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Pre-boss Restart is scoped to the current run and failed browser durability is reported honestly. Maze destinations avoid visible shared HP/Oxygen; shared exploration health relinquishes Inventory/map/battle reading ownership. Sonar 1 O2 per 6 seconds, R-independent guarded sites, post-lab navigation, forced strong-room encounters, combat pacing and authored spell rules are retained",
+  "change": "Sonar lens spin ends when the pickup is collected or removed by owned-item Load. Preserves required-item 3D reveal, map-marker Sonar, pre-boss-only ending and repaired maze UI. Includes Marc's timed rare boosts, automatic Oxygen Cells, Escape map close and saved sites cleared only after rewarded victory",
   "deferred": "Tethys opening/Cordys introduction LAST with explicit Miguel review before main/canonical. Full earned campaign/browser/audio/polish acceptance and same-source Windows/Linux packages remain. Native download source below is older than this web build",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
