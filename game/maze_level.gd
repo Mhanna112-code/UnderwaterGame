@@ -814,6 +814,10 @@ var _battle: Battle
 var _encounter_status: Label
 
 func _on_diver_encounter(d: Diver) -> void:
+	# Part of the world: out in the open water it's World's roll to make
+	# (with its own R setting), not the maze's.
+	if world != null and not maze_active:
+		return
 	if _battling or any_modal_open() or d != _diver:
 		return
 	if is_diver_in_strong_room():
@@ -826,6 +830,8 @@ func _toggle_random_encounters() -> void:
 	if is_diver_in_strong_room():
 		return   # forced on in the danger zone - the HUD hint is greyed out
 	random_encounters_enabled = not random_encounters_enabled
+	if world != null:
+		world.random_encounters_enabled = random_encounters_enabled
 	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
 
 # kind: "strong" (the strong-enemy room's random encounters), "secret_boss"

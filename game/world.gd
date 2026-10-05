@@ -1642,6 +1642,8 @@ func _toggle_sonar() -> void:
 # tutorial fight as after it.
 func _toggle_random_encounters() -> void:
 	random_encounters_enabled = not random_encounters_enabled
+	if maze != null:
+		maze.random_encounters_enabled = random_encounters_enabled
 	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
 	_update_hud()   # refreshes the "R: Encounters (On/Off)" hint immediately
 
