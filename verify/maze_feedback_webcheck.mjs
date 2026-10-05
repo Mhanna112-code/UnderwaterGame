@@ -11,6 +11,7 @@ const target = process.argv[2];
 const output = process.argv[3] || '/tmp/maze-feedback-web';
 fs.mkdirSync(output, { recursive: true });
 const live = target.startsWith('http');
+const headed = process.argv.includes('--headed');
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm', '.pck': 'application/octet-stream', '.png': 'image/png', '.json': 'application/json' };
 const server = http.createServer((request, response) => {
   const file = path.join(target, decodeURIComponent(request.url.split('?')[0]) === '/' ? 'index.html' : decodeURIComponent(request.url.split('?')[0]));
@@ -20,11 +21,13 @@ const server = http.createServer((request, response) => {
 });
 if (!live) await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const base = live ? target : `http://127.0.0.1:${server.address().port}/`;
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=metal', '--ignore-gpu-blocklist'] });
-const errors = [], downloads = [], findings = [];
+const browser = await chromium.launch({ headless: !headed, args: ['--use-gl=angle', '--use-angle=metal', '--ignore-gpu-blocklist'] });
+const errors = [], downloads = [], findings = [], pointerObservations = [];
 const metadata = live ? await (await fetch(new URL('build-info.json', base))).json()
   : JSON.parse(fs.readFileSync(path.join(target, 'build-info.json'), 'utf8'));
+let observationStage = 'setup';
 const capture = async (page, name) => {
+  observationStage = name;
   const file = path.join(output, name + '.png');
   await page.screenshot({ path: file });
   return JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [file], { encoding: 'utf8' })).map(row => row.text).join('\n');
@@ -44,8 +47,28 @@ try {
   for (const route of ['', '?maze=1&entry=entrance']) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const page = await context.newPage();
-    page.on('pageerror', error => errors.push(String(error)));
+    // Trace the platform request without changing its return or rejection.
+    await page.addInitScript(() => {
+      const original = Element.prototype.requestPointerLock;
+      Element.prototype.requestPointerLock = function (...args) {
+        console.log('POINTER REQUEST|' + JSON.stringify({
+          focused: document.hasFocus(), visibility: document.visibilityState,
+          connected: this.isConnected, ownsDocument: this.ownerDocument === document,
+          tag: this.tagName, href: location.href, stack: new Error().stack,
+        }));
+        return original.apply(this, args);
+      };
+    });
+    page.on('pageerror', error => {
+      const detail = observationStage + '|' + String(error.stack || error);
+      errors.push(detail);
+      console.log('BROWSER ERROR|' + detail);
+    });
     page.on('console', message => {
+      if (message.text().startsWith('POINTER REQUEST|')) {
+        pointerObservations.push({ stage: observationStage, ...JSON.parse(message.text().slice('POINTER REQUEST|'.length)) });
+        console.log(message.text());
+      }
       if (message.type() === 'error' || /SCRIPT ERROR:|^ERROR:/.test(message.text())) errors.push(message.text());
     });
     const downloaded = new Promise(resolve => page.on('requestfinished', async request => {
@@ -66,6 +89,8 @@ try {
     } else {
       const world = await capture(page, 'maze-entry');
       if (!/navigation map|WASD|Hallway|L: map/i.test(world)) throw new Error('Export direct maze route did not render gameplay controls');
+      if (!/find the navigation map[\s\S]*Control Room/i.test(world))
+        throw new Error('GOAL-1 exported entrance hides its actionable Control Room destination');
       await page.keyboard.press('KeyL');
       await page.waitForTimeout(500);
       const unearned = await capture(page, 'map-unearned');
@@ -117,6 +142,8 @@ try {
       }
       const map = await capture(page, 'maze-map');
       if (!/MAZE NAVIGATION/i.test(map) || !/rotate/i.test(map)) throw new Error('Real earned L did not reveal exported maze map controls');
+      if (/Maze:\s*find|Open the hallway|Ancient Relic recovered/i.test(map))
+        throw new Error('GOAL-4 exploration destination paints through the actual map overview');
       if (!/Left/i.test(map) || !/Right/i.test(map) || !/Ctrl/i.test(map) || !/Encounters/i.test(map)) throw new Error('MAP-8 exported map keys are unreadable or missing portable Left/Right/Ctrl/R controls');
       if (strictIntro && (!/LEGEND/i.test(map) || !/Chest/i.test(map) || /Boss|Special encounter/i.test(map)))
         throw new Error('Earned map legend is absent, omits the discovered chest or reveals unknown boss/site types');
@@ -130,18 +157,73 @@ try {
           throw new Error('Actual earned map/help/legend is unreadable at ' + width + 'x' + height);
       }
       await page.keyboard.press('KeyL');
+      await page.waitForTimeout(4500);
+      for (const [width, height] of [[1280, 720], [720, 480], [360, 640]]) {
+        await page.setViewportSize({ width, height });
+        await page.waitForTimeout(500);
+        const goal = await capture(page, `earned-map-goal-${width}x${height}`);
+        if (!/Open the hallway/i.test(goal) || !/relic/i.test(goal) || !/Cordys/i.test(goal))
+          throw new Error('GOAL-1 earned map does not restore a readable next destination at ' + width + 'x' + height);
+        if (/E:\s*interact[\s\S]*F:\s*ability/i.test(goal))
+          throw new Error('GOAL-4 restored destination revives retired generic bottom controls');
+      }
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+      const inventory = await capture(page, 'goal-inventory-owner');
+      if (/Open the hallway/i.test(inventory) || !/Inventory/i.test(inventory))
+        throw new Error('GOAL-4 actual Inventory does not exclusively own the reading screen');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Tab');
+      await page.waitForTimeout(4500);
+      observationStage = 'before-grapple-aim';
+      const focusState = () => page.evaluate(() => ({
+        focused: document.hasFocus(), visibility: document.visibilityState,
+        canvasConnected: document.querySelector('canvas')?.isConnected,
+        canvasOwnsDocument: document.querySelector('canvas')?.ownerDocument === document,
+        pointerLocked: Boolean(document.pointerLockElement), href: location.href,
+      }));
+      pointerObservations.push({ stage: 'before-bring-to-front', ...await focusState() });
+      await page.bringToFront();
+      pointerObservations.push({ stage: 'after-bring-to-front', ...await focusState() });
+      if (headed) {
+        // The diagnostic entrance has used only keys so far. Take the normal
+        // first gameplay click before F; do not inject or fake a browser lock.
+        observationStage = 'first-gameplay-click';
+        await page.mouse.click(640, 360);
+        await page.waitForTimeout(500);
+        pointerObservations.push({ stage: 'after-gameplay-click', ...await focusState() });
+      }
+      observationStage = 'before-grapple-aim';
+      await page.keyboard.press('KeyF');
+      await page.waitForTimeout(500);
+      if (headed) {
+        await page.waitForFunction(() => document.pointerLockElement === document.querySelector('canvas'), null, { timeout: 5000 });
+        pointerObservations.push({ stage: 'actual-grapple-lock', ...await focusState() });
+      }
+      const aim = await capture(page, 'goal-aim-owner');
+      if (/Open the hallway/i.test(aim) || !/Left click/i.test(aim) || !/cancel/i.test(aim))
+        throw new Error('GOAL-4 actual grapple aim does not own the HUD');
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+      const canceled = await capture(page, 'goal-after-aim');
+      if (!/Open the hallway/i.test(canceled) || /Inventory/i.test(canceled))
+        throw new Error('GOAL-4 aim cancel loses destination or opens Inventory');
       await page.keyboard.press('KeyL');
       await page.waitForTimeout(500);
       const reopened = await capture(page, 'maze-map-repeat');
       if (/discovered|closes\s+the\s+map/i.test(reopened)) throw new Error('Navigation lesson repeated on the next L open');
     }
+    observationStage = 'context-teardown';
     await context.close();
   }
 } catch (error) { findings.push(String(error)); }
 findings.push(...errors);
 await browser.close();
 if (!live) await new Promise(resolve => server.close(resolve));
-const receipt = { source_commit: metadata.source_commit, downloads, findings, scope: 'served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection and actual swimming/E acquisition/earned L controls; no full campaign or durability claim' };
+const receipt = { source_commit: metadata.source_commit, downloads, findings, scope: 'served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection, actual swimming/E map acquisition, earned L controls and next destination at three widths, actual Inventory/aim/cancel reading ownership; no New Game full campaign or durability claim' };
+receipt.pointerObservations = pointerObservations;
+receipt.browserMode = headed ? 'headed Chromium; actual canvas pointer lock required' : 'headless Chromium';
 fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2));
 console.log(JSON.stringify(receipt));
 console.log(findings.length ? 'MAZE FEEDBACK WEB: failed' : 'MAZE FEEDBACK WEB: clean');

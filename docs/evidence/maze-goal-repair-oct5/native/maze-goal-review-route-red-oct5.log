@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+ERROR: GOAL-6 real diagnostic maze flag leaves the active entrance without its destination
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/maze_review_route.gd:31)
+MAZE REVIEW ROUTE: 1 finding(s)

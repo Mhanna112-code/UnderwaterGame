@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SCRIPT ERROR: Parse Error: Could not find type "MazeRouteGuide" in the current scope.
+          at: GDScript::reload (res://game/world.gd:85)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+          at: GDScript::reload (res://verify/campaign_goals.gd:0)
+ERROR: Failed to load script "res://verify/campaign_goals.gd" with error "Compilation failed".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+SCRIPT ERROR: Invalid assignment of property or key 'skip_intro_for_test' with value of type 'bool' on a base object of type 'Nil'.
+          at: _run (res://verify/campaign_goals.gd:19)
+          GDScript backtrace (most recent call first):
+              [0] _run (res://verify/campaign_goals.gd:19)

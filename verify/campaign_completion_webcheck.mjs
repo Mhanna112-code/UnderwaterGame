@@ -1,5 +1,5 @@
-// END-2/3/4: real browser fight -> rejected durable checkpoint -> Retry ->
-// Return to Title -> fresh-page chosen-slot Load. Supplied legal level-five
+// END-2/3/4/6: real browser fight -> pre-boss autosave -> ending -> cold Load;
+// optional rejected durability must offer only session Restart. Legal level-five
 // kit/key/room isolates ending; this is NOT earned campaign/balance evidence.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 
 const target = process.argv[2], output = process.argv[3] || '/tmp/campaign-ending-web';
 const laboratory = process.argv.includes('--laboratory');
+const deniedPreBoss = process.argv.includes('--deny-pre-boss');
 fs.mkdirSync(output, { recursive: true });
 const live = target.startsWith('http');
 let server, url = target;
@@ -31,7 +32,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=me
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 let page = await context.newPage();
 const errors = [], observations = [], findings = [];
-let actions = 0, committed, before;
+let actions = 0, committed, before, metadata, servedPack;
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const observePage = active => {
   active.on('pageerror', error => errors.push(String(error)));
@@ -43,15 +44,19 @@ const observePage = active => {
 };
 observePage(page);
 if (!laboratory) await page.addInitScript(() => {
-  window.rejectCompletion = true;
-  window.rejectedCompletionWrites = 0;
+  window.rejectPreBoss = false;
+  window.rejectedPreBossWrites = 0;
   const put = IDBObjectStore.prototype.put;
   IDBObjectStore.prototype.put = function(value, key) {
     const result = put.call(this, value, key);
-    let completed = false;
-    try { completed = JSON.parse(new TextDecoder().decode(value.contents)).route_state?.octopus_state === 'defeated'; } catch (_) {}
-    if (window.rejectCompletion && completed && String(key).endsWith('/saves/slot_0.json')) {
-      window.rejectedCompletionWrites++;
+    let beforeBoss = false;
+    try {
+      const data = JSON.parse(new TextDecoder().decode(value.contents));
+      beforeBoss = data.campaign_scene === 'maze' && data.route_state?.octopus_state !== 'defeated'
+        && data.campaign_checkpoint?.maze?.boss_triggers?.includes('main_boss');
+    } catch (_) {}
+    if (window.rejectPreBoss && beforeBoss && String(key).endsWith('/saves/slot_0_auto.json')) {
+      window.rejectedPreBossWrites++;
       this.transaction.abort();
     }
     return result;
@@ -73,11 +78,11 @@ const clickText = async (pattern, name) => {
   expect(row, `Missing ${pattern}: ${rows.map(row => row.text).join(' | ')}`);
   await click(row);
 };
-const readSlot = async () => page.evaluate(async record => {
+const readSlot = async (autosave = false) => page.evaluate(async record => {
   const db = await new Promise((resolve, reject) => { const request = indexedDB.open(record.database); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
   const bytes = await new Promise((resolve, reject) => { const tx = db.transaction('FILE_DATA', 'readonly'); const request = tx.objectStore('FILE_DATA').get(record.key); request.onsuccess = () => resolve(request.result ? new TextDecoder().decode(request.result.contents) : null); request.onerror = () => reject(request.error); });
   db.close(); return bytes;
-}, { database: record.database, key: record.key });
+}, { database: record.database, key: autosave ? record.key.replace(/slot_0\.json$/, 'slot_0_auto.json') : record.key });
 const load = async label => {
   await clickText(/^Load Game$/, label + '-title');
   await clickText(/^Slot 1\s*[-–]/, label + '-slot');
@@ -98,6 +103,15 @@ const waitTitle = async (label, needsLoad = false) => {
   throw new Error('BOOT-1 title controls never became ready within 90 seconds');
 };
 try {
+  metadata = await (await fetch(new URL('build-info.json', url))).json();
+  if (process.env.EXPECTED_SOURCE_SHA) expect(metadata.source_commit === process.env.EXPECTED_SOURCE_SHA, 'Wrong runtime source identity');
+  const pack = await fetch(new URL('index.pck', url));
+  expect(pack.ok, 'Pack download HTTP ' + pack.status);
+  const digest = crypto.createHash('sha256');
+  let bytes = 0;
+  for await (const chunk of pack.body) { bytes += chunk.length; digest.update(chunk); }
+  servedPack = { bytes, sha256: digest.digest('hex') };
+  expect(bytes === metadata.pck_bytes && servedPack.sha256 === metadata.pck_sha256, 'Served pack does not match identified runtime');
   await page.goto(url, { waitUntil: 'load' }); await waitTitle('cold');
   await clickText(/^New Game$/, 'cold-title'); await page.waitForTimeout(2000);
   await page.evaluate(async record => {
@@ -121,9 +135,12 @@ try {
     expect(step < 15, 'Real swim never reached ' + (laboratory ? 'laboratory movie' : 'confirmation'));
   }
   if (laboratory) await clickText(/^Skip Cutscene$/, 'actual-lab-movie-skip');
-  else await page.keyboard.press('KeyY');
+  else {
+    await page.evaluate(reject => { window.rejectPreBoss = reject; }, deniedPreBoss);
+    await page.keyboard.press('KeyY');
+  }
   await page.waitForTimeout(2000);
-  const deadline = Date.now() + 180000;
+  const deadline = Date.now() + 240000;
   let ending = false;
   while (Date.now() < deadline && actions < 70) {
     const rows = await capture('fight-' + actions + '-' + observations.length);
@@ -196,20 +213,21 @@ try {
     expect(/Laboratory cleared/i.test(loaded) && /maze/i.test(loaded) && !/Computer recovered|Your turn|Broken Office/i.test(loaded), 'LAB-W3 cold Load replays lab fight/payoff or loses maze direction');
     expect(await readSlot() === committed, 'LAB-W3 cold Load rewrote bytes, resources or reward');
   } else {
-  const failure = (await capture('rejected-ending')).map(row => row.text).join('\n');
-  expect(/Completion could not be saved/i.test(failure) && /Retry Save/i.test(failure), 'END-2 rejection falsely acknowledged saved ending');
-  expect(await page.evaluate(() => window.rejectedCompletionWrites > 0), 'END-2 fault never reached completed durable write');
-  expect(await readSlot() === before, 'END-2 rejection changed exact previous durable bytes');
-  await clickText(/^Return to Title$/, 'disabled-title');
-  expect((await capture('title-still-disabled')).some(row => /Game complete/i.test(row.text)), 'END-2 failed save allowed exit');
-  await page.evaluate(() => { window.rejectCompletion = false; });
-  await clickText(/^Retry Save$/, 'retry-ending'); await page.waitForTimeout(5500);
-  const savedText = (await capture('confirmed-ending')).map(row => row.text).join('\n');
-  expect(/Completed journey saved to Slot 1/i.test(savedText) && !/Retry Save/i.test(savedText), 'END-2 retry lacks durable confirmation');
-  committed = await readSlot();
-  const saved = JSON.parse(committed);
-  expect(saved.route_state.octopus_state === 'defeated' && !saved.campaign_checkpoint.maze.boss_triggers.includes('main_boss'), 'END-1 completion retains boss or unfinished milestone');
-  expect(saved.route_state.tethys_state === 'locked' && saved.campaign_checkpoint.maze.boss_triggers.includes('secret_boss'), 'END-1 completion incorrectly requires/finishes independent lab/puppets');
+  const endingText = (await capture('pre-boss-ending')).map(row => row.text).join('\n');
+  expect(/Restart from Auto Save/i.test(endingText) && /Return to Title/i.test(endingText), 'END-1 ending lacks Marc\'s requested choices');
+  expect(await readSlot() === before, 'END-1 ending changed the existing manual checkpoint');
+  committed = await readSlot(true);
+  if (deniedPreBoss) {
+    expect(/Autosave failed/i.test(endingText) && /session/i.test(endingText) && !/autosaved right before/i.test(endingText), 'END-6 rejected durability falsely promises persistent Restart');
+    expect(await page.evaluate(() => window.rejectedPreBossWrites > 0), 'END-6 fault never reached the actual pre-boss autosave');
+    expect(committed === null, 'END-6 rejection retained unconfirmed durable autosave bytes');
+  } else {
+    expect(/autosaved/i.test(endingText) && !/failed|session only|being confirmed/i.test(endingText), 'END-1 ending has no honest saved pre-boss confirmation');
+    expect(committed, 'END-1 pre-boss autosave never reached IndexedDB');
+    const saved = JSON.parse(committed);
+    expect(saved.route_state.octopus_state !== 'defeated' && saved.campaign_checkpoint.maze.boss_triggers.includes('main_boss'), 'END-1 pre-boss autosave records completion or removes the station');
+    expect(saved.route_state.tethys_state === 'locked' && saved.campaign_checkpoint.maze.boss_triggers.includes('secret_boss'), 'END-1 ending completed independent lab/puppets');
+  }
   await page.keyboard.down('KeyW'); await page.keyboard.press('Tab'); await page.keyboard.press('KeyP'); await page.waitForTimeout(600); await page.keyboard.up('KeyW');
   for (const width of [720, 360]) {
     await page.setViewportSize({ width, height: 720 }); await page.waitForTimeout(400);
@@ -217,19 +235,29 @@ try {
     expect(/Game complete/i.test(text) && /Return to Title/i.test(text) && !/Save Point|WASD|Your turn/i.test(text), 'END-4 narrow ending clips controls or leaks gameplay HUD');
   }
   await page.setViewportSize({ width: 1280, height: 720 });
+  if (deniedPreBoss) {
+    // Same-session Restart must still be usable without claiming cold persistence.
+    await page.evaluate(() => { window.rejectPreBoss = false; });
+    await clickText(/^Restart from Auto Save$/, 'actual-session-restart');
+    await page.waitForTimeout(2000);
+    const resumed = (await capture('session-pre-boss-restored')).map(row => row.text).join('\n');
+    expect(!/Game complete|party is overwhelmed/i.test(resumed) && /WASD|Cordys|Maze/i.test(resumed), 'END-6 session Restart did not return to playable pre-boss maze');
+    expect(await readSlot() === before && await readSlot(true) === null, 'END-6 session Restart rewrote persistent checkpoint bytes');
+  } else {
   await clickText(/^Return to Title$/, 'actual-title-exit'); await page.waitForTimeout(2000);
   expect((await capture('returned-title')).some(row => /^Load Game$/.test(row.text)), 'END-3 actual title exit did not return to title');
   await page.close(); page = await context.newPage(); observePage(page);
   await page.goto(url, { waitUntil: 'load' }); await waitTitle('cold-ending', true);
   await load('cold-load');
-  const loaded = (await capture('cold-completed')).map(row => row.text).join('\n');
-  expect(/Game complete/i.test(loaded) && /Completed journey saved to Slot 1/i.test(loaded), 'END-3 cold Load did not restore completed ending');
-  expect(await readSlot() === committed, 'END-3 cold Load rewrote bytes, resources or reward');
+  const loaded = (await capture('cold-pre-boss')).map(row => row.text).join('\n');
+  expect(!/Game complete|New Game/i.test(loaded) && /WASD|Cordys|Maze/i.test(loaded), 'END-3 cold latest Load did not restore the pre-boss maze');
+  expect(await readSlot() === before && await readSlot(true) === committed, 'END-3 cold Load rewrote manual or autosave bytes');
+  }
   }
 } catch (error) { findings.push(String(error)); }
 findings.push(...errors);
 await browser.close(); if (server) await new Promise(resolve => server.close(resolve));
-fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ target: url, scenario: laboratory ? 'laboratory' : 'ending', fixture: laboratory ? 'new disposable profile, supplied legal level-five kit/cleared blockers; actual swim/movie/fight/payoff/Close/cold Load; NOT earned route' : 'new disposable profile, supplied legal level-five kit, supplied key spent through E, isolated recovered room; NOT earned route', actions, previous_sha256: before && hash(before), completed_sha256: committed && hash(committed), observations, findings }, null, 2));
+fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ target: url, source_commit: metadata?.source_commit, servedPack, scenario: laboratory ? 'laboratory' : deniedPreBoss ? 'pre-boss denied durability/session restart' : 'pre-boss durable/cold Load', fixture: laboratory ? 'new disposable profile, supplied legal level-five kit/cleared blockers; actual swim/movie/fight/payoff/Close/cold Load; NOT earned route' : 'new disposable profile, supplied legal level-five kit/key/isolated room; actual swim/confirmation/fight; NOT earned route', actions, previous_sha256: before && hash(before), pre_boss_sha256: committed && hash(committed), observations, findings }, null, 2));
 console.log((laboratory ? 'LABORATORY PAYOFF WEB: ' : 'CAMPAIGN COMPLETION WEB: ') + (findings.length ? 'failed' : 'clean'));
 for (const finding of findings) console.log('FINDING ' + finding);
 process.exit(findings.length ? 1 : 0);

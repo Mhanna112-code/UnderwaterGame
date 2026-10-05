@@ -1,0 +1,11 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CAMPAIGN GOAL OWNERSHIP|actual_R_Escape_L_Tab_F=true|retired_hints=false|no_save_files=true
+FINDING GOAL-4 first map/lesson overlays the destination
+FINDING GOAL-4 lesson dismissal reveals destination behind still-open overview
+FINDING GOAL-4 aim cancel loses goal, stacks Inventory or restores retired controls
+CAMPAIGN GOALS|generated_cases=40|findings=3|no_save_files=true

@@ -1,0 +1,19 @@
+{
+  "scope": "Platform-only probe, no game loaded: actual mouse click on a canvas whose click handler calls its unmodified requestPointerLock; fresh Playwright browsers, same Chromium version, bringToFront before click. This does not accept actual game aiming.",
+  "headless": {
+    "headless": true,
+    "browser": "151.0.7922.34",
+    "focused": true,
+    "locked": null,
+    "errors": ["WrongDocumentError: The root document of this element is not valid for pointer lock."]
+  },
+  "headed": {
+    "headless": false,
+    "browser": "151.0.7922.34",
+    "focused": true,
+    "locked": "CANVAS",
+    "errors": []
+  },
+  "related_primary_report": "https://github.com/microsoft/playwright/issues/20956",
+  "interpretation": "The headless platform rejects even a simple connected focused canvas. Visible Chromium supports the same request. Actual game headed mouse-capture acceptance remains separately required; no production error filter or mocked success is introduced."
+}

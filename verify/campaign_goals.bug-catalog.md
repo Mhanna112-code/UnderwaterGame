@@ -28,11 +28,34 @@ lab/map/relic × stale-objective input product rather than five hand-picked case
 | GOAL-1 | Cleared laboratory or early maze/return shows stale lab/relic instructions; players pursue already completed content or miss actual final boss. Current strings use legacy objective and only map, not completion milestones. | Generated restored-state presentation + physical enter/return | Caught 136 failures over 40 cases; repaired locally |
 | GOAL-2 | Recovery leaves no laboratory direction and the player wanders without an actionable wider purpose. Existing shallow guidance only says fight. | Normal recovered Shallows presentation with local hint precedence preserved | Caught missing wider direction; repaired locally |
 | GOAL-3 | Maze repeats the same map search instruction on status and goal labels. New rendered goal exposed an existing status string with duplicate ownership. | Separate neutral map status and actionable goal over generated cases | Caught visually; repaired locally |
+| GOAL-4 | Restoring the destination also restores retired control hints or draws a goal through notices, map lessons/overview, Inventory or grapple aim. | Actual R/Escape/L/Tab/F UI-owner transitions plus unchanged milestone text | Corrected fixture/native and rendered owners pass; exported browser pending |
+| GOAL-5 | The longer aim/swap title forces the control column beyond a narrow viewport, clipping the fire/cancel instructions. | Actual F aim and control-column viewport containment at 360px, rendered inspection | Native red one finding; final separated action lines/rendered 360px green; exported browser pending |
+| GOAL-6 | The public diagnostic maze entrance has no destination because it correctly bypasses the opening without earning its completion flag. | Actual --maze-playtest startup: visible Control Room goal, no fabricated opening/lab/map milestones; exported browser entrance | Exact browser screenshot and native red; native repaired flag route/non-mutating guidance green; new export pending |
+| GOAL-8 | Retained World HP/Oxygen covers the maze destination, hiding the next target (including Cordys). | Actual earned-map browser OCR and generated-state viewport/visible-bar rectangle invariants at desktop, short-landscape and narrow sizes | Browser red; original native short layout gives 120 overlap findings; local repair verification in progress |
+| GOAL-9 | World health bars draw above embedded Inventory, obscuring its title, tabs and body although the maze goal correctly yields. | Actual Escape reading-owner transition must hide shared exploration health, then restore it on close; earned-map browser title/tabs are independently readable | Actual browser screenshot reproduced; native red1 -> green0; matching export acceptance pending |
 | LAB-1 | Actual laboratory victory never acknowledges computer/controller payoff or suggests the puzzle/maze. Current handler sets enter_maze and silently saves. | Real legal-move Tethys victory, visible payoff, Continue/save/load | Caught actual 12-action win with absent payoff; repaired locally |
 | LAB-2 | Payoff popup fits, but stale encounter warnings/gameplay HUD compete behind it. Rendered 360-width native page exposed this despite semantic success. | Actual rendered payoff, hidden HUD and restored HUD on Close | Caught visually; repaired locally |
 | LAB-3 | World pauses the laboratory-arrival announcement during battle/payoff and replays it after actual victory. It falsely announces a new Tethys arrival when Close restores HUD. | Actual legal-move victory → Close → no obsolete boss-arrival notice | Browser visual witness, native red one finding → local repair green |
 
 ## Self-critique
+
+GOAL-8 checks actual visible HP/Oxygen bands and visible party rows, not their
+parent's unused allocation. At 360x640 the VBox retains a 286px three-row
+allocation although the active member's row is hidden: the two visible rows
+end at y396, not y496. The initial narrow observer falsely counted that blank
+space as painted content; raw bounds are retained. Bottom-band overlap was
+independently witnessed in the browser screenshot and remains a strict
+assertion. Changing the layout without hiding destinations or moving painted
+content over them should pass. Earned-map browser screenshots are required
+separately; this fixture matrix does not establish route balance.
+
+The dbfd4cb earned-map browser additionally exposes GOAL-8 after the longer
+Random Encounters text and earned L line wrap: the destination's fixed92px
+allocation starts in the last party label. Extend the native oracle through
+the actual first-L-close transition, not only the early restored-state frame.
+Use actual font/text height to reserve enough readable caption space without
+unnecessarily occupying blank rows. The browser red360 picture is retained;
+do not weaken its complete hallway/relic/Cordys semantic assertion.
 
 GOAL-1 semantic words/destinations, not exact punctuation. Wrong-but-stable E/F
 or find-lab text after clearance fails. Concrete input product gives independent
@@ -45,6 +68,37 @@ behavior-preserving goal/helper refactor is not intended. Full earned routes
 remain in the subsequent balance batch.
 
 ## Skipped
+
+Browser investigation (cb607 export): all maze reading-owner checks completed,
+but Chromium reported WrongDocumentError during the grapple segment. The error
+remains a failing finding. The observer now traces the unmodified platform
+request's document/focus/attachment state and brings its tab to the foreground
+before actual F input. This is an investigation, not yet a production fix or a
+claim of benign teardown. A green rerun alone cannot prove focus was causal:
+inspect the before/after focus and request/error timing receipts first.
+
+The traced same-pack hosted rerun still fails while document.hasFocus is true
+before and after bringToFront; its real canvas is attached and owns the document.
+A separate actual-click canvas probe with Chromium151.0.7922.34 rejects in
+headless mode with the identical error and locks successfully in headed mode.
+This agrees with the [Playwright upstream report](https://github.com/microsoft/playwright/issues/20956)
+about native Mac view focus. Retain both red receipts. The actual game headed
+observer now additionally requires document.pointerLockElement to be its canvas;
+it must pass separately before treating game aim as accepted. No rejected promise
+is caught/hidden and no lock success is fabricated.
+
+First headed game rerun also fails its real lock assertion when the diagnostic
+entrance is driven only by keys (no normal first gameplay click). This result
+is retained as headed-key-only-receipt.json; switching launch mode alone is not
+a fix. Next use the real first-click gameplay capture before F, as normal
+players do, and continue requiring real canvas lock/no page errors. No game
+code or engine pointer-lock adapter is modified by this diagnostic.
+
+Final same-pack headed first-click run passes, terminal0/no findings, with
+pointerLocked true after the actual mouse click and still true during real F
+aim. Actual E map acquisition, three widths, Inventory and cancel remain
+strict. Receipt and inspected pictures are in browser-final-headed. This
+corrects the observer's omitted ordinary click, not the production game.
 
 Final opening swap/Cordys film is review-gated. No final narration rewrite,
 new dialogue tutorial, boss/key/geometry tuning, compulsory laboratory lock,
@@ -82,3 +136,31 @@ are separate acceptance, not implied by a semantic native matrix.
   encounter. Other pending exploration announcements and reference boss
   behavior remain unchanged. Actual 12-action native win/Close/cold Load is
   green; matching exported/hosted recheck is still required.
+
+Fresh f457098 regression: all40 existing GOAL-1 cases fail because the maze
+always hides both Controls and GoalLabel. The local repair restores only the
+milestone-aware destination, not retired generic controls/status notes or the
+E/F suffix. Map/modal/announcement/aim remain exclusive owners. The old red
+receipt is retained in `docs/evidence/main-intake-f457098/campaign-goals.log`.
+Native/rendered/exported acceptance and publication of this repair are not
+implied by the historical successful batch above.
+
+GOAL-4 self-critique: only visibility/text outcomes and actual public controls
+are asserted, not private visibility-helper calls. Wrong-but-stable hidden
+goal fails before input; always-visible goal fails each reading owner; generic
+Controls or E/F suffix restoration fails even when destination words are right.
+All-actors-inside-maze/map fixtures isolate caption ownership and avoid falsely
+claiming earned acquisition or traversal. The state product remains generated
+by GOAL-1, while this new sequence probes the cross-feature ownership boundary.
+
+GOAL-4 observer corrections: the initial ownership fixture at the maze boundary
+was outside the earned-map navigation region, and Tab legitimately queues a
+four-second 'Now playing' notice. Actual L rejection and hidden destination
+through that notice were correct production behavior, not three new bugs.
+The corrected fixture uses the authored DiverEntry and waits for the genuine
+switch notice to drain; all 40 cases and actual owner transitions pass.
+
+GOAL-5 asserts actual instruction-column bounds, not a private wrapping call
+or exact line breaks. A stable clipped title fails; changing the layout while
+keeping it readable should pass. Full map acquisition remains separate from
+the native caption fixture. The browser check earns its map with swimming/E.

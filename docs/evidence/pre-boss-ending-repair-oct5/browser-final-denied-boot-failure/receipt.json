@@ -1,0 +1,28 @@
+{
+  "target": "https://underwatergame-1lugjcqye-immortaldemongods-projects.vercel.app/",
+  "source_commit": "cb607cf7b27ccca844d643ba5b74e2dca1e1f385",
+  "servedPack": {
+    "bytes": 94990924,
+    "sha256": "10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031"
+  },
+  "scenario": "pre-boss denied durability/session restart",
+  "fixture": "new disposable profile, supplied legal level-five kit/key/isolated room; actual swim/confirmation/fight; NOT earned route",
+  "actions": 0,
+  "observations": [
+    {
+      "name": "cold-boot-0",
+      "text": "GODOT\nGame engine"
+    },
+    {
+      "name": "cold-boot-1",
+      "text": "GODOT\nGame engine"
+    },
+    {
+      "name": "cold-boot-2",
+      "text": "GODOT\nGame engine"
+    }
+  ],
+  "findings": [
+    "TimeoutError: page.screenshot: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n"
+  ]
+}

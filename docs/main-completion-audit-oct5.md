@@ -1,5 +1,105 @@
 # Remaining campaign plan: current main audit, October 5
 
+## Latest published bounded batch — cb607cf runtime / d08478c main
+
+Main push and canonical delivery are complete for this repair batch. The actual
+canonical HTML/JS/Wasm/PCK all match the accepted export byte-for-byte; fresh
+browser cold title passes without captured errors. Runtime cb607cf, pack10be4f5b
+is94,990,924bytes. See pre-boss-maze-ui-delivery-oct5.md for deployment ID,
+main artifact commit and raw identity/presentation receipts. Git deploy is not
+automatic. The full current runner is live in disposable native user data;
+it has no terminal full-suite verdict yet. Full-scope remaining work below
+stays active; opening work is still review-gated and deferred until last.
+
+Final acceptance now passes on this same artifact: hosted first-click headed
+Chromium gives actual canvas mouse capture, E-earned map, discovery-only first
+L lesson/reopen, complete destinations at three sizes, exclusive Inventory and
+F/cancel. Both durable/cold-Load and injected-denial/session-Restart ending
+profiles exit0 without findings. Rejected boot/mouse observers remain retained;
+the normal click correction does not change production pointer-lock handling.
+This bounded batch can publish. Full earned campaigns, exhaustive integration
+dispositions, current full suite/Bomb Bot/audio/six-area review/native packages
+and review-gated opening remain incomplete. Publication is separately recorded
+in pre-boss-maze-ui-delivery-oct5.md; older pending paragraphs below describe
+the investigation history, not unresolved final mouse/save checks.
+
+### Investigation history for this accepted batch
+
+Before publication, origin main was2456b28 and the batch had not been pushed.
+The final candidate runtime is cb607cf, actual served PCK
+`10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031`
+(94,990,924bytes), on an unpromoted deployment. Canonical is unchanged.
+Current hosted success acceptance completed15 actual fight actions, responsive
+exclusive ending, actual Title exit, destroyed-page latest pre-boss Load and
+unchanged manual/autosave bytes. Granted legal level5 fixture: not earned
+balance. The denied-storage profile timed out taking a screenshot at boot,
+before testing persistence; its failure is retained and a fresh run is pending.
+
+GOAL-8 additionally failed after earned first-L-close because its fixed-height
+caption overlapped the newly wrapped party HUD. cb607cf uses actual wrapped
+text height; native first-map-close red1 -> green0, all40 generated cases and
+actual reading owners pass at desktop/short/narrow sizes. Final Metal narrow
+rendering was inspected. Actual Inventory now has readable title/tabs/body
+without retained health painting above them. However the exact final local
+browser reports WrongDocumentError during the aiming segment, so acceptance
+and publication remain blocked pending a traced request/focus investigation.
+This is not a full-suite, earned-route or full-campaign readiness claim.
+
+## Earlier instruction and repair history (ending contract still binding)
+
+Miguel explicitly chose **Preserve Marc's pre-boss-only ending** on October 5.
+Do not restore the older completion-save design. Final victory must show the
+exclusive ending; Restart restores the pre-Cordys party/checkpoint, while
+Return to Title remains available. A successful in-memory capture must not be
+represented as a durable browser autosave. All older completed-save receipts
+below are historical, not acceptance for this changed contract.
+
+The local candidate has merged Marc e572a55/4dd2a47, preserving shared maze
+HP/O2, red stat-loss hints, combat pacing, party-spell rules and 12-Oxygen
+Shockwave. The previously hidden maze destination and clipped aim text remain
+repaired. All40 generated milestone cases and actual R/Escape/L/Tab/F ownership
+pass, including a rendered360px run. World health remains visible in the maze;
+World destination and generic controls do not compete with its own guidance.
+
+Two real pre-boss ending defects were reproduced: a static snapshot enabled
+another selected slot's restart, and denied autosave staging still claimed
+'autosaved'. Local instance/run ownership, validated restart destinations,
+honest session-only failure status and failed-sync rollback now pass native
+cross-slot, eight-candidate matrix and denied-write/actual-restart checks.
+A real12-action Cordys win then Restart and fresh Title autosave Load preserve
+HP/O2/XP/level and exact autosave bytes. This uses a supplied legal level5 kit;
+it is ending proof, **not earned campaign/balance proof**. Both browser
+contracts pass on the exact6606c5b export:13-action real win, actual Title exit
+and fresh-page pre-boss Load;12-action real win with rejected IndexedDB autosave
+and honest session-only Restart. Neither writes completion. The final reconciled
+export still requires same-artifact acceptance/publication.
+
+The current full native runner was intentionally stopped before merging new
+main sources; its partial result is not a full-suite pass. The native tutorial
+observer had bypassed the zero mouse-mask hover guard by emitting pressed.
+Corrected actual hover/continue/target flow completes all five lessons and a
+real victory with no engine errors. This is not full browser curriculum proof.
+The previous local maze browser run reached/earned its actual map and checked
+owners/layout, but reported WrongDocumentError; retain it as failed, with a
+stage/stack observer added for the next identified export.
+
+Fresh main through7d0a47d is merged locally into5fe504d: post-Tethys compass/
+cleared exit and affordable Sonar/R-independent guarded sites are retained.
+Native real-win/pre-boss cold Load, goal ownership and Sonar/site checks pass
+again. New same-artifact browser acceptance/publication is in progress.
+
+The retained health HUD exposed a real destination-overlap regression in the
+actual earned-map browser screenshot. GOAL-8 now reserves actual HP/Oxygen
+bands and visible side-party rows;40 generated milestone cases plus actual
+owners pass at1280x720,720x480 and360x640, with inspected Metal narrow rendering.
+The initially oversized hidden-row/headless-default observer failures are
+retained and identified, not counted as production bugs. Browser final export
+must still pass before deployment. Canonical was not repointed to an old pack.
+The Tethys opening/Cordys introduction remains **LAST**, with Miguel's explicit
+review/approval required before main or canonical. No opening actor/sequence
+change is included here. Full earned routes, remaining integration dispositions,
+browser/Bomb Bot/audio/visual acceptance and matching native packages remain.
+
 ## Current checkpoint: fresh main intake supersedes prior acceptance below
 
 During earned-route verification, main advanced through Marc's f457098 and

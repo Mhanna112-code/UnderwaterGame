@@ -1406,8 +1406,9 @@ func _refresh_map_copy() -> void:
 		if _map_help != null:
 			# The lever map has its own controls list under the map instead.
 			_map_help.visible = main_map.visible and ordinary
-			# The bottom-left HUD captions are always hidden now (see
-			# MazeLevel's caption loop), so nothing to swap out here.
+			# MazeLevel owns goal visibility through main_map.visibility_changed.
+			# Generic bottom-left controls stay hidden; no second owner toggles
+			# the destination while this overview is reading.
 
 func _layout_overview() -> void:
 	if _map_help == null:

@@ -1,0 +1,22 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+GOAL-8 bounds goal=[P: (16.0, 432.0), S: (328.0, 92.0)] party=[P: (16.0, 210.0), S: (220.0, 286.0)]
+GOAL-8 visible row=[P: (16.0, 210.0), S: (220.0, 86.0)]
+GOAL-8 visible row=[P: (16.0, 310.0), S: (220.0, 86.0)]
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=false stale=find_lab
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=false stale=enter_lab
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=false stale=defeat_tethys
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=false stale=enter_maze
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=false stale=
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=true stale=find_lab
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=true stale=enter_lab
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=true stale=defeat_tethys
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=true stale=enter_maze
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=false relic=true stale=
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=true relic=false stale=find_lab
+FINDING GOAL-8 side party bars cover the restored maze destination: lab=false map=true relic=false stale=enter_lab
+CAMPAIGN GOALS|generated_cases=40|findings=40|no_save_files=true

@@ -133,7 +133,11 @@ func _full_lesson(fight: Battle) -> void:
 				_press_key(KEY_X)
 		elif fight.target_menu.visible and not fight.target_buttons.is_empty():
 			var button := fight.target_buttons[0] as Button
-			if button.disabled:
+			# Hover-only targets deliberately look enabled, but their public
+			# mouse mask rejects clicks until the explanation is acknowledged.
+			# Emitting pressed through that guard skips a required real lesson
+			# and leaves its hover coroutine waiting on a replaced button.
+			if button.disabled or button.button_mask == 0:
 				button.emit_signal("mouse_entered")
 			else:
 				button.emit_signal("pressed")

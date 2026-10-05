@@ -301,9 +301,12 @@ run "maze puppet reward: does a real carried-party win give one maze key without
 run "maze Cordys: does the campaign rematch use normal combat and admit a real legal-kit win" "$GODOT" --headless --path . --script verify/maze_cordys.gd
 run "maze Cordys station: do visible stationary actor, real approach, decline and modal ownership work for every diver" "$GODOT" --headless --path . --script verify/maze_cordys_station.gd
 run "maze Cordys confirmation: does real Yes start Cordys and preserve independent completion through a snapshot" "$GODOT" --headless --path . --script verify/maze_cordys_trigger.gd -- --real-win
-run "campaign ending: does actual Cordys victory checkpoint completion and conserve rewards through Title Load" "$GODOT" --headless --path . --script verify/campaign_completion.gd
-run "campaign ending denied write: does real Retry preserve previous bytes and block exit until saved" "$GODOT" --headless --path . --script verify/campaign_completion.gd -- --denied
+run "campaign ending: does actual Cordys victory offer the saved pre-boss restart without writing completion" "$GODOT" --headless --path . --script verify/campaign_completion.gd
+run "pre-boss restart ownership: do actual Title Loads reject another run and invalid checkpoint destinations" "$GODOT" --headless --path . --script verify/pre_boss_restart_ownership.gd -- --candidates
+run "pre-boss denied autosave: does the ending distinguish session-only restart and preserve saved bytes" "$GODOT" --headless --path . --script verify/pre_boss_restart_ownership.gd -- --denied
 run "campaign goals: do generated saved milestones, early maze, return and Shallows purpose replace stale guidance" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --shallows
+run "maze destination owners: do actual notice/map/Inventory/aim controls preserve goals without restoring retired hints" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --ownership
+run "maze narrow aim: do actual F/cancel instructions remain inside a 360px viewport" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --ownership --narrow
 run "lab payoff: does real Tethys victory acknowledge the computer/controller and preserve independent progress through Load" "$GODOT" --headless --path . --script verify/lab_payoff.gd
 run "lab maze navigation: does visible camera-relative guidance survive Load and actual swimming through the cleared lab exit" "$GODOT" --headless --path . --script verify/lab_maze_navigation.gd -- --fixture
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
@@ -397,7 +400,14 @@ else
 	# animation despite doing nothing. Current L-map proof needs an identified
 	# export; don't silently accept a stale generated docs pack.
 	if [ -f "$WEB_DIR/build-info.json" ]; then
-		run "identified feedback export: do served checksum, title and actual swim/E acquisition/first earned L-map agree" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback
+		# Chromium's headless Mac view rejects even a focused bare canvas lock.
+		# Use a real window on this display-bearing platform; the observer must
+		# prove actual pointer capture, never filter its failed request error.
+		maze_browser_options=()
+		if [ "$(uname)" = "Darwin" ]; then
+			maze_browser_options+=(--headed)
+		fi
+		GATE_TIMEOUT_SECONDS=420 run "identified feedback export: do actual swim/E/map/Inventory/aim owners agree without browser errors" node verify/maze_feedback_webcheck.mjs "$WEB_DIR" /tmp/gate-maze-feedback "${maze_browser_options[@]}"
 	else
 		echo "=== identified maze feedback webcheck: skipped, no build-info.json ==="
 		skips=$((skips + 1))
@@ -410,7 +420,8 @@ else
 		run "laboratory browser fixture: disclosed legal kit/cleared blockers before actual swim" "$GODOT" --headless --path . --script verify/lab_payoff_browser_fixture.gd
 		GATE_TIMEOUT_SECONDS=360 run "laboratory browser payoff: actual swim/movie/fight/Close/cold Load, no stale boss arrival" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-laboratory-payoff --laboratory
 		run "ending browser fixture: supply a disclosed legal kit and spend the room key through E" "$GODOT" --headless --path . --script verify/maze_cordys_browser_fixture.gd -- --ending
-		GATE_TIMEOUT_SECONDS=360 run "campaign ending browser: actual fight, rejected IndexedDB, Retry and cold Load preserve completion" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-campaign-ending
+		GATE_TIMEOUT_SECONDS=420 run "pre-boss ending browser: actual fight, durable autosave and cold latest Load preserve the pre-Cordys checkpoint" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-campaign-ending
+		GATE_TIMEOUT_SECONDS=420 run "pre-boss denied browser: rejected IndexedDB must acknowledge only session Restart and preserve durable bytes" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-pre-boss-denied --deny-pre-boss
 		GATE_TIMEOUT_SECONDS=300 run "Bomb Bot browser progress: do actual mouse actions reach enemy attacks, victory and restored World controls" node verify/bomb_bot_browser_progress.mjs "$WEB_DIR" /tmp/gate-bomb-progress
 		if [ -f "$WEB_DIR/build-info.json" ]; then
 			run "delivered spell browser: do real world input and mouse targeting animate/resolve an authored cast" node verify/spell_animation_browser.mjs "$WEB_DIR" /tmp/gate-spell-animation

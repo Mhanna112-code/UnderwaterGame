@@ -26,6 +26,20 @@ completion independently of opening completion, and returns control.
 
 ## Evaluation
 
+### 2026-10-05 current-main observer correction
+
+The fresh full-lesson runner produced infinite-tween errors, but investigation
+found it was emitting `pressed` on a hover-only target whose public mouse mask
+was zero. Current tutorials deliberately leave those targets enabled-looking
+while rejecting clicks. The observer's old `disabled` check bypassed that
+guard, skipped the required hover lesson and replaced its target while the
+lesson awaited hover. This is not evidence of a real user clicking through.
+The observer now honors both public input guards and supplies the required
+hover before clicking. Preserve the red receipt; do not count this as a new
+production bug or silently remove the engine-error gate. A fresh complete
+five-move/victory run remains required. Actual Skip/cancellation/browser input
+are separate checks, not proved by this native signal-driven curriculum run.
+
 Root cause confirmed: `_apply_tutorial_move_gate` creates a Battle-owned
 infinite tween targeting a generated Button. `_populate_move_menu` frees that
 Button without stopping its tween. The next guided step normally replaces the

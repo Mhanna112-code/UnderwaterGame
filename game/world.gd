@@ -284,24 +284,77 @@ var _completion_checkpoint: Dictionary = {}
 var _completion_saving := false
 
 # The state captured when the player confirmed the Cordys fight (see
-# MazeLevel.cordys_fight_starting). Static so it survives the scene reload a
-# restart performs; also written as the slot's autosave when a slot exists.
-static var _pre_boss_checkpoint: Dictionary = {}
+# MazeLevel.cordys_fight_starting). This belongs to this World/run, not a
+# static cache that another Title Load could mistakenly claim. The separate
+# one-shot restart envelope below transfers it across the requested reload.
+var _pre_boss_checkpoint: Dictionary = {}
+var _pre_boss_slot := -1
+var _pre_boss_save_error: Error = ERR_UNAVAILABLE
+var _pre_boss_saving := false
+var _pre_boss_generation := 0
 static var _restart_checkpoint: Dictionary = {}
 
 func _capture_pre_boss_autosave() -> void:
 	_pre_boss_checkpoint = _serialize_state()
+	_pre_boss_slot = _current_slot
+	_pre_boss_generation += 1
+	var generation := _pre_boss_generation
+	_pre_boss_save_error = ERR_UNAVAILABLE
 	if _current_slot < 0:
 		return
 	var slot := _current_slot
+	var path := SaveManager.autosave_path(slot)
+	var existed := FileAccess.file_exists(path)
+	var previous := FileAccess.get_file_as_bytes(path) if existed else PackedByteArray()
+	_pre_boss_saving = true
 	var error := SaveManager.write_autosave(slot, _pre_boss_checkpoint)
-	if error == OK:
-		await BrowserCheckpoint.confirm_slot(slot, true)
+	var written := error == OK
+	var written_bytes := FileAccess.get_file_as_bytes(path) if written else PackedByteArray()
+	if written:
+		error = await BrowserCheckpoint.confirm_slot(slot, true)
+	if written and error != OK and FileAccess.get_file_as_bytes(path) == written_bytes:
+		# Roll back only this write; a newer run/checkpoint may have taken
+		# ownership while the browser's confirmation was pending.
+		SaveManager.rollback_autosave(slot, existed, previous)
+		if OS.has_feature("web"):
+			JavaScriptBridge.force_fs_sync()
+	# A later Title Load/New Game owns its own checkpoint/status, even if
+	# this browser confirmation finishes after that run boundary.
+	if generation != _pre_boss_generation:
+		return
+	_pre_boss_saving = false
+	_pre_boss_save_error = error
+	_refresh_completion_restart_options()
 
-func _restart_from_pre_boss_autosave() -> void:
-	var data := _pre_boss_checkpoint
+func _clear_pre_boss_checkpoint() -> void:
+	_pre_boss_generation += 1
+	_pre_boss_checkpoint = {}
+	_pre_boss_slot = -1
+	_pre_boss_saving = false
+	_pre_boss_save_error = ERR_UNAVAILABLE
+
+func _pre_boss_restart_data() -> Dictionary:
+	var data := _pre_boss_checkpoint if _pre_boss_slot == _current_slot else {}
 	if data.is_empty() and _current_slot >= 0:
 		data = SaveManager.read_autosave(_current_slot)
+	# A corrupt file, completed save or unrelated open-water autosave is not
+	# a restart before Cordys. Validation is read-only and never grants state.
+	if data.get("campaign_scene") != "maze" or CampaignCheckpoint.decode(data) == null \
+		or data.get("route_state", {}).get("octopus_state") == "defeated" \
+		or not data.get("campaign_checkpoint", {}).get("maze", {}).get("boss_triggers", []).has("main_boss"):
+		return {}
+	return data
+
+func _refresh_completion_restart_options() -> void:
+	if not is_instance_valid(_completion_screen):
+		return
+	var has_restart := not _pre_boss_restart_data().is_empty()
+	var current_memory := _pre_boss_slot == _current_slot and not _pre_boss_checkpoint.is_empty()
+	var durable := has_restart and (_pre_boss_save_error == OK if current_memory else true)
+	_completion_screen.show_options(has_restart, durable, _pre_boss_saving)
+
+func _restart_from_pre_boss_autosave() -> void:
+	var data := _pre_boss_restart_data()
 	if data.is_empty():
 		return
 	_restart_checkpoint = data
@@ -355,11 +408,10 @@ func _show_campaign_completion(already_saved := false) -> void:
 	add_child(_completion_screen)
 	# The ending no longer writes a completion save; it offers the autosave
 	# taken right before the Cordys fight instead.
-	var has_autosave := not _pre_boss_checkpoint.is_empty() 		or (_current_slot >= 0 and FileAccess.file_exists(SaveManager.autosave_path(_current_slot)))
-	_completion_screen.show_options(has_autosave)
+	_refresh_completion_restart_options()
 
 func _autosave_safe() -> bool:
-	if _checkpoint_saving:
+	if _checkpoint_saving or _pre_boss_saving:
 		return false
 	if _current_slot < 0 or title_screen.visible or get_tree().paused or not route_state.prologue_complete:
 		return false
@@ -752,6 +804,7 @@ func _show_title_screen() -> void:
 # role the old implicit end-of-_ready() checkpoint used to serve, now a
 # real file instead of an in-memory snapshot.
 func _on_title_new_game(slot: int) -> void:
+	_clear_pre_boss_checkpoint()
 	_current_slot = slot
 	_autosave_timer = 0.0
 	var existed := SaveManager.slot_exists(slot)
@@ -828,6 +881,7 @@ func _on_title_load_latest(slot: int) -> bool:
 	return await _on_title_load_game(slot, false, true)
 
 func _on_title_load_game(slot: int, from_autosave := false, latest := false) -> bool:
+	_clear_pre_boss_checkpoint()
 	_cancel_random_encounter_reveal()
 	_current_slot = slot
 	_autosave_timer = 0.0
