@@ -357,6 +357,7 @@ func _setup_walls():
 	_build_maze_doors()
 	_build_sphere_room()
 	_build_main_boss_room()
+	_build_sonar_vision_pickup()
 	_build_boss_triggers()
 	_build_vortex_chest()
 	_build_map_chest()
@@ -2246,15 +2247,80 @@ func _dev_spawn_at_boss_rooms() -> void:
 
 # Spheres show in 3D only while the active diver is in their room with
 # Sonar Vision on.
+# Sonar Vision pickup: Marc's spinning cyan lens in the hall between the two
+# boss doors. Owning the item is required for Sonar Vision's 3D reveal.
+var _sonar_vision_pickup: Area3D
+
+func _build_sonar_vision_pickup() -> void:
+	if _door30_center == Vector3.ZERO:
+		return
+	var box33 := $CSGBox3D33 as CSGBox3D
+	var spot := Vector3((_door30_center.x + box33.global_position.x) * 0.5, ($DiverEntry as Node3D).global_position.y + 0.3, _door30_center.z + 6.0)
+	var pickup := Area3D.new()
+	pickup.name = "SonarVisionPickup"
+	pickup.collision_mask = 2   # divers
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 1.3
+	shape.shape = sphere
+	pickup.add_child(shape)
+	var lens := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.35
+	torus.outer_radius = 0.6
+	lens.mesh = torus
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.3, 0.95, 1.0)
+	mat.emission_enabled = true
+	mat.emission = Color(0.3, 0.95, 1.0)
+	mat.emission_energy_multiplier = 2.5
+	lens.material_override = mat
+	lens.rotation.x = PI * 0.5
+	pickup.add_child(lens)
+	var label := Label3D.new()
+	label.text = "Sonar Vision"
+	label.font_size = 48
+	label.pixel_size = 0.008
+	label.outline_size = 8
+	label.modulate = Color(0.6, 0.97, 1.0)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.position = Vector3(0, 1.2, 0)
+	pickup.add_child(label)
+	add_child(pickup)
+	pickup.global_position = spot
+	var spin := create_tween().set_loops()
+	spin.tween_property(lens, "rotation:y", TAU, 2.0).from(0.0)
+	pickup.body_entered.connect(_on_sonar_vision_pickup)
+	_sonar_vision_pickup = pickup
+
+func _on_sonar_vision_pickup(body: Node3D) -> void:
+	if not body is Diver or inventory.has("sonar_vision"):
+		return
+	inventory["sonar_vision"] = 1
+	_announce("You gained the item: Sonar Vision.")
+	_announce("Sonar Vision can be used with Sonar to show hidden items around you.", 6.0)
+	if is_instance_valid(_sonar_vision_pickup):
+		_sonar_vision_pickup.queue_free()
+	_sonar_vision_pickup = null
+
 func _update_sonar_vision() -> void:
+	# Already owned (e.g. after a Load): the lens is gone for good.
+	if is_instance_valid(_sonar_vision_pickup) and inventory.has("sonar_vision"):
+		_sonar_vision_pickup.queue_free()
+		_sonar_vision_pickup = null
 	if _swirl_room == null or _diver == null:
 		return
 	_swirl_room.set_revealed(sonar_vision_active() and _swirl_room.contains(_diver.global_position))
 
-# Vision follows the live area's active sonar diver, not obsolete saved item
-# or equipment flags. Q still consumes Oxygen through Diver's existing timer.
-func sonar_vision_active() -> bool:
+# Maxilani's sonar is on in the live maze (Q; drains Oxygen through Diver's
+# own timer). Drives the minimap's red hidden-item markers.
+func sonar_on_in_maze() -> bool:
 	return maze_active and _diver != null and _diver.passive_id == "sonar" and _diver.sonar_active
+
+# Sonar Vision - actually SEEING the invisible spheres in 3D - also needs the
+# Sonar Vision item (picked up in the boss-door hall).
+func sonar_vision_active() -> bool:
+	return sonar_on_in_maze() and inventory.has("sonar_vision")
 
 # Hidden things the minimap tracks as red circles.
 # The secret item room's rocks that haven't been broken yet, within
@@ -2265,18 +2331,22 @@ var _secret_room_rocks: Array[Node3D] = []
 
 func sonar_rock_positions() -> PackedVector3Array:
 	var out := PackedVector3Array()
-	if not sonar_vision_active():
+	if not sonar_on_in_maze():
 		return out
 	for rock in _secret_room_rocks:
-		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and rock.global_position.distance_to(_diver.global_position) <= SONAR_ROCK_RADIUS:
+		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and rock.global_position.distance_to(_diver.global_position) <= SONAR_ROCK_RADIUS 				and MiniMap.within_marker_height(_diver.global_position.y, rock.global_position.y):
 			out.append(rock.global_position)
 	return out
 
 # Only while the diver being played has sonar on (Maxilani, Q).
 func hidden_marker_positions() -> PackedVector3Array:
-	if _swirl_room == null or not sonar_vision_active():
+	if _swirl_room == null or not sonar_on_in_maze():
 		return PackedVector3Array()
-	return _swirl_room.positions()
+	var out := PackedVector3Array()
+	for p in _swirl_room.positions():
+		if MiniMap.within_marker_height(_diver.global_position.y, p.y):
+			out.append(p)
+	return out
 
 # --- Swap target selection (the main game's TargetSelector) --------------------
 var target_selector: TargetSelector
@@ -5435,7 +5505,10 @@ func _spawn_key_pickup(key: Node3D) -> void:
 func map_points_of_interest() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if special_sites != null:
-		out.append_array(special_sites.points_of_interest())
+		for site in special_sites.points_of_interest():
+			# Red special-encounter circles follow the same height window.
+			if _diver == null or MiniMap.within_marker_height(_diver.global_position.y, (site.pos as Vector3).y):
+				out.append(site)
 	for p in _posters:
 		out.append({"id": String(p.name), "kind": "poster", "pos": p.global_position, "radius": 7.0, "done": p.seen, "texture": p.portrait})
 	for k in key_pickups:

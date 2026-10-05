@@ -100,6 +100,13 @@ func _draw_lines_at_overlapping_areas(center: Vector3, px_per_unit: float, mid: 
 # hides both the dot and the arrow immediately, toggling back on brings
 # back whatever's already been revealed with no re-ping needed.
 const MARKER_PULSE_SPEED := 3.0
+# Every red circle (item rocks, item/special encounters, maze hidden objects)
+# only shows while the diver is within this many metres above or below it -
+# roughly five feet - so swimming far over or under one hides it.
+const MARKER_HEIGHT_RANGE := 1.5
+
+static func within_marker_height(viewer_y: float, marker_y: float) -> bool:
+	return absf(viewer_y - marker_y) <= MARKER_HEIGHT_RANGE
 
 # Sonar lives on whichever Diver has passive_id == "sonar" (Maxilani), not
 # necessarily divers[active] - sonar_active persists on her own instance
@@ -124,9 +131,7 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 		if world.key_items.has(item_id) or not world.revealed_key_items.has(item_id):
 			continue
 		var pos: Vector3 = entry.at
-		# An item site triggers inside a 3D sphere of its radius. Above or
-		# below that band it can't be entered, so it isn't shown either.
-		if absf(center.y - pos.y) > float(entry.get("radius", 0.0)):
+		if not within_marker_height(center.y, pos.y):
 			continue
 		var rel := Vector2(pos.x, pos.z) - Vector2(center.x, center.z)
 		var dist: float = maxf(rel.length(), 0.01)   # guards the /dist normalize below
@@ -154,6 +159,8 @@ func _draw_item_rock_markers(center: Vector3, px_per_unit: float, mid: Vector2, 
 			continue
 		var rock := world._cracked_walls[id] as Node3D
 		if not is_instance_valid(rock) or rock.is_queued_for_deletion():
+			continue
+		if not within_marker_height(center.y, rock.global_position.y):
 			continue
 		var rel := Vector2(rock.global_position.x, rock.global_position.z) - Vector2(center.x, center.z)
 		if rel.length() <= view_radius:
