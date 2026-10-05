@@ -831,13 +831,15 @@ func _refresh_announcement_visibility() -> void:
 		_banner.visible = notice_visible
 	# Status/goal and an announcement share the bottom reading area. Give
 	# only one surface ownership rather than painting text on top of text.
-	# The bottom-left status/goal hints ("Find the navigation map...",
-	# "E: interact · F: ability", hallway/current notes) were removed on
-	# request; the labels still exist for state, they are just never shown.
-	for caption in ["Controls", "GoalLabel"]:
-		var node := get_node_or_null("HUD/" + caption) as CanvasItem
-		if node != null:
-			node.visible = false
+	# Keep the retired generic controls/status hints out. The milestone-aware
+	# destination is distinct: without it, entering the independent maze loses
+	# all direction. It yields to the same map/modal/notice/aim owners as before.
+	var controls := get_node_or_null("HUD/Controls") as CanvasItem
+	if controls != null:
+		controls.visible = false
+	var goal := get_node_or_null("HUD/GoalLabel") as CanvasItem
+	if goal != null:
+		goal.visible = captions_allowed and not notice_visible and not aiming
 
 var _responsive_captions: Array[Label] = []
 
@@ -2786,6 +2788,9 @@ func _build_world_hud() -> void:
 	column.add_theme_constant_override("separation", 0)
 	$HUD.add_child(column)
 	_world_hud_name = Label.new()
+	# Aim/swap instructions are longer than a character name. Do not let
+	# their minimum width force the entire column past a narrow viewport.
+	_world_hud_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_world_hud_name)
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 10)
@@ -2820,10 +2825,10 @@ func _update_world_hud() -> void:
 		var t := target_selector.current_target() as Diver
 		_world_hud_name.text = "Swap with %s?   Left/Right: cycle  ·  Enter: confirm  ·  Esc: cancel" % (Cast.display_name(t.model_name) if t != null else "...")
 	elif aiming:
-		_world_hud_name.text = "Grapple aim   Left click: fire  ·  Right click / Esc: cancel"
+		_world_hud_name.text = "Grapple aim"
 	var after := ""
 	if aiming:
-		after = "WASD swim  ·  Space/Shift depth  ·  Mouse aim"
+		after = "Left click: fire\nRight click / Esc: cancel\nWASD swim  ·  Space/Shift depth  ·  Mouse aim"
 	elif _diver.ability_id != "":
 		after += "  ·  F: %s" % String(_diver.ability_id).capitalize()
 	if _diver.passive_id == "sonar":
@@ -2837,7 +2842,7 @@ func _update_world_hud() -> void:
 	if goal != null:
 		var purpose := route_state.exploration_goal("maze", key_items.has(MAP_ITEM), _completed) if route_state != null \
 			else "Find the navigation map in the Control Room."
-		goal.text = purpose + "\nE: interact  ·  F: ability."
+		goal.text = purpose
 	if map_ok and _map_flash == null:
 		_map_flash = create_tween().set_loops()
 		_map_flash.tween_property(_world_hud_map, "modulate:a", 0.25, 0.45)

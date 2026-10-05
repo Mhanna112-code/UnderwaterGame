@@ -66,6 +66,8 @@ try {
     } else {
       const world = await capture(page, 'maze-entry');
       if (!/navigation map|WASD|Hallway|L: map/i.test(world)) throw new Error('Export direct maze route did not render gameplay controls');
+      if (!/find the navigation map[\s\S]*Control Room/i.test(world))
+        throw new Error('GOAL-1 exported entrance hides its actionable Control Room destination');
       await page.keyboard.press('KeyL');
       await page.waitForTimeout(500);
       const unearned = await capture(page, 'map-unearned');
@@ -117,6 +119,8 @@ try {
       }
       const map = await capture(page, 'maze-map');
       if (!/MAZE NAVIGATION/i.test(map) || !/rotate/i.test(map)) throw new Error('Real earned L did not reveal exported maze map controls');
+      if (/Maze:\s*find|Open the hallway|Ancient Relic recovered/i.test(map))
+        throw new Error('GOAL-4 exploration destination paints through the actual map overview');
       if (!/Left/i.test(map) || !/Right/i.test(map) || !/Ctrl/i.test(map) || !/Encounters/i.test(map)) throw new Error('MAP-8 exported map keys are unreadable or missing portable Left/Right/Ctrl/R controls');
       if (strictIntro && (!/LEGEND/i.test(map) || !/Chest/i.test(map) || /Boss|Special encounter/i.test(map)))
         throw new Error('Earned map legend is absent, omits the discovered chest or reveals unknown boss/site types');
@@ -130,6 +134,35 @@ try {
           throw new Error('Actual earned map/help/legend is unreadable at ' + width + 'x' + height);
       }
       await page.keyboard.press('KeyL');
+      await page.waitForTimeout(4500);
+      for (const [width, height] of [[1280, 720], [720, 480], [360, 640]]) {
+        await page.setViewportSize({ width, height });
+        await page.waitForTimeout(500);
+        const goal = await capture(page, `earned-map-goal-${width}x${height}`);
+        if (!/Open the hallway/i.test(goal) || !/relic/i.test(goal) || !/Cordys/i.test(goal))
+          throw new Error('GOAL-1 earned map does not restore a readable next destination at ' + width + 'x' + height);
+        if (/E:\s*interact[\s\S]*F:\s*ability/i.test(goal))
+          throw new Error('GOAL-4 restored destination revives retired generic bottom controls');
+      }
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+      const inventory = await capture(page, 'goal-inventory-owner');
+      if (/Open the hallway/i.test(inventory) || !/Inventory/i.test(inventory))
+        throw new Error('GOAL-4 actual Inventory does not exclusively own the reading screen');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Tab');
+      await page.waitForTimeout(4500);
+      await page.keyboard.press('KeyF');
+      await page.waitForTimeout(500);
+      const aim = await capture(page, 'goal-aim-owner');
+      if (/Open the hallway/i.test(aim) || !/Left click/i.test(aim) || !/cancel/i.test(aim))
+        throw new Error('GOAL-4 actual grapple aim does not own the HUD');
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+      const canceled = await capture(page, 'goal-after-aim');
+      if (!/Open the hallway/i.test(canceled) || /Inventory/i.test(canceled))
+        throw new Error('GOAL-4 aim cancel loses destination or opens Inventory');
       await page.keyboard.press('KeyL');
       await page.waitForTimeout(500);
       const reopened = await capture(page, 'maze-map-repeat');
@@ -141,7 +174,7 @@ try {
 findings.push(...errors);
 await browser.close();
 if (!live) await new Promise(resolve => server.close(resolve));
-const receipt = { source_commit: metadata.source_commit, downloads, findings, scope: 'served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection and actual swimming/E acquisition/earned L controls; no full campaign or durability claim' };
+const receipt = { source_commit: metadata.source_commit, downloads, findings, scope: 'served pack checksum, completed browser pack requests, ordinary title, diagnostic entrance unearned-L rejection, actual swimming/E map acquisition, earned L controls and next destination at three widths, actual Inventory/aim/cancel reading ownership; no New Game full campaign or durability claim' };
 fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2));
 console.log(JSON.stringify(receipt));
 console.log(findings.length ? 'MAZE FEEDBACK WEB: failed' : 'MAZE FEEDBACK WEB: clean');

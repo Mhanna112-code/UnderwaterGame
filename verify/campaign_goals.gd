@@ -4,11 +4,17 @@ extends SceneTree
 var findings: Array[String] = []
 var world: World
 var cases := 0
+var capture_folder := "/private/tmp/campaign-goals-visual-oct5"
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	if "--narrow" in OS.get_cmdline_user_args():
+		root.size = Vector2i(360, 640)
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--capture-dir="):
+			capture_folder = arg.trim_prefix("--capture-dir=")
 	world = load("res://game/world.tscn").instantiate() as World
 	world.skip_intro_for_test = true
 	world.skip_tutorial_for_test = true
@@ -79,6 +85,8 @@ func _run() -> void:
 						"GOAL-1 physical return retains maze HUD: " + label)
 					_expect_deep(lab_done, label + " after return")
 					cases += 1
+	if findings.is_empty() and "--ownership" in OS.get_cmdline_user_args():
+		await _goal_ownership()
 	if "--shallows" in OS.get_cmdline_user_args():
 		var data: Dictionary = JSON.parse_string(JSON.stringify(base))
 		data.route_state.objective_id = "find_lab"
@@ -123,7 +131,90 @@ func _capture(label: String) -> void:
 	if "--visual" not in OS.get_cmdline_user_args():
 		return
 	await RenderingServer.frame_post_draw
-	var folder := "/private/tmp/campaign-goals-visual-oct5"
-	DirAccess.make_dir_recursive_absolute(folder)
-	_expect(root.get_texture().get_image().save_png(folder + "/" + label + ".png") == OK,
+	DirAccess.make_dir_recursive_absolute(capture_folder)
+	_expect(root.get_texture().get_image().save_png(capture_folder + "/" + label + ".png") == OK,
 		"GOAL-1/2 cannot capture actual rendered goal " + label)
+
+func _goal_ownership() -> void:
+	# This is an isolated caption fixture, not earned acquisition/travel.
+	# Use the authored entry, which is inside the earned-map navigation region.
+	# A generic maze-boundary position cannot open L even with the map acquired.
+	# All three positions stay inside so actual Tab cannot hand back to World.
+	var maze := world.embedded_maze
+	var entry: Vector3 = maze.get_node("DiverEntry").global_position
+	for index in 3:
+		world.divers[index].global_position = entry + Vector3(0, 0, index * 0.3)
+		world.divers[index].velocity = Vector3.ZERO
+	for frame in 6:
+		await physics_frame
+	_expect(maze.nav_map_area().has_point(Vector2(maze._diver.global_position.x, maze._diver.global_position.z))
+		and maze.key_items.has("maze_nav_map"), "GOAL-4 fixture lacks earned-map region access")
+	var goal := maze.get_node("HUD/GoalLabel") as Label
+	var controls := maze.get_node("HUD/Controls") as Label
+	var purpose := goal.text
+	_expect(maze.maze_active and goal.is_visible_in_tree() and not controls.visible
+		and not "E:" in purpose and not "F:" in purpose,
+		"GOAL-4 restored destination is hidden or restores retired generic hints")
+	await _capture("goal-before-owners")
+	await _key(KEY_R)
+	_expect(maze._banner.is_visible_in_tree() and not goal.is_visible_in_tree(),
+		"GOAL-4 destination competes with actual R notice")
+	await create_timer(4.3).timeout
+	_expect(goal.is_visible_in_tree() and goal.text == purpose and not controls.visible,
+		"GOAL-4 drained notice loses destination or revives generic controls")
+	await _key(KEY_ESCAPE)
+	_expect(maze.inventory_menu.visible and not goal.is_visible_in_tree(),
+		"GOAL-4 destination competes with actual Inventory reading")
+	await _key(KEY_ESCAPE)
+	_expect(not maze.inventory_menu.visible and goal.is_visible_in_tree(),
+		"GOAL-4 closing Inventory loses destination")
+	await _key(KEY_L)
+	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	_expect(map.main_map.visible and not goal.is_visible_in_tree(),
+		"GOAL-4 first map/lesson overlays the destination")
+	var panel := root.get_node("CharacterAbilityPopup/%AbilityExplanationPanel") as Control
+	if panel.visible:
+		await _key(KEY_ESCAPE)
+	_expect(not paused and map.main_map.visible and not goal.is_visible_in_tree(),
+		"GOAL-4 lesson dismissal reveals destination behind still-open overview")
+	await _capture("goal-map-owner")
+	await _key(KEY_L)
+	_expect(not map.main_map.visible and goal.is_visible_in_tree() and not controls.visible,
+		"GOAL-4 closing overview loses goal or restores generic controls")
+	await _key(KEY_TAB)
+	_expect(maze._diver.ability_id == "grapple", "GOAL-4 actual Tab did not select grapple diver")
+	# Switching divers legitimately owns the caption with 'Now playing'. Let
+	# that real notice drain before isolating aim/cancel destination ownership.
+	await create_timer(4.3).timeout
+	_expect(goal.is_visible_in_tree(), "GOAL-4 diver-switch notice never returns destination")
+	await _key(KEY_F)
+	for frame in 3:
+		await physics_frame
+	_expect(maze.aiming and not goal.is_visible_in_tree(),
+		"GOAL-4 destination competes with actual grapple aim")
+	var controls_column := maze.get_node("HUD/MazeExplorationControls") as Control
+	_expect(Rect2(Vector2.ZERO, root.get_visible_rect().size).grow(1).encloses(controls_column.get_global_rect()),
+		"GOAL-5 actual aim instructions expand beyond the viewport and clip fire/cancel controls")
+	await _capture("goal-aim-owner")
+	await _key(KEY_ESCAPE)
+	_expect(not maze.aiming and not maze.inventory_menu.visible and goal.is_visible_in_tree()
+		and goal.text == purpose and not controls.visible,
+		"GOAL-4 aim cancel loses goal, stacks Inventory or restores retired controls")
+	await _capture("goal-after-owners")
+	print("CAMPAIGN GOAL OWNERSHIP|actual_R_Escape_L_Tab_F=", findings.is_empty(),
+		"|retired_hints=false|no_save_files=true")
+
+func _key(code: Key) -> void:
+	var event := InputEventKey.new()
+	event.keycode = code
+	event.physical_keycode = code
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	event = InputEventKey.new()
+	event.keycode = code
+	event.physical_keycode = code
+	Input.parse_input_event(event)
+	for frame in 3:
+		await physics_frame
+		await process_frame

@@ -28,6 +28,8 @@ lab/map/relic × stale-objective input product rather than five hand-picked case
 | GOAL-1 | Cleared laboratory or early maze/return shows stale lab/relic instructions; players pursue already completed content or miss actual final boss. Current strings use legacy objective and only map, not completion milestones. | Generated restored-state presentation + physical enter/return | Caught 136 failures over 40 cases; repaired locally |
 | GOAL-2 | Recovery leaves no laboratory direction and the player wanders without an actionable wider purpose. Existing shallow guidance only says fight. | Normal recovered Shallows presentation with local hint precedence preserved | Caught missing wider direction; repaired locally |
 | GOAL-3 | Maze repeats the same map search instruction on status and goal labels. New rendered goal exposed an existing status string with duplicate ownership. | Separate neutral map status and actionable goal over generated cases | Caught visually; repaired locally |
+| GOAL-4 | Restoring the destination also restores retired control hints or draws a goal through notices, map lessons/overview, Inventory or grapple aim. | Actual R/Escape/L/Tab/F UI-owner transitions plus unchanged milestone text | Corrected fixture/native and rendered owners pass; exported browser pending |
+| GOAL-5 | The longer aim/swap title forces the control column beyond a narrow viewport, clipping the fire/cancel instructions. | Actual F aim and control-column viewport containment at 360px, rendered inspection | Native red one finding; final separated action lines/rendered 360px green; exported browser pending |
 | LAB-1 | Actual laboratory victory never acknowledges computer/controller payoff or suggests the puzzle/maze. Current handler sets enter_maze and silently saves. | Real legal-move Tethys victory, visible payoff, Continue/save/load | Caught actual 12-action win with absent payoff; repaired locally |
 | LAB-2 | Payoff popup fits, but stale encounter warnings/gameplay HUD compete behind it. Rendered 360-width native page exposed this despite semantic success. | Actual rendered payoff, hidden HUD and restored HUD on Close | Caught visually; repaired locally |
 | LAB-3 | World pauses the laboratory-arrival announcement during battle/payoff and replays it after actual victory. It falsely announces a new Tethys arrival when Close restores HUD. | Actual legal-move victory → Close → no obsolete boss-arrival notice | Browser visual witness, native red one finding → local repair green |
@@ -82,3 +84,31 @@ are separate acceptance, not implied by a semantic native matrix.
   encounter. Other pending exploration announcements and reference boss
   behavior remain unchanged. Actual 12-action native win/Close/cold Load is
   green; matching exported/hosted recheck is still required.
+
+Fresh f457098 regression: all40 existing GOAL-1 cases fail because the maze
+always hides both Controls and GoalLabel. The local repair restores only the
+milestone-aware destination, not retired generic controls/status notes or the
+E/F suffix. Map/modal/announcement/aim remain exclusive owners. The old red
+receipt is retained in `docs/evidence/main-intake-f457098/campaign-goals.log`.
+Native/rendered/exported acceptance and publication of this repair are not
+implied by the historical successful batch above.
+
+GOAL-4 self-critique: only visibility/text outcomes and actual public controls
+are asserted, not private visibility-helper calls. Wrong-but-stable hidden
+goal fails before input; always-visible goal fails each reading owner; generic
+Controls or E/F suffix restoration fails even when destination words are right.
+All-actors-inside-maze/map fixtures isolate caption ownership and avoid falsely
+claiming earned acquisition or traversal. The state product remains generated
+by GOAL-1, while this new sequence probes the cross-feature ownership boundary.
+
+GOAL-4 observer corrections: the initial ownership fixture at the maze boundary
+was outside the earned-map navigation region, and Tab legitimately queues a
+four-second 'Now playing' notice. Actual L rejection and hidden destination
+through that notice were correct production behavior, not three new bugs.
+The corrected fixture uses the authored DiverEntry and waits for the genuine
+switch notice to drain; all 40 cases and actual owner transitions pass.
+
+GOAL-5 asserts actual instruction-column bounds, not a private wrapping call
+or exact line breaks. A stable clipped title fails; changing the layout while
+keeping it readable should pass. Full map acquisition remains separate from
+the native caption fixture. The browser check earns its map with swimming/E.
