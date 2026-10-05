@@ -99,7 +99,8 @@ func effective_accuracy() -> int:
 	return maxi(0, accuracy - status_level("blindness") + int(temporary_modifiers.accuracy))
 
 func effective_evasion() -> int:
-	return maxi(0, evasion + int(temporary_modifiers.evasion))
+	# Evasion Down lowers it by its level for as long as it lasts.
+	return maxi(0, evasion + int(temporary_modifiers.evasion) - status_level("evasion_down"))
 
 func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
@@ -166,6 +167,9 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 		"level": maxi(level, int(existing.get("level", 0))),
 		"turns": maxi(turns, int(existing.get("turns", 0))),
 	}
+	# The dodge pool shrinks with it straight away, not only next turn.
+	if status == "evasion_down":
+		evasion_current = mini(evasion_current, effective_evasion())
 
 func status_level(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("level", 0))
