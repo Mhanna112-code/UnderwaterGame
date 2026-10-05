@@ -2877,7 +2877,7 @@ func _update_lever_ui() -> void:
 		# Boxed list to the right of the map; "Press E to release levers"
 		# sits under the map itself.
 		var close_line := "[Esc]  close the map\n          (also releases the levers)" if on_lever else "[Esc] or [L]  close the map"
-		_lever_map_controls.text = "WALLS\n  [Left] / [Right]  select\n  [Enter]  rotate\nCURRENTS\n  [Shift] + [Left] / [Right]  select\n  [Shift] + [E]  rotate\n" + close_line
+		_lever_map_controls.text = "WALLS\n  [Left] / [Right]  select\n  [Enter]  rotate\nCURRENTS\n  [Ctrl] + [Left] / [Right]  select\n  [Ctrl] + [E]  rotate\n" + close_line
 		_lever_map_controls.size = Vector2.ZERO   # shrink to the current text
 		_lever_map_controls.position = Vector2(536, 76)
 	var minimap := $HUD.get_node_or_null("MazeMiniMap") as MazeMiniMap
@@ -3203,7 +3203,7 @@ func _build_minimap() -> void:
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
 	label.name = "GoalLabel"
-	label.text = "Goal: open the hallway, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nWalls and currents only move from the maze map: L opens it; Left/Right picks a wall set and E rotates it; Shift+Left/Right picks a current and Shift+E moves it. Tab switches diver; E uses their ability (at the room switch: E interacts, Shift+E toggles room encounters)."
+	label.text = "Goal: open the hallway, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nWalls and currents only move from the maze map: L opens it; Left/Right picks a wall set and E rotates it; Ctrl+Left/Right picks a current and Ctrl+E moves it. Tab switches diver; E uses their ability (at the room switch: E interacts, Shift+E toggles room encounters)."
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -4728,7 +4728,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		else:
 			_announce("Only Maxilani has sonar.")
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_R:
-		# Open map or not (currents move with Shift+E on the map).
+		# Open map or not (currents move with Ctrl+E on the map).
 		_toggle_random_encounters()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_F1:
 		if tutorial_book != null:
@@ -5678,7 +5678,9 @@ func map_points_of_interest() -> Array[Dictionary]:
 		out.append({"id": "secret_item_room", "kind": "room_label", "pos": Vector3(c.x, 0, c.y), "radius": 0.0, "rect": item_room, "label": "Secret\nItem Room"})
 	if _dome_site != Vector3.ZERO:
 		var dome := Rect2(_dome_site.x - PLINTH_RADIUS, _dome_site.z - PLINTH_RADIUS, PLINTH_RADIUS * 2.0, PLINTH_RADIUS * 2.0)
-		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
+		# Its name sits low in the box, so the chest (just behind the dome's
+		# middle) shows clear above it.
+		out.append({"id": "control_room", "kind": "room_label", "pos": Vector3(_dome_site.x, 0, _dome_site.z + PLINTH_RADIUS * 0.4), "radius": 0.0, "rect": dome, "label": "Control\nRoom"})
 	return out
 
 # The main boss room's floor plan (inside its North/South/East walls).
@@ -6466,7 +6468,7 @@ func show_map_intro_once() -> void:
 	_map_intro_shown = true
 	var pages: Array[Dictionary] = [{
 		"title": "Maze Navigation",
-		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with Shift+E to new areas and halls. R still turns random encounters on or off. Previously visited locations are marked on the map.",
+		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with Ctrl+E to new areas and halls. R still turns random encounters on or off. Previously visited locations are marked on the map.",
 		"slot": null,
 	}]
 	popup.call("open", pages)

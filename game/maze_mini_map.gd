@@ -232,7 +232,7 @@ var selectedHall: Array[CSGBox3D] = []
 var selectedHallName := ""
 
 # The currently highlighted *active flow area*.  It never names a wall pair
-# or an old controller location. Shift+arrow cycles this independently from
+# or an old controller location. Ctrl+arrow cycles this independently from
 # selectedHallName so map readers can inspect a current without losing their
 # wall selection.
 var selectedCurrentCorridor: Area3D
@@ -240,8 +240,8 @@ var selectedCurrentCorridor: Area3D
 # The selected rotatable wall set (one entry of MazeLevel.rotatable_wall_sets()),
 # or {}. While the map is closed it tracks the set nearest the diver (and
 # selectedCurrentCorridor the nearest current); once L opens the map,
-# Left/Right steps through revealed sets and Shift+Left/Right through
-# currents. The map blinks both; E rotates the set, Shift+E the current.
+# Left/Right steps through revealed sets and Ctrl+Left/Right through
+# currents. The map blinks both; E rotates the set, Ctrl+E the current.
 var selected_rotatable_set: Dictionary = {}
 var _rotatable_blink_on := true
 const ROTATABLE_BLINK_INTERVAL := 0.4
@@ -414,7 +414,7 @@ func _set_centre(wall_set: Dictionary) -> Vector3:
 	return sum / maxf(n, 1)
 
 # Left/Right on the open map: step through the rotatable wall sets the diver
-# has revealed (at least one wall seen), the way Shift+Left/Right steps
+# has revealed (at least one wall seen), the way Ctrl+Left/Right steps
 # through currents.
 func _cycle_selected_set(direction: int) -> void:
 	var sets: Array = []
@@ -782,7 +782,19 @@ func _draw() -> void:
 			var outline := piece.duplicate()
 			outline.append(piece[0])
 			draw_polyline(outline, MAP_CONTROL_COLOR, 1.5)
-	for poi in _found_pois():
+	for poi in _found_pois_rooms_first():
+		if poi.has("rect") and String(poi["kind"]) == "room_label":
+			var rr := poi["rect"] as Rect2
+			var corners := PackedVector2Array()
+			for corner in [rr.position, Vector2(rr.end.x, rr.position.y), rr.end, Vector2(rr.position.x, rr.end.y)]:
+				corners.append((corner - Vector2(center.x, center.z)) * px_per_unit + mid)
+			var radar := PackedVector2Array()
+			for k in 32:
+				radar.append(mid + Vector2.from_angle(TAU * k / 32.0) * (r - 2.0))
+			for piece in Geometry2D.intersect_polygons(corners, radar):
+				var outline := piece.duplicate()
+				outline.append(piece[0])
+				draw_polyline(outline, ROOM_COLOR, 1.5)
 		var prel := Vector2((poi["pos"] as Vector3).x - center.x, (poi["pos"] as Vector3).z - center.z)
 		if prel.length() <= view_radius - 2.0:
 			_draw_poi(self, prel * px_per_unit + mid, poi, 0.8)
@@ -1261,7 +1273,7 @@ func _build_map_help() -> void:
 	style.set_content_margin_all(10)
 	_map_help.add_theme_stylebox_override("panel", style)
 	_map_help.position = main_map.position + Vector2(0, MAIN_MAP_SIZE + 6)
-	# Wider than the map: the "Shift + E" key needs the room (nothing sits
+	# Wider than the map: the "Ctrl + E" key needs the room (nothing sits
 	# under the legend panel to its right).
 	_map_help.custom_minimum_size = Vector2(MAIN_MAP_SIZE + 110.0, 0)
 	_map_help.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1277,11 +1289,11 @@ func _build_map_help() -> void:
 	_map_help_label.add_theme_font_size_override("normal_font_size", 16)
 	_map_help_label.add_theme_color_override("default_color", Color(0.92, 0.97, 1.0))
 	# A table so the two rows' keys, actions and rotate keys line up in
-	# columns, left-aligned, whatever width the Shift key adds to row two.
+	# columns, left-aligned, whatever width the Ctrl key adds to row two.
 	var cell := "[cell padding=0,3,18,3]%s[/cell]"
 	var rows := [
 		["%s / %s" % [Slot._badge("←"), Slot._badge("→")], "choose a selected hallway", Slot._badge("E"), "rotate it"],
-		["%s + %s / %s" % [Slot._badge("Shift ⇧"), Slot._badge("←"), Slot._badge("→")], "choose a selected current", "%s + %s" % [Slot._badge("Shift ⇧"), Slot._badge("E")], "rotate it"],
+		["%s + %s / %s" % [Slot._badge("Ctrl"), Slot._badge("←"), Slot._badge("→")], "choose a selected current", "%s + %s" % [Slot._badge("Ctrl"), Slot._badge("E")], "rotate it"],
 	]
 	var table := "[table=4]"
 	for row in rows:
@@ -1336,8 +1348,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_update_selected_rotatable_set()
 			main_map.queue_redraw()
 		get_viewport().set_input_as_handled()
-	elif main_map.visible and keycode == KEY_E and key_event.shift_pressed:
-		# Shift+E: move the blinking current (Shift+Left/Right picks it).
+	elif main_map.visible and keycode == KEY_E and key_event.ctrl_pressed:
+		# Ctrl+E: move the blinking current (Ctrl+Left/Right picks it).
 		_rotate_selected_current()
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
@@ -1345,7 +1357,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# reach MazeLevel's relic interaction while the map is open.
 		_rotate_selected_set()
 		get_viewport().set_input_as_handled()
-	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT] and key_event.shift_pressed:
+	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT] and key_event.ctrl_pressed:
 		_cycle_selected_current(1 if keycode == KEY_RIGHT else -1)
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT]:
@@ -1597,7 +1609,12 @@ func _on_main_map_overlay_draw() -> void:
 			var c0 := _project_to_main_map(Vector3(control_room.position.x, 0, control_room.position.y))
 			var c1 := _project_to_main_map(Vector3(control_room.end.x, 0, control_room.end.y))
 			_main_map_overlay.draw_rect(Rect2(c0, c1 - c0), MAP_CONTROL_COLOR, false, 2.0)
-		for poi in _found_pois():
+		for poi in _found_pois_rooms_first():
+			if poi.has("rect") and String(poi["kind"]) == "room_label":
+				var rr := poi["rect"] as Rect2
+				var r0 := _project_to_main_map(Vector3(rr.position.x, 0, rr.position.y))
+				var r1 := _project_to_main_map(Vector3(rr.end.x, 0, rr.end.y))
+				_main_map_overlay.draw_rect(Rect2(r0, r1 - r0), ROOM_COLOR, false, 2.0)
 			_draw_poi(_main_map_overlay, _project_to_main_map(poi["pos"] as Vector3), poi, 1.0)
 	# _main_map_diver_pos is already an absolute panel-space point (see
 	# _project_to_main_map()), not relative to panel center.
@@ -1635,6 +1652,19 @@ func _update_found_pois(diver_pos: Vector3) -> void:
 			var p := poi["pos"] as Vector3
 			if is_inf(float(poi["radius"])) or d2.distance_to(Vector2(p.x, p.z)) <= float(poi["radius"]):
 				_found_poi_ids[id] = true
+
+# Room labels (and their purple visited-room box) first, then everything
+# else, so an icon in a room - the Control Room's chest - draws on top of
+# its name rather than under it.
+func _found_pois_rooms_first() -> Array[Dictionary]:
+	var rooms: Array[Dictionary] = []
+	var rest: Array[Dictionary] = []
+	for poi in _found_pois():
+		if String(poi["kind"]) == "room_label":
+			rooms.append(poi)
+		else:
+			rest.append(poi)
+	return rooms + rest
 
 func _found_pois() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
