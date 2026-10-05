@@ -1,0 +1,24 @@
+{
+  "source_commit": "17e4705cc4e90053f2cabd27b99a55180879329d",
+  "fixture": "disposable recovered World checkpoint; selected positions and encounters isolated; inventory starts empty",
+  "observations": [
+    {
+      "name": "approach",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap\n, • Q: Sonar (On) • R: Encounters (Off)\nBreak rocks for items: (TAB) Bucky, (F) Shockwave.\nOptional Combat Training\n02 100 / 100\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "bucky",
+      "text": "Bucky\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Shockwave • R: Encounters (Off)\nBreak this rock for items: (F) Shockwave.\nOptional Combat Training\n02 100 / 100\nBucky 10/10"
+    },
+    {
+      "name": "broken",
+      "text": "Bucky\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Shockwave • R: Encounters (Off)\nShallows: fight to grow stronger.\nOptional Combat Training\n02 100 / 100\nBucky 10/10"
+    },
+    {
+      "name": "pickup-0",
+      "text": "Bucky\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Shockwave • R: Encounters (Off)\nShallows: fight to grow stronger.\nOptional Combat Training\nPicked up a Potion.\n02 100 / 100\nBucky 10/10"
+    }
+  ],
+  "findings": [],
+  "scope": "actual hosted Title Load/W/Tab/F and visible reward confirmation, not fresh opening or durability"
+}

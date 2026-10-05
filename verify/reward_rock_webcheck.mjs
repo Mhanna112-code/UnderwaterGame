@@ -47,7 +47,9 @@ try {
   }, fixture);
   await page.reload(); await page.waitForTimeout(20000);
   await page.mouse.click(640, 405); await page.waitForTimeout(700); // Load Game.
-  await page.mouse.click(640, 327); await page.waitForTimeout(1500); // Slot 0.
+  // Current Title includes separate autosave rows; the manual slot is the
+  // first 44px button at y=267, not the retired menu's y=327 autosave row.
+  await page.mouse.click(640, 267); await page.waitForTimeout(1500); // Manual slot 0.
   await page.keyboard.down('KeyW'); await page.waitForTimeout(1100); await page.keyboard.up('KeyW');
   await page.waitForTimeout(300);
   const approaching = await capture('approach');
@@ -58,7 +60,15 @@ try {
   await page.keyboard.press('KeyF'); await page.waitForTimeout(400);
   const broken = await capture('broken');
   expect(!/Break (this rock|rocks) for items/i.test(broken), 'ROCK-3 hint survived real browser Shockwave');
-  expect(/Picked up a/i.test(broken), 'ROCK-3 expected nearby reward collection has no rendered confirmation');
+  // Breaking spawns a pickup; it does not auto-grant one from two metres
+  // away. Walk the actual next boundary instead of assuming instant pickup.
+  let collected = /Picked up a/i.test(broken);
+  for (let step = 0; step < 4 && !collected; step++) {
+    await page.keyboard.down('KeyW'); await page.waitForTimeout(350); await page.keyboard.up('KeyW');
+    await page.waitForTimeout(200);
+    collected = /Picked up a/i.test(await capture('pickup-' + step));
+  }
+  expect(collected, 'ROCK-3 actual swim-to-pickup has no rendered collection confirmation');
 } catch (error) { findings.push(String(error)); }
 findings.push(...errors);
 await browser.close();

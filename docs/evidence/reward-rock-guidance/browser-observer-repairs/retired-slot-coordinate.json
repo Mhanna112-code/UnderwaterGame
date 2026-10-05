@@ -1,0 +1,14 @@
+{
+  "source_commit": "17e4705cc4e90053f2cabd27b99a55180879329d",
+  "fixture": "disposable recovered World checkpoint; selected positions and encounters isolated; inventory starts empty",
+  "observations": [
+    {
+      "name": "approach",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Autosave - Empty\n< Back"
+    }
+  ],
+  "findings": [
+    "Error: ROCK-1 exported approach lacks switch/ability/reward instruction"
+  ],
+  "scope": "actual hosted Title Load/W/Tab/F and visible reward confirmation, not fresh opening or durability"
+}

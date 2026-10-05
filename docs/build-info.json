@@ -1,14 +1,14 @@
 {
-  "source_commit": "97bd48fb4f4c28f45fb2e55e9095b41a2b8691ba",
-  "pck_sha256": "189095a31249e420b3db142e9aa2c0b9be41e7a7392eeb92970e5b31396eec5a",
-  "pck_bytes": 93316404,
+  "source_commit": "17e4705cc4e90053f2cabd27b99a55180879329d",
+  "pck_sha256": "934713634cb34dfb9dc840688a65abd21ecf631c5072ab8c31e4112e28c26f27",
+  "pck_bytes": 93317092,
   "engine": "Godot 4.7.1",
   "status": "Main follow-up: focused regression checks, not full campaign acceptance",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "PR100 integration plus Marc's 10% ordinary enemy boost ceiling, unboosted Evasion and completed-prologue blockade waypoint",
+  "change": "PR100/main integration plus proximity Bucky/TAB/F guidance at intact reward rocks and compact HUD separation from minimap",
   "deferred": "Approved Tethys opening pivot; complete campaign/browser persistence/audio listening/polish acceptance; refreshed Windows/Linux packages",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"

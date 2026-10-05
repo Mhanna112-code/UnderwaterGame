@@ -65,7 +65,13 @@ proper plain World contract. Auto-overlap can collect the spawned item before
 the test queries nodes, so the public inventory increment is accepted alongside
 an actual ItemOrb overlap, rather than falsely requiring an orb to remain.
 
-The hosted browser observer uses a disclosed, disposable recovered checkpoint
-fixture, then real Title Load/W/Tab/F and rendered reward feedback. Browser
-receipt is recorded separately after publishing a checked preview. This does
-not certify a complete fresh opening or browser-save durability.
+The hosted browser observer passes with a disclosed, disposable recovered
+checkpoint fixture, then real Title Load/W/Tab/F and rendered reward feedback.
+It observes the switch prompt, Bucky's direct F prompt, retired broken-rock
+hint and "Picked up a Potion" after actual W swimming into the dropped item.
+Initial observer issues are preserved: old manual-slot coordinates hit Marc's
+new autosave row, and breaking was incorrectly expected to auto-grant an item
+from two metres away. The corrected observer uses the current manual slot and
+actual swim-to-pickup. An interrupted run lost its browser context and is not
+counted as a product defect. No production pickup changes were required.
+This does not certify a complete fresh opening or browser-save durability.
