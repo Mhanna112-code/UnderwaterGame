@@ -113,6 +113,7 @@ func _ready() -> void:
 	_build_special_encounters()
 	_build_visible_floors()
 	_carve_hall_whirlpool_holes()
+	_build_secret_wall_entrance()
 	_build_save_points()
 	_add_wall_skirts()
 	if dev_all_keys_gate_open or OS.get_cmdline_user_args().has("--dev"):
@@ -1041,7 +1042,7 @@ func _update_room_switch() -> void:
 		poster = null
 	for p in _posters:
 		p.set_highlight(p == poster)
-	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _secret_entrance_in_reach() or _vortex_chest_in_reach() or _split_rock_in_reach()
+	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _path_button_in_reach() or _vortex_chest_in_reach() or _split_rock_in_reach()
 	if _interact_cooldown and (_banner == null or _banner_timer <= 0.0):
 		_interact_cooldown = false
 	if _interact_cooldown:
@@ -1159,7 +1160,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (save_point_menu != null and save_point_menu.visible) or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt))
+	return (save_point_menu != null and save_point_menu.visible) or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_tethys_prompt != null and is_instance_valid(_tethys_prompt)) or (_draft_prompt != null and is_instance_valid(_draft_prompt))
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -1399,10 +1400,81 @@ func _build_secret_wall_entrance() -> void:
 	add_child(_secret_entrance)
 	var bottom := w27.global_position.y - w27.size.y * 0.5
 	_secret_entrance.global_position = Vector3(w27.global_position.x + face * (w27.size.z * 0.5 + 0.07), bottom + 0.3 + 1.8, mid.z)
-	var pulse := create_tween().set_loops()
-	pulse.tween_property(mat, "emission_energy_multiplier", 3.0, 0.5).set_trans(Tween.TRANS_SINE)
-	pulse.tween_property(mat, "emission_energy_multiplier", 0.4, 0.5).set_trans(Tween.TRANS_SINE)
 	_secret_entrance.set_meta("face", face)
+	# No glowing panel any more - just an anchor for where the way in is. What
+	# you see is the draft: water streaming in along the floor and away under
+	# the wall to the other side.
+	_secret_entrance.visible = false
+	_build_secret_draft(w27, face, mid.z)
+
+# Pale streaks drawn in toward wall 27 along the floor and out of sight through
+# the gap beneath it - a current that plainly goes somewhere.
+func _build_secret_draft(w27: CSGBox3D, face: float, z: float) -> void:
+	var wall_bottom := w27.global_position.y - w27.size.y * 0.5
+	var gap_mid := (_floor_top_y + 0.15 + wall_bottom) * 0.5
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(0.9, maxf(0.1, (wall_bottom - _floor_top_y) * 0.35), 1.4)
+	pm.direction = Vector3(-face, 0, 0)
+	pm.spread = 4.0
+	pm.initial_velocity_min = 2.0
+	pm.initial_velocity_max = 3.0
+	pm.gravity = Vector3.ZERO
+	pm.particle_flag_align_y = true
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.75, 0.95, 1.0, 0.0))
+	fade.set_color(1, Color(0.75, 0.95, 1.0, 0.0))
+	fade.add_point(0.15, Color(0.75, 0.95, 1.0, 0.8))
+	fade.add_point(0.8, Color(0.6, 0.85, 1.0, 0.55))
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = fade
+	pm.color_ramp = ramp
+	var streak := BoxMesh.new()
+	streak.size = Vector3(0.03, 0.5, 0.03)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	streak.material = mat
+	var draft := GPUParticles3D.new()
+	draft.name = "SecretWallDraft"
+	draft.amount = 70
+	draft.lifetime = 2.0
+	draft.preprocess = 2.0
+	draft.process_material = pm
+	draft.draw_pass_1 = streak
+	draft.visibility_aabb = AABB(Vector3(-8, -2, -4), Vector3(16, 4, 8))
+	add_child(draft)
+	draft.global_position = Vector3(w27.global_position.x + face * (w27.size.z * 0.5 + 2.2), gap_mid, z)
+
+# Swimming up to the draft asks whether to follow it. Asked once per approach:
+# say no and it waits until you've swum away and come back.
+const SECRET_DRAFT_PROMPT_TEXT := "A draft leads to the other side of the wall.. would you like to explore further?"
+var _draft_prompt: ConfirmPromptModal
+var _draft_prompt_latched := false
+
+func _update_secret_draft_prompt() -> void:
+	var near := _secret_entrance_in_reach()
+	if not near:
+		_draft_prompt_latched = false
+		return
+	if _draft_prompt_latched or _battling or any_modal_open():
+		return
+	_draft_prompt_latched = true
+	_open_secret_draft_prompt()
+
+func _open_secret_draft_prompt() -> void:
+	if _draft_prompt != null and is_instance_valid(_draft_prompt):
+		return
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_mouse_look = false
+	_diver.velocity = Vector3.ZERO
+	_draft_prompt = ConfirmPromptModal.new(SECRET_DRAFT_PROMPT_TEXT)
+	_draft_prompt.answered.connect(func(yes: bool) -> void:
+		_draft_prompt = null
+		if yes:
+			_enter_secret_wall())
+	add_child(_draft_prompt)
 
 func _secret_entrance_in_reach() -> bool:
 	if _secret_entrance == null or _diver == null:
@@ -4237,6 +4309,7 @@ func _physics_process(dt: float) -> void:
 	_update_save_point_prompt()
 	_update_announce(dt)
 	_check_split_rock()
+	_update_secret_draft_prompt()
 	if _aiming and (_battling or any_modal_open() or _gate_cutscene or not _moving_wall_sets.is_empty() or _free_map_open):
 		_cancel_aim()
 	_move_camera(dt)
@@ -4451,7 +4524,7 @@ func _handle_e(e: InputEventKey) -> void:
 	elif _vortex_chest_in_reach():
 		_open_vortex_chest()
 	elif _secret_entrance_in_reach():
-		_enter_secret_wall()
+		_open_secret_draft_prompt()
 	elif _split_rock_in_reach():
 		_announce("This rock looks broken in half. I wonder if something could split it open...", 5.0)
 	elif _diver_near_switch() and (e as InputEventKey).shift_pressed:
