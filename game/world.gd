@@ -3737,8 +3737,8 @@ func _update_banner(dt: float) -> void:
 	banner.text = _announcements.current_text()
 
 # Entering a guarded item's site starts its encounter directly; Sonar and
-# random-encounter rolls are not prerequisites, but the R encounter toggle
-# still gates it. Only the active diver can trigger one. A per-site latch
+# random-encounter rolls and the R toggle are not prerequisites. R only
+# controls ordinary travel fights. Only the active diver can trigger one. A per-site latch
 # prevents reopening a prompt or battle while the diver remains inside the
 # same radius; leaving and re-entering can trigger a repeatable special
 # reward site again.
@@ -3755,11 +3755,6 @@ func _try_trigger_item_site(d: Diver) -> bool:
 	if found.is_empty():
 		_inside_item_site_id = ""
 		return false
-	if not random_encounters_enabled:
-		# Clear the latch while encounters are off, so switching them back on
-		# while still inside this radius can trigger the site immediately.
-		_inside_item_site_id = ""
-		return true
 	var item_id := String(found.item)
 	var site_id := String(found.get("site", item_id))
 	if site_id == _inside_item_site_id:
@@ -4604,7 +4599,7 @@ func _update_hud() -> void:
 	# ability_id.
 	if d.passive_id == "sonar":
 		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
-	line += (" · R:Random %s" if narrow else "  ·  R: Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
+	line += (" · R:Random %s" if narrow else "  ·  R: Random Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during

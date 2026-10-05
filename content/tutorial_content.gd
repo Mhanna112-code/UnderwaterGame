@@ -29,7 +29,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Special Encounters",
-		"body": "Sonar (Q, Maxilani's passive) is the only way these are found - nothing is visible from a distance until sonar actually reveals it. Trigger one and you send in exactly one diver, alone, to survive a short timed challenge built around THEIR ability specifically (see the 'Choose who goes' screen for what each one plays like). Clear it flawlessly - nothing gets through at all - and the enemy's closing swing is guaranteed to miss instead of being a separate roll. Losing costs nothing permanent: a diver who falls here washes back out at the HP they went in with. Wins pay out either a key item or a temporary Attack/Defense boost that lasts the rest of whatever fight you use it in.",
+		"body": "Sonar (Q, Maxilani's passive) reveals nearby guarded sites as red dots. Swim into a site to trigger its fight or special challenge, even with Sonar and random encounters off. A special challenge sends in exactly one diver to use their ability. Clear it flawlessly and the enemy's closing swing misses. Losing restores the diver's entry HP. Wins grant the site's item.",
 	},
 	{
 		"title": "Getting Around",
@@ -115,7 +115,7 @@ const WORLD_ABILITY_BLURBS := {
 	"swap": "Instantly trades places with another party member - press F, cycle who with Left/Right, confirm with Enter. Escape cancels. Uses no Oxygen. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
 	"grapple": "Press F to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. Anchors pull Musashi toward them; floating light items reel toward him instead. Uses no Oxygen. Firing at open water or a wall does nothing and can be retried immediately.",
 	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks nearby obstacles built to be shockwaved open. Costs 12 Oxygen and has a short cooldown.",
-	"sonar": "Toggled with Q, not F - it's a passive, not the active ability slot. Costs oxygen for as long as it stays on, and it's the only way to reveal special encounters and anything else hidden until sonar finds it.",
+	"sonar": "Press Q as Maxilani to reveal nearby hidden sites as red dots. Costs 1 Oxygen every 6 seconds while on. Discovered sites remain marked when Sonar is off. Swim into the site to trigger it; R only switches random fights off, not guarded-site challenges.",
 }
 
 const ABILITY_BLURBS := {

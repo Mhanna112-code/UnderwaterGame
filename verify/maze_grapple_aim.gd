@@ -190,7 +190,7 @@ func _save_owner_case() -> void:
 	_expect(point.has_diver(diver), "AIM-3 checkpoint fixture is not in actual contact")
 	await _key(KEY_F)
 	await create_timer(4.2).timeout
-	_expect(not _hud().contains("F: ability") and not _hud().contains("TAB switch") and not _hud().contains("R: Encounters"),
+	_expect(not _hud().contains("F: ability") and not _hud().contains("TAB switch") and not _hud().contains("R: Encounters") and not _hud().contains("R: Random Encounters"),
 		"AIM-3 aim HUD advertises blocked ability/selection/encounter controls after notices drain")
 	await _capture("maze-checkpoint-aim")
 	await _key(KEY_P)
