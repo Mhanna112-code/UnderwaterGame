@@ -1,0 +1,10 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_MATRIX|actor=0|csg=false|cylinder=false|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_MATRIX|actor=0|csg=false|cylinder=false|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(229.7097, 2.0, 19.56974)
+FINDING WHIRL-1 generated open suction fails to reset/damage/release
+WHIRLPOOL SAFETY: findings=1

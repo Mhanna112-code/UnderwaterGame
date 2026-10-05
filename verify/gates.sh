@@ -202,6 +202,8 @@ run "poster boundary captured bypass: does real swimming stop before the western
 run "poster boundary coverage: do three capsules stop at both ends in both directions and below the actual ceiling" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --matrix
 run "poster fence saved placements: do old/current-frame JSON restores retain resources and swimmable party positions" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --restore
 run "poster fence downed party: do overlapping saved downed bodies clear without revival, refill or effect loss" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --restore --downed
+run "whirlpool wall safety: does a real wall prevent suction without disabling an open-water catch" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd
+run "whirlpool wall safety family: do three capsules, static/CSG walls, sphere/cylinder suction and both orientations obey physical occlusion" "$GODOT" --headless --path . --script verify/whirlpool_safety.gd -- --matrix
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
 run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd

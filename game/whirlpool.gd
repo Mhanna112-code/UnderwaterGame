@@ -180,6 +180,8 @@ func _physics_process(dt: float) -> void:
 		var d := body as Diver
 		if d == null or not is_instance_valid(d) or d.is_grappling() or d.is_suction_locked():
 			continue
+		if not _in_open_water_with(d):
+			continue
 		var to_centre := global_position - d.global_position
 		to_centre.y = 0.0
 		var dist := to_centre.length()
@@ -199,7 +201,19 @@ func _on_suction_entered(body: Node3D) -> void:
 		return
 	if bypass.is_valid() and bool(bypass.call()):
 		return
+	if not _in_open_water_with(d):
+		return
 	_pull_in(d)
+
+# Warning/suction shapes can reach into a neighbouring corridor. Marc's
+# authored contract only drags/catches a diver with open water to the
+# centre at their own height; the floor below is not an obstruction.
+func _in_open_water_with(d: Diver) -> bool:
+	var centre := Vector3(global_position.x, d.global_position.y, global_position.z)
+	var query := PhysicsRayQueryParameters3D.create(d.global_position, centre, 1)
+	query.exclude = [d.get_rid()]
+	query.hit_from_inside = true
+	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 # Three visible beats, not one instant swap: pulled in (physically, the
 # whole approach), vanish at the center (caught), then reappear at

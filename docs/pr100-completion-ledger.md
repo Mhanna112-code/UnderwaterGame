@@ -3,6 +3,15 @@
 Contract: user-authorized comprehensive plan in the October 4 conversation.
 This ledger retains the full scope; a green focused batch is not release readiness.
 
+October 5 whirlpool LOS follow-up ports Marc's open-water wall-occlusion
+contract to both drag and suction. A real intervening wall originally still
+locked/reset the diver and removed2HP. The same case now refuses catch while
+unobstructed suction still works;24 generated capsule/wall/shape/orientation
+pairs and native Metal repeat pass, with actual current/grapple preservation.
+Evidence: `docs/evidence/whirlpool-wall-safety-oct5`. This admits only LOS,
+not hall layout/deep-shaft visuals, inactive/battle/menu warning ownership,
+interrupted motion cleanup or downed HP safety. Those remain required work.
+
 October 5 poster-boundary batch ports both authored fences, including the west
 extension to the maze edge. Real W originally crossed the line; it now stops.
 48 generated actor/gap/direction/height cases and636 physical rays cover both
