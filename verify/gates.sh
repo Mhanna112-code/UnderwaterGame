@@ -187,6 +187,12 @@ run "puzzle Deep exit: do real plate completion and normal swimming open Deep wa
 run "puzzle saved Deep exit: do saved solved doors reopen without an obsolete maze portal" "$GODOT" --headless --path . --script verify/puzzle_maze_exit.gd -- --cold-load
 run "embedded maze ownership and ramp: does actual bidirectional swimming retain one party/input/camera/HUD owner without inactive encounters or Oxygen drain" "$GODOT" --headless --path . --script verify/embedded_maze.gd
 run "embedded maze saves: do 48 generated World/maze cases and cold legacy Title Load preserve frames, resources and independent progress" "$GODOT" --headless --path . --script verify/embedded_maze_checkpoint.gd
+run "maze drafts: do three capsules traverse real outgoing/return paths without clipping, reversing, or racing moving walls" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd
+run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
+run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
+for draft_diver in 0 1 2; do
+	run "maze draft teardown diver $draft_diver: does owner removal restore a clear actor and sealed floor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --cancel "--diver=$draft_diver"
+done
 run "maze secret continuity: do real E/Esc transitions retain resources, doors, walls and pending rewards" "$GODOT" --headless --path . --script verify/maze_secret_continuity.gd
 run "maze checkpoint: do cold Load, failed writes and real defeat/Restart conserve saved puzzle and campaign state" "$GODOT" --headless --path . --script verify/maze_checkpoint.gd
 run "maze checkpoint IO: do generated saves round-trip and malformed saves return an actionable title without mutation" "$GODOT" --headless --path . --script verify/maze_checkpoint_io.gd

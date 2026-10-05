@@ -16,7 +16,7 @@ func _run() -> void:
 				await _swap_owner(maze, selected)
 				await _map_geometry(maze)
 				await _room_policy(maze, selected)
-			maze.queue_free()
+			maze.world.queue_free()
 			await process_frame
 		if not findings.is_empty():
 			break
@@ -40,19 +40,32 @@ func _enter(selected: int) -> MazeLevel:
 	world.route_state.set_zone("deep")
 	world.route_state.set_maze_door_state("available")
 	world.active = selected
-	world.divers[selected].global_position = world.deep_zone_layout.route_points().maze_transition
-	for frame in range(20):
+	var maze := world.embedded_maze
+	world.divers[selected].global_position = Vector3(maze.embedded_bounds.position.x - 1.5, 1.8, 16)
+	world.yaw = PI * 0.5
+	var swim := InputEventKey.new()
+	swim.keycode = KEY_W
+	swim.pressed = true
+	Input.parse_input_event(swim)
+	for frame in range(35):
 		await physics_frame
-		if current_scene is MazeLevel:
+		if maze.maze_active:
 			break
-	if not current_scene is MazeLevel:
+	swim = InputEventKey.new()
+	swim.keycode = KEY_W
+	Input.parse_input_event(swim)
+	await physics_frame
+	if current_scene != world or not maze.maze_active:
 		findings.append("INT-06 fixture actual World entrance did not reach Maze")
+		world.queue_free()
+		await process_frame
 		return null
-	var maze := current_scene as MazeLevel
 	# Input composition fixture after acquisition; marc_earned_map exercises
 	# earning the map through actual swimming/E rather than this grant.
 	maze.key_items.append("maze_nav_map")
-	maze.divers[selected].global_position = maze.get_node("MazeCheckpoint").global_position + Vector3.UP
+	for i in range(3):
+		maze.divers[i].global_position = maze.get_node("MazeCheckpoint").global_position + Vector3(3 * (i - selected), 1.8, 0)
+		maze.divers[i].velocity = Vector3.ZERO
 	for frame in range(8):
 		await physics_frame
 	return maze

@@ -38,6 +38,8 @@ var maze_active := true
 var embedded_bounds := Rect2()
 var _entry_physics_frame := -1
 const EMBED_PASSAGE_HALF_WIDTH := 4.0
+var draft_passages: Node3D
+var _potion_rock_spot := Vector3.ZERO
 
 # Every scene-authored CSGBox3D wall, read live by maze_mini_map.gd each
 # frame rather than baked into fixed [start, end] segments the way
@@ -134,6 +136,10 @@ func _ready() -> void:
 	if world == null:
 		_build_secret_wall_entrance()
 	_build_wall_10_11_extras()
+	draft_passages = preload("res://game/maze_draft_passages.gd").new()
+	draft_passages.name = "DraftPassages"
+	add_child(draft_passages)
+	draft_passages.setup(self)
 	_build_hall_gauntlet()
 	_build_inventory_menu()
 	_build_campaign_checkpoint()
@@ -1172,7 +1178,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt))
+	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open())
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -3899,9 +3905,15 @@ func _build_floor() -> void:
 	# _physics_process()'s golden-orb fall).
 	_floor_top_y = floor_y + _FLOOR_THICKNESS * 0.5
 
-	_build_invisible_wall(
-		Vector3(center_x, floor_y, center_z),
-		Vector3(span_x, _FLOOR_THICKNESS, span_z))
+	var floor_body := StaticBody3D.new()
+	floor_body.name = "MazeFloorCollision"
+	floor_body.position = Vector3(center_x, floor_y, center_z)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(span_x, _FLOOR_THICKNESS, span_z)
+	shape.shape = box
+	floor_body.add_child(shape)
+	add_child(floor_body)
 
 # A perimeter around the whole level, same idea as world.gd's own
 # _build_boundary_walls() for the open dive site - invisible collision
@@ -4294,6 +4306,7 @@ func _physics_process(dt: float) -> void:
 	_update_puppet_patrol(dt)
 	_update_announce(dt)
 	_check_split_rock()
+	draft_passages.update()
 	_move_camera(dt)
 
 # Wall-rotation "cutscene": while any walls are rotating the camera pans up
@@ -4500,6 +4513,8 @@ func _handle_e(e: InputEventKey) -> void:
 		_open_map_chest()
 	elif _secret_entrance_in_reach():
 		_enter_secret_wall()
+	elif draft_passages != null and draft_passages.outgoing_in_reach():
+		draft_passages.open_outgoing_prompt()
 	elif _split_rock_in_reach():
 		_announce("This rock looks broken in half. I wonder if something could split it open...", 5.0)
 	elif _diver_near_switch() and (e as InputEventKey).shift_pressed:
@@ -4546,6 +4561,7 @@ func _gain_key(id := "", text := "You've obtained a key") -> void:
 const BARRIER_HEIGHT := 9.0
 var _hallway_barriers: Array[CollisionShape3D] = []
 var _walls_14_15_barriers: Array[CollisionShape3D] = []
+var _walls_10_11_home_barriers: Array[CollisionShape3D] = []
 var _wall_11_joint := Vector3.ZERO   # north end of wall 11 - where 14 meets it
 var _wall_10_joint := Vector3.ZERO   # north end of wall 10 - where 15 meets it
 var _walls_14_15_rest: Array = []    # [[wall, position, yaw]] at start
@@ -4669,28 +4685,31 @@ func _update_state_barriers() -> void:
 		s.set_deferred("disabled", _hallway_1_2_swung)
 	for s in _walls_14_15_barriers:
 		s.set_deferred("disabled", not _walls_14_15_open)
+	for s in _walls_10_11_home_barriers:
+		s.set_deferred("disabled", _walls_10_11_swung)
 
 # --- Walls 10/11 ---------------------------------------------------------------
-# The L map's third wall set. Each swings a quarter turn about its north end
-# (where it meets 14 / 15) to run west, dead in line with 14's / 15's home
-# line and flush against its end. Two more walls close off where their far
-# ends land when swung - one down from swung 11's end to 10's line, one
-# along that line to swung 10's end - and stay up either way. A potion rock
-# sits in the corner they make.
+# The L map's third wall set. Wall 10 continues wall 15's home line west;
+# wall 11 follows wall 14's home line but shares swung wall 10's west end.
+# The fixed Break Room endcap/closers remain in place in either state.
+# Its outgoing draft is separate from the incoming draft under swung 11.
 var _walls_10_11_swung := false
 var _walls_10_11_home: Array = []   # [[wall, position, yaw]]
 var _wall_10_11_extras: Array[CSGBox3D] = []
 
 func _walls_10_11_targets() -> Array:
-	var out := []
-	for pair in [[$CSGBox3D11, 0], [$CSGBox3D10, 1]]:
-		var w := pair[0] as CSGBox3D
-		var rest: Array = _walls_14_15_rest[pair[1]]
-		var line_wall := rest[0] as CSGBox3D
-		var line_pos := rest[1] as Vector3
-		var west_x := line_pos.x - line_wall.size.x * 0.5
-		out.append([w, Vector3(west_x - w.size.x * 0.5, w.global_position.y, line_pos.z), 0.0])
-	return out
+	var w10 := $CSGBox3D10 as CSGBox3D
+	var w11 := $CSGBox3D11 as CSGBox3D
+	var rest15: Array = _walls_14_15_rest[1]
+	var rest14: Array = _walls_14_15_rest[0]
+	var west15 := (rest15[1] as Vector3).x - (rest15[0] as CSGBox3D).size.x * 0.5
+	var west10 := west15 - w10.size.x
+	return [[w11, Vector3(west10 + w11.size.x * 0.5, w11.global_position.y, (rest14[1] as Vector3).z), 0.0],
+		[w10, Vector3(west15 - w10.size.x * 0.5, w10.global_position.y, (rest15[1] as Vector3).z), 0.0]]
+
+func _draft_wall_line_x() -> float:
+	var rest14: Array = _walls_14_15_rest[0]
+	return (rest14[1] as Vector3).x - (rest14[0] as CSGBox3D).size.x * 0.5 - ($CSGBox3D11 as CSGBox3D).size.x
 
 func _rotate_walls_10_11() -> void:
 	if _wall_set_moving("CSGBox3D10/11"):
@@ -4709,13 +4728,17 @@ func _rotate_walls_10_11() -> void:
 			tweens.append(_tween_wall_to_transform_about_hinge(target[0], target[1], target[2]))
 		_walls_10_11_swung = true
 		$HUD/Controls.text = "Walls 10/11 swinging..."
+	_update_state_barriers()
 	_track_wall_set_motion("CSGBox3D10/11", tweens, [$CSGBox3D10, $CSGBox3D11])
+	if not tweens.is_empty():
+		(tweens[-1] as Tween).finished.connect(func() -> void:
+			$HUD/Controls.text = "Walls 10/11: OPEN." if _walls_10_11_swung else "Walls 10/11: CLOSED.")
 
 func _build_wall_10_11_extras() -> void:
 	var targets := _walls_10_11_targets()
 	var w11 := $CSGBox3D11 as CSGBox3D
 	var t := w11.size.z
-	var end11_x := (targets[0][1] as Vector3).x - w11.size.x * 0.5   # swung 11's west end
+	var end11_x := _draft_wall_line_x()
 	var line10_z := (targets[1][1] as Vector3).z
 	var line11_z := (targets[0][1] as Vector3).z
 	var end10_x := (targets[1][1] as Vector3).x - ($CSGBox3D10 as CSGBox3D).size.x * 0.5
@@ -4727,20 +4750,30 @@ func _build_wall_10_11_extras() -> void:
 	# Along 10's line from that wall to swung 10's end.
 	var b_x0 := a_x - t * 0.5
 	var wall_b := _spawn_wall("Wall10Closer", Vector3((b_x0 + end10_x) * 0.5, y, line10_z), 0.0, Vector3(absf(end10_x - b_x0), w11.size.y, t))
+	var end11_swung_x := (targets[0][1] as Vector3).x - w11.size.x * 0.5
+	var wall_c := _spawn_wall("Wall11Closer", Vector3((b_x0 + end11_swung_x) * 0.5, y, line11_z), 0.0, Vector3(absf(end11_swung_x - b_x0), w11.size.y, t))
 	# Always standing, whichever way walls 10/11 face.
-	for wall in [wall_a, wall_b]:
+	for wall in [wall_a, wall_b, wall_c]:
 		_wall_10_11_extras.append(wall)
 		wall_boxes.append(wall)
 	# The potion rock, in the inside corner of the two.
 	var r := 0.55
 	var inward_z := signf(line11_z - line10_z)
 	var spot := Vector3(a_x + t * 0.5 + r + 0.25, _floor_top_y + r, line10_z + inward_z * (t * 0.5 + r + 0.25))
+	_potion_rock_spot = spot
 	var rock := CrackedWall.new()
 	rock.span = Vector3(1.1, 1.1, 1.1)
 	rock.disguised_as_scenery_rock = true
 	rock.position = spot
 	rock.broken.connect(_on_secret_rock_broken.bind("potion", spot + Vector3(0, 0.6, 0)))
 	add_child(rock)
+	var gc: Dictionary = _wall_geometry(wall_b)
+	var west := maxf(gc.negative_end.x, gc.positive_end.x)
+	var east := _wall_11_joint.x - wall_b.size.z * 0.5
+	if east > west + 0.5:
+		var barrier := _spawn_barrier("Wall10LineBarrier", Vector3((west + east) * 0.5, 0, wall_b.global_position.z), Vector3(east - west, 0, wall_b.size.z))
+		_walls_10_11_home_barriers.append(barrier.get_child(0) as CollisionShape3D)
+	_update_state_barriers()
 
 # --- Progress gate (switch puzzle) --------------------------------------------
 # Bars across the passage between CSGBox3D20 and CSGBox3D21, halfway along
@@ -5830,6 +5863,7 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 			wall.size = CampaignSession.vector_from(spec.size)
 			wall.visible = bool(spec.visible)
 			wall.use_collision = bool(spec.collision)
+	var draft_layout_migrated := _reconcile_legacy_draft_walls()
 	for current in _currents_by_corridor.values():
 		(current as WaterCurrent).teardown()
 		(current as WaterCurrent).queue_free()
@@ -5896,6 +5930,8 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	if restore_positions:
 		for i in range(divers.size()):
 			divers[i].position = CampaignSession.vector_from(data.positions[i])
+	if draft_layout_migrated:
+		_clear_party_from_migrated_draft_wall()
 	for holder in data.levers:
 		var index := int(holder.lever)
 		# Old checkpoints may name the dome levers Marc has removed. Their
@@ -5937,6 +5973,46 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	(get_node("HUD/MazeMiniMap") as MazeMiniMap).restore_campaign_discovery(data.map)
 	$HUD/Controls.text = ("Hallway: OPEN" if _hallway_1_2_swung else "Hallway: CLOSED. Open the map (L).") \
 		if key_items.has(MAP_ITEM) else "Find the navigation map in the Control Room."
+
+func _reconcile_legacy_draft_walls() -> bool:
+	# Pre-draft saves used wall 14's west end for swung wall 11. Latest
+	# authored geometry aligns 11 with swung 10 instead. Recognize only that
+	# exact obsolete transform, preserving home states and unrelated saved
+	# walls, keys, discoveries and party positions. Coordinate rebasing has
+	# already happened, so standalone and embedded checkpoints share this.
+	if not _walls_10_11_swung:
+		return false
+	var wall11 := $CSGBox3D11 as CSGBox3D
+	var rest14: Array = _walls_14_15_rest[0]
+	var old := Vector3((rest14[1] as Vector3).x - (rest14[0] as CSGBox3D).size.x * 0.5 - wall11.size.x * 0.5,
+		wall11.global_position.y, (rest14[1] as Vector3).z)
+	if wall11.global_position.distance_to(old) < 0.02 and absf(wall11.rotation.y) < 0.01:
+		var latest: Array = _walls_10_11_targets()[0]
+		wall11.global_position = latest[1]
+		wall11.rotation.y = float(latest[2])
+		return true
+	return false
+
+func _clear_party_from_migrated_draft_wall() -> void:
+	# A previously clear saved position can now be inside relocated wall 11.
+	# Its concave CSG surface does not eject a wholly buried capsule. Move
+	# only overlapping party members to the nearest hall side, preserving
+	# their resources, height, progress and the rest of the saved placement.
+	var wall := $CSGBox3D11 as CSGBox3D
+	var half := wall.size * 0.5
+	for diver in divers:
+		var local: Vector3 = wall.global_transform.affine_inverse() * diver.global_position
+		var segment_half: float = maxf(diver.height * 0.5 - diver.radius, 0.0)
+		var gap := Vector3(maxf(absf(local.x) - half.x, 0.0),
+			maxf(absf(local.y) - half.y - segment_half, 0.0), maxf(absf(local.z) - half.z, 0.0))
+		if gap.length_squared() >= diver.radius * diver.radius:
+			continue
+		var side := signf(local.z)
+		if side == 0.0:
+			side = signf(($CSGBox3D10 as CSGBox3D).global_position.z - wall.global_position.z)
+		local.z = side * (half.z + diver.radius + 0.12)
+		diver.global_position = wall.global_transform * local
+		diver.velocity = Vector3.ZERO
 
 # All names are resolved against the freshly authored scene before applying
 # any puzzle mutations. Corrupt IO may not reach get_node/indexing halfway

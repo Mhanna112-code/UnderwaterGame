@@ -61,7 +61,28 @@ func _ready() -> void:
 	no.position = Vector2(PANEL_SIZE.x * 0.5 + 20, PANEL_SIZE.y - 68)
 	no.pressed.connect(func() -> void: _answer(false))
 	panel.add_child(no)
+	_layout_panel(panel, label, yes, no)
+	get_viewport().size_changed.connect(_layout_panel.bind(panel, label, yes, no))
 	no.grab_focus.call_deferred()   # the safe choice is the default
+
+func _layout_panel(panel: Panel, label: Label, yes: Button, no: Button) -> void:
+	# Draft questions also appear in narrow playtest windows. Keep both
+	# choices inside the panel instead of clipping the fixed 560px layout.
+	var viewport := get_viewport().get_visible_rect().size
+	var width := minf(PANEL_SIZE.x, maxf(240.0, viewport.x - 32.0))
+	var height := minf(PANEL_SIZE.y, maxf(180.0, viewport.y - 32.0))
+	panel.offset_left = -width * 0.5
+	panel.offset_right = width * 0.5
+	panel.offset_top = -height * 0.5
+	panel.offset_bottom = height * 0.5
+	label.size = Vector2(width - 48.0, height - 100.0)
+	label.add_theme_font_size_override("font_size", 20 if width < 440.0 else 22)
+	var button_width := minf(150.0, (width - 72.0) * 0.5)
+	var left := (width - button_width * 2.0 - 20.0) * 0.5
+	yes.size = Vector2(button_width, 44)
+	no.size = yes.size
+	yes.position = Vector2(left, height - 68.0)
+	no.position = Vector2(left + button_width + 20.0, height - 68.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo):

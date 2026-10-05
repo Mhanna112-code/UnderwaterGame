@@ -1,0 +1,24 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+DRAFT_OUTGOING|real approach prompt and No latch=true
+DRAFT_OUTGOING|Yes moved below wall and released actor at clear exit=(332.2555, 1.8, 30.23211)
+DRAFT_OUTGOING_CASE|diver=1|exit=(332.2555, 1.8, 30.23211)
+DRAFT_OUTGOING_CASE|diver=2|exit=(332.2555, 1.8, 30.23211)
+DRAFT_RETURN_CASE|diver=0|swung=false|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=0|swung=false|incoming=true|position=(348.4379, 1.8, 34.64161)
+DRAFT_RETURN_CASE|diver=0|swung=true|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=0|swung=true|incoming=true|position=(348.4379, 1.8, 29.23376)
+DRAFT_RETURN_CASE|diver=1|swung=false|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=1|swung=false|incoming=true|position=(348.4379, 1.8, 34.64161)
+DRAFT_RETURN_CASE|diver=1|swung=true|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=1|swung=true|incoming=true|position=(348.4379, 1.8, 29.23376)
+DRAFT_RETURN_CASE|diver=2|swung=false|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=2|swung=false|incoming=true|position=(348.4379, 1.8, 34.64161)
+DRAFT_RETURN_CASE|diver=2|swung=true|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=2|swung=true|incoming=true|position=(348.4379, 1.8, 29.23376)
+DRAFT_GENERATED|outgoing_actors=3|return_cases=12|independent_path_samples=476
+MAZE DRAFT PASSAGES: clean

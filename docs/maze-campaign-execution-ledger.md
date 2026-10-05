@@ -2,8 +2,8 @@
 
 ## Current authoritative status
 
-Current feedback runtime is bffe1b50edd23199d346fac6b4ca71903b70acc0. Existing
-review alias is updated and locally/immutable/stable checksum-title-L checks
+Hosted feedback runtime is still bffe1b50edd23199d346fac6b4ca71903b70acc0. Existing
+review alias was updated for that revision and locally/immutable/stable checksum-title-L checks
 pass; portable control screenshots inspected. PCK and deployment identifiers
 are in the runtime manifest. Same-source Windows/Linux prerelease is published,
 ZIP/architecture/published hashes pass, target launches still unverified.
@@ -20,6 +20,16 @@ Real acquisition/return, six capsule/input/pause
 cases, 72 map boundaries, isolated-slot cold/legacy Load and actual door-key
 separation pass. Native acquisition/map frames inspected; external Control Room
 discoverability and browser acquisition remain open.
+
+October 5 source has advanced beyond that hosted runtime: `2f89a61` embeds the
+shared-party maze beyond the lab with a physical ramp, migrated checkpoint
+frames and actual boundary ownership. The following focused draft batch carries
+the latest outgoing/automatic-return pair and 10/11 alignment/barriers, including
+collision, teardown and old-save placement repairs. Actual capsules/keys,
+restores and native wide/narrow evidence are in docs/evidence/maze-drafts-oct5.
+The host has NOT been rebuilt for either batch. The completion ledger remains
+authoritative about pending campaign pivot, geometry, browser, balance and
+matching exports; focused green receipts are not full integration readiness.
 
 Approved later decision: Miguel confirmed the Tethys opening pivot. It replaces
 the older Cordys-opening opponent, not durable completion/optional training/
@@ -44,8 +54,9 @@ and the diver beside the solid chest; current checkpoint recovery also passes.
 This source batch is ready for review, not yet export/browser-hosted. See
 marc_swirl_spacing.bug-catalog.md for invalid observers and the earlier unaccepted
 native timeout. No complete normal-access/resource/polish claim is implied.
-Discovery legend, underpass, queue, embedded
-geometry and complete route/storage/audio/polish acceptance remain open.
+Discovery legend, queue, remaining embedded hazards/riders and complete
+route/storage/audio/polish acceptance remain open. The later October 5 batches
+above supersede this historical underpass/embedded-ownership status.
 
 ## Earlier batch receipts (historical, not latest hosted status)
 

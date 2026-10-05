@@ -15,7 +15,7 @@ Late changes need a separately recorded intake rather than silent scope expansio
 |---|---|
 | Complete #97/#99 behavioral dispositions | Existing intake plus latest f698bee/4ec6598 deltas require final exhaustive reconciliation. |
 | Embedded World/maze, one party/camera/input/HUD | October 5 batch embeds authored geometry and shares the same three live actors/inventory/session. Real bidirectional ramp movement, floor seams, one-step boundary movement, camera/HUD/Tab/R ownership and parked Sonar checks pass. 48 generated checkpoint cases, legacy cold Title Load and 12 World-return cases pass. Full embedded hazards/map/browser/campaign acceptance remains open. |
-| Latest underpass, outgoing/return drafts, barriers and riders | Pending latest geometry admission; sphere spacing/occlusion/vortex solidity already in 0561454. |
+| Latest underpass, outgoing/return drafts, barriers and riders | October 5 draft batch carries the one-way Break Room passage, automatic swung-wall return, latest 10/11 alignment and state barriers. Three outgoing actors, 12 incoming direction/state cases, whole-motion surface/solid-volume checks, outside-floor preservation, blocked exits, all three teardown cases, six JSON restores and cold legacy Title Load pass. Native 1280x720/360x640 question/motion/exit inspected. Full moving-wall rider, floor, whirlpool and normal-route geometry acceptance remains open. Sphere spacing/occlusion/vortex solidity already in 0561454. |
 | Earned Control Room map and exclusive chest | Carried in 6cc66c7 and reconciled through b916637: real pre-map acquisition/return, six chest capsule/input/pause cases (now including F), 72 regional L cases, disposable-slot cold/legacy Load and door-key/relic separation rerun clean. Earlier native frames inspected. Full embedded/browser acquisition/discoverability remains open; no dev grant. |
 | Discovery-only map and responsive first-open | Pending full earned-map/discovery admission and browser inspection. Existing map styling is not the whole requirement. |
 | F abilities / E interaction / Ctrl currents / Shift sink / Tab / Q | World/Maze F binding and Maze interaction-only E repaired; public help/keycaps/HUD/README reconciled. 86 real-input/zero-Oxygen/ownership checks plus real map E/Ctrl+E and chest regressions pass. Maze first-person aim, final embedded routing, review guide and historical video inspection remain pending. |
@@ -57,3 +57,13 @@ lab-victory prerequisite. Standalone maze review/legacy compatibility remains.
 Evidence and disclosed fixture limits: docs/evidence/lab-maze-ramp-oct5.
 The current preview must not be treated as this source until rebuilt and checked;
 final browser/exports remain open. No full-suite or merge-ready claim is made.
+
+October 5 draft passage batch: a dark marker is not a physical hole. Actual
+motion exposed the solid floor/skirt, shared-actor teardown and concave CSG
+interior defects; bounded transient floor pieces, deeper clearance, safe abort
+placement and solid-volume validation repair them. The migration recognizes
+only the old swung wall-11 transform and clears overlapping saved party members
+without changing their resources or other puzzle progress. Existing input-owner
+fixture now swims through the embedded entrance instead of requiring a removed
+scene-changing portal. Evidence: docs/evidence/maze-drafts-oct5. The hosted
+artifact remains bffe1b5, not this source; the full objective stays active.

@@ -77,7 +77,7 @@ below are not admitted by this bounded delivery; full route/polish remains open.
 | #97 c035c20 | Half sphere-room rock columns, room to swim through | Locally carried: six independent chord checks, actual three-diver swimming and preserved contact damage pass. Native inspection required near-camera presentation fade and missing vortex solidity. Settled native approach/key/collision and checkpoint checks pass; fresh export/browser admission pending, not yet hosted. |
 | #97 f698bee | Control Room map box narrower, deeper down steps | Read completely. Pending coordinated room-box/legend rendering admission, not carried by the acquired chest alone. Preserve clear maze-wall strokes and chest/name separation. |
 | #97 4ec6598: radius special sites | Seven invisible radius sites replace guardians; Sonar red markers; R gates entry, once per visit | Read completely. Pending: retain chosen-diver minigames/rewards and actual resource owner; persist consumed/revealed sites and randomized positions instead of replaying rewards on cold Load. Check radius through walls/height and R-on while already inside. Not a replacement for puppet/Cordys authored bosses. |
-| #97 4ec6598: underpass/geometry | Outbound Break Room draft; automatic inbound wall-11 draft; new state barriers and wall alignment | Read completely. Supersedes earlier bidirectional underpass assumption. Pending actual capsules in both directions, all wall states, no trap or world-wide barrier; reconcile embedded lab/maze geometry. |
+| #97 4ec6598: underpass/geometry | Outbound Break Room draft; automatic inbound wall-11 draft; new state barriers and wall alignment | October 5 focused admission carries the one-way pair and 10/11 barriers/alignment into shared ownership. Actual three-actor outgoing paths, 12 return state/direction cases, moving-wall negative, independent surface/interior checks and held-key exit pass. Floor/skirt clipping, buried teardown actor, blocked concave-CSG exit and old-save geometry/placement defects reproduced and repaired. Six restores and cold legacy Title Load pass. Native wide/narrow inspection in docs/evidence/maze-drafts-oct5. Whole riders/floors/whirlpool and earned campaign route remain pending; not yet hosted. |
 | #97 4ec6598: E/F, Swap, orb | F uses abilities, E only interacts; Swap free; grapple reels item to Musashi | Orb b064f99 merged with earned-map batch; F/E dispatch, help/keycaps/HUD/README and exclusive World menu ownership admitted in 133f715 with 86 checks. Existing environmental verbs remain free. Final embedded/first-person Maze integration and historical media/hosted guide reconciliation still pending. |
 | #97 4ec6598: recovery economy | Touch restores at maze save pads; only level-up refills after a battle, no ordinary victory heal | Save-contact restoration already exists in our campaign checkpoint. Other pads pending. Removing the current 30% regroup changes route attrition: must re-prove legal-resource puppet/Cordys/lab wins and recovery availability before admission; not a cosmetic merge. Preserve prologue/optional-training recovery contracts. |
 | #97 4ec6598: first map / marker copy | Synchronous first-open map layout before paused intro; inline hidden-item icon | Pending coordinated introduction/legend layout and existing popup ownership/lifetime repair. Do not overwrite the previously fixed freed-label await or FIFO caller ownership. |
@@ -223,3 +223,20 @@ errors (`/tmp/underwater-late-orb-*.log`). No fresh export has been delivered;
 the unchanged stable artifact remains bffe1b5, and pending table rows remain
 open. Miguel's confirmed Tethys opening amendment is saved in the plan, not
 implemented by this orb/chest integration.
+
+## October 5 shared-world draft passage admission
+
+Builds on pushed `2f89a61` lab-side ramp/shared ownership, not a new branch or
+release. Outbound passage is Break Room only, with safe No focus/reapproach;
+automatic incoming passage exists only under settled swung wall 11. During
+motion, a bounded temporary floor opening retains solid floor elsewhere, all
+input/save ownership stays exclusive, and teardown returns the actor to its
+clear departure before sealing. Concave CSG interior validation supplements
+physics surface queries. Old swung transforms are migrated and only affected
+saved actors are cleared to the hall side; HP/Oxygen/inventory stay intact.
+
+The prior source table's "either side" underpass wording is historical and
+superseded by this latest authored one-way pair. Old Wall27 excursions remain
+absent from the embedded campaign. Full moving-wall riders, hazard/floor routes,
+discovery UI, first-person aim, Sonar, radius sites and queues remain separate
+pending rows. The existing bffe1b5 hosted review is still stale for these batches.
