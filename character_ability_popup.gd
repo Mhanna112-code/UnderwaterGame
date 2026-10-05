@@ -25,6 +25,11 @@ const ENABLE_VIDEO_CLIPS := true
 
 var _pages: Array[Dictionary] = []
 var _index := 0
+var _pending_batches: Array[Dictionary] = []
+var _page_owner: WeakRef
+var _mouse_mode_before := Input.MOUSE_MODE_VISIBLE
+var _paused_before := false
+var _owns_pause := false
 # Cached after the first render - see _wasd_cluster_texture(). Rendering the
 # WASD cluster to a texture takes a couple of real frames (a SubViewport
 # needs to actually draw before its texture is valid), so this is warmed in
@@ -115,6 +120,14 @@ func _build_close_button() -> void:
 # as [pulse] BBCode text elsewhere (pulse_text_effect.gd) and TutorialBook's
 # own Next/Close pulse (tutorial_book.gd) rather than a third effect system.
 func _process(_delta: float) -> void:
+	# Marc's battle deferral, with scene lifetime and multiple callers retained.
+	# A paused Game Over/title is not an exploration resume opportunity.
+	if not _pending_batches.is_empty() and not _battle_running() and not get_tree().paused \
+			and not (%AbilityExplanationPanel as PanelContainer).visible:
+		var batch: Dictionary = _pending_batches.pop_front()
+		var owner_ref: WeakRef = batch.get("owner")
+		if owner_ref == null or is_instance_valid(owner_ref.get_ref()):
+			_display_pages(batch["pages"], owner_ref)
 	if not (%AbilityExplanationPanel as PanelContainer).visible:
 		return
 	var flash := 0.35 + 0.65 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0))
@@ -151,12 +164,43 @@ func _style_panel() -> void:
 	media_style.set_border_width_all(1)
 	(%MediaFrame as PanelContainer).add_theme_stylebox_override("panel", media_style)
 
-# `pages` entries: {"slot": Slot (or null), "title": String, "body": String}.
-func open(pages: Array[Dictionary]) -> void:
+func _battle_running() -> bool:
+	return is_inside_tree() and get_tree().get_first_node_in_group("battle") != null
+
+func suspend_for_battle() -> void:
+	if not (%AbilityExplanationPanel as PanelContainer).visible:
+		return
+	_pending_batches.push_front({"pages": _pages.slice(_index), "owner": _page_owner})
+	_clear_highlights()
+	_clear_media()
+	(%AbilityExplanationPanel as PanelContainer).hide()
+	_pages = []
+	# Battle now owns pause/cursor; don't restore exploration capture over it.
+	if _owns_pause:
+		get_tree().paused = false
+	_owns_pause = false
+
+# `owner` prevents autoload-held pages surviving their World/Maze scene.
+# Existing page-only callers remain supported for standalone explanations.
+func open(pages: Array[Dictionary], owner: Node = null) -> void:
 	if pages.is_empty():
 		return
+	var owner_ref: WeakRef = weakref(owner) if is_instance_valid(owner) else null
+	if _battle_running():
+		_pending_batches.append({"pages": pages, "owner": owner_ref})
+		return
+	_display_pages(pages, owner_ref)
+
+func _display_pages(pages: Array[Dictionary], owner_ref: WeakRef) -> void:
+	if not (%AbilityExplanationPanel as PanelContainer).visible:
+		_mouse_mode_before = Input.mouse_mode
+		_paused_before = get_tree().paused
+	_clear_highlights()
 	_pages = pages
+	_page_owner = owner_ref
 	_index = 0
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_owns_pause = true
 	get_tree().paused = true
 	_refresh()
 	(%AbilityExplanationPanel as PanelContainer).show()
@@ -166,11 +210,11 @@ func _refresh() -> void:
 	(%Title as Label).text = String(page.get("title", ""))
 	_build_paragraph(String(page.get("body", "")))
 	for p in _pages:
-		var slot: Slot = p.get("slot")
-		if slot != null:
+		var slot: Variant = p.get("slot")
+		if is_instance_valid(slot):
 			slot.set_highlighted(slot == page.get("slot"))
 	(%PopupClose as Button).text = "Close" if _index >= _pages.size() - 1 else "Next"
-	var page_slot: Slot = page.get("slot")
+	var page_slot: Variant = page.get("slot")
 	# "media" lets a page pick its own clip explicitly - needed the moment a
 	# diver gets more than one page (Maxilani's Swap and Sonar are two
 	# separate pages now, see world.gd's _show_ability_popups()), since
@@ -183,7 +227,7 @@ func _refresh() -> void:
 	if page.get("media_control") is Callable:
 		_show_media_control((page["media_control"] as Callable).call())
 		return
-	var media_key: String = String(page.get("media", page_slot.diver.ability_id if page_slot != null else ""))
+	var media_key: String = String(page.get("media", page_slot.diver.ability_id if is_instance_valid(page_slot) and is_instance_valid(page_slot.diver) else ""))
 	_refresh_media(media_key)
 
 func _show_media_control(media: Control) -> void:
@@ -217,6 +261,11 @@ func _build_paragraph(body: String) -> void:
 	label.append_text(parts[0])
 	if parts.size() > 1:
 		var tex := await _wasd_cluster_texture()
+		# Next/Close or battle suspension may replace this paragraph while its
+		# first WASD texture awaits real render frames. Never finish an obsolete
+		# page by writing into the freed RichTextLabel.
+		if not is_instance_valid(label) or label.is_queued_for_deletion():
+			return
 		# Native size, not squashed to fit a single text line - add_image()
 		# used to force this into 54x18 against the texture's actual 90x63,
 		# flattening the two-row W/A/S/D layout into an illegible sliver.
@@ -411,17 +460,38 @@ func _refresh_media(ability_id: String) -> void:
 	frame.add_child(placeholder)
 
 func _on_next_pressed() -> void:
+	if _pages.is_empty():
+		return
 	if _index >= _pages.size() - 1:
 		_close()
 		return
 	_index += 1
 	_refresh()
 
-func _close() -> void:
+func _clear_highlights() -> void:
 	for p in _pages:
-		var slot: Slot = p.get("slot")
-		if slot != null:
+		var slot: Variant = p.get("slot")
+		if is_instance_valid(slot):
 			slot.set_highlighted(false)
+
+func _clear_media() -> void:
+	var frame := %MediaFrame as PanelContainer
+	for player in frame.find_children("*", "VideoStreamPlayer", true, false):
+		player.stop()
+		player.stream = null
+	for child in frame.get_children():
+		frame.remove_child(child)
+		child.queue_free()
+
+func _close() -> void:
+	_clear_highlights()
+	_clear_media()
 	(%AbilityExplanationPanel as PanelContainer).hide()
-	get_tree().paused = false
+	_pages = []
+	_page_owner = null
+	if _owns_pause:
+		get_tree().paused = _paused_before
+		# Restore before `closed`: a listener may open another modal immediately.
+		Input.mouse_mode = _mouse_mode_before
+	_owns_pause = false
 	closed.emit()

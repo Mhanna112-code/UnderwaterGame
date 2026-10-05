@@ -12,6 +12,16 @@ the real menu/spell/title regression pass. Evidence directory:
 `/Volumes/Totallynotaharddrive/underwater-marc-pause.zxKiXs`.
 This is NOT a new deployed build or acceptance of the remaining maze changes.
 
+Marc b41955c popup ownership is now adapted locally: actual Battle entry
+suspends information, pending pages wait through combat and recovery/title pause,
+remaining lessons and subsequent callers resume FIFO, and scene owners prevent
+stale World/Maze pages. Hidden clip decoding is stopped; captured cursor is
+released/restored. Native rapid walkthrough exposed a WASD paragraph continuation
+writing into freed UI despite a printed clean result; repaired and rerun with
+script-error rejection. Real ownership, native embedded video and tutorial
+victory handoff pass. Native captures inspected in
+`/Volumes/Totallynotaharddrive/underwater-marc-popup.V6EPiq`.
+
 October 4 character-delivery artifact: b0bee59 now serves the existing stable
 feedback alias, not main/public. PCK 93,209,800 bytes / SHA256
 de249eed5c6a1db0074c608c23738df1159b59b27034d2184ae10ffd0b014132.

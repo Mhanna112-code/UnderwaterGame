@@ -3802,7 +3802,7 @@ func _show_ability_popups() -> void:
 	# world.gd's own compile and left the affected gate hanging forever
 	# with nothing left to run and no reachable quit(). The NodePath lookup
 	# is a runtime call, not a parse-time identifier, so it works either way.
-	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
+	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages, self)
 
 func _build_route_objective_hud() -> void:
 	route_objective_panel = PanelContainer.new()

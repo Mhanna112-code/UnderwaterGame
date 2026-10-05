@@ -647,7 +647,7 @@ func _update_strong_room_warning() -> void:
 				"slot": null,
 				"media_control": func() -> Control: return StrongZoneDemoClip.new(),
 			}]
-			popup.call("open", pages)
+			popup.call("open", pages, self)
 	_update_encounter_status(inside)
 	if _room_warning == null:
 		if not inside:
@@ -1137,7 +1137,7 @@ func _open_switch_minigame() -> void:
 			"media_control": func() -> Control: return PortraitDemoClip.new(demo_textures),
 		}]
 		popup.closed.connect(_open_switch_minigame, CONNECT_ONE_SHOT)
-		popup.call("open", pages)
+		popup.call("open", pages, self)
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mouse_look = false
@@ -1484,7 +1484,7 @@ func _build_sonar_vision_pickup() -> void:
 					"body": "A key item that lets you see invisible objects. To see them you need to have sonar on and the Sonar Vision equipped: play as Maxilani and switch her sonar on with Q, and keep Sonar Vision equipped (G equips or unequips it). It's equipped now.",
 					"slot": null,
 				}]
-				popup.call("open", pages)
+				popup.call("open", pages, self)
 			pickup.queue_free())
 
 # --- Boss rooms ------------------------------------------------------------------

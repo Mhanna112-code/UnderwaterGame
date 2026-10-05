@@ -641,6 +641,17 @@ func _register_stat_effects(attack: Dictionary) -> void:
 						stat_effects[attack_name]["player"]["evasion"] = \
 							effect["evasion"]
 
+# Marc's info-popup/combat ownership contract. Enter-tree runs before Battle
+# builds UI, so an interrupted explainer cannot leave the new fight paused.
+func _enter_tree() -> void:
+	add_to_group("battle")
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup != null and popup.has_method("suspend_for_battle"):
+		popup.call("suspend_for_battle")
+
+func _exit_tree() -> void:
+	remove_from_group("battle")
+
 func _ready() -> void:
 	for diver in BASE_MOVES:
 		for attack in BASE_MOVES[diver]:
