@@ -547,6 +547,19 @@ func _register_stat_effects(attack: Dictionary) -> void:
 						stat_effects[attack_name]["player"]["evasion"] = \
 							effect["evasion"]
 
+# Overlays that draw above the battle screen - the whirlpool's "Danger"
+# warning, info popups - keep out of the way for as long as a battle runs.
+func _enter_tree() -> void:
+	add_to_group("battle")
+	Whirlpool.set_battle_running(true)
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup != null and popup.has_method("suspend_for_battle"):
+		popup.call("suspend_for_battle")
+
+func _exit_tree() -> void:
+	remove_from_group("battle")
+	Whirlpool.set_battle_running(not get_tree().get_nodes_in_group("battle").is_empty())
+
 func _ready() -> void:
 	for diver in BASE_MOVES:
 		for attack in BASE_MOVES[diver]:

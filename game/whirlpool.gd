@@ -57,6 +57,13 @@ var armed := true
 const WARNING_TEXT := "Danger: Whirlpool ahead"
 const WARNING_COLOR := Color(1.0, 0.6, 0.45)
 static var _warning_caption: Label
+# Hidden while a battle runs (Battle sets this), back after if still near.
+static var _battle_running := false
+
+static func set_battle_running(on: bool) -> void:
+	_battle_running = on
+	if _warning_caption != null and is_instance_valid(_warning_caption):
+		_warning_caption.visible = not _warning_whirlpools.is_empty() and not on
 static var _warning_whirlpools: Dictionary = {}   # Whirlpool -> true while a diver is inside its warning radius
 var _divers_in_warning: Dictionary = {}           # Diver -> true
 # Optional: returns true when something (e.g. a current running through
@@ -221,7 +228,7 @@ func _update_warning_caption() -> void:
 		if _warning_whirlpools.is_empty() or not is_inside_tree():
 			return
 		_build_warning_caption()
-	_warning_caption.visible = not _warning_whirlpools.is_empty()
+	_warning_caption.visible = not _warning_whirlpools.is_empty() and not _battle_running
 
 func _build_warning_caption() -> void:
 	var layer := CanvasLayer.new()
