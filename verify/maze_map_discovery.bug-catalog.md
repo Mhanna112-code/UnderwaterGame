@@ -31,6 +31,7 @@ legend versus narrow stacked legend; present/missing/invalid saved intro state.
 | DISC-5 | First-open lesson replays after load or new optional field invalidates old saves. | JSON round-trip through checkpoint validator and public restore, real L after load; legacy missing field accepted, malformed field rejected. | New/legacy JSON round trips and five invalid types pass. |
 | DISC-6 | Browser smoke falsely requires a pre-granted map, or accepts ambient frames as map success. | Served hash plus actual keyboard swimming/E acquisition then L/OCR; no grant or internal state injection. The existing 703fa50 rejection is an obsolete observer, not a product red. | confirmed obsolete observer |
 | DISC-7 | A narrow text-only map lesson leaves its panel offsets behind when a later authored video lesson opens. | Public popup pages: narrow text lesson, then a real Grapple clip at desktop size; inspect the visible panel's centering and media bounds. No private refresh call. | Characterized; viewport resize refreshes text offsets before media opens, so suspected desktop regression retracted. |
+| DISC-8 | An unread orange notice remains drawn through first L because the lesson pauses before the next physics visibility update. | Actual chest E/R/L, assert active notice before L and hidden banner immediately after the first dispatched L; keep the paused lesson and verify the same notice reappears after closing the overview. Physics is disabled in this existing projection fixture, so no later frame can repair the failure. | caught; synchronous Maze-owned visibility fixed; headless/native checks pass |
 
 Each test asserts output semantics, not a private call count or exact prose.
 Wrong-but-stable hidden content, invalid projection, missing lesson or resource
@@ -47,6 +48,12 @@ grant fails; implementation refactors preserving these public behaviors pass.
 
 ## Evaluation
 
+- October 5 Sonar composition follow-up: actual first L with an unread notice
+  reproduces DISC-8 while physics is disabled and the lesson pauses the tree.
+  Maze listens to map visibility and relinquishes/restores captions in the
+  same dispatch. New paused red/green and 12 native viewport receipts are in
+  `docs/evidence/sonar-vision-oct5`; prior map/browser claims below stay bounded
+  to their original source, not this newly changed export.
 - Caught: missing discovery-only legend and visited-boss POI; the text-only
   first-open lesson clipped 360x640. Captured reds and accepted native receipt
   are in `docs/evidence/maze-map-discovery-oct5`.

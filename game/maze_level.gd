@@ -184,6 +184,7 @@ func set_maze_active(on: bool) -> void:
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 	$HUD.visible = on
 	($Camera3D as Camera3D).current = on
+	_update_sonar_vision() # Clear stale reveal before an inactive subtree stops.
 
 func enter_from_world() -> void:
 	if route_state != null:
@@ -330,7 +331,6 @@ func _setup_walls():
 	_build_boss_triggers()
 	_build_vortex_chest()
 	_build_map_chest()
-	_build_sonar_vision_pickup()
 	_build_path_button()
 
 # CSGBox3D6 does NOT rotate or move at runtime at all - it's placed exactly
@@ -799,13 +799,15 @@ func _announcement_readable() -> bool:
 
 func _refresh_announcement_visibility() -> void:
 	var captions_allowed := _announcement_readable()
-	_banner.visible = _banner_timer > 0.0 and captions_allowed
+	var notice_visible := _banner != null and _banner_timer > 0.0 and captions_allowed
+	if _banner != null:
+		_banner.visible = notice_visible
 	# Status/goal and an announcement share the bottom reading area. Give
 	# only one surface ownership rather than painting text on top of text.
 	for caption in ["Controls", "GoalLabel"]:
 		var node := get_node_or_null("HUD/" + caption) as CanvasItem
 		if node != null:
-			node.visible = captions_allowed and not _banner.visible
+			node.visible = captions_allowed and not notice_visible
 
 var _responsive_captions: Array[Label] = []
 
@@ -1504,12 +1506,13 @@ func _place_divers_at_secret_entrance() -> void:
 # --- Sphere room and Sonar Vision ---------------------------------------------
 # The room behind wall 16's door is a big room full of hidden spheres
 # swirling around its centre (SwirlRoom). They're invisible to the eye; the
-# minimap always shows them as red circles. The Sonar Vision item (picked up
-# in the room behind the Box30/32 door, toggled with Q) shows them in 3D
-# while the active diver is inside the sphere room.
+# sonar minimap shows them as red circles. Maxilani's Q also shows them in
+# 3D while she is the active diver inside the sphere room. No pickup or G.
 var _swirl_room: SwirlRoom
-var has_sonar_vision := false
-var sonar_vision_equipped := false   # G, once you have it
+# Legacy checkpoint fields remain round-trippable but no longer gate vision.
+# New runs have vision as part of Q; old false values must not disable it.
+var has_sonar_vision := true
+var sonar_vision_equipped := true
 
 func _build_sphere_room() -> void:
 	var back := get_node_or_null("Room16Back") as CSGBox3D
@@ -1533,67 +1536,9 @@ func _build_sphere_room() -> void:
 	_swirl_room.setup(interior, wall_bottom - _FLOOR_CLEARANCE, wall_top + _CEILING_CLEARANCE)
 	add_child(_swirl_room)
 	_swirl_room.diver_hit.connect(func(d: Diver) -> void:
-		# Only while the rocks are unseen - with sonar on and Sonar Vision
-		# equipped the player can see what hit them.
+		# Q reveals the rocks; no separate equipment is needed to see a hit.
 		if d == _diver and not sonar_vision_active():
 			_announce("Some hidden items in this room seem to be doing damage...", 2.5))
-
-# The Sonar Vision pickup: a spinning cyan lens in the middle of the room
-# behind the Box30/32 door. Swim into it to take it (it's switched on).
-func _build_sonar_vision_pickup() -> void:
-	if _door30_center == Vector3.ZERO:
-		return
-	# In the hall between the two boss doors, a little north of their line.
-	var box33 := $CSGBox3D33 as CSGBox3D
-	var spot := Vector3((_door30_center.x + box33.global_position.x) * 0.5, ($DiverEntry as Node3D).global_position.y + 0.3, _door30_center.z + 6.0)
-	var pickup := Area3D.new()
-	pickup.name = "SonarVisionPickup"
-	pickup.collision_mask = 2   # divers
-	var shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = 1.3
-	shape.shape = sphere
-	pickup.add_child(shape)
-	var lens := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.35
-	torus.outer_radius = 0.6
-	lens.mesh = torus
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.3, 0.95, 1.0)
-	mat.emission_enabled = true
-	mat.emission = Color(0.3, 0.95, 1.0)
-	mat.emission_energy_multiplier = 2.5
-	lens.material_override = mat
-	lens.rotation.x = PI * 0.5
-	pickup.add_child(lens)
-	var label := Label3D.new()
-	label.text = "Sonar Vision"
-	label.font_size = 48
-	label.pixel_size = 0.008
-	label.outline_size = 8
-	label.modulate = Color(0.6, 0.97, 1.0)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.position = Vector3(0, 1.2, 0)
-	pickup.add_child(label)
-	add_child(pickup)
-	pickup.global_position = spot
-	var spin := create_tween().set_loops()
-	spin.tween_property(lens, "rotation:y", TAU, 2.0).from(0.0)
-	pickup.body_entered.connect(func(body: Node3D) -> void:
-		if maze_active and body is Diver and not has_sonar_vision:
-			has_sonar_vision = true
-			sonar_vision_equipped = true
-			_announce("Sonar Vision acquired (equipped). To see invisible objects: Sonar Vision equipped (G) and Maxilani's sonar on (Q).", 8.0)
-			var popup := get_node_or_null("/root/CharacterAbilityPopup")
-			if popup != null:
-				var pages: Array[Dictionary] = [{
-					"title": "Sonar Vision",
-					"body": "A key item that lets you see invisible objects. To see them you need to have sonar on and the Sonar Vision equipped: play as Maxilani and switch her sonar on with Q, and keep Sonar Vision equipped (G equips or unequips it). It's equipped now.",
-					"slot": null,
-				}]
-				popup.call("open", pages, self)
-			pickup.queue_free())
 
 # --- Boss rooms ------------------------------------------------------------------
 # Secret boss room: the whole space between Box30 and Box32 behind the
@@ -2245,11 +2190,10 @@ func _update_sonar_vision() -> void:
 		return
 	_swirl_room.set_revealed(sonar_vision_active() and _swirl_room.contains(_diver.global_position))
 
-# Invisible objects show only while all of this holds: Sonar Vision owned and
-# equipped, and the diver being played has the sonar passive (Maxilani) with
-# her sonar switched on.
+# Vision follows the live area's active sonar diver, not obsolete saved item
+# or equipment flags. Q still consumes Oxygen through Diver's existing timer.
 func sonar_vision_active() -> bool:
-	return has_sonar_vision and sonar_vision_equipped and _diver != null and _diver.passive_id == "sonar" and _diver.sonar_active
+	return maze_active and _diver != null and _diver.passive_id == "sonar" and _diver.sonar_active
 
 # Hidden things the minimap tracks as red circles.
 # The secret item room's rocks that haven't been broken yet, within
@@ -2260,7 +2204,7 @@ var _secret_room_rocks: Array[Node3D] = []
 
 func sonar_rock_positions() -> PackedVector3Array:
 	var out := PackedVector3Array()
-	if _diver == null or _diver.passive_id != "sonar" or not _diver.sonar_active:
+	if not sonar_vision_active():
 		return out
 	for rock in _secret_room_rocks:
 		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and rock.global_position.distance_to(_diver.global_position) <= SONAR_ROCK_RADIUS:
@@ -2269,7 +2213,7 @@ func sonar_rock_positions() -> PackedVector3Array:
 
 # Only while the diver being played has sonar on (Maxilani, Q).
 func hidden_marker_positions() -> PackedVector3Array:
-	if _swirl_room == null or _diver == null or _diver.passive_id != "sonar" or not _diver.sonar_active:
+	if _swirl_room == null or not sonar_vision_active():
 		return PackedVector3Array()
 	return _swirl_room.positions()
 
@@ -2823,8 +2767,6 @@ func _update_world_hud() -> void:
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
 	after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
-	if has_sonar_vision:
-		after += "  ·  G: Sonar Vision (%s)" % ("Equipped" if sonar_vision_equipped else "Off")
 	_world_hud_after.text = after
 	var map_ok := can_open_nav_map()
 	_world_hud_map.visible = map_ok
@@ -3060,6 +3002,10 @@ func _build_minimap() -> void:
 	minimap.offset_bottom = 166.0
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(minimap)
+	# L's first-open lesson pauses the tree in the same input dispatch. The
+	# maze owns its captions and must relinquish them synchronously, not wait
+	# for a physics update that the lesson has just prevented from running.
+	minimap.main_map.visibility_changed.connect(_refresh_announcement_visibility)
 
 # A persistent on-screen hint for _rotate_left_currents_left()/_right()
 # below - kept as its own label rather than reusing $HUD/Controls, since
@@ -4490,9 +4436,6 @@ func _unhandled_input(e: InputEvent) -> void:
 			_announce("Sonar %s." % ("on" if _diver.toggle_sonar() else "off"))
 		else:
 			_announce("Only Maxilani has sonar.")
-	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_G and has_sonar_vision:
-		sonar_vision_equipped = not sonar_vision_equipped
-		_announce("Sonar Vision %s." % ("equipped" if sonar_vision_equipped else "unequipped"))
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_TAB:
 		_switch_diver()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_F:
@@ -5993,10 +5936,6 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	if _rock_split and is_instance_valid(_split_rock):
 		_split_rock.queue_free()
 		_split_rock = null
-	if has_sonar_vision:
-		var pickup := get_node_or_null("SonarVisionPickup")
-		if pickup != null:
-			pickup.queue_free()
 	for kind in _boss_triggers.keys():
 		if not data.boss_triggers.has(kind):
 			_remove_boss_trigger(String(kind))

@@ -27,6 +27,9 @@ func _run() -> void:
 	await create_timer(2.3).timeout
 	_expect(maze.key_items.count("maze_nav_map") == 1, "DISC-1 actual chest E did not grant map")
 	await _key(KEY_ESCAPE)
+	await _key(KEY_R)
+	var unread_notice := maze._banner.text
+	_expect(maze._banner.visible and not unread_notice.is_empty(), "DISC-8 active notice fixture is not readable before first L")
 	# Input.parse_input_event is buffered until the next event dispatch. Observe
 	# the first dispatched frame: the lesson pauses further map processing.
 	var press := InputEventKey.new()
@@ -37,6 +40,7 @@ func _run() -> void:
 	var popup := root.get_node("CharacterAbilityPopup")
 	var panel := popup.get_node("%AbilityExplanationPanel") as Control
 	_expect(map.main_map.visible and panel.visible and paused, "DISC-1 first L did not open the navigation lesson over a paused map")
+	_expect(not maze._banner.visible, "DISC-8 unread orange notice draws through the paused first-open map")
 	_expect(String((popup.get_node("%Title") as Label).text).contains("Navigation"), "DISC-1 first L presented a different lesson")
 	var lines := map.main_map.find_children("*", "Line2D", false, false)
 	_expect(not lines.is_empty(), "DISC-1 first-open map has no projected discovered walls before pause")
@@ -49,6 +53,7 @@ func _run() -> void:
 	await _key(KEY_ESCAPE)
 	await _capture_map()
 	await _key(KEY_L)
+	_expect(maze._banner.visible and maze._banner.text == unread_notice, "DISC-8 closing the map loses or fails to restore unread notice")
 	await _key(KEY_L)
 	_expect(not panel.visible and not paused, "DISC-1 navigation lesson repeats every L open")
 	await _key(KEY_L)

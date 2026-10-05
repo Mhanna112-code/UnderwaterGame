@@ -69,3 +69,9 @@ disclose any pre-granted map and don't claim ordinary acquisition.
   acquisition/return, real Stun/Angler dispatch, WeakRef tutorial FIFO and missing/
   malformed checkpoint handling pass. This does not claim the full gates, normal
   campaign routes or a current hosted build.
+- Sonar follow-up: coalescing now distinguishes Q from R, so each control
+  keeps its latest state without deleting queued rewards. Model coverage is
+  now 484 cases. Full live R/Q/menu/save-contact/E rerun passes after adapting
+  post-physics observers to a complete update. A separate paused first-L
+  regression confirms the real synchronous map-caption leak (DISC-8) and
+  its repair; this is not merely an assertion timing adjustment.

@@ -76,8 +76,13 @@ func _notice_sequence(owner: Node, banner: Label, map_owner: bool, already_r := 
 		_expect(owner.inventory_menu.visible, "MSG-3 actual Escape did not open inventory")
 	await create_timer(4.25, true).timeout
 	await _key(KEY_L if map_owner else KEY_ESCAPE)
-	await physics_frame
-	_expect(banner.text == expected and (not map_owner or banner.visible), "MSG-3 hidden modal/map consumed unread notice in " + kind)
+	# physics_frame resumes before the owner's HUD update. Observe a complete
+	# readable update after closing rather than an old hidden-label frame.
+	for frame in 3:
+		await physics_frame
+	_expect(banner.text == expected and (not map_owner or banner.visible), "MSG-3 hidden modal/map consumed unread notice in " + kind
+		+ "|expected=" + expected + "|actual=" + banner.text + "|visible=" + str(banner.visible)
+		+ ("|map=" + str(owner.get_node("HUD/MazeMiniMap").main_map.visible) + "|modal=" + str(owner.any_modal_open()) if map_owner else ""))
 	print("ORANGE INPUT|", kind, "|R/Q FIFO, twenty R coalescing and hidden-owner preservation")
 
 func _save_contact_sequence(world: World) -> void:
@@ -137,7 +142,10 @@ func _save_contact_sequence(world: World) -> void:
 	await _key(KEY_P)
 	_expect(world.save_point_menu.visible, "MSG-4 real P cannot open the restored save prompt")
 	await _key(KEY_P)
-	_expect(not world.save_point_menu.visible and world.banner.text.contains("Press P"), "MSG-4 closing real P loses the held prompt")
+	for frame in 3:
+		await physics_frame
+	_expect(not world.save_point_menu.visible and world.banner.text.contains("Press P"), "MSG-4 closing real P loses the held prompt"
+		+ "|menu=" + str(world.save_point_menu.visible) + "|banner=" + world.banner.text)
 	print("ORANGE INPUT|World|actual W save contact restores all resources behind two notices; persistent P returns")
 
 func _queued_interaction_sequence(maze: MazeLevel) -> void:

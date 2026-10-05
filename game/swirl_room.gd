@@ -29,7 +29,7 @@ extends Node3D
 # every physics frame; hits happen whether or not the spheres are visible.
 #
 # The rocks are invisible unless `set_revealed(true)` - MazeLevel does that
-# while Maxilani has her sonar on, Sonar Vision is equipped and she's inside
+# while active Maxilani has her Q sonar on and she's inside
 # the room. They're lumpy low-poly rocks in the maze's scenery-rock colours,
 # each turned and sized a little differently, with a faint cyan sonar rim.
 # `positions()` is what the minimap draws as red circles either way.

@@ -95,6 +95,11 @@ func _run() -> void:
 		_expect(FileAccess.get_file_as_bytes(SaveManager.slot_path(SLOT)) == checkpoint_bytes,
 			"INT-04 rejected save replaces the last usable checkpoint")
 		_expect(maze.campaign_session.selected_slot == SLOT, "INT-04 rejected save changes selected checkpoint")
+		# Orange FIFO preserves earlier contact/success notices. The denied
+		# save's warning must become readable, not overwrite them instantly.
+		var failure_deadline := Time.get_ticks_msec() + 18000
+		while not _save_failure(maze) and Time.get_ticks_msec() < failure_deadline:
+			await physics_frame
 		_expect(_save_failure(maze), "INT-04 rejected save has no visible failure explanation")
 		DirAccess.remove_absolute(pending_path)
 	maze.inventory = {"potion": 99}

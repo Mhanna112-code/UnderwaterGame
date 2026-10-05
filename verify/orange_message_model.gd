@@ -44,6 +44,23 @@ func _initialize() -> void:
 			_expect(queue.current_text() == "Found the Ancient Relic" and queue.pending_messages() == expected,
 				"MSG-2 repeated encounter toggles displace current reward, duplicate or evict additional loot")
 			cases += 1
+	# SV-5: independently coalesce both controls, never all toggles together.
+	# Sonar/R spam must retain both rewards and each control's latest state.
+	for sonar_toggles in range(1, 17):
+		for encounter_toggles in range(1, 17):
+			var mixed = Queue.new()
+			mixed.push("Sonar on.")
+			mixed.push("Door unlocked")
+			mixed.push("Relic earned")
+			for i in sonar_toggles:
+				mixed.push("Sonar off." if i % 2 == 0 else "Sonar on.")
+			for i in encounter_toggles:
+				mixed.push("Random encounters off." if i % 2 == 0 else "Random encounters on.")
+			var latest_sonar := "Sonar off." if sonar_toggles % 2 == 1 else "Sonar on."
+			var latest_r := "Random encounters off." if encounter_toggles % 2 == 1 else "Random encounters on."
+			_expect(mixed.current_text() == latest_sonar and mixed.pending_messages() == ["Door unlocked", "Relic earned", latest_r],
+				"SV-5 mixed Q/R toggles lose either control's latest state or queued rewards")
+			cases += 1
 	var queue = Queue.new()
 	queue.push("Random encounters off.")
 	queue.push("Door unlocked", 8.0)

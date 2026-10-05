@@ -11,6 +11,13 @@ Miguel explicitly confirmed the Tethys opening pivot in this task; the plan
 addendum records that authority. It is not implemented by the orb merge.
 Late changes need a separately recorded intake rather than silent scope expansion.
 
+October 5 later refresh found #97 `bba8b80` (one new commit), while #99 stayed
+`86878fa`. The complete four-file delta is separately classified in
+`docs/marc-oct5-late-intake.md`: Box12 draft/Control Room path replacement,
+C5 rider/collision and barrier/whirlpool changes, per-slot autosaves/title rows
+and diagnostic secret-room start. These are not admitted by the bounded map,
+queue or Sonar batch; they require explicit subsequent integration/verification.
+
 | Requirement | Current proof / remaining acceptance |
 |---|---|
 | Complete #97/#99 behavioral dispositions | Existing intake plus latest f698bee/4ec6598 deltas require final exhaustive reconciliation. |
@@ -20,9 +27,9 @@ Late changes need a separately recorded intake rather than silent scope expansio
 | Discovery-only map and responsive first-open | Runtime 2054d11 implements external discovered-only legend, visited-boss POIs/icons, boxed room labels and synchronous first-open projection before the lesson pauses. 64 discovery subsets, full-to-empty replacement, 12 paused native viewport sizes, optional new/legacy JSON lesson history/five invalid types and public later-media transition pass. Exact local pack hash and real browser swimming/E/L/first lesson/repeat open pass at wide/short/narrow sizes; captures inspected. Hosted-current acceptance and human/full-route discoverability remain open. |
 | F abilities / E interaction / Ctrl currents / Shift sink / Tab / Q | World/Maze F binding and Maze interaction-only E repaired; public help/keycaps/HUD/README reconciled. 86 real-input/zero-Oxygen/ownership checks plus real map E/Ctrl+E and chest regressions pass. Maze first-person aim, final embedded routing, review guide and historical video inspection remain pending. |
 | Item-orb reel versus anchor pull, free environmental abilities | Real ORB-1 red captured; local repair passes 59 real-physics checks including six shapes, scene teardown, moving shooter and retry after shooter deletion. World aim, swimming and animation regressions pass. No hosted claim. See verify/marc_orb_reel.bug-catalog.md. |
-| Sonar-following Vision and save compatibility | Pending reconciliation; do not retain contradictory legacy pickup instructions. |
+| Sonar-following Vision and save compatibility | October 5 bounded port makes active Maxilani's Q reveal hazards without a pickup/G toggle; old ownership/equipment flags remain round-trippable but inert. Fresh Q red reproduced. Four legacy flag pairs × three selected actors pass JSON decode/restore without resource/key resets; actual Q/G/Tab, inside/outside, active/inactive, reading-menu and zero-O2 checks pass headless/native. Sonar/R feedback coalesces independently, preserving rewards. Full embedded/browser/campaign acceptance remains open. |
 | Radius special spots, discovery/toggle and encounter ownership | Pending latest port and live-area checks; preserve strong-room intent. |
-| Orange FIFO/coalescing | October 5 scene-owned shared FIFO carries one current/four waiting messages, duplicate renewal and latest-only encounter toggles. Original actual Q-overwrites-R and Save-menu hidden-timer reds repaired. 228 generated cases and actual World/Maze R/Q, Inventory/map/Save-menu preservation, physical save-point contact/whole-party restoration/held P prompt, queued E cooldown and real denied save/retry pass headless/native; rendered captures inspected. Existing WeakRef tutorial FIFO remains preserved and its regression passes. Full fight/cross-area/campaign reset and hosted acceptance remain required. |
+| Orange FIFO/coalescing | October 5 scene-owned shared FIFO carries one current/four waiting messages, duplicate renewal and independent latest-only Q/R toggles. Original overwrite/Save-menu reds repaired; Sonar follow-up catches contradictory Q-off feedback and paused first-L banner leakage. 484 generated cases and actual World/Maze R/Q, Inventory/map/Save-menu preservation, physical save-point contact/whole-party restoration/held P prompt, queued E cooldown and real denied save/retry pass; native captures inspected. Existing WeakRef tutorial FIFO remains preserved. Full fight/cross-area/campaign reset and hosted acceptance remain required. |
 | Combat mechanics and authored animations | e7072ab preserves stun/Angler repairs; full regression rerun required after subsequent integration. |
 | Learned-spell enemy scaling / no normal victory refill | Pending production consumers, clear recovery UX and old/new route balance comparison. Do not indiscriminately scale bosses. |
 | Angler retained, opening Tethys defeat, safe recovery | Pending campaign pivot; do not mark lab victory or make opening defeat ordinary Game Over. |
@@ -57,6 +64,15 @@ lab-victory prerequisite. Standalone maze review/legacy compatibility remains.
 Evidence and disclosed fixture limits: docs/evidence/lab-maze-ramp-oct5.
 The current preview must not be treated as this source until rebuilt and checked;
 final browser/exports remain open. No full-suite or merge-ready claim is made.
+
+October 5 Sonar batch: active Maxilani's Q owns hazard reveal from the start;
+legacy item/equipment flags round-trip without gating it. Obsolete pickup/G
+instructions removed. Fresh actual-input and contradictory-notice reds repaired.
+Cross-feature probing also caught first-L pausing before captions hid: map
+visibility now synchronously hands off Maze-owned captions, preserving unread
+time. Evidence and corrected-observer disclosures are in
+docs/evidence/sonar-vision-oct5. New #97 bba8b80 intake remains separately pending;
+no current-browser, full campaign, export or release-readiness claim is made.
 
 October 5 draft passage batch: a dark marker is not a physical hole. Actual
 motion exposed the solid floor/skirt, shared-actor teardown and concave CSG

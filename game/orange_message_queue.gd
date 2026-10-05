@@ -35,9 +35,10 @@ func push(text: String, seconds := 4.0) -> void:
 	if _text == text:
 		_remaining = maxf(_remaining, seconds)
 		return
-	if _encounter_toggle(text):
-		_pending = _pending.filter(func(message: Dictionary) -> bool: return not _encounter_toggle(String(message.text)))
-		if _encounter_toggle(_text):
+	var toggle := _toggle_kind(text)
+	if not toggle.is_empty():
+		_pending = _pending.filter(func(message: Dictionary) -> bool: return _toggle_kind(String(message.text)) != toggle)
+		if _toggle_kind(_text) == toggle:
 			_text = text
 			_remaining = seconds
 			return
@@ -61,5 +62,9 @@ func advance(delta: float) -> void:
 		_text = String(next.text)
 		_remaining = float(next.seconds)
 
-func _encounter_toggle(text: String) -> bool:
-	return text.begins_with("Random encounters on") or text.begins_with("Random encounters off")
+func _toggle_kind(text: String) -> String:
+	if text.begins_with("Random encounters on") or text.begins_with("Random encounters off"):
+		return "encounters"
+	if text.begins_with("Sonar on") or text.begins_with("Sonar off"):
+		return "sonar"
+	return ""
