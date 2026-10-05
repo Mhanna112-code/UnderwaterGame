@@ -1,9 +1,9 @@
 # Sonar pickup lifetime repair — October 5
 
-Runtime source: `343e37c8a11ddf26f08eef0375bc80b6f3008838`.
-Includes Marc's current main `10ba1481be7e3b17caeba9bef1d1630d3698f548`.
-Export PCK: `def184f6bba9892f86546e1a89eaaef2df9e25dced1556ef6ed7a39634176881`,
-94,993,724 bytes, Godot 4.7.1.
+Runtime source: `7336611fcaeed8e03c875fdb3e0118facd7737df`.
+Includes Marc's current main `e507bfccf110b8cf1e6af6ab833266db7fc8fe69`.
+Export PCK: `ae9f15f6d3716c75b69c6f46fa1db243ca57a6d05e50374201407a3fb0ac1984`,
+94,993,548 bytes, Godot 4.7.1.
 
 ## Demonstrated repair
 
@@ -28,14 +28,19 @@ source pass Sonar pickup/reveal, upstream item-site outcome fixture, maze-site
 The site outcome fixtures emit a result; they are not actual-fight balance
 proof. The current export has no engine/script errors.
 
+The first push was correctly rejected when Marc advanced main with e507bfc
+(no item circles for maze ambush rocks). Preserved that five-line change,
+re-exported its exact merged source, and repeated all six pickup and twelve
+Sonar cases successfully. The earlier343e37c candidate was not promoted.
+
 ## Delivery status
 
-Exact local browser acceptance passes: source/pack checksum, actual map earning
+Exact earlier343e37c local browser acceptance passes: source/pack checksum, actual map earning
 through swim/E, unearned-map rejection, L, Inventory, three destination widths,
 real pointer lock/aim/cancel, no captured errors. Inspected narrow goal and
 Inventory pictures. Hosted publication is pending. The canonical URL still
 serves the previous `cb607cf` until this candidate is accepted and promoted.
-No automatic Git deployment is claimed.
+Current7336611 hosted acceptance is pending. No automatic Git deployment is claimed.
 
 ## Full-suite and scope limits
 

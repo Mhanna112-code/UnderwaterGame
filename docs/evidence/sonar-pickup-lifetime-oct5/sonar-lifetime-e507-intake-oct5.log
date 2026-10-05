@@ -1,0 +1,11 @@
+
+=== Sonar pickup lifetime: do actual collection and cold owned-item restore avoid freed-target animation errors ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR PICKUP COLLECTED|actor=0
+SONAR PICKUP RESTORED|actor=0
+SONAR PICKUP COLLECTED|actor=1
+SONAR PICKUP RESTORED|actor=1
+SONAR PICKUP COLLECTED|actor=2
+SONAR PICKUP RESTORED|actor=2
+SONAR PICKUP LIFETIME: clean|cases=6

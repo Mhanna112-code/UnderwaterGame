@@ -1,14 +1,14 @@
 {
-  "source_commit": "343e37c8a11ddf26f08eef0375bc80b6f3008838",
-  "pck_sha256": "def184f6bba9892f86546e1a89eaaef2df9e25dced1556ef6ed7a39634176881",
-  "pck_bytes": 94993724,
+  "source_commit": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+  "pck_sha256": "ae9f15f6d3716c75b69c6f46fa1db243ca57a6d05e50374201407a3fb0ac1984",
+  "pck_bytes": 94993548,
   "engine": "Godot 4.7.1",
-  "status": "Sonar lifetime native and exact-export local browser checks accepted; reconciled with Marc main 10ba148; hosted candidate acceptance pending, full campaign incomplete",
+  "status": "Sonar lifetime native checks pass after Marc main e507bfc intake; hosted exact-source candidate acceptance pending, full campaign incomplete",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Sonar lens spin ends when the pickup is collected or removed by owned-item Load. Preserves required-item 3D reveal, map-marker Sonar, pre-boss-only ending and repaired maze UI. Includes Marc's timed rare boosts, automatic Oxygen Cells, Escape map close and saved sites cleared only after rewarded victory",
+  "change": "Sonar lens spin ends when the pickup is collected or removed by owned-item Load. Preserves required-item 3D reveal, map-marker Sonar, pre-boss-only ending and repaired maze UI. Includes Marc's timed rare boosts, automatic Oxygen Cells, Escape map close, saved sites cleared only after rewarded victory and no item circles for maze ambush rocks",
   "deferred": "Tethys opening/Cordys introduction LAST with explicit Miguel review before main/canonical. Full earned campaign/browser/audio/polish acceptance and same-source Windows/Linux packages remain. Native download source below is older than this web build",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
