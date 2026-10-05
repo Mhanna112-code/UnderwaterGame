@@ -1,0 +1,5 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR BUDGET|seconds=120|used=100.0|active=false
+FINDING FR-1 two-minute Sonar navigation depleted 100.0 Oxygen instead of about 20
+SONAR ENCOUNTER FRICTION: failed

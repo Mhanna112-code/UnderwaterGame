@@ -1,14 +1,14 @@
 {
-  "source_commit": "153b2a59275969fb05e683b26141a48ef42e1182",
-  "pck_sha256": "f9264ce939a6c1d3d781ca4313d70859985edc3968df85dae609e694a9c09082",
-  "pck_bytes": 94984492,
+  "source_commit": "8605058f410f0a2fe5f562661fa06660b1543e08",
+  "pck_sha256": "b743c909331d48d33ba9f2d0b74758ab46e685cec0994416b3ad4cfd5398a4f2",
+  "pck_bytes": 94984476,
   "engine": "Godot 4.7.1",
-  "status": "Post-Tethys visible maze ramp guide and cleared exit; focused navigation verification, not full-campaign readiness",
+  "status": "Affordable Sonar and guarded sites independent of random combat; focused access/billing verification, not full-campaign readiness",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Camera-relative maze compass after lab victory/cold Load; cleared exit-cover geometry and responsive navigation layout. Preserves Marc e572a55 shared maze HUD, ending checkpoints, pacing and spell rules, plus 4dd2a47 12-Oxygen Shockwave and renamed Spells tab",
+  "change": "Sonar costs 1 O2 per 6 seconds. World/Maze guarded sites work with R off. Marc's forced strong-room encounters, active-diver maze vision, current combat rules and post-lab maze navigation remain unchanged",
   "deferred": "Full earned campaign/browser/audio/polish acceptance; same-source Windows/Linux packages. Native download source below is older than this web build",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"

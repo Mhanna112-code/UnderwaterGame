@@ -35,4 +35,10 @@ Tests assert resource quantities, site access and exclusive input owners, not he
 
 ## Evaluation
 
-Pending red witnesses, repairs, existing ownership/persistence regressions and exported browser route.
+Captured old-rate red: 120 controlled seconds exhausted 100 Oxygen and disabled Sonar. Captured separate World and Maze red witnesses: real Q discovery followed by Q-off/R-off physical approach never opened a chooser. Repairs now pass independently.
+
+Native green: two-minute budget (19/20 boundary tolerance), 48 randomized elapsed-time partitions, pause/off/zero/partial-interval handoff, actual Q/R/swimming into World and Maze sites, cancellation without prompt loops, and unchanged first-special lesson/plain guardian reward dispatch. Existing Maze site tests pass 12 outcomes, seven rewards and 384 JSON round-trips; public outcome fixtures prove plumbing/persistence, not human minigame victories. Saved preferences, Marc's 12 Sonar-vision ownership cases and grapple-aim modal ownership pass. Post-lab physical maze navigation still passes.
+
+Rejected evidence: a preliminary run printed clean while Godot emitted an unsupported `%g` help-format error. The format was repaired and the actual help body now has independent semantic checks; engine errors invalidate a test even with exit 0. A browser approach initially assumed native fixture yaw survived cold Load; it does not. The harness was corrected to use S toward the supplied reef checkpoint, not a runtime camera/position injection.
+
+Exported browser check: fresh-profile ordinary Title Load, actual Q-on scan showing red dots and 99/100 Oxygen after one six-second interval, Q-off/R-off physical approach, cancel/no loop, real exit/re-entry and chosen Musashi solo battle. Reviewed screenshots confirm marker visibility is Q-gated; help was corrected rather than promising permanently visible markers. Final hosted receipt and artifact hash are recorded under `docs/evidence/sonar-encounter-friction/` upon publication. This is focused access/billing acceptance, not an earned full campaign or a minigame-win/balance claim.
