@@ -2813,7 +2813,7 @@ func _update_maze_route_guide() -> void:
 		# turns backwards halfway across it, before maze ownership can begin.
 		var ramp := Vector3(embedded_maze.embedded_bounds.position.x + 1, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
 		maze_route_guide.update_bearing(cam, (divers[active] as Diver).global_position,
-			ramp, maxf(route_objective_panel.get_rect().end.y, hud.get_rect().end.y))
+			ramp, maxf(route_objective_panel.get_rect().end.y, exploration_hud.party_panel.get_rect().end.y))
 
 func _update_route_zone() -> void:
 	if not route_state.prologue_complete or divers.is_empty():
@@ -4582,6 +4582,7 @@ func _layout_route_objective_panel() -> void:
 	var viewport_size := get_viewport().get_visible_rect().size
 	var compact := viewport_size.x < 600.0
 	var right_limit := maxf(160.0 if compact else 304.0, viewport_size.x - 176.0)
+	route_objective_label.add_theme_font_size_override("font_size", 14 if compact else 19)
 	var panel_width := viewport_size.x - 32.0 if compact else minf(570.0, maxf(288.0, right_limit - 32.0))
 	var panel_left := clampf(
 		(viewport_size.x - panel_width) * 0.5,

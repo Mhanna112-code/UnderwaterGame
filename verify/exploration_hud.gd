@@ -109,6 +109,21 @@ func _verify_resources_and_layout(world: World) -> void:
 	await _settle()
 	_expect("DOWN" in world.hp_bar_label.text and "LOW" in world.oxygen_bar_label.text, "HUD-2 empty resource labels hide down/low state")
 	world.divers[0].stats.fill()
+	# The post-lab compass used to reserve the old top-left controls' bottom.
+	# Moving controls down must not shove that compass into the active card.
+	world.route_state.set_lab_state("cleared")
+	world.route_state.set_tethys_state("defeated")
+	world.route_state.deep_warning_seen = true
+	world._sync_lab_staging()
+	for i in range(3):
+		world.divers[i].global_position = Vector3(175, 2, 16 + i * 2)
+	for shape in shapes:
+		root.size = shape
+		await _settle()
+		var guide := world.maze_route_guide as Control
+		_expect(guide.is_visible_in_tree(), "HUD-4 earned post-lab guidance disappeared")
+		for panel in [world.exploration_hud.active_panel, world.exploration_hud.party_panel, world.hud, world.minimap, world.route_objective_panel]:
+			_expect(not guide.get_global_rect().intersects(panel.get_global_rect()), "HUD-4 post-lab compass covers %s at %s: guide=%s panel=%s" % [panel.name, shape, guide.get_global_rect(), panel.get_global_rect()])
 
 func _verify_owners(world: World) -> void:
 	await _tap(KEY_ESCAPE)

@@ -16,6 +16,8 @@ var oxygen_label: Label
 var health_fill: StyleBoxFlat
 var encounter_label: Label
 var switch_hint: Label
+var encounter_dot: Panel
+var _dot_style: StyleBoxFlat
 var _rows: Array[Dictionary] = []
 
 func _ready() -> void:
@@ -72,6 +74,15 @@ func _ready() -> void:
 	encounter_label.name = "EncounterStatus"
 	encounter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(encounter_label)
+	# Draw the dot instead of relying on a Unicode glyph that the Web font
+	# export may omit (the browser can otherwise show a missing-glyph box).
+	encounter_dot = Panel.new()
+	encounter_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	encounter_dot.size = Vector2(8, 8)
+	_dot_style = StyleBoxFlat.new()
+	_dot_style.set_corner_radius_all(4)
+	encounter_dot.add_theme_stylebox_override("panel", _dot_style)
+	encounter_label.add_child(encounter_dot)
 
 func refresh(party: Array[Dictionary], selected: int, encounters_on: bool, switch_available: bool) -> void:
 	if party.is_empty() or selected < 0 or selected >= party.size():
@@ -95,7 +106,8 @@ func refresh(party: Array[Dictionary], selected: int, encounters_on: bool, switc
 		var percent := int(ceil(clampf(other.oxygen / maxf(1, other.oxygen_max), 0, 1) * 100))
 		(entry.oxygen as Label).text = "Oxygen %d%%" % percent
 	switch_hint.text = "TAB  Switch diver" if switch_available else "Switching available after the tutorial"
-	encounter_label.text = "●  Random encounters: %s" % ("ON" if encounters_on else "OFF")
+	encounter_label.text = "Random encounters: %s" % ("ON" if encounters_on else "OFF")
+	_dot_style.bg_color = Color(0.3, 0.94, 0.72) if encounters_on else Color(0.42, 0.5, 0.57)
 	encounter_label.add_theme_color_override("font_color", TEXT if encounters_on else Color(0.67, 0.75, 0.81))
 
 func layout_for(viewport_size: Vector2, map_rect: Rect2, maze_controls_bottom := 0.0) -> void:
@@ -105,6 +117,8 @@ func layout_for(viewport_size: Vector2, map_rect: Rect2, maze_controls_bottom :=
 	_rect(active_panel, Rect2((viewport_size.x - width) * 0.5, viewport_size.y - 108, width, 92))
 	var status_width := minf(230, viewport_size.x - 32)
 	_rect(encounter_label, Rect2(viewport_size.x - status_width - 16, map_rect.end.y + 5, status_width, 24))
+	var text_width := encounter_label.get_theme_font("font").get_string_size(encounter_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	encounter_dot.position = Vector2(status_width - text_width - 14, 8)
 	# Numeric rows shrink their font, not their meaning, on narrow screens.
 	for entry in _rows:
 		for key in ["name", "health", "oxygen"]:

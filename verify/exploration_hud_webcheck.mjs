@@ -69,9 +69,13 @@ try {
   if (process.env.EXPECTED_SOURCE_SHA) expect(metadata.source_commit === process.env.EXPECTED_SOURCE_SHA, 'Stale source identity');
   await page.goto(url, { waitUntil: 'load' }); await title('fresh-title');
   await click(/^New Game$/, 'new-game');
-  const bootDeadline = Date.now() + 12000;
+  const bootDeadline = Date.now() + 60000;
   while (!logs.some(row => row.includes('PROLOGUE_PHASE|opening_video')) && Date.now() < bootDeadline) await page.waitForTimeout(200);
   expect(logs.some(row => row.includes('PROLOGUE_PHASE|opening_video')), 'Normal New Game did not acknowledge checkpoint/opening');
+  while (!logs.some(row => row.includes('PROLOGUE_PHASE|spawn_exploration')) && Date.now() < bootDeadline) await page.waitForTimeout(200);
+  expect(logs.some(row => row.includes('PROLOGUE_PHASE|spawn_exploration')), 'Normal opening movie did not reveal exploration');
+  await page.waitForTimeout(500);
+  await capture('normal-new-game-hud');
   await page.evaluate(async record => {
     const db = await new Promise((resolve, reject) => { const r = indexedDB.open(record.database); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
     await new Promise((resolve, reject) => {
@@ -110,10 +114,18 @@ try {
   await click(/^Close$/, 'guide-close');
   await page.keyboard.press('r'); await page.waitForTimeout(500);
   expect(/Random encounters:\s*ON/i.test(await text('encounters-on')), 'HUD-5 R status lost');
-  await page.keyboard.down('w');
-  const fightDeadline = Date.now() + 45000;
-  while (!logs.some(row => row.includes('RANDOM_COMBAT')) && Date.now() < fightDeadline) await page.waitForTimeout(100);
-  await page.keyboard.up('w');
+  // Reverse course before scenery can pin the diver against a wall. Real
+  // input still earns distance and random rolls; no encounter-state injection.
+  const fightDeadline = Date.now() + 60000;
+  let leg = 0;
+  while (!logs.some(row => row.includes('RANDOM_COMBAT')) && Date.now() < fightDeadline) {
+    const key = ['s', 'a', 'd', 'w'][leg++ % 4];
+    await page.keyboard.down(key);
+    const legEnd = Date.now() + 5500;
+    while (!logs.some(row => row.includes('RANDOM_COMBAT')) && Date.now() < legEnd) await page.waitForTimeout(100);
+    await page.keyboard.up(key);
+    await capture('swimming-leg-' + leg);
+  }
   expect(logs.some(row => row.includes('RANDOM_COMBAT')), 'Ordinary swimming never triggered real random battle');
   await page.waitForTimeout(2400);
   const battle = await text('actual-random-battle');
