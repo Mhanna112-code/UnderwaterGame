@@ -68,4 +68,5 @@ call. A stale tracker or delayed old Tween rewriting a loaded wall fails.
 - The current-on branch bounds displacement only while the actor remains in C5;
   the actual water may legally carry them beyond it. The relocated-current branch
   keeps clear capsules stationary. Neither turns current behavior off globally.
-- WALL-3 remains pending; do not present C5 safety as retained-rider completion.
+- WALL-3 is now addressed separately by `maze_wall_riders.gd` and its catalog;
+  C5 safety alone still must not be presented as retained-rider completion.

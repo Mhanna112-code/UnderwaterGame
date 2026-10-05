@@ -1225,7 +1225,7 @@ func poster_modal_open() -> bool:
 	return _poster_modal != null and is_instance_valid(_poster_modal)
 
 func any_modal_open() -> bool:
-	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
+	return _wall_riders.busy() or (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -3155,6 +3155,7 @@ var _moving_wall_sets: Dictionary = {}
 var _wall_motion_tweens: Dictionary = {}
 var _wall_motion_targets: Dictionary = {}
 var _wall_motion_collision: Dictionary = {}
+var _wall_riders = preload("res://game/maze_wall_riders.gd").new(self)
 
 func _wall_set_moving(set_name: String) -> bool:
 	return _moving_wall_sets.has(set_name)
@@ -3196,6 +3197,7 @@ func _finish_wall_motion(set_name: String, interrupted := false) -> void:
 		# settle there, never leave half-rotated unsaveable geometry behind.
 		if interrupted and _wall_motion_targets.has(wall):
 			(wall as CSGBox3D).transform = _wall_motion_targets[wall]
+		_wall_riders.finish(wall)
 		_restore_motion_collision(wall)
 		_wall_motion_targets.erase(wall)
 		_wall_last_xf.erase(wall)
@@ -3203,7 +3205,9 @@ func _finish_wall_motion(set_name: String, interrupted := false) -> void:
 	_moving_wall_nodes.erase(set_name)
 	_wall_motion_tweens.erase(set_name)
 
-func _cancel_wall_motion() -> void:
+func _cancel_wall_motion(preserve_rider_positions := false) -> void:
+	# Do this before removing target transforms used for clearance queries.
+	_wall_riders.cancel(preserve_rider_positions)
 	for set_name in _moving_wall_sets.keys():
 		_finish_wall_motion(String(set_name), true)
 	# Defensive cleanup for a request which was cancelled before tracking.
@@ -3241,9 +3245,9 @@ var _moving_wall_nodes: Dictionary = {}   # set name -> Array of the walls it's 
 # Moving walls are static colliders that a tween repositions every frame, so
 # physics never pushes anything out of their way - a long wall swinging about
 # one end (Box14's far end covers ~0.5m a frame) just passes through divers.
-# Instead, every physics frame, any diver a moving wall now overlaps is
-# pushed out of it to the side that wall is moving toward (so the wall drags
-# it along), using where that part of the wall was last frame.
+# Intercepted divers become retained passengers on the wall's moving face.
+# Their transient owner keeps a rigid local offset, then releases a clear
+# capsule on that face. C5 occupants remain exempt from walls10/11.
 const SWEEP_MARGIN := 0.05
 var _wall_last_xf: Dictionary = {}   # moving wall -> its transform last physics frame
 
@@ -3253,6 +3257,7 @@ func _sweep_divers_with_moving_walls() -> void:
 	for set_name in _wall_motion_tweens.keys():
 		if (_wall_motion_tweens[set_name] as Array).any(func(t: Tween) -> bool: return not t.is_valid()):
 			_finish_wall_motion(String(set_name), true)
+	_wall_riders.update()
 	var still_moving: Dictionary = {}
 	for set_name in _moving_wall_nodes:
 		for w in _moving_wall_nodes[set_name]:
@@ -3269,6 +3274,10 @@ func _sweep_divers_with_moving_walls() -> void:
 				# bba8b80: C5 occupants are not passengers on walls 10/11.
 				# Collision is also suspended so physics cannot shove them out.
 				if set_name == "CSGBox3D10/11" and _c5_zone().has_point(Vector2(d.global_position.x, d.global_position.z)):
+					_wall_riders.detach_in_place(d, wall)
+					continue
+				if _wall_riders.owns(d):
+					_wall_riders.carry(d, wall)
 					continue
 				var r := d.radius + SWEEP_MARGIN
 				var local := xf.affine_inverse() * d.global_position
@@ -3284,7 +3293,9 @@ func _sweep_divers_with_moving_walls() -> void:
 					side = signf(local.z) if local.z != 0.0 else 1.0
 				var pushed := Vector3(local.x, local.y, side * (half.z + r))
 				var target := xf * pushed
-				d.global_position = Vector3(target.x, d.global_position.y, target.z)
+				if _wall_riders.capture(d, wall, pushed,
+					wall.get_parent().global_transform * (_wall_motion_targets[wall] as Transform3D)):
+					d.global_position = Vector3(target.x, d.global_position.y, target.z)
 	_wall_last_xf.clear()
 	for wall in still_moving:
 		_wall_last_xf[wall] = (wall as CSGBox3D).global_transform
@@ -4275,7 +4286,7 @@ func _physics_process(dt: float) -> void:
 			# Inactive divers still run swim() with no input, so currents and
 			# drag keep acting on them (World does the same).
 			# No steering while any walls are mid-rotation (_moving_wall_sets).
-			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _gate_cutscene:
+			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _wall_riders.busy() and not _gate_cutscene:
 				d.swim(_player_dir(), _player_rise(), dt)
 			else:
 				d.swim(Vector3.ZERO, 0.0, dt)
@@ -5699,7 +5710,7 @@ const CAMPAIGN_FLAGS := ["_completed", "_hallway_1_2_swung", "_walls_14_15_open"
 	"room_encounters_enabled", "_strong_room_seen", "_switch_explained"]
 
 func can_capture_campaign_snapshot() -> bool:
-	return _moving_wall_sets.is_empty() and not _gate_cutscene and not _chest_reward_pending \
+	return _moving_wall_sets.is_empty() and not _wall_riders.busy() and not _gate_cutscene and not _chest_reward_pending \
 		and not _battling and not aiming and not get_tree().paused and not any_modal_open() \
 		and special_sites != null and special_sites.initialized
 
@@ -5962,7 +5973,7 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 		return
 	# Cancel only after valid coordinate preflight. Old Tweens must not keep
 	# moving walls after applying the checkpoint, or retain disabled skirts.
-	_cancel_wall_motion()
+	_cancel_wall_motion(true)
 	for flag in CAMPAIGN_FLAGS:
 		set(flag, bool(data.flags.get(flag, false)))
 	keys_held = int(data.keys_held)

@@ -194,6 +194,10 @@ run "maze drafts: do three capsules traverse real outgoing/return paths without 
 run "C5 wall safety: do all three capsules avoid wall/attached-rock shoves and regain stable collision after restore/interruption" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd
 run "C5 active current: does live water push remain distinct from moving-wall carry" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd -- --currents
 run "moving-wall teardown: are surviving shared actors and non-default wall/skirt/rock layers preserved" "$GODOT" --headless --path . --script verify/maze_wall_motion.gd -- --teardown
+run "retained wall riders: do six walls carry three capsules both ways and release to real swimming" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --matrix
+run "retained rider lifecycle: do restore, killed Tween, inactive/removed owner and C5 arrival relinquish safe poses/locks" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --lifecycle
+run "retained rider ownership: do downed bodies retain resources and other motion owners keep their locks" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --ownership
+run "retained rider landing: does a new CSG obstruction plus real current preserve carry and clear release" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --blocked --currents
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
 run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd

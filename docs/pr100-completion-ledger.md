@@ -3,6 +3,16 @@
 Contract: user-authorized comprehensive plan in the October 4 conversation.
 This ledger retains the full scope; a green focused batch is not release readiness.
 
+October 5 retained-rider follow-up now carries all six moving walls outside C5
+with same-face capsule-clear release and transient mask/lock ownership. The
+original push-only drift red is captured; 36 generated actor/wall/direction
+cases, 15 lifecycle/C5-arrival cases, six downed/preexisting-lock cases and
+actual current plus blocked CSG landing are covered separately in
+`docs/evidence/maze-wall-riders-oct5`. Native captures disclose existing wall
+occlusion/chase cropping, not final visual acceptance. Poster-west barrier,
+hall whirlpools, autosaves, normal campaigns/browser, final exports and full
+suite remain pending. The existing public preview remains bffe1b5.
+
 October 5 C5 follow-up integrates the bba8b80 exception for walls10/11 and
 suspends/restores their attached collision bodies, including the split rock.
 Actual collision rays reproduced the original wall/skirt defect; generated C5
@@ -13,7 +23,8 @@ interruption, inactive/re-entry and removed-owner/non-default-layer checks are
 covered by `verify/maze_wall_motion.gd`. Evidence and fixture limits are in
 `docs/evidence/maze-wall-motion-oct5`. This is NOT admission of the remaining
 outside-C5 retained-rider port, poster-west barrier, hall whirlpools or autosaves.
-Final campaign, browser, exports and full-suite acceptance remain open.
+Final campaign, browser, exports and full-suite acceptance remain open. The
+outside-C5 retained-rider portion is separately admitted above.
 
 October 5 Box12 follow-up admits only the Control Room route portion of bba8b80:
 three real capsule traversals/240 independently queried motion frames, blocked
@@ -47,7 +58,7 @@ queue or Sonar batch; they require explicit subsequent integration/verification.
 |---|---|
 | Complete #97/#99 behavioral dispositions | Existing intake plus latest f698bee/4ec6598 deltas require final exhaustive reconciliation. |
 | Embedded World/maze, one party/camera/input/HUD | October 5 batch embeds authored geometry and shares the same three live actors/inventory/session. Real bidirectional ramp movement, floor seams, one-step boundary movement, camera/HUD/Tab/R ownership and parked Sonar checks pass. 48 generated checkpoint cases, legacy cold Title Load and 12 World-return cases pass. Full embedded hazards/map/browser/campaign acceptance remains open. |
-| Latest underpass, outgoing/return drafts, barriers and riders | October 5 draft batch carries the one-way Break Room passage, automatic swung-wall return, latest 10/11 alignment and state barriers. Three outgoing actors, 12 incoming direction/state cases, whole-motion surface/solid-volume checks, outside-floor preservation, blocked exits, all three teardown cases, six JSON restores and cold legacy Title Load pass. Native 1280x720/360x640 question/motion/exit inspected. Full moving-wall rider, floor, whirlpool and normal-route geometry acceptance remains open. Sphere spacing/occlusion/vortex solidity already in 0561454. |
+| Latest underpass, outgoing/return drafts, barriers and riders | October 5 draft batch carries the one-way Break Room passage, automatic swung-wall return, latest 10/11 alignment and state barriers. Three outgoing actors, 12 incoming direction/state cases, whole-motion surface/solid-volume checks, outside-floor preservation, blocked exits, all three teardown cases, six JSON restores and cold legacy Title Load pass. Native 1280x720/360x640 question/motion/exit inspected. Outside-C5 retained riders now pass36 real carry/release/swim and15 lifecycle/C5-arrival cases; native occlusion/cropping remains disclosed. Full floor, whirlpool, normal-route/browser and visual acceptance remains open. Sphere spacing/occlusion/vortex solidity already in 0561454. |
 | Earned Control Room map and exclusive chest | Carried in 6cc66c7 and reconciled through b916637. October 5 map batch adds actual shared-World ramp and actual review-flag swimming/E/L acquisition/return with the same party; cold title Load retains embedded owner/selected slot/map/key/relic separation. Six chest capsule/input/pause and 72 regional availability cases rerun clean. Exact 2054d11 local browser export earns the map with real swimming/E/L, no grant. Hosted-current/full-route/human discoverability acceptance remains open. |
 | Discovery-only map and responsive first-open | Runtime 2054d11 implements external discovered-only legend, visited-boss POIs/icons, boxed room labels and synchronous first-open projection before the lesson pauses. 64 discovery subsets, full-to-empty replacement, 12 paused native viewport sizes, optional new/legacy JSON lesson history/five invalid types and public later-media transition pass. Exact local pack hash and real browser swimming/E/L/first lesson/repeat open pass at wide/short/narrow sizes; captures inspected. Hosted-current acceptance and human/full-route discoverability remain open. |
 | F abilities / E interaction / Ctrl currents / Shift sink / Tab / Q | World/Maze F binding and Maze interaction-only E repaired; public help/keycaps/HUD/README reconciled. October 5 aim batch adds real F → first-person → left fire/right or Esc cancel, scene-owned reticle and surviving shared-model cleanup. Nine generated cancel cases, anchor/item/wall shots, actual P/L owners and JSON restore pass headless/native; actual aimed ramp departure passes. 88 control/zero-Oxygen checks plus Sonar/map/chest/checkpoint preservation pass. Required-anchor normal route, browser aim, review guide and historical video inspection remain pending. |
