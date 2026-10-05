@@ -413,11 +413,16 @@ const GRAPPLE_COLLISION_MASK := 1 | (1 << 4)
 # aimed like grapple (a whiff costs nothing) but a hit is a bigger, more
 # game-changing move than a simple pull, so it sits between the two.
 const SHOCKWAVE_COOLDOWN := 2.5
+# Shockwave costs Oxygen again (12; originally 20 in 743b279, removed in
+# ee883d8 so an empty tank could never block progress). Grapple and Swap
+# stay free. Save points and Oxygen Cells refill the tank.
+const SHOCKWAVE_OXYGEN_COST := 12.0
 const GRAPPLE_COOLDOWN := 1.2
 const SWAP_COOLDOWN := 2.0
 
-# Shockwave, Grapple, and Swap are the environmental progression verbs, so
-# their availability must never be exhausted by Oxygen. A player can always
+# Grapple and Swap are environmental progression verbs, so their
+# availability must never be exhausted by Oxygen (Shockwave now costs
+# SHOCKWAVE_OXYGEN_COST - see shockwave_needs_oxygen()). A player can always
 # recover from a missed route step or an empty tank. Sonar deliberately keeps
 # its distinct resource cost below; combat and spell systems own their costs.
 # Its drain is charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather
@@ -467,7 +472,11 @@ func _process(dt: float) -> void:
 # world.gd guessing at Diver's private cooldown/grapple-in-progress state.
 func can_use_ability() -> bool:
 	return (ability_id != "" and not ability_locked and _ability_cooldown <= 0.0
-		and not _is_grappling)
+		and not _is_grappling and not shockwave_needs_oxygen())
+
+# True only when this is Shockwave and the tank can't pay for it.
+func shockwave_needs_oxygen() -> bool:
+	return ability_id == "shockwave" and stats.oxygen < SHOCKWAVE_OXYGEN_COST
 
 # Called by whatever is meant to unlock a locked ability - right now just
 # grapple_anchor.gd's on_grappled_to(), for the one anchor whose
@@ -532,6 +541,7 @@ func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> void
 
 func _shockwave() -> void:
 	_ability_cooldown = SHOCKWAVE_COOLDOWN
+	stats.oxygen = maxf(0.0, stats.oxygen - SHOCKWAVE_OXYGEN_COST)
 	get_tree().call_group("shockwave_breakable", "on_shockwave", global_position, SHOCKWAVE_RADIUS)
 	_shockwave_vfx()
 

@@ -35,74 +35,15 @@ func _run() -> void:
 		var o2_before: Array = world.divers.map(func(d): return d.stats.oxygen)
 		seed(_run_seed(true))
 		fight.run_btn.pressed.emit()
-		await create_timer(1.85).timeout
+		await create_timer(Battle.LOG_READ_DELAY + 0.5).timeout
 		_expect(not world.battling, "ESC-001 actual successful Run failed to return to world")
 		var cue := world.get_node_or_null("HUD/EscapeEncounterHint") as Control
-		_expect(cue != null and cue.is_visible_in_tree(), "ESC-001 successful escape has no visible encounter-toggle cue")
-		_expect(world.random_encounters_enabled, "ESC-003 cue forced encounters Off")
-		_expect(hp_before == world.divers.map(func(d): return d.stats.hp), "ESC-003 escape cue healed/damaged party")
-		_expect(o2_before == world.divers.map(func(d): return d.stats.oxygen), "ESC-003 escape cue changed Oxygen")
-		if cue != null:
-			print("ESCAPE VIEW|viewport=", root.get_visible_rect(), "|cue=", cue.get_global_rect())
-			_expect("Encounters (On)" in cue.setting_label.text, "ESC-001 cue does not show actual R setting")
-			_expect(root.get_visible_rect().encloses(cue.get_global_rect()), "ESC-007 cue clipped")
-			_expect(not cue.get_global_rect().intersects(world.route_objective_panel.get_global_rect()), "ESC-007 cue overlaps objective")
-			_expect(not cue.get_global_rect().intersects(Rect2(Vector2(root.size.x - 166, 10), Vector2(156, 156))), "ESC-007 cue overlaps minimap")
-			_expect(_ignores_pointer(cue), "ESC-006 informational cue blocks pointer input")
-			await _capture("on")
-			var first_color: Color = cue.get_theme_stylebox("panel").bg_color
-			await create_timer(0.3).timeout
-			_expect(cue.get_theme_stylebox("panel").bg_color != first_color, "ESC-002 On cue is not pulsing")
-			await create_timer(2.6).timeout
-			_expect(not cue.visible and world.random_encounters_enabled, "ESC-002 untouched On cue stays visible or changes setting")
-			# Failed Run is the actual battle button with a probability fixture,
-			# not a fabricated result signal. AI counterattack stays unchanged.
-			(world.divers[world.active] as Diver).encounter_triggered.emit()
-			fight = await _wait_for_encounter(world)
-			await _wait_for_run(fight)
-			seed(_run_seed(false))
-			fight.run_btn.pressed.emit()
-			await create_timer(0.1).timeout
-			_expect(world.battling and not cue.visible and "Can't get clear" in fight.log_label.get_parsed_text(), "ESC-004 failed Run showed exploration cue")
-			await _wait_for_run(fight)
-			seed(_run_seed(true))
-			fight.run_btn.pressed.emit()
-			await create_timer(1.8).timeout
-			_expect(not world.battling and cue.visible, "ESC-001 eventual escape after failed Run loses cue")
-			await _key(KEY_R)
-			_expect(not world.random_encounters_enabled and "Encounters (Off)" in cue.setting_label.text, "ESC-005 real R fails to update setting/cue")
-			await _capture("off")
-			first_color = cue.get_theme_stylebox("panel").bg_color
-			await create_timer(0.3).timeout
-			_expect(cue.get_theme_stylebox("panel").bg_color == first_color, "ESC-005 Off cue keeps pulsing")
-			(world.divers[world.active] as Diver).encounter_triggered.emit()
-			await process_frame
-			_expect(not world.battling, "ESC-003 R Off fails to gate actual ordinary encounter event")
-			await create_timer(2.5).timeout
-			_expect(not cue.visible, "ESC-005 R update extends cue forever")
-			# Repeated escape uses one node. A next battle must retire it at once.
-			await _key(KEY_R)
-			(world.divers[world.active] as Diver).encounter_triggered.emit()
-			fight = await _wait_for_encounter(world)
-			await _wait_for_run(fight)
-			seed(_run_seed(true))
-			fight.run_btn.pressed.emit()
-			await create_timer(1.8).timeout
-			_expect(cue.visible, "ESC-006 repeated escape lost single cue owner")
-			(world.divers[world.active] as Diver).encounter_triggered.emit()
-			fight = await _wait_for_encounter(world)
-			_expect(world.battling and not cue.visible, "ESC-006 old cue leaks into new battle")
-			# Retire the real battle before exercising the public Load lifecycle.
-			await process_frame
-			fight = world.battle
-			await _wait_for_run(fight)
-			seed(_run_seed(true))
-			fight.run_btn.pressed.emit()
-			await create_timer(1.8).timeout
-			world.title_screen.load_game_chosen.emit(SLOT)
-			await process_frame
-			await process_frame
-			_expect(not cue.visible and world.random_encounters_enabled, "ESC-006 Load resurrects escape cue or changes saved setting")
+		# The post-escape cue was removed on request: escaping shows only the
+		# "You successfully ran away." notice; the HP-bar badge shows R.
+		_expect(cue == null or not cue.is_visible_in_tree(), "ESC-001 removed post-escape encounter cue still appears")
+		_expect(world.random_encounters_enabled, "ESC-003 escape forced encounters Off")
+		_expect(hp_before == world.divers.map(func(d): return d.stats.hp), "ESC-003 escape healed/damaged party")
+		_expect(o2_before == world.divers.map(func(d): return d.stats.oxygen), "ESC-003 escape changed Oxygen")
 	# Separate public-component cases, not a fabricated World escape result.
 	# Already-Off and paused-menu expiry share the same absolute deadline.
 	var isolated := preload("res://game/encounter_escape_hint.gd").new()

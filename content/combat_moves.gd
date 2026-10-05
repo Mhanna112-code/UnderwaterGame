@@ -130,7 +130,7 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 							costs.append("%s %s%d" % [stat.left(3).to_upper(), "+" if amount > 0 else "", amount])
 				if not costs.is_empty():
 					parts.append(" / ".join(costs))
-	return " • ".join(parts)
+	return "  ".join(parts)
 
 # Prototype_1/Prototype_V's legacy power/debuff kits never had a "Show
 # formulas" toggle to fall back on for a numeric preview - now that that
@@ -161,4 +161,4 @@ static func _resolved_legacy_hint(stats: CombatantStats, move: Dictionary) -> St
 		var flavor := String(move.get("hint", ""))
 		if flavor != "":
 			parts.append(flavor)
-	return " • ".join(parts)
+	return "  ".join(parts)

@@ -2,6 +2,9 @@ class_name MazeLevel
 extends Node3D
 
 signal campaign_completed
+# Emitted the moment the player confirms the Cordys fight, before it starts -
+# World autosaves this exact point for the ending's "Restart from Auto Save".
+signal cordys_fight_starting
 
 # A wall's physical ends.  These names are intentionally kept at the API
 # boundary: callers choose a named authored exit only when the level design
@@ -1851,6 +1854,7 @@ func _update_cordys_station() -> void:
 	_cordys_prompt.answered.connect(func(yes: bool) -> void:
 		_cordys_prompt = null
 		if yes and _boss_triggers.has("main_boss"):
+			cordys_fight_starting.emit()
 			_start_battle("main_boss"))
 	add_child(_cordys_prompt)
 
@@ -4605,6 +4609,9 @@ func _use_active_ability() -> void:
 			if not target_selector.selecting and _diver.can_use_ability():
 				target_selector.start_selection(_diver)
 		_:
+			if _diver.shockwave_needs_oxygen():
+				_announce("Not enough Oxygen for Shockwave (needs %d)." % int(Diver.SHOCKWAVE_OXYGEN_COST))
+				return
 			_diver.use_ability()
 
 # Scene-owned aim; shared Divers outlive the embedded maze on teardown.

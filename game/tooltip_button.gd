@@ -107,12 +107,16 @@ func _build_panel(text: String) -> Control:
 	style.set_border_width_all(1)
 	panel.add_theme_stylebox_override("panel", style)
 
-	var label := Label.new()
-	label.text = text
+	# Rich text so stat losses ("EVA -3") can show in red, as in the log.
+	var label := RichTextLabel.new()
+	label.bbcode_enabled = true
+	label.fit_content = true
+	label.scroll_active = false
+	label.text = CombatRules.red_stat_losses_bbcode(text)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.custom_minimum_size = Vector2(MAX_WIDTH, 0)
-	label.add_theme_color_override("font_color", Color(0.88, 0.93, 0.96))
-	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("default_color", Color(0.88, 0.93, 0.96))
+	label.add_theme_font_size_override("normal_font_size", 14)
 	panel.add_child(label)
 	return panel

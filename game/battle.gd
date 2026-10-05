@@ -392,7 +392,11 @@ const FEEDBACK_IMMUNE_COLOR := Color(0.62, 0.2, 1.0)
 # file uses this same constant now (they used to be separate 0.7/0.8/0.9
 # magic numbers, all too short to actually read a sentence in) so pacing
 # stays consistent and only needs tuning in one place.
-const LOG_READ_DELAY := 1.6
+# Combat log lines stay up long enough to read: at least LOG_MIN_READ_SECONDS,
+# plus 1-3 s more for longer lines (see _log_read_delay()). LOG_READ_DELAY is
+# the longest possible hold, kept for callers/tests that need an upper bound.
+const LOG_MIN_READ_SECONDS := 5.0
+const LOG_READ_DELAY := 8.0
 # Extra seconds the first combat tutorial holds "The enemies back off, beaten."
 const TUTORIAL_WIN_EXTRA_HOLD := 6.0
 
@@ -743,7 +747,9 @@ func _ready() -> void:
 		# The guardian flag also identifies rewardless lab blockers. Only a
 		# real item reward may promise an item. Explicit authored introductions
 		# (including the two-wave puppets) retain their narrative ownership.
-		if not reward_item_on_win.is_empty() and encounter_intro_override.is_empty():
+		# Tutorial fights (including the practice special encounter) award no
+		# item, so they never promise one.
+		if not reward_item_on_win.is_empty() and encounter_intro_override.is_empty() and not tutorial_encounter:
 			intro = ITEM_CARRIER_INTRO
 			_intro_hold = intro
 		_log(intro)
@@ -1150,6 +1156,7 @@ func reveal_prologue_octopus() -> void:
 	stats.agility = 20
 	stats.evasion = 0
 	stats.defense = 0
+	stats.immune_to_stat_loss = true   # bosses shrug off stat-lowering effects
 	stats.fill()
 	var enemy := {
 		"kind": "enemy", "stats": stats, "display_name": "Cordys",
@@ -2254,6 +2261,7 @@ func _build_ui() -> void:
 	# for an empty second line: it makes the lab actors unreadably small.
 	log_label.custom_minimum_size = Vector2(0, 28 if compact_battle_ui else 56)
 	log_label.fit_content = true
+	log_label.finished.connect(_fit_panel_height)
 	log_label.minimum_size_changed.connect(func() -> void: call_deferred("_fit_panel_height"))
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2282,6 +2290,11 @@ func _build_ui() -> void:
 	_tutorial_caption.visible = false
 	_tutorial_caption.bbcode_enabled = true
 	_tutorial_caption.fit_content = true
+	# fit_content's new height is only known once the text has been laid out,
+	# which can land after the deferred _fit_panel_height() call; for that
+	# frame the caption drew at the old size over other text. Refit when
+	# layout finishes (same for the log and level-up captions below).
+	_tutorial_caption.finished.connect(_fit_panel_height)
 	_tutorial_caption.scroll_active = false
 	_tutorial_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# Plain white base text, same as a classic FF-style dialogue box -
@@ -2318,6 +2331,7 @@ func _build_ui() -> void:
 	_levelup_caption.visible = false
 	_levelup_caption.bbcode_enabled = true
 	_levelup_caption.fit_content = true
+	_levelup_caption.finished.connect(_fit_panel_height)
 	_levelup_caption.scroll_active = false
 	_levelup_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_levelup_caption.add_theme_color_override("default_color", Color.WHITE)
@@ -2562,6 +2576,24 @@ func _menu_button(title: String, hint: String) -> Button:
 	var viewport_width := get_viewport().get_visible_rect().size.x
 	b.custom_minimum_size = Vector2(205 if viewport_width < 900.0 else 300, 52)
 	b.clip_text = true
+	if CombatRules.has_stat_loss(hint):
+		# Button text is single-colour, so the hint line is drawn by a rich
+		# text overlay instead (title stays in b.text for lookups/layout).
+		b.text = "%s
+ " % title
+		var line := RichTextLabel.new()
+		line.name = "HintLine"
+		line.bbcode_enabled = true
+		line.scroll_active = false
+		line.autowrap_mode = TextServer.AUTOWRAP_OFF
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		line.offset_top = -26.0
+		line.offset_bottom = -2.0
+		line.offset_left = 4.0
+		line.offset_right = -4.0
+		line.text = "[center]%s[/center]" % CombatRules.red_stat_losses_bbcode(hint)
+		b.add_child(line)
 	return b
 
 # Moves skip_tutorial_btn (a single shared instance, not one per menu) so it
@@ -3023,6 +3055,12 @@ func _log(text: String) -> void:
 	log_label.add_text(text)
 	call_deferred("_fit_panel_height")
 
+# Adds to the current log line without rebuilding it, so any red effect text
+# already on the line keeps its colour.
+func _log_append(text: String) -> void:
+	log_label.add_text(text)
+	call_deferred("_fit_panel_height")
+
 func _audio_call(method: StringName, args: Array = []) -> void:
 	var owner := get_node_or_null("/root/GameAudio")
 	if owner != null and owner.has_method(method):
@@ -3033,6 +3071,12 @@ func _move_is_heavy(move: Dictionary) -> bool:
 	var move_name := String(move.get("name", "")).to_lower()
 	return power >= 10 or move_name.contains("heavy") or move_name.contains("crushing") \
 		or move_name.contains("great") or move_name.contains("spinning")
+
+# 5 s for a short line, +1 s per ~40 characters beyond the first 50, capped
+# at +3 s (8 s total).
+func _log_read_delay() -> float:
+	var length := _current_log_text().length()
+	return LOG_MIN_READ_SECONDS + clampf(ceilf((length - 50) / 40.0), 0.0, 3.0)
 
 func _current_log_text() -> String:
 	return log_label.get_parsed_text()
@@ -3077,7 +3121,8 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary, play_sound: bo
 	if result_kind == "heal" or result_kind == "revive":
 		messages.append({"text": "+%d HP" % int(result.get("changed", 0)), "color": FEEDBACK_EFFECT_COLOR})
 	elif result_kind != "":
-		messages.append({"text": "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))], "color": FEEDBACK_NEGATIVE_COLOR})
+		# A lowered stat reads in the same red as the log/move-hint stat losses.
+		messages.append({"text": "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))], "color": Color.html(CombatRules.STAT_LOSS_COLOR)})
 	elif not bool(result.get("hit", false)) or bool(result.get("dodged", false)):
 		messages.append({"text": "DODGE", "color": FEEDBACK_EFFECT_COLOR})
 	elif int(result.get("damage", 0)) > 0:
@@ -3088,7 +3133,8 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary, play_sound: bo
 		messages.append({"text": "IMMUNE", "color": FEEDBACK_IMMUNE_COLOR})
 	var effects := result.get("effects", []) as Array
 	for effect in effects:
-		messages.append({"text": String(effect), "color": FEEDBACK_NEGATIVE_COLOR})
+		var effect_color := Color.html(CombatRules.STAT_LOSS_COLOR) if CombatRules.has_stat_loss(String(effect)) else FEEDBACK_NEGATIVE_COLOR
+		messages.append({"text": String(effect), "color": effect_color})
 	for index in range(messages.size()):
 		var message := messages[index] as Dictionary
 		_show_floating_text(entry, String(message.text), message.color as Color, index)
@@ -3125,11 +3171,11 @@ func _show_damage_over_time(entry: Dictionary, tick: Dictionary, stack_base: int
 	if bleed_damage > 0:
 		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2), stack_base)
 		stack_base += 1
-		_log("%s  •  %s is bleeding and takes %d damage." % [_current_log_text(), String(entry.display_name), bleed_damage])
+		_log_append("  %s is bleeding and takes %d damage." % [String(entry.display_name), bleed_damage])
 	var poison_damage := int(tick.get("poison_damage", 0))
 	if poison_damage > 0:
 		_show_floating_text(entry, "POISON -%d" % poison_damage, Color(0.55, 0.9, 0.28), stack_base)
-		_log("%s  •  %s is poisoned and takes %d damage." % [_current_log_text(), String(entry.display_name), poison_damage])
+		_log_append("  %s is poisoned and takes %d damage." % [String(entry.display_name), poison_damage])
 	_refresh_bar(entry)
 	if (entry.stats as CombatantStats).hp <= 0 and entry.has("actor") and is_instance_valid(entry.actor):
 		if entry.actor is Diver:
@@ -3387,7 +3433,7 @@ func _advance_turn() -> void:
 		# next actor's "X's turn." replaces it.
 		_busy = true
 		_set_all_buttons(false)
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		await get_tree().create_timer(_log_read_delay()).timeout
 		_advance_turn()
 		return
 	if String(_acting.kind) == "enemy":
@@ -4013,6 +4059,34 @@ func _add_power_badge(btn: Button, power: int) -> void:
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(badge)
 
+# The move's Oxygen cost as "16O2" in blue, on its own plate in the bottom
+# right corner (the power badge owns the top right), so it can't be clipped
+# off the end of a long hint the way the old " - 16 O2" suffix could.
+func _add_oxygen_badge(btn: Button, cost: int) -> void:
+	var plate := PanelContainer.new()
+	plate.name = "OxygenBadge"
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var plate_style := StyleBoxFlat.new()
+	plate_style.bg_color = Color(0.05, 0.08, 0.1, 0.85)
+	plate_style.set_corner_radius_all(4)
+	plate_style.content_margin_left = 4
+	plate_style.content_margin_right = 4
+	plate.add_theme_stylebox_override("panel", plate_style)
+	plate.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	plate.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	plate.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	plate.offset_right = -4
+	plate.offset_bottom = -3
+	plate.offset_left = -4
+	plate.offset_top = -3
+	btn.add_child(plate)
+	var badge := Label.new()
+	badge.text = "%dO2" % cost
+	badge.add_theme_font_size_override("font_size", 13)
+	badge.add_theme_color_override("font_color", Color(0.35, 0.75, 1.0))
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(badge)
+
 func _populate_move_menu(actor: Dictionary) -> void:
 	# The guided button belongs to this menu generation. An infinite tween
 	# whose property targets have all been freed becomes a zero-duration
@@ -4028,12 +4102,12 @@ func _populate_move_menu(actor: Dictionary) -> void:
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
 		var hint: String = CombatMoves.resolved_hint(actor.stats as CombatantStats, mv)
-		if ox_cost > 0.0:
-			hint = "%s - %d O2" % [hint, int(ox_cost)]
 		var b := _menu_button(String(mv.name), hint)
 		var base_power := _move_base_power(mv)
 		if base_power > 0:
 			_add_power_badge(b, base_power)
+		if ox_cost > 0.0:
+			_add_oxygen_badge(b, int(ox_cost))
 		var tooltip := _move_tooltip_text(mv, actor)
 		if tooltip != "":
 			b.tooltip_text = tooltip
@@ -4290,7 +4364,7 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	_refresh_bar(target)
 	_log(msg if msg != "" else "%s - nothing happened." % display)
 	_finish_actor_turn(_acting)
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	_advance_turn()
 
 # Every attack_up/defense_up applied so far this battle, as {stats, field,
@@ -4352,13 +4426,21 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	var targets: Array
 	match effect:
 		"heal":
-			targets = _living(party)
+			# Living and actually hurt - a heal never revives and never
+			# wastes a turn/Oxygen on someone already at full health.
+			targets = _living(party).filter(func(e: Dictionary) -> bool:
+				var s := e.stats as CombatantStats
+				return s.hp < s.hp_max)
 		"revive":
 			targets = party.filter(func(e: Dictionary) -> bool: return (e.stats as CombatantStats).hp <= 0)
 		_:
 			targets = _living(enemies)
 
 	if targets.is_empty():
+		if effect == "heal":
+			_log("No one needs healing right now.")
+		elif effect == "revive":
+			_log("No one is down.")
 		move_menu.visible = true
 		call_deferred("_fit_panel_height")
 		return
@@ -5070,7 +5152,7 @@ func _apply_debuff(defender: CombatantStats, debuff: String, amount: int) -> Dic
 
 # Appended to the move's own log line: "... - Tethys is immune to Weaken."
 func _log_immunity(target: Dictionary, mv: Dictionary) -> void:
-	_log("%s  •  %s is immune to %s." % [_current_log_text(), String(target.display_name), String(mv.get("name", "that move"))])
+	_log_append("  %s is immune to %s." % [String(target.display_name), String(mv.get("name", "that move"))])
 
 func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r: Dictionary) -> void:
 	var text: String = String(mv.get("text", "You use %s" % String(mv.name)))
@@ -5100,7 +5182,12 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 	_log("%s for %d." % [text, int(r.damage)])
 	var effects := r.get("effects", []) as Array
 	if not effects.is_empty():
-		_log("%s  •  %s" % [_current_log_text(), ", ".join(effects)])
+		# Effects in red right after the hit line - no bullet separator.
+		log_label.add_text("  ")
+		log_label.push_color(Color.html(CombatRules.STAT_LOSS_COLOR))
+		log_label.add_text(", ".join(effects))
+		log_label.pop()
+		call_deferred("_fit_panel_height")
 
 # Swing first, resolve at the moment of impact. Returns once the hit is
 # supposed to land, leaving the rest of the clip to play out underneath the
@@ -5318,7 +5405,7 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 		if _tutorial_step == 0:
 			await _explain_other_stats()
 		_tutorial_step += 1
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	await _wait_for_delivered_cast(_acting)
 	if not target_died:
 		_restore_enemy_idle(target)
@@ -5384,7 +5471,7 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 		if _tutorial_step == 0:
 			await _explain_other_stats()
 		_tutorial_step += 1
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	await _wait_for_delivered_cast(_acting)
 	_advance_turn()
 
@@ -5555,7 +5642,7 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 
 	_log("%s uses %s: %s." % [String(actor.display_name), String(move.name), "; ".join(summaries)])
 	_finish_actor_turn(actor)
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	if is_instance_valid(boss):
 		boss.call("play", "idle")
 		if boss is CampaignCordys:
@@ -5632,7 +5719,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	if move.is_empty():
 		_log("%s has no enabled attack." % String(actor.display_name))
 		_finish_actor_turn(actor)
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		await get_tree().create_timer(_log_read_delay()).timeout
 		_advance_turn()
 		return
 	await _step_toward(actor, target)
@@ -5701,7 +5788,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 	_send_home(actor, attack_length * (1.0 - IMPACT_FRACTION))
 	_log("%s uses %s: %s." % [String(actor.display_name), String(move.get("name", "Attack")), "; ".join(result_rows)])
 	_finish_actor_turn(actor)
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	_restore_enemy_idle(actor)
 	_advance_turn()
 
@@ -5788,7 +5875,7 @@ func _finish_special_enemy_turn(actor: Dictionary, target: Dictionary, flawless:
 		(target.actor as Diver).play_death_fade()
 	_special_round += 1
 	_finish_actor_turn(actor)
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	# MODIFIED (added): the first special encounter walks through all three
 	# divers' own minigames in turn - Maxilani (already just played out,
 	# _tutorial_enemy_turns == 1), then Musashi, then Bucky. Only fires while
@@ -5903,7 +5990,7 @@ func _do_grapple_intercept_encounter(actor: Dictionary, target: Dictionary, _tar
 	# The safe color is announced by the minigame's wave_started signal.
 	# This first line establishes the actual objective before its first wave.
 	_log("%s launches a colored vortex. Grapple the instructed color before it reaches you!" % String(actor.display_name))
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	var minigame := GrappleInterceptMinigame.new()
 	minigame.stage_root = _stage_vp
 	minigame.stage_camera = _stage_cam
@@ -5947,7 +6034,7 @@ func _do_rock_dodge_encounter(actor: Dictionary, target: Dictionary, _target_sta
 	# without this while Maxilani's and Musashi's both have it.
 	_log("%s hurls rocks and walls at %s! Left/Right to move lanes, E to shockwave a rock when it arrives in your lane." % [String(actor.display_name), String(target.display_name)])
 	_audio_call(&"play_shockwave")
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	_look_at_dodge_angle((target.actor as Node3D).global_position)
 	var minigame := RockDodgeMinigame.new()
 	minigame.thrower_position = (actor.actor as Node3D).global_position + Vector3.UP * (actor.actor as Goblin).height
@@ -5991,7 +6078,7 @@ func _do_swap_minigame(actor: Dictionary, target: Dictionary, _target_stats: Com
 	# reads as body text in the bottom panel instead of an overlay that
 	# collided with the party status column at the top of the screen.
 	_log("%s scrambles the diver portraits! Left/Right to aim, E to swap into that spot." % String(actor.display_name))
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	_look_at_swap_angle((target.actor as Node3D).global_position, (actor.actor as Node3D).global_position)
 	var minigame := DiverSwapMinigame.new()
 	minigame.stage_root = _stage_vp
@@ -6092,7 +6179,7 @@ func _win() -> void:
 	for entry in _living(party):
 		if entry.has("actor") and is_instance_valid(entry.actor) and entry.actor is Diver:
 			(entry.actor as Diver).play_win()
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	# The first combat tutorial lingers on the victory before its
 	# "You have defeated your first enemy!" caption replaces it.
 	if tutorial_encounter and not special_encounter:
@@ -6117,7 +6204,7 @@ func _win() -> void:
 			var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
 			for lv in levels:
 				_log("%s reached level %d!" % [String(entry.display_name), int((lv as Dictionary).level)])
-				await get_tree().create_timer(LOG_READ_DELAY).timeout
+				await get_tree().create_timer(_log_read_delay()).timeout
 			if not levels.is_empty():
 				levelup_blocks.append(_build_levelup_block(entry, levels))
 		var available_key_items: Array = world.key_items.duplicate() if world != null else campaign_key_items_source.duplicate()
@@ -6177,7 +6264,7 @@ func _win() -> void:
 		# instead of an Enter-gate, same reasoning _apply_stat_delta()-style
 		# previews elsewhere in this file use a timer when nothing has to
 		# stay synchronized with an explanation.
-		await get_tree().create_timer(LOG_READ_DELAY * 1.5).timeout
+		await get_tree().create_timer(_log_read_delay()).timeout
 		for entry in party:
 			if entry.has("hp_heal_overlay"):
 				(entry.hp_heal_overlay as ColorRect).visible = false
@@ -6229,7 +6316,7 @@ func _lose() -> void:
 		await _tutorial_show_step("In this case, the party lost the fight, but you can continue to fight enemies in the overworld. Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen (green on the bars, outlined in purple at the top) even if they went down - otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.")
 	else:
 		_log("The party is battered and pulls back.")
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		await get_tree().create_timer(_log_read_delay()).timeout
 	_revert_temp_buffs()
 	finished.emit("lost")
 
@@ -6241,8 +6328,20 @@ func _on_skip_tutorial_pressed() -> void:
 	_tutorial_awaiting_enter = false
 	_set_all_buttons(false)
 	main_menu.visible = false
+	# Only the skip line stays on screen - clear any tutorial caption, its
+	# Continue button, the level-up block and the move/stat panels.
+	_tutorial_caption.text = ""
+	_tutorial_caption.visible = false
+	_tutorial_continue_btn.visible = false
+	_levelup_caption.visible = false
+	move_menu.visible = false
+	item_menu.visible = false
+	target_menu.visible = false
+	_selected_move_panel.visible = false
+	(_player_stats_ui.panel as Control).visible = false
+	(_enemy_stats_ui.panel as Control).visible = false
 	_log("Skipping the tutorial fight.")
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	_revert_temp_buffs()
 	finished.emit("skipped")
 
@@ -6255,7 +6354,7 @@ func _on_run() -> void:
 
 	if randf() <= RUN_CHANCE:
 		_log("The party breaks off and swims for it.")
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		await get_tree().create_timer(_log_read_delay()).timeout
 		_revert_temp_buffs()
 		finished.emit("fled")
 		return
@@ -6263,7 +6362,7 @@ func _on_run() -> void:
 	var living_enemies := _living(enemies)
 	var blocker := String(living_enemies[0].display_name) if not living_enemies.is_empty() else "something"
 	_log("Can't get clear - %s cuts you off!" % blocker)
-	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	await get_tree().create_timer(_log_read_delay()).timeout
 	if not living_enemies.is_empty():
 		var attacker: Dictionary = living_enemies[randi_range(0, living_enemies.size() - 1)]
 		var angler := attacker.actor as Goblin
@@ -6279,7 +6378,7 @@ func _on_run() -> void:
 			_log("%s %s you for %d as you struggle free." % [String(attacker.display_name), String(move.get("verb", "attacks")), int(r.damage)])
 		if (_acting.stats as CombatantStats).hp <= 0 and _acting.has("actor") and _acting.actor is Diver:
 			(_acting.actor as Diver).play_death_fade()
-		await get_tree().create_timer(LOG_READ_DELAY).timeout
+		await get_tree().create_timer(_log_read_delay()).timeout
 	_finish_actor_turn(_acting)
 	_advance_turn()
 
