@@ -1923,6 +1923,7 @@ func _build_secret_item_rocks() -> void:
 		rock.disguised_as_scenery_rock = true   # round scenery-rock look, like the main game's
 		rock.position = marker.global_position
 		var reward: String = SECRET_ITEM_ROCKS[marker_name]
+		rock.set_meta("reward", reward)   # "ambush" rocks get no red circle
 		rock.broken.connect(_on_secret_rock_broken.bind(reward, marker.global_position))
 		add_child(rock)
 		_secret_room_rocks.append(rock)
@@ -2352,6 +2353,10 @@ func sonar_rock_positions() -> PackedVector3Array:
 	if not sonar_on_in_maze():
 		return out
 	for rock in _secret_room_rocks:
+		# Rocks hiding enemies aren't item rocks - no red circle (as in the
+		# open world, where ambush rocks are skipped too).
+		if is_instance_valid(rock) and String(rock.get_meta("reward", "")) == "ambush":
+			continue
 		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and rock.global_position.distance_to(_diver.global_position) <= SONAR_ROCK_RADIUS 				and MiniMap.within_marker_height(_diver.global_position.y, rock.global_position.y):
 			out.append(rock.global_position)
 	return out
