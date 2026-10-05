@@ -400,6 +400,10 @@ func _build_stats() -> void:
 const SHOCKWAVE_RADIUS := 3.0
 const GRAPPLE_RANGE := 14.0
 const GRAPPLE_PULL_DURATION := 0.4
+# Environment occludes shots; lightweight item targets live on layer 5 so
+# swimming and camera collision remain unaffected. Both preview and fire use
+# this mask rather than including buddies or silently missing floating items.
+const GRAPPLE_COLLISION_MASK := 1 | (1 << 4)
 
 # Different cooldowns on purpose, not just one shared constant: shockwave
 # always does something the instant it's used (no aim, nothing to whiff),
@@ -698,10 +702,9 @@ func _grapple(aim_dir: Vector3) -> void:
 	var from: Vector3 = global_position + Vector3(0, height * 0.4, 0)
 	var to: Vector3 = from + dir * GRAPPLE_RANGE
 	var query := PhysicsRayQueryParameters3D.create(from, to)
-	# Keep the live ray aligned with the aim preview: ignore the firing diver
-	# and only query the gameplay collision layer containing route anchors.
+	# Keep the live ray aligned with the aim preview and ignore party bodies.
 	query.exclude = [get_rid()]
-	query.collision_mask = 1
+	query.collision_mask = GRAPPLE_COLLISION_MASK
 	var result := space.intersect_ray(query)
 
 	# Beam end is wherever the ray actually stopped - the max range if it
@@ -713,6 +716,11 @@ func _grapple(aim_dir: Vector3) -> void:
 		return
 
 	_ability_cooldown = GRAPPLE_COOLDOWN
+	# Light rewards travel to the actual shooter. Anchors retain traversal;
+	# choosing the nearest diver after a pull would award the wrong player.
+	if (result.collider as Node).has_method("reel_in_to"):
+		(result.collider as Node).call("reel_in_to", self)
+		return
 	_is_grappling = true
 	var target: Vector3 = (result.collider as Node3D).global_position
 

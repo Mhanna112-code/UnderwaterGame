@@ -166,3 +166,28 @@ embedded geometry or browser rendering.
 Each subsequent push requires another bounded remote refresh and a delta entry.
 No absent Discord animation is assumed downloaded; the admitted nine clips are
 the already-downloaded FBX derivatives documented in the asset manifest.
+
+## Latest fixed intake: #97 4ec6598 / #99 86878fa
+
+The approved completion contract is tracked in `docs/pr100-completion-ledger.md`.
+The earlier pending rows are historical receipts, not evidence of a full merge.
+New #97 deltas f698bee and 4ec6598 include Control Room map-box placement,
+radius-based special spots and extra draft routes, F abilities/E interactions,
+free Swap, light-orb reeling, and removal of ordinary post-victory refill.
+Geometry, input ownership, new encounter spots, and recovery admission remain
+explicitly pending; do not present this batch as the entire upstream integration.
+
+Light-orb subset admitted locally: port `reel_in_to(shooter)` while preserving
+ordinary anchor traversal, authored models/animation libraries, shared stats and
+Sonar battle billing. A live layer-5 shot previously failed even though the aim
+preview could see it. Shared ray mask now includes environment and item targets
+but not party bodies. The item follows its shooter and cannot be stolen by a
+touching bystander, double-collected during a synchronous callback, or permanently
+lost when its shooter leaves. Environmental abilities retain the approved free
+anti-softlock behavior, rather than restoring upstream 20-Oxygen grapple/shockwave
+charges. Swap is therefore also free, as Marc requested.
+
+Captured red ORB-1 and final 59 real-physics checks are documented in
+`verify/marc_orb_reel.bug-catalog.md`; ordinary World aim, three-character
+swimming and delivered animation regressions pass. No updated preview, normal
+campaign completion, embedded World/maze, or full-suite claim is made here.
