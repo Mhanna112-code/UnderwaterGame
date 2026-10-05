@@ -30,6 +30,9 @@ and outstanding campaign acceptance; it is not a full-game readiness claim.
 [The goals, laboratory and ending batch](docs/main-goals-ending-batch-oct5.md)
 records the next runtime/export identity, hosted/canonical checks and remaining
 earned-route/full-campaign limits.
+The later [pre-boss ending and maze UI repair](docs/pre-boss-maze-ui-delivery-oct5.md)
+preserves Marc's pre-boss-only ending and records the current matching canonical
+artifact, reading-layout fixes and remaining acceptance work.
 
 ## Controls
 

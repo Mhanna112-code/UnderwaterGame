@@ -22,8 +22,26 @@ evidence/maze-goal-layout-oct5. Rejected runs remain explicitly labelled.
 The browser correction uses a visible window and real first gameplay click;
 it never suppresses mouse-capture errors or injects a lock.
 
-Publication: pending final fast-forward push, delivery deployment promotion
-and independent canonical pack check. This document will record those results.
+Publication completed:
+
+- Fast-forward main2456b28 -> d08478c73dba1afa4b6cc2367ee7bbf9f37400ae;
+  terminal push0, no force push or new PR.
+- READY delivery deployment dpl_5VoUEF9vCVaGgdmycuyD5y2927gz,
+  https://underwatergame-cj0bg1a6f-immortaldemongods-projects.vercel.app/.
+  Actual served HTML/JS/Wasm/PCK equal the accepted export byte-for-byte;
+  fresh-profile ordinary title passes with no captured errors.
+- That exact deployment was promoted to https://underwatergame.vercel.app/.
+  A separate canonical read again matches all four runtime assets, source and
+  pack digest; actual fresh-profile title displays Underwater/New Game and
+  no captured browser/script errors. Terminal canonical check0.
+- Raw candidate/canonical identity and title receipts plus inspected canonical
+  picture are in evidence/pre-boss-ending-repair-oct5/delivery.
+
+Git integration is still disconnected: this was an explicit verified deployment,
+not an assertion that future pushes automatically update the URL. The existing
+separate campaign-review alias was not changed by this canonical delivery.
+Full current gates have now started with an isolated Godot wrapper pointing
+every command at UnderwaterGame-gates-qL8P9b; a running partial log is not a pass.
 
 Not full-game readiness: earned lab-first/maze-first casual/skilled journeys,
 exhaustive upstream dispositions, full current suite, Bomb Bot/audio/six-area

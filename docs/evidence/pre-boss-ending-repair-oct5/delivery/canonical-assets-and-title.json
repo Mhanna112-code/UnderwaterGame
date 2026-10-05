@@ -1,0 +1,44 @@
+{
+  "target": "https://underwatergame.vercel.app/",
+  "deployment": "dpl_5VoUEF9vCVaGgdmycuyD5y2927gz",
+  "metadata": {
+    "source_commit": "cb607cf7b27ccca844d643ba5b74e2dca1e1f385",
+    "pck_sha256": "10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031",
+    "pck_bytes": 94990924,
+    "engine": "Godot 4.7.1",
+    "status": "Accepted bounded pre-boss-only ending and maze reading-layout repair, reconciled with Sonar/site main; full campaign acceptance remains incomplete",
+    "upstream_intake": {
+      "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
+      "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
+    },
+    "change": "Pre-boss Restart is scoped to the current run and failed browser durability is reported honestly. Maze destinations avoid visible shared HP/Oxygen; shared exploration health relinquishes Inventory/map/battle reading ownership. Sonar 1 O2 per 6 seconds, R-independent guarded sites, post-lab navigation, forced strong-room encounters, combat pacing and authored spell rules are retained",
+    "deferred": "Tethys opening/Cordys introduction LAST with explicit Miguel review before main/canonical. Full earned campaign/browser/audio/polish acceptance and same-source Windows/Linux packages remain. Native download source below is older than this web build",
+    "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
+    "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
+  },
+  "assets": [
+    {
+      "file": "index.html",
+      "bytes": 6387,
+      "sha256": "9d27e2a6381c949e0da341aa25f57201825d4feef5084366337843511b0658d9"
+    },
+    {
+      "file": "index.js",
+      "bytes": 279815,
+      "sha256": "68586d6daafc93c6e697b3fb258976874aa7459b8931165ebb1dc3c9614cc42c"
+    },
+    {
+      "file": "index.wasm",
+      "bytes": 39513091,
+      "sha256": "35116f68540ac41acf7d71ea457added91b5e960a9cca3e2acc72918eaf01277"
+    },
+    {
+      "file": "index.pck",
+      "bytes": 94990924,
+      "sha256": "10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031"
+    }
+  ],
+  "title": "Underwater\nNew Game",
+  "errors": [],
+  "scope": "Canonical four runtime assets equal accepted local/candidate export; fresh-profile ordinary title. Bounded actual ending/map/mouse checks retained separately on identical game bytes; no full-campaign claim."
+}

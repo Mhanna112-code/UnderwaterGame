@@ -1,6 +1,15 @@
 # Remaining campaign plan: current main audit, October 5
 
-## Latest unpublished batch checkpoint — cb607cf
+## Latest published bounded batch — cb607cf runtime / d08478c main
+
+Main push and canonical delivery are complete for this repair batch. The actual
+canonical HTML/JS/Wasm/PCK all match the accepted export byte-for-byte; fresh
+browser cold title passes without captured errors. Runtime cb607cf, pack10be4f5b
+is94,990,924bytes. See pre-boss-maze-ui-delivery-oct5.md for deployment ID,
+main artifact commit and raw identity/presentation receipts. Git deploy is not
+automatic. The full current runner is live in disposable native user data;
+it has no terminal full-suite verdict yet. Full-scope remaining work below
+stays active; opening work is still review-gated and deferred until last.
 
 Final acceptance now passes on this same artifact: hosted first-click headed
 Chromium gives actual canvas mouse capture, E-earned map, discovery-only first
@@ -14,7 +23,9 @@ and review-gated opening remain incomplete. Publication is separately recorded
 in pre-boss-maze-ui-delivery-oct5.md; older pending paragraphs below describe
 the investigation history, not unresolved final mouse/save checks.
 
-Origin main remains2456b28; this checkout has not pushed the current batch.
+### Investigation history for this accepted batch
+
+Before publication, origin main was2456b28 and the batch had not been pushed.
 The final candidate runtime is cb607cf, actual served PCK
 `10be4f5b9a3cea95a77139a32985baee8bea9d489f89eef961291bc8dec6e031`
 (94,990,924bytes), on an unpromoted deployment. Canonical is unchanged.
@@ -34,7 +45,7 @@ browser reports WrongDocumentError during the aiming segment, so acceptance
 and publication remain blocked pending a traced request/focus investigation.
 This is not a full-suite, earned-route or full-campaign readiness claim.
 
-## Latest instruction and local follow-up (supersedes ending contract below)
+## Earlier instruction and repair history (ending contract still binding)
 
 Miguel explicitly chose **Preserve Marc's pre-boss-only ending** on October 5.
 Do not restore the older completion-save design. Final victory must show the
