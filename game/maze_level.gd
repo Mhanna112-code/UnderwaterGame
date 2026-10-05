@@ -5127,16 +5127,80 @@ func _split_rock_in_reach() -> bool:
 	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z)) <= SPLIT_ROCK_RADIUS + SPLIT_ROCK_REACH
 
 func _check_split_rock() -> void:
+	_update_rock_pull_stream()
 	if _rock_split or _split_rock == null or _battling or any_modal_open():
 		return
 	var break_rock := get_node_or_null("WindCorridorBreakRock") as Area3D
 	if break_rock == null:
+		return
+	# Only once the rock's hallway (walls 10/11) has swung over and come to
+	# rest on the line where the two currents meet - not while it's still
+	# away at home, however the currents are set.
+	if not _rock_over_currents():
 		return
 	var a: WaterCurrent = _currents_by_corridor.get($WindCorridor4, null)
 	var b: WaterCurrent = _currents_by_corridor.get(break_rock, null)
 	if a == null or b == null or a.orientation.dot(b.orientation) > -0.9:
 		return
 	_play_split_rock_cutscene()
+
+func _rock_over_currents() -> bool:
+	return _walls_10_11_swung and not _wall_set_moving("CSGBox3D10/11")
+
+# While the rock sits over the currents' line and C4 holds a current, C4's
+# pull is drawn reaching all the way to the rock - dense, bright streaks from
+# the rock off along C4's flow - so it reads from the far side of the wall too.
+var _rock_pull_stream: GPUParticles3D
+
+func _update_rock_pull_stream() -> void:
+	var c4_current: WaterCurrent = _currents_by_corridor.get($WindCorridor4, null)
+	var show := not _rock_split and _split_rock != null and c4_current != null and _rock_over_currents()
+	if not show:
+		if _rock_pull_stream != null:
+			_rock_pull_stream.emitting = false
+		return
+	if _rock_pull_stream == null:
+		_rock_pull_stream = _build_rock_pull_stream()
+	_rock_pull_stream.global_position = _split_rock.global_position + Vector3(0, 0.4, 0)
+	var pm := _rock_pull_stream.process_material as ParticleProcessMaterial
+	var flow := c4_current.orientation
+	flow.y = 0.0
+	pm.direction = flow.normalized() if flow.length() > 0.01 else Vector3.FORWARD
+	_rock_pull_stream.emitting = true
+
+func _build_rock_pull_stream() -> GPUParticles3D:
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(1.2, 1.4, 1.2)
+	pm.spread = 6.0
+	pm.initial_velocity_min = 5.0
+	pm.initial_velocity_max = 7.0
+	pm.gravity = Vector3.ZERO
+	pm.particle_flag_align_y = true
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.8, 0.97, 1.0, 0.0))
+	fade.set_color(1, Color(0.8, 0.97, 1.0, 0.0))
+	fade.add_point(0.1, Color(0.85, 0.98, 1.0, 0.95))
+	fade.add_point(0.85, Color(0.65, 0.9, 1.0, 0.6))
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = fade
+	pm.color_ramp = ramp
+	var streak := BoxMesh.new()
+	streak.size = Vector3(0.05, 0.8, 0.05)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	streak.material = mat
+	var stream := GPUParticles3D.new()
+	stream.name = "RockPullStream"
+	stream.amount = 140
+	stream.lifetime = 2.4
+	stream.process_material = pm
+	stream.draw_pass_1 = streak
+	stream.visibility_aabb = AABB(Vector3(-20, -3, -20), Vector3(40, 6, 40))
+	add_child(stream)
+	return stream
 
 func _play_split_rock_cutscene() -> void:
 	_rock_split = true
