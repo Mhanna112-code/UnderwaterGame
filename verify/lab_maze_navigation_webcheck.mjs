@@ -80,9 +80,12 @@ try {
     expect(label.x > 0 && label.x < width && label.y > 160 && label.y < 590, 'NAV-W4 compass overlaps map/controls or bottom health');
   }
   await page.setViewportSize({ width: 1280, height: 720 });
-  // Normal Load starts with yaw zero: A swims east toward the left-pointing
-  // compass. No direct camera, actor, phase, encounter or result injection.
-  await page.keyboard.down('KeyA');
+  // Follow the compass with ordinary look/swim controls, instead of staring
+  // sideways into the ramp rail while holding A. Normal Load starts yaw zero;
+  // Left turns toward the east passage. No camera/actor/phase injection.
+  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(785); await page.keyboard.up('ArrowLeft');
+  await page.waitForTimeout(400); await capture('face-the-compass');
+  await page.keyboard.down('KeyW');
   const deadline = Date.now() + 25000;
   let entered = false;
   let previousDistance = Infinity;
@@ -97,7 +100,7 @@ try {
     expect(metres <= previousDistance + 1, 'NAV-W6 distance increases before entry: compass points back to the ramp mouth');
     previousDistance = metres;
   }
-  await page.keyboard.up('KeyA');
+  await page.keyboard.up('KeyW');
   expect(entered, 'NAV-W2 actual lab-to-ramp swimming never relinquished World HUD to the maze');
   await capture('actual-maze-entry');
   expect(errors.length === 0, 'NAV-W3 exported flow contains browser/script errors');
@@ -105,6 +108,6 @@ try {
 findings.push(...errors);
 await browser.close(); if (server) server.close();
 fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ source_commit: metadata.source_commit, pck_sha256: metadata.pck_sha256, observations, findings,
-  scope: 'Fresh-profile supplied completed-lab checkpoint; normal Title Load, visible compass at three widths, actual browser A swimming through the lab exit/ramp into maze ownership. Not an earned Tethys victory or full-campaign balance claim.' }, null, 2));
+  scope: 'Fresh-profile supplied completed-lab checkpoint; normal Title Load, visible compass at three widths, ordinary arrow-key look and W swimming through the lab exit/ramp into maze ownership with decreasing distance. Not an earned Tethys victory or full-campaign balance claim.' }, null, 2));
 console.log(findings.length ? 'LAB MAZE NAVIGATION WEB: failed' : 'LAB MAZE NAVIGATION WEB: clean');
 process.exit(findings.length ? 1 : 0);
