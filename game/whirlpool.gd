@@ -42,6 +42,11 @@ signal diver_sucked_in(d: Diver, amount: int)
 @export var sink_depth := 2.2
 @export var vanish_duration := 0.35
 @export var deep_hole_radius := 0.0
+# World corridor whirlpool: draw the ring down on the seafloor (world y≈0) as
+# a solid, brightly lit swirl with visible arms, instead of a 72%-opacity disc
+# floating at swim height that read as faded. On the floor it still stays out
+# of the grapple sightline that the flat ring was introduced to protect.
+@export var floor_visual := false
 const DEEP_SHAFT_DEPTH := 9.0
 
 var armed := true
@@ -128,6 +133,31 @@ func _build_visual() -> void:
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_inst.material_override = mat
 	mesh_inst.position.y = 0.04
+	if floor_visual:
+		mesh_inst.position.y = 0.1 - position.y
+		mat.albedo_color = Color(0.05, 0.42, 0.55, 0.95)
+		mat.emission = Color(0.1, 0.6, 0.75)
+		mat.emission_energy_multiplier = 1.4
+		# A torus is rotationally symmetric, so spinning it alone looks still.
+		# Three curved-looking arms make the rotation readable.
+		var arm_mat := StandardMaterial3D.new()
+		arm_mat.albedo_color = Color(0.7, 0.95, 1.0)
+		arm_mat.emission_enabled = true
+		arm_mat.emission = Color(0.55, 0.9, 1.0)
+		arm_mat.emission_energy_multiplier = 1.6
+		arm_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		for k in 3:
+			for seg in 3:
+				var arm := MeshInstance3D.new()
+				var box := BoxMesh.new()
+				box.size = Vector3(suction_radius * 0.3, 0.12, 0.14)
+				arm.mesh = box
+				arm.material_override = arm_mat
+				var angle := TAU * k / 3.0 + seg * 0.45
+				var r := suction_radius * (0.35 + seg * 0.22)
+				arm.position = Vector3(cos(angle) * r, 0.08, sin(angle) * r)
+				arm.rotation.y = -angle - PI * 0.35
+				mesh_inst.add_child(arm)
 	add_child(mesh_inst)
 
 	var tw := create_tween().set_loops()

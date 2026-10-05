@@ -29,7 +29,8 @@ func _run() -> void:
 	await physics_frame
 	await process_frame
 	var text := world.route_objective_label.text.to_lower()
-	_expect(world.route_objective_panel.visible and "shallows" in text and "stronger" in text,
+	# Tutorial side of the entrance blockade (x < 16).
+	_expect(world.route_objective_panel.visible and "mysterious blockade" in text,
 		"SHALLOW-001 post-opening Shallows has no visible zone/purpose instruction: " + text)
 	_expect(not "laboratory" in text and not "wall" in text,
 		"SHALLOW-001 Shallows shows an unrelated contextual instruction")

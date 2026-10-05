@@ -47,7 +47,8 @@ func _run() -> void:
 		diver.global_position = sample
 		diver.velocity = Vector3.ZERO
 		await physics_frame
-		var collision := diver.move_and_collide(Vector3.UP * 26.0, true)
+		# Free water all the way up past the airborne reward rocks (18 m)...
+		var collision := diver.move_and_collide(Vector3.UP * 17.0, true)
 		if collision != null:
 			findings.append(
 				"INVISIBLE OPEN-WATER CEILING: upward path from %s hit collision at y=%.2f" % [
@@ -55,11 +56,15 @@ func _run() -> void:
 					collision.get_position().y,
 				]
 			)
+		# ...then the restored world ceiling at four blockade heights (24 m).
+		var roof := diver.move_and_collide(Vector3.UP * 40.0, true)
+		if roof == null or absf(roof.get_position().y - World.WORLD_CEILING_Y) > 0.5:
+			findings.append("WORLD CEILING MISSING: upward path from %s did not stop at y=%.1f" % [sample, World.WORLD_CEILING_Y])
 
 	for finding in findings:
 		push_error(finding)
 	if findings.is_empty():
-		print("OPEN WATER: horizontal and vertical traversal are free of invisible world-spanning collision")
+		print("OPEN WATER: horizontal traversal is free; vertical is free up to the world ceiling")
 	world.queue_free()
 	await process_frame
 	var audio := root.get_node_or_null("GameAudio")

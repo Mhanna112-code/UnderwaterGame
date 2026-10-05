@@ -1847,7 +1847,7 @@ const SECRET_ITEM_ROCKS := {
 	"ItemRock2": "sphere_room_key",
 	"ItemRock3": "attack_up",
 	"Marker3D2": "defense_up",
-	"Marker3D4": "spell_shard",
+	"Marker3D4": "evasion_up",
 	"Marker3D5": "ambush",
 	"Marker3D7": "ambush",
 }

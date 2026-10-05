@@ -108,19 +108,28 @@ func effective_agility() -> int:
 	return maxi(0, agility - status_level("blindness"))
 
 func effective_defense() -> int:
-	return maxi(0, defense - status_level("blindness"))
+	return maxi(0, defense - status_level("blindness") - status_level("defense_down"))
 
 func begin_turn() -> void:
 	temporary_modifiers = {"accuracy": 0, "evasion": 0}
 	evasion_current = effective_evasion()
 
-func end_turn() -> Dictionary:
+# Bleed/Poison damage only, no timer countdown. end_turn() uses it, and a
+# skipped Stun turn calls it directly so damage-over-time keeps landing
+# while stunned.
+func tick_damage_over_time() -> Dictionary:
 	var bleed_damage := status_level("bleed")
 	if bleed_damage > 0:
 		hp = maxi(0, hp - bleed_damage)
 	var poison_damage := status_level("poison")
 	if poison_damage > 0:
 		hp = maxi(0, hp - poison_damage)
+	return {"bleed_damage": bleed_damage, "poison_damage": poison_damage}
+
+func end_turn() -> Dictionary:
+	var dot := tick_damage_over_time()
+	var bleed_damage := int(dot.bleed_damage)
+	var poison_damage := int(dot.poison_damage)
 	var expired: Array[String] = []
 	for status in statuses.keys():
 		var entry := statuses[status] as Dictionary
@@ -144,6 +153,12 @@ func spend_evasion(amount: int) -> int:
 	var spent := mini(evasion_current, maxi(0, amount))
 	evasion_current -= spent
 	return spent
+
+# Bosses (Tethys) shrug off every stat-lowering effect: reduce_evasion/
+# reduce_defense, the Blindness/Evasion Down/Defense Down statuses and the
+# legacy Weaken/Slow-style debuffs. Bleed, Poison and Stun still apply.
+var immune_to_stat_loss := false
+const STAT_LOSS_STATUSES := ["blindness", "evasion_down", "defense_down"]
 
 func reduce_evasion(amount: int) -> int:
 	var before := evasion

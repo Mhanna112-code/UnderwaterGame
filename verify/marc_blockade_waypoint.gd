@@ -20,8 +20,13 @@ func _run() -> void:
 	world.route_state.set_prologue_phase("complete")
 	await _frames(3)
 	arrow = world.find_child("BlockadeWaypoint", true, false) as MeshInstance3D
+	# The forced tutorial's light-beam arrow owns guidance until it is done.
+	_expect(arrow == null or not arrow.visible, "FOLLOW-3 waypoint overlaps the tutorial beam arrow before the tutorial fight")
+	world.route_state.tutorial_complete = true
+	await _frames(3)
+	arrow = world.find_child("BlockadeWaypoint", true, false) as MeshInstance3D
 	if arrow == null:
-		findings.append("FOLLOW-3 completed recovery has no visible blockade waypoint")
+		findings.append("FOLLOW-3 completed tutorial has no visible blockade waypoint")
 		await _finish(world)
 		return
 	var wall := world._cracked_walls["entrance_blockade"] as CrackedWall

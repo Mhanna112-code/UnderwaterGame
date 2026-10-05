@@ -4,8 +4,8 @@ extends CanvasLayer
 ## First-run cinematic owner.
 ##
 ## This intentionally does not share lifecycle or controls with
-## LabVideoCutscene. They reuse the same temporary media bytes, but the opening
-## is non-skippable while the later lab scene remains skippable.
+## LabVideoCutscene. They reuse the same temporary media bytes. A small
+## mouse-only "Skip Cutscene" button sits at the bottom right (see _skip()).
 
 signal completed(success: bool)
 signal handoff_started
@@ -24,6 +24,7 @@ const MOVIE_FADE_SECONDS := 0.55
 var _video: VideoStreamPlayer
 var _fallback: VBoxContainer
 var _continue_button: Button
+var _skip_button: Button
 var _watchdog: Timer
 var _completed := false
 var _fallback_visible := false
@@ -96,6 +97,27 @@ func _ready() -> void:
 	_continue_button.pressed.connect(_on_fallback_continue)
 	_fallback.add_child(_continue_button)
 
+	# Mouse-only (FOCUS_NONE) so Enter/Space can't skip by accident;
+	# _unhandled_input() still swallows every key while the film plays.
+	_skip_button = Button.new()
+	_skip_button.name = "SkipCutscene"
+	_skip_button.text = "Skip Cutscene"
+	_skip_button.focus_mode = Control.FOCUS_NONE
+	_skip_button.add_theme_font_size_override("font_size", 14)
+	_skip_button.modulate.a = 0.75
+	_skip_button.anchor_left = 1.0
+	_skip_button.anchor_top = 1.0
+	_skip_button.anchor_right = 1.0
+	_skip_button.anchor_bottom = 1.0
+	_skip_button.offset_left = -136.0
+	_skip_button.offset_top = -50.0
+	_skip_button.offset_right = -16.0
+	_skip_button.offset_bottom = -16.0
+	_skip_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_skip_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_skip_button.pressed.connect(_skip)
+	shade.add_child(_skip_button)
+
 	_watchdog = Timer.new()
 	_watchdog.name = "DecoderWatchdog"
 	_watchdog.one_shot = false
@@ -134,7 +156,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	# neither Escape nor gameplay controls reach the paused world underneath.
 	get_viewport().set_input_as_handled()
 
+# Same ending as letting the film run out: the opening still shows its short
+# title card (which performs the world handoff), anything else completes.
+func _skip() -> void:
+	if _completed or _handing_off:
+		return
+	_on_video_finished()
+
 func _on_video_finished() -> void:
+	if is_instance_valid(_skip_button):
+		_skip_button.visible = false
 	if _completed or _handing_off:
 		return
 	if show_opening_title:
@@ -202,6 +233,8 @@ func _show_decoder_fallback() -> void:
 	if _completed or _fallback_visible:
 		return
 	_fallback_visible = true
+	if is_instance_valid(_skip_button):
+		_skip_button.visible = false
 	if is_instance_valid(_watchdog):
 		_watchdog.stop()
 	if is_instance_valid(_video):

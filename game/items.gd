@@ -3,10 +3,10 @@
 # nothing here needs a .new() either.
 #
 # Two kinds of item live in ITEMS, told apart by "kind":
-#   - Consumables ("heal"/"oxygen"/"spell_point") apply straight to a
+#   - Consumables ("heal"/"oxygen" and the battle-only boosts) apply straight to a
 #     Diver's stats the instant they're picked up - see grant(). These
 #     are what ItemOrb hands out (see cracked_wall.gd's break handler in
-#     world.gd - a shockwaved rock pops one, chosen from RANDOM_DROP_TABLE).
+#     world.gd - a shockwaved rock pops one, taken from EVEN_DROP_ORDER).
 #   - Key items ("key") are party-wide spell requirements in spell_tree.gd
 #     (see each spell's requires_items) - they don't touch a Diver's stats at all, they go
 #     into World.key_items instead. grant() refuses these on purpose (see
@@ -23,10 +23,6 @@ const ITEMS := {
 	"oxygen_cell": {
 		"display": "Oxygen Cell", "kind": "oxygen", "amount": 30.0,
 		"description": "Restores 30 oxygen.",
-	},
-	"spell_shard": {
-		"display": "Spell Shard", "kind": "spell_point", "amount": 1,
-		"description": "Grants 1 spell point.",
 	},
 	"current_pearl": {
 		"display": "Current Pearl", "kind": "key",
@@ -79,22 +75,36 @@ const ITEMS := {
 		"description": "Raises defense for the rest of this fight.",
 		"battle_only": true,
 	},
+	"accuracy_up": {
+		"display": "Focus Tonic", "kind": "accuracy_up", "amount": 2,
+		"description": "Raises accuracy for the rest of this fight.",
+		"battle_only": true,
+	},
+	"evasion_up": {
+		"display": "Slipstream Oil", "kind": "evasion_up", "amount": 2,
+		"description": "Raises evasion for the rest of this fight.",
+		"battle_only": true,
+	},
 }
 
-# What a shockwaved rock can pop out - potions weighted heaviest by literal
-# repetition (same trick Goblin.jitter_pct's callers use elsewhere: no
-# separate weight table, just how many times an id appears) so a break
-# usually pays out something small and reliable, occasionally something
-# better. Key items are deliberately absent from the random table: two are
-# placed in specific airborne rocks and the others come from guardians.
-const RANDOM_DROP_TABLE := [
-	"potion", "potion", "potion", "potion",
-	"oxygen_cell", "oxygen_cell",
-	"spell_shard",
+# Removed items still present in older saves: dropped from inventory on Load,
+# and a pending world drop of one becomes the first item of EVEN_DROP_ORDER.
+const RETIRED_ITEMS := ["spell_shard"]
+
+# Every consumable a breakable item rock can hold, each exactly once. Rocks
+# take these in order by index (drop_for_rock()), so the item rocks spread
+# them evenly instead of a random roll clumping potions. Key items stay out:
+# two sit in fixed airborne rocks and the rest come from guardians.
+const EVEN_DROP_ORDER := [
+	"potion", "attack_up", "oxygen_cell", "defense_up", "accuracy_up", "evasion_up",
 ]
 
+static func drop_for_rock(rock_index: int) -> String:
+	return EVEN_DROP_ORDER[posmod(rock_index, EVEN_DROP_ORDER.size())]
+
+# Equal odds of every consumable, for any caller without a fixed rock index.
 static func random_drop() -> String:
-	return RANDOM_DROP_TABLE[randi_range(0, RANDOM_DROP_TABLE.size() - 1)]
+	return EVEN_DROP_ORDER[randi_range(0, EVEN_DROP_ORDER.size() - 1)]
 
 static func is_key_item(item_id: String) -> bool:
 	return String(ITEMS.get(item_id, {}).get("kind", "")) == "key"
@@ -106,10 +116,8 @@ static func is_key_item(item_id: String) -> bool:
 # consumed for nothing, which is what grant() alone used to let happen
 # (it already messaged "already at full health," but still returned a
 # real message either way, and its caller never distinguished the two to
-# skip the actual deduction). spell_point has no cap (CombatantStats.
-# spell_points has no _max field to check against) - it always helps,
-# same as a key item request always fails since is_key_item() catches it
-# separately.
+# skip the actual deduction). The battle-only boosts always help; a key item
+# request always fails since is_key_item() catches it separately.
 #
 # MODIFIED: took a Diver originally - changed to CombatantStats directly
 # so battle.gd's party entries (which only ever carry {stats, actor, ...}
@@ -123,7 +131,7 @@ static func would_help(item_id: String, s: CombatantStats) -> bool:
 			return s.hp < s.hp_max
 		"oxygen":
 			return s.oxygen < s.oxygen_max
-		"spell_point", "attack_up", "defense_up":
+		"attack_up", "defense_up", "accuracy_up", "evasion_up":
 			return true
 		_:
 			return false
@@ -155,14 +163,19 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 			s.oxygen = minf(s.oxygen_max, s.oxygen + float(def.amount))
 			var gained_ox := s.oxygen - before_ox
 			return "Found an %s! +%d O2" % [display, int(round(gained_ox))] if gained_ox > 0.0 else "Found an %s, but your tank's already full." % display
-		"spell_point":
-			s.spell_points += int(def.amount)
-			return "Found a %s! +%d spell point" % [display, int(def.amount)]
 		"attack_up":
 			s.strength += int(def.amount)
 			return "%s! Strength up by %d for this fight." % [display, int(def.amount)]
 		"defense_up":
 			s.defense += int(def.amount)
 			return "%s! Defense up by %d for this fight." % [display, int(def.amount)]
+		"accuracy_up":
+			s.accuracy += int(def.amount)
+			return "%s! Accuracy up by %d for this fight." % [display, int(def.amount)]
+		"evasion_up":
+			# Also top up the live dodge pool so the boost helps this round.
+			s.evasion += int(def.amount)
+			s.evasion_current += int(def.amount)
+			return "%s! Evasion up by %d for this fight." % [display, int(def.amount)]
 		_:
 			return ""

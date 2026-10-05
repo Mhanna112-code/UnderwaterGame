@@ -101,6 +101,8 @@ var _puppet_completed_xp := 0
 var prologue_angler_encounter := false
 var _prologue_angler_interrupted := false
 var prologue_octopus_encounter := false
+# Set by World for the opening: skip the Angler and reveal Cordys right away.
+var prologue_direct_cordys := false
 var _prologue_response_resolved := false
 var _prologue_strike_index := 0
 
@@ -164,6 +166,7 @@ var _special_tutorial_finale_shown := false
 # least once instead of it being left entirely to chance.
 var _tutorial_force_next_qte := false
 var _tutorial_flash_tween: Tween
+var _skip_tutorial_flash_tween: Tween
 var _tutorial_caption: RichTextLabel
 var _swap_demo_frame: PanelContainer
 # Built unconditionally (see _build_ui()) - shows the per-diver level-up
@@ -196,27 +199,20 @@ var diver_model_name := "Staff_Diver"
 const RUN_CHANCE := 0.6
 const MIN_ENEMIES := 1
 const MAX_ENEMIES := 3
-const OPENING_TWO_ENEMY_CHANCE := 0.25
 
-# A fresh party can face one or two grunts. Three-grunt packs enter the roll
-# only after the party has earned its first level; this removes the observed
-# level-1 automatic-loss pack without deleting the harder formation.
-static func max_enemies_for_level(player_level: int, is_guardian: bool = false) -> int:
+# Ordinary encounters can field up to three enemies at every level (the old
+# level-1 cap of two was lifted on request). Guardians stay solo.
+static func max_enemies_for_level(_player_level: int, is_guardian: bool = false) -> int:
 	if is_guardian:
 		return 1
-	return 2 if player_level <= 1 else MAX_ENEMIES
+	return MAX_ENEMIES
 
-# One shared roll policy for production and the balance gate. The opening
-# keeps a minority two-enemy challenge, level 2 consolidates the mixed roster
-# without introducing a three-pack, and level 3 unlocks all three formations.
-static func ordinary_enemy_count_for_roll(player_level: int, roll: float, is_guardian: bool = false) -> int:
+# One shared roll policy for production and the balance gate: one, two or
+# three enemies with equal odds at every level.
+static func ordinary_enemy_count_for_roll(_player_level: int, roll: float, is_guardian: bool = false) -> int:
 	if is_guardian:
 		return 1
 	var normalized := clampf(roll, 0.0, 0.999999)
-	if player_level <= 1:
-		return 2 if normalized < OPENING_TWO_ENEMY_CHANCE else 1
-	if player_level == 2:
-		return 1
 	if normalized < 1.0 / 3.0:
 		return 1
 	return 2 if normalized < 2.0 / 3.0 else 3
@@ -285,7 +281,7 @@ const BASE_MOVES := {
 	"Prototype_V(1922)": [
 		{"name": "Guard Bash", "power": 6, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
 		{"name": "Heavy Kick", "power": 10, "acc_mod": 0, "hint": "Balanced, heavier", "text": "You drive a heavy kick home", "oxygen_cost": 10.0},
-		{"name": "Crushing Haymaker", "power": 15, "acc_mod": 0, "hint": "Very heavy, exhaust enemy EVA first", "text": "You wind up and crush it", "oxygen_cost": 16.0},
+		{"name": "Crushing Haymaker", "power": 15, "acc_mod": 0, "hint": "Very heavy, slow", "text": "You wind up and crush it", "oxygen_cost": 16.0},
 	],
 }
 
@@ -384,6 +380,9 @@ const ENEMY_HEAVY_FINISH_CHANCE := 0.65
 const FEEDBACK_DAMAGE_COLOR := Color(1.0, 0.32, 0.27)
 const FEEDBACK_EFFECT_COLOR := Color(0.3, 0.72, 1.0)
 const FEEDBACK_NEGATIVE_COLOR := Color(0.76, 0.38, 1.0)
+# Brighter, more saturated purple than the debuff colour above, for a boss
+# shrugging off a stat-lowering effect.
+const FEEDBACK_IMMUNE_COLOR := Color(0.62, 0.2, 1.0)
 
 # How long a move's result stays on screen (log_label text) before whatever
 # happens next - the next turn's own _log() call, or a win/lose/flee banner
@@ -394,6 +393,8 @@ const FEEDBACK_NEGATIVE_COLOR := Color(0.76, 0.38, 1.0)
 # magic numbers, all too short to actually read a sentence in) so pacing
 # stays consistent and only needs tuning in one place.
 const LOG_READ_DELAY := 1.6
+# Extra seconds the first combat tutorial holds "The enemies back off, beaten."
+const TUTORIAL_WIN_EXTRA_HOLD := 6.0
 
 # How far into a swing the hit is supposed to land. Waiting out the whole
 # clip before resolving reads as the damage arriving after the attack has
@@ -726,6 +727,10 @@ func _ready() -> void:
 			_begin_boss_encounter()
 	elif encounter_source == "maze_cordys":
 		_begin_campaign_cordys()
+	elif prologue_direct_cordys:
+		_set_all_buttons(false)
+		main_menu.visible = false
+		reveal_prologue_octopus()
 	else:
 		var intro := encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies)
 		# The guardian flag also identifies rewardless lab blockers. Only a
@@ -2341,6 +2346,13 @@ func _build_ui() -> void:
 		skip_tutorial_btn.focus_mode = Control.FOCUS_NONE
 		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
 		_place_skip_tutorial_btn_last(main_menu)
+		# Flashes for the whole tutorial fight so the way out is never missed.
+		# Its own tween, separate from _tutorial_flash_tween (which pulses the
+		# scripted move button and gets killed/restarted every step).
+		_skip_tutorial_flash_tween = create_tween()
+		_skip_tutorial_flash_tween.set_loops()
+		_skip_tutorial_flash_tween.tween_property(skip_tutorial_btn, "modulate", Color(1.0, 0.45, 0.35), 0.5)
+		_skip_tutorial_flash_tween.tween_property(skip_tutorial_btn, "modulate", Color.WHITE, 0.5)
 
 	_selected_move_panel = PanelContainer.new()
 	# MODIFIED (fixed): same missing-IGNORE bug as create_stats_panel()'s
@@ -3059,8 +3071,10 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary, play_sound: bo
 		messages.append({"text": "DODGE", "color": FEEDBACK_EFFECT_COLOR})
 	elif int(result.get("damage", 0)) > 0:
 		messages.append({"text": "-%d" % int(result.damage), "color": FEEDBACK_DAMAGE_COLOR})
-	elif (result.get("effects", []) as Array).is_empty():
+	elif (result.get("effects", []) as Array).is_empty() and not bool(result.get("immune", false)):
 		messages.append({"text": "ABSORBED", "color": FEEDBACK_EFFECT_COLOR})
+	if bool(result.get("immune", false)):
+		messages.append({"text": "IMMUNE", "color": FEEDBACK_IMMUNE_COLOR})
 	var effects := result.get("effects", []) as Array
 	for effect in effects:
 		messages.append({"text": String(effect), "color": FEEDBACK_NEGATIVE_COLOR})
@@ -3090,15 +3104,21 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_in
 	tween.tween_callback(label.queue_free)
 
 func _finish_actor_turn(entry: Dictionary) -> void:
-	var tick := (entry.stats as CombatantStats).end_turn()
+	_show_damage_over_time(entry, (entry.stats as CombatantStats).end_turn())
+
+# Floating text, log line, bar refresh and death for one Bleed/Poison tick.
+# stack_base lifts the labels above anything already shown this turn (the
+# "STUNNED" label on a skipped turn).
+func _show_damage_over_time(entry: Dictionary, tick: Dictionary, stack_base: int = 0) -> void:
 	var bleed_damage := int(tick.get("bleed_damage", 0))
 	if bleed_damage > 0:
-		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2))
-		_log("%s  •  %s bleeds for %d." % [_current_log_text(), String(entry.display_name), bleed_damage])
+		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2), stack_base)
+		stack_base += 1
+		_log("%s  •  %s is bleeding and takes %d damage." % [_current_log_text(), String(entry.display_name), bleed_damage])
 	var poison_damage := int(tick.get("poison_damage", 0))
 	if poison_damage > 0:
-		_show_floating_text(entry, "POISON -%d" % poison_damage, Color(0.55, 0.9, 0.28))
-		_log("%s  •  %s takes %d poison damage." % [_current_log_text(), String(entry.display_name), poison_damage])
+		_show_floating_text(entry, "POISON -%d" % poison_damage, Color(0.55, 0.9, 0.28), stack_base)
+		_log("%s  •  %s is poisoned and takes %d damage." % [_current_log_text(), String(entry.display_name), poison_damage])
 	_refresh_bar(entry)
 	if (entry.stats as CombatantStats).hp <= 0 and entry.has("actor") and is_instance_valid(entry.actor):
 		if entry.actor is Diver:
@@ -3261,7 +3281,7 @@ func _advance_turn() -> void:
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
 		_set_all_buttons(false)
-		await _tutorial_show_step("Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats - instead, you earn Spell Points, which can be used to gain new abilities by defeating enemies in battles. More on Spell Points and spell trees later.")
+		await _tutorial_show_step("Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.")
 		await _tutorial_show_step("Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.")
 	# The first special encounter's own version of the block just above -
 	# fires once all three divers' own teaching turns (Maxilani, Musashi,
@@ -3345,12 +3365,18 @@ func _advance_turn() -> void:
 		_advance_turn()   # downed since the queue was built - skip them
 		return
 	if (_acting.stats as CombatantStats).is_stunned():
-		# Consume only the skipped Stun turn: neither action path, begin_turn()
-		# nor end_turn() runs, matching the authored combat/balance contract.
+		# The action is skipped and only the Stun counter ticks down (other
+		# status timers hold), but Bleed/Poison still deal their damage.
 		(_acting.stats as CombatantStats).consume_status_turn("stun")
 		_show_floating_text(_acting, "STUNNED", FEEDBACK_NEGATIVE_COLOR)
-		_log("%s is stunned and can't move!" % String(_acting.display_name))
+		_log("%s is stunned for this turn and can't act." % String(_acting.display_name))
+		_show_damage_over_time(_acting, (_acting.stats as CombatantStats).tick_damage_over_time(), 1)
 		_refresh_bar(_acting)
+		# Hold so the stun (and any Bleed/Poison) line can be read before the
+		# next actor's "X's turn." replaces it.
+		_busy = true
+		_set_all_buttons(false)
+		await get_tree().create_timer(LOG_READ_DELAY).timeout
 		_advance_turn()
 		return
 	if String(_acting.kind) == "enemy":
@@ -3597,6 +3623,9 @@ func _start_party_turn(actor: Dictionary) -> void:
 	if prologue_angler_encounter or prologue_octopus_encounter:
 		run_btn.visible = false
 		items_btn.visible = false
+	# The lab boss (Tethys) is a stand-and-fight encounter: no running away.
+	if boss_encounter:
+		run_btn.visible = false
 	# Run stays off for the entire tutorial fight, not just its scripted
 	# steps - _set_all_buttons(true) just re-enabled it above like every
 	# other button, and this fight is supposed to read as risk-free
@@ -4239,7 +4268,7 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	# sites). Recorded by field name rather than by item_id specifically,
 	# so a future third "for this fight" stat item needs no changes here -
 	# just another kind -> field mapping.
-	var temp_field: String = {"attack_up": "strength", "defense_up": "defense"}.get(kind, "")
+	var temp_field: String = {"attack_up": "strength", "defense_up": "defense", "accuracy_up": "accuracy", "evasion_up": "evasion"}.get(kind, "")
 	if temp_field != "":
 		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount})
 	var inv := _party_inventory()
@@ -4378,6 +4407,7 @@ func _explain_dodging(enemy: Dictionary) -> void:
 	# one enemy button - same assumption _tutorial_prep_enemy_turn() and
 	# render_light_beam()'s solo goblin already make.
 	var enemy_btn := target_buttons[0] as Button
+	_set_hover_only(enemy_btn, true)
 	var flash := create_tween()
 	flash.set_loops()
 	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -4486,6 +4516,22 @@ func _explain_damage(enemy: Dictionary) -> void:
 # this since _populate_all_target_menu() builds a single "All enemies"
 # button rather than one button per enemy, so "Click the highlighted
 # Grunt" would name something that isn't actually on the button.
+# The tutorial's hover steps need the highlighted enemy to look live and show
+# its stat preview on hover, without letting a click (or Enter/Space, which
+# also continue tutorial captions) attack before the explanation is done.
+# disabled = true blocked clicks but greyed the button out, reading as broken.
+func _set_hover_only(btn: Button, hover_only: bool) -> void:
+	if hover_only and not btn.has_meta("hover_only_focus"):
+		btn.set_meta("hover_only_focus", btn.focus_mode)
+	btn.disabled = false
+	btn.button_mask = 0 if hover_only else MOUSE_BUTTON_MASK_LEFT
+	if hover_only:
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.release_focus()
+	elif btn.has_meta("hover_only_focus"):
+		btn.focus_mode = btn.get_meta("hover_only_focus")
+		btn.remove_meta("hover_only_focus")
+
 func _explain_click_to_attack(enemy: Dictionary, label_override: String = "") -> void:
 	var enemy_btn := target_buttons[0] as Button
 	var label := label_override if label_override != "" else String(enemy.get("display_name", "the enemy"))
@@ -4499,7 +4545,7 @@ func _explain_click_to_attack(enemy: Dictionary, label_override: String = "") ->
 	# all_enemies case, any OTHER target_buttons entry) stay disabled, so
 	# the only thing clickable during this prompt is the one thing it's
 	# actually asking for.
-	enemy_btn.disabled = false
+	_set_hover_only(enemy_btn, false)
 	await enemy_btn.pressed
 	flash.kill()
 	_stat_preview_frozen = false
@@ -4522,6 +4568,7 @@ func _explain_precise_tap(enemy: Dictionary) -> void:
 	target_back_btn.disabled = true
 
 	var enemy_btn := target_buttons[0] as Button
+	_set_hover_only(enemy_btn, true)
 	var flash := create_tween()
 	flash.set_loops()
 	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -4562,6 +4609,7 @@ func _explain_crushing_haymaker(enemy: Dictionary) -> void:
 	(enemy.stats as CombatantStats).evasion_current = TUTORIAL_HAYMAKER_DODGE_EVASION
 
 	var enemy_btn := target_buttons[0] as Button
+	_set_hover_only(enemy_btn, true)
 	var flash := create_tween()
 	flash.set_loops()
 	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -4597,6 +4645,7 @@ func _explain_weaken(enemy: Dictionary) -> void:
 	target_back_btn.disabled = true
 
 	var enemy_btn := target_buttons[0] as Button
+	_set_hover_only(enemy_btn, true)
 	var flash := create_tween()
 	flash.set_loops()
 	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -4645,6 +4694,7 @@ func _explain_flash_blast(enemy: Dictionary) -> void:
 	(enemy.stats as CombatantStats).evasion_current = TUTORIAL_HAYMAKER_DODGE_EVASION
 
 	var enemy_btn := target_buttons[0] as Button
+	_set_hover_only(enemy_btn, true)
 	var flash := create_tween()
 	flash.set_loops()
 	flash.tween_property(enemy_btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -4981,6 +5031,8 @@ func _apply_revive(target: CombatantStats, amount: int) -> Dictionary:
 # stat_floor is always empty (nothing debuffs a diver today), so this falls
 # back to the exact same flat minimums as before for that case.
 func _apply_debuff(defender: CombatantStats, debuff: String, amount: int) -> Dictionary:
+	if defender.immune_to_stat_loss:
+		return {"hit": true, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "immune": true}
 	var changed := 0
 	match debuff:
 		"defense":
@@ -5004,6 +5056,10 @@ func _apply_debuff(defender: CombatantStats, debuff: String, amount: int) -> Dic
 			defender.evasion = maxi(int(defender.stat_floor.get("evasion", 0)), defender.evasion - amount)
 			changed = before - defender.evasion
 	return {"hit": true, "damage": 0, "absorbed": 0, "debuff": debuff, "changed": changed}
+
+# Appended to the move's own log line: "... - Tethys is immune to Weaken."
+func _log_immunity(target: Dictionary, mv: Dictionary) -> void:
+	_log("%s  •  %s is immune to %s." % [_current_log_text(), String(target.display_name), String(mv.get("name", "that move"))])
 
 func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r: Dictionary) -> void:
 	var text: String = String(mv.get("text", "You use %s" % String(mv.name)))
@@ -5221,6 +5277,8 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# back off, so it never had a frame where a player could actually see it.
 	_refresh_player_stats_panel()
 	_log_player_result(_acting, target, mv, r)
+	if bool(r.get("immune", false)):
+		_log_immunity(target, mv)
 	if prologue_octopus_encounter:
 		print("PROLOGUE_HIT|move=%s|damage=%d|hit=%s|hp=%d|effects=%s" % [String(mv.name), int(r.damage), str(r.hit), (target.stats as CombatantStats).hp, str(r.get("effects", []))])
 		_audio_call(&"duck_music", [-7.0, 0.25])
@@ -5266,6 +5324,7 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	# so the swing is aimed into the group rather than past it.
 	await _swing(_acting, mv, targets[0] as Dictionary)
 	var summaries: Array[String] = []
+	var immune_targets: Array = []
 	var first := true
 	var changed_agility := false
 	for target in targets:
@@ -5282,6 +5341,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 		_react(target, result)
 		_show_combat_feedback(target, result)
 		_refresh_bar(target)
+		if bool(result.get("immune", false)):
+			immune_targets.append(target)
 		if not result.hit:
 			summaries.append("%s dodges" % String(target.display_name))
 		elif int(result.damage) > 0:
@@ -5293,6 +5354,8 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	if changed_agility:
 		_resort_pending()
 	_log("%s: %s." % [String(mv.get("name", "Move")), "; ".join(summaries)])
+	for target in immune_targets:
+		_log_immunity(target, mv)
 	_refresh_bar(_acting)
 	# Same "the bottom 'You' panel never saw a self_temporary cost land"
 	# fix as _resolve_party_move()'s own copy just above - Multiple Knee
@@ -5336,6 +5399,77 @@ func _wait_for_delivered_cast(entry: Dictionary) -> void:
 # below). Reads as "the enemy is going after the hurt one" over a few
 # turns without ever being a deterministic focus-fire that feels like the
 # AI is cheating rather than playing smart.
+# True when this diver's own Bleed + Poison already finish them at the end of
+# their next turn (that damage now lands even on a stunned turn).
+static func doomed_by_damage_over_time(stats: CombatantStats) -> bool:
+	var pending := stats.status_level("bleed") + stats.status_level("poison")
+	return pending > 0 and stats.hp <= pending
+
+# Exactly how much of `combat` (a formula move) would land on `defender` right
+# now, mirroring CombatRules.resolve() hit by hit: a hit needs the attacker's
+# effective Accuracy + acc_mod to strictly exceed the defender's CURRENT
+# Evasion pool; a failed hit spends that much of the pool instead. The first
+# hit's self cost (applied after it resolves) and an on-hit Defense Down both
+# carry into later hits. Returns -1 for moves that are not predictable: legacy
+# power moves (random variance) and QTE moves (the player may time a dodge).
+static func predicted_landed_damage(attacker: CombatantStats, defender: CombatantStats, combat: Dictionary) -> int:
+	if not combat.has("formula") or bool(combat.get("quick_time_bool", false)):
+		return -1
+	var raw := CombatRules.formula_value(attacker, combat.get("formula", {}))
+	if raw <= 0:
+		return 0
+	var accuracy := attacker.effective_accuracy() + int(combat.get("acc_mod", 0))
+	var self_accuracy := 0
+	var defense_cut := 0
+	for effect_value in combat.get("effects", []):
+		var effect := effect_value as Dictionary
+		if String(effect.get("kind", "")) == "self_temporary":
+			self_accuracy += int(effect.get("accuracy", 0))
+		elif String(effect.get("kind", "")) == "status" and String(effect.get("status", "")) == "defense_down":
+			defense_cut = maxi(defense_cut, CombatRules.formula_value(attacker, effect.get("level", {})))
+	var pool := defender.evasion_current
+	var defense := defender.effective_defense()
+	var cut_applied := defender.status_level("defense_down") >= defense_cut
+	var total := 0
+	for hit_index in range(maxi(1, int(combat.get("hits", 1)))):
+		if accuracy <= pool:
+			pool -= mini(pool, accuracy)
+		else:
+			total += 0 if defense - raw > 5 else maxi(1, raw - defense)
+			if not cut_applied and defense_cut > 0:
+				defense = maxi(0, defense - (defense_cut - defender.status_level("defense_down")))
+				cut_applied = true
+		if hit_index == 0:
+			accuracy += self_accuracy
+	return total
+
+# A guaranteed kill for an ordinary enemy turn, or {} if there is none: every
+# (move, living non-doomed diver) pair whose predicted landed damage reaches
+# that diver's current HP. Among several, prefer the move that beats the
+# target's Evasion by the widest margin, then the lowest-HP target.
+static func lethal_enemy_choice(attacker: CombatantStats, moves: Array, alive_party: Array) -> Dictionary:
+	var best := {}
+	var best_margin := -INF
+	var best_hp := 0
+	for entry_value in alive_party:
+		var entry := entry_value as Dictionary
+		var stats := entry.stats as CombatantStats
+		if stats.hp <= 0 or doomed_by_damage_over_time(stats):
+			continue
+		for move_value in moves:
+			var move := move_value as Dictionary
+			if not bool(move.get("enabled", true)):
+				continue
+			var combat := move.get("combat", {}) as Dictionary
+			if predicted_landed_damage(attacker, stats, combat) < stats.hp:
+				continue
+			var margin := float(attacker.effective_accuracy() + int(combat.get("acc_mod", 0)) - stats.evasion_current)
+			if margin > best_margin or (margin == best_margin and stats.hp < best_hp):
+				best = {"move": move.duplicate(true), "target": entry}
+				best_margin = margin
+				best_hp = stats.hp
+	return best
+
 func _pick_enemy_target(alive_party: Array) -> Dictionary:
 	if alive_party.size() <= 1:
 		return alive_party[0]
@@ -5454,8 +5588,22 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 				return
 
 	var enemy_actor := actor.actor as Goblin
-	var decision := enemy_actor.choose_move_and_target(actor.stats as CombatantStats, alive_party, target,
-		not forced_target.is_empty() or tutorial_encounter or prologue_angler_encounter)
+	var scripted_turn := not forced_target.is_empty() or tutorial_encounter or prologue_angler_encounter
+	# Outside scripted fights: always take a guaranteed kill when one exists,
+	# and never spend an attack on a diver Bleed/Poison will finish anyway.
+	var lethal := {} if scripted_turn else lethal_enemy_choice(actor.stats as CombatantStats, enemy_actor.available_moves(), alive_party)
+	var decision: Dictionary
+	if not lethal.is_empty():
+		decision = lethal
+	else:
+		var candidates := alive_party
+		if not scripted_turn:
+			var not_doomed := alive_party.filter(func(e: Dictionary) -> bool: return not doomed_by_damage_over_time(e.stats as CombatantStats))
+			if not not_doomed.is_empty():
+				candidates = not_doomed
+				if not candidates.has(target):
+					target = _pick_enemy_target(candidates)
+		decision = enemy_actor.choose_move_and_target(actor.stats as CombatantStats, candidates, target, scripted_turn)
 	var move := decision.move as Dictionary
 	target = decision.target as Dictionary
 	target_stats = target.stats as CombatantStats
@@ -5934,6 +6082,10 @@ func _win() -> void:
 		if entry.has("actor") and is_instance_valid(entry.actor) and entry.actor is Diver:
 			(entry.actor as Diver).play_win()
 	await get_tree().create_timer(LOG_READ_DELAY).timeout
+	# The first combat tutorial lingers on the victory before its
+	# "You have defeated your first enemy!" caption replaces it.
+	if tutorial_encounter and not special_encounter:
+		await get_tree().create_timer(TUTORIAL_WIN_EXTRA_HOLD).timeout
 	# The tutorial's first win is narrated, not real - see the caption below,
 	# which explicitly tells the player this particular win doesn't grant
 	# XP. gain_xp() never runs here, so there's no level-up to log and no
@@ -6063,7 +6215,7 @@ func _lose() -> void:
 	# "lost" branch already opens tutorial_result_popup with its own
 	# special-encounter-appropriate explanation before this would run.
 	if tutorial_encounter and not special_encounter:
-		await _tutorial_show_step("In this case, the party lost the fight, but you can continue to fight enemies in the overworld. Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen (green on the bars, outlined in purple at the top) even if they went down - otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats - instead, you earn Spell Points, which can be used to gain new abilities by defeating enemies in battles. More on Spell Points and spell trees later.")
+		await _tutorial_show_step("In this case, the party lost the fight, but you can continue to fight enemies in the overworld. Winning a fight awards XP to your whole party, not just whoever fought - including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen (green on the bars, outlined in purple at the top) even if they went down - otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.")
 	else:
 		_log("The party is battered and pulls back.")
 		await get_tree().create_timer(LOG_READ_DELAY).timeout
@@ -6084,7 +6236,7 @@ func _on_skip_tutorial_pressed() -> void:
 	finished.emit("skipped")
 
 func _on_run() -> void:
-	if _busy:
+	if _busy or boss_encounter:
 		return
 	_busy = true
 	_set_all_buttons(false)

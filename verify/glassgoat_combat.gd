@@ -210,20 +210,22 @@ func _test_bleed_persists_and_stacks_until_fight_end() -> void:
 	_expect(target.status_level("bleed") == 4,
 		"BLEED LOST: stacks must remain until the fight ends when no duration is authored")
 
-# Frilled Shark's Tail Spin (content/enemy_moves.gd) is the first move to use
-# reduce_defense() - Electric Touch's reduce_evasion() counterpart, but for
-# Defense, and by the wielder's OWN Defense rather than anything the target
-# has. Runs after this same hit's own damage (CombatRules.resolve() computes
-# damage before walking the effects list), so this hit isn't softened by the
-# Defense it strips - only every attack after it is.
+# Frilled Shark's Tail Spin (content/enemy_moves.gd) applies a timed Defense
+# Down status by the wielder's OWN Defense. It must not touch the target's
+# base Defense (that used to persist into saves), and it expires on its own.
+# Runs after this same hit's damage, so this hit isn't softened by it.
 func _test_tail_spin_strips_defense_by_the_wielders_own_defense() -> void:
 	var shark := _stats(10, 2, 3, 1, 0, 3)
 	var target := _stats(10, 1, 4, 1, 0, 0)
 	var move := {
 		"name": "Tail Spin", "formula": {"strength": 1}, "effects": [
-			{"kind": "reduce_defense", "amount": {"defense": 1}},
+			{"kind": "status", "status": "defense_down", "level": {"defense": 1}, "duration": 3},
 		],
 	}
 	var result := CombatRules.resolve(shark, target, move)
 	_expect(result.damage == 1, "TAIL SPIN FORMULA WRONG: it deals the Frilled Shark's Strength (2), floored at 1 by its own 4 Defense")
-	_expect(target.defense == 1, "TAIL SPIN EFFECT MISSING: it must lower the target's Defense by the Frilled Shark's own 3 Defense")
+	_expect(target.effective_defense() == 1, "TAIL SPIN EFFECT MISSING: it must lower the target's Defense by the Frilled Shark's own 3 Defense")
+	_expect(target.defense == 4, "TAIL SPIN NOT TEMPORARY: base Defense must stay untouched")
+	for i in range(3):
+		target.end_turn()
+	_expect(target.effective_defense() == 4, "TAIL SPIN NEVER EXPIRES: Defense Down must wear off after 3 turns")

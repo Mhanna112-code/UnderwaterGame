@@ -139,6 +139,11 @@ const PrologueCinematicScript := preload("res://game/prologue_cinematic.gd")
 var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
 const AIRBORNE_ROCK_HEIGHT := BLOCKADE_HEIGHT * 3.0
+const WORLD_CEILING_Y := BLOCKADE_HEIGHT * 4.0
+# _build_highway()'s entrance_rocks x (START_X + 1). West of it is the
+# tutorial side of the shallows.
+const ENTRANCE_BLOCKADE_X := 16.0
+const CEILING_THICKNESS := 2.0
 const ROCK_KEY_ITEM_REWARDS := {
 	"rock_7": "abyssal_lens",
 	"rock_8": "sunken_core",
@@ -308,6 +313,9 @@ var route_state := RouteState.new()
 var _prologue_trigger := OpeningTriggerScript.new()
 var _prologue_spawn_delay := 0.0
 var _prologue_cinematic: CanvasLayer
+# One-shot flag read by _start_battle(): open the prologue battle directly on
+# Cordys (see _start_prologue_cordys()).
+var _next_battle_direct_cordys := false
 var deep_zone_layout := DeepZoneLayoutScript.new()
 var deep_zone_environment: DeepZoneEnvironment
 var _lab_video_cutscene: LabVideoCutscene
@@ -504,6 +512,11 @@ func restore_checkpoint(data: Dictionary) -> bool:
 		s.oxygen = float(sd.get("oxygen", s.oxygen_max))
 	inventory = (data.get("inventory", {}) as Dictionary).duplicate()
 	pending_world_drops = (data.get("pending_world_drops", {}) as Dictionary).duplicate(true)
+	for retired in Items.RETIRED_ITEMS:
+		inventory.erase(retired)
+		for drop_id in pending_world_drops:
+			if String((pending_world_drops[drop_id] as Dictionary).get("item", "")) == retired:
+				(pending_world_drops[drop_id] as Dictionary)["item"] = Items.EVEN_DROP_ORDER[0]
 	# .assign(), not a plain `=` - key_items/revealed_key_items/
 	# consumed_world_ids are all typed Array[String], and JSON.parse_string()
 	# only ever hands back a plain untyped Array. Plain `=` replaces the
@@ -733,7 +746,7 @@ func _on_title_load_game(slot: int, from_autosave := false) -> bool:
 	get_tree().paused = false
 	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
 	if route_state.prologue_complete:
-		_build_optional_training()
+		_build_forced_tutorial_beam()
 	return true
 
 # The opening owns no campaign state. World owns the durable milestone and
@@ -794,11 +807,31 @@ func _update_prologue_trigger(dt: float) -> void:
 	if _prologue_spawn_delay > 0.0:
 		_prologue_spawn_delay = maxf(0.0, _prologue_spawn_delay - dt)
 		return
-	var swimming := _player_dir().length_squared() > 0.0 and not target_selector.selecting and not _transitioning_to_encounter
-	if _prologue_trigger.update((divers[active] as Diver).position, dt, swimming):
-		route_state.set_prologue_phase("angler")
-		route_state.set_encounter_source("prologue_angler")
-		_start_battle("", false, "angler", divers, false, false, "An Angler darts out of the murk.", true)
+	# The opening cutscene hands straight off to Cordys - no swim trigger and
+	# no Angler warm-up fight first.
+	if not _transitioning_to_encounter:
+		_start_prologue_cordys()
+
+# Cordys's introduction film, then the unwinnable Cordys fight. The battle is
+# still built as the prologue encounter (party stage, prologue rules), but
+# Battle.prologue_direct_cordys makes its _ready() go straight to
+# reveal_prologue_octopus() instead of opening on an Angler. Losing hands off
+# to _recover_from_prologue() exactly as before (the cinematic's aftermath,
+# recovery, then the forced tutorial beam).
+func _start_prologue_cordys() -> void:
+	_transitioning_to_encounter = true
+	_audio_call(&"stop_music")
+	route_state.set_encounter_source("prologue_octopus")
+	route_state.set_prologue_phase("octopus_introduction")
+	_prologue_cinematic = PrologueCinematicScript.new() as CanvasLayer
+	title_layer.add_child(_prologue_cinematic)
+	await _prologue_cinematic.introduction_finished
+	get_tree().paused = false
+	_transitioning_to_encounter = false
+	route_state.set_prologue_phase("octopus_reveal")
+	route_state.set_encounter_source("prologue_angler")
+	_next_battle_direct_cordys = true
+	_start_battle("", false, "angler", divers, false, false, "", true)
 
 func _on_prologue_angler_defeated() -> void:
 	if route_state.prologue_phase != "angler" or not is_instance_valid(battle) or not battle.prologue_angler_encounter:
@@ -895,7 +928,7 @@ func _recover_from_prologue() -> void:
 	battle = null
 	battling = false
 	route_state.set_prologue_phase("complete")
-	_build_optional_training()
+	_build_forced_tutorial_beam()
 	_update_hud()
 	_update_hp_bar()
 	_update_oxygen_bar()
@@ -906,26 +939,28 @@ func _recover_from_prologue() -> void:
 	if audio != null:
 		audio.fade_music_in(0.35)
 
-func _build_optional_training() -> void:
-	if not route_state.prologue_complete or route_state.tutorial_complete or is_instance_valid(light_beam):
+# The combat tutorial is mandatory again once the prologue recovery hands
+# back control: the light beam returns with its waypoint arrow and intro
+# banner, and _camera_look_override holds the camera on it until the active
+# diver arrives (_update_intro_sequence() -> _start_first_encounter()).
+# _intro_active blocks TAB, abilities, item sites and random encounters for
+# the walk-over, same as the original pre-prologue intro.
+func _build_forced_tutorial_beam() -> void:
+	if not route_state.prologue_complete or route_state.tutorial_complete:
 		return
-	# Use the existing training beam at its original clear-water position,
-	# ten metres from recovery spawn, with no compulsory arrow/camera lock.
-	render_light_beam()
-	light_beam.position = Vector3(0.0, 6.0, 10.0)
-	var label := Label3D.new()
-	label.name = "OptionalTrainingLabel"
-	label.text = "Optional Combat Training"
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.font_size = 72
-	label.pixel_size = 0.01
-	label.modulate = Color("a6e6ff")
-	label.outline_size = 8
-	# The old y=4 label projected directly through Maxilani's head after
-	# recovery/Load. Put the optional affordance above the swimming silhouette.
-	label.position = Vector3(0.0, 1.2, 0.0)
-	label.no_depth_test = true
-	light_beam.add_child(label)
+	if not is_instance_valid(light_beam):
+		light_beam = null
+		render_light_beam()
+		light_beam.position = Vector3(0.0, 6.0, 10.0)
+	light_beam.visible = true
+	_first_encounter_started = false
+	intro_arrow()
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = true
+		_point_arrow_at(light_beam.global_position)
+	_show_intro_text()
+	_intro_active = true
+	_camera_look_override = light_beam
 
 func _on_title_boss_playtest() -> void:
 	_current_slot = -1
@@ -1227,6 +1262,7 @@ func _ready() -> void:
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
 		target_selector.register_character(d)
 	_build_diver_slots()
+	_build_party_bars()   # needs the divers that were just created
 	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
 	# reach a save point immediately, same reason it also grants max spell
 	# points/every key item - fighting through the scripted first battle
@@ -1446,6 +1482,14 @@ func _build_site() -> void:
 	deep_zone_environment.name = "DeepZoneEnvironment"
 	add_child(deep_zone_environment)
 	_build_deep_zone_blocker_staging()
+	# A second save point just before the laboratory, so a Tethys loss doesn't
+	# send the party all the way back to the shallows checkpoint.
+	var lab_save_point := SavePoint.new()
+	lab_save_point.name = "LabSavePoint"
+	lab_save_point.position = DeepZoneLayoutScript.LAB_SAVE_POINT
+	lab_save_point.footprint_offset_y = -1.8
+	add_child(lab_save_point)
+	_save_points.append(lab_save_point)
 
 	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
 	# was taking most of a minute to show its first frame and every node set up
@@ -1504,6 +1548,13 @@ func _build_boundary_walls() -> void:
 	for limits in [[-DeepZoneLayoutScript.WORLD_HALF_Z - THICKNESS, gap - half_width], [gap + half_width, DeepZoneLayoutScript.WORLD_HALF_Z + THICKNESS]]:
 		_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MAX_X + THICKNESS * 0.5, WALL_Y, (float(limits[0]) + float(limits[1])) * 0.5), Vector3(THICKNESS, WALL_HEIGHT, float(limits[1]) - float(limits[0])))
 	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MIN_X - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
+	# Restored collision-only roof (removed in the PR88 port): its underside is
+	# exactly four blockade-heights above the floor, so the airborne reward
+	# rocks at 3x height stay reachable but nobody swims off into the sky.
+	_build_invisible_wall(
+		Vector3(center_x, WORLD_CEILING_Y + CEILING_THICKNESS * 0.5, 0.0),
+		Vector3(span_x, CEILING_THICKNESS, span_z)
+	)
 
 func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
@@ -1577,7 +1628,7 @@ func _on_breakable_rock_broken(id: String, spot: Vector3) -> void:
 	if id in ROCK_AMBUSH_IDS:
 		_start_battle("", false, "angler", [], false, false, "Some enemies were hiding in the rocks!")
 		return
-	var item_id := Items.random_drop()
+	var item_id := Items.drop_for_rock(int(id.trim_prefix("rock_")))
 	var drop_position := spot + Vector3(randf_range(-0.6, 0.6), 0.3, randf_range(-0.6, 0.6))
 	pending_world_drops[id] = {
 		"item": item_id,
@@ -1883,6 +1934,7 @@ func _build_highway() -> void:
 	add_child(void_mesh)
 
 	var whirlpool := Whirlpool.new()
+	whirlpool.floor_visual = true
 	whirlpool.position = Vector3(gap_center_x, 2.0, LANE_Z)
 	whirlpool.reset_to = Vector3(GAP_START_X - 4.0, 2.0, LANE_Z)
 	whirlpool.warned.connect(_on_whirlpool_warned)
@@ -1918,11 +1970,11 @@ func _build_highway() -> void:
 		add_child(plate)
 		_lock_plates.append(plate)
 
-		# One door per plate, a little further down the lane than its own
-		# plate - solid until _check_gap_puzzle opens all three together,
-		# once every plate is occupied at once.
+		# One door per plate, far enough down the lane that the plate's ring
+		# (radius 1.2) sits fully in front of the door rather than under it -
+		# solid until _check_gap_puzzle opens all three together.
 		var door := Door.new()
-		door.position = Vector3(plate_x + 1.6, WALL_HEIGHT * 0.5, LANE_Z + z_off)
+		door.position = Vector3(plate_x + 3.0, WALL_HEIGHT * 0.5, LANE_Z + z_off)
 		add_child(door)
 		_doors.append(door)
 
@@ -3270,8 +3322,9 @@ func _make_waypoint_arrow() -> MeshInstance3D:
 	arrow.scale = Vector3.ONE * 0.6
 	return arrow
 
-# Marc's post-tutorial waypoint, adapted to the campaign's completed prologue:
-# optional training must not become a prerequisite for finding the blockade.
+# Marc's post-tutorial waypoint. The combat tutorial is mandatory again, so it
+# waits for tutorial_complete (won or skipped) - until then the light-beam
+# arrow is the only waypoint, and the two never overlap.
 # Physical target existence (including loaded consumed geometry) owns cleanup.
 func _update_blockade_arrow() -> void:
 	var wall := _cracked_walls.get("entrance_blockade") as Node3D
@@ -3280,7 +3333,7 @@ func _update_blockade_arrow() -> void:
 			_blockade_arrow.queue_free()
 		_blockade_arrow = null
 		return
-	var available := route_state.prologue_complete and route_state.prologue_phase == "complete" and not divers.is_empty()
+	var available := route_state.prologue_complete and route_state.prologue_phase == "complete" 		and route_state.tutorial_complete and not divers.is_empty()
 	var blocked := battling or is_instance_valid(random_encounter_reveal) or _transitioning_to_encounter or aiming
 	blocked = blocked or (embedded_maze != null and embedded_maze.maze_active)
 	blocked = blocked or not $HUD.visible or title_screen.visible or game_over_screen.visible
@@ -3459,6 +3512,9 @@ func _begin_random_encounter_reveal() -> void:
 	random_encounter_reveal = RandomEncounterReveal.new()
 	var reveal := random_encounter_reveal
 	reveal.enemy_ids = selected
+	# Shown while the enemies swim in, not queued: a queued announcement only
+	# ticks during exploration, so it used to surface after the fight ended.
+	banner.text = _random_encounter_text(selected.size())
 	reveal.camera = cam
 	# Freeze world physics/status timers, not just movement input. Preview
 	# animations run ALWAYS; no HP/O2, preference or checkpoint is modified.
@@ -3472,6 +3528,9 @@ func _begin_random_encounter_reveal() -> void:
 		print("RANDOM_COMBAT|enemies=", ",".join(selected))
 	, CONNECT_ONE_SHOT)
 	add_child(reveal)
+
+func _random_encounter_text(count: int) -> String:
+	return "Enemies emerge from the murk!" if count > 1 else "An enemy emerges from the murk!"
 
 func _cancel_random_encounter_reveal() -> void:
 	if not is_instance_valid(random_encounter_reveal):
@@ -3566,7 +3625,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battling = true
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
-	elif route_state.encounter_source == "prologue_angler":
+	elif route_state.encounter_source == "prologue_angler" and not _next_battle_direct_cordys:
 		_audio_call(&"play_prologue_battle_music")
 	else:
 		_audio_call(&"play_battle_music")
@@ -3592,7 +3651,13 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		banner.text = ""
 		_banner_timer = 0.0
 	else:
-		_announce("Enemies emerge from the murk!" if revealed_enemy_ids.size() > 1 else "An enemy emerges from the murk!")
+		# A random encounter already showed "...emerges from the murk!" during
+		# its reveal (_begin_random_encounter_reveal()). Never queue it here:
+		# queued announcements only tick during exploration, so it surfaced
+		# after the fight. Ambush/blocker fights narrate their own intro in
+		# the battle log instead.
+		banner.text = ""
+		_banner_timer = 0.0
 	battle = Battle.new()
 	battle.ordinary_enemy_ids = revealed_enemy_ids.duplicate()
 	battle.party_source = custom_party if not custom_party.is_empty() else divers
@@ -3607,6 +3672,8 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	if battle.prologue_angler_encounter:
 		battle.prologue_angler_defeated.connect(_on_prologue_angler_defeated)
 		battle.prologue_phase_changed.connect(_on_prologue_phase_changed)
+	battle.prologue_direct_cordys = battle.prologue_angler_encounter and _next_battle_direct_cordys
+	_next_battle_direct_cordys = false
 	battle.tutorial_encounter = tutorial
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text
@@ -3859,10 +3926,7 @@ func _on_tutorial_loss_exit() -> void:
 		_first_encounter_started = false
 		for i in range(divers.size()):
 			(divers[i] as Diver).position = CAST[i].at as Vector3
-		if is_instance_valid(light_beam):
-			light_beam.visible = true
-		else:
-			_build_optional_training()
+		_build_forced_tutorial_beam()
 		_write_save()
 		call_deferred("_show_ability_popups")
 
@@ -4153,17 +4217,12 @@ func _refresh_world_guidance() -> void:
 		var position := (divers[active] as Diver).global_position
 		if deep_zone_layout.zone_for_position(position) == "deep":
 			text = _route_objective_text(route_state.objective_id)
-		elif _puzzle_solved and _puzzle_hint_bounds.has_point(position):
-			text = "The way is open. Explore the deep sea."
-		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
-			text = "Use Bucky's Shockwave to break the wall. (TAB)"
-		elif _near_reward_rock(position):
-			if (divers[active] as Diver).ability_id == "shockwave":
-				text = "Break this rock for items: (F) Shockwave."
-			else:
-				text = "Break rocks for items: (TAB) Bucky, (F) Shockwave."
+		elif not route_state.tutorial_complete:
+			text = ""   # the forced tutorial's light-beam arrow owns guidance
+		elif position.x < ENTRANCE_BLOCKADE_X:
+			text = "Explore the mysterious blockade."
 		else:
-			text = "Shallows: fight to grow stronger."
+			text = "Explore the deep sea."
 	route_objective_label.text = text
 	route_objective_panel.visible = text != ""
 	if get_viewport().get_visible_rect().size.x < 600.0:
@@ -4171,18 +4230,6 @@ func _refresh_world_guidance() -> void:
 		# below both surfaces instead of allowing the map to obscure the keys.
 		route_objective_panel.offset_top = maxf(176.0, hud.get_rect().end.y + 8.0)
 		route_objective_panel.offset_bottom = route_objective_panel.offset_top + 44.0
-
-func _near_reward_rock(position: Vector3) -> bool:
-	# Guidance belongs to actual, unbroken loot rocks, never scenery, the
-	# route blockade or ambush rocks. Full 3D distance prevents seabed hints
-	# while swimming high overhead; the prompt appears within Shockwave reach.
-	for id in _cracked_walls:
-		if not String(id).begins_with("rock_") or id in ROCK_AMBUSH_IDS:
-			continue
-		var rock := _cracked_walls[id] as CrackedWall
-		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and position.distance_to(rock.global_position) <= Diver.SHOCKWAVE_RADIUS:
-			return true
-	return false
 
 func _route_objective_text(objective_id: String) -> String:
 	match objective_id:
@@ -4277,13 +4324,128 @@ func _build_hp_bar() -> void:
 	hp_bar.add_theme_stylebox_override("fill", _hp_bar_mat)
 	wrap.add_child(hp_bar)
 
+	# Blue Random Encounters On/Off badge, pinned just left of the HP bar
+	# (a child of it, so it tracks the centered bar without shifting it).
+	encounter_indicator = PanelContainer.new()
+	encounter_indicator.name = "EncounterIndicator"
+	encounter_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	encounter_indicator.anchor_left = 0.0
+	encounter_indicator.anchor_right = 0.0
+	encounter_indicator.anchor_top = 0.5
+	encounter_indicator.anchor_bottom = 0.5
+	encounter_indicator.offset_left = -8.0
+	encounter_indicator.offset_right = -8.0
+	encounter_indicator.offset_top = -11.0
+	encounter_indicator.offset_bottom = 11.0
+	encounter_indicator.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	encounter_indicator.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_encounter_indicator_style = StyleBoxFlat.new()
+	_encounter_indicator_style.set_corner_radius_all(4)
+	_encounter_indicator_style.set_border_width_all(1)
+	_encounter_indicator_style.content_margin_left = 7.0
+	_encounter_indicator_style.content_margin_right = 7.0
+	_encounter_indicator_style.content_margin_top = 1.0
+	_encounter_indicator_style.content_margin_bottom = 1.0
+	encounter_indicator.add_theme_stylebox_override("panel", _encounter_indicator_style)
+	encounter_indicator_label = Label.new()
+	encounter_indicator_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	encounter_indicator_label.add_theme_font_size_override("font_size", 12)
+	encounter_indicator.add_child(encounter_indicator_label)
+	hp_bar.add_child(encounter_indicator)
+	_update_encounter_indicator()
+
 	hp_bar_label = Label.new()
 	hp_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hp_bar_label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
 	wrap.add_child(hp_bar_label)
 
+var encounter_indicator: PanelContainer
+var encounter_indicator_label: Label
+var _encounter_indicator_style: StyleBoxFlat
+var _encounter_indicator_state := ""
+
+# Bright blue when random encounters are on, dim blue when off. Narrow
+# screens get a shorter label so it stays on-screen beside the centered bar.
+func _update_encounter_indicator() -> void:
+	if encounter_indicator == null:
+		return
+	var narrow := get_viewport().get_visible_rect().size.x < 640.0
+	var state := "%s|%s" % [random_encounters_enabled, narrow]
+	if state == _encounter_indicator_state:
+		return
+	_encounter_indicator_state = state
+	var on := random_encounters_enabled
+	encounter_indicator_label.text = ("Enc %s" if narrow else "Random Encounters: %s") % ("ON" if on else "OFF")
+	_encounter_indicator_style.bg_color = Color(0.13, 0.42, 0.85, 0.92) if on else Color(0.08, 0.14, 0.26, 0.85)
+	_encounter_indicator_style.border_color = Color(0.55, 0.78, 1.0) if on else Color(0.25, 0.36, 0.55)
+	encounter_indicator_label.add_theme_color_override("font_color", Color.WHITE if on else Color(0.55, 0.65, 0.8))
+
+# The non-active divers' HP and O2, stacked down the left edge just under the
+# top-left controls text. Rebuilt per diver on TAB (whoever is active owns the
+# big bottom-center bars instead), refreshed with the main bars every frame.
+var _party_bars_box: VBoxContainer
+var _party_bar_rows: Array[Dictionary] = []
+
+func _build_party_bars() -> void:
+	_party_bars_box = VBoxContainer.new()
+	_party_bars_box.name = "PartyBars"
+	_party_bars_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_party_bars_box.add_theme_constant_override("separation", 8)
+	_party_bars_box.position = Vector2(16.0, 76.0)
+	$HUD.add_child(_party_bars_box)
+	for i in range(divers.size()):
+		var row := VBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 2)
+		var label := Label.new()
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_theme_font_size_override("font_size", 12)
+		label.add_theme_color_override("font_outline_color", Color.BLACK)
+		label.add_theme_constant_override("outline_size", 4)
+		row.add_child(label)
+		var hp := _small_party_bar(Color(0.78, 0.15, 0.15), 8.0)
+		row.add_child(hp)
+		var o2 := _small_party_bar(Color(0.25, 0.65, 0.9), 5.0)
+		row.add_child(o2)
+		_party_bars_box.add_child(row)
+		_party_bar_rows.append({"row": row, "label": label, "hp": hp, "o2": o2})
+
+func _small_party_bar(fill_color: Color, height: float) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.custom_minimum_size = Vector2(150.0, height)
+	bar.show_percentage = false
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	bar.add_theme_stylebox_override("fill", fill)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.03, 0.06, 0.08, 0.75)
+	bar.add_theme_stylebox_override("background", bg)
+	return bar
+
+func _update_party_bars() -> void:
+	if _party_bars_box == null:
+		return
+	# Follow the controls text down if it wraps onto more lines.
+	_party_bars_box.position.y = maxf(76.0, hud.get_rect().end.y + 6.0) if hud != null else 76.0
+	for i in range(_party_bar_rows.size()):
+		var row := _party_bar_rows[i]
+		var d := divers[i] as Diver
+		(row.row as Control).visible = i != active
+		if i == active:
+			continue
+		(row.label as Label).text = "%s   HP %d/%d   O2 %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max, int(round(d.stats.oxygen))]
+		var hp := row.hp as ProgressBar
+		hp.max_value = d.stats.hp_max
+		hp.value = d.stats.hp
+		var o2 := row.o2 as ProgressBar
+		o2.max_value = d.stats.oxygen_max
+		o2.value = d.stats.oxygen
+
 func _update_hp_bar() -> void:
+	_update_encounter_indicator()
+	_update_party_bars()
 	var d: Diver = divers[active]
 	hp_bar.max_value = d.stats.hp_max
 	hp_bar.value = d.stats.hp

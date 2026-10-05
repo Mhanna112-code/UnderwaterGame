@@ -21,7 +21,9 @@ func _run() -> void:
 	world.get_node("HUD").visible = true
 	paused = false
 	world.route_state.prologue_complete = true
-	world.route_state.tutorial_complete = false
+	# Post-tutorial play: an unfinished tutorial now forces the light-beam
+	# walk-over on Load, which locks abilities (F) until the tutorial fight.
+	world.route_state.tutorial_complete = true
 	world.route_state.set_prologue_phase("complete")
 	world.random_encounters_enabled = false
 	world.yaw = 0.0
@@ -30,8 +32,10 @@ func _run() -> void:
 	await _hold(KEY_W, 1.1)
 	_expect(diver.global_position.distance_to(Vector3(6, 1, -7)) < 3.0, "ROCK-1 actual W did not reach early reward rock: %s" % diver.global_position)
 	var text := world.route_objective_label.text.to_lower()
-	_expect(world.route_objective_panel.visible and "bucky" in text and "tab" in text and "f" in text and "shockwave" in text and "item" in text,
-		"ROCK-1 nearby early rock lacks Bucky/TAB/F/Shockwave/item guidance: " + text)
+	# The "Break rocks for items" prompt was removed on request; reward rocks
+	# are now signposted only by their Sonar minimap marker.
+	_expect(not ("break" in text and "rock" in text),
+		"ROCK-1 removed rock-loot prompt is still shown near an early reward rock: " + text)
 	if OS.get_cmdline_user_args().has("--extended"):
 		await _extended()
 	await _finish()
@@ -47,7 +51,7 @@ func _extended() -> void:
 			diver.global_position = rock.global_position + offset
 			diver.velocity = Vector3.ZERO
 			await _frames(3)
-			_expect(_loot_hint() and "bucky" in world.route_objective_label.text.to_lower(), "ROCK-2 early reward rock proximity lacks actionable hint at %s" % diver.global_position)
+			_expect(not _loot_hint(), "ROCK-2 removed rock-loot prompt reappeared at %s" % diver.global_position)
 	for point in [Vector3(6, 12, -7), Vector3(-30, 2, 30), Vector3(-38, 19, -30), Vector3(10, 19, 46)]:
 		diver.global_position = point
 		diver.velocity = Vector3.ZERO
@@ -75,8 +79,7 @@ func _extended() -> void:
 	(world.divers[2] as Diver).global_position = Vector3(6, 2, -12)
 	await _hold(KEY_TAB, 0.05)
 	await _hold(KEY_W, 1.1)
-	_expect(_loot_hint() and "(F)" in world.route_objective_label.text and not "TAB" in world.route_objective_label.text,
-		"ROCK-3 active Bucky lacks direct Shockwave prompt")
+	_expect(not _loot_hint(), "ROCK-3 removed rock-loot prompt reappeared for active Bucky")
 	var inventory_before := 0
 	for count in world.inventory.values():
 		inventory_before += int(count)

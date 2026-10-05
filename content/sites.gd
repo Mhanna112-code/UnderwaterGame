@@ -76,6 +76,26 @@ const ALL := [
 		"special": true,
 		"links": [],
 	},
+	# Two more special encounters on the Deep Zone road to Tethys. "deep" marks
+	# them as past the entrance blockade: verify/sites.gd's straight-line-from-
+	# the-anchor rule can't apply there, since the corridor walls sit between.
+	{
+		# open water just north of the Deep hub, before the lab cave
+		"id": "deep_vents", "kind": "combat",
+		"at": Vector3(84.0, 2.6, 32.0), "radius": 7.0,
+		"item": "accuracy_up", "look": "vent_shrine", "enemy": "angler",
+		"special": true, "deep": true,
+		"links": [],
+	},
+	{
+		# inside the lab cave, between Bomb Bot's exit (x<=126) and Sword
+		# Slayer's trigger (x>=141)
+		"id": "deep_cave", "kind": "combat",
+		"at": Vector3(133.5, 2.6, 16.0), "radius": 5.5,
+		"item": "evasion_up", "look": "kelp_cache", "enemy": "swordfish_duelist",
+		"special": true, "deep": true,
+		"links": [],
+	},
 ]
 
 static func by_id(id: String) -> Dictionary:
@@ -107,6 +127,7 @@ static func guarded() -> Array:
 				"site": String(s.id), "look": String(s.get("look", "urchin")),
 				"enemy": String(s.get("enemy", "angler")),
 				"special": bool(s.get("special", false)),
+				"deep": bool(s.get("deep", false)),
 			})
 	return out
 

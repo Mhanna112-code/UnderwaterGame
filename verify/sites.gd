@@ -66,7 +66,7 @@ func _check_clearings() -> void:
 				break
 		if not blocked.is_empty():
 			findings.append("NO ROOM: '%s' has level geometry through %s (%s)" % [String(d.id), ", ".join(blocked), _blocker_summary(space, at)])
-		if String(d.id) == String(Sites.start().id):
+		if String(d.id) == String(Sites.start().id) or bool(d.get("deep", false)):
 			continue
 		if not _first_environment_hit(space, anchor, at).is_empty():
 			findings.append("WALLED OFF: nothing can swim straight from the anchor to '%s'" % String(d.id))
