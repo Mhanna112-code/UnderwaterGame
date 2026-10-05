@@ -26,6 +26,7 @@ const ROCK_VARIANTS := [
 var _lab_interior: Node3D
 var _lab_door: Node3D
 var _lab_door_backing: StaticBody3D
+var _lab_exit_cover: Array[Node3D] = []
 
 func _ready() -> void:
 	_build_entry_threshold()
@@ -184,8 +185,8 @@ func _build_lab_landmark() -> void:
 	# reads as one authored rock mass rather than three repeated prop copies.
 	_add_rocks(landmark, Vector3(184.0, 0.0, 5.5), Vector3(4.4, 4.6, 2.5), 0.32, 9)
 	_add_rocks(landmark, Vector3(184.0, 0.0, 26.5), Vector3(4.7, 4.3, 2.6), -0.48, 10)
-	_add_rocks(landmark, Vector3(187.0, 7.0, 16.0), Vector3(4.6, 2.5, 3.1), 0.12, 8, false)
-	_add_rocks(landmark, Vector3(194.0, 0.0, 16.0), Vector3(5.2, 4.7, 4.5), -0.2, 6)
+	_lab_exit_cover.append(_add_rocks(landmark, Vector3(187.0, 7.0, 16.0), Vector3(4.6, 2.5, 3.1), 0.12, 8, false))
+	_lab_exit_cover.append(_add_rocks(landmark, Vector3(194.0, 0.0, 16.0), Vector3(5.2, 4.7, 4.5), -0.2, 6))
 
 	# The visual rocks need an equally real physical shell. The center slab
 	# sits immediately behind the closed door; side slabs prevent swimming
@@ -262,6 +263,12 @@ func _add_lab_shell_body(parent: Node3D, body_name: String, position: Vector3, s
 # incomplete building from open-water sight lines.
 func set_lab_phase(phase: String) -> void:
 	var opened := phase in ["cutscene", "boss", "cleared"]
+	# These two visual clusters cover the otherwise collision-clear exit.
+	# Retire them only after victory, so returning players can actually see
+	# and swim the east passage instead of passing through an opaque mountain.
+	# The physical side shell and pre-fight concealment remain unchanged.
+	for cover in _lab_exit_cover:
+		cover.visible = phase != "cleared"
 	if is_instance_valid(_lab_door):
 		_lab_door.visible = not opened
 	if is_instance_valid(_lab_interior):

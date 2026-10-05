@@ -1,15 +1,15 @@
 {
-  "source_commit": "5e89b5ae418ae42c92a561423775b2e50f996fdb",
-  "pck_sha256": "d0f98f27460a17eecc411d1f4bd0c5840cb2cea749ae1db5494db63c6ba1baf1",
-  "pck_bytes": 94974240,
+  "source_commit": "153b2a59275969fb05e683b26141a48ef42e1182",
+  "pck_sha256": "f9264ce939a6c1d3d781ca4313d70859985edc3968df85dae609e694a9c09082",
+  "pck_bytes": 94984492,
   "engine": "Godot 4.7.1",
-  "status": "Maze milestone destinations and readable aim controls; retains newest valid save recovery and Marc f457098; focused verification, not full-campaign readiness",
+  "status": "Post-Tethys visible maze ramp guide and cleared exit; focused navigation verification, not full-campaign readiness",
   "upstream_intake": {
     "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
     "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
   },
-  "change": "Restore milestone-aware maze destinations, yielding to map/lesson, Inventory, notice and aim; keep retired generic hints hidden; separate aim fire/cancel lines and wrap long titles. Diagnostic maze guidance no longer requires fabricated opening completion. Retain latest-save recovery and Marc f457098 runtime changes without changing opening sequence, combat, geometry or persistence",
-  "deferred": "Full earned campaign/browser/audio/polish acceptance; same-source Windows/Linux packages; initial Angler conflict. Tethys opening and Cordys introduction remain last and require explicit Miguel review before publication. Native download source below is older than this web build",
+  "change": "Camera-relative maze compass after lab victory/cold Load; cleared exit-cover geometry and responsive navigation layout. Preserves Marc e572a55 shared maze HUD, ending checkpoints, pacing and spell rules, plus 4dd2a47 12-Oxygen Shockwave and renamed Spells tab",
+  "deferred": "Full earned campaign/browser/audio/polish acceptance; same-source Windows/Linux packages. Native download source below is older than this web build",
   "native_download_source_commit": "bffe1b50edd23199d346fac6b4ca71903b70acc0",
   "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/pr100-feedback-bffe1b5"
 }

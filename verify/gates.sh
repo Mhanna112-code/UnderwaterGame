@@ -307,6 +307,7 @@ run "campaign goals: do generated saved milestones, early maze, return and Shall
 run "maze destination owners: do actual notice/map/Inventory/aim controls preserve goals without restoring retired hints" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --ownership
 run "maze narrow aim: do actual F/cancel instructions remain inside a 360px viewport" "$GODOT" --headless --path . --script verify/campaign_goals.gd -- --ownership --narrow
 run "lab payoff: does real Tethys victory acknowledge the computer/controller and preserve independent progress through Load" "$GODOT" --headless --path . --script verify/lab_payoff.gd
+run "lab maze navigation: does visible camera-relative guidance survive Load and actual swimming through the cleared lab exit" "$GODOT" --headless --path . --script verify/lab_maze_navigation.gd -- --fixture
 run "maze completion: can a player reach and recover the final relic" "$GODOT" --headless --path . --script verify/maze_completion.gd
 run "maze minimap: do walls and live currents match the navigation overlay" "$GODOT" --headless --path . --script verify/maze_minimap.gd
 run "maze portrait lanes: does a real two-lane rung carry the portrait without changing direction" "$GODOT" --headless --path . --script verify/maze_latest_switch.gd
@@ -406,6 +407,7 @@ else
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
 	if [ -x /tmp/underwater-screen-ocr ]; then
+		GATE_TIMEOUT_SECONDS=180 run "lab maze navigation browser: normal Load, readable compass and actual swim across ramp" node verify/lab_maze_navigation_webcheck.mjs "$WEB_DIR" /tmp/gate-lab-maze-navigation
 		GATE_TIMEOUT_SECONDS=360 run "latest save browser: do normal Load and actual combat-death Continue restore newest snapshots, with manual and invalid-auto alternatives" node verify/latest_save_recovery_webcheck.mjs "$WEB_DIR" /tmp/gate-latest-save-recovery
 		run "laboratory browser fixture: disclosed legal kit/cleared blockers before actual swim" "$GODOT" --headless --path . --script verify/lab_payoff_browser_fixture.gd
 		GATE_TIMEOUT_SECONDS=360 run "laboratory browser payoff: actual swim/movie/fight/Close/cold Load, no stale boss arrival" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-laboratory-payoff --laboratory

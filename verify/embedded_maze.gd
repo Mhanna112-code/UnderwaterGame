@@ -72,7 +72,10 @@ func _run() -> void:
 		"EMBED-4 lab-side ramp did not lead physically into the embedded maze")
 	_expect(world.route_state.lab_state == "locked", "EMBED-4 ramp incorrectly requires lab victory")
 	_expect(root.get_viewport().get_camera_3d() == maze.get_node("Camera3D")
-		and not world.get_node("HUD").visible and maze.get_node("HUD").visible,
+		and world.get_node("HUD").visible and maze.get_node("HUD").visible
+		and not world.hud.is_visible_in_tree()
+		and not world.route_objective_panel.is_visible_in_tree()
+		and world.hp_bar.is_visible_in_tree(),
 		"EMBED-1 entry has competing camera/HUD owners")
 	_expect(actors[0].stats == stats and stats.hp == 7 and is_equal_approx(stats.oxygen, 13.25)
 		and world.inventory["potion"] == 2 and maze.inventory == world.inventory,

@@ -1,0 +1,24 @@
+{
+  "source_commit": "153b2a59275969fb05e683b26141a48ef42e1182",
+  "artifact_commit": "a1fc0cc",
+  "preserved_main_intake": ["e572a55", "4dd2a47"],
+  "pck_sha256": "f9264ce939a6c1d3d781ca4313d70859985edc3968df85dae609e694a9c09082",
+  "pck_bytes": 94984492,
+  "preview_deployment_id": "dpl_4K8wsDLVEtKpiM77upuBQu9v2sAA",
+  "production_deployment_id": "dpl_9KSk34RZXvZLm3kM4HzriPg8T1qn",
+  "production_status": "READY",
+  "canonical_url": "https://underwatergame.vercel.app/",
+  "review_url": "https://underwatergame-maze-campaign-review.vercel.app/",
+  "verification": {
+    "actual_tethys_victory_and_cold_title_load": "passed; legal level-five kit, not earned-campaign balance",
+    "native_headless_lab_to_maze_and_checkpoint": "passed",
+    "embedded_maze_bidirectional_shared_party_and_hud": "passed",
+    "latest_save_recovery": "passed",
+    "browser_rendered_arrow_look_and_w_route": "passed; declared completed-lab checkpoint, no entry/position mutation during swim",
+    "browser_widths": [1280, 720, 360],
+    "browser_script_errors": [],
+    "canonical_and_review_metadata": "match verified source",
+    "canonical_and_review_streamed_pack_sha256": "match verified export"
+  },
+  "scope": "Post-Tethys route guidance and exit sight line. Not full earned-campaign, all-platform or audio acceptance. Rejected observers and windowed traversal result are retained separately. Existing player saves untouched."
+}

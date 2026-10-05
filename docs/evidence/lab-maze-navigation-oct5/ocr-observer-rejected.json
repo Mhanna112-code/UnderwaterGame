@@ -1,0 +1,198 @@
+{
+  "source_commit": "153b2a59275969fb05e683b26141a48ef42e1182",
+  "pck_sha256": "f9264ce939a6c1d3d781ca4313d70859985edc3968df85dae609e694a9c09082",
+  "observations": [
+    {
+      "name": "fresh-boot-0",
+      "text": "GODOT\nGame engine"
+    },
+    {
+      "name": "fresh-boot-1",
+      "text": "GODOT\nGame engine"
+    },
+    {
+      "name": "fresh-boot-2",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "create-fresh-storage",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "fixture-boot-0",
+      "text": "GODOT\nGame engine"
+    },
+    {
+      "name": "fixture-boot-1",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "normal-title-load",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "normal-slot-load",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "lab-exit-1280",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02\n100 / 100\nMaze ramp\n83 m\nBucky 10/10\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "lab-exit-720",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap •\nQ: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the\nramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02 100 / 100\nMaze ramp\n83 ml\nBucky 10/10\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "lab-exit-360",
+      "text": "Maxilani\nWASD swim -\nSPACE/SHIFT depth • *\nmouse/arrows look •\nTAB diver • F: Swap •\nQ: Sonar (Off) • R:\nEncounters (Off)\n02 100 / 100\nMusashi 10/10\n02\n100 / 100\nBucky\n10 / 10\nLaboratory cleared. Take the ramp\nbeyond it to explore the maze.\nMaze ramp\n83 m\n02 100 / 100\nEnc OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "face-the-compass-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02\n100 / 100\nMaze ramp\n83 m\nBucky 10/10\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -1.6010850188807657,
+      "pixels": 362
+    },
+    {
+      "name": "face-the-compass-turn-1",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02\n100 / 100\nMaze ramp\n83 m\nBucky 10 / 10\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.744076540834167,
+      "pixels": 362
+    },
+    {
+      "name": "face-the-compass-turn-2",
+      "text": "WASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sohar (Off) • R: Encounters (Off)\nLaboratory cleared. Take the ramp beyond it to explore the\n02 100 / 100\nmaze.\nMusashi 10/10\n02\n100 / 100\n1\nMaze ramp\n83 m\nBucky 10/10\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.023185171250050825,
+      "pixels": 360
+    },
+    {
+      "name": "actual-swim-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10/10\n02\n100 / 100\nMaze ramp\n75 ml\nBucky 10/10\n02\n100 / 100\nRandom Encounters: OFF)\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "follow-0-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02 100 / 100\nMaze ramp\n74 ml\nBucky 10 / 10\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.03028869208583111,
+      "pixels": 362
+    },
+    {
+      "name": "actual-swim-1",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02 100 / 100\nMaze ramp\n65 ml\nBucky 10 / 10\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10/10"
+    },
+    {
+      "name": "follow-1-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10/10\n02 100 / 100\nMaze ramp\n64 ml\nBucky 10 / 10\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10/10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.03028869208583111,
+      "pixels": 362
+    },
+    {
+      "name": "actual-swim-2",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02 100 / 100\n1\nMaze ramp\n56 ml\nBucky 10/10\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "follow-2-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02 100 / 100\nBucky 10/10\nMaze ramp\n55 ml\nMAZE\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.03028869208583111,
+      "pixels": 362
+    },
+    {
+      "name": "actual-swim-3",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02\n100 / 100\nMaze ramp\n46 ml\nBucky 10 / 10\nMAZE\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "follow-3-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) R: Encounters (Off)\nLaboratory cleared. Take the ramp beyond it to explore the\n02 100 / 100\nmaze.\nMusashi 10 / 10\n02\n100 / 100\nMaze ramp\n45 ml\nBucky\n10 / 10\nMAZE\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": 0.03204676236586085,
+      "pixels": 361
+    },
+    {
+      "name": "actual-swim-4",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02 100 / 100\nBucky 10 / 10\nMAZE\nMaze ramp\n37 ml\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "follow-4-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nMusashi 10 / 10\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMAZE\n02 100 / 100\nMaze ramp\n36 ml\nBucky 10 / 10\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": 0.03204676236586085,
+      "pixels": 361
+    },
+    {
+      "name": "actual-swim-5",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10/10\n02\n100 / 100\nMaze ramp\n28 ml\nBucky 10/10\n02\n100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "follow-5-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10/10\n02\n100 / 100\nMaze ramp\n26 ml\nBucky 10/10\n02 100 / 100\nRandom Encounters: OFF)\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.02524715954415109,
+      "pixels": 363
+    },
+    {
+      "name": "actual-swim-6",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02\n100 / 100\nMaze ramp\n18 m\nBucky 10/10\n02 100 / 100\nandom Encounters: OFF)\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "follow-6-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10/10\n02\n100 / 100\nMaze ramp\n17 ml\nBucky 10 / 10\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.023981514884192336,
+      "pixels": 363
+    },
+    {
+      "name": "actual-swim-7",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10/10\n02\n100/ 100\nMaze ramp\n9ml\nBucky 10/10\nContral Room\n02 100 / 100\nRandom Encounters: OFF)\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "follow-7-turn-0",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10/10\n02\n100/ 100\nMaze ramp\n7ml\nBucky 10 / 10\n02 100 / 100\nRandom Encounters: OFF)\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": -0.09137098474336089,
+      "pixels": 361
+    },
+    {
+      "name": "follow-7-turn-1",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nLaboratory cleared. Take the ramp beyond it to explore the\nmaze.\nMusashi 10 / 10\n02 100 / 100\nMaze ramp\n7ml\nBucky 10 / 10\n02 100 / 100\nRandom Encounters: OFF)\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "rendered-bearing",
+      "angle": 0.02569601433732764,
+      "pixels": 362
+    },
+    {
+      "name": "actual-swim-8",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth mouse/arrows look TAB switch diver\n• F: Swap • Q: Sonar (Off) • R: Encounters (Off)\n02 100 / 100\nMusashi 10/10\n02 100 / 100\nBucky 10 / 10\nConcrol Room\n02 100/ 100\nRandom Encounters: OFF\nMaxilani\n10/10"
+    }
+  ],
+  "findings": [
+    "Error: NAV-W3 guide vanished without visible maze-room ownership"
+  ],
+  "scope": "Fresh-profile supplied completed-lab checkpoint; normal Title Load, visible compass at three widths, ordinary arrow-key look and W swimming through the lab exit/ramp into maze ownership with decreasing distance. Not an earned Tethys victory or full-campaign balance claim."
+}
