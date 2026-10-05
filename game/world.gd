@@ -2254,6 +2254,9 @@ func _update_banner(dt: float) -> void:
 		_banner_timer -= dt
 		if _banner_timer <= 0.0:
 			banner.text = ""
+			if not _announce_queue.is_empty():
+				banner.text = _announce_queue.pop_front()
+				_banner_timer = ANNOUNCE_SECONDS
 
 # Entering a guarded item's site starts its encounter directly; Sonar and
 # random-encounter rolls are not prerequisites, but the R encounter toggle
@@ -2717,9 +2720,36 @@ func _grant_reward_item(item_id: String) -> void:
 		return
 	_add_to_inventory(item_id)
 
+# Orange messages queue rather than wipe each other out: one already up gets
+# its full time, then the next shows. The same message isn't queued twice,
+# and an encounters on/off message only ever replaces another one, so
+# toggling R quickly doesn't build a backlog.
+const ANNOUNCE_SECONDS := 4.0
+const ANNOUNCE_QUEUE_MAX := 4
+var _announce_queue: Array[String] = []
+
 func _announce(text: String) -> void:
-	banner.text = text
-	_banner_timer = 4.0
+	if _banner_timer <= 0.0 or banner.text == "":
+		banner.text = text
+		_banner_timer = ANNOUNCE_SECONDS
+		return
+	if banner.text == text:
+		_banner_timer = maxf(_banner_timer, ANNOUNCE_SECONDS)
+		return
+	if _is_encounters_message(text):
+		_announce_queue = _announce_queue.filter(func(q: String) -> bool: return not _is_encounters_message(q))
+		if _is_encounters_message(banner.text):
+			banner.text = text
+			_banner_timer = ANNOUNCE_SECONDS
+			return
+	if _announce_queue.has(text):
+		return
+	_announce_queue.append(text)
+	while _announce_queue.size() > ANNOUNCE_QUEUE_MAX:
+		_announce_queue.pop_front()
+
+func _is_encounters_message(text: String) -> bool:
+	return text.begins_with("Random encounters on") or text.begins_with("Random encounters off")
 
 func _intro_announce(text: String) -> void:
 	banner.text = text

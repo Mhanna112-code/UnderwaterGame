@@ -110,10 +110,8 @@ func _build_close_button() -> void:
 # as [pulse] BBCode text elsewhere (pulse_text_effect.gd) and TutorialBook's
 # own Next/Close pulse (tutorial_book.gd) rather than a third effect system.
 func _process(_delta: float) -> void:
-	if not _held_pages.is_empty() and not _battle_running() and not get_tree().paused:
-		var pages := _held_pages
-		_held_pages = []
-		open(pages)
+	if not _queue.is_empty() and not _battle_running() and not get_tree().paused and not (%AbilityExplanationPanel as PanelContainer).visible:
+		open(_queue.pop_front())
 	if not (%AbilityExplanationPanel as PanelContainer).visible:
 		return
 	var flash := 0.35 + 0.65 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0))
@@ -150,10 +148,11 @@ func _style_panel() -> void:
 	media_style.set_border_width_all(1)
 	(%MediaFrame as PanelContainer).add_theme_stylebox_override("panel", media_style)
 
-# A popup that would show during a battle waits for it to end instead; one
-# already open when a battle starts is put away and comes back, from the
-# page it was on, once the battle's over.
-var _held_pages: Array[Dictionary] = []
+# Popups queue: one that would show during a battle, or while another popup
+# is up, waits its turn (in order) instead of replacing what's on screen; one
+# already open when a battle starts is put away and comes back first, from
+# the page it was on, once the battle's over.
+var _queue: Array = []   # of Array[Dictionary] page lists
 
 func _battle_running() -> bool:
 	return is_inside_tree() and get_tree().get_first_node_in_group("battle") != null
@@ -161,7 +160,8 @@ func _battle_running() -> bool:
 func suspend_for_battle() -> void:
 	if not (%AbilityExplanationPanel as PanelContainer).visible:
 		return
-	_held_pages = _pages.slice(_index)
+	var rest: Array[Dictionary] = _pages.slice(_index)
+	_queue.push_front(rest)
 	(%AbilityExplanationPanel as PanelContainer).hide()
 	get_tree().paused = false
 
@@ -169,9 +169,10 @@ func suspend_for_battle() -> void:
 func open(pages: Array[Dictionary]) -> void:
 	if pages.is_empty():
 		return
-	# Never over a battle: held until it's over (see _process()).
-	if _battle_running():
-		_held_pages = pages
+	# Never over a battle, and never over another popup: it waits its turn
+	# (see _process()).
+	if _battle_running() or (%AbilityExplanationPanel as PanelContainer).visible:
+		_queue.append(pages)
 		return
 	_pages = pages
 	_index = 0
