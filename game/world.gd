@@ -1861,6 +1861,12 @@ func _on_item_orb_collected(item_id: String, _d: Diver, drop_id: String) -> void
 # why an item sits in the inventory until the player chooses to use it
 # instead of applying itself the instant it's picked up.
 func _add_to_inventory(item_id: String) -> void:
+	if item_id == "oxygen_cell":
+		var used := Items.auto_use_oxygen_cell(divers)
+		if used != "":
+			_announce(used)
+			_update_oxygen_bar()
+			return
 	inventory[item_id] = int(inventory.get(item_id, 0)) + 1
 	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 	_announce("Picked up a %s." % display)
@@ -4785,10 +4791,20 @@ func _controls_text_bottom() -> float:
 func _sync_overlay_hud() -> void:
 	if not is_inside_tree() or hp_bar == null:
 		return
-	var covered := (inventory_menu != null and inventory_menu.visible) 		or (save_point_menu != null and save_point_menu.visible) 		or _maze_nav_map_open()
+	var covered := (inventory_menu != null and inventory_menu.visible) \
+		or (save_point_menu != null and save_point_menu.visible) \
+		or _maze_nav_map_open() or _maze_menu_open()
 	for wrap in [hp_bar.get_parent(), oxygen_bar.get_parent() if oxygen_bar != null else null, _party_bars_box]:
 		if wrap != null and is_instance_valid(wrap):
 			(wrap as CanvasItem).visible = not covered
+
+# The maze runs its own Esc inventory menu and save menu instances.
+func _maze_menu_open() -> bool:
+	if embedded_maze == null or not embedded_maze.maze_active:
+		return false
+	var menu := embedded_maze.get("inventory_menu") as Control
+	var save_menu := embedded_maze.get("_save_menu") as Control
+	return (menu != null and menu.visible) or (save_menu != null and save_menu.visible)
 
 func _maze_nav_map_open() -> bool:
 	if embedded_maze == null or not embedded_maze.maze_active:

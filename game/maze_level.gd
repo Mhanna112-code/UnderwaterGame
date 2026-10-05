@@ -1871,7 +1871,7 @@ const SECRET_ITEM_ROCKS := {
 	"ItemRock2": "sphere_room_key",
 	"ItemRock3": "attack_up",
 	"Marker3D2": "defense_up",
-	"Marker3D4": "evasion_up",
+	"Marker3D4": "defense_up",
 	"Marker3D5": "ambush",
 	"Marker3D7": "ambush",
 }
@@ -1948,6 +1948,11 @@ func _on_secret_orb_collected(item_id: String, _d: Diver) -> void:
 	if Items.is_key_item(item_id):
 		_gain_key(item_id)
 		return
+	if item_id == "oxygen_cell":
+		var used := Items.auto_use_oxygen_cell(divers)
+		if used != "":
+			_announce(used)
+			return
 	inventory[item_id] = int(inventory.get(item_id, 0)) + 1
 	_announce("Picked up a %s." % display)
 
@@ -4561,6 +4566,11 @@ func _unhandled_input(e: InputEvent) -> void:
 	# MazeMiniMap consumes L/E/Ctrl+E/arrows; other keys cannot stack owners.
 	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
 	if map != null and map.main_map != null and map.main_map.visible:
+		# Esc closes the navigation map (L still toggles it).
+		if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo \
+				and (e as InputEventKey).keycode == KEY_ESCAPE:
+			map.main_map.visible = false
+			get_viewport().set_input_as_handled()
 		return
 	# A swap choice is also an exclusive owner, including at a save point.
 	if target_selector != null and target_selector.selecting and not _battling and not any_modal_open():

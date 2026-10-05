@@ -413,7 +413,8 @@ func _refresh_items() -> void:
 		if not world.divers.is_empty():
 			# Battle-only boosts (and anything that does nothing right now) are
 			# greyed out here - this menu only ever opens outside battle.
-			btn.disabled = bool(def.get("battle_only", false)) 				or not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
+			btn.disabled = bool(def.get("battle_only", false)) \
+				or not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
 		btn.pressed.connect(_on_use_item_pressed.bind(item_id))
 		# A black tile pinned to the button's own right edge, vertically
 		# centered - same "opaque plate behind a number" idea as battle.gd's

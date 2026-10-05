@@ -83,7 +83,9 @@ const ALL := [
 		# open water just north of the Deep hub, before the lab cave
 		"id": "deep_vents", "kind": "combat",
 		"at": Vector3(84.0, 2.6, 32.0), "radius": 7.0,
-		"item": "accuracy_up", "look": "vent_shrine", "enemy": "angler",
+		# Replayable special sites hand out the common boosts; Focus Tonic and
+		# Slipstream Oil stay rare (two of each in the game, all one-time).
+		"item": "attack_up", "look": "vent_shrine", "enemy": "angler",
 		"special": true, "deep": true,
 		"links": [],
 	},
@@ -92,7 +94,7 @@ const ALL := [
 		# Slayer's trigger (x>=141)
 		"id": "deep_cave", "kind": "combat",
 		"at": Vector3(133.5, 2.6, 16.0), "radius": 5.5,
-		"item": "evasion_up", "look": "kelp_cache", "enemy": "swordfish_duelist",
+		"item": "defense_up", "look": "kelp_cache", "enemy": "swordfish_duelist",
 		"special": true, "deep": true,
 		"links": [],
 	},

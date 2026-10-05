@@ -67,12 +67,12 @@ const ITEMS := {
 	# grants or doesn't.
 	"attack_up": {
 		"display": "Attack Tonic", "kind": "attack_up", "amount": 4,
-		"description": "Raises strength for the rest of this fight.",
+		"description": "Raises Strength by 4 for the rest of this fight.",
 		"battle_only": true,
 	},
 	"defense_up": {
 		"display": "Defense Shell", "kind": "defense_up", "amount": 3,
-		"description": "Raises defense for the rest of this fight.",
+		"description": "Raises Defense by 3 for the rest of this fight.",
 		"battle_only": true,
 	},
 	# Owning this is what lets Maxilani's sonar reveal invisible objects in 3D
@@ -84,13 +84,13 @@ const ITEMS := {
 	},
 	"accuracy_up": {
 		"display": "Focus Tonic", "kind": "accuracy_up", "amount": 2,
-		"description": "Raises accuracy for the rest of this fight.",
-		"battle_only": true,
+		"description": "Raises Accuracy by 2 for the user's next 5 turns. Only one Focus Tonic or Slipstream Oil can be used per battle.",
+		"battle_only": true, "turns": 5, "one_per_battle": true,
 	},
 	"evasion_up": {
 		"display": "Slipstream Oil", "kind": "evasion_up", "amount": 2,
-		"description": "Raises evasion for the rest of this fight.",
-		"battle_only": true,
+		"description": "Raises Evasion by 2 for the user's next 5 turns. Only one Focus Tonic or Slipstream Oil can be used per battle.",
+		"battle_only": true, "turns": 5, "one_per_battle": true,
 	},
 }
 
@@ -100,7 +100,9 @@ const RETIRED_ITEMS := ["spell_shard"]
 
 # Every consumable a breakable item rock can hold, each exactly once. Rocks
 # take these in order by index (drop_for_rock()), so the item rocks spread
-# them evenly instead of a random roll clumping potions. Key items stay out:
+# them evenly instead of a random roll clumping potions. With the seven
+# overworld item rocks that is exactly one Focus Tonic and one Slipstream
+# Oil; the maze's two one-time special sites hold the only other two. Key items stay out:
 # two sit in fixed airborne rocks and the rest come from guardians.
 const EVEN_DROP_ORDER := [
 	"potion", "attack_up", "oxygen_cell", "defense_up", "accuracy_up", "evasion_up",
@@ -112,6 +114,26 @@ static func drop_for_rock(rock_index: int) -> String:
 # Equal odds of every consumable, for any caller without a fixed rock index.
 static func random_drop() -> String:
 	return EVEN_DROP_ORDER[randi_range(0, EVEN_DROP_ORDER.size() - 1)]
+
+# Oxygen Cells are used the moment they're picked up: they go to the living
+# diver with the lowest Oxygen. Returns the announcement, or "" when nobody
+# needs Oxygen (the caller then keeps the cell in the inventory instead).
+static func auto_use_oxygen_cell(divers: Array) -> String:
+	var best: Diver = null
+	var best_ratio := 1.0
+	for d in divers:
+		var diver := d as Diver
+		if diver == null or diver.stats.hp <= 0 or diver.stats.oxygen >= diver.stats.oxygen_max:
+			continue
+		var ratio := diver.stats.oxygen / maxf(1.0, diver.stats.oxygen_max)
+		if best == null or ratio < best_ratio:
+			best = diver
+			best_ratio = ratio
+	if best == null:
+		return ""
+	var before := best.stats.oxygen
+	best.stats.oxygen = minf(best.stats.oxygen_max, best.stats.oxygen + float(ITEMS.oxygen_cell.amount))
+	return "Oxygen Cell used on %s: +%d O2." % [Cast.display_name(best.model_name), int(round(best.stats.oxygen - before))]
 
 static func is_key_item(item_id: String) -> bool:
 	return String(ITEMS.get(item_id, {}).get("kind", "")) == "key"
@@ -181,11 +203,11 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 			return "%s! Defense up by %d for this fight." % [display, int(def.amount)]
 		"accuracy_up":
 			s.accuracy += int(def.amount)
-			return "%s! Accuracy up by %d for this fight." % [display, int(def.amount)]
+			return "%s! Accuracy up by %d for %d turns." % [display, int(def.amount), int(def.get("turns", 5))]
 		"evasion_up":
 			# Also top up the live dodge pool so the boost helps this round.
 			s.evasion += int(def.amount)
 			s.evasion_current += int(def.amount)
-			return "%s! Evasion up by %d for this fight." % [display, int(def.amount)]
+			return "%s! Evasion up by %d for %d turns." % [display, int(def.amount), int(def.get("turns", 5))]
 		_:
 			return ""
