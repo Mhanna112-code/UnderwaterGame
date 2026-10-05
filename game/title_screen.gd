@@ -19,6 +19,7 @@ const COVER_ART: Texture2D = preload("res://docs/underwater-cover.png")
 
 signal new_game_chosen(slot: int)
 signal load_game_chosen(slot: int)
+signal load_latest_chosen(slot: int)
 signal load_autosave_chosen(slot: int)
 signal boss_playtest_chosen
 signal special_playtest_chosen
@@ -330,8 +331,12 @@ func _refresh_slots() -> void:
 
 	for slot in range(SaveManager.SLOT_COUNT):
 		var btn := Button.new()
+		btn.name = "LatestSlot%d" % slot
 		btn.custom_minimum_size = Vector2(360, 44)
 		var data: Dictionary = SaveManager.read_slot(slot)
+		if _pending_action == "load":
+			var candidates := SaveManager.latest_candidates(slot)
+			data = candidates[0].data if not candidates[0].data.is_empty() else candidates[1].data
 		if data.is_empty():
 			btn.text = "Slot %d - Empty" % (slot + 1)
 			if _pending_action == "new" and not SaveManager.read_autosave(slot).is_empty():
@@ -340,12 +345,21 @@ func _refresh_slots() -> void:
 		else:
 			btn.text = "Slot %d - %s%s" % [
 				slot + 1, _summarize(data),
-				" (overwrite)" if _pending_action == "new" else "",
+				" (overwrite)" if _pending_action == "new" else " - Latest save",
 			]
 		btn.pressed.connect(_on_slot_pressed.bind(slot))
 		_wire_menu_button(btn, &"play_ui_start_game")
 		_list.add_child(btn)
 		if _pending_action == "load":
+			var manual := SaveManager.read_slot(slot)
+			var manual_btn := Button.new()
+			manual_btn.name = "ManualSlot%d" % slot
+			manual_btn.custom_minimum_size = Vector2(360, 36)
+			manual_btn.text = "Slot %d Save Point - %s" % [slot + 1, "Empty" if manual.is_empty() else _summarize(manual)]
+			manual_btn.disabled = manual.is_empty()
+			manual_btn.pressed.connect(load_game_chosen.emit.bind(slot))
+			_wire_menu_button(manual_btn, &"play_ui_start_game")
+			_list.add_child(manual_btn)
 			var auto_data := SaveManager.read_autosave(slot)
 			var auto_btn := Button.new()
 			auto_btn.name = "AutosaveSlot%d" % slot
@@ -398,4 +412,4 @@ func _on_slot_pressed(slot: int) -> void:
 	if _pending_action == "new":
 		new_game_chosen.emit(slot)
 	else:
-		load_game_chosen.emit(slot)
+		load_latest_chosen.emit(slot)

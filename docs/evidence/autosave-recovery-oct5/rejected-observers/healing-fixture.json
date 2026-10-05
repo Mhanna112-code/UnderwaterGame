@@ -1,0 +1,31 @@
+{
+  "source_commit": "e74fcc55d1dd75339dd8ad3a8d05680ac8cbc61c",
+  "pck_sha256": "16af7928a5180284e63fa2a2659d04e2c4802640c6fe292bea3bed1bb9fee2a4",
+  "logs": [
+    "PROLOGUE_PHASE|opening_video",
+    "PROLOGUE_PHASE|complete",
+    "CHECKPOINT_LATEST_LOADED|slot=0|autosave=true"
+  ],
+  "observations": [
+    {
+      "name": "fresh-title",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "cold-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "latest-picker",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - Lv 1 party\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "latest-loaded",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (On)\n02 100 / 100\nExplore the mysterious blockade.\nMusashi 10 / 10\n02 100 / 100\nSave Point\nRestore your party\nBucky 10/10\nSave - Press P\n02 1007100\nRandom Encounters: ON\nMaxilani\n10 / 10"
+    }
+  ],
+  "findings": [
+    "Error: Autosaved injured health not restored visibly"
+  ],
+  "scope": "Fresh-profile declared save fixtures; actual swimming/random-enemy defeat/default recovery; explicit cold manual load and invalid-auto fallback. No earned autosave cadence or full campaign claim."
+}

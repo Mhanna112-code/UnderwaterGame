@@ -109,6 +109,7 @@ prepare_godot_classes() {
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
 run "Marc autosaves: do safe World/maze saves preserve manual checkpoints and rejected writes" "$GODOT" --headless --path . --script verify/marc_autosaves.gd
+run "Latest save recovery: do title and World/maze death recovery prefer newest valid snapshots with manual fallback" "$GODOT" --headless --path . --script verify/latest_save_recovery.gd
 run "Marc recovery/hall/title: do all three real pads accept P and latest lanes/autosave rows exist" "$GODOT" --headless --path . --script verify/marc_maze_recovery_hall.gd
 run "Marc learned-spell scaling: do authored thresholds preserve EVA and tutorial" "$GODOT" --headless --path . --script verify/marc_unlock_scaling.gd
 run "Marc base enemy boosts: do public factories cap rolls at 10% and preserve authored EVA" "$GODOT" --headless --path . --script verify/marc_enemy_boosts.gd
@@ -402,6 +403,7 @@ else
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
 	if [ -x /tmp/underwater-screen-ocr ]; then
+		GATE_TIMEOUT_SECONDS=360 run "latest save browser: do normal Load and actual combat-death Continue restore newest snapshots, with manual and invalid-auto alternatives" node verify/latest_save_recovery_webcheck.mjs "$WEB_DIR" /tmp/gate-latest-save-recovery
 		run "laboratory browser fixture: disclosed legal kit/cleared blockers before actual swim" "$GODOT" --headless --path . --script verify/lab_payoff_browser_fixture.gd
 		GATE_TIMEOUT_SECONDS=360 run "laboratory browser payoff: actual swim/movie/fight/Close/cold Load, no stale boss arrival" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-laboratory-payoff --laboratory
 		run "ending browser fixture: supply a disclosed legal kit and spend the room key through E" "$GODOT" --headless --path . --script verify/maze_cordys_browser_fixture.gd -- --ending

@@ -433,6 +433,7 @@ var _route_blocker_gates: Dictionary = {}
 # This one-shot handoff survives reload_current_scene(), then the fresh World
 # consumes and clears it at the end of _ready().
 static var _restart_slot := -1
+static var _restart_latest := false
 var _loaded_maze_session: CampaignSession
 var _campaign_session: CampaignSession
 var embedded_maze: MazeLevel
@@ -502,7 +503,13 @@ func _write_save() -> Error:
 # back as {} from SaveManager, whose "divers" key then defaults to []) -
 # a wrong-shaped restore silently leaving some divers untouched would be a
 # worse bug than just not restoring at all.
-func _load_save(from_autosave := false) -> bool:
+func _load_save(from_autosave := false, latest := false) -> bool:
+	if latest:
+		for candidate in SaveManager.latest_candidates(_current_slot):
+			if restore_checkpoint(candidate.data):
+				print("CHECKPOINT_LATEST_LOADED|slot=", _current_slot, "|autosave=", candidate.autosave)
+				return true
+		return false
 	return restore_checkpoint(SaveManager.read_autosave(_current_slot) if from_autosave else SaveManager.read_slot(_current_slot))
 
 # Shared validated restore used by disk Load and a live campaign return.
@@ -816,11 +823,14 @@ func _on_title_skip_tutorial(slot: int = 0) -> void:
 func _on_title_load_autosave(slot: int) -> void:
 	await _on_title_load_game(slot, true)
 
-func _on_title_load_game(slot: int, from_autosave := false) -> bool:
+func _on_title_load_latest(slot: int) -> bool:
+	return await _on_title_load_game(slot, false, true)
+
+func _on_title_load_game(slot: int, from_autosave := false, latest := false) -> bool:
 	_cancel_random_encounter_reveal()
 	_current_slot = slot
 	_autosave_timer = 0.0
-	if not _load_save(from_autosave):
+	if not _load_save(from_autosave, latest):
 		_current_slot = -1
 		$HUD.visible = false
 		get_tree().paused = true
@@ -1182,6 +1192,13 @@ func _show_game_over() -> void:
 
 func _on_game_over_restart() -> void:
 	_restart_slot = _current_slot
+	_restart_latest = false
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+func _on_game_over_continue() -> void:
+	_restart_slot = _current_slot
+	_restart_latest = true
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
@@ -1191,6 +1208,8 @@ func _on_game_over_restart() -> void:
 # have to reproduce piece by piece. Lands back on the title screen exactly
 # like a cold launch does, since _ready() always ends by showing it.
 func _on_game_over_title() -> void:
+	_restart_slot = -1
+	_restart_latest = false
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
@@ -1395,6 +1414,7 @@ func _ready() -> void:
 	title_screen = TitleScreen.new()
 	title_screen.new_game_chosen.connect(_on_title_new_game)
 	title_screen.load_game_chosen.connect(_on_title_load_game)
+	title_screen.load_latest_chosen.connect(_on_title_load_latest)
 	title_screen.load_autosave_chosen.connect(_on_title_load_autosave)
 	title_screen.boss_playtest_chosen.connect(_on_title_boss_playtest)
 	title_screen.special_playtest_chosen.connect(_on_title_special_playtest)
@@ -1430,6 +1450,7 @@ func _ready() -> void:
 
 	game_over_screen = GameOverScreen.new()
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
+	game_over_screen.continue_chosen.connect(_on_game_over_continue)
 	game_over_screen.title_chosen.connect(_on_game_over_title)
 	# This cannot live under HUD: _show_game_over() deliberately hides HUD as
 	# one unit. Keep both exclusive, paused menu surfaces on the overlay layer.
@@ -1453,8 +1474,10 @@ func _ready() -> void:
 		_resume_from_checkpoint.call_deferred(data, slot)
 	elif _restart_slot >= 0:
 		var restart_slot := _restart_slot
+		var restart_latest := _restart_latest
 		_restart_slot = -1
-		if await _on_title_load_game(restart_slot):
+		_restart_latest = false
+		if await _on_title_load_game(restart_slot, false, restart_latest):
 			_announce("You wake back at your last save.")
 	else:
 		_show_title_screen()
@@ -1568,6 +1591,7 @@ func _restore_campaign_return(session: CampaignSession) -> bool:
 	_campaign_session = session
 	_current_slot = session.selected_slot
 	_restart_slot = -1
+	_restart_latest = false
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false

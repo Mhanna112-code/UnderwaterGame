@@ -1,0 +1,108 @@
+{
+  "source_commit": "e74fcc55d1dd75339dd8ad3a8d05680ac8cbc61c",
+  "pck_sha256": "16af7928a5180284e63fa2a2659d04e2c4802640c6fe292bea3bed1bb9fee2a4",
+  "logs": [
+    "PROLOGUE_PHASE|opening_video",
+    "PROLOGUE_PHASE|complete",
+    "CHECKPOINT_LATEST_LOADED|slot=0|autosave=true",
+    "RANDOM_COMBAT|enemies=swordfish_duelist,swordfish_duelist,frilled_shark",
+    "CHECKPOINT_GAME_OVER|slot=0|complete=true",
+    "PROLOGUE_PHASE|complete",
+    "CHECKPOINT_LATEST_LOADED|slot=0|autosave=true",
+    "PROLOGUE_PHASE|complete",
+    "PROLOGUE_PHASE|complete",
+    "CHECKPOINT_LATEST_LOADED|slot=0|autosave=false"
+  ],
+  "observations": [
+    {
+      "name": "fresh-title",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "cold-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "latest-picker",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - Lv 1 party\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "latest-loaded",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (On)\n02 60 / 100\nExplore the mysterious blockade.\n•\nMusashi 1/10\n02 60 / 100\n•\nBucky 1/10\n02\n60 / 100\nRandom Encounters: ON\nMaxilani\n1/10"
+    },
+    {
+      "name": "combat-current",
+      "text": "NOW\nSwordfish Duelist 1\nNext\nSwordfish Duelist 2\nFrilled Shark 3\nMaxilani\nMusashi\nBucky\nMaxilani\n1/10\nLv 1\n60 / 10002\nSwordfish Duelist 1\nSwordfish Duelist 2\nEVA 3/0\nMusashi\n1/10\nLv 1\n60 / 100 02\nFrilled Shark 3\n8/8\n8 / 8\n5/5\nEVA 2/0\nBucky\n1/10\nLv 1\n60 / 100 02\nEVA 0/0\nEnemies block the way!\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "combat-current",
+      "text": "NOW\nSwordfish Duelist 1\nNext\nSwordfish Duelist 2\nFrilled Shark 3\nMaxilani\nMusashi\nBucky\nMusashi\n1/10\nLv 1\n60 / 100 02\nEVA 2/0\nSwordfish Duelist 1\n8 / 8\nSwordfish Duelist 2\n8 / 8\nFrilled Shark 3\n5/5\nBleed 2\nBleed 2\n-3\nSwordfish Duelist 1 uses Arc Slash: Bucky -3; Maxilani -3.\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "combat-current",
+      "text": "NOW\nSwordfish Duelist 1\nNext\nSwordfish Duelist 2\nFrilled Shark 3\nMaxilani\nMusashi\nBucky\nMusashi\n1/10\nLv 1\n60 / 100 02\nEVA 2/0\nSwordfish Duelist 1\n8/8\nSwordfish Duelist 2\n8 / 8\nFrilled Shark 3\n5/5\nSwordfish Duelist 1 uses Arc Slash: Bucky -3; Maxilani -3.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3"
+    },
+    {
+      "name": "combat-current",
+      "text": "NOW\nSwordfish Duelist 2\nNext\nFrilled Shark 3\nMaxilani\nMusashi l\nBucky\nSwordfish Duelist 1\n8/8\nSwordfish Duelist 2\n8 / 8\nFrilled Shark 3\n5/5\nBleed 2\n-3\nSwordfish Duelist 2 uses Arc Slash: Musashi -3.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3"
+    },
+    {
+      "name": "combat-current",
+      "text": "NOW\nSwordfish Duelist 2\nNext\nFrilled Shark 3\nMaxilani\nMusashi l\nBucky\nSwordfish Duelist 1\n8/8\nSwordfish Duelist 2\n8 / 8\nFrilled Shark 3\n5/5\nSwordfish Duelist 2 uses Arc Slash: Musashi -3.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3"
+    },
+    {
+      "name": "combat-current",
+      "text": "NOW\nSwordfish Duelist 2\nNext\nFrilled Shark 3\nMaxilani\nMusashi l\nBucky\nSwordfish Duelist 1\n8/8\nSwordfish Duelist 2\n8 / 8\nFrilled Shark 3\n5/5\nThe party is battered and pulls back.\nYou\nSTR\nACC\n1\nDEF\nEVA\n3"
+    },
+    {
+      "name": "combat-current",
+      "text": "The party is overwhelmed...\nContinue from Latest Save\nRestart from Save Point\nReturn to Title"
+    },
+    {
+      "name": "actual-defeat",
+      "text": "The party is overwhelmed...\nContinue from Latest Save\nRestart from Save Point\nReturn to Title"
+    },
+    {
+      "name": "continue-latest",
+      "text": "The party is overwhelmed...\nContinue from Latest Save\nRestart from Save Point\nReturn to Title"
+    },
+    {
+      "name": "death-recovered",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (On)\n02 60 / 100\nExplore the mysterious blockade.\n•\nMusashi 1/10\n02 60 / 100\n•\nBucky 1/10\n02\n60 / 100\nRandom Encounters: ON\nMaxilani\n1/10"
+    },
+    {
+      "name": "manual-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "manual-picker",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - Lv 1 party\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "manual-loaded",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (On)\n02 60 / 100\nExplore the mysterious blockade.\nMusashi 10 / 10\n02 60 / 100\nBucky 10/10\n02 60 / 100\nRandom Encounters: ON\nMaxilani |\n10 / 10"
+    },
+    {
+      "name": "fallback-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "fallback-picker",
+      "text": "Underwater\nLoad Game\nSlot 1 - ? - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - ?\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "fallback-loaded",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Encounters (On)\n02 60 / 100\nExplore the mysterious blockade.\nMusashi 10 / 10\n02 60 / 100\nBucky 10/10\n02 60 / 100\nRandom Encounters: ON\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "narrow-title",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "narrow-picker",
+      "text": "Underwater\nLoad Game\nSlot 1 - ? - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - ?\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    }
+  ],
+  "findings": [],
+  "scope": "Fresh-profile declared save fixtures; actual swimming/random-enemy defeat/default recovery; explicit cold manual load and invalid-auto fallback. No earned autosave cadence or full campaign claim."
+}

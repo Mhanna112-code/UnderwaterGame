@@ -1,0 +1,34 @@
+{
+  "runtime_source": "f4570981cb3c16bce5d6e9b8852e10a849b64f19",
+  "checkout": "af411988a6496e2d91e35e4949ca096f444db91e",
+  "scope": "Native focused current-consumer checks; terminal tool outputs below. Initial separate output for each was the Godot 4.7.1 header; these are not full raw console transcripts or full campaign/balance acceptance.",
+  "checks": [
+    {
+      "name": "enemy-lethal",
+      "command": "godot --headless --path . --script verify/enemy_lethal_choice.gd",
+      "chunk_id": "f3c69c",
+      "wall_time_seconds": 0.000538958,
+      "exit_code": 0,
+      "original_token_count": 15,
+      "output": "LETHAL PREDICTIONS|checked=396\nENEMY LETHAL CHOICE: clean\n"
+    },
+    {
+      "name": "tethys-immunity",
+      "command": "godot --headless --path . --script verify/tethys_immunity.gd",
+      "chunk_id": "286410",
+      "wall_time_seconds": 0.000009125,
+      "exit_code": 0,
+      "original_token_count": 6,
+      "output": "TETHYS IMMUNITY: clean\n"
+    },
+    {
+      "name": "authored-turns",
+      "command": "godot --headless --path . --script verify/authored_combat_turns.gd",
+      "chunk_id": "df9dff",
+      "wall_time_seconds": 0.000008833,
+      "exit_code": 0,
+      "original_token_count": 137,
+      "output": "STUN DISPATCH|side=party|duration=1|skips=1|restored=true\nSTUN DISPATCH|side=party|duration=2|skips=2|restored=true\nSTUN DISPATCH|side=party|duration=3|skips=3|restored=true\nSTUN DISPATCH|side=enemy|duration=1|skips=1|restored=true\nSTUN DISPATCH|side=enemy|duration=2|skips=2|restored=true\nSTUN DISPATCH|side=enemy|duration=3|skips=3|restored=true\nANGLER PROPERTIES|seeds=128|low_hp_headbutts=50|streak_reset=true|forced_species_preserved=true\nANGLER LIVE|button_damage=[1, 3]|retaliation=50|miss_then_party_flash=true\nAUTHORED COMBAT TURNS: clean\n"
+    }
+  ]
+}
