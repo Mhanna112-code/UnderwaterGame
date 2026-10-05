@@ -402,6 +402,8 @@ else
 	run "boss webcheck: does ?boss=1 open Glassgoat's fight" node verify/boss_webcheck.mjs "$WEB_DIR" /tmp/gate-tethys.png /tmp/gate-tethys-title.png
 	run "guardian webcheck: does ?guardian=trench open the Swordfish Duelist" node verify/guardian_webcheck.mjs "$WEB_DIR" /tmp/gate-guardian.png
 	if [ -x /tmp/underwater-screen-ocr ]; then
+		run "laboratory browser fixture: disclosed legal kit/cleared blockers before actual swim" "$GODOT" --headless --path . --script verify/lab_payoff_browser_fixture.gd
+		GATE_TIMEOUT_SECONDS=360 run "laboratory browser payoff: actual swim/movie/fight/Close/cold Load, no stale boss arrival" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-laboratory-payoff --laboratory
 		run "ending browser fixture: supply a disclosed legal kit and spend the room key through E" "$GODOT" --headless --path . --script verify/maze_cordys_browser_fixture.gd -- --ending
 		GATE_TIMEOUT_SECONDS=360 run "campaign ending browser: actual fight, rejected IndexedDB, Retry and cold Load preserve completion" node verify/campaign_completion_webcheck.mjs "$WEB_DIR" /tmp/gate-campaign-ending
 		GATE_TIMEOUT_SECONDS=300 run "Bomb Bot browser progress: do actual mouse actions reach enemy attacks, victory and restored World controls" node verify/bomb_bot_browser_progress.mjs "$WEB_DIR" /tmp/gate-bomb-progress

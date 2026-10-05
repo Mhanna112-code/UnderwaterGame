@@ -3701,7 +3701,12 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
 	if boss_encounter:
-		_announce("Tethys rises from the deep!")
+		# Laboratory Battle already owns this arrival in its intro/log. A
+		# World announcement freezes underneath battle and the payoff popup,
+		# then falsely re-announces Tethys after she has been defeated.
+		# Preserve other queued exploration feedback; don't clear the FIFO.
+		if route_state.encounter_source != "lab_boss":
+			_announce("Tethys rises from the deep!")
 	elif tutorial:
 		# No announce line for the tutorial fight itself (removed on
 		# purpose), but _show_intro_text()'s "Swim over to the light beam."

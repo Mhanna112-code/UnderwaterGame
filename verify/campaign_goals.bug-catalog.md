@@ -30,6 +30,7 @@ lab/map/relic × stale-objective input product rather than five hand-picked case
 | GOAL-3 | Maze repeats the same map search instruction on status and goal labels. New rendered goal exposed an existing status string with duplicate ownership. | Separate neutral map status and actionable goal over generated cases | Caught visually; repaired locally |
 | LAB-1 | Actual laboratory victory never acknowledges computer/controller payoff or suggests the puzzle/maze. Current handler sets enter_maze and silently saves. | Real legal-move Tethys victory, visible payoff, Continue/save/load | Caught actual 12-action win with absent payoff; repaired locally |
 | LAB-2 | Payoff popup fits, but stale encounter warnings/gameplay HUD compete behind it. Rendered 360-width native page exposed this despite semantic success. | Actual rendered payoff, hidden HUD and restored HUD on Close | Caught visually; repaired locally |
+| LAB-3 | World pauses the laboratory-arrival announcement during battle/payoff and replays it after actual victory. It falsely announces a new Tethys arrival when Close restores HUD. | Actual legal-move victory → Close → no obsolete boss-arrival notice | Browser visual witness, native red one finding → local repair green |
 
 ## Self-critique
 
@@ -75,3 +76,9 @@ are separate acceptance, not implied by a semantic native matrix.
   bugs and are not counted as caught lab failures.
 - Browser checkpoint durability, complete earned journeys, full suite and
   publication remain pending. No new opening/Cordys film changes included.
+- LAB-3 browser visual inspection exposed an obsolete arrival after Close.
+  Native added assertion reproduced exactly one failure; laboratory combat
+  already owns its arrival log, so no World FIFO arrival is queued for this
+  encounter. Other pending exploration announcements and reference boss
+  behavior remain unchanged. Actual 12-action native win/Close/cold Load is
+  green; matching exported/hosted recheck is still required.

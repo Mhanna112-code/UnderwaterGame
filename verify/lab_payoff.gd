@@ -112,6 +112,8 @@ func _run() -> void:
 			await process_frame
 		_expect(not panel.visible and not paused and world.get_node("HUD").visible and "maze" in world.route_objective_label.text.to_lower(),
 			"LAB-1 dismissing payoff cannot resume useful maze guidance")
+		_expect(not "Tethys rises" in world.banner.text,
+			"LAB-3 payoff Close replays the obsolete boss-arrival announcement after victory")
 		for index in 3:
 			var stats := world.divers[index].stats as CombatantStats
 			var expected: Dictionary = before.campaign_checkpoint.party[index].stats

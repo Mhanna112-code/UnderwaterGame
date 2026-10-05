@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 const target = process.argv[2], output = process.argv[3] || '/tmp/campaign-ending-web';
+const laboratory = process.argv.includes('--laboratory');
 fs.mkdirSync(output, { recursive: true });
 const live = target.startsWith('http');
 let server, url = target;
@@ -25,7 +26,7 @@ if (!live) {
   url = `http://127.0.0.1:${server.address().port}/`;
 }
 const record = structuredClone(JSON.parse(fs.readFileSync('docs/evidence/opening-exploration-defaults/browser-result.json')).saveRecheck.beforeReload[0]);
-record.data = JSON.parse(fs.readFileSync('/tmp/campaign-ending-browser-fixture.json'));
+record.data = JSON.parse(fs.readFileSync(laboratory ? '/tmp/campaign-lab-browser-fixture.json' : '/tmp/campaign-ending-browser-fixture.json'));
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=metal', '--ignore-gpu-blocklist'] });
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 let page = await context.newPage();
@@ -41,7 +42,7 @@ const observePage = active => {
   });
 };
 observePage(page);
-await page.addInitScript(() => {
+if (!laboratory) await page.addInitScript(() => {
   window.rejectCompletion = true;
   window.rejectedCompletionWrites = 0;
   const put = IDBObjectStore.prototype.put;
@@ -95,26 +96,36 @@ try {
   }, record);
   await page.reload(); await page.waitForTimeout(22000);
   await load('fixture-load'); before = await readSlot();
-  expect(before && JSON.parse(before).route_state.octopus_state !== 'defeated', 'END-2 no incomplete durable baseline');
+  expect(before && JSON.parse(before).route_state.octopus_state !== 'defeated', 'No incomplete durable baseline');
   for (let step = 0; step < 16; step++) {
-    await page.keyboard.down('KeyW'); await page.waitForTimeout(250); await page.keyboard.up('KeyW');
-    const text = (await capture('approach-' + step)).map(row => row.text).join('\n');
-    if (/great danger/i.test(text)) break;
-    expect(step < 15, 'END-1 real swim never reached confirmation');
+    const key = laboratory ? 'KeyA' : 'KeyW';
+    await page.keyboard.down(key); await page.waitForTimeout(250); await page.keyboard.up(key);
+    const rows = await capture('approach-' + step), text = rows.map(row => row.text).join('\n');
+    // Guidance also names the Broken Office. Require the movie's actual
+    // heading/control, not that destination appearing in the World HUD.
+    if (laboratory ? rows.some(row => /^The Broken Office$|^Skip Cutscene$/.test(row.text.trim())) : /great danger/i.test(text)) break;
+    expect(step < 15, 'Real swim never reached ' + (laboratory ? 'laboratory movie' : 'confirmation'));
   }
-  await page.keyboard.press('KeyY'); await page.waitForTimeout(2000);
+  if (laboratory) await clickText(/^Skip Cutscene$/, 'actual-lab-movie-skip');
+  else await page.keyboard.press('KeyY');
+  await page.waitForTimeout(2000);
   const deadline = Date.now() + 180000;
   let ending = false;
   while (Date.now() < deadline && actions < 70) {
     const rows = await capture('fight-' + actions + '-' + observations.length);
     const text = rows.map(row => row.text).join('\n');
-    if (/Game complete/i.test(text)) { ending = true; break; }
+    if (laboratory ? /Computer recovered/i.test(text) : /Game complete/i.test(text)) { ending = true; break; }
     expect(!/party is overwhelmed/i.test(text), 'END-1 supplied legal-kit browser strategy lost; ending not reached');
+    if (/Press Enter to continue/i.test(text)) { await page.keyboard.press('Enter'); await page.waitForTimeout(800); continue; }
     const attack = rows.find(row => /^Attack$/.test(row.text.trim()) && row.y > 400);
     if (!attack) { await page.waitForTimeout(800); continue; }
     const who = /Maxilani.s turn/i.test(text) ? 'Maxilani' : /Musashi.s turn/i.test(text) ? 'Musashi' : /Bucky.s turn/i.test(text) ? 'Bucky' : '';
     if (!who) { await page.waitForTimeout(500); continue; }
-    let targetName = 'Cordys', desired = who === 'Maxilani' ? 'Swift Strike' : who === 'Musashi' ? 'Precise Jab' : 'Guard Bash';
+    let targetName = laboratory ? 'Tethys' : 'Cordys', desired = who === 'Maxilani' ? 'Swift Strike' : who === 'Musashi' ? 'Precise Jab' : 'Guard Bash';
+    // Alternate refreshes keep Blindness active with ordinary non-perfect
+    // input. Legal level-five kit is supplied; no enemy/turn state injected.
+    if (laboratory && who === 'Maxilani' && actions % 6 < 3) desired = 'Flash Blast';
+    if (laboratory && who === 'Musashi' && actions < 3) desired = 'Weaken';
     if (who === 'Maxilani') {
       for (const name of ['Maxilani', 'Musashi', 'Bucky']) {
         const label = rows.find(row => row.text.trim() === name && row.x < 300 && row.y > 60 && row.y < 400);
@@ -143,6 +154,31 @@ try {
   }
   expect(ending, 'END-1 no actual browser victory/ending before deadline');
   await page.waitForTimeout(5000);
+  if (laboratory) {
+    const payoff = (await capture('laboratory-payoff')).map(row => row.text).join('\n');
+    expect(/Computer recovered/i.test(payoff) && /controlling/i.test(payoff) && /ramp/i.test(payoff), 'LAB-W2 missing computer/controller/ramp payoff');
+    committed = await readSlot();
+    const saved = JSON.parse(committed);
+    expect(saved.route_state.lab_state === 'cleared' && saved.route_state.tethys_state === 'defeated'
+      && saved.route_state.octopus_state !== 'defeated', 'LAB-W3 durable lab victory missing or falsely completes Cordys');
+    await page.keyboard.down('KeyW'); await page.keyboard.press('Tab'); await page.keyboard.press('KeyP'); await page.waitForTimeout(600); await page.keyboard.up('KeyW');
+    for (const width of [720, 360]) {
+      await page.setViewportSize({ width, height: 720 }); await page.waitForTimeout(400);
+      const text = (await capture('lab-payoff-' + width)).map(row => row.text).join('\n');
+      expect(/Computer recovered/i.test(text) && /Close/i.test(text) && !/WASD|Your turn|Something grunts/i.test(text), 'LAB-W2 payoff clips controls or leaks gameplay HUD');
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await clickText(/^Close$/, 'actual-lab-payoff-close');
+    const resumed = (await capture('lab-resumed-guidance')).map(row => row.text).join('\n');
+    expect(/Laboratory cleared/i.test(resumed) && /maze/i.test(resumed) && !/Computer recovered/i.test(resumed), 'LAB-W2 Close does not resume useful maze direction');
+    expect(!/Tethys rises/i.test(resumed), 'LAB-W4 payoff Close replays the obsolete boss-arrival notice');
+    await page.close(); page = await context.newPage(); observePage(page);
+    await page.goto(url, { waitUntil: 'load' }); await page.waitForTimeout(23000);
+    await load('cold-lab-load');
+    const loaded = (await capture('cold-lab-completed')).map(row => row.text).join('\n');
+    expect(/Laboratory cleared/i.test(loaded) && /maze/i.test(loaded) && !/Computer recovered|Your turn|Broken Office/i.test(loaded), 'LAB-W3 cold Load replays lab fight/payoff or loses maze direction');
+    expect(await readSlot() === committed, 'LAB-W3 cold Load rewrote bytes, resources or reward');
+  } else {
   const failure = (await capture('rejected-ending')).map(row => row.text).join('\n');
   expect(/Completion could not be saved/i.test(failure) && /Retry Save/i.test(failure), 'END-2 rejection falsely acknowledged saved ending');
   expect(await page.evaluate(() => window.rejectedCompletionWrites > 0), 'END-2 fault never reached completed durable write');
@@ -172,10 +208,11 @@ try {
   const loaded = (await capture('cold-completed')).map(row => row.text).join('\n');
   expect(/Game complete/i.test(loaded) && /Completed journey saved to Slot 1/i.test(loaded), 'END-3 cold Load did not restore completed ending');
   expect(await readSlot() === committed, 'END-3 cold Load rewrote bytes, resources or reward');
+  }
 } catch (error) { findings.push(String(error)); }
 findings.push(...errors);
 await browser.close(); if (server) await new Promise(resolve => server.close(resolve));
-fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ target: url, fixture: 'new disposable profile, supplied legal level-five kit, supplied key spent through E, isolated recovered room; NOT earned route', actions, previous_sha256: before && hash(before), completed_sha256: committed && hash(committed), observations, findings }, null, 2));
-console.log(findings.length ? 'CAMPAIGN COMPLETION WEB: failed' : 'CAMPAIGN COMPLETION WEB: clean');
+fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ target: url, scenario: laboratory ? 'laboratory' : 'ending', fixture: laboratory ? 'new disposable profile, supplied legal level-five kit/cleared blockers; actual swim/movie/fight/payoff/Close/cold Load; NOT earned route' : 'new disposable profile, supplied legal level-five kit, supplied key spent through E, isolated recovered room; NOT earned route', actions, previous_sha256: before && hash(before), completed_sha256: committed && hash(committed), observations, findings }, null, 2));
+console.log((laboratory ? 'LABORATORY PAYOFF WEB: ' : 'CAMPAIGN COMPLETION WEB: ') + (findings.length ? 'failed' : 'clean'));
 for (const finding of findings) console.log('FINDING ' + finding);
 process.exit(findings.length ? 1 : 0);
