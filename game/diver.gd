@@ -428,14 +428,14 @@ const SWAP_COOLDOWN := 2.0
 # Its drain is charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather
 # than smoothly every physics frame - see _physics_process()'s
 # _sonar_drain_timer.
-const SONAR_OXYGEN_DRAIN_PER_SEC := 3.0
+const SONAR_OXYGEN_PER_TICK := 1.0
 
 # How often the sonar drain actually gets charged - a few seconds, not
 # every frame. Separate from SONAR_INTERVAL (the ping/update_sonar() tick
 # rate, currently 0.2s) on purpose: how often the minimap re-checks for
 # nearby zones and how often oxygen gets billed for having sonar on are
 # two different cadences that don't need to match.
-const SONAR_DRAIN_INTERVAL := 3.0
+const SONAR_DRAIN_INTERVAL := 6.0
 var _sonar_drain_timer := 0.0
 
 var _ability_cooldown := 0.0
@@ -613,17 +613,11 @@ func _physics_process(delta: float) -> void:
 		return
 	if passive_id == "sonar" and sonar_active:
 		_sonar_drain_timer -= delta
-		if _sonar_drain_timer <= 0.0:
-			_sonar_drain_timer = SONAR_DRAIN_INTERVAL
-			# Flat per-tick cost, not SONAR_OXYGEN_DRAIN_PER_SEC * INTERVAL -
-			# that multiplication used to preserve the old smooth-drain
-			# rate exactly (3.0/sec average), but 3 charged every 3 seconds
-			# (a 1.0/sec effective rate, 3x cheaper) is the actual wanted
-			# cost. SONAR_OXYGEN_DRAIN_PER_SEC's name is now a bit stale -
-			# it's really "oxygen per tick" - but kept as-is rather than
-			# renaming, since a rename with no behavior change isn't worth
-			# the diff on its own.
-			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_DRAIN_PER_SEC)
+		while _sonar_drain_timer <= 0.0 and sonar_active:
+			# Navigation costs 20 O2 per two minutes, not a whole tank.
+			# Preserve elapsed overshoot so billing doesn't depend on frames.
+			_sonar_drain_timer += SONAR_DRAIN_INTERVAL
+			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_PER_TICK)
 			if stats.oxygen <= 0.0:
 				sonar_active = false
 		sonar_timer -= delta

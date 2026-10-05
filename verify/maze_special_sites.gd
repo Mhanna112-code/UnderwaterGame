@@ -27,7 +27,8 @@ func _run() -> void:
 		await _placement_cases()
 	else:
 		var maxilani := maze.divers[0] as Diver
-		maxilani.global_position = Vector3(64, maze._floor_top_y + 1.5, 52)
+		# Discover from outside the entry radius; R-off no longer locks sites.
+		maxilani.global_position = Vector3(64, maze._floor_top_y + 1.5, 58)
 		maxilani.velocity = Vector3.ZERO
 		await _key(KEY_Q)
 		for frame in 4:
@@ -73,51 +74,41 @@ func _trigger_cases(actor: Diver) -> void:
 	wall.global_position = point + Vector3(0, 2, 2)
 	actor.global_position = point + Vector3(0, 1.5, 3.5)
 	await _settle()
-	await _key(KEY_R)
-	await _settle()
 	_expect(not chooser.visible and not paused, "SITE-2 radius prompts through a solid wall")
-	await _key(KEY_R)
 	wall.queue_free()
 	actor.global_position = point + Vector3.UP * 7
 	await _settle()
-	await _key(KEY_R)
-	await _settle()
 	_expect(not chooser.visible, "SITE-2 horizontal radius prompts from far above")
-	await _key(KEY_R)
+	maze.set_maze_active(false)
 	actor.global_position = point + Vector3.UP * 1.5
 	await _settle()
-	maze.set_maze_active(false)
-	maze.random_encounters_enabled = true
-	await _settle()
 	_expect(not chooser.visible, "SITE-2 inactive Maze opens a site chooser")
-	maze.random_encounters_enabled = false
-	maze.set_maze_active(true)
 	# A lesson can pause halfway through Maze's physics callback. Exercise
 	# the component's public frame entry after that real shared owner opens.
 	var lesson := root.get_node("CharacterAbilityPopup")
 	var lesson_pages: Array[Dictionary] = [{"title": "Site ownership probe", "body": "Read before entering.", "slot": null}]
 	lesson.open(lesson_pages, maze)
-	maze.random_encounters_enabled = true
+	maze.set_maze_active(true)
 	maze.special_sites.update()
 	_expect(paused and not chooser.visible, "SITE-2 site stacks a chooser after the shared lesson has paused the frame")
 	if chooser.visible:
 		chooser.cancelled.emit()
-	# Closing the lesson resumes ordinary radius triggering. Disable the
-	# fixture preference BEFORE closing, rather than racing native physics.
-	maze.random_encounters_enabled = false
+	# Leave the site before closing the lesson, then approach under inventory
+	# ownership. Setup must not rely on R suppressing authored destinations.
+	actor.global_position = point + Vector3(0, 1.5, 6)
 	await _key(KEY_ESCAPE)
 	_expect(not paused and not chooser.visible, "SITE-2 lesson cannot relinquish exclusive ownership")
 	await _settle()
 	await _key(KEY_ESCAPE)
+	actor.global_position = point + Vector3.UP * 1.5
 	await _key(KEY_R)
 	await _settle()
 	_expect(maze.inventory_menu.visible and not chooser.visible,
 		"SITE-2 site steals the inventory owner")
 	await _key(KEY_ESCAPE)
-	await _key(KEY_R)
 	await _settle()
-	_expect(chooser.visible and paused and not maze.can_capture_campaign_snapshot(),
-		"SITE-1/2 actual R-on inside the open radius does not open an exclusive chooser")
+	_expect(chooser.visible and paused and not maze.random_encounters_enabled and not maze.can_capture_campaign_snapshot(),
+		"SITE-1/2 R-off open radius does not open an exclusive chooser")
 	if not captures.is_empty():
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png(captures.path_join("special-site-confirm.png"))
@@ -137,7 +128,7 @@ func _trigger_cases(actor: Diver) -> void:
 	_expect(chooser.visible and paused, "SITE-3 actual leave/re-entry does not reoffer canceled site")
 	chooser.cancelled.emit()
 	maze.random_encounters_enabled = false
-	print("MAZE SITE TRIGGERS|wall_blocked=true|height_blocked=true|inactive_blocked=true|modal_blocked=true|R_inside=true|actual_reentry=true")
+	print("MAZE SITE TRIGGERS|wall_blocked=true|height_blocked=true|inactive_blocked=true|modal_blocked=true|R_off=true|actual_reentry=true")
 
 func _prompt_layout_cases(chooser: SpecialEncounterPrompt) -> void:
 	for size in [Vector2i(1280, 720), Vector2i(720, 480), Vector2i(360, 640)]:
@@ -188,6 +179,7 @@ func _outcome_cases() -> void:
 	var chooser := maze.special_sites.prompt as SpecialEncounterPrompt
 	for selected in 3:
 		for outcome in ["lost", "fled", "won", "downed"]:
+			maze.set_maze_active(false)
 			maze.random_encounters_enabled = false
 			maze.restore_campaign_snapshot(JSON.parse_string(JSON.stringify(baseline)))
 			for index in 3:
@@ -202,10 +194,9 @@ func _outcome_cases() -> void:
 			var oxygen := actor.stats.oxygen
 			var stats := actor.stats
 			var quantity := int(maze.inventory.get("accuracy_up", 0))
+			maze.set_maze_active(true)
 			await _settle()
-			await _key(KEY_R)
-			await _settle()
-			_expect(chooser.visible and paused, "SITE-4 actual R-on fails chooser for " + outcome)
+			_expect(chooser.visible and paused, "SITE-4 R-off fails chooser for " + outcome)
 			chooser.diver_chosen.emit(actor.model_name)
 			await process_frame
 			if outcome == "downed":
@@ -249,6 +240,7 @@ func _reward_matrix() -> void:
 	var enemies := ["swordfish_duelist", "angler", "swordfish_duelist", "angler", "angler", "swordfish_duelist", "angler"]
 	var chooser := maze.special_sites.prompt as SpecialEncounterPrompt
 	for site_index in 7:
+		maze.set_maze_active(false)
 		maze.random_encounters_enabled = false
 		maze.restore_campaign_snapshot(JSON.parse_string(JSON.stringify(baseline)))
 		var at := CampaignSession.vector_from(baseline.special_sites[site_index].position)
@@ -256,8 +248,7 @@ func _reward_matrix() -> void:
 			actor.global_position = Vector3(2000, 2, 2000)
 		maze.divers[0].global_position = at + Vector3.UP * 1.5
 		var before := maze.inventory.duplicate(true)
-		await _settle()
-		await _key(KEY_R)
+		maze.set_maze_active(true)
 		await _settle()
 		_expect(chooser.visible and paused, "SITE-1/3 authored site does not open: %d" % site_index)
 		if not chooser.visible:
@@ -284,6 +275,7 @@ func _reward_matrix() -> void:
 	print("MAZE SITE REWARDS|authored_items_and_enemies=7|public_result_fixture=true|consumed_reentry=true")
 
 func _persistence_cases() -> void:
+	maze.set_maze_active(false) # Codec fixtures are not physical site entry.
 	var original := maze.campaign_snapshot()
 	_expect(original.has("special_sites") and original.special_sites.size() == 7,
 		"SITE-5/6 snapshot omits one or more authored sites")

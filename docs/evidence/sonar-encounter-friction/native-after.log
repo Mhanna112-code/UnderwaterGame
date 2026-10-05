@@ -1,0 +1,20 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR BUDGET|seconds=120|used=19.0|active=true
+SONAR TIME PARTITIONS|generated=48|paused_off_zero=true|partial_interval_handoff=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FR WORLD|R=false|Q=false|position=(-45.0, 2.6, 23.10961)
+FR MAZE|R=false|Q=false|position=(64.0, -0.10879, 55.26189)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FR WORLD VARIANTS|first_special_lesson_R_off=true|plain_guardian_R_off=true|reward_preserved=true
+SONAR ENCOUNTER FRICTION: clean

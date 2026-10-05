@@ -30,7 +30,7 @@ special encounter source is distinct from ordinary/puppet/Cordys/lab bosses.
 
 | ID | Bug and player impact | Independent oracle | Status |
 |---|---|---|---|
-| SITE-1 | Missing radius sites give no discoverable/earnable rewards. High: authored exploration content lost. | Actual Q at authored point yields a special POI, then R-on approach yields the chosen-diver prompt; seven independent enemy/item expectations. | captured missing-content red; ported |
+| SITE-1 | Missing radius sites give no discoverable/earnable rewards. High: authored exploration content lost. | Actual Q at authored point yields a special POI, then approach yields the chosen-diver prompt even with R off; seven independent enemy/item expectations. | captured missing-content red; ported; R decoupled by FR-2 |
 | SITE-2 | Inactive area, wrong actor, R-off, modal or through-wall/height proximity steals input or starts a fight. High: duplicate/unavoidable combat. | Actual owner/toggle inputs and physical wall/height fixtures; real paused shared lesson followed by component frame entry; valid re-entry. Separate Sonar gate covers parked/wrong actors. | paused-frame overlap caught and fixed; other paths characterized |
 | SITE-3 | Cancel/loss retriggers every frame or win grants again on re-entry/load. High: trapped prompts/infinite items. | Real prompt cancel, physical exit/re-entry, lifecycle outcomes and all seven consumed-site re-entry/JSON restores. | characterized |
 | SITE-4 | Chosen actor is replaced, downed selection crashes, or result resets other party resources. High: shared-state corruption. | All three chosen living/downed cases; actual Battle contains only that live actor/resource; inventory/resources independent checks after win/loss/flee. | characterized |

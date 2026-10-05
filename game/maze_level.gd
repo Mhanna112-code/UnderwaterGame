@@ -2903,7 +2903,7 @@ func _update_world_hud() -> void:
 	if _diver.passive_id == "sonar":
 		after += "  ·  Q: Sonar (%s)" % ("On" if _diver.sonar_active else "Off")
 	if not aiming:
-		after += "  ·  R: Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
+		after += "  ·  R: Random Encounters (%s)" % ("On" if random_encounters_enabled else "Off")
 	_world_hud_after.text = after
 	var map_ok := can_open_nav_map()
 	_world_hud_map.visible = map_ok and not aiming

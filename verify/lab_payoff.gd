@@ -112,6 +112,9 @@ func _run() -> void:
 			await process_frame
 		_expect(not panel.visible and not paused and world.get_node("HUD").visible and "maze" in world.route_objective_label.text.to_lower(),
 			"LAB-1 dismissing payoff cannot resume useful maze guidance")
+		var guides := get_nodes_in_group("maze_route_guide")
+		_expect(not guides.is_empty() and (guides[0] as Control).is_visible_in_tree(),
+			"NAV-1 actual Tethys victory/Close leaves the maze ramp direction hidden")
 		_expect(not "Tethys rises" in world.banner.text,
 			"LAB-3 payoff Close replays the obsolete boss-arrival announcement after victory")
 		for index in 3:
@@ -134,6 +137,9 @@ func _run() -> void:
 		and world.route_state.tethys_state == "defeated" and "maze" in world.route_objective_label.text.to_lower(),
 		"LAB-1 cold Title Load replays payoff/fight or loses suggested maze direction")
 	_expect(FileAccess.get_file_as_bytes(path) == saved_bytes, "LAB-1 Load rewrites victory or duplicates reward")
+	var loaded_guides := get_nodes_in_group("maze_route_guide")
+	_expect(not loaded_guides.is_empty() and (loaded_guides[0] as Control).is_visible_in_tree(),
+		"NAV-3 cold Title Load loses actual won-lab navigation")
 	print("LAB PAYOFF|Title_Load=true|save_bytes_conserved=true|no_repeat_popup=true")
 	await _finish()
 

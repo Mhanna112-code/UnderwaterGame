@@ -82,6 +82,7 @@ var _banner_timer := 0.0
 var _announcements := preload("res://game/orange_message_queue.gd").new()
 var route_objective_panel: PanelContainer
 var route_objective_label: Label
+var maze_route_guide: MazeRouteGuide
 var battling := false
 var battle: Battle
 var yaw := 0.0
@@ -1332,6 +1333,8 @@ func _ready() -> void:
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
 	_build_route_objective_hud()
+	maze_route_guide = preload("res://game/maze_route_guide.gd").new()
+	$HUD.add_child(maze_route_guide)
 	escape_encounter_hint = preload("res://game/encounter_escape_hint.gd").new()
 	$HUD.add_child(escape_encounter_hint)
 	route_state.objective_changed.connect(_on_route_objective_changed)
@@ -2655,6 +2658,7 @@ func _physics_process(dt: float) -> void:
 	# Run before combat/maze early returns so the old world waypoint cannot
 	# remain visible after another owner takes control of this frame.
 	_update_blockade_arrow()
+	_update_maze_route_guide()
 	if embedded_maze != null and embedded_maze.maze_active:
 		active = embedded_maze.active
 		if not embedded_maze._battling:
@@ -2732,6 +2736,32 @@ func _physics_process(dt: float) -> void:
 	_update_deep_zone_blockers()
 	_update_lab_route()
 	_update_maze_transition()
+	_update_maze_route_guide()
+
+func _update_maze_route_guide() -> void:
+	if maze_route_guide == null:
+		return
+	# Derive from the earned milestone, including cold Load. Never introduce
+	# a lab prerequisite for the independently reachable maze.
+	maze_route_guide.visible = (
+		route_state.prologue_complete
+		and route_state.lab_state == "cleared"
+		and route_state.tethys_state == "defeated"
+		and route_state.octopus_state != "defeated"
+		and not divers.is_empty()
+		and deep_zone_layout.zone_for_position((divers[active] as Diver).global_position) == "deep"
+		and not battling and not is_instance_valid(random_encounter_reveal)
+		and not aiming and not target_selector.selecting
+		and not inventory_menu.visible and not save_point_menu.visible
+		and not embedded_maze.maze_active and not get_tree().paused
+		and $HUD.visible and cam.current
+	)
+	if maze_route_guide.visible:
+		# Aim just inside the real maze boundary. A marker at the ramp mouth
+		# turns backwards halfway across it, before maze ownership can begin.
+		var ramp := Vector3(embedded_maze.embedded_bounds.position.x + 1, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
+		maze_route_guide.update_bearing(cam, (divers[active] as Diver).global_position,
+			ramp, maxf(route_objective_panel.get_rect().end.y, hud.get_rect().end.y))
 
 func _update_route_zone() -> void:
 	if not route_state.prologue_complete or divers.is_empty():
@@ -3716,8 +3746,8 @@ func _update_banner(dt: float) -> void:
 	banner.text = _announcements.current_text()
 
 # Entering a guarded item's site starts its encounter directly; Sonar and
-# random-encounter rolls are not prerequisites, but the R encounter toggle
-# still gates it. Only the active diver can trigger one. A per-site latch
+# random-encounter rolls and the R toggle are not prerequisites. R only
+# controls ordinary travel fights. Only the active diver can trigger one. A per-site latch
 # prevents reopening a prompt or battle while the diver remains inside the
 # same radius; leaving and re-entering can trigger a repeatable special
 # reward site again.
@@ -3734,11 +3764,6 @@ func _try_trigger_item_site(d: Diver) -> bool:
 	if found.is_empty():
 		_inside_item_site_id = ""
 		return false
-	if not random_encounters_enabled:
-		# Clear the latch while encounters are off, so switching them back on
-		# while still inside this radius can trigger the site immediately.
-		_inside_item_site_id = ""
-		return true
 	var item_id := String(found.item)
 	var site_id := String(found.get("site", item_id))
 	if site_id == _inside_item_site_id:
@@ -3891,6 +3916,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	_cancel_random_encounter_reveal()
 	escape_encounter_hint.dismiss()
 	battling = true
+	_update_maze_route_guide() # Hide before Battle pauses exploration frames.
 	Whirlpool.refresh_in(self)
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
@@ -4582,7 +4608,7 @@ func _update_hud() -> void:
 	# ability_id.
 	if d.passive_id == "sonar":
 		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
-	line += (" · R:Random %s" if narrow else "  ·  R: Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
+	line += (" · R:Random %s" if narrow else "  ·  R: Random Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
 	hud.text = line
 
 # A persistent readout of the active diver's HP, always visible during
