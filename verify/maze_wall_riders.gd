@@ -51,6 +51,9 @@ func _run() -> void:
 	for index in indices:
 		_expect(world.restore_checkpoint(JSON.parse_string(JSON.stringify(home))), "RIDER-3 baseline restore rejected")
 		var set_spec: Dictionary = maze.rotatable_wall_sets()[index]
+		var home_destinations: Array[Transform3D] = []
+		for destination_wall: CSGBox3D in set_spec.walls:
+			home_destinations.append(destination_wall.global_transform)
 		var open_data: Dictionary
 		(set_spec.rotate as Callable).call()
 		await create_timer(1.5).timeout
@@ -81,7 +84,7 @@ func _run() -> void:
 					world.active = selected
 					maze.active = selected
 					maze._diver = world.divers[selected]
-					await _trial(maze, set_spec, w, directions[w], selected, closing, destinations[w])
+					await _trial(maze, set_spec, w, directions[w], selected, closing, home_destinations[w] if closing else destinations[w])
 					if not findings.is_empty():
 						await _finish()
 						return
@@ -116,19 +119,26 @@ func _trial(maze: MazeLevel, set_spec: Dictionary, wall_index: int, side: float,
 			await physics_frame
 			await process_frame
 			if frame % 20 == 0:
-				print("RIDER_FRAME|", frame, "|wall=", wall.global_position, "|yaw=", wall.rotation.y, "|actor=", actor.global_position, "|local=", wall.global_transform.affine_inverse() * actor.global_position)
+				print("RIDER_FRAME|", frame, "|wall=", wall.global_position, "|yaw=", wall.rotation.y, "|actor=", actor.global_position, "|local=", wall.global_transform.affine_inverse() * actor.global_position, "|locked=", actor.is_suction_locked(), "|mask=", actor.collision_mask)
 			if not contacted and actor.global_position.distance_to(before) > 0.1 and absf((wall.global_transform.affine_inverse() * actor.global_position).z) < wall.size.z * 0.5 + actor.radius + 0.2:
 				contacted = true
 				offset = wall.global_transform.affine_inverse() * actor.global_position
 				contact_position = actor.global_position
 				print("RIDER_CONTACT|frame=", frame, "|offset=", offset)
-			elif contacted:
+			elif contacted and actor.is_suction_locked() and actor.collision_mask == 0:
 				var actual := wall.global_transform.affine_inverse() * actor.global_position
 				carried_frames += 1
 				_expect(absf(actual.x - offset.x) < 0.12 and absf(actual.z - offset.z) < 0.12,
 					"RIDER-1 passenger lost wall-local offset at frame %d: expected %s got %s" % [frame, offset, actual])
 				if not findings.is_empty():
 					break
+			elif contacted:
+				# Capsule-clear release may change local offset after the wall
+				# reaches its independently observed destination. Do not confuse
+				# elapsed-time completion with a fixed 65-frame carry interval.
+				_expect(wall.global_position.distance_to(destination.origin) < 0.01
+					and wall.global_basis.is_equal_approx(destination.basis),
+					"RIDER-1 passenger released before wall reached its observed destination")
 			if contacted and frame == 10 and OS.get_cmdline_user_args().has("--blocked"):
 				# Introduce a real opaque CSG volume at the preferred final
 				# landing after capture. A surface-only check misses its center.
@@ -320,7 +330,7 @@ func _ownership(maze: MazeLevel, home: Dictionary) -> void:
 				elif frame > 10:
 					var actual := wall.global_transform.affine_inverse() * actor.global_position
 					_expect(absf(actual.x - offset.x) < 0.12 and absf(actual.z - offset.z) < 0.12,
-						"RIDER-4 downed passenger loses wall-local offset")
+						"RIDER-4 downed passenger loses wall-local offset frame=%d yaw=%f locked=%s mask=%d expected=%s actual=%s" % [frame, wall.rotation.y, actor.is_suction_locked(), actor.collision_mask, offset, actual])
 			await create_timer(0.6).timeout
 			_expect(actor.is_suction_locked() == already_locked and actor.collision_mask == 5, "RIDER-4 completion clears another owner's lock or loses mask")
 			_expect(actor.stats.hp == 0 and actor.stats.oxygen == 0, "RIDER-4 motion revives/refills downed passenger")

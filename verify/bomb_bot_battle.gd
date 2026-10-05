@@ -76,7 +76,10 @@ func _connect_bomb_animation_trace() -> void:
 			bomb_trace_connected = true
 
 func _on_bomb_animation_started(clip: StringName) -> void:
-	var lower := String(clip).to_lower()
+	# Imported take names contain spaces ("Lighting Blast"); observe the
+	# same semantic fragment regardless of cosmetic spacing/case. Retain the
+	# raw signal below so an idle-only fight can never masquerade as an attack.
+	var lower := String(clip).to_lower().replace(" ", "")
 	observed_bomb_animations[String(clip)] = true
 	for fragment in ["lightingblast", "slingpunch", "sonic_bump"]:
 		if lower.contains(fragment):

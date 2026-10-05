@@ -47,6 +47,30 @@ the C5 exception and reject a preexisting motion owner rather than stealing it.
 
 ## Evaluation
 
+- Current runtime7336611 full-suite repeat reports missing swept contact in
+  one generated capsule case and a downed-offset mismatch. A standalone
+  default trial still passes (64 retained frames). Classification is pending:
+  the verifier observes fixed frame counts while wall Tweens use elapsed time,
+  so early settlement/release under load can invalidate a carry-only oracle.
+  Add actual public lock/mask, frame and wall-pose diagnostics before changing
+  either production motion or this requirement. Preserve failed full-suite
+  evidence; a single default pass does not clear its full matrix.
+- Traced matrix repeats the offset finding at frame63 with the wall already
+  at its closed endpoint. The carry assertion currently continues after normal
+  release and capsule-clear repositioning. Correct the oracle to require rigid
+  offset only while the public motion lock/mask is retained; any release must
+  independently coincide with the previously observed physical destination.
+  Opening and closing need different observed destinations. Keep sustained
+  contact, final clearance, resource/mask conservation and real swimming checks;
+  this change must not accept an idle or prematurely released passenger.
+- Corrected current-runtime matrix exits0:36 actual actor/wall/direction
+  cases and2,277 retained frames, endpoint-checked release, actual clear landing,
+  mask/resource conservation and resumed swimming. Raw old matrix failure,
+  default one-case pass and traced six-case ownership pass are retained in
+  `docs/evidence/maze-wall-riders-oct5/current-runtime`. No production motion
+  change and no all-suite/campaign approval. The six-case ownership observer
+  still uses fixed frames; its possible timing sensitivity remains disclosed.
+
 - Caught: original overlap-only pushing loses along-wall offset at frame8
   after genuine contact. Saved original observer and red log are preserved.
 - Adapted and verified: safe landing, mask/lock lifecycle, downed-body resources,

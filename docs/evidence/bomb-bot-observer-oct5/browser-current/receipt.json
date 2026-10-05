@@ -1,0 +1,368 @@
+{
+  "target": "https://underwatergame.vercel.app/",
+  "metadata": {
+    "source_commit": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+    "pck_sha256": "ae9f15f6d3716c75b69c6f46fa1db243ca57a6d05e50374201407a3fb0ac1984",
+    "pck_bytes": 94993548,
+    "engine": "Godot 4.7.1",
+    "status": "Sonar lifetime native regressions and exact-source hosted/canonical asset, title and maze map/menu/aim checks pass; full campaign and balance matrix incomplete",
+    "upstream_intake": {
+      "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
+      "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
+    },
+    "change": "Sonar lens spin ends when the pickup is collected or removed by owned-item Load. Preserves required-item 3D reveal, map-marker Sonar, pre-boss-only ending and repaired maze UI. Includes Marc's timed rare boosts, automatic Oxygen Cells, Escape map close, saved sites cleared only after rewarded victory and no item circles for maze ambush rocks",
+    "deferred": "Tethys opening/Cordys introduction LAST with explicit Miguel review before main/canonical. Full earned campaign/browser/audio/polish acceptance remains. Matching Windows/Linux feedback packages are cross-exported and archive-checked, not target-machine launch-tested",
+    "native_download_source_commit": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+    "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/main-feedback-7336611",
+    "native_target_launch_verified": false
+  },
+  "browser": "151.0.7922.34",
+  "backend": "metal",
+  "channel": "bundled-chromium",
+  "actions": [
+    {
+      "text": "Play Bomb Bot Test",
+      "x": 640.0000016399999,
+      "y": 427.9999998800001
+    },
+    {
+      "text": "Attack",
+      "x": 168.00000065165702,
+      "y": 536.9999999411094
+    },
+    {
+      "text": "Electric Touch",
+      "x": 164.999998725,
+      "y": 592.999999775
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.00000078073776,
+      "y": 654.9999999059334
+    },
+    {
+      "text": "Attack",
+      "x": 167.00000045151205,
+      "y": 537.9999999444905
+    },
+    {
+      "text": "Precise Tap",
+      "x": 164.99999924953084,
+      "y": 668.0000000611594
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.00000078073776,
+      "y": 654.9999999059334
+    },
+    {
+      "text": "Attack",
+      "x": 168.0000005213256,
+      "y": 536.9999999528875
+    },
+    {
+      "text": "Guard Bash",
+      "x": 167.00000089999997,
+      "y": 654.9999999
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.00000078089226,
+      "y": 654.9999999072247
+    },
+    {
+      "text": "Attack",
+      "x": 168.0000005213256,
+      "y": 536.9999999528875
+    },
+    {
+      "text": "Electric Touch",
+      "x": 164.9999989,
+      "y": 594.0000000800001
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.00000078160758,
+      "y": 654.9999999134579
+    },
+    {
+      "text": "Attack",
+      "x": 168.0000005213256,
+      "y": 536.9999999528875
+    },
+    {
+      "text": "Precise Tap",
+      "x": 164.99999924953084,
+      "y": 668.0000000611594
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.0000007790921,
+      "y": 654.999999654738
+    },
+    {
+      "text": "Attack",
+      "x": 168.0000005213256,
+      "y": 536.9999999528875
+    },
+    {
+      "text": "Guard Bash",
+      "x": 167.00000089999997,
+      "y": 654.9999999
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.00000078160758,
+      "y": 654.9999999134579
+    },
+    {
+      "text": "Attack",
+      "x": 168.00000065,
+      "y": 536.999999925
+    },
+    {
+      "text": "Electric Touch",
+      "x": 164.9999989,
+      "y": 594.0000000800001
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.00000078089226,
+      "y": 654.9999999072247
+    },
+    {
+      "text": "Attack",
+      "x": 168.00000065,
+      "y": 536.999999925
+    },
+    {
+      "text": "Guard Bash",
+      "x": 167.00000089999997,
+      "y": 654.9999999
+    },
+    {
+      "text": "Bomb Bot",
+      "x": 167.00000078089226,
+      "y": 654.9999999072247
+    }
+  ],
+  "observations": [
+    {
+      "name": "title-0",
+      "text": "Underwater\nNew Game\nPlay Bomb Bot Test"
+    },
+    {
+      "name": "battle-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\n- 12/12"
+    },
+    {
+      "name": "action-002-1",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nBomb Bot\n12/12\nMaxilani's turn.\nYou\nSTR\nACC\nDEF\nEVA\n3\nElectric Touch\nStrength Damage EVA -3\nAxe Kick\nStrength Damage EVA -3\nScuba Stabbing\nStrength Damage 2 Bleed\nFlash Blast\n2 Blindness\nMultiple Knee Combo\nStrength Damage all ACC/EVA -1\nBack"
+    },
+    {
+      "name": "action-003-3",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBomb Bot\n-12/12\nMaxilani's turn.\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\nEVA 1/1 HP 12/12\nBack"
+    },
+    {
+      "name": "action-004-5",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nBomb Bot\n12/12\nMaxilani's turn.\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "action-004-7",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nElectric Touch shocks the target for 1. EVA -1\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\n- 11/12"
+    },
+    {
+      "name": "action-004-9",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nBomb Bot\n11/12"
+    },
+    {
+      "name": "action-005-11",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nBomb Bot\n11/12\nMusashi's turn.\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\n1\nPrecise Tap\nWeaken\nDEF -2\n1002\nSlow\nAGI -2\nBack\n1002"
+    },
+    {
+      "name": "action-006-13",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nBomb Bot\n- 11/12\nMusashi's turn.\nPrecise Tap 3\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\nBomb Bot\nEVA 0/0 HP 11/12\nBack"
+    },
+    {
+      "name": "action-007-15",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Tap 3\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nBomb Bot\n- 11/12"
+    },
+    {
+      "name": "action-007-17",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nYou land a precise tap for 0.\nPrecise Tap 3\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nBomb Bot\n- 11/12"
+    },
+    {
+      "name": "action-007-19",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nRun\nMight not escape\nItems\nBomb Bot\n11/12"
+    },
+    {
+      "name": "action-008-21",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nBomb Bot\n11/12\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\nGuard Bash\nSturdy, reliable\n4\nHeavy Kick\nBalanced, heavier\n10\n1002\nCrushing Haymaker\nVery heavy, slow\n15\n1602\nBack"
+    },
+    {
+      "name": "action-009-22",
+      "text": "NOW\nBecky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBomb Bot\n-11 /12\nBucky's turn.\nGuard Bash 8\nYou\nSTR\nACC\n4\nDEF\nEVA\nBomb Bot\nEVA 0/0 HP 11/12\nBack"
+    },
+    {
+      "name": "action-010-24",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n- 11/12"
+    },
+    {
+      "name": "action-010-26",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 3.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n8/12"
+    },
+    {
+      "name": "action-010-28",
+      "text": "NOW\nBomb Bot\nNext\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 3.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n8/12"
+    },
+    {
+      "name": "action-010-30",
+      "text": "NOW\nBomb Bot\nNext\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nBomb Bot uses Sling Punch: Musashi -5.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\n-5\nBomb Bot\n8/12"
+    },
+    {
+      "name": "action-010-32",
+      "text": "NOW\nBomb Bot\nNext\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBomb Bot uses Sling Punch: Musashi -5.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n8/12"
+    },
+    {
+      "name": "action-010-34",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\n8/12"
+    },
+    {
+      "name": "action-011-35",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\nEVA 3/3\nMusashi\nBomb Bot\n10/10 Lv 1\n100 / 100 02\n8/12\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nMaxilani's turn.\nYou\nSTR\nACC\nDEF\nEVA\n3\nElectric Touch\nStrength Damage EVA -3\nAxe Kick\nStrength Damage EVA -3\nScuba Stabbing\nStrength Damage 2 Bleed\nFlash Blast\n2 Blindness\nMultiple Knee Combo\nStrength Damage all ACC/EVA -1\nBack"
+    },
+    {
+      "name": "action-012-37",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\nBomb Bot\n8 /12\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\nEVA 0/0 HP 8/12\nBack"
+    },
+    {
+      "name": "action-013-39",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\nBomb Bot\n8/12\n5/10\nLv 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nMaxilani's turn.\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3"
+    },
+    {
+      "name": "action-013-41",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nBucky\nBomb Bot\nMaxilani\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nElectric Touch shocks the target for 1. EVA unchanged\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\n7/12"
+    },
+    {
+      "name": "action-013-43",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nMusashi's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nBomb Bot\n7/12"
+    },
+    {
+      "name": "action-014-45",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\nBomb Bot\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nMusashi's turn.\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\n2\n1\nPrecise Tap\nWeaken\nDEF -2\n1002\nSlow\nAGI -2\nBack\n1002\n7/12"
+    },
+    {
+      "name": "action-015-47",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\nBomb Bot\n7/12\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA O/0\nMusashi's turn.\nPrecise Tap 3\nYou\nSTR\nACC\n2\nDEF\nEVA\n2\nBomb Bot\nEVA 0/0 HP 7/12\nBack"
+    },
+    {
+      "name": "action-016-49",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nMusashi's turn.\nPrecise Tap 3\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nBomb Bot\n7/12"
+    },
+    {
+      "name": "action-016-51",
+      "text": "NOW\nMusashi\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nYou land a precise tap for 0.\nPrecise Tap 3\nYou\nSTR\nACC\nDEF\nEVA\n2\n2\nBomb Bot\n7/12"
+    },
+    {
+      "name": "action-016-53",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\n4\nDEF\nEVA\n4\nRun\nMight not escape\nItems\nBomb Bot\n7/12"
+    },
+    {
+      "name": "action-017-55",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\nBomb Bot\n7/12\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA O/0\nBucky's turn.\nYou\nSTR\nACC\n4\n1\nDEF\nEVA\nGuard Bash\nSturdy, reliable\n4\nHeavy Kick\nBalanced, heavier\n10\n1002\nCrushing Haymaker\nVery heavy, slow\n15\n1602\nBack"
+    },
+    {
+      "name": "action-018-57",
+      "text": "NOW\nBecky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBomb Bot\nBucky's turn.\nGuard Bash 8\nYou\nSTR\nACC\n4\nDEF\nEVA\nBomb Bot\nEVA 0/0 HP 7/12\nBack\n7/12"
+    },
+    {
+      "name": "action-019-59",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\nEVA 3/3\nMusashi\n10/10 Lv1\n100 / 100 02\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n7/12"
+    },
+    {
+      "name": "action-019-61",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\nEVA 3/3\nMusashi\n10/10 Lv 1\n100 / 100 02\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 4.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n3/12"
+    },
+    {
+      "name": "action-019-63",
+      "text": "NOW\nBomb Bot\nNext\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nMusashi\n5/10\nLV 1\n100 / 100 02\nEVA 2/2\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 4.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n3/12"
+    },
+    {
+      "name": "action-019-65",
+      "text": "NOW\nBomb Bot\nNext\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nBomb Bot uses Sling Punch: Musashi -5.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\n-5\nBomb Bot\n3/12"
+    },
+    {
+      "name": "action-019-68",
+      "text": "NOW\nBomb Bot\nNext\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10/10\nLv 1\n100 / 100 02\nEVA 0/0\nBomb Bot uses Sling Punch: Musashi -5.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n3/12"
+    },
+    {
+      "name": "action-019-70",
+      "text": "NOW\nMaxilani\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\n3/12"
+    },
+    {
+      "name": "action-020-73",
+      "text": "NOW\nMaxilani\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv 1\n100 / 100 02\nBomb Bot\n3/12\nEVA 0/0\nMaxilani's turn.\nYou\nSTR\nACC\nDEF\nEVA\n3\nElectric Touch\nStrength Damage EVA -3\nAxe Kick\nStrength Damage EVA -3\nScuba Stabbing\nStrength Damage 2 Bleed\nFlash Blast\n2 Blindness\nMultiple Knee Combo\nStrength Damage all ACC/EVA -1\nBack"
+    },
+    {
+      "name": "action-021-75",
+      "text": "NOW\nMaxilani\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBomb Bot\n3/12\nMaxilani's turn.\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\nEVA 0/0 HP 3/12\nBack"
+    },
+    {
+      "name": "action-022-78",
+      "text": "NOW\nMaxilani\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nMaxilani's turn.\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\n3 /12"
+    },
+    {
+      "name": "action-022-80",
+      "text": "NOW\nMaxilani\nNext\nBucky\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nElectric Touch shocks the target for 1. EVA unchanged\nElectric Touch 1\nYou\nSTR\nACC\nDEF\nEVA\n3\nBomb Bot\n2/12"
+    },
+    {
+      "name": "action-022-82",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv1\n100 / 100 02\nEVA 0/0\nBucky's turn.\nAttack\nPick a move\nYou\nSTR\nACC\nDEF\nEVA\nRun\nMight not escape\nItems\nBomb Bot\n2/12"
+    },
+    {
+      "name": "action-023-84",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\nEVA 3/3\nBucky\nBomb Bot\n10/10 Lv1\n100 / 100 02\n-10/10\nLv 1\n100 / 100 02\n2/12\nEVA 0/0\nBucky's turn.\nYou\nSTR\nACC\n4\nDEF\nEVA\nGuard Bash\nSturdy, reliable\n4\nHeavy Kick\nBalanced, heavier\n10\n1002\nCrushing Haymaker\nVery heavy, slow\n15\n1602\nBack"
+    },
+    {
+      "name": "action-024-86",
+      "text": "NOW\nBecky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv1\n100 / 100 02\nBomb Bot\n2/12\nEVA 0/0\nBucky's turn.\nGuard Bash 8\nYou\nSTR\nACC\n4\nDEF\nEVA\nBomb Bot\nEVA 0/0 HP 2/12\nBack"
+    },
+    {
+      "name": "action-025-88",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nBucky's turn.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA\nBomb Bot\n2/12"
+    },
+    {
+      "name": "action-025-90",
+      "text": "NOW\nBucky\nNext\nBomb Bot\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10/10\nLv 1\n100 / 100 02\nEVA 0/0\nYou bash it with your guard for 5.\nGuard Bash 8\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "action-025-92",
+      "text": "Victory\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10 / 10\nLv 1\n100 / 100 02\nEVA 0/0\nThe enemies back off, beaten."
+    },
+    {
+      "name": "action-025-93",
+      "text": "Victory\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nThe enemies back off, beaten."
+    },
+    {
+      "name": "action-025-95",
+      "text": "Victory\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10/10\nLv 1\n100 / 100 02\nEVA 0/0\nThe enemies back off, beaten."
+    },
+    {
+      "name": "action-025-97",
+      "text": "Victory\nMaxilani\n10/10 Lv 1\n100 / 100 02\nEVA 3/3\nBucky\n10/10 Lv 1\n100 / 100 02\nEVA 0/0\nThe enemies back off, beaten."
+    },
+    {
+      "name": "action-025-99",
+      "text": "Maxilani\nWASD swim SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Random Encounters (On)\n02\n100 / 100\nExplore the mysterious blockade.\nMusashi\n0 / 10\n02\n100 / 100\nBucky\n10 / 10\nSave Point\nRestore your party\nBomb Bot powers down. The path to Sword Slayer is open.\n02 100 / 100\nRandom Encounters: ON\nMaxilani\n10 / 10"
+    },
+    {
+      "name": "world-input",
+      "text": "Maxilani\nWASD swim • SPACE/SHIFT depth • mouse/arrows look • TAB diver • F: Swap • Q: Sonar (Off) • R: Random Encounters (Off)\n02\n100 / 100\nExplore the mysterious blockade.\nMusashi 0/10\n02\n100 / 100\nBucky\n10 / 10\nSave Point\nRestore your party\nBomb Bot powers down. The path to Sword Slayer is open.\n02 100 / 100\nRandom Encounters: OFF\nMaxilani\n10 / 10"
+    }
+  ],
+  "errors": [],
+  "won": true,
+  "returned": true,
+  "failure": null,
+  "scope": "diagnostic lab trigger; actual rendered menus/mouse input and fight outcome; not normal travel or maze second wave"
+}

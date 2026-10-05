@@ -298,3 +298,13 @@ no engine/script errors. Retain the two prior ordinary losses and the default
 missing-Angler failure. This is current-runtime native lab-only acceptance for
 this disclosed strategy, NOT eight-seed rates, browser durability, actual
 minigame skill, maze-first or full-campaign readiness.
+
+Current casual64003/direct no-rest observation exits1: tutorial completed with
+the real restored level1/full-health party, then the first ordinary encounter
+was **two Swordfish Duelists**. Twelve real move actions ended in all three
+divers down, XP0; the missed-special branch was never reached. Preserve this
+real loss and its actual roster. Current production explicitly rolls one/two/
+three ordinary enemies with equal odds at every level (a requested change),
+so do not silently restore the old early-game pack cap as an observer repair.
+This one outcome does not establish an aggregate casual failure rate; it
+identifies first-pack pressure for the required broader balance investigation.

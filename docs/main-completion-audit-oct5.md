@@ -28,6 +28,36 @@ Matching-source Windows/Linux feedback ZIPs are now cross-exported, integrity-
 checked and published, including downloaded SHA256 verification. Target-machine
 launches/playtests are not verified. See the native delivery record.
 
+Metadata/native download information is now promoted at the canonical URL with
+unchanged runtime7336611/game bytes, deploymentdpl_2E53cRBsgnbyzio5FgMfQzDY5jHE.
+Candidate exact metadata/assets/title pass; independent canonical metadata and
+four assets match; its first fresh-title screenshot timed out and is retained
+as failed. Fresh repeat exits0 with expected New Game/no captured errors and
+exact metadata/four assets. No blanket full-browser acceptance claim.
+
+Current canonical bundled Chromium/Metal Bomb Bot diagnostic passes25 real
+mouse actions, actual damage, victory and World-input return without captured
+errors. Musashi is down at return; this is not balance approval. Actual Google
+Chrome cannot launch because it is not installed. The native Bomb Bot false
+negative was its verifier comparing `lightingblast` to actual `Lighting Blast`;
+space normalization now passes a complete actual fight on unchanged runtime.
+The full suite also reports moving-wall matrix/ownership findings; a standalone
+default and traced six-case ownership repeat pass, while the matrix exposes
+an offset assertion continuing after elapsed-time wall settlement. A stronger
+endpoint-versus-carry observer now passes36 actual actor/wall/direction cases
+and2,277 retained frames with endpoint-checked clear release and real swimming.
+This repairs the observer, not production motion. Original full-run findings
+are retained; ownership fixture timing sensitivity and other gates stay open.
+
+Casual64003 finishes real tutorial recovery, then loses its first ordinary
+pack: two Swordfish Duelists, level1/XP0, twelve move actions and all divers down.
+No optional-special recovery occurred. Current equal1/2/3 pack odds were
+explicitly requested; do not silently restore an old onboarding cap without
+measured balance investigation. One loss is not an aggregate failure rate.
+
+Fresh GitHub reads confirm #97bba8b80/#9986878fa unchanged; both remain open.
+Historical intake pending statements still need exhaustive final reconciliation.
+
 Remaining: exhaustive upstream dispositions; casual/skilled lab-first and
 maze-first earned completion; current browser persistence/Bomb Bot/audio and
 broader visual review; target-machine native acceptance. The production opening
@@ -347,7 +377,7 @@ Those are not current-main packages and have not been target-launched here.
 | Puppets/generic key/fixed Cordys | Implemented | Preserve two waves, one final key/XP outcome, generic keys and independent lab progress. No unapproved Cordys weakening/unique-key prerequisite. |
 | Earned casual/skilled campaigns | Not established by current tests | Real New Game lab-first and maze-first policies, earned XP/spells/items, reachable rests and documented non-perfect QTE assumptions. |
 | Browser saves/Bomb Bot/audio/polish | Focused/historical receipts only | Current Chrome Bomb Bot reproduction, actual browser manual/auto saves and denial/reload/loss, listening and six-area visual inspection. |
-| Matching export/release docs | Canonical actual HTML/JS/Wasm/PCK match runtime7336611/PCKae9f15f6; export pushed in2c7637f and publication receipts/docs in1186d95; same-source Windows/Linux7336611 ZIPs published and downloaded digests checked | Current package metadata publication and full acceptance remain; native target launches not verified. Refresh packages after any future runtime repair. Git integration remains disconnected. |
+| Matching export/release docs | Canonical actual HTML/JS/Wasm/PCK and refreshed package metadata match runtime7336611/PCKae9f15f6; same-source Windows/Linux7336611 ZIPs published and downloaded digests checked; independent canonical metadata/assets/title repeat passes | Full acceptance remains; native target launches not verified. Refresh packages after any future runtime repair. Git integration remains disconnected. |
 
 ## Original audit failures and misleading evidence (historical; repairs above)
 

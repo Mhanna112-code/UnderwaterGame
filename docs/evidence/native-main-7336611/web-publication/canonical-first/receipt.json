@@ -1,0 +1,51 @@
+{
+  "base": "https://underwatergame.vercel.app/",
+  "expected_source": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+  "scope": "exact four served game assets and fresh ordinary title; not full campaign or browser pickup/persistence acceptance",
+  "assets": [
+    {
+      "file": "index.html",
+      "bytes": 6387,
+      "sha256": "09694f85c3f9bb0460ace2051f6981cf4086282fdfad91e66931cfbbb5f8b014",
+      "matches_local": true
+    },
+    {
+      "file": "index.js",
+      "bytes": 279815,
+      "sha256": "68586d6daafc93c6e697b3fb258976874aa7459b8931165ebb1dc3c9614cc42c",
+      "matches_local": true
+    },
+    {
+      "file": "index.wasm",
+      "bytes": 39513091,
+      "sha256": "35116f68540ac41acf7d71ea457added91b5e960a9cca3e2acc72918eaf01277",
+      "matches_local": true
+    },
+    {
+      "file": "index.pck",
+      "bytes": 94993548,
+      "sha256": "ae9f15f6d3716c75b69c6f46fa1db243ca57a6d05e50374201407a3fb0ac1984",
+      "matches_local": true
+    }
+  ],
+  "errors": [],
+  "metadata": {
+    "source_commit": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+    "pck_sha256": "ae9f15f6d3716c75b69c6f46fa1db243ca57a6d05e50374201407a3fb0ac1984",
+    "pck_bytes": 94993548,
+    "engine": "Godot 4.7.1",
+    "status": "Sonar lifetime native regressions and exact-source hosted/canonical asset, title and maze map/menu/aim checks pass; full campaign and balance matrix incomplete",
+    "upstream_intake": {
+      "pr97": "bba8b80337c07298763a28c9c1109382091bc480",
+      "pr99": "86878faedb71e81072b1d200f4ccbfc6f0507210"
+    },
+    "change": "Sonar lens spin ends when the pickup is collected or removed by owned-item Load. Preserves required-item 3D reveal, map-marker Sonar, pre-boss-only ending and repaired maze UI. Includes Marc's timed rare boosts, automatic Oxygen Cells, Escape map close, saved sites cleared only after rewarded victory and no item circles for maze ambush rocks",
+    "deferred": "Tethys opening/Cordys introduction LAST with explicit Miguel review before main/canonical. Full earned campaign/browser/audio/polish acceptance remains. Matching Windows/Linux feedback packages are cross-exported and archive-checked, not target-machine launch-tested",
+    "native_download_source_commit": "7336611fcaeed8e03c875fdb3e0118facd7737df",
+    "native_downloads": "https://github.com/Mhanna112-code/UnderwaterGame/releases/tag/main-feedback-7336611",
+    "native_target_launch_verified": false
+  },
+  "metadata_matches_local": true,
+  "passed": false,
+  "failure": "page.screenshot: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\n    at /private/tmp/sonar-delivery-assets-check-oct5.mjs:44:14"
+}

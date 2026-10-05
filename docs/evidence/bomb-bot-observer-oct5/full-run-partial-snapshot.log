@@ -1,0 +1,2279 @@
+
+=== Godot class cache: can direct gates resolve project scripts ===
+
+=== Marc autosaves: do safe World/maze saves preserve manual checkpoints and rejected writes ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MARC AUTOSAVES: clean
+
+=== Latest save recovery: do title and World/maze death recovery prefer newest valid snapshots with manual fallback ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=false
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_GAME_OVER|slot=918527|complete=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_GAME_OVER|slot=918527|complete=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CHECKPOINT_LATEST_LOADED|slot=918527|autosave=true
+CHECKPOINT_LOAD_FAILED|slot=918527
+LATEST SAVE RECOVERY: clean
+
+=== Marc recovery/hall/title: do all three real pads accept P and latest lanes/autosave rows exist ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+REST INPUT|MazeCheckpoint|active=true|modal=true|contact=MazeCheckpoint:<Area3D#139334783658>|menu=true
+REST INPUT|MazeCheckpoint1|active=true|modal=true|contact=MazeCheckpoint1:<Area3D#139569664696>|menu=true
+REST INPUT|MazeCheckpoint2|active=true|modal=true|contact=MazeCheckpoint2:<Area3D#139804545734>|menu=true
+MARC RECOVERY/HALL/TITLE: clean
+
+=== Marc learned-spell scaling: do authored thresholds preserve EVA and tutorial ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC UNLOCK SCALING: clean
+
+=== Marc base enemy boosts: do public factories cap rolls at 10% and preserve authored EVA ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC ENEMY BOOSTS: clean|legacy=false|samples=96
+
+=== Marc legacy enemy boosts: does the explicit comparison mode preserve reference EVA ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC ENEMY BOOSTS: clean|legacy=true|samples=96
+
+=== Marc blockade waypoint: do real World frames, Tab/F and cold Load preserve direction and cleanup ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MARC BLOCKADE WAYPOINT: clean
+
+=== reward rock guidance: do actual approach/Tab/F, item collection and cold Load preserve actionable hints ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+REWARD ROCK GUIDANCE: clean
+
+=== victory cue: does actual combat replace battle music before exploration ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+VICTORY TIMING|actions=3|outcomes=["won"]|visible_victory=true
+BATTLE VICTORY TIMING: clean
+
+=== ordinary victory attrition: do real attacks finish without the retired resource refill ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+VICTORY TIMING|actions=3|outcomes=["won"]|visible_victory=true
+BATTLE VICTORY TIMING: clean
+
+=== welcome centering: do twelve real viewports keep text in the middle ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+WELCOME CENTER: clean|sizes=12
+
+=== verification runner: are engine/script errors rejected even when the child exits0 ===
+GATE ERROR DETECTION: clean (engine/script witnesses rejected, healthy child accepted)
+
+=== authored combat turns: do real stun skips and Angler damage/Bite history reach live Battle ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STUN DISPATCH|side=party|duration=1|skips=1|restored=true
+STUN DISPATCH|side=party|duration=2|skips=2|restored=true
+STUN DISPATCH|side=party|duration=3|skips=3|restored=true
+STUN DISPATCH|side=enemy|duration=1|skips=1|restored=true
+STUN DISPATCH|side=enemy|duration=2|skips=2|restored=true
+STUN DISPATCH|side=enemy|duration=3|skips=3|restored=true
+ANGLER PROPERTIES|seeds=128|low_hp_headbutts=50|streak_reset=true|forced_species_preserved=true
+ANGLER LIVE|button_damage=[1, 3]|retaliation=50|miss_then_party_flash=true
+AUTHORED COMBAT TURNS: clean
+
+=== Marc pause port: do all four tabs fit and block exploration without losing audio/training ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+MARC PAUSE PRESENTATION: clean
+
+=== Marc popup port: do real battles defer lessons and resume surviving callers safely ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+MARC POPUP OWNERSHIP: clean
+
+=== orange notice queue: do newest-four FIFO, duplicates and encounter toggles preserve readable notices ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ORANGE MODEL: clean|generated=484
+
+=== orange live owners: do R/Q, map/menus, save contact and queued E preserve notices and usable controls ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+ORANGE INPUT|World|R/Q FIFO, twenty R coalescing and hidden-owner preservation
+ORANGE INPUT|World|actual W save contact restores all resources behind two notices; persistent P returns
+ORANGE INPUT|Maze|R/Q FIFO, twenty R coalescing and hidden-owner preservation
+ORANGE INPUT|Maze|queued real E hides prompt, repeated E cannot prolong notice, next E works after drain
+ORANGE MESSAGES: clean
+
+=== Sonar Vision: do actual Q/Tab, required item, old flags and active-area ownership preserve marker/reveal rules without G ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR LEGACY|owned=false|equipped=false|three_actors=true
+SONAR LEGACY|owned=false|equipped=true|three_actors=true
+SONAR LEGACY|owned=true|equipped=false|three_actors=true
+SONAR LEGACY|owned=true|equipped=true|three_actors=true
+SONAR VISION: clean|legacy_actor_cases=12
+
+=== Sonar pickup lifetime: do actual collection and cold owned-item restore avoid freed-target animation errors ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR PICKUP COLLECTED|actor=0
+SONAR PICKUP RESTORED|actor=0
+SONAR PICKUP COLLECTED|actor=1
+SONAR PICKUP RESTORED|actor=1
+SONAR PICKUP COLLECTED|actor=2
+SONAR PICKUP RESTORED|actor=2
+SONAR PICKUP LIFETIME: clean|cases=6
+
+=== Sonar/site friction: does two-minute navigation preserve Oxygen and real Q/R-off approaches reach guarded challenges ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SONAR BUDGET|seconds=120|used=19.0|active=true
+SONAR TIME PARTITIONS|generated=48|paused_off_zero=true|partial_interval_handoff=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FR WORLD|R=false|Q=false|position=(-45.0, 2.6, 23.10961)
+FR MAZE|R=false|Q=false|position=(64.0, -0.10879, 55.26189)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FR WORLD VARIANTS|first_special_lesson_R_off=true|plain_guardian_R_off=true|reward_preserved=true
+SONAR ENCOUNTER FRICTION: clean
+
+=== Marc status port: does authored Bleed persist/cap while timed statuses and readable units remain real ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC STATUS CONTRACT: clean
+
+=== Marc status layout: do all six multi-status cards fit through actual viewport resizing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC STATUS PRESENTATION: clean
+
+=== opening migration: do all durable milestones normalize interrupted phases ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING PROLOGUE STATE: clean
+
+=== opening video: are production and lab policies independent ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING VIDEO: clean
+
+=== opening video persistence: do success and decoder failure restore safely ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+OPENING VIDEO WORLD: clean
+
+=== opening trigger: does only actual horizontal swimming start once, without banking idle time ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+OPENING TRIGGER: clean
+
+=== opening free swim: do idle and camera-only stay free before four seconds of real swimming ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FREE_SWIM|prior_idle_seconds=15|swimming_seconds=0.000|distance_m=0.000|phase=octopus_introduction
+FINDING  OPEN-035 Angler starts without swimming after 15 seconds idle
+FINDING  OPEN-026 real W input cannot swim three metres
+FINDING  OPEN-035 prior idle time consumed the four-second swimming window
+FINDING  OPEN-026 opening does not progress after usable swimming
+FINDING  OPEN-035 swim started an ordinary/random encounter
+OPENING FREE SWIM: 5 finding(s)
+
+=== opening world: are authored encounters protected and real-input reachable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-007 movement did not start prologue Angler
+FINDING  OPEN-007 Battle start did not publish Angler phase
+FINDING  OPEN-007 Battle source is not prologue_angler
+OPENING PROLOGUE WORLD: 3 finding(s)
+
+=== opening Angler: do normal damage/miss/utility choices and real defeat preserve ordinary rules and rewards ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Scuba Stabbing", 1, 2]|HP=2|log=Scuba Stabbing opens a wound for 1.  Bleed 2
+ANGLER BUTTON|["Staff_Diver", "Flash Blast", 0, 0]|HP=3|log=Flash Blast: Angler affected.
+ANGLER BUTTON|["Staff_Diver", "Multiple Knee Combo", 1, 0]|HP=2|log=Multiple Knee Combo: Angler -1.
+ANGLER BUTTON|["Staff_Diver", "Axe Kick", 3, 0]|HP=0|log=Axe Kick crashes down for 4.
+ANGLER BUTTON|["Prototype_1(1910)", "Precise Tap", 3, 0]|HP=0|log=You land a precise tap for 3.
+ANGLER BUTTON|["Prototype_1(1910)", "Weaken", 0, 0]|HP=3|log=This enemy's Defense can't be lowered any further!
+ANGLER BUTTON|["Prototype_1(1910)", "Slow", 0, 0]|HP=3|log=This enemy's Agility can't be lowered any further!
+ANGLER BUTTON|["Prototype_V(1922)", "Guard Bash", 3, 0]|HP=0|log=You bash it with your guard for 7.
+ANGLER BUTTON|["Prototype_V(1922)", "Heavy Kick", 0, 0]|HP=3|log=You drive a heavy kick home - Angler evades!
+ANGLER BUTTON|["Prototype_V(1922)", "Crushing Haymaker", 0, 0]|HP=3|log=You wind up and crush it - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 0, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 0]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 3]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 1, 9]|HP=3|log=Electric Touch shocks the target - Angler evades!
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 0]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 2, 3]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 2, 9]|HP=3|log=Electric Touch shocks the target for 0.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 0]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 1, 0, 5, 3]|HP=2|log=Electric Touch shocks the target for 1.  EVA -1
+ANGLER BUTTON|["Staff_Diver", "Electric Touch", 0, 0, 5, 9]|HP=3|log=Electric Touch shocks the target for 0.  EVA -1
+FINDING  ANGLE-004 real kill failed single interruption
+FINDING  ANGLE-004 real kill failed single interruption
+FINDING  ANGLE-004 real kill failed single interruption
+PROLOGUE ANGLER: 3 findings
+
+=== opening Cordys: do actual stats, move effects and survivor outcomes remain real ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=120|living=3
+PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=122|living=3
+PROLOGUE_HIT|move=Guard Bash|damage=7|hit=true|hp=989|effects=[]
+PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=124|living=3
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=false|hp=10|living=1
+RETALIATION WITNESS|evasion|[{ "hit": false, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 30, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=0|hit=true|hp=10|living=1
+RETALIATION WITNESS|defense|[{ "hit": true, "damage": 0, "absorbed": 0, "debuff": "", "changed": 0, "dodged": false, "evasion_spent": 0, "effects": [] }]
+PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=4|hit=true|hp=996|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 4, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=1|hit=true|hp=999|effects=["Bleed 2"]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 2, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=1|hit=true|hp=999|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=1|ACC=3|DEF=0|EVA=0|[{ "damage": 1, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=9|hit=true|hp=991|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 9, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=5|hit=true|hp=995|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=4|DEF=2|EVA=0|[{ "damage": 5, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=7|ACC=0|DEF=0|EVA=0|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=7|ACC=3|DEF=0|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=3|hit=true|hp=997|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=12|ACC=1|DEF=10|EVA=0|[{ "damage": 3, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Multiple Knee Combo|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Multiple Knee Combo|STR=3|ACC=0|DEF=10|EVA=3|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Scuba Stabbing|damage=0|hit=false|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Scuba Stabbing|STR=12|ACC=0|DEF=7|EVA=5|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Flash Blast|damage=0|hit=true|hp=1000|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Flash Blast|STR=9|ACC=6|DEF=5|EVA=1|[{ "damage": 0, "bleed": 0, "blindness": 0, "acc_cost": -1, "eva_cost": -1, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Electric Touch|damage=10|hit=true|hp=990|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Electric Touch|STR=12|ACC=6|DEF=2|EVA=5|[{ "damage": 10, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": 0, "oxygen": 100.0 }]
+PROLOGUE_HIT|move=Axe Kick|damage=2|hit=true|hp=998|effects=[]
+PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=0
+CHOICE|Axe Kick|STR=1|ACC=3|DEF=2|EVA=0|[{ "damage": 2, "bleed": 0, "blindness": 0, "acc_cost": 0, "eva_cost": -3, "oxygen": 100.0 }]
+PROLOGUE COMBAT: clean
+
+=== opening Cordys: does the skinned actor preserve authored poses and facing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE OCTOPUS: clean
+
+=== opening mix: do cue envelopes preserve user preferences ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE ENVELOPE: clean
+
+=== opening split video: is one decoder retained silently across combat ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SPLIT CINEMATIC: clean
+
+=== opening cinematic edit: is the approved title ending retained without the monologue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+PROLOGUE CINEMATIC ASSET: clean
+
+=== opening journey: do real moves reach atomic recovery and ordinary encounters ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening fallback recovery: do death restart and title load preserve completed play without falsifying video viewing ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening real death: do enemy attacks and actual defeat preserve completed play across Restart and Load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening training continuity: does voluntary Skip preserve completion through actual later death ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== opening save denial: does failed recovery retain the previous checkpoint and allow Retry Save ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|octopus_introduction
+FINDING  OPEN-011 journey failed to start Angler
+OPENING JOURNEY: 1 finding(s)
+
+=== checkpoint invalid load: do missing and malformed saves retain an actionable title instead of replaying opening ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+CHECKPOINT_LOAD_FAILED|slot=918305
+PROLOGUE_PHASE|complete
+CHECKPOINT LOAD FAILURES: clean
+
+=== checkpoint slot switch: does denied replacement retain the active save and retry correctly ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FINDING  OPEN-030 denied save falsely announces success
+FINDING  OPEN-030 retry does not select a successful target
+FINDING  OPEN-030 cross-slot retry loses opening completion
+FINDING  MSG-6 successful retry overwrites unread failure
+FINDING  MSG-6 committed retry never announces success after failure
+CHECKPOINT SLOT SWITCH: 5 finding(s)
+
+=== World manual checkpoint: does real caught-actor rejection preserve bytes and stable/denied retries retain the correct slot ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WORLD_MANUAL_SAVE|caught=true|selected=918422|target_unchanged=true|notice=Wait for the movement or encounter to finish, then save.
+SAVE_STABILITY_OBSERVER|maze_stable=true|maze_active=false|paused=false|locks=[false, false, false]|grapples=[false, false, false]|whirl_busy=false|intro=false|title=false|special=false|popup=false
+WORLD_MANUAL_SAVE|stable_retry=true|denied_staging=true|source_preserved=true|permission_retry=true
+WORLD MANUAL SAVE: clean
+
+=== World Save reading: do actual P and held W retain poses and restore swimming after close ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WORLD_SAVE_READING|actual_P_and_W=true|no_files_written=true|resumed_swim=true
+WORLD MANUAL SAVE: clean
+
+=== optional training: do ignore, Retry, Return and Skip retain normal control ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FINDING  OPEN-017 optional label absent
+FINDING  OPEN-018 ignoring training locks TAB switching
+FINDING  OPEN-017 Skip did not return world control
+OPTIONAL TRAINING: 3 finding(s)
+
+=== opening exploration: do Sonar/encounters enable at recovery and saved manual choices survive Load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=false|encounters=true|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=false|active=1
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=0
+EXPLORATION ROUND TRIP|sonar=true|encounters=true|active=1
+PROLOGUE_PHASE|spawn_exploration
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+CHECKPOINT_LOAD_FAILED|slot=918310
+PROLOGUE_PHASE|complete
+OPENING EXPLORATION DEFAULTS: clean
+
+=== menu audio comfort: is hover brief, rate-limited and subordinate to confirmations ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MENU HOVER MEASURE|audible_span=0.000|peak_db=-120.00|samples=16384
+MENU HOVER PREFERENCE|volume=0.5|muted=false|peak=0.000000
+MENU HOVER PREFERENCE|volume=1.0|muted=true|peak=0.000000
+MENU HOVER PREFERENCE|volume=0.0|muted=false|peak=0.000000
+MENU AUDIO COMFORT: clean
+
+=== tutorial actual win: does menu replacement remain error-free and victory expose Continue ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+WIN_PROBE|log=The enemies back off, beaten.|caption=You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|await=true|paused=false
+TUTORIAL WIN HANDOFF: clean
+
+=== tutorial full lesson: do all five real guided moves and a real victory finish without infinite tweens ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|0|Maxilani's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|0|Maxilani's turn.|A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|Electric Touch's own power is 0. This raw power number is shown in yellow at the top-right of its attack menu button before any stats are added. Add Maxilani's Strength, then subtract Angler's Defense (1-1 = 0), and this attack will deal 1 damage.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Click the highlighted Angler to attack.|false
+LESSON|0|Electric Touch shocks the target for 1.  EVA -1|Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Electric Touch shocks the target for 1.  EVA -1|Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|1|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|1|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|1|Musashi's turn.|Precise Tap temporarily boosts Musashi's Accuracy stat for this one turn, making the attack much harder to dodge - that's why its ACC number is shown in [color=66e666]green[/color], with the white (+X) next to it showing the increase.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|2|You land a precise tap for 3.|Click the highlighted Angler to attack.|false
+LESSON|2|Bucky's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|2|Bucky's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|2|Bucky's turn.|Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|2|Bucky's turn.|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Angler uses Bite: Bucky QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|3|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|3|Musashi's turn.|Weaken deals no damage at all - its power is 0, so there's nothing to subtract from Angler's HP. What it does instead is lower their Defense, which is why its DEF number is shown in [color=e65959]red[/color], with the white (-2) next to it. Some moves only ever affect an enemy's stats like this, with no damage of their own, but they're worth using to weaken enemies for greater party hits.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|3|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|4|This enemy's Defense can't be lowered any further!|Click the highlighted Angler to attack.|false
+LESSON|4|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|4|Maxilani's turn.|Hover over the highlighted button to see what Flash Blast does.|false
+LESSON|4|Maxilani's turn.|Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, which lowers Agility, Accuracy, and Defense all by the same amount at once. That's why the enemy's ACC and DEF numbers are both shown in [color=e65959]red[/color] here: lower Accuracy means their own attacks miss more, and lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three, for as many turns as Maxilani's own Accuracy. Blindness is only one of several status conditions moves can inflict - hover over any attack that names one on its own button (like Scuba Stabbing's Bleed) to see exactly what it does, or find full details on all of them, including ones not shown in this fight, from the Combat Help tab of the Esc menu out in the world.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|4|Maxilani's turn.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Flash Blast: Angler affected.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Bucky's turn.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 7.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 7.|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|5|You bash it with your guard for 7.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Angler uses Bite: Maxilani -1.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Maxilani's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Electric Touch shocks the target for 1.  EVA unchanged  Maxilani is bleeding and takes 2 damage.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Musashi's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|You land a precise tap for 3.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+FULL_LESSON_RESULT|["won"]
+
+=== tutorial world win: does actual optional beacon entry and victory restore movement and persist both milestones ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+TRAINING_ENTRY|position=(0.0, 2.0, 6.0)|beam=(0.0, 6.0, 10.0)
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|0|Maxilani's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|0|Maxilani's turn.|A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Electric Touch will lower Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|Electric Touch's own power is 0. This raw power number is shown in yellow at the top-right of its attack menu button before any stats are added. Add Maxilani's Strength, then subtract Angler's Defense (1-1 = 0), and this attack will deal 1 damage.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Click the highlighted Angler to attack.|false
+LESSON|0|Electric Touch shocks the target for 1.  EVA -1|Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Electric Touch shocks the target for 1.  EVA -1|Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|1|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|1|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|1|Musashi's turn.|Precise Tap temporarily boosts Musashi's Accuracy stat for this one turn, making the attack much harder to dodge - that's why its ACC number is shown in [color=66e666]green[/color], with the white (+X) next to it showing the increase.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|1|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|2|You land a precise tap for 3.|Click the highlighted Angler to attack.|false
+LESSON|2|Bucky's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|2|Bucky's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|2|Bucky's turn.|Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|2|Bucky's turn.|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Angler uses Bite: Musashi QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|3|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|3|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|3|Musashi's turn.|Weaken deals no damage at all - its power is 0, so there's nothing to subtract from Angler's HP. What it does instead is lower their Defense, which is why its DEF number is shown in [color=e65959]red[/color], with the white (-2) next to it. Some moves only ever affect an enemy's stats like this, with no damage of their own, but they're worth using to weaken enemies for greater party hits.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|3|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|4|This enemy's Defense can't be lowered any further!|Click the highlighted Angler to attack.|false
+LESSON|4|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|4|Maxilani's turn.|Hover over the highlighted button to see what Flash Blast does.|false
+LESSON|4|Maxilani's turn.|Flash Blast deals no damage either, same as Weaken - instead it hits every enemy at once with a status called Blindness, which lowers Agility, Accuracy, and Defense all by the same amount at once. That's why the enemy's ACC and DEF numbers are both shown in [color=e65959]red[/color] here: lower Accuracy means their own attacks miss more, and lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three, for as many turns as Maxilani's own Accuracy. Blindness is only one of several status conditions moves can inflict - hover over any attack that names one on its own button (like Scuba Stabbing's Bleed) to see exactly what it does, or find full details on all of them, including ones not shown in this fight, from the Combat Help tab of the Esc menu out in the world.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|4|Maxilani's turn.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler affected.|Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Flash Blast: Angler affected.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+LESSON|5|Bucky's turn.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 8.|Winning won't grant any XP or rewards in this case but makes for good practice. There's no real risk in fighting this one out - a loss just sends the party back to the overworld to regroup, fully healed.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|false
+LESSON|5|You bash it with your guard for 8.|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|5|You bash it with your guard for 8.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Angler uses Bite: Bucky QTE dodge.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Maxilani's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Electric Touch shocks the target for 1.  EVA unchanged|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|Musashi's turn.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|You land a precise tap for 3.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|Sometimes during an enemy's attack, a Quick Time Event shows up:|false
+LESSON|5|The enemies back off, beaten.|You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press Space, Enter, or click Continue[/pulse][/font_size]|true
+FULL_LESSON_RESULT|["won"]
+
+=== clips: does every clip the game asks for exist ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+Staff_Diver          Scuba_Rigged.fbx                         61 clips
+   motion idle    Scuba_(Idle)1(Loop)                1.65s
+   motion swim    Scuba_(Swimming1)(Mid)(Loop)       0.98s
+   motion swim_start Scuba_(Swimming1)(Start)           0.65s
+   motion swim_end Scuba_(Swimming1)(End)             0.98s
+   motion hurt    Scuba_(Damaged1)Weak_Hit           1.65s
+   motion hurt_bad Scuba_(Damaged2)Heavy_Hit          1.48s
+   motion down    Scuba_(Faint)(Mid)(Loop)           0.98s
+   motion down_start Scuba_(Faint)(Start)               1.32s
+   motion win     Scuba_(Win)(Mid2)(Loop)            2.17s
+   move Electric Touch Scuba_(Attack)Eletric1             1.98s
+   move Scuba Stabbing Scuba_(Attack)Stab1                1.15s
+   move Flash Blast Scuba_(Attack)Flash1               1.65s
+   move Multiple Knee Combo Scuba_(Attack)Double_Knee1         1.48s
+   move Axe Kick  Scuba_(Attack)Axe_Kick1            1.72s
+   spell Swift Strike Scuba_(Attack) Swift Slash         3.71s
+   spell Riptide Slash Scuba_(Attack) Riptide Slash       4.58s
+   spell Tidal Burst Scuba_(Attack)Stab1                1.15s
+   spell Current Snare Scuba_(Attack)Stab1                1.15s
+   spell Healing Current Scuba_(Attack)Stab1                1.15s
+Prototype_1(1910)    Prototype1_Rigged.fbx                    62 clips
+   motion idle    Proto1_(Idle1)                     0.82s
+   motion swim    Proto1_(Swimming1)(Mid)(Loop)      0.73s
+   motion swim_start Proto1_(Swimming1)(Start)          0.32s
+   motion swim_end Proto1_(Swimming1)(End)            1.32s
+   motion hurt    Proto1_(Damaged1)Weak_Hit          0.65s
+   motion hurt_bad Proto1_(Damaged2)Heavy_Hit         2.32s
+   motion down    Proto1_(Faint)(Mid)(Loop)          0.98s
+   motion down_start Proto1_(Faint)(Start)              1.32s
+   motion win     Proto1_(Win)(Mid)(Loop)            0.98s
+   move Precise Tap Proto1_(Attack)Palm_Strike         1.40s
+   move Weaken    Proto1_(Attack)DualPalm            1.65s
+   move Slow      Proto1_(Attack)Axe_Kick            1.98s
+   spell Weaken Empowered Proto1_(Attack)Palm_Strike         1.40s
+   spell Slow Empowered Proto1_(Attack)Palm_Strike         1.40s
+   spell Blinding Silt Proto1_(Attack)Blinding)Silt       3.29s
+   spell Exploit Opening Proto1_(Attack)Blinding)Exploit_Opening 4.96s
+   spell Precise Jab Proto1_(Attack)Precise_Jab         6.62s
+Prototype_V(1922)    PrototypeV_Rigged.fbx                    63 clips
+   motion idle    Proto5_(Idle)(Loop)                1.65s
+   motion swim    Proto5_(Swimming1)(Mid)(Loop)      0.98s
+   motion swim_start Proto5_(Swimming1)(Start)          0.48s
+   motion swim_end Proto5_(Swimming1)(End)            0.98s
+   motion hurt    Proto5_(Damaged1)Weak_Hit          0.32s
+   motion hurt_bad Proto5_(Damaged2)Strong_Hit        0.98s
+   motion down    Proto5_(Faint)(Mid)(Loop)          0.65s
+   motion down_start Proto5_(Faint)(Start)              1.98s
+   motion win     Proto5_(Thumbs_P)(Mid)(Loop)       0.65s
+   move Guard Bash Proto5_(Attack)BodyPress           2.15s
+   move Heavy Kick Proto5_(Attack)Slam                1.98s
+   move Crushing Haymaker Proto5_(Attack)Hammer              2.32s
+   spell Heavy Slam Proto5_Heavy_Slam                  3.71s
+   spell Guard Break Proto5_Guard_Break                 2.46s
+   spell Mending Current Proto5_Mending Current             5.38s
+   spell Tidal Revival Proto5_Tidal_Revival               4.96s
+CLIPS: clean
+
+=== spell delivery: do authored spells deform the runtime rig without losing old motions ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SPELL POSE|Staff_Diver|Swift Strike|3.708s|changed=116
+SPELL POSE|Staff_Diver|Riptide Slash|4.583s|changed=249
+SPELL POSE|Prototype_1(1910)|Blinding Silt|3.292s|changed=186
+SPELL POSE|Prototype_1(1910)|Exploit Opening|4.958s|changed=202
+SPELL POSE|Prototype_1(1910)|Precise Jab|6.625s|changed=280
+SPELL POSE|Prototype_V(1922)|Guard Break|2.458s|changed=61
+SPELL POSE|Prototype_V(1922)|Heavy Slam|3.708s|changed=240
+SPELL POSE|Prototype_V(1922)|Mending Current|5.375s|changed=128
+SPELL POSE|Prototype_V(1922)|Tidal Revival|4.958s|changed=104
+SPELL ANIMATION DELIVERY: clean
+
+=== spell support: do delivered casts heal/revive and return to usable turns ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+SUPPORT DELIVERY|Mending Current|spells/Proto5_Mending Current|HP=1>9|O2=100.0>92.0
+SUPPORT DELIVERY|Tidal Revival|spells/Proto5_Tidal_Revival|HP=0>10|O2=100.0>72.0
+SPELL SUPPORT DELIVERY: clean
+
+=== item message: do real rewards survive first-turn text without menu overlap ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC REWARD LAYOUT: clean
+
+=== animations: does every rig change state correctly ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+Staff_Diver          idle -> start -> loop -> end -> idle; light + heavy reactions
+Prototype_1(1910)    idle -> start -> loop -> end -> idle; light + heavy reactions
+Prototype_V(1922)    idle -> start -> loop -> end -> idle; light + heavy reactions
+ANIMATIONS: clean
+
+=== swim: do they move, and animate while moving ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+mouse look           yaw changed 0.60 rad, camera orbited 3.84 m
+Staff_Diver          moved  2.78 m, now at (1.4, 3.0, -2.2), pitch +0.22 rad  (active)
+                     playing rig|Scuba_(Swimming1)(Mid)(Loop)
+Prototype_1(1910)    moved  0.00 m, now at (-3.6, 2.2, -3.0), pitch +0.00 rad  (should hold still)
+                     playing rig_001|Proto1_(Idle1)
+Prototype_V(1922)    moved  0.00 m, now at (3.6, 2.4, -3.0), pitch +0.00 rad  (should hold still)
+                     playing rig_002|Proto5_(Idle)(Loop)
+camera               6.62 m from the player
+clips played, in order:
+   Scuba_(Idle)1(Loop)
+   Scuba_(Swimming1)(Start)
+   Scuba_(Swimming1)(Mid)(Loop)
+   Scuba_(Swimming1)(End)
+   Scuba_(Idle)1(Loop)
+SWIM: clean
+
+=== current: can full upstream input cross the flow ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+CURRENT BARRIER: max upstream z -2.500, final z -4.437
+CURRENT BARRIER: clean
+
+=== Glassgoat combat: do the authored V2 rules hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+GLASSGOAT COMBAT: clean
+
+=== Marc Evasion Down: does a real status immediately cap remaining EVA without refilling or double subtraction ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+MARC EVASION POOL: clean|generated=1260
+
+=== Glassgoat follow-up: do roster and result-first presentation match Discord ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+GLASSGOAT DISCORD FOLLOW-UP: clean
+
+=== combat Quick Read: do result choices, context, and all-target previews agree ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT QUICK READ: clean
+
+=== combat content: do timing and actor lifetime contracts hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT CONTENT RECONCILIATION: clean
+
+=== initially downed combat: do real potions and earned revival restore normal actors, cards, resources and usable turns ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+INITIAL DOWN CASE|target=0|method=spell|restored=true|actual_swing=true|actions=3|hp=10|o2=72.0
+INITIAL DOWN CASE|target=1|method=spell|restored=true|actual_swing=true|actions=4|hp=10|o2=72.0
+COMBAT INITIALLY DOWNED: clean
+
+=== Tethys boss: does Glassgoat's final boss import and fight separately ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TETHYS PROBE|laboratory=false|actor_ready=true
+TETHYS PROBE|pose_and_skin_samples_complete=true
+TETHYS PROBE|swim_intro_complete=true
+TETHYS BOSS: clean — laboratory_variant=false; 13 distinct character motions deform a 311-bone skinned rig; six attacks production-called; 4 base/helper takes excluded
+
+=== Tethys laboratory variant: does the delivered Weirdo mesh preserve rig clips facing and attack behavior ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TETHYS PROBE|laboratory=true|actor_ready=true
+TETHYS PROBE|pose_and_skin_samples_complete=true
+TETHYS PROBE|swim_intro_complete=true
+TETHYS BOSS: clean — laboratory_variant=true; 13 distinct character motions deform a 311-bone skinned rig; six attacks production-called; 6 base/helper takes excluded
+
+=== effect feedback: report actual EVA changes without inventing progress at zero or on a miss ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT EFFECT FEEDBACK: 20 actual-pool cases clean
+
+=== heavy payoff: can normal and earned heavy moves hit exhausted EVA, still miss unprepared EVA and spend real Oxygen ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+HEAVY PAYOFF|move=Heavy Slam|eva=0|damage=5|spent=0|oxygen=92.0
+HEAVY PAYOFF|move=Heavy Slam|eva=2|damage=0|spent=1|oxygen=92.0
+HEAVY PAYOFF|move=Crushing Haymaker|eva=0|damage=5|spent=0|oxygen=84.0
+HEAVY PAYOFF|move=Crushing Haymaker|eva=2|damage=0|spent=1|oxygen=84.0
+
+=== lab attainable victory: do three real earned-kit policies win through actual Battle outcomes ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LAB REAL FIGHT|level=2|policy=accessible|seed=62000|result=won|actions=12|boss_hp=0|min_party_hp=13|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62001|result=won|actions=13|boss_hp=0|min_party_hp=11|min_living=3|min_oxygen=60.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62002|result=won|actions=12|boss_hp=0|min_party_hp=13|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62003|result=won|actions=12|boss_hp=0|min_party_hp=12|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62004|result=won|actions=13|boss_hp=0|min_party_hp=10|min_living=3|min_oxygen=60.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62005|result=won|actions=12|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62006|result=won|actions=12|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=2|policy=accessible|seed=62007|result=won|actions=13|boss_hp=0|min_party_hp=10|min_living=3|min_oxygen=60.0
+LAB REAL BALANCE|level=2|policy=accessible|wins=8/8
+LAB REAL FIGHT|level=2|policy=skilled|seed=62000|result=lost|actions=17|boss_hp=18|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62001|result=lost|actions=17|boss_hp=34|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62002|result=lost|actions=16|boss_hp=19|min_party_hp=0|min_living=0|min_oxygen=50.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62003|result=lost|actions=17|boss_hp=33|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62004|result=lost|actions=15|boss_hp=31|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62005|result=lost|actions=17|boss_hp=16|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62006|result=lost|actions=18|boss_hp=17|min_party_hp=0|min_living=0|min_oxygen=50.0
+LAB REAL FIGHT|level=2|policy=skilled|seed=62007|result=lost|actions=15|boss_hp=29|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL BALANCE|level=2|policy=skilled|wins=0/8
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62000|result=lost|actions=14|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=50.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62001|result=lost|actions=17|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=44.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62002|result=lost|actions=16|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=44.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62003|result=lost|actions=18|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=44.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62004|result=lost|actions=16|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=44.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62005|result=lost|actions=17|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=44.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62006|result=lost|actions=18|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL FIGHT|level=2|policy=earned_heavy|seed=62007|result=lost|actions=15|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=40.0
+LAB REAL BALANCE|level=2|policy=earned_heavy|wins=0/8
+LAB REAL FIGHT|level=3|policy=accessible|seed=62000|result=won|actions=12|boss_hp=0|min_party_hp=13|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62001|result=won|actions=13|boss_hp=0|min_party_hp=11|min_living=3|min_oxygen=60.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62002|result=won|actions=12|boss_hp=0|min_party_hp=13|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62003|result=won|actions=12|boss_hp=0|min_party_hp=12|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62004|result=won|actions=13|boss_hp=0|min_party_hp=10|min_living=3|min_oxygen=60.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62005|result=won|actions=12|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62006|result=won|actions=12|boss_hp=0|min_party_hp=15|min_living=3|min_oxygen=68.0
+LAB REAL FIGHT|level=3|policy=accessible|seed=62007|result=won|actions=13|boss_hp=0|min_party_hp=10|min_living=3|min_oxygen=60.0
+LAB REAL BALANCE|level=3|policy=accessible|wins=8/8
+LAB REAL FIGHT|level=3|policy=skilled|seed=62000|result=won|actions=35|boss_hp=0|min_party_hp=3|min_living=1|min_oxygen=20.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62001|result=won|actions=35|boss_hp=0|min_party_hp=7|min_living=2|min_oxygen=0.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62002|result=won|actions=46|boss_hp=0|min_party_hp=6|min_living=2|min_oxygen=0.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62003|result=won|actions=26|boss_hp=0|min_party_hp=3|min_living=1|min_oxygen=40.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62004|result=won|actions=50|boss_hp=0|min_party_hp=8|min_living=2|min_oxygen=0.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62005|result=won|actions=42|boss_hp=0|min_party_hp=10|min_living=2|min_oxygen=0.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62006|result=won|actions=39|boss_hp=0|min_party_hp=10|min_living=2|min_oxygen=0.0
+LAB REAL FIGHT|level=3|policy=skilled|seed=62007|result=won|actions=33|boss_hp=0|min_party_hp=4|min_living=1|min_oxygen=40.0
+LAB REAL BALANCE|level=3|policy=skilled|wins=8/8
+LAB REAL FIGHT|level=3|policy=earned_heavy|seed=62000|result=lost|actions=14|boss_hp=66|min_party_hp=0|min_living=0|min_oxygen=50.0
+GATE ERROR: exceeded 600s timeout
+
+=== lab live route: do real guard victories, full film, Continue and boss victory carry rewards to level 3 ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+LAB LIVE ROUTE|fight=bomb_bot|result=won|actions=6
+LAB CARRIED PARTY|after=bomb_bot|name=Staff_Diver|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB CARRIED PARTY|after=bomb_bot|name=Prototype_1(1910)|level=1|xp=15|hp=10|o2=80.0|spells=[]
+LAB CARRIED PARTY|after=bomb_bot|name=Prototype_V(1922)|level=1|xp=15|hp=10|o2=100.0|spells=[]
+LAB LIVE ROUTE|fight=sword_slayer|result=won|actions=7
+LAB CARRIED PARTY|after=sword_slayer|name=Staff_Diver|level=2|xp=2|hp=10|o2=100.0|spells=["swift_strike"]
+LAB CARRIED PARTY|after=sword_slayer|name=Prototype_1(1910)|level=2|xp=2|hp=10|o2=100.0|spells=["precise_jab"]
+LAB CARRIED PARTY|after=sword_slayer|name=Prototype_V(1922)|level=2|xp=2|hp=10|o2=100.0|spells=["heavy_slam"]
+CHECKPOINT_GAME_OVER|slot=918363|complete=true
+LAB LIVE ROUTE|fight=lab|result=lost|actions=19
+LAB CARRIED PARTY|after=lab|name=Staff_Diver|level=2|xp=2|hp=0|o2=100.0|spells=["swift_strike"]
+LAB CARRIED PARTY|after=lab|name=Prototype_1(1910)|level=2|xp=2|hp=0|o2=40.0|spells=["precise_jab"]
+LAB CARRIED PARTY|after=lab|name=Prototype_V(1922)|level=2|xp=2|hp=0|o2=100.0|spells=["heavy_slam"]
+FINDING LAB-BAL-004 reachable continuous lab ended lost
+FINDING LAB-BAL-004 actual victories did not complete route state
+LAB LIVE ROUTE: 2 findings
+
+=== deep-zone assets: do selected FBXs import with visible geometry and authored clips ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+bomb_bot       meshes=1 materials=1 bounds=(11.46958, 3.923139, 3.439871) clips=9
+sword_slayer   meshes=1 materials=1 bounds=(2.039622, 2.400931, 5.853566) clips=10
+broken_office  meshes=15 materials=16 bounds=(32.59685, 26.45547, 18.99701) clips=0
+deep_rocks     meshes=6 materials=6 bounds=(4.645249, 2.441653, 4.75434) clips=0
+DEEP ZONE ASSETS: clean
+
+=== lab door asset: is Glassgoat's separated door the exact visible entrance source ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+LAB DOOR ASSET: clean
+
+=== lab exterior: does the rock shell conceal the office while preserving the entrance ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+lab door bounds  position=(176.8636, 0.0, 13.84894) size=(3.093933, 7.607401, 4.302129)
+LAB EXTERIOR: clean
+
+=== deep-zone environment: are approved scenery sources visibly and safely placed ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+beach palm source bounds  position=(-0.060026, -0.063503, -0.01) size=(0.120052, 0.127005, 0.18119)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+production palm EntryPalmNorth  position=(69.32386, 0.0, -2.782476) size=(5.352287, 6.885221, 5.564953)
+production palm EntryPalmSouth  position=(78.22695, 0.0, 23.19134) size=(7.546097, 7.972361, 7.617331)
+production palm HubPalmNorth  position=(89.30299, 0.0, -6.706974) size=(5.394028, 5.616891, 5.413949)
+production palm HubPalmSouth  position=(96.05273, 0.0, 31.07847) size=(5.894554, 6.160461, 5.843065)
+production palm MazePalmOuter  position=(98.04955, 0.0, -19.90048) size=(5.900909, 6.341651, 5.80096)
+production palm MazePalmGate  position=(115.8116, 0.0, -51.2753) size=(6.376892, 7.428791, 6.550591)
+FINDING  DZ-ENV-003: palm is hidden away from an authored travel landmark
+FINDING  DZ-24: maze branch lacks a distinct sequence of floor-level rock dressing
+FINDING  DZ-24: lab and maze routes lost their crystal landmark clusters
+DEEP ZONE ENVIRONMENT: 3 finding(s)
+
+=== deep-zone blockers: do authored blocker actors use their real models, moves, and clips ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+CHECKPOINT_GAME_OVER|slot=-1|complete=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+DEEP ZONE BLOCKERS: clean
+
+=== deep-zone blocker balance: are both mandatory fights approachable and meaningfully tactical ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+DZ-FID-1 no-refill blocker screen: no victory healing; actual XP/spells/navigation/rest journey still unverified
+casual:bomb_bot          100.0% wins   2.9 rounds   5.8 HP lost
+casual:sword_slayer       97.5% wins   2.5 rounds  10.5 HP lost
+casual:sequence           93.8% wins   5.3 rounds  15.3 HP lost
+skilled:bomb_bot         100.0% wins   1.0 rounds   0.0 HP lost
+skilled:sword_slayer     100.0% wins   1.0 rounds   4.5 HP lost
+skilled:sequence         100.0% wins   2.0 rounds   4.4 HP lost
+DEEP ZONE BLOCKER BALANCE: clean
+
+=== deep-zone Bomb Bot: does the full production fight survive attacks, victory, and world return ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+Bomb Bot result=won presses=27 enemy_turn_frames=1892 attacks=[] all_animations=["rig|Bombot(Damaged)", "rig|Bombot(Idle)(Loop)", "rig|Bombot(Attack)Lighting Blast", "rig|Bombot(Death)"]
+FINDING  DZ-26: the completed production fight never visibly started a Bomb Bot attack clip (enemy turn frames=1892; all clips=["rig|Bombot(Damaged)", "rig|Bombot(Idle)(Loop)", "rig|Bombot(Attack)Lighting Blast", "rig|Bombot(Death)"])
+BOMB BOT BATTLE: 1 finding(s)
+
+=== deep-zone progression: does a real blocker victory level, learn, equip, and expose attacks ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+DEEP ZONE PROGRESSION: clean
+
+=== audio assets: do canonical Phoenix tracks import with reviewed duration and digest ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+AUDIO ASSETS: clean
+
+=== combat SFX assets: do reviewed derivatives import without raw reels ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT SFX INTAKE: clean
+
+=== combat SFX playback: do production combat results trigger overlap-safe audible feedback ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT SFX PLAYBACK: clean
+
+=== combat feedback: are V2 results and target stats visible ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+COMBAT FEEDBACK: clean
+
+=== defeated overhead: does dead UI leave with its actor ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+DEFEATED OVERHEAD: clean
+
+=== balance: do casual and skilled policies clear the artifact route ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+BAL-17 no-refill policy screen: persistent resources/earned XP, no victory healing; NOT full earned campaign acceptance
+casual   79.2% wins,  2.5 rounds,  7.9 HP lost  (1 enemy 37/37, 1.2 r, 2 enemy 39/42, 2.6 r, 3 enemy 19/41, 4.4 r)
+skilled  94.2% wins,  1.9 rounds,  4.8 HP lost  (1 enemy 37/37, 1.1 r, 2 enemy 42/42, 1.9 r, 3 enemy 34/41, 2.9 r)
+casual  route  60.8% reach trench | 1.6 random + 1.5 guardian fights/run | 4.7 enemies/run | successes: 3.5 battles, 22.9 HP, level 1.9
+casual  route terminal stages: guardian:shallows:angler=1, guardian:trench:swordfish_duelist=10, random:shallows:angler+angler+swordfish_duelist=6, random:shallows:angler+frilled_shark+frilled_shark=1, random:shallows:angler+frilled_shark+swordfish_duelist=5, random:shallows:angler+swordfish_duelist=1, random:shallows:angler+swordfish_duelist+swordfish_duelist=5, random:shallows:frilled_shark+frilled_shark+swordfish_duelist=1, random:shallows:frilled_shark+swordfish_duelist=1, random:shallows:frilled_shark+swordfish_duelist+swordfish_duelist=2, random:shallows:swordfish_duelist+swordfish_duelist=4, random:trench:angler+angler+angler=1, random:trench:angler+angler+frilled_shark=2, random:trench:angler+angler+swordfish_duelist=11, random:trench:angler+frilled_shark+frilled_shark=2, random:trench:angler+frilled_shark+swordfish_duelist=14, random:trench:angler+swordfish_duelist=5, random:trench:angler+swordfish_duelist+swordfish_duelist=2, random:trench:frilled_shark+frilled_shark=1, random:trench:frilled_shark+frilled_shark+swordfish_duelist=2, random:trench:frilled_shark+swordfish_duelist=1, random:trench:frilled_shark+swordfish_duelist+swordfish_duelist=8, random:trench:swordfish_duelist=1, random:trench:swordfish_duelist+swordfish_duelist=4, random:trench:swordfish_duelist+swordfish_duelist+swordfish_duelist=3, success=146
+skilled route  85.4% reach trench | 1.8 random + 1.9 guardian fights/run | 5.5 enemies/run | successes: 3.8 battles, 24.8 HP, level 1.9
+skilled route terminal stages: guardian:trench:swordfish_duelist=13, random:shallows:angler+frilled_shark+swordfish_duelist=1, random:shallows:angler+swordfish_duelist+swordfish_duelist=2, random:shallows:frilled_shark+frilled_shark+swordfish_duelist=1, random:shallows:frilled_shark+swordfish_duelist+swordfish_duelist=1, random:shallows:swordfish_duelist+swordfish_duelist=1, random:trench:angler+angler+frilled_shark=1, random:trench:angler+angler+swordfish_duelist=1, random:trench:angler+frilled_shark+swordfish_duelist=4, random:trench:angler+swordfish_duelist=1, random:trench:angler+swordfish_duelist+swordfish_duelist=4, random:trench:frilled_shark+swordfish_duelist+swordfish_duelist=2, random:trench:swordfish_duelist+swordfish_duelist=1, random:trench:swordfish_duelist+swordfish_duelist+swordfish_duelist=2, success=205
+BALANCE: clean
+
+=== opening packs: are first-route formation probabilities intentional ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+opening pack tuning  equal one/two/three packs at every level clean
+
+=== sites: are item locations unmarked and physically reachable ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+SITES: clean
+
+=== encounters: does a fight start from anywhere ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+encounter rate: a check every 12 m on average, 50% of them bite, so a fight every 24 m
+current_pearl  at (-24.0, 2.6, -12.0): 0 overlap(s), approach clear
+reef_plate     at (12.0, 2.6, -42.0): 0 overlap(s), approach clear
+attack_up      at (-45.0, 2.6, 15.0): 0 overlap(s), approach clear
+defense_up     at (-15.0, 2.6, -44.0): 0 overlap(s), approach clear
+attack_up      at (84.0, 2.6, 32.0): 0 overlap(s), approach BLOCKED at (15.0, 2.107143, 5.714286)
+defense_up     at (133.5, 2.6, 16.0): 0 overlap(s), approach BLOCKED at (15.0, 2.067415, 1.797752)
+RANDOM_REVEAL|enemies=frilled_shark,angler|duration=1.5
+RANDOM_COMBAT|enemies=frilled_shark,angler
+open water                   1 battle(s), reward none
+the current_pearl guardian   1 battle(s), reward current_pearl
+the reef_plate guardian      1 battle(s), reward reef_plate
+the attack_up guardian       1 battle(s), reward attack_up
+the defense_up guardian      1 battle(s), reward defense_up
+the attack_up guardian       1 battle(s), reward attack_up
+the defense_up guardian      1 battle(s), reward defense_up
+ENCOUNTERS: clean
+
+=== guardian zones: does the artifact encounter stay distinct ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+guardian encounter exclusion  random rolls yield to the real guardian
+
+=== guardian/item integration: do claimed sites stay retired after save/load ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+GUARDIAN ITEM INTEGRATION: clean
+
+=== intro beam: does entering its visible column start tutorial combat ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+intro beam           visible column started one tutorial battle
+
+=== intro forward entry: does default forward swimming reach the visible tutorial target ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+tutorial forward entry  production forward swim reached the visible tutorial beam
+
+=== open water: can a diver pass beside the visible entrance rocks ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+OPEN WATER: blockade line blocks the bypass; vertical is free up to the world ceiling
+
+=== legacy guidance: does the plate puzzle avoid competing with RouteState ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+LEGACY GUIDANCE: puzzle opened without competing with the active route objective
+
+=== tutorial QTE: does the first Angler swing show and accept the timing dodge ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+tutorial qte          forced Angler bite showed and accepted the live timing dodge
+
+=== tutorial exit: does a completed lesson win and return to world ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+ERROR: TUTORIAL EXIT: completed lesson left the battle screen mounted
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_exit.gd:89)
+ERROR: WORLD HANDOFF: battling stayed true after tutorial completion
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_exit.gd:89)
+ERROR: WORLD HANDOFF: completed tutorial left its light beam in the world
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_exit.gd:89)
+GATE ERROR: an engine/script error or release-blocking infinite tween loop invalidates the exit status
+
+=== tutorial continue: can mouse users advance a live caption ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+tutorial continue button   mouse click advanced the live caption wait state
+
+=== input aliases: do Swap and narration accept additive controls without losing old keys ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+INPUT ALIASES: Swap and tutorial accept additive controls without dropping legacy keys
+
+=== tutorial onboarding: does combat hand off world controls safely ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+tutorial ability onboarding  completed lesson opened and dismissed the real ability carousel
+
+=== tutorial onboarding review route: can a reviewer inspect its actual UI ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+ERROR: ONBOARDING REPLAY: Combat Help has no mouse-accessible tutorial guide action
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_onboarding_review_route.gd:37)
+ERROR: ONBOARDING REPLAY: Inventory remained stacked beneath the tutorial guide
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_onboarding_review_route.gd:37)
+ERROR: ONBOARDING REPLAY: action did not open the real TutorialBook
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_onboarding_review_route.gd:37)
+ERROR: ONBOARDING REPLAY: guide did not pause world input
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_onboarding_review_route.gd:37)
+GATE ERROR: an engine/script error or release-blocking infinite tween loop invalidates the exit status
+
+=== tutorial loss: can a player retry or safely exit to world ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+FINDING  NO ABILITY POPUP ON EXIT: exiting to world should still open the ability walkthrough, same as the old automatic path did
+FINDING  NOT PAUSED: the ability popup that just opened should have paused the tree
+
+=== tutorial skip: does explicit skip restore the playable world ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|spawn_exploration
+tutorial skip          returned to the world clean
+
+=== menus/spells/title: do help, safe tutorial replay, review routing, and title composition hold ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+MENUS / SPELLS / TITLE: clean
+
+=== route state: does authored progression round-trip through its public contract ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|opening_video
+ROUTE STATE: clean
+
+=== deep-zone route: is the expanded dark route physically supported and state-driven ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RANDOM_REVEAL|enemies=swordfish_duelist,angler,swordfish_duelist|duration=1.5
+RANDOM_COMBAT|enemies=swordfish_duelist,angler,swordfish_duelist
+FINDING  BRANCHING: maze transition is not spatially separate from the lab route
+DEEP ZONE ROUTE: 1 finding(s)
+
+=== deep-zone guidance: does water deepen continuously while the lab remains the main objective ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+DEEP ZONE GUIDANCE: clean
+
+=== local world guidance: do lab and Bucky wall hints follow location, active diver and real wall destruction ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+PROLOGUE_PHASE|spawn_exploration
+PROLOGUE_PHASE|complete
+FINDING  OPEN-045 room contact lacks wall guidance at (14.0, 2.0, 10.0)
+FINDING  OPEN-045 room contact lacks wall guidance at (20.0, 2.0, 5.0)
+FINDING  OPEN-045 room contact lacks wall guidance at (20.0, 2.0, 15.0)
+FINDING  OPEN-044 touching puzzle entrance has no short Bucky/wall instruction
+FINDING  OPEN-049 Bucky/wall hint omits parenthesized TAB switching key
+LOCAL WORLD GUIDANCE: 5 finding(s)
+
+=== lab route: do the Mermaid cutscene, Tethys handoff, recovery, and completion round-trip ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+ERROR: Parameter "material" is null.
+   at: material_get_instance_shader_parameters (servers/rendering/dummy/storage/material_storage.cpp:264)
+ERROR: Parameter "material" is null.
+   at: material_get_instance_shader_parameters (servers/rendering/dummy/storage/material_storage.cpp:264)
+GATE ERROR: an engine/script error or release-blocking infinite tween loop invalidates the exit status
+
+=== deep-zone maze entry: does normal progression reach the current maze without a query flag ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+FINDING  DZ-MAZE-001: maze area did not receive exclusive HUD ownership
+DEEP ZONE MAZE TRANSITION: 1 finding(s)
+
+=== maze campaign handoff: do six real entrance cases retain party, kit, inventory and progress ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+MAZE CAMPAIGN HANDOFF: six cases clean
+
+=== puzzle Deep exit: do real plate completion and normal swimming open Deep water without an obsolete maze portal ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+PUZZLE EXIT|Deep passage opened|maze entrance relocated beyond laboratory|party preserved
+PUZZLE MAZE EXIT: clean
+
+=== puzzle saved Deep exit: do saved solved doors reopen without an obsolete maze portal ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+PUZZLE EXIT|Deep passage opened|maze entrance relocated beyond laboratory|party preserved
+PUZZLE MAZE EXIT: clean
+
+=== embedded maze ownership and ramp: does actual bidirectional swimming retain one party/input/camera/HUD owner without inactive encounters or Oxygen drain ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+EMBED_LAYOUT|bounds=[P: (256.3036, -23.75299), S: (182.0708, 156.4959)]|entry=(286.609, 0.0, 16.0)
+PASS|EMBED-1 shared actors, unchanged spawn, title camera/HUD ownership
+EMBED_SWIM|key=68|end=(263.1659, 1.8, 16.0)|target=263.0
+EMBED_FRAME_STEP|crossing_max=0.08334350585938
+EMBED_SWIM|key=65|end=(224.8872, 1.8, 16.0)|target=225.0
+EMBED_FRAME_STEP|crossing_max=0.08334350585938
+EMBED_TRAVERSAL|lab_first_requirement=false|outbound_x=263|return_x=225|no_save_writes
+EMBED_TAB|world=1|maze=1|owner=true
+EMBED_INPUT|Tab_once=true|R_save_conserved=true|inactive_encounters=false|inactive_Oxygen_drain=false
+EMBED_SWIM|key=68|end=(262.096, -0.239987, 15.99996)|target=262.0
+EMBED_FRAME_STEP|crossing_max=0.08346557617188
+EMBED_SWIM|key=65|end=(224.8926, 1.368803, 15.99995)|target=225.0
+EMBED_FRAME_STEP|crossing_max=0.08331298828125
+EMBED_FLOOR|sink-held descent and uphill return physically traversed
+EMBED_AIM_SELECTED|world=1|maze=1|owner=true|world_battle=false|maze_battle=false|paused=false
+EMBED_SWIM|key=65|end=(224.8353, 1.8, 16.0)|target=225.0
+EMBED_FRAME_STEP|crossing_max=0.08334350585938
+EMBED_AIM_HANDOFF|actual_ramp_swim=true|same_actor=true|model_restored=true
+EMBEDDED MAZE: clean
+
+=== embedded maze saves: do 48 generated World/maze cases and cold legacy Title Load preserve frames, resources and independent progress ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+EMBED_SAVE_PREFLIGHT|maze_valid=true|runtime=true|decode=true
+EMBED_CHECKPOINT|generated_cases=48|legacy_origin_cases=24|World_and_maze_locations=true
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+EMBED_COLD_LOAD|slot=918359|legacy_standalone=true|scene=World|owner=Maze|player_slots_untouched=true
+EMBEDDED CHECKPOINT: clean
+
+=== maze drafts: do three capsules traverse real outgoing/return paths without clipping, reversing, or racing moving walls ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+DRAFT_OUTGOING|real approach prompt and No latch=true
+DRAFT_OUTGOING|Yes moved below wall and released actor at clear exit=(332.2555, 1.8, 30.23211)
+DRAFT_OUTGOING_CASE|diver=1|exit=(332.2555, 1.8, 30.23211)
+DRAFT_OUTGOING_CASE|diver=2|exit=(332.2555, 1.8, 30.23211)
+DRAFT_RETURN_CASE|diver=0|swung=false|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=0|swung=false|incoming=true|position=(348.4379, 1.8, 34.64161)
+DRAFT_RETURN_CASE|diver=0|swung=true|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=0|swung=true|incoming=true|position=(348.4379, 1.8, 29.23376)
+DRAFT_RETURN_CASE|diver=1|swung=false|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=1|swung=false|incoming=true|position=(348.4379, 1.8, 34.64161)
+DRAFT_RETURN_CASE|diver=1|swung=true|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=1|swung=true|incoming=true|position=(348.4379, 1.8, 29.23376)
+DRAFT_RETURN_CASE|diver=2|swung=false|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=2|swung=false|incoming=true|position=(348.4379, 1.8, 34.64161)
+DRAFT_RETURN_CASE|diver=2|swung=true|incoming=false|position=(348.4379, 1.8, 31.64161)
+DRAFT_RETURN_CASE|diver=2|swung=true|incoming=true|position=(348.4379, 1.8, 29.23376)
+DRAFT_GENERATED|outgoing_actors=3|return_cases=12|independent_path_samples=476
+MAZE DRAFT PASSAGES: clean
+
+=== C5 wall safety: do all three capsules avoid wall/attached-rock shoves and regain stable collision after restore/interruption ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WALL_HOME|["CSGBox3D10:(376.5983, 1.4204, 9.60191):(33.6604, 4.05762, 1.0)", "CSGBox3D11:(368.0748, 1.4204, 16.68196):(31.9193, 4.05762, 1.0)"]
+C5_ORACLE|west=351.458465576172|east=376.598297119141|z=-6.72829055786133..1.22230958938599
+C5_CASE|diver=0|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.507667, -2.75299)|end=(357.6864, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.507667, -2.75299)|end=(364.0284, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.507667, -2.75299)|end=(370.3703, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.507667, -2.75299)|end=(357.6864, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.507667, -2.75299)|end=(364.0284, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.507667, -2.75299)|end=(370.3703, -0.507667, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.376822, -2.75299)|end=(357.6864, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.376822, -2.75299)|end=(364.0284, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.376822, -2.75299)|end=(370.3703, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.376822, -2.75299)|end=(357.6864, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.5|swept=false|start=(364.0284, -0.376822, -2.75299)|end=(364.0284, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.376822, -2.75299)|end=(370.3703, -0.376822, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.120827, -2.75299)|end=(357.6864, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.120827, -2.75299)|end=(364.0284, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.120827, -2.75299)|end=(370.3703, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.120827, -2.75299)|end=(357.6864, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.120827, -2.75299)|end=(364.0284, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.120827, -2.75299)|end=(370.3703, -0.120827, -2.75299)
+WALL_RESTORE|actor=0|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=0|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=0|delay_frames=55|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=55|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=55|loaded_geometry_retained=true
+WALL_KILL|settled_target=true|saveable=true
+WALL_INACTIVE|reentered=true|geometry_settled=true|owner_released=true
+MAZE WALL MOTION: clean | physical_samples=48|C5_cases=18|swept_capsule_frames=30
+
+=== C5 active current: does live water push remain distinct from moving-wall carry ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WALL_HOME|["CSGBox3D10:(376.5983, 1.4204, 9.60191):(33.6604, 4.05762, 1.0)", "CSGBox3D11:(368.0748, 1.4204, 16.68196):(31.9193, 4.05762, 1.0)"]
+C5_ORACLE|west=351.458465576172|east=376.598297119141|z=-6.72829055786133..1.22230958938599
+C5_CASE|diver=0|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.507667, -2.75299)|end=(348.9208, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.507667, -2.75299)|end=(353.9612, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.507667, -2.75299)|end=(360.2715, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.507667, -2.75299)|end=(348.9208, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.507667, -2.75299)|end=(353.9833, -0.507667, -2.75299)
+C5_CASE|diver=0|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.507667, -2.75299)|end=(360.3253, -0.507667, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.376822, -2.75299)|end=(348.976, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.376822, -2.75299)|end=(353.9612, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.376822, -2.75299)|end=(360.2715, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.376822, -2.75299)|end=(348.9981, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.376822, -2.75299)|end=(353.9833, -0.376822, -2.75299)
+C5_CASE|diver=1|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.376822, -2.75299)|end=(360.3253, -0.376822, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.2|swept=false|start=(357.6864, -0.120827, -2.75299)|end=(348.8229, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.5|swept=true|start=(364.0284, -0.120827, -2.75299)|end=(353.9612, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=true|fraction=0.8|swept=true|start=(370.3703, -0.120827, -2.75299)|end=(360.2715, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.2|swept=false|start=(357.6864, -0.120827, -2.75299)|end=(348.8451, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.5|swept=true|start=(364.0284, -0.120827, -2.75299)|end=(353.9833, -0.120827, -2.75299)
+C5_CASE|diver=2|opening=false|fraction=0.8|swept=true|start=(370.3703, -0.120827, -2.75299)|end=(360.3253, -0.120827, -2.75299)
+WALL_RESTORE|actor=0|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=0|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=0|delay_frames=55|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=1|delay_frames=55|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=3|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=25|loaded_geometry_retained=true
+WALL_RESTORE|actor=2|delay_frames=55|loaded_geometry_retained=true
+WALL_KILL|settled_target=true|saveable=true
+WALL_INACTIVE|reentered=true|geometry_settled=true|owner_released=true
+MAZE WALL MOTION: clean | physical_samples=48|C5_cases=18|swept_capsule_frames=30
+
+=== moving-wall teardown: are surviving shared actors and non-default wall/skirt/rock layers preserved ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WALL_TEARDOWN|shared_actors_alive=true|layers=5,9,17|settled_geometry=true
+MAZE WALL MOTION: clean | physical_samples=0|C5_cases=0|swept_capsule_frames=0
+
+=== retained wall riders: do six walls carry three capsules both ways and release to real swimming ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RIDER_START|wall=CurrentWall1|diver=0|closing=false|position=(301.8843, -0.507667, 34.95497)|size=(18.408, 4.058, 1.0)
+RIDER_FRAME|0|wall=(300.8047, 1.42021, 29.43257)|yaw=-1.570796251297|actor=(301.8451, -0.507667, 34.88952)|local=(5.456951, -1.927877, -1.040314)
+RIDER_CONTACT|frame=1|offset=(5.471596, -1.927877, -0.979614)
+RIDER_FRAME|20|wall=(305.5835, 1.42021, 28.00342)|yaw=-0.98959481716156|actor=(309.4063, -0.507667, 32.03876)|local=(5.471588, -1.927877, -0.979599)
+RIDER_FRAME|40|wall=(308.2129, 1.42021, 25.29799)|yaw=-0.55268758535385|actor=(313.3841, -0.507667, 27.33669)|local=(5.471558, -1.927877, -0.979584)
+RIDER_FRAME|60|wall=(309.4499, 1.42021, 21.73907)|yaw=-0.11635523289442|actor=(314.9982, -0.507667, 21.40131)|local=(5.471619, -1.927877, -0.979599)
+RIDER_RELEASE|wall=CurrentWall1|diver=0|clear=true|mask=5|swim=1.00785064697266
+RIDER_START|wall=CurrentWall2|diver=0|closing=false|position=(310.0916, -0.507667, 16.45788)|size=(27.8898, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(309.3057, 1.420213, 24.82138)|yaw=1.59261298179626|actor=(310.1031, -0.507667, 16.45763)|local=(8.344387, -1.92788, 0.979614)
+RIDER_CONTACT|frame=1|offset=(8.344389, -1.927883, 0.979584)
+RIDER_FRAME|20|wall=(314.933, 1.420265, 23.44822)|yaw=2.02620577812195|actor=(312.1426, -0.507667, 15.52345)|local=(8.344376, -1.927933, 0.979584)
+RIDER_FRAME|40|wall=(319.9937, 1.420325, 19.13697)|yaw=2.52512574195862|actor=(313.7516, -0.507667, 13.51335)|local=(8.34436, -1.927993, 0.979584)
+RIDER_FRAME|60|wall=(322.2536, 1.420378, 13.74483)|yaw=2.96284174919128|actor=(314.2164, -0.507667, 11.29722)|local=(8.344391, -1.928046, 0.979591)
+RIDER_RELEASE|wall=CurrentWall2|diver=0|clear=true|mask=5|swim=1.00784683227539
+RIDER_START|wall=CurrentWall1|diver=1|closing=false|position=(301.7586, -0.376822, 34.94328)|size=(18.408, 4.058, 1.0)
+RIDER_FRAME|0|wall=(300.9946, 1.42021, 29.4305)|yaw=-1.54897964000702|actor=(301.9756, -0.376822, 34.92672)|local=(5.516342, -1.797032, -0.86084)
+RIDER_CONTACT|frame=0|offset=(5.516342, -1.797032, -0.86084)
+RIDER_FRAME|20|wall=(304.6647, 1.42021, 28.52988)|yaw=-1.11132943630219|actor=(307.8826, -0.376822, 33.09233)|local=(5.516342, -1.797032, -0.86084)
+RIDER_FRAME|40|wall=(307.5762, 1.42021, 26.1973)|yaw=-0.67936325073242|actor=(312.4086, -0.376822, 28.99347)|local=(5.516342, -1.797032, -0.86084)
+RIDER_FRAME|60|wall=(309.2476, 1.42021, 22.84475)|yaw=-0.24558570981026|actor=(314.8077, -0.376822, 23.35089)|local=(5.516357, -1.797032, -0.860851)
+RIDER_RELEASE|wall=CurrentWall1|diver=1|clear=true|mask=5|swim=1.00785064697266
+RIDER_START|wall=CurrentWall2|diver=1|closing=false|position=(309.9728, -0.376822, 16.45792)|size=(27.8898, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(309.3057, 1.420213, 24.82138)|yaw=1.59261298179626|actor=(309.9843, -0.376822, 16.45766)|local=(8.346979, -1.797034, 0.86084)
+RIDER_CONTACT|frame=1|offset=(8.346977, -1.797037, 0.86087)
+RIDER_FRAME|20|wall=(315.0532, 1.420266, 23.38848)|yaw=2.03617668151855|actor=(312.0767, -0.376822, 15.54294)|local=(8.346985, -1.797088, 0.86084)
+RIDER_FRAME|40|wall=(319.5538, 1.420319, 19.72411)|yaw=2.47063136100769|actor=(313.5515, -0.376822, 13.86027)|local=(8.346985, -1.797141, 0.86084)
+RIDER_FRAME|60|wall=(322.0941, 1.420371, 14.50487)|yaw=2.90515542030334|actor=(314.1811, -0.376822, 11.71279)|local=(8.346985, -1.797193, 0.860851)
+RIDER_RELEASE|wall=CurrentWall2|diver=1|clear=true|mask=5|swim=1.00784683227539
+RIDER_START|wall=CurrentWall1|diver=2|closing=false|position=(301.9827, -0.120827, 34.94326)|size=(18.408, 4.058, 1.0)
+RIDER_FRAME|0|wall=(301.0263, 1.42021, 29.42975)|yaw=-1.54534351825714|actor=(302.2515, -0.120827, 34.92457)|local=(5.524269, -1.541037, -1.08493)
+RIDER_CONTACT|frame=0|offset=(5.524269, -1.541037, -1.08493)
+RIDER_FRAME|20|wall=(304.6828, 1.42021, 28.52092)|yaw=-1.10901129245758|actor=(308.1154, -0.120827, 32.98312)|local=(5.524261, -1.541037, -1.084991)
+RIDER_FRAME|40|wall=(307.6126, 1.42021, 26.15191)|yaw=-0.67267894744873|actor=(312.6095, -0.120827, 28.74536)|local=(5.524261, -1.541037, -1.084961)
+RIDER_FRAME|60|wall=(309.2643, 1.42021, 22.77706)|yaw=-0.23757575452328|actor=(314.8887, -0.120827, 23.02269)|local=(5.524261, -1.541037, -1.084957)
+RIDER_RELEASE|wall=CurrentWall1|diver=2|clear=true|mask=5|swim=1.00785064697266
+RIDER_START|wall=CurrentWall2|diver=2|closing=false|position=(310.1969, -0.120827, 16.45795)|size=(27.8898, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(309.3546, 1.420213, 24.82019)|yaw=1.59624910354614|actor=(310.2271, -0.120827, 16.45718)|local=(8.338181, -1.54104, 1.084961)
+RIDER_CONTACT|frame=3|offset=(8.338184, -1.541048, 1.084961)
+RIDER_FRAME|20|wall=(315.0099, 1.420266, 23.41016)|yaw=2.0325813293457|actor=(312.2662, -0.120827, 15.46201)|local=(8.338181, -1.541093, 1.08493)
+RIDER_FRAME|40|wall=(319.5394, 1.420319, 19.74222)|yaw=2.46891355514526|actor=(313.6938, -0.120827, 13.69829)|local=(8.338181, -1.541146, 1.084961)
+RIDER_FRAME|60|wall=(322.0891, 1.420371, 14.52559)|yaw=2.90357255935669|actor=(314.2419, -0.120827, 11.50528)|local=(8.338196, -1.541198, 1.084969)
+RIDER_RELEASE|wall=CurrentWall2|diver=2|clear=true|mask=5|swim=1.00784683227539
+RIDER_START|wall=CurrentWall1|diver=0|closing=true|position=(315.0312, -0.507667, 21.80817)|size=(18.408, 4.058, 1.0)
+RIDER_FRAME|0|wall=(309.5056, 1.42021, 20.96164)|yaw=-0.02678025513887|actor=(315.0236, -0.507667, 22.08939)|local=(5.546204, -1.927877, 0.979595)
+RIDER_CONTACT|frame=0|offset=(5.546204, -1.927877, 0.979595)
+RIDER_FRAME|20|wall=(308.606, 1.42021, 24.58872)|yaw=-0.45948925614357|actor=(313.1425, -0.507667, 27.92639)|local=(5.546173, -1.927877, 0.979584)
+RIDER_FRAME|40|wall=(306.2086, 1.42021, 27.55194)|yaw=-0.90097612142563|actor=(308.884, -0.507667, 32.50796)|local=(5.546188, -1.927877, 0.979614)
+RIDER_FRAME|60|wall=(302.8363, 1.42021, 29.19219)|yaw=-1.3352233171463|actor=(303.1782, -0.507667, 34.81384)|local=(5.546204, -1.927877, 0.979614)
+RIDER_RELEASE|wall=CurrentWall1|diver=0|clear=true|mask=5|swim=1.00787353515625
+RIDER_START|wall=CurrentWall2|diver=0|closing=true|position=(314.0995, -0.507667, 12.4303)|size=(27.8898, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(322.4617, 1.420397, 11.71785)|yaw=3.11432194709778|actor=(314.0984, -0.507667, 12.46968)|local=(8.339691, -1.928064, -0.979594)
+RIDER_CONTACT|frame=2|offset=(8.339691, -1.928059, -0.979593)
+RIDER_FRAME|20|wall=(321.0496, 1.420344, 17.3726)|yaw=2.67798972129822|actor=(313.1522, -0.507667, 14.51952)|local=(8.339691, -1.928011, -0.979599)
+RIDER_FRAME|40|wall=(317.3801, 1.420291, 21.90079)|yaw=2.24165749549866|actor=(311.4283, -0.507667, 15.97742)|local=(8.339706, -1.927959, -0.979599)
+RIDER_FRAME|60|wall=(312.1447, 1.420238, 24.45294)|yaw=1.80563199520111|actor=(309.2515, -0.507667, 16.57012)|local=(8.339691, -1.927906, -0.979553)
+RIDER_RELEASE|wall=CurrentWall2|diver=0|clear=true|mask=5|swim=1.8013231754303
+RIDER_START|wall=CurrentWall1|diver=1|closing=true|position=(315.0311, -0.376822, 21.68941)|size=(18.408, 4.058, 1.0)
+RIDER_FRAME|0|wall=(309.5056, 1.42021, 20.96425)|yaw=-0.02708045206964|actor=(315.0234, -0.376822, 21.97487)|local=(5.543243, -1.797032, 0.860848)
+RIDER_CONTACT|frame=0|offset=(5.543243, -1.797032, 0.860848)
+RIDER_FRAME|20|wall=(308.6011, 1.42021, 24.59855)|yaw=-0.46074935793877|actor=(313.1835, -0.376822, 27.83422)|local=(5.543213, -1.797032, 0.86084)
+RIDER_FRAME|40|wall=(306.2351, 1.42021, 27.53084)|yaw=-0.89708167314529|actor=(309.0207, -0.376822, 32.39996)|local=(5.543213, -1.797032, 0.860855)
+RIDER_FRAME|60|wall=(302.8516, 1.42021, 29.1885)|yaw=-1.33341407775879|actor=(303.3184, -0.376822, 34.77866)|local=(5.543213, -1.797032, 0.86084)
+RIDER_RELEASE|wall=CurrentWall1|diver=1|clear=true|mask=5|swim=1.00787353515625
+RIDER_START|wall=CurrentWall2|diver=1|closing=true|position=(314.0995, -0.376822, 12.31155)|size=(27.8898, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(322.4623, 1.420397, 11.69338)|yaw=3.11614012718201|actor=(314.0987, -0.376822, 12.34158)|local=(8.344452, -1.797219, -0.860847)
+RIDER_CONTACT|frame=3|offset=(8.344421, -1.797211, -0.860848)
+RIDER_FRAME|20|wall=(321.0605, 1.420344, 17.35069)|yaw=2.67980766296387|actor=(313.2066, -0.376822, 14.40356)|local=(8.344391, -1.797166, -0.860855)
+RIDER_FRAME|40|wall=(317.3992, 1.420291, 21.88554)|yaw=2.24347543716431|actor=(311.5267, -0.376822, 15.89534)|local=(8.344406, -1.797113, -0.86084)
+RIDER_FRAME|60|wall=(312.1983, 1.420239, 24.43996)|yaw=1.80972969532013|actor=(309.3871, -0.376822, 16.53639)|local=(8.344429, -1.797061, -0.86084)
+RIDER_RELEASE|wall=CurrentWall2|diver=1|clear=true|mask=5|swim=1.91533780097961
+RIDER_START|wall=CurrentWall1|diver=2|closing=true|position=(315.0311, -0.120827, 21.91352)|size=(18.408, 4.058, 1.0)
+RIDER_FRAME|0|wall=(309.5078, 1.42021, 20.85516)|yaw=-0.01454433519393|actor=(315.0295, -0.120827, 22.02054)|local=(5.538055, -1.541037, 1.084961)
+RIDER_CONTACT|frame=0|offset=(5.538055, -1.541037, 1.084961)
+RIDER_FRAME|20|wall=(308.6126, 1.42021, 24.5752)|yaw=-0.45775789022446|actor=(313.101, -0.120827, 27.99592)|local=(5.538116, -1.541037, 1.084969)
+RIDER_FRAME|40|wall=(306.2563, 1.42021, 27.5139)|yaw=-0.89396792650223|actor=(308.8791, -0.120827, 32.51067)|local=(5.538086, -1.541037, 1.084976)
+RIDER_FRAME|60|wall=(302.9036, 1.42021, 29.17574)|yaw=-1.32725644111633|actor=(303.1861, -0.120827, 34.81197)|local=(5.538086, -1.541037, 1.084961)
+RIDER_RELEASE|wall=CurrentWall1|diver=2|clear=true|mask=5|swim=1.00787353515625
+RIDER_START|wall=CurrentWall2|diver=2|closing=true|position=(314.0995, -0.120827, 12.53566)|size=(27.8898, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(322.4617, 1.420397, 11.71785)|yaw=3.11432194709778|actor=(314.0985, -0.120827, 12.57508)|local=(8.336792, -1.541224, -1.084962)
+RIDER_CONTACT|frame=3|offset=(8.336792, -1.541216, -1.084963)
+RIDER_FRAME|20|wall=(321.061, 1.420344, 17.34973)|yaw=2.67988729476929|actor=(313.1139, -0.120827, 14.60728)|local=(8.336792, -1.541171, -1.084953)
+RIDER_FRAME|40|wall=(317.4001, 1.420291, 21.88487)|yaw=2.24355506896973|actor=(311.3565, -0.120827, 16.04078)|local=(8.336777, -1.541119, -1.084961)
+RIDER_FRAME|60|wall=(312.1655, 1.420239, 24.44793)|yaw=1.80722284317017|actor=(309.158, -0.120827, 16.59728)|local=(8.3368, -1.541066, -1.084991)
+RIDER_RELEASE|wall=CurrentWall2|diver=2|clear=true|mask=5|swim=1.80873799324036
+RIDER_START|wall=CSGBox3D14|diver=0|closing=false|position=(388.0629, -0.507667, 34.2212)|size=(25.6101, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(380.3769, 1.4204, 33.41004)|yaw=-0.02181661501527|actor=(388.0555, -0.507667, 34.55742)|local=(7.701813, -1.928067, 0.979593)
+RIDER_CONTACT|frame=0|offset=(7.701813, -1.928067, 0.979593)
+RIDER_FRAME|20|wall=(379.1355, 1.4204, 38.53365)|yaw=-0.45359316468239|actor=(385.6293, -0.507667, 42.7891)|local=(7.701843, -1.928067, 0.979584)
+RIDER_FRAME|40|wall=(375.8227, 1.4204, 42.70109)|yaw=-0.88968902826309|actor=(379.9111, -0.507667, 49.30124)|local=(7.701813, -1.928067, 0.979584)
+RIDER_FRAME|60|wall=(371.0931, 1.4204, 45.07072)|yaw=-1.32297730445862|actor=(372.0326, -0.507667, 52.77751)|local=(7.701828, -1.928067, 0.979584)
+RIDER_RELEASE|wall=CSGBox3D14|diver=0|clear=true|mask=5|swim=1.00787353515625
+RIDER_START|wall=CSGBox3D15|diver=0|closing=false|position=(396.3192, -0.507667, 28.0117)|size=(25.2762, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(388.7345, 1.4204, 27.14651)|yaw=-0.01766447722912|actor=(396.3149, -0.507667, 28.26017)|local=(7.598907, -1.928067, 0.979595)
+RIDER_CONTACT|frame=0|offset=(7.598907, -1.928067, 0.979595)
+RIDER_FRAME|20|wall=(387.5234, 1.4204, 32.22134)|yaw=-0.45087674260139|actor=(393.936, -0.507667, 36.41428)|local=(7.598907, -1.928067, 0.979599)
+RIDER_FRAME|40|wall=(384.2015, 1.4204, 36.39389)|yaw=-0.89388471841812|actor=(388.1977, -0.507667, 42.93088)|local=(7.598846, -1.928067, 0.979584)
+RIDER_FRAME|60|wall=(379.5272, 1.4204, 38.71155)|yaw=-1.32709288597107|actor=(380.4102, -0.507667, 46.32223)|local=(7.598877, -1.928067, 0.979614)
+RIDER_RELEASE|wall=CSGBox3D15|diver=0|clear=true|mask=5|swim=1.00787353515625
+RIDER_START|wall=CSGBox3D14|diver=1|closing=false|position=(388.0628, -0.376822, 34.10245)|size=(25.6101, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(380.3769, 1.4204, 33.41004)|yaw=-0.02181661501527|actor=(388.0555, -0.376822, 34.43864)|local=(7.699188, -1.797222, 0.860847)
+RIDER_CONTACT|frame=0|offset=(7.699188, -1.797222, 0.860847)
+RIDER_FRAME|20|wall=(379.124, 1.4204, 38.55723)|yaw=-0.45572635531425|actor=(385.6585, -0.376822, 42.71874)|local=(7.699219, -1.797222, 0.860855)
+RIDER_FRAME|40|wall=(375.7666, 1.4204, 42.74629)|yaw=-0.89554458856583|actor=(379.9074, -0.376822, 49.29399)|local=(7.699219, -1.797222, 0.86087)
+RIDER_FRAME|60|wall=(371.0203, 1.4204, 45.08891)|yaw=-1.32907736301422|actor=(372.0274, -0.376822, 52.77031)|local=(7.699219, -1.797222, 0.86087)
+RIDER_RELEASE|wall=CSGBox3D14|diver=1|clear=true|mask=5|swim=1.7818603515625
+RIDER_START|wall=CSGBox3D15|diver=1|closing=false|position=(396.3192, -0.376822, 27.89295)|size=(25.2762, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(388.7364, 1.4204, 26.93211)|yaw=0.0|actor=(396.3192, -0.376822, 27.89295)|local=(7.582886, -1.797222, 0.960848)
+RIDER_FRAME|20|wall=(387.2213, 1.4204, 32.80444)|yaw=-0.50498342514038|actor=(396.3192, -0.376822, 27.89295)|local=(5.586182, -1.797222, -8.699997)
+RIDER_FRAME|40|wall=(383.7436, 1.4204, 36.74425)|yaw=-0.94138699769974|actor=(396.3192, -0.376822, 27.89295)|local=(0.247665, -1.797222, -15.37637)
+RIDER_FRAME|60|wall=(378.9274, 1.4204, 38.84467)|yaw=-1.37771928310394|actor=(396.3192, -0.376822, 27.89295)|local=(-7.41114, -1.797222, -19.17023)
+FINDING RIDER-1 fixture lacks sustained real swept contact
+MAZE WALL RIDERS: findings=1
+
+=== retained rider lifecycle: do restore, killed Tween, inactive/removed owner and C5 arrival relinquish safe poses/locks ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RIDER_LIFECYCLE|diver=0|mode=restore|clear=true|mask=5
+RIDER_LIFECYCLE|diver=0|mode=kill|clear=true|mask=5
+RIDER_LIFECYCLE|diver=0|mode=inactive|clear=true|mask=5
+RIDER_LIFECYCLE|diver=0|mode=removed|clear=true|mask=5
+RIDER_C5_ARRIVAL|end=(359.8148, -0.507667, -2.691317)|velocity=(-0.013016, 0.0, 0.021693)
+RIDER_LIFECYCLE|diver=0|mode=c5-arrival|clear=true|mask=5
+RIDER_LIFECYCLE|diver=1|mode=restore|clear=true|mask=5
+RIDER_LIFECYCLE|diver=1|mode=kill|clear=true|mask=5
+RIDER_LIFECYCLE|diver=1|mode=inactive|clear=true|mask=5
+RIDER_LIFECYCLE|diver=1|mode=removed|clear=true|mask=5
+RIDER_C5_ARRIVAL|end=(359.8148, -0.376822, -2.691317)|velocity=(-0.013016, 0.0, 0.021693)
+RIDER_LIFECYCLE|diver=1|mode=c5-arrival|clear=true|mask=5
+RIDER_LIFECYCLE|diver=2|mode=restore|clear=true|mask=5
+RIDER_LIFECYCLE|diver=2|mode=kill|clear=true|mask=5
+RIDER_LIFECYCLE|diver=2|mode=inactive|clear=true|mask=5
+RIDER_LIFECYCLE|diver=2|mode=removed|clear=true|mask=5
+RIDER_C5_ARRIVAL|end=(359.8148, -0.120827, -2.691317)|velocity=(-0.013016, 0.0, 0.021693)
+RIDER_LIFECYCLE|diver=2|mode=c5-arrival|clear=true|mask=5
+MAZE WALL RIDERS: clean | cases=15|retained_frames=0
+
+=== retained rider ownership: do downed bodies retain resources and other motion owners keep their locks ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RIDER_OWNERSHIP|diver=0|preexisting_lock=true|hp=0|oxygen=0|mask=5
+RIDER_OWNERSHIP|diver=0|preexisting_lock=false|hp=0|oxygen=0|mask=5
+FINDING RIDER-4 downed passenger loses wall-local offset
+MAZE WALL RIDERS: findings=1
+
+=== retained rider landing: does a new CSG obstruction plus real current preserve carry and clear release ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+RIDER_START|wall=CSGBox3D14|diver=0|closing=false|position=(388.0629, -0.507667, 34.2212)|size=(25.6101, 4.05762, 1.0)
+RIDER_FRAME|0|wall=(380.3769, 1.4204, 33.41004)|yaw=-0.02181661501527|actor=(388.0555, -0.507667, 34.55742)|local=(7.701813, -1.928067, 0.979593)
+RIDER_CONTACT|frame=0|offset=(7.701813, -1.928067, 0.979593)
+RIDER_FRAME|20|wall=(379.1229, 1.4204, 38.55954)|yaw=-0.45593491196632|actor=(385.6066, -0.507667, 42.83018)|local=(7.701813, -1.928067, 0.979599)
+RIDER_FRAME|40|wall=(375.8032, 1.4204, 42.71686)|yaw=-0.89172679185867|actor=(379.8782, -0.507667, 49.32533)|local=(7.701782, -1.928067, 0.979614)
+RIDER_FRAME|60|wall=(371.068, 1.4204, 45.07704)|yaw=-1.32508111000061|actor=(371.9913, -0.507667, 52.78579)|local=(7.701797, -1.928067, 0.979584)
+RIDER_RELEASE|wall=CSGBox3D14|diver=0|clear=true|mask=5|swim=1.00881958007812
+MAZE WALL RIDERS: clean | cases=1|retained_frames=64
+
+=== poster boundary captured bypass: does real swimming stop before the western poster fence ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+POSTER_APPROACH|edge=256.303634643555|poster_west=300.304748535156|line=39.1365737915039|start=(278.3042, 2.0, 37.13657)
+POSTER_SWIM|end=(278.3042, 2.0, 38.20691)|owner=true|velocity=(0.0, 0.0, 0.0)
+MAZE POSTER BARRIERS: clean
+
+=== poster boundary coverage: do three capsules stop at both ends in both directions and below the actual ceiling ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.3|side=-1.0|y=2.0|moved=1.07033157348633|end=(270.204, 2.0, 38.20691)
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.3|side=1.0|y=2.0|moved=1.07033157348633|end=(270.204, 2.0, 40.06624)
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.3|side=-1.0|y=3.26808713674545|moved=1.07038497924805|end=(270.204, 3.268087, 38.20696)
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.3|side=1.0|y=3.26808713674545|moved=1.07038497924805|end=(270.204, 3.268087, 40.06619)
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.7|side=-1.0|y=2.0|moved=1.07038497924805|end=(287.4044, 2.0, 38.20696)
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.7|side=1.0|y=2.0|moved=1.07038497924805|end=(287.4044, 2.0, 40.06619)
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.7|side=-1.0|y=3.26808713674545|moved=1.07038497924805|end=(287.4044, 3.268087, 38.20696)
+POSTER_MATRIX|actor=0|gap=(257.3036, 300.3047)|fraction=0.7|side=1.0|y=3.26808713674545|moved=1.07038497924805|end=(287.4044, 3.268087, 40.06619)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.3|side=-1.0|y=2.0|moved=1.07048797607422|end=(312.2722, 2.0, 38.20706)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.3|side=1.0|y=2.0|moved=1.07033538818359|end=(312.2722, 2.0, 40.06624)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.3|side=-1.0|y=3.26808713674545|moved=1.07033538818359|end=(312.2722, 3.268087, 38.20691)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.3|side=1.0|y=3.26808713674545|moved=1.07049179077148|end=(312.2722, 3.268087, 40.06608)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.7|side=-1.0|y=2.0|moved=1.07033920288086|end=(315.9525, 2.0, 38.20691)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.7|side=1.0|y=2.0|moved=1.07038879394531|end=(315.9525, 2.0, 40.06618)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.7|side=-1.0|y=3.26808713674545|moved=1.07033920288086|end=(315.9525, 3.268087, 38.20691)
+POSTER_MATRIX|actor=0|gap=(309.512, 318.7128)|fraction=0.7|side=1.0|y=3.26808713674545|moved=1.07049179077148|end=(315.9525, 3.268087, 40.06608)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.3|side=-1.0|y=2.0|moved=1.18907928466797|end=(270.204, 2.0, 38.32565)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.3|side=1.0|y=2.0|moved=1.18907928466797|end=(270.204, 2.0, 39.94749)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.3|side=-1.0|y=3.13724141120911|moved=1.18907928466797|end=(270.204, 3.137241, 38.32565)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.3|side=1.0|y=3.13724141120911|moved=1.18907928466797|end=(270.204, 3.137241, 39.94749)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.7|side=-1.0|y=2.0|moved=1.18908309936523|end=(287.4044, 2.0, 38.32566)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.7|side=1.0|y=2.0|moved=1.18908309936523|end=(287.4044, 2.0, 39.94749)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.7|side=-1.0|y=3.13724141120911|moved=1.18908309936523|end=(287.4044, 3.137241, 38.32566)
+POSTER_MATRIX|actor=1|gap=(257.3036, 300.3047)|fraction=0.7|side=1.0|y=3.13724141120911|moved=1.18908309936523|end=(287.4044, 3.137241, 39.94749)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.3|side=-1.0|y=2.0|moved=1.18913269042969|end=(312.2722, 2.0, 38.32571)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.3|side=1.0|y=2.0|moved=1.18913269042969|end=(312.2722, 2.0, 39.94744)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.3|side=-1.0|y=3.13724141120911|moved=1.18908309936523|end=(312.2722, 3.137241, 38.32566)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.3|side=1.0|y=3.13724141120911|moved=1.18913269042969|end=(312.2722, 3.137241, 39.94744)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.7|side=-1.0|y=2.0|moved=1.18913269042969|end=(315.9525, 2.0, 38.32571)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.7|side=1.0|y=2.0|moved=1.18913269042969|end=(315.9525, 2.0, 39.94744)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.7|side=-1.0|y=3.13724141120911|moved=1.18908309936523|end=(315.9525, 3.137241, 38.32566)
+POSTER_MATRIX|actor=1|gap=(309.512, 318.7128)|fraction=0.7|side=1.0|y=3.13724141120911|moved=1.18908309936523|end=(315.9525, 3.137241, 39.94749)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.3|side=-1.0|y=2.0|moved=0.96516418457031|end=(270.204, 2.0, 38.10174)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.3|side=1.0|y=2.0|moved=0.96516418457031|end=(270.204, 2.0, 40.17141)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.3|side=-1.0|y=2.88124697208405|moved=0.96496963500977|end=(270.204, 2.881247, 38.10154)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.3|side=1.0|y=2.88124697208405|moved=0.96506881713867|end=(270.204, 2.881247, 40.1715)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.7|side=-1.0|y=2.0|moved=0.96501922607422|end=(287.4044, 2.0, 38.10159)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.7|side=1.0|y=2.0|moved=0.96501922607422|end=(287.4044, 2.0, 40.17155)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.7|side=-1.0|y=2.88124697208405|moved=0.96497344970703|end=(287.4044, 2.881247, 38.10155)
+POSTER_MATRIX|actor=2|gap=(257.3036, 300.3047)|fraction=0.7|side=1.0|y=2.88124697208405|moved=0.96496963500977|end=(287.4044, 2.881247, 40.1716)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.3|side=-1.0|y=2.0|moved=0.96512222290039|end=(312.2722, 2.0, 38.1017)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.3|side=1.0|y=2.0|moved=0.9653205871582|end=(312.2722, 2.0, 40.17125)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.3|side=-1.0|y=2.88124697208405|moved=0.96492385864258|end=(312.2722, 2.881247, 38.1015)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.3|side=1.0|y=2.88124697208405|moved=0.9652214050293|end=(312.2722, 2.881247, 40.17135)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.7|side=-1.0|y=2.0|moved=0.96527099609375|end=(315.9525, 2.0, 38.10184)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.7|side=1.0|y=2.0|moved=0.96512603759766|end=(315.9525, 2.0, 40.17145)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.7|side=-1.0|y=2.88124697208405|moved=0.96497344970703|end=(315.9525, 2.881247, 38.10155)
+POSTER_MATRIX|actor=2|gap=(309.512, 318.7128)|fraction=0.7|side=1.0|y=2.88124697208405|moved=0.96497344970703|end=(315.9525, 2.881247, 40.1716)
+POSTER_MATRIX|cases=48|independent_physical_rays=636
+MAZE POSTER BARRIERS: clean
+
+=== poster fence saved placements: do old/current-frame JSON restores retain resources and swimmable party positions ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+POSTER_RESTORE|actor=0|legacy=false|gap=(257.3036, 300.3047)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(257.3036, 300.3047)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(257.3036, 300.3047)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(309.512, 318.7128)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(309.512, 318.7128)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(309.512, 318.7128)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(257.3036, 300.3047)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(257.3036, 300.3047)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(257.3036, 300.3047)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(309.512, 318.7128)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(309.512, 318.7128)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(309.512, 318.7128)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(257.3036, 300.3047)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(257.3036, 300.3047)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(257.3036, 300.3047)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(309.512, 318.7128)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(309.512, 318.7128)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(309.512, 318.7128)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(257.3036, 300.3047)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(257.3036, 300.3047)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(257.3036, 300.3047)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(309.512, 318.7128)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(309.512, 318.7128)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(309.512, 318.7128)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(257.3036, 300.3047)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(257.3036, 300.3047)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(257.3036, 300.3047)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(309.512, 318.7128)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(309.512, 318.7128)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(309.512, 318.7128)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(257.3036, 300.3047)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(257.3036, 300.3047)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(257.3036, 300.3047)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(309.512, 318.7128)|side=-1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(309.512, 318.7128)|side=0.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(309.512, 318.7128)|side=1.0|downed=-1|clear_and_swimmable=true
+POSTER_RESTORE|generated_JSON_cases=36|no_player_files=true
+MAZE POSTER BARRIERS: clean
+
+=== poster fence downed party: do overlapping saved downed bodies clear without revival, refill or effect loss ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+POSTER_RESTORE|actor=0|legacy=false|gap=(257.3036, 300.3047)|side=-1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(257.3036, 300.3047)|side=0.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(257.3036, 300.3047)|side=1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(309.512, 318.7128)|side=-1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(309.512, 318.7128)|side=0.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=false|gap=(309.512, 318.7128)|side=1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(257.3036, 300.3047)|side=-1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(257.3036, 300.3047)|side=0.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(257.3036, 300.3047)|side=1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(309.512, 318.7128)|side=-1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(309.512, 318.7128)|side=0.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=0|legacy=true|gap=(309.512, 318.7128)|side=1.0|downed=1|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(257.3036, 300.3047)|side=-1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(257.3036, 300.3047)|side=0.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(257.3036, 300.3047)|side=1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(309.512, 318.7128)|side=-1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(309.512, 318.7128)|side=0.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=false|gap=(309.512, 318.7128)|side=1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(257.3036, 300.3047)|side=-1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(257.3036, 300.3047)|side=0.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(257.3036, 300.3047)|side=1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(309.512, 318.7128)|side=-1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(309.512, 318.7128)|side=0.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=1|legacy=true|gap=(309.512, 318.7128)|side=1.0|downed=2|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(257.3036, 300.3047)|side=-1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(257.3036, 300.3047)|side=0.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(257.3036, 300.3047)|side=1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(309.512, 318.7128)|side=-1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(309.512, 318.7128)|side=0.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=false|gap=(309.512, 318.7128)|side=1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(257.3036, 300.3047)|side=-1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(257.3036, 300.3047)|side=0.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(257.3036, 300.3047)|side=1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(309.512, 318.7128)|side=-1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(309.512, 318.7128)|side=0.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|actor=2|legacy=true|gap=(309.512, 318.7128)|side=1.0|downed=0|clear_and_swimmable=true
+POSTER_RESTORE|generated_JSON_cases=36|no_player_files=true
+MAZE POSTER BARRIERS: clean
+
+=== whirlpool wall safety: does a real wall prevent suction without disabling an open-water catch ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_OCCLUDED|start=(228.8, 2.0, 16.0)|end=(228.8, 2.0, 16.0)|lock_seen=false|hp=7|caught=0
+WHIRL_OPEN|end=(226.0, 2.0, 16.0)|hp=5|caught=1
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool wall safety family: do three capsules, static/CSG walls, sphere/cylinder suction and both orientations obey physical occlusion ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=false|cylinder=false|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=false|cylinder=false|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=false|cylinder=true|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=false|cylinder=true|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=true|cylinder=false|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=true|cylinder=false|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=true|cylinder=true|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=0|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=0|csg=true|cylinder=true|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=false|cylinder=false|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=false|cylinder=false|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=false|cylinder=true|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=false|cylinder=true|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=true|cylinder=false|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=true|cylinder=false|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=true|cylinder=true|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=1|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=1|csg=true|cylinder=true|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=false|cylinder=false|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=false|cylinder=false|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=false|cylinder=true|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=false|cylinder=true|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=true|cylinder=false|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=true|cylinder=false|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=true|cylinder=true|angle=0.0|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_OPEN_OBSERVER|actor=2|caught=1|hp=5|at=(226.0, 2.0, 16.0)|visible=true|locked=false
+WHIRL_MATRIX|actor=2|csg=true|cylinder=true|angle=1.5707963267949|blocked_then_open=true|caught=1|end=(226.0, 2.0, 16.0)
+WHIRL_MATRIX|cases=24|no_player_files=true
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool owner teardown: does a caught shared diver survive hazard removal and really swim ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_TEARDOWN_CAUGHT|point=(28.0, 2.0, 10.0)|mid=(27.73687, 1.993598, 10.59333)|visible=true
+WHIRL_TEARDOWN|lock=false|released=(28.0, 2.0, 10.0)|end=(28.0, 2.0, 11.78179)|visible=true|hp=7
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool interruption family: do three actors survive spiral/vanish owner loss, stopped timers and live JSON restore ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=spiral|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=vanish|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=vanish|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=0|phase=vanish|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=spiral|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=spiral|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=spiral|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=vanish|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=vanish|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=1|phase=vanish|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=spiral|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=spiral|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=spiral|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=vanish|interrupt=owner|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(229.4, 2.0, 16.0)|wanted=(229.4, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=7|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=vanish|interrupt=scheduler|release=(229.4, 2.0, 16.0)|hp=7|lock=false
+WHIRL_LIFECYCLE_OBSERVER|at=(226.0, 2.0, 16.0)|wanted=(226.0, 2.0, 16.0)|rotation=(0.0, 0.35, 0.0)|model_rotation=(0.0, 0.2, 0.3)|visible=true|hp=6|clear=true
+WHIRL_LIFECYCLE|actor=2|phase=vanish|interrupt=restore|release=(226.0, 2.0, 16.0)|hp=6|lock=false
+WHIRL_LIFECYCLE|cases=18|no_player_files=true
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool inactive owner: does the actual disabled maze remain quiet for parked shared actors ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_INACTIVE|active_world=0|maze_active=false|hazard_can_process=true|lock_seen=false|point=(339.688, 1.8, 5.698997)|end=(339.688, 1.8, 5.698997)|hp=7
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool active deactivation: does real maze handoff release six interrupted actors and refuse transient snapshots ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DEACTIVATE|actor=0|phase=spiral|release=(339.688, 1.8, 5.698997)|end=(339.688, 1.8, 7.480792)|hp=7
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DEACTIVATE|actor=0|phase=vanish|release=(339.688, 1.8, 5.698997)|end=(339.688, 1.8, 7.480792)|hp=7
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DEACTIVATE|actor=1|phase=spiral|release=(339.688, 1.8, 5.698997)|end=(339.688, 1.8, 7.480792)|hp=7
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DEACTIVATE|actor=1|phase=vanish|release=(339.688, 1.8, 5.698997)|end=(339.688, 1.8, 7.480792)|hp=7
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DEACTIVATE|actor=2|phase=spiral|release=(339.688, 1.8, 5.698997)|end=(339.688, 1.8, 7.480792)|hp=7
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DEACTIVATE|actor=2|phase=vanish|release=(339.688, 1.8, 5.698997)|end=(339.688, 1.8, 8.211316)|hp=7
+WHIRL_DEACTIVATE|cases=6|no_player_files=true
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool blocked return: do24 capsule/solid/yaw/phase cases release outside new solids and permit actual clear-direction swimming ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=false|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=0|csg=true|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=false|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=0.0|phase=spiral|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=0.0|phase=vanish|release=(231.9, 2.0, 16.0)|buried=false|key=87|end=(231.9, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=1.5707963267949|phase=spiral|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=1|csg=true|angle=1.5707963267949|phase=vanish|release=(229.4, 2.0, 13.5)|buried=false|key=65|end=(231.1818, 2.0, 13.5)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=0.0|phase=spiral|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=0.0|phase=vanish|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=1.5707963267949|phase=spiral|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.2342, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=false|angle=1.5707963267949|phase=vanish|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.2342, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=0.0|phase=spiral|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=0.0|phase=vanish|release=(232.15, 2.0, 16.0)|buried=false|key=87|end=(232.15, 2.0, 17.7818)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=1.5707963267949|phase=spiral|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.2342, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_RETURN|actor=2|csg=true|angle=1.5707963267949|phase=vanish|release=(230.4524, 2.0, 13.45933)|buried=false|key=65|end=(232.5566, 2.0, 13.45933)|hp=7
+WHIRL_BLOCKED_MATRIX|cases=24|no_player_files=true
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool actual damage: do36 completed overlaps keep downed HP0, living HP1 and nonnegative loss without O2 cost ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_DAMAGE|actor=0|before=0|damage=0|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=0|damage=2|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=0|damage=10|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=1|damage=0|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=1|damage=2|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=1|damage=10|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=2|damage=0|after=2|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=2|damage=2|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=0|before=2|damage=10|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=0|before=7|damage=0|after=7|reported=0|completions=1
+WHIRL_DAMAGE|actor=0|before=7|damage=2|after=5|reported=2|completions=1
+WHIRL_DAMAGE|actor=0|before=7|damage=10|after=1|reported=6|completions=1
+WHIRL_DAMAGE|actor=1|before=0|damage=0|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=0|damage=2|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=0|damage=10|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=1|damage=0|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=1|damage=2|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=1|damage=10|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=2|damage=0|after=2|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=2|damage=2|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=1|before=2|damage=10|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=1|before=7|damage=0|after=7|reported=0|completions=1
+WHIRL_DAMAGE|actor=1|before=7|damage=2|after=5|reported=2|completions=1
+WHIRL_DAMAGE|actor=1|before=7|damage=10|after=1|reported=6|completions=1
+WHIRL_DAMAGE|actor=2|before=0|damage=0|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=0|damage=2|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=0|damage=10|after=0|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=1|damage=0|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=1|damage=2|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=1|damage=10|after=1|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=2|damage=0|after=2|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=2|damage=2|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=2|before=2|damage=10|after=1|reported=1|completions=1
+WHIRL_DAMAGE|actor=2|before=7|damage=0|after=7|reported=0|completions=1
+WHIRL_DAMAGE|actor=2|before=7|damage=2|after=5|reported=2|completions=1
+WHIRL_DAMAGE|actor=2|before=7|damage=10|after=1|reported=6|completions=1
+WHIRL_DAMAGE|cases=36|no_player_files=true
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool actor lifetime: do six removed rigs leave no engine errors and three preexisting owners retain their locks/models/masks ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+WHIRL_ACTOR_LIFETIME|rig=0|phase=spiral|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=0|phase=vanish|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=1|phase=spiral|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=1|phase=vanish|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=2|phase=spiral|replacement_completions=1
+WHIRL_ACTOR_LIFETIME|rig=2|phase=vanish|replacement_completions=1
+WHIRL_NONSTEAL_OBSERVER|actor=0|own_busy=false|positions=[(229.4, 2.0, 16.0), (210.0, 2.0, 18.0), (210.0, 2.0, 20.0)]|locked=true
+WHIRL_NONSTEAL|actor=0|mask=5|lock=true
+WHIRL_NONSTEAL_OBSERVER|actor=1|own_busy=false|positions=[(210.0, 2.0, 16.0), (229.4, 2.0, 16.0), (210.0, 2.0, 20.0)]|locked=true
+WHIRL_NONSTEAL|actor=1|mask=9|lock=true
+WHIRL_NONSTEAL_OBSERVER|actor=2|own_busy=false|positions=[(210.0, 2.0, 16.0), (210.0, 2.0, 18.0), (229.4, 2.0, 16.0)]|locked=true
+WHIRL_NONSTEAL|actor=2|mask=17|lock=true
+WHIRL_ACTOR_LIFETIME|cases=9|no_player_files=true
+WHIRLPOOL SAFETY: clean
+
+=== whirlpool Inventory suspension: do all three actors in spiral/vanish remain unchanged behind actual Escape menus and resume exactly once ===
