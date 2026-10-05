@@ -1107,7 +1107,7 @@ const SIDE_LEGEND_ENTRIES := [
 	["current", "Current"],
 	["you", "You"],
 	["room", "Visited room"],
-	["poster", "Poster (clue)"],
+	["poster", "Poster"],
 	["chest", "Chest"],
 	["switch", "Map Control switch"],
 	["key", "Key"],
