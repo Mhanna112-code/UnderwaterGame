@@ -234,7 +234,7 @@ var selectedCurrentCorridor: Area3D
 # or {}. While the map is closed it tracks the set nearest the diver (and
 # selectedCurrentCorridor the nearest current); once L opens the map,
 # Left/Right steps through revealed sets and Shift+Left/Right through
-# currents. The map blinks both; E rotates the set, R the current.
+# currents. The map blinks both; E rotates the set, Shift+E the current.
 var selected_rotatable_set: Dictionary = {}
 var _rotatable_blink_on := true
 const ROTATABLE_BLINK_INTERVAL := 0.4
@@ -1211,7 +1211,9 @@ func _build_map_help() -> void:
 	style.set_content_margin_all(10)
 	_map_help.add_theme_stylebox_override("panel", style)
 	_map_help.position = main_map.position + Vector2(0, MAIN_MAP_SIZE + 6)
-	_map_help.custom_minimum_size = Vector2(MAIN_MAP_SIZE, 0)
+	# Wider than the map: the "Shift + E" key needs the room (nothing sits
+	# under the legend panel to its right).
+	_map_help.custom_minimum_size = Vector2(MAIN_MAP_SIZE + 110.0, 0)
 	_map_help.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_help.z_index = 4
 	# The keys drawn as the same dark key badges as the ability popup
@@ -1229,7 +1231,7 @@ func _build_map_help() -> void:
 	var cell := "[cell padding=0,3,18,3]%s[/cell]"
 	var rows := [
 		["%s / %s" % [Slot._badge("←"), Slot._badge("→")], "choose a selected hallway", Slot._badge("E"), "rotate it"],
-		["%s + %s / %s" % [Slot._badge("Shift ⇧"), Slot._badge("←"), Slot._badge("→")], "choose a selected current", Slot._badge("R"), "rotate it"],
+		["%s + %s / %s" % [Slot._badge("Shift ⇧"), Slot._badge("←"), Slot._badge("→")], "choose a selected current", "%s + %s" % [Slot._badge("Shift ⇧"), Slot._badge("E")], "rotate it"],
 	]
 	var table := "[table=4]"
 	for row in rows:
@@ -1283,6 +1285,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_update_selected_rotatable_set()
 			main_map.queue_redraw()
 		get_viewport().set_input_as_handled()
+	elif main_map.visible and keycode == KEY_E and key_event.shift_pressed:
+		# Shift+E: move the blinking current (Shift+Left/Right picks it).
+		_rotate_selected_current()
+		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
 		# Confirm: rotate the blinking set. Handled here so E doesn't also
 		# reach MazeLevel's relic interaction while the map is open.
@@ -1293,9 +1299,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT]:
 		_cycle_selected_set(1 if keycode == KEY_RIGHT else -1)
-		get_viewport().set_input_as_handled()
-	elif main_map.visible and keycode == KEY_R:
-		_rotate_selected_current()
 		get_viewport().set_input_as_handled()
 
 # Absolute panel-space projection - MAIN_MAP_MARGIN + (world offset from

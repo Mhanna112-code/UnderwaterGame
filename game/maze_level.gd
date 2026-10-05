@@ -2742,7 +2742,7 @@ func handle_lever_map_key(keycode: Key) -> bool:
 	if keycode in [KEY_ESCAPE, KEY_L]:
 		_free_map_open = false
 		return true
-	return not keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_LEFT, KEY_RIGHT, KEY_R]
+	return not keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_LEFT, KEY_RIGHT, KEY_E]
 
 # The map header's close hint while the lever map is up.
 func lever_map_close_hint() -> String:
@@ -2833,7 +2833,7 @@ func _update_lever_ui() -> void:
 		# Boxed list to the right of the map; "Press E to release levers"
 		# sits under the map itself.
 		var close_line := "[Esc]  close the map\n          (also releases the levers)" if on_lever else "[Esc] or [L]  close the map"
-		_lever_map_controls.text = "WALLS\n  [Left] / [Right]  select\n  [Enter]  rotate\nCURRENTS\n  [Shift] + [Left] / [Right]  select\n  [R]  rotate\n" + close_line
+		_lever_map_controls.text = "WALLS\n  [Left] / [Right]  select\n  [Enter]  rotate\nCURRENTS\n  [Shift] + [Left] / [Right]  select\n  [Shift] + [E]  rotate\n" + close_line
 		_lever_map_controls.size = Vector2.ZERO   # shrink to the current text
 		_lever_map_controls.position = Vector2(536, 76)
 	var minimap := $HUD.get_node_or_null("MazeMiniMap") as MazeMiniMap
@@ -3159,7 +3159,7 @@ func _build_minimap() -> void:
 func _build_rotate_prompt() -> void:
 	var label := Label.new()
 	label.name = "GoalLabel"
-	label.text = "Goal: open the hallway, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nWalls and currents only move from the maze map: L opens it; Left/Right picks a wall set and E rotates it; Shift+Left/Right picks a current and R moves it. Tab switches diver; E uses their ability (at the room switch: E interacts, Shift+E toggles room encounters)."
+	label.text = "Goal: open the hallway, follow the northbound channel into the reward chamber, then press E beside the cracked relic.\nWalls and currents only move from the maze map: L opens it; Left/Right picks a wall set and E rotates it; Shift+Left/Right picks a current and Shift+E moves it. Tab switches diver; E uses their ability (at the room switch: E interacts, Shift+E toggles room encounters)."
 	label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 16.0
 	label.offset_top = -64.0
@@ -4679,10 +4679,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		else:
 			_announce("Only Maxilani has sonar.")
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_R:
-		# On the open map R moves the picked current instead (the map's own).
-		var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
-		if map == null or not map.main_map.visible:
-			_toggle_random_encounters()
+		# Open map or not (currents move with Shift+E on the map).
+		_toggle_random_encounters()
 	elif e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo and (e as InputEventKey).keycode == KEY_F1:
 		if tutorial_book != null:
 			tutorial_book.open(TutorialContent.GENERAL_PAGES)
@@ -6419,7 +6417,7 @@ func show_map_intro_once() -> void:
 	_map_intro_shown = true
 	var pages: Array[Dictionary] = [{
 		"title": "Maze Navigation",
-		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with R to new areas and halls. Previously visited locations are marked on the map.",
+		"body": "The Maze Navigation map allows you to select hallways and currents in the maze next to the Map Control room and rotate hallways with E to other halls and currents with Shift+E to new areas and halls. R still turns random encounters on or off. Previously visited locations are marked on the map.",
 		"slot": null,
 	}]
 	popup.call("open", pages)
