@@ -38,6 +38,22 @@ var _transitioning_to_encounter := false
 # until then, same reasoning as gating TAB/random encounters: nothing about
 # the tutorial should be skippable by ducking into a menu mid-walk-over.
 var _first_encounter_done := false
+
+const OBJECTIVE_TEXT := "OBJECTIVE: Explore the mysterious blockade path"
+const OBJECTIVE_GAP := 8.0
+var _objective_label: Label
+
+# The objective shows once the opening tutorial fight is over, and stays
+# out of the way of a battle.
+func _update_objective() -> void:
+	if _objective_label != null:
+		_objective_label.visible = _first_encounter_done and not battling
+		# Its top sits a little below the bottom of the controls text at the
+		# top left (which can be 2-3 lines), still centred.
+		if hud != null:
+			var top := hud.position.y + hud.get_combined_minimum_size().y + OBJECTIVE_GAP
+			_objective_label.offset_top = top
+			_objective_label.offset_bottom = top + 30.0
 # Set right before tutorial_result_popup.open() in _on_battle_finished()'s
 # "lost" branch, read by _on_tutorial_loss_exit() - the popup itself carries
 # no memory of which tutorial fight opened it (special encounter vs. the
@@ -644,6 +660,24 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
+
+	# Top-centre objective, shown once the opening tutorial fight is done
+	# (see _update_objective()).
+	_objective_label = Label.new()
+	_objective_label.text = OBJECTIVE_TEXT
+	_objective_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_objective_label.offset_left = -360.0
+	_objective_label.offset_right = 360.0
+	_objective_label.offset_top = 14.0
+	_objective_label.offset_bottom = 44.0
+	_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_objective_label.add_theme_font_size_override("font_size", 20)
+	_objective_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.40))
+	_objective_label.add_theme_color_override("font_outline_color", Color(0.01, 0.04, 0.07, 0.95))
+	_objective_label.add_theme_constant_override("outline_size", 6)
+	_objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_objective_label.visible = false
+	$HUD.add_child(_objective_label)
 
 	minimap = MiniMap.new()
 	minimap.world = self
@@ -1631,6 +1665,8 @@ func _on_swap_target_cancelled() -> void:
 
 func _physics_process(dt: float) -> void:
 	_t += dt
+	_update_objective()
+	_update_blockade_arrow()
 	if battling or inventory_menu.visible:
 		return
 	# keyboard turning too: mouse capture is the first thing to go wrong in a
@@ -2083,7 +2119,13 @@ func intro_arrow() -> void:
 	if _intro_arrow != null or light_beam == null:
 		return
 	var d: Diver = divers[active]
+	_intro_arrow = _make_arrow()
+	_intro_arrow.position = Vector3(0, d.height * 0.6, -1.0)
+	d.add_child(_intro_arrow)
+	_point_arrow_at(light_beam.global_position)
 
+# The light-blue waypoint arrow mesh (intro_arrow() and the blockade arrow).
+func _make_arrow() -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Tip along local -Z (the axis look_at() aims at a target) with the base
@@ -2099,12 +2141,44 @@ func intro_arrow() -> void:
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	st.set_material(material)
 
-	_intro_arrow = MeshInstance3D.new()
-	_intro_arrow.mesh = st.commit()
-	_intro_arrow.scale = Vector3.ONE * 0.6
-	_intro_arrow.position = Vector3(0, d.height * 0.6, -1.0)
-	d.add_child(_intro_arrow)
-	_point_arrow_at(light_beam.global_position)
+	var arrow := MeshInstance3D.new()
+	arrow.mesh = st.commit()
+	arrow.scale = Vector3.ONE * 0.6
+	return arrow
+
+# After the tutorial fight, the same arrow points the way to the entrance
+# blockade - on whichever diver is active, hidden during battles and once
+# they're up close, and gone for good once the blockade is broken.
+const BLOCKADE_ARROW_HIDE_DIST := 6.0
+var _blockade_arrow: MeshInstance3D
+
+func _update_blockade_arrow() -> void:
+	var wall := _cracked_walls.get("entrance_blockade") as Node3D
+	if not is_instance_valid(wall):
+		if is_instance_valid(_blockade_arrow):
+			_blockade_arrow.queue_free()
+		_blockade_arrow = null
+		return
+	if not _first_encounter_done or divers.is_empty():
+		return
+	var d: Diver = divers[active]
+	if not is_instance_valid(_blockade_arrow):
+		_blockade_arrow = _make_arrow()
+	if _blockade_arrow.get_parent() != d:
+		if _blockade_arrow.get_parent() != null:
+			_blockade_arrow.get_parent().remove_child(_blockade_arrow)
+		_blockade_arrow.position = Vector3(0, d.height * 0.6, -1.0)
+		d.add_child(_blockade_arrow)
+	var near := Vector2(d.global_position.x, d.global_position.z).distance_to(
+		Vector2(wall.global_position.x, wall.global_position.z)) <= BLOCKADE_ARROW_HIDE_DIST
+	_blockade_arrow.visible = not battling and not near
+	if _blockade_arrow.visible:
+		var target := wall.global_position
+		var to_target := target - _blockade_arrow.global_position
+		var up := Vector3.UP
+		if absf(to_target.normalized().dot(Vector3.UP)) > 0.999:
+			up = Vector3.FORWARD
+		_blockade_arrow.look_at(target, up)
 
 
 # Pairs with intro_arrow() - called at the same moment (world _ready()) so
@@ -2306,6 +2380,10 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 # unmodified fight with nothing riding on it, same as before this existed.
 func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "") -> void:
 	battling = true
+	# Nothing left over from swimming ("Danger - a whirlpool lies just ahead!"
+	# and the like) once the fight starts.
+	banner.text = ""
+	_banner_timer = 0.0
 	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
 	_pending_reward_item = reward_item
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
@@ -2322,13 +2400,12 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		# hang on screen through the whole fight and after.
 		banner.text = ""
 		_banner_timer = 0.0
-	elif reward_item != "" and not special:
-		# The plain (non-special) guarded fights - shallows/trench's key
-		# items. A special encounter doesn't need this: its own Enter/Not
-		# Now prompt (or, for the very first one, battle.gd's own tutorial
-		# caption) already told the player what they're walking into before
-		# the fight even started.
-		_announce("Defeat the enemy to gain a special reward item!")
+	elif reward_item != "":
+		# An enemy carrying an item (guarded fights, special or not): no
+		# banner - battle.gd's combat text opens with "This enemy is
+		# carrying an item! Defeat the enemy and win the item." instead.
+		banner.text = ""
+		_banner_timer = 0.0
 	else:
 		_announce("An angler fish emerges from the murk!")
 	battle = Battle.new()

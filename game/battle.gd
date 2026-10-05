@@ -540,6 +540,17 @@ func _register_stat_effects(attack: Dictionary) -> void:
 						stat_effects[attack_name]["player"]["evasion"] = \
 							effect["evasion"]
 
+# Info popups, which draw above the battle screen, keep out of the way for
+# as long as a battle runs.
+func _enter_tree() -> void:
+	add_to_group("battle")
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	if popup != null and popup.has_method("suspend_for_battle"):
+		popup.call("suspend_for_battle")
+
+func _exit_tree() -> void:
+	remove_from_group("battle")
+
 func _ready() -> void:
 	for diver in BASE_MOVES:
 		for attack in BASE_MOVES[diver]:
@@ -564,8 +575,57 @@ func _ready() -> void:
 		if boss_intro_enabled:
 			_begin_boss_encounter()
 	else:
-		_log(encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies))
+		var intro := encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies)
+		if guardian_encounter:
+			intro = ITEM_CARRIER_INTRO
+			_intro_hold = intro
+		_log(intro)
 		_advance_turn()
+
+# The opening combat text for an enemy guarding an item. Kept above the
+# first "X's turn." line (which would otherwise replace it at once).
+const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
+var _intro_hold := ""
+
+# Enemies get a little stronger as the party unlocks its spells: every
+# scaled stat (not evasion, which is never scaled) gains another 1% while
+# fewer than half of the party's spells are unlocked, 2.5% from half, and
+# 5% once every one is - on top of the enemy's own boost. Not in the
+# tutorial fight.
+const UNLOCK_BONUS_SOME := 0.01
+const UNLOCK_BONUS_HALF := 0.025
+const UNLOCK_BONUS_ALL := 0.05
+
+func _unlock_bonus() -> float:
+	var known := 0
+	var total := 0
+	for d in party_source:
+		var diver := d as Diver
+		if diver == null:
+			continue
+		var tree: Dictionary = SpellTree.tree_for(diver.model_name)
+		for branch in tree:
+			total += (tree[branch] as Dictionary).size()
+		known += diver.known_spells.size()
+	if total == 0:
+		return 0.0
+	if known >= total:
+		return UNLOCK_BONUS_ALL
+	if known * 2 >= total:
+		return UNLOCK_BONUS_HALF
+	return UNLOCK_BONUS_SOME
+
+func _with_unlock_bonus(s: CombatantStats) -> CombatantStats:
+	if tutorial_encounter or s == null:
+		return s
+	var k := 1.0 + _unlock_bonus()
+	s.hp_max = int(round(float(s.hp_max) * k))
+	s.strength = int(round(float(s.strength) * k))
+	s.defense = int(round(float(s.defense) * k))
+	s.agility = int(round(float(s.agility) * k))
+	s.accuracy = int(round(float(s.accuracy) * k))
+	s.fill()
+	return s
 
 static func encounter_intro(entries: Array) -> String:
 	if entries.size() != 1:
@@ -1136,7 +1196,7 @@ func _build_stage() -> void:
 			party_actor_count += 1
 		party_centre /= maxf(1.0, float(party_actor_count))
 		boss.face_toward(party_centre)
-		var boss_stats := boss.make_stats(ref_stats, lvl)
+		var boss_stats := _with_unlock_bonus(boss.make_stats(ref_stats, lvl))
 		enemies.append({
 			"kind": "enemy", "stats": boss_stats,
 			"display_name": TethysBoss.DISPLAY_NAME,
@@ -1166,7 +1226,7 @@ func _build_stage() -> void:
 			party_actor_count += 1
 		party_centre /= maxf(1.0, float(party_actor_count))
 		g.face_toward(party_centre)
-		var st: CombatantStats = g.make_stats(ref_stats, lvl)
+		var st: CombatantStats = _with_unlock_bonus(g.make_stats(ref_stats, lvl))
 		if tutorial_encounter:
 			# Five-plus real turns (every scripted move, then however many
 			# more real ones it actually takes to win or lose once
@@ -1539,11 +1599,16 @@ func _build_ui() -> void:
 		_build_overhead_bar(entry)
 
 	log_label = RichTextLabel.new()
-	log_label.custom_minimum_size = Vector2(0, 36)
+	# Always room for two lines (e.g. "This enemy is carrying an item!..."
+	# above "X's turn."), and it grows for more - the panel refits around it
+	# (see _log()), moving the buttons down instead of covering the text.
+	log_label.custom_minimum_size = Vector2(0, LOG_MIN_HEIGHT)
+	log_label.fit_content = true
 	log_label.scroll_active = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(log_label)
+	# Added to `col` below, after the tutorial/level-up captions, so
+	# "X's turn." always reads under them.
 
 	# A second, wrapping line above the normal one-line log - the log's
 	# combat messages ("You strike for 12.") are too short-lived and terse
@@ -1596,6 +1661,7 @@ func _build_ui() -> void:
 	_levelup_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_levelup_caption.install_effect(PulseTextEffect.new())
 	col.add_child(_levelup_caption)
+	col.add_child(log_label)
 
 	main_menu = HFlowContainer.new()
 	main_menu.add_theme_constant_override("h_separation", 12)
@@ -2211,9 +2277,12 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	overlay.size.x = ((after - before) / max_value) * OVERHEAD_BAR_WIDTH
 	overlay.visible = true
 
+const LOG_MIN_HEIGHT := 56.0   # two lines of combat text
+
 func _log(text: String) -> void:
 	log_label.clear()
 	log_label.add_text(text)
+	call_deferred("_fit_panel_height")
 
 func _current_log_text() -> String:
 	return log_label.get_parsed_text()
@@ -2735,7 +2804,12 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_refresh_player_stats_panel()
 	_clear_stat_preview()
 	_show_turn_cursor_on(actor)
-	_log("%s's turn." % String(actor.display_name))
+	var turn_text := "%s's turn." % String(actor.display_name)
+	if _intro_hold != "":
+		turn_text = "%s
+%s" % [_intro_hold, turn_text]
+		_intro_hold = ""
+	_log(turn_text)
 	_set_all_buttons(true)
 	# Run stays off for the entire tutorial fight, not just its scripted
 	# steps - _set_all_buttons(true) just re-enabled it above like every
@@ -2796,12 +2870,25 @@ func _play_special_encounter_intro() -> void:
 # actor.actor is always the Diver battle-stage instance built in
 # _build_stage(), never a Goblin, so no type check needed before the cast.
 func _process(_delta: float) -> void:
+	# While a caption is waiting on "Press Enter to continue", the turn line
+	# ("X's turn.") stays hidden - it's not that turn yet until Enter is
+	# pressed. Captions that are just instructions keep it showing under them.
+	if is_instance_valid(log_label):
+		var show_log := not (_caption_awaits_enter(_tutorial_caption) or _caption_awaits_enter(_levelup_caption))
+		if log_label.visible != show_log:
+			log_label.visible = show_log
+			# A line more or less in the panel: refit it, or the bottom row
+			# (e.g. the enemy to click) gets pushed off the screen.
+			call_deferred("_fit_panel_height")
 	if not is_instance_valid(_turn_cursor) or not _turn_cursor.visible:
 		return
 	if not is_instance_valid(_turn_cursor_target):
 		_turn_cursor.visible = false
 		return
 	_turn_cursor.global_position = _turn_cursor_target.global_position + Vector3.UP * _turn_cursor_height
+
+func _caption_awaits_enter(caption: RichTextLabel) -> bool:
+	return is_instance_valid(caption) and caption.visible and caption.text.contains("Press Enter to continue")
 
 func _show_turn_cursor_on(actor: Dictionary) -> void:
 	if not actor.has("actor") or not is_instance_valid(actor.actor) or not is_instance_valid(_turn_cursor):
@@ -3806,7 +3893,7 @@ func _explain_other_stats() -> void:
 	# TutorialContent's shared page body - that same "Every Other Stat"
 	# text is also what the F1 general tutorial book shows outside of any
 	# fight, where "the status panels on either side" wouldn't mean anything.
-	var text := "HP is highlighted in purple in the status panels on either side - your party's on the left, the enemies' on the right. %s" % TutorialContent.page_body("Every Other Stat")
+	var text := "Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. %s" % TutorialContent.page_body("Every Other Stat")
 	await _tutorial_show_step(
 		text,
 		func() -> void:
@@ -4401,7 +4488,9 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 				var poison_level := maxi(1, int(round(float(target_stats.hp_max) * float(move.poison_fraction))))
 				target_stats.add_status("poison", poison_level, int(move.get("poison_turns", 3)))
 				var effects := result.get("effects", []) as Array
-				effects.append("Poison %d·%d" % [poison_level, int(move.get("poison_turns", 3))])
+				# Same wording as the status cards: "Poison 2 (3 turns left)".
+				var poison_turns := int(move.get("poison_turns", 3))
+				effects.append("Poison %d (%d %s left)" % [poison_level, poison_turns, "turn" if poison_turns == 1 else "turns"])
 				result["effects"] = effects
 			_react(target, result)
 			_show_combat_feedback(target, result)

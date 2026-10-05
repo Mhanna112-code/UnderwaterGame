@@ -178,7 +178,15 @@ func status_summary() -> String:
 	for status in statuses.keys():
 		var level := status_level(String(status))
 		var turns := status_turns(String(status))
-		parts.append("%s %d%s" % [String(status).capitalize(), level, "·%d" % turns if turns > 0 else ""])
+		var name := String(status).capitalize()
+		var left := " (%d %s left)" % [turns, "turn" if turns == 1 else "turns"] if turns > 0 else ""
+		# Stun's level is just how many turns it skips, so it reads as the
+		# turns left alone: "Stun (2 turns left)". The rest keep their amount:
+		# "Bleed 4", "Poison 2 (3 turns left)".
+		if String(status) == "stun":
+			parts.append(name + (left if turns > 0 else " (%d %s left)" % [level, "turn" if level == 1 else "turns"]))
+		else:
+			parts.append("%s %d%s" % [name, level, left])
 	return "  ".join(parts)
 
 # Adds XP and applies every level-up it crosses (a big win can jump more
