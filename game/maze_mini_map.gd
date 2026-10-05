@@ -116,6 +116,13 @@ func _box_segment(box: CSGBox3D) -> Array:
 
 func _process(_dt: float) -> void:
 	_update_revealed()
+	# Something found with the map up joins the legend straight away.
+	if _side_legend != null and _side_legend.visible:
+		var rows := _legend_entries_found().size()
+		var height := 44.0 + SIDE_LEGEND_ROW * rows + 6.0
+		if not is_equal_approx(_side_legend.size.y, height):
+			_side_legend.size.y = height
+			_side_legend.queue_redraw()
 	# While the map is closed the selection keeps tracking whatever wall set
 	# and current are nearest, so that's what's selected when L opens it.
 	# While it's open the player's arrow-key choice stands.
@@ -1136,11 +1143,36 @@ func _draw_side_legend() -> void:
 	ci.draw_rect(Rect2(Vector2.ZERO, ci.size), Color(0.3, 0.55, 0.95), false, 2.0)
 	var font := ThemeDB.fallback_font
 	ci.draw_string(font, Vector2(14, 26), "LEGEND", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.94, 1.0))
-	for i in SIDE_LEGEND_ENTRIES.size():
-		var entry: Array = SIDE_LEGEND_ENTRIES[i]
+	var shown := _legend_entries_found()
+	for i in shown.size():
+		var entry: Array = shown[i]
 		var mid := Vector2(30.0, 44.0 + SIDE_LEGEND_ROW * (i + 0.5))
 		_draw_legend_icon(ci, String(entry[0]), mid)
 		ci.draw_string(font, Vector2(58.0, mid.y + 5.0), String(entry[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, LEGEND_TEXT_COLOR)
+
+# Only what you've come across: an entry joins the legend once at least one
+# thing of its kind is on your map (you're always there). The panel is sized
+# to the entries it has.
+func _legend_entries_found() -> Array:
+	var kinds := {"you": true}
+	if not _revealed_walls.is_empty():
+		kinds["wall"] = true
+	if not _revealed_rooms.is_empty():
+		kinds["room"] = true
+	if maze_level != null:
+		for corridor in maze_level._currents_by_corridor:
+			if _is_discovered_corridor(corridor as Area3D):
+				kinds["current"] = true
+				break
+		for poi in _found_pois():
+			kinds[String(poi["kind"])] = true
+			if poi.has("rect"):
+				kinds["room"] = true
+	var out: Array = []
+	for entry in SIDE_LEGEND_ENTRIES:
+		if kinds.has(String(entry[0])):
+			out.append(entry)
+	return out
 
 func _draw_legend_icon(ci: CanvasItem, kind: String, c: Vector2) -> void:
 	match kind:
@@ -1259,6 +1291,7 @@ func _refresh_map_copy() -> void:
 			_map_help.visible = main_map.visible and legend.visible
 			if _side_legend != null:
 				_side_legend.visible = main_map.visible and legend.visible
+				_side_legend.size.y = 44.0 + SIDE_LEGEND_ROW * _legend_entries_found().size() + 6.0
 				_side_legend.queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
