@@ -133,6 +133,7 @@ run "animations: does every rig change state correctly" "$GODOT" --headless --pa
 run "swim: do they move, and animate while moving"    "$GODOT" --headless --path . --script verify/swim.gd
 run "current: can full upstream input cross the flow" "$GODOT" --headless --path . --script verify/current_barrier.gd
 run "Glassgoat combat: do the authored V2 rules hold" "$GODOT" --headless --path . --script verify/glassgoat_combat.gd
+run "Marc Evasion Down: does a real status immediately cap remaining EVA without refilling or double subtraction" "$GODOT" --headless --path . --script verify/marc_evasion_pool.gd
 run "Glassgoat follow-up: do roster and result-first presentation match Discord" "$GODOT" --headless --path . --script verify/glassgoat_discord_followup.gd
 run "combat Quick Read: do result choices, context, and all-target previews agree" "$GODOT" --headless --path . --script verify/combat_quick_read.gd
 run "combat content: do timing and actor lifetime contracts hold" "$GODOT" --headless --path . --script verify/combat_content_reconciliation.gd

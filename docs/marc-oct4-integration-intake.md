@@ -48,7 +48,7 @@ is locally verified, not yet hosted. Preview remains `b0bee59`.
 | #97 659ff69 / #99 7a27230 | Remove Reopen Tutorial Guide button; retain F1 | One shared removal; two practice buttons and optional world beacon remain. This does not remove the tutorial content. |
 | #97 1ec8be0 | Chest cutscene excludes movement/aim/Swap/map until real reward | Pending earned-chest admission; retain pause/scene-teardown safety, no stranded cutscene flag. |
 | #97 04bc26e | Ctrl current controls; boxed room labels | Ctrl controls admitted locally; room labels pending with earned-map/discovery legend. Supersedes 2a41c0f Shift controls. |
-| #97 6f4cca8 / #99 6ea109f | Evasion Down immediately caps remaining dodge pool | Effective-EVA subtraction already exists here. New immediate pool cap is pending; never double-subtract or refill spent EVA. |
+| #97 6f4cca8 / #99 6ea109f | Evasion Down immediately caps remaining dodge pool | Admitted: existing effective subtraction retained, immediate cap added. Actual Flash Blast/follow-up wrong dodge reproduced; repaired sequence and 1,260 generated cases pass without refilling spent EVA. |
 | #97 3d55fb8 | Embedded maze caption above World HP/O2 | Pending measured embedded ownership/layout, not a fixed-coordinate raw port. |
 | #97 835047b / #99 4a1ec34 | Orange-message FIFO/max four/coalesced toggles; popup FIFO | Orange banner queue pending. Popup FIFO already adapted with live WeakRef owners in 3d69a5b; deduplicate, do not overwrite it. |
 | #97 41aeb76 | Opaque separate map title band; larger Control Room POI | Title band admitted responsively; larger POI pending discovery/chest batch. |
@@ -70,7 +70,7 @@ is locally verified, not yet hosted. Preview remains `b0bee59`.
   heal/revive checks pass. Final shared status, actual F1/practice/menu and tutorial
   caption regressions pass without captured script errors. No hosted acceptance
   is implied by this local admission.
-- Current locally verified map batch: Ctrl+E/current selection, R preference
+- 99544d1 pushed map batch: Ctrl+E/current selection, R preference
   outside forced room, clockwise geometry cycles, readable strokes, Shift-only
   sinking, responsive title/help and restored-room first draw. Three real diver
   input cases, 24 discovery subsets, physical first-channel route, both-owner
@@ -78,6 +78,12 @@ is locally verified, not yet hosted. Preview remains `b0bee59`.
   pass without script errors. Native wide/short/portrait captures inspected.
   Detailed red receipts and invalid-oracle exclusions are in
   `verify/marc_maze_map_contract.bug-catalog.md`. Not hosted yet.
+- Current immediate-EVA batch: actual authored hit/follow-up red repaired with
+  Marc's cap, 1,260 arithmetic cases, Glassgoat rules, Quick Read, status and actual
+  puppet waves pass. Quick Read retained stale three-turn Bleed assertions from
+  before the earlier persistent port; those expectations are reconciled explicitly,
+  not counted as a newly fixed product tooltip. Detailed receipt catalog:
+  `verify/marc_evasion_pool.bug-catalog.md`. No hosted acceptance implied.
 - All other maze rows above remain pending. In particular, a new branch snapshot
   is not evidence that seamless geometry, acquired-map behavior or underpass
   traversal has been integrated or verified.

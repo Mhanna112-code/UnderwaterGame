@@ -2,6 +2,16 @@
 
 ## Current authoritative status
 
+Next bounded admission: Marc's immediate Evasion Down cap. Our effective-EVA
+subtraction already existed, but a real authored Flash Blast/follow-up attack
+reproduced a wrong dodge from the oversized remaining pool. Immediate min-cap
+repair passes that same sequence and 1,260 generated arithmetic cases without
+refilling spent EVA or double-subtracting. Glassgoat/Quick Read/status/actual puppet
+waves pass without script errors. Two old Quick Read three-turn Bleed assertions
+were stale after the preceding persistent-Bleed port; reconciled and disclosed,
+not called product defects. Map controls batch is now pushed as `99544d1`.
+Preview is still `b0bee59`, not these new local/pushed changes.
+
 Latest October 4 refresh: PR97 `c035c20` / PR99 `86878fa`, unchanged on a
 second fetch after verification. Nine new maze / three shared deltas are
 classified in the intake. Ctrl supersedes the intermediate Shift current keys.

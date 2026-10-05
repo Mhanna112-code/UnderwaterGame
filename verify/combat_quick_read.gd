@@ -78,8 +78,8 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 	if stabbing != null:
 		_expect("Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text,
 			"HARDCODED QUICK READ: 4 STR still renders '%s'" % stabbing.text)
-		_expect("fades after 3 turns" in stabbing.tooltip_text,
-			"STATUS CONTEXT DRIFT: tooltip does not describe current three-turn Bleed behavior")
+		_expect("rest of the fight" in stabbing.tooltip_text and "fades after 3 turns" not in stabbing.tooltip_text,
+			"STATUS CONTEXT DRIFT: tooltip invents expiry for Marc's battle-persistent Bleed")
 
 func _test_current_rule_context(battle: Battle) -> void:
 	var actor := battle._acting as Dictionary
@@ -93,8 +93,8 @@ func _test_current_rule_context(battle: Battle) -> void:
 	# invented three-turn Bite text.
 	var angler_bite := _enemy_combat("bite")
 	var bite_context := battle._move_tooltip_text(angler_bite, actor)
-	_expect("fades after 3 turns" in bite_context,
-		"BLEED DURATION DRIFT: Angler Bite must describe the current three-turn expiry")
+	_expect("rest of the fight" in bite_context and "fades after 3 turns" not in bite_context,
+		"BLEED DURATION DRIFT: Angler Bite invents expiry for Marc's battle-persistent Bleed")
 	var evasion_down := _enemy_combat("flash_blast")
 	var evasion_context := battle._move_tooltip_text(evasion_down, actor)
 	_expect("Evasion Down" in evasion_context,

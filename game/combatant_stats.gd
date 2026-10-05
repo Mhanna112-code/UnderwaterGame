@@ -189,6 +189,10 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 		"level": maxi(level, int(existing.get("level", 0))),
 		"turns": maxi(turns, int(existing.get("turns", 0))),
 	}
+	# Marc's timed debuff also shrinks the live dodge allowance immediately.
+	# Never refill a pool already spent by previous attacks this turn.
+	if status == "evasion_down":
+		evasion_current = mini(evasion_current, effective_evasion())
 
 func status_level(status: String) -> int:
 	return int((statuses.get(status, {}) as Dictionary).get("level", 0))
