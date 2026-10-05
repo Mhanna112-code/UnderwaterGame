@@ -555,8 +555,8 @@ The secret guardian assignment is settled: Cordys's approved two-wave puppet enc
 ### October 4 follow-up reconciliation: PR99, new PR97 and character delivery
 
 This is a new execution delta, not retrospective acceptance of the earlier
-preview. PR100's last delivered source is dcb7650 until the runtime manifest
-identifies a newer artifact. Main/public remain unchanged.
+preview. PR100's latest preview runtime is b0bee59, identified by the runtime
+manifest. Main/public remain unchanged.
 
 - Partial downloaded FBXs: admit nine authored spell clips through animation-
   only libraries while preserving complete existing models/motions. Verify
@@ -593,6 +593,21 @@ identifies a newer artifact. Main/public remain unchanged.
 - PR96 progression discussion is not authorization for a global combat
   rebalance; keep that audit separate. The local animation/UI work neither
   claims final balance nor substitutes for full earned-route/polish evidence.
+
+Later October 4 refresh: PR97 f3018f4 and PR99 d5134bf supersede those remote
+snapshots, not the integrated 58c6ed0 maze. Additional genuine first-parent
+maze deltas include rotating-wall riders, shared floor, HUD alignment, an
+embedded World/maze handoff, secret draft/prompt, split-rock conditions, boss
+rock/ring polish, developer start, battle-popup suppression and poster-wall
+fencing. The dd83f7a merge imports main history already present in PR100;
+do not mistake that inherited history for new maze design or replay it wholesale.
+The embedded-maze offset/passage is authored against Marc's older World layout
+and must be reconciled with our independent lab/deep route, confirmed puzzle
+exit, carried-party/checkpoint owner and campaign bosses before admission.
+PR99 additionally changes status wording, tutorial/caption fit and Bleed lifetime
+(3 turns → rest of fight). The latter is a real combat semantic change, not
+merely copy; prove its consumers and repeat the affected normal-resource wins.
+None of these newest deltas is claimed in the b0bee59 preview.
 
 Commit and verify each delta against the same stable feedback alias. Refresh
 remote heads before declaring all collaborator changes reconciled. Keep the

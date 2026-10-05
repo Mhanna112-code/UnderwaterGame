@@ -1,5 +1,35 @@
 # Maze and campaign integration audit log
 
+## October 4 b0bee59 preview admission and collaborator refresh
+
+Pushed cursor correction b0bee59 exported with Godot 4.7.1, exit 0 and no export
+errors: 93,209,800-byte PCK, SHA256
+de249eed5c6a1db0074c608c23738df1159b59b27034d2184ae10ffd0b014132.
+Immutable 8cvu27573 / dpl_77kdAJvGn1ekQY5RJKNJ1dJZEUmT passes actual served
+checksum, completed browser requests, ordinary title and real L-map. Actual
+mouse-selected Swift Strike in a real two-Shark encounter deals 3 and spends
+8 O2; early/impact/late browser frames inspected, caster visible and no clipped
+cursor. No page/script errors captured. Existing feedback alias points to this
+preview; stable-alias checksum, completed pack requests, ordinary title and
+real L-map recheck independently pass. Main/public not promoted.
+
+Earlier local b0bee59 cast attempt did not reach an encounter in its bounded
+single-direction swim and failed for absent Attack. Cause not established;
+do not count it green. Hosted same-source run reached a real encounter and
+passed without changing the input/result oracle. This is evidence for a real
+hosted cast, not acceptance of random-encounter timing or the first failed run.
+cb57436 hosted screenshot ENOSPC and earlier native capture timeouts remain
+unaccepted. Fourteen new cursor mid-pose native views pass; earlier full 42
+geometry views belong to cb57436. Support/menu regressions pass on b0bee59.
+
+Refreshing GitHub found additional PR97 f3018f4 and PR99 d5134bf work. The
+first-parent authored deltas and plan are recorded; large dd83f7a main-merge
+history is not new work absent from PR100. Embedded maze versus our independent
+lab route/checkpoint owner and persistent Bleed versus previous three-turn
+rule require semantic reconciliation and consumer proof. Newest upstream work,
+all-nine web gestures, normal earning, full route/audio/polish and refreshed
+Windows/Linux target playtests remain open. This increment is not merge-ready.
+
 ## October 4, 20:10 CDT hosted-cast attempt and small cursor follow-up
 
 cb57436 exports cleanly: PCK 93,209,848 bytes, SHA256

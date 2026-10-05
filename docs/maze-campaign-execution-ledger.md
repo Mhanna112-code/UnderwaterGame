@@ -2,6 +2,29 @@
 
 ## Current authoritative status
 
+October 4 character-delivery artifact: b0bee59 now serves the existing stable
+feedback alias, not main/public. PCK 93,209,800 bytes / SHA256
+de249eed5c6a1db0074c608c23738df1159b59b27034d2184ae10ffd0b014132.
+Immutable preview passed served bytes, completed browser pack requests, ordinary
+title, real L-map and mouse-selected Swift Strike. Cast frames were inspected;
+damage 3 and O2 100→92. Stable-alias served checksum, completed pack requests,
+ordinary title and real L-map independently pass on the same source. Fourteen fresh native
+mid-pose views assert the origin cursor hidden in addition to cb57436's earlier
+forty-two-view geometry run. Original failed timeout/ENOSPC/no-encounter attempts
+remain recorded, not counted as successes. Windows/Linux still use 1ccf92f.
+No all-nine browser or full earned-route/polish acceptance is claimed.
+
+Fresh collaborator refresh: PR97 f3018f4 and PR99 d5134bf add further changes
+after the previous bbadaaf/7e52dfc snapshots, including World-embedded maze,
+wall riders/floor/secret-wall/hallway conditions and popup ownership; plus
+status text, persistent Bleed and tutorial/caption sizing. These are NOT in the
+preview. The large maze merge brings in main history already present here;
+first-parent authored deltas, not a raw file-replacement diff, govern the next
+reconciliation. Preserve our independent lab and checkpoint/boss contracts.
+
+The following timestamped checkpoints are historical; the artifact above is
+the authoritative current one.
+
 October 4, 19:56 CDT cast-framing follow-up: first character-delivery commit
 446b6b9 was exported to an immutable preview, but was NOT assigned to the stable
 alias. Actual browser Swift Strike exposed full-party occlusion missed by the
