@@ -2847,6 +2847,7 @@ func _update_world_hud() -> void:
 		var purpose := route_state.exploration_goal("maze", key_items.has(MAP_ITEM), _completed) if route_state != null \
 			else "Find the navigation map in the Control Room."
 		goal.text = purpose
+		_layout_destination_label(goal)
 	if map_ok and _map_flash == null:
 		_map_flash = create_tween().set_loops()
 		_map_flash.tween_property(_world_hud_map, "modulate:a", 0.25, 0.45)
@@ -2864,6 +2865,35 @@ func _update_world_hud() -> void:
 		_tab_flash.kill()
 		_tab_flash = null
 		_world_hud_tab.modulate.a = 1.0
+
+func _layout_destination_label(goal: Label) -> void:
+	# Shared World HP/O2 stay visible inside the embedded maze. Reserve their
+	# actual bottom band rather than painting destination text through a bar.
+	var host := get_parent() as World
+	var viewport_size := get_viewport().get_visible_rect().size
+	var bottom := -16.0
+	if host != null:
+		for bar in [host.hp_bar, host.oxygen_bar]:
+			if bar != null and bar.is_visible_in_tree():
+				bottom = minf(bottom, (bar.get_parent() as Control).get_global_rect().position.y - viewport_size.y - 12.0)
+	goal.offset_left = 16.0
+	goal.offset_right = -16.0
+	goal.offset_bottom = bottom
+	goal.offset_top = bottom - 92.0
+	# Landscape-short screens can put the side party rows into this band.
+	# Use the free column beside them when there is enough reading width;
+	# tall/narrow screens keep the full-width destination below those rows.
+	if host != null and host._party_bars_box != null and host._party_bars_box.is_visible_in_tree():
+		# VBox can retain the hidden active member's allocation. Reserve only
+		# the painted rows, not that unused third-row space.
+		var party_bounds := Rect2()
+		for row in host._party_bars_box.get_children():
+			if row is Control and row.is_visible_in_tree():
+				party_bounds = row.get_global_rect() if party_bounds.size == Vector2.ZERO else party_bounds.merge(row.get_global_rect())
+		var bounds := Rect2(16.0, viewport_size.y + goal.offset_top, viewport_size.x - 32.0, 92.0)
+		var left := party_bounds.end.x + 12.0
+		if bounds.intersects(party_bounds) and viewport_size.x - left - 16.0 >= 300.0:
+			goal.offset_left = left
 
 # Legacy saves retain this flag, but it no longer controls a route or input.
 var _path_opened := false

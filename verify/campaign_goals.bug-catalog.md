@@ -31,11 +31,22 @@ lab/map/relic × stale-objective input product rather than five hand-picked case
 | GOAL-4 | Restoring the destination also restores retired control hints or draws a goal through notices, map lessons/overview, Inventory or grapple aim. | Actual R/Escape/L/Tab/F UI-owner transitions plus unchanged milestone text | Corrected fixture/native and rendered owners pass; exported browser pending |
 | GOAL-5 | The longer aim/swap title forces the control column beyond a narrow viewport, clipping the fire/cancel instructions. | Actual F aim and control-column viewport containment at 360px, rendered inspection | Native red one finding; final separated action lines/rendered 360px green; exported browser pending |
 | GOAL-6 | The public diagnostic maze entrance has no destination because it correctly bypasses the opening without earning its completion flag. | Actual --maze-playtest startup: visible Control Room goal, no fabricated opening/lab/map milestones; exported browser entrance | Exact browser screenshot and native red; native repaired flag route/non-mutating guidance green; new export pending |
+| GOAL-8 | Retained World HP/Oxygen covers the maze destination, hiding the next target (including Cordys). | Actual earned-map browser OCR and generated-state viewport/visible-bar rectangle invariants at desktop, short-landscape and narrow sizes | Browser red; original native short layout gives 120 overlap findings; local repair verification in progress |
 | LAB-1 | Actual laboratory victory never acknowledges computer/controller payoff or suggests the puzzle/maze. Current handler sets enter_maze and silently saves. | Real legal-move Tethys victory, visible payoff, Continue/save/load | Caught actual 12-action win with absent payoff; repaired locally |
 | LAB-2 | Payoff popup fits, but stale encounter warnings/gameplay HUD compete behind it. Rendered 360-width native page exposed this despite semantic success. | Actual rendered payoff, hidden HUD and restored HUD on Close | Caught visually; repaired locally |
 | LAB-3 | World pauses the laboratory-arrival announcement during battle/payoff and replays it after actual victory. It falsely announces a new Tethys arrival when Close restores HUD. | Actual legal-move victory → Close → no obsolete boss-arrival notice | Browser visual witness, native red one finding → local repair green |
 
 ## Self-critique
+
+GOAL-8 checks actual visible HP/Oxygen bands and visible party rows, not their
+parent's unused allocation. At 360x640 the VBox retains a 286px three-row
+allocation although the active member's row is hidden: the two visible rows
+end at y396, not y496. The initial narrow observer falsely counted that blank
+space as painted content; raw bounds are retained. Bottom-band overlap was
+independently witnessed in the browser screenshot and remains a strict
+assertion. Changing the layout without hiding destinations or moving painted
+content over them should pass. Earned-map browser screenshots are required
+separately; this fixture matrix does not establish route balance.
 
 GOAL-1 semantic words/destinations, not exact punctuation. Wrong-but-stable E/F
 or find-lab text after clearance fails. Concrete input product gives independent

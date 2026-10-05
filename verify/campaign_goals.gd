@@ -12,6 +12,12 @@ func _initialize() -> void:
 func _run() -> void:
 	if "--narrow" in OS.get_cmdline_user_args():
 		root.size = Vector2i(360, 640)
+	elif "--short" in OS.get_cmdline_user_args():
+		root.size = Vector2i(720, 480)
+	else:
+		# Headless SceneTree's default viewport is not the game's desktop
+		# window. Give the desktop bounds oracle its declared 1280x720 size.
+		root.size = Vector2i(1280, 720)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-dir="):
 			capture_folder = arg.trim_prefix("--capture-dir=")
@@ -69,6 +75,15 @@ func _run() -> void:
 					var text := goal.text.to_lower()
 					_expect(goal.is_visible_in_tree() and not "laboratory" in text and not "tethys" in text,
 						"GOAL-1 early maze has hidden/stale laboratory goal: " + label)
+					for bar in [world.hp_bar, world.oxygen_bar]:
+						_expect(not goal.get_global_rect().intersects((bar.get_parent() as Control).get_global_rect()),
+							"GOAL-8 shared health/Oxygen covers the restored maze destination: " + label)
+					for row in world._party_bars_box.get_children():
+						if row is Control and row.is_visible_in_tree():
+							_expect(not goal.get_global_rect().intersects(row.get_global_rect()),
+								"GOAL-8 side party bars cover the restored maze destination: " + label)
+					_expect(root.get_visible_rect().encloses(goal.get_global_rect()),
+						"GOAL-8 destination extends outside viewport: " + label)
 					if not has_map:
 						_expect("control room" in text and "map" in text, "GOAL-1 missing-map maze offers no actionable map goal: " + label)
 						_expect(not "find the navigation map" in (maze.get_node("HUD/Controls") as Label).text.to_lower(),

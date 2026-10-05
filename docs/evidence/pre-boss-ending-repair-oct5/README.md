@@ -35,8 +35,14 @@ it, then the same unchanged sources passed. These are not production bugs.
 Tests use the separate confirmed UnderwaterGame-gates-qL8P9b user-data namespace
 so older native verifiers cannot temporarily remove a person's ordinary slots.
 The partial full runner was stopped before source intake and is not a full
-suite pass. Browser success/rejected-IDB/cold Load, identified export/hosted
-acceptance and publication of this repair are still pending. Canonical's
+suite pass. Browser success/cold Load now pass on the identified local
+source6606c5b pack5098f894 (94,986,044bytes):13 actual fight actions, visible
+completion, responsive exclusive ending, actual Return to Title, destroyed-page
+cold Load of the durable pre-boss autosave, and unchanged manual/exact autosave
+bytes. Receipt and inspected ending360/cold-Load pictures are in browser-success.
+This supplied legal-kit fight does not establish earned campaign balance.
+Rejected-IDB verification, latest-main intake, final identified export/hosted
+acceptance and publication are still pending. Canonical's
 separate navigation deployment remains intact; these local fixes are not yet
 represented as live. Full earned routes, integration accounting, browser/Bomb
 Bot/audio/visual acceptance and matching native packages remain separate work.
