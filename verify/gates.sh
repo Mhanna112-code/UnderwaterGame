@@ -198,6 +198,10 @@ run "retained wall riders: do six walls carry three capsules both ways and relea
 run "retained rider lifecycle: do restore, killed Tween, inactive/removed owner and C5 arrival relinquish safe poses/locks" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --lifecycle
 run "retained rider ownership: do downed bodies retain resources and other motion owners keep their locks" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --ownership
 run "retained rider landing: does a new CSG obstruction plus real current preserve carry and clear release" "$GODOT" --headless --path . --script verify/maze_wall_riders.gd -- --blocked --currents
+run "poster boundary captured bypass: does real swimming stop before the western poster fence" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd
+run "poster boundary coverage: do three capsules stop at both ends in both directions and below the actual ceiling" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --matrix
+run "poster fence saved placements: do old/current-frame JSON restores retain resources and swimmable party positions" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --restore
+run "poster fence downed party: do overlapping saved downed bodies clear without revival, refill or effect loss" "$GODOT" --headless --path . --script verify/maze_poster_barriers.gd -- --restore --downed
 run "maze draft blocked exit: does solid-volume validation abort rather than bury the actor" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --blocked
 run "maze draft saves: do current/legacy JSON and cold Title Load preserve usable passages and shared resources" "$GODOT" --headless --path . --script verify/maze_draft_passages.gd -- --restore
 run "Box12 replacement route: do actual approach/No/Yes, three capsules, chest E/L and 36 migrated saves retain usable geometry/resources" "$GODOT" --headless --path . --script verify/maze_box12_route.gd

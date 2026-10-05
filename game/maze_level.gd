@@ -4772,6 +4772,26 @@ func _build_start_area_barriers() -> void:
 		far_z = maxf(far_z, p.z)
 	far_z += _PERIMETER_MARGIN
 	_spawn_barrier("StartBarrierSouth", Vector3(start_west.x - t * 0.5, 0, (start_west.z + far_z) * 0.5), Vector3(t, 0, far_z - start_west.z))
+	# Marc's poster boundary closes both ends of the hallway cap. The west
+	# extension reaches the perimeter, but stays south of the lab-side entry
+	# gap; do not replace that deliberate opening with a full west fence.
+	var end_wall := get_node_or_null("HallwayEndWall") as CSGBox3D
+	if end_wall != null:
+		var g: Dictionary = _wall_geometry(end_wall)
+		var a := g["negative_end"] as Vector3
+		var b := g["positive_end"] as Vector3
+		var west_end := a if a.x < b.x else b
+		var east_end := b if a.x < b.x else a
+		var line_z := end_wall.global_position.z
+		var b6 := $CSGBox3D6 as CSGBox3D
+		var b6_face := b6.global_position.x - b6.size.z * 0.5
+		if b6_face >= east_end.x:
+			_spawn_barrier("PosterWallBarrierEast", Vector3((east_end.x + b6_face) * 0.5, 0, line_z), Vector3(b6_face - east_end.x + t, 0, t))
+		var edge_x := west_end.x
+		for p in _collect_bounds_points():
+			edge_x = minf(edge_x, p.x)
+		edge_x -= _PERIMETER_MARGIN
+		_spawn_barrier("PosterWallBarrierWest", Vector3((edge_x + west_end.x) * 0.5, 0, line_z), Vector3(west_end.x - edge_x + t, 0, t))
 
 # An invisible wall (floor to well above the walls) centred at `center`'s
 # x/z, `footprint` x/z in size.
