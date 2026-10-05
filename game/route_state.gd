@@ -115,7 +115,10 @@ func exploration_goal(area: String, has_maze_map := false, has_relic := false) -
 	# Old objective strings describe a moment, not a durable destination.
 	# Use earned milestones and the current owner; entering the independent
 	# maze must neither complete the laboratory nor keep its HUD instructions.
-	if not prologue_complete:
+	# The active maze (including its explicit diagnostic entrance) needs a
+	# destination without fabricating an opening-completion milestone. World
+	# opening/title guidance remains hidden until genuine recovery.
+	if not prologue_complete and area != "maze":
 		return ""
 	if octopus_state == "defeated":
 		return "Journey complete. Cordys is defeated."

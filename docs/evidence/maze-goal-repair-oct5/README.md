@@ -40,3 +40,21 @@ earned/discovered map geometry; the actual browser acquisition checks do.
 Initial Angler removal remains a separately recorded current-main conflict.
 The Tethys opening/Cordys movie relocation stays LAST and requires Miguel's
 explicit review/approval before main or canonical publication.
+
+The first exact browser export (0bba64f, d1ff9ea5 pack) caught a separate
+GOAL-6 presentation gap in the real diagnostic entrance: its prologue flag
+correctly remains false, but that suppressed active maze guidance too.
+The actual native --maze-playtest startup reproduces the missing destination.
+The repair allows maze guidance independently of that flag without mutating
+it, laboratory progress or acquired map state; unfinished World opening
+guidance still stays hidden. Final native review-route checks pass. The
+opening sequence/actors are not changed. Browser proof requires a new export.
+
+The complete runner was stopped at orange_messages before older save tests
+could temporarily remove ordinary human slots. The isolated rerun uses the
+same linked game/test sources and exact exported browser pack, but a copied
+project.godot with only config/name changed to UnderwaterGame-gates-qL8P9b.
+The observed OS user-data directory confirms the separate namespace. This is
+verification filesystem isolation, not a changed public game build. Existing
+human save filenames remain present. The complete rerun is still in progress;
+its result is not implied by the focused greens above.
