@@ -1,26 +1,14 @@
-# A small glowing pickup: what a shockwaved rock actually leaves behind now
-# (see cracked_wall.gd's `broken` signal and world.gd's break handler)
-# instead of the old instant-heal-on-break. Same trigger shape as
-# lock_plate.gd - an Area3D on collision layer 2 (divers), body_entered
-# does the whole job.
-#
-# Doesn't apply its own item - that's Items.grant()'s job, called by
-# whoever's listening to `collected` (world.gd). This just represents "an
-# item is sitting here" and disappears the instant something picks it up.
+# Glowing pickup left by a shockwaved rock. Area3D on layer 2; emits `collected` (World applies the item).
 class_name ItemOrb
 extends Area3D
 
 signal collected(item_id: String, diver: Diver)
 
 @export var item_id := ""
-# Maze options: `golden` gives it a gold shimmer (pulsing glow, sparkles, a
-# little light) so it reads as "grab this"; `grappleable` lets Musashi's
-# grapple hit it - the diver stays put and reels the orb toward themselves
-# (handy for orbs left floating out of reach).
+# Maze options: `golden` adds a gold shimmer; `grappleable` lets Musashi's grapple reel it in.
 @export var golden := false
 @export var grappleable := false
-# Only a grapple picks this one up; swimming into it just says so (the
-# `needs_ability` signal - MazeLevel shows the message).
+# Grapple-only pickup; swimming into it emits `needs_ability`.
 @export var grapple_only := false
 signal needs_ability(diver: Diver)
 
@@ -41,9 +29,7 @@ func _ready() -> void:
 	_mat = StandardMaterial3D.new()
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mat.emission_enabled = true
-	# Key items never drop from a rock (see Items.EVEN_DROP_ORDER) - orbs
-	# only ever carry a consumable, so there's no "key item" color case to
-	# handle here at all, unlike Items.grant()'s match.
+	# Orbs only carry consumables, so no key-item color.
 	var c := Color(0.95, 0.85, 0.3) if item_id == "potion" else Color(0.4, 0.85, 0.95)
 	if golden:
 		c = Color(1.0, 0.78, 0.25)
@@ -67,18 +53,14 @@ func _ready() -> void:
 
 	body_entered.connect(_on_body_entered)
 
-# Bob and spin in place so a pop of orbs scattered across the seabed reads
-# as "things you can grab," not just more scenery - same "make the
-# interactive object visually distinct" instinct cracked_wall.gd's header
-# comment already calls out for the rocks themselves.
+# Bob and spin so orbs read as pickups.
 func _process(dt: float) -> void:
 	_bob_t += dt
 	_mesh.position.y = sin(_bob_t * 2.4) * 0.12
 	_mesh.rotate_y(dt * 1.6)
 
 func _on_body_entered(body: Node3D) -> void:
-	# Mid-flight reward ownership belongs to the shooter, not a bystander
-	# whose body happens to touch the item while it crosses the party.
+	# Mid-flight, only the shooter can collect it.
 	if _reeling or _collected:
 		return
 	if body is Diver:
@@ -90,8 +72,7 @@ func _on_body_entered(body: Node3D) -> void:
 func _collect(diver: Diver) -> void:
 	if _collected or is_queued_for_deletion() or not is_instance_valid(diver) or diver.is_queued_for_deletion():
 		return
-	# Set before listeners run: a synchronous collection callback may itself
-	# cause another overlap/collection attempt before queue_free completes.
+	# Set before listeners run, since a callback may trigger another collection.
 	_collected = true
 	collected.emit(item_id, diver)
 	queue_free()
@@ -141,10 +122,7 @@ func _add_golden_shimmer() -> void:
 	light.omni_range = 3.0
 	add_child(light)
 
-# What the grapple's ray actually hits: a small body on its own collision
-# layer (5), so divers (which only collide with layer 1) never bump into it
-# and the camera's wall check ignores it, but the grapple's dedicated ray
-# mask does not. The orb follows the shooter, shrinking as it arrives.
+# Grapple target body on layer 5 (ignored by divers and the camera). Follows the shooter, shrinking.
 class GrappleTarget extends StaticBody3D:
 	var orb: ItemOrb
 	var _reel_tween: Tween

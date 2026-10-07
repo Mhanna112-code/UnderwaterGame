@@ -82,9 +82,7 @@ func _ready() -> void:
 		_video.play()
 	_action_button.grab_focus()
 
-# Web Theora can keep its clock running past EOF without emitting finished
-# (same guard as OpeningVideo._process()), which would now leave the scene
-# stuck with no Continue button to fall back on.
+# Web Theora may not emit finished at EOF (same guard as OpeningVideo).
 func _process(_dt: float) -> void:
 	if _completed or _finished_playing or not is_instance_valid(_video) or _video.stream == null:
 		return

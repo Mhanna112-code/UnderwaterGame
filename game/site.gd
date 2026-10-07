@@ -1,19 +1,5 @@
-# One place on the seabed, built so that arriving somewhere feels like it.
-#
-# A site is marked by broken columns round the rim. Sites without guarded
-# items also have a low berm ring; item locations omit that ring so it does
-# not signpost either special or ordinary rewards. The enclosure narrows the
-# volume, which is the only thing that makes an encounter inside it mean
-# anything in three dimensions, where anything in open water can be swum around.
-#
-# No plinth at the middle - a combat site's guarded item is discovered via
-# sonar/proximity, not walked up to (see item_guardian.gd's own comment on
-# the on-screen guardian having been removed already). A permanent stone
-# pedestal sitting at the exact item location from the moment the world
-# loads gave away every guarded item's whereabouts on sight, defeating that
-# discovery entirely - it was the one piece of the old "guardian standing on
-# its plinth" presentation that never got cleaned up when the guardian
-# itself did.
+# One seabed site: broken columns round the rim, plus a berm ring unless it guards an item.
+# No centre plinth, so guarded item locations aren't signposted before sonar discovery.
 class_name Site
 extends Node3D
 
@@ -27,8 +13,7 @@ func build(d: Dictionary) -> void:
 	position.y = 0.0
 	var r: float = float(d.radius)
 
-	# the berm: a low ring you cross to get in. Guarded item locations omit it
-	# so their positions aren't signposted before discovery.
+	# Berm ring; item sites omit it so they aren't signposted.
 	if String(d.get("item", "")) == "":
 		var berm := MeshInstance3D.new()
 		var torus := TorusMesh.new()
@@ -41,8 +26,7 @@ func build(d: Dictionary) -> void:
 		berm.position.y = -0.35
 		add_child(berm)
 
-	# broken columns round the rim, thinning towards the entrance so the way
-	# in reads without anybody drawing an arrow on it
+	# Columns thin toward the entrance so the way in reads.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(d.id))
 	var count: int = 9 if String(d.kind) == "combat" else 5
@@ -64,32 +48,16 @@ func build(d: Dictionary) -> void:
 	if String(d.kind) == "anchor":
 		_descent_line()
 
-# Where the descent chain stands, relative to the site's middle.
-#
-# NOT the middle, which is where it used to be and where the party spawns.
-# Glass_Goat opened the build and reported "this time I started impaled":
-# the chain is a 34 m pole running from the seabed to the surface through
-# x=0, z=0, and Staff_Diver spawns at exactly that point.
-#
-# Offset diagonally rather than straight back: the other two divers stand at
-# negative Z and the start camera looks along it, so a chain directly behind
-# the party is both crowded and pointed at the lens. From here it is 5.1 m
-# from the nearest spawn and off to one side of the opening shot.
+# Descent chain offset from the centre (the spawn point) and off to the side of the opening camera.
 const DESCENT_AT := Vector3(3.6, 0.0, 3.6)
 
-# Where this site puts something solid enough to stand inside. Used by
-# verify/sites.gd to check nobody spawns in it. A combat site no longer
-# places anything solid at its own center (see build()'s removed plinth
-# call), but still reserves that point - narrow-but-empty is still worth
-# keeping a spawn off of, since it's the framing center every combat
-# encounter there is built around.
+# Solid-ish points to keep spawns off; verify/sites.gd checks them. The centre stays reserved.
 func furniture_points() -> Array:
 	if String(data.get("kind", "")) == "anchor":
 		return [global_position + DESCENT_AT]
 	return [global_position]
 
-# where you came down. It is the only thing on the map that points at the
-# surface, and it is what an ending would eventually bookend.
+# The descent chain: the only marker pointing to the surface.
 func _descent_line() -> void:
 	var chain := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()

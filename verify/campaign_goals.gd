@@ -71,29 +71,10 @@ func _run() -> void:
 						and not world.route_objective_panel.is_visible_in_tree()
 						and not world.get_node("HUD/Controls").is_visible_in_tree(),
 						"GOAL-1 maze loses shared health or retains World guidance/controls: " + label)
+					# The maze shows no objective line (removed on request).
 					var goal := maze.get_node("HUD/GoalLabel") as Label
-					var text := goal.text.to_lower()
-					_expect(goal.is_visible_in_tree() and not "laboratory" in text and not "tethys" in text,
-						"GOAL-1 early maze has hidden/stale laboratory goal: " + label)
-					for bar in [world.hp_bar, world.oxygen_bar]:
-						_expect(not goal.get_global_rect().intersects((bar.get_parent() as Control).get_global_rect()),
-							"GOAL-8 shared health/Oxygen covers the restored maze destination: " + label)
-					for row in world._party_bars_box.get_children():
-						if row is Control and row.is_visible_in_tree():
-							_expect(not goal.get_global_rect().intersects(row.get_global_rect()),
-								"GOAL-8 side party bars cover the restored maze destination: " + label)
-					_expect(root.get_visible_rect().encloses(goal.get_global_rect()),
-						"GOAL-8 destination extends outside viewport: " + label)
-					if not has_map:
-						_expect("control room" in text and "map" in text, "GOAL-1 missing-map maze offers no actionable map goal: " + label)
-						_expect(not "find the navigation map" in (maze.get_node("HUD/Controls") as Label).text.to_lower(),
-							"GOAL-3 duplicate map instructions compete across status/goal surfaces: " + label)
-					elif has_relic:
-						_expect("cordys" in text and not "to the relic" in text,
-							"GOAL-1 acquired relic leaves stale relic goal instead of Cordys: " + label)
-					else:
-						_expect("relic" in text and "cordys" in text,
-							"GOAL-1 earned-map guidance omits exploration/final destination: " + label)
+					_expect(not goal.is_visible_in_tree() and goal.text == "",
+						"GOAL-1 maze shows an objective line: " + label)
 					if stale == "" and not lab_done and (has_map or not has_relic):
 						await _capture("maze-relic" if has_relic else "maze-map" if has_map else "maze-before-map")
 					_expect(world.route_state.lab_state == ("cleared" if lab_done else "locked"),
@@ -173,16 +154,15 @@ func _goal_ownership() -> void:
 	var goal := maze.get_node("HUD/GoalLabel") as Label
 	var controls := maze.get_node("HUD/Controls") as Label
 	var purpose := goal.text
-	_expect(maze.maze_active and goal.is_visible_in_tree() and not controls.visible
-		and not "E:" in purpose and not "F:" in purpose,
-		"GOAL-4 restored destination is hidden or restores retired generic hints")
+	_expect(maze.maze_active and not goal.is_visible_in_tree() and purpose == "" and not controls.visible,
+		"GOAL-4 maze shows an objective line or restores retired generic hints")
 	await _capture("goal-before-owners")
 	await _key(KEY_R)
 	_expect(maze._banner.is_visible_in_tree() and not goal.is_visible_in_tree(),
 		"GOAL-4 destination competes with actual R notice")
 	await create_timer(4.3).timeout
-	_expect(goal.is_visible_in_tree() and goal.text == purpose and not controls.visible,
-		"GOAL-4 drained notice loses destination or revives generic controls")
+	_expect(not goal.is_visible_in_tree() and not controls.visible,
+		"GOAL-4 drained notice revives an objective line or generic controls")
 	await _key(KEY_ESCAPE)
 	_expect(maze.inventory_menu.visible and not goal.is_visible_in_tree(),
 		"GOAL-4 destination competes with actual Inventory reading")
@@ -190,8 +170,8 @@ func _goal_ownership() -> void:
 		and not world._party_bars_box.is_visible_in_tree(),
 		"GOAL-9 shared health paints above embedded Inventory reading")
 	await _key(KEY_ESCAPE)
-	_expect(not maze.inventory_menu.visible and goal.is_visible_in_tree(),
-		"GOAL-4 closing Inventory loses destination")
+	_expect(not maze.inventory_menu.visible and not goal.is_visible_in_tree(),
+		"GOAL-4 closing Inventory brings back an objective line")
 	_expect(world.hp_bar.is_visible_in_tree() and world.oxygen_bar.is_visible_in_tree(),
 		"GOAL-9 closing embedded Inventory loses shared exploration health")
 	await _key(KEY_L)

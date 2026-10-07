@@ -1,29 +1,17 @@
-# Glassgoat's Mermaid Freak is Tethys, an authored boss. It is deliberately a
-# separate combatant from Goblin: the meeting clarified that normal grunts
-# will eventually be replaced by fish, while this four-armed creature is the
-# massive authored boss. Godot does not expose usable surface materials from
-# this FBX import, so _apply_validation_materials() preserves the saturated-red
-# intent Glassgoat confirmed for the playable review build. That engine-side
-# fallback is not a request for Glassgoat to reauthor the ready asset.
+# Tethys, the authored four-armed boss (Glassgoat's Mermaid Freak), separate from Goblin.
+# The FBX import exposes no usable materials, so _apply_validation_materials() applies the confirmed saturated red.
 class_name TethysBoss
 extends Node3D
 
 const SRC := preload("res://characters/Mermaid_Freak.fbx")
 
-# Laboratory presentation can select a compatible delivered variant while
-# keeping one animation/combat adapter. Default/reference presentation stays
-# unchanged; this is not the review-gated opening identity/film change.
+# Lets the lab use a compatible model variant with the same adapter.
 var model_scene: PackedScene = SRC
 
 const DISPLAY_NAME := "Tethys"
 const BASE_XP := 75
 
-# The encounter cycles through all six authored attack clips before
-# repeating. The first three mechanics come directly from Glassgoat's
-# meeting explanation: Double Scratch pressures evasion through two hits,
-# Tail Sweep attacks the whole party through armour, and Poison Breath
-# poisons the whole party. The other clips are playable provisional roles so
-# none of the delivered animation work is hidden from the review build.
+# Cycles all six attack clips; Double Scratch, Tail Sweep and Poison Breath follow the designer's spec.
 const MOVES := [
 	{
 		"id": "double_scratch", "name": "Double Scratch",
@@ -40,8 +28,7 @@ const MOVES := [
 	{
 		"id": "poison_breath", "name": "Poison Breath",
 		"clip": "poison_breath", "target": "all", "hits": 1,
-		# Levels unlock spells, not HP growth. Preserve the authored 15% poison
-		# contract, but do not also deliver a near-lethal direct breath hit.
+		# Keeps the 15% poison without a near-lethal direct hit (divers don't gain HP with levels).
 		"power": 0, "acc_mod": 1, "poison_fraction": 0.15, "poison_turns": 3,
 		"intent": "Party-wide pressure that continues for three turns",
 	},
@@ -98,8 +85,7 @@ func _ready() -> void:
 	var box := _world_aabb(model)
 	height = maxf(0.1, box.size.y)
 	radius = maxf(0.6, maxf(box.size.x, box.size.z) * 0.5)
-	# Preserve the artist's scale. Only move the imported root enough to put
-	# the model's measured feet on the stage floor.
+	# Keep the artist's scale; only lift the model so its feet sit on the floor.
 	model.position.y -= box.position.y
 	_apply_validation_materials(model)
 
@@ -115,9 +101,7 @@ func head_offset() -> float:
 func foot_offset() -> float:
 	return 0.0
 
-# Mermaid_Freak was authored with its visible front along local +Z. Godot's
-# default Node3D look_at convention points -Z, so use_model_front must remain
-# true whenever combat turns this actor toward somebody.
+# The model faces local +Z, so use_model_front must stay true when turning it.
 func face_toward(world_target: Vector3) -> void:
 	var level_target := Vector3(world_target.x, global_position.y, world_target.z)
 	if global_position.distance_squared_to(level_target) > 0.0025:
@@ -126,11 +110,7 @@ func face_toward(world_target: Vector3) -> void:
 func make_stats(_ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = BASE_XP + maxi(0, player_level - 1) * 12
 	var s := CombatantStats.new()
-	# Current divers stay at 10 HP even at level 3. The former scaling imagined
-	# stat growth that does not exist and killed the party in two boss turns.
-	# Fixed encounter tuning admits earned spells/control and armor payoff;
-	# larger XP levels must not strengthen the boss faster than the player.
-	# Animation-cycle validation is separate from real attainable victory.
+	# Fixed tuning: divers stay at 10 HP, so the boss must not scale with level.
 	s.hp_max = 65
 	s.strength = 1
 	s.defense = 1
@@ -185,9 +165,7 @@ func _fade_after_death() -> void:
 	tween.set_parallel(false)
 	tween.tween_callback(queue_free)
 
-# The delivered transition clips are exercised in their intended order
-# before the first turn: Start -> Loop -> End -> Idle, instead of jumping
-# directly from idle into the loop and back.
+# Play the transition clips in order: Start -> Loop -> End -> Idle.
 func play_swim_intro() -> void:
 	for key in ["swim_start", "swim_loop", "swim_end"]:
 		var length := play(key)
@@ -229,9 +207,7 @@ func _apply_validation_materials(root: Node) -> void:
 		var mesh := mesh_value as MeshInstance3D
 		for surface in range(mesh.mesh.get_surface_count()):
 			var material := StandardMaterial3D.new()
-			# Two related reds retain separation between the body and face surfaces
-			# while preserving the saturated-red intent confirmed by Glassgoat. The
-			# eventual dark boss arena supplies the intended presentation context.
+			# Two reds keep body and face surfaces distinct.
 			material.albedo_color = Color("9f2435") if surface_index % 2 == 0 else Color("c24a50")
 			material.roughness = 0.72
 			material.metallic = 0.05

@@ -1,14 +1,5 @@
-# A plain Button whose tooltip word-wraps and always opens directly ABOVE
-# the button. Used by _menu_button() (battle.gd) for every menu button.
-#
-# Godot's built-in tooltip opens below the mouse cursor and only flips above
-# when it would run past the bottom of the screen. The battle menu sits at
-# the bottom edge, so whether a given move's tooltip "fit" below depended on
-# its text height and exactly where the cursor was - one move's tooltip
-# opened below (Crushing Haymaker) while its neighbours' flipped above. This
-# button suppresses the built-in tooltip (_get_tooltip() returns "") and
-# shows its own panel instead, positioned from the button's rect rather than
-# the cursor, so every tooltip lands in the same place.
+# Button whose word-wrapped tooltip always opens directly above it (the built-in one is suppressed),
+# so every battle menu tooltip lands in the same place.
 class_name TooltipButton
 extends Button
 

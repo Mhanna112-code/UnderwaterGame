@@ -1,10 +1,4 @@
-# A rest spot: standing on one is what makes SavePointMenu reachable at
-# all (see world.gd's _update_save_point_prompt/_toggle_save_menu) - spell
-# learning/equipping isn't available anywhere else, on purpose. Tracks
-# occupants as a list rather than one like LockPlate does, since divers
-# don't collide with each other (layer 2, see diver.gd) and could in
-# principle overlap here - has_diver() just needs to answer "is this
-# particular diver currently in range," not "who got here first."
+# Rest spot that makes SavePointMenu reachable. Tracks a list of occupants since divers can overlap.
 class_name SavePoint
 extends Area3D
 
@@ -17,9 +11,7 @@ var disabled = false
 
 func _ready() -> void:
 	if not disabled:
-		# Same reason every other Area3D in this project sets this - divers
-		# are on collision layer 2, and Area3D's default mask only watches
-		# layer 1 (see lock_plate.gd/whirlpool.gd for the identical fix).
+		# Divers are on layer 2.
 		collision_mask = 2
 		body_entered.connect(_on_body_entered)
 		body_exited.connect(_on_body_exited)
@@ -35,9 +27,7 @@ func _ready() -> void:
 		_mat.emission = Color(0.3, 0.75, 0.95)
 		_mat.emission_energy_multiplier = 1.4
 		_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		# A solid foreground crystal can completely hide the chase-camera diver.
-		# Fade just this decorative crystal near the camera, not the ground ring
-		# or rest/save contact volume. The landmark remains opaque at distance.
+		# Fade the decorative crystal near the camera so it can't hide the diver.
 		_crystal = mesh
 		_crystal_material = _mat.duplicate() as StandardMaterial3D
 		_crystal_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -49,8 +39,7 @@ func _ready() -> void:
 		ring.outer_radius = 1.4
 		var ring_mesh := MeshInstance3D.new()
 		ring_mesh.mesh = ring
-		# TorusMesh already lies in XZ. Rotating it 90 degrees makes an upright
-		# opaque ring whose edge hides the diver even after the prism fades.
+		# Lay the torus flat so its edge doesn't hide the diver.
 		ring_mesh.position.y = footprint_offset_y
 		ring_mesh.material_override = _mat
 		add_child(ring_mesh)
@@ -89,8 +78,7 @@ func _process(_delta: float) -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
 		return
-	# Explicit opacity also works in the Compatibility/web renderer, where
-	# shader distance fading did not remove the near-camera foreground prism.
+	# Explicit opacity also works in the Compatibility/web renderer.
 	var distance := camera.global_position.distance_to(_crystal.global_position)
 	var opacity := clampf((distance - 5.0) / 3.0, 0.0, 1.0)
 	_crystal.visible = opacity > 0.01

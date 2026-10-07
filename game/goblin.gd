@@ -1,37 +1,21 @@
-# The ordinary enemy's model, sized and floor-aligned once here so nothing else
-# has to care about its FBX units. Its gameplay class deliberately remains
-# Goblin: combat, balance and saved-game code already depend on that stable
-# actor contract. The visible model is Glassgoat's Angler Fish. Display only:
-# no collision or world movement. Used by game/battle.gd on the battle stage.
+# Ordinary enemy actor (class stays Goblin for combat/save compatibility); shows the Angler Fish.
+# Display only: sized and floor-aligned here, no collision or movement.
 class_name Goblin
 extends Node3D
 
 const SRC := preload("res://characters/Angler_Fish.fbx")
 const TARGET_HEIGHT := 1.6
 
-# Unlike the retired Goblin and the divers, this rig's visible face is its
-# local +Z axis. Battle uses face_toward() instead of assuming all actors have
-# the same forward axis.
+# This rig faces local +Z; battle uses face_toward() rather than assuming a forward axis.
 const COMBAT_FRONT_AXIS := Vector3.FORWARD
 
-# MODIFIED (changed): a grunt's stats used to be derived from the party's
-# own current stats (battle.gd hands make_stats() the party's average
-# CombatantStats) plus a random 8-35% "edge" on top, so no two fights
-# against the same enemy type played out quite the same and difficulty
-# implicitly tracked the party's own growth. Replaced with Angler's own
-# authored species base instead, with a 5-10% rounded encounter roll on
-# non-Evasion stats and a separate learned-spell bonus owned by Battle.
+# Authored species base stats; a 5-10% encounter roll is applied to non-Evasion stats.
 const BASE_STATS := {
 	"hp": 5, "strength": 2, "defense": 0, "agility": 2,
 	"evasion": 1, "accuracy": 3,
 }
 
-# Dev-only revert switch, same --flag/?query=1 convention world.gd's own
-# playtest routes use (_boss_playtest_requested() and friends) - brings
-# back the exact old floor+random-edge formula below instead of BASE_STATS/
-# SwordDuelist.DUELIST_BASE_STATS, purely so old vs. new balance can be
-# compared side by side while testing. Off by default; a real player always
-# gets the authored species stats with the smaller encounter roll.
+# Dev-only switch (--flag/?query=1) restoring the legacy floor+random-edge formula for comparison.
 static func legacy_scaling_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--legacy-enemy-scaling"):
 		return true
@@ -40,8 +24,7 @@ static func legacy_scaling_requested() -> bool:
 		return String(search).contains("legacy_enemy_scaling=1")
 	return false
 
-# The exact floor/edge formula every enemy used before BASE_STATS/
-# DUELIST_BASE_STATS replaced it - kept only for legacy_scaling_requested().
+# Legacy floor/edge formula, used only by legacy_scaling_requested().
 const LEGACY_FLOOR_STATS := {
 	"hp": 15, "strength": 3, "defense": 1, "agility": 3,
 	"evasion": 2, "accuracy": 3,
@@ -64,10 +47,7 @@ func _legacy_stats_from(ref: CombatantStats) -> CombatantStats:
 	s.fill()
 	return s
 
-# XP a win pays out, before level scaling (see make_stats). Read by
-# game/battle.gd's _win() as enemy_actor.xp_reward - a grunt matched to a
-# high-level party is worth more than the same fight at level 1, not a flat
-# amount regardless of how tough the party it was scaled against actually is.
+# XP a win pays out before level scaling; read by battle.gd's _win().
 const BASE_XP := 10
 var xp_reward: int = BASE_XP
 
@@ -89,10 +69,7 @@ func _ready() -> void:
 	var raw_height: float = maxf(box.size.y, 0.05)
 	model.scale *= TARGET_HEIGHT / raw_height
 	box = _world_aabb(model)
-	# Some delivered creatures are much longer than they are tall. Height-only
-	# normalization makes those rigs technically 1.6 m high but wide enough to
-	# leave the battle stage or cover the party. Subclasses can declare a real
-	# presentation cap without changing ordinary Angler sizing.
+	# Long rigs can declare a presentation cap so height normalization doesn't make them too wide.
 	var horizontal_span := maxf(box.size.x, box.size.z)
 	var horizontal_cap := max_visual_horizontal_span()
 	if horizontal_cap < INF and horizontal_span > horizontal_cap:
@@ -120,9 +97,7 @@ func _ready() -> void:
 	_attack_anim = _resolve_clip(primary_attack_clip())
 	play("idle")
 
-# The existing Goblin class is the stable enemy actor contract used by battle,
-# guardian triggers, progression and balance. Subclasses swap only asset-facing
-# facts; all of those systems can keep treating the actor as a Goblin.
+# Subclasses swap only asset-facing facts; systems still treat the actor as a Goblin.
 func model_source() -> PackedScene:
 	return SRC
 
@@ -138,53 +113,35 @@ func display_name() -> String:
 func primary_attack_clip() -> String:
 	return "attack)bite"
 
-# Height normalization is sufficient for most rigs. Long-bodied subclasses
-# can override this to keep their largest horizontal visual dimension within
-# a camera-friendly span.
+# Long-bodied subclasses can override to cap their horizontal span.
 func max_visual_horizontal_span() -> float:
 	return INF
 
-# Battle framing must measure the imported mesh, not infer its footprint from
-# a generic collision radius. Returned in world space so the stage camera can
-# use every actual corner regardless of the actor's rotation or FBX hierarchy.
+# World-space mesh bounds for battle framing.
 func visual_bounds() -> AABB:
 	return _world_aabb(self)
 
-# This one stands its model's feet on its own origin (see _ready()'s
-# model.position.y line), which is the opposite of what diver.gd does. Both
-# conventions are fine; assuming either one is not. See Diver.head_offset().
+# Feet sit on the origin (opposite of diver.gd); see Diver.head_offset().
 func head_offset() -> float:
 	return height
 
 func foot_offset() -> float:
 	return 0.0
 
-# `ref` (the party's average CombatantStats, still passed by battle.gd's
-# _build_stage()) only matters at all when legacy_scaling_requested() is on
-# - see BASE_STATS' own comment for why it's otherwise unused. Kept as a
-# parameter anyway so this stays a drop-in override for SwordDuelist.
-# make_stats() and a stable call signature for battle.gd.
+# `ref` is only used by the legacy route; kept so the signature matches SwordDuelist.make_stats().
 func make_stats(ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	xp_reward = maxi(1, int(round(float(BASE_XP) * (1.0 + float(maxi(player_level - 1, 0)) * 0.12))))
 	if legacy_scaling_requested():
 		return _legacy_stats_from(ref)
 	return _stats_from(BASE_STATS)
 
-# A per-stat 5-10% boost on top of `base`, independently rolled per stat -
-# same "no two fights play out quite the same, one stat might land tougher
-# than another" flavor the old floor+edge formula had, just a smaller,
-# tighter range now that `base` is each enemy's own real stats rather than
-# a bare-minimum floor under the party's own (usually much higher) numbers.
+# Independent 5-10% boost per stat on top of `base`.
 const BOOST_MIN := 1.05
 const BOOST_MAX := 1.10
 func _boost() -> float:
 	return randf_range(BOOST_MIN, BOOST_MAX)
 
-# Shared by SwordDuelist's own make_stats() override, so both "read a fixed
-# stat block, boost it, and remember the un-boosted floor" only exists once.
-# stat_floor is `base` itself, unboosted - a debuff (Weaken/Slow/...) can
-# knock this fight's boosted starting value back down, but never past the
-# species' own real stat (see battle.gd's _apply_debuff()).
+# Shared with SwordDuelist. stat_floor is the unboosted base, so debuffs can't go below it.
 func _stats_from(base: Dictionary) -> CombatantStats:
 	var s := CombatantStats.new()
 	s.hp_max = int(round(float(base.hp) * _boost()))
@@ -202,10 +159,7 @@ func _stats_from(base: Dictionary) -> CombatantStats:
 	}
 	return s
 
-# Keys are semantic rather than raw FBX paths. Glassgoat's non-humanoid rig
-# names its moves differently from the retired Goblin: swim loop, Bite,
-# Damaged, and Death. Keeping that translation here lets battle.gd ask for
-# the same readable actions regardless of importer naming.
+# Semantic keys mapped to this rig's animation names so battle.gd can ask for readable actions.
 func play(substr: String) -> void:
 	if anim == null:
 		return
@@ -224,8 +178,7 @@ func play(substr: String) -> void:
 	if want != "" and (anim.current_animation != want or not anim.is_playing()):
 		anim.play(want)
 
-# A fresh deep copy makes it safe for Battle/UI code to attach per-turn data
-# without mutating the next encounter's artist-facing catalogue.
+# Deep copy so per-turn data doesn't mutate the catalogue.
 func available_moves() -> Array:
 	var available: Array = []
 	for move_value in enemy_catalogue():
@@ -247,15 +200,12 @@ func play_move(move: Dictionary) -> float:
 	var animation := anim.get_animation(clip)
 	return animation.length if animation != null else 0.0
 
-# Select by authored data, not a conditional tied to a particular animation.
-# `finisher_below_hp` is optional; any enabled move with it makes the target
-# low-health state use every move's finisher_weight instead of normal weight.
+# Select by authored data. Any enabled `finisher_below_hp` move switches to finisher_weight at low target HP.
 func choose_move(target: CombatantStats) -> Dictionary:
 	var moves := available_moves()
 	if moves.is_empty():
 		return {}
-	# Keep a deliberate roll order in content data. This preserves deterministic
-	# balance seeds while allowing the catalogue to stay human-readable.
+	# Deliberate roll order keeps balance seeds deterministic.
 	moves.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left.get("roll_order", 0)) < int(right.get("roll_order", 0)))
 	var finisher := false
 	for move_value in moves:
@@ -278,10 +228,8 @@ func choose_move(target: CombatantStats) -> Dictionary:
 			return move.duplicate(true)
 	return (moves.back() as Dictionary).duplicate(true)
 
-# Authored Angler policy: below half HP, a 37.5% Headbutt opportunity
-# retaliates against the largest living damage dealer. Otherwise Bite is
-# random; misses catching up to hits schedule one Flash Blast. These were
-# separate from the move catalogue and were lost during integration.
+# Angler policy: below half HP, 37.5% Headbutt on the top damage dealer; otherwise random Bite,
+# with one Flash Blast when misses catch up to hits.
 const LOW_HP_FRACTION := 0.5
 const STUN_PRIORITY_CHANCE := 0.375
 var _damage_taken_by: Dictionary = {}
@@ -324,8 +272,7 @@ func _highest_damage_target(alive_party: Array, fallback: Dictionary) -> Diction
 	return fallback if best_entries.is_empty() else best_entries[randi() % best_entries.size()] as Dictionary
 
 func choose_move_and_target(self_stats: CombatantStats, alive_party: Array, default_target: Dictionary, forced: bool) -> Dictionary:
-	# Other rigs override this method; keep the base contract safe for a new
-	# subtype too. Choreographed targets must agree with their on-screen lesson.
+	# Base contract must stay safe for subtypes; choreographed targets must match the lesson.
 	if enemy_id() != "angler" or forced or alive_party.is_empty():
 		return {"move": choose_move(default_target.stats as CombatantStats), "target": default_target}
 	if float(self_stats.hp) < float(self_stats.hp_max) * LOW_HP_FRACTION:
@@ -349,8 +296,7 @@ func face_toward(world_target: Vector3) -> void:
 	to.y = 0.0
 	if to.length() < 0.05:
 		return
-	# For a local +Z front, yaw 0 faces world +Z. This is intentionally the
-	# opposite sign from the divers'/-Z helper in Battle._step_toward().
+	# +Z front: yaw 0 faces world +Z (opposite sign from Battle._step_toward()).
 	rotation.y = atan2(to.x, to.z)
 
 func _resolve_clip(fragment: String) -> String:
@@ -363,18 +309,8 @@ func _resolve_clip(fragment: String) -> String:
 			return clip
 	return ""
 
-# Called by battle.gd the instant a hit actually brings this grunt to 0 HP.
-# Fades every mesh surface to transparent while the whole model sinks and
-# shrinks slightly - reads as "dying and disappearing," not just "the model
-# popped out of existence." Fire-and-forget: nothing awaits this, it just
-# queue_free()s itself once the tween's done, same pattern diver.gd's own
-# throwaway VFX (_shockwave_vfx(), _swap_flash()) already use.
-#
-# Duplicates each surface's material before touching it rather than editing
-# in place - the imported FBX's materials may be shared resources (Godot
-# caches imported materials across instances of the same asset), so
-# mutating one in place could fade every other living grunt on the stage
-# along with this one.
+# Death fade: sinks, shrinks and fades, then frees itself. Materials are duplicated first
+# because imported materials are shared between instances.
 func play_death_fade() -> void:
 	play("death")
 	var tw := create_tween()

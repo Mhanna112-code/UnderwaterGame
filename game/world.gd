@@ -1,12 +1,4 @@
-# The dive site: a seafloor, the three divers, and a camera you swim behind.
-#
-# Deliberately small. This exists so the team can get hands on the models and
-# feel their scale and speed in motion, which no screenshot can settle, and
-# so the next argument about the art is had in front of something playable.
-#
-# class_name so other nodes that need a live reference (MiniMap,
-# TargetSelector) can type it properly instead of reading dynamic
-# properties off a plain Node3D.
+# The dive site: a seafloor, the three divers, and a chase camera.
 class_name World
 extends Node3D
 
@@ -22,47 +14,23 @@ var _intro_arrow: MeshInstance3D
 var _blockade_arrow: MeshInstance3D
 const BLOCKADE_ARROW_HIDE_DIST := 6.0
 
-# Gates TAB/random-encounters and holds the camera on the light beam from
-# the moment the world loads until the active diver actually reaches it -
-# see intro_arrow(), _show_intro_text(), render_light_beam(), and
-# _update_intro_sequence() below.
+# Gates TAB/random encounters and holds the camera on the light beam until
+# the active diver reaches it.
 var _intro_active := false
-# Horizontal radius of the rendered light column that counts as arrival.
-# The beam is 12 m tall and its node is centered at y=6, whereas divers
-# swim near y=2; arrival must be measured across the seafloor plane, not to
-# the mesh origin in 3D (see _update_intro_sequence()).
+# Horizontal (XZ) arrival radius around the light beam.
 const INTRO_ARRIVAL_DIST := 2.5
 var _first_encounter_started := false
 var _transitioning_to_encounter := false
 var random_encounter_reveal: RandomEncounterReveal
-# Set once the choreographed tutorial fight (see battle.gd's
-# tutorial_encounter) actually finishes - _on_battle_finished() flips this.
-# Gates the save point (_toggle_save_menu()/_update_save_point_prompt())
-# until then, same reasoning as gating TAB/random encounters: nothing about
-# the tutorial should be skippable by ducking into a menu mid-walk-over.
+# Set when the tutorial fight finishes; gates the save point until then.
 var _first_encounter_done := false
-# Set right before tutorial_result_popup.open() in _on_battle_finished()'s
-# "lost" branch, read by _on_tutorial_loss_exit() - the popup itself carries
-# no memory of which tutorial fight opened it (special encounter vs. the
-# plain first combat fight), and _show_ability_popups() (World Map, Maxilani
-# Swap/Sonar, Musashi/Bucky's own pages) is onboarding for the latter only.
+# Which tutorial fight opened the loss popup (special vs. first combat).
 var _tutorial_loss_was_special := false
-# Test seam only. Automated subsystem checks need to enter their focused
-# scenario immediately; an actual player always sees the opening crawl.
+# Test seam: skip the opening crawl.
 var skip_intro_for_test := false
-# Developer convenience, same shape as skip_intro_for_test above but for the
-# scripted first fight itself, not just the narration crawl before it -
-# playtesting exploration, other encounters, or saves shouldn't require
-# walking to the light beam and fighting through the tutorial every single
-# session. Set from code (skip_intro_for_test's own use case) or by
-# launching with the --skip-tutorial arg / (on a web build) a ?skip_
-# tutorial=1 URL, same convention as _boss_playtest_requested() and its
-# siblings above - never a persisted save value, so there is no way for a
-# real player to end up with it on by accident.
+# Dev/test: skip the scripted first fight (--skip-tutorial or ?skip_tutorial=1).
 var skip_tutorial_for_test := false
-# Focused route gates do not need to wait through Tethys's full authored swim
-# entrance before asserting World's handoff/result ownership. Production and
-# browser play keep the entrance enabled.
+# Test seam: skip Tethys's swim entrance.
 var skip_boss_intro_for_test := false
 
 func _tutorial_skip_requested() -> bool:
@@ -73,10 +41,7 @@ func _tutorial_skip_requested() -> bool:
 		return String(search).contains("skip_tutorial=1")
 	return false
 
-# random encounters: each Diver tracks its own distance swum and fires
-# encounter_triggered when it rolls one (see diver.gd). This just reacts -
-# drops into a turn-based fight against an ordinary enemy pack, Pokemon-style, and
-# freezes the dive while game/battle.gd runs it.
+# Random encounters: Diver emits encounter_triggered; World starts a battle.
 var banner: Label
 var _banner_timer := 0.0
 var _announcements := preload("res://game/orange_message_queue.gd").new()
@@ -91,52 +56,34 @@ var cam_dist := 6.5
 var cam: Camera3D
 var hud: Label
 var mouse_look := false
-# R toggles this - see _on_encounter_triggered()'s own early-out and the
-# "R: Encounters" hint _update_hud() adds next to it. Player-facing (not a
-# dev/test-only flag): on by default, so ordinary play is unaffected unless
-# someone actually presses R.
+# R toggles random encounters (player-facing, on by default).
 var random_encounters_enabled := true
 var escape_encounter_hint: PanelContainer
 var _t := 0.0
 
-# First-person aim mode for aimed abilities (grapple): E enters it instead
-# of firing right away, camera cuts to the diver's own eye line, left click
-# fires, right click backs out. Nothing about the ability itself changes -
-# use_ability() still does the actual raycast/pull, this only decides when
-# it gets called.
+# First-person aim mode for aimed abilities (grapple): E enters, left click
+# fires, right click cancels.
 var aiming := false
 
-# Swap goes through TargetSelector instead of first-person aim: cycle
-# between allies with A/D or Left/Right, Space/Enter confirms, Escape cancels. See
-# target_selector.gd for the selection logic and _start_ability()/
-# _unhandled_input() below for how E and the arrow keys route into it.
+# Swap target picking (A/D or arrows, Space/Enter confirms, Escape cancels).
 var target_selector: TargetSelector
 
-# P opens save_point_menu, but only while standing on a SavePoint (see
-# _save_points/_toggle_save_menu/_update_save_point_prompt). Spell learning
-# and equipping happen automatically after battles.
+# P opens the save menu while standing on a SavePoint.
 var save_point_menu: SavePointMenu
 var _save_points: Array = []
 var _showing_save_prompt := false
 var _save_point_contact_active := false
 var _save_point_tutorial_seen := false
-# Combat Help unlocks (both saved): the special-encounter replay appears only
-# after the party has left a special encounter in any way (win, loss, Skip),
-# and the character-ability pages only after they've been shown once.
+# Combat Help unlocks (saved).
 var special_encounter_left := false
 var ability_popups_seen := false
-# Item encounter sites (guarded items and special encounters) the party has
-# beaten AND won the item from. Only this removes a site: its fight stops
-# triggering and its red minimap circle goes away. Saved.
+# Item sites beaten and claimed; these stop triggering. Saved.
 var cleared_item_sites: Array[String] = []
 var _pending_reward_site := ""   # site whose fight is being offered/started
 var _battle_reward_site := ""    # site the current battle was started from
 
-# Party-wide, not per-diver - key items unlock spells in whichever diver's
-# tree requires them, they aren't "held" by whoever found one or won the
-# guardian fight.
-# The dive site as physical places from content/sites.gd. Built by
-# _build_dive_sites(); site_nodes is keyed by site id.
+# Party-wide key items (unlock spells in any diver's tree).
+# Dive sites from content/sites.gd; site_nodes is keyed by site id.
 var site_nodes: Dictionary = {}
 
 const SiteScript := preload("res://game/site.gd")
@@ -153,11 +100,9 @@ var key_items: Array[String] = []
 const BLOCKADE_HEIGHT := 6.0
 const AIRBORNE_ROCK_HEIGHT := BLOCKADE_HEIGHT * 3.0
 const WORLD_CEILING_Y := BLOCKADE_HEIGHT * 4.0
-# _build_highway()'s entrance_rocks x (START_X + 1). West of it is the
-# tutorial side of the shallows.
+# Entrance rocks x; west of it is the tutorial side.
 const ENTRANCE_BLOCKADE_X := 16.0
-# _build_highway()'s three lock-plate doors (plate_x + 3.0, plate_x = 39).
-# "Explore the deep sea" only shows once the party is past them.
+# Lock-plate doors x; "Explore the deep sea" shows only past them.
 const PUZZLE_DOORS_X := 42.0
 const CEILING_THICKNESS := 2.0
 const ROCK_KEY_ITEM_REWARDS := {
@@ -166,120 +111,59 @@ const ROCK_KEY_ITEM_REWARDS := {
 }
 const ROCK_AMBUSH_IDS := ["rock_9", "rock_10"]
 
-# Which ItemGuardian.spots() item ids sonar has ever pinged (see
-# Diver.update_sonar()) - MiniMap draws a marker for anything in here
-# that isn't also in key_items yet (still unclaimed). Party-wide like
-# key_items, not per-diver, and never cleared except implicitly by an id
-# leaving this "revealed but unclaimed" state once it's actually claimed.
+# Item ids sonar has pinged; MiniMap marks those not yet in key_items.
 var revealed_key_items: Array[String] = []
 
-# Every persistable world object (breakable rocks, the entrance blockade -
-# see _build_breakable_rocks()/_build_highway()) that's already been
-# consumed this run, by a stable id string ("rock_0", "entrance_blockade",
-# etc.) rather than a node reference, since this is exactly what
-# _serialize_state()/_load_save() read and write to the save file. Without
-# this, loading a save always looked pristine again - the world geometry
-# was rebuilt fresh in _ready() before any save was ever read, and nothing
-# tracked which of those fresh rocks should immediately disappear again.
+# Stable ids of consumed persistable world objects (saved; removed on load).
 var consumed_world_ids: Array[String] = []
 
-# id -> live CrackedWall node, populated at build time (_build_breakable_
-# rocks()/_build_highway()) - _load_save() uses this to actually free the
-# matching node the instant a loaded save says its id is already consumed,
-# since consumed_world_ids by itself is just data, not something that
-# removes anything on its own.
+# id -> live CrackedWall, so _load_save() can free consumed ones.
 var _cracked_walls: Dictionary = {}
 
-# Party-wide consumables (item_id -> count) - what an ItemOrb pickup or a
-# non-key guardian reward actually adds to now, instead of Items.grant()
-# applying instantly on pickup (see _on_item_orb_collected()/
-# _grant_reward_item()). Only ever spent from inventory_menu.gd's Use
-# button, via use_inventory_item() below - that's the one place
-# Items.grant() is still called from.
+# Party-wide consumables (item_id -> count), spent via use_inventory_item().
 var inventory: Dictionary = {}
 
-# Stable rock id -> {item, position:[x,y,z]} for a reward that has spawned
-# but has not entered inventory yet. This is the third mutually-exclusive
-# reward state alongside an intact source rock and a collected inventory
-# entry; serializing it prevents save-after-break-before-pickup from erasing
-# the reward when the consumed rock is removed on load.
+# Rock id -> {item, position} for a spawned but uncollected reward (saved so
+# it survives the rock being removed on load).
 var pending_world_drops: Dictionary = {}
 
-# Escape's pause menu - see _unhandled_input()'s ESCAPE branch for how it
-# opens/closes (mutually exclusive with aiming/target_selector.selecting/
-# save_point_menu, same guard shape those already use against each other)
-# and _physics_process()'s gate for why movement actually stops while it's
-# open, unlike save_point_menu (that gap predates this and isn't this
-# menu's problem to fix).
+# Escape pause menu (mutually exclusive with aim/target select/save menu).
 var inventory_menu: InventoryMenu
 
-# The title screen (New Game/Load Game, shown once at start and again on
-# "Return to Title") and the game-over screen ("lost" a battle) - see
-# _show_title_screen()/_show_game_over() below.
+# Title screen and game-over screen.
 var title_screen: TitleScreen
 var game_over_screen: GameOverScreen
 var title_layer: CanvasLayer
 
-# Special encounters (the solo-diver ability minigame) are opt-in - the
-# player chooses which diver's ability to face it with. Entering an
-# unclaimed special item's site radius opens the encounter directly; it does
-# not require Sonar or a random encounter roll.
+# Special encounters open on entering an unclaimed special item's site radius.
 var special_encounter_prompt: SpecialEncounterPrompt
 var tutorial_book: TutorialBook
-# Shown in place of the old immediate heal-and-return on a tutorial loss -
-# see _on_battle_finished()'s "lost" branch and _on_tutorial_loss_retry()/
-# _on_tutorial_loss_exit() below.
+# Tutorial loss popup (retry/exit).
 var tutorial_result_popup: TutorialResultPopup
 
 const SLOT_SCENE := preload("res://slot.tscn")
-# One Slot (see slot.gd) per diver, built once in _ready() by
-# _build_diver_slots() - purely a HUD anchor CharacterAbilityPopup
-# highlights while explaining that diver's world ability, same index order
-# as `divers`. CharacterAbilityPopup itself needs no instancing here - it's
-# an autoload singleton (project.godot's [autoload] section), reached
-# directly by its global name in _show_ability_popups() below.
+# One HUD Slot per diver, same order as `divers`; anchors CharacterAbilityPopup.
 var _diver_slots: Array = []
-# The first-run opening and the later lab cutscene deliberately have separate
-# owners and policies even while both temporarily point to the same Mermaid
-# media bytes. This reference exists so the normal title path and verification
-# can observe one active owner without searching the scene tree.
+# Active first-run opening owner, observable without searching the tree.
 var opening_video: CanvasLayer
 var _special_encounter_item := ""
 var _special_encounter_diver: Diver
 var _special_encounter_pre_hp := 0
 var _special_encounter_pre_oxygen := 0.0
 var _inside_item_site_id := ""
-# Which enemy species the special encounter's closing swing (and the real
-# battle if the diver picks to fight it out) should use - set right before
-# _offer_special_encounter() from whichever guarded site's radius the diver
-# entered (see _try_trigger_item_site()), same
-# per-site mapping (Angler at shallows, Swordfish Duelist at trench)
-# Sites.guarded() has always carried.
+# Enemy species for the pending special encounter, set from the guarded site.
 var _pending_guardian_enemy_id := "angler"
 
-# Set right before a special encounter opens for a guarded item (see
-# _on_encounter_triggered()), read once in _on_battle_finished() and cleared
-# immediately after - "" means an ordinary random encounter, nothing to hand
-# out on a win.
+# Guarded item to grant on a win; "" for an ordinary random encounter.
 var _pending_reward_item := ""
 
-# True only during the isolated ?boss=1 review route. It never writes a
-# save and returns to the title after the result, so repeatedly testing
-# Tethys cannot damage a real playthrough.
+# Isolated ?boss=1 review route: never saves, returns to title afterwards.
 var _boss_playtest_active := false
 
-# Isolated ?special=1 review route. It opens the real guardian chooser and
-# battle/minigame dispatcher but never grants an item or alters a save.
+# Isolated ?special=1 review route: never grants items or saves.
 var _special_playtest_active := false
 
-# Which save slot this run is playing into - set the instant the title
-# screen resolves (New Game picks one and writes an initial save into it;
-# Load Game picks one and reads from it), -1 only while the title screen
-# itself is still up and nothing's been chosen yet. Everything that used
-# to be an in-memory-only checkpoint (see _write_save()/_load_save() below)
-# now reads/writes SaveManager.slot_path(_current_slot) instead, so a game
-# over's "restart from save point" and an actual save-point visit are the
-# same real file, and it all survives closing the game entirely.
+# Active save slot; -1 while the title screen is still up.
 var _current_slot := -1
 const AUTOSAVE_INTERVAL := 180.0
 var _autosave_timer := 0.0
@@ -289,10 +173,7 @@ var _completion_screen: CanvasLayer
 var _completion_checkpoint: Dictionary = {}
 var _completion_saving := false
 
-# The state captured when the player confirmed the Cordys fight (see
-# MazeLevel.cordys_fight_starting). This belongs to this World/run, not a
-# static cache that another Title Load could mistakenly claim. The separate
-# one-shot restart envelope below transfers it across the requested reload.
+# State captured when the Cordys fight was confirmed (per World/run).
 var _pre_boss_checkpoint: Dictionary = {}
 var _pre_boss_slot := -1
 var _pre_boss_save_error: Error = ERR_UNAVAILABLE
@@ -319,13 +200,11 @@ func _capture_pre_boss_autosave() -> void:
 	if written:
 		error = await BrowserCheckpoint.confirm_slot(slot, true)
 	if written and error != OK and FileAccess.get_file_as_bytes(path) == written_bytes:
-		# Roll back only this write; a newer run/checkpoint may have taken
-		# ownership while the browser's confirmation was pending.
+		# Roll back only this write; a newer run may own the checkpoint now.
 		SaveManager.rollback_autosave(slot, existed, previous)
 		if OS.has_feature("web"):
 			JavaScriptBridge.force_fs_sync()
-	# A later Title Load/New Game owns its own checkpoint/status, even if
-	# this browser confirmation finishes after that run boundary.
+	# A later Title Load/New Game owns its own checkpoint/status.
 	if generation != _pre_boss_generation:
 		return
 	_pre_boss_saving = false
@@ -343,8 +222,7 @@ func _pre_boss_restart_data() -> Dictionary:
 	var data := _pre_boss_checkpoint if _pre_boss_slot == _current_slot else {}
 	if data.is_empty() and _current_slot >= 0:
 		data = SaveManager.read_autosave(_current_slot)
-	# A corrupt file, completed save or unrelated open-water autosave is not
-	# a restart before Cordys. Validation is read-only and never grants state.
+	# Only a valid pre-Cordys checkpoint counts. Read-only validation.
 	if data.get("campaign_scene") != "maze" or CampaignCheckpoint.decode(data) == null \
 		or data.get("route_state", {}).get("octopus_state") == "defeated" \
 		or not data.get("campaign_checkpoint", {}).get("maze", {}).get("boss_triggers", []).has("main_boss"):
@@ -395,9 +273,7 @@ func _resume_from_checkpoint(data: Dictionary, slot: int) -> void:
 func _show_campaign_completion(already_saved := false) -> void:
 	if is_instance_valid(_completion_screen) or route_state.octopus_state != "defeated":
 		return
-	# The actual battle result has already paid XP and removed the station.
-	# Freeze this boundary before yielding; retries must not replay rewards or
-	# silently restore/heal the party. This does not relax ordinary save guards.
+	# Rewards are already paid; freeze this boundary so retries can't replay them.
 	_checkpoint_saving = true
 	$HUD.visible = false
 	if embedded_maze != null:
@@ -412,8 +288,7 @@ func _show_campaign_completion(already_saved := false) -> void:
 	_completion_screen.restart_chosen.connect(_restart_from_pre_boss_autosave)
 	_completion_screen.title_chosen.connect(_on_game_over_title)
 	add_child(_completion_screen)
-	# The ending no longer writes a completion save; it offers the autosave
-	# taken right before the Cordys fight instead.
+	# The ending offers the pre-Cordys autosave instead of a completion save.
 	_refresh_completion_restart_options()
 
 func _autosave_safe() -> bool:
@@ -454,10 +329,7 @@ func _tick_autosave(dt: float) -> void:
 	_autosave_timer = 0.0
 	_announce("Game autosaved." if error == OK else "Autosave failed. Your last checkpoint is unchanged.")
 
-# One public source of truth for authored progression beyond the existing
-# free-roam/tutorial state. RouteState owns JSON-safe data and its objective
-# signal; World only includes it in the same atomic checkpoint dictionary as
-# party, inventory, and mutable geometry.
+# Authored progression state; saved in the same atomic checkpoint.
 var route_state := RouteState.new()
 var _prologue_trigger := OpeningTriggerScript.new()
 var _prologue_spawn_delay := 0.0
@@ -471,9 +343,8 @@ const PUZZLE_MAZE_EXIT := Vector3(47.0, 2.0, 10.0)
 const PUZZLE_MAZE_EXIT_RADIUS := 2.5
 var _maze_entry_source := "deep_landmark"
 
-# One-time authored blocker trigger ownership. `_inside_route_blocker_id` is a
-# re-entry latch: fleeing or losing while still inside the volume must not drop
-# the player straight back into the same battle on the next physics frame.
+# One-time blocker triggers. `_inside_route_blocker_id` prevents re-triggering
+# while still inside the volume.
 const ROUTE_BLOCKER_TRIGGER_RADIUS := 4.0
 const ROUTE_BLOCKER_EXIT_RADIUS := 6.0
 const ROUTE_BLOCKER_TRIGGER_HALF_WIDTH := 10.0
@@ -483,22 +354,15 @@ var _inside_route_blocker_id := ""
 var _route_blocker_world_actors: Dictionary = {}
 var _route_blocker_gates: Dictionary = {}
 
-# Scene reload is the only honest way to roll mutable geometry back to a
-# checkpoint: _load_save() can remove objects a save says are consumed, but
-# it cannot recreate a CrackedWall already queue_free()'d after that save.
-# This one-shot handoff survives reload_current_scene(), then the fresh World
-# consumes and clears it at the end of _ready().
+# One-shot handoff across reload_current_scene() to restore a checkpoint
+# (consumed geometry can't be recreated in place).
 static var _restart_slot := -1
 static var _restart_latest := false
 var _loaded_maze_session: CampaignSession
 var _campaign_session: CampaignSession
 var embedded_maze: MazeLevel
 
-# Full state: per-diver position/stats/spells plus the world-level
-# inventory/key_items/active - everything _write_save()'s caller (a save
-# point) or the initial New Game write needs to reproduce the run exactly.
-# Vector3 isn't JSON-serializable, so position goes in as a plain [x,y,z]
-# array (see _load_save()'s reverse conversion).
+# Full run state for saving. Vector3 is stored as [x,y,z] for JSON.
 func _serialize_world_state() -> Dictionary:
 	var divers_data: Array = []
 	for d in divers:
@@ -555,11 +419,7 @@ func _write_save() -> Error:
 		return ERR_UNCONFIGURED
 	return SaveManager.write_slot(_current_slot, _serialize_state())
 
-# Bails out and does nothing rather than a half-restore if the save data
-# doesn't actually match divers[] one-to-one (a missing/corrupt slot reads
-# back as {} from SaveManager, whose "divers" key then defaults to []) -
-# a wrong-shaped restore silently leaving some divers untouched would be a
-# worse bug than just not restoring at all.
+# Refuses partial restores when save data doesn't match divers[] one-to-one.
 func _load_save(from_autosave := false, latest := false) -> bool:
 	if latest:
 		for candidate in SaveManager.latest_candidates(_current_slot):
@@ -570,7 +430,6 @@ func _load_save(from_autosave := false, latest := false) -> bool:
 	return restore_checkpoint(SaveManager.read_autosave(_current_slot) if from_autosave else SaveManager.read_slot(_current_slot))
 
 # Shared validated restore used by disk Load and a live campaign return.
-# Neither consumer needs to write a temporary save or discard live stats.
 func restore_checkpoint(data: Dictionary) -> bool:
 	_loaded_maze_session = null
 	var maze_session: CampaignSession
@@ -583,8 +442,7 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	var raw_divers: Variant = data.get("divers", [])
 	if not raw_divers is Array or raw_divers.size() != divers.size():
 		return false
-	# Validate the complete shape before mutating any live actor. Invalid IO
-	# must not partly restore the party then fall through as a fresh opening.
+	# Validate the complete shape before mutating any live actor.
 	if not data.get("route_state", {}) is Dictionary:
 		return false
 	var raw_route := data.get("route_state", {}) as Dictionary
@@ -634,8 +492,7 @@ func restore_checkpoint(data: Dictionary) -> bool:
 			if not values is Array or values.any(func(value: Variant) -> bool: return not value is String):
 				return false
 	var divers_data := raw_divers as Array
-	# Preflight is complete. Old hazard timers must relinquish shared actors
-	# before the loaded pose/resources replace them, never after that point.
+	# Old hazard timers must release shared actors before the restore.
 	Whirlpool.cancel_in(self)
 	_loaded_maze_session = maze_session if data.get("campaign_scene") == "maze" else null
 	_campaign_session = maze_session
@@ -673,14 +530,7 @@ func restore_checkpoint(data: Dictionary) -> bool:
 		for drop_id in pending_world_drops:
 			if String((pending_world_drops[drop_id] as Dictionary).get("item", "")) == retired:
 				(pending_world_drops[drop_id] as Dictionary)["item"] = Items.EVEN_DROP_ORDER[0]
-	# .assign(), not a plain `=` - key_items/revealed_key_items/
-	# consumed_world_ids are all typed Array[String], and JSON.parse_string()
-	# only ever hands back a plain untyped Array. Plain `=` replaces the
-	# variable's array reference outright with that untyped one, which
-	# throws "Trying to assign an array of type Array to a variable of
-	# type Array[String]" at runtime - .assign() instead coerces into the
-	# existing typed array in place, same pattern known_spells/
-	# equipped_spells above already use for exactly this reason.
+	# .assign(): these are typed Array[String]; JSON gives untyped Arrays.
 	key_items.assign((data.get("key_items", []) as Array).duplicate())
 	revealed_key_items.assign((data.get("revealed_key_items", []) as Array).duplicate())
 	consumed_world_ids.assign((data.get("consumed_world_ids", []) as Array).duplicate())
@@ -691,13 +541,12 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	cleared_item_sites.clear()
 	for site_value in data.get("cleared_item_sites", []):
 		cleared_item_sites.append(String(site_value))
-	# Older saves predate the list: a key-item site whose item is owned was
-	# necessarily beaten and won, so it stays cleared.
+	# Older saves: an owned key item's site counts as cleared.
 	if not data.has("cleared_item_sites"):
 		for spot in ItemGuardian.spots():
 			if Items.is_key_item(String(spot.item)) and key_items.has(String(spot.item)):
 				cleared_item_sites.append(String(spot.get("site", spot.item)))
-	# The forced first special encounter (Maxilani's tutorial) only happens once.
+	# The forced first special encounter only happens once.
 	player_first_special_encounter = not special_encounter_left
 	route_state.load_save_data(data.get("route_state", {}) as Dictionary)
 	random_encounters_enabled = data.get("random_encounters_enabled", true)
@@ -706,8 +555,7 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	_sync_puzzle_maze_exit()
 	for i in range(divers.size()):
 		var d := divers[i] as Diver
-		# Older completed checkpoints predate these settings. Migrate them
-		# to the new exploration default; explicit later Off choices survive.
+		# Migrate older completed checkpoints to the new exploration default.
 		var sonar_on: bool = divers_data[i].get("sonar_active", route_state.prologue_complete and d.passive_id == "sonar")
 		sonar_on = sonar_on and d.passive_id == "sonar" and d.stats.oxygen > 0.0
 		if d.sonar_active != sonar_on:
@@ -718,12 +566,7 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	_sync_deep_zone_blocker_staging()
 	_sync_lab_staging()
 
-	# The world was already rebuilt pristine before this ever runs (see
-	# TitleScreen's New-Game/Load-Game flow, or the full scene reload
-	# "Return to Title" does) - anything this save says is already
-	# consumed needs to be removed again right now, or a loaded save would
-	# hand back a leveled-up party standing in a world that looks like
-	# nothing was ever broken (exactly the gap that prompted this).
+	# Remove objects this save marks as consumed from the freshly built world.
 	for id in consumed_world_ids:
 		if _cracked_walls.has(id):
 			(_cracked_walls[id] as CrackedWall).queue_free()
@@ -758,36 +601,24 @@ func restore_checkpoint(data: Dictionary) -> bool:
 	return true
 
 func _normalize_loaded_route_state() -> void:
-	# Flat legacy/entry saves contain the outer-world checkpoint, not maze
-	# geometry. Returning there must leave the independent entrance usable.
+	# Flat legacy saves hold the outer-world checkpoint; keep the entrance usable.
 	if _loaded_maze_session == null and route_state.zone_id == "maze":
 		route_state.set_zone("deep")
 		route_state.set_maze_door_state("available")
-	# A movie decoder or live Battle is not a serializable checkpoint. Older or
-	# interrupted saves that captured either transient state return to the safe
-	# laboratory entrance and can replay the authored handoff exactly once.
+	# Movie/battle states aren't serializable; return to the lab entrance.
 	if route_state.lab_state in ["cutscene", "boss"] or route_state.tethys_state == "in_progress":
 		route_state.set_lab_state("available")
 		route_state.set_tethys_state("available")
 		route_state.set_objective("find_lab")
 		route_state.set_encounter_source("random")
-	# The current maze is a separate deep-zone branch, not a reward for beating
-	# Tethys. Migrate older deep-zone saves that captured the former lab-gated
-	# `locked` state so they cannot remain permanently unable to use the branch.
+	# Migrate older saves with the former lab-gated `locked` maze state.
 	if route_state.zone_id == "deep" and route_state.maze_door_state == "locked":
 		route_state.set_maze_door_state("available")
-	# Migrate blocker-first objective copy from early PR #96 builds. The fight
-	# states still preserve exactly where the player is; only the HUD hierarchy
-	# changes so the laboratory remains the goal Marc described.
+	# Migrate blocker-first objective copy from early builds.
 	if route_state.zone_id == "deep" and route_state.objective_id in ["defeat_bomb_bot", "defeat_sword_slayer", "enter_lab"]:
 		route_state.set_objective("find_lab")
 
-# get_tree().paused freezes every node whose process_mode isn't ALWAYS -
-# the whole world (movement, physics, encounters, the HUD's own per-frame
-# updates) just stops, and TitleScreen/GameOverScreen (both explicitly
-# ALWAYS, see their own _ready()) are the only things still receiving
-# input. Mirrors the pause Battle already puts the world into during a
-# fight, just triggered by a menu screen instead of battle.gd.
+# Pause the world; title/game-over screens run with PROCESS_MODE_ALWAYS.
 func _audio_call(method: StringName) -> void:
 	var owner := get_node_or_null("/root/GameAudio")
 	if owner != null:
@@ -800,22 +631,15 @@ func _show_title_screen() -> void:
 	cam.current = true
 	if is_instance_valid(escape_encounter_hint):
 		escape_encounter_hint.dismiss()
-	# The title owns the entire cold-launch surface. Keeping it on a separate
-	# layer lets the world HUD disappear as one unit instead of maintaining a
-	# growing list of labels/bars/minimap nodes to hide individually.
+	# The title owns a separate layer so the world HUD hides as one unit.
 	$HUD.visible = false
-	# Cold title must remain silent until a trusted browser gesture. Any return
-	# from gameplay also retires the prior world/battle/result cue here.
+	# Cold title stays silent until a browser gesture; retire any prior cues.
 	_audio_call(&"stop_music")
 	Whirlpool.refresh_in(self)
 	get_tree().paused = true
 	title_screen.open()
 
-# New Game always starts from the fresh, level-1 divers _ready()'s CAST
-# loop just built (nothing here resets stats - there's nothing to reset
-# yet) - just claims a slot and writes the very first save into it, same
-# role the old implicit end-of-_ready() checkpoint used to serve, now a
-# real file instead of an in-memory snapshot.
+# New Game: claim a slot and write the first save from the fresh divers.
 func _on_title_new_game(slot: int) -> void:
 	_clear_pre_boss_checkpoint()
 	_current_slot = slot
@@ -844,38 +668,20 @@ func _on_title_new_game(slot: int) -> void:
 	var audio := get_node_or_null("/root/GameAudio")
 	if audio != null:
 		audio.fade_music_in(0.35)
-	# Covers the plain --skip-tutorial/?skip_tutorial=1 route: skip_tutorial_
-	# for_test was already true before _ready() ever rendered the light beam
-	# (see the block right after _build_diver_slots()), so a player clicking
-	# the ordinary "New Game" button still never gets the scripted first
-	# fight. Since that fight is what normally triggers _show_ability_popups()
-	# (via _on_battle_finished()), it has to fire from here instead - this is
-	# the actual moment a skipped-tutorial game truly begins.
+	# Skip-tutorial route: show ability popups here since no first fight runs.
 	if skip_tutorial_for_test:
 		call_deferred("_show_ability_popups")
 
-# The "New Game (Skip Tutorial)" title-screen button - same idea as
-# --skip-tutorial, reachable without configuring a command-line arg. Unlike
-# that flag, this fires from a button press well after _ready() already
-# rendered the light beam/intro arrow assuming a normal tutorial run (only
-# _tutorial_skip_requested() is checked that early), so this has to undo
-# that setup itself before handing off to the same _on_title_new_game() flow
-# every other new game goes through - reusing it rather than duplicating its
-# save/intro-crawl/HUD handling.
+# "New Game (Skip Tutorial)": undo the tutorial setup done in _ready(), then
+# use the normal new-game flow.
 func _on_title_skip_tutorial(slot: int = 0) -> void:
 	skip_tutorial_for_test = true
-	# This dedicated review entry bypasses the opening too. Normal New Game
-	# never calls it; do not confuse its skip with completing optional training.
+	# Review entry that bypasses the opening (not normal New Game).
 	route_state.opening_video_seen = true
 	route_state.prologue_complete = true
 	route_state.tutorial_complete = true
 	route_state.set_prologue_phase("complete")
-	# Otherwise _on_title_new_game() below still plays the full intro-crawl
-	# narrative cutscene first, same as an ordinary New Game - every other
-	# playtest button (Boss/Guardian/Special/Spell) jumps straight into
-	# gameplay with none of that, and this one silently not matching them
-	# reads as "the button doesn't work" rather than "there's a cutscene
-	# playing first."
+	# Skip the intro crawl, like the other playtest buttons.
 	skip_intro_for_test = true
 	if is_instance_valid(light_beam):
 		light_beam.queue_free()
@@ -928,11 +734,8 @@ func _on_title_load_game(slot: int, from_autosave := false, latest := false) -> 
 		_build_forced_tutorial_beam()
 	return true
 
-# The opening owns no campaign state. World owns the durable milestone and
-# writes it only after actual playback completes. A decoder fallback continues
-# this session safely but intentionally leaves the viewing milestone false.
-# Retry that cinematic only while the playable prologue is still incomplete;
-# completed recovery takes precedence and must never rewind normal play.
+# World writes the opening milestone only after playback completes. Retry the
+# cinematic only while the prologue is incomplete.
 func _play_opening_if_needed() -> bool:
 	if route_state.prologue_complete or route_state.opening_video_seen:
 		return true
@@ -947,12 +750,10 @@ func _play_opening_if_needed() -> bool:
 	opening_video.show_opening_title = true
 	opening_video.handoff_started.connect(func() -> void:
 		route_state.set_prologue_phase("opening_handoff")
-		# Prepare the HUD behind the opaque title so the final reveal includes
-		# controls. World physics stays paused until completed below.
+		# Prepare the HUD behind the opaque title; physics stays paused.
 		_camera_look_override = null
 		return_camera_to_player()
-		# Settle the existing chase framing before revealing it, not on the
-		# first unpaused frame (which otherwise visibly zooms after the fade).
+		# Settle camera framing before the reveal to avoid a visible zoom.
 		_move_camera(1.0)
 		_update_hp_bar()
 		_update_oxygen_bar()
@@ -986,8 +787,7 @@ func _update_prologue_trigger(dt: float) -> void:
 	if _prologue_spawn_delay > 0.0:
 		_prologue_spawn_delay = maxf(0.0, _prologue_spawn_delay - dt)
 		return
-	# Revealing the world is not consent to a boss fight. Preserve a usable
-	# exploration beat, then start the authored Angler only after real swimming.
+	# Start the Angler only after real swimming, not on reveal.
 	var swimming := _player_dir().length_squared() > 0.0 and not target_selector.selecting and not _transitioning_to_encounter
 	if _prologue_trigger.update((divers[active] as Diver).position, dt, swimming):
 		route_state.set_prologue_phase("angler")
@@ -1011,8 +811,7 @@ func _on_prologue_angler_defeated() -> void:
 	)
 	title_layer.add_child(bridge)
 	await bridge.completed
-	# Music has already faded to silence during the notice. Retire its owner
-	# explicitly before the movie starts, even if a device's audio thread lags.
+	# Retire the music owner before the movie starts.
 	_audio_call(&"stop_music")
 	route_state.set_encounter_source("prologue_octopus")
 	route_state.set_prologue_phase("octopus_introduction")
@@ -1034,7 +833,7 @@ func _recover_from_prologue() -> void:
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	mouse_look = false
-	# Hold deliberate silence while the defeated formation remains visible.
+	# Hold silence while the defeated formation remains visible.
 	await get_tree().create_timer(1.0).timeout
 	if is_instance_valid(_prologue_cinematic) and not _prologue_cinematic.is_queued_for_deletion():
 		route_state.set_prologue_phase("octopus_aftermath")
@@ -1070,9 +869,7 @@ func _recover_from_prologue() -> void:
 	if checkpoint_error == OK:
 		checkpoint_error = await BrowserCheckpoint.confirm_slot(_current_slot)
 	while checkpoint_error != OK:
-		# Ordinary play must never be released on a false checkpoint promise.
-		# Retain this restored session, explain the failure and retry the exact
-		# active slot without replaying either movie or fight.
+		# Don't release play on a failed checkpoint; explain and retry the same slot.
 		recovery.show_save_failure()
 		print("CHECKPOINT_SAVE_FAILED|slot=", _current_slot, "|error=", checkpoint_error)
 		await recovery.continued
@@ -1100,12 +897,8 @@ func _recover_from_prologue() -> void:
 	if audio != null:
 		audio.fade_music_in(0.35)
 
-# The combat tutorial is mandatory again once the prologue recovery hands
-# back control: the light beam returns with its waypoint arrow and intro
-# banner, and _camera_look_override holds the camera on it until the active
-# diver arrives (_update_intro_sequence() -> _start_first_encounter()).
-# _intro_active blocks TAB, abilities, item sites and random encounters for
-# the walk-over, same as the original pre-prologue intro.
+# After prologue recovery the combat tutorial is mandatory: beam, arrow and
+# camera hold return until the diver arrives.
 func _build_forced_tutorial_beam() -> void:
 	if not route_state.prologue_complete or route_state.tutorial_complete:
 		return
@@ -1139,16 +932,8 @@ func _on_title_special_playtest() -> void:
 	get_tree().paused = false
 	_offer_special_encounter("current_pearl")
 
-# Drops straight into ordinary free-roam (no battle, no tutorial - see
-# _ready()'s own use of _spell_playtest_requested() to also set
-# skip_tutorial_for_test) with a fully learned/equipped temporary roster.
-# This branch's normal progression automatically learns every currently
-# affordable spell after a real victory (Battle._win()), so a review route
-# that merely hands out points and keys but leaves `known_spells` empty is
-# not a usable substitute: Party Spells says there is nothing to review.
-# Learn through the same SpellTree rule instead of assigning arrays by hand,
-# so prerequisites, key-item gates, and auto-equip remain real. Never writes
-# a save, same as every other playtest route here.
+# Free-roam with a fully learned/equipped temporary roster, learned through
+# SpellTree so gates stay real. Never saves.
 func _on_title_spell_playtest() -> void:
 	_current_slot = -1
 	title_screen.close()
@@ -1199,11 +984,7 @@ func _blocker_playtest_requested() -> bool:
 		return String(search).contains("blocker=bomb_bot")
 	return false
 
-# For quickly iterating on tutorial_result_popup's own look/copy without
-# actually needing to lose the scripted first fight every time - opens it
-# immediately once the world loads, standing in for a real tutorial loss.
-# Retry/Exit still work for real off of this (see _on_tutorial_loss_retry()/
-# _on_tutorial_loss_exit()), neither depends on an actual Battle existing.
+# Opens the tutorial loss popup immediately for iterating on its look.
 func _tutorial_loss_playtest_requested() -> bool:
 	if OS.get_cmdline_user_args().has("--tutorial-loss-playtest"):
 		return true
@@ -1231,9 +1012,7 @@ func _maze_playtest_requested() -> bool:
 func _show_game_over() -> void:
 	escape_encounter_hint.dismiss()
 	print("CHECKPOINT_GAME_OVER|slot=", _current_slot, "|complete=", route_state.prologue_complete)
-	# Defeat owns the whole screen just like cold launch. The controls, active
-	# diver label, bars, minimap and any announcement describe a playable world
-	# and become misleading noise once that world has been paused.
+	# Defeat hides the world HUD like the cold-launch title.
 	$HUD.visible = false
 	title_screen.close()
 	_audio_call(&"play_game_over_music")
@@ -1252,19 +1031,37 @@ func _on_game_over_continue() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
-# reload_current_scene() re-runs World._ready() from scratch - every rock,
-# cracked wall, item guardian and diver goes back to its pristine starting
-# state, which a hand-written "reset everything" function would otherwise
-# have to reproduce piece by piece. Lands back on the title screen exactly
-# like a cold launch does, since _ready() always ends by showing it.
+# Reload rebuilds the pristine world and lands on the title screen.
+func return_to_title() -> void:
+	# --dev would otherwise restart dev mode on the reload and skip the title.
+	_dev_start_suppressed = true
+	_on_game_over_title()
+
+# Survives reload_current_scene(): after Return To Title, a --dev session lands
+# on the title screen instead of jumping straight back into dev mode.
+static var _dev_start_suppressed := false
+
+func _dev_requested() -> bool:
+	return OS.get_cmdline_user_args().has("--dev") and not _dev_start_suppressed
+
+# Writes the current run to this slot's autosave right now (used before
+# returning to the title). ERR_UNCONFIGURED when there's no save slot (dev mode).
+func autosave_now() -> Error:
+	if _current_slot < 0:
+		return ERR_UNCONFIGURED
+	var slot := _current_slot
+	var error := SaveManager.write_autosave(slot, _serialize_state())
+	if error == OK:
+		error = await BrowserCheckpoint.confirm_slot(slot, true)
+	return error
+
 func _on_game_over_title() -> void:
 	_restart_slot = -1
 	_restart_latest = false
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
-# The gap sequence's three-plate finale (see _build_highway()). Populated
-# there, checked every physics frame in _check_gap_puzzle().
+# Gap puzzle's three plates; checked each frame in _check_gap_puzzle().
 var _lock_plates: Array = []
 var _doors: Array = []
 var _puzzle_goal: Waypoint
@@ -1272,103 +1069,49 @@ var _puzzle_solved := false
 var _puzzle_hint_bounds := AABB()
 var _puzzle_exit_label: Label3D
 
-# Array[Dictionary], each {a: Vector3, b: Vector3, body: StaticBody3D,
-# revealed: bool, line_a: Vector3, line_b: Vector3} - one entry per
-# WALL_REVEAL_SEGMENT_LENGTH-ish slice of a wall (see
-# _slice_wall_into_pieces(), called once per wall from _build_wall()).
-# `a`/`b` are the piece's own full, fixed span; `line_a`/`line_b` are the
-# actual overlap geometry frozen in at the moment this piece was first
-# found (see _update_wall_visibility()/_piece_area_overlap()) - only
-# meaningful once `revealed` is true, unset (Vector3.ZERO) before that.
-# World's own walls are static - nothing here ever moves once built - so
-# slicing once at build time is enough; there's no need to recompute a
-# piece's endpoints every frame the way maze_mini_map.gd's live-swinging
-# test-scene walls require. Read directly by mini_map.gd's
-# _draw_lines_at_overlapping_areas() (world.gd has a class_name now, so
-# MiniMap can type its reference and read this like any other property).
+# Wall pieces: {a, b, body, revealed, line_a, line_b}. a/b are the fixed span;
+# line_a/line_b are the overlap frozen when first revealed. Read by MiniMap.
 var _wall_pieces: Array[Dictionary] = []
 var minimap: MiniMap
 
-# How finely each wall is sliced for reveal purposes - matches
-# maze_mini_map.gd's own REVEAL_SEGMENT_LENGTH, so a long corridor wall
-# lights up gradually as you swim its length instead of all at once.
+# Wall slice length for gradual reveal (matches maze_mini_map.gd).
 const WALL_REVEAL_SEGMENT_LENGTH := 2.0
 
-# MODIFIED: was a one-shot PhysicsShapeQueryParameters3D/intersect_shape()
-# sphere-cast, re-issued from scratch once a second - replaced with a
-# persistent Area3D that follows the active diver (see
-# _build_wall_sight_area()/_update_wall_visibility()), checked every
-# physics tick via get_overlapping_bodies() instead. That's cheap even at
-# full physics rate: it just reads the physics server's already-computed
-# overlap list for this one Area3D, not a fresh broad-phase query over
-# every wall in the level the way intersect_shape() was. It's only the
-# COARSE first pass now, though - which walls are even worth checking
-# closely this tick - see _update_wall_visibility()'s own per-piece
-# distance check for what actually decides which exact stretch of a
-# wall counts as "found."
+# Area3D following the active diver; coarse pass for wall reveal.
 var _wall_sight_area: Area3D
 
-# The camera's one alternate mode: instead of chasing the active diver,
-# hold on `_camera_focus_target` (used both by TargetSelector while
-# picking a swap target, and for a brief confirmation hold on whoever a
-# swap just traded places with - see focus_camera_on()/
-# return_camera_to_player() and _on_diver_swapped()). auto_return_after
-# is 0 for "stay until told otherwise" (TargetSelector explicitly calls
-# return_camera_to_player() on confirm/cancel) or >0 for "hold this long,
-# then snap back to the player on its own."
+# Camera focus override: hold on `_camera_focus_target` (swap targeting or
+# post-swap hold). auto_return_after 0 = until told, >0 = timed.
 enum CameraMode { PLAYER, FOCUS }
 var camera_mode := CameraMode.PLAYER
 var _camera_focus_target: Node3D = null
 
-# Keeps the normal chase camera's position (still tracking the active diver)
-# but points it at this instead of the diver, while set - used for the
-# intro sequence's light beam so the player stays framed the whole walk
-# over instead of the camera cutting away to hover near the beam. See
-# _move_camera()'s own use of this.
+# While set, the chase camera keeps its position but looks at this point
+# (used for the intro light beam).
 var _camera_look_override: Node3D = null
 var _camera_focus_timer := 0.0
 
-# test seam: verify/swim.gd steers the player without a keyboard. Nothing in
-# the game writes these, so the shipped build reads the real keys.
+# Test seam: verify/swim.gd steers the player without a keyboard.
 var scripted := false
 var scripted_dir := Vector3.ZERO
 var scripted_rise := 0.0
 
-# Marks whichever diver TAB currently has you steering - same green cone,
-# same "hover above the head" positioning target_selector.gd's own cursor
-# already uses for a swap target, so "this is who you're currently in
-# control of" reads as the same visual language as "this is who you're
-# about to swap into." Hidden rather than left dangling over a diver that
-# doesn't apply right now: mid-swap-selection (target_selector's own cursor
-# is already doing this job for the target being picked), first-person aim
-# (there's no "above your own head" view to show it in), and battling (the
-# dive site isn't even what's on screen).
+# Cone above the active diver; hidden while swap-selecting, aiming or battling.
 var _active_cursor: MeshInstance3D
 
 func _ready() -> void:
-	if OS.get_cmdline_user_args().has("--dev"):
+	if _dev_requested():
 		skip_intro_for_test = true
 		skip_tutorial_for_test = true
-	# Read-only trace synchronizes exported playtests to real gameplay without
-	# query shortcuts or commands that mutate state.
+	# Read-only trace that syncs exported playtests to real gameplay.
 	route_state.phase_changed.connect(_report_prologue_phase)
 	cam = $Camera3D
 	hud = $HUD/Controls
-	# MODIFIED (added): none of $HUD's own children ever set mouse_filter,
-	# so this hint label - like the banner/minimap/HP/oxygen bars below -
-	# defaulted to STOP. $HUD stays visible for the entire duration of a
-	# battle (nothing hides it when one starts), so any special-encounter
-	# minigame's own full-screen _unhandled_input (mouse-look, click-to-
-	# grapple) was getting eaten by whichever of these plain HUD elements
-	# happened to sit under the cursor - none of them are meant to be
-	# clickable in the first place.
+	# HUD elements must not eat mouse input meant for minigames.
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner = Label.new()
 	banner.name = "Banner"
-	# Bottom-center, hugging the bottom edge of its own box so the text sits
-	# right underneath the diver (who's roughly screen-center while playing)
-	# and just above the HP/oxygen bars (_build_hp_bar/_build_oxygen_bar
-	# occupy the last 82px at the very bottom - see below).
+	# Bottom-center, just above the HP/oxygen bars.
 	banner.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	banner.offset_left = -320.0
 	banner.offset_right = 320.0
@@ -1434,23 +1177,17 @@ func _ready() -> void:
 		divers.append(d)
 		d.encounter_triggered.connect(_on_encounter_triggered.bind(d))
 		d.swapped_with.connect(_on_diver_swapped.bind(d))
+		d.sonar_changed.connect(_update_hud, CONNECT_DEFERRED)
 		target_selector.register_character(d)
 	_build_diver_slots()
 	_build_party_bars()   # needs the divers that were just created
-	# SceneTree.process_frame fires even while paused, which is exactly when
-	# the Esc/save menus and the maze map are up.
+	# process_frame fires even while paused (menus and maze map).
 	get_tree().process_frame.connect(_sync_overlay_hud)
-	# The spell-playtest route (see _on_title_spell_playtest()) is meant to
-	# reach a save point immediately, same reason it also grants max spell
-	# points/every key item - fighting through the scripted first battle
-	# first would defeat the point of a fast spell-testing loop.
+	# The spell-playtest route needs a save point immediately, so skip the tutorial.
 	if _tutorial_skip_requested() or _spell_playtest_requested() or _blocker_playtest_requested():
 		skip_tutorial_for_test = true
 	if skip_tutorial_for_test:
-		# Never spawn the beam/arrow at all, and mark the tutorial as already
-		# done up front - TAB/random encounters/the save point prompt all
-		# gate on _first_encounter_done, the same state a player has after
-		# actually finishing the real tutorial fight.
+		# No beam/arrow; mark the tutorial done up front.
 		_first_encounter_started = true
 		_first_encounter_done = true
 		route_state.opening_video_seen = true
@@ -1459,9 +1196,7 @@ func _ready() -> void:
 		route_state.set_prologue_phase("complete")
 	_update_hud()
 
-	# Do not parent the title to HUD: _show_title_screen() deliberately hides
-	# that whole layer so its controls cannot bunch underneath the title on the
-	# first frame. This layer remains visible and interactive while paused.
+	# Not under HUD: _show_title_screen() hides that whole layer.
 	title_layer = CanvasLayer.new()
 	title_layer.name = "TitleLayer"
 	title_layer.layer = 20
@@ -1507,14 +1242,11 @@ func _ready() -> void:
 	game_over_screen.restart_chosen.connect(_on_game_over_restart)
 	game_over_screen.continue_chosen.connect(_on_game_over_continue)
 	game_over_screen.title_chosen.connect(_on_game_over_title)
-	# This cannot live under HUD: _show_game_over() deliberately hides HUD as
-	# one unit. Keep both exclusive, paused menu surfaces on the overlay layer.
+	# Not under HUD: _show_game_over() hides HUD as one unit.
 	title_layer.add_child(game_over_screen)
 	_build_embedded_maze()
 
-	# A game-over restart must rebuild the scene before applying its save so
-	# unsaved geometry and inventory roll back as one checkpoint. Cold launch
-	# still opens the title screen exactly as before.
+	# A game-over restart rebuilds the scene before applying its save.
 	if SceneHandoff.returning_to_world:
 		SceneHandoff.returning_to_world = false
 		var returned := SceneHandoff.take_campaign_session()
@@ -1539,20 +1271,29 @@ func _ready() -> void:
 		if not SceneHandoff.checkpoint_load_error.is_empty():
 			title_screen.show_load_error(SceneHandoff.checkpoint_load_error)
 			SceneHandoff.checkpoint_load_error = ""
-	if OS.get_cmdline_user_args().has("--dev"):
+	if _dev_requested():
 		_start_dev_mode.call_deferred()
 	elif _maze_playtest_requested():
 		call_deferred("_enter_maze_scene", true)
 
+# Set by _start_dev_mode(): hides the objective line at the top of the screen.
+var _dev_mode := false
+
+# Set by _start_dev_mode() (--dev). Battle reads it to show every status.
+var dev_mode := false
+
 func _start_dev_mode() -> void:
+	dev_mode = true
+	_dev_mode = true
 	# Explicit command-line diagnostics never claim or write a player slot.
 	_current_slot = -1
 	route_state.opening_video_seen = true
 	route_state.prologue_complete = true
 	route_state.set_prologue_phase("complete")
+	# Dev mode: every item, including the Maze Navigation Map.
 	for id in Items.ITEMS:
 		if Items.is_key_item(String(id)):
-			if id != "maze_nav_map" and not key_items.has(id):
+			if not key_items.has(id):
 				key_items.append(id)
 		elif String(Items.ITEMS[id].get("kind", "")) == "info":
 			inventory[id] = 1
@@ -1561,6 +1302,7 @@ func _start_dev_mode() -> void:
 	# Every Combat Help tutorial/replay is unlocked in dev mode.
 	special_encounter_left = true
 	ability_popups_seen = true
+	_save_point_tutorial_seen = true
 	route_state.tutorial_complete = true
 	title_screen.close()
 	get_tree().paused = false
@@ -1572,31 +1314,60 @@ func _start_dev_mode() -> void:
 		for child in embedded_maze._gate.get_children():
 			if child is CollisionShape3D:
 				child.disabled = true
+	# Every ability and every spell the unlocked key items allow.
+	embedded_maze.key_items = key_items
+	for d in divers:
+		var diver := d as Diver
+		diver.unlock_ability()
+		diver.stats.spell_points = 99
+		SpellTree.learn_all_available(diver, key_items)
+		diver.stats.fill()
+	add_child(DevTeleport.new(self))
 	var front := Vector3(263, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
 	if OS.get_cmdline_user_args().has("--secret-room"):
 		var room := embedded_maze._secret_item_room_rect().abs()
 		front = Vector3(room.get_center().x, embedded_maze._floor_top_y + 1.2, room.get_center().y)
 	elif OS.get_cmdline_user_args().has("--octopus-front"):
-		# Diagnostic shortcut: everything unlocked, standing just inside the
-		# main boss room's door facing the stationed Cordys (outside his
-		# prompt radius, so you walk up to start the fight yourself).
-		if not key_items.has("maze_nav_map"):
-			key_items.append("maze_nav_map")
-		embedded_maze.key_items = key_items
-		for d in divers:
-			var diver := d as Diver
-			diver.unlock_ability()
-			diver.stats.spell_points = 99
-			SpellTree.learn_all_available(diver, key_items)
-			diver.stats.fill()
+		# Diagnostic shortcut: just inside the main boss room's door, facing Cordys
+		# (outside his prompt radius).
 		var b33 := embedded_maze.get_node("CSGBox3D33") as Node3D
 		front = Vector3(b33.global_position.x + 3.0, embedded_maze._floor_top_y + 1.2, embedded_maze._main_boss_door_z)
-		yaw = -PI * 0.5   # face east, into the room toward Cordys
+		yaw = -PI * 0.5   # face east, toward Cordys
 	for i in divers.size():
 		(divers[i] as Diver).global_position = front + Vector3(-float(i) * 1.5, 0, float(i) * 1.5)
 		(divers[i] as Diver).velocity = Vector3.ZERO
 	_set_maze_ownership(true)
-	_announce("DEV MODE: temporary items and maze keys. No player save is written.")
+	_announce("DEV MODE: everything unlocked. F2 = teleport menu, T = jump to aim. No player save is written.")
+
+# Dev mode only: open the Tethys fight without playing up to it - both route
+# blockers beaten, lab available. Entering the lab then starts the cutscene.
+func dev_unlock_tethys() -> void:
+	route_state.set_blocker_state("bomb_bot", "defeated")
+	route_state.set_blocker_state("sword_slayer", "defeated")
+	if route_state.lab_state in ["locked", "cleared"] or route_state.tethys_state == "defeated":
+		route_state.set_lab_state("available")
+		route_state.set_tethys_state("available")
+	_sync_deep_zone_blocker_staging()
+	_sync_lab_staging()
+
+# Dev mode only (DevTeleport): move the party to `pos`, switching between
+# the overworld and the maze if needed.
+func dev_teleport(pos: Vector3, to_maze: bool, label: String, look_yaw := NAN) -> void:
+	if battling:
+		_announce("Can't teleport during a battle.")
+		return
+	var in_maze := embedded_maze != null and embedded_maze.maze_active
+	for i in divers.size():
+		var diver := divers[i] as Diver
+		diver.global_position = pos + Vector3(-float(i) * 1.5, 0, float(i) * 1.5)
+		diver.velocity = Vector3.ZERO
+	if not is_nan(look_yaw):
+		yaw = look_yaw
+		if in_maze and to_maze:
+			embedded_maze._yaw = look_yaw
+	if to_maze != in_maze:
+		_set_maze_ownership(to_maze)
+	_announce("Teleported to %s." % label)
 
 var _maze_hidden_hud: Array[CanvasItem] = []
 
@@ -1635,8 +1406,7 @@ func _restore_campaign_return(session: CampaignSession) -> bool:
 	session.route_state.set_maze_door_state("available")
 	session.route_state.set_encounter_source("random")
 	var data := CampaignCheckpoint.encode(session, "world")
-	# The World entrance activates automatically inside its radius. A return
-	# places the party just outside it, in the protected open-water approach.
+	# Returns place the party just outside the auto-activating entrance radius.
 	var spot := deep_zone_layout.route_points().maze_transition as Vector3
 	if session.outer_world_checkpoint.get("maze_entry_source", "deep_landmark") == "puzzle_exit":
 		spot = PUZZLE_MAZE_EXIT + Vector3(8.0, 0, 0)
@@ -1660,8 +1430,7 @@ func _restore_campaign_return(session: CampaignSession) -> bool:
 	_update_hud()
 	return true
 
-# A floor and some rock so there is parallax to swim past: without something
-# to move relative to, motion at this scale reads as standing still.
+# Floor and rocks give parallax so motion reads at this scale.
 func _build_site() -> void:
 	var floor_body := StaticBody3D.new()
 	floor_body.name = "ShallowsFloorBody"
@@ -1683,9 +1452,7 @@ func _build_site() -> void:
 	floor_body.add_child(fs)
 	add_child(floor_body)
 
-	# The authored route continues east beyond the former x=62 collision rail.
-	# Keep this as its own darker surface so the boundary is visible rather
-	# than merely changing a zone id while the world looks identical.
+	# Darker surface for the eastern extension so the boundary is visible.
 	var deep_body := StaticBody3D.new()
 	deep_body.name = "DeepZoneFloorBody"
 	var deep_mesh := MeshInstance3D.new()
@@ -1722,8 +1489,7 @@ func _build_site() -> void:
 	deep_zone_environment.name = "DeepZoneEnvironment"
 	add_child(deep_zone_environment)
 	_build_deep_zone_blocker_staging()
-	# A second save point just before the laboratory, so a Tethys loss doesn't
-	# send the party all the way back to the shallows checkpoint.
+	# Save point before the laboratory so a Tethys loss isn't a long walk back.
 	var lab_save_point := SavePoint.new()
 	lab_save_point.name = "LabSavePoint"
 	lab_save_point.position = DeepZoneLayoutScript.LAB_SAVE_POINT
@@ -1731,12 +1497,9 @@ func _build_site() -> void:
 	add_child(lab_save_point)
 	_save_points.append(lab_save_point)
 
-	# One MultiMesh, not 46 nodes with 46 collision bodies. The browser build
-	# was taking most of a minute to show its first frame and every node set up
-	# at startup was part of that bill. Rocks are scenery: they do not need to
-	# be solid, and they do not need to be separate objects.
+	# One non-colliding MultiMesh for scenery rocks (startup cost).
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260814          # same site every run: a level you can talk about
+	rng.seed = 20260814          # fixed seed: same site every run
 	var rock := SphereMesh.new()
 	rock.radius = 0.5
 	rock.height = 0.7
@@ -1769,10 +1532,7 @@ func _build_site() -> void:
 	_build_boundary_walls()
 	_build_item_grapple_anchors()
 
-# Keep the playable space inside the visible seafloor perimeter. These outer
-# safety rails intentionally do not appear on the minimap; unlike a ceiling,
-# they align with the readable end of the authored world rather than cutting
-# through ordinary open water.
+# Invisible perimeter rails along the visible seafloor edge (not on minimap).
 func _build_boundary_walls() -> void:
 	const WALL_HEIGHT := 80.0
 	const WALL_Y := 30.0
@@ -1788,9 +1548,7 @@ func _build_boundary_walls() -> void:
 	for limits in [[-DeepZoneLayoutScript.WORLD_HALF_Z - THICKNESS, gap - half_width], [gap + half_width, DeepZoneLayoutScript.WORLD_HALF_Z + THICKNESS]]:
 		_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MAX_X + THICKNESS * 0.5, WALL_Y, (float(limits[0]) + float(limits[1])) * 0.5), Vector3(THICKNESS, WALL_HEIGHT, float(limits[1]) - float(limits[0])))
 	_build_invisible_wall(Vector3(DeepZoneLayoutScript.WORLD_MIN_X - THICKNESS * 0.5, WALL_Y, 0.0), Vector3(THICKNESS, WALL_HEIGHT, span_z + THICKNESS * 2.0))
-	# Restored collision-only roof (removed in the PR88 port): its underside is
-	# exactly four blockade-heights above the floor, so the airborne reward
-	# rocks at 3x height stay reachable but nobody swims off into the sky.
+	# Collision-only roof at four blockade heights; airborne rocks stay reachable.
 	_build_invisible_wall(
 		Vector3(center_x, WORLD_CEILING_Y + CEILING_THICKNESS * 0.5, 0.0),
 		Vector3(span_x, CEILING_THICKNESS, span_z)
@@ -1806,33 +1564,15 @@ func _build_invisible_wall(center: Vector3, size: Vector3) -> void:
 	body.add_child(shape)
 	add_child(body)
 
-# CrackedWalls scattered around the open world. Ground-level rocks give a
-# random consumable; the four airborne rocks at 3x blockade height instead
-# hold two fixed spell keys and two enemy ambushes. No invisible collision
-# extension (collision_height/width stay 0) since only breaking them matters.
-#
-# Spread through open water away from every other placed thing - clear of
-# the anchor's own radius (Sites.ALL[0], r=6.5), both combat sites' radii
-# (shallows r=9.5 at (-24,-12), trench r=10.0 at (12,-42)), and the gated
-# highway corridor.
-# Two formerly misplaced rocks remain before the visible entrance formation,
-# keeping their rewards available without making the player cross that authored
-# gate first. The old 60 m invisible collision wing no longer exists.
-#
-# disguised_as_scenery_rock left at its default (false) on purpose - these
-# read as a rounded rock (sphere_shaped) recolored brown, so a player can
-# spot "this one's breakable" on sight rather than only discovering these
-# by sweeping the whole site with shockwave.
+# Breakable reward rocks in open water, clear of sites and the highway.
+# Ground rocks give a random consumable; airborne ones hold spell keys or ambushes.
 func _build_breakable_rocks() -> void:
 	const SPOTS := [
 		Vector3(6.0, 1.0, -7.0), Vector3(-7.0, 1.0, 5.0),
 		Vector3(-15.0, 1.0, -20.0), Vector3(-3.0, 1.0, -30.0),
 		Vector3(-25.0, 1.0, 12.0), Vector3(10.0, 1.0, -15.0),
 		Vector3(8.0, 1.0, 22.0),
-		# These four rocks float three times the 6m blockade height above the
-		# seafloor. Two hold spell keys and two conceal encounter ambushes.
-		# All four stay before the visible entrance formation (see the note
-		# above), so the Sunken Core and ambushes remain available beforehand.
+		# Airborne rocks at 3x blockade height: two spell keys, two ambushes.
 		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, 22.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, -48.0),
 		Vector3(-38.0, AIRBORNE_ROCK_HEIGHT, -30.0), Vector3(10.0, AIRBORNE_ROCK_HEIGHT, 46.0),
 	]
@@ -1844,19 +1584,13 @@ func _build_breakable_rocks() -> void:
 		rock.sphere_shaped = true
 		rock.position = spot
 		rock.broken.connect(_on_breakable_rock_broken.bind(id, spot))
-		# Separate listener purely for save persistence (see
-		# _on_world_object_consumed()/consumed_world_ids) - kept apart from
-		# _on_breakable_rock_broken() above so "spawn a reward" and "record
-		# that this is now permanently gone" stay two independent jobs, the
-		# same way cracked_wall.gd itself never mixes reward logic into its
-		# own break detection.
+		# Separate listener for save persistence (rewards handled elsewhere).
 		rock.broken.connect(_on_world_object_consumed.bind(id))
 		add_child(rock)
 		_cracked_walls[id] = rock
 
-# id and spot are bound at connect time (see _build_breakable_rocks()) - the
-# `broken` signal stays ability/reward-agnostic. The stable id ties together
-# the consumed source and its pending reward across save/load.
+# id and spot are bound at connect time; the id links the consumed rock to
+# its pending reward across save/load.
 func _on_breakable_rock_broken(id: String, spot: Vector3) -> void:
 	if ROCK_KEY_ITEM_REWARDS.has(id):
 		var key_item := String(ROCK_KEY_ITEM_REWARDS[id])
@@ -1881,20 +1615,12 @@ func _spawn_world_drop(id: String, item_id: String, drop_position: Vector3) -> v
 		return
 	var orb := ItemOrb.new()
 	orb.item_id = item_id
-	# Small scatter so a pop doesn't sit dead-center in the rubble - purely
-	# cosmetic, the pickup radius (see item_orb.gd) covers either way.
+	# Small cosmetic scatter for the reward pop.
 	orb.position = drop_position
 	orb.collected.connect(_on_item_orb_collected.bind(id))
 	add_child(orb)
 
-# Shared by every persistable CrackedWall's `broken` signal (reward rocks
-# AND the entrance blockade - see _build_breakable_rocks()/_build_highway())
-# - just records that `id` is gone for good, so a later _write_save() call
-# captures it and a later _load_save() knows to free it again on a fresh
-# world rebuild (see consumed_world_ids/_cracked_walls above). Doesn't
-# touch the node itself; on_shockwave() already queue_free()s it - this is
-# purely bookkeeping for persistence, same separation _on_breakable_rock_
-# broken() (the reward-spawning listener) already keeps from this.
+# Records `id` as consumed for save/load; doesn't touch the node.
 func _on_world_object_consumed(id: String) -> void:
 	if not consumed_world_ids.has(id):
 		consumed_world_ids.append(id)
@@ -1905,47 +1631,22 @@ func _on_item_orb_collected(item_id: String, _d: Diver, drop_id: String) -> void
 	pending_world_drops.erase(drop_id)
 	_add_to_inventory(item_id)
 
-# Party-wide, not applied to `d` (who physically swam into the orb) at all
-# anymore - see inventory/use_inventory_item()'s own header comments for
-# why an item sits in the inventory until the player chooses to use it
-# instead of applying itself the instant it's picked up.
-func _add_to_inventory(item_id: String) -> void:
-	if item_id == "oxygen_cell":
-		var used := Items.auto_use_oxygen_cell(divers)
-		if used != "":
-			_announce(used)
-			_update_oxygen_bar()
-			return
+# Goes into the party inventory; applied later via use_inventory_item().
+func _add_to_inventory(item_id: String, announce := true) -> void:
 	inventory[item_id] = int(inventory.get(item_id, 0)) + 1
+	if not announce:
+		return
 	var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
 	_announce("Picked up a %s." % display)
 
-# The only place Items.grant() still runs from - called by
-# inventory_menu.gd's Use button. Applies to whichever diver is currently
-# being steered, same as the old instant-pickup behavior did, just delayed
-# until the player actually chooses to spend it.
-#
-# Refuses (announces why, doesn't touch the count) rather than spending
-# the item when it wouldn't do anything - Items.would_help() is the same
-# check inventory_menu.gd's Use button already disables on, kept here too
-# so this can never waste a potion even if it's ever called some other
-# way than clicking that button.
+# Applies an inventory item to the active diver (inventory_menu.gd's Use).
+# Refuses without spending when Items.would_help() says it wouldn't help.
 func use_inventory_item(item_id: String) -> void:
 	var count: int = int(inventory.get(item_id, 0))
 	if count <= 0 or divers.is_empty():
 		return
 	var diver: Diver = divers[active]
-	# MODIFIED (fixed): battle_only items (attack_up/defense_up - see
-	# items.gd's own header comment) are only ever meant to last "for the
-	# rest of this fight," which is entirely battle.gd's own bookkeeping
-	# (_resolve_item() records the amount, _revert_temp_buffs() subtracts it
-	# back off before the fight ends) - this world-map inventory menu never
-	# goes through that at all (Esc's inventory_menu.open() only ever fires
-	# while not battling, see _unhandled_input()'s own guard), so calling
-	# Items.grant() from here was a real, permanent stat increase with
-	# nothing left to ever revert it. would_help() still returns true for
-	# these (a real battle-time check still needs to allow them), so this
-	# needs its own explicit refusal rather than reusing that check.
+	# battle_only buffs are reverted only by battle.gd, so refuse them here.
 	if bool(Items.ITEMS.get(item_id, {}).get("battle_only", false)):
 		_announce("This item can only be used during a battle.")
 		return
@@ -1961,14 +1662,8 @@ func use_inventory_item(item_id: String) -> void:
 		inventory.erase(item_id)
 	_update_hp_bar()
 
-# Every move/spell a given diver can use from the pause menu's "Party
-# Spells" tab right now - their BASE_MOVES entries (see battle.gd) plus
-# whatever they've learned in the spell tree (known_spells, not just
-# equipped_spells - see spell_tree.gd's own header comment on why), each
-# filtered down to just the ones tagged "inventory": true. Returns move/
-# spell-def dictionaries as-is (mixed shape - BASE_MOVES uses "name",
-# spell defs use "display" - see _party_spell_label() below for reading
-# either one back).
+# Inventory-tagged moves/spells (BASE_MOVES + known_spells) for the pause menu.
+# Mixed shape: BASE_MOVES uses "name", spell defs use "display".
 func _inventory_spells_for(d: Diver) -> Array:
 	var out: Array = []
 	for mv in Battle.BASE_MOVES.get(d.model_name, []):
@@ -1983,26 +1678,13 @@ func _inventory_spells_for(d: Diver) -> Array:
 func _party_spell_label(spell: Dictionary) -> String:
 	return String(spell.get("display", spell.get("name", "")))
 
-# Same oxygen economy as casting it in battle - a spell that costs 16
-# oxygen there shouldn't become a free, infinite-use heal just because
-# there's no battle running right now (oxygen_cost defaults to 0.0 same as
-# battle.gd, so Maxilani's free base Heal really does stay free here too).
-# Called by the menu before it lets a spell be picked at all - see
-# inventory_menu.gd's caster-picker, which disables anyone who can't
-# currently afford it, same as battle.gd's move menu already does.
+# Same oxygen cost as casting in battle.
 func can_afford_party_spell(spell: Dictionary, caster: Diver) -> bool:
 	# A downed diver can't cast anything, in or out of battle.
 	return caster.stats.hp > 0 and caster.stats.oxygen >= float(spell.get("oxygen_cost", 0.0))
 
-# Resolves a "heal"/"revive" party spell straight against target.stats,
-# same math battle.gd's _apply_heal()/_apply_revive() use, just without a
-# live Battle around to run it through - there's no accuracy check and no
-# enemy to miss against, so this is the minimum needed to reuse the same
-# effect data in both places. Deducts the caster's oxygen same as a real
-# cast would (see can_afford_party_spell() above); does nothing if the
-# spell's effect isn't one this menu knows how to apply (e.g. someone
-# mistags a damage move "inventory" - there's no opponent to swing it at
-# outside battle, so it's a silent no-op rather than a crash).
+# Applies a heal/revive party spell outside battle (same math as battle.gd)
+# and deducts oxygen. Unknown effects are a no-op.
 func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 	if not can_afford_party_spell(spell, caster):
 		return
@@ -2039,40 +1721,8 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 	_update_hp_bar()
 	_update_oxygen_bar()
 
-# Two fixed guardian spots, each sitting on exactly the key item
-# spell_tree.gd's two capstone spells are gated behind (current_pearl for
-# Staff_Diver's Tidal Burst, reef_plate for Prototype_V(1922)'s Bulwark
-# Stance) - see items.gd's ITEMS entries for both. Placed well clear of the
-# scattered rocks/CAST start positions/highway, out in the open dive site
-# where _build_site()'s rock scatter already reaches (dist up to 48).
-# The one place in the dive site worth swimming *to*, as opposed to swimming
-# around until something attacks you.
-#
-# Every other piece of this already existed and was already wired to
-# ItemGuardian.spots(): sonar reveals a spot once you get within the minimap's
-# view radius (diver.gd's update_sonar), the minimap then draws a pulsing
-# marker for it or an arrow toward it (mini_map.gd), and winning the special
-# encounter it can now open (see _try_trigger_item_site()) grants the item
-# (_grant_reward_item). The only thing missing here originally was the six
-# lines that put a guarded site's ring/plinth in the water at all. They were
-# here, wrapped in a triple-quoted string, which GDScript parses as a string
-# literal and Godot never warns about, so the function ran and built
-# nothing. See #45.
-# Places to discover while exploring or using Maxilani's sonar.
-#
-# The dive site used to be open water with rocks in it: encounters happened
-# wherever you were, so the terrain did no work and there was nothing on the
-# map to aim at. This is the answer from the first combat PR, ported: a
-# handful of built places joined by trails of lit beacons.
-#
-# A site is a bowl. A low berm ring you physically cross, broken columns
-# round the rim, and a plinth at the middle. The enclosure is the point:
-# it narrows the volume, which is the only thing that makes a fight inside
-# it mean anything in three dimensions, where anything in open water can be
-# swum around.
-#
-# The site bowls themselves have no decorative lamps. Ordinary guarded item
-# locations get cyan grappleable rings; special encounter sites have none.
+# Dive sites: bowls (berm ring, columns, plinth) joined by beacon trails.
+# Guarded item sites get cyan grappleable rings; special sites have none.
 func _build_dive_sites() -> void:
 	for d in Sites.ALL:
 		var site: Site = SiteScript.new()
@@ -2081,33 +1731,12 @@ func _build_dive_sites() -> void:
 		site_nodes[String(d.id)] = site
 
 
-# A straight corridor out past the rest of the scattered rocks - and the
-# whole first real gate, not just scenery to swim through. In order:
-#   0. A save point sits before the entrance blockade, in the open dive
-#      site - a rest/prep stop before the gate, not a reward for clearing
-#      it (see save_point.gd).
-#   1. Rubble blocks the entrance - only Mech Pilot's shockwave clears it
-#      (an invisible collision extension well above the visible rocks
-#      rules out just swimming over the top - see cracked_wall.gd).
-#   2. A whirlpool over a real gap in the floor. Getting close warns you;
-#      getting caught sucks you in, costs HP, and sweeps you back - unless
-#      you're mid-grapple, which is exempt (see whirlpool.gd). Nothing
-#      ever disarms it - there is no bridge, no permanent safe crossing.
-#      Every plain swim through it gets caught, every single time. A
-#      second GrappleAnchor sits right before it as a staging point; the
-#      real crossing anchor is on the far side.
-#   3. Reaching that far anchor used to unlock Maxilani's swap ability (see
-#      grapple_anchor.gd's on_grappled_to()) - swap now starts available
-#      from the beginning like every other diver's ability (see diver.gd's
-#      BASE_STATS), so this anchor's unlock call is a no-op today. Grapple
-#      and swap are still the only two ways across the whirlpool.
-#   4. Three lit plates on the far side. All three divers standing on
-#      their own plate at once opens the way past END_X - which means
-#      getting all three across by grapple/swap alone, since nothing
-#      ever makes the whirlpool safe to swim through.
-# Every piece here is a reusable class (CrackedWall, GrappleAnchor,
-# Whirlpool, LockPlate, Waypoint) - this function is just where they get
-# placed and wired together for this one gate.
+# The first gate corridor, in order:
+#   0. Save point before the entrance blockade.
+#   1. Rubble only Mech Pilot's shockwave clears (tall invisible collision).
+#   2. A permanent whirlpool over a floor gap; grapple is exempt.
+#   3. Far-side grapple anchor; grapple and swap are the only ways across.
+#   4. Three lock plates that all need a diver to open the way past END_X.
 func _build_highway() -> void:
 	const START_X := 15.0
 	const GAP_START_X := 24.0
@@ -2119,26 +1748,19 @@ func _build_highway() -> void:
 
 	var length := END_X - START_X
 	var center_x := (START_X + END_X) * 0.5
-	# Contextual guidance follows this visible room, not a world-spanning
-	# collider or a saved objective. Small margins count contact/approach.
+	# Contextual guidance follows this visible room; small margins count approach.
 	_puzzle_hint_bounds = AABB(
 		Vector3(START_X - 3.0, 0.0, LANE_Z - LANE_HALF_WIDTH - 2.0),
 		Vector3(length + 6.0, WALL_HEIGHT + 2.0, LANE_HALF_WIDTH * 2.0 + 4.0)
 	)
 
-	# 0. A save point before the corridor even starts - the first place in
-	# the game save menu becomes available at all (see
-	# save_point.gd/SavePointMenu). Sits in the open dive site ahead of the
-	# entrance blockade, not inside the walled corridor, so it reads as
-	# "rest here before attempting the gate," not "partway through it."
+	# 0. Save point ahead of the entrance blockade.
 	var save_point := SavePoint.new()
 	save_point.position = Vector3(START_X - 5.0, 2.0, LANE_Z)
-	# Contact volume is centred at swimming height; its visual footprint belongs
-	# on the floor, not across the player's torso at that same two-metre height.
+	# Contact volume at swimming height; visual footprint on the floor.
 	save_point.footprint_offset_y = -1.8
 	add_child(save_point)
-	# First in the list: the Deep Zone's lab save point is built earlier but
-	# this shallows one stays _save_points[0].
+	# Must stay _save_points[0] (the lab save point is built earlier).
 	_save_points.push_front(save_point)
 
 	_build_wall(
@@ -2150,20 +1772,12 @@ func _build_highway() -> void:
 		Vector3(length, WALL_HEIGHT, 0.6)
 	)
 
-	# 1. The entrance blockade - one solid rock formation spanning the full
-	# lane width and wall height, no gaps to swim around or over. Only
-	# Mech Pilot's shockwave clears it.
+	# 1. The entrance blockade: full lane width and height, shockwave only.
 	var entrance_rocks := CrackedWall.new()
 	entrance_rocks.span = Vector3(2.0, WALL_HEIGHT, LANE_HALF_WIDTH * 2.0)
-	# Invisible collision extends far above the visible rocks - divers rise
-	# freely in 3D, so a blockade that only matched its visible height
-	# could just be swum over, the same gap the corridor's own walls have
-	# (and accept, since going over a wall to cut a corner isn't the same
-	# problem as skipping a gate entirely).
+	# Invisible collision far above the visible rocks so it can't be swum over.
 	entrance_rocks.collision_height = 40.0
-	# Restored on request: the invisible collision extends 60 m wide in line
-	# with the blockade, so nobody can swim around the corridor's open ends
-	# and cut back in past the gate without breaking it.
+	# Invisible collision extends 60 m wide so the gate can't be bypassed.
 	entrance_rocks.collision_width = 60.0
 	entrance_rocks.position = Vector3(START_X + 1.0, WALL_HEIGHT * 0.5, LANE_Z)
 	add_child(entrance_rocks)
@@ -2174,11 +1788,7 @@ func _build_highway() -> void:
 	var gap_center_x := (GAP_START_X + GAP_END_X) * 0.5
 	var gap_width := GAP_END_X - GAP_START_X
 
-	# Sits just ABOVE the floor's own surface (y=0), not below it - a patch
-	# placed under the floor is invisible, since the floor is one big
-	# opaque plane covering the same footprint and renders right over it.
-	# Unshaded so it reads as pure void regardless of the site's lighting,
-	# not just "a dark rock."
+	# Slightly above the floor (below would be hidden); unshaded to read as void.
 	var void_mesh := MeshInstance3D.new()
 	var void_plane := BoxMesh.new()
 	void_plane.size = Vector3(gap_width, 0.06, LANE_HALF_WIDTH * 2.0)
@@ -2198,28 +1808,19 @@ func _build_highway() -> void:
 	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
 	add_child(whirlpool)
 
-	# A second anchor right before the gap, in addition to the one on the
-	# far side - a staging point for Musashi on the approach, not itself
-	# a way across.
+	# Staging anchor before the gap (not itself a way across).
 	var near_anchor := GrappleAnchor.new()
-	# Leave enough swim room after the staging pull to move past this
-	# collider before aiming at the far anchor. At GAP_START_X - 1 the
-	# diver stopped inside the near anchor's generous target cylinder, so
-	# the next straight shot selected it again instead of crossing.
+	# Far enough back that the next shot doesn't reselect this anchor.
 	near_anchor.position = Vector3(GAP_START_X - 3.0, 2.0, LANE_Z)
 	add_child(near_anchor)
 
-	# 3. The anchor that unlocks Maxilani's swap - reaching it is the
-	# "you made it across" beat, but it doesn't disarm anything. The
-	# whirlpool stays armed forever; grapple and swap are the permanent
-	# way across, not a one-time gate.
+	# 3. Far-side anchor; the whirlpool stays armed.
 	var anchor := GrappleAnchor.new()
 	anchor.position = Vector3(GAP_END_X + 2.0, 2.0, LANE_Z)
 	anchor.unlocks_diver_ability_for = "Staff_Diver"
 	add_child(anchor)
 
-	# 5. Three lit plates - the actual finale. All three occupied at once
-	# (checked in _physics_process via _check_gap_puzzle) reveals the goal.
+	# 5. Three lit plates; all occupied (see _check_gap_puzzle) opens the doors.
 	var plate_x := lerpf(GAP_END_X, END_X, 0.6)
 	for z_off in [-2.5, 0.0, 2.5]:
 		var plate := LockPlate.new()
@@ -2227,9 +1828,7 @@ func _build_highway() -> void:
 		add_child(plate)
 		_lock_plates.append(plate)
 
-		# One door per plate, far enough down the lane that the plate's ring
-		# (radius 1.2) sits fully in front of the door rather than under it -
-		# solid until _check_gap_puzzle opens all three together.
+		# One door per plate, past the plate's ring; opened by _check_gap_puzzle.
 		var door := Door.new()
 		door.position = Vector3(plate_x + 3.0, WALL_HEIGHT * 0.5, LANE_Z + z_off)
 		add_child(door)
@@ -2253,8 +1852,7 @@ func _build_highway() -> void:
 	add_child(_puzzle_exit_label)
 
 func _on_whirlpool_warned() -> void:
-	# The whirlpool shows its own "Danger: Whirlpool ahead" caption while
-	# the diver is within its warning radius (see whirlpool.gd).
+	# The whirlpool shows its own warning caption (see whirlpool.gd).
 	pass
 
 func _on_diver_sucked_in(d: Diver, amount: int) -> void:
@@ -2262,9 +1860,7 @@ func _on_diver_sucked_in(d: Diver, amount: int) -> void:
 	if d == divers[active]:
 		_flash_hp_bar()
 
-# Polled rather than signal-driven, since "solved" is a fact about all
-# three plates at once, not something any single plate can know on its
-# own - simplest to just check the three of them each frame.
+# Polled: "solved" depends on all three plates at once.
 func _check_gap_puzzle() -> void:
 	if _puzzle_solved or _lock_plates.size() < 3 or _puzzle_goal == null:
 		return
@@ -2291,16 +1887,11 @@ func _sync_puzzle_maze_exit() -> void:
 	if is_instance_valid(_puzzle_goal):
 		_puzzle_goal.visible = false
 
-# One plain wall segment: a StaticBody3D box, solid (divers collide with
-# it via CharacterBody3D's own move_and_slide, same as the floor), centered
-# on `center` with total dimensions `size`.
+# One solid wall segment centered on `center` with dimensions `size`.
 func _build_wall(center: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()
 	body.position = center
-	# Tag so _update_wall_visibility()'s detection area can tell an actual
-	# wall apart from anything else it might overlap (the diver's own
-	# body, CrackedWall rocks, LockPlates, whatever else sits on a
-	# physics layer it can see).
+	# Tag so the wall-reveal area can tell walls from other bodies.
 	body.add_to_group("Wall")
 
 	var mesh_inst := MeshInstance3D.new()
@@ -2321,18 +1912,13 @@ func _build_wall(center: Vector3, size: Vector3) -> void:
 
 	add_child(body)
 
-	# Minimap segment: along whichever horizontal axis is actually the
-	# wall's length. Every wall built here is axis-aligned, so this is
-	# just picking x vs z, not reading the body's real rotation.
+	# Minimap segment along the wall's long horizontal axis (walls are axis-aligned).
 	if size.x >= size.z:
 		_slice_wall_into_pieces(center - Vector3(size.x * 0.5, 0.0, 0.0), center + Vector3(size.x * 0.5, 0.0, 0.0), body)
 	else:
 		_slice_wall_into_pieces(center - Vector3(0.0, 0.0, size.z * 0.5), center + Vector3(0.0, 0.0, size.z * 0.5), body)
 
-# Cuts one wall's full [a, b] span into WALL_REVEAL_SEGMENT_LENGTH-ish
-# pieces, each its own independent reveal entry - see _wall_pieces' own
-# comment for why a long wall should light up gradually rather than all
-# at once the moment any part of it is found.
+# Splits a wall span into reveal pieces of ~WALL_REVEAL_SEGMENT_LENGTH.
 func _slice_wall_into_pieces(a: Vector3, b: Vector3, body: StaticBody3D) -> void:
 	var length: float = a.distance_to(b)
 	var count: int = maxi(1, int(ceil(length / WALL_REVEAL_SEGMENT_LENGTH)))
@@ -2352,8 +1938,7 @@ func _refresh_world_reading() -> void:
 		return # Its own reading/input owner controls the shared party.
 	var reading := _checkpoint_saving or inventory_menu.visible or save_point_menu.visible
 	for actor in divers:
-		# Sonar owns a separate physics clock; stopping World.swim alone would
-		# keep billing Oxygen behind this exclusive reading surface.
+		# Sonar has its own physics clock; stop it too or Oxygen keeps draining.
 		actor.exploration_paused = reading or (embedded_maze != null and embedded_maze.contains_point(actor.global_position))
 
 func whirlpool_activity() -> int:
@@ -2372,9 +1957,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		return
 	if battling or _transitioning_to_encounter:
 		return
-	# These menus freeze exploration through this owner rather than pausing
-	# the entire SceneTree. Physics already respects them; keyboard/mouse
-	# dispatch must do the same or F/Tab can act behind a reading screen.
+	# These menus freeze exploration via this owner; block input here too.
 	if inventory_menu.visible or save_point_menu.visible:
 		if e is InputEventKey and e.pressed and not e.echo:
 			if e.keycode == KEY_ESCAPE:
@@ -2387,10 +1970,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	# Aim mode intercepts clicks before the normal "first click captures
-	# the mouse" handling below - a click here means fire/cancel, not
-	# "start looking around" (mouse is already captured to get here in the
-	# first place in any normal session).
+	# In aim mode a click means fire/cancel.
 	if aiming and e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 		var mb := e as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
@@ -2400,10 +1980,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			_cancel_aim()
 			return
 
-	# TargetSelector intercepts A/D/Left/Right/Space/Enter the same way aim mode
-	# intercepts clicks - before they'd otherwise turn the camera or do
-	# nothing at all (see _physics_process, which suppresses the normal
-	# arrow-key camera turn outright while target_selector.selecting).
+	# TargetSelector intercepts its keys before camera turning.
 	if target_selector.selecting and e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
 		var sk := (e as InputEventKey).keycode
 		if sk == KEY_D or sk == KEY_RIGHT:
@@ -2423,12 +2000,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		mouse_look = true
 	elif e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
-		# elif, not a run of independent ifs like this used to be - opening
-		# the inventory menu only makes sense when NONE of the others were
-		# already true (otherwise a stray Escape while aiming would both
-		# cancel the aim AND pop the pause menu open in the same press).
-		# Closing it is the mirror of save_point_menu's own close branch
-		# right above it.
+		# elif chain: one Escape press does only one thing.
 		if aiming:
 			_cancel_aim()
 		elif target_selector.selecting:
@@ -2441,12 +2013,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			inventory_menu.open()
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		mouse_look = false
-	# Left-click-and-drag always works here, independent of mouse_look/
-	# MOUSE_MODE_CAPTURED - a guaranteed fallback for whatever's leaving
-	# capture-based free-look dead after the tutorial (reported: arrow-key
-	# turning still works, so battling/pause aren't the gate; captured
-	# mouse-look specifically goes silent). Doesn't touch mouse_look or
-	# Input.mouse_mode at all, so it can't make that separate problem worse.
+	# Left-drag look works independently of mouse capture as a fallback.
 	elif e is InputEventMouseMotion and (mouse_look or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
 		var mm := e as InputEventMouseMotion
 		yaw -= mm.relative.x * 0.004
@@ -2468,10 +2035,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif k == KEY_F1:
 			tutorial_book.open(TutorialContent.GENERAL_PAGES)
 
-# F's actual behavior depends on the active diver's ability: shockwave has
-# nothing to aim, fires immediately. Grapple enters first-person aim mode.
-# Swap goes through TargetSelector's cycle-through-candidates flow instead
-# of either - see target_selector.gd.
+# F depends on the ability: shockwave fires, grapple aims, swap uses TargetSelector.
 func _start_ability() -> void:
 	if not route_state.prologue_complete or aiming or target_selector.selecting:
 		return
@@ -2486,8 +2050,7 @@ func _start_ability() -> void:
 		_update_hud()
 	elif d.ability_needs_aim():
 		aiming = true
-		# Aim uses the active diver's eye line. Keep their own rig out of that
-		# first-person view so the body cannot cover the crosshair or target.
+		# Hide the active diver's rig in first-person aim.
 		d.set_model_visible(false)
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		mouse_look = true
@@ -2495,22 +2058,8 @@ func _start_ability() -> void:
 	else:
 		d.use_ability(_aim_dir())
 
-# Q, separate from F - sonar isn't the active diver's "ability" (that slot
-# is swap, on this same diver), it's a passive being switched on and off,
-# so it gets its own key rather than competing with _start_ability(). Only
-# does anything for whichever diver actually has the sonar passive; a
-# stray Q on anyone else is a silent no-op just like it would be on a
-# diver with no ability at all.
-#
-# Silent no-op (same shape as _start_ability()'s own _intro_active check)
-# until the choreographed first fight is actually done - _first_encounter_
-# done covers the intro walk AND the fight itself (battling already blocks
-# _unhandled_input() outright, but the brief transition tween between the
-# two - _transitioning_to_encounter - has neither flag set), so this one
-# check covers the whole span "before the tutorial" actually means,
-# without a separate carve-out for that gap. No "not yet" message either -
-# the goal is a clean first walk with nothing else competing for
-# attention, not a wall of "can't do that yet" banners.
+# Q toggles sonar for the diver with the sonar passive. Silent no-op until
+# the first fight is done.
 func _toggle_sonar() -> void:
 	if not route_state.prologue_complete:
 		return
@@ -2525,25 +2074,16 @@ func _toggle_sonar() -> void:
 		_announce("Sonar off.")
 	else:
 		_announce("Not enough oxygen for sonar.")
-	_update_hud()   # refreshes the "Q: Sonar (On/Off)" hint immediately
+	_update_hud()   # refresh the sonar hint
 
-# Flips random_encounters_enabled - _on_encounter_triggered() reads it as
-# its own early-out, so this doesn't touch a battle already in progress,
-# only whether a NEW one is allowed to start. No _first_encounter_done gate
-# like _toggle_sonar() has - unlike sonar (a diver ability that wouldn't
-# make sense to explain before the tutorial hands out abilities at all),
-# this is a player convenience that's just as meaningful before the
-# tutorial fight as after it.
+# Toggles whether new random encounters can start (no tutorial gate).
 func _toggle_random_encounters() -> void:
 	random_encounters_enabled = not random_encounters_enabled
 	escape_encounter_hint.set_encounters_enabled(random_encounters_enabled)
 	_announce("Random encounters on." if random_encounters_enabled else "Random encounters off.")
-	_update_hud()   # refreshes the "R: Encounters (On/Off)" hint immediately
+	_update_hud()   # refresh the encounters hint
 
-# Only opens if the active diver is actually standing on a save point -
-# see save_point.gd.has_diver(). Closes on a second press; won't open
-# while aiming or mid-swap-selection, same guard _start_ability() already
-# applies for the same reason (those modes already own the mouse/camera).
+# Opens only while standing on a save point; not while aiming or selecting.
 func _toggle_save_menu() -> void:
 	if save_point_menu.visible:
 		save_point_menu.close()
@@ -2553,9 +2093,7 @@ func _toggle_save_menu() -> void:
 	if not route_state.prologue_complete:
 		_announce("Finish your first encounter before saving.")
 		return
-	# Pressing P off a save point used to just silently do nothing - which
-	# reads identically to "the menu is broken" from the player's side.
-	# Bannering it means a stray P press is never mistaken for a bug.
+	# Explain instead of silently doing nothing off a save point.
 	if not _diver_on_save_point(divers[active]):
 		_announce("No save point nearby.")
 		return
@@ -2569,20 +2107,8 @@ func _diver_on_save_point(d: Diver) -> bool:
 			return true
 	return false
 
-# world.gd owns showing the confirmation and closing the menu - the menu
-# itself only emits the request; World checks the persistent write before
-# promising success or changing the run's active checkpoint.
-#
-# A save-point visit restores HP/O2 on contact; this handler writes a real
-# save file (_write_save()) to whichever slot this run is
-# playing into - a game over's "Restart from Save Point" (see
-# _show_game_over()/_on_game_over_restart()) reads back exactly this.
-#
-# HP/oxygen restore for the WHOLE party, not just whoever's physically
-# standing on the point - battle damage (and oxygen spend) is shared
-# across all three divers, so a rest stop patching up only the one you
-# happened to be steering would leave the other two stuck damaged/
-# drained with no other way to recover.
+# The menu only emits the request; World writes the save before confirming.
+# Restores HP/O2 for the whole party, since damage is shared.
 func _manual_save_safe() -> bool:
 	if battling or _transitioning_to_encounter or _intro_active or aiming or target_selector.selecting or get_tree().paused:
 		return false
@@ -2592,8 +2118,7 @@ func _manual_save_safe() -> bool:
 		return false
 	if Whirlpool.busy_in(self) or divers.any(func(d: Diver) -> bool: return d.is_grappling() or d.is_suction_locked()):
 		return false
-	# The menu requesting this save is allowed. The other area's puzzle and
-	# reward state must still be stable, even though its shared actors live here.
+	# The other area's puzzle and reward state must be stable to save.
 	return embedded_maze == null or (not embedded_maze.maze_active and embedded_maze.can_capture_campaign_snapshot())
 
 func _on_save_requested(_d: Diver, slot: int) -> void:
@@ -2609,10 +2134,7 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 		s.oxygen = s.oxygen_max
 	_update_hp_bar()
 	_update_oxygen_bar()
-	# A save-point save can target any slot from the title screen's slot
-	# list. Make the chosen slot this run's active checkpoint too, so future
-	# save-point visits and "Restart from Save Point" continue from the same
-	# destination rather than silently returning to the slot New Game chose.
+	# The chosen slot becomes this run's active checkpoint.
 	var existed := SaveManager.slot_exists(slot)
 	var previous := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) if existed else PackedByteArray()
 	_checkpoint_saving = true
@@ -2640,12 +2162,8 @@ func _on_save_requested(_d: Diver, slot: int) -> void:
 	_announce("Progress saved to Slot %d." % (slot + 1))
 	save_point_menu.close()
 
-# Shows the save prompt while standing on a save point with the menu
-# closed, clears it the moment either stops being true. Tracked separately
-# from _announce()'s normal fade (_banner_timer stays 0 here) so the
-# prompt persists exactly as long as you're standing there, not for a
-# fixed few seconds - but that also means it only ever clears its own
-# text, never a real announcement's, via _showing_save_prompt.
+# Holds the save prompt while on a save point with the menu closed; clears
+# only its own text.
 func _update_save_point_prompt() -> void:
 	var on_point := _diver_on_save_point(divers[active]) and route_state.prologue_complete
 	if on_point and not _save_point_contact_active:
@@ -2662,13 +2180,9 @@ func _update_save_point_prompt() -> void:
 	if on_point and not _showing_save_prompt and _announcements.current_text().is_empty():
 		if not _save_point_tutorial_seen:
 			_save_point_tutorial_seen = true
-			var pages: Array[Dictionary] = [{
-				"title": "Save Points",
-				"body": "At Save Points you can write/overwrite your game progress to one of three save slots. Save points also revive any downed party members and fully replenish the party's health/O2 bars.",
-				"slot": null,
-			}]
+			var pages: Array[Dictionary] = [TutorialContent.saving_page()]
 			(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
-		banner.text = "Save - Press P"
+		banner.text = "Save your progress."
 		_banner_timer = 0.0
 		_showing_save_prompt = true
 	elif not on_point and _showing_save_prompt:
@@ -2696,22 +2210,19 @@ func _cancel_aim() -> void:
 	divers[active].set_model_visible(true)
 	_update_hud()
 
-# TargetSelector confirmed a target (Enter, with a valid candidate
-# currently selected) - fire the active diver's ability at them.
+# TargetSelector confirmed a target: fire the active diver's ability at it.
 func _on_swap_target_confirmed(target: Node3D) -> void:
 	divers[active].use_ability(Vector3.ZERO, target)
 	_update_hud()
 
-# TargetSelector cancelled (Escape, or Left/Right cancel handling) - just
-# needs the HUD put back, TargetSelector already returned the camera.
+# TargetSelector cancelled; just restore the HUD.
 func _on_swap_target_cancelled() -> void:
 	_update_hud()
 
 func _physics_process(dt: float) -> void:
 	_t += dt
 	_tick_autosave(dt)
-	# Run before combat/maze early returns so the old world waypoint cannot
-	# remain visible after another owner takes control of this frame.
+	# Run before early returns so the world waypoint can't linger.
 	_update_blockade_arrow()
 	_update_maze_route_guide()
 	if embedded_maze != null and embedded_maze.maze_active:
@@ -2728,11 +2239,8 @@ func _physics_process(dt: float) -> void:
 		return
 	if battling or is_instance_valid(random_encounter_reveal) or inventory_menu.visible or save_point_menu.visible or _checkpoint_saving:
 		return
-	# keyboard turning too: mouse capture is the first thing to go wrong in a
-	# browser, and a build nobody can steer is a build nobody plays.
-	# Suppressed while target_selector.selecting - Left/Right are
-	# repurposed there for cycling (see _unhandled_input), so they'd
-	# otherwise both spin the camera AND change the selection on one press.
+	# Keyboard turning as a fallback to mouse capture; suppressed while
+	# target selecting (Left/Right cycle there).
 	if not target_selector.selecting and Input.is_key_pressed(KEY_LEFT):
 		yaw += dt * 2.0
 	if not target_selector.selecting and Input.is_key_pressed(KEY_RIGHT):
@@ -2744,32 +2252,19 @@ func _physics_process(dt: float) -> void:
 
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
-		# Movement pauses for the active diver while picking a swap target
 		if embedded_maze != null and embedded_maze.contains_point(d.global_position):
 			# Parked actors cannot drift or spend Oxygen in an inactive area.
 			d.exploration_paused = true
 			continue
 		d.exploration_paused = false
-		# Movement pauses for the active diver while picking a swap target
-		# too - the camera's busy showing an ally, swimming around blind
-		# to where your own diver actually is would be confusing controls.
-		# Also pauses for the brief _start_first_encounter() tween onto the
-		# light beam's center - swim()'s own move_and_slide() running the
-		# same frame as a Tween driving global_position directly would fight
-		# it for the diver's actual position.
+		# Movement pauses while picking a swap target and during the intro tween.
 		if i == active and not target_selector.selecting and not _transitioning_to_encounter:
 			d.swim(_player_dir(), _player_rise(), dt)
-			# The distance roll can pause the tree inside swim(). Do not continue
-			# this already-running frame and move the camera or trigger a second
-			# route encounter after the preview has measured its placement.
+			# swim() may pause the tree on an encounter roll; stop this frame.
 			if is_instance_valid(random_encounter_reveal):
 				return
 		else:
-			# Zero input, not skipped entirely - swim() still drains
-			# velocity to a stop and keeps bob/bubble animation ticking,
-			# it just never gives them anywhere new to go. A diver you
-			# TAB away from (mid-gap-crossing, standing on a lock plate)
-			# now stays exactly where you left it instead of drifting off.
+			# Zero input so inactive divers decelerate and stay put.
 			d.swim(Vector3.ZERO, 0.0, dt)
 	_move_camera(dt)
 	_update_aim_marker()
@@ -2796,8 +2291,7 @@ func _physics_process(dt: float) -> void:
 func _update_maze_route_guide() -> void:
 	if maze_route_guide == null:
 		return
-	# Derive from the earned milestone, including cold Load. Never introduce
-	# a lab prerequisite for the independently reachable maze.
+	# Derived from the earned milestone; the maze needs no lab prerequisite.
 	maze_route_guide.visible = (
 		route_state.prologue_complete
 		and route_state.lab_state == "cleared"
@@ -2812,8 +2306,7 @@ func _update_maze_route_guide() -> void:
 		and $HUD.visible and cam.current
 	)
 	if maze_route_guide.visible:
-		# Aim just inside the real maze boundary. A marker at the ramp mouth
-		# turns backwards halfway across it, before maze ownership can begin.
+		# Aim just inside the real maze boundary, not at the ramp mouth.
 		var ramp := Vector3(embedded_maze.embedded_bounds.position.x + 1, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
 		maze_route_guide.update_bearing(cam, (divers[active] as Diver).global_position,
 			ramp, maxf(route_objective_panel.get_rect().end.y, hud.get_rect().end.y))
@@ -2826,8 +2319,7 @@ func _update_route_zone() -> void:
 		return
 	route_state.set_zone(physical_zone)
 	if physical_zone == "deep":
-		# Independent branch: the maze transition is available on entering Deep
-		# even while the two lab blockers and Tethys remain untouched.
+		# The maze transition is available on entering Deep regardless of lab state.
 		if route_state.maze_door_state == "locked":
 			route_state.set_maze_door_state("available")
 		if route_state.lab_state != "cleared" and route_state.tethys_state != "defeated":
@@ -2836,11 +2328,8 @@ func _update_route_zone() -> void:
 			route_state.mark_deep_warning_seen()
 			_announce("You've entered deeper water. Stronger enemies may appear.")
 
-# Marc's review described Deep as a water-color gradient around the laboratory,
-# not a binary floor swap. Grade the actual world environment from the active
-# diver's physical x-position so every route through the region gets the same
-# continuous treatment. The battle viewport owns its own environment and is
-# intentionally unaffected.
+# Grade the world environment by the active diver's x-position (Deep gradient).
+# The battle viewport has its own environment.
 func _update_deep_zone_visuals() -> void:
 	if divers.is_empty():
 		return
@@ -2855,10 +2344,7 @@ func _update_deep_zone_visuals() -> void:
 	environment.ambient_light_color = Color(0.32, 0.5, 0.56).lerp(Color(0.18, 0.3, 0.4), factor)
 	environment.ambient_light_energy = lerpf(1.1, 0.82, factor)
 
-# Checks the live diver's physical position, not a query-string route or a
-# test-only teleport. Sword Slayer joins this same table after its actor slice;
-# keeping Bomb Bot alone here prevents an unimplemented id falling back to an
-# Angler if a player swims ahead during this commit.
+# Checks the live diver's position. Only Bomb Bot is listed for now.
 func _update_deep_zone_blockers() -> void:
 	if battling or divers.is_empty() or not route_state.prologue_complete:
 		return
@@ -2918,9 +2404,8 @@ func _resolve_deep_zone_blocker(blocker_id: String, result: String) -> void:
 	if result == "won":
 		_write_save()
 
-# LAB-TETHYS-001/010: the physical unlocked door is the one production entry
-# point. A state latch is more reliable than a one-frame Area signal and makes
-# remaining inside the radius harmless after the cutscene has started.
+# The unlocked lab door is the one production entry; a latch makes staying
+# in the radius harmless.
 func _update_lab_route() -> void:
 	if battling or divers.is_empty() or not route_state.prologue_complete:
 		return
@@ -2936,6 +2421,8 @@ func _update_lab_route() -> void:
 func _start_lab_cutscene() -> void:
 	if route_state.lab_state != "available" or is_instance_valid(_lab_video_cutscene):
 		return
+	# Autosave on entering the lab, before the cutscene and the Tethys fight.
+	_capture_pre_boss_autosave()
 	route_state.set_lab_state("cutscene")
 	route_state.set_tethys_state("available")
 	route_state.set_encounter_source("lab_boss")
@@ -3002,9 +2489,7 @@ func _set_maze_ownership(on: bool, restored := false) -> void:
 		cam.current = true
 		route_state.set_zone("deep")
 		route_state.set_maze_door_state("available")
-	# The maze brings its own controls line, minimap and captions, so only the
-	# overworld-only HUD pieces hide there. The HP/O2 bars (with the Random
-	# Encounters badge) and the other divers' side bars stay on screen.
+	# The maze has its own HUD; hide only overworld-only pieces.
 	_apply_maze_hud(on)
 	_active_cursor.visible = false if on else _active_cursor.visible
 	Whirlpool.refresh_in(self)
@@ -3033,8 +2518,7 @@ func _build_lab_maze_ramp() -> void:
 	var root := Node3D.new()
 	root.name = "LabMazeRamp"
 	add_child(root)
-	# Match collision and visible slab. The top face joins both existing floors;
-	# rotating a flat box instead of stacking steps keeps the return traversable.
+	# A rotated slab joins both floors so the return stays traversable.
 	var slope := atan2(span.y, span.x)
 	var floor := CSGBox3D.new()
 	floor.name = "RampFloor"
@@ -3071,8 +2555,7 @@ func _build_lab_maze_ramp() -> void:
 		light.omni_range = 12.0
 		root.add_child(light)
 		_build_invisible_wall(Vector3(rail.position.x, 30.0, rail.position.z), Vector3(rail.size.x, 80.0, rail.size.z))
-	# Preserve Marc's ceiling plug: no swimming over the maze ceiling into a
-	# sealed interior. Its lower ceiling has a visible face.
+	# Ceiling plug: no swimming over the maze ceiling.
 	var reference := embedded_maze.get_node("CurrentWall1") as CSGBox3D
 	var ceiling := reference.position.y + reference.size.y * 0.5 + embedded_maze._CEILING_CLEARANCE
 	_build_invisible_wall(Vector3((start.x + finish.x) * 0.5, (ceiling + 80.0) * 0.5, start.z), Vector3(span.x + 8.0, 80.0 - ceiling, DeepZoneLayoutScript.MAZE_APPROACH_HALF_WIDTH * 2.0))
@@ -3105,15 +2588,10 @@ func _build_deep_zone_blocker_staging() -> void:
 		actor.add_to_group("deep_zone_blocker_staging")
 		actor.set_meta("blocker_id", blocker_id)
 		var point := points[blocker_id] as Vector3
-		# These are visible guardians, not waypoint icons. Their source rigs use
-		# large authored offsets, so a guessed Y value can put every rendered
-		# mesh below the seafloor even while the actor node itself looks valid.
-		# Place first, measure the real transformed meshes, then hover above the
-		# floor and the approaching diver's silhouette.
+		# Rigs have large authored offsets: place, measure real mesh bounds, then
+		# hover above the floor and the diver.
 		var presentation_scale := 1.5 if blocker_id == "bomb_bot" else 1.6
-		# Stand on the player's side of the field, centered on its opening.
-		# Imported roots are offset: center actual bounds after facing, not just
-		# the Node3D, otherwise both guardians still look pushed to the left.
+		# Center actual mesh bounds on the field opening (imported roots are offset).
 		actor.position = Vector3(point.x - 5.0, 0.0, point.z)
 		actor.scale = Vector3.ONE * presentation_scale
 		add_child(actor)
@@ -3123,8 +2601,7 @@ func _build_deep_zone_blocker_staging() -> void:
 		if actor_bounds.size.length() > 0.01:
 			actor.position.x += point.x - 5.0 - actor_bounds.get_center().x
 			actor.position.z += point.z - actor_bounds.get_center().z
-			# Hover above the chase-camera diver's silhouette. Horizontal mesh
-			# centering alone hid the entire guard behind the player on approach.
+			# Hover above the chase-camera diver's silhouette.
 			actor.position.y += 5.0 - actor_bounds.position.y
 			actor.force_update_transform()
 		_route_blocker_world_actors[blocker_id] = actor
@@ -3145,10 +2622,7 @@ func _build_route_blocker_gate(blocker_id: String, point: Vector3) -> Dictionary
 	collision.shape = shape
 	body.add_child(collision)
 
-	# A sparse energy grid and bright edge pylons make the collision legible
-	# from both sides without tinting most of the screen. This is deliberately
-	# a wall, not another ring or waypoint: the guardian identifies the fight;
-	# the field explains why swimming around it is not possible.
+	# Sparse energy grid and edge pylons make the field's collision legible.
 	var color := Color("ff9b55") if blocker_id == "bomb_bot" else Color("a879ff")
 
 	for z_offset in [-9.5, 9.5]:
@@ -3237,19 +2711,8 @@ func _sync_deep_zone_blocker_staging() -> void:
 		(gate.body as Node3D).visible = closed
 		(gate.collision as CollisionShape3D).set_deferred("disabled", not closed)
 
-# Runs every physics frame from world load until the active diver reaches
-# the light beam: keeps the arrow aimed at it (the diver keeps moving, so a
-# one-time look_at from intro_arrow() would go stale immediately) and hands
-# off to _start_first_encounter() the moment they arrive. _intro_active
-# itself stays true straight through that handoff (see _start_first_
-# encounter()'s own comment) - TAB/random encounters/camera don't return to
-# normal until the tutorial battle is actually about to start.
-# Plain look_at(target, Vector3.UP) warns and produces a degenerate
-# rotation whenever the arrow ends up directly above/below the target - and
-# it does, right at game start: Maxilani's CAST position is (0, 2.0, 0),
-# directly over the beam's own (0, *, 0) center. Falls back to a level
-# vector as the up hint for just that one degenerate case; normal look_at
-# resumes the instant the diver steps off that exact vertical line.
+# Keeps the intro arrow aimed at the beam and starts the first encounter on
+# arrival. Uses a level up-vector when directly above/below the target.
 func _point_arrow_at(target_pos: Vector3) -> void:
 	if not is_instance_valid(_intro_arrow):
 		return
@@ -3267,10 +2730,7 @@ func _update_intro_sequence() -> void:
 		return
 	_point_arrow_at(light_beam.global_position)
 	var d: Diver = divers[active]
-	# The beam is a vertical cylinder.  Its node sits halfway up its 12 m
-	# height, so a full Vector3 distance would make the part a diver can
-	# visibly swim through (near y=2) more than 2.5 m away from its origin.
-	# Only x/z describe whether the diver entered the displayed column.
+	# Measure in XZ only; the beam's origin is at half its height.
 	var horizontal_distance := Vector2(d.global_position.x, d.global_position.z).distance_to(
 		Vector2(light_beam.global_position.x, light_beam.global_position.z)
 	)
@@ -3293,28 +2753,11 @@ func _start_first_encounter(d: Diver) -> void:
 	_transitioning_to_encounter = false
 	_intro_active = false
 	_camera_look_override = null
-	# All three divers now, not just the one that walked up - the tutorial
-	# script itself demonstrates one scripted move each from all three (see
-	# battle.gd's _TUTORIAL_SCRIPT), CAST's own order (Staff_Diver,
-	# Prototype_1(1910), Prototype_V(1922)) is what makes divers[0]/[1]/[2]
-	# resolve to Maxilani/Musashi/Mech Pilot there.
+	# All three divers join the tutorial (CAST order matters for its script).
 	_start_battle("", false, "angler", divers, false, true)
 
-# A real Area3D, radius matched to minimap.view_radius - "revealed" and
-# "currently fits on the minimap's own zoom circle" are the same distance
-# by construction now, rather than two independently-tuned numbers (the
-# old WALL_SIGHT_RADIUS was a separate constant that happened to be
-# smaller than view_radius).
-#
-# MODIFIED: monitorable used to be explicitly set false (nothing else
-# needs to detect THIS area itself, only monitoring - detecting the walls
-# - seemed relevant) - empirically, in this Godot version, monitorable
-# false also silently breaks get_overlapping_bodies() entirely, not just
-# area-vs-area detection the way the docs describe. Confirmed directly: a
-# body sitting well inside the sphere's radius stopped showing up in
-# get_overlapping_bodies() the instant monitorable was set false, and
-# came back the instant it wasn't. Left at its default (true) now - real,
-# observed behavior wins over documented semantics here.
+# Radius matches minimap.view_radius. monitorable must stay true or
+# get_overlapping_bodies() returns nothing.
 func _build_wall_sight_area() -> void:
 	_wall_sight_area = Area3D.new()
 	_wall_sight_area.monitoring = true
@@ -3326,33 +2769,8 @@ func _build_wall_sight_area() -> void:
 	add_child(_wall_sight_area)
 
 
-# Follows the active diver every physics tick and reveals whichever
-# WALL PIECES (not whole walls) actually overlap the detection area, for
-# mini_map.gd's fog-of-war (_wall_pieces' own "revealed"/"line_a"/
-# "line_b" fields).
-#
-# Two passes: get_overlapping_bodies() is the coarse first pass - a
-# cheap read of the physics server's already-computed overlap list for
-# this one persistent Area3D, telling us which WHOLE walls are even
-# worth checking closely this tick, without having to test every single
-# piece in the entire level every frame. Then, for only the pieces
-# belonging to those nearby bodies, _piece_area_overlap() computes the
-# actual overlapping RANGE (as two Vector3 endpoints, not just a yes/no)
-# between that piece's own bounds and the detection area's bounds - a
-# piece right next to the diver and a piece at the far end of the same
-# long wall don't necessarily reveal together, and a piece only grazed at
-# its very edge reveals only that grazed sliver, not its whole span.
-#
-# The overlap is computed once, the instant a piece is first found, and
-# frozen into line_a/line_b from then on (piece.revealed gates this to a
-# one-time write) - it does NOT keep recomputing every frame off the
-# diver's current position. Redrawing from a live, continuously-
-# recomputed overlap would make a previously-revealed stretch shrink or
-# vanish the moment the diver moved away again, breaking the "seen
-# doesn't un-happen" rule every other reveal system in this project
-# already follows (World.revealed_key_items, maze_mini_map.gd's own fog).
-# Freezing the vectors at first contact keeps that guarantee while still
-# drawing the exact overlap geometry, not just the piece's full span.
+# Reveals overlapping wall pieces for the minimap fog of war. Coarse pass via
+# get_overlapping_bodies(), then per-piece overlap frozen on first reveal.
 func _update_wall_visibility() -> void:
 	if divers.is_empty():
 		return
@@ -3379,21 +2797,8 @@ func _update_wall_visibility() -> void:
 		piece.line_a = overlap[0]
 		piece.line_b = overlap[1]
 
-# The overlapping RANGE between one wall piece's own bounding box and the
-# detection area's bounding box, both measured as [min, max] Vector2
-# bounds in the horizontal XZ plane - the difference between each box's
-# own max and min gives the overlap on each axis (overlap_min/
-# overlap_max below). Returns [] if that range is empty (min > max on
-# either axis) - no overlap at all - otherwise [Vector3, Vector3]: the
-# two actual world-space endpoints of the overlapping stretch, reusing
-# piece a's own Y (walls don't vary in height along their own length).
-#
-# Since a piece is a LINE, not a filled box, one of the two axes always
-# collapses to the piece's own fixed coordinate on that axis (e.g. a
-# piece running along X has piece_min.y == piece_max.y == its one fixed
-# Z value), so the returned points differ only along whichever axis the
-# piece actually runs on - exactly the clipped sub-segment, not a
-# degenerate box corner.
+# XZ overlap between a wall piece and the detection area, as two endpoints
+# at the piece's Y; [] if none.
 static func _piece_area_overlap(a: Vector3, b: Vector3, area_min: Vector2, area_max: Vector2) -> Array:
 	var piece_min := Vector2(minf(a.x, b.x), minf(a.z, b.z))
 	var piece_max := Vector2(maxf(a.x, b.x), maxf(a.z, b.z))
@@ -3421,20 +2826,9 @@ func _player_dir() -> Vector3:
 	if f == Vector2.ZERO:
 		return Vector3.ZERO
 	f = f.normalized()
-	# swim where the camera is looking, not where the world's axes point.
-	# fwd matches the camera's actual look direction; right is fwd rotated
-	# -90 around Y so it points to screen-right regardless of which way the
-	# diver model currently happens to be facing. W/A/S/D always map to
-	# camera-forward/left/back/right.
+	# Camera-relative movement: W/A/S/D map to camera forward/left/back/right.
 	var fwd := Vector3(sin(yaw), 0, cos(yaw))
-	# MODIFIED: while _camera_look_override is set (the intro's light beam -
-	# see _move_camera()'s own `orbit_dir`), the camera actually LOOKS at
-	# that override, not wherever yaw points - fwd used to stay yaw-based
-	# regardless, so W/A/S/D kept mapping to a direction the screen wasn't
-	# actually showing as forward, which read as the controls having gone
-	# inverted/scrambled for the length of the walk to the beam. Matching
-	# _move_camera()'s own orbit_dir here (diver-to-beam, not yaw) keeps
-	# "forward" meaning the same thing on screen as it does to the keys.
+	# With a look override, forward follows the camera's actual view direction.
 	if is_instance_valid(_camera_look_override) and active >= 0 and active < divers.size():
 		var to_target: Vector3 = _camera_look_override.global_position - divers[active].global_position
 		to_target.y = 0.0
@@ -3466,28 +2860,15 @@ func _move_camera(dt: float) -> void:
 		return
 
 	if aiming:
-		# Cut to the diver's own eye line instead of the chase framing -
-		# same eye height _grapple() itself fires from (diver.gd's
-		# height * 0.4), so what you see lines up with what the raycast
-		# actually checks.
+		# First-person at the same eye height grapple fires from.
 		var eye: Vector3 = d.global_position + Vector3(0, d.height * 0.4, 0)
 		cam.global_position = cam.global_position.lerp(eye, clampf(dt * 14.0, 0.0, 1.0))
 		cam.look_at(eye + dir * 10.0, Vector3.UP)
 		return
 
 	var focus: Vector3 = d.global_position + Vector3(0, d.height * 0.35, 0)
-	# MODIFIED: `dir` used to stay _aim_dir() (the diver's own movement/
-	# facing direction) even while _camera_look_override was set, so the
-	# camera sat wherever the diver's OWN heading put it and only swiveled
-	# to look at the beam afterward - correct look_at, but positioned with
-	# no regard for where the beam actually was, so the diver routinely
-	# ended up off to one side of frame (or out of it) instead of staying
-	# centered between the camera and the thing it's looking at. Orbiting
-	# around the diver-to-beam direction instead keeps the camera on the
-	# opposite side of the diver FROM the beam, so the shot reads as
-	# "looking past the diver at the beam" the whole walk over, the same
-	# framing intent _start_first_encounter()'s own header comment already
-	# describes.
+	# With a look override, orbit on the diver-to-target axis to keep the diver
+	# framed between camera and target.
 	var orbit_dir := dir
 	if is_instance_valid(_camera_look_override):
 		var to_target: Vector3 = _camera_look_override.global_position - focus
@@ -3512,10 +2893,7 @@ func _camera_pan_toward(target: Node3D, dir: Vector3, dt: float) -> void:
 	cam.global_position = cam.global_position.lerp(want, clampf(dt * 6.0, 0.0, 1.0))
 	cam.look_at(focus, Vector3.UP)
 
-# Called by TargetSelector while cycling (no auto-return - TargetSelector
-# explicitly calls return_camera_to_player() on confirm/cancel) and by
-# _on_diver_swapped for the brief post-swap confirmation hold (auto-return
-# after 1.1s, since nothing else ends that one on its own).
+# auto_return_after 0 = until return_camera_to_player(), >0 = timed hold.
 func focus_camera_on(target: Node3D, auto_return_after: float = 0.0) -> void:
 	camera_mode = CameraMode.FOCUS
 	_camera_focus_target = target
@@ -3526,13 +2904,7 @@ func return_camera_to_player() -> void:
 	_camera_focus_target = null
 	_camera_focus_timer = 0.0
 
-# A vertical shaft of light (e.g. sunlight through the water). The
-# shimmer/pulse/height-fade all vary per-pixel along the beam's length, which
-# only the GPU can do - so that math lives in the shader's fragment(), driven
-# by the shader's own TIME (free-running, no GDScript upkeep) and v_y (the
-# vertex's normalized height, computed once per vertex and handed to
-# fragment() via a varying). GDScript's job is just: build the mesh, write
-# the shader, wire up the material, and add one node to the tree.
+# A vertical shaft of light; shimmer/pulse/fade are done in the shader.
 var light_beam: MeshInstance3D
 
 func render_light_beam() -> void:
@@ -3542,9 +2914,6 @@ func render_light_beam() -> void:
 	var shimmer_speed := 1.5
 	var pulse_speed := 1.5
 	var brightness := 1.5
-	# MODIFIED: 6.0 -> 12.0, radii doubled below too - too small/thin to
-	# read as a landmark from across the dive site, the whole reason the
-	# intro walks the player toward it in the first place.
 	var beam_height := 12.0
 
 	var shader := Shader.new()
@@ -3597,21 +2966,14 @@ void fragment() {
 	light_beam = MeshInstance3D.new()
 	light_beam.mesh = mesh
 	light_beam.material_override = material
-	# World center, base resting on the seafloor (y=0 - see _build_site()),
-	# rising straight up: CylinderMesh is centered on its own local origin,
-	# so lifting it by half its height puts the base exactly at y=0.
+	# Base rests on the seafloor (CylinderMesh is centered on its origin).
 	var d: Diver = divers[active]
-	# This runs during World._ready(), while its new Diver children may not
-	# yet be inside the scene tree. Their local position is already valid;
-	# querying global_position here emits an engine error in headless checks.
-	# Keep the first visible objective on the default W/forward swim axis. The
-	# prior lateral x+10 placement made an ordinary forward input miss the beam
-	# entirely, which PR #88 fixed and later branches accidentally dropped.
+	# Use local position: Divers may not be in the tree yet during _ready().
+	# Keep the beam on the default forward swim axis.
 	light_beam.position = d.position + Vector3(0.0, beam_height * 0.5, 10.0)
 	add_child(light_beam)
 
-# Ordinary guarded-item locations retain their grapple targets without a
-# visible ring. Special encounter sites have no item-location grapple target.
+# Guarded item sites keep invisible grapple targets; special sites have none.
 func _build_item_grapple_anchors() -> void:
 	for entry_value in ItemGuardian.spots():
 		var entry := entry_value as Dictionary
@@ -3624,26 +2986,8 @@ func _build_item_grapple_anchors() -> void:
 		anchor.position = entry.at as Vector3
 		add_child(anchor)
 
-# A one-shot marker that points at the light beam (render_light_beam()) from
-# just in front of the active diver. Parented to the diver at a small local
-# offset (forward along her own -Z, per diver.gd's rest-facing convention -
-# see the battle stage's own "backs to camera" comment for the same fact
-# used the other way - plus a little lift toward head height) rather than
-# anywhere in world space, so it moves and turns with her as she swims
-# without any extra tracking code of its own.
-# MODIFIED: this local offset used to be (10, height + 0.6, 0) - that 10
-# was meant for render_light_beam()'s OWN world-space nudge a few lines up
-# and never belonged here at all. Parented to the diver with a full 10
-# units of local X, it swung in a wide circle around her head every time
-# she turned, instead of sitting still in front of her.
-# Its own ROTATION is a separate matter from this position: _point_arrow_
-# at() re-aims it at the beam's global position every frame regardless of
-# the diver's current facing (look_at() computes whatever local rotation
-# achieves that global aim, parent rotation and all), so turning to swim
-# sideways moves the arrow's spot (still in front of her) without ever
-# throwing off which way it's pointing. No billboard here - unlike a
-# label, this mesh's whole job is to visibly point in a real 3D direction,
-# which billboarding would just override with "face the camera."
+# Arrow parented in front of the active diver; _point_arrow_at() re-aims it
+# at the beam every frame.
 func intro_arrow() -> void:
 	if _intro_arrow != null or light_beam == null:
 		return
@@ -3656,9 +3000,7 @@ func intro_arrow() -> void:
 func _make_waypoint_arrow() -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# Tip along local -Z (the axis look_at() aims at a target) with the base
-	# behind it, so orienting this mesh via look_at makes the tip visibly
-	# point at whatever it's aimed at.
+	# Tip along local -Z so look_at() points it at the target.
 	st.add_vertex(Vector3(0, 0, -1))
 	st.add_vertex(Vector3(-0.5, 0, 0.6))
 	st.add_vertex(Vector3(0.5, 0, 0.6))
@@ -3674,10 +3016,8 @@ func _make_waypoint_arrow() -> MeshInstance3D:
 	arrow.scale = Vector3.ONE * 0.6
 	return arrow
 
-# Marc's post-tutorial waypoint. The combat tutorial is mandatory again, so it
-# waits for tutorial_complete (won or skipped) - until then the light-beam
-# arrow is the only waypoint, and the two never overlap.
-# Physical target existence (including loaded consumed geometry) owns cleanup.
+# Post-tutorial waypoint; waits for tutorial_complete so it never overlaps
+# the beam arrow. Cleanup follows the physical target's existence.
 func _update_blockade_arrow() -> void:
 	var wall := _cracked_walls.get("entrance_blockade") as Node3D
 	if not is_instance_valid(wall) or wall.is_queued_for_deletion():
@@ -3711,30 +3051,19 @@ func _update_blockade_arrow() -> void:
 		_blockade_arrow.look_at(wall.global_position, up)
 
 
-# Pairs with intro_arrow() - called at the same moment (world _ready()) so
-# the hint text and the waypoint arrow appear together. Goes through the
-# shared banner (bottom-center, see _ready()) rather than its own label,
-# same as every other on-screen message.
+# Intro hint shown in the shared banner alongside the arrow.
 func _show_intro_text() -> void:
 	_intro_announce("Swim over to the light beam.")
 
 
-# Where the camera is actually looking, from yaw/pitch (mouse-look or
-# arrow keys) - matches _player_dir()'s horizontal forward when pitch is 0.
-# Shared by the camera itself and by aimed abilities (grapple), so "what
-# you're looking at" and "what you're aiming at" are always the same thing.
+# Camera look direction from yaw/pitch; shared by camera and aimed abilities.
 func _aim_dir() -> Vector3:
 	return Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch))
 
 var _aim_marker: MeshInstance3D
 var _aim_marker_mat: StandardMaterial3D
 
-# The reticle is a world-space torus. At its authored size it reads well on a
-# distant Grapple target, but a ray that immediately hits a corridor wall can
-# put that same 64 cm marker only centimetres from the first-person camera and
-# turn it into a screen-filling gray polygon. Keep its apparent angular size
-# bounded near surfaces while preserving the full authored size on route-scale
-# targets. The small non-zero floor also keeps a close miss visible as feedback.
+# Clamp the reticle's apparent size near surfaces so it can't fill the screen.
 func _aim_marker_scale_for_distance(distance: float) -> float:
 	return clampf(distance / 3.0, 0.04, 1.0)
 
@@ -3753,12 +3082,7 @@ func _ensure_aim_marker() -> void:
 	_aim_marker.visible = false
 	add_child(_aim_marker)
 
-# Runs the same raycast grapple will fire, every frame while aiming,
-# purely so the player can see where a shot would land before committing
-# to it - a preview, not a hitbox. Turns green on a valid grapple_anchor,
-# gray otherwise. Grapple-only now - swap goes through TargetSelector's
-# cycle-through-candidates flow instead, with its own cursor (see
-# target_selector.gd), not this raycast-based ring reticle.
+# Grapple aim preview: green on a valid anchor, gray otherwise.
 func _update_aim_marker() -> void:
 	if not aiming:
 		if _aim_marker != null:
@@ -3788,24 +3112,18 @@ func _update_aim_marker() -> void:
 	_aim_marker_mat.emission = c
 	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
 
-# fade the banner. Only called while not battling: _physics_process skips
-# this whole side of the world once a fight is up.
+# Fade the banner (exploration only).
 func _update_banner(dt: float) -> void:
 	if _announcements.current_text().is_empty():
 		return # Held intro/save-point prompts are not transient announcements.
-	# SavePointMenu does not pause the tree, unlike a lesson; neither reading
-	# menu may consume the exploration banner's allotted time underneath it.
+	# Reading menus don't consume the banner's time.
 	if $HUD.visible and not save_point_menu.visible and not inventory_menu.visible:
 		_announcements.advance(dt)
 	_banner_timer = _announcements.seconds_left()
 	banner.text = _announcements.current_text()
 
-# Entering a guarded item's site starts its encounter directly; Sonar and
-# random-encounter rolls and the R toggle are not prerequisites. R only
-# controls ordinary travel fights. Only the active diver can trigger one. A per-site latch
-# prevents reopening a prompt or battle while the diver remains inside the
-# same radius; leaving and re-entering can trigger a repeatable special
-# reward site again.
+# Entering a guarded item's site starts its encounter directly (active diver
+# only). A per-site latch prevents retriggering until the diver leaves.
 func _try_trigger_item_site(d: Diver) -> bool:
 	if not route_state.prologue_complete or d != divers[active] or battling or _intro_active or _transitioning_to_encounter:
 		return false
@@ -3813,7 +3131,8 @@ func _try_trigger_item_site(d: Diver) -> bool:
 	for entry_value in ItemGuardian.spots():
 		var entry := entry_value as Dictionary
 		var radius := float(entry.get("radius", 0.0))
-		if radius > 0.0 and d.position.distance_to(entry.at as Vector3) <= radius:
+		# Same height window as the minimap's red circle.
+		if radius > 0.0 and d.position.distance_to(entry.at as Vector3) <= radius and MiniMap.within_marker_height(d.position.y, (entry.at as Vector3).y):
 			found = entry
 			break
 	if found.is_empty():
@@ -3836,10 +3155,8 @@ func _try_trigger_item_site(d: Diver) -> bool:
 		_start_battle(item_id, false, enemy_id)
 	return true
 
-# A Diver's distance-based roll still controls ordinary encounters outside
-# guarded item sites. Site proximity is checked independently in
-# _physics_process() and here, since a movement roll may land on the same
-# frame the active diver crosses a site boundary.
+# Distance rolls drive ordinary encounters; site proximity is checked here
+# too since both can happen on the same frame.
 func _on_encounter_triggered(d: Diver) -> void:
 	if embedded_maze != null and embedded_maze.maze_active:
 		return
@@ -3862,12 +3179,10 @@ func _begin_random_encounter_reveal() -> void:
 	random_encounter_reveal = RandomEncounterReveal.new()
 	var reveal := random_encounter_reveal
 	reveal.enemy_ids = selected
-	# Shown while the enemies swim in, not queued: a queued announcement only
-	# ticks during exploration, so it used to surface after the fight ended.
+	# Shown immediately; queued announcements only tick during exploration.
 	banner.text = _random_encounter_text(selected.size())
 	reveal.camera = cam
-	# Freeze world physics/status timers, not just movement input. Preview
-	# animations run ALWAYS; no HP/O2, preference or checkpoint is modified.
+	# Freeze world physics/status timers; nothing persistent is modified.
 	get_tree().paused = true
 	reveal.finished.connect(func() -> void:
 		if random_encounter_reveal != reveal:
@@ -3892,13 +3207,7 @@ func _cancel_random_encounter_reveal() -> void:
 	_transitioning_to_encounter = false
 	get_tree().paused = false
 
-# Skips the Enter/Not Now prompt and drops the player straight into the
-# minigame as Maxilani, narrated by battle.gd's own _first_fight_prompt()
-# ("Welcome to your first special encounter!..."), same "show, don't ask
-# permission" idea the combat tutorial's own first fight already uses.
-# MODIFIED (fixed): this never actually flipped back to false, so every
-# special encounter for the rest of the game skipped the real prompt and
-# forced Maxilani - now cleared the first time this path actually runs.
+# First special encounter: skip the prompt and force Maxilani (once).
 var player_first_special_encounter := true
 func _offer_special_encounter(item_id: String) -> void:
 	_special_encounter_item = item_id
@@ -3907,21 +3216,9 @@ func _offer_special_encounter(item_id: String) -> void:
 		special_encounter_prompt.open()
 	else:
 		player_first_special_encounter = false
-		# MODIFIED (fixed): custom_party takes actual Diver nodes
-		# (_build_party() does `d as Diver` on each entry) - the literal
-		# string "Maxilani" here crashed that cast the instant this path
-		# ever actually ran. divers[0] is Maxilani/Staff_Diver by CAST's
-		# own fixed order (see CAST above), same convention _show_ability_
-		# popups() and others already rely on.
+		# custom_party needs Diver nodes; divers[0] is Maxilani by CAST order.
 		var maxilani: Diver = divers[0]
-		# MODIFIED (added): this is the exact crash battle.gd's _build_stage()
-		# hits if she's downed - it never gives a hp<=0 party member an
-		# "actor" at all, and this fight forces her in solo regardless of
-		# whether some earlier ordinary battle left her at 0 HP. The
-		# tutorial win-heal a few screens over (_on_battle_finished()) covers
-		# her coming OUT of this fight downed; this covers going INTO it
-		# already downed, since nothing else guarantees she's alive by the
-		# time a player wanders into the first special-encounter site.
+		# Battle can't stage a downed party member; make sure she's alive.
 		if maxilani.stats.hp <= 0:
 			maxilani.stats.hp = maxilani.stats.hp_max
 			maxilani.stats.oxygen = maxilani.stats.oxygen_max
@@ -3953,10 +3250,7 @@ func _on_special_encounter_cancelled() -> void:
 		_special_playtest_active = false
 		call_deferred("_show_title_screen")
 
-# `d` (bound at connect time) is whoever's swapped_with just fired - only
-# react if it's the diver currently being steered, same guard shape as
-# _on_encounter_triggered, so a background diver's stray signal (there
-# shouldn't be one, but nothing enforces that) can't hijack the camera.
+# Only react for the diver currently being steered.
 func _on_diver_swapped(target: Diver, d: Diver) -> void:
 	if embedded_maze != null and embedded_maze.maze_active:
 		return
@@ -3964,9 +3258,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 		return
 	focus_camera_on(target, 1.1)
 
-# reward_item carries straight into _pending_reward_item - "" (the
-# default, what every ordinary random encounter passes) means an
-# unmodified fight with nothing riding on it, same as before this existed.
+# reward_item "" means an ordinary fight with no reward.
 func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = []) -> void:
 	for diver in divers:
 		diver.exploration_paused = true
@@ -3981,42 +3273,29 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 		_audio_call(&"play_prologue_battle_music")
 	else:
 		_audio_call(&"play_battle_music")
-	inventory_menu.close()   # shouldn't normally be open when an encounter rolls, but not a state battle.gd should ever have to share the screen with
+	inventory_menu.close()   # shouldn't be open during a battle
 	_pending_reward_item = reward_item
-	# Remember which site (if any) this fight belongs to, only when it
-	# carries that site's reward.
+	# Remember the site only when the fight carries its reward.
 	_battle_reward_site = _pending_reward_site if reward_item != "" else ""
 	_pending_reward_site = ""
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # buttons need the cursor back
 	mouse_look = false
 	if boss_encounter:
-		# Laboratory Battle already owns this arrival in its intro/log. A
-		# World announcement freezes underneath battle and the payoff popup,
-		# then falsely re-announces Tethys after she has been defeated.
-		# Preserve other queued exploration feedback; don't clear the FIFO.
+		# The lab Battle announces this itself; don't add a World banner. Keep the
+		# queue intact.
 		if route_state.encounter_source != "lab_boss":
 			_announce("Tethys rises from the deep!")
 	elif tutorial:
-		# No announce line for the tutorial fight itself (removed on
-		# purpose), but _show_intro_text()'s "Swim over to the light beam."
-		# sits in the same banner via _intro_announce(), which - unlike
-		# _announce() - never sets a timer to clear itself. Every other
-		# branch here overwrites it with a fresh, self-clearing announce;
-		# without an explicit clear here too, that intro line would just
-		# hang on screen through the whole fight and after.
+		# Clear the non-expiring intro banner so it doesn't linger through the fight.
 		banner.text = ""
 		_banner_timer = 0.0
 	elif reward_item != "":
-		# Marc PR99: actual carrier notice belongs with the combat log and
-		# first playable turn, not a competing world banner.
+		# The carrier notice belongs in the combat log, not a world banner.
 		banner.text = ""
 		_banner_timer = 0.0
 	else:
-		# A random encounter already showed "...emerges from the murk!" during
-		# its reveal (_begin_random_encounter_reveal()). Never queue it here:
-		# queued announcements only tick during exploration, so it surfaced
-		# after the fight. Ambush/blocker fights narrate their own intro in
-		# the battle log instead.
+		# Random encounters already announced during the reveal; others narrate in
+		# the battle log.
 		banner.text = ""
 		_banner_timer = 0.0
 	battle = Battle.new()
@@ -4057,9 +3336,8 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
-	# Battle owns victory music while its result is visible. Once it relinquishes
-	# the screen, restore exploration before any playtest/title early return.
-	# A normal loss is replaced by _show_game_over() below.
+	# Restore exploration music once Battle releases the screen. A normal loss
+	# goes to _show_game_over() below.
 	match result:
 		"won", "fled", "skipped":
 			_audio_call(&"play_exploration_music")
@@ -4070,16 +3348,11 @@ func _on_battle_finished(result: String) -> void:
 		_first_encounter_done = true
 		if result in ["won", "skipped"]:
 			route_state.tutorial_complete = true
-		# Guided the walk-over and held the camera during it - once the
-		# tutorial fight is actually over (win or the softened loss), it's
-		# done its job and would just sit there as a permanent beam of light
-		# in the overworld otherwise.
+		# The intro beam's job is done once the tutorial fight ends.
 		if route_state.tutorial_complete and is_instance_valid(light_beam):
 			light_beam.queue_free()
 			light_beam = null
-		# Do not persist the damaged/dead training result. Win/Skip save only
-		# after the shared recovery below; loss keeps the prior checkpoint
-		# until Return heals/repositions the party.
+		# Don't persist the training result; save only after recovery below.
 	if _boss_playtest_active:
 		var test_kind := "Tethys boss"
 		_boss_playtest_active = false
@@ -4110,13 +3383,10 @@ func _on_battle_finished(result: String) -> void:
 		if result == "won":
 			route_state.set_lab_state("cleared")
 			route_state.set_tethys_state("defeated")
-			# The maze branch was already available on entering Deep. Point the
-			# player toward it after the lab victory without making Tethys its key.
+			# Point the player toward the (already available) maze after the lab victory.
 			route_state.set_objective("enter_maze")
 		else:
-			# The real checkpoint remains the one written before entering the
-			# laboratory. Keep the live state retryable too so a nonstandard test
-			# or future soft-loss flow cannot strand the route in `in_progress`.
+			# Keep the live state retryable so the route can't get stuck `in_progress`.
 			route_state.set_lab_state("available")
 			route_state.set_tethys_state("available")
 			route_state.set_objective("enter_lab")
@@ -4128,39 +3398,12 @@ func _on_battle_finished(result: String) -> void:
 	match result:
 		"won":
 			if was_special and _special_encounter_diver != null:
-				# MODIFIED (changed): was a full heal (hp_max/oxygen_max) on a
-				# win specifically - a loss just below already reverts to
-				# _special_encounter_pre_hp/_special_encounter_pre_oxygen (the
-				# snapshot taken before the encounter started, see line 2285),
-				# so winning used to leave the diver in better shape than
-				# losing did. Matched to the same pre-fight snapshot either
-				# way - a special encounter no longer changes this diver's
-				# HP/O2 at all outside the fight itself, regardless of outcome.
+				# Win or lose, restore the pre-encounter HP/O2 snapshot.
 				_special_encounter_diver.stats.hp = _special_encounter_pre_hp
 				_special_encounter_diver.stats.oxygen = _special_encounter_pre_oxygen
 				_update_hp_bar()
 				_update_oxygen_bar()
-			# MODIFIED (added): the very first special encounter is a
-			# choreographed practice fight, same idea as the very first
-			# combat tutorial's own no-XP rule just above - it's there to
-			# teach the mechanic, not to hand out a real reward for it. The
-			# item itself was never a one-time key item to begin with (see
-			# _grant_reward_item()'s is_key_item() branch - attack_up/
-			# defense_up fall through to plain inventory, and nothing here
-			# ever marks the site "claimed" the way current_pearl/reef_plate
-			# do), so skipping the grant doesn't lock the reward away -
-			# every real special encounter at this same site afterward
-			# (through the normal diver-choice prompt) can still win it.
-			# MODIFIED (changed): this whole win used to show its own orange
-			# _announce() banner right here, after already being back in the
-			# overworld ("no reward this time" for the practice run, or the
-			# generic tutorial-win line otherwise) - moved into the fight's
-			# own tutorial captions instead (see battle.gd's _advance_turn(),
-			# the special-encounter finale block, shown at the end of the
-			# guided portion before the real fight-to-the-death). The reward
-			# grant is still skipped for this practice run either way; this
-			# win now shows no banner at all, since everything worth saying
-			# about it was already said inside the fight.
+			# The first special encounter is practice: no item grant and no banner.
 			if was_special and was_tutorial:
 				pass
 			elif _pending_reward_item != "":
@@ -4168,7 +3411,7 @@ func _on_battle_finished(result: String) -> void:
 				if _battle_reward_site != "" and not cleared_item_sites.has(_battle_reward_site):
 					cleared_item_sites.append(_battle_reward_site)
 			elif was_tutorial:
-				_announce("You won! You can replay this fight any time from the Esc menu's Combat Help tab.")
+				pass   # no banner after the tutorial fight (the battle already said it all)
 			elif was_lab_boss:
 				_announce("Tethys is defeated. The blue-lit maze passage is now your next route.")
 			elif route_blocker_id == "bomb_bot":
@@ -4178,20 +3421,7 @@ func _on_battle_finished(result: String) -> void:
 			else:
 				_announce("The enemy backs off into the dark.")
 			if was_tutorial:
-				# MODIFIED (added): a win never healed anyone, unlike "skipped"
-				# and the loss popup's own "Exit to World" (both just above/
-				# below) which already do this full heal. A diver who went down
-				# during the choreographed finale stayed down afterward - and
-				# since this fight is replayable from the Esc menu at any HP,
-				# with no way back to a save to recover from it otherwise, that
-				# state could ride straight into the next real battle. Confirmed
-				# as the actual cause of a real crash: the very first special
-				# encounter forces the party down to just that one diver (see
-				# World._offer_special_encounter()), and _build_stage() in
-				# battle.gd never gives a hp<=0 party member an "actor" key at
-				# all - anything after that touching party_entry.actor for her
-				# (its own party_centre-facing math) hit a bare Dictionary
-				# without the key instead.
+				# Heal after a win so nobody downed carries into the next battle.
 				for d in divers:
 					var s: CombatantStats = (d as Diver).stats
 					s.hp = s.hp_max
@@ -4200,14 +3430,9 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 		"fled":
 			_announce("You successfully ran away.")
-			# The post-escape "R: Encounters" box was removed on request; the
-			# HUD badge by the HP bar already shows the setting.
+			# The HUD badge by the HP bar already shows the encounters setting.
 		"skipped":
-			# The "Skip Tutorial" in-battle menu option (see battle.gd's
-			# _on_skip_tutorial_pressed()) - Run itself stays disabled for the
-			# whole tutorial fight, so this is the deliberate way out of it
-			# early, same recovery a loss's own "Exit to World" choice gives
-			# rather than a separate, unique flow.
+			# In-battle "Skip Tutorial": same recovery as a loss's "Exit to World".
 			for d in divers:
 				var s: CombatantStats = (d as Diver).stats
 				s.hp = s.hp_max
@@ -4222,14 +3447,8 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 				_announce("The current sweeps you back out, unharmed but empty-handed.")
 			elif was_tutorial:
-				# A brand-new player's first-ever fight has no real save to
-				# fall back to yet, so losing here was never going to be the
-				# normal game-over flow below - now offered as an actual
-				# choice (see _on_tutorial_loss_retry()/_on_tutorial_loss_
-				# exit()) instead of unconditionally healing and returning to
-				# the world. Both handlers do their own cleanup (heal, HUD
-				# refresh, _show_ability_popups()), so this returns immediately
-				# rather than falling through to the shared cleanup below.
+				# First-fight loss offers Retry/Exit instead of game over; handlers do their
+				# own cleanup.
 				_tutorial_loss_was_special = was_special
 				tutorial_result_popup.open(
 					"Tutorial Fight Lost",
@@ -4243,31 +3462,15 @@ func _on_battle_finished(result: String) -> void:
 	_pending_reward_item = ""
 	_special_encounter_item = ""
 	_special_encounter_diver = null
-	# MODIFIED (fixed): was just `if was_tutorial:` - the first special
-	# encounter is ALSO tutorial_encounter (see World._offer_special_
-	# encounter()), so a win there was firing this same World Map/Maxilani
-	# Swap-Sonar/Musashi/Bucky onboarding carousel a second time, right after
-	# it had already run once for the real first combat tutorial.
-	# _show_ability_popups() is specifically that carousel, not a generic
-	# "a tutorial fight just ended" hook.
+	# The first special encounter is also tutorial_encounter; only the combat
+	# tutorial shows the onboarding carousel.
 	if was_tutorial and not was_special:
-		# Deferred, not called inline - the announcements/HP-bar updates
-		# above still need to land first, and open() itself pauses the
-		# tree, which should only happen once this whole handler (and
-		# whatever signal dispatch got it here) has actually finished.
+		# Deferred: open() pauses the tree, so let this handler finish first.
 		_write_save()
 		call_deferred("_show_ability_popups")
 
-# Heals the party and returns to the overworld - the same recovery a
-# tutorial loss always did, just now behind an explicit "Exit to World"
-# choice (see tutorial_result_popup.open() above) rather than automatic.
-# In the real loss flow, _on_battle_finished() already freed `battle`
-# before ever opening tutorial_result_popup, so this is a no-op there. It's
-# only load-bearing for --tutorial-loss-playtest (_show_tutorial_loss_
-# playtest()), which starts a real battle to sit visibly behind the popup
-# and never goes through _on_battle_finished() at all - without this, the
-# battle scene just kept running underneath, unpaused, once the popup
-# closed, which looked like Exit/Retry doing nothing at all.
+# Heal and return to the overworld. Freeing `battle` here matters only for
+# the tutorial-loss playtest, which never goes through _on_battle_finished().
 func _free_lingering_test_battle() -> void:
 	if battle != null:
 		battle.queue_free()
@@ -4286,9 +3489,7 @@ func _on_tutorial_loss_exit() -> void:
 	_pending_reward_item = ""
 	_special_encounter_item = ""
 	_special_encounter_diver = null
-	# MODIFIED (fixed): same as _on_battle_finished()'s own fix just above -
-	# a lost-and-exited first special encounter was opening this onboarding
-	# carousel again too.
+	# Not after the first special encounter (see _on_battle_finished()).
 	if not _tutorial_loss_was_special:
 		_first_encounter_started = false
 		for i in range(divers.size()):
@@ -4297,37 +3498,19 @@ func _on_tutorial_loss_exit() -> void:
 		_write_save()
 		call_deferred("_show_ability_popups")
 
-# --tutorial-loss-playtest's own entry point (see
-# _tutorial_loss_playtest_requested()) - jumps straight past the title
-# screen to the exact popup a real tutorial loss opens, with the same real
-# Retry/Exit handlers behind it.
+# --tutorial-loss-playtest entry: straight to the real tutorial loss popup.
 func _show_tutorial_loss_playtest() -> void:
 	title_screen.close()
 	$HUD.visible = true
 	get_tree().paused = false
-	# A short real-time wait, not just call_deferred (one idle frame) - every
-	# other path that starts a real Battle only ever does so well after the
-	# world has fully settled (player walked to the light beam, etc.), and
-	# this is the one place that builds a full 3D battle scene the instant
-	# the world loads. Cheap insurance either way, though a repro session
-	# established this ISN'T what was behind an earlier string of crashes
-	# investigating this feature - a plain, code-untouched launch failed
-	# just as often in the same session (3/3), which pointed at this
-	# machine's own GPU/driver flakiness (already seen intermittently
-	# elsewhere this session), not a bug in this code path.
+	# Short wait so the world settles before building a battle scene.
 	await get_tree().create_timer(1.0).timeout
-	# A real tutorial battle first, not just the plain overworld behind it -
-	# the point of this mode is seeing the popup exactly as it looks
-	# mid-fight (the popup's own open() pauses the tree right after, which
-	# freezes the battle scene in place behind it, same as a real loss would).
+	# Start a real tutorial battle so the popup appears over it as in a real loss.
 	_start_battle("", false, "angler", divers, false, true)
 	call_deferred("_open_tutorial_loss_playtest_popup")
 
 func _open_tutorial_loss_playtest_popup() -> void:
-	# This debug route always builds the plain tutorial fight (see the
-	# hardcoded call just above) - reset in case a real special-encounter
-	# loss earlier in the same session left this true, which would
-	# incorrectly suppress _on_tutorial_loss_exit()'s ability popups here.
+	# This route is the plain tutorial fight; reset the special flag.
 	_tutorial_loss_was_special = false
 	tutorial_result_popup.open(
 		"Tutorial Fight Lost",
@@ -4341,18 +3524,11 @@ func _on_tutorial_loss_retry() -> void:
 	else:
 		_replay_tutorial_battle()
 
-# _on_tutorial_loss_retry()'s special-encounter counterpart to
-# _replay_tutorial_battle() just below - relaunches the exact same forced-
-# Maxilani solo fight _offer_special_encounter()'s first-time branch does,
-# using _special_encounter_item/_pending_guardian_enemy_id, which are still
-# whatever they were on the failed attempt (_on_battle_finished()'s "lost"
-# branch returns before ever clearing them - see its own comment). Heals
-# Maxilani first for the same "always start a retry undamaged" reason
-# _replay_tutorial_battle() does.
+# Retry of the first special encounter: relaunch the forced solo Maxilani
+# fight with the same item/enemy, healing her first.
 func _replay_special_encounter_tutorial(item_id: String = "", enemy_id: String = "") -> void:
-	# Combat Help supplies a stable practice setup. The retry path leaves these
-	# blank so it can reuse the exact reward/site and enemy from the failed
-	# tutorial encounter instead.
+	# Combat Help uses a stable setup; Retry leaves these blank to reuse the
+	# failed encounter's reward/site and enemy.
 	if item_id == "":
 		item_id = _special_encounter_item if _special_encounter_item != "" else "attack_up"
 	if enemy_id == "":
@@ -4366,13 +3542,8 @@ func _replay_special_encounter_tutorial(item_id: String = "", enemy_id: String =
 	_update_oxygen_bar()
 	_start_battle(item_id, false, enemy_id, [maxilani], true, true)
 
-# The same tutorial fight _start_first_encounter() launches the first time
-# (all three divers, angler enemy, tutorial_encounter true) - reused by
-# both the "Retry" button above and the Esc menu's own replay option (see
-# inventory_menu.gd's Combat Help tab), so there's exactly one definition of
-# "what the tutorial fight actually is" rather than two copies drifting
-# apart. Heals first so a retry (or an on-demand replay well into a real
-# playthrough) always starts from a fair, undamaged state.
+# The single tutorial fight definition (Retry and Combat Help replay).
+# Heals first.
 func _replay_tutorial_battle() -> void:
 	for d in divers:
 		var s: CombatantStats = (d as Diver).stats
@@ -4382,21 +3553,15 @@ func _replay_tutorial_battle() -> void:
 	_update_oxygen_bar()
 	_start_battle("", false, "angler", divers, false, true)
 
-# Key items (current_pearl/reef_plate) go straight into the party-wide
-# key_items array - Items.grant() refuses those on purpose (see its own
-# header comment), a guardian's reward isn't "held" by whichever diver's
-# turn it was when the fight ended. Everything else Items.ITEMS could
-# theoretically hold goes into the shared inventory same as an orb pickup
-# would (see _add_to_inventory()), in case a future guardian ever guards a
-# consumable instead of a key item.
+# Key items go to party-wide key_items; anything else to the shared inventory.
 func _grant_reward_item(item_id: String) -> void:
 	if Items.is_key_item(item_id):
+		# Announced in the battle's combat log (Battle._win).
 		if not key_items.has(item_id):
 			key_items.append(item_id)
-		var display := String(Items.ITEMS.get(item_id, {}).get("display", item_id))
-		_announce("Victory - you claim the key item %s!" % display)
 		return
-	_add_to_inventory(item_id)
+	# Announced in the battle's combat log (Battle.reward_claim_text()).
+	_add_to_inventory(item_id, false)
 
 func _announce(text: String) -> void:
 	_announcements.push(text)
@@ -4415,29 +3580,16 @@ func _display_name(model_name: String) -> String:
 	# the stable gameplay/save identifier.
 	return Cast.display_name(model_name)
 
-# One Slot per diver, in a row along the top-left of the HUD - no icon
-# texture yet (none exists), so each Slot just renders as its own empty
-# bordered box until set_diver() is given one. Built once, right after
-# `divers` itself is populated in _ready(), since each Slot needs a live
-# Diver reference for _show_ability_popups() to read ability_id/passive_id
-# off of.
+# One Slot per diver, needed by _show_ability_popups().
 func _build_diver_slots() -> void:
-	# Not parented into $HUD - with no icon art to actually show yet, the
-	# row just rendered as 3 blank boxes over the diver-name/controls text.
-	# Kept as unparented, invisible Slot instances instead of dropping them
-	# entirely: _show_ability_popups() still uses set_diver()/set_highlighted()
-	# on these, and neither needs the node to be in the scene tree to work -
-	# only actually showing a highlighted box on screen does, which nothing
-	# does right now anyway with the row gone. Once real icon art exists,
-	# re-parent `slot` into $HUD here instead of leaving it detached.
+	# Not parented to $HUD until icon art exists; set_diver()/set_highlighted()
+	# work outside the tree.
 	for d in divers:
 		var slot: Slot = SLOT_SCENE.instantiate()
 		slot.set_diver(d as Diver)
 		_diver_slots.append(slot)
 
-# `_diver_slots` intentionally stays outside the scene tree until real icon art
-# exists, so tree teardown cannot free those Nodes for us. Explicit ownership
-# here prevents three hidden Control subtrees leaking on every restart/load.
+# _diver_slots live outside the tree, so free them explicitly.
 func _exit_tree() -> void:
 	_cancel_random_encounter_reveal()
 	for slot_value in _diver_slots:
@@ -4447,17 +3599,8 @@ func _exit_tree() -> void:
 	_diver_slots.clear()
 
 
-# Fired once, right after the tutorial fight's own battle screen closes and
-# control returns to the overworld (see _on_battle_finished()) - five fixed
-# CharacterAbilityPopup pages, in party order: the general world-controls
-# blurb (no Slot to highlight - it isn't about any one diver), then
-# Maxilani's Swap and Sonar as two separate pages, then Musashi/Bucky's own
-# single-ability writeups. Text lives on slot.gd itself (worldExplanation/
-# maxilaniSwapTitle/etc.) rather than here - every Slot instance carries an
-# identical copy of all of it, so which one they're read off doesn't
-# matter, only _diver_slots[i] matching CAST's fixed Staff_Diver/
-# Prototype_1(1910)/Prototype_V(1922) order matters for picking the right
-# Slot to highlight per page.
+# Ability onboarding pages after the tutorial fight, in party order. Text lives
+# on slot.gd; _diver_slots[i] must match CAST order.
 func _show_ability_popups() -> void:
 	if _diver_slots.is_empty():
 		return
@@ -4467,11 +3610,7 @@ func _show_ability_popups() -> void:
 	]
 	if _diver_slots.size() > 0:
 		var maxilani: Slot = _diver_slots[0]
-		# Two separate pages, not one combined page - Swap and Sonar are two
-		# distinct things to learn (and, eventually, two distinct demo clips;
-		# see "media" below and TutorialContent.ABILITY_MEDIA), and cramming
-		# both into one page's body left Sonar with no clip of its own at
-		# all (the page could only ever show ability_id's one clip, "swap").
+		# Swap and Sonar get separate pages (each has its own clip).
 		pages.append({
 			"slot": maxilani,
 			"title": maxilani.maxilaniSwapTitle,
@@ -4504,17 +3643,9 @@ func _show_ability_popups() -> void:
 	pages.append({
 		"slot": null,
 		"title": "Inventory",
-		"body": "Press Escape to access the inventory menu where you can use items, diver spells and access any tutorials from Combat Help.",
+		"body": "Press " + Slot._badge("Esc") + " to access the inventory menu where you can use items, diver spells and access any tutorials from Combat Help.",
 	})
-	# get_node("/root/...") rather than the bare autoload name - the bare
-	# global identifier only resolves when Godot boots the project the
-	# normal way (main scene + autoload pass). verify/'s gates launch
-	# headless via `--script <file>`, which runs that script as the main
-	# loop directly; under that path the GDScript compiler fails to
-	# resolve the bare name at all ("Identifier not found"), which failed
-	# world.gd's own compile and left the affected gate hanging forever
-	# with nothing left to run and no reachable quit(). The NodePath lookup
-	# is a runtime call, not a parse-time identifier, so it works either way.
+	# get_node() instead of the bare autoload name so headless --script runs compile.
 	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages, self)
 	ability_popups_seen = true
 
@@ -4547,9 +3678,7 @@ func _build_route_objective_hud() -> void:
 	route_objective_panel.add_child(route_objective_label)
 
 func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
-	# The top-right minimap owns 166 px. Keep both text surfaces out of that
-	# rectangle at narrow browser widths instead of letting readable text exist
-	# underneath an opaque navigation control.
+	# Keep text out of the minimap's 166 px top-right corner.
 	var compact := viewport_size.x < 600.0
 	var right_limit := maxf(160.0 if compact else 304.0, viewport_size.x - 176.0)
 	hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -4562,9 +3691,7 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 
 	_layout_route_objective_panel()
 
-# Guidance panel: centred, out of the minimap's corner, and never over the
-# other divers' side bars - slid right of them when there's room for a
-# readable panel, otherwise dropped below them.
+# Guidance panel: centred, clear of the minimap and the side bars.
 func _layout_route_objective_panel() -> void:
 	if route_objective_panel == null:
 		return
@@ -4596,10 +3723,8 @@ func _layout_route_objective_panel() -> void:
 func _show_lab_payoff() -> void:
 	if route_state.lab_state != "cleared" or route_state.tethys_state != "defeated":
 		return
-	# The meeting requested a brief computer/controller message, not new
-	# narration or another compulsory encounter. Reuse the input-exclusive
-	# paged surface and its scene-owner/battle-deferral protection. `cleared`
-	# already persists this payoff; loading never repays or replays victory.
+	# Brief computer message on the paged input-exclusive surface; `cleared`
+	# already persists it.
 	var pages: Array[Dictionary] = [{
 		"slot": null,
 		"title": "Computer recovered",
@@ -4623,12 +3748,14 @@ func _refresh_world_guidance() -> void:
 	if route_objective_panel == null or route_objective_label == null:
 		return
 	var text := ""
-	if route_state.prologue_complete and not divers.is_empty():
+	if _dev_mode:
+		pass   # dev mode: no objectives
+	elif route_state.prologue_complete and not divers.is_empty():
 		var position := (divers[active] as Diver).global_position
 		if deep_zone_layout.zone_for_position(position) == "deep":
 			text = route_state.exploration_goal("deep")
 		elif not route_state.tutorial_complete:
-			text = ""   # the forced tutorial's light-beam arrow owns guidance
+			text = ""   # the tutorial's light-beam arrow owns guidance
 		elif position.x < PUZZLE_DOORS_X:
 			# Until the party is through the ringed lock-plate doors.
 			text = "Explore the mysterious blockade."
@@ -4663,28 +3790,18 @@ func _update_hud() -> void:
 		line = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look · TAB diver" % _display_name(d.model_name)
 	if d.ability_id != "":
 		line += (" · F:%s" if narrow else "  ·  F: %s") % String(d.ability_id).capitalize()
-	# Only shows for whichever diver actually has the passive (see
-	# _toggle_sonar()'s own passive_id check) - same "only mention it if
-	# it'd do something" rule the F: hint above already follows for
-	# ability_id.
+	# Only for the diver that has the sonar passive.
 	if d.passive_id == "sonar":
 		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
 	line += (" · R:Random %s" if narrow else "  ·  R: Random Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
 	hud.text = line
 
-# A persistent readout of the active diver's HP, always visible during
-# free swimming (not just during Battle, which has its own separate HP
-# bars on its own screen) - bottom-center, red fill matching Battle's own
-# bar styling (see battle.gd's _add_bar) so the same number reads the
-# same way in both places.
+# Active diver's HP bar during exploration, styled like Battle's bars.
 var hp_bar: ProgressBar
 var hp_bar_label: Label
 var _hp_bar_mat: StyleBoxFlat
 
-# Shared by hp_bar_label and oxygen_bar_label - hp_bar_label had no
-# override at all (whatever the default theme font size happens to be)
-# while oxygen_bar_label was hardcoded to 13, so the two never actually
-# matched. One constant for both now.
+# Shared font size for the HP and O2 bar labels.
 const WORLD_HUD_LABEL_FONT_SIZE := 14
 
 func _build_hp_bar() -> void:
@@ -4694,10 +3811,7 @@ func _build_hp_bar() -> void:
 	wrap.offset_bottom = -10.0
 	wrap.add_theme_constant_override("separation", 4)
 	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	# MODIFIED (added): this spans the full WIDTH of the screen (BOTTOM_WIDE)
-	# and defaulted to STOP - a special-encounter minigame's own aim-down
-	# input landed right in this strip and got eaten here instead of
-	# reaching it. Purely informational, nothing here is ever clicked.
+	# Informational; must not eat minigame mouse input.
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(wrap)
 
@@ -4705,18 +3819,14 @@ func _build_hp_bar() -> void:
 	hp_bar.custom_minimum_size = Vector2(220, 20)
 	hp_bar.show_percentage = false
 	hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# MODIFIED (added): wrap's own IGNORE (above) only applies to wrap
-	# itself - hp_bar/hp_bar_label are separate nodes that each still
-	# defaulted to STOP independently, which is what was actually still
-	# blocking this strip regardless of the outer wrap's own filter.
+	# IGNORE doesn't cascade to children.
 	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_bar_mat = StyleBoxFlat.new()
 	_hp_bar_mat.bg_color = Color(0.78, 0.15, 0.15)
 	hp_bar.add_theme_stylebox_override("fill", _hp_bar_mat)
 	wrap.add_child(hp_bar)
 
-	# Blue Random Encounters On/Off badge, pinned just left of the HP bar
-	# (a child of it, so it tracks the centered bar without shifting it).
+	# Blue Random Encounters On/Off badge, a child of the HP bar on its left.
 	encounter_indicator = PanelContainer.new()
 	encounter_indicator.name = "EncounterIndicator"
 	encounter_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4756,8 +3866,7 @@ var encounter_indicator_label: Label
 var _encounter_indicator_style: StyleBoxFlat
 var _encounter_indicator_state := ""
 
-# Bright blue when random encounters are on, dim blue when off. Narrow
-# screens get a shorter label so it stays on-screen beside the centered bar.
+# Bright when on, dim when off; shorter label on narrow screens.
 func _update_encounter_indicator() -> void:
 	if encounter_indicator == null:
 		return
@@ -4772,9 +3881,7 @@ func _update_encounter_indicator() -> void:
 	_encounter_indicator_style.border_color = Color(0.55, 0.78, 1.0) if on else Color(0.25, 0.36, 0.55)
 	encounter_indicator_label.add_theme_color_override("font_color", Color.WHITE if on else Color(0.55, 0.65, 0.8))
 
-# The non-active divers' HP and O2, stacked down the left edge just under the
-# top-left controls text. Rebuilt per diver on TAB (whoever is active owns the
-# big bottom-center bars instead), refreshed with the main bars every frame.
+# Non-active divers' HP/O2 down the left edge; rebuilt on TAB.
 var _party_bars_box: VBoxContainer
 var _party_bar_rows: Array[Dictionary] = []
 
@@ -4820,10 +3927,7 @@ func _party_bar_label() -> Label:
 	label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
 	return label
 
-# Bottom edge of whatever controls/character text sits top-left right now: the
-# maze's controls block while it owns the screen, otherwise the world's
-# Controls label measured by its real wrapped lines (its rect is fixed in the
-# scene and doesn't grow when the text wraps on narrow screens).
+# Bottom of the top-left controls text (maze's or the world's wrapped label).
 func _controls_text_bottom() -> float:
 	if embedded_maze != null and embedded_maze.maze_active:
 		var block := embedded_maze.get_node_or_null("HUD/MazeExplorationControls") as Control
@@ -4840,9 +3944,7 @@ func _controls_text_bottom() -> float:
 	var text_height := lines * hud.get_line_height() + maxi(0, lines - 1) * spacing
 	return hud.global_position.y + maxf(text_height, 0.0)
 
-# The HP/O2 bars and the other divers' side bars step aside whenever a
-# full-screen surface is open (Esc menu, save menu, maze navigation map), so
-# they never draw over or show through it.
+# Bars hide while a full-screen surface is open.
 func _sync_overlay_hud() -> void:
 	if not is_inside_tree() or hp_bar == null:
 		return
@@ -4870,8 +3972,7 @@ func _maze_nav_map_open() -> bool:
 func _update_party_bars() -> void:
 	if _party_bars_box == null:
 		return
-	# Follow the controls text down if it wraps onto more lines - the maze's
-	# own controls block while it owns the screen, the world's otherwise.
+	# Follow the controls text down if it wraps.
 	_party_bars_box.position.y = maxf(76.0, _controls_text_bottom() + 10.0)
 	for i in range(_party_bar_rows.size()):
 		var row := _party_bar_rows[i]
@@ -4896,30 +3997,19 @@ func _update_hp_bar() -> void:
 	hp_bar.value = d.stats.hp
 	hp_bar_label.text = "%s   %d / %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max]
 
-# Same wrap/bar/label shape as the HP bar, stacked just above it - O2 is
-# read continuously (sonar drains it every frame while active - see
-# Diver._physics_process()) so it's updated every physics frame right
-# alongside HP rather than only on discrete events like the HP bar's other
-# callers do. No regen to show ticking here - the only thing that ever
-# moves this bar back up is a save point (_on_save_requested()).
+# O2 bar above the HP bar, updated every physics frame.
 var oxygen_bar: ProgressBar
 var oxygen_bar_label: Label
 
 func _build_oxygen_bar() -> void:
 	var wrap := VBoxContainer.new()
 	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	# MODIFIED: this band (offset_top to offset_bottom) used to be only 24px
-	# tall (-82 to -58), with just 2px of clearance above the HP bar's own
-	# band starting at -56 - nowhere near enough to fit a 14px bar plus a
-	# label on top of it, so the label routinely overflowed straight down
-	# onto the HP bar below. Now 40px tall with an 8px real gap above the
-	# HP bar's own top edge (-56).
+	# 40px band with an 8px gap above the HP bar.
 	wrap.offset_top = -104.0
 	wrap.offset_bottom = -64.0
 	wrap.add_theme_constant_override("separation", 4)
 	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	# MODIFIED (added): same full-width STOP-by-default bug as the HP bar's
-	# own wrap just above.
+	# Informational; must not eat mouse input.
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(wrap)
 
@@ -4927,8 +4017,7 @@ func _build_oxygen_bar() -> void:
 	oxygen_bar.custom_minimum_size = Vector2(220, 14)
 	oxygen_bar.show_percentage = false
 	oxygen_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# MODIFIED (added): same reasoning as the HP bar's own fix just above -
-	# wrap's IGNORE doesn't cascade to its children.
+	# IGNORE doesn't cascade to children.
 	oxygen_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mat := StyleBoxFlat.new()
 	mat.bg_color = Color(0.25, 0.65, 0.85)
@@ -4947,10 +4036,7 @@ func _update_oxygen_bar() -> void:
 	oxygen_bar.value = d.stats.oxygen
 	oxygen_bar_label.text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
 
-# Same downward-pointing cone TargetSelector's own cursor uses, same green,
-# built once here rather than in TargetSelector since this one's purpose is
-# different (mark who you're steering, not who you're about to swap into)
-# even though the shape is deliberately identical.
+# Green cone marking the active diver (same shape as TargetSelector's cursor).
 func _build_active_cursor() -> void:
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.0
@@ -4967,12 +4053,7 @@ func _build_active_cursor() -> void:
 	_active_cursor.rotation_degrees.x = 180.0   # cone points down at the diver's head
 	add_child(_active_cursor)
 
-# Refreshed every physics frame (same cadence as _update_hp_bar()/
-# _update_oxygen_bar()) so it keeps following the active diver as they
-# swim, not just snapping into place on a TAB press. Hidden during
-# target_selector.selecting/aiming/battling - see _active_cursor's own
-# header comment for why each of those isn't a "hover over your own head"
-# moment.
+# Follows the active diver each frame; hidden while selecting, aiming or battling.
 func _update_active_cursor() -> void:
 	if battling or aiming or target_selector.selecting or divers.is_empty():
 		_active_cursor.visible = false
@@ -4981,9 +4062,7 @@ func _update_active_cursor() -> void:
 	_active_cursor.visible = true
 	_active_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.5)
 
-# Called on top of the normal value drop (which already reads as "the bar
-# is noticeably lower now") for a brief extra flash, so a hit lands even
-# if you're not staring at the bar the instant it happens.
+# Brief extra flash on top of the value drop.
 func _flash_hp_bar() -> void:
 	var tw := create_tween()
 	tw.tween_property(_hp_bar_mat, "bg_color", Color(1.0, 0.9, 0.85), 0.1)

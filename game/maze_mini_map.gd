@@ -1,35 +1,13 @@
-# A radar for maze_level.gd's standalone test scene - same circular
-# overhead-readout shape as mini_map.gd, trimmed down to what this scene
-# actually has: one test diver, no party, no key items, no sonar.
-#
-# MODIFIED: mini_map.gd reads a fixed world._wall_segments array baked
-# once per wall as it's built - that works for World because a wall there
-# never moves again once built. This scene's CurrentWall1/CurrentWall2
-# actually swing open at runtime (see maze_level.gd's swing_hallway()), so
-# a one-time bake would silently go stale the moment that happens. Instead
-# this recomputes each wall's own endpoints from the box's CURRENT
-# global_transform every draw call - a few extra vector ops 60 times a
-# second, in exchange for the radar never lying about a wall that just
-# moved.
-#
-# MODIFIED (removed then reinstated): this used to slice every wall into
-# short pieces and reveal them individually as the diver got close (fog
-# of war), matching mini_map.gd's own per-piece reveal for the real game.
-# That per-piece slicing was dropped, but reveal itself is back - now
-# piggybacked on the hall-discovery system below instead of its own
-# separate mechanism: a wall doesn't draw AT ALL, on either this radar or
-# the big main map, until _update_revealed() has actually resolved it (the
-# diver got within view_radius of it at least once). Once resolved, it
-# stays drawn forever after - on the main map even once the diver walks
-# back away from it, since _wall_to_hall never forgets an entry.
+# Radar for maze_level.gd: circular overhead readout like mini_map.gd, plus the big main map.
+# Wall endpoints are recomputed from each box's current transform every draw, since
+# some walls swing open at runtime. A wall draws nowhere until revealed, then stays drawn.
 class_name MazeMiniMap
 extends Control
 
 var maze_level: MazeLevel
 
 @export var view_radius := 22.0
-# How close the diver has to get to a wall (nearest point) to reveal its
-# group - "running into" it, not merely having it inside the radar circle.
+# Distance to a wall's nearest point that reveals its group.
 @export var reveal_distance := 5.0
 
 const WALL_COLOR := Color(0.6, 0.64, 0.68, 0.9)
@@ -37,9 +15,7 @@ const SELECTED_WALL_COLOR := Color(1.0, 0.82, 0.32, 1.0)
 const FLOW_COLOR := Color(0.28, 0.82, 1.0, 0.95)
 const ROOM_COLOR := Color(0.78, 0.66, 0.95, 0.95)
 
-# Walls that reveal together: the moment the diver is within view_radius of
-# ANY wall in a group, every wall in that group appears on both maps. Any
-# wall in wall_boxes not named here (or in SECRET_ROOMS) reveals on its own.
+# Walls that reveal together on both maps. Unlisted walls (not in SECRET_ROOMS) reveal alone.
 const REVEAL_GROUPS := [
 	["CSGBox3D", "CurrentWall3"],
 	["CurrentWall1", "CurrentWall2"],
@@ -56,12 +32,10 @@ const REVEAL_GROUPS := [
 	["CSGBox3D23"],
 ]
 
-# Secret rooms reveal the same way, but draw as one closed box spanning
-# their walls' extent rather than as the individual walls.
+# Secret rooms reveal the same way but draw as one closed box.
 const SECRET_ROOMS := [
 	["CSGBox3D24", "CSGBox3D25", "RewardChamberWestWall"],
-	# 29, 33, 30, 32 and the door wall between 30 and 32: the whole block
-	# (the secret boss room plus the hall in front of it).
+	# The secret boss room plus the hall in front of it.
 	["CSGBox3D29", "CSGBox3D33", "CSGBox3D33North", "CSGBox3D30", "CSGBox3D32", "Box30DoorWallA", "Box30DoorWallB", "SecretBossRoomBack"],
 	# The secret boss room.
 	["CSGBox3D30", "Box30DoorWallA", "Box30DoorWallB", "SecretBossRoomBack"],
@@ -80,7 +54,7 @@ const SELECTED_FLOW_COLOR := Color(1.0, 0.68, 0.28, 1.0)
 const HIDDEN_MARKER_COLOR := Color(1.0, 0.18, 0.18)   # hidden objects (sphere room)
 const STRONG_ZONE_COLOR := Color(1.0, 0.15, 0.15)   # the strong encounter zone, flashing
 
-# 0..1, pulsing - how bright the strong encounter zone is right now.
+# 0..1 pulse for the strong encounter zone.
 func _zone_alpha() -> float:
 	return 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * 1.2)
 
@@ -94,11 +68,7 @@ func _ready() -> void:
 	blink.tween_callback(func() -> void: _rotatable_blink_on = not _rotatable_blink_on)
 	blink.tween_interval(ROTATABLE_BLINK_INTERVAL)
 
-# The world-space endpoints of `box`'s own centerline, right now - the
-# longer of its two horizontal dimensions is treated as its length (a
-# wall built wide-along-X vs. wide-along-Z), read fresh from box.global_
-# transform every call rather than cached, so a wall that swings open
-# (CurrentWall1/CurrentWall2) never draws stale.
+# World-space endpoints of the box's centerline along its longer horizontal axis, read live.
 func _box_segment(box: CSGBox3D) -> Array:
 	var half: Vector3 = box.size * 0.5
 	var t := box.global_transform
@@ -108,12 +78,7 @@ func _box_segment(box: CSGBox3D) -> Array:
 
 func _process(_dt: float) -> void:
 	_update_revealed()
-	# While the map is closed the selection keeps tracking whatever wall set
-	# and current are nearest, so that's what's selected when L opens it.
-	# While it's open the player's arrow-key choice stands.
-	# Unless the player has picked something themselves on the open map,
-	# whatever wall set and current are nearest stay selected - map open or
-	# not (the lever-dome map stays open while the levers are held).
+	# Unless the player picked something on the open map, track the nearest wall set and current.
 	if not main_map.visible:
 		_selection_manual = false
 	if main_map.visible and _selection_manual:
@@ -125,30 +90,14 @@ func _process(_dt: float) -> void:
 		_refresh_main_map()
 
 # --- Hall discovery & rotation-selection ---
-#
-# A hall (the player-facing unit - "hall 1", "hall 2", ...) is really one
-# WindCorridor's open lane PLUS the two walls that enclose it. Which two
-# walls those are is pure geometry and never changes (see
-# _compute_corridor_wall_pairs()), but the NAME a hall gets is player-
-# facing and assigned progressively in _update_revealed(): a hall isn't
-# added to _hall_walls until the diver has actually swum within
-# view_radius of one of its two walls, and "WindCorridorN" numbers halls
-# in the order they were actually found this playthrough, not by the
-# corridor node's own child index. Discovery ALSO gates visibility now
-# (see the class comment up top) - a wall isn't drawn anywhere, on the
-# radar or the main map, until it's been resolved here at least once.
+# A hall is one WindCorridor plus its two enclosing walls. Halls are named in
+# discovery order as the diver reveals their walls.
 
-#
-# This is a geometric heuristic, not read from authored data - if two
-# corridors sit close enough together that a wall between them ends up
-# assigned to the wrong one (or claimed by both), this nearest-two-walls
-# rule is what to retune, not the dictionary shape.
+# Nearest-two-walls heuristic; retune this rule if walls get misassigned.
 var _corridor_wall_pairs: Dictionary = {}   # Area3D -> Array[CSGBox3D], size 2
 var _corridor_wall_pairs_computed := false
 
-# A corridor's real centre is its CollisionShape3D's, not the Area3D's own
-# origin - the Area3D nodes sit away from the volumes they actually cover,
-# which paired every corridor past the first with the same far-off walls.
+# Use the CollisionShape3D's centre; the Area3D origin sits away from its volume.
 func _corridor_center(corridor: Area3D) -> Vector3:
 	for child in corridor.get_children():
 		if child is CollisionShape3D:
@@ -185,68 +134,34 @@ func _corridor_for_wall(box: CSGBox3D) -> Area3D:
 			return corridor
 	return null
 
-# Player-facing discovery. hall name -> Array[CSGBox3D] size 2, keys
-# assigned in the order the diver actually found each hall.
+# hall name -> Array[CSGBox3D] (size 2), in discovery order.
 var _hall_walls: Dictionary = {}
-# Hall name -> the actual WindCorridor Area3D enclosed by that hall's walls.
-# This is deliberately distinct from raw #72's permanent hall-to-current
-# association: `H` and `L` move controller objects between areas, so only
-# MazeLevel._currents_by_corridor tells us where a flow truly exists now.
+# hall name -> enclosed WindCorridor. Use MazeLevel._currents_by_corridor for where flows are now.
 var _hall_corridors: Dictionary = {}
-# A corridor may have no unique nearest wall pair (several share an authored
-# boundary), but the player can still see and feel its flow. Track visual
-# discovery separately from the wall-pair heuristic so a live current never
-# vanishes simply because that heuristic assigned a shared wall elsewhere.
+# Corridor visual discovery, tracked separately so a live current never vanishes
+# because the wall-pair heuristic assigned a shared wall elsewhere.
 var _discovered_corridors: Dictionary = {}
-# CSGBox3D -> hall name, once assigned. A wall that turned out to belong
-# to no corridor at all gets "" here instead - not a hall, but still
-# marked so its adjacency isn't rechecked every single frame forever.
+# CSGBox3D -> hall name, or "" for walls belonging to no corridor.
 var _wall_to_hall: Dictionary = {}
 var _hall_discovery_count := 0
 
-# The hall currently up for rotation (its own two walls) - empty until the
-# first hall is ever found. Kept as the actual CSGBox3D pair rather than a
-# screen-space PackedVector2Array: the small radar and the main map
-# project the same hall into two completely different coordinate spaces,
-# and whichever one last redrew would silently stomp the other's cached
-# points if this held pixels instead of the underlying walls. Whatever
-# eventually highlights the selected hall on screen should project
-# selectedHall's own walls itself, on demand, in whichever space it's
-# drawing to.
+# Selected hall's wall pair (walls, not screen points, since radar and main map project differently).
 var selectedHall: Array[CSGBox3D] = []
 var selectedHallName := ""
 
-# The currently highlighted *active flow area*.  It never names a wall pair
-# or an old controller location. Ctrl+arrow cycles this independently from
-# selectedHallName so map readers can inspect a current without losing their
-# wall selection.
+# Highlighted active flow area; Ctrl+arrow cycles it independently of the hall selection.
 var selectedCurrentCorridor: Area3D
 
-# The selected rotatable wall set (one entry of MazeLevel.rotatable_wall_sets()),
-# or {}. While the map is closed it tracks the set nearest the diver (and
-# selectedCurrentCorridor the nearest current); once L opens the map,
-# Left/Right steps through revealed sets and Ctrl+Left/Right through
-# currents. The map blinks both; E rotates the set, Ctrl+E the current.
+# Selected rotatable wall set (from MazeLevel.rotatable_wall_sets()) or {}. Nearest while the
+# map is closed; Left/Right cycles sets and Ctrl+Left/Right currents on the open map.
+# E rotates the set, Ctrl+E the current.
 var selected_rotatable_set: Dictionary = {}
 var _rotatable_blink_on := true
 const ROTATABLE_BLINK_INTERVAL := 0.4
 const BLINK_FLOW_COLOR := Color(0.62, 0.96, 1.0, 1.0)
 const DIM_FLOW_COLOR := Color(0.28, 0.82, 1.0, 0.3)
 
-# Blink clock for selectedHall's highlight on the SMALL RADAR's _draw()
-# only - the main map's own blink is separate (see _restart_main_map_blink()
-# down by _main_map_hall_lines), since it tweens real Line2D nodes
-# directly instead. The radar has no persistent line Nodes to tween: every
-# wall there is redrawn from scratch each frame via draw_line()/
-# draw_multiline(), so "blinking" just means _draw() skips
-# selectedHallName's own lines for one redraw whenever this is false.
-# _process() already calls queue_redraw() every frame regardless of this,
-# so flipping it here is picked up on the very next redraw with no extra
-# signal needed. Started once in _ready() - a single looping clock works
-# for whichever hall is selected at any given moment, it doesn't need
-# restarting when selection changes (unlike the main map's tween, which
-# targets specific nodes and so DOES need restarting - see
-# _restart_main_map_blink()).
+# Radar-only blink clock for selectedHall; _draw() skips its lines while false.
 var _hall_blink_on := true
 
 func _start_hall_blink() -> void:
@@ -257,18 +172,11 @@ func _start_hall_blink() -> void:
 	tween.tween_callback(func(): _hall_blink_on = false)
 	tween.tween_interval(0.5)
 
-# Same shape as _main_map_hall_lines further down, just for the small
-# radar - not consumed by anything yet (nothing currently supports
-# clicking this 150x150 view to select a hall), but built the same way in
-# _draw() below so that's a small addition later rather than a redesign.
+# Radar equivalent of _main_map_hall_lines; not consumed yet.
 var _radar_hall_points: Dictionary = {}
 
-# Walks every not-yet-resolved wall and, once the diver has actually gotten
-# within view_radius of it, resolves it: no adjacent corridor -> marked ""
-# (drawn on its own, never grouped); an adjacent corridor -> both of that
-# corridor's walls are folded into a new _hall_walls entry together (even
-# if the diver has only physically reached one of the two so far) and
-# named by discovery order.
+# Resolves revealed walls: no adjacent corridor -> "", otherwise both of the corridor's
+# walls become a new hall named by discovery order.
 func _update_revealed() -> void:
 	if maze_level == null or maze_level._diver == null or not is_instance_valid(maze_level._diver):
 		return
@@ -277,18 +185,15 @@ func _update_revealed() -> void:
 	var diver_pos: Vector3 = maze_level._diver.global_position
 	_update_revealed_groups(diver_pos)
 	_update_found_pois(diver_pos)
-	# A corridor - and so the current running through it - becomes visible
-	# once a wall enclosing it has been revealed.
+	# A corridor becomes visible once one of its walls is revealed...
 	for corridor in maze_level.corridors:
 		if not is_instance_valid(corridor) or _discovered_corridors.has(corridor):
 			continue
 		var pair: Array = _corridor_wall_pairs.get(corridor, [])
-		# Or once the diver is actually in it - a wide corridor's walls can
-		# sit just past reveal_distance from its middle.
+		# ...or the diver is in or near it.
 		if pair.any(func(box) -> bool: return _revealed_walls.has(box)) or corridor.overlaps_body(maze_level._diver) or diver_pos.distance_to(_corridor_center(corridor)) <= reveal_distance:
 			_discovered_corridors[corridor] = true
-	# Hall naming/selection now follows reveal instead of doing its own
-	# distance check, and secret-room walls never join a hall.
+	# Secret-room walls never join a hall.
 	for box in maze_level.wall_boxes:
 		if not is_instance_valid(box) or _wall_to_hall.has(box):
 			continue
@@ -305,19 +210,12 @@ func _update_revealed() -> void:
 		_hall_corridors[hall_name] = corridor
 		for wall in walls:
 			_wall_to_hall[wall] = hall_name
-		# Halls no longer become the selection on discovery - selection is
-		# the nearest rotatable wall set (_update_selected_rotatable_set()).
 
-# True once the player has chosen a wall set or current themselves (arrow
-# keys, or Ctrl+E moving a current) on the open map; closing the map hands
-# selection back to "nearest".
+# True once the player picks a set/current on the open map; closing the map resets it.
 var _selection_manual := false
-# How near a rotatable wall set has to be for it to be picked automatically.
 const AUTO_SELECT_RADIUS_SCALE := 2.0   # x view_radius
 
-# Picks the rotatable set nearest the diver: at least one of its walls must
-# already be revealed, and the diver within AUTO_SELECT_RADIUS_SCALE x
-# view_radius of one of them.
+# Nearest rotatable set with a revealed wall, within AUTO_SELECT_RADIUS_SCALE x view_radius.
 func _update_selected_rotatable_set() -> void:
 	selected_rotatable_set = {}
 	if maze_level == null or maze_level._diver == null or not is_instance_valid(maze_level._diver):
@@ -352,8 +250,7 @@ func _nearest_current(at: Vector3) -> Area3D:
 			best = corridor as Area3D
 	return best
 
-# How far `at` is from the nearest point of a corridor's push zone (0 inside
-# it) - fairer than its centre, since some corridors are long.
+# Distance to the corridor's push zone (0 inside); fairer than its centre for long corridors.
 func _distance_to_corridor(corridor: Area3D, at: Vector3) -> float:
 	for child in corridor.get_children():
 		var shape_node := child as CollisionShape3D
@@ -369,7 +266,7 @@ func _validate_selection() -> void:
 	if selectedCurrentCorridor != null and (not is_instance_valid(selectedCurrentCorridor) or not maze_level._currents_by_corridor.has(selectedCurrentCorridor) or not _is_discovered_corridor(selectedCurrentCorridor)):
 		selectedCurrentCorridor = null
 
-# Marc's spatial selection order: screen right is +X, down is +Z.
+# Screen right is +X, down is +Z.
 func _clockwise_angle(p: Vector3) -> float:
 	var middle := _maze_middle()
 	return fposmod(atan2(p.z - middle.y, p.x - middle.x), TAU)
@@ -394,9 +291,7 @@ func _set_centre(wall_set: Dictionary) -> Vector3:
 			n += 1
 	return sum / maxf(n, 1)
 
-# Left/Right on the open map: step through the rotatable wall sets the diver
-# has revealed (at least one wall seen), the way Ctrl+Left/Right steps
-# through currents.
+# Left/Right on the open map: cycle through revealed rotatable sets.
 func _cycle_selected_set(direction: int) -> void:
 	var sets: Array = []
 	for wall_set in maze_level.rotatable_wall_sets():
@@ -418,10 +313,7 @@ func _cycle_selected_set(direction: int) -> void:
 	selected_rotatable_set = sets[index]
 	_selection_manual = true
 
-# The active current running between a set's walls right now: the current
-# corridor nearest the middle of the set, if it sits inside the gap between
-# the walls. Read live, so after a rotation it follows wherever the walls
-# and currents actually ended up (or is null if no current runs there).
+# Current corridor nearest the set's middle, if within the gap between its walls. Read live.
 func _current_between(wall_set: Dictionary) -> Area3D:
 	var centres: Array[Vector2] = []
 	for box in wall_set.get("walls", []):
@@ -454,10 +346,7 @@ func _main_map_line_for(box: CSGBox3D) -> Line2D:
 	var lines: Array[Line2D] = _main_map_hall_lines[hall_name]
 	return lines[index] if index >= 0 and index < lines.size() else null
 
-# Resets every wall/current line to normal, then blinks the selected set's
-# walls (amber <-> normal) and the current between them (bright <-> dim).
-# Walls blink by colour rather than visibility so a selected wall never
-# looks like an open gap.
+# Blink the selected set's walls (by colour, so they never look like gaps) and its current.
 func _apply_rotatable_highlight() -> void:
 	for hall_name in _main_map_hall_lines:
 		for line in (_main_map_hall_lines[hall_name] as Array[Line2D]):
@@ -487,9 +376,7 @@ func _apply_rotatable_highlight() -> void:
 		if _main_map_current_heads.has(current):
 			(_main_map_current_heads[current] as Polygon2D).color = flow_color
 
-# Ctrl+E: rotate the selected current to its paired corridor, and keep it
-# selected in its new place (that corridor counts as discovered - the
-# player just sent a current into it).
+# Ctrl+E: rotate the selected current and keep it selected at its new corridor.
 func _rotate_selected_current() -> void:
 	if selectedCurrentCorridor == null:
 		return
@@ -497,15 +384,14 @@ func _rotate_selected_current() -> void:
 	if moved_to != null:
 		_discovered_corridors[moved_to] = true
 		selectedCurrentCorridor = moved_to
-		_selection_manual = true   # keep following the current just moved
+		_selection_manual = true
 
 func _rotate_selected_set() -> void:
 	if selected_rotatable_set.is_empty():
 		return
 	(selected_rotatable_set["rotate"] as Callable).call()
 
-# Resolves REVEAL_GROUPS/SECRET_ROOMS node names once, then gives every
-# remaining wall its own single-wall group.
+# Resolve REVEAL_GROUPS/SECRET_ROOMS names once; other walls get single-wall groups.
 func _build_reveal_groups() -> void:
 	var grouped: Dictionary = {}
 	for names in REVEAL_GROUPS:
@@ -532,8 +418,7 @@ func _build_reveal_groups() -> void:
 			_wall_groups.append(single)
 	_reveal_groups_built = true
 
-# Within reveal_distance of the wall's nearest point (not its midpoint), so
-# a long wall reveals as soon as you reach any part of it.
+# Uses the nearest point so long walls reveal as soon as any part is reached.
 func _wall_in_reach(box: CSGBox3D, diver_pos: Vector3) -> bool:
 	if not is_instance_valid(box):
 		return false
@@ -561,8 +446,7 @@ func _update_revealed_groups(diver_pos: Vector3) -> void:
 		if _any_wall_in_reach(_room_walls[i], diver_pos):
 			_revealed_rooms[i] = true
 
-# Corners of the axis-aligned box spanning a secret room's walls, in world
-# space (y unused), in draw order.
+# Corners of a secret room's bounding box (world space, y unused), in draw order.
 func _room_corners(i: int) -> Array[Vector3]:
 	var rect := Rect2()
 	var first := true
@@ -590,12 +474,7 @@ func _room_corners(i: int) -> Array[Vector3]:
 		Vector3(rect.end.x, 0.0, rect.end.y), Vector3(rect.position.x, 0.0, rect.end.y),
 	]
 
-# Points selectedHall at `hall_name`'s own wall pair. Called the moment a
-# new hall is first discovered (see _update_revealed()) so there's always
-# something selected as soon as one exists, and reusable later by whatever
-# click handler lets the player pick a DIFFERENT already-found hall to
-# rotate instead (see _pick_hall_at() below for hit-testing a click
-# against a hall's drawn lines).
+# Points selectedHall at `hall_name`'s wall pair.
 func _select_rotatable_hall(hall_name: String) -> void:
 	if not _hall_walls.has(hall_name):
 		return
@@ -603,13 +482,7 @@ func _select_rotatable_hall(hall_name: String) -> void:
 	selectedHallName = hall_name
 	_restart_main_map_blink()
 
-# Moves the selection to the next/previous discovered hall, wrapping
-# around at either end - _hall_walls' own key order is discovery order
-# (GDScript Dictionaries preserve insertion order), so this is really just
-# "the hall found right after/before the current one," matching how the
-# player thinks about cycling through what they've found so far. Halls
-# not yet discovered aren't in _hall_walls at all, so they're never a
-# valid cycle target. A no-op with nothing discovered yet.
+# Cycles through discovered halls in discovery order, wrapping.
 func _select_next_hall() -> void:
 	_cycle_selected_hall(1)
 
@@ -636,12 +509,7 @@ func _draw() -> void:
 	draw_circle(mid, r, Color(0.03, 0.06, 0.08, 0.88))
 	draw_arc(mid, r - 1.5, 0.0, TAU, 48, Color(0.5, 0.72, 0.8, 0.55), 1.5)
 
-	# Only walls _update_revealed() has actually resolved draw at all - an
-	# undiscovered wall shows up on neither this radar nor the main map.
-	# Of the resolved ones, anything folded into a hall is grouped under
-	# that hall's key (so a future click-to-select can test against one
-	# hall's lines at a time); anything resolved but standalone just draws
-	# as its own independent line.
+	# Only revealed walls draw. Hall walls are grouped by hall name; others draw standalone.
 	var hall_points: Dictionary = {}
 	for box in maze_level.wall_boxes:
 		if not is_instance_valid(box) or not _revealed_walls.has(box) or _room_wall_set.has(box):
@@ -658,9 +526,7 @@ func _draw() -> void:
 		if hall_name == "":
 			draw_line(p_a, p_b, Color(0.6, 0.64, 0.68, 0.9), 2.0)
 			continue
-		# PackedVector2Array is copied when read out of a Dictionary, so
-		# appending in place left every hall's list empty and hall walls
-		# (e.g. CurrentWall1/2) never drew on the radar. Write it back.
+		# PackedVector2Array is copied out of a Dictionary; write it back after appending.
 		var hall_list: PackedVector2Array = hall_points.get(hall_name, PackedVector2Array())
 		hall_list.append(p_a)
 		hall_list.append(p_b)
@@ -668,16 +534,13 @@ func _draw() -> void:
 	_radar_hall_points = hall_points
 	for hall_name in hall_points:
 		var points := hall_points[hall_name] as PackedVector2Array
-		# A hall can be known to the minimap while every one of its segments
-		# is outside this radar circle. Godot rejects an empty polyline and
-		# otherwise prints an error every redraw.
+		# A known hall may be entirely outside the circle; skip empty polylines.
 		if points.size() >= 2:
 			var wall_color := SELECTED_WALL_COLOR if hall_name == selectedHallName else WALL_COLOR
 			var wall_width := 2.8 if hall_name == selectedHallName else 2.0
 			draw_multiline(points, wall_color, wall_width)
 
-	# While the big map is open (where E rotates them), the selected
-	# rotatable walls blink amber here too, drawn over their normal lines.
+	# While the big map is open, the selected rotatable walls blink amber here too.
 	if main_map.visible and _rotatable_blink_on and not selected_rotatable_set.is_empty():
 		for box in selected_rotatable_set["walls"]:
 			if not is_instance_valid(box) or not _revealed_walls.has(box):
@@ -701,10 +564,7 @@ func _draw() -> void:
 				continue
 			draw_line((edge[0] as Vector2) * px_per_unit + mid, (edge[1] as Vector2) * px_per_unit + mid, ROOM_COLOR, 2.0)
 
-	# Current arrows are derived from the live controller dictionary, not from
-	# whatever two walls happened to be closest when a hall was discovered.
-	# A current therefore disappears from Corridor 1 and reappears in Corridor
-	# 3 as soon as H makes that real relocation.
+	# Current arrows come from the live controller dictionary, so relocations show immediately.
 	for corridor in maze_level._currents_by_corridor:
 		if not _is_discovered_corridor(corridor as Area3D):
 			continue
@@ -764,9 +624,7 @@ func _draw() -> void:
 	var fwd: Vector3 = -maze_level._diver.global_transform.basis.z
 	_draw_arrow(mid, Vector2(fwd.x, fwd.z))
 
-# Identical to mini_map.gd's own _clip_to_circle() - see its comment there
-# for the derivation. Duplicated rather than shared because Control has no
-# common non-World base both minimaps could hang a shared helper off of.
+# Same as mini_map.gd's _clip_to_circle(); duplicated since there's no shared base.
 func _clip_to_circle(rel_a: Vector2, rel_b: Vector2, radius: float) -> Array:
 	var d: Vector2 = rel_b - rel_a
 	var dd: float = d.dot(d)
@@ -786,12 +644,7 @@ func _clip_to_circle(rel_a: Vector2, rel_b: Vector2, radius: float) -> Array:
 		return []
 	return [rel_a + d * lo, rel_a + d * hi]
 
-# Closest distance from `p` to any point ON the segment a->b, not to its
-# endpoints - project p onto the infinite line through a/b, clamp that
-# projection to the segment's own [0, 1] range (so it can't slide past
-# either end), then measure to wherever that clamped point landed. Used by
-# _compute_corridor_wall_pairs() (wall-to-corridor distance) and _pick_hall_at()
-# (hit-testing a click against a hall's drawn lines).
+# Distance from `p` to the nearest point on segment a->b.
 static func _point_to_segment_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var ab := b - a
 	var len_sq := ab.length_squared()
@@ -813,11 +666,7 @@ func _draw_arrow(p: Vector2, facing: Vector2) -> void:
 		PackedColorArray([Color(0.35, 0.95, 0.55)])
 	)
 
-# A WaterCurrent is authoritative only through its collision Area3D and
-# orientation. Its map shaft starts and ends inside that same BoxShape3D,
-# matching the actual region that pushes a diver. This intentionally replaces
-# the raw PR's attractive but wall-derived sine wave, which could continue to
-# claim a current after its controller had moved somewhere else.
+# Flow shaft drawn within the current's own BoxShape3D (the actual push region).
 func _flow_path_for_corridor(corridor: Area3D, current: WaterCurrent) -> PackedVector3Array:
 	var points := PackedVector3Array()
 	if corridor == null or current == null or current.area != corridor or current.orientation.length_squared() < 0.0001:
@@ -836,8 +685,7 @@ func _flow_path_for_corridor(corridor: Area3D, current: WaterCurrent) -> PackedV
 	if travel_extent < 0.01:
 		return points
 	var center := shape_node.global_transform * Vector3.ZERO
-	# Stay slightly inside both ends: the arrow describes the push zone without
-	# visually crossing the two solid end walls that frame it.
+	# Stay slightly inside both ends so the arrow doesn't cross the end walls.
 	var half_span := travel_extent * 0.42
 	points.append(center - flow * half_span)
 	points.append(center + flow * half_span)
@@ -846,8 +694,7 @@ func _flow_path_for_corridor(corridor: Area3D, current: WaterCurrent) -> PackedV
 func _is_discovered_corridor(corridor: Area3D) -> bool:
 	return corridor != null and _discovered_corridors.has(corridor)
 
-# Marc's readable flow symbols. These extend only the drawing, never the
-# Area3D which physically pushes a diver. Center and facing remain exact.
+# Minimum drawn arrow lengths; affects drawing only, not the push Area3D.
 const MAIN_MAP_MIN_CURRENT_PX := 44.0
 const RADAR_MIN_CURRENT_PX := 26.0
 
@@ -860,8 +707,7 @@ func _at_least_long(start: Vector2, end: Vector2, min_len: float) -> Array:
 	var half := run / length * min_len * 0.5
 	return [middle - half, middle + half]
 
-# Rebind discovered geometry to fresh scene nodes. Instance IDs are not save
-# identities, and discovering the return panel must not erase earlier halls.
+# Saved by node name (instance IDs aren't stable across loads).
 func campaign_discovery() -> Dictionary:
 	var data := {"walls": [], "rooms": _revealed_rooms.keys(), "corridors": [],
 		"halls": [], "count": _hall_discovery_count, "pois": _found_poi_ids.keys(), "intro_seen": intro_seen}
@@ -883,7 +729,7 @@ func campaign_discovery() -> Dictionary:
 
 func restore_campaign_discovery(data: Dictionary) -> void:
 	intro_seen = bool(data.get("intro_seen", false))
-	# A restored room can draw before the first discovery process tick.
+	# A restored room can draw before the first discovery tick.
 	if not _reveal_groups_built:
 		_build_reveal_groups()
 	_revealed_walls.clear()
@@ -893,8 +739,7 @@ func restore_campaign_discovery(data: Dictionary) -> void:
 	_hall_corridors.clear()
 	_wall_to_hall.clear()
 	_found_poi_ids.clear()
-	# Replacing discovery must replace its drawing too, not leave lines from
-	# a previous restore visible and spoil rooms that this save never visited.
+	# Also clear previous drawings so unvisited rooms aren't spoiled.
 	for drawing in [_main_map_hall_lines, _main_map_lone_lines, _main_map_room_lines, _main_map_current_lines, _main_map_current_heads]:
 		for value in drawing.values():
 			var nodes: Array = value if value is Array else [value]
@@ -945,9 +790,7 @@ func _draw_current_flow(corridor: Area3D, current: WaterCurrent, center: Vector3
 	var stretched := _at_least_long(start, end, RADAR_MIN_CURRENT_PX)
 	start = stretched[0]
 	end = stretched[1]
-	# Same blue wavy line + arrowhead as the big map. The selected current
-	# blinks bright/dim blue only while the big map is open (where Ctrl+E can
-	# rotate it); otherwise it's drawn like every other current.
+	# The selected current blinks only while the big map is open.
 	var color := FLOW_COLOR
 	if corridor == selectedCurrentCorridor and main_map.visible:
 		color = BLINK_FLOW_COLOR if _rotatable_blink_on else DIM_FLOW_COLOR
@@ -973,22 +816,12 @@ func _draw_flow_arrow(start: Vector2, end: Vector2, color: Color, width: float) 
 	var base := end - facing * 7.0
 	draw_polygon(PackedVector2Array([end, base + side * 3.6, base - side * 3.6]), PackedColorArray([color]))
 
-# --- Big persistent overview map, opened/closed with M ---
-# The small radar above recenters on the diver every frame (see _draw()'s
-# own `center`) - fine for "what's near me right now," wrong for a
-# standing overview, since anything already drawn would slide around the
-# panel the instant the diver moves. This map uses a FIXED origin instead
-# (_main_map_origin, computed once from the maze's own real bounds and
-# never touched again), so a wall drawn here stays at the same pixel
-# forever.
+# --- Big persistent overview map, toggled with L ---
+# Uses a fixed origin (unlike the diver-centred radar) so drawn walls stay put.
 const MAIN_MAP_SIZE := 500.0
-# Empty space kept between the maze's own drawn extent and the panel's
-# edge, on every side - without this, a wall sitting exactly on the
-# maze's outer boundary would draw right at pixel 0, half-clipped by the
-# panel edge/border.
+# Padding between the maze extent and the panel edge.
 const MAIN_MAP_MARGIN := 14.0
-# Room kept clear at the top for the title and at the bottom for the legend,
-# so the whole maze is drawn between them.
+# Space reserved for the title and legend.
 const MAIN_MAP_HEADER := 56.0
 const MAIN_MAP_FOOTER := 30.0
 var _main_map_footer := MAIN_MAP_FOOTER
@@ -996,59 +829,27 @@ var main_map: Control
 var _main_map_px_per_unit := 1.0
 var _main_map_origin := Vector2.ZERO
 var _main_map_bounds_computed := false
-# Keyed by hall name (String, e.g. "WindCorridor1") -> one real Line2D per
-# wall in that hall (size 2, same order as _hall_walls[hall_name]) - a
-# persistent child of main_map rather than a PackedVector2Array rebuilt
-# every frame, so blinking the selected hall (_restart_main_map_blink())
-# can just tween these nodes' own .visible directly. A separate Line2D per
-# wall rather than one 4-point Line2D for the whole hall: Line2D always
-# connects its points into ONE continuous polyline, so a single Line2D
-# covering both walls would draw a spurious diagonal connecting wall A's
-# far end to wall B's near end. Created lazily, the first time a hall is
-# actually discovered (see _update_main_map_hall_line()); .points get
-# refreshed every frame after that in _refresh_main_map(), same as before,
-# since a wall can still swing open after its hall was first found.
+# hall name -> one Line2D per wall (same order as _hall_walls). Separate lines so the two
+# walls aren't joined by a stray segment. Created lazily; points refreshed every frame.
 var _main_map_hall_lines: Dictionary = {}
-# CSGBox3D -> its own persistent Line2D, for RESOLVED walls that turned
-# out to belong to no hall (see _wall_to_hall - undiscovered walls never
-# get an entry here at all). One per wall rather than combined into a
-# single Line2D for the same reason as _main_map_hall_lines above.
+# CSGBox3D -> Line2D for revealed walls belonging to no hall.
 var _main_map_lone_lines: Dictionary = {}
-# Area3D -> Line2D / Polygon2D. These keys are live corridor nodes rather
-# than discovery-order hall names: moving an active controller from Corridor
-# 2 to Corridor 3 must move the visual with the controller, not leave it
-# attached to the old hall.
+# Area3D -> Line2D / Polygon2D, keyed by live corridor so visuals follow relocated currents.
 var _main_map_current_lines: Dictionary = {}
 var _main_map_current_heads: Dictionary = {}
 var _main_map_diver_pos := Vector2.ZERO
-# Draws the diver arrow + border above every wall Line2D - see its own
-# z_index comment in _build_main_map().
+# Diver arrow + border, drawn above the wall lines.
 var _main_map_overlay: Control
-# Presentation history is optional in old checkpoints, not a new mandatory
-# progression flag. Ownership of the map remains the earned party item.
+# Optional in old checkpoints; not a progression flag.
 var intro_seen := false
 
-# The blink tween currently animating whichever hall is selectedHallName's
-# own Line2D nodes on the main map - re-created (not reused) every time
-# selection changes, since a Tween created with create_tween() is tied to
-# whatever it was told to animate at creation time; there's no "retarget"
-# operation, so switching halls means killing the old one and building a
-# fresh one against the new hall's nodes instead.
 var _main_map_blink_tween: Tween
 
-# Restarts the main map's hall-highlight blink to target whichever hall is
-# currently selectedHallName. Called both when selection actually changes
-# (_select_rotatable_hall()) and the first time the selected hall's own
-# Line2D nodes get created (_update_main_map_hall_line() - selection can
-# happen before the main map has ever been opened, in which case there's
-# nothing to tween yet until it is).
+# Re-applies the hall highlight for selectedHallName.
 func _restart_main_map_blink() -> void:
 	if _main_map_blink_tween != null and _main_map_blink_tween.is_valid():
 		_main_map_blink_tween.kill()
-	# A selected wall is highlighted rather than blinked invisible. A blink can
-	# look like an open gap precisely while the player is deciding whether it is
-	# safe to swim there; a persistent warm outline conveys selection without
-	# making the collision map lie.
+	# Highlight rather than blink, so a selected wall never looks like an open gap.
 	for hall_name in _main_map_hall_lines:
 		var lines: Array[Line2D] = _main_map_hall_lines[hall_name]
 		var hall_selected: bool = hall_name == selectedHallName
@@ -1067,11 +868,7 @@ func _refresh_current_highlight() -> void:
 			(_main_map_current_heads[corridor] as Polygon2D).color = SELECTED_FLOW_COLOR if selected else FLOW_COLOR
 	_refresh_map_copy()
 
-# Common setup for every Line2D this main map creates (hall or standalone)
-# - added as a child of main_map so it renders in the same panel-space
-# coordinates _project_to_main_map() already produces (main_map's own
-# transform is identity, so a Line2D child at the default position 0,0
-# treats its .points as directly being that panel space).
+# Line2D child of main_map, so its points are in panel space.
 func _make_main_map_line() -> Line2D:
 	var line := Line2D.new()
 	line.width = 2.0
@@ -1079,13 +876,7 @@ func _make_main_map_line() -> Line2D:
 	main_map.add_child(line)
 	return line
 
-# Scans maze_level's actual geometry once (not every frame - a maze's
-# real footprint doesn't change after it's built) for the min/max corner
-# of everything in it, then derives both the fixed origin (the min
-# corner - so the maze's own top-left lands at the panel's top-left) and
-# the scale (whichever axis needs to shrink MORE to fit its own span into
-# the panel, used for BOTH axes so the maze doesn't stretch out of
-# proportion).
+# Computes the fixed origin and a uniform scale fitting the maze's bounds into the panel.
 func _compute_main_map_bounds() -> void:
 	if maze_level == null:
 		return
@@ -1114,23 +905,13 @@ func _build_main_map() -> void:
 	main_map.clip_contents = true
 	main_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	main_map.z_index = 4
-	# Starts closed - L toggles it (see _unhandled_input()).
+	# Starts closed; L toggles it.
 	main_map.visible = false
 	main_map.draw.connect(_on_main_map_draw)
-	# NOT add_child(main_map) on `self` - this Control is only 150x150 AND
-	# has clip_contents = true, which clips every descendant's drawing to
-	# that 150x150 rect regardless of how big main_map itself claims to
-	# be. A sibling under the same parent this radar already lives under
-	# gets the full 500x500 instead.
+	# Added to the parent, not self: this radar clips to 150x150.
 	get_parent().add_child(main_map)
 
-	# A CanvasItem's own draw calls always render before its children's, so
-	# now that walls are real Line2D children of main_map (instead of also
-	# being drawn inline in _on_main_map_draw()), the diver arrow + border
-	# can no longer just be drawn at the end of that same function - that
-	# would put them BEHIND the wall lines, not on top. z_index = 1 pins
-	# this overlay above every wall Line2D regardless of when each one gets
-	# created (they all default to z_index 0, same as main_map itself).
+	# z_index 1 keeps the overlay above the wall Line2D children.
 	_main_map_overlay = Control.new()
 	_main_map_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_main_map_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1155,7 +936,7 @@ func _make_map_label(node_name: String, text: String, position: Vector2, label_s
 	return label
 
 func _build_main_map_copy() -> void:
-	# Marc's title band stays opaque and separate from the projected geometry.
+	# Opaque title band, separate from the map geometry.
 	var band := ColorRect.new()
 	band.name = "MazeMapTitleBand"
 	band.color = Color(0.03, 0.06, 0.08, 1.0)
@@ -1172,8 +953,7 @@ func _build_main_map_copy() -> void:
 	divider.z_index = 2
 	main_map.add_child(divider)
 	_make_map_label("MazeMapTitle", "MAZE NAVIGATION   [L] Close", Vector2(16, 10), Vector2(468, 28), 19, Color(0.86, 0.94, 1.0))
-	# The legend: each map symbol drawn as it appears on the map, with what
-	# it means to its right.
+	# Legend: each symbol with its meaning.
 	var legend := Control.new()
 	legend.name = "MazeMapLegend"
 	legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1320,8 +1100,7 @@ func _draw_legend(legend: Control) -> void:
 		x += font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_FONT_SIZE).x + 18.0
 		index += 1
 
-# The controls, big and clear, in a panel right under the map: walls and
-# currents only move from here.
+# Controls panel under the map.
 var _map_help: PanelContainer
 var _map_help_label: RichTextLabel
 
@@ -1339,12 +1118,10 @@ func _build_map_help() -> void:
 	_map_help.custom_minimum_size = Vector2.ZERO
 	_map_help.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_help.z_index = 4
-	# The keys drawn as the same dark key badges as the ability popup
-	# (Slot._badge()).
+	# Keys drawn as Slot._badge() key badges.
 	_map_help_label = RichTextLabel.new()
 	_map_help_label.bbcode_enabled = true
-	# Height is measured after wrapping into the actual panel width. Enabling
-	# fit_content at zero width caches a huge initial minimum on live resize.
+	# fit_content off: at zero width it caches a huge minimum on live resize.
 	_map_help_label.fit_content = false
 	_map_help_label.scroll_active = false
 	_map_help_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1388,8 +1165,7 @@ func _show_intro_once() -> void:
 func _refresh_map_copy() -> void:
 	if main_map == null:
 		return
-	# The overview replaces exploration controls/radar rather than drawing
-	# through them on a narrow viewport. Sibling map input still owns L.
+	# The overview hides the exploration controls and radar.
 	visible = not main_map.visible
 	var exploration := get_parent().get_node_or_null("MazeExplorationControls") as Control
 	if exploration != null:
@@ -1400,15 +1176,12 @@ func _refresh_map_copy() -> void:
 		title.text = "MAZE NAVIGATION   " + (maze_level.lever_map_close_hint() if maze_level != null and maze_level.levers_map_mode() else "[L] Close")
 	var legend := main_map.get_node_or_null("MazeMapLegend") as Control
 	if legend != null:
-		legend.visible = false # Superseded by the discovery-only external legend.
+		legend.visible = false   # superseded by the side legend
 		var ordinary := maze_level == null or not maze_level.levers_map_mode()
 		_side_legend.visible = main_map.visible and ordinary
 		if _map_help != null:
-			# The lever map has its own controls list under the map instead.
 			_map_help.visible = main_map.visible and ordinary
-			# MazeLevel owns goal visibility through main_map.visibility_changed.
-			# Generic bottom-left controls stay hidden; no second owner toggles
-			# the destination while this overview is reading.
+			# MazeLevel owns goal visibility via main_map.visibility_changed.
 
 func _layout_overview() -> void:
 	if _map_help == null:
@@ -1428,8 +1201,7 @@ func _layout_overview() -> void:
 	]
 	if _map_help_label.text != help_copy:
 		_map_help_label.text = help_copy
-	# Stable first-frame reserve: measuring a zero-width RichTextLabel here
-	# reports the previous wrap, and the intro pauses before it can settle.
+	# Fixed height: measuring a zero-width RichTextLabel here reports a stale wrap.
 	var help_height := 144.0 if width < 400 else 112.0
 	_map_help.size = Vector2(width, help_height)
 	var legend_height := minf(58 + _legend_kinds.size() * 30, 128 if not side_by_side else viewport.y - 32)
@@ -1464,9 +1236,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var key_event := event as InputEventKey
 	var keycode: Key = key_event.keycode
-	# While both dome levers are held, MazeLevel decides what opens/closes
-	# the map and which keys are off-limits (see handle_lever_map_key());
-	# the map's own select/rotate keys below still apply.
+	# While both dome levers are held, MazeLevel handles map open/close keys.
 	if maze_level != null and maze_level.handle_lever_map_key(keycode):
 		get_viewport().set_input_as_handled()
 		return
@@ -1478,8 +1248,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if main_map.visible:
 			_update_selected_rotatable_set()
 			main_map.queue_redraw()
-			# Visibility lays out and projects synchronously before the lesson
-			# pauses normal processing. No later frame may be needed to fix it.
+			# Layout happens synchronously before the intro popup pauses processing.
 			_show_intro_once()
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode == KEY_E and key_event.ctrl_pressed:
@@ -1489,8 +1258,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		maze_level._try_open_door(true)
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
-		# Confirm: rotate the blinking set. Handled here so E doesn't also
-		# reach MazeLevel's relic interaction while the map is open.
+		# Handled here so E doesn't also trigger MazeLevel's relic interaction.
 		_rotate_selected_set()
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode in [KEY_LEFT, KEY_RIGHT] and key_event.ctrl_pressed:
@@ -1500,24 +1268,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_cycle_selected_set(1 if keycode == KEY_RIGHT else -1)
 		get_viewport().set_input_as_handled()
 
-# Absolute panel-space projection - MAIN_MAP_MARGIN + (world offset from
-# the maze's own min corner) * scale, so the maze's top-left corner lands
-# near the panel's top-left corner (with just the margin's breathing
-# room), not centered on the panel the way the small radar centers on the
-# diver.
+# Panel-space projection from the fixed origin.
 func _project_to_main_map(pos: Vector3) -> Vector2:
 	return Vector2(MAIN_MAP_MARGIN, MAIN_MAP_HEADER) + (Vector2(pos.x, pos.z) - _main_map_origin) * _main_map_px_per_unit
 
-# Keeps every resolved wall's Line2D up to date, projected through the
-# fixed origin instead of the small radar's diver-relative one - only
-# walls _update_revealed() has actually resolved are touched at all, an
-# undiscovered wall gets no Line2D yet (and so shows up nowhere on the
-# main map) until the diver has swum up to it on the radar first. Node
-# creation only happens once per wall (see _update_main_map_hall_line()/
-# _update_main_map_lone_line()), but .points get reassigned every frame
-# regardless, same live re-projection as before - a wall can still swing
-# open after its hall was first found, and a stale cached Line2D would
-# silently lie about where it is.
+# Re-projects revealed walls every frame (walls can swing). Lines are created once per wall.
 func _refresh_main_map() -> void:
 	_layout_overview()
 	if not _main_map_bounds_computed:
@@ -1605,9 +1360,7 @@ func _update_main_map_current_line(corridor: Area3D, current: WaterCurrent) -> v
 	var base := end - facing * 10.0
 	(_main_map_current_heads[corridor] as Polygon2D).polygon = PackedVector2Array([end, base + side * 4.8, base - side * 4.8])
 
-# A sine wave from `start` to `wave_end`, then straight into `end` (the
-# arrow tip), so the current reads as moving water. First/last points stay
-# exactly start/end, so the line still spans the live flow area.
+# Sine wave to `wave_end`, then straight to the arrow tip; endpoints stay exact.
 func _wavy_points(start: Vector2, wave_end: Vector2, end: Vector2) -> PackedVector2Array:
 	const WAVELENGTH := 14.0
 	const AMPLITUDE := 3.0
@@ -1641,20 +1394,13 @@ func _cycle_selected_current(direction: int) -> void:
 	_selection_manual = true
 	_refresh_current_highlight()
 
-# One persistent Line2D per standalone wall - created the first time this
-# particular box is seen, just repositioned on every call after that.
+# One persistent Line2D per standalone wall.
 func _update_main_map_lone_line(box: CSGBox3D, p_a: Vector2, p_b: Vector2) -> void:
 	if not _main_map_lone_lines.has(box):
 		_main_map_lone_lines[box] = _make_main_map_line()
 	(_main_map_lone_lines[box] as Line2D).points = PackedVector2Array([p_a, p_b])
 
-# One persistent Line2D per wall in the hall (see _main_map_hall_lines'
-# own comment for why it's one-per-wall rather than one-per-hall) - the
-# pair is created together the first time ANY of the hall's walls is seen,
-# indexed to match _hall_walls[hall_name]'s own wall order so box always
-# lands on the same Line2D across calls. If this is the hall the player
-# currently has selected, kick the blink tween off now that there's
-# something real for it to animate (see _restart_main_map_blink()).
+# Line2D pair per hall, indexed like _hall_walls[hall_name]; created on first sight.
 func _update_main_map_hall_line(hall_name: String, box: CSGBox3D, p_a: Vector2, p_b: Vector2) -> void:
 	var is_new := not _main_map_hall_lines.has(hall_name)
 	if is_new:
@@ -1672,11 +1418,7 @@ func _update_main_map_hall_line(hall_name: String, box: CSGBox3D, p_a: Vector2, 
 	if is_new and hall_name == selectedHallName:
 		_restart_main_map_blink()
 
-# The nearest HALL to a click at `p` on main_map (by name, e.g. "1"), or
-# "" if nothing is within `max_dist` pixels - tests against each hall's
-# own Line2D nodes (_main_map_hall_lines, both its walls together), so
-# clicking near either wall of a hall selects that whole hall as one unit
-# rather than one specific wall.
+# Nearest hall to a click at `p` within `max_dist` px, or "".
 func _pick_hall_at(p: Vector2, max_dist: float = 10.0) -> String:
 	var best := ""
 	var best_dist := max_dist
@@ -1691,29 +1433,12 @@ func _pick_hall_at(p: Vector2, max_dist: float = 10.0) -> String:
 				best = hall_name
 	return best
 
-# The actual drawing - only ever called BY Godot, in response to
-# queue_redraw() above, never called directly. main_map has no script of
-# its own to override _draw() on, so the `draw` signal (connected in
-# _build_main_map()) is what hooks a plain runtime Control into this
-# callback instead.
+# main_map's `draw` handler (connected in _build_main_map()).
 func _on_main_map_draw() -> void:
 	main_map.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.03, 0.06, 0.08, 1.0))
-	# Walls themselves are no longer drawn here - _main_map_hall_lines and
-	# _main_map_lone_lines are real Line2D children of main_map now (see
-	# _make_main_map_line()), so Godot renders them on its own, right after
-	# this background (a CanvasItem's own draw calls happen before its
-	# children's). Blinking the selected hall is handled by
-	# _restart_main_map_blink() tweening those nodes' .visible directly,
-	# not by skipping a draw call here. The diver arrow and border used to
-	# draw here too, right after the walls - moved to _main_map_overlay
-	# (see _on_main_map_overlay_draw()) since they need to render ABOVE
-	# the wall Line2D children now, which this function's own draw calls
-	# can't do (a parent always draws before its children, regardless of
-	# call order within its own _draw).
+	# Walls are Line2D children; the diver arrow and border draw in _main_map_overlay.
 
-# Same idea as _on_main_map_draw() above, but for _main_map_overlay - see
-# its z_index comment in _build_main_map() for why the diver arrow and
-# border live in a separate node now instead of drawing here directly.
+# _main_map_overlay's `draw` handler.
 func _on_main_map_overlay_draw() -> void:
 	var fwd := Vector2(0, -1)
 	if maze_level != null and maze_level._diver != null and is_instance_valid(maze_level._diver):
@@ -1745,8 +1470,7 @@ func _on_main_map_overlay_draw() -> void:
 				var bottom := _project_to_main_map(Vector3(room_rect.end.x, 0, room_rect.end.y))
 				_main_map_overlay.draw_rect(Rect2(top, bottom - top), ROOM_COLOR, false, 2.0)
 			_draw_poi(_main_map_overlay, _project_to_main_map(poi["pos"] as Vector3), poi, 1.0)
-	# _main_map_diver_pos is already an absolute panel-space point (see
-	# _project_to_main_map()), not relative to panel center.
+	# Already in absolute panel space.
 	var p := _main_map_diver_pos
 	var tip := p + fwd * 9.0
 	var back_l := p - fwd * 5.0 + side * 5.5
@@ -1755,15 +1479,11 @@ func _on_main_map_overlay_draw() -> void:
 		PackedVector2Array([tip, back_l, back_r]),
 		PackedColorArray([Color(0.35, 0.95, 0.55)])
 	)
-	# Blue border, drawn last so it sits on top of the walls/arrow rather
-	# than under them - filled=false makes this an outline, not a filled
-	# rect over the whole panel.
+	# Border drawn last, as an outline.
 	_main_map_overlay.draw_rect(Rect2(Vector2.ZERO, main_map.size), Color(0.3, 0.55, 0.95), false, 3.0)
 
-# --- Points of interest -----------------------------------------------------------
-# Things the diver has come across (MazeLevel.map_points_of_interest()):
-# each appears on both maps once the diver has been within its radius (or
-# inside its rect), and stays.
+# --- Points of interest ---
+# Each appears on both maps once the diver enters its radius or rect, and stays.
 var _found_poi_ids: Dictionary = {}
 
 func _found_pois_rooms_first() -> Array[Dictionary]:

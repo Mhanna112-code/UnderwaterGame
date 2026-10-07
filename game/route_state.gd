@@ -98,8 +98,7 @@ func set_prologue_phase(value: String) -> void:
 	prologue_phase = value
 	phase_changed.emit(prologue_phase)
 
-# Live video, Battle, timers and actors are intentionally not persisted. The
-# three durable milestones decide which safe public phase a loaded run enters.
+# Live video, battle, timers and actors aren't saved; three milestones pick the loaded phase.
 func normalize_prologue_phase() -> void:
 	if prologue_complete:
 		set_prologue_phase(PROLOGUE_PHASE_COMPLETE)
@@ -112,12 +111,7 @@ func mark_deep_warning_seen() -> void:
 	deep_warning_seen = true
 
 func exploration_goal(area: String, has_maze_map := false, has_relic := false) -> String:
-	# Old objective strings describe a moment, not a durable destination.
-	# Use earned milestones and the current owner; entering the independent
-	# maze must neither complete the laboratory nor keep its HUD instructions.
-	# The active maze (including its explicit diagnostic entrance) needs a
-	# destination without fabricating an opening-completion milestone. World
-	# opening/title guidance remains hidden until genuine recovery.
+	# Derive the phase from earned milestones and current area, not old objective strings.
 	if not prologue_complete and area != "maze":
 		return ""
 	if octopus_state == "defeated":
@@ -171,10 +165,8 @@ func load_save_data(data: Dictionary) -> void:
 	set_octopus_state(String(data.get("octopus_state", OCTOPUS_UNAVAILABLE)))
 	set_encounter_source(String(data.get("encounter_source", ENCOUNTER_RANDOM)))
 	deep_warning_seen = data.get("deep_warning_seen", false) == true
-	# All three fields were introduced together. A save with none of them is an
-	# existing PR #96 run and must never be forced back through a new opening.
-	# Once any field exists, missing siblings are treated as false so an
-	# interrupted write cannot silently skip unfinished prologue work.
+	# A save with none of these fields is a legacy run and skips the new opening;
+	# otherwise missing fields default to false.
 	var legacy_save := (
 		not data.has("opening_video_seen")
 		and not data.has("prologue_complete")

@@ -1,8 +1,4 @@
-# A visual-only trail marker: no collision, nothing reacts to it, it just
-# tells the player which way to go. Two looks via `is_goal` - a thin
-# pillar for a marker along the way, a wide ring for the destination
-# itself, so the actual target reads as different from the breadcrumbs
-# leading to it.
+# Visual-only trail marker: a thin pillar along the way, a wide ring (`is_goal`) at the destination.
 class_name Waypoint
 extends Node3D
 
@@ -41,9 +37,7 @@ func _ready() -> void:
 	mesh.material_override = mat
 	add_child(mesh)
 
-	# A slow bob so it reads as "a marker" rather than scenery - matters
-	# most for the small trail pillars, which would otherwise be easy to
-	# mistake for background clutter at a distance.
+	# Slow bob so markers don't read as scenery.
 	var tw := create_tween().set_loops()
 	tw.tween_property(self, "position:y", _base_y + 0.3, 1.2)
 	tw.tween_property(self, "position:y", _base_y - 0.3, 1.2)

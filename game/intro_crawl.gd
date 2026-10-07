@@ -1,24 +1,11 @@
-# Shown once, right after a brand-new game actually starts (see world.gd's
-# _on_title_new_game()) - a black screen with the game's opening story
-# scrolling upward, Star-Wars-crawl style. Never shown on Load Game or a
-# "Return to Title" replay of the title screen - a returning player has
-# already read this once, and a save always resumes past this point.
-# Same "paused but interactive" shape as TitleScreen/GameOverScreen/
-# SpecialEncounterPrompt (process_mode ALWAYS so input still works while
-# get_tree().paused freezes the world underneath), built in code with no
-# .tscn, same convention as those three.
+# Opening story crawl shown once on New Game (never on Load). Paused-but-interactive overlay.
 class_name IntroCrawl
 extends Control
 
 signal finished
 
 const TEXT_WIDTH := 560.0
-# A player needs enough time to read a complete line without tracking it at
-# speed. The old fixed 30-second scroll kept a line in a 720px browser window
-# for only about 18 seconds, which is why the reviewed crawl ended before its
-# narrative could be read. Keep a deliberate lower bound for ordinary screens
-# and extend the whole crawl on short viewports, where the same speed would
-# otherwise shorten the readable window again.
+# Scroll speed sized so each line stays readable; the crawl lengthens on short viewports.
 const MIN_SCROLL_DURATION := 55.0
 const MIN_LINE_VISIBLE_SECONDS := 30.0
 const SCROLL_EXIT_PADDING := 40.0
@@ -33,15 +20,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# MODIFIED: was STOP, on the theory that catching the click needed it -
-	# backwards. STOP consumes a mouse press as a GUI event right here and
-	# stops it from ever reaching _unhandled_input(), which is where the
-	# actual skip-on-click logic lives (this Control has no _gui_input() of
-	# its own to catch it at that layer instead) - so a click was silently
-	# swallowed and skipping only ever worked via E (keyboard events aren't
-	# affected by mouse_filter at all, which is why that half looked fine).
-	# IGNORE lets the press fall through to _unhandled_input() like any
-	# other unclaimed input.
+	# IGNORE so clicks reach _unhandled_input() (the skip handler).
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var bg := ColorRect.new()
@@ -56,20 +35,11 @@ func _ready() -> void:
 	_text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_text_label.add_theme_font_size_override("font_size", 22)
 	_text_label.add_theme_color_override("font_color", Color(0.75, 0.88, 0.95))
-	# Anchored to horizontal-center, top=0 - offset_top/offset_bottom (set
-	# once real layout size is known, see _start_scroll()) are what actually
-	# animate to produce the scroll; left/right stay fixed so wrapping
-	# width never changes mid-scroll.
+	# offset_top/bottom animate the scroll; left/right stay fixed so wrap width doesn't change.
 	_text_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_text_label.offset_left = -TEXT_WIDTH * 0.5
 	_text_label.offset_right = TEXT_WIDTH * 0.5
-	# MODIFIED (added): same STOP-by-default bug as the root Control just
-	# above, one level deeper - this Control's own IGNORE doesn't cascade
-	# to children, which each still default to STOP independently. This
-	# label spans a wide, tall band down the center of the screen for most
-	# of the scroll, exactly where a player would actually click to skip,
-	# so without this a click landing on the text itself would still get
-	# swallowed here even with the root already fixed.
+	# Children default to STOP too; IGNORE so clicks on the text still skip.
 	_text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_text_label)
 
@@ -89,15 +59,10 @@ func open() -> void:
 	visible = true
 	_done = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	# Deferred so the label has actually gone through one layout pass first
-	# - get_combined_minimum_size() below needs its real wrapped height,
-	# which isn't known until the width set in _ready() has been applied.
+	# Deferred so the wrapped height is known.
 	call_deferred("_start_scroll")
 
-# Starts just below the bottom edge and scrolls up until fully past the
-# top - both edges of the label move together at the same rate (a plain
-# vertical scroll, not a receding-into-the-distance crawl; simpler, and
-# still reads as "rolling text" without needing a 3D-perspective label).
+# Plain vertical scroll from below the bottom edge to past the top.
 func _start_scroll() -> void:
 	var vp_height: float = get_viewport_rect().size.y
 	var text_height: float = _text_label.get_combined_minimum_size().y
@@ -113,10 +78,7 @@ func _start_scroll() -> void:
 	_tween.set_parallel(false)
 	_tween.tween_callback(_finish)
 
-# Public reading contract used by verification. A line remains within the
-# viewport for viewport_height / pixels_per_second, so the duration must grow
-# with the total travel distance on short screens rather than stay at a fixed
-# cinematic time.
+# Duration grows with travel distance so each line stays on screen long enough (used by verification).
 static func readable_scroll_duration(viewport_height: float, text_height: float) -> float:
 	var safe_viewport := maxf(1.0, viewport_height)
 	var total_distance := safe_viewport + maxf(0.0, text_height) + SCROLL_EXIT_PADDING
@@ -129,12 +91,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var is_skip_key: bool = event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).keycode == KEY_E
 	var is_click: bool = event is InputEventMouseButton and (event as InputEventMouseButton).pressed
 	if is_skip_key or is_click:
-		# MODIFIED (added): this E press (or click) was consumed right here
-		# to skip the intro - without marking it handled, the SAME event
-		# kept propagating to every other _unhandled_input() in the tree,
-		# including world.gd's, which fires _start_ability() unconditionally
-		# on E. That's why skipping the intro with E also fired Maxilani's
-		# swap ability the instant the world loaded underneath it.
+		# Mark handled so the skip press doesn't also trigger world.gd's E ability.
 		get_viewport().set_input_as_handled()
 		_finish()
 

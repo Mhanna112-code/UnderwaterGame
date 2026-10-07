@@ -1,22 +1,8 @@
-# The screen a save point actually opens (see world.gd's
-# _toggle_save_menu/_update_save_point_prompt). Spell learning is handled
-# automatically after battles; this menu is only for writing save slots.
-# Owns navigation between the save menu, slot picker, and overwrite prompt:
-#   root:      "Save"
-#   slots:     one button per save slot (same slots the title screen's own
-#              Load/New Game picker shows), plus Back
-#   confirm:   "Are you sure you want to overwrite this save progress?"
-#              with Yes/No, only reachable from slots when the chosen slot
-#              already has data
-# world.gd only ever calls open_for()/close() - everything between those
-# two calls is this file's business, not world.gd's.
+# Save point menu: root "Save" -> slot picker -> overwrite confirm.
+# world.gd only calls open_for()/close().
 class_name SavePointMenu
 extends Control
 
-# MODIFIED (changed): used to just be (diver: Diver) - saving now lets the
-# player pick ANY slot (see _build_slots_panel()), not only whichever one
-# this run started from, so world.gd needs to know which slot the request
-# is actually for.
 signal save_requested(diver: Diver, slot: int)
 
 var diver: Diver
@@ -29,8 +15,7 @@ var _confirm_label: Label
 var _pending_slot := -1
 var _saving_label: Label
 
-# Confirmation owns the same reading surface until durable storage replies.
-# Navigation and repeated clicks cannot start a second writer in that interval.
+# Confirmation blocks navigation and repeat clicks until the write finishes.
 func set_saving(on: bool, slot := -1) -> void:
 	if _saving_label == null:
 		_saving_label = Label.new()
@@ -60,10 +45,7 @@ func _ready() -> void:
 	add_child(_confirm_panel)
 
 
-# A left-aligned dark panel at a fixed screen position, not a CenterContainer
-# - matches inventory_menu.gd's own root panel (same offset_left/offset_top),
-# per direct request that the two menus "line up" instead of one being
-# centered and the other pinned to the corner.
+# Fixed left-aligned panel, lined up with inventory_menu.gd's.
 func _build_left_panel() -> Control:
 	var bg := ColorRect.new()
 	bg.color = Color(0.02, 0.05, 0.08, 0.92)
@@ -102,13 +84,7 @@ func _build_root_panel() -> Control:
 
 	return bg
 
-# One button per SaveManager slot, same "Slot N - Lv X party" / "Slot N -
-# Empty" readout title_screen.gd's own _refresh_slots()/_summarize() show -
-# this is deliberately the exact same slot list a player already knows from
-# New Game/Load Game, not a second, differently-worded picker. Rebuilt every
-# time _show_slots() runs (not just once in _ready()) so it always reflects
-# whatever just got written, in case the player saves more than once in the
-# same visit to this menu.
+# One button per slot, same readout as the title screen; rebuilt on every _show_slots().
 func _build_slots_panel() -> Control:
 	var bg := _build_left_panel()
 	var col := _panel_column(bg)
@@ -145,10 +121,7 @@ func _refresh_slots_list() -> void:
 		btn.pressed.connect(_on_slot_pressed.bind(slot, not data.is_empty()))
 		_slots_list.add_child(btn)
 
-# Same one-line "Lv N party" readout title_screen.gd's own _summarize()
-# builds - not shared code (title_screen.gd's copy is private to that
-# script), but deliberately the same logic/wording so a slot reads
-# identically whichever screen it's seen from.
+# Same "Lv N party" summary as title_screen.gd's _summarize().
 func _summarize(data: Dictionary) -> String:
 	var divers_data: Array = data.get("divers", [])
 	if divers_data.is_empty():

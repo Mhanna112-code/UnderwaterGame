@@ -32,9 +32,9 @@ func _initialize() -> void:
 			if outcome == "hit":
 				for _repeat in range(12):
 					CombatRules.resolve(attacker, target, stabbing)
-				# Only 3 stack increases per fight after the first wound: the next
-				# Stabbing's hit (+1) and Bleed (+STR+1), then one more hit (+1).
-				_expect(target.status_level("bleed") == mini(10, 2 * strength + 4), "M99-S2 repeated landed Bleed ignores the 3-stack/10 cap")
+				# Only another Bleed move stacks (plain hits don't): the first wound plus
+				# at most 3 more Bleed applications of STR+1 each, never past 10.
+				_expect(target.status_level("bleed") == mini(10, 4 * (strength + 1)), "M99-S2 repeated landed Bleed ignores the 3-stack/10 cap")
 	# Timed controls: do not accidentally make Poison/Blindness persistent too.
 	target = _stats(1, 1, 0)
 	target.add_status("poison", 2, 3)

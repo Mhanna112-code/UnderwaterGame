@@ -1,35 +1,13 @@
-# Mech Pilot's special-encounter minigame (see battle.gd's _do_enemy_turn()
-# special_encounter branch) - now the ONLY special-encounter minigame tied
-# to the shockwave ability (blast_rocks_minigame.gd, the offensive
-# counterpart played on Mech Pilot's own turn, was retired - this is the
-# sole minigame shockwave plays now, always on the enemy's turn).
-#
-# Three lanes - left/middle/right - run in a straight line from the enemy
-# to the player. Each wave sends one object down every lane at once: one
-# breakable rock (a random lane each wave) and two solid walls in the
-# other two. Hold Left/Right to strafe along that same line and line
-# yourself up with the rock's lane, then press E to shockwave it before it
-# lands - standing in a wall's lane when it arrives gets you hit exactly
-# like an unbroken rock would.
-#
-# Self-contained: battle.gd just instantiates one, adds it as a child,
-# calls run(), and awaits `finished`. Nothing here knows about
-# CombatantStats/damage - that's battle.gd's job once it has the result,
-# same ability-agnostic split cracked_wall.gd/grapple_anchor.gd use
-# elsewhere in this project.
+# Mech Pilot's shockwave minigame, played on the enemy's turn.
+# Three lanes run from enemy to player; each wave sends one breakable rock and two
+# walls. Hold Left/Right to line up with the rock, press E to shockwave it.
+# battle.gd calls run(), awaits `finished`, and owns all damage logic.
 class_name RockDodgeMinigame
 extends Control
 
 signal finished(hits: int, total: int)
 
-# Fired whenever anything reaches the player unbroken - an unbroken rock
-# in the lane they're standing in, or a wall in that lane - so battle.gd
-# can apply that hit's own damage live, the instant it happens, rather
-# than a lump sum computed after the whole encounter ends. Kept separate
-# from `finished` (which only ever carries the hits/waves tally, for the
-# closing log line) - this script still doesn't know what a CombatantStats
-# even is, only "something got past you," same ability-agnostic split as
-# everywhere else.
+# Emitted the instant an unbroken rock or wall reaches the player, so battle.gd applies damage live.
 signal rock_landed
 
 const WAVE_COUNT := 10
@@ -37,31 +15,17 @@ const MIN_WAVE_GAP := 1
 const MAX_WAVE_GAP := 2.5
 const TRAVEL_TIME := 0.64
 
-# Waves fire in randomly-sized clusters rather than always one at a time -
-# MIN_WAVE_GAP/MAX_WAVE_GAP above is the breather BETWEEN clusters; waves
-# inside one cluster fire back-to-back with no extra pause of their own
-# (each wave's own TRAVEL_TIME already paces it, see _run_one_wave()),
-# which is what makes a bigger batch read as a flurry instead of just a
-# faster metronome. Batch size is capped to however many waves are left in
-# WAVE_COUNT's pool, so the very last batch can't overshoot the total.
+# Waves fire in random-size clusters; the gap above is between clusters. Batch is capped to waves remaining.
 const MIN_WAVE_BATCH := 2
 const MAX_WAVE_BATCH := 8
 
 const LANES: Array[String] = ["left", "middle", "right"]
 const LANE_SIGN := {"left": -1.0, "middle": 0.0, "right": 1.0}
 
-# How far apart the three lanes sit, in world units, along the shared
-# `_right` axis below. Needs to be comfortably wider than
-# SHOCKWAVE_RADIUS/LANDING_HIT_RADIUS - otherwise a player standing in one
-# lane could reach into a neighboring lane's object too, which would let a
-# single shockwave break a rock from the wrong lane, or let a wall in an
-# adjacent lane catch someone who correctly moved out of its way.
+# Must exceed HIT_RADIUS so one lane can't reach a neighboring lane's object.
 const LANE_SPACING := 2.4
 
-# Same radius both for "close enough to shockwave the rock" and "close
-# enough for a wall/unbroken rock to actually hit you" - one number for
-# both keeps the rule simple to read off the screen: if you're close
-# enough to break it, you're also close enough to be hit by it.
+# Shared radius for both breaking a rock and being hit.
 const HIT_RADIUS := 1.8
 
 var thrower_position: Vector3
@@ -71,108 +35,56 @@ var target_actor: Node3D
 var _hits := 0
 var _resolved := 0
 
-# Computed once in run() - the shared world-space "sideways" axis both
-# enemy_positions and player_positions below are built from. MUST be the
-# same vector for both sides (not each actor's own local right, which
-# would point opposite ways with the two actors facing each other) or the
-# three lanes wouldn't actually run in a straight line from thrower to
-# player - see thread with the user working through this exact bug before
-# any code was written.
+# Shared sideways axis for both enemy and player lane positions; must be the same
+# vector for both sides so lanes run straight.
 var _right := Vector3.RIGHT
 var _player_base_pos: Vector3
 
-# Index into LANES - which of the three the player is currently standing
-# in. Re-derived from CURRENTLY HELD input every frame (see _process()
-# below), not an accumulated value a press increments/decrements - that's
-# what gives this the Chansey/egg-minigame feel: holding Left/Right leans
-# into that lane and letting go snaps straight back to middle, rather than
-# a press-to-hop-and-stay control. Whenever the derived lane differs from
-# where the player's already tweening to, _snap_to_lane() kicks off a new
-# move.
-var _player_lane := 1   # 0=left, 1=middle, 2=right - see LANES
+# Derived from held input each frame: holding leans into a lane, releasing snaps back to middle.
+var _player_lane := 1   # 0=left, 1=middle, 2=right
 const MOVE_TIME := 0.18
 var _move_tween: Tween
 
-# Only a successful break starts this - a miss (nothing live, or the live
-# rock out of range) leaves it untouched, so whiffing never costs the
-# player the ability to try again on the very next wave.
+# Only a successful break starts the cooldown; a miss doesn't.
 const SHOCKWAVE_COOLDOWN_MS := 350
 var _shockwave_ready_at := 0
 
-# The wave currently in flight, lane -> {node, kind, landing_pos, broken}.
-# kind is "rock" or "wall". Empty between waves.
+# lane -> {node, kind ("rock"/"wall"), landing_pos, broken, tween}. Empty between waves.
 var _current_wave: Dictionary = {}
 
-# Guards _finish() against emitting `finished` twice - it's now reachable
-# from two places (WAVE_COUNT actually being reached, and battle.gd's
-# request_abort() below when the player's HP hits 0 mid-encounter), and a
-# second emission would resume battle.gd's already-resumed `await
-# minigame.finished` a second time.
+# Prevents emitting `finished` twice (normal end and request_abort()).
 var _did_finish := false
 
 func _ready() -> void:
-	# MODIFIED (fixed): same missing Control-ancestor fallback as diver_swap_
-	# minigame.gd's own _ready() (see its comment) - this one was never
-	# actually reported broken, but it has the exact same bug for the exact
-	# same reason (added directly under Battle, a CanvasLayer, via
-	# _do_rock_dodge_encounter()'s add_child(minigame)), so "DODGE THE ROCKS"
-	# and this minigame's own hint/progress labels would collapse to the
-	# top-left corner too, the moment anyone actually looked for it.
+	# Parent may be a CanvasLayer, so size to the viewport manually.
 	if get_parent() is Control:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	else:
 		set_anchors_preset(Control.PRESET_TOP_LEFT)
 		size = get_viewport_rect().size
-	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only individual rocks/labels catch clicks, not the whole overlay
+	mouse_filter = Control.MOUSE_FILTER_IGNORE   # only rocks/labels catch clicks
 
-	# MODIFIED (removed): the "DODGE THE ROCKS" title, the "Hold Left/Right
-	# to line up with the rock, E to shockwave it..." hint, and this
-	# progress readout all used to render here as floating Control text
-	# over the minigame - per direct request, every one of them is gone
-	# now, same as diver_swap_minigame.gd's own matching removal. The
-	# controls explanation already lives in the battle log instead (see
-	# battle.gd's _do_rock_dodge_encounter()).
 
 func run() -> void:
 	if target_actor != null:
 		_player_base_pos = target_actor.global_position
-	# Horizontal-only, so a raised thrower_position (battle.gd offsets it
-	# by the enemy's own height) doesn't tilt the lane axis - forward is
-	# purely "which way the player is from the enemy" in the XZ plane.
+	# Horizontal-only so the enemy's height offset doesn't tilt the lane axis.
 	var forward := _player_base_pos - thrower_position
 	forward.y = 0.0
 	if forward.length() > 0.001:
 		forward = forward.normalized()
-		# MODIFIED: was forward.cross(Vector3.UP) - pointed the opposite way
-		# from the dodge camera's own actual screen-right (see battle.gd's
-		# _look_at_dodge_angle(), which offsets/looks at the stage from a
-		# specific angle rather than a plain forward view), so Left/Right
-		# were swapped: pressing Left visibly moved the player toward the
-		# lane spawned on their right. Cross product is anti-commutative,
-		# so swapping the operand order is exactly a sign flip and nothing
-		# else - every lane offset built from _right (both here and
-		# thrower-side in _run_one_wave()) mirrors together, which is what
-		# keeps the lanes still running in a straight line, just now
-		# correctly matching what's on screen.
+		# UP x forward matches the dodge camera's screen-right.
 		_right = Vector3.UP.cross(forward).normalized()
 
 	_wave_loop()
 
-# MODIFIED (changed): used to write into _progress_label, now removed (see
-# _ready()'s own comment) - kept as a no-op rather than deleted outright so
-# every call site that reports a hit doesn't need its own edit just to drop
-# a call to a function that used to matter.
+# No-op; kept so existing call sites don't need edits.
 func _update_progress() -> void:
 	pass
 
-# Polls held-key state every frame rather than reacting to individual
-# press/release events - "what's held right now" is exactly the rule that
-# gives letting go its automatic snap-back, with no separate "on release"
-# case to write: nothing held (or both, which cancels out) always resolves
-# to middle. Only actually moves anything when the derived lane changes,
-# so this is a no-op most frames.
+# Poll held keys each frame; neither or both held resolves to middle.
 func _process(_delta: float) -> void:
-	var desired := 1   # middle by default - also what holding both keys or neither resolves to
+	var desired := 1   # neither/both held -> middle
 	if Input.is_key_pressed(KEY_LEFT) and not Input.is_key_pressed(KEY_RIGHT):
 		desired = 0
 	elif Input.is_key_pressed(KEY_RIGHT) and not Input.is_key_pressed(KEY_LEFT):
@@ -180,10 +92,7 @@ func _process(_delta: float) -> void:
 	if desired != _player_lane:
 		_snap_to_lane(desired)
 
-# Tweened rather than an instant snap - same "swim the puppet into
-# position" feel blast_rocks_minigame.gd's grid movement used. Kills any
-# still-running move tween first so a quick Left-then-Right doesn't stack
-# two tweens fighting over the same global_position at once.
+# Kill any running move tween so quick inputs don't stack.
 func _snap_to_lane(index: int) -> void:
 	if target_actor == null:
 		return
@@ -194,18 +103,7 @@ func _snap_to_lane(index: int) -> void:
 	_move_tween = target_actor.create_tween()
 	_move_tween.tween_property(target_actor, "global_position", target, MOVE_TIME)
 
-# Irregular, not metronomic - each gap is its own random roll rather than
-# a fixed beat, same reasoning as the old per-rock stream this replaced:
-# the player should be reacting to each wave, not counting a rhythm out in
-# advance.
-# MODIFIED (fixed): same bug as diver_swap_minigame.gd's own _spawn_loop()
-# fix - this checked is_instance_valid(self) but never _did_finish, and
-# request_abort()/_finish() neither frees self nor bumps _resolved up to
-# WAVE_COUNT, just emits `finished` and starts target_actor's own swim-back
-# tween. On an early abort (died mid-barrage) this kept going and threw
-# another wave at an already-dead diver, re-parking her in a dodge lane and
-# undoing the swim-back - exactly why the camera kept reading as still
-# mid-encounter after death.
+# Random gaps so the player reacts rather than counting a rhythm. Stops on _did_finish (early abort).
 func _wave_loop() -> void:
 	while _resolved < WAVE_COUNT and not _did_finish:
 		await get_tree().create_timer(randf_range(MIN_WAVE_GAP, MAX_WAVE_GAP)).timeout
@@ -232,11 +130,8 @@ func _run_one_wave() -> void:
 		wave[lane] = {"node": node, "kind": kind, "landing_pos": landing_pos, "broken": false, "tween": tw}
 
 	_current_wave = wave
-	# All three lanes travel for the same TRAVEL_TIME, so one shared timer
-	# stands in for "wait until this wave's tweens are done" instead of
-	# juggling three separate tween.finished signals - a broken rock kills
-	# its own tween early (see _try_shockwave()) and is already gone by the
-	# time this fires, so it's simply skipped below.
+	_shockwave_used_this_wave = false
+	# All lanes share TRAVEL_TIME, so one timer covers the wave; broken rocks are skipped.
 	await get_tree().create_timer(TRAVEL_TIME).timeout
 	if not is_instance_valid(self):
 		return
@@ -267,23 +162,14 @@ func _finish() -> void:
 		return
 	_did_finish = true
 	if target_actor != null:
-		# Swim back to exactly where this started - same reasoning as
-		# blast_rocks_minigame.gd's own _maybe_finish() cleanup: the player
-		# shouldn't be left standing in whichever lane the last wave happened
-		# to end on for the rest of the battle. Kills any still-running
-		# _move_tween first, same "don't fight the in-flight move" rule
-		# _snap_to_lane() already follows.
+		# Swim back to the starting position.
 		if _move_tween != null and _move_tween.is_valid():
 			_move_tween.kill()
 		var back := target_actor.create_tween()
 		back.tween_property(target_actor, "global_position", _player_base_pos, MOVE_TIME)
 	finished.emit(_hits, WAVE_COUNT)
 
-# Called by battle.gd the instant the player's HP hits 0 mid-encounter -
-# ends the barrage right away with whatever tally it has so far, instead
-# of continuing to throw more waves at a diver who's already down. Just
-# calls _finish() - _did_finish above is what makes that safe even if
-# WAVE_COUNT was also about to be reached on its own.
+# Called by battle.gd when the player's HP hits 0 mid-encounter.
 func request_abort() -> void:
 	_finish()
 
@@ -293,15 +179,13 @@ func _spawn_rock(at: Vector3) -> MeshInstance3D:
 	sphere.radius = 0.3
 	rock.mesh = sphere
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.42, 0.22, 0.14)   # same brown as cracked_wall.gd's disguised rocks
+	mat.albedo_color = Color(0.42, 0.22, 0.14)   # same brown as cracked_wall.gd's rocks
 	rock.material_override = mat
 	stage_root.add_child(rock)
 	rock.global_position = at
 	return rock
 
-# Visually distinct from the rock on purpose - the player has to be able
-# to tell which of the three incoming lanes is safe to stand in from
-# across the whole flight, not just at the last second.
+# Visually distinct from the rock so safe lanes are readable from afar.
 func _spawn_wall(at: Vector3) -> MeshInstance3D:
 	var wall := MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -320,18 +204,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if (event as InputEventKey).keycode == KEY_E:
 		_try_shockwave()
 
-# Only the rock can be broken - shockwaving a wall does nothing (walls
-# aren't a hazard you fight, only one you avoid by not being there), so
-# this only ever looks for "rock" entries in the current wave. Distance
-# is checked against the rock's LIVE in-flight position, not its landing
-# point, so timing still matters - pressing E while it's still far up the
-# lane does nothing, same "free presses don't get punished" rule as
-# before.
+# Only rocks can be broken, checked against their live position. One shockwave per
+# wave: a press during a wave is spent whether it hits or not.
+var _shockwave_used_this_wave := false
+
 func _try_shockwave() -> void:
+	if _current_wave.is_empty() or _shockwave_used_this_wave:
+		return
+	_shockwave_used_this_wave = true
 	if target_actor is Diver:
 		(target_actor as Diver)._shockwave_vfx()
-	if _current_wave.is_empty():
-		return
 	if Time.get_ticks_msec() < _shockwave_ready_at:
 		return
 	for lane in LANES:
@@ -343,8 +225,8 @@ func _try_shockwave() -> void:
 			continue
 		if target_actor.global_position.distance_to(node.global_position) <= HIT_RADIUS:
 			_break_rock(lane, entry)
-			_shockwave_ready_at = Time.get_ticks_msec() + SHOCKWAVE_COOLDOWN_MS
-		return   # at most one rock live per wave - found it or it's out of range either way
+			_shockwave_ready_at = 0
+		return   # at most one rock per wave
 
 func _break_rock(lane: String, entry: Dictionary) -> void:
 	entry.broken = true
@@ -355,25 +237,13 @@ func _break_rock(lane: String, entry: Dictionary) -> void:
 	_hits += 1
 	_flash_and_free(entry.node)
 
-# A quick scale-up-and-free "shattered" flash rather than an instant
-# queue_free() - a hit needs to visibly register as a hit, same reason
-# cracked_wall.gd's break isn't silent either. Bound to the node itself
-# (node.create_tween()), not this minigame's own Control - the wave that
-# pushes _resolved to WAVE_COUNT can fire `finished` and get queue_free()'d
-# by battle.gd before a self-bound tween would have finished, which would
-# leave that last hit's flash stuck mid-animation forever.
+# Bound to the node, not this Control, so the flash survives this minigame being freed.
 func _flash_and_free(node: MeshInstance3D) -> void:
 	var tw := node.create_tween()
 	tw.tween_property(node, "scale", Vector3.ONE * 1.6, 0.12)
 	tw.tween_callback(node.queue_free)
 
-# A red emission flash rather than the shatter scale above - this is the
-# "it hit you" case (an unbroken rock or a wall caught the player standing
-# in its lane), which needs to read as bad, not as a successful break.
-# Flashes via material emission the same mechanism _shockwave_vfx()
-# already uses, same as the old per-rock miss flash this replaces. Bound
-# to the node itself, not this Control, for the same queue_free-survival
-# reason as _flash_and_free() above.
+# Red emission flash for a hit on the player. Node-bound like _flash_and_free().
 func _flash_hit_and_free(node: MeshInstance3D) -> void:
 	var mat := node.material_override as StandardMaterial3D
 	mat.emission_enabled = true

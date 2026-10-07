@@ -46,10 +46,10 @@ func _test_result_first_move_menu() -> void:
 	var stabbing := _move_button(battle, "Scuba Stabbing")
 	_expect(stabbing != null, "RESULT-FIRST MENU MISSING: Scuba Stabbing is absent")
 	if stabbing != null:
-		_expect("Strength Damage" in stabbing.text and "2 Bleed" in stabbing.text,
-			"RESULT-FIRST MENU WRONG: expected semantic Strength Damage / resolved 2 Bleed, observed '%s'" % stabbing.text)
-		_expect("STR" not in stabbing.text,
-			"FORMULA POLLUTION: default move choice exposes stat algebra '%s'" % stabbing.text)
+		_expect("Damage" in stabbing.tooltip_text and "Bleed 2" in stabbing.tooltip_text,
+			"RESULT-FIRST MENU WRONG: expected semantic Strength Damage / resolved 2 Bleed, observed '%s'" % stabbing.tooltip_text)
+		_expect("STR" not in stabbing.tooltip_text,
+			"FORMULA POLLUTION: default move choice exposes stat algebra '%s'" % stabbing.tooltip_text)
 		_expect("Damage" in stabbing.tooltip_text and "Strength" in stabbing.tooltip_text,
 			"ON-DEMAND CALCULATION MISSING: resolved choice has no contextual explanation")
 
@@ -60,8 +60,8 @@ func _test_result_first_move_menu() -> void:
 	battle._populate_move_menu(battle._acting)
 	stabbing = _move_button(battle, "Scuba Stabbing")
 	if stabbing != null:
-		_expect("Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text,
-			"HARDCODED MOVE PREVIEW: 4 STR still renders '%s'" % stabbing.text)
+		_expect("Damage" in stabbing.tooltip_text and "Bleed 5" in stabbing.tooltip_text,
+			"HARDCODED MOVE PREVIEW: 4 STR still renders '%s'" % stabbing.tooltip_text)
 
 	# The original result/formula toggle created a second lower-panel state
 	# that could look frozen during a live battle. The current contract keeps
@@ -70,7 +70,7 @@ func _test_result_first_move_menu() -> void:
 	_expect(_button_starting_with(battle.move_menu, "Show formulas") == null,
 		"FORMULA MODE REGRESSION: Quick Read should not retain a second menu state")
 	stabbing = _move_button(battle, "Scuba Stabbing")
-	_expect(stabbing != null and "Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text and "STR" not in stabbing.text,
+	_expect(stabbing != null and "Damage" in stabbing.tooltip_text and "Bleed 5" in stabbing.tooltip_text and "STR" not in stabbing.tooltip_text,
 		"QUICK READ LOST AFTER STAT CHANGE: result-first choice no longer reflects the acting character")
 	battle.queue_free()
 	await process_frame

@@ -1,6 +1,4 @@
-# The ordinary enemy roster is data, separate from fixed artifact guardians.
-# A pack rolls each actor independently, so mixed Angler/Swordfish/Frilled
-# Shark groups are possible without making any artifact's defender random.
+# Ordinary enemy roster data; each pack member rolls independently (guardians are fixed).
 class_name EnemyRoster
 extends RefCounted
 
@@ -22,7 +20,5 @@ static func id_for_roll(roll: float) -> String:
 	return "frilled_shark"
 
 static func random_id() -> String:
-	# Presentation variety must not consume the global combat/stat RNG. A
-	# roster roll changing whether a later attack hits would be a hidden
-	# balance change, not an art-roster change.
+	# Separate RNG so roster rolls never shift combat outcomes.
 	return id_for_roll(_rng.randf())

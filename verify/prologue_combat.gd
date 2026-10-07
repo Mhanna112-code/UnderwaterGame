@@ -114,7 +114,7 @@ func _choice_matrix() -> void:
 		["Axe Kick", 1, 3, 0, 0, 4, 0, 0, 0, -3],
 		["Scuba Stabbing", 1, 3, 0, 0, 1, 2, 0, 0, 0],
 		["Flash Blast", 1, 3, 0, 0, 0, 0, 0, -1, -1],   # Cordys is immune to Blindness,
-		["Multiple Knee Combo", 1, 3, 0, 0, 1, 0, 0, -1, -1],
+		["Multiple Knee Combo", 1, 3, 0, 0, 1, 0, 0, 0, -1],
 		["Axe Kick", 7, 4, 2, 0, 9, 0, 0, 0, -3],
 		["Electric Touch", 7, 4, 2, 0, 5, 0, 0, 0, 0],
 		["Electric Touch", 7, 0, 0, 0, 0, 0, 0, 0, 0],

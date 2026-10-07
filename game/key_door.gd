@@ -1,18 +1,5 @@
-# A reusable, item-keyed version of Glassgoat's delivered Door FBX.
-#
-# This is intentionally NOT `Door` in door.gd.  Door is the existing
-# lock-plate puzzle's procedural blocker and must remain that self-contained
-# mechanic.  KeyDoor is a separate world object which uses the delivered
-# shape-key asset, has a player-facing key requirement, and can be placed by
-# the maze or a later main-scene route without either place knowing its art
-# import or animation details.
-#
-# Ported from UnderwaterGame PR #93 into the maze project. Maze changes only:
-# the model is game/KeyDoor.fbx (PR #93's corrected Door.fbx - the maze's
-# older game/Door.fbx stays for its own Door class); with no World above it,
-# the save/key bookkeeping is skipped, an empty `required_key_id` means no key
-# is needed, `active_diver_source` says which diver is being played, and
-# `announce` shows the missing-key text.
+# Item-keyed door using Glassgoat's Door FBX (game/KeyDoor.fbx); separate from door.gd's lock-plate Door.
+# Without a World (maze): no save bookkeeping, empty required_key_id means no key, hooks below supply diver/text.
 class_name KeyDoor
 extends StaticBody3D
 
@@ -20,34 +7,25 @@ signal door_opened(door_id: String)
 
 const DOOR_SCENE := preload("res://game/KeyDoor.fbx")
 
-# A stable identity is deliberately separate from the required item: several
-# distinct doors may use the same key, while a save must remember each one.
+# Stable identity separate from the key: several doors may share one key.
 @export var door_id := ""
 @export var required_key_id := "current_pearl"
 @export var prompt_override := ""
 @export_range(0.1, 8.0, 0.05) var opening_duration := 1.2
 @export var shape_key_name: StringName = &"Open"
 @export_range(0.0, 1.0, 0.01) var open_value := 1.0
-# The supplied FBX is in a very small Blender unit scale.  Its actual model
-# bounds, not a guessed magic scale, determine the rest of this component's
-# size.  A level can choose a different visual height per placement.
+# Scale is derived from the model's bounds (the FBX uses a tiny unit scale).
 @export_range(0.5, 12.0, 0.1) var visual_height := 3.2
 @export_range(0.6, 8.0, 0.1) var interaction_radius := 3.0
-# Keep collision until the authored morphology is plainly moving out of the
-# passage.  This threshold is part of the public gameplay contract and is
-# covered by verify/key_door.gd.
+# Collision stays until the open morph reaches this progress; covered by verify/key_door.gd.
 @export_range(0.0, 1.0, 0.05) var collision_release_progress := 0.8
-# Optional secondary visuals that should disappear once the passage clears.
-# Glassgoat's corrected Door keeps its upright wheel visible, so this is empty
-# by default; placements can still opt in for a different asset.
+# Optional visuals hidden once the passage clears.
 @export var hide_when_open_node_names: Array[StringName] = []
-# Maze hooks (see the header): who's being played, where to show text, and
-# (with no World) the party's key items.
+# Maze hooks: active diver, text display and (without World) key items.
 var active_diver_source: Callable
 var announce: Callable
 var key_source: Callable
-# Maze: keys are a plain count and any key opens any door - with these set,
-# a door takes one key instead of looking for its own key id.
+# Maze: keys are a plain count and any key opens any door.
 var key_count_source: Callable
 var spend_key: Callable
 
@@ -83,9 +61,7 @@ func _process(_delta: float) -> void:
 	if _prompt.visible:
 		_prompt.text = interaction_prompt(active_diver)
 
-# Called by World before it dispatches E to the active diver's ability.
-# Returns true only when the door actually owns this key press (missing-key
-# feedback counts as owning it, so E cannot both complain and fire an ability).
+# Called by World before dispatching E; returns true when the door consumes the press (including missing-key feedback).
 func interact(actor: Diver) -> bool:
 	if _opened or _opening or not is_in_range(actor):
 		return false
@@ -114,7 +90,7 @@ func interact(actor: Diver) -> bool:
 func is_in_range(actor: Diver) -> bool:
 	if actor == null or not is_instance_valid(actor):
 		return false
-	# Marc's reach uses the visible door surface, not its floor-level origin.
+	# Reach uses the visible door surface, not its floor-level origin.
 	if _collision == null or not (_collision.shape is BoxShape3D):
 		return actor.global_position.distance_to(global_position) <= interaction_radius
 	var half := (_collision.shape as BoxShape3D).size * 0.5
@@ -122,8 +98,7 @@ func is_in_range(actor: Diver) -> bool:
 	var nearest := local.clamp(-half, half)
 	return (_collision.global_transform * nearest).distance_to(actor.global_position) <= interaction_radius * 0.8
 
-# Plain map E takes a reachable ready door before the selected hallway.
-# Read actual key eligibility, not player-facing prompt punctuation.
+# Lets plain E prefer a reachable ready door; checks real key eligibility.
 func can_unlock(actor: Diver) -> bool:
 	if _opened or _opening or not is_in_range(actor):
 		return false
@@ -149,9 +124,7 @@ func interaction_prompt(actor: Diver) -> String:
 		return ""
 	return _nearby_prompt(actor)
 
-# Save restoration is intentionally instantaneous: a saved route should not
-# put a newly reloaded player in front of a visually closed but logically open
-# checkpoint while an animation catches up.
+# Instant on load, so a saved-open door never appears closed.
 func restore_open_state() -> void:
 	_opened = true
 	_opening = false
@@ -219,11 +192,7 @@ func _build_art_and_collision() -> void:
 		return
 	var scale_factor := visual_height / raw_bounds.size.y
 	art.scale = Vector3.ONE * scale_factor
-	# The imported FBX is centred vertically around its own origin.  A level
-	# placement, however, is a world-floor placement: `KeyDoor.position.y`
-	# must mean "this door rests here," not "bury half the door below here."
-	# Apply the same derived grounding offset to art and physics so they never
-	# disagree about where the visible doorway begins.
+	# The FBX is centred on its origin; offset art and physics so position.y is the floor.
 	var floor_offset := Vector3(0.0, -raw_bounds.position.y * scale_factor, 0.0)
 	art.position = floor_offset
 
@@ -312,11 +281,7 @@ func _collect_named_meshes(node: Node, wanted_names: Array[StringName], found: A
 	for child in node.get_children():
 		_collect_named_meshes(child, wanted_names, found)
 
-# Glassgoat's corrected asset places the wheel outside the aperture, but the
-# authored Open morph still leaves a disconnected central leaf behind. Split
-# that leaf from the source mesh at runtime: the outer frame keeps its real
-# imported shape-key animation while the leaf rises clear before collision is
-# released. This preserves the delivered closed pose and an actual doorway.
+# Split the leftover central leaf from the mesh so it rises clear while the frame keeps its open morph.
 func _rebuild_opening_frame(source: MeshInstance3D) -> void:
 	if source.mesh == null or source.mesh.get_surface_count() != 1:
 		push_error("KeyDoor: expected one-surface Door_Frame mesh")
@@ -375,8 +340,7 @@ func _split_door_frame_mesh(source_mesh: Mesh) -> Dictionary:
 	var outer_blend_arrays: Array = []
 	for blend in blend_arrays:
 		var filtered_blend := (blend as Array).duplicate(true)
-		# Godot's blend-shape channels carry only vertex/normal/tangent data;
-		# they inherit the filtered base surface's index buffer.
+		# Blend-shape channels inherit the base surface's index buffer.
 		filtered_blend[Mesh.ARRAY_INDEX] = null
 		outer_blend_arrays.append(filtered_blend)
 	var inner := ArrayMesh.new()

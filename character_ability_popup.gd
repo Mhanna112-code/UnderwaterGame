@@ -1,26 +1,11 @@
 extends Control
 
-# Autoload singleton (see project.godot's [autoload] section) - always
-# present in the tree, reached globally as CharacterAbilityPopup.open(...)
-# rather than instanced/added-as-a-child anywhere, so no class_name here
-# (one would collide with the reserved autoload name and fail to compile).
-#
-# One popup, paged through a caller-supplied list of {slot, title, body}
-# entries (see World._show_ability_popups()) - PopupClose doubles as both
-# buttons the brief asked for: it reads "Next" and advances while there's
-# another page left, then relabels itself to "Close" on the last one
-# instead of the popup needing a second, separate button that would sit
-# unused on every page but the last. Highlights whichever HUD Slot (see
-# slot.gd) belongs to the diver the current page is about, the same
-# "draw a border around the thing being explained" idea battle.gd's
-# tutorial captions use on a stat row - so the popup and the HUD element
-# it's describing are visually tied together while it's open.
+# Autoload singleton (no class_name: it would collide with the autoload name).
+# Pages through {slot, title, body} entries; PopupClose reads "Next" until the last
+# page, then "Close". Highlights the HUD Slot of the diver each page describes.
 signal closed
 
-# Embedded clips are enabled only after the player is constrained to its
-# MediaFrame. See _refresh_media(): a non-expanded VideoStreamPlayer reports
-# its native 1920x1080 source size as a minimum and can grow this small popup
-# into a full-screen overlay.
+# Video clips rely on the player being constrained to MediaFrame (see _refresh_media()).
 const ENABLE_VIDEO_CLIPS := true
 
 var _pages: Array[Dictionary] = []
@@ -30,44 +15,25 @@ var _page_owner: WeakRef
 var _mouse_mode_before := Input.MOUSE_MODE_VISIBLE
 var _paused_before := false
 var _owns_pause := false
-# Cached after the first render - see _wasd_cluster_texture(). Rendering the
-# WASD cluster to a texture takes a couple of real frames (a SubViewport
-# needs to actually draw before its texture is valid), so this is warmed in
-# _ready() rather than the first time a page actually needs it.
+# Cached WASD texture; warmed in _ready() since the SubViewport render takes a few frames.
 var _wasd_texture: ImageTexture = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	# This autoload Control stays visible for the lifetime of the game; only
-	# its inner panel is hidden between uses. Ignore input on the root so its
-	# centered 600x350 rect cannot swallow world mouse-look or IntroCrawl's
-	# click-to-skip events while the panel is hidden. The panel and its child
-	# buttons still receive input when the modal is open.
+	# Root ignores input so its rect can't swallow world input while the panel is hidden.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# The modal's own CanvasLayer defaults to layer 1 - the same as a scene's
-	# HUD layer - and the HUD is added after this autoload, so HUD captions
-	# (e.g. the maze's orange warnings) drew on top of the open modal. Put
-	# the modal above every HUD layer.
+	# Above every HUD CanvasLayer.
 	($UI as CanvasLayer).layer = 100
 	(%PopupClose as Button).pressed.connect(_on_next_pressed)
 	_style_panel()
 	_build_close_button()
 	get_viewport().size_changed.connect(_layout_text_page)
-	# PanelContainer defaults to visible, unlike a PopupPanel (which starts
-	# hidden until .popup() is called) - hide it up front so it isn't just
-	# sitting on screen from the moment the game boots, before open() is
-	# ever called.
+	# PanelContainer starts visible; hide until open().
 	(%AbilityExplanationPanel as PanelContainer).hide()
-	# Fire-and-forget: by the time a player actually finishes the tutorial
-	# and _show_ability_popups() first opens this, several real seconds have
-	# passed, plenty for this one-time render to finish well ahead of need.
+	# Warm the WASD texture ahead of first use.
 	_wasd_cluster_texture()
 
-# Every other paged/modal overlay in this project (TutorialBook, IntroCrawl)
-# closes on Escape - this one didn't, so Escape here did nothing at all: the
-# popup has no listener for it, and get_tree().paused (set by open()) freezes
-# World's own Escape handling underneath it too. _close() never ran, "closed"
-# never fired, and anything depending on that signal never happened either.
+# Escape closes the popup (the tree is paused, so World can't handle it).
 func _unhandled_input(event: InputEvent) -> void:
 	if not (%AbilityExplanationPanel as PanelContainer).visible:
 		return
@@ -75,16 +41,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_close()
 
-# An always-reachable exit independent of which page you're on - PopupClose
-# (below) only reads "Close" on the last page; everywhere else it reads
-# "Next" and a corner X is the only way to leave outright, same "get me out
-# of this modal" job TutorialBook's own corner X does (tutorial_book.gd).
-# A PanelContainer stacks every direct child to the same content rect (the
-# same trick MarginContainer uses for an overlay), so an extra child here
-# sits on top of %Margin's own layout instead of pushing it aside; wrapped
-# in a plain, non-Container Control first since a Container would otherwise
-# force this new child to that same full rect too, fighting the anchor/
-# offset that actually places the button in the corner.
+# Corner X closes from any page. Wrapped in a non-Container Control so the
+# PanelContainer doesn't force it to the full rect.
 func _build_close_button() -> void:
 	var panel := %AbilityExplanationPanel as PanelContainer
 	var overlay := Control.new()
@@ -97,13 +55,7 @@ func _build_close_button() -> void:
 	btn.custom_minimum_size = btn_size
 	btn.add_theme_font_size_override("font_size", 16)
 	btn.pressed.connect(_close)
-	# Explicit anchors/offsets computed from a fixed size, not
-	# set_anchors_and_offsets_preset()'s PRESET_MODE_MINSIZE - that reads
-	# get_combined_minimum_size() at the moment it's called, and calling it
-	# before add_child() (this button wasn't in the tree yet) measured a
-	# stale, smaller size than the 28x28 + font-16 actually settled on,
-	# undershooting the inset and leaving it hanging half outside the
-	# panel's own rounded top-right corner instead of sitting inside it.
+	# Explicit anchors from a fixed size: PRESET_MODE_MINSIZE mismeasures before add_child().
 	var inset := 12.0
 	btn.anchor_left = 1.0
 	btn.anchor_right = 1.0
@@ -115,14 +67,9 @@ func _build_close_button() -> void:
 	btn.offset_bottom = inset + btn_size.y
 	overlay.add_child(btn)
 
-# Pulses PopupClose - Next on every page but the last, Close once it
-# relabels itself there (see _refresh()) - so there's always exactly one
-# flashing button pointing at "what to press next", same sine-pulse shape
-# as [pulse] BBCode text elsewhere (pulse_text_effect.gd) and TutorialBook's
-# own Next/Close pulse (tutorial_book.gd) rather than a third effect system.
+# Pulses PopupClose so the next button to press is always obvious.
 func _process(_delta: float) -> void:
-	# Marc's battle deferral, with scene lifetime and multiple callers retained.
-	# A paused Game Over/title is not an exploration resume opportunity.
+	# Show deferred batches once no battle is running and the tree isn't paused.
 	if not _pending_batches.is_empty() and not _battle_running() and not get_tree().paused \
 			and not (%AbilityExplanationPanel as PanelContainer).visible:
 		var batch: Dictionary = _pending_batches.pop_front()
@@ -134,18 +81,8 @@ func _process(_delta: float) -> void:
 	var flash := 0.35 + 0.65 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0))
 	(%PopupClose as Button).modulate.a = flash
 
-# Dark blue fill, white outline - a permanent look for the whole window,
-# unlike Slot.set_highlighted()'s version of this same StyleBoxFlat
-# technique, which toggles a border on/off per diver. A plain PanelContainer
-# draws whatever's set on its own "panel" theme override as its background/
-# border, same mechanism _row_stylebox() in battle.gd and set_highlighted()
-# in slot.gd both already use. Not a PopupPanel (a Window subclass) - that
-# was crashing this project's windowed/GPU-rendered launches outright the
-# instant this autoload booted, before open() was ever even called, on at
-# least one machine. Every other overlay in this project (TutorialBook,
-# SpecialEncounterPrompt, InventoryMenu, TitleScreen) is a plain Control
-# toggled by visibility for the same reason - this now matches them instead
-# of being the only Window-based UI in the whole codebase.
+# Dark blue fill, white outline. Plain Control rather than PopupPanel (Window
+# subclass), which crashed some machines on boot.
 func _style_panel() -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.05, 0.08, 0.22)
@@ -153,11 +90,7 @@ func _style_panel() -> void:
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(6)
 	(%AbilityExplanationPanel as PanelContainer).add_theme_stylebox_override("panel", style)
-	# Default Label font color reads fine on the editor's own light gray
-	# background but disappears against this dark blue fill - same reason
-	# every other screen in the project (title_screen.gd, tutorial_book.gd,
-	# inventory_menu.gd, ...) sets an explicit light font color rather than
-	# relying on the theme default.
+	# Explicit light font color; the default is unreadable on the dark fill.
 	(%Title as Label).add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	var media_style := StyleBoxFlat.new()
 	media_style.bg_color = Color(0.03, 0.08, 0.11)
@@ -181,8 +114,7 @@ func suspend_for_battle() -> void:
 		get_tree().paused = false
 	_owns_pause = false
 
-# `owner` prevents autoload-held pages surviving their World/Maze scene.
-# Existing page-only callers remain supported for standalone explanations.
+# `owner` keeps pages from outliving their World/Maze scene; optional.
 func open(pages: Array[Dictionary], owner: Node = null) -> void:
 	if pages.is_empty():
 		return
@@ -216,15 +148,8 @@ func _refresh() -> void:
 			slot.set_highlighted(slot == page.get("slot"))
 	(%PopupClose as Button).text = "Close" if _index >= _pages.size() - 1 else "Next"
 	var page_slot: Variant = page.get("slot")
-	# "media" lets a page pick its own clip explicitly - needed the moment a
-	# diver gets more than one page (Maxilani's Swap and Sonar are two
-	# separate pages now, see world.gd's _show_ability_popups()), since
-	# page_slot.diver.ability_id alone is one fixed value per diver and
-	# can't tell those two pages apart on its own. Falls back to that same
-	# ability_id-derived lookup for a diver with only one page (Musashi,
-	# Bucky), so they don't need to pass it explicitly.
-	# "media_control": a Callable returning a Control to show in the media
-	# frame instead of a clip file (e.g. a live-drawn demo animation).
+	# "media" overrides the clip for divers with multiple pages; otherwise derived from ability_id.
+	# "media_control": a Callable returning a Control to show instead of a clip.
 	if page.get("media_control") is Callable:
 		_show_media_control((page["media_control"] as Callable).call())
 		return
@@ -233,8 +158,7 @@ func _refresh() -> void:
 	_layout_text_page()
 
 func _layout_text_page() -> void:
-	# Text-only lessons (including first map open) must fit while paused.
-	# Keep the established media layout unchanged for authored video pages.
+	# Fit text-only pages to the viewport; media pages keep their authored layout.
 	if (%MediaFrame as Control).visible:
 		return
 	var viewport := get_viewport_rect().size
@@ -257,17 +181,8 @@ func _show_media_control(media: Control) -> void:
 	media.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.add_child(media)
 
-# Rebuilds %Paragraph's one RichTextLabel from scratch every call. The
-# inline [F]/[Q]/[Tab] badges are BBCode baked straight into the body string
-# by slot.gd's _badge(), so a plain .text = body handles those. The WASD
-# cluster can't be BBCode text (it's a 2D arrangement, not a run of
-# characters), so a body containing Slot.WASD_MARKER is instead built with
-# append_text()/add_image() - a rendered snapshot of the same cluster
-# (_wasd_cluster_texture()) inserted as one inline "character" via
-# RichTextLabel's own image support. That's what actually gets "same line
-# as Use, wrapping to the next line only if it doesn't fit" for free -
-# nothing here decides the line break, RichTextLabel's normal text layout
-# does, the same as it would for an oversized letter.
+# Rebuilds the paragraph label. WASD_MARKER is replaced by an inline image of the
+# key cluster so RichTextLabel handles wrapping.
 func _build_paragraph(body: String) -> void:
 	var paragraph := %Paragraph as Control
 	for child in paragraph.get_children():
@@ -278,24 +193,14 @@ func _build_paragraph(body: String) -> void:
 	_append_with_markers(label, parts[0])
 	if parts.size() > 1:
 		var tex := await _wasd_cluster_texture()
-		# Next/Close or battle suspension may replace this paragraph while its
-		# first WASD texture awaits real render frames. Never finish an obsolete
-		# page by writing into the freed RichTextLabel.
+		# The page may be replaced while awaiting the texture; don't write into a freed label.
 		if not is_instance_valid(label) or label.is_queued_for_deletion():
 			return
-		# Native size, not squashed to fit a single text line - add_image()
-		# used to force this into 54x18 against the texture's actual 90x63,
-		# flattening the two-row W/A/S/D layout into an illegible sliver.
-		# RichTextLabel grows that line's own height to fit the tallest
-		# inline content automatically, so drawing it at the size it was
-		# actually rendered at is enough on its own to give it room - no
-		# manual newline needed, which would otherwise break "Use [WASD] and
-		# move..." across a line for no reason.
+		# Native size; RichTextLabel grows the line height to fit.
 		label.add_image(tex, int(WASD_CLUSTER_SIZE.x), int(WASD_CLUSTER_SIZE.y))
 		_append_with_markers(label, parts[1])
 
-# Body text with Slot.SMALL_MARKER/SPECIAL_MARKER swapped for inline swatches
-# of the two minimap red-circle markers.
+# Swaps Slot.SMALL_MARKER/SPECIAL_MARKER for inline minimap marker swatches.
 func _append_with_markers(label: RichTextLabel, text: String) -> void:
 	var rest := text
 	while true:
@@ -312,9 +217,7 @@ func _append_with_markers(label: RichTextLabel, text: String) -> void:
 		rest = rest.substr(at + marker.length())
 	label.append_text(rest)
 
-# Minimap red circles at popup scale, keeping their real size ratio (small
-# 3.5 px vs special 5.5 px radius on the map) and the special marker's light
-# outline. Built from an Image, so no SubViewport frames are needed.
+# Minimap red circles at popup scale, keeping their size ratio. Built from an Image.
 const _MARKER_RED := Color(1.0, 0.18, 0.18)
 const _MARKER_OUTLINE := Color(1.0, 0.75, 0.75)
 var _marker_swatches := {}
@@ -349,32 +252,18 @@ func _rich_label() -> RichTextLabel:
 	label.scroll_active = false
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# RichTextLabel's own base-text theme property is "default_color", not
-	# Label's "font_color" - a [color=...] BBCode tag overrides this per-run,
-	# but everything outside one (the ordinary prose) still needs this set or
-	# it falls back to a barely-visible default against the dark blue fill.
+	# RichTextLabel uses "default_color", not "font_color".
 	label.add_theme_color_override("default_color", Color(0.8, 0.88, 0.9))
 	return label
 
-# Key badge/gap sizing, shared between _key_badge()/_wasd_cluster() (the
-# layout) and _wasd_cluster_texture()/_build_paragraph() (the rendered
-# result, which needs the same numbers to size the SubViewport and the
-# inline image it becomes without either squashing or clipping it).
+# Shared by the cluster layout and its rendered texture/inline image size.
 const _KEY_SIZE := Vector2(26, 26)
 const _KEY_GAP := 3
-const _CLUSTER_PAD := Vector2(3, 4)   # transparent breathing room baked into the texture itself
+const _CLUSTER_PAD := Vector2(3, 4)   # transparent padding baked into the texture
 const WASD_CLUSTER_CONTENT_SIZE := Vector2(_KEY_SIZE.x * 3 + _KEY_GAP * 2, _KEY_SIZE.y * 2 + _KEY_GAP)
 const WASD_CLUSTER_SIZE := WASD_CLUSTER_CONTENT_SIZE + _CLUSTER_PAD * 2
 
-# Renders _wasd_cluster() once into an off-screen SubViewport and keeps the
-# resulting texture for every page that needs it after - a SubViewport
-# needs a couple of real frames to actually draw before its texture is
-# valid, so doing this per-page-open would flash in a frame or two late
-# every single time instead of just the first. Padded on all sides
-# (_CLUSTER_PAD) rather than rendered tight to the grid's own edges, so the
-# inline image _build_paragraph() drops into the paragraph text already
-# carries its own breathing room instead of butting straight up against
-# neighboring glyphs.
+# Renders _wasd_cluster() once into an off-screen SubViewport and caches it.
 func _wasd_cluster_texture() -> ImageTexture:
 	if _wasd_texture != null:
 		return _wasd_texture
@@ -397,10 +286,7 @@ func _wasd_cluster_texture() -> ImageTexture:
 	vp.queue_free()
 	return _wasd_texture
 
-# A "keycap" - a black-bordered square with one letter, big enough to read
-# clearly inline with the surrounding body text without looking like a
-# smudge (the 18x18/font-11 version this replaced did, once forced through
-# add_image()'s old 54x18 squash - see _build_paragraph()).
+# Keycap: bordered square with one letter.
 func _key_badge(letter: String) -> PanelContainer:
 	var badge := PanelContainer.new()
 	var style := StyleBoxFlat.new()
@@ -421,11 +307,7 @@ func _key_badge(letter: String) -> PanelContainer:
 	badge.add_child(label)
 	return badge
 
-# W centered above A/S/D, same physical layout as the real keys - a 3-column
-# grid with an empty same-sized spacer standing in for the two gaps flanking
-# W on the top row. size_flags_horizontal = SIZE_SHRINK_BEGIN keeps the
-# whole cluster hugging the left edge (matching the text it sits between)
-# instead of stretching to fill %Paragraph's full width.
+# W centered above A/S/D via a 3-column grid with spacers.
 func _wasd_cluster() -> GridContainer:
 	var grid := GridContainer.new()
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -444,25 +326,14 @@ func _wasd_cluster() -> GridContainer:
 	grid.add_child(_key_badge("D"))
 	return grid
 
-# Swaps in whatever demo clip/image exists for `ability_id`, in the frame
-# to the right of the body text - same loading logic as
-# special_encounter_prompt.gd's own _refresh_media() (a still image loads
-# into a TextureRect, a .ogv loops via a VideoStreamPlayer replaying itself
-# on `finished`), reusing content/tutorial_content.gd's ABILITY_MEDIA table
-# rather than a second copy of it. Neither file exists yet for any ability,
-# so this always falls through to the placeholder today - same "reserve the
-# spot, no code changes needed once a clip exists" reasoning as that other
-# copy. "" (the World Map page, which isn't about any one ability) also
-# falls through to the placeholder rather than a blank frame.
+# Shows the demo clip/image for `ability_id` from TutorialContent.ABILITY_MEDIA, or a placeholder.
 func _refresh_media(ability_id: String) -> void:
 	var frame := %MediaFrame as PanelContainer
 	frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for child in frame.get_children():
 		child.queue_free()
-	# Pages such as Inventory have no clip by design. Hide the entire media
-	# frame instead of showing the generic "Clip coming soon" placeholder,
-	# which is reserved for abilities that are expected to have media.
+	# No ability id (e.g. Inventory): hide the frame instead of showing a placeholder.
 	if ability_id.is_empty():
 		frame.hide()
 		return
@@ -474,17 +345,7 @@ func _refresh_media(ability_id: String) -> void:
 			var video_stream := VideoStreamTheora.new()
 			video_stream.file = path
 			player.stream = video_stream
-			# The Grapple clip is a clean 16:9 excerpt. Keep its original
-			# framing: the old side-crop magnified a damaged long recording and
-			# made the late, obstructed frames look like a second image.
-			# expand=true scales the video to fill whatever rect it's given,
-			# with no aspect-ratio awareness at all (unlike TextureRect, which
-			# has STRETCH_KEEP_ASPECT_CENTERED below) - filling %MediaFrame's
-			# own ~160x140 rect directly stretched a 1920x1080 (16:9) source
-			# into a near-square frame, visibly squashed. AspectRatioContainer
-			# is what actually keeps it undistorted: it sizes/centers its one
-			# child to the given ratio and lets expand=true fill THAT correctly
-			# proportioned rect instead of the mismatched frame directly.
+			# AspectRatioContainer keeps the 16:9 clip undistorted; expand=true ignores aspect.
 			var aspect := AspectRatioContainer.new()
 			aspect.ratio = 16.0 / 9.0
 			aspect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -492,20 +353,9 @@ func _refresh_media(ability_id: String) -> void:
 			player.expand = true
 			player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			player.finished.connect(player.play)
-			# Parented to frame (%MediaFrame), not self - a plain add_child()
-			# here put it on the popup's own root instead, which (a) never
-			# gets cleared by this function's own frame.get_children() cleanup
-			# above, leaking a new VideoStreamPlayer every time this page is
-			# shown again, and (b) left it outside the frame cleanup path instead
-			# of keeping the clip inside this small MediaFrame.
+			# Parent to the frame so the cleanup above frees it.
 			frame.add_child(aspect)
-			# Not autoplay=true - that starts Theora decode synchronously the
-			# same frame this popup pauses the tree and _wasd_cluster_texture()
-			# may still be mid-render (its own SubViewport awaits two
-			# RenderingServer.frame_post_draw signals). Deferring play() one
-			# frame lets that settle first, in case decode contending with an
-			# in-flight SubViewport render is what was stalling the whole
-			# screen to black rather than just this player's own small frame.
+			# Deferred rather than autoplay so decode doesn't start in the same frame the tree pauses.
 			player.call_deferred("play")
 			return
 		var tex := load(path) as Texture2D

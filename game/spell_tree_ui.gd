@@ -1,31 +1,5 @@
-# Scaffolding for the spell-tree screen: three columns (one per
-# SpellTree.branches() entry), a button per spell in that branch, spent
-# points and unmet requirements just disable the button rather than
-# hiding it - seeing what you can't afford/haven't unlocked yet is part of
-# planning which branch to spend on next. Hovering a button shows its
-# description via Godot's own tooltip (Button.tooltip_text) rather than a
-# hand-built popup - it's exactly what that property is for.
-#
-# Every diver has their own tree now (see SpellTree.SPELL_TREES), so the
-# columns can't be built once in _ready() and reused - open_for() rebuilds
-# them fresh for whichever diver's tree is being viewed. Branch order is
-# still fixed (SpellTree.BRANCH_ORDER) so the screen doesn't reshuffle
-# left-to-right depending on whose tree is open.
-#
-# Rebuilds its buttons from scratch on every _refresh() rather than
-# tracking diffs, same tradeoff MiniMap's _draw() makes - simpler to get
-# right than incremental updates.
-#
-# Reached only through SavePointMenu now, never directly - back_pressed is
-# how it hands control back to the save-point menu's root instead of just
-# hiding itself, so the player lands back on Save/Learn Spells, not out of
-# the save-point flow entirely.
-#
-# THIS IS SCAFFOLDING, not the finished screen: no tree-line connectors
-# between prerequisite spells (columns just list every node in the branch
-# top to bottom), no icons. Good enough to prove the data/gating work
-# end-to-end; the visual layer is a later pass once real spell content
-# exists to look at.
+# Spell-tree screen (scaffolding): one column per branch in BRANCH_ORDER, unaffordable spells disabled not hidden.
+# Rebuilt per diver in open_for(); reached only via SavePointMenu, returning through back_pressed.
 class_name SpellTreeUI
 extends Control
 
@@ -33,10 +7,7 @@ signal back_pressed
 
 var diver: Diver
 
-# Placeholder until game/quest_manager.gd exists - passed through to
-# SpellTree.can_learn()/learn() exactly like a real key-item list would be,
-# so wiring in the real one later is a one-line change here, not a
-# rewrite of this screen.
+# Placeholder until a real key-item source exists.
 var key_items: Array = []
 
 var _title_label: Label
@@ -49,11 +20,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	# The spell tree is a full-screen decision surface, so it intentionally
-	# hides world HUD text instead of allowing it to overlap the tree header.
+	# Full-screen and opaque so world HUD text can't overlap it.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
-	# The opaque backdrop provides contrast only; it must not consume the
-	# clicks intended for the actual spell buttons above it.
+	# Backdrop must not eat clicks meant for the spell buttons.
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -105,11 +74,7 @@ func close() -> void:
 	visible = false
 	diver = null
 
-# Rebuilt every open_for() rather than once in _ready(), since which
-# branches/spells exist depends on diver.model_name now (see
-# SpellTree.SPELL_TREES) - a screen built for one diver's tree can't just
-# be relabeled for another's, the columns themselves need different
-# spells in them.
+# Columns depend on the diver's tree, so they're rebuilt per open_for().
 func _rebuild_columns() -> void:
 	for child in _columns_box.get_children():
 		child.queue_free()
@@ -136,7 +101,7 @@ func _refresh() -> void:
 
 	for branch in SpellTree.branches(diver.model_name):
 		var col: VBoxContainer = _branch_columns[branch]
-		# First child is the header Label - only clear buttons below it.
+		# Keep the header Label (first child).
 		for child in col.get_children():
 			if child is Button:
 				child.queue_free()

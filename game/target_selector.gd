@@ -1,17 +1,5 @@
-# Owns exactly one job: who can be targeted right now, who's currently
-# picked, and cycling between them - kept separate from the ability
-# itself (which only cares about the eventual confirmed/cancelled result)
-# and from the camera (which just gets told where to look, via
-# world.focus_camera_on()/return_camera_to_player()). That separation is
-# what lets a second targeted ability later reuse this whole
-# select/cycle/confirm/cancel flow instead of duplicating it.
-#
-# Adapted from a from-scratch Game/CameraController/TargetSelector
-# proposal to this project's actual shape: characters are Diver instances
-# built with .new() (no .tscn scenes anywhere in this project), and there's
-# one camera already owned by world.gd rather than a separate controller
-# node - see world.gd's focus_camera_on()/return_camera_to_player() for
-# where "tell the camera where to go" actually lives.
+# Reusable target selection: candidates, current pick, cycling, confirm/cancel.
+# Camera moves are delegated to the host's focus_camera_on()/return_camera_to_player().
 class_name TargetSelector
 extends Node
 
@@ -22,13 +10,7 @@ signal cancelled
 # focus_camera_on(target) and return_camera_to_player().
 var world: Node
 
-# The full roster - every character that could ever be a target for some
-# ability, not just "current candidates for the ability in progress."
-# register_character()/unregister_character() maintain this; a given
-# selection's actual candidate list is computed fresh in
-# _refresh_targets() each time selection starts, since who's *valid*
-# depends on who's asking (a requester can't target themselves) and could
-# later depend on the ability itself (allies-only, enemies-only, etc.).
+# Full roster; candidates are recomputed per selection in _refresh_targets().
 var selectable_characters: Array[Node3D] = []
 
 var selecting := false
@@ -44,15 +26,11 @@ func register_character(character: Node3D) -> void:
 	if character.can_be_selected:
 		selectable_characters.append(character)
 
-# Not called anywhere yet - nothing in this game removes a diver - but
-# kept available for when something does (a diver knocked out, a
-# character leaving the roster), same as the original proposal flagged.
+# Unused for now; kept for when a character can leave the roster.
 func unregister_character(character: Node3D) -> void:
 	selectable_characters.erase(character)
 
-# requester is excluded from its own candidate list - an ability that
-# targets "another character" shouldn't be able to pick the caster.
-# Returns false (and does nothing else) if there's nobody valid to pick.
+# The requester can't target itself. Returns false if nobody is valid.
 func start_selection(requester: Node3D = null) -> bool:
 	_requester = requester
 	_refresh_targets()
@@ -107,9 +85,7 @@ func _end_selection() -> void:
 	if world != null:
 		world.return_camera_to_player()
 
-# Moves the cursor and points the camera at whichever candidate is now
-# selected - both happen from this one place so cycling always keeps
-# them in sync.
+# Moves the cursor and camera together so they stay in sync.
 func _apply_selection() -> void:
 	var target := current_target()
 	if target == null:
@@ -117,10 +93,7 @@ func _apply_selection() -> void:
 	if world != null:
 		world.focus_camera_on(target)
 
-# Cursor position is refreshed every frame the selected target is valid,
-# not just when the selection changes - if the target ever moves again
-# (this game currently holds non-active divers still, but nothing here
-# should assume that stays true forever), the cursor keeps following.
+# Refreshed every frame so the cursor follows a moving target.
 func _process(_dt: float) -> void:
 	if not selecting or cursor == null:
 		return
@@ -137,11 +110,7 @@ func _show_cursor() -> void:
 	if cursor != null:
 		cursor.visible = true
 		return
-	# A downward-pointing cone, built the same way as this project's other
-	# throwaway ability VFX (see diver.gd's _shockwave_vfx()) rather than
-	# a separate TargetCursor.tscn - nothing in this project uses .tscn
-	# files for dynamically-created objects, so a cursor scene would be
-	# the only exception rather than following the established pattern.
+	# Downward cone built in code, like the other ability VFX.
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.0
 	cone.bottom_radius = 0.28

@@ -1,9 +1,5 @@
-# Single owner for music sequencing and, in later increments, game SFX.
-#
-# Phoenix's paired tracks are authored as an INTRO followed immediately by a
-# LOOP with no crossfade. One AudioStreamPlayer makes overlap impossible: the
-# finished signal replaces the intro stream with a loop-enabled duplicate and
-# starts that same player again.
+# Music sequencing and SFX. Tracks are INTRO then LOOP with no crossfade: one player
+# swaps to a loop-enabled duplicate on `finished`, so overlap is impossible.
 class_name UnderwaterAudioManager
 extends Node
 
@@ -55,16 +51,13 @@ var _sfx_volume := 1.0
 var _sfx_muted := false
 
 func _ready() -> void:
-	# Title and game-over deliberately pause the SceneTree. Their audio is
-	# still a live UI surface, so the global owner must remain processable.
+	# Title/game-over pause the tree, so this must keep processing.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_players()
 	load_audio_settings()
 
 func _exit_tree() -> void:
-	# Release duplicated compressed streams before Godot performs its final
-	# ObjectDB/resource leak audit. This is also exercised by headless route
-	# verifiers, which create and destroy complete World sessions quickly.
+	# Release duplicated streams before Godot's exit leak audit.
 	release_streams_for_shutdown()
 
 func release_streams_for_shutdown() -> void:
@@ -87,9 +80,7 @@ func release_streams_for_shutdown() -> void:
 func play_music_sequence(cue_id: String, intro: AudioStream, loop: AudioStream) -> void:
 	play_authored_music_sequence(cue_id, intro, loop, 0.0, 0.0)
 
-# The authored trim is local to a cue and composes with the player's Music bus
-# setting. It must never rewrite the persistent volume slider: the opening can
-# therefore be intentionally quieter without making the rest of the game quiet.
+# Per-cue trim composes with the Music bus; never rewrites the persisted volume slider.
 func play_authored_music_sequence(
 		cue_id: String,
 		intro: AudioStream,
@@ -140,13 +131,11 @@ func play_battle_music() -> void:
 	play_music_sequence("battle", BATTLE_INTRO, BATTLE_LOOP)
 
 func play_tethys_music() -> void:
-	# The delivered "verb tail" is not labelled INTRO and has not passed the
-	# browser listening audit. Use the explicitly authored seamless loop.
+	# Use the authored seamless loop (the "verb tail" isn't audited).
 	play_music_sequence("tethys", null, TETHYS_LOOP)
 
 func play_title_music() -> void:
-	# This pair remains candidate pending the binding listening audit. Keeping
-	# ownership here prevents TitleScreen from choosing raw files itself.
+	# Candidate pair pending listening audit; kept here so TitleScreen doesn't pick raw files.
 	play_music_sequence("title", TITLE_CANDIDATE_INTRO, TITLE_LOOP)
 
 func play_victory_music() -> void:
@@ -162,8 +151,7 @@ func play_prologue_battle_music() -> void:
 	play_authored_music_sequence("prologue_battle", BATTLE_INTRO, BATTLE_LOOP, 0.0, -7.0)
 
 func play_prologue_victory_music() -> void:
-	# Brief confidence before the omen; keep Phoenix's pair intact and quiet.
-	# World fades this local cue out, never the player's persisted Music bus.
+	# Quiet cue; World fades it locally, never the Music bus.
 	play_authored_music_sequence("prologue_victory", VICTORY_CANDIDATE_INTRO, VICTORY_LOOP, -9.0, -9.0)
 
 func play_cordys_music() -> void:
@@ -182,9 +170,7 @@ func stop_music() -> void:
 	_loop_gain_db = 0.0
 	_apply_active_music_gain(0.0)
 
-# Public because this is the semantic production callback connected to the
-# AudioStreamPlayer's `finished` signal. Tests drive the same transition
-# without waiting through a full authored track.
+# Public: the `finished` callback, also driven directly by tests.
 func advance_music_after_stream_finished() -> void:
 	if _phase == "one_shot":
 		stop_music()
@@ -216,8 +202,7 @@ func get_music_gain_state() -> Dictionary:
 func get_music_transition_trace() -> Array[String]:
 	return _transition_trace.duplicate()
 
-# One cue player's local gain, never the persisted Music bus. Cue replacement
-# cancels the envelope so an old hit cannot alter a new cue or revive silence.
+# Local cue gain; replacing the cue cancels the envelope.
 func duck_music(trim_db: float = -7.0, hold_seconds: float = 0.25) -> void:
 	if _phase == "stopped":
 		return
@@ -251,8 +236,7 @@ func _cancel_gain_envelope() -> void:
 	_gain_envelope = null
 
 func play_ui_hover() -> void:
-	# Title runs while paused. Use monotonic real time, not a gameplay timer,
-	# and protect the start of explicit confirmation from stray pointer entry.
+	# Real time (runs while paused); guard against stray pointer entry at start.
 	var now := Time.get_ticks_msec()
 	if now - _last_ui_hover_msec < 250 or now < _ui_confirm_until_msec:
 		return
@@ -265,9 +249,7 @@ func play_ui_click() -> void:
 func play_ui_start_game() -> void:
 	_play_sfx("ui_start_game", UI_START_GAME)
 
-# Combat uses a short round-robin pool instead of the UI player's
-# stop-and-replace policy. An attack swing and its impact are separate pieces
-# of feedback and must be able to overlap without either one cutting off.
+# Round-robin pool so swing and impact sounds can overlap.
 func play_combat_swing(heavy: bool = false) -> void:
 	_play_combat_sfx("combat_heavy_swing" if heavy else "combat_swing",
 		COMBAT_ATTACK_SWIRL if heavy else COMBAT_SWING, -3.0 if heavy else -5.0)
@@ -384,11 +366,7 @@ func _play_combat_sfx(event_id: String, stream: AudioStream, volume_db: float) -
 	_start_player(player)
 	_sfx_event_trace.append(event_id)
 
-# Headless gates verify semantic cue ownership and transition state, not sound
-# hardware. Starting a compressed stream there creates an Ogg playback object
-# that Godot's immediate SceneTree.quit() leak audit can observe before the
-# dummy audio thread retires it. Native and web play normally; headless tests
-# keep the exact stream/state contracts without manufacturing a false leak.
+# Headless: skip starting compressed streams, which would trip a false leak report at quit.
 func _start_player(player: AudioStreamPlayer) -> void:
 	if DisplayServer.get_name() == "headless":
 		return

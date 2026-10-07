@@ -42,7 +42,7 @@ func _run() -> void:
 	await _capture("contact")
 	var announcements := 0
 	for label in _visible_labels(maze):
-		if label.text.contains("Party restored"):
+		if label.text.contains("Save your progress"):
 			announcements += 1
 			if not Rect2(Vector2.ZERO, root.get_visible_rect().size).encloses(label.get_global_rect()):
 				findings.append("INT-08 checkpoint contact announcement is clipped")
@@ -71,7 +71,7 @@ func _run() -> void:
 	if slot == null:
 		findings.append("INT-08 actual Save mouse click does not reveal the slot picker")
 	for label in _visible_labels(maze):
-		if label.text.contains("Party restored"):
+		if label.text.contains("Save your progress"):
 			findings.append("INT-08 gameplay announcement leaks over the active Save menu")
 	var viewport := Rect2(Vector2.ZERO, root.get_visible_rect().size)
 	for button in _visible_buttons(maze):

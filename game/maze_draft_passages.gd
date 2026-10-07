@@ -1,6 +1,6 @@
 extends Node3D
-# Authored 4ec6598 passage pair and bba8b80 Box12 route, adapted to World ownership. This
-# component owns only transient prompt/motion; the maze snapshot owns walls.
+# Maze draft passage pair and Box12 route under World ownership.
+# Owns only the transient prompt/motion; the maze snapshot owns walls.
 const WIDTH := 2.6
 const REACH := 1.6
 var maze: MazeLevel
@@ -59,8 +59,7 @@ func setup(owner_maze: MazeLevel) -> void:
 	return_visuals.append(_streaks(Vector3(return_x, maze._floor_top_y + 0.5, return_z + return_side * (wall11.size.z * 0.5 + 1.2)),
 		Vector3(0, -0.35, -return_side).normalized()))
 	_show_return(false)
-	# bba8b80 replaces the raised 12/13 path with this one-way draft. Reuse
-	# the safe bounded tunnel and teardown lifecycle, not an independent tween.
+	# Box12's one-way draft reuses the bounded tunnel and teardown lifecycle.
 	box12 = maze.get_node("CSGBox3D12") as CSGBox3D
 	var ends := maze._wall_geometry(box12)
 	box12_z = clampf(maze._dome_site.z, minf(ends.negative_end.z, ends.positive_end.z) + WIDTH,
@@ -84,6 +83,53 @@ func _slot_visual(at: Vector3, size: Vector3) -> MeshInstance3D:
 	add_child(pit)
 	pit.global_position = at - Vector3.UP
 	return pit
+
+func _current_whirlpool(at: Vector3, direction: Vector3, whirlpool_position: Vector3):
+	var lower_particles := GPUParticles3D.new()
+	lower_particles.amount = 70
+	lower_particles.lifetime = 2.0
+	lower_particles.preprocess = 2.0
+	
+	var process := ParticleProcessMaterial.new()
+	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	process.emission_box_extents = Vector3(0.9, 0.4, WIDTH * 0.45) if absf(direction.x) > 0.1 else Vector3(WIDTH * 0.45, 0.4, 0.9)
+	process.direction = direction
+	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	process.emission_ring_axis = Vector3.UP
+	process.emission_ring_radius = 1.2
+	process.emission_ring_inner_radius = 0.9
+	process.emission_ring_height = 0.2
+	
+	process.orbit_velocity_min = 0.6        
+	process.orbit_velocity_max = 0.8
+	process.radial_velocity_min = -0.3    
+	process.radial_velocity_max = -0.2
+	process.spread = 4.0
+	process.initial_velocity_min = 2.0
+	process.initial_velocity_max = 3.0
+	process.gravity = Vector3.ZERO
+	process.particle_flag_align_y = true
+	
+	var medium_particles := GPUParticles3D.new()
+	medium_particles.amount = 70
+	medium_particles.lifetime = 2.0
+	medium_particles.preprocess = 2.0
+	
+	#medium_particles.lower_moving = false
+	
+	var high_particles := GPUParticles3D.new()
+	high_particles.amount = 70
+	high_particles.lifetime = 2.0
+	high_particles.preprocess = 2.0
+	
+	#high_particles.medium_moving = false
+	#Area3D particles_area = Area3D.new()
+	#partiiles_area.position = whirlpool_position - particles_area.e
+	
+	
+	
+
+	
 
 func _streaks(at: Vector3, direction: Vector3) -> GPUParticles3D:
 	var particles := GPUParticles3D.new()
@@ -147,8 +193,7 @@ func update() -> void:
 		return
 	var open := maze._walls_10_11_swung and not maze._wall_set_moving("CSGBox3D10/11")
 	_show_return(open)
-	# The dark marker suggests a slot, but must not visually bury the actor
-	# while the bounded floor tunnel is open. Keep the authored water streaks.
+	# Hide the dark slot marker while the tunnel is open so it doesn't cover the actor.
 	outgoing_slot.visible = not busy
 	box12_slot.visible = not busy
 	(return_visuals[0] as MeshInstance3D).visible = open and not busy
@@ -177,8 +222,7 @@ func update() -> void:
 	if not incoming:
 		return_latched = false
 	if incoming and not return_latched:
-		# A blocked exit must not run hundreds of shape queries and repeat
-		# its warning every frame. Leaving/reapproaching permits a new try.
+		# Latch a blocked exit until the diver leaves and reapproaches.
 		return_latched = true
 		var exit_axis := Vector3(0, 0, -return_side)
 		var near := Vector3(return_x, maze._floor_top_y - 0.4, return_z + return_side * (wall.size.z * 0.5 + 0.6))
@@ -254,10 +298,7 @@ func _inside_active_pull_zone(at: Vector3, radius: float) -> bool:
 	return false
 
 func _inside_solid_wall(center: Vector3, capsule: CapsuleShape3D) -> bool:
-	# CSG collision consists of triangle surfaces, so intersect_shape alone
-	# accepts a capsule fully buried in an opaque wall. All authored boxes
-	# are upright (yaw rotations); test the vertical capsule against their
-	# solid volume as well, with rounded corners rather than a padded AABB.
+	# CSG collision is surface-only, so also test the capsule against each upright box's solid volume.
 	var segment_half := capsule.height * 0.5 - capsule.radius
 	for wall in maze.wall_boxes:
 		if not is_instance_valid(wall) or not wall.visible or not wall.use_collision:
@@ -280,13 +321,9 @@ func _start_passage(near: Vector3, far: Vector3, preferred: Vector3, wall: CSGBo
 	busy = true
 	departure = actor.global_position
 	landing = destination
-	# The upstream visual slot alone does not cut the global invisible floor.
-	# Open only this actor's bounded tunnel while its motion owns all input;
-	# retain solid floor everywhere else and seal it once the clear exit is
-	# reached. A declined prompt never opens a manual-sinking escape hole.
+	# Open only this actor's bounded floor tunnel during the motion, then seal it at the exit.
 	var capsule := (actor.get_children().filter(func(n: Node) -> bool: return n is CollisionShape3D)[0] as CollisionShape3D).shape as CapsuleShape3D
-	# Wall skirts intentionally fill the normal wall-to-floor clearance.
-	# The authored passage must travel below those too, not clip through them.
+	# Travel below wall skirts too, not through them.
 	var bottom := minf(maze._floor_top_y, wall.global_position.y - wall.size.y * 0.5)
 	var skirt := wall.get_node_or_null("Skirt") as StaticBody3D
 	if skirt != null:
@@ -308,9 +345,7 @@ func _start_passage(near: Vector3, far: Vector3, preferred: Vector3, wall: CSGBo
 	motion.tween_callback(_release)
 
 func camera_frame() -> Array:
-	# The ordinary chase ray starts below the floor during a tunnel and
-	# collapses the camera into the model. Frame the whole short passage
-	# above the walls, keeping the same camera/input owner throughout.
+	# Frame the passage from above the walls; the normal chase ray would start below the floor.
 	var center := (departure + landing) * 0.5
 	center.y = maze._floor_top_y + 0.6
 	return [center, 8.0]
@@ -328,9 +363,7 @@ func _release() -> void:
 func cancel() -> void:
 	if motion != null and motion.is_valid():
 		motion.kill()
-	# Embedded actors belong to World and may outlive this transient owner.
-	# Restore the known clear approach before sealing the floor; unlocking
-	# an actor midway through the tunnel would bury it in the restored slab.
+	# Restore the clear approach before sealing, or the actor would be buried in the slab.
 	if busy and is_instance_valid(actor) and actor.is_inside_tree():
 		actor.global_position = departure
 	_release()

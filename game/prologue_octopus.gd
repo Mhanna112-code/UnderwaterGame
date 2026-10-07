@@ -1,7 +1,5 @@
-# Prologue-only presentation adapter for Glassgoat's composite Cordys FBX.
-#
-# This actor deliberately owns presentation facts only. Campaign progression,
-# final boss balance and rewards remain separate from the opening prologue.
+# Prologue-only presentation adapter for the composite Cordys FBX.
+# Owns presentation only; campaign progression, boss balance and rewards live elsewhere.
 class_name PrologueOctopus
 extends Node3D
 
@@ -50,13 +48,9 @@ func _ready() -> void:
 	height = bounds.size.y
 	radius = maxf(0.8, maxf(bounds.size.x, bounds.size.z) * 0.5)
 
-	# Imported get_aabb() is the unskinned bind pose, not what the player sees.
-	# Normalize from idle, then frame the actual surface envelope of every
-	# used clip. Battle uses fixed views per beat, never per-frame zooming.
+	# get_aabb() is the bind pose; frame the surface envelope of the used clips (fixed views per beat).
 	_presentation_bounds = bounds
-	# Derived offline from this exact skin and the used clips. Scanning every
-	# action during _ready() caused a measured three-second first-reveal hitch.
-	# The projection gate still samples the live skin independently.
+	# Precomputed offline; scanning clips in _ready() caused a 3s hitch.
 	set_framing_clip("")
 	_set_loop("idle")
 	_subdue_swordfish_bill()
@@ -88,11 +82,10 @@ func framing_points() -> Array[Vector3]:
 	return points
 
 func set_framing_clip(key: String) -> void:
-	# Opposite extremes from unrelated attacks made one all-clip camera too
-	# distant. Admit idle/reveal/player-hit plus only this response's motion.
+	# Frame idle/reveal/player-hit plus only this response's motion.
 	_presentation_points.clear()
 	var by_pose := FRAMING.get_meta("pose_points", {}) as Dictionary
-	if by_pose.is_empty(): # Safe bootstrap while regenerating the derivative.
+	if by_pose.is_empty(): # bootstrap while regenerating the derivative
 		for point in FRAMING.get_meta("points") as PackedVector3Array:
 			_presentation_points.append(point)
 		return
@@ -149,14 +142,9 @@ func _set_loop(key: String) -> void:
 	if animation != null:
 		animation.loop_mode = Animation.LOOP_LINEAR
 
-# The Swordfish corpse's very pale bill reads as detached white rods in the
-# delivered attack poses. Preserve the mesh and its embedded texture, but
-# apply a dark underwater tint so the silhouette remains part of the composite
-# instead of becoming a screen-spanning artifact.
+# Dark tint on the Swordfish's pale bill so it doesn't read as detached white rods.
 func _subdue_swordfish_bill() -> void:
-	# The dummy rendering server cannot own material overrides and emits a false
-	# material-RID error. Structural headless tests assert the public tint
-	# contract; real-window and browser captures verify the applied result.
+	# The headless dummy renderer can't own material overrides.
 	if DisplayServer.get_name() == "headless":
 		return
 	for mesh in _meshes(_model):

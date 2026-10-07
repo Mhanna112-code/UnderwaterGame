@@ -1,51 +1,6 @@
-# All spell data and the rules for learning/equipping it, in one place with
-# no state of its own - every function here is static. Nothing needs a
-# .new().
-#
-# One tree PER DIVER (keyed by Diver.model_name), not one shared tree - see
-# SPELL_TREES below. Each diver's tree is shaped to read as their role
-# through which branch is deep vs. shallow, not just through numbers:
-#   Staff_Diver (Maxilani): offense is the deep branch - a fast glass
-#     cannon with nothing to fall back on defensively at all (no defense
-#     branch). support is a single node, upgrading the free "Heal" base
-#     move she starts every game with (see battle.gd's BASE_MOVES) rather
-#     than giving her a real sustain branch to lean on.
-#   Prototype_1(1910) (Musashi): debuff is the deep branch, with four
-#     different status effects to chain - utility, not raw power.
-#   Prototype_V(1922) (Mech Pilot): offense/debuff/support only now - her
-#     old "defense" branch was entirely barrier spells (a shield stat that
-#     no longer exists, see combatant_stats.gd), so it's gone rather than
-#     left with nothing in it. Worth a real design pass, not assumed here:
-#     her whole "tank" identity was that branch; she has no replacement
-#     mechanic yet; its support path grows from world-found key items.
-#
-# Each branch is a small DAG, not a straight line: a spell's
-# "requires_spells" can point at any earlier node in its branch, so one
-# node can unlock several different follow-ups at once. "requires_items"
-# gates specific spells behind key items found in the world or won from
-# guardians.
-#
-# Every spell doubles as a battle.gd move definition - "power"/"acc_mod"
-# work exactly like BASE_MOVES entries there. "effect" picks how the move
-# resolves: "damage" (default, omitted) hits the target normally, "debuff"
-# (paired with a "debuff"/"amount" key) lowers one of the target's stats -
-# see battle.gd's _resolve_move().
-#
-# "oxygen_cost" is what casting the spell actually costs in battle (read by
-# battle.gd's _moves_for()/_resolve_party_move()) - a completely different
-# spend from "cost" above, which only pays for *learning* it once at a save
-# point. Every spell here uses cost*8 so a spell's up-front point price and
-# its per-cast oxygen price stay proportional without needing two numbers
-# hand-tuned per entry - see battle.gd's BASE_MOVES for each diver's one
-# move that's exempt from any oxygen cost at all (their free basic attack).
-#
-# "inventory": true marks a "heal"/"revive" spell as also usable outside
-# battle, from the Escape-key pause menu's "Party Spells" tab - see
-# World._inventory_spells_for()/World.use_party_spell(), which only know
-# how to resolve those two effects (same restriction as battle.gd's
-# BASE_MOVES' own "inventory" tag). A known spell shows up there the moment
-# it's learned. Learning a spell also equips it for battle automatically
-# (see learn()) - there's no loadout cap or manual equip screen.
+# Static spell data and learning rules; one tree per diver (keyed by Diver.model_name).
+# Spells are battle.gd move defs; "requires_spells"/"requires_items" gate nodes, "cost" buys once, "oxygen_cost" (cost*8) is per cast.
+# "inventory": true heal/revive spells are also castable from the pause menu. Learning auto-equips.
 class_name SpellTree
 extends RefCounted
 
@@ -77,24 +32,20 @@ const SPELL_TREES := {
 		"debuff": {
 			"current_snare": {
 				"display": "Current Snare", "cost": 1,
-				"description": "Wraps the target in a dragging current, lowering its agility.",
+				"description": "Wraps the target in a dragging current, lowering its evasion.",
 				"requires_spells": [], "requires_items": [],
-				"debuff": "agility", "amount": 3, "acc_mod": 3, "oxygen_cost": 8.0,
-				"hint": "Lowers agility", "text": "A snare of current wraps the target",
+				"debuff": "evasion", "amount": 1, "acc_mod": 3, "oxygen_cost": 8.0,
+				"hint": "Lowers evasion", "text": "A snare of current wraps the target",
 			},
 		},
-		# A single improvement over her free base "Heal" move (see
-		# battle.gd's BASE_MOVES), not a real support branch to rival
-		# Prototype_V(1922)'s - she still has nothing to fall back on for
-		# actual survivability, just a stronger version of the sustain she
-		# already starts with.
+		# Her only heal: learned with Spell Points (her base kit has none).
 		"support": {
 			"healing_current": {
 				"display": "Healing Current", "cost": 2,
-				"description": "A stronger current than her free heal knows - restores more HP.",
+				"description": "A strong current restores 10 HP.",
 				"requires_spells": [], "requires_items": [],
 				"effect": "heal", "amount": 10, "oxygen_cost": 16.0, "inventory": true,
-				"hint": "Restores more HP than her base heal", "text": "You channel a stronger mending current",
+				"hint": "Restores 10 HP", "text": "You channel a stronger mending current",
 			},
 		},
 	},
@@ -105,14 +56,14 @@ const SPELL_TREES := {
 				"description": "Strikes a nerve, lowering the target's defense.",
 				"requires_spells": [], "requires_items": [],
 				"debuff": "defense", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
-				"hint": "Lowers defense", "text": "You strike a nerve - defense drops",
+				"hint": "Greatly lowers defense", "text": "You strike a nerve - defense drops",
 			},
 			"slow": {
 				"display": "Slow Empowered", "cost": 1,
 				"description": "Hobbles the target, lowering its agility.",
 				"requires_spells": [], "requires_items": [],
 				"debuff": "agility", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
-				"hint": "Lowers agility", "text": "You hobble the target - agility drops",
+				"hint": "Greatly lowers agility", "text": "You hobble the target - agility drops",
 			},
 			"blinding_silt": {
 				"display": "Blinding Silt", "cost": 2,
@@ -126,7 +77,7 @@ const SPELL_TREES := {
 				"description": "A precise strike into every weakness you've already opened up. Rarely misses. Requires an Abyssal Lens.",
 				"requires_spells": ["blinding_silt"], "requires_items": ["abyssal_lens"],
 				"power": 8, "acc_mod": 5, "oxygen_cost": 24.0,
-				"hint": "A precise strike, rarely misses", "text": "You exploit the opening",
+				"hint": "A precise strike", "text": "You exploit the opening",
 			},
 		},
 		"offense": {
@@ -145,9 +96,7 @@ const SPELL_TREES := {
 				"display": "Heavy Slam", "cost": 1,
 				"description": "A very heavy blow - slow and uncertain to land, but hits hard when it does.",
 				"requires_spells": [], "requires_items": [],
-				# Bucky's base ACC is 1 and levels do not increase it. A -3
-				# modifier made this earned spell incapable of hitting EVA 0.
-				# Keep the heavy risk: it requires exhausting the target's EVA.
+				# Base ACC is 1 and never rises, so acc_mod stays 0 (it requires exhausting EVA instead).
 				"power": 14, "acc_mod": 0, "oxygen_cost": 8.0,
 				"hint": "Very heavy, slow to land", "text": "You drive a heavy slam home",
 			},
@@ -158,26 +107,21 @@ const SPELL_TREES := {
 				"description": "Batters through the target's guard, lowering its defense. Requires a Sunken Core.",
 				"requires_spells": [], "requires_items": ["sunken_core"],
 				"debuff": "defense", "amount": 3, "acc_mod": 4, "oxygen_cost": 16.0,
-				"hint": "Cracks the target's defense", "text": "You batter through the target's guard",
+				"hint": "Lowers target's defense by 3", "text": "You batter through the target's guard",
 			},
 		},
-		# Nobody else has this branch - healing/reviving an ally is the
-		# clearest possible expression of "support" a spell can be.
-		# "effect": "heal"/"revive" here are read by battle.gd's
-		# _resolve_move() the same way as "debuff" - always succeeds, no
-		# accuracy check, targets an ally instead of an enemy (see
-		# _on_move_chosen()'s target-pool branch for each).
+		# heal/revive always succeed and target an ally (battle.gd _resolve_move()).
 		"support": {
 			"mending_current": {
 				"display": "Mending Current", "cost": 1,
-				"description": "Wraps an ally in a warm current, restoring some HP.",
+				"description": "Wraps an ally in a warm current, restoring 8 HP.",
 				"requires_spells": [], "requires_items": [],
 				"effect": "heal", "amount": 8, "oxygen_cost": 8.0, "inventory": true,
 				"hint": "Restores an ally's HP", "text": "You wrap an ally in a mending current",
 			},
 			"tidal_revival": {
 				"display": "Tidal Revival", "cost": 3,
-				"description": "Pulls a downed ally back up on a surge of current. Requires a Reef Plate.",
+				"description": "Pulls a downed ally back up on a surge of current.",
 				"requires_spells": ["mending_current"], "requires_items": ["reef_plate"],
 				"effect": "revive", "amount": 12, "oxygen_cost": 28.0, "inventory": true,
 				"hint": "Revives a downed ally", "text": "A surge of current pulls an ally back up",
@@ -189,11 +133,7 @@ const SPELL_TREES := {
 static func tree_for(model_name: String) -> Dictionary:
 	return SPELL_TREES.get(model_name, SPELL_TREES["Staff_Diver"])
 
-# Fixed order rather than tree_for(model_name).keys() - each diver's tree
-# dict is written with a different key order (whichever branch is "theirs"
-# comes first, for readability in the data above), but the UI's three
-# columns need to land in the same left-to-right order for every diver, or
-# switching whose tree you're viewing would shuffle the whole screen.
+# Fixed column order for the UI, independent of each tree's key order.
 const BRANCH_ORDER := ["offense", "debuff", "defense", "support"]
 
 static func branches(model_name: String) -> Array:
@@ -203,8 +143,7 @@ static func branches(model_name: String) -> Array:
 static func spell_def(model_name: String, branch: String, spell_id: String) -> Dictionary:
 	return tree_for(model_name)[branch][spell_id]
 
-# Looks a spell id up without knowing which branch it's in - used by
-# battle.gd (which only has equipped_spells, just ids).
+# Looks a spell up without knowing its branch.
 static func find_def(model_name: String, spell_id: String) -> Dictionary:
 	var tree: Dictionary = tree_for(model_name)
 	for branch in tree:
@@ -212,9 +151,7 @@ static func find_def(model_name: String, spell_id: String) -> Dictionary:
 			return tree[branch][spell_id]
 	return {}
 
-# key_items is passed in rather than read from a global - nothing here
-# should assume where the party's key items are tracked (that's
-# QuestManager's job, not built yet). Callers own that lookup.
+# Callers supply key_items; this file doesn't know where they're tracked.
 static func can_learn(diver: Diver, branch: String, spell_id: String, key_items: Array) -> bool:
 	if diver.known_spells.has(spell_id):
 		return false
@@ -229,31 +166,25 @@ static func can_learn(diver: Diver, branch: String, spell_id: String, key_items:
 			return false
 	return true
 
-# Spends the points and grants the spell - returns false and changes
-# nothing if can_learn() would have failed, so a caller never needs to
-# check both.
+# Spends points and grants the spell; returns false and changes nothing if can_learn() fails.
 static func learn(diver: Diver, branch: String, spell_id: String, key_items: Array) -> bool:
 	if not can_learn(diver, branch, spell_id, key_items):
 		return false
 	var def: Dictionary = spell_def(diver.model_name, branch, spell_id)
 	diver.stats.spell_points -= int(def.cost)
 	diver.known_spells.append(spell_id)
-	# Learned spells go straight into the battle loadout - there's no
-	# manual equip step anymore (see equip_all_known()).
+	# Learned spells are equipped automatically.
 	if not diver.equipped_spells.has(spell_id):
 		diver.equipped_spells.append(spell_id)
 	return true
 
-# Brings an older save's loadout in line with the auto-equip rule: every
-# known spell equipped, in the order it was learned.
+# Migrates older saves: every known spell equipped, in learned order.
 static func equip_all_known(diver: Diver) -> void:
 	for spell_id in diver.known_spells:
 		if not diver.equipped_spells.has(spell_id):
 			diver.equipped_spells.append(spell_id)
 
-# Automatically spends every currently usable point after a battle. Repeat
-# until a full pass makes no progress so a newly learned prerequisite can
-# unlock its dependent spell immediately in the same victory.
+# Spends every usable point, repeating until no progress so new prerequisites unlock dependents.
 static func learn_all_available(diver: Diver, key_items: Array) -> PackedStringArray:
 	var learned := PackedStringArray()
 	var tree := tree_for(diver.model_name)

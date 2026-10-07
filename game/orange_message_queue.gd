@@ -46,8 +46,7 @@ func push(text: String, seconds := 4.0) -> void:
 		if String(message.text) == text:
 			return
 	_pending.append({"text": text, "seconds": seconds})
-	# Marc's bounded newest-four pending policy. Current text gets its full
-	# readable time; duplicate/toggle feedback cannot accumulate a backlog.
+	# Keep only the newest four pending messages so feedback can't build a backlog.
 	while _pending.size() > MAX_PENDING:
 		_pending.pop_front()
 

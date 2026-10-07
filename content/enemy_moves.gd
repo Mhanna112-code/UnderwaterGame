@@ -1,29 +1,12 @@
-# Ordinary-enemy moves are content data. Adding a delivered attack means adding
-# one record here after its clip has passed the Angler import gate; Battle does
-# not need a new branch for that animation. A move stays disabled until its
-# combat role is agreed, so a newly delivered artist clip never alters balance
-# by surprise.
+# Ordinary-enemy moves as content data. New moves stay disabled until their combat role is agreed.
 class_name EnemyMoves
 extends RefCounted
 
-# How long Spinning Slayer's and Tail Spin's Defense Down lasts, counted in the
-# target's own turns (it wears off at the end of its last one).
+# Defense Down duration for Spinning Slayer / Tail Spin, in the target's own turns.
 const DEFENSE_DOWN_TURNS := 3
 
-# `clip` is a case-insensitive fragment of the FBX animation take. Glassgoat's
-# final Angler table names exactly Bite, Headbutt and Shine (Flash Blast); the
-# legacy Ramming Bite is not an authored attack and is intentionally absent.
-# The three delivered attacks use the same wielder-stat "formula"/"effects"
-# shape as content/combat_moves.gd's V2 player kit (see CombatRules.resolve),
-# so Bite's stacking Bleed and Flash Blast's timed Evasion drop resolve from
-# the enemy's own stats. Headbutt keeps Strength-based damage, while its stun
-# is a deliberately fixed two-turn balance rule (see the source map).
-#
-# The relative selection weights predate this reconciliation and are a balance
-# policy, not a fourth attack. The route simulator remains the guardrail after
-# the authored persistent Bleed is restored; it exercises two guardian sites
-# and random encounters rather than claiming a single isolated fight proves
-# the campaign is fair.
+# `clip` is a case-insensitive fragment of the FBX take name. Moves use the same formula/effects
+# shape as combat_moves.gd (see CombatRules.resolve); selection weights are balance policy.
 const ANGLER := [
 	{
 		"id": "bite", "name": "Bite", "clip": "attack)bite",
@@ -37,12 +20,7 @@ const ANGLER := [
 		},
 	},
 	{
-		# The source table described stun "by Strength," but the party-scaled
-		# starting Angler reliably produced a three-whole-turn lockout. The
-		# focused 2,400-route A/B showed fixed two turns improves both casual
-		# and skilled completion without changing Headbutt's Strength damage.
-		# A stunned actor loses whole turns; CombatantStats.consume_status_turn()
-		# owns the countdown.
+		# Fixed two-turn stun (not Strength-scaled) for balance; consume_status_turn() owns the countdown.
 		"id": "headbutt", "name": "Headbutt", "clip": "attack)headbutt",
 		"enabled": true, "target": "single", "roll_order": 2, "weight": 8.0,
 		"finisher_weight": 0.0, "verb": "headbutts",
@@ -54,9 +32,7 @@ const ANGLER := [
 		},
 	},
 	{
-		# No finisher_weight above zero: a party-wide Evasion debuff isn't a
-		# closing blow, so it stays out of the low-HP finisher roll entirely
-		# (see Goblin.choose_move()'s finisher_below_hp scan).
+		# No finisher_weight: a party-wide debuff isn't a closing blow.
 		"id": "flash_blast", "name": "Flash Blast", "clip": "attack)shine",
 		"enabled": true, "target": "all", "roll_order": 3, "weight": 15.0,
 		"finisher_weight": 0.0, "verb": "flashes at",
@@ -72,16 +48,8 @@ const ANGLER := [
 static func angler_catalogue() -> Array:
 	return ANGLER.duplicate(true)
 
-# Glassgoat's Swordfish kit is formula-driven like the V2 diver moves. The
-# artist specified the mechanics and supplied one clip per attack, but not AI
-# selection odds. The provisional initial odds make Arc Slash's two-target
-# persistent Bleed a rare pressure move, Triple Combo an occasional Evasion
-# counter, and Spinning Slayer the readable default. "two" means the weighted-picked
-# primary target plus one other living diver (Battle.enemy_targets_for_scope),
-# which makes Arc Slash's stated Target: 2 deterministic and never duplicates
-# a target. Triple Combo intentionally has no legacy heavy/QTE fields: its
-# authored counterplay is three sequential normal hits, each of which spends
-# the defender's current Evasion pool before the next begins.
+# Swordfish kit; odds are provisional. "two" = weighted primary target plus one other living diver.
+# Triple Combo is three sequential normal hits, each spending the defender's Evasion pool.
 const SWORDFISH_DUELIST := [
 	{
 		"id": "arc_slash", "name": "Arc Slash", "clip": "attack)greatslash",
@@ -108,8 +76,7 @@ const SWORDFISH_DUELIST := [
 		"finisher_weight": 0.67, "verb": "drills into",
 		"combat": {
 			"formula": {"strength": 1, "defense": 1}, "acc_mod": 1,
-			# Temporary: a timed status, not a cut to the diver's saved base
-			# Defense (reduce_defense) - that used to persist after the fight.
+			# Timed status, not a permanent Defense cut.
 			"effects": [
 				{"kind": "status", "status": "defense_down", "level": {"defense": 1}, "duration": DEFENSE_DOWN_TURNS},
 			],
@@ -120,17 +87,8 @@ const SWORDFISH_DUELIST := [
 static func swordfish_duelist_catalogue() -> Array:
 	return SWORDFISH_DUELIST.duplicate(true)
 
-# The third ordinary enemy. Bite deals Strength plus the Frilled Shark's own
-# Defense ("Armor") - CombatRules.formula_value() already sums any named stat
-# coefficient, so "Strength + Armor" needs no new engine support, just the
-# {"strength": 1, "defense": 1} formula below. Tail Spin deals plain Strength
-# damage and then (see CombatRules.resolve()'s effects loop running after
-# damage, not before) strips the target's own Defense by the Frilled Shark's
-# Defense - same "amount is the wielder's own stat" convention as Flash
-# Blast's Evasion drop and Headbutt's Stun duration, both by the attacker's
-# own Accuracy/Strength rather than anything belonging to the target.
-# Weight/finisher_weight are placeholder selection odds, same disclaimer as
-# Headbutt/Flash Blast's own comments in the Angler catalogue above.
+# Frilled Shark. Bite = Strength + Defense; Tail Spin then strips target Defense by the shark's Defense.
+# Weights are placeholder odds.
 const FRILLED_SHARK := [
 	{
 		"id": "bite", "name": "Bite", "clip": "attack)bite",
@@ -144,8 +102,7 @@ const FRILLED_SHARK := [
 		"finisher_weight": 40.0, "verb": "spins its tail into",
 		"combat": {
 			"formula": {"strength": 1}, "acc_mod": 1,
-			# Temporary: a timed status, not a cut to the diver's saved base
-			# Defense (reduce_defense) - that used to persist after the fight.
+			# Timed status, not a permanent Defense cut.
 			"effects": [
 				{"kind": "status", "status": "defense_down", "level": {"defense": 1}, "duration": DEFENSE_DOWN_TURNS},
 			],
@@ -156,20 +113,8 @@ const FRILLED_SHARK := [
 static func frilled_shark_catalogue() -> Array:
 	return FRILLED_SHARK.duplicate(true)
 
-# Bomb Bot is the first authored laboratory-access blocker. Glassgoat supplied
-# the three animation takes but no numerical move sheet, so this is deliberately
-# a small, testable first-pass kit rather than invented final balance:
-#
-# - Lightning Blast is the readable party-pressure move.
-# - Sling Punch rewards its armoured body with one focused heavy hit.
-# - Sonic Bump is the control move, trading lower damage for a short Blindness
-#   debuff which immediately lowers Accuracy, Agility and Defense.
-#
-# The FBX itself misspells Lightning as `LightingBlast`; keep the typo only in
-# the importer-facing `clip` field while the player-facing move remains correct.
-# Weighting favours the single-target moves so the all-party blast is pressure,
-# not the dominant answer every round. The route balance and human playtest
-# gates own the final numbers.
+# Bomb Bot: first-pass kit (no numeric sheet supplied). Single-target moves are weighted higher.
+# The FBX misspells `LightingBlast`; keep the typo only in `clip`.
 const BOMB_BOT := [
 	{
 		"id": "lightning_blast", "name": "Lightning Blast", "clip": "lightingblast",

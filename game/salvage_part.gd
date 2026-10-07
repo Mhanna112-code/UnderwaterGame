@@ -1,15 +1,5 @@
-# The thing you came down here for.
-#
-# Marc's ruling: you take what the creature is guarding, and it is a component
-# for the rig on the surface. That makes this object the reason the game
-# exists, so it cannot be a gold box. It is built here rather than modelled
-# because no art delivery contains one, and a placeholder that reads as a
-# placeholder is what made the enemies feel like they had no meaning.
-#
-# A pressure regulator: brass housing, a valve wheel you could actually turn,
-# bolted flanges, and a lit gauge. The gauge is the point of the whole design.
-# It is the only warm light on a cold seabed, so it pulls the eye from far
-# enough away that the player swims to it without being told to.
+# The salvage component the party came down for: a procedurally built pressure regulator.
+# Its warm lit gauge is the only warm light on the seabed, drawing the player toward it.
 class_name SalvagePart
 extends Node3D
 
@@ -23,9 +13,7 @@ var _spin := 0.0
 var wheel: Node3D
 
 func _ready() -> void:
-	# Brass everywhere read as one moulded lump. The housing is iron and the
-	# fittings are brass, which is both how the thing would be built and the
-	# only reason its shapes separate at a distance.
+	# Iron housing with brass fittings so the shapes separate at a distance.
 	var body := _mat(BRASS, 0.9, 0.28)
 	var iron := _mat(IRON, 0.75, 0.62)
 	var dark := _mat(DARK, 0.6, 0.7)
@@ -67,9 +55,7 @@ func _ready() -> void:
 		spoke.rotation = Vector3(0, -a2, PI * 0.5)
 	_cyl(Vector3(0, -0.06, 0), 0.05, 0.14, dark, Vector3.ZERO, wheel)
 
-	# the gauge: the one warm thing on the seabed
-	# the gauge, dimmer than the first pass: at 2.4 energy it blew to flat
-	# white and swallowed its own needle, which is the one detail on it
+	# The gauge; kept dim enough that the needle stays visible.
 	var face := _cyl(Vector3(0, 0.06, 0.30), 0.13, 0.06, _emissive(GAUGE, 0.9), Vector3(PI * 0.5, 0, 0))
 	face.name = "Gauge"
 	_torus(Vector3(0, 0.06, 0.31), 0.125, 0.175, body, Vector3(PI * 0.5, 0, 0))

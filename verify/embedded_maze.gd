@@ -107,10 +107,19 @@ func _run() -> void:
 		"EMBED-2 maze encounter preference diverges from the World save owner")
 	_expect(world._serialize_state().random_encounters_enabled,
 		"EMBED-2 saving in maze loses the last R choice")
+	# Maze movement rolls ordinary random fights (R on): the maze owns them,
+	# never the inactive World.
 	actors[1].encounter_triggered.emit()
 	await process_frame
-	_expect(not world.battling and not maze._battling,
-		"EMBED-2 inactive World starts a random battle from maze movement")
+	_expect(not world.battling and maze._battling and maze._battle_kind == "random",
+		"EMBED-2 maze random fight missing or started by the inactive World")
+	if maze._battling and maze._battle != null:
+		maze._battle.finished.emit("fled")
+		for frame in range(4):
+			await process_frame
+	# Random fights now roll anywhere in the maze; keep the movement checks below deterministic.
+	world.random_encounters_enabled = false
+	maze.random_encounters_enabled = false
 	# Switch to a World-parked member via real Tab, then leave Maxilani's
 	# Sonar active in the inactive maze. Its resource timer must not run there.
 	actors[2].global_position = Vector3(220, 1.8, 16)

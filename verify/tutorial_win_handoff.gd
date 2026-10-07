@@ -66,6 +66,7 @@ func _run() -> void:
 	fight._tutorial_step = fight._TUTORIAL_SCRIPT.size()
 	fight._tutorial_enemy_turns = 1
 	fight._tutorial_finale_shown = true
+	fight._set_tutorial_guard(false)   # the real finale clears the no-knockout guard
 	var enemy := fight.enemies[0].stats as CombatantStats
 	enemy.hp = 1
 	enemy.defense = 0

@@ -1,29 +1,6 @@
-# The Escape-key pause menu - four tabs. "Items" (potions and anything else
-# Items.ITEMS defines as a consumable) applies straight to whoever you're
-# currently steering, same as before. "Party Spells" is any known move/
-# spell tagged "inventory": true (see battle.gd's BASE_MOVES/spell_tree.gd's
-# own header comments) - Maxilani's free base Heal, plus any learned "heal"/
-# "revive" spell, castable by ANY party member on ANY party member, not
-# just whoever's currently active. Items don't apply themselves the instant
-# they're picked up anymore - an orb/guardian reward just adds to
-# World.inventory now (see world.gd's _on_item_orb_collected()/
-# _grant_reward_item()), and World.use_inventory_item()/use_party_spell()
-# (called from here) are the only places those effects actually resolve.
-# "Combat Help" is mostly pure reference - a Stats glossary (content/
-# tutorial_content.gd's STAT_GLOSSARY), an Effects section (TutorialContent.
-# EFFECT_KIND_EXPLANATIONS - "Self Cost"/"Evasion Reduction", the parts of a
-# move that aren't a CombatantStats status), and status condition writeups
-# (STATUS_CONDITIONS) for whoever wants the full Blindness/Stun/Flash-Blast-
-# self-cost numbers again outside of a fight. Three real action buttons sit
-# above all of that: replaying the scripted first fight, replaying the
-# special-encounter tutorial, and reopening the paged walkthrough
-# (World.tutorial_book, TutorialContent.GENERAL_PAGES), previously only
-# reachable via the F1 keybind.
-#
-# Same build-once-in-_ready()/rebuild-on-refresh shape as SpellTreeUI/
-# SavePointMenu - nothing here is scene-file based, on purpose,
-# matching the rest of this project. "Audio" is the player-facing surface for
-# the global Music/SFX bus levels and mute state owned by GameAudio.
+# Escape-key pause menu: Items, Party Spells, Combat Help (reference + tutorial replays), Audio.
+# Item and party-spell effects resolve only via World.use_inventory_item()/use_party_spell().
+# Built in code in _ready() and rebuilt on refresh, like SpellTreeUI/SavePointMenu.
 class_name InventoryMenu
 extends Control
 
@@ -32,12 +9,7 @@ extends Control
 var world: Node
 var audio_manager: Node
 
-# "items" | "spells_root" | "spells_target" - spells_root lists every
-# living diver's inventory-tagged spells (one button per caster+spell
-# pair); spells_target only shows once a spell's been picked, listing who
-# it can land on (see _valid_targets_for()). Back from spells_target
-# returns to spells_root, not to the Items tab - same "back one step, not
-# all the way out" shape battle.gd's own move/target menus already use.
+# "items" | "spells_root" | "spells_target"; Back from spells_target returns to spells_root.
 var _mode := "items"
 var _pending_spell: Dictionary = {}
 var _pending_caster: Diver = null
@@ -48,6 +20,8 @@ var _items_tab: Button
 var _spells_tab: Button
 var _help_tab: Button
 var _audio_tab: Button
+var _title_tab: Button
+var _confirm_title: Control
 var _content: VBoxContainer
 var _scroll: ScrollContainer
 var _shade: TextureRect
@@ -55,10 +29,7 @@ var _header_rule: ColorRect
 
 func _ready() -> void:
 	visible = false
-	# Runtime Controls begin with zero-sized offsets. Reset anchors and offsets
-	# together so the menu actually owns the viewport under a CanvasLayer at
-	# every browser size; anchor-only sizing can leave a zero-width hit/backdrop
-	# rectangle even though descendants happen to draw outside it.
+	# Reset anchors and offsets together; anchor-only sizing can leave a zero-size hit/backdrop rect.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -89,10 +60,7 @@ func _ready() -> void:
 	_content = root
 	root.name = "MenuContent"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# MODIFIED (changed): offset_top was 50 - the world HUD's own diver-name/
-	# Match the HUD label's 12px left inset and sit shortly below its two
-	# lines, leaving enough room for the controls hint without a large gap.
-	# SavePointMenu uses the same offsets so both menu surfaces line up.
+	# Match the HUD label's 12px inset; SavePointMenu uses the same offsets.
 	root.offset_left = 12.0
 	root.offset_top = 75.0
 	root.offset_right = -12.0
@@ -145,7 +113,13 @@ func _ready() -> void:
 	_audio_tab.toggle_mode = true
 	_audio_tab.pressed.connect(_switch_to.bind("audio"))
 	tabs.add_child(_audio_tab)
-	for tab in [_items_tab, _spells_tab, _help_tab, _audio_tab]:
+	_title_tab = Button.new()
+	_title_tab.name = "TitleTab"
+	_title_tab.text = "Main Menu"
+	_title_tab.toggle_mode = true
+	_title_tab.pressed.connect(_switch_to.bind("title"))
+	tabs.add_child(_title_tab)
+	for tab in [_items_tab, _spells_tab, _help_tab, _audio_tab, _title_tab]:
 		_style_tab(tab)
 
 	_hint = Label.new()
@@ -154,27 +128,12 @@ func _ready() -> void:
 	_hint.add_theme_color_override("font_color", Color(0.72, 0.82, 0.88))
 	root.add_child(_hint)
 
-	# ScrollContainer, not _list added straight to root - Combat Help's own
-	# content (Stats + Effects + Status Conditions + the Replay Tutorial
-	# Fight button) is tall enough to run past the bottom of the screen with
-	# nothing to scroll it into view, unlike Items/Party Spells which rarely
-	# have enough entries to hit this. size_flags_vertical on the scroll
-	# view (not _list itself) is what gives it a bounded height to actually
-	# scroll within, rather than just growing to fit its content like any
-	# other container would.
+	# Scrolls so the tall Combat Help content stays reachable.
 	var scroll := ScrollContainer.new()
 	_scroll = scroll
 	scroll.name = "ContentScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# A floor, not the actual size - size_flags_vertical above still lets it
-	# grow to fill whatever's left in `root` at any given resolution. This
-	# just guarantees a real reading window even if that "remaining space"
-	# calculation ever comes out smaller than expected, rather than the
-	# scroll view quietly shrinking to a sliver just because Items/Party
-	# Spells (the other two tabs sharing this same _list/scroll) rarely have
-	# enough entries to make the difference visible there.
-	# Keep a useful reading window without forcing the VBox below the viewport
-	# at 720px or narrow/mobile heights. EXPAND_FILL owns the remaining space.
+	# Minimum reading height; EXPAND_FILL owns the remaining space.
 	scroll.custom_minimum_size = Vector2(0, 240)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
@@ -223,16 +182,45 @@ func _style_tab(tab: Button) -> void:
 	tab.add_theme_color_override("font_pressed_color", Color(0.02, 0.07, 0.1))
 	tab.add_theme_color_override("font_hover_pressed_color", Color(0.02, 0.07, 0.1))
 
+# Opening this pauses the SceneTree; this menu keeps processing and handles Esc to close.
+var _paused_tree := false
+var _was_tree_paused := false
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	var key := event as InputEventKey
+	if key != null and key.pressed and not key.echo and key.keycode == KEY_ESCAPE and _paused_tree:
+		get_viewport().set_input_as_handled()
+		if is_instance_valid(_confirm_title):
+			_cancel_return_to_title()   # Esc backs out of the Yes/No first
+		else:
+			close()
+
 func open() -> void:
-	# World creates its HP/O2 bars after this menu. Paint the modal over those
-	# siblings as well, not just over the 3D world; otherwise bars cover Help
-	# text and Audio controls even when all rectangles pass layout checks.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	if not _paused_tree and is_inside_tree():
+		_was_tree_paused = get_tree().paused
+		get_tree().paused = true
+		_paused_tree = true
+	# Draw over World's HP/O2 bars, which are created after this menu.
 	move_to_front()
 	visible = true
+	_refresh_world_overlays()
 	_switch_to("items")
 
 func close() -> void:
+	_cancel_return_to_title()
 	visible = false
+	if _paused_tree and is_inside_tree():
+		get_tree().paused = _was_tree_paused
+	_paused_tree = false
+	_refresh_world_overlays()
+
+# World normally updates these every frame; it's paused while this is open.
+func _refresh_world_overlays() -> void:
+	if world != null and is_instance_valid(world) and world.has_method("_update_maze_route_guide"):
+		world.call("_update_maze_route_guide")
 
 func _switch_to(mode: String) -> void:
 	_mode = mode
@@ -243,6 +231,7 @@ func _switch_to(mode: String) -> void:
 	_spells_tab.button_pressed = mode in ["spells_root", "spells_target"]
 	_help_tab.button_pressed = mode == "help"
 	_audio_tab.button_pressed = mode == "audio"
+	_title_tab.button_pressed = mode == "title"
 	refresh()
 
 func refresh() -> void:
@@ -259,6 +248,8 @@ func refresh() -> void:
 			_refresh_help()
 		"audio":
 			_refresh_audio()
+		"title":
+			_refresh_title()
 
 func _refresh_audio() -> void:
 	_hint.text = "Set music and sound effect levels. Changes are saved automatically."
@@ -358,7 +349,7 @@ func _audio_owner() -> Node:
 	return get_node_or_null("/root/GameAudio")
 
 func _refresh_items() -> void:
-	_hint.text = "Using an item applies it to whoever you're currently steering."
+	_hint.text = "Use any available items on any party members."
 	if world == null or world.inventory.is_empty():
 		var empty := Label.new()
 		empty.text = "No items yet"
@@ -375,27 +366,13 @@ func _refresh_items() -> void:
 		var def: Dictionary = Items.ITEMS.get(item_id, {})
 		# Same word-wrapped blue-bordered tooltip panel as the battle menu.
 		var btn := TooltipButton.new()
-		# MODIFIED (changed): was "Use %s (x%d)" as the button's own text -
-		# the count now lives in its own tile at the button's right edge
-		# instead (see the plate/badge built below, same "opaque plate
-		# behind a number" convention battle.gd's _add_power_badge() uses
-		# for a move's power badge), so the button's text is just the
-		# item's name, left-aligned so it doesn't visually crowd the tile.
 		btn.text = String(def.get("display", item_id))
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.tooltip_text = String(def.get("description", ""))
 		if bool(def.get("battle_only", false)):
 			btn.tooltip_text = "This item can only be used in battle. " + btn.tooltip_text
 		btn.custom_minimum_size = Vector2(0, 40)
-		# MODIFIED (fixed): the count tile is correctly anchored inside this
-		# button's own rect (8px in from its true right edge), but Godot's
-		# default Button theme has no visible background in its normal
-		# (non-hover) state - against this menu's own dark panel background,
-		# that made the button read as invisible, so the tile looked like it
-		# was floating disconnected in empty space past "Potion" rather than
-		# sitting inside the same row. A real background/border ties them
-		# together as one visible row, same dark-bordered-panel look used
-		# elsewhere in this game (e.g. battle.gd's swap demo frame).
+		# Visible background so the count tile reads as part of the same row.
 		var btn_style := StyleBoxFlat.new()
 		btn_style.bg_color = Color(0.03, 0.09, 0.12)
 		btn_style.border_color = Color(0.18, 0.34, 0.4)
@@ -404,23 +381,13 @@ func _refresh_items() -> void:
 		btn_style.set_content_margin_all(8)
 		btn.add_theme_stylebox_override("normal", btn_style)
 		btn.add_theme_stylebox_override("disabled", btn_style)
-		# Disabled rather than hidden when it wouldn't help the currently
-		# steered diver right now (full HP for a potion, full oxygen for a
-		# cell, etc.) - same "show what you can't use yet" convention
-		# spell_tree_ui.gd/the Party Spells tab already use, so the item
-		# doesn't just vanish from the list, and world.use_inventory_item()
-		# refuses the same way if this were ever somehow clicked anyway.
+		# Disabled rather than hidden when it wouldn't help the steered diver.
 		if not world.divers.is_empty():
-			# Battle-only boosts (and anything that does nothing right now) are
-			# greyed out here - this menu only ever opens outside battle.
+			# Battle-only items are greyed out; this menu only opens outside battle.
 			btn.disabled = bool(def.get("battle_only", false)) \
 				or not Items.would_help(item_id, (world.divers[world.active] as Diver).stats)
 		btn.pressed.connect(_on_use_item_pressed.bind(item_id))
-		# A black tile pinned to the button's own right edge, vertically
-		# centered - same "opaque plate behind a number" idea as battle.gd's
-		# _add_power_badge() (a move's power badge), just centered on this
-		# button's right edge instead of its top-right corner, since this
-		# button is a wide horizontal bar rather than a small square tile.
+		# Count tile pinned to the button's right edge, vertically centered.
 		var count_tile := PanelContainer.new()
 		count_tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var tile_style := StyleBoxFlat.new()
@@ -452,28 +419,155 @@ func _on_use_item_pressed(item_id: String) -> void:
 	world.use_inventory_item(item_id)
 	refresh()
 
-# _start_battle() (called via _replay_tutorial_battle()) closes this menu
-# itself, same as starting any other fight - nothing extra needed here.
+# _start_battle() closes this menu itself.
 func _on_replay_tutorial_pressed() -> void:
-	if world != null:
-		world._replay_tutorial_battle()
+	var w := _help_world()
+	if w != null:
+		close()
+		w.call("_replay_tutorial_battle")
 
-# Replay the first special-encounter lesson from Combat Help without needing
-# to discover a sonar site first. This is the Maxilani practice encounter;
-# its tutorial path never grants the guarded item.
+# Replays the Maxilani special-encounter lesson; never grants the guarded item.
 func _on_character_abilities_pressed() -> void:
 	close()
-	world._show_ability_popups()
+	var w := _help_world()
+	if w != null:
+		w.call("_show_ability_popups")
+
+func _on_saving_help_pressed() -> void:
+	close()
+	var pages: Array[Dictionary] = [TutorialContent.saving_page()]
+	(get_node("/root/CharacterAbilityPopup") as Node).call("open", pages)
+
+# --- Main Menu tab: back to the title screen, after a Yes/No confirmation ---
+func _refresh_title() -> void:
+	_hint.text = "Leave this game and go back to the title screen. Game will autosave first."
+	var btn := Button.new()
+	btn.name = "ReturnToTitle"
+	btn.text = "Return To Title Screen"
+	btn.custom_minimum_size = Vector2(0, 44)
+	btn.pressed.connect(_ask_return_to_title)
+	_list.add_child(btn)
+
+func _ask_return_to_title() -> void:
+	if is_instance_valid(_confirm_title):
+		return
+	var shade := ColorRect.new()
+	shade.name = "ReturnToTitleConfirm"
+	shade.color = Color(0, 0, 0, 0.6)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(shade)
+	_confirm_title = shade
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_child(center)
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.02, 0.07, 0.1)
+	style.border_color = Color(0.3, 0.6, 0.75)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(20)
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 16)
+	panel.add_child(col)
+	var question := Label.new()
+	question.name = "Question"
+	question.text = "Are you sure you would like to return to title screen? Game will autosave first."
+	question.add_theme_font_size_override("font_size", 18)
+	question.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	col.add_child(question)
+	# Shown in place of the buttons while the autosave runs.
+	var status := Label.new()
+	status.name = "SaveStatus"
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status.add_theme_font_size_override("font_size", 18)
+	status.add_theme_color_override("font_color", Color(0.45, 0.85, 1.0))
+	status.visible = false
+	col.add_child(status)
+	var row := HBoxContainer.new()
+	row.name = "Buttons"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	col.add_child(row)
+	var yes := Button.new()
+	yes.name = "Yes"
+	yes.text = "Yes"
+	yes.custom_minimum_size = Vector2(110, 40)
+	yes.pressed.connect(_confirm_return_to_title)
+	row.add_child(yes)
+	var no := Button.new()
+	no.name = "No"
+	no.text = "No"
+	no.custom_minimum_size = Vector2(110, 40)
+	no.pressed.connect(_cancel_return_to_title)
+	row.add_child(no)
+	no.grab_focus()
+
+func _cancel_return_to_title() -> void:
+	if _title_saving:
+		return   # can't back out mid-save
+	if is_instance_valid(_confirm_title):
+		_confirm_title.queue_free()
+	_confirm_title = null
+
+var _title_saving := false
+const TITLE_SAVE_MIN_SECONDS := 0.8   # keep "Autosaving..." readable even when the write is instant
+
+# Yes: autosave first (indicator in the modal), then go to the title. If the save
+# fails, ask before leaving anyway (skip_save = that second Yes).
+func _confirm_return_to_title(skip_save := false) -> void:
+	if _title_saving or not is_instance_valid(_confirm_title):
+		return
+	if not skip_save and world != null and world.has_method("autosave_now"):
+		var row := _confirm_title.find_child("Buttons", true, false) as Control
+		var status := _confirm_title.find_child("SaveStatus", true, false) as Label
+		var question := _confirm_title.find_child("Question", true, false) as Label
+		_title_saving = true
+		row.visible = false
+		status.text = "Autosaving..."
+		status.visible = true
+		var pulse := status.create_tween().set_loops()
+		pulse.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)   # the tree is paused under this menu
+		pulse.tween_property(status, "modulate:a", 0.35, 0.4)
+		pulse.tween_property(status, "modulate:a", 1.0, 0.4)
+		var started := Time.get_ticks_msec()
+		var error: Error = await world.call("autosave_now")
+		var remaining := TITLE_SAVE_MIN_SECONDS - (Time.get_ticks_msec() - started) / 1000.0
+		if remaining > 0.0:
+			await get_tree().create_timer(remaining).timeout
+		pulse.kill()
+		status.modulate.a = 1.0
+		_title_saving = false
+		if error != OK and error != ERR_UNCONFIGURED:
+			status.text = "Autosave failed."
+			question.text = "Autosave failed. Return to title screen anyway?"
+			var yes := row.find_child("Yes", false, false) as Button
+			for connection in yes.pressed.get_connections():
+				yes.pressed.disconnect(connection.callable)
+			yes.pressed.connect(_confirm_return_to_title.bind(true))
+			row.visible = true
+			return
+		if error == OK:
+			status.text = "Saved."
+	_cancel_return_to_title()
+	close()
+	get_tree().paused = false
+	if world != null and world.has_method("return_to_title"):
+		world.call("return_to_title")
+	else:
+		# Standalone maze scene: the title screen lives in the World scene.
+		get_tree().change_scene_to_file("res://game/world.tscn")
 
 func _on_replay_special_encounter_tutorial_pressed() -> void:
-	if world != null:
-		world._replay_special_encounter_tutorial("attack_up", "angler")
+	var w := _help_world()
+	if w != null:
+		close()
+		w.call("_replay_special_encounter_tutorial", "attack_up", "angler")
 
-# One button per living diver x their inventory-tagged spells (see
-# World._inventory_spells_for()) - disabled rather than hidden when that
-# diver can't currently afford it, same "show what you can't afford yet"
-# convention spell_tree_ui.gd already uses, so a low-oxygen diver's spells
-# don't just silently vanish from the list.
+# One button per living diver x inventory spell; disabled when unaffordable.
 func _refresh_spells_root() -> void:
 	_hint.text = "Party members' known spells"
 	if world == null:
@@ -532,9 +626,7 @@ func _on_spell_chosen(spell: Dictionary, caster: Diver) -> void:
 	_mode = "spells_target"
 	refresh()
 
-# "heal" lands on anyone still standing (self included); "revive" only on
-# whoever's actually down - same target-pool split battle.gd's
-# _on_move_chosen() already draws between the two effects.
+# "heal" targets the living; "revive" only the downed.
 func _valid_targets_for(spell: Dictionary) -> Array:
 	if world == null:
 		return []
@@ -568,30 +660,44 @@ func _on_target_chosen(target: Diver) -> void:
 	_mode = "spells_root"
 	refresh()
 
-# Plain reference text, no buttons - one section heading plus a title/body
-# Label pair per entry, so a new stat/effect/status only ever needs adding
-# to its own TutorialContent table, not here too.
+# Reference text only; entries come from TutorialContent tables.
+# Combat Help's lessons live on World. In the maze this menu's `world` is the
+# MazeLevel, so use the World it's embedded in.
+func _help_world() -> Node:
+	if world is World:
+		return world
+	if world != null and world.get("world") is World:
+		return world.get("world")
+	return null
+
 func _refresh_help() -> void:
 	_hint.text = "Stats, effects, and status conditions"
-	if world != null and world.has_method("_replay_tutorial_battle"):
+	var w := _help_world()
+	if w != null:
 		var replay_btn := Button.new()
 		replay_btn.text = "Replay Tutorial Fight"
 		replay_btn.custom_minimum_size = Vector2(0, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
-	if world != null and world.has_method("_show_ability_popups") and bool(world.get("ability_popups_seen")):
-		var abilities_btn := Button.new()
-		abilities_btn.text = "Character Abilities"
-		abilities_btn.custom_minimum_size = Vector2(0, 40)
-		abilities_btn.pressed.connect(_on_character_abilities_pressed)
-		_list.add_child(abilities_btn)
-	# Only once the party has left a special encounter in any way.
-	if world != null and world.has_method("_replay_special_encounter_tutorial") and bool(world.get("special_encounter_left")):
-		var replay_special_btn := Button.new()
-		replay_special_btn.text = "Replay Special Encounter Tutorial"
-		replay_special_btn.custom_minimum_size = Vector2(0, 40)
-		replay_special_btn.pressed.connect(_on_replay_special_encounter_tutorial_pressed)
-		_list.add_child(replay_special_btn)
+		if bool(w.get("ability_popups_seen")):
+			var abilities_btn := Button.new()
+			abilities_btn.text = "Character Abilities"
+			abilities_btn.custom_minimum_size = Vector2(0, 40)
+			abilities_btn.pressed.connect(_on_character_abilities_pressed)
+			_list.add_child(abilities_btn)
+		if bool(w.get("special_encounter_left")):
+			var replay_special_btn := Button.new()
+			replay_special_btn.text = "Replay Special Encounter Tutorial"
+			replay_special_btn.custom_minimum_size = Vector2(0, 40)
+			replay_special_btn.pressed.connect(_on_replay_special_encounter_tutorial_pressed)
+			_list.add_child(replay_special_btn)
+		# The Saving lesson, once it has been shown at a save point.
+		if bool(w.get("_save_point_tutorial_seen")):
+			var saving_btn := Button.new()
+			saving_btn.text = "Saving"
+			saving_btn.custom_minimum_size = Vector2(0, 40)
+			saving_btn.pressed.connect(_on_saving_help_pressed)
+			_list.add_child(saving_btn)
 	_add_help_section("Stats", TutorialContent.STAT_GLOSSARY)
 	var effect_entries: Array[Dictionary] = []
 	for kind in TutorialContent.EFFECT_KIND_EXPLANATIONS:
@@ -600,6 +706,10 @@ func _refresh_help() -> void:
 	_add_help_section("Status Conditions", TutorialContent.STATUS_CONDITIONS)
 
 func _add_help_section(heading: String, entries: Array[Dictionary]) -> void:
+	# Gap above each section so Stats / Effects / Status Conditions read apart.
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 22)
+	_list.add_child(gap)
 	var heading_label := Label.new()
 	heading_label.text = heading
 	heading_label.add_theme_font_size_override("font_size", 15)

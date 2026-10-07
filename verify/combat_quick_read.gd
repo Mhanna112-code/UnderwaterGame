@@ -38,10 +38,10 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 	var stabbing := _move_button(battle, "Scuba Stabbing")
 	_expect(stabbing != null, "QUICK READ MISSING: Scuba Stabbing is absent from the active move menu")
 	if stabbing != null:
-		_expect("Strength Damage" in stabbing.text and "2 Bleed" in stabbing.text,
-			"QUICK READ WRONG: expected semantic Strength Damage / resolved 2 Bleed, observed '%s'" % stabbing.text)
-		_expect("STR" not in stabbing.text,
-			"FORMULA-FIRST REGRESSION: default move choice exposes stat algebra '%s'" % stabbing.text)
+		_expect("Damage" in stabbing.tooltip_text and "Bleed 2" in stabbing.tooltip_text,
+			"QUICK READ WRONG: expected semantic Strength Damage / resolved 2 Bleed, observed '%s'" % stabbing.tooltip_text)
+		_expect("STR" not in stabbing.tooltip_text,
+			"FORMULA-FIRST REGRESSION: default move choice exposes stat algebra '%s'" % stabbing.tooltip_text)
 		_expect("Damage" in stabbing.tooltip_text and "Bleed" in stabbing.tooltip_text,
 			"MOVE CONTEXT MISSING: result-first choice has no on-demand Damage/Bleed explanation")
 		var tooltip_view := (stabbing as TooltipButton)._build_panel(stabbing.tooltip_text) as PanelContainer
@@ -76,8 +76,8 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 	battle._populate_move_menu(battle._acting)
 	stabbing = _move_button(battle, "Scuba Stabbing")
 	if stabbing != null:
-		_expect("Strength Damage" in stabbing.text and "5 Bleed" in stabbing.text,
-			"HARDCODED QUICK READ: 4 STR still renders '%s'" % stabbing.text)
+		_expect("Damage" in stabbing.tooltip_text and "Bleed 5" in stabbing.tooltip_text,
+			"HARDCODED QUICK READ: 4 STR still renders '%s'" % stabbing.tooltip_text)
 		_expect("rest of the fight" in stabbing.tooltip_text and "fades after 3 turns" not in stabbing.tooltip_text,
 			"STATUS CONTEXT DRIFT: tooltip invents expiry for Marc's battle-persistent Bleed")
 

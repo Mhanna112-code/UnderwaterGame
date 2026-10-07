@@ -1,24 +1,21 @@
 class_name CombatMoves
 extends RefCounted
 
-# Group_StatsV2's first complete playable kit. Formulas are data rather than
-# branches in Battle: each coefficient multiplies the named stat on whoever
-# uses the move, which lets the same definition work for a diver or an enemy.
+# Player kit. Formula coefficients multiply the user's named stats, so moves work for divers or enemies.
 const SCUBA := [
 	{
 		"name": "Electric Touch", "formula": {"strength": 1},
 		"target": "one_enemy", "effects": [
-			{"kind": "reduce_evasion", "amount": {"accuracy": 1}},
+			# Flat -1 Evasion on hit.
+			{"kind": "reduce_evasion", "amount": {"flat": 1}},
 		],
-		"hint": "1 STR damage; strips EVA by ACC",
+		"hint": "1 STR damage; lowers EVA by 1",
 		"text": "Electric Touch shocks the target",
 	},
 	{
 		"name": "Scuba Stabbing", "formula": {"strength": 1},
 		"target": "one_enemy", "effects": [
-			# Marc's final contract matches enemy Bleed: persistent for the
-			# rest of battle. Poison remains timed. Subsequent damaging hits
-			# stack Bleed, with the shared CombatantStats cap of 10.
+			# Bleed is persistent for the battle and stacks on damaging hits (cap 10); Poison is timed.
 			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
 		],
 		"hint": "1 STR damage; applies 1 + STR Bleed",
@@ -28,16 +25,7 @@ const SCUBA := [
 		"name": "Flash Blast", "formula": {},
 		"target": "all_enemies", "effects": [
 			{"kind": "status", "status": "blindness", "level": {"flat": 2}, "duration": {"accuracy": 1}},
-			# Multiple Knee Combo (below) is the only other all-enemies move
-			# in this kit, and it already pays a self_temporary cost for
-			# hitting everyone at once - Flash Blast had none at all despite
-			# a stronger, longer-lasting payoff (three stats down for
-			# several turns, vs. two stats down for one), so recasting it
-			# right as it expired was a free, essentially risk-free loop.
-			# Matched to Multiple Knee Combo's own -1/-1 rather than set
-			# higher, since Flash Blast already costs its own turn and deals
-			# no damage - the point is a real tradeoff each cast, not making
-			# the move not worth using at all.
+			# Self cost matches Multiple Knee Combo so recasting isn't a free loop.
 			{"kind": "self_temporary", "accuracy": -1, "evasion": -1},
 		],
 		"hint": "All foes; Blindness 2 for ACC turns; -1 ACC/EVA for 1 turn",
@@ -46,9 +34,9 @@ const SCUBA := [
 	{
 		"name": "Multiple Knee Combo", "formula": {"strength": 1},
 		"target": "all_enemies", "effects": [
-			{"kind": "self_temporary", "accuracy": -1, "evasion": -1},
+			{"kind": "self_temporary", "evasion": -1},
 		],
-		"hint": "All foes; -1 ACC/EVA for 1 turn",
+		"hint": "All foes; -1 EVA for 1 turn",
 		"text": "Multiple Knee Combo sweeps the enemy line",
 	},
 	{
@@ -63,11 +51,7 @@ const SCUBA := [
 
 static func for_model(model_name: String) -> Array:
 	return SCUBA if model_name == "Staff_Diver" else []
-# The move table keeps formulas because the rules need them, but Glassgoat's
-# player-facing contract is result-first: resolve those symbols against the
-# acting character before putting them on an ordinary choice button. Target
-# defense is not known until the next screen, so "Damage" here is the move's
-# authored output before the selected target mitigates it.
+# Button text is result-first: formulas resolved against the actor. Damage is pre-mitigation.
 static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 	if not move.has("formula"):
 		return _resolved_legacy_hint(stats, move)
@@ -75,47 +59,21 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 	var has_status := false
 	var damage := CombatRules.formula_value(stats, move.get("formula", {}))
 	if damage > 0:
-		# MODIFIED (changed): was "%d Damage" - a number here duplicated the
-		# same preview _preview_raw_power()/_selected_move_power already
-		# show once a move is actually selected, and there's no fixed
-		# "power" badge for a formula move to check it against (see
-		# _move_base_power() - every Scuba formula is pure stat
-		# coefficients, no flat base term). "Strength Damage" names WHICH
-		# stat drives it instead of a number that's really a preview against
-		# whoever's turn it happens to be; the full per-move breakdown
-		# (including Axe Kick's added Accuracy) is one hover away in the
-		# move's own tooltip.
+		# Names the driving stat instead of a turn-dependent number; details are in the tooltip.
 		parts.append("Strength Damage%s" % (" all" if String(move.get("target", "")) == "all_enemies" else ""))
 	for effect_value in move.get("effects", []):
 		var effect := effect_value as Dictionary
 		match String(effect.get("kind", "")):
 			"reduce_evasion":
-				parts.append("EVA -%d" % CombatRules.formula_value(stats, effect.get("amount", {})))
+				# Target Evasion loss lives in the tooltip; red "STAT -N" on a button means self cost.
+				pass
 			"status":
-				# MODIFIED (changed): was "Status Effect: %d %s" - the
-				# "Status Effect:" prefix was redundant with the status name
-				# itself (Bleed/Blindness/... already reads as a status on
-				# sight) and just ate into the fixed-width button's limited
-				# room. Duration is still deliberately left off here: no
-				# room for "2 Bleed for 3 turns" without clipping, and the
-				# exact number is one hover away in the move's own tooltip
-				# (see battle.gd's _move_tooltip_text()).
+				# Duration omitted to fit the fixed-width button; it's in the tooltip.
 				has_status = true
 				var level := CombatRules.formula_value(stats, effect.get("level", {}))
 				parts.append("%d %s" % [level, String(effect.get("status", "Effect")).capitalize()])
 			"self_temporary":
-				# Dropped from the button entirely when a "status" part is
-				# also present on the same move (Flash Blast) - even with
-				# "for 1 turn" already trimmed, "Status Effect: 2 Blindness"
-				# plus a cost part still ran past the fixed-width button and
-				# got clip_text-truncated (see _menu_button()'s clip_text,
-				# which clips instead of wrapping). The status effect is the
-				# half worth the on-button real estate; the self cost is
-				# still fully explained in the "Self Cost" hover tooltip (see
-				# TutorialContent.EFFECT_KIND_EXPLANATIONS) and still applies
-				# mechanically either way. Axe Kick/Multiple Knee Combo have
-				# no status effect on the same move, so their self cost still
-				# shows on the button as before.
+				# Self cost is dropped when the move also has a status (Flash Blast) so the button doesn't clip.
 				if has_status:
 					continue
 				var costs: Array[String] = []
@@ -132,33 +90,10 @@ static func resolved_hint(stats: CombatantStats, move: Dictionary) -> String:
 					parts.append(" / ".join(costs))
 	return "  ".join(parts)
 
-# Prototype_1/Prototype_V's legacy power/debuff kits never had a "Show
-# formulas" toggle to fall back on for a numeric preview - now that that
-# control is gone entirely (removed, not just hidden), the default view has
-# to be complete on its own here too, not just for the formula-based Scuba
-# moves above. Battle._apply_debuff()'s own flat amount still shows for a
-# debuff move; a power-based attack's own combined power+Strength number no
-# longer does (see the elif this replaced) - the power badge on the button
-# already shows the move's own raw power without doing that math for the
-# player. The authored flavor `hint` (accuracy/weight feel a bare number
-# can't convey, e.g. "Very heavy, slow") is kept as a trailing detail.
-static func _resolved_legacy_hint(stats: CombatantStats, move: Dictionary) -> String:
+# Legacy kits: the button shows the flavor `hint`. Target debuffs aren't shown (red "STAT -N" = self cost).
+static func _resolved_legacy_hint(_stats: CombatantStats, move: Dictionary) -> String:
 	var parts: Array[String] = []
-	var debuff := String(move.get("debuff", ""))
-	if debuff != "":
-		parts.append("%s -%d" % [debuff.left(3).to_upper(), int(move.get("amount", 0))])
-	# Flavor text is skipped for every debuff move - every one of them
-	# ("Lowers a target's defense", "Lowers accuracy", ...) just restates
-	# the "XXX -N" part already added above in prose, so it was pure length
-	# with no new information - and that length is exactly what was pushing
-	# the appended "- N O2" oxygen cost (see _populate_move_menu()) past the
-	# fixed-width move button's clip_text cutoff, e.g. Weaken's trailing
-	# "O2" getting clipped down to just "O". Power-based moves keep their
-	# flavor text (e.g. "Nearly unmissable") since it's the only place
-	# acc_mod's effect is communicated at all - this function never surfaces
-	# acc_mod as a number the way it does power/debuff amounts.
-	if debuff == "":
-		var flavor := String(move.get("hint", ""))
-		if flavor != "":
-			parts.append(flavor)
+	var flavor := String(move.get("hint", ""))
+	if flavor != "":
+		parts.append(flavor)
 	return "  ".join(parts)

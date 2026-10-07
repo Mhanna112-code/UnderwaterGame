@@ -1,7 +1,4 @@
-# One of the three lit positions past the gap. Tracks its own occupant -
-# doesn't know about the other two plates or what "solved" means, that's
-# world.gd's job (it polls is_occupied() on all three each frame). Lights
-# up while occupied so standing on the right spot is visually obvious.
+# One of three lit plates past the gap; tracks its occupant and lights up while occupied.
 class_name LockPlate
 extends Area3D
 
@@ -9,10 +6,7 @@ var occupant: Diver = null
 var _mat: StandardMaterial3D
 
 func _ready() -> void:
-	# Divers sit on collision layer 2 (see diver.gd - they don't collide
-	# with each other, only the environment on layer 1). An Area3D's
-	# default collision_mask only watches layer 1, so without this a
-	# plate would never notice a diver standing on it.
+	# Divers are on layer 2; the default mask only watches layer 1.
 	collision_mask = 2
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
@@ -23,9 +17,7 @@ func _ready() -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.name = "PlateSurface"
 	mesh.mesh = ring
-	# TorusMesh is already horizontal. Keep the cue on the corridor floor and
-	# centered under the trigger instead of rotating it upright on the wall,
-	# where it falsely advertises a different place to stand.
+	# Keep the ring flat on the floor, centered under the trigger.
 	mesh.position.y = -1.92
 	_mat = StandardMaterial3D.new()
 	_mat.emission_enabled = true

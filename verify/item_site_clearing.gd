@@ -41,15 +41,32 @@ func _run() -> void:
 	world.battle.finished.emit("fled")
 	await process_frame
 	_expect(not world.cleared_item_sites.has(site_id), "CLEAR-02 fleeing cleared the site")
-	# CLEAR-03: winning clears it, stops the fight and is saved.
+	# CLEAR-03: winning clears it, stops the fight and is saved. (Back on the
+	# site: the diver drifts up after a fight, and a site only triggers inside
+	# the minimap's height window.)
 	world._inside_item_site_id = ""
+	diver.position = site.at
 	world._try_trigger_item_site(diver)
 	_expect(world.battling, "CLEAR-03 site did not retrigger after fleeing")
 	world.battle.finished.emit("won")
 	await process_frame
 	_expect(world.cleared_item_sites.has(site_id), "CLEAR-03 winning did not clear the site")
 	world._inside_item_site_id = ""
+	diver.position = site.at
 	_expect(not world._try_trigger_item_site(diver) and not world.battling, "CLEAR-03 cleared site still starts a fight")
+	# HEIGHT-01: a site off the minimap (too far above it) doesn't trigger.
+	var other: Dictionary = {}
+	for spot in ItemGuardian.spots():
+		if String(spot.get("site", spot.item)) != site_id and not bool(spot.get("special", false)):
+			other = spot
+			break
+	world._inside_item_site_id = ""
+	diver.position = (other.at as Vector3) + Vector3(0, MiniMap.MARKER_HEIGHT_RANGE + 1.0, 0)
+	_expect(not world._try_trigger_item_site(diver) and not world.battling, "HEIGHT-01 a site above the minimap's height window still triggered")
+	diver.position = other.at
+	_expect(world._try_trigger_item_site(diver) and world.battling, "HEIGHT-01 a site inside the height window did not trigger")
+	world.battle.finished.emit("fled")
+	await process_frame
 	_expect((world._serialize_state().get("cleared_item_sites", []) as Array).has(site_id), "CLEAR-03 clear not saved")
 
 	world.queue_free()

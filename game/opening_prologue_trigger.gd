@@ -21,9 +21,7 @@ func update(position: Vector3, delta: float, movement_requested: bool) -> bool:
 		Vector2(_previous.x, _previous.z)
 	)
 	_previous = position
-	# Waiting, looking around, drifting, and pressing into a blocked collider
-	# must not spend the player's exploration beat. Count only requested swim
-	# input that actually changed the diver's horizontal position this frame.
+	# Count only swim input that actually moved the diver horizontally.
 	if not movement_requested or moved <= 0.00001:
 		return false
 	_swimming_seconds += maxf(0.0, delta)

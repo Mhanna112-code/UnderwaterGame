@@ -65,8 +65,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(resize)
 	resize.call()
 
-# A session snapshot can support Restart even when persistent saving fails.
-# Never describe RAM-only or unconfirmed browser bytes as a saved checkpoint.
+# Restart can use a session snapshot; only confirmed durable bytes are called "saved".
 func show_options(has_restart: bool, durable: bool, saving := false) -> void:
 	if not has_restart:
 		status.text = "No autosave from before the Cordys fight is available."

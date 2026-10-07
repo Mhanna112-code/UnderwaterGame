@@ -1,10 +1,5 @@
-# Shown by World when the scripted first fight ends in a loss - same visual
-# recipe as CharacterAbilityPopup (dark blue PanelContainer, white border,
-# light text; a plain Control toggled by visibility rather than a Window,
-# for the same crash-avoidance reason documented on that class), but with
-# two action buttons instead of a paged Next/Close, since there's a real
-# choice here (try again, or head back to the world) rather than more pages
-# to read through.
+# Shown by World when the scripted first fight is lost: Try Again or return to the world.
+# Plain Control (not a Window), styled like CharacterAbilityPopup.
 class_name TutorialResultPopup
 extends Control
 
@@ -17,12 +12,7 @@ var _body: Label
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	# _and_offsets_ matters - PRESET_FULL_RECT anchors alone leave this
-	# Control's initial zero-size offsets untouched, collapsing it (and the
-	# centered panel inside it) into a tiny rect in the corner instead of the
-	# full viewport - same fix title_screen.gd's own header comment documents
-	# needing for exactly this "runtime Control parented directly under a
-	# CanvasLayer, nothing above it to inherit a size from" situation.
+	# Anchors alone leave a runtime Control under a CanvasLayer at size zero.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false

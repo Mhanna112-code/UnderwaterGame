@@ -1,9 +1,7 @@
 class_name LeverHoldPanel
 extends Panel
 
-# Shown above the orange caption while the active diver is holding one of
-# the dome's levers and the other lever is still free: a "lever on" sign (a
-# drawn lever thrown to ON) with "Press E to release the lever" under it.
+# "Press E to release the lever" sign, shown while the active diver holds one dome lever and the other is free.
 
 const PANEL_SIZE := Vector2(380, 150)
 const ON_GREEN := Color(0.35, 0.95, 0.5)
@@ -41,8 +39,7 @@ func _ready() -> void:
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hint)
 
-# The sign: a little plate with a lever base and its handle thrown over to
-# a green ON position.
+# A lever plate with its handle thrown to a green ON.
 func _draw() -> void:
 	var plate := Rect2(Vector2(24, 14), Vector2(110, 74))
 	draw_rect(plate, Color(0.12, 0.16, 0.2))

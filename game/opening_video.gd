@@ -1,11 +1,7 @@
 class_name OpeningVideo
 extends CanvasLayer
 
-## First-run cinematic owner.
-##
-## This intentionally does not share lifecycle or controls with
-## LabVideoCutscene. They reuse the same temporary media bytes. A small
-## mouse-only "Skip Cutscene" button sits at the bottom right (see _skip()).
+## First-run cinematic owner, separate from LabVideoCutscene. Mouse-only skip button at bottom right.
 
 signal completed(success: bool)
 signal handoff_started
@@ -15,8 +11,7 @@ const DECODER_WATCHDOG_SECONDS := 4.0
 
 @export_file("*.ogv") var video_path := DEFAULT_VIDEO
 @export var local_volume_db := -6.0
-# Only World's first-run Mermaid playback opts in. The inherited split Cordys
-# cinematic keeps its existing segment/completion policy.
+# Only World's first-run playback opts in.
 @export var show_opening_title := false
 
 const MOVIE_FADE_SECONDS := 0.55
@@ -136,9 +131,7 @@ func _ready() -> void:
 func _process(_dt: float) -> void:
 	if _completed or _handing_off or _fallback_visible or not is_instance_valid(_video) or _video.paused:
 		return
-	# Web Theora can continue advancing its clock after EOF without emitting
-	# finished. Use the complete decoder-reported length, not a wall-clock
-	# timeout or hard-coded asset duration, so a future replacement is intact.
+	# Web Theora may not emit finished at EOF; use the decoder-reported length.
 	var duration := _video.get_stream_length()
 	if show_opening_title and duration > 0.0:
 		var remaining := duration - _video.stream_position
@@ -152,12 +145,10 @@ func _process(_dt: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _completed or not event.is_pressed():
 		return
-	# First-run playback has no skip path. Consume keyboard and mouse events so
-	# neither Escape nor gameplay controls reach the paused world underneath.
+	# Consume all input so nothing reaches the paused world.
 	get_viewport().set_input_as_handled()
 
-# Same ending as letting the film run out: the opening still shows its short
-# title card (which performs the world handoff), anything else completes.
+# Same as the film ending: the opening shows its title card (which does the handoff).
 func _skip() -> void:
 	if _completed or _handing_off:
 		return
@@ -222,9 +213,7 @@ func _title_label(text: String, font_size: int, color: Color) -> Label:
 func _on_decoder_watchdog() -> void:
 	if _completed or _handing_off or _fallback_visible:
 		return
-	# A decoder can claim playing while never advancing, including a stall
-	# after a valid first frame. Observe progress for every grace interval,
-	# not just the initial playing flag, to prevent a permanent black lock.
+	# Watch progress every grace interval so a stalled decoder can't lock on black.
 	var position_now := _video.stream_position
 	if position_now <= _last_decoder_position + 0.01:
 		_show_decoder_fallback()

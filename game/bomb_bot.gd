@@ -1,15 +1,10 @@
-# First one-time laboratory blocker. It stays inside Goblin's stable battle
-# actor contract so camera framing, turn dispatch, status presentation and
-# victory cleanup do not need a model-specific branch.
+# One-time lab blocker, using Goblin's actor contract.
 class_name BombBot
 extends Goblin
 
 const BOMB_BOT_SRC := preload("res://art/deep_zone/Bomb_Bot.fbx")
 
-# No authored stat sheet accompanied this model. These conservative fixed
-# values establish a reproducible tuning baseline: durable armour, low speed
-# and evasion, and enough accuracy for its control move to matter. They are
-# explicitly provisional and must move only through measured route playtests.
+# Provisional fixed stats (no authored sheet): armoured, slow, low evasion. Tune via route playtests.
 const BOMB_BOT_STATS := {
 	"hp": 12, "strength": 3, "defense": 4, "agility": 1,
 	"evasion": 1, "accuracy": 3,

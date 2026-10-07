@@ -66,8 +66,7 @@ func _ready() -> void:
 	no.grab_focus.call_deferred()   # the safe choice is the default
 
 func _layout_panel(panel: Panel, label: Label, yes: Button, no: Button) -> void:
-	# Draft questions also appear in narrow playtest windows. Keep both
-	# choices inside the panel instead of clipping the fixed 560px layout.
+	# Keep both buttons inside the panel on narrow windows.
 	var viewport := get_viewport().get_visible_rect().size
 	var width := minf(PANEL_SIZE.x, maxf(240.0, viewport.x - 32.0))
 	var height := minf(PANEL_SIZE.y, maxf(180.0, viewport.y - 32.0))

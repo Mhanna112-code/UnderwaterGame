@@ -1,35 +1,17 @@
-# A diver you can swim around, and the one place the model's arrival is
-# handled: the export faces +Z where Godot treats -Z as forward, and the
-# rig sits at its own origin rather than on its feet. Fix it once, here,
-# and the rest of the game can place a Diver and forget the export ever
-# had opinions.
-#
-# The divers used to be one unrigged mesh each, pulled out of divers.glb,
-# with every bit of life faked by rotating the whole model: bob, bank and
-# a kick-pitch. Glass_Goat's rigged deliveries replaced that. Each diver
-# now instantiates their own rigged file whole and plays real clips off
-# its AnimationPlayer, and content/cast.gd is the table of which clip is
-# which. The procedural part that survived is the yaw turn and the pitch
-# into a glide, because those follow the camera and the velocity rather
-# than the animation, and the bubble trail.
+# Swimmable diver. Corrects the export's facing (+Z vs Godot's -Z) and origin
+# so the rest of the game can place a Diver directly. Clip names live in content/cast.gd.
 
 class_name Diver
 extends CharacterBody3D
 
-# world.gd listens for this on whichever Diver is currently the player and
-# starts a Battle. Emitted for every Diver, including the two drifting NPCs
-# (each tracks its own distance independently) - world.gd is what decides
-# only the active one counts.
+# Emitted by every Diver; world.gd only acts on the active one.
 signal encounter_triggered
+signal sonar_changed
 
-# Exploration clocks have no work in a battle. Preserve Sonar's enabled state
-# and remaining tick, but don't bill it against the shared combat resource.
+# Pauses exploration clocks (Sonar billing) during battle without losing state.
 var exploration_paused := false
 
-# Fired by _swap() once a swap actually lands, target being who this diver
-# just traded places with. world.gd listens for this to do a confirmation
-# camera pan toward the traded-to position - purely a presentation hook,
-# the swap itself has already fully happened by the time this fires.
+# Emitted after a swap lands; world.gd uses it for a camera pan.
 signal swapped_with(target: Diver)
 
 
@@ -42,11 +24,7 @@ signal swapped_with(target: Diver)
 @export var model_name := "Staff_Diver"
 @export var tint := Color(1, 1, 1)
 
-# Set by world.gd right after add_child(), same convention MiniMap/
-# InventoryMenu/TargetSelector already use for their own `world` refs -
-# added specifically so update_sonar() (below) can reach World.key_items/
-# World.revealed_key_items without constructing a throwaway World.new()
-# that has none of the real game's state on it.
+# Set by world.gd after add_child(); update_sonar() reads its key-item state.
 var world: World
 
 var speed := 5.0
@@ -61,12 +39,7 @@ var SONAR_INTERVAL := 0.2
 # COMBAT STATS
 # ============================================================
 
-# Glassgoat's September V2 baseline deliberately gives every diver 10 HP
-# and differentiates them through role stats: Scuba is the mobile accurate
-# specialist, Cyclops is the even spread, and Bucky is the slow armored
-# hitter. The earlier mixed 10/26/42 scale made Scuba strictly worse than
-# the two characters whose V2 blocks had not yet been ported.
-#
+# Every diver has 10 HP; roles differ through the other stats.
 const BASE_STATS := {
 	"Staff_Diver": {
 		"hp": 10, "strength": 1, "defense": 0, "agility": 3,
@@ -85,33 +58,19 @@ const BASE_STATS := {
 	},
 }
 
-# Lives on the Diver node itself, so level/XP survive between encounters for
-# as long as this Diver does (the length of one play session - nothing
-# persists across a reload yet). game/world.gd hands this to game/battle.gd
-# when a fight starts.
+# Level/XP persist for this node's lifetime (one session); handed to battle.gd.
 var stats: CombatantStats
 var passive_id := ""
-# "" means this diver has no active ability - use_ability() is a no-op for
-# an empty id, so nothing needs to special-case "does this diver have one."
+# "" means no active ability; use_ability() is then a no-op.
 var ability_id := ""
 
-# A locked ability exists (ability_id is set) but can't be used yet - the
-# mechanism is still here (unlock_ability(), called by grapple_anchor.gd's
-# on_grappled_to()) for any diver a future BASE_STATS entry gates this way,
-# but nothing currently sets ability_locked true - Maxilani's swap used to
-# gate on reaching a grapple anchor, but now starts available like every
-# other diver's ability.
+# Ability exists but is unusable until unlock_ability(). Nothing sets this today.
 var ability_locked := false
 
-# Spell ids this diver has bought from game/spell_tree.gd, across all three
-# branches at once (offense/defense/debuff aren't separate inventories -
-# just where a given id happens to live in the tree). See SpellTree.learn().
+# Spell ids bought from SpellTree, across all branches.
 var known_spells: Array[String] = []
 
-# Which known spells are active for battle. SpellTree.learn() equips every
-# spell as it's learned, so this mirrors known_spells (kept as its own list
-# because battle.gd and older saves read it directly). No cap - battle.gd's
-# move menu scrolls when a diver has more moves than fit.
+# Spells active in battle. SpellTree.learn() equips on learn, so this mirrors known_spells.
 var equipped_spells: Array[String] = []
 
 
@@ -130,16 +89,9 @@ var distance_since_encounter: float = 0.0
 @export var min_encounter_distance: float = 8.0
 @export var max_encounter_distance: float = 16.0
 
-# Chance of actually triggering an encounter when the distance
-# threshold is reached.
-#
-# 0.25 = 25%
-# 0.50 = 50%
-# 1.00 = 100%
-# Marc tested and pushed 8-16 m / 50% in PR #50, then explicitly asked this
-# combat PR to adopt those settings. That averages one fight per 24 m. Keep
-# verify/encounters.gd tied to all three inputs so later tuning is deliberate.
-@export_range(0.0, 1.0) var encounter_chance: float = 0.5
+# Chance an encounter triggers when the distance threshold is reached.
+# Keep verify/encounters.gd in sync when tuning these three values.
+@export_range(0.0, 1.0) var encounter_chance: float = 0.7
 
 # The randomly selected distance at which the next encounter
 # check will happen.
@@ -154,11 +106,9 @@ var model: Node3D
 var height := 1.9
 var radius := 0.4
 
-# The rigged file's own AnimationPlayer, left where it was inside the
-# imported tree. See _ready() for why it is not moved.
+# The rigged file's own AnimationPlayer, left in place (see _ready()).
 var anim: AnimationPlayer
-# Only Battle opts into the delivered cast's measured action envelope. Idle
-# exploration and legacy combat framing remain unchanged.
+# Only Battle uses the measured spell framing envelope.
 const SPELL_FRAMES := preload("res://art/characters/spell_animations/frames.res")
 var framing_clip := ""
 
@@ -169,22 +119,15 @@ func framing_points() -> Array[Vector3]:
 		result.append(global_transform * (point as Vector3))
 	return result
 
-# Whichever armature name this particular delivery used - "rig",
-# "rig_001", "rig_002". Learned from the file rather than assumed.
+# Armature prefix used by this delivery ("rig", "rig_001", ...), learned from the file.
 var _prefix := ""
-# A one-shot (a swing, a hit reaction) owns the body until this many
-# seconds have passed, then the diver falls back to whatever motion its
-# movement says it should be in.
+# A one-shot clip owns the body until this time, then movement takes over.
 var _busy_until := 0.0
 var _clock := 0.0
 var _motion := ""
-# What to return to when a one-shot ends. Empty means "whatever the
-# movement says", which is how a diver swimming around behaves. A diver
-# who has fainted or won a fight sets it, so the pose holds instead of
-# snapping back to a neutral float one frame after it lands.
+# Loop to return to after a one-shot ("" = follow movement); holds faint/win poses.
 var _hold := ""
-# Whether the diver was swimming last frame, so the change can be caught and
-# the Start and End clips played into and out of the loop.
+# Previous frame's swim state, for Start/End transition clips.
 var _was_moving := false
 
 var _lean := 0.0
@@ -206,18 +149,8 @@ func _ready() -> void:
 		max_encounter_distance
 	)
 
-	# The rigged file carries ONE AnimationPlayer whose track paths are
-	# relative to that file's own tree. Lifting a single mesh out of it,
-	# which is what this did while the models were unrigged, breaks every
-	# one of those paths: the clips still resolve by name and then animate
-	# nothing. So the whole file is instantiated intact and the meshes that
-	# are not this character get hidden instead.
-	#
-	# Every delivery contains every character's animations and only one
-	# character's mesh, which is why the file is chosen per diver rather
-	# than shared. Meshes and animations are shared resources underneath,
-	# so six of these on screen is six node trees, not six copies of a
-	# 38 MB export.
+	# Instantiate the whole rigged file so animation track paths resolve; other
+	# characters' meshes in it are hidden below.
 	var file := Cast.file(model_name)
 
 	var src: Node3D = (load(file) as PackedScene).instantiate()
@@ -256,10 +189,7 @@ func _ready() -> void:
 
 		var mine: bool = String(mi.name) == model_name
 
-		# What a character carries is skinned to the same rig and swims
-		# with them, so it is part of the character, not a prop standing
-		# nearby. Hiding it is what left the staff floating on its own
-		# beside her - see issue #26.
+		# Carried items (e.g. the staff) are skinned to the rig, so keep them visible.
 		mi.visible = mine or carried.has(String(mi.name))
 
 		if mine:
@@ -280,22 +210,11 @@ func _ready() -> void:
 	if anim == null:
 		push_error("NO AnimationPlayer in %s" % file)
 	else:
-		# New spell deliveries are partial FBXs. Add their verified animation
-		# tracks to the existing rig instead of losing its old movement clips.
+		# Merge partial spell FBX animations into the existing rig's clips.
 		anim.add_animation_library("spells", Cast.spell_animations(model_name))
-		# Keep animating while the tree is paused. _ready() runs under the
-		# title screen, which pauses everything, and a paused
-		# AnimationPlayer never advances a frame - so calling play() below
-		# set up an idle that never applied and the first thing anybody saw
-		# on loading the game was three characters standing in bind pose
-		# with their arms straight out. Only the AnimationPlayer is set to
-		# ALWAYS, not the Diver: movement, physics and encounter rolls
-		# still stop dead when the game is paused, which is the point of
-		# pausing it.
+		# Animate while the tree is paused (title screen) so divers don't sit in bind pose.
 		anim.process_mode = Node.PROCESS_MODE_ALWAYS
-		# Learn this file's armature prefix once, from a clip we know it
-		# has, instead of hard-coding "rig" and getting it wrong for two
-		# of the three deliveries.
+		# Learn the armature prefix from a clip guaranteed to exist.
 		_learn_prefix(Cast.motion(model_name, "idle"))
 		play_motion("idle")
 
@@ -313,9 +232,8 @@ func _ready() -> void:
 		minf(box.size.x, box.size.z) * 0.5
 	)
 
-	# Move the model so its feet sit on the body's floor. Applied to the
-	# whole imported tree rather than to the mesh, because moving the mesh
-	# alone would slide it out from under the skeleton driving it.
+	# Centre the model on the body. Move the whole tree, not the mesh, or the mesh
+	# detaches from its skeleton.
 	src.position.y -= box.position.y + height * 0.5
 
 
@@ -338,18 +256,8 @@ func _ready() -> void:
 
 	add_child(shape)
 
-	# Divers don't collide with each other - layer 2, masked to only see
-	# layer 1 (the environment: floor, walls, rocks). Nothing in this game
-	# needs two divers to physically block one another, and letting them
-	# collide caused a real bug: swap() exchanges two divers' positions
-	# outright (not a gradual move), and for a frame or two afterward
-	# their capsules could register as overlapping and push against each
-	# other, kicking off a runaway velocity that sent a diver rocketing
-	# off in a semi-random direction with no way to tell it had happened
-	# short of watching it occur. Physics ray queries (grapple, swap
-	# targeting) are unaffected - PhysicsRayQueryParameters3D defaults to
-	# checking all collision layers unless a query explicitly restricts
-	# its own mask, which none of this project's raycasts do.
+	# Layer 2, masked to the environment only: divers colliding after a swap launched
+	# them. Ray queries still check all layers.
 	collision_layer = 2
 	collision_mask = 1
 
@@ -381,9 +289,7 @@ func _build_stats() -> void:
 	stats.accuracy = int(base.accuracy)
 	stats.fill()
 
-	# Not a CombatantStats field - an ability isn't part of the damage
-	# formula, it lives on the Diver itself. .get() with a default since
-	# not every entry in BASE_STATS has an "ability" key yet.
+	# Ability lives on the Diver, not CombatantStats; not every entry has one.
 	ability_id = String(base.get("ability", ""))
 	passive_id = String(base.get("passive", ""))
 	ability_locked = bool(base.get("ability_locked", false))
@@ -393,83 +299,89 @@ func _build_stats() -> void:
 # ABILITIES
 # ============================================================
 
-# match on ability_id, not on model_name - use_ability() shouldn't need to
-# know which diver it's on, only what that diver's BASE_STATS entry said
-# its ability was. Adding a third ability later means one more match branch
-# here, not a new system.
 const SHOCKWAVE_RADIUS := 3.0
 const GRAPPLE_RANGE := 14.0
 const GRAPPLE_PULL_DURATION := 0.4
-# Environment occludes shots; lightweight item targets live on layer 5 so
-# swimming and camera collision remain unaffected. Both preview and fire use
-# this mask rather than including buddies or silently missing floating items.
+# Environment plus item targets on layer 5; shared by aim preview and fire.
 const GRAPPLE_COLLISION_MASK := 1 | (1 << 4)
 
-# Different cooldowns on purpose, not just one shared constant: shockwave
-# always does something the instant it's used (no aim, nothing to whiff),
-# so it needs real downtime or it'd be free to spam. Grapple is the
-# traversal tool - a whiff already costs nothing (see _grapple() below),
-# so a successful pull shouldn't feel sluggish on top of that. Swap is
-# aimed like grapple (a whiff costs nothing) but a hit is a bigger, more
-# game-changing move than a simple pull, so it sits between the two.
+# Shockwave can't miss, so it has the longest cooldown; grapple misses are free.
 const SHOCKWAVE_COOLDOWN := 2.5
-# Shockwave costs Oxygen again (12; originally 20 in 743b279, removed in
-# ee883d8 so an empty tank could never block progress). Grapple and Swap
-# stay free. Save points and Oxygen Cells refill the tank.
+# Grapple and Swap are free. Save points and Oxygen Cells refill the tank.
 const SHOCKWAVE_OXYGEN_COST := 12.0
 const GRAPPLE_COOLDOWN := 1.2
 const SWAP_COOLDOWN := 2.0
 
-# Grapple and Swap are environmental progression verbs, so their
-# availability must never be exhausted by Oxygen (Shockwave now costs
-# SHOCKWAVE_OXYGEN_COST - see shockwave_needs_oxygen()). A player can always
-# recover from a missed route step or an empty tank. Sonar deliberately keeps
-# its distinct resource cost below; combat and spell systems own their costs.
-# Its drain is charged in lump sums every SONAR_DRAIN_INTERVAL seconds rather
-# than smoothly every physics frame - see _physics_process()'s
-# _sonar_drain_timer.
-const SONAR_OXYGEN_PER_TICK := 1.0
+# Grapple/Swap never cost Oxygen so progression can't be blocked. Sonar is
+# billed in lump sums every SONAR_DRAIN_INTERVAL.
+const SONAR_OXYGEN_PER_TICK := 3.0
 
-# How often the sonar drain actually gets charged - a few seconds, not
-# every frame. Separate from SONAR_INTERVAL (the ping/update_sonar() tick
-# rate, currently 0.2s) on purpose: how often the minimap re-checks for
-# nearby zones and how often oxygen gets billed for having sonar on are
-# two different cadences that don't need to match.
-const SONAR_DRAIN_INTERVAL := 6.0
+# Sonar billing cadence; independent of SONAR_INTERVAL (ping rate).
+const SONAR_DRAIN_INTERVAL := 3.0
 var _sonar_drain_timer := 0.0
 
 var _ability_cooldown := 0.0
 var _is_grappling := false
 
-# Sonar is proc'd on/off (see toggle_sonar(), bound to Q in world.gd), not
-# always-on just because this diver's model has the passive - passive_id
-# says *which* diver can use it, sonar_active says whether it's currently
-# running. Only meaningful when passive_id == "sonar"; harmless (never
-# read) on a diver that doesn't have the passive at all.
-var sonar_active := false
+# Toggled with Q; passive_id says who can use it. Changes emit sonar_changed for the HUD.
+var sonar_active := false:
+	set(value):
+		if value == sonar_active:
+			return
+		sonar_active = value
+		sonar_changed.emit()
+
+# Sonar on: a cyan ring pulses out from the diver and fades, once a second.
+const SONAR_FX_INTERVAL := 1.0
+const SONAR_FX_DURATION := 1.4
+const SONAR_FX_RADIUS := 4.5
+const SONAR_FX_COLOR := Color(0.35, 0.9, 1.0)
+var _sonar_fx_timer := 0.0
 
 func _process(dt: float) -> void:
 	_ability_cooldown = maxf(0.0, _ability_cooldown - dt)
+	if sonar_active and visible and not exploration_paused:
+		_sonar_fx_timer -= dt
+		if _sonar_fx_timer <= 0.0:
+			_sonar_fx_timer = SONAR_FX_INTERVAL
+			_sonar_pulse_fx()
+	else:
+		_sonar_fx_timer = 0.0
 
-	# A one-shot clip holds the body for its own length and then hands it
-	# back. Timed off an accumulated clock rather than an AnimationPlayer
-	# signal because a diver can be freed mid swing (play_death_fade) and
-	# a pending signal on a freed node is a crash, not an animation bug.
+	# Timed off a clock, not an AnimationPlayer signal, since the diver may be freed mid-clip.
 	if _busy_until > 0.0:
 		_clock += dt
 		if _clock >= _busy_until:
 			_busy_until = 0.0
 			_motion = ""
-			# On the battle stage nothing drives _animate(), so without
-			# this a diver would stand frozen on the last frame of the
-			# swing it just threw. In the world _animate() overrides this
-			# on the very next physics frame, so it costs nothing there.
+			# Nothing drives _animate() in battle, so return to the held/idle loop here.
 			play_motion(_hold if _hold != "" else "idle")
 
-# Read-only check world.gd can make before deciding whether to enter aim
-# mode or fire immediately - mirrors use_ability()'s own guard exactly, so
-# there's one place that knows what "ready to use" means instead of
-# world.gd guessing at Diver's private cooldown/grapple-in-progress state.
+func _sonar_pulse_fx() -> void:
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.965
+	torus.outer_radius = 1.0
+	torus.rings = 48
+	ring.mesh = torus
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(SONAR_FX_COLOR, 0.75)
+	mat.emission_enabled = true
+	mat.emission = SONAR_FX_COLOR
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	ring.material_override = mat
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ring)
+	ring.position = Vector3.ZERO   # body centre (origin is mid-capsule)
+	ring.scale = Vector3.ONE * 0.3
+	var tw := ring.create_tween().set_parallel(true)
+	tw.tween_property(ring, "scale", Vector3.ONE * SONAR_FX_RADIUS, SONAR_FX_DURATION).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(mat, "albedo_color:a", 0.0, SONAR_FX_DURATION).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(ring.queue_free)
+
+# Mirrors use_ability()'s guard; world.gd checks this before aiming.
 func can_use_ability() -> bool:
 	return (ability_id != "" and not ability_locked and _ability_cooldown <= 0.0
 		and not _is_grappling and not shockwave_needs_oxygen())
@@ -478,25 +390,14 @@ func can_use_ability() -> bool:
 func shockwave_needs_oxygen() -> bool:
 	return ability_id == "shockwave" and stats.oxygen < SHOCKWAVE_OXYGEN_COST
 
-# Called by whatever is meant to unlock a locked ability - right now just
-# grapple_anchor.gd's on_grappled_to(), for the one anchor whose
-# unlocks_diver_ability_for names this diver's model. Harmless to call on
-# a diver that was never locked in the first place.
+# Called by grapple_anchor.gd's on_grappled_to(). Safe on unlocked divers.
 func unlock_ability() -> void:
 	ability_locked = false
 
-# So whirlpool.gd (and anything else outside this script) can check whether
-# a pull is in progress without reaching into the private _is_grappling
-# field directly.
 func is_grappling() -> bool:
 	return _is_grappling
 
-# Same shape as _is_grappling, for the same reason: whirlpool.gd drives
-# global_position directly (a tween pulling the diver into the whirlpool's
-# center) for the duration of the pull, and swim()'s own move_and_slide()
-# would fight it every physics frame otherwise. A grappling diver is
-# already exempt from suction entirely (see whirlpool.gd) - this is for
-# the pull itself, once it's started.
+# Set by whirlpool.gd while its tween drives global_position; swim() yields.
 var _suction_locked := false
 
 func set_suction_locked(v: bool) -> void:
@@ -505,28 +406,16 @@ func set_suction_locked(v: bool) -> void:
 func is_suction_locked() -> bool:
 	return _suction_locked
 
-# WaterCurrent writes these while this diver overlaps its Area3D. The
-# push is blended with steering; current_axis removes sideways escape from
-# a corridor whose flow is meant to be an actual traversal constraint.
+# Written by WaterCurrent while overlapping; current_axis limits steering to the flow.
 var external_push := Vector3.ZERO
 var current_axis := Vector3.ZERO
 
-# Which abilities need a deliberate aim step (first-person raycast, click
-# to fire) vs firing the instant F is pressed. Shockwave is omnidirectional,
-# nothing to aim. Swap used to be raycast-aimed too, but now goes through
-# TargetSelector's cycle-through-candidates flow instead (see world.gd),
-# so it's no longer in this list - world.gd checks ability_id == "swap"
-# directly to route it to start_selection() rather than first-person aim.
+# Only grapple uses first-person aim; swap goes through TargetSelector.
 func ability_needs_aim() -> bool:
 	return ability_id == "grapple"
 
-# aim_dir: world-space direction to fire an aimed ability in (grapple).
-# Zero vector (the default) falls back to the diver's own body facing -
-# used by shockwave (omnidirectional) and by anything that calls
-# use_ability() without a camera to aim from.
-# target: explicit target for abilities that don't aim at all but still
-# need to know who (swap) - comes from TargetSelector.confirmed, not a
-# raycast.
+# aim_dir: world-space grapple aim; zero falls back to body facing.
+# target: swap target preselected by TargetSelector.
 func use_ability(aim_dir: Vector3 = Vector3.ZERO, target: Node3D = null) -> void:
 	if not can_use_ability():
 		return
@@ -545,10 +434,7 @@ func _shockwave() -> void:
 	get_tree().call_group("shockwave_breakable", "on_shockwave", global_position, SHOCKWAVE_RADIUS)
 	_shockwave_vfx()
 
-# Throwaway visual: an expanding, fading sphere centered on the diver.
-# Nothing here is a hitbox - the actual break check is on_shockwave() over
-# on whatever's listening in the "shockwave_breakable" group, this is only
-# so the pulse reads as something happening.
+# Visual only; breaking is handled by the shockwave_breakable group.
 func _shockwave_vfx() -> void:
 	var vfx := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
@@ -567,12 +453,7 @@ func _shockwave_vfx() -> void:
 	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.35)
 	tw.tween_callback(vfx.queue_free)
 
-# toggle_sonar() is the only thing that ever sets sonar_active true - once
-# oxygen actually runs out it also turns itself back off (rather than
-# leaving it "on" but silently inert), so a player checking sonar_active
-# always gets an honest answer about whether pings are still happening.
-# Battles end with every passive switched back off (Sonar is the only one
-# today), so the player re-enables it deliberately afterwards.
+# Battles end with passives off; the player re-enables Sonar deliberately.
 func reset_passives_after_battle() -> void:
 	sonar_active = false
 
@@ -581,17 +462,11 @@ func toggle_sonar() -> bool:
 		return false
 	sonar_active = not sonar_active and stats.oxygen > 0.0
 	if sonar_active:
-		# Starts the drain clock fresh on every fresh toggle-on, so turning
-		# sonar on always buys a full SONAR_DRAIN_INTERVAL of free use
-		# before the first charge - without this, _sonar_drain_timer could
-		# still be sitting near/at 0 from however it was left, charging
-		# almost immediately instead of after a few real seconds.
+		# A fresh toggle-on gets a full interval before the first charge.
 		_sonar_drain_timer = SONAR_DRAIN_INTERVAL
 	return sonar_active
 
-# Scene handoffs retain the resource consumed by combat rather than rebuilding
-# or filling baseline stats. Preserve the Sonar billing clock as well: resetting
-# it on entry must neither charge immediately nor buy a free new interval.
+# Carries combat-consumed state and the Sonar billing clock across scene handoffs.
 func campaign_member_state() -> Dictionary:
 	return {"model": model_name, "stats": stats,
 		"known_spells": known_spells.duplicate(), "equipped_spells": equipped_spells.duplicate(),
@@ -614,8 +489,7 @@ func _physics_process(delta: float) -> void:
 	if passive_id == "sonar" and sonar_active:
 		_sonar_drain_timer -= delta
 		while _sonar_drain_timer <= 0.0 and sonar_active:
-			# Navigation costs 20 O2 per two minutes, not a whole tank.
-			# Preserve elapsed overshoot so billing doesn't depend on frames.
+			# Keep overshoot so billing is frame-rate independent.
 			_sonar_drain_timer += SONAR_DRAIN_INTERVAL
 			stats.oxygen = maxf(0.0, stats.oxygen - SONAR_OXYGEN_PER_TICK)
 			if stats.oxygen <= 0.0:
@@ -625,44 +499,13 @@ func _physics_process(delta: float) -> void:
 			sonar_timer = SONAR_INTERVAL
 			update_sonar()
 
-# Marks every not-yet-claimed key-item zone the diver is currently within
-# range of as "revealed" - MiniMap draws a pulsing red marker for anything
-# in World.revealed_key_items that isn't also in World.key_items yet (dot
-# if it's within the minimap's own view_radius, a small arrow at the rim
-# pointing toward it otherwise - see mini_map.gd's _draw()). Once revealed
-# it stays revealed for the rest of the run (nothing here ever removes an
-# id from revealed_key_items except a claim clearing it via key_items) -
-# sonar's job is confirming something's nearby, not re-confirming it every
-# single ping once you already know.
-#
-# MODIFIED again: reveal used to be unconditional - one ping, anywhere on
-# the whole map, revealed every remaining key item regardless of distance.
-# Now gated on entry.radius (the same guaranteed-encounter radius
-# ItemGuardian.spots() already carries per zone) - sonar has to actually be
-# on AND the diver has to be within that zone's own radius before it
-# reveals, so the minimap marker means "you're close, and pinged," not
-# "sonar has ever been used once anywhere."
-#
-# MODIFIED from the original draft: that version built a fresh
-# `World.new()`/`ItemGuardian.new()` each call - `World.new()` is an
-# empty, disconnected World with its own blank key_items array (not the
-# real game's), so `world.key_items.has(item)` could never actually match
-# anything, and constructing two throwaway objects every 0.2s (this runs
-# on every sonar ping, see SONAR_INTERVAL) leaked the work of building
-# them for nothing. Fixed by using the `world` reference world.gd now
-# assigns after add_child() (see the new `var world: World` above)
-# instead of a fresh instance, and reading ItemGuardian.spots() directly off
-# the class (it's a const - no instance needed to read it, same reason
-# battle.gd's BASE_MOVES gets read as Battle.BASE_MOVES elsewhere).
-# Also fixed: `world.key_items.has(item)` was checking the whole SPOTS
-# dictionary against key_items (which only ever holds item-id strings),
-# never `item.item` (the actual id) - always false, so nothing was ever
-# actually being skipped as already-claimed.
+# Reveals unclaimed key items within minimap range of the active diver.
+# Reveals are permanent for the run.
 func update_sonar() -> void:
 	if world == null:
 		return
 	if world.embedded_maze != null and world.embedded_maze.maze_active:
-		return # MazeMiniMap owns local Sonar discoveries in this active area.
+		return # MazeMiniMap owns Sonar in an active maze.
 	var s_items := []
 	for item in ItemGuardian.spots():
 		if world.key_items.has(String(item.item)):
@@ -672,41 +515,14 @@ func update_sonar() -> void:
 		var item_id := String(entry.item)
 		if world.revealed_key_items.has(item_id):
 			continue
-		# Gated on the minimap's own view radius: "revealed" should mean
-		# "you actually saw it as a dot on the minimap at some point", so
-		# the reveal distance and the dot/arrow display distance (see
-		# mini_map.gd's _draw_key_item_markers()) have to be the same
-		# number rather than two that happen to share a name. The spots
-		# used to carry a "radius" of their own for this; it is gone, along
-		# with the guaranteed-encounter rule that was the only thing that
-		# ever read it.
-		#
-		# MODIFIED (fixed): checked against `position` - this diver's OWN
-		# position - which only reads right if she also happens to be the
-		# one the player is currently swimming. She isn't always: switching
-		# to another diver (Tab) leaves her parked wherever she was left
-		# (see world.gd's own swim() loop - an inactive diver gets zero
-		# input, not skipped), while this still runs every SONAR_INTERVAL
-		# regardless of which diver is active (gated on passive_id/sonar_
-		# active, not on being the active diver). Sonar being "on" should
-		# mean "reveals whatever's near wherever you actually are right
-		# now," not "near wherever Maxilani happens to be standing" -
-		# checked against the actually-active diver's position instead.
+		# Same radius as the minimap's dot display, measured from the active diver.
 		var scan_pos: Vector3 = (world.divers[world.active] as Diver).position
 		if scan_pos.distance_to(entry.at as Vector3) <= world.minimap.view_radius:
 			world.revealed_key_items.append(item_id)
 
 
-# Aimed - the one ability that isn't omnidirectional. `aim_dir` comes from
-# world.gd's camera yaw/pitch (where the player is actually looking, via
-# mouse-look), not the diver's own body facing, which lags behind real
-# aim (it only lerps toward the last swim direction - see _animate()).
-# Falls back to body facing only if nothing supplied a real aim direction.
-#
-# The beam always fires and is always visible, hit or miss - shooting and
-# seeing nothing happen reads as broken, not "you missed." Only a
-# confirmed hit on something in the "grapple_anchor" group spends the
-# cooldown or starts the pull; a clean miss can be retried immediately.
+# Fires along aim_dir (camera), else body facing. The beam always shows; only a
+# grapple_anchor hit spends the cooldown, so misses can retry immediately.
 func _grapple(aim_dir: Vector3) -> void:
 	var dir: Vector3 = aim_dir.normalized() if aim_dir.length() > 0.01 else -global_transform.basis.z
 	var space := get_world_3d().direct_space_state
@@ -718,8 +534,7 @@ func _grapple(aim_dir: Vector3) -> void:
 	query.collision_mask = GRAPPLE_COLLISION_MASK
 	var result := space.intersect_ray(query)
 
-	# Beam end is wherever the ray actually stopped - the max range if it
-	# hit nothing at all, or whatever it struck (anchor or not).
+	# Beam ends where the ray stopped, or at max range.
 	var beam_end: Vector3 = to if result.is_empty() else (result.position as Vector3)
 	_grapple_beam_vfx(from, beam_end)
 
@@ -727,18 +542,14 @@ func _grapple(aim_dir: Vector3) -> void:
 		return
 
 	_ability_cooldown = GRAPPLE_COOLDOWN
-	# Light rewards travel to the actual shooter. Anchors retain traversal;
-	# choosing the nearest diver after a pull would award the wrong player.
+	# Reel-in targets reward the shooter directly.
 	if (result.collider as Node).has_method("reel_in_to"):
 		(result.collider as Node).call("reel_in_to", self)
 		return
 	_is_grappling = true
 	var target: Vector3 = (result.collider as Node3D).global_position
 
-	# The anchor gets a chance to react to being reached, independent of
-	# the pull itself - grapple_anchor.gd's on_grappled_to() is what
-	# unlocks Staff_Diver's signal ability for the gap sequence. Diver
-	# doesn't know or care what the anchor does with this; it just offers.
+	# Let the anchor react to being reached.
 	if (result.collider as Node).has_method("on_grappled_to"):
 		(result.collider as Node).call("on_grappled_to")
 
@@ -749,11 +560,7 @@ func _grapple(aim_dir: Vector3) -> void:
 	tw.tween_property(self, "global_position", stop_at, GRAPPLE_PULL_DURATION)
 	tw.tween_callback(func() -> void: _is_grappling = false)
 
-# Throwaway visual: a thin beam from where the diver fired to wherever the
-# shot actually ended (hit or not), fading out over the pull's own
-# duration regardless of whether a pull happens. Fixed in place once
-# spawned (doesn't track the diver mid-pull) - "you fired a line" reads
-# fine without the beam continuously updating.
+# Visual only: a fixed beam that fades over the pull duration.
 func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
 	var dist := from.distance_to(to)
 	if dist < 0.01:
@@ -779,21 +586,8 @@ func _grapple_beam_vfx(from: Vector3, to: Vector3) -> void:
 	tw.tween_property(mat, "albedo_color:a", 0.0, GRAPPLE_PULL_DURATION)
 	tw.tween_callback(beam.queue_free)
 
-# Not aimed at all - the target comes pre-selected from TargetSelector's
-# cycle-through-candidates flow (world.gd routes F through
-# target_selector.start_selection() for "swap" instead of first-person
-# aim; see ability_needs_aim()). Swaps this diver's position with
-# `target` outright: instant, not a tween like grapple's pull - "switch
-# places" reads as a snap, not travel. A null/invalid target is a no-op
-# and spends no cooldown, same "a clean non-hit costs nothing" policy
-# grapple's whiff has, just reached through selection instead of a raycast
-# miss.
-#
-# Doesn't touch the gap's bridge - that used to be a side effect of this
-# ability (back when it was called "signal"), but raising a bridge has
-# nothing to do with trading places with an ally, so it's now triggered by
-# reaching the far grapple anchor instead (see grapple_anchor.gd's
-# raises_bridge).
+# Instantly trade places with a TargetSelector-chosen ally. An invalid target
+# is a no-op and costs no cooldown.
 func _swap(target: Diver) -> void:
 	if target == null or not is_instance_valid(target) or not target.can_be_selected:
 		return
@@ -811,9 +605,7 @@ func _swap(target: Diver) -> void:
 
 	swapped_with.emit(target)
 
-# Throwaway visual: a matching flash at both the old and new spot, so the
-# swap reads as "these two places traded occupants" rather than just one
-# diver silently teleporting.
+# Flash at both spots so it reads as a trade, not a teleport.
 func _swap_vfx(pos_a: Vector3, pos_b: Vector3) -> void:
 	_swap_flash(pos_a)
 	_swap_flash(pos_b)
@@ -837,41 +629,24 @@ func _swap_flash(at: Vector3) -> void:
 	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.4)
 	tw.tween_callback(vfx.queue_free)
 
-# Called by gap_pit.gd when this diver blunders into an unresolved gap.
-# Flickers the model a few times - the model swap trick, not a shader
-# effect, since nothing about these models supports a flash material
-# (unrigged, no vertex colors to hijack) and this needed to work with
-# whatever's already on them.
+# Called by gap_pit.gd: hit recoil plus a visibility flicker that reads through fog.
 func flash_damage() -> void:
 	if model == null:
 		return
-	# The flicker stays because it reads at any distance and through the
-	# fog. The rigged deliveries added a real recoil on top of it.
 	play_hit_reaction(false)
 	var tw := create_tween()
 	for i in range(4):
 		tw.tween_property(model, "visible", false, 0.08)
 		tw.tween_property(model, "visible", true, 0.08)
 
-# Called by whirlpool.gd to make a diver vanish while caught (pulled to
-# the center, gone, then reappears at the reset point) - a plain
-# visibility toggle, same mechanism flash_damage() already uses, just
-# held rather than flickered.
+# Used by whirlpool.gd to hide the diver while caught.
 func set_model_visible(v: bool) -> void:
 	if model != null:
 		model.visible = v
 
 
-# How far above and below this diver's own origin the model actually
-# reaches.
-#
-# Worth stating rather than assuming, because the two things that stand on
-# the battle stage disagree about it: _ready() centres a Diver's model on
-# its origin (see the src.position.y line, which subtracts half the height)
-# while goblin.gd stands its model's FEET on the origin. Anything putting a
-# marker over a combatant's head has to ask rather than add `height`, and
-# nothing did: the health bars floated half a body above the divers and sat
-# correctly on the grunts, which is exactly how it was reported.
+# Model extent relative to origin. Diver models are centred (goblin.gd's stand on
+# their feet), so head markers must ask rather than add `height`.
 func head_offset() -> float:
 	return height * 0.5
 
@@ -883,12 +658,7 @@ func foot_offset() -> float:
 # PLAYING CLIPS
 # ============================================================
 
-# Each delivery names its armature node differently - the clips inside
-# Scuba_Rigged.fbx are "rig|Scuba_(Idle)1(Loop)" and the same motion in
-# PrototypeV_Rigged.fbx is "rig_002|Scuba_(Idle)1(Loop)". Ask the file
-# once, using a clip cast.gd guarantees is in there, and remember the
-# answer instead of hard-coding a prefix that is wrong for two files in
-# three.
+# Armature prefixes differ per delivery; learn it once from a known clip.
 func _learn_prefix(known_stem: String) -> void:
 	_prefix = ""
 	if anim == null or known_stem == "":
@@ -900,10 +670,8 @@ func _learn_prefix(known_stem: String) -> void:
 			_prefix = nm.substr(0, bar + 1)
 			return
 
-# Stem (what cast.gd stores) to the full clip name this file uses. Matches
-# on the part AFTER the bar, never the part before it: a prefix match
-# would happily hand back another character's clip, which is how the scuba
-# diver ended up standing in the brass suit's idle.
+# Stem to full clip name. Match after the bar only; a prefix match can return
+# another character's clip.
 func resolve(stem: String) -> String:
 	if anim == null or stem == "":
 		return ""
@@ -920,9 +688,7 @@ func resolve(stem: String) -> String:
 			return nm
 	return ""
 
-# A looping state: swimming, floating, downed. Cheap to call every frame -
-# it returns immediately if this motion is already the one playing, and it
-# never interrupts a one-shot that is still running.
+# Looping state. Cheap per frame; no-op if already playing or a one-shot is running.
 func play_motion(name: String) -> void:
 	if anim == null or _busy_until > 0.0 or _motion == name:
 		return
@@ -930,26 +696,12 @@ func play_motion(name: String) -> void:
 	if full == "":
 		return
 	_motion = name
-	# Animation resources are shared between every instance of the same
-	# file, so this writes loop_mode on the same object the other divers
-	# wearing this model are reading. Safe as it stands, because no clip is
-	# ever used as both a loop and a one-shot: swim, idle, down and win loop,
-	# and attacks and hit reactions do not. Reuse one in both modes and the
-	# two divers will fight over it.
+	# Animations are shared across instances; never use one clip as both loop and one-shot.
 	var a: Animation = anim.get_animation(full)
 	a.loop_mode = Animation.LOOP_LINEAR
 	anim.play(full)
 
-# Swimming or floating, with the way in and out of each.
-#
-# The swim clips ship as Start / Mid (Loop) / End and the first build played
-# only the loop, so a diver went from standing to full stroke and back with
-# nothing between. Glass_Goat animated those transitions on purpose and
-# noticed immediately that they were missing.
-#
-# A one-shot already in progress outranks all of this. A swing or a hit
-# reaction is more important than a swim transition, and interrupting one to
-# play the other would be the wrong trade.
+# Swim/idle with Start/End transitions. A running one-shot takes priority.
 func _update_motion(moving: bool) -> void:
 	if moving == _was_moving:
 		play_motion("swim" if moving else "idle")
@@ -957,9 +709,7 @@ func _update_motion(moving: bool) -> void:
 
 	_was_moving = moving
 	if _busy_until > 0.0:
-		# Mid swing or mid recoil. Skip the transition rather than cutting
-		# the clip short; _process() hands the body back to the right loop
-		# when it finishes.
+		# Mid one-shot: skip the transition; _process() returns to _hold afterwards.
 		_hold = "swim" if moving else "idle"
 		return
 
@@ -967,10 +717,7 @@ func _update_motion(moving: bool) -> void:
 	if play_clip(Cast.motion(model_name, "swim_start" if moving else "swim_end")) <= 0.0:
 		play_motion(_hold)
 
-# A one-shot: a swing, a hit reaction. Returns how long it runs, so the
-# fight can wait exactly that long instead of guessing at a delay. Takes
-# the full stem rather than a motion name because attack clips come from
-# the move being used, not from a fixed list.
+# One-shot clip by stem. Returns its length so callers can wait exactly that long.
 func play_clip(stem: String) -> float:
 	if anim == null:
 		return 0.0
@@ -986,8 +733,7 @@ func play_clip(stem: String) -> float:
 	_busy_until = a.length
 	return a.length
 
-# The reaction to being hit, chosen by how hard. Two clips exist per
-# character and using only one of them wastes half of what was delivered.
+# Hit reaction chosen by severity.
 func play_hit_reaction(heavy: bool) -> float:
 	return play_clip(Cast.motion(model_name, "hurt_bad" if heavy else "hurt"))
 
@@ -998,13 +744,9 @@ func play_win() -> void:
 	_hold = "win"
 	play_motion("win")
 
-# Out of the fight. The Start plays once and the Mid loop holds the pose,
-# which is the difference between a diver who has fainted and a diver who
-# faints and then springs back to attention.
+# Faint: Start plays once, then the Mid loop holds the pose.
 func play_down() -> void:
-	# Set before the lead clip, not after: _process() hands the body back
-	# the instant the Start finishes, and without this it would hand it
-	# back to a neutral float for the one frame before the loop starts.
+	# Set _hold first so there's no one-frame neutral float after Start.
 	_hold = "down"
 	play_clip(Cast.motion(model_name, "down_start"))
 
@@ -1023,8 +765,7 @@ func _find_anim(n: Node) -> AnimationPlayer:
 
 func _add_bubbles() -> void:
 
-	# CPU particles are used so this also works with the
-	# compatibility renderer / web export.
+	# CPU particles for the compatibility renderer / web export.
 
 	bubbles = CPUParticles3D.new()
 
@@ -1049,7 +790,6 @@ func _add_bubbles() -> void:
 	bubbles.scale_amount_max = 0.11
 
 
-	# Bubble mesh.
 	var sphere := SphereMesh.new()
 
 	sphere.radius = 0.5
@@ -1063,7 +803,6 @@ func _add_bubbles() -> void:
 	bubbles.mesh = sphere
 
 
-	# Bubble material.
 	var m := StandardMaterial3D.new()
 
 	m.albedo_color = Color(0.75, 0.92, 1.0, 0.55)
@@ -1088,22 +827,11 @@ func _add_bubbles() -> void:
 # SWIMMING
 # ============================================================
 
-# dir:
-# Desired horizontal direction in world space.
-#
-# rise:
-# -1 = swim down
-#  0 = horizontal
-# +1 = swim up
-#
-# dt:
-# Frame delta.
+# dir: desired world-space horizontal direction. rise: -1 down, 0 level, +1 up.
 
 func swim(dir: Vector3, rise: float, dt: float) -> void:
 
-	# A grapple or whirlpool-suction tween owns global_position for its
-	# duration - move_and_slide() below would fight it every physics frame
-	# otherwise, since it also writes global_position off of `velocity`.
+	# Grapple/suction tweens own global_position; move_and_slide() would fight them.
 	if _is_grappling or _suction_locked:
 		return
 
@@ -1147,21 +875,17 @@ func swim(dir: Vector3, rise: float, dt: float) -> void:
 	# TRACK MOVEMENT DISTANCE
 	# ========================================================
 
-	# Remember where the diver was before movement.
 	var old_position := global_position
 
 
-	# Actually move the diver.
 	move_and_slide()
 
 
-	# Calculate how far the diver actually moved.
 	var distance_moved := old_position.distance_to(
 		global_position
 	)
 
 
-	# Add that movement to our counters.
 	distance_traveled += distance_moved
 
 	distance_since_encounter += distance_moved
@@ -1189,18 +913,15 @@ func swim(dir: Vector3, rise: float, dt: float) -> void:
 
 func check_for_encounter() -> void:
 
-	# Reset the distance counter.
 	distance_since_encounter = 0.0
 
 
-	# Pick a new random distance for the next encounter check.
 	encounter_distance = randf_range(
 		min_encounter_distance,
 		max_encounter_distance
 	)
 
 
-	# Roll for an encounter.
 	if randf() <= encounter_chance:
 
 		start_random_encounter()
@@ -1224,10 +945,7 @@ func _animate(dir: Vector3, dt: float) -> void:
 		return
 
 
-	# Two thresholds rather than one, because a single one at the speed a
-	# diver drifts at makes this flip several times a second, and each flip
-	# would restart a transition clip. Start swimming decisively, stop
-	# swimming lazily.
+	# Hysteresis so drift speed doesn't keep restarting transition clips.
 	var speed_now := velocity.length()
 	var moving := _was_moving
 	if speed_now > 0.6:
@@ -1265,16 +983,7 @@ func _animate(dir: Vector3, dt: float) -> void:
 	# SWIM POSTURE
 	# ========================================================
 
-	# The big one this used to apply, pitching the body most of the way
-	# forward once you got moving, is gone. It existed because the models
-	# were unrigged and something had to sell "swimming" - and it was
-	# nearly the right angle, which is why it survived. The swim clip is
-	# authored horizontal already, so applying it on top left the diver
-	# nose-diving head first into the seabed at every speed. Verified by
-	# screenshot, not by reading the numbers.
-	#
-	# What no clip can know is whether you are heading up or down, so that
-	# part stays, on its own, and small.
+	# The swim clip is already horizontal; only add a small climb/dive pitch.
 	var want_pitch: float = clampf(
 		velocity.y * 0.12,
 		-0.35,
@@ -1297,8 +1006,6 @@ func _animate(dir: Vector3, dt: float) -> void:
 	# NOSE UP TO CLIMB, NOSE DOWN TO DIVE
 	# ========================================================
 
-	# The bob and the kick-swing that used to live here are in the swim
-	# clip now, and doubling them up read as a diver having a seizure.
 	model.rotation.x = _lean
 
 
@@ -1311,29 +1018,15 @@ func _animate(dir: Vector3, dt: float) -> void:
 		bubbles.emitting = true
 
 
-# Called by battle.gd the instant a hit brings this diver (the throwaway
-# battle-stage actor, not the real world.gd Diver - see _build_stage()'s
-# comment on why the actor is a separate instance from the party's real
-# stats) down to 0 HP. Same fade-while-sinking-and-shrinking treatment
-# goblin.gd's play_death_fade() gives a defeated grunt, mirrored here so
-# both sides of a fight disappear the same way rather than only enemies
-# visibly dying. Materials get duplicated before fading for the same
-# reason goblin.gd's version does - the imported GLB's materials can be a
-# shared resource across every Diver instance of the same model_name, and
-# mutating one in place would fade every other diver wearing that model
-# too, including the real party member's own battle-stage neighbors.
+# Battle-stage actor at 0 HP: faint, then fade, sink and shrink like goblin.gd.
+# Materials are duplicated because they're shared across instances.
 func play_death_fade() -> void:
-	# Faint first. The fade is what removes the body from the stage; the
-	# faint is what says it went down rather than blinked out.
 	play_down()
 	var tw := create_tween()
 	tw.set_parallel(true)
 	for m in _all_meshes(model):
 		var mesh_instance := m as MeshInstance3D
-		# Every diver's file carries all three characters' meshes and hides
-		# the two it is not (see _ready()). Fading those too would spend
-		# the tween on geometry nobody can see, and worse, it duplicates
-		# and mutates their materials.
+		# Skip the hidden other-character meshes (see _ready()).
 		if not mesh_instance.is_visible_in_tree():
 			continue
 		if mesh_instance.mesh == null:
@@ -1349,20 +1042,9 @@ func play_death_fade() -> void:
 	tw.tween_property(self, "position:y", position.y - 0.6, 0.9)
 	tw.tween_property(self, "scale", scale * 0.7, 0.9)
 	tw.set_parallel(false)
-	# Unlike goblin.gd's version, this never queue_free()s the actor - a
-	# downed party member can come back from a revive spell (Tidal
-	# Revival), which needs the real actor node still standing on the stage
-	# to un-fade (see play_revive() below). Only an enemy's defeat is
-	# actually permanent for the fight.
+	# Not freed: a revive spell needs the actor to un-fade (play_revive()).
 
-# Reverses play_death_fade() - a revive spell brought this diver back (see
-# battle.gd's "revive" handling in _resolve_party_move()), so the actor that
-# faded, sank, and shrank needs to visibly return the same way it left,
-# rather than just standing back up mid-fade with the old death pose/alpha
-# still applied. Clears the override materials play_death_fade() installed
-# once the fade-in finishes rather than leaving them sitting at alpha 1
-# forever - visually identical either way, just not carrying dead weight
-# for the rest of the fight.
+# Reverses play_death_fade() on revive, then clears the override materials.
 func play_revive() -> void:
 	var overrides: Array = []
 	var tw := create_tween()
@@ -1399,11 +1081,7 @@ func _all_meshes(n: Node) -> Array:
 # WORLD AABB
 # ============================================================
 
-# The mesh's box in `root`'s space. It used to be enough to read the
-# mesh's own transform, because the mesh was reparented straight onto the
-# model node. Inside a rigged file it sits several nodes deep, under a
-# Skeleton3D with its own scale, so the transforms in between have to be
-# walked or the diver comes out a hundred times too tall.
+# Mesh AABB in `root`'s space, walking intermediate transforms (e.g. Skeleton3D scale).
 func _world_aabb(m: MeshInstance3D, root: Node) -> AABB:
 
 	var a: AABB = m.get_aabb()

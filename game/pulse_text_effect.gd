@@ -1,10 +1,5 @@
-# A RichTextLabel custom BBCode effect - [pulse]Press Enter to continue[/pulse]
-# fades the wrapped run's opacity in and out continuously. Exists so "Press
-# Enter to continue" can sit right at the end of whatever caption text
-# precedes it (wrapping onto the caption's own last line, or its own new
-# line only if it doesn't fit - same as any other run of text) instead of
-# living in a separate Label below the caption, which always claimed its
-# own full row regardless of how much room was actually left.
+# Custom BBCode [pulse]...[/pulse]: fades the wrapped text's opacity in and out,
+# so prompts can flow inline at the end of a caption.
 class_name PulseTextEffect
 extends RichTextEffect
 

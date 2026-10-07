@@ -1,17 +1,9 @@
-# Text for the general tutorial book (see game/tutorial_book.gd) - kept as
-# plain data, separate from the Control that renders it, the same split
-# content/sites.gd draws between map data and game/site.gd's building of it.
-#
-# Every mechanic described here was read out of the actual code that runs
-# it (combatant_stats.gd, combat_rules.gd, battle.gd's apply_damage_roll(),
-# diver.gd's oxygen spend) rather than guessed at, specifically because a
-# tutorial that describes the game wrong is worse than no tutorial - a
-# player who trusts it and gets burned learns to stop trusting it.
+# Tutorial text as plain data, rendered by game/tutorial_book.gd.
+# Every mechanic described here must match the code that implements it.
 class_name TutorialContent
 extends RefCounted
 
-# One landscape slot shared by every tutorial clip surface: the post-combat
-# ability modal, the special-encounter chooser, and the in-fight tutorial.
+# Shared landscape slot for every tutorial clip surface.
 const VIDEO_FRAME_SIZE := Vector2(320, 180)
 
 const GENERAL_PAGES: Array[Dictionary] = [
@@ -21,7 +13,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Dodging: Accuracy vs. Evasion",
-		"body": "A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker and defender have equal evasion, so the attacker will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn round and you may have nothing left to dodge with later in the same turn.",
+		"body": "A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker has equal accuracy to the defender's evasion, so the attack will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn and you may have nothing left to dodge with later in the same turn.",
 	},
 	{
 		"title": "Every Other Stat",
@@ -37,29 +29,33 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 ]
 
-# Pulls one GENERAL_PAGES entry's body by title, for battle.gd's
-# choreographed first fight to fold into its own tutorial captions
-# (_explain_turn_order() combines this with "Combat Basics",
-# _explain_dodging() with "Dodging: Accuracy vs. Evasion") instead of
-# maintaining a second copy of the same wording. Empty string on a title
-# that doesn't exist rather than an error - a typo'd title should read as
-# "page missing" during testing, not crash the fight.
+const SAVING_IMAGE := "res://media/tutorials/saving_save_point.png"
+
+# "Saving" lesson: shown at the first save point, replayable from Combat Help.
+static func saving_page() -> Dictionary:
+	return {
+		"title": "Saving",
+		"body": "The game autosaves your progress every few minutes while you explore (not during battles, menus or cutscenes), and again right before the final boss. Load Game lets you continue from the latest save.
+
+Save Points let you save manually: stand on one and press P to write your progress to one of three save slots. Save Points also revive downed divers and fully refill the party's HP and O2.",
+		"slot": null,
+		"media_control": Callable(TutorialContent, "_saving_image"),
+	}
+
+static func _saving_image() -> Control:
+	var picture := TextureRect.new()
+	picture.texture = load(SAVING_IMAGE) as Texture2D
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	return picture
+
 static func page_body(title: String) -> String:
 	for page in GENERAL_PAGES:
 		if String(page.title) == title:
 			return String(page.body)
 	return ""
 
-# One entry per combat stat - shown as its own "Stats" section in the
-# Combat Help tab (game/inventory_menu.gd's Esc-menu pause screen), and
-# (see battle.gd's _move_tooltip_text()) folded into the hover tooltip of
-# any move whose formula deals damage, since every damaging hit is reduced
-# by the target's Defense the same way regardless of which of the
-# attacker's own stats fed its raw number. Used to live as prose inside
-# GENERAL_PAGES's own "Damage: Attack vs. Defense"/"Dodging: Accuracy vs.
-# Evasion" pages, duplicating whatever a status-effect tooltip or the F1
-# book already said - one glossary entry per stat instead, so a definition
-# only ever has to be right in one place.
+# One entry per combat stat: Combat Help's Stats section and damaging-move tooltips.
 const STAT_GLOSSARY: Array[Dictionary] = [
 	{
 		"title": "HP",
@@ -87,74 +83,40 @@ const STAT_GLOSSARY: Array[Dictionary] = [
 	},
 ]
 
-# Case-insensitive-by-construction lookup (titles here are always this
-# table's own literal strings) - battle.gd's _move_tooltip_text() uses this
-# to fold the Strength/Defense entries into any damage-dealing move's own
-# hover tooltip, rather than only being reachable through the Esc menu.
+# Lookup used by battle.gd's _move_tooltip_text().
 static func stat_glossary_body(title: String) -> String:
 	for entry in STAT_GLOSSARY:
 		if String(entry.get("title", "")) == title:
 			return String(entry.get("body", ""))
 	return ""
 
-# One line per special-encounter ability, read on the "Choose who goes"
-# carousel next to whichever diver is currently selected - kept here
-# rather than duplicated in special_encounter_prompt.gd so the wording
-# only has to be right in one place.
-# One line per world ability/passive - shown in CharacterAbilityPopup
-# (character_ability_popup.gd) right after the tutorial fight, one per
-# diver, when world.gd's _show_ability_popups() first walks the party.
-# Distinct from ABILITY_BLURBS below: that one describes the special-
-# encounter minigame's own reflex-test version of an ability, this one
-# describes what pressing F (or Q, for the sonar passive) actually does
-# while exploring - a different context with a different payoff, read
-# straight out of diver.gd's _grapple()/_shockwave()/_swap()/sonar handling
-# rather than guessed at (same "never describe a mechanic wrong" rule as
-# GENERAL_PAGES above).
+# Exploration abilities/passives, shown in CharacterAbilityPopup after the tutorial fight.
 const WORLD_ABILITY_BLURBS := {
 	"swap": "Instantly trades places with another party member - press F, cycle who with Left/Right, confirm with Enter. Escape cancels. Uses no Oxygen. Useful for getting a diver across a gap or hazard once someone else already made it to the other side.",
 	"grapple": "Press F to grapple golden targets. In aim mode, left-click fires and right-click or Escape cancels. Anchors pull Musashi toward them; floating light items reel toward him instead. Uses no Oxygen. Firing at open water or a wall does nothing and can be retried immediately.",
 	"shockwave": "Press F to fire instantly in every direction at once - no aiming needed. Breaks nearby obstacles built to be shockwaved open. Costs 12 Oxygen and has a short cooldown.",
-	"sonar": "Press Q as Maxilani to show nearby hidden sites as red dots. Costs 1 Oxygen every 6 seconds while on. Red dots are visible only while Sonar is on. Swim into a site to trigger it even with Sonar off; R only switches random fights off, not guarded-site challenges.",
+	"sonar": "Press Q as Maxilani to show nearby hidden sites as red dots. Costs 3 Oxygen every 3 seconds while on. Red dots are visible only while Sonar is on. Swim into a site to trigger it even with Sonar off; R only switches random fights off, not guarded-site challenges.",
 }
 
-const ABILITY_BLURBS := {
-	"swap": "In the encounter: portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then Left/Right and E to swap into a mismatched slot before it lands.",
-	"grapple": "In the encounter: click to capture the mouse, aim at the glowing weak spot, and left-click to grapple it. Each incoming rock needs two weak-spot hits before impact.",
-	"shockwave": "In the encounter: three lanes come in at once - one rock, two solid walls. Hold Left/Right to lean into that lane (let go to snap back to middle) and line up with the rock, then E to shockwave it before it lands. Standing in a wall's lane gets you hit.",
+# Shown on the special-encounter "Choose who goes" screen (a bbcode
+# RichTextLabel there), with keys drawn as tiles via Slot._badge().
+static var ABILITY_BLURBS := {
+	"swap": "Portraits fly in from the enemy. Watch which one matches the reference sitting in each slot, then %s/%s and %s to swap into a mismatched slot before it lands." % [Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E")],
+	"grapple": "Three waves of yellow and green spheres swirl in from the enemy. Each wave names one color as safe: move the mouse to aim the crosshair and %s to grapple every sphere of that color before the wave reaches you. A wave you don't clear hits you." % Slot._badge("Left click"),
+	"shockwave": "Three lanes come in at once: one rock, two solid walls. Hold %s/%s to lean into that lane (let go to snap back to middle) and line up with the rock, then %s to shockwave it before it lands - you only get one shockwave per wave, so time it carefully. Standing in a wall's lane gets you hit." % [Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E")],
 }
 
-# Read out in the choreographed first encounter (see battle.gd's
-# tutorial_encounter) while that move's button is flashing and every other
-# button is disabled - one at a time, forcing the player to actually use
-# each of Maxilani's five starting SCUBA moves once before the fight ends.
-# Every number/effect here matches content/combat_moves.gd's SCUBA array
-# exactly, same "never describe a mechanic wrong" rule as GENERAL_PAGES above.
+# Shown during the scripted first fight while that move's button flashes.
+# Must match content/combat_moves.gd's SCUBA array.
 const FIRST_BATTLE_MOVE_NOTES := {
-	"Electric Touch": "ATTACK move - 1x Strength damage, and it also strips the target's Evasion by your Accuracy. A good opener: everything you throw after this lands more easily.",
+	"Electric Touch": "ATTACK move - 1x Strength damage, and it also lowers the target's Evasion by 1 for the rest of the fight. A good opener: everything you throw after this lands more easily.",
 	"Scuba Stabbing": "ATTACK move - 1x Strength damage plus Bleed (1 + Strength) that keeps ticking after the hit. Use it when you want damage spread over several turns instead of one big number.",
 	"Flash Blast": "UTILITY move - no damage at all. Hits every enemy with Blindness 2 (lowers Agility, Accuracy, AND Defense) for as many turns as your own Accuracy. For making a whole group easier to dodge, not for ending a fight.",
 	"Multiple Knee Combo": "ATTACK move - 1x Strength damage to every enemy, but -1 Accuracy/Evasion on yourself until your next turn. Worth it against several weak targets; riskier against one hard hitter.",
 	"Axe Kick": "ATTACK move - your hardest single hit (Strength + Accuracy damage), but it drops your own Evasion by 3 until your next turn, so you're an easier target right after. Use it when you can afford that trade.",
 }
 
-# Where a short demo clip/image for each ability lives, once one exists.
-# character_ability_popup.gd's own Esc-menu reference carousel (every
-# ability, in or out of combat) checks ResourceLoader.exists() and falls
-# back to a plain placeholder frame if the file isn't there yet - these
-# paths can be filled in one ability at a time with no other code changes
-# needed. .ogv plays as video (Godot's built-in VideoStreamPlayer format);
-# anything else is loaded as a still image.
-# MODIFIED (changed): this used to be one shared ABILITY_MEDIA table, its
-# "swap"/"grapple"/"shockwave" entries pointed to by special_encounter_
-# prompt.gd's own diver-choice carousel and battle.gd's in-fight tutorial
-# demo frame too - the same clip playing in three different contexts (a
-# general reference page, a pre-fight choice screen, and mid-battle) made
-# it unclear which folder's own file a change was even supposed to affect.
-# Split into this table (character_ability_popups/) and SPECIAL_ENCOUNTER_
-# MEDIA below (special_encounters/) - each side now owns its own copy of
-# a clip even where the content starts out identical (e.g. both still have
-# their own "swap"), so replacing one never silently changes the other.
+# Character-ability demo media; missing files fall back to a placeholder. .ogv plays as video.
 const ABILITY_MEDIA := {
 	"world": "res://media/tutorials/character_ability_popups/WorldMap.ogv",
 	"swap": "res://media/tutorials/character_ability_popups/swap_demo.ogv",
@@ -163,36 +125,19 @@ const ABILITY_MEDIA := {
 	"shockwave": "res://media/tutorials/character_ability_popups/shockwave_demo.ogv",
 }
 
-# special_encounter_prompt.gd's diver-choice carousel (shown before a real
-# special encounter starts) and battle.gd's own in-fight demo frame (shown
-# by the special-encounter tutorial while explaining each diver's minigame)
-# - see ABILITY_MEDIA's own comment for why this is a separate table now
-# rather than the same one. Only the three diver minigames apply here;
-# "world" (the world map) and "sonar" (an out-of-combat passive) have
-# nothing to do with a special encounter, so neither has an entry.
+# Special-encounter chooser and in-fight demo media (kept separate from ABILITY_MEDIA).
 const SPECIAL_ENCOUNTER_MEDIA := {
 	"swap": "res://media/tutorials/special_encounters/swap_demo.ogv",
 	"grapple": "res://media/tutorials/special_encounters/grapple_demo.ogv",
 	"shockwave": "res://media/tutorials/special_encounters/shockwave_demo.ogv",
 }
 
-# The supplied Swap recording is a 1920x1080 capture with its actual 16:9
-# game view centered inside a large black canvas.  Keep the delivered file
-# intact, but sample its useful 384x216 region when it is shown in-game so
-# the chooser presents the instruction instead of the recording's padding.
-# Other clips are already framed correctly and intentionally have no entry.
+# The Swap recording is padded inside a 1920x1080 canvas; sample its useful 384x216 region.
 const SPECIAL_ENCOUNTER_VIDEO_CROPS := {
 	"swap": Vector4(732.0 / 1920.0, 384.0 / 1080.0, 384.0 / 1920.0, 216.0 / 1080.0),
 }
 
-# One entry per status condition a move can apply - shared by the Combat
-# Help tab (game/inventory_menu.gd's Esc-menu pause screen), the hover
-# tooltip _populate_move_menu() attaches to any move whose hint says "Status
-# Effect" (see battle.gd), and battle.gd's own tutorial captions, so the
-# numbers only ever have to be right in one place. Blindness's numbers were
-# read straight out of the code that applies them (combatant_stats.gd's
-# effective_accuracy()/effective_agility()/effective_defense(), all three
-# reading status_level("blindness") the same way).
+# One entry per status condition: Combat Help, status tooltips and tutorial captions.
 const STATUS_CONDITIONS: Array[Dictionary] = [
 	{
 		"title": "Blindness",
@@ -212,7 +157,7 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 	},
 	{
 		"title": "Bleed",
-		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight - it never wears off on its own. Every later damaging hit on a bleeding character adds 1 more, and another Bleed move adds its full amount again - but it can only stack up 3 times per fight (and never past 10). Scuba Stabbing applies 1 plus the caster's Strength.",
+		"body": "Deals its stacked amount as damage when the bleeding character's turn ends, every turn for the rest of the fight. Another Bleed move adds its full amount again, but it can only stack up 3 times per fight.",
 	},
 	{
 		"title": "Poison",
@@ -220,11 +165,7 @@ const STATUS_CONDITIONS: Array[Dictionary] = [
 	},
 ]
 
-# Case-insensitive lookup by title - status names travel as lowercase
-# CombatantStats keys ("blindness", "bleed", ...) everywhere except this
-# table's own "title" field, which is capitalized for display. Empty string
-# (not a crash/placeholder body) for a name with no entry, so a caller can
-# just skip attaching a tooltip rather than showing an empty one.
+# Lookup by lowercase status key; returns "" when there is no entry.
 static func status_condition_body(status_name: String) -> String:
 	var normalized := status_name.replace("_", " ").to_lower()
 	for entry in STATUS_CONDITIONS:
@@ -232,15 +173,7 @@ static func status_condition_body(status_name: String) -> String:
 			return String(entry.get("body", ""))
 	return ""
 
-# reduce_evasion/self_temporary aren't CombatantStats statuses - nothing
-# calls add_status() for them, so they have no level/duration and no place
-# in STATUS_CONDITIONS above - but they're just as opaque to a new player as
-# a status effect is (a bare "EVA -3" doesn't say whether that's permanent
-# or whose Evasion actually drops). Keyed by the move data's own "kind"
-# string rather than a display title, since every move using a given kind
-# behaves identically - there's nothing move-specific to look up the way a
-# status name is. One title alongside each body, since the kind string
-# itself ("reduce_evasion") isn't fit for display.
+# Explanations for move effect kinds that aren't CombatantStats statuses, keyed by "kind".
 const EFFECT_KIND_EXPLANATIONS: Dictionary = {
 	"reduce_evasion": {
 		"title": "Evasion Reduction",

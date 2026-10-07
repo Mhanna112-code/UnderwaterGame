@@ -1,9 +1,7 @@
 class_name DeepZoneEnvironment
 extends Node3D
 
-# Production composition for the expanded region. These are environmental
-# silhouettes, not encounter triggers: ordinary enemies remain random and the
-# authored blockers are added by their own lifecycle owner later.
+# Environmental composition for the expanded region; no encounter triggers here.
 const ROCKS := preload("res://art/deep_zone/Rocks.fbx")
 const BROKEN_OFFICE := preload("res://art/deep_zone/Broken_Office.fbx")
 const CORRECTED_DOOR := preload("res://art/deep_zone/Corrected_Door.fbx")
@@ -47,8 +45,7 @@ func _build_route_scenery() -> void:
 	scenery.name = "RouteScenery"
 	scenery.add_to_group("deep_zone_scenery")
 	add_child(scenery)
-	# A broad, uneven reef spine frames the laboratory approach while keeping
-	# the declared center route clear for three diver-sized bodies.
+	# Reef spine framing the lab approach; the center route stays clear.
 	var placements := [
 		[Vector3(82.0, 0.0, 5.0), Vector3(1.45, 1.35, 1.45), 0.25, 6],
 		[Vector3(87.0, 0.0, 27.0), Vector3(1.65, 1.55, 1.55), -0.45, 7],
@@ -64,18 +61,12 @@ func _build_route_scenery() -> void:
 		_add_rocks(scenery, placement[0] as Vector3, placement[1] as Vector3, float(placement[2]), int(placement[3]))
 	_build_lab_approach_reef(scenery)
 	_build_route_rubble(scenery)
-	# Low guide lights read as authored wreckage power rather than a floating
-	# debug ring or an ordinary enemy used as a waypoint.
+	# Low guide lights as wreckage power.
 	for x in [86.0, 111.0, 136.0, 159.0]:
 		_add_glow(scenery, Vector3(x, 0.75, 7.0), Color("4bb9b5"), 5.5, 0.22)
 
 func _build_lab_approach_reef(parent: Node3D) -> void:
-	# The authored fights cannot block an open ocean with a proximity circle.
-	# Continue the already-visible north/south rock spine into one honest,
-	# physical approach corridor. The colliders occupy the same silhouettes as
-	# these overlapping delivered rock clusters and local visible cave canopy,
-	# so there is no invisible gap to swim around or over. The maze branch stays
-	# outside the corridor at z=-34 and remains independently reachable.
+	# Physical corridor matching the visible rock clusters (no invisible gaps); the maze branch stays outside.
 	var clusters := [
 		[Vector3(98.0, 0.0, 3.0), Vector3(2.4, 3.2, 2.2), 0.22, 9],
 		[Vector3(120.0, 0.0, 3.0), Vector3(2.65, 3.5, 2.35), -0.48, 10],
@@ -89,16 +80,11 @@ func _build_lab_approach_reef(parent: Node3D) -> void:
 	for cluster_value in clusters:
 		var cluster := cluster_value as Array
 		_add_rocks(parent, cluster[0] as Vector3, cluster[1] as Vector3, float(cluster[2]), int(cluster[3]))
-	# Three overlapping overhead clusters turn the laboratory branch into a
-	# short cave throat. The visible rock canopy owns the same volume as the
-	# physical roof below, so a player never meets a collision-only ceiling.
+	# Overhead clusters form a cave throat; visible canopy matches the physical roof.
 	_add_rocks(parent, Vector3(116.0, 13.6, 16.0), Vector3(3.4, 2.4, 3.5), 1.08, 10, false)
 	_add_rocks(parent, Vector3(142.0, 14.2, 16.0), Vector3(3.7, 2.5, 3.6), -0.72, 9, false)
 	_add_rocks(parent, Vector3(168.0, 13.8, 16.0), Vector3(3.5, 2.45, 3.7), 0.54, 8, false)
-	# Begin at x=104 rather than the hub itself: the independent maze route
-	# peels south-west through x=100/z=0 and must remain clear of this lab corridor.
-	# The east end still meets the physical laboratory shell at x=181, so the
-	# shortened wall does not reopen a route around either blocker.
+	# Starts at x=104 to keep the maze route clear; the east end meets the lab shell at x=181.
 	_add_reef_wall_body(parent, "NorthApproachReef", Vector3(142.5, 12.0, 3.0), Vector3(77.0, 24.0, 6.0))
 	_add_reef_wall_body(parent, "SouthApproachReef", Vector3(142.5, 12.0, 29.0), Vector3(77.0, 24.0, 6.0))
 	_add_reef_wall_body(parent, "LabApproachRoof", Vector3(142.5, 19.0, 16.0), Vector3(77.0, 10.0, 20.0))
@@ -115,10 +101,7 @@ func _add_reef_wall_body(parent: Node3D, body_name: String, position: Vector3, s
 	body.add_child(shape_node)
 	parent.add_child(body)
 
-# Smaller one- and two-mesh formations carry the eye between the large reef
-# walls without turning the clear swim lane into clutter. Every point stays
-# outside the central z=10..22 travel band or on the independently clear maze
-# branch; these are visual floor dressing, never hidden collision.
+# Small visual formations between reef walls, kept outside travel bands. No collision.
 func _build_route_rubble(parent: Node3D) -> void:
 	var rubble := [
 		[Vector3(72.0, 0.0, 5.0), Vector3(0.52, 0.38, 0.48), 0.18, 0],
@@ -145,9 +128,7 @@ func _build_palm_landmarks() -> void:
 	palms.name = "SunkenPalmLandmarks"
 	palms.add_to_group("deep_zone_scenery")
 	add_child(palms)
-	# The approved palms act as two restrained silhouette pairs: one announces
-	# the deep threshold, and one confirms the otherwise-open maze branch. They
-	# stay well outside both diver corridors and away from the industrial lab.
+	# Palm silhouette pairs, kept clear of corridors and the lab.
 	_add_palm(palms, "EntryPalmNorth", Vector3(72.0, 0.0, 0.0), 0.38, 0.18)
 	_add_palm(palms, "EntryPalmSouth", Vector3(82.0, 0.0, 27.0), 0.44, -0.62)
 	_add_palm(palms, "HubPalmNorth", Vector3(92.0, 0.0, -4.0), 0.31, 0.72)
@@ -158,11 +139,7 @@ func _build_palm_landmarks() -> void:
 func _build_lab_landmark() -> void:
 	var landmark := _landmark("lab")
 	landmark.name = "LabLandmark"
-	# Glassgoat's intended exterior is a separated door embedded in a large
-	# rock face. Broken Office is the concealed cutscene/boss staging set, not
-	# an open exterior building: keeping it hidden here prevents its missing
-	# walls from reading as a see-through lab while preserving its authored
-	# transform for the later interior transition.
+	# Exterior is a door in a rock face; Broken Office stays hidden as the interior staging set.
 	var interior := _add_asset(
 		landmark, BROKEN_OFFICE, Vector3(194.0, 0.0, 16.0),
 		Vector3(0.58, 0.58, 0.58), 0.0
@@ -180,17 +157,13 @@ func _build_lab_landmark() -> void:
 	door.add_to_group("lab_exterior_door")
 	_lab_door = door
 
-	# An asymmetrical mountain silhouette wraps the hidden room. These are
-	# deliberately different scales/rotations from the route reef so the lab
-	# reads as one authored rock mass rather than three repeated prop copies.
+	# Asymmetric mountain silhouette around the hidden room.
 	_add_rocks(landmark, Vector3(184.0, 0.0, 5.5), Vector3(4.4, 4.6, 2.5), 0.32, 9)
 	_add_rocks(landmark, Vector3(184.0, 0.0, 26.5), Vector3(4.7, 4.3, 2.6), -0.48, 10)
 	_lab_exit_cover.append(_add_rocks(landmark, Vector3(187.0, 7.0, 16.0), Vector3(4.6, 2.5, 3.1), 0.12, 8, false))
 	_lab_exit_cover.append(_add_rocks(landmark, Vector3(194.0, 0.0, 16.0), Vector3(5.2, 4.7, 4.5), -0.2, 6))
 
-	# The visual rocks need an equally real physical shell. The center slab
-	# sits immediately behind the closed door; side slabs prevent swimming
-	# around the facade while leaving the declared LAB point reachable.
+	# Physical shell: center slab behind the door, side slabs block swimming around.
 	_lab_door_backing = _add_lab_shell_body(landmark, "DoorBacking", Vector3(180.5, 4.0, 16.0), Vector3(2.0, 8.0, 6.0))
 	_add_lab_shell_body(landmark, "NorthRockMass", Vector3(184.0, 5.0, 7.5), Vector3(8.0, 10.0, 11.0))
 	_add_lab_shell_body(landmark, "SouthRockMass", Vector3(184.0, 5.0, 24.5), Vector3(8.0, 10.0, 11.0))
@@ -257,16 +230,10 @@ func _add_lab_shell_body(parent: Node3D, body_name: String, position: Vector3, s
 	parent.add_child(body)
 	return body
 
-# The exterior is intentionally opaque until the authored handoff owns the
-# screen. During the Mermaid scene and battle, open only the separated door
-# and its matching backing collider; the side rock shell continues to hide the
-# incomplete building from open-water sight lines.
+# Exterior stays opaque; during the scene and battle only the door and its backing collider open.
 func set_lab_phase(phase: String) -> void:
 	var opened := phase in ["cutscene", "boss", "cleared"]
-	# These two visual clusters cover the otherwise collision-clear exit.
-	# Retire them only after victory, so returning players can actually see
-	# and swim the east passage instead of passing through an opaque mountain.
-	# The physical side shell and pre-fight concealment remain unchanged.
+	# Exit-covering visual clusters are removed only after victory.
 	for cover in _lab_exit_cover:
 		cover.visible = phase != "cleared"
 	if is_instance_valid(_lab_door):
@@ -286,8 +253,7 @@ func _add_palm(parent: Node3D, palm_name: String, position: Vector3, palm_scale:
 	parent.add_child(wrapper)
 	var instance := BEACH_ASSETS.instantiate() as Node3D
 	wrapper.add_child(instance)
-	# The delivery is a three-part environment study. Glassgoat approved its
-	# tree, not replacement world-sized sand and water planes.
+	# Use only the approved tree, not the delivery's sand/water planes.
 	for mesh_value in _meshes(instance):
 		var mesh := mesh_value as MeshInstance3D
 		mesh.visible = mesh.name == "Palm_Tree_1"

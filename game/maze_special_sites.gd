@@ -12,7 +12,9 @@ const DEFINITIONS := [
 const CLEARANCE := 2.2
 const RADIUS := 4.0
 const SONAR_RADIUS := 14.0
-const HEIGHT := 4.0
+# Same window as the maze minimap's red circle (MiniMap.within_marker_height):
+# a site that isn't on the minimap can't trigger.
+const HEIGHT := MiniMap.MARKER_HEIGHT_RANGE
 var maze: MazeLevel
 var initialized := false
 var sites: Array[Dictionary] = []
@@ -203,7 +205,8 @@ func finish(result: String) -> void:
 		_pending.consumed = true
 		_chosen.stats.hp = _chosen.stats.hp_max
 		_chosen.stats.oxygen = _chosen.stats.oxygen_max
-		maze._on_secret_orb_collected(String(_pending.item), _chosen)
+		# Announced in the battle's combat log (Battle.reward_claim_text()).
+		maze._on_secret_orb_collected(String(_pending.item), _chosen, false)
 	else:
 		_chosen.stats.hp = _pre_hp
 		_chosen.stats.oxygen = _pre_oxygen

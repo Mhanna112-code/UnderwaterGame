@@ -1,10 +1,8 @@
 class_name PosterModal
 extends CanvasLayer
 
-# A maze wall poster (MazePoster) shown up close: the same paper and
-# portrait, with its big number written on the paper right under the
-# portrait (where the wall poster has its scribbles); the modal ends just
-# below that. Closed by the X button or Esc.
+# Close-up of a maze wall poster (MazePoster) with its number under the portrait.
+# Closed by the X button or Esc.
 
 signal closed
 
