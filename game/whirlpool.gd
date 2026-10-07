@@ -29,7 +29,8 @@ signal diver_sucked_in(d: Diver, amount: int)
 # Draw the swirl on the seafloor (y≈0), clear of the grapple sightline.
 @export var floor_visual := false
 # Bouncing particle column inside the suction area (whirlpool_column.gd).
-@export var column_visual := true
+# Off for now: work in progress, whirlpools keep their original look.
+@export var column_visual := false
 const DEEP_SHAFT_DEPTH := 9.0
 
 var armed := true
