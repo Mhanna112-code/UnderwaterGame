@@ -1405,6 +1405,19 @@ func _start_dev_mode() -> void:
 		(divers[i] as Diver).velocity = Vector3.ZERO
 	_set_maze_ownership(true)
 	_announce("DEV MODE: everything unlocked. G = teleport menu, T = jump to aim. No player save is written.")
+	if OS.get_cmdline_user_args().has("--tethys-front"):
+		call_deferred("_dev_spawn_tethys_front")
+
+# --tethys-front: same as the G menu's Tethys entry (lab unlocked, 7 units
+# outside its door), facing the door. Swim in to start the cutscene and fight.
+func _dev_spawn_tethys_front() -> void:
+	dev_unlock_tethys()
+	var lab := deep_zone_layout.route_points().lab as Vector3
+	var back := DeepZoneLayoutScript.DEEP_HUB - lab
+	back.y = 0.0
+	var at := lab + back.normalized() * 7.0
+	var to_lab := lab - at
+	dev_teleport(at, false, "the Tethys lab door", atan2(to_lab.x, to_lab.z))   # camera looks along (sin yaw, cos yaw)
 
 # Dev mode only: open the Tethys fight without playing up to it - both route
 # blockers beaten, lab available. Entering the lab then starts the cutscene.
@@ -1428,12 +1441,13 @@ func dev_teleport(pos: Vector3, to_maze: bool, label: String, look_yaw := NAN) -
 		var diver := divers[i] as Diver
 		diver.global_position = pos + Vector3(-float(i) * 1.5, 0, float(i) * 1.5)
 		diver.velocity = Vector3.ZERO
-	if not is_nan(look_yaw):
-		yaw = look_yaw
-		if in_maze and to_maze:
-			embedded_maze._yaw = look_yaw
 	if to_maze != in_maze:
 		_set_maze_ownership(to_maze)
+	# After the switch: leaving the maze copies the maze camera's yaw back over ours.
+	if not is_nan(look_yaw):
+		yaw = look_yaw
+		if to_maze:
+			embedded_maze._yaw = look_yaw
 	_announce("Teleported to %s." % label)
 
 var _maze_hidden_hud: Array[CanvasItem] = []
@@ -3819,7 +3833,7 @@ func _show_lab_payoff() -> void:
 	var pages: Array[Dictionary] = [{
 		"slot": null,
 		"title": "Computer recovered",
-		"body": "Tethys is defeated. You recovered the computer she swallowed. Another being is controlling these creatures.\n\nSuggested next step: explore the maze via the ramp beyond the laboratory. Use the divers' abilities for its puzzles.",
+		"body": "From the Tethys corpse you retrieve the computer. The records show that the scientists who created such monstrosity were being influenced by mental abilities of an unknown being that lies beyond the laboratory.\n\nSuggested next step: explore the maze via the ramp beyond the laboratory.",
 	}]
 	$HUD.visible = false
 	var popup := get_node("/root/CharacterAbilityPopup")

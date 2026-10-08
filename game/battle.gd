@@ -4759,7 +4759,7 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 		elif int(result.damage) > 0:
 			summaries.append("%s -%d" % [String(target.display_name), int(result.damage)])
 		else:
-			summaries.append("%s affected" % String(target.display_name))
+			summaries.append("%s %s" % [String(target.display_name), _zero_damage_summary(result)])
 		if (target.stats as CombatantStats).hp <= 0:
 			_play_enemy_death(target)
 	if changed_agility:
@@ -4934,7 +4934,7 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 			elif int(result.damage) > 0:
 				hit_summaries.append("-%d" % int(result.damage))
 			else:
-				hit_summaries.append("affected")
+				hit_summaries.append(_zero_damage_summary(result))
 		if (target.stats as CombatantStats).hp <= 0 and target.actor is Diver:
 			(target.actor as Diver).play_death_fade()
 		summaries.append("%s %s" % [String(target.display_name), "/".join(hit_summaries)])
@@ -4948,6 +4948,14 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 			(boss as CampaignCordys).set_framing_clip("")
 			_frame_stage_camera()
 	_advance_turn()
+
+# Log text for a hit that landed but dealt no damage: its effects ("Poison 2"),
+# or "-0" when Defense absorbed it all (same as the floating number).
+func _zero_damage_summary(result: Dictionary) -> String:
+	var names: Array[String] = []
+	for effect in result.get("effects", []) as Array:
+		names.append(String(effect).get_slice(" (", 0))
+	return ", ".join(names) if not names.is_empty() else "-0"
 
 # Boss self-heal: restores heal_fraction of max HP and removes Bleed, then ends the turn.
 func _do_boss_self_heal(actor: Dictionary, boss: Node3D, move: Dictionary) -> void:
@@ -5091,7 +5099,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 			elif int(result.get("damage", 0)) > 0:
 				target_results.append("-%d" % int(result.damage))
 			else:
-				target_results.append("affected")
+				target_results.append(_zero_damage_summary(result))
 		if (resolved_target.stats as CombatantStats).hp <= 0 and resolved_target.has("actor") and resolved_target.actor is Diver:
 			(resolved_target.actor as Diver).play_death_fade()
 		result_rows.append("%s %s" % [String(resolved_target.display_name), "/".join(target_results)])

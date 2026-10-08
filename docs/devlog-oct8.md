@@ -77,3 +77,49 @@ two small balance tweaks. Each change is listed with what it does and why.
 - Several automated tests start a new game in real save slots 2 and 4. They
   should be switched to throwaway test slots so they never touch a player's
   saves.
+
+---
+
+# Later on October 8
+
+## Tethys
+
+- **Tethys no longer heals herself.** She now simply repeats her six attacks in a
+  fixed order: Double Scratch, Tail Sweep, Poison Breath, Tail Slam, Tongue Slayer,
+  Spinning Death.
+  *Why:* without the random heal the fight is a fair, readable race, and players
+  can learn and plan around her attack order.
+- **Tail Slam's accuracy is 4** (was 3).
+  *Why:* at 3 it tied Maxilani's Evasion of 3, and a tie is a dodge, so one of
+  Tethys's heaviest attacks could never touch Maxilani. Now it can hit every diver,
+  and its QTE gives players a way to dodge it by timing.
+- **The lab cutscene looks like the opening cutscene.** The film fills the screen,
+  with a small "Skip Cutscene" button in the bottom-right corner. The old version had
+  a smaller bordered window, a heading and a large centred Skip button.
+  *Why:* the two cutscenes should feel like part of the same game. The old Skip
+  button also had keyboard focus, so pressing Enter or Space skipped the scene by
+  accident. The new one only responds to the mouse, and Esc still skips.
+- **New "Computer recovered" text after beating Tethys:** "From the Tethys corpse
+  you retrieve the computer. The records show that the scientists who created such
+  monstrosity were being influenced by mental abilities of an unknown being that
+  lies beyond the laboratory." followed by "Suggested next step: explore the maze
+  via the ramp beyond the laboratory."
+  *Why:* it explains where the computer came from and what it reveals, and points
+  the story at the being beyond the lab.
+
+## Combat log
+
+- **Hits that do no damage now read "-0" instead of "affected"**, or name their
+  effect when they have one (for example "Poison 2"). A double hit that Defense
+  fully absorbs reads "Bucky -0/-0".
+  *Why:* "affected" didn't say what happened. "-0" matches the floating number,
+  and naming the effect tells you what the hit actually did.
+
+## Dev tools
+
+- **New launch option `--tethys-front`** starts dev mode with the lab unlocked,
+  just outside its door and facing it.
+  *Why:* it makes testing the Tethys fight and cutscene quick.
+- **Dev teleports now face the right way** when they move you out of the maze.
+  *Why:* leaving the maze overwrote the camera direction, so you arrived facing
+  sideways.
