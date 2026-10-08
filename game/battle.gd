@@ -4380,13 +4380,14 @@ func _resolve_attack(attacker: CombatantStats, defender: CombatantStats, move: D
 	if String(move.get("effect", "")) == "heavy":
 		heavy_fraction = randf_range(float(move.get("heavy_min", 0.25)), float(move.get("heavy_max", 0.5)))
 
-	# Independent ENEMY_QTE_CHANCE roll for quick_time_bool moves (enemy only);
+	# Independent roll for quick_time_bool moves (enemy only): the move's own
+	# "qte_chance" (Tail Slam: 1.0, always) or ENEMY_QTE_CHANCE;
 	# a successful dodge zeroes damage. _tutorial_force_next_qte forces it and is
 	# consumed here unconditionally.
 	var force_qte := _tutorial_force_next_qte
 	_tutorial_force_next_qte = false
 	var player_dodge := false
-	if bool(move.get("quick_time_bool", false)) and (force_qte or randf() < ENEMY_QTE_CHANCE):
+	if bool(move.get("quick_time_bool", false)) and (force_qte or randf() < float(move.get("qte_chance", ENEMY_QTE_CHANCE))):
 		# Organic QTEs get an Enter-gated warning first; the forced tutorial swing
 		# already had its own explanation.
 		if not force_qte:

@@ -36,6 +36,7 @@ const MOVES := [
 		"id": "tail_slam", "name": "Tail Slam",
 		"clip": "tail_slam", "target": "single", "hits": 1,
 		"power": 4, "acc_mod": 1, "quick_time_bool": true,   # ACC 3 + 1 = 4: beats Maxilani's EVA 3
+		"qte_chance": 1.0,   # every Tail Slam that gets past Evasion is a QTE
 		"intent": "Provisional telegraphed single-target heavy",
 	},
 	{

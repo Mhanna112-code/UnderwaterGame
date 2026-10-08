@@ -93,6 +93,10 @@ two small balance tweaks. Each change is listed with what it does and why.
   *Why:* at 3 it tied Maxilani's Evasion of 3, and a tie is a dodge, so one of
   Tethys's heaviest attacks could never touch Maxilani. Now it can hit every diver,
   and its QTE gives players a way to dodge it by timing.
+- **Tail Slam is always a QTE attack.** Whenever it gets past a diver's Evasion,
+  the timing bar appears every time (other QTE attacks still trigger 1 time in 4).
+  *Why:* it's Tethys's heaviest single hit, so the player should always get a
+  skill-based chance to dodge it rather than a lucky roll.
 - **The lab cutscene looks like the opening cutscene.** The film fills the screen,
   with a small "Skip Cutscene" button in the bottom-right corner. The old version had
   a smaller bordered window, a heading and a large centred Skip button.
