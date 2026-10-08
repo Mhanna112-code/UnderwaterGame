@@ -166,7 +166,7 @@ func _confirm_swap() -> void:
 	_update_active_cursor()
 
 # Portrait speed in units/sec; travel time is derived from it per round.
-var portraitSpeed = 3.7209
+var portraitSpeed = 3.7767   # +1.5% (was 3.7209)
 # This round's travel duration (distance / portraitSpeed).
 var _current_travel_time := 1.75
 

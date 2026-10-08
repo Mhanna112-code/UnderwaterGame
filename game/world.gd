@@ -3554,7 +3554,10 @@ func _on_battle_finished(result: String) -> void:
 	if was_tutorial and not was_special:
 		# Deferred: open() pauses the tree, so let this handler finish first.
 		_write_save()
-		call_deferred("_show_ability_popups")
+		# First time only: Combat Help replays don't repeat the onboarding
+		# (it stays available from the Esc menu's Character Abilities button).
+		if not ability_popups_seen:
+			call_deferred("_show_ability_popups")
 
 # Heal and return to the overworld. Freeing `battle` here matters only for
 # the tutorial-loss playtest, which never goes through _on_battle_finished().
@@ -3583,7 +3586,8 @@ func _on_tutorial_loss_exit() -> void:
 			(divers[i] as Diver).position = CAST[i].at as Vector3
 		_build_forced_tutorial_beam()
 		_write_save()
-		call_deferred("_show_ability_popups")
+		if not ability_popups_seen:
+			call_deferred("_show_ability_popups")
 
 # --tutorial-loss-playtest entry: straight to the real tutorial loss popup.
 func _show_tutorial_loss_playtest() -> void:

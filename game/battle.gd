@@ -331,6 +331,7 @@ var _tutorial_awaiting_enter := false
 var _tutorial_continue_btn: Button
 # Set only by an explicit tutorial skip, separate from _busy.
 var _skip_tutorial_requested := false
+const SKIP_TUTORIAL_TEXT := "Skipping the tutorial fight."
 
 # Subset of a spell def read by _register_stat_effects(), keyed by its move-menu name.
 func _spell_preview_move(def: Dictionary, spell_id: String) -> Dictionary:
@@ -582,6 +583,9 @@ func create_stats_panel(title: String) -> Dictionary:
 func _row_stylebox(on: bool, color: Color = Color(1, 0, 0)) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0, 0, 0, 0)
+	# Fixed 3px room for the border either way: a box that only gets its
+	# padding when highlighted makes the row (and the panel) jump 6px.
+	style.set_content_margin_all(3)
 	if on:
 		style.border_color = color
 		style.set_border_width_all(3)
@@ -1998,6 +2002,25 @@ func _fit_panel_height() -> void:
 			_refresh_bar(entry)
 	_bottom_panel.offset_bottom = 0.0
 	_bottom_panel.offset_top = -(_bottom_panel.get_combined_minimum_size().y + 12.0)
+	if _caption_focus:
+		# Fixed height; grows only if a caption's laid-out text needs more room.
+		# The container's own minimum is unreliable here: until the caption has
+		# its width it reports one word per line.
+		if _tutorial_caption.size.x > 100.0 and _tutorial_caption.is_finished():
+			var col := _tutorial_caption.get_parent() as Container
+			var margin := col.get_parent().get_parent() as MarginContainer
+			var need := (_tutorial_caption.get_content_height()
+				+ _tutorial_continue_btn.get_combined_minimum_size().y
+				+ main_menu.get_combined_minimum_size().y
+				+ 2.0 * col.get_theme_constant("separation")
+				+ margin.get_theme_constant("margin_top") + margin.get_theme_constant("margin_bottom") + 12.0)
+			_caption_focus_height = maxf(_caption_focus_height, need)
+		# Minigame pages show a demo clip beside the caption; never clip it.
+		if _swap_demo_frame.visible:
+			var m := _swap_demo_frame.get_parent().get_parent() as MarginContainer
+			_caption_focus_height = maxf(_caption_focus_height, _swap_demo_frame.custom_minimum_size.y
+				+ m.get_theme_constant("margin_top") + m.get_theme_constant("margin_bottom") + 12.0)
+		_bottom_panel.offset_top = -_caption_focus_height
 	_fit_party_status_cards_above_panel()
 	# Stage ends at the panel's top so a taller HUD shrinks the fight instead of covering it.
 	if _stage_container != null:
@@ -2177,8 +2200,14 @@ func _on_qte_timeout() -> void:
 # `on_layout_ready` runs after _fit_panel_height() has resized the panel, so
 # highlight boxes land on the new row positions.
 func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -> void:
+	# Special tutorial: only caption, Continue and Skip while pages turn.
+	if special_encounter and tutorial_encounter:
+		_enter_caption_focus()
 	# Hidden by default outside tutorials (e.g. the QTE warning).
 	_tutorial_caption.visible = true
+	# Log off now, not a frame later in _process: otherwise a page opened after
+	# an action draws one frame with the log and the panel jumps 64px.
+	log_label.visible = false
 	# [pulse] flashes the prompt inline at the end of the caption.
 	_tutorial_caption.text = "%s\n[font_size=18][pulse]Press %s, %s, or click Continue[/pulse][/font_size]" % [text, Slot._badge("Space"), Slot._badge("Enter")]
 	_caption_step_serial += 1
@@ -2198,6 +2227,55 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 		return
 
 var _caption_step_serial := 0
+
+# Caption focus (special tutorial only). While its captions are up, every
+# panel element except the caption, Continue and Skip Tutorial is hidden, and
+# the panel can only grow, never shrink, so the text never jumps between pages.
+var _caption_focus := false
+var _caption_focus_saved := {}       # Control -> visibility before focus
+var _caption_focus_height := 0.0     # tallest panel height seen during focus
+
+func _caption_focus_controls() -> Array:
+	return [_levelup_caption, _selected_move_panel, (_player_stats_ui.panel as Control).get_parent(),
+		move_menu, item_menu, target_menu, attack_btn, run_btn, items_btn]
+
+func _enter_caption_focus() -> void:
+	if _caption_focus:
+		return
+	# Seed with the normal panel height (log + menu + stats rows), so hiding them
+	# leaves room for the caption instead of shrinking the panel. Measured from
+	# rows whose height doesn't depend on width: on the first frame the panel
+	# has no width yet and a wrapping caption would report a huge height.
+	var col := _tutorial_caption.get_parent() as Container
+	var margin := col.get_parent().get_parent() as MarginContainer
+	# One line of log, one row of buttons (the menu would stack them with no width).
+	var rows_h := log_label.custom_minimum_size.y
+	rows_h += attack_btn.get_combined_minimum_size().y
+	rows_h += ((_player_stats_ui.panel as Control).get_parent() as Control).get_combined_minimum_size().y
+	rows_h += 2.0 * col.get_theme_constant("separation")
+	rows_h += margin.get_theme_constant("margin_top") + margin.get_theme_constant("margin_bottom")
+	_caption_focus_height = maxf(-_bottom_panel.offset_top, rows_h + 12.0)
+	_caption_focus_saved.clear()
+	for c in _caption_focus_controls():
+		_caption_focus_saved[c] = (c as Control).visible
+		(c as Control).visible = false
+	# Skip Tutorial lives in main_menu, so the row stays with just that button.
+	main_menu.visible = true
+	_place_skip_tutorial_btn_last(main_menu)
+	log_label.visible = false
+	_caption_focus = true
+	call_deferred("_fit_panel_height")
+
+# Called from _process once the last caption of a run has closed.
+func _exit_caption_focus() -> void:
+	if not _caption_focus:
+		return
+	_caption_focus = false
+	for c in _caption_focus_saved:
+		if is_instance_valid(c):
+			(c as Control).visible = bool(_caption_focus_saved[c])
+	_caption_focus_saved.clear()
+	call_deferred("_fit_panel_height")
 
 func _hide_continue_if_idle(step: int) -> void:
 	if step == _caption_step_serial and is_instance_valid(_tutorial_continue_btn):
@@ -2503,6 +2581,9 @@ func _clear_support_preview() -> void:
 			_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
 
 func _log(text: String) -> void:
+	# Once skipped, only the skip line shows; an interrupted step can't overwrite it.
+	if _skip_tutorial_requested and text != SKIP_TUTORIAL_TEXT:
+		return
 	log_label.clear()
 	log_label.add_text(text)
 	call_deferred("_fit_panel_height")
@@ -2510,6 +2591,8 @@ func _log(text: String) -> void:
 # Enemy-attack damage ("Bucky -3") shown in the stat-loss red.
 static var _damage_regex: RegEx
 func _log_enemy_damage(text: String) -> void:
+	if _skip_tutorial_requested:
+		return
 	if _damage_regex == null:
 		_damage_regex = RegEx.create_from_string("(?<![A-Za-z0-9])-[0-9]+")
 	var safe := text.replace("[", "[lb]")
@@ -2849,6 +2932,8 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # Turn dispatcher: check for a wipe on either side first, rebuild the queue
 # at round end, then run the enemy AI or the player menu.
 func _advance_turn() -> void:
+	if _skip_tutorial_requested:
+		return
 	# The attacking diver's turn is over: drop their move/damage line.
 	_hide_move_damage_line()
 	# After all scripted moves and the QTE turn, show "Defeat the enemy!" once,
@@ -3031,9 +3116,11 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	# Borrows _levelup_caption (unused mid-fight) for the caption's second half.
 	_levelup_caption.text = "The white bar sweeps across the track, and pressing %s the instant it's inside the red zone dodges the attack completely. Miss the timing and the attack just lands as normal.\n[font_size=22][pulse]Press %s to continue[/pulse][/font_size]" % [Slot._badge("X"), Slot._badge("Enter")]
 	_levelup_caption.visible = true
+	# Wait flag set before the layout frame so _process keeps the log hidden.
+	log_label.visible = false
+	_tutorial_awaiting_enter = true
 	call_deferred("_fit_panel_height")
 	await get_tree().process_frame
-	_tutorial_awaiting_enter = true
 	while _tutorial_awaiting_enter:
 		await get_tree().process_frame
 	_levelup_caption.visible = false
@@ -3131,9 +3218,23 @@ func _play_special_encounter_intro() -> void:
 		run_btn.disabled = true
 
 func _process(_delta: float) -> void:
+	# An interrupted tutorial step may still set a caption or open a menu.
+	if _skip_tutorial_requested:
+		_tutorial_caption.visible = false
+		_tutorial_continue_btn.visible = false
+		_levelup_caption.visible = false
+		for m in [main_menu, move_menu, item_menu, target_menu, _selected_move_panel]:
+			(m as Control).visible = false
+		log_label.visible = true
+	# Caption focus ends once the run of captions is over (Continue hidden).
+	if _caption_focus and not _tutorial_awaiting_enter and not _tutorial_continue_btn.visible:
+		_exit_caption_focus()
 	# Reconcile the log's caption gate with our Continue action.
 	if is_instance_valid(log_label):
-		var show_log := not _tutorial_awaiting_enter
+		# Also hidden between back-to-back captions (Continue stays up until the
+		# deferred _hide_continue_if_idle), or the log blinks in for a frame and
+		# the panel jumps up and down.
+		var show_log := not (_tutorial_awaiting_enter or (_tutorial_caption.visible and _tutorial_continue_btn.visible))
 		if log_label.visible != show_log:
 			log_label.visible = show_log
 			call_deferred("_fit_panel_height")
@@ -5260,6 +5361,8 @@ func _build_levelup_block(entry: Dictionary, levels: Array) -> String:
 	return "[b]%s[/b] - Lv.%d\n%s" % [String(entry.display_name), last_level, line]
 
 func _win() -> void:
+	if _skip_tutorial_requested:
+		return
 	# Victory music now, while Battle still owns the screen.
 	_audio_call(&"play_victory_music")
 	_set_all_buttons(false)
@@ -5368,6 +5471,8 @@ func _win() -> void:
 	finished.emit("won")
 
 func _lose() -> void:
+	if _skip_tutorial_requested:
+		return
 	# Reframe once more before the loss screen.
 	_frame_stage_camera()
 	_set_all_buttons(false)
@@ -5386,7 +5491,10 @@ func _lose() -> void:
 	finished.emit("lost")
 
 func _on_skip_tutorial_pressed() -> void:
-	if _busy:
+	# Works mid-step too (the button is only clickable when skipping is allowed);
+	# the interrupted step's coroutine is muted by the _skip_tutorial_requested
+	# guards in _log, _process, _advance_turn, _win and _lose.
+	if _skip_tutorial_requested:
 		return
 	_skip_tutorial_requested = true
 	_busy = true
@@ -5404,7 +5512,7 @@ func _on_skip_tutorial_pressed() -> void:
 	_selected_move_panel.visible = false
 	(_player_stats_ui.panel as Control).visible = false
 	(_enemy_stats_ui.panel as Control).visible = false
-	_log("Skipping the tutorial fight.")
+	_log(SKIP_TUTORIAL_TEXT)
 	await get_tree().create_timer(_log_read_delay()).timeout
 	_revert_temp_buffs()
 	finished.emit("skipped")

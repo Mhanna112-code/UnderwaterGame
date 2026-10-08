@@ -21,7 +21,7 @@ func make_stats() -> CombatantStats:
 	var stats := CombatantStats.new()
 	stats.hp_max = 78
 	stats.strength = 5
-	stats.defense = 2
+	stats.defense = 4
 	stats.agility = 5
 	stats.evasion = 5
 	stats.accuracy = 6
