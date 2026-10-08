@@ -24,6 +24,9 @@ feel like an event. Each change is listed with what it does and why it was made.
 - **A MISS sign appears between the stat panels when an attack can't hit.**
   *Why:* misses used to be invisible until the attack failed. Now you can see in
   advance that the enemy's Evasion is too high.
+- **No more flicker when hovering targets.** The space for the yellow damage line is
+  kept while you choose a target, so the buttons don't jump under the mouse.
+  *Why:* the line appearing and disappearing resized the menu, which made it flicker.
 - **A blinking red marker sits over the target you're hovering.**
   *Why:* with several enemies on screen it wasn't always clear which one a button
   meant.
@@ -72,9 +75,16 @@ feel like an event. Each change is listed with what it does and why it was made.
   - **Heavy Kick:** 8 power, +1 accuracy, 8 O2
   - **Heavy Slam:** 12 power, 10 O2
   - **Precise Jab:** +2 accuracy
+  - **Weaken, Slow and their Empowered versions:** +1 accuracy (was +2)
   - **Current Snare:** lowers Evasion
   *Why:* to balance Bucky's options against each other, and to stop "near-unmissable"
   moves from making Evasion meaningless.
+- **Teamwork against Cordys.** Musashi's Precise Jab (ACC 2 + 2 = 4) is dodged by
+  Cordys, and that dodge spends 4 of his 5 Evasion, leaving 1. Bucky's Heavy Kick
+  (ACC 1 + 1 = 2) then beats that 1 and connects. Cordys acts first each round, then
+  Musashi, then Bucky, so both get their turn before his Evasion refills.
+  *Why:* Bucky's low Accuracy means he rarely lands a hit on his own. This gives
+  players a deliberate way to set him up.
 - **Bucky learns Mending Current first** (level 2), then Heavy Slam (level 3).
   *Why:* a heal early on makes the party much more forgiving than a second heavy hit.
 - **Items:**

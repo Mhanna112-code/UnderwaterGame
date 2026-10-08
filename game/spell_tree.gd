@@ -55,14 +55,14 @@ const SPELL_TREES := {
 				"display": "Weaken Empowered", "cost": 1,
 				"description": "Strikes a nerve, lowering the target's defense.",
 				"requires_spells": [], "requires_items": [],
-				"debuff": "defense", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
+				"debuff": "defense", "amount": 2, "acc_mod": 1, "oxygen_cost": 8.0,
 				"hint": "Greatly lowers defense", "text": "You strike a nerve - defense drops",
 			},
 			"slow": {
 				"display": "Slow Empowered", "cost": 1,
 				"description": "Hobbles the target, lowering its agility.",
 				"requires_spells": [], "requires_items": [],
-				"debuff": "agility", "amount": 2, "acc_mod": 2, "oxygen_cost": 8.0,
+				"debuff": "agility", "amount": 2, "acc_mod": 1, "oxygen_cost": 8.0,
 				"hint": "Greatly lowers agility", "text": "You hobble the target - agility drops",
 			},
 			"blinding_silt": {

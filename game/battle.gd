@@ -175,8 +175,8 @@ const BASE_MOVES := {
 	"Staff_Diver": CombatMoves.SCUBA,
 	"Prototype_1(1910)": [
 		{"name": "Precise Tap", "power": 1, "acc_mod": 9, "text": "You land a precise tap"},
-		{"name": "Weaken", "power": 0, "acc_mod": 2, "debuff": "defense", "amount": 2, "hint": "Lowers defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
-		{"name": "Slow", "power": 0, "acc_mod": 2, "debuff": "agility", "amount": 2, "hint": "Lowers agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
+		{"name": "Weaken", "power": 0, "acc_mod": 1, "debuff": "defense", "amount": 2, "hint": "Lowers defense", "text": "You strike a nerve - its defense drops", "oxygen_cost": 10.0},
+		{"name": "Slow", "power": 0, "acc_mod": 1, "debuff": "agility", "amount": 2, "hint": "Lowers agility", "text": "You hobble it - its agility drops", "oxygen_cost": 10.0},
 	],
 	"Prototype_V(1922)": [
 		{"name": "Guard Bash", "power": 4, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
@@ -723,9 +723,10 @@ func _show_move_damage_line(move: Dictionary, targets: Array) -> void:
 			var text := _effective_damage_text(move, (target as Dictionary).stats as CombatantStats)
 			if text != "" and not values.has(text):
 				values.append(text)
-	_selected_move_name.text = String(move.get("name", "")) if not values.is_empty() else ""
+	_selected_move_name.text = String(move.get("name", "")) if not values.is_empty() else " "
 	_selected_move_power.text = " / ".join(values)
-	_selected_move_panel.visible = not values.is_empty()
+	# Stays (blank) while the target list is open: see _blank_move_damage_line().
+	_selected_move_panel.visible = not values.is_empty() or target_menu.visible
 
 # True when `move` can't beat `defender`'s current Evasion (ACC <= EVA misses).
 func _preview_misses(move: Dictionary, defender: CombatantStats) -> bool:
@@ -795,7 +796,7 @@ func _clear_stat_preview() -> void:
 	(_enemy_stats_ui.panel as Control).visible = false
 	if _miss_label != null:
 		_miss_label.visible = false
-	_selected_move_panel.visible = false
+	_blank_move_damage_line()
 	# Full reset: _apply_stat_delta() overwrote the value text.
 	if _acting.has("stats"):
 		_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
@@ -3804,10 +3805,11 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		call_deferred("_fit_panel_height")
 		return
 	_pending_move = mv
-	# The yellow name + damage line appears on enemy hover (_show_move_damage_line).
-	_selected_move_name.text = ""
+	# The yellow name + damage line fills in on hover (_show_move_damage_line).
+	# Its row is reserved now, blank, so hovering never resizes the panel.
+	_selected_move_name.text = " "
 	_selected_move_power.text = ""
-	_selected_move_panel.visible = false
+	_selected_move_panel.visible = true
 	if String(mv.get("target", "one_enemy")) in ["all_enemies", "all_allies"]:
 		_populate_all_target_menu(targets)
 	else:
@@ -4177,6 +4179,13 @@ func _populate_target_menu(targets: Array) -> void:
 	_place_skip_tutorial_btn_last(target_menu)
 
 # Resolve whichever of _pending_move/_pending_item is set, then clear both.
+# Mouse left a target: clear the yellow line's text but keep its row while a
+# move's target list is open, so the layout doesn't jump.
+func _blank_move_damage_line() -> void:
+	_selected_move_name.text = " "
+	_selected_move_power.text = ""
+	_selected_move_panel.visible = target_menu.visible and _pending_item == "" and not _pending_move.is_empty()
+
 # The yellow move/damage line is a targeting aid only: gone once a move is used.
 func _hide_move_damage_line() -> void:
 	_selected_move_name.text = ""
