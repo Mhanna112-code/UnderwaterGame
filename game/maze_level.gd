@@ -761,13 +761,14 @@ func _start_battle(kind := "strong") -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_mouse_look = false
 	_battle = Battle.new()
+	_battle.dev_mode = world != null and world.dev_mode
 	match kind:
 		"secret_boss":
-			_announce("Cordys's puppets guard the way.")
 			_battle.encounter_source = "maze_puppets"
 			if route_state != null:
 				route_state.set_encounter_source("maze_puppets")
-			_battle.encounter_intro_override = "Break their hold. Face their master."
+			_battle.encounter_intro_override = "These enemies are guarding a nearby entity..."
+			_battle.encounter_intro_hold = 4.0
 		"main_boss":
 			_announce("Cordys waits for you.")
 			_battle.encounter_source = "maze_cordys"
@@ -832,7 +833,8 @@ func _on_battle_finished(result: String) -> void:
 		_play_maze_music(&"play_exploration_music")
 	if result == "won" and kind == "secret_boss":
 		_remove_boss_trigger("secret_boss")
-		_gain_key("abyss_key", "Their hold is broken. You've obtained a maze key.")
+		_gain_key("abyss_key", "")   # silent: the Cordys reveal follows
+		get_tree().create_timer(1.5).timeout.connect(_reveal_cordys)
 		return
 	if result == "won" and kind == "main_boss":
 		_remove_boss_trigger("main_boss")
@@ -1075,7 +1077,7 @@ func poster_modal_open() -> bool:
 func whirlpool_activity() -> int:
 	if not maze_active or _battling:
 		return Whirlpool.Activity.INACTIVE
-	if not _announcement_readable() or _chest_reward_pending or _gate_cutscene:
+	if not _announcement_readable() or _chest_reward_pending or _gate_cutscene or _cordys_reveal:
 		return Whirlpool.Activity.SUSPENDED
 	return Whirlpool.Activity.EXPLORING
 
@@ -1402,6 +1404,9 @@ const BOSS_DANGER_PROMPT := "A great danger is detected here. Are you sure you w
 const CORDYS_PROMPT_RADIUS := 6.0
 var _cordys_prompt: ConfirmPromptModal
 var _cordys_prompt_armed := true
+var _cordys_touch_radius := 1.0
+# Diver-to-Cordys gap (beyond touching) that still counts as bumping into him.
+const CORDYS_TOUCH_MARGIN := 0.35
 
 func _build_secret_boss_room() -> void:
 	var box30 := $CSGBox3D30 as CSGBox3D
@@ -1460,6 +1465,11 @@ const PUPPET_REACH := 4.4
 const PUPPET_HEADROOM := 1.5
 const PUPPET_SPEED := 2.2
 const PUPPET_PROMPT_RADIUS := 3.8
+# Solid box around the three puppets (they sit at x = -2, 0, 2), plus the
+# touch margin that triggers the prompt.
+const PUPPET_BODY_SIZE := Vector3(5.8, 2.8, 2.8)
+const PUPPET_BODY_CENTER := Vector3(0, 0.9, 0.5)
+const PUPPET_TOUCH_MARGIN := 0.35
 const PUPPET_PROMPT_TEXT := BOSS_DANGER_PROMPT
 var _puppet_patrol: Node3D
 var _puppet_guard_actors: Array[Goblin] = []
@@ -1515,14 +1525,24 @@ func _build_puppet_patrol() -> void:
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.position.y = 2.6
 	_puppet_patrol.add_child(label)
+	# Solid: the party bumps into the puppets instead of swimming through them.
+	# AnimatableBody so the moving patrol pushes rather than overlaps.
+	var solid := AnimatableBody3D.new()
+	var solid_shape := CollisionShape3D.new()
+	var solid_box := BoxShape3D.new()
+	solid_box.size = PUPPET_BODY_SIZE
+	solid_shape.shape = solid_box
+	solid_shape.position = PUPPET_BODY_CENTER
+	solid.add_child(solid_shape)
+	_puppet_patrol.add_child(solid)
+	# Touching them (a thin shell around the body) asks the danger question.
 	var area := Area3D.new()
 	area.collision_mask = 2   # divers
 	var shape := CollisionShape3D.new()
-	var cyl := CylinderShape3D.new()
-	cyl.radius = PUPPET_PROMPT_RADIUS
-	cyl.height = PUPPET_TOP + 2.0
-	shape.shape = cyl
-	shape.position = Vector3(0, cyl.height * 0.5 - 1.0, 0)
+	var touch_box := BoxShape3D.new()
+	touch_box.size = PUPPET_BODY_SIZE + Vector3.ONE * PUPPET_TOUCH_MARGIN * 2.0
+	shape.shape = touch_box
+	shape.position = PUPPET_BODY_CENTER
 	area.add_child(shape)
 	_puppet_patrol.add_child(area)
 	area.body_entered.connect(func(body: Node3D) -> void:
@@ -1604,17 +1624,34 @@ func _build_boss_triggers() -> void:
 		label.position = Vector3(0, actor.height + 0.7, 0)
 		station.add_child(label)
 		_boss_triggers["main_boss"] = station
+		# Solid body; AnimatableBody so it can move with him out of the cave.
+		var solid := AnimatableBody3D.new()
+		solid.name = "CordysBody"
+		var solid_shape := CollisionShape3D.new()
+		var cyl := CylinderShape3D.new()
+		cyl.radius = actor.radius
+		cyl.height = actor.height
+		solid_shape.shape = cyl
+		solid_shape.position = Vector3(0, actor.height * 0.5, 0)
+		solid.add_child(solid_shape)
+		station.add_child(solid)
+		_cordys_touch_radius = actor.radius
+		_build_cordys_cave(station, actor)
+		_set_cordys_out(not _boss_triggers.has("secret_boss"))
 
 func _update_cordys_station() -> void:
 	var station := _boss_triggers.get("main_boss") as Node3D
-	if not is_instance_valid(station) or station.is_queued_for_deletion():
+	if not is_instance_valid(station) or station.is_queued_for_deletion() or not _cordys_out:
 		return
-	var distance := _diver.global_position.distance_to(station.global_position + Vector3(0, 2, 0))
-	# After declining, the player must leave the vicinity before being asked again.
-	if distance > CORDYS_PROMPT_RADIUS + 1.0:
+	# Asks only when the diver bumps into him (horizontal contact with his body).
+	var distance := Vector2(_diver.global_position.x - station.global_position.x,
+		_diver.global_position.z - station.global_position.z).length()
+	var touch := _cordys_touch_radius + _diver.radius + CORDYS_TOUCH_MARGIN
+	# After declining, the player must back away before being asked again.
+	if distance > touch + 1.5:
 		_cordys_prompt_armed = true
 		return
-	if not _cordys_prompt_armed or distance > CORDYS_PROMPT_RADIUS \
+	if not _cordys_prompt_armed or distance > touch \
 		or not can_capture_campaign_snapshot() or not _announcement_readable():
 		return
 	if not _main_boss_room_rect().has_point(Vector2(_diver.global_position.x, _diver.global_position.z)):
@@ -1631,6 +1668,127 @@ func _update_cordys_station() -> void:
 			cordys_fight_starting.emit()
 			_start_battle("main_boss"))
 	add_child(_cordys_prompt)
+
+# --- Cordys's cave: he hides at the east end of the main boss room until his
+# puppets are beaten, then a camera pan shows him coming out. ---
+const CAVE_DEPTH := 4.0
+var _cordys_cave: Node3D
+var _cordys_out := false
+var _cordys_hide_pos := Vector3.ZERO
+var _cordys_out_pos := Vector3.ZERO
+var _cordys_reveal := false          # camera cutscene running
+var _cordys_view_spot := Vector3.ZERO
+
+func _build_cordys_cave(station: Node3D, actor: Node3D) -> void:
+	var rect := _main_boss_room_rect()
+	if rect.size == Vector2.ZERO:
+		return
+	var floor_y := _maze_floor_top()
+	var cordys_radius := float(actor.get("radius"))
+	var cordys_height := float(actor.get("height"))
+	var z := station.global_position.z
+	var mouth_x := rect.end.x - CAVE_DEPTH
+	var mouth_h := cordys_height + 1.2
+	var half_w := cordys_radius + 1.0
+	_cordys_out_pos = station.global_position
+	_cordys_hide_pos = Vector3(mouth_x + CAVE_DEPTH * 0.5, station.global_position.y, z)
+	_cordys_view_spot = Vector3(lerpf(rect.position.x, mouth_x, 0.25), floor_y + 5.0,
+		clampf(z + 3.0, rect.position.y + 1.0, rect.end.y - 1.0))
+
+	_cordys_cave = Node3D.new()
+	_cordys_cave.name = "CordysCave"
+	add_child(_cordys_cave)
+	# Dark interior: an opaque block that hides him until he swims out of it.
+	var dark := StandardMaterial3D.new()
+	dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dark.albedo_color = Color(0.01, 0.02, 0.03)
+	var hole := MeshInstance3D.new()
+	var hole_box := BoxMesh.new()
+	hole_box.size = Vector3(CAVE_DEPTH, mouth_h, half_w * 2.0)
+	hole.mesh = hole_box
+	hole.material_override = dark
+	_cordys_cave.add_child(hole)
+	hole.global_position = Vector3(mouth_x + CAVE_DEPTH * 0.5, floor_y + mouth_h * 0.5, z)
+	# Faceted rocks: an arch around the mouth, then a mound over and around it.
+	var stone := StandardMaterial3D.new()
+	stone.vertex_color_use_as_albedo = true
+	stone.roughness = 1.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 33
+	var rocks: Array[Array] = []   # [position, radius]
+	for i in 11:
+		var a := PI * float(i) / 10.0
+		rocks.append([Vector3(mouth_x, floor_y + sin(a) * mouth_h, z + cos(a) * (half_w + 0.5)), rng.randf_range(0.9, 1.4)])
+	for i in 14:
+		rocks.append([Vector3(rng.randf_range(mouth_x + 0.5, rect.end.x - 0.5), floor_y + mouth_h + rng.randf_range(-0.6, 0.9),
+			z + rng.randf_range(-half_w - 1.5, half_w + 1.5)), rng.randf_range(1.2, 2.0)])
+	for side in [-1.0, 1.0]:
+		for i in 3:
+			rocks.append([Vector3(rng.randf_range(mouth_x + 0.6, rect.end.x - 0.6), floor_y + rng.randf_range(0.4, mouth_h),
+				z + side * (half_w + rng.randf_range(1.0, 1.8))), rng.randf_range(1.2, 1.8)])
+	for spec in rocks:
+		var rock := MeshInstance3D.new()
+		rock.mesh = _broken_half_mesh(float(spec[1]), rng)
+		rock.material_override = stone
+		rock.rotation = Vector3(rng.randf_range(-0.5, 0.5), rng.randf() * TAU, rng.randf_range(-0.5, 0.5))
+		_cordys_cave.add_child(rock)
+		rock.global_position = spec[0]
+	# Solid: the party can't swim into the cave.
+	var body := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(CAVE_DEPTH, mouth_h + 2.0, half_w * 2.0 + 3.0)
+	shape.shape = box
+	body.add_child(shape)
+	_cordys_cave.add_child(body)
+	body.global_position = Vector3(mouth_x + CAVE_DEPTH * 0.5, floor_y + (mouth_h + 2.0) * 0.5, z)
+
+# Instantly in the cave (hidden, no prompt) or out in the room.
+func _set_cordys_out(out: bool) -> void:
+	var station := _boss_triggers.get("main_boss") as Node3D
+	if not is_instance_valid(station) or _cordys_cave == null:
+		return
+	_cordys_out = out
+	station.global_position = _cordys_out_pos if out else _cordys_hide_pos
+	for child in station.get_children():
+		(child as Node3D).visible = out
+	var body := station.get_node_or_null("CordysBody")
+	if body != null:
+		for shape in body.get_children():
+			(shape as CollisionShape3D).set_deferred("disabled", not out)
+
+# After the puppets fall: pan to the cave and watch Cordys swim out.
+func _reveal_cordys() -> void:
+	var station := _boss_triggers.get("main_boss") as Node3D
+	if not is_instance_valid(station) or _cordys_out or _cordys_cave == null:
+		return
+	var autosave_text := ""
+	if world != null:
+		autosave_text = await world.autosave_after_boss()
+	_cordys_reveal = true
+	_cancel_aim()
+	_diver.velocity = Vector3.ZERO
+	var actor := station.get_node_or_null("Cordys") as PrologueOctopus
+	var tw := create_tween()
+	tw.tween_interval(1.8)   # camera travel
+	tw.tween_callback(func() -> void:
+		for child in station.get_children():
+			(child as Node3D).visible = true
+		if actor != null:
+			actor.play("idle"))
+	tw.tween_property(station, "global_position", _cordys_out_pos, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void:
+		_set_cordys_out(true)
+		if actor != null:
+			actor.play("reveal"))
+	tw.tween_interval(2.0)
+	tw.tween_callback(func() -> void:
+		if actor != null:
+			actor.play("idle")
+		_cordys_reveal = false
+		if autosave_text != "":
+			_announce(autosave_text)
+		_announce("Cordys has left his cave. He waits for you beyond the Abyss Key door.", 5.0))
 
 # --- Secret item room (the reward chamber) ---
 # Rocks broken with Bucky's Shockwave. ItemRock is the completion relic; others give
@@ -3795,7 +3953,7 @@ func _physics_process(dt: float) -> void:
 				continue
 			# Inactive divers still swim() with no input so currents act on them.
 			# No steering while walls are moving.
-			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _wall_riders.busy() and not _gate_cutscene:
+			if d == _diver and _lever_held_by(d) == null and not _free_map_open and _moving_wall_sets.is_empty() and not _wall_riders.busy() and not _gate_cutscene and not _cordys_reveal:
 				d.swim(_player_dir(), _player_rise(), dt)
 			else:
 				d.swim(Vector3.ZERO, 0.0, dt)
@@ -3872,6 +4030,16 @@ func _move_camera(dt: float) -> void:
 		var look := Vector3(_gate.global_position.x, _floor_top_y + 1.6, _gate.global_position.z)
 		cam.global_position = cam.global_position.lerp(_gate_view_spot, clampf(dt * 2.5, 0.0, 1.0))
 		_cam_look = _cam_look.lerp(look, clampf(dt * 3.0, 0.0, 1.0))
+		cam.look_at(_cam_look, Vector3.UP)
+		_cutscene_return = CUTSCENE_RETURN_TIME
+		return
+	if _cordys_reveal:
+		if _cam_look == Vector3.ZERO:
+			_cam_look = _diver.global_position
+		var station := _boss_triggers.get("main_boss") as Node3D
+		var look := station.global_position + Vector3(0, 2.0, 0) if is_instance_valid(station) else _cordys_view_spot
+		cam.global_position = cam.global_position.lerp(_cordys_view_spot, clampf(dt * 1.6, 0.0, 1.0))
+		_cam_look = _cam_look.lerp(look, clampf(dt * 2.5, 0.0, 1.0))
 		cam.look_at(_cam_look, Vector3.UP)
 		_cutscene_return = CUTSCENE_RETURN_TIME
 		return
@@ -4079,7 +4247,7 @@ func _aim_dir() -> Vector3:
 func _aim_blocked() -> bool:
 	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
 	return not maze_active or _battling or any_modal_open() or _chest_reward_pending \
-		or _gate_cutscene or not _moving_wall_sets.is_empty() or _free_map_open \
+		or _gate_cutscene or _cordys_reveal or not _moving_wall_sets.is_empty() or _free_map_open \
 		or (map != null and map.main_map != null and map.main_map.visible)
 
 func _start_aim() -> void:
@@ -4151,11 +4319,13 @@ func _exit_tree() -> void:
 # Each key opens any one door.
 var keys_held := 0
 
+# `text` "" = no banner.
 func _gain_key(id := "", text := "You've obtained a key") -> void:
 	keys_held += 1
 	if id != "" and not key_items.has(id):
 		key_items.append(id)
-	_announce(text, 4.0)
+	if text != "":
+		_announce(text, 4.0)
 
 # --- State barriers ---
 # Invisible walls where a rotating wall set would be in its other position,
@@ -5072,8 +5242,8 @@ func _build_hall_gauntlet() -> void:
 			w.warning_radius = 2.6
 			w.pull_radius = 1.6
 			w.pull_speed = 2.4
-			w.damage_min = 3
-			w.damage_max = 6
+			w.damage_min = 1
+			w.damage_max = 1
 			w.reset_to = entrance
 			# Open shaft below; _carve_hall_whirlpool_holes() cuts the floor.
 			w.deep_hole_radius = w.suction_radius + 0.1
@@ -5187,6 +5357,20 @@ func can_afford_party_spell(spell: Dictionary, caster: Diver) -> bool:
 func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 	if not can_afford_party_spell(spell, caster):
 		return
+	if String(spell.get("target", "")) == "all_allies":
+		# Party-wide heal (Healing Current): every living, hurt diver.
+		var hurt := divers.filter(func(d: Diver) -> bool: return d.stats.hp > 0 and d.stats.hp < d.stats.hp_max)
+		if hurt.is_empty():
+			_announce("Everyone is already at full health.")
+			return
+		caster.stats.oxygen -= float(spell.get("oxygen_cost", 0.0))
+		var parts: Array[String] = []
+		for d in hurt:
+			var before: int = d.stats.hp
+			d.stats.hp = mini(d.stats.hp_max, d.stats.hp + int(spell.get("amount", 0)))
+			parts.append("%s +%d" % [_display_name(d.model_name), d.stats.hp - before])
+		_announce("%s - %s HP." % [_party_spell_label(spell), ", ".join(parts)])
+		return
 	caster.stats.oxygen -= float(spell.get("oxygen_cost", 0.0))
 	var s := target.stats
 	var amount := int(spell.get("amount", 0))
@@ -5218,7 +5402,7 @@ const CAMPAIGN_FLAGS := ["_completed", "_hallway_1_2_swung", "_walls_14_15_open"
 	"room_encounters_enabled", "_strong_room_seen", "_switch_explained"]
 
 func can_capture_campaign_snapshot() -> bool:
-	return _moving_wall_sets.is_empty() and not _wall_riders.busy() and not Whirlpool.busy_in(self) and not _gate_cutscene and not _chest_reward_pending \
+	return _moving_wall_sets.is_empty() and not _wall_riders.busy() and not Whirlpool.busy_in(self) and not _gate_cutscene and not _cordys_reveal and not _chest_reward_pending \
 		and not _battling and not aiming and not get_tree().paused and not any_modal_open() \
 		and special_sites != null and special_sites.initialized
 
@@ -5424,9 +5608,11 @@ func _build_campaign_checkpoint() -> void:
 	# Two interior save points.
 	var into := signf(($CSGBox3D10 as CSGBox3D).global_position.x - ($CSGBox3D11 as CSGBox3D).global_position.x)
 	var interior: Array[Vector3] = [Vector3(_wall_11_joint.x + into * 2.4, _floor_top_y, _wall_11_joint.z - 2.2)]
-	var hall := _hall_rect()
-	if hall.size != Vector2.ZERO:
-		interior.append(Vector3(hall.position.x + 2.0, _floor_top_y, hall.position.y + 2.2))
+	# Inside Cordys's room, beside its door.
+	var boss_room := _main_boss_room_rect()
+	if boss_room.size != Vector2.ZERO:
+		interior.append(Vector3(boss_room.position.x + 2.0, _floor_top_y,
+			clampf(_main_boss_door_z + DOOR_GAP_WIDTH * 0.5 + 2.0, boss_room.position.y + 1.5, boss_room.end.y - 1.5)))
 	for place in interior:
 		var point := SavePoint.new()
 		point.name = "MazeCheckpoint%d" % _campaign_save_points.size()
@@ -5523,7 +5709,7 @@ func _on_campaign_save_requested(_actor: Diver, slot: int) -> void:
 	campaign_session.selected_slot = slot
 	if world != null:
 		world._current_slot = slot
-	_announce("Maze progress saved to Slot %d." % (slot + 1))
+	_announce("Progress saved to Slot %d." % (slot + 1))
 
 func _show_campaign_game_over() -> void:
 	$HUD.visible = false
@@ -5532,7 +5718,7 @@ func _show_campaign_game_over() -> void:
 	var audio := get_node_or_null("/root/GameAudio")
 	if audio != null:
 		audio.call("play_game_over_music")
-	_game_over.open()
+	_game_over.open(world.autosave_tooltip() if world != null else "")
 
 func _restart_campaign_checkpoint() -> void:
 	_reload_campaign_checkpoint(false)
@@ -5757,6 +5943,7 @@ func restore_campaign_snapshot(data: Dictionary, restore_positions := true) -> v
 	for kind in _boss_triggers.keys():
 		if not data.boss_triggers.has(kind):
 			_remove_boss_trigger(String(kind))
+	_set_cordys_out(not _boss_triggers.has("secret_boss"))
 	if route_state != null:
 		route_state.set_octopus_state("available" if _boss_triggers.has("main_boss") else "defeated")
 	_update_state_barriers()

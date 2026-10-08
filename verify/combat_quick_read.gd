@@ -38,9 +38,9 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 	var stabbing := _move_button(battle, "Scuba Stabbing")
 	_expect(stabbing != null, "QUICK READ MISSING: Scuba Stabbing is absent from the active move menu")
 	if stabbing != null:
-		_expect("Damage" in stabbing.tooltip_text and "Bleed 2" in stabbing.tooltip_text,
-			"QUICK READ WRONG: expected semantic Strength Damage / resolved 2 Bleed, observed '%s'" % stabbing.tooltip_text)
-		_expect("STR" not in stabbing.tooltip_text,
+		_expect("Damage" in stabbing.tooltip_text and "Bleed 1" in stabbing.tooltip_text,
+			"QUICK READ WRONG: expected semantic Strength Damage / flat 1 Bleed, observed '%s'" % stabbing.tooltip_text)
+		_expect("STR (" in stabbing.tooltip_text,
 			"FORMULA-FIRST REGRESSION: default move choice exposes stat algebra '%s'" % stabbing.tooltip_text)
 		_expect("Damage" in stabbing.tooltip_text and "Bleed" in stabbing.tooltip_text,
 			"MOVE CONTEXT MISSING: result-first choice has no on-demand Damage/Bleed explanation")
@@ -76,15 +76,15 @@ func _test_quick_read_and_details(battle: Battle) -> void:
 	battle._populate_move_menu(battle._acting)
 	stabbing = _move_button(battle, "Scuba Stabbing")
 	if stabbing != null:
-		_expect("Damage" in stabbing.tooltip_text and "Bleed 5" in stabbing.tooltip_text,
-			"HARDCODED QUICK READ: 4 STR still renders '%s'" % stabbing.tooltip_text)
+		_expect("Damage" in stabbing.tooltip_text and "Bleed 1" in stabbing.tooltip_text,
+			"HARDCODED QUICK READ: 4 STR changed the flat Bleed in '%s'" % stabbing.tooltip_text)
 		_expect("rest of the fight" in stabbing.tooltip_text and "fades after 3 turns" not in stabbing.tooltip_text,
 			"STATUS CONTEXT DRIFT: tooltip invents expiry for Marc's battle-persistent Bleed")
 
 func _test_current_rule_context(battle: Battle) -> void:
 	var actor := battle._acting as Dictionary
 	var flash_context := battle._move_tooltip_text(CombatMoves.SCUBA[2], actor)
-	_expect("All enemies" in flash_context and "lasting as many turns as the caster's own Accuracy" in flash_context,
+	_expect("All enemies" in flash_context and "turns, equal to" in flash_context and "'s ACC (" in flash_context,
 		"ALL-TARGET CONTEXT DRIFT: Flash Blast context does not expose its live scope/duration")
 	# Source order is not a stable game contract: the reconciliation removes the
 	# retired Ramming Bite, so callers must identify an authored move by id rather

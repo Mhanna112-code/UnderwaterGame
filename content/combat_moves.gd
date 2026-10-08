@@ -15,10 +15,10 @@ const SCUBA := [
 	{
 		"name": "Scuba Stabbing", "formula": {"strength": 1},
 		"target": "one_enemy", "effects": [
-			# Bleed is persistent for the battle and stacks on damaging hits (cap 10); Poison is timed.
-			{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
+			# Bleed lasts the whole battle; only another Bleed move adds to it (cap 10). Poison is timed.
+			{"kind": "status", "status": "bleed", "level": {"flat": 1}},
 		],
-		"hint": "1 STR damage; applies 1 + STR Bleed",
+		"hint": "1 STR damage; applies 1 Bleed",
 		"text": "Scuba Stabbing opens a wound",
 	},
 	{

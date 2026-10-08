@@ -203,6 +203,26 @@ func _run() -> void:
 	# Exercise the production enemy-turn path for all six moves. Inflate HP
 	# only inside this gate so the party survives long enough to observe the
 	# complete deterministic animation cycle.
+	# Tidal Mending: heals 10% of max HP and removes Bleed.
+	var boss_stats := battle.enemies[0].stats as CombatantStats
+	battle_boss.heal_chance = 1.0
+	# Never rolled at full health, even at a 100% chance.
+	boss_stats.hp = boss_stats.hp_max
+	_expect(String(battle_boss.next_move(boss_stats).get("effect", "")) != "self_heal",
+		"TIDAL MENDING: rolled at full health")
+	battle_boss._move_index = 0   # keep the cycle check below starting at Double Scratch
+	boss_stats.hp = boss_stats.hp_max - 20
+	boss_stats.add_status("bleed", 3)
+	var hp_before_heal := boss_stats.hp
+	await battle._do_boss_turn(battle.enemies[0], battle.party)
+	var expected_heal := maxi(1, roundi(float(boss_stats.hp_max) * 0.1))
+	_expect(boss_stats.hp == hp_before_heal + expected_heal,
+		"TIDAL MENDING: expected +%d HP, got +%d" % [expected_heal, boss_stats.hp - hp_before_heal])
+	_expect(boss_stats.status_level("bleed") == 0, "TIDAL MENDING: Bleed was not removed")
+	boss_stats.hp = boss_stats.hp_max
+	# The fixed six-move cycle below must not roll the heal.
+	battle_boss.heal_chance = 0.0
+
 	var started_clips: Array[String] = []
 	battle_boss.anim.animation_started.connect(func(name: StringName) -> void: started_clips.append(String(name)))
 	(battle.enemies[0].stats as CombatantStats).accuracy = 99

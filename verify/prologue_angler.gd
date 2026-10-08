@@ -49,7 +49,7 @@ func _button_witnesses() -> void:
 	# buttons before AI acts. STR/DEF/ACC/EVA and move data remain their baseline.
 	var rows := [
 		["Staff_Diver", "Electric Touch", 1, 0],
-		["Staff_Diver", "Scuba Stabbing", 1, 2],
+		["Staff_Diver", "Scuba Stabbing", 1, 1],
 		["Staff_Diver", "Flash Blast", 0, 0],
 		["Staff_Diver", "Multiple Knee Combo", 1, 0],
 		["Staff_Diver", "Axe Kick", 3, 0],
@@ -57,7 +57,7 @@ func _button_witnesses() -> void:
 		["Prototype_1(1910)", "Weaken", 0, 0],
 		["Prototype_1(1910)", "Slow", 0, 0],
 		["Prototype_V(1922)", "Guard Bash", 3, 0],
-		["Prototype_V(1922)", "Heavy Kick", 0, 0],
+		["Prototype_V(1922)", "Heavy Kick", 3, 0],   # +1 ACC: lands and finishes the 3-HP Angler
 		["Prototype_V(1922)", "Crushing Haymaker", 0, 0],
 	]
 	# Generated boundary fixtures catch hidden guarantees: below/equal/above
@@ -98,7 +98,7 @@ func _button_witnesses() -> void:
 			_expect("for 4" in fight.log_label.get_parsed_text(), "ANGLE-003 Axe Kick damage was inflated; HP clamp hid it")
 		if row[1] == "Flash Blast":
 			_expect(target.status_level("blindness") == 2, "ANGLE-003 utility lost Blindness")
-		if row[1] in ["Heavy Kick", "Crushing Haymaker"]:
+		if row[1] == "Crushing Haymaker":
 			_expect("evades" in fight.log_label.get_parsed_text(), "ANGLE-003 low-ACC Bucky move was guaranteed a hit")
 		if row[2] < 3:
 			_expect(interruptions.is_empty(), "ANGLE-003 nonlethal action interrupted for Cordys")

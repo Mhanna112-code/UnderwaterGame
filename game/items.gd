@@ -47,14 +47,14 @@ const ITEMS := {
 	},
 	# Battle-only boosts: grant() adds them normally; battle.gd reverts them when the fight ends.
 	"attack_up": {
-		"display": "Attack Tonic", "kind": "attack_up", "amount": 4,
-		"description": "Raises Strength by 4 for the rest of this fight.",
-		"battle_only": true,
+		"display": "Attack Tonic", "kind": "attack_up", "amount": 2,
+		"description": "Raises Strength by 2 for the rest of this fight. Only one Attack Tonic or Defense Shell can be used per battle.",
+		"battle_only": true, "battle_limit": "power",
 	},
 	"defense_up": {
-		"display": "Defense Shell", "kind": "defense_up", "amount": 3,
-		"description": "Raises Defense by 3 for the rest of this fight.",
-		"battle_only": true,
+		"display": "Defense Shell", "kind": "defense_up", "amount": 2,
+		"description": "Raises Defense by 2 for the rest of this fight. Only one Attack Tonic or Defense Shell can be used per battle.",
+		"battle_only": true, "battle_limit": "power",
 	},
 	# Lets Maxilani's sonar reveal invisible objects. Passive; shown greyed out in the menu.
 	"sonar_vision": {
@@ -64,12 +64,12 @@ const ITEMS := {
 	"accuracy_up": {
 		"display": "Focus Tonic", "kind": "accuracy_up", "amount": 2,
 		"description": "Raises Accuracy by 2 for the user's next 5 turns. Only one Focus Tonic or Slipstream Oil can be used per battle.",
-		"battle_only": true, "turns": 5, "one_per_battle": true,
+		"battle_only": true, "turns": 5, "battle_limit": "focus",
 	},
 	"evasion_up": {
 		"display": "Slipstream Oil", "kind": "evasion_up", "amount": 2,
 		"description": "Raises Evasion by 2 for the user's next 5 turns. Only one Focus Tonic or Slipstream Oil can be used per battle.",
-		"battle_only": true, "turns": 5, "one_per_battle": true,
+		"battle_only": true, "turns": 5, "battle_limit": "focus",
 	},
 }
 
@@ -118,12 +118,12 @@ static func grant(item_id: String, s: CombatantStats) -> String:
 			var before := s.hp
 			s.hp = mini(s.hp_max, s.hp + int(def.amount))
 			var gained := s.hp - before
-			return "Found a %s! +%d HP" % [display, gained] if gained > 0 else "Found a %s, but you're already at full health." % display
+			return "Used a %s! +%d HP" % [display, gained] if gained > 0 else "Used a %s, but you're already at full health." % display
 		"oxygen":
 			var before_ox := s.oxygen
 			s.oxygen = minf(s.oxygen_max, s.oxygen + float(def.amount))
 			var gained_ox := s.oxygen - before_ox
-			return "Found an %s! +%d O2" % [display, int(round(gained_ox))] if gained_ox > 0.0 else "Found an %s, but your tank's already full." % display
+			return "Used an %s! +%d O2" % [display, int(round(gained_ox))] if gained_ox > 0.0 else "Used an %s, but your tank's already full." % display
 		"attack_up":
 			s.strength += int(def.amount)
 			return "%s! Strength up by %d for this fight." % [display, int(def.amount)]

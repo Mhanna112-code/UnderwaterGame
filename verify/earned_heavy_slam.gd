@@ -15,7 +15,7 @@ func _run() -> void:
 		var diver := Diver.new()
 		diver.model_name = "Prototype_V(1922)"
 		root.add_child(diver)
-		while diver.stats.level < 2:
+		while diver.stats.level < 3:   # Bucky learns Mending Current at 2, Heavy Slam at 3
 			diver.stats.gain_xp(10)
 			SpellTree.learn_all_available(diver, [])
 		var battle := Battle.new()

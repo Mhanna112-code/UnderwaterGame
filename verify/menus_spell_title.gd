@@ -75,8 +75,8 @@ func _test_inventory_item_surface(world: World) -> void:
 	if potion_button != null:
 		potion_button.pressed.emit()
 		await process_frame
-	_expect(diver.stats.hp == mini(diver.stats.hp_max, before_hp + 10),
-		"MENU-ITEM-7: Potion did not apply exactly its documented 10 HP")
+	_expect(diver.stats.hp == mini(diver.stats.hp_max, before_hp + int(Items.ITEMS.potion.amount)),
+		"MENU-ITEM-7: Potion did not apply exactly its documented HP")
 	_expect(not world.inventory.has("potion"),
 		"MENU-ITEM-7: one Potion click did not consume exactly one copy")
 	_expect(world.inventory_menu.visible,

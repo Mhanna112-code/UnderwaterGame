@@ -104,6 +104,7 @@ func _run() -> void:
 	whirl.pull_duration = 0.4
 	whirl.vanish_duration = 0.1
 	whirl.damage_min = 2
+	whirl.return_nearby = false   # these fixtures test the reset_to path
 	whirl.damage_max = 2
 	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
 	world.add_child(whirl)
@@ -195,6 +196,7 @@ func _menu_case(selected: int, phase: String) -> void:
 	actor.stats.hp = 7
 	actor.stats.oxygen = 0.0
 	whirl.damage_min = 2
+	whirl.return_nearby = false   # these fixtures test the reset_to path
 	whirl.damage_max = 2
 	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
 	_expect(_clear(actor), "WHIRL-2 authored approach is not capsule-clear")
@@ -280,6 +282,7 @@ func _maze_menu() -> void:
 	actor.stats.hp = 7
 	actor.stats.oxygen = 0.0
 	whirl.damage_min = 2
+	whirl.return_nearby = false   # these fixtures test the reset_to path
 	whirl.damage_max = 2
 	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
 	_expect(_clear(actor) and whirl.armed and not bool(whirl.bypass.call()),
@@ -376,6 +379,7 @@ func _save_menu() -> void:
 	whirl.vanish_duration = 0.2
 	whirl.sink_depth = 0.5 # Keep actual contact: a separate contact reentry legitimately heals.
 	whirl.damage_min = 2
+	whirl.return_nearby = false   # these fixtures test the reset_to path
 	whirl.damage_max = 2
 	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
 	world.add_child(whirl)
@@ -427,6 +431,7 @@ func _map_pause() -> void:
 	whirl.pull_duration = 0.6
 	whirl.vanish_duration = 0.2
 	whirl.damage_min = 2
+	whirl.return_nearby = false   # these fixtures test the reset_to path
 	whirl.damage_max = 2
 	whirl.diver_sucked_in.connect(func(_d: Diver, _amount: int) -> void: caught += 1)
 	maze.add_child(whirl)
@@ -642,6 +647,7 @@ func _lifecycle() -> void:
 				whirl.pull_duration = 0.5
 				whirl.vanish_duration = 0.4
 				whirl.damage_min = 2
+				whirl.return_nearby = false   # these fixtures test the reset_to path
 				whirl.damage_max = 2
 				world.add_child(whirl)
 				_expect(_clear(actor), "WHIRL-3 generated approach is not capsule-clear")
@@ -904,6 +910,7 @@ func _damage() -> void:
 				whirl.pull_duration = 0.1
 				whirl.vanish_duration = 0.05
 				whirl.damage_min = damage
+				whirl.return_nearby = false   # these fixtures test the reset_to path
 				whirl.damage_max = damage
 				caught = 0
 				last_lost = -99
@@ -1121,6 +1128,7 @@ func _matrix() -> void:
 					whirl.pull_duration = 0.4
 					whirl.vanish_duration = 0.1
 					whirl.damage_min = 2
+					whirl.return_nearby = false   # these fixtures test the reset_to path
 					whirl.damage_max = 2
 					_expect(_clear_at(actor, whirl.reset_to), "WHIRL-1 generated reset fixture is not capsule-clear")
 					if not findings.is_empty():

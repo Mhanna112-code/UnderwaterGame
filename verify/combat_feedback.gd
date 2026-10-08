@@ -56,7 +56,7 @@ func _process(_delta: float) -> bool:
 	_expect("DODGE" in feedback, "DODGE FEEDBACK MISSING: a miss must be visible over its target")
 	_expect("-3" in feedback and "Bleed 2" in feedback,
 		"DAMAGE/STATUS FEEDBACK MISSING: damage and applied status must be separately colorable over the target")
-	_expect("ABSORBED" in feedback, "ABSORBED FEEDBACK MISSING: a zero-damage hit must not look like a dodge")
+	_expect("-0" in feedback, "ZERO-DAMAGE FEEDBACK MISSING: a zero-damage hit must show -0, not look like a dodge")
 
 	for failure in failures:
 		push_error(failure)

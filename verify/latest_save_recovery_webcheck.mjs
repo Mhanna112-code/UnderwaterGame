@@ -93,7 +93,7 @@ try {
   let death = false;
   while (Date.now() < deathDeadline) {
     const rows = await capture('combat-current');
-    if (rows.some(row => /Continue from Latest Save/i.test(row.text))) { death = true; break; }
+    if (rows.some(row => /Continue from Last Autosave/i.test(row.text))) { death = true; break; }
     const next = rows.find(row => /^Continue(?:\s|$)/i.test(row.text.trim()))
       || rows.find(row => /^Attack$/i.test(row.text.trim()))
       // A selected move's readout remains on screen during target selection.
@@ -106,7 +106,7 @@ try {
   expect(death, 'Actual enemies did not reach Game Over through ordinary combat input');
   await capture('actual-defeat');
   const previousLoads = logs.filter(row => /CHECKPOINT_LATEST_LOADED.*autosave=true/.test(row)).length;
-  await click(/^Continue from Latest Save$/i, 'continue-latest');
+  await click(/^Continue from Last Autosave$/i, 'continue-latest');
   await page.waitForTimeout(7000);
   expect(logs.filter(row => /CHECKPOINT_LATEST_LOADED.*autosave=true/.test(row)).length > previousLoads, 'Actual death recovery did not reload autosave');
   const restored = (await capture('death-recovered')).map(row => row.text).join('\n');

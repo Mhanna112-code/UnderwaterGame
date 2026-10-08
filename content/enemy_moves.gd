@@ -15,7 +15,7 @@ const ANGLER := [
 		"combat": {
 			"formula": {"strength": 1}, "acc_mod": 1,
 			"effects": [
-				{"kind": "status", "status": "bleed", "level": {"flat": 1, "strength": 1}},
+				{"kind": "status", "status": "bleed", "level": {"flat": 2}},
 			],
 		},
 	},

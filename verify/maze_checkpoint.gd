@@ -166,6 +166,9 @@ func _real_defeat_and_restart(maze: MazeLevel, wall: Transform3D) -> void:
 	maze._diver = maze.divers[2]
 	maze.world.active = 2
 	maze.divers[2].stats.hp = 1
+	# Cordys only leaves his cave once his puppets are beaten.
+	maze._remove_boss_trigger("secret_boss")
+	maze._set_cordys_out(true)
 	var station := maze._boss_triggers.get("main_boss") as Node3D
 	maze.divers[maze.active].global_position = station.global_position + Vector3(-4, 1.2, 0)
 	for frame in 20:

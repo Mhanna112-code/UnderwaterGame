@@ -14,8 +14,8 @@ func _initialize() -> void:
 	for _turn in range(4):
 		target.begin_turn()
 		target.end_turn()
-	_expect(target.status_level("bleed") == 2 and target.hp == hp_after_hit - 8,
-		"M99-S1 authored Stabbing did not deal four persistent 2-damage ticks")
+	_expect(target.status_level("bleed") == 1 and target.hp == hp_after_hit - 4,
+		"M99-S1 authored Stabbing did not deal four persistent 1-damage ticks")
 	target.fill()
 	_expect(target.status_level("bleed") == 0, "M99-S1 Bleed carried into the next fight after refill")
 	if not findings.is_empty():
@@ -26,15 +26,15 @@ func _initialize() -> void:
 			attacker = _stats(strength, 3, 0)
 			target = _stats(1, 1, 3 if outcome == "miss" else 0)
 			CombatRules.resolve(attacker, target, stabbing, true, outcome == "dodge")
-			var expected_level := mini(10, strength + 1) if outcome == "hit" else 0
+			var expected_level := 1 if outcome == "hit" else 0   # flat 1, whatever the Strength
 			_expect(target.status_level("bleed") == expected_level,
 				"M99-S2 initial bleed cap/failure isolation: STR %d %s" % [strength, outcome])
 			if outcome == "hit":
 				for _repeat in range(12):
 					CombatRules.resolve(attacker, target, stabbing)
 				# Only another Bleed move stacks (plain hits don't): the first wound plus
-				# at most 3 more Bleed applications of STR+1 each, never past 10.
-				_expect(target.status_level("bleed") == mini(10, 4 * (strength + 1)), "M99-S2 repeated landed Bleed ignores the 3-stack/10 cap")
+				# at most 3 more Bleed applications of a flat 1 each, never past 10.
+				_expect(target.status_level("bleed") == 4, "M99-S2 repeated landed Bleed ignores the 3-stack/10 cap")
 	# Timed controls: do not accidentally make Poison/Blindness persistent too.
 	target = _stats(1, 1, 0)
 	target.add_status("poison", 2, 3)

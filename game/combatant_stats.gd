@@ -35,6 +35,8 @@ var oxygen: float
 
 # XP to next level = XP_BASE * level^XP_CURVE (1->2 is 30, 4->5 is 240).
 const XP_BASE := 30.0
+# Level cap: 9 Spell Points by then, enough for the largest spell tree.
+const MAX_LEVEL := 10
 const XP_CURVE := 1.5
 
 # Battle-only HP floor (never saved); the special tutorial sets 1 so nobody goes down early. 0 = off.
@@ -42,6 +44,9 @@ var min_hp := 0
 var hp: int:
 	set(value):
 		hp = maxi(value, min_hp) if min_hp > 0 else value
+		# Going down clears every status, so a revive starts clean.
+		if hp <= 0:
+			statuses.clear()
 
 func _init() -> void:
 	hp = hp_max
@@ -123,6 +128,8 @@ func spend_evasion(amount: int) -> int:
 # Bosses ignore stat-lowering effects; Bleed, Poison and Stun still apply.
 var immune_to_stat_loss := false
 const BLEED_MAX_STACKS := 3
+# Most Bleed this combatant can carry; divers set 5 (Diver), enemies keep 10.
+var bleed_cap := 10
 const STAT_LOSS_STATUSES := ["blindness", "evasion_down", "defense_down"]
 
 func reduce_evasion(amount: int) -> int:
@@ -161,7 +168,7 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 		return
 	# The Bleed cap applies to the first wound too.
 	if status == "bleed":
-		level = mini(10, level)
+		level = mini(bleed_cap, level)
 	if status == "bleed" and statuses.has(status):
 		# After the first wound Bleed grows at most BLEED_MAX_STACKS more times per fight, never past 10.
 		var bleed := statuses[status] as Dictionary
@@ -169,7 +176,7 @@ func add_status(status: String, level: int, turns: int = 0) -> void:
 		if stacks >= BLEED_MAX_STACKS:
 			return
 		bleed.stacks = stacks + 1
-		bleed.level = mini(10, status_level(status) + level)
+		bleed.level = mini(bleed_cap, status_level(status) + level)
 		return
 	var existing := statuses.get(status, {}) as Dictionary
 	statuses[status] = {
@@ -205,12 +212,15 @@ func status_summary() -> String:
 func gain_xp(amount: int) -> Array:
 	xp += amount
 	var levels_gained: Array = []
-	while xp >= xp_to_next:
+	while xp >= xp_to_next and level < MAX_LEVEL:
 		xp -= xp_to_next
 		level += 1
 		xp_to_next = int(round(XP_BASE * pow(float(level), XP_CURVE)))
 		spell_points += 1
 		levels_gained.append({"level": level})
+	# At the cap, XP stops accumulating.
+	if level >= MAX_LEVEL:
+		xp = 0
 	if not levels_gained.is_empty():
 		fill()  # only full heal/recharge
 	return levels_gained

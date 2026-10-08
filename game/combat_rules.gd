@@ -39,7 +39,7 @@ static func resolve(attacker: CombatantStats, defender: CombatantStats, move: Di
 		if kind == "reduce_evasion":
 			var amount := formula_value(attacker, effect.get("amount", {}))
 			var changed := defender.reduce_evasion(amount)
-			applied.append("EVA -%d" % changed if changed > 0 else "EVA unchanged")
+			applied.append("EVA -%d" % changed)
 		elif kind == "reduce_defense":
 			var amount := formula_value(attacker, effect.get("amount", {}))
 			var changed := defender.reduce_defense(amount)

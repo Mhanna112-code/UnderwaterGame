@@ -327,7 +327,7 @@ func _tick_autosave(dt: float) -> void:
 		SaveManager.rollback_autosave(slot, existed, previous)
 	_autosave_writing = false
 	_autosave_timer = 0.0
-	_announce("Game autosaved." if error == OK else "Autosave failed. Your last checkpoint is unchanged.")
+	_announce(("Progress saved to Slot %d." % (slot + 1)) if error == OK else "Autosave failed. Your last checkpoint is unchanged.")
 
 # Authored progression state; saved in the same atomic checkpoint.
 var route_state := RouteState.new()
@@ -1017,7 +1017,7 @@ func _show_game_over() -> void:
 	title_screen.close()
 	_audio_call(&"play_game_over_music")
 	get_tree().paused = true
-	game_over_screen.open()
+	game_over_screen.open(autosave_tooltip())
 
 func _on_game_over_restart() -> void:
 	_restart_slot = _current_slot
@@ -1054,6 +1054,61 @@ func autosave_now() -> Error:
 	if error == OK:
 		error = await BrowserCheckpoint.confirm_slot(slot, true)
 	return error
+
+# Game-over tooltip for "Continue from Last Autosave": when it was made and
+# each diver's level in it.
+func autosave_tooltip() -> String:
+	if _dev_mode or _current_slot < 0:
+		# No slot (dev mode): nothing is written, so describe the party now.
+		var now: Array[String] = []
+		for d in divers:
+			var ds := (d as Diver).stats
+			now.append("%s Lv %d (%d/%d HP)" % [_display_name((d as Diver).model_name), ds.level, ds.hp, ds.hp_max])
+		return "Dev mode: no autosave is written.\nParty now: %s" % ", ".join(now)
+	var data := SaveManager.read_autosave(_current_slot)
+	var raw_divers: Variant = data.get("divers", [])
+	if data.is_empty() or not raw_divers is Array:
+		return "No autosave yet."
+	var levels: Array[String] = []
+	for i in (raw_divers as Array).size():
+		var stats := ((raw_divers as Array)[i] as Dictionary).get("stats", {}) as Dictionary
+		var diver_name := _display_name((divers[i] as Diver).model_name) if i < divers.size() else "Diver %d" % (i + 1)
+		levels.append("%s Lv %d (%d/%d HP)" % [diver_name, int(stats.get("level", 1)), int(stats.get("hp", 0)), int(stats.get("hp_max", 10))])
+	var lines: Array[String] = []
+	var saved_at := FileAccess.get_modified_time(SaveManager.autosave_path(_current_slot))
+	if saved_at > 0:
+		lines.append("Autosaved %s" % _time_ago(int(Time.get_unix_time_from_system()) - int(saved_at)))
+	lines.append("\n".join(levels))
+	return "\n".join(lines)
+
+static func _time_ago(seconds: int) -> String:
+	if seconds < 60:
+		return "just now"
+	if seconds < 3600:
+		var minutes := seconds / 60
+		return "%d minute%s ago" % [minutes, "" if minutes == 1 else "s"]
+	if seconds < 86400:
+		var hours := seconds / 3600
+		return "%d hour%s ago" % [hours, "" if hours == 1 else "s"]
+	var days := seconds / 86400
+	return "%d day%s ago" % [days, "" if days == 1 else "s"]
+
+# Autosave right after a boss win, once back in the world. Returns the banner
+# text to show when the moment is right ("" when there's no save slot).
+func autosave_after_boss() -> String:
+	if _dev_mode:
+		return "Autosave skipped in dev mode."
+	if _current_slot < 0:
+		return ""
+	var error := await autosave_now()
+	_autosave_timer = 0.0
+	return ("Progress saved to Slot %d." % (_current_slot + 1)) if error == OK else "Autosave failed. Your last checkpoint is unchanged."
+
+# Banner for the post-Tethys autosave, shown once the lab payoff closes.
+var _post_tethys_autosave_text := ""
+
+func _autosave_after_tethys() -> void:
+	_post_tethys_autosave_text = await autosave_after_boss()
 
 func _on_game_over_title() -> void:
 	_restart_slot = -1
@@ -1099,7 +1154,17 @@ var scripted_rise := 0.0
 # Cone above the active diver; hidden while swap-selecting, aiming or battling.
 var _active_cursor: MeshInstance3D
 
+# World-space labels (save points, sites, names) vanish past this distance
+# instead of shrinking to unreadable specks.
+const LABEL_VISIBLE_RANGE := 100.0
+
+func _hide_far_label(node: Node) -> void:
+	if node is Label3D and node.get_viewport() == get_viewport():
+		(node as Label3D).visibility_range_end = LABEL_VISIBLE_RANGE
+
 func _ready() -> void:
+	# Battle labels live in the stage SubViewport, so they're never affected.
+	get_tree().node_added.connect(_hide_far_label)
 	if _dev_requested():
 		skip_intro_for_test = true
 		skip_tutorial_for_test = true
@@ -1323,6 +1388,8 @@ func _start_dev_mode() -> void:
 		SpellTree.learn_all_available(diver, key_items)
 		diver.stats.fill()
 	add_child(DevTeleport.new(self))
+	# Dev mode: Cordys is always out of his cave, ready to fight.
+	embedded_maze._set_cordys_out(true)
 	var front := Vector3(263, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
 	if OS.get_cmdline_user_args().has("--secret-room"):
 		var room := embedded_maze._secret_item_room_rect().abs()
@@ -1337,7 +1404,7 @@ func _start_dev_mode() -> void:
 		(divers[i] as Diver).global_position = front + Vector3(-float(i) * 1.5, 0, float(i) * 1.5)
 		(divers[i] as Diver).velocity = Vector3.ZERO
 	_set_maze_ownership(true)
-	_announce("DEV MODE: everything unlocked. F2 = teleport menu, T = jump to aim. No player save is written.")
+	_announce("DEV MODE: everything unlocked. G = teleport menu, T = jump to aim. No player save is written.")
 
 # Dev mode only: open the Tethys fight without playing up to it - both route
 # blockers beaten, lab available. Entering the lab then starts the cutscene.
@@ -1688,6 +1755,9 @@ func can_afford_party_spell(spell: Dictionary, caster: Diver) -> bool:
 func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 	if not can_afford_party_spell(spell, caster):
 		return
+	if String(spell.get("target", "")) == "all_allies":
+		_use_party_heal_all(spell, caster)
+		return
 	var s := target.stats
 	var effect := String(spell.get("effect", ""))
 	# Validate the target before spending Oxygen: heals only touch the living
@@ -1718,6 +1788,22 @@ func use_party_spell(spell: Dictionary, caster: Diver, target: Diver) -> void:
 			_announce("%s - %s is back up!" % [label, _display_name(target.model_name)])
 		_:
 			return
+	_update_hp_bar()
+	_update_oxygen_bar()
+
+# Party-wide heal (Healing Current): every living, hurt diver, one Oxygen cost.
+func _use_party_heal_all(spell: Dictionary, caster: Diver) -> void:
+	var hurt := divers.filter(func(d: Diver) -> bool: return d.stats.hp > 0 and d.stats.hp < d.stats.hp_max)
+	if hurt.is_empty():
+		_announce("Everyone is already at full health.")
+		return
+	caster.stats.oxygen -= float(spell.get("oxygen_cost", 0.0))
+	var parts: Array[String] = []
+	for d in hurt:
+		var before: int = d.stats.hp
+		d.stats.hp = mini(d.stats.hp_max, d.stats.hp + int(spell.get("amount", 0)))
+		parts.append("%s +%d" % [_display_name(d.model_name), d.stats.hp - before])
+	_announce("%s - %s HP." % [_party_spell_label(spell), ", ".join(parts)])
 	_update_hp_bar()
 	_update_oxygen_bar()
 
@@ -3394,6 +3480,7 @@ func _on_battle_finished(result: String) -> void:
 		_sync_lab_staging()
 		if result == "won":
 			_write_save()
+			_autosave_after_tethys()
 			call_deferred("_show_lab_payoff")
 	match result:
 		"won":
@@ -3740,6 +3827,9 @@ func _on_lab_payoff_closed() -> void:
 	if not battling and not embedded_maze.maze_active and not is_instance_valid(_completion_screen):
 		$HUD.visible = true
 		_refresh_world_guidance()
+	if _post_tethys_autosave_text != "":
+		_announce(_post_tethys_autosave_text)
+		_post_tethys_autosave_text = ""
 
 func _on_route_objective_changed(_objective_id: String) -> void:
 	_refresh_world_guidance()

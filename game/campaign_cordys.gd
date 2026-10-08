@@ -21,7 +21,7 @@ func make_stats() -> CombatantStats:
 	var stats := CombatantStats.new()
 	stats.hp_max = 78
 	stats.strength = 5
-	stats.defense = 4
+	stats.defense = 2
 	stats.agility = 5
 	stats.evasion = 5
 	stats.accuracy = 6
@@ -29,7 +29,19 @@ func make_stats() -> CombatantStats:
 	stats.fill()
 	return stats
 
-func next_move() -> Dictionary:
+# Self-heal rolled on 15% of turns (below full HP), outside the cycle: heals 10% max HP and stops Bleed.
+# 'reveal' is a validated framing key.
+const HEAL_CHANCE := 0.15
+var heal_chance := HEAL_CHANCE   # tests set 0 for the fixed cycle
+const HEAL_MOVE := {
+	"name": "Regenerate", "clip": "reveal",
+	"target": "self", "effect": "self_heal", "heal_fraction": 0.10,
+}
+
+# `stats`: the boss's own stats; the heal is never rolled at full health.
+func next_move(stats: CombatantStats = null) -> Dictionary:
+	if stats != null and stats.hp < stats.hp_max and randf() < heal_chance:
+		return HEAL_MOVE.duplicate(true)
 	var move := (MOVES[_move_index % MOVES.size()] as Dictionary).duplicate(true)
 	_move_index += 1
 	return move

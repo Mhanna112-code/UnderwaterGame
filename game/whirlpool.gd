@@ -26,6 +26,10 @@ signal diver_sucked_in(d: Diver, amount: int)
 @export var sink_depth := 2.2
 @export var vanish_duration := 0.35
 @export var deep_hole_radius := 0.0
+# Spit the diver out beside the whirlpool (random spot on the side they came
+# from, clear of walls and every whirlpool's pull) instead of at reset_to.
+# reset_to stays the fallback when no nearby spot is clear.
+@export var return_nearby := true
 # Draw the swirl on the seafloor (y≈0), clear of the grapple sightline.
 @export var floor_visual := false
 # Bouncing particle column inside the suction area (whirlpool_column.gd).
@@ -312,6 +316,55 @@ func _restore_actor(actor: Diver, record: Dictionary) -> void:
 	actor.velocity = Vector3.ZERO
 	actor.set_suction_locked(bool(record.locked))
 
+# A clear spot just outside this whirlpool's reach, on the half the diver came
+# from (so a whirlpool guarding a gap never lands you across it). Null if none.
+func _nearby_landing(actor: Diver, came_from: Vector3) -> Variant:
+	var reach := maxf(maxf(suction_radius, pull_radius), deep_hole_radius) + actor.radius + 1.0
+	var away := came_from - global_position
+	away.y = 0.0
+	var base_angle := atan2(away.z, away.x) if away.length() > 0.05 else randf() * TAU
+	var centre := Vector3(global_position.x, came_from.y, global_position.z)
+	var space := get_world_3d().direct_space_state
+	_refresh_return_boxes()
+	for attempt in 32:
+		var angle := base_angle + randf_range(-1.2, 1.2)
+		var at := centre + Vector3(cos(angle), 0.0, sin(angle)) * (reach + randf_range(0.0, 1.5) + float(attempt) * 0.05)
+		# Same room: nothing solid between the whirlpool and the spot.
+		var ray := PhysicsRayQueryParameters3D.create(centre, at, 1)
+		ray.exclude = [actor.get_rid()]
+		if not space.intersect_ray(ray).is_empty():
+			continue
+		if _inside_any_whirlpool(at, actor.radius):
+			continue
+		if _fits_at(actor, at):
+			return at
+	return null
+
+# True when `at` is within any whirlpool's suction, pull or hole (this one included).
+func _inside_any_whirlpool(at: Vector3, margin: float) -> bool:
+	for hazard in get_tree().get_nodes_in_group("whirlpool_hazards"):
+		var w := hazard as Whirlpool
+		var reach := maxf(maxf(w.suction_radius, w.pull_radius), w.deep_hole_radius) + margin + 0.3
+		if Vector2(at.x - w.global_position.x, at.z - w.global_position.z).length() < reach:
+			return true
+	return false
+
+# The diver's capsule fits at `at` without touching solids or being buried in a wall box.
+func _fits_at(actor: Diver, at: Vector3) -> bool:
+	var collision: CollisionShape3D
+	for child in actor.get_children():
+		if child is CollisionShape3D:
+			collision = child
+			break
+	if collision == null:
+		return false
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = collision.shape
+	query.collision_mask = 1
+	query.exclude = [actor.get_rid()]
+	query.transform = Transform3D(actor.global_basis, at) * collision.transform
+	return not _buried_in_box(query.transform.origin, actor) and actor.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
 func _clear_return(actor: Diver, preferred: Vector3) -> Variant:
 	var collision: CollisionShape3D
 	for child in actor.get_children():
@@ -520,7 +573,9 @@ func _pull_in(d: Diver) -> void:
 		if not is_instance_valid(actor):
 			_motions.erase(id)
 			return
-		var landing: Variant = _clear_return(actor, reset_to)
+		var landing: Variant = _nearby_landing(actor, record.start) if return_nearby else null
+		if landing == null:
+			landing = _clear_return(actor, reset_to)
 		if landing == null:
 			_cancel_motion(id)
 			return
@@ -536,5 +591,6 @@ func _pull_in(d: Diver) -> void:
 		_released[id] = weakref(actor)
 		if lost > 0 and bool(record.visible):
 			actor.flash_damage()
+			BattleFx.flash(actor, BattleFx.DAMAGE_RED)   # red tint, as in battle
 		diver_sucked_in.emit(actor, lost)
 	)

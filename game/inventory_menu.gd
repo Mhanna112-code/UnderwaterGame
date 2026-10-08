@@ -621,6 +621,11 @@ func _refresh_spells_root() -> void:
 		_list.add_child(empty)
 
 func _on_spell_chosen(spell: Dictionary, caster: Diver) -> void:
+	# Party-wide spells skip the target list.
+	if world != null and String(spell.get("target", "")) == "all_allies":
+		world.use_party_spell(spell, caster, null)
+		refresh()
+		return
 	_pending_spell = spell
 	_pending_caster = caster
 	_mode = "spells_target"

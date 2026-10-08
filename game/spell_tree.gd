@@ -42,10 +42,10 @@ const SPELL_TREES := {
 		"support": {
 			"healing_current": {
 				"display": "Healing Current", "cost": 2,
-				"description": "A strong current restores 10 HP.",
+				"description": "A strong current restores 10 HP to the whole party.",
 				"requires_spells": [], "requires_items": [],
-				"effect": "heal", "amount": 10, "oxygen_cost": 16.0, "inventory": true,
-				"hint": "Restores 10 HP", "text": "You channel a stronger mending current",
+				"effect": "heal", "amount": 10, "target": "all_allies", "oxygen_cost": 16.0, "inventory": true,
+				"hint": "Restores 10 HP to everyone", "text": "You channel a stronger mending current",
 			},
 		},
 	},
@@ -83,10 +83,10 @@ const SPELL_TREES := {
 		"offense": {
 			"precise_jab": {
 				"display": "Precise Jab", "cost": 1,
-				"description": "A quick, near-unmissable jab - reliability over raw power.",
+				"description": "A quick, accurate jab - reliability over raw power.",
 				"requires_spells": [], "requires_items": [],
-				"power": 4, "acc_mod": 8, "oxygen_cost": 8.0,
-				"hint": "Nearly unmissable", "text": "You land a precise jab",
+				"power": 4, "acc_mod": 2, "oxygen_cost": 8.0,
+				"hint": "Accurate", "text": "You land a precise jab",
 			},
 		},
 	},
@@ -97,7 +97,7 @@ const SPELL_TREES := {
 				"description": "A very heavy blow - slow and uncertain to land, but hits hard when it does.",
 				"requires_spells": [], "requires_items": [],
 				# Base ACC is 1 and never rises, so acc_mod stays 0 (it requires exhausting EVA instead).
-				"power": 14, "acc_mod": 0, "oxygen_cost": 8.0,
+				"power": 12, "acc_mod": 0, "oxygen_cost": 10.0,
 				"hint": "Very heavy, slow to land", "text": "You drive a heavy slam home",
 			},
 		},
@@ -135,6 +135,11 @@ static func tree_for(model_name: String) -> Dictionary:
 
 # Fixed column order for the UI, independent of each tree's key order.
 const BRANCH_ORDER := ["offense", "debuff", "defense", "support"]
+# Auto-learn order where it differs from BRANCH_ORDER: Bucky picks up his heal
+# (Mending Current) before Heavy Slam.
+const LEARN_BRANCH_ORDER := {
+	"Prototype_V(1922)": ["support", "offense", "debuff", "defense"],
+}
 
 static func branches(model_name: String) -> Array:
 	var tree: Dictionary = tree_for(model_name)
@@ -185,13 +190,23 @@ static func equip_all_known(diver: Diver) -> void:
 			diver.equipped_spells.append(spell_id)
 
 # Spends every usable point, repeating until no progress so new prerequisites unlock dependents.
+# True once the diver has learned every spell in their tree.
+static func knows_all(diver: Diver) -> bool:
+	var tree := tree_for(diver.model_name)
+	for branch in tree:
+		for spell_id in tree[branch]:
+			if not diver.known_spells.has(String(spell_id)):
+				return false
+	return not tree.is_empty()
+
 static func learn_all_available(diver: Diver, key_items: Array) -> PackedStringArray:
 	var learned := PackedStringArray()
 	var tree := tree_for(diver.model_name)
 	var made_progress := true
+	var order: Array = LEARN_BRANCH_ORDER.get(diver.model_name, BRANCH_ORDER)
 	while made_progress:
 		made_progress = false
-		for branch in BRANCH_ORDER:
+		for branch in order:
 			if not tree.has(branch):
 				continue
 			for spell_id in tree[branch]:

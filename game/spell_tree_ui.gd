@@ -12,6 +12,10 @@ var key_items: Array = []
 
 var _title_label: Label
 var _points_label: Label
+var _level_label: Label
+var _xp_bar: ProgressBar
+var _xp_label: Label
+var _points_pulse: Tween
 var _columns_box: HBoxContainer
 var _branch_columns: Dictionary = {}   # branch name -> VBoxContainer
 
@@ -48,10 +52,41 @@ func _ready() -> void:
 	_title_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
 	root.add_child(_title_label)
 
+	# Level, XP to the next level, and Spell Points (pulses while unspent).
+	var progress_row := HBoxContainer.new()
+	progress_row.add_theme_constant_override("separation", 14)
+	root.add_child(progress_row)
+	_level_label = Label.new()
+	_level_label.add_theme_font_size_override("font_size", 22)
+	_level_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.25))
+	_level_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	progress_row.add_child(_level_label)
+	_xp_bar = ProgressBar.new()
+	_xp_bar.custom_minimum_size = Vector2(240, 14)
+	_xp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_xp_bar.show_percentage = false
+	var xp_fill := StyleBoxFlat.new()
+	xp_fill.bg_color = Color(1.0, 0.8, 0.25)
+	xp_fill.set_corner_radius_all(3)
+	_xp_bar.add_theme_stylebox_override("fill", xp_fill)
+	var xp_track := StyleBoxFlat.new()
+	xp_track.bg_color = Color(0.16, 0.22, 0.27)
+	xp_track.set_corner_radius_all(3)
+	_xp_bar.add_theme_stylebox_override("background", xp_track)
+	progress_row.add_child(_xp_bar)
+	_xp_label = Label.new()
+	_xp_label.add_theme_font_size_override("font_size", 18)
+	_xp_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
+	_xp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	progress_row.add_child(_xp_label)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(24, 0)
+	progress_row.add_child(gap)
 	_points_label = Label.new()
 	_points_label.add_theme_font_size_override("font_size", 24)
 	_points_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
-	root.add_child(_points_label)
+	_points_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	progress_row.add_child(_points_label)
 
 	var hint := Label.new()
 	hint.text = "Hover a spell for details. Click to learn it."
@@ -97,7 +132,24 @@ func _rebuild_columns() -> void:
 func _refresh() -> void:
 	if diver == null:
 		return
-	_points_label.text = "Spell Points: %d" % diver.stats.spell_points
+	var s := diver.stats
+	var maxed := s.level >= CombatantStats.MAX_LEVEL
+	_level_label.text = "Lv %d%s" % [s.level, " (max)" if maxed else ""]
+	_xp_bar.max_value = s.xp_to_next
+	_xp_bar.value = s.xp_to_next if maxed else s.xp
+	_xp_label.text = "MAX" if maxed else "%d / %d XP" % [s.xp, s.xp_to_next]
+	_points_label.text = "Spell Points: %d" % s.spell_points
+	# Gold pulse while points are waiting to be spent.
+	if _points_pulse != null and _points_pulse.is_valid():
+		_points_pulse.kill()
+	_points_label.modulate = Color.WHITE
+	if s.spell_points > 0:
+		_points_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+		_points_pulse = _points_label.create_tween().set_loops()
+		_points_pulse.tween_property(_points_label, "modulate:a", 0.45, 0.6)
+		_points_pulse.tween_property(_points_label, "modulate:a", 1.0, 0.6)
+	else:
+		_points_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
 
 	for branch in SpellTree.branches(diver.model_name):
 		var col: VBoxContainer = _branch_columns[branch]

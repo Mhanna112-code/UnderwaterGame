@@ -48,7 +48,7 @@ func _legacy_stats_from(ref: CombatantStats) -> CombatantStats:
 	return s
 
 # XP a win pays out before level scaling; read by battle.gd's _win().
-const BASE_XP := 10
+const BASE_XP := 20
 var xp_reward: int = BASE_XP
 
 var anim: AnimationPlayer

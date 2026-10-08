@@ -35,6 +35,9 @@ var reward_item_on_win := ""
 const ITEM_CARRIER_INTRO := "This enemy is carrying an item! Defeat the enemy and win the item."
 var _intro_hold := ""
 var encounter_intro_override := ""
+const PUPPET_HP := 9
+# Seconds the opening line stays up before the first turn (0 = straight in).
+var encounter_intro_hold := 0.0
 # Without a World (standalone maze), items come from this shared dictionary.
 var inventory_source: Dictionary = {}
 var campaign_key_items_source: Array[String] = []
@@ -177,7 +180,7 @@ const BASE_MOVES := {
 	],
 	"Prototype_V(1922)": [
 		{"name": "Guard Bash", "power": 4, "acc_mod": 3, "hint": "Sturdy, reliable", "text": "You bash it with your guard"},
-		{"name": "Heavy Kick", "power": 10, "acc_mod": 0, "hint": "Balanced, heavier", "text": "You drive a heavy kick home", "oxygen_cost": 10.0},
+		{"name": "Heavy Kick", "power": 8, "acc_mod": 1, "hint": "Balanced, heavier", "text": "You drive a heavy kick home", "oxygen_cost": 8.0},
 		{"name": "Crushing Haymaker", "power": 15, "acc_mod": 0, "hint": "Very heavy, slow", "text": "You wind up and crush it", "oxygen_cost": 16.0},
 	],
 }
@@ -489,6 +492,11 @@ func _ready() -> void:
 			intro = ITEM_CARRIER_INTRO
 			_intro_hold = intro
 		_log(intro)
+		if encounter_intro_hold > 0.0:
+			_busy = true
+			_set_all_buttons(false)
+			await get_tree().create_timer(encounter_intro_hold).timeout
+			_busy = false
 		_advance_turn()
 
 static func encounter_intro(entries: Array) -> String:
@@ -643,7 +651,9 @@ func _refresh_player_stats_panel() -> void:
 
 # Shows the post-move value (green raise / red drop) with the delta, e.g. "4 (-1)".
 # Amounts come from stat_effects.
-func _apply_stat_delta(ui: Dictionary, s: CombatantStats, deltas: Dictionary) -> void:
+# `floors`: lowest value each stat can be pushed to (stat key -> value). Legacy
+# debuffs (Weaken, Slow...) stop at an enemy's floor stat; everything else at 0.
+func _apply_stat_delta(ui: Dictionary, s: CombatantStats, deltas: Dictionary, floors: Dictionary = {}) -> void:
 	for stat in STAT_ROW_KEYS:
 		var key: String = STAT_ROW_KEYS[stat]
 		var value_label := ui.values[stat] as Label
@@ -655,23 +665,91 @@ func _apply_stat_delta(ui: Dictionary, s: CombatantStats, deltas: Dictionary) ->
 			delta_label.visible = false
 			continue
 		var amount := int(deltas[key])
-		# Total floors at 0 like real stats; the delta stays unclamped.
+		# A drop shows only what can really go: down to the floor stat, or 0.
+		var floor_value := int(floors.get(key, 0))
+		var floor_limited := false
+		if amount < 0:
+			var room := maxi(0, base - floor_value)
+			if -amount > room:
+				amount = -room
+				floor_limited = floor_value > 0
 		value_label.text = str(maxi(0, base + amount))
 		value_label.add_theme_color_override("font_color", STAT_COLOR_UP if amount > 0 else STAT_COLOR_DOWN)
-		delta_label.text = "(+%d)" % amount if amount > 0 else "(%d)" % amount
-		delta_label.add_theme_color_override("font_color", STAT_COLOR_NEUTRAL)
+		if floor_limited:
+			# Stopped by the floor stat: "-1 (Floor Stat)", or "-0 (Floor Stat)" when already there.
+			delta_label.text = "-%d (Floor Stat)" % -amount
+			delta_label.add_theme_color_override("font_color", STAT_COLOR_NEUTRAL)
+		elif amount == 0:
+			# Already at 0: the move still targets this stat, but nothing is left to lose.
+			delta_label.text = "(-0)"
+			delta_label.add_theme_color_override("font_color", STAT_COLOR_NEUTRAL)
+		else:
+			delta_label.text = "(+%d)" % amount if amount > 0 else "(%d)" % amount
+			delta_label.add_theme_color_override("font_color", STAT_COLOR_NEUTRAL)
 		delta_label.visible = true
 
-# Target-button hover: previews this move's deltas on both panels.
-# Enemy-targeting moves only.
+var _miss_label: Label
+
+# Floors a move's stat drop stops at: legacy debuffs use the target's floor stats
+# (as _apply_debuff does; Agility never below 1), other effects stop at 0.
+func _debuff_floors(move: Dictionary, target: CombatantStats) -> Dictionary:
+	if String(move.get("debuff", "")) == "":
+		return {}
+	var floors := target.stat_floor.duplicate()
+	floors["agility"] = int(floors.get("agility", 1))
+	return floors
+
+# Damage `move` will deal to `defender` if it lands: after Defense, with the
+# same rules as the real hit (a miss is shown by the MISS sign instead). Always one
+# number (power moves show their un-rolled total). "" for moves that deal no damage.
+func _effective_damage_text(move: Dictionary, defender: CombatantStats) -> String:
+	var attacker: CombatantStats = _acting.stats as CombatantStats if _acting.has("stats") else null
+	if attacker == null or String(move.get("effect", "")) in ["heal", "revive"] or String(move.get("debuff", "")) != "":
+		return ""
+	var raw := _preview_raw_power(move, attacker)
+	if raw <= 0:
+		return ""
+	if move.has("formula"):
+		return str(_preview_damage(move, attacker, defender))
+	# Power moves: one number, the un-rolled total (power + STR - DEF), never below 0.
+	return str(maxi(0, raw - defender.effective_defense()))
+
+# The yellow line above the stat panels: move name and its effective damage
+# on the hovered enemy (or each enemy, for an all-enemies hover).
+func _show_move_damage_line(move: Dictionary, targets: Array) -> void:
+	var values: Array[String] = []
+	for target in targets:
+		if (target as Dictionary).has("stats"):
+			var text := _effective_damage_text(move, (target as Dictionary).stats as CombatantStats)
+			if text != "" and not values.has(text):
+				values.append(text)
+	_selected_move_name.text = String(move.get("name", "")) if not values.is_empty() else ""
+	_selected_move_power.text = " / ".join(values)
+	_selected_move_panel.visible = not values.is_empty()
+
+# True when `move` can't beat `defender`'s current Evasion (ACC <= EVA misses).
+func _preview_misses(move: Dictionary, defender: CombatantStats) -> bool:
+	if String(move.get("effect", "")) in ["heal", "revive"] or not _acting.has("stats"):
+		return false
+	var accuracy := (_acting.stats as CombatantStats).effective_accuracy() + int(move.get("acc_mod", 0))
+	return accuracy <= defender.evasion_current
+
+# Target-button hover: previews this move's deltas on both panels, or a MISS
+# sign instead of the enemy's changes when it would be evaded. The caster's
+# own self cost still shows: it's paid even on a miss. Enemy-targeting moves only.
 func _show_stat_preview(move: Dictionary, enemy: Dictionary) -> void:
 	if not enemy.has("stats"):
 		return
 	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
+	var misses := _preview_misses(move, enemy.stats as CombatantStats)
+	_show_move_damage_line(move, [enemy])
 	_apply_stat_delta(_player_stats_ui, _acting.stats as CombatantStats, effects.get("player", {}) as Dictionary)
 	_set_stats_panel_base(_enemy_stats_ui, enemy.stats as CombatantStats)
 	(_enemy_stats_ui.title as Label).text = String(enemy.get("display_name", "Enemy"))
-	_apply_stat_delta(_enemy_stats_ui, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
+	if not misses:
+		_apply_stat_delta(_enemy_stats_ui, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary, _debuff_floors(move, enemy.stats as CombatantStats))
+	if _miss_label != null:
+		_miss_label.visible = misses
 	(_enemy_stats_ui.panel as Control).visible = true
 
 # Cleared on mouse_exited and whenever target_menu is left. While frozen
@@ -687,15 +765,18 @@ func _show_all_stat_preview(move: Dictionary, enemies: Array) -> void:
 	if enemies.is_empty():
 		return
 	_show_stat_preview(move, enemies[0] as Dictionary)
+	_show_move_damage_line(move, enemies)
 	var container := (_enemy_stats_ui.panel as Control).get_parent()
 	var effects: Dictionary = stat_effects.get(String(move.get("name", "")), {})
 	for i in range(1, enemies.size()):
 		var enemy := enemies[i] as Dictionary
 		if not enemy.has("stats"):
 			continue
-		var extra := create_stats_panel(String(enemy.get("display_name", "Enemy")))
+		var extra_misses := _preview_misses(move, enemy.stats as CombatantStats)
+		var extra := create_stats_panel(String(enemy.get("display_name", "Enemy")) + ("  MISS" if extra_misses else ""))
 		_set_stats_panel_base(extra, enemy.stats as CombatantStats)
-		_apply_stat_delta(extra, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary)
+		if not extra_misses:
+			_apply_stat_delta(extra, enemy.stats as CombatantStats, effects.get("enemy", {}) as Dictionary, _debuff_floors(move, enemy.stats as CombatantStats))
 		(extra.panel as Control).visible = true
 		container.add_child(extra.panel as Control)
 		_extra_enemy_stats_uis.append(extra)
@@ -712,6 +793,9 @@ func _clear_stat_preview() -> void:
 	if _enemy_stats_ui.is_empty() or _stat_preview_frozen:
 		return
 	(_enemy_stats_ui.panel as Control).visible = false
+	if _miss_label != null:
+		_miss_label.visible = false
+	_selected_move_panel.visible = false
 	# Full reset: _apply_stat_delta() overwrote the value text.
 	if _acting.has("stats"):
 		_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
@@ -731,7 +815,8 @@ func _begin_campaign_cordys() -> void:
 	_log("Cordys. This time, you can fight back.")
 	var actor := enemies[0].actor as CampaignCordys
 	var length := actor.play("reveal")
-	await get_tree().create_timer(maxf(0.8, length)).timeout
+	# Hold for the normal combat-text read time (3 s+), even if the clip is shorter.
+	await get_tree().create_timer(maxf(_log_read_delay(), length)).timeout
 	actor.play("idle")
 	_advance_turn()
 
@@ -1149,19 +1234,22 @@ func _build_ordinary_enemy_wave(vp: SubViewport, enemy_z: float, lvl: int, ref_s
 			# Shorter fight only; keep the species' other stats.
 			st.hp_max = 3
 			st.fill()
+		if encounter_source == "maze_puppets" and _puppet_wave == 0:
+			# First wave only: every puppet has the same fixed HP; other stats stay per species.
+			st.hp_max = PUPPET_HP
+			st.hp = PUPPET_HP
 		if tutorial_encounter:
 			# Tutorials fight a fixed Angler: TUTORIAL_ENEMY_HP and unboosted floor stats.
 			st.hp_max = TUTORIAL_ENEMY_HP
 			for field in ["strength", "defense", "agility", "evasion", "accuracy"]:
 				st.set(field, int(st.stat_floor.get(field, st.get(field))))
 			# Beginner tutorial: stats chosen so every lesson caption is true.
-			#  - EVA = Maxilani's Accuracy: her first Electric Touch misses
-			#    ("equal accuracy to the defender's evasion, so the attack will miss").
+			#  - EVA = Maxilani's Accuracy - 1: her first Electric Touch lands.
 			#  - DEF 3 with a debuff floor of 0: Weaken's "-2" lands in full (3 -> 1)
 			#    and Flash Blast's Blindness still visibly lowers DEF afterwards.
 			#  - AGI 2 < Maxilani's 3: she goes first, as the turn-order lesson says.
 			if not special_encounter and not party.is_empty():
-				st.evasion = (party[0].stats as CombatantStats).effective_accuracy()
+				st.evasion = maxi(0, (party[0].stats as CombatantStats).effective_accuracy() - 1)
 				st.defense = TUTORIAL_ENEMY_DEFENSE
 				st.stat_floor = {"strength": 0, "defense": 0, "agility": 0, "evasion": 0, "accuracy": 0}
 			st.fill()
@@ -1183,12 +1271,20 @@ func _build_ordinary_enemy_wave(vp: SubViewport, enemy_z: float, lvl: int, ref_s
 	_apply_dev_statuses()
 	_frame_stage_camera()
 
-# Dev mode (--dev): every status on every combatant for display. Level 1, 9 turns (Stun: 1).
+# Set by whoever starts the fight (World or the maze) when --dev is on.
+var dev_mode := false
+
+# Dev mode (--dev): every status on every combatant in ordinary fights (never
+# bosses or scripted fights). Level 1, 9 turns (Stun: 1).
 const DEV_STATUSES := [["blindness", 1, 9], ["stun", 1, 1], ["evasion_down", 1, 9],
 	["defense_down", 1, 9], ["bleed", 1, 0], ["poison", 1, 9]]
 
 func _apply_dev_statuses() -> void:
-	if world == null or not bool(world.get("dev_mode")):
+	if not dev_mode and (world == null or not bool(world.get("dev_mode"))):
+		return
+	if boss_encounter or encounter_source in ["maze_cordys", "maze_puppets", "lab_boss", "prologue_octopus"] \
+		or tutorial_encounter or special_encounter or guardian_encounter \
+		or prologue_angler_encounter or prologue_octopus_encounter:
 		return
 	for entry in party + enemies:
 		var s := (entry as Dictionary).get("stats") as CombatantStats
@@ -1511,6 +1607,52 @@ func _build_turn_cursor() -> void:
 	_turn_cursor.visible = false
 	_stage_vp.add_child(_turn_cursor)
 
+# Blinking red cones over the enemy (or enemies) a hovered target button would hit.
+var _target_cursors: Array = []   # [cone MeshInstance3D, enemy actor Node3D]
+const TARGET_CURSOR_COLOR := Color(1.0, 0.2, 0.2)
+
+func _show_target_cursors(targets: Array) -> void:
+	_hide_target_cursors()
+	for target_value in targets:
+		var target := target_value as Dictionary
+		if not target.has("actor") or not is_instance_valid(target.actor):
+			continue
+		if (target.stats as CombatantStats).hp <= 0:
+			continue
+		var cone := CylinderMesh.new()
+		cone.top_radius = 0.0
+		cone.bottom_radius = 0.2
+		cone.height = 0.35
+		var cursor := MeshInstance3D.new()
+		cursor.mesh = cone
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		mat.albedo_color = TARGET_CURSOR_COLOR
+		mat.emission = TARGET_CURSOR_COLOR
+		cursor.material_override = mat
+		cursor.rotation_degrees.x = 180.0
+		_stage_vp.add_child(cursor)
+		var blink := cursor.create_tween().set_loops()
+		blink.tween_callback(func() -> void: cursor.visible = not cursor.visible).set_delay(0.25)
+		_target_cursors.append([cursor, target.actor])
+	_update_target_cursors()
+
+func _hide_target_cursors() -> void:
+	for pair in _target_cursors:
+		if is_instance_valid(pair[0]):
+			(pair[0] as Node).queue_free()
+	_target_cursors.clear()
+
+func _update_target_cursors() -> void:
+	# Whatever closed the target menu, the markers go with it.
+	if not _target_cursors.is_empty() and not target_menu.is_visible_in_tree():
+		_hide_target_cursors()
+		return
+	for pair in _target_cursors:
+		if is_instance_valid(pair[0]) and is_instance_valid(pair[1]):
+			(pair[0] as Node3D).global_position = _top_of(pair[1] as Node3D) + Vector3.UP * 0.45
+
 # Fresh averaged CombatantStats of living divers (or all, if none alive) for
 # Goblin.make_stats(); never aliases a real diver's stats.
 func _party_average_stats() -> CombatantStats:
@@ -1724,7 +1866,7 @@ func _build_ui() -> void:
 	attack_btn = _menu_button("Attack", "Pick a move")
 	attack_btn.pressed.connect(_show_moves)
 	main_menu.add_child(attack_btn)
-	run_btn = _menu_button("Run", "No escape from a boss" if _no_escape() else "Might not escape")
+	run_btn = _menu_button("Run", "" if _no_escape() else "Might not escape")
 	run_btn.tooltip_text = "You can't run from a boss." if _no_escape() else ""
 	run_btn.pressed.connect(_on_run)
 	main_menu.add_child(run_btn)
@@ -1771,9 +1913,26 @@ func _build_ui() -> void:
 	col.add_child(stats_row)
 	_player_stats_ui = create_stats_panel("You")
 	stats_row.add_child(_player_stats_ui.panel as Control)
+	# Shown instead of the enemy's stat changes when the hovered move would miss.
+	_miss_label = Label.new()
+	_miss_label.text = "MISS"
+	_miss_label.custom_minimum_size = Vector2(84, 0)
+	_miss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_miss_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_miss_label.add_theme_font_size_override("font_size", 24)
+	_miss_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.3))
+	_miss_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_miss_label.add_theme_constant_override("outline_size", 6)
+	_miss_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_miss_label.visible = false
+	stats_row.add_child(_miss_label)
 	_enemy_stats_ui = create_stats_panel("Enemy")
 	(_enemy_stats_ui.panel as Control).visible = false
 	stats_row.add_child(_enemy_stats_ui.panel as Control)
+	# The MISS sign belongs to the enemy panel: hide it whenever that hides.
+	(_enemy_stats_ui.panel as Control).visibility_changed.connect(func() -> void:
+		if not (_enemy_stats_ui.panel as Control).visible:
+			_miss_label.visible = false)
 	# Fill real numbers now; _start_party_turn() may be several frames away.
 	if not party.is_empty():
 		_set_stats_panel_base(_player_stats_ui, party[0].stats as CombatantStats)
@@ -1874,7 +2033,8 @@ func _fit_party_status_cards_above_panel() -> void:
 	_party_status_column.offset_right = expanded_right if _uses_narrow_info_band() or _party_status_column.offset_top + vertical_height > panel_top else normal_right
 
 # Name plus a one-line tradeoff hint on the button.
-func _menu_button(title: String, hint: String) -> Button:
+# `hint_bbcode` (optional) draws the hint line in colour instead of `hint`.
+func _menu_button(title: String, hint: String, hint_bbcode := "") -> Button:
 	# TooltipButton everywhere (Godot shows no tooltip when tooltip_text is empty).
 	var b := TooltipButton.new()
 	b.text = title if hint == "" else "%s\n%s" % [title, hint]
@@ -1882,7 +2042,7 @@ func _menu_button(title: String, hint: String) -> Button:
 	var viewport_width := get_viewport().get_visible_rect().size.x
 	b.custom_minimum_size = Vector2(205 if viewport_width < 900.0 else 300, 52)
 	b.clip_text = true
-	if CombatRules.has_stat_loss(hint):
+	if hint_bbcode != "" or CombatRules.has_stat_loss(hint):
 		# Hint line drawn by a rich-text overlay (button text is single-colour).
 		b.text = "%s
  " % title
@@ -1895,7 +2055,7 @@ func _menu_button(title: String, hint: String) -> Button:
 		line.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
 		line.offset_left = 4.0
 		line.offset_right = -4.0
-		line.text = "[center]%s[/center]" % CombatRules.red_stat_losses_bbcode(hint)
+		line.text = "[center]%s[/center]" % (hint_bbcode if hint_bbcode != "" else CombatRules.red_stat_losses_bbcode(hint))
 		# Match the button's own font, size and colour, and sit exactly on its
 		# second text line (two centred lines: line 2 starts line_spacing/2 below centre).
 		line.ready.connect(func() -> void:
@@ -2134,11 +2294,16 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	hp_label.add_theme_constant_override("outline_size", 5)
 	bar_row.add_child(hp_label)
+	var bleed_icon := BattleFx.StatusIcon.new("bleed")
+	bar_row.add_child(bleed_icon)
+	var poison_icon := BattleFx.StatusIcon.new("poison")
+	bar_row.add_child(poison_icon)
 
 	# Oxygen bar only for divers; enemies never spend oxygen.
 	var oxygen_bar: ProgressBar
 	var oxygen_label: Label
 	var oxygen_heal_overlay: ColorRect
+	var xp_bar: ProgressBar
 	if String(entry.kind) == "party":
 		var o2_row := HBoxContainer.new()
 		o2_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2178,6 +2343,19 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 		oxygen_label.add_theme_constant_override("outline_size", 5)
 		o2_row.add_child(oxygen_label)
 
+		# XP to the next level: a thin gold bar under O2; exact numbers on hover.
+		xp_bar = ProgressBar.new()
+		xp_bar.custom_minimum_size = Vector2(bar_width, 4)
+		xp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		xp_bar.show_percentage = false
+		var xp_fill := StyleBoxFlat.new()
+		xp_fill.bg_color = XP_GOLD
+		xp_bar.add_theme_stylebox_override("fill", xp_fill)
+		var xp_track := StyleBoxFlat.new()
+		xp_track.bg_color = Color(0.03, 0.06, 0.08, 0.85)
+		xp_bar.add_theme_stylebox_override("background", xp_track)
+		box.add_child(xp_bar)
+
 	var status_label := Label.new()
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Wrap long status summaries inside the card instead of widening it.
@@ -2198,9 +2376,16 @@ func _build_overhead_bar(entry: Dictionary) -> void:
 		entry["oxygen_label"] = oxygen_label
 		entry["oxygen_heal_overlay"] = oxygen_heal_overlay
 	entry["status_label"] = status_label
+	if xp_bar != null:
+		entry["xp_bar"] = xp_bar
+	entry["bleed_icon"] = bleed_icon
+	entry["poison_icon"] = poison_icon
 	entry["overhead"] = box
 	entry["card"] = card
 	_ignore_mouse_recursive(card)
+	# PASS (not STOP) so hover shows the XP tooltip without eating clicks.
+	if xp_bar != null:
+		xp_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 
 func _refresh_all_bars() -> void:
 	for e in party:
@@ -2222,6 +2407,15 @@ func _refresh_bar(entry: Dictionary) -> void:
 		(entry.oxygen_bar as ProgressBar).max_value = s.oxygen_max
 		(entry.oxygen_bar as ProgressBar).value = s.oxygen
 		(entry.oxygen_label as Label).text = "%d / %d O2" % [int(s.oxygen), int(s.oxygen_max)]
+	if entry.has("xp_bar") and not bool(entry.get("xp_animating", false)):
+		var xp_bar := entry.xp_bar as ProgressBar
+		var maxed := s.level >= CombatantStats.MAX_LEVEL
+		xp_bar.max_value = s.xp_to_next
+		xp_bar.value = s.xp_to_next if maxed else s.xp
+		xp_bar.tooltip_text = "Max level" if maxed else "XP %d / %d to Lv %d" % [s.xp, s.xp_to_next, s.level + 1]
+	if entry.has("bleed_icon"):
+		(entry.bleed_icon as Control).visible = s.status_level("bleed") > 0
+		(entry.poison_icon as Control).visible = s.status_level("poison") > 0
 	var status_text := s.status_summary()
 	# Live Evasion pool (spent by dodges, refilled each own turn) as current/max.
 	if String(entry.kind) in ["party", "enemy"]:
@@ -2249,6 +2443,63 @@ func _show_heal_overlay(overlay: ColorRect, before: float, after: float, max_val
 	overlay.position.x = (before / max_value) * actual_width
 	overlay.size.x = ((after - before) / max_value) * actual_width
 	overlay.visible = true
+
+# --- Previews for items, heals and revives on divers ---
+
+# Stat items: "+2" in green on that diver's stat table ("You" for the acting
+# diver). HP / O2 items: green span on the bar they'd fill.
+func _show_item_preview(item_id: String, target: Dictionary) -> void:
+	var def: Dictionary = Items.ITEMS.get(item_id, {})
+	var kind := String(def.get("kind", ""))
+	var amount := int(def.get("amount", 0))
+	var s := target.stats as CombatantStats
+	var field := String({"attack_up": "strength", "defense_up": "defense", "accuracy_up": "accuracy", "evasion_up": "evasion"}.get(kind, ""))
+	if field != "":
+		var ui := _player_stats_ui if target == _acting else _enemy_stats_ui
+		_set_stats_panel_base(ui, s)
+		if ui == _enemy_stats_ui:
+			(_enemy_stats_ui.title as Label).text = String(target.display_name)
+		_apply_stat_delta(ui, s, {field: amount})
+		(ui.panel as Control).visible = true
+		if _miss_label != null:
+			_miss_label.visible = false
+	elif kind == "heal" and target.has("hp_heal_overlay"):
+		_show_heal_overlay(target.hp_heal_overlay, s.hp, mini(s.hp_max, s.hp + amount), s.hp_max)
+	elif kind == "oxygen" and target.has("oxygen_heal_overlay"):
+		_show_heal_overlay(target.oxygen_heal_overlay, s.oxygen, minf(s.oxygen_max, s.oxygen + float(amount)), s.oxygen_max)
+
+# Heal: green span from current HP to where it would land. Revive: the downed
+# diver's card shows again with the restored HP in green and the name greyed.
+func _show_heal_preview(move: Dictionary, targets: Array) -> void:
+	var effect := String(move.get("effect", ""))
+	var amount := int(move.get("amount", 0))
+	for target_value in targets:
+		var target := target_value as Dictionary
+		if not target.has("hp_heal_overlay"):
+			continue
+		var s := target.stats as CombatantStats
+		if effect == "revive":
+			if target.has("card"):
+				(target.card as Control).visible = true
+			if target.has("name_label"):
+				(target.name_label as Control).modulate = Color(0.55, 0.55, 0.55)
+			# The card just reappeared; place the span once it has its size.
+			_show_heal_overlay.call_deferred(target.hp_heal_overlay, 0.0, float(mini(s.hp_max, amount)), float(s.hp_max))
+		elif effect == "heal" and s.hp > 0:
+			_show_heal_overlay(target.hp_heal_overlay, s.hp, mini(s.hp_max, s.hp + amount), s.hp_max)
+
+func _clear_support_preview() -> void:
+	for entry in party:
+		for key in ["hp_heal_overlay", "oxygen_heal_overlay"]:
+			if entry.has(key):
+				(entry[key] as ColorRect).visible = false
+		if entry.has("name_label"):
+			(entry.name_label as Control).modulate = Color.WHITE
+		_refresh_bar(entry)   # hides a downed diver's card again
+	if not _stat_preview_frozen and not _enemy_stats_ui.is_empty():
+		(_enemy_stats_ui.panel as Control).visible = false
+		if _acting.has("stats"):
+			_set_stats_panel_base(_player_stats_ui, _acting.stats as CombatantStats)
 
 func _log(text: String) -> void:
 	log_label.clear()
@@ -2338,13 +2589,14 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary, play_sound: bo
 		messages.append({"text": "+%d HP" % int(result.get("changed", 0)), "color": FEEDBACK_EFFECT_COLOR})
 	elif result_kind != "":
 		# Stat losses in the shared stat-loss red.
-		messages.append({"text": "%s -%d" % [result_kind.to_upper(), int(result.get("changed", 0))], "color": Color.html(CombatRules.STAT_LOSS_COLOR)})
+		messages.append({"text": "%s -%d" % [String(_STAT_ABBR.get(result_kind, result_kind.to_upper())), int(result.get("changed", 0))], "color": Color.html(CombatRules.STAT_LOSS_COLOR)})
 	elif not bool(result.get("hit", false)) or bool(result.get("dodged", false)):
 		messages.append({"text": "DODGE", "color": FEEDBACK_EFFECT_COLOR})
 	elif int(result.get("damage", 0)) > 0:
 		messages.append({"text": "-%d" % int(result.damage), "color": FEEDBACK_DAMAGE_COLOR})
 	elif (result.get("effects", []) as Array).is_empty() and not bool(result.get("immune", false)):
-		messages.append({"text": "ABSORBED", "color": FEEDBACK_EFFECT_COLOR})
+		# A landed hit that did no damage reads as a red -0.
+		messages.append({"text": "-0", "color": FEEDBACK_DAMAGE_COLOR})
 	if bool(result.get("immune", false)):
 		messages.append({"text": "IMMUNE", "color": FEEDBACK_IMMUNE_COLOR})
 	var effects := result.get("effects", []) as Array
@@ -2354,6 +2606,71 @@ func _show_combat_feedback(entry: Dictionary, result: Dictionary, play_sound: bo
 	for index in range(messages.size()):
 		var message := messages[index] as Dictionary
 		_show_floating_text(entry, String(message.text), message.color as Color, index)
+	_show_result_fx(entry, result)
+
+# Stage effects for one result: red flash on damage, green bubbles on a heal,
+# red down-arrows when a stat loss or status lands, yellow flash on Stun.
+func _show_result_fx(entry: Dictionary, result: Dictionary) -> void:
+	var actor := entry.actor as Node3D
+	var result_kind := String(result.get("debuff", ""))
+	var landed := bool(result.get("hit", false)) and not bool(result.get("dodged", false))
+	if result_kind in ["heal", "revive"]:
+		if int(result.get("changed", 0)) > 0:
+			BattleFx.bubbles(_stage_vp, _fx_point(actor, 0.5))
+		return
+	if not landed:
+		return
+	if int(result.get("damage", 0)) > 0:
+		BattleFx.flash(actor, BattleFx.DAMAGE_RED)
+	var effects := (result.get("effects", []) as Array).filter(
+		func(e: Variant) -> bool: return not String(e).ends_with(" -0"))
+	if (result_kind != "" and int(result.get("changed", 0)) > 0) or not effects.is_empty():
+		BattleFx.down_arrows(_stage_vp, _fx_point(actor, 1.0))
+	if effects.any(func(e: Variant) -> bool: return String(e).begins_with("Stun")):
+		# After the damage flash so the two colours don't overlap.
+		# Delay on the actor's own tween so it dies with the actor.
+		actor.create_tween().tween_callback(BattleFx.flash.bind(actor, BattleFx.STUN_YELLOW, 4)).set_delay(0.55)
+
+# Stage-space point on `actor`: 0 = feet, 1 = head (same space as floating text).
+func _fx_point(actor: Node3D, height_frac: float) -> Vector3:
+	var top := _top_of(actor) - actor.global_position + actor.position
+	var bottom := _bottom_of(actor) - actor.global_position + actor.position
+	return bottom.lerp(top, height_frac)
+
+const XP_GOLD := Color(1.0, 0.8, 0.25)
+
+# Fills the card's XP bar from its old value; each level-up fills it to the
+# end, flashes, says LEVEL UP and restarts with the leftover. Not awaited.
+func _animate_xp_gain(entry: Dictionary, amount: int, xp_before: int, next_before: int, level_ups: int) -> void:
+	if amount <= 0 or not entry.has("xp_bar") or (level_ups == 0 and (entry.stats as CombatantStats).level >= CombatantStats.MAX_LEVEL):
+		return
+	var bar := entry.xp_bar as ProgressBar
+	var s := entry.stats as CombatantStats
+	entry["xp_animating"] = true
+	if entry.has("actor") and is_instance_valid(entry.actor):
+		# Stacked high so LEVEL UP (below) never overlaps it.
+		_show_floating_text(entry, "+%d XP" % amount, XP_GOLD, 3)
+	bar.max_value = next_before
+	bar.value = xp_before
+	for i in level_ups:
+		var fill := bar.create_tween()
+		fill.tween_property(bar, "value", bar.max_value, 0.6)
+		await fill.finished
+		var flash := bar.create_tween()
+		flash.tween_property(bar, "modulate", Color(2.0, 1.8, 1.2), 0.12)
+		flash.tween_property(bar, "modulate", Color.WHITE, 0.3)
+		if entry.has("actor") and is_instance_valid(entry.actor):
+			_show_floating_text(entry, "LEVEL UP", XP_GOLD, 0)
+		await flash.finished
+		# The next level's requirement (same formula as CombatantStats.gain_xp).
+		var reached := s.level - level_ups + i + 1
+		bar.max_value = int(round(CombatantStats.XP_BASE * pow(float(reached), CombatantStats.XP_CURVE)))
+		bar.value = 0
+	var rest := bar.create_tween()
+	rest.tween_property(bar, "value", bar.max_value if s.level >= CombatantStats.MAX_LEVEL else float(s.xp), 0.5)
+	await rest.finished
+	entry["xp_animating"] = false
+	_refresh_bar(entry)
 
 func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_index: int = 0) -> void:
 	var actor := entry.actor as Node3D
@@ -2375,6 +2692,22 @@ func _show_floating_text(entry: Dictionary, text: String, color: Color, stack_in
 	tween.set_parallel(false)
 	tween.tween_callback(label.queue_free)
 
+# Item effects (floating "+HP" etc.) get this long before a Bleed/Poison tick.
+const ITEM_EFFECT_SHOW := 1.2
+
+# A diver's end of turn: when Bleed or Poison will tick, wait until they're back
+# on their spot (attacks) or the item's effect has shown, so the tick doesn't
+# read as part of the action. No wait when nothing ticks.
+func _finish_party_turn(entry: Dictionary, after_item := false) -> void:
+	var s := entry.stats as CombatantStats
+	if s.status_level("bleed") > 0 or s.status_level("poison") > 0:
+		if after_item:
+			await get_tree().create_timer(ITEM_EFFECT_SHOW).timeout
+		else:
+			while Time.get_ticks_msec() < int(entry.get("home_at_ms", 0)):
+				await get_tree().process_frame
+	_finish_actor_turn(entry)
+
 func _finish_actor_turn(entry: Dictionary) -> void:
 	_show_damage_over_time(entry, (entry.stats as CombatantStats).end_turn())
 	_tick_timed_buffs(entry)
@@ -2383,6 +2716,14 @@ func _finish_actor_turn(entry: Dictionary) -> void:
 # stack_base lifts labels above any already shown this turn.
 func _show_damage_over_time(entry: Dictionary, tick: Dictionary, stack_base: int = 0) -> void:
 	var bleed_damage := int(tick.get("bleed_damage", 0))
+	var poison_tick := int(tick.get("poison_damage", 0))
+	if (bleed_damage > 0 or poison_tick > 0) and entry.has("actor") and is_instance_valid(entry.actor):
+		var actor := entry.actor as Node3D
+		if bleed_damage > 0:
+			BattleFx.blood_drops(_stage_vp, _fx_point(actor, 0.75))
+		if poison_tick > 0:
+			BattleFx.poison_cloud(_stage_vp, _fx_point(actor, 0.6))
+		actor.create_tween().tween_callback(BattleFx.flash.bind(actor, BattleFx.DAMAGE_RED)).set_delay(0.35)
 	if bleed_damage > 0:
 		_show_floating_text(entry, "BLEED -%d" % bleed_damage, Color(0.9, 0.12, 0.2), stack_base)
 		stack_base += 1
@@ -2507,6 +2848,8 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 # Turn dispatcher: check for a wipe on either side first, rebuild the queue
 # at round end, then run the enemy AI or the player menu.
 func _advance_turn() -> void:
+	# The attacking diver's turn is over: drop their move/damage line.
+	_hide_move_damage_line()
 	# After all scripted moves and the QTE turn, show "Defeat the enemy!" once,
 	# then continue into the real fight checks below.
 	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
@@ -2578,6 +2921,8 @@ func _advance_turn() -> void:
 		# Stun skips the action and only the Stun counter ticks; Bleed/Poison still apply.
 		(_acting.stats as CombatantStats).consume_status_turn("stun")
 		_show_floating_text(_acting, "STUNNED", FEEDBACK_NEGATIVE_COLOR)
+		if _acting.has("actor") and is_instance_valid(_acting.actor):
+			BattleFx.flash(_acting.actor as Node3D, BattleFx.STUN_YELLOW, 4)
 		_log("%s is stunned for this turn and can't act." % String(_acting.display_name))
 		_show_damage_over_time(_acting, (_acting.stats as CombatantStats).tick_damage_over_time(), 1)
 		_refresh_bar(_acting)
@@ -2728,7 +3073,8 @@ func _start_party_turn(actor: Dictionary) -> void:
 	_place_skip_tutorial_btn_last(main_menu)
 	_selected_move_name.text = ""
 	_selected_move_power.text = ""
-	_selected_move_panel.visible = true
+	# Shown once a damage move is picked (see the target step).
+	_selected_move_panel.visible = false
 	(_player_stats_ui.panel as Control).visible = true
 	call_deferred("_fit_panel_height")
 	_refresh_player_stats_panel()
@@ -2790,6 +3136,7 @@ func _process(_delta: float) -> void:
 		if log_label.visible != show_log:
 			log_label.visible = show_log
 			call_deferred("_fit_panel_height")
+	_update_target_cursors()
 	if not is_instance_valid(_turn_cursor) or not _turn_cursor.visible:
 		return
 	if not is_instance_valid(_turn_cursor_target):
@@ -2825,6 +3172,7 @@ func _moves_for(entry: Dictionary) -> Array:
 			"hint": String(def.get("hint", "")),
 			"text": String(def.get("text", "You cast %s" % String(def.get("display", spell_id)))),
 			"oxygen_cost": float(def.get("oxygen_cost", 0.0)),
+			"target": String(def.get("target", "")),
 		})
 	return out
 
@@ -3036,6 +3384,61 @@ func _add_oxygen_badge(btn: Button, cost: int) -> void:
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(badge)
 
+# An item's effect as [plain text, green BBCode], e.g. "Heal 5 HP" or "DEF +2".
+const _ITEM_EFFECT_LABELS := {
+	"heal": "Heal %d HP", "oxygen": "O2 +%d", "attack_up": "STR +%d",
+	"defense_up": "DEF +%d", "accuracy_up": "ACC +%d", "evasion_up": "EVA +%d",
+}
+func _item_effect_line(def: Dictionary) -> Array:
+	var kind := String(def.get("kind", ""))
+	if not _ITEM_EFFECT_LABELS.has(kind):
+		var fallback := String(def.get("description", ""))
+		return [fallback, ""]
+	var text := String(_ITEM_EFFECT_LABELS[kind]) % int(def.get("amount", 0))
+	return [text, "[color=#%s]%s[/color]" % [STAT_COLOR_UP.to_html(false), text]]
+
+const _STAT_ABBR := {"strength": "STR", "defense": "DEF", "agility": "AGI", "accuracy": "ACC", "evasion": "EVA"}
+
+# A move's effects as [plain text, coloured BBCode], e.g. "Damage; ACC +6" or
+# "Enemy DEF -3; ACC +4": enemy stat losses red, accuracy gains green.
+func _move_effect_line(mv: Dictionary, caster: CombatantStats) -> Array:
+	var parts: Array[Array] = []   # [text, colour or null]
+	var red := Color.html(CombatRules.STAT_LOSS_COLOR)
+	var support := String(mv.get("effect", ""))
+	if support == "heal":
+		var everyone := String(mv.get("target", "")) == "all_allies"
+		parts.append(["Heal %d HP%s" % [int(mv.get("amount", 0)), " (party)" if everyone else ""], STAT_COLOR_UP])
+	elif support == "revive":
+		parts.append(["Revive %d HP" % int(mv.get("amount", 0)), STAT_COLOR_UP])
+	else:
+		var debuff := String(mv.get("debuff", ""))
+		var deals_damage := CombatRules.formula_value(caster, mv.get("formula", {})) > 0 if mv.has("formula") \
+			else debuff == "" and int(mv.get("power", 0)) > 0
+		if deals_damage:
+			parts.append(["Damage", null])
+		if debuff != "":
+			parts.append(["Enemy %s -%d" % [_STAT_ABBR.get(debuff, debuff.to_upper()), int(mv.get("amount", 0))], red])
+		for effect_value in mv.get("effects", []):
+			var effect := effect_value as Dictionary
+			match String(effect.get("kind", "")):
+				"reduce_evasion":
+					parts.append(["Enemy EVA -%d" % CombatRules.formula_value(caster, effect.get("amount", {})), red])
+				"reduce_defense":
+					parts.append(["Enemy DEF -%d" % CombatRules.formula_value(caster, effect.get("amount", {})), red])
+				"status":
+					parts.append([String(effect.get("status", "")).capitalize(), null])
+				"self_temporary":
+					parts.append(["Self Cost", null])
+		var acc_mod := int(mv.get("acc_mod", 0))
+		if acc_mod != 0:
+			parts.append(["ACC %s%d" % ["+" if acc_mod > 0 else "", acc_mod], STAT_COLOR_UP if acc_mod > 0 else red])
+	var plain: Array[String] = []
+	var rich: Array[String] = []
+	for part in parts:
+		plain.append(String(part[0]))
+		rich.append(String(part[0]) if part[1] == null else "[color=#%s]%s[/color]" % [(part[1] as Color).to_html(false), part[0]])
+	return ["; ".join(plain), "; ".join(rich)]
+
 func _populate_move_menu(actor: Dictionary) -> void:
 	# Stop the flash tween BEFORE freeing its target buttons: a looping tween with
 	# freed targets becomes a zero-duration loop that can hang the web build.
@@ -3048,8 +3451,9 @@ func _populate_move_menu(actor: Dictionary) -> void:
 	var available: float = (actor.stats as CombatantStats).oxygen
 	for mv in _moves_for(actor):
 		var ox_cost: float = float(mv.get("oxygen_cost", 0.0))
-		# Name only; the summary and details live in the tooltip.
-		var b := _menu_button(String(mv.name), "")
+		# Second line: the move's effects only; details live in the tooltip.
+		var effect_line := _move_effect_line(mv, actor.stats as CombatantStats)
+		var b := _menu_button(String(mv.name), String(effect_line[0]), String(effect_line[1]))
 		var base_power := _move_base_power(mv)
 		if base_power > 0:
 			_add_power_badge(b, base_power)
@@ -3109,17 +3513,21 @@ func _move_tooltip_text(mv: Dictionary, actor: Dictionary) -> String:
 		sections.append("Target\nOne downed ally.")
 		sections.append("Revive\nBrings the ally back with %d HP." % int(mv.get("amount", 0)))
 	elif support_effect == "heal":
-		sections.append("Target\nOne living ally.")
+		sections.append("Target\n%s" % ("Every living ally." if target_scope == "all_allies" else "One living ally."))
 		sections.append("Heal\nRestores %d HP." % int(mv.get("amount", 0)))
 	elif target_scope in ["all", "all_enemies"]:
 		sections.append("Target\nAll enemies.")
 	var deals_damage := mv.has("formula") and not (mv.get("formula", {}) as Dictionary).is_empty()
 	if deals_damage:
 		var formula: Dictionary = mv.get("formula", {})
-		var damage_body := _formula_damage_sentence(String(actor.get("display_name", "the caster")), formula, String(mv.get("target", "")))
+		var damage_body := _formula_damage_sentence(String(actor.get("display_name", "the caster")), actor.stats as CombatantStats, formula, String(mv.get("target", "")))
 		# Explain why formula moves with no "base" term have no power badge.
 		if _move_base_power(mv) <= 0:
-			damage_body = "This move has no power of its own - its entire damage comes from your Strength stat. %s" % damage_body
+			var used: Array[String] = []
+			for key in ["strength", "accuracy", "agility", "evasion", "defense"]:
+				if formula.has(key):
+					used.append(String(_STAT_ABBR.get(key, key.to_upper())))
+			damage_body = "This move has no power of its own - its entire damage comes from your %s. %s" % [" and ".join(used), damage_body]
 		sections.append("Damage\n%s" % damage_body)
 	for effect_value in mv.get("effects", []):
 		var effect := effect_value as Dictionary
@@ -3129,6 +3537,14 @@ func _move_tooltip_text(mv: Dictionary, actor: Dictionary) -> String:
 			var body := TutorialContent.status_condition_body(status_name)
 			if body != "":
 				var level := CombatRules.formula_value(actor.stats as CombatantStats, effect.get("level", {}))
+				if status_name == "blindness":
+					# Live-value first sentence; the rest of the shared help text follows.
+					var turns := CombatRules.formula_value(actor.stats as CombatantStats, effect.get("duration", {}))
+					var who := "every enemy's" if target_scope in ["all", "all_enemies"] else "the target's"
+					var rest := body.substr(body.find(". ") + 2) if body.find(". ") >= 0 else ""
+					body = "%s lowers %s AGI, ACC and DEF by %d for %d turns, equal to %s's ACC (%d). %s" % [
+						String(mv.get("name", "This move")), who, level, turns,
+						String(actor.get("display_name", "the caster")), (actor.stats as CombatantStats).effective_accuracy(), rest]
 				sections.append("%s %d\n%s" % [status_name.capitalize(), level, body])
 		elif kind == "self_temporary":
 			# Names this move's actual ACC/EVA cost.
@@ -3142,30 +3558,36 @@ func _move_tooltip_text(mv: Dictionary, actor: Dictionary) -> String:
 		var debuff := String(mv.get("debuff", ""))
 		if debuff == "" and support_effect == "" and mv.has("power"):
 			var strength := (actor.stats as CombatantStats).strength
-			sections.append("Damage\nDeals %d power plus %s's Strength (%d), varied slightly, minus the target's Defense." % [
+			sections.append("Damage\nDeals %d power plus %s's STR (%d), minus the target's DEF." % [
 				int(mv.get("power", 0)), String(actor.get("display_name", "the caster")), strength,
 			])
 		if debuff != "":
 			sections.append("Debuff\n%s lowers the target's %s by %d." % [
-				String(mv.get("name", "This move")), debuff.capitalize(), int(mv.get("amount", 0)),
+				String(mv.get("name", "This move")), String(_STAT_ABBR.get(debuff, debuff.to_upper())), int(mv.get("amount", 0)),
 			])
 		var acc_mod := int(mv.get("acc_mod", 0))
 		if acc_mod != 0:
-			sections.append("Accuracy\nThis move's own Accuracy for this one turn is %s by %d, %s." % [
+			sections.append("Accuracy\nThis move's own ACC for this one turn is %s by %d, %s." % [
 				"boosted" if acc_mod > 0 else "reduced", absi(acc_mod),
 				"making it much harder to dodge" if acc_mod > 0 else "making it more likely to miss",
 			])
 	return "\n\n".join(sections)
 
-# Names the formula's stats in lower-case prose, e.g. "strength plus accuracy".
-func _formula_damage_sentence(caster_name: String, formula: Dictionary, target: String) -> String:
-	var stat_labels: Array[String] = []
+# Names the formula's stats with the caster's current values, e.g.
+# "Maxilani's STR (1) plus ACC (3)" (a "x2" coefficient reads "2x STR (1)").
+func _formula_damage_sentence(caster_name: String, caster: CombatantStats, formula: Dictionary, target: String) -> String:
+	var parts: Array[String] = []
 	for key in ["strength", "accuracy", "agility", "evasion", "defense"]:
-		if formula.has(key):
-			stat_labels.append(key)
-	var stat_text := " plus ".join(stat_labels) if not stat_labels.is_empty() else "power"
+		if not formula.has(key):
+			continue
+		var value := CombatRules.formula_value(caster, {key: 1})
+		var times := int(formula[key])
+		parts.append("%s%s (%d)" % ["%dx " % times if times != 1 else "", String(_STAT_ABBR.get(key, key.to_upper())), value])
+	if int(formula.get("flat", 0)) != 0:
+		parts.append("%d" % int(formula.flat))
+	var stat_text := " plus ".join(parts) if not parts.is_empty() else "power"
 	var scope_text := " to all enemies" if target == "all_enemies" else ""
-	return "This move deals damage equal to %s's %s%s." % [caster_name, stat_text, scope_text]
+	return "This move deals damage equal to %s's %s%s, minus the target's DEF." % [caster_name, stat_text, scope_text]
 
 # Mirrors combat_moves.gd's ACC/EVA combining rule so wording matches the button.
 func _self_cost_sentence(effect: Dictionary) -> String:
@@ -3204,12 +3626,17 @@ func _populate_item_menu() -> void:
 			var def: Dictionary = Items.ITEMS.get(item_id, {})
 			if String(def.get("kind", "")) == "info":
 				continue   # explanatory items (Sonar Vision) have no battle use
+			# Second line: just the effect ("DEF +2" in green); full text on hover.
+			var effect_line := _item_effect_line(def)
 			var b := _menu_button("%s (x%d)" % [String(def.get("display", item_id)), count],
-				String(def.get("description", "")))
-			# Focus Tonic / Slipstream Oil: one between them per battle.
-			if bool(def.get("one_per_battle", false)) and _one_per_battle_used:
+				String(effect_line[0]), String(effect_line[1]))
+			b.tooltip_text = String(def.get("description", ""))
+			# One item per limit group per battle: Attack Tonic / Defense Shell,
+			# and Focus Tonic / Slipstream Oil.
+			var limit := String(def.get("battle_limit", ""))
+			if limit != "" and _battle_limits_used.has(limit):
 				b.disabled = true
-				b.tooltip_text = "Already used a Focus Tonic or Slipstream Oil this battle."
+				b.tooltip_text = String(BATTLE_LIMIT_USED_TEXT.get(limit, "Already used this battle."))
 			b.pressed.connect(_on_item_chosen.bind(item_id))
 			item_menu.add_child(b)
 			item_buttons.append(b)
@@ -3243,6 +3670,8 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 	var kind := String(Items.ITEMS.get(item_id, {}).get("kind", ""))
 	var amount := int(Items.ITEMS.get(item_id, {}).get("amount", 0))
 	var was_down := (target.stats as CombatantStats).hp <= 0
+	var hp_before := (target.stats as CombatantStats).hp
+	var oxygen_before := (target.stats as CombatantStats).oxygen
 	var msg := Items.grant(item_id, target.stats as CombatantStats)
 	if was_down and (target.stats as CombatantStats).hp > 0:
 		_return_to_stage(target)
@@ -3255,23 +3684,42 @@ func _resolve_item(item_id: String, target: Dictionary) -> void:
 		# turns (not the turn used).
 		_temp_buffs.append({"stats": target.stats, "field": temp_field, "amount": amount,
 			"turns": int(item_def.get("turns", 0)), "fresh": true, "display": String(item_def.get("display", item_id))})
-		if bool(item_def.get("one_per_battle", false)):
-			_one_per_battle_used = true
+		var limit := String(item_def.get("battle_limit", ""))
+		if limit != "":
+			_battle_limits_used[limit] = true
 	var inv := _party_inventory()
 	var count: int = int(inv.get(item_id, 0))
 	inv[item_id] = count - 1
 	if inv[item_id] <= 0:
 		inv.erase(item_id)
 	_refresh_bar(target)
+	# Same look as spells: bubbles for HP/O2, green arrows for a stat boost.
+	if msg != "" and target.has("actor") and is_instance_valid(target.actor):
+		var target_actor := target.actor as Node3D
+		var gained_hp := (target.stats as CombatantStats).hp - hp_before
+		var gained_oxygen := int(round((target.stats as CombatantStats).oxygen - oxygen_before))
+		if kind == "heal" and gained_hp > 0:
+			BattleFx.bubbles(_stage_vp, _fx_point(target_actor, 0.5))
+			_show_floating_text(target, "+%d HP" % gained_hp, FEEDBACK_EFFECT_COLOR)
+		elif kind == "oxygen" and gained_oxygen > 0:
+			BattleFx.bubbles(_stage_vp, _fx_point(target_actor, 0.5))
+			_show_floating_text(target, "+%d O2" % gained_oxygen, FEEDBACK_EFFECT_COLOR)
+		elif temp_field != "":
+			BattleFx.up_arrows(_stage_vp, _fx_point(target_actor, 1.0))
+			_show_floating_text(target, String(_item_effect_line(Items.ITEMS.get(item_id, {}))[0]), STAT_COLOR_UP)
 	_log(msg if msg != "" else "%s - nothing happened." % display)
-	_finish_actor_turn(_acting)
+	await _finish_party_turn(_acting, true)
 	await get_tree().create_timer(_log_read_delay()).timeout
 	_advance_turn()
 
 # Each battle-only buff as {stats, field, amount}; one entry per use.
 var _temp_buffs: Array[Dictionary] = []
-# Set once a Focus Tonic or Slipstream Oil has been used this battle.
-var _one_per_battle_used := false
+# Item limit groups already used this battle (items.gd "battle_limit").
+var _battle_limits_used: Dictionary = {}
+const BATTLE_LIMIT_USED_TEXT := {
+	"power": "Already used an Attack Tonic or Defense Shell this battle.",
+	"focus": "Already used a Focus Tonic or Slipstream Oil this battle.",
+}
 
 # Counts down timed item boosts at the owner's turn end and removes expired ones.
 func _tick_timed_buffs(entry: Dictionary) -> void:
@@ -3332,14 +3780,20 @@ func _on_move_chosen(mv: Dictionary) -> void:
 	var targets: Array
 	match effect:
 		"heal":
-			# Living and hurt.
+			# Living and hurt; a party-wide heal still needs at least one of them.
 			targets = _living(party).filter(func(e: Dictionary) -> bool:
 				var s := e.stats as CombatantStats
 				return s.hp < s.hp_max)
+			if String(mv.get("target", "")) == "all_allies" and not targets.is_empty():
+				targets = _living(party)
 		"revive":
 			targets = party.filter(func(e: Dictionary) -> bool: return (e.stats as CombatantStats).hp <= 0)
 		_:
 			targets = _living(enemies)
+			# Single-target moves can also land on the caster's fellow divers
+			# (not themselves). Scripted tutorials stay enemy-only.
+			if String(mv.get("target", "one_enemy")) not in ["all_enemies", "all_allies"] and not tutorial_encounter:
+				targets += _living(party).filter(func(e: Dictionary) -> bool: return e != _acting)
 
 	if targets.is_empty():
 		if effect == "heal":
@@ -3350,14 +3804,11 @@ func _on_move_chosen(mv: Dictionary) -> void:
 		call_deferred("_fit_panel_height")
 		return
 	_pending_move = mv
-	# Heal/revive show the amount in the name slot and leave power blank.
-	_selected_move_name.text = String(mv.name)
-	if effect == "heal" or effect == "revive":
-		_selected_move_name.text = "%s - restores %d HP" % [String(mv.name), int(mv.get("amount", 0))]
-		_selected_move_power.text = ""
-	else:
-		_selected_move_power.text = str(_preview_raw_power(mv, _acting.stats as CombatantStats))
-	if String(mv.get("target", "one_enemy")) == "all_enemies":
+	# The yellow name + damage line appears on enemy hover (_show_move_damage_line).
+	_selected_move_name.text = ""
+	_selected_move_power.text = ""
+	_selected_move_panel.visible = false
+	if String(mv.get("target", "one_enemy")) in ["all_enemies", "all_allies"]:
 		_populate_all_target_menu(targets)
 	else:
 		_populate_target_menu(targets)
@@ -3403,14 +3854,6 @@ func _explain_dodging(enemy: Dictionary) -> void:
 	# Freeze the preview so a stray mouse_exited can't hide it mid-explanation.
 	_stat_preview_frozen = true
 
-	await _tutorial_show_step(
-		TutorialContent.page_body("Dodging: Accuracy vs. Evasion"),
-		func() -> void:
-			_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, true)
-			_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, true)
-	)
-	_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, false)
-	_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, false)
 	# Target buttons/Back stay disabled until _explain_click_to_attack().
 	await _explain_evasion_reduction(enemy)
 	await _explain_damage(enemy)
@@ -3423,9 +3866,8 @@ func _explain_evasion_reduction(enemy: Dictionary) -> void:
 	var delta := int((stat_effects.get(move_name, {}) as Dictionary).get("enemy", {}).get("evasion", 0))
 	var delta_text := ("+%d" % delta) if delta > 0 else str(delta)
 	await _tutorial_show_step(
-		"When it connects, %s lowers %s's Evasion - that's why its EVA number is shown in [color=%s]red[/color], with the white (%s) next to it showing exactly how much. Even though this %s will miss, in other cases where the attack connects it would lower the target's Evasion by that much (%s). A stat shown in [color=%s]red[/color] means its total went down; a stat shown in [color=%s]green[/color] means its total went up." % [
+		"When it connects, %s lowers %s's Evasion - that's why its EVA number is shown in [color=%s]red[/color], with the white (%s) next to it showing exactly how much. A stat shown in [color=%s]red[/color] means its total went down; a stat shown in [color=%s]green[/color] means its total went up." % [
 			move_name, enemy_name, STAT_COLOR_DOWN.to_html(false), delta_text,
-			move_name, delta_text,
 			STAT_COLOR_DOWN.to_html(false), STAT_COLOR_UP.to_html(false),
 		],
 		func() -> void:
@@ -3529,6 +3971,16 @@ func _explain_precise_tap(enemy: Dictionary) -> void:
 			_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, true)
 	)
 	_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, false)
+	var enemy_name := String(enemy.get("display_name", "the enemy"))
+	var effective := _effective_damage_text(_pending_move, enemy.stats as CombatantStats)
+	await _tutorial_show_step(
+		"The yellow line above your stats shows Precise Tap and %s: the damage it will actually deal to %s. Everything is already factored in - the move's power, %s's STR and %s's DEF - so you don't have to work it out yourself. It appears whenever you hover over a target." % [
+			effective, enemy_name, String(_acting.display_name), enemy_name,
+		],
+		func() -> void:
+			_set_row_highlight(_selected_move_panel, true)
+	)
+	_set_row_highlight(_selected_move_panel, false)
 	await _explain_click_to_attack(enemy)
 
 # Stage 2 (Mech Pilot, Crushing Haymaker): a large hit at a large Oxygen cost;
@@ -3555,6 +4007,22 @@ func _explain_crushing_haymaker(enemy: Dictionary) -> void:
 	enemy_btn.modulate = Color.WHITE
 	_stat_preview_frozen = true
 
+	var bucky_acc := (_acting.stats as CombatantStats).effective_accuracy() + int(_pending_move.get("acc_mod", 0))
+	var angler_eva := (enemy.stats as CombatantStats).evasion_current
+	await _tutorial_show_step(
+		"If the enemy's Evasion (EVA, right panel) is greater than or equal to the attacker's Accuracy (ACC, left panel), the enemy evades and the attack misses. Here %s's Accuracy is %d and %s's Evasion is %d, so this attack will miss, shown by MISS in the middle. Each dodge spends the enemy's Evasion down by the Accuracy it beat, and it only refills at the start of that enemy's own next turn." % [
+			String(_acting.get("display_name", "Bucky")), bucky_acc,
+			String(enemy.get("display_name", "the enemy")), angler_eva,
+		],
+		func() -> void:
+			_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, true)
+			_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, true)
+			# Same red box as the stat rows, around the MISS sign.
+			_miss_label.add_theme_stylebox_override("normal", _row_stylebox(true))
+	)
+	_set_row_highlight(_player_stats_ui.rows.ACC as PanelContainer, false)
+	_set_row_highlight(_enemy_stats_ui.rows.EVA as PanelContainer, false)
+	_miss_label.remove_theme_stylebox_override("normal")
 	await _tutorial_show_step(
 		"Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.",
 		func() -> void:
@@ -3658,10 +4126,16 @@ func _populate_all_target_menu(targets: Array) -> void:
 	var names: Array[String] = []
 	for target in targets:
 		names.append(String(target.display_name))
-	var button := _menu_button("All enemies", ", ".join(names))
+	var party_wide := String(_pending_move.get("target", "")) == "all_allies"
+	var button := _menu_button("Whole party" if party_wide else "All enemies", ", ".join(names))
 	button.pressed.connect(_on_all_targets_chosen.bind(targets))
-	# All-enemies moves only target enemies, so always preview every one.
-	if not targets.is_empty():
+	if party_wide:
+		button.mouse_entered.connect(_show_heal_preview.bind(_pending_move, targets))
+		button.mouse_exited.connect(_clear_support_preview)
+	else:
+		button.mouse_entered.connect(_show_target_cursors.bind(targets))
+		button.mouse_exited.connect(_hide_target_cursors)
+	if not targets.is_empty() and not party_wide:
 		button.mouse_entered.connect(_show_all_stat_preview.bind(_pending_move, targets))
 		button.mouse_exited.connect(_clear_all_stat_preview)
 	target_menu.add_child(button)
@@ -3685,7 +4159,15 @@ func _populate_target_menu(targets: Array) -> void:
 			])
 		var b := _menu_button(String(t.display_name), hint)
 		b.pressed.connect(_on_target_chosen.bind(t))
-		if previewable:
+		if _pending_item != "":
+			b.mouse_entered.connect(_show_item_preview.bind(_pending_item, t))
+			b.mouse_exited.connect(_clear_support_preview)
+		elif not previewable:
+			b.mouse_entered.connect(_show_heal_preview.bind(_pending_move, [t]))
+			b.mouse_exited.connect(_clear_support_preview)
+		else:
+			b.mouse_entered.connect(_show_target_cursors.bind([t]))
+			b.mouse_exited.connect(_hide_target_cursors)
 			b.mouse_entered.connect(_show_stat_preview.bind(_pending_move, t))
 			b.mouse_exited.connect(_clear_stat_preview)
 		target_menu.add_child(b)
@@ -3695,9 +4177,21 @@ func _populate_target_menu(targets: Array) -> void:
 	_place_skip_tutorial_btn_last(target_menu)
 
 # Resolve whichever of _pending_move/_pending_item is set, then clear both.
+# The yellow move/damage line is a targeting aid only: gone once a move is used.
+func _hide_move_damage_line() -> void:
+	_selected_move_name.text = ""
+	_selected_move_power.text = ""
+	_selected_move_panel.visible = false
+
 func _on_target_chosen(target: Dictionary) -> void:
 	target_menu.visible = false
+	_hide_target_cursors()
+	_clear_support_preview()
 	_clear_stat_preview()
+	# Keep the move/damage line up through this attack; _advance_turn() clears it.
+	_hide_move_damage_line()
+	if _pending_item == "" and not _pending_move.is_empty():
+		_show_move_damage_line(_pending_move, [target])
 	if _uses_narrow_info_band():
 		(_player_stats_ui.panel as Control).visible = false
 		_turn_cursor.visible = false
@@ -3710,7 +4204,11 @@ func _on_target_chosen(target: Dictionary) -> void:
 
 func _on_all_targets_chosen(targets: Array) -> void:
 	target_menu.visible = false
+	_hide_target_cursors()
+	_clear_support_preview()
 	_clear_stat_preview()
+	_hide_move_damage_line()
+	_show_move_damage_line(_pending_move, targets)
 	if _uses_narrow_info_band():
 		(_player_stats_ui.panel as Control).visible = false
 		_turn_cursor.visible = false
@@ -3724,6 +4222,8 @@ func _show_moves_or_items_from_target_menu() -> void:
 	if _busy:
 		return
 	target_menu.visible = false
+	_hide_target_cursors()
+	_clear_support_preview()
 	_clear_stat_preview()
 	if _pending_item != "":
 		_pending_item = ""
@@ -3881,6 +4381,11 @@ func _log_immunity(target: Dictionary, mv: Dictionary) -> void:
 
 func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r: Dictionary) -> void:
 	var text: String = String(mv.get("text", "You use %s" % String(mv.name)))
+	# Immune to a stat-lowering move: never print its "defense drops" flavor;
+	# _log_immunity() appends "<Boss> is immune to <Move>."
+	if bool(r.get("immune", false)) and String(mv.get("debuff", "")) != "":
+		_log("You use %s on %s." % [String(mv.name), String(target.display_name)])
+		return
 	if not r.hit:
 		# Stat-lowering flavor ("agility drops") only plays when the move lands.
 		var lowers_on_hit := String(mv.get("debuff", "")) != "" or (mv.get("effects", []) as Array).any(
@@ -3903,7 +4408,8 @@ func _log_player_result(actor: Dictionary, target: Dictionary, mv: Dictionary, r
 		if int(r.changed) > 0:
 			_log("%s on %s by %d." % [text, String(target.display_name), int(r.changed)])
 		else:
-			_log("This enemy's %s can't be lowered any further!" % String(r.debuff).capitalize())
+			_log("You use %s on %s - %s -0, it can't go any lower." % [
+				String(mv.name), String(target.display_name), String(_STAT_ABBR.get(String(r.debuff), String(r.debuff).to_upper()))])
 		return
 	_log("%s for %d." % [text, int(r.damage)])
 	var effects := r.get("effects", []) as Array
@@ -3982,6 +4488,7 @@ func _step_toward(entry: Dictionary, target: Dictionary, face_only: bool = false
 
 # Always return to the stored home so interrupted swings can't drift.
 func _send_home(entry: Dictionary, delay: float) -> void:
+	entry["home_at_ms"] = Time.get_ticks_msec() + int((maxf(delay, 0.0) + SWING_STEP_TIME) * 1000.0)
 	# Read through Variant: assigning a freed Object to a typed local throws before is_instance_valid().
 	var actor_value: Variant = entry.get("actor")
 	if actor_value == null or not is_instance_valid(actor_value):
@@ -4078,10 +4585,13 @@ func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
 	# already restored by _show_combat_feedback().
 	var target_died: bool = target.has("stats") and (target.stats as CombatantStats).hp <= 0
 	if target_died:
-		_play_enemy_death(target)
+		if target.get("actor") is Diver:
+			(target.actor as Diver).play_death_fade()
+		else:
+			_play_enemy_death(target)
 	elif r.hit and String(r.debuff) == "":
 		_play_enemy_hit(target)
-	_finish_actor_turn(_acting)
+	await _finish_party_turn(_acting)
 	# Only the scripted diver's turn advances the script. Let the result line be
 	# read before the HP explanation.
 	var result_read := false
@@ -4111,8 +4621,15 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	var immune_targets: Array = []
 	var first := true
 	var changed_agility := false
+	var party_heal := String(mv.get("effect", "")) == "heal"
 	for target in targets:
 		if (target.stats as CombatantStats).hp <= 0:
+			continue
+		if party_heal:
+			var healed := _apply_heal(target.stats as CombatantStats, int(mv.get("amount", 0)))
+			_show_combat_feedback(target, healed)
+			_refresh_bar(target)
+			summaries.append(("%s +%d HP" % [String(target.display_name), int(healed.changed)]) if int(healed.changed) > 0 else "%s already full" % String(target.display_name))
 			continue
 		var result := CombatRules.resolve(_acting.stats as CombatantStats, target.stats as CombatantStats, mv, first)
 		if target.get("actor") is Goblin:
@@ -4143,7 +4660,7 @@ func _resolve_party_move_all(mv: Dictionary, targets: Array) -> void:
 	_refresh_bar(_acting)
 	# Refresh the player panel so self_temporary costs are visible.
 	_refresh_player_stats_panel()
-	_finish_actor_turn(_acting)
+	await _finish_party_turn(_acting)
 	if prologue_octopus_encounter:
 		_audio_call(&"duck_music", [-7.0, 0.25])
 		await _resolve_prologue_finisher()
@@ -4259,7 +4776,10 @@ func _pick_enemy_target(alive_party: Array) -> Dictionary:
 
 func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 	var boss := actor.actor as Node3D
-	var move := boss.call("next_move") as Dictionary
+	var move := boss.call("next_move", actor.stats) as Dictionary
+	if String(move.get("effect", "")) == "self_heal":
+		await _do_boss_self_heal(actor, boss, move)
+		return
 	var primary: Dictionary = _pick_enemy_target(alive_party)
 	var targets: Array = alive_party if String(move.get("target", "single")) == "all" else [primary]
 
@@ -4319,7 +4839,44 @@ func _do_boss_turn(actor: Dictionary, alive_party: Array) -> void:
 			_frame_stage_camera()
 	_advance_turn()
 
+# Boss self-heal: restores heal_fraction of max HP and removes Bleed, then ends the turn.
+func _do_boss_self_heal(actor: Dictionary, boss: Node3D, move: Dictionary) -> void:
+	var stats := actor.stats as CombatantStats
+	var boss_name := String(actor.display_name)
+	if boss is CampaignCordys:
+		(boss as CampaignCordys).set_framing_clip(String(move.clip))
+		_frame_stage_camera()
+	_log("%s prepares %s." % [boss_name, String(move.name)])
+	var length := float(boss.call("play_attack", move))
+	await get_tree().create_timer(maxf(0.6, length * IMPACT_FRACTION)).timeout
+
+	var before := stats.hp
+	var amount := maxi(1, roundi(float(stats.hp_max) * float(move.get("heal_fraction", 0.1))))
+	stats.hp = mini(stats.hp_max, stats.hp + amount)
+	var healed := stats.hp - before
+	var cured_bleed := stats.status_level("bleed") > 0
+	stats.statuses.erase("bleed")
+	_refresh_bar(actor)
+	if healed > 0:
+		_show_floating_text(actor, "+%d HP" % healed, FEEDBACK_EFFECT_COLOR)
+		BattleFx.bubbles(_stage_vp, _fx_point(boss, 0.5))
+	if cured_bleed:
+		_show_floating_text(actor, "BLEED CURED", FEEDBACK_EFFECT_COLOR, 1)
+	var heal_text := ("recovers %d HP" % healed) if healed > 0 else "is already at full health"
+	var bleed_text := " and stops the bleeding" if cured_bleed else ""
+	_log("%s uses %s: %s%s." % [boss_name, String(move.name), heal_text, bleed_text])
+
+	_finish_actor_turn(actor)
+	await get_tree().create_timer(_log_read_delay()).timeout
+	if is_instance_valid(boss):
+		boss.call("play", "idle")
+		if boss is CampaignCordys:
+			(boss as CampaignCordys).set_framing_clip("")
+			_frame_stage_camera()
+	_advance_turn()
+
 func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
+	_hide_move_damage_line()
 	(actor.stats as CombatantStats).begin_turn()
 	_refresh_bar(actor)
 	_set_all_buttons(false)
@@ -4738,7 +5295,11 @@ func _win() -> void:
 			total_xp = int(round(float(total_xp) * 1.5))
 		# Every party member gets the full XP amount.
 		for entry in party:
-			var levels: Array = (entry.stats as CombatantStats).gain_xp(total_xp)
+			var xp_stats := entry.stats as CombatantStats
+			var xp_before := xp_stats.xp
+			var next_before := xp_stats.xp_to_next
+			var levels: Array = xp_stats.gain_xp(total_xp)
+			_animate_xp_gain(entry, total_xp, xp_before, next_before, levels.size())
 			for lv in levels:
 				_log("%s reached level %d!" % [String(entry.display_name), int((lv as Dictionary).level)])
 				await get_tree().create_timer(_log_read_delay()).timeout
@@ -4757,6 +5318,7 @@ func _win() -> void:
 				spell_unlock_announcements.append({
 					"display_name": String(entry.display_name),
 					"skills": unlocked,
+					"all": SpellTree.knows_all(diver),
 				})
 	# Reward announced as the last log line; practice runs award nothing.
 	if reward_item_on_win != "" and Items.ITEMS.has(reward_item_on_win) and not (special_encounter and tutorial_encounter):
@@ -4789,9 +5351,10 @@ func _win() -> void:
 			_levelup_caption.visible = false
 			call_deferred("_fit_panel_height")
 	for unlock in spell_unlock_announcements:
-		await _tutorial_show_step("%s unlocked %s." % [
-			String(unlock.display_name), ", ".join(unlock.skills)
-		])
+		var unlock_text := "%s unlocked %s." % [String(unlock.display_name), ", ".join(unlock.skills)]
+		if bool(unlock.get("all", false)):
+			unlock_text += " That was %s's last ability - every ability is now unlocked!" % String(unlock.display_name)
+		await _tutorial_show_step(unlock_text)
 	_revert_temp_buffs()
 	finished.emit("won")
 

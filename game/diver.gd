@@ -287,6 +287,7 @@ func _build_stats() -> void:
 	stats.agility = int(base.agility)
 	stats.evasion = int(base.evasion)
 	stats.accuracy = int(base.accuracy)
+	stats.bleed_cap = 5   # divers never bleed more than 5 per turn
 	stats.fill()
 
 	# Ability lives on the Diver, not CombatantStats; not every entry has one.

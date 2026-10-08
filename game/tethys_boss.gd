@@ -121,7 +121,18 @@ func make_stats(_ref: CombatantStats, player_level: int = 1) -> CombatantStats:
 	s.fill()
 	return s
 
-func next_move() -> Dictionary:
+# Self-heal rolled on 20% of turns (below full HP), outside the cycle: heals 10% max HP and stops Bleed.
+const HEAL_CHANCE := 0.20
+var heal_chance := HEAL_CHANCE   # tests set 0 for the fixed cycle
+const HEAL_MOVE := {
+	"id": "tidal_mending", "name": "Tidal Mending", "clip": "idle",
+	"target": "self", "effect": "self_heal", "heal_fraction": 0.10,
+}
+
+# `stats`: the boss's own stats; the heal is never rolled at full health.
+func next_move(stats: CombatantStats = null) -> Dictionary:
+	if stats != null and stats.hp < stats.hp_max and randf() < heal_chance:
+		return HEAL_MOVE.duplicate(true)
 	var move := (MOVES[_move_index % MOVES.size()] as Dictionary).duplicate(true)
 	_move_index += 1
 	return move

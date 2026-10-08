@@ -1,114 +1,92 @@
-# Dev Log - Oct 6
+# Dev Log - October 6
 
-All changes since `9a3c28b`. Headless verify suites were re-run after each batch;
-remaining failures are listed at the end.
+This update makes battles easier to read, makes the bosses tougher, adds more
+autosaves, and fills the maze with surprise fights. Here's what changed, grouped by
+area of the game.
 
-## Battle
+---
 
-- **Pause screen removed.** The in-battle pause overlay (`combat_pause_overlay.gd`) and
-  `audio_manager.set_paused` are gone.
-- **Move buttons show the name only.** The second line under each party move
-  ("Strength Damage 2 Bleed", "Restores 10 HP", ...) is gone. The power badge (top right)
-  and O2 cost badge (bottom right) remain.
-- **Move tooltips carry the details.** Target, Damage, status with its resolved amount
-  ("Bleed 2"), Heal / Revive amounts, Debuff, Self Cost and Accuracy sections. Legacy
-  power moves (Swift Strike, Heavy Kick, ...) now explain their damage. No summary line
-  and no O2 line.
-- **Red stat-loss line alignment.** Axe Kick / Multiple Knee Combo's red "EVA -3" line
-  used its own font, size and position. It now matches the button's second line exactly.
-  (Superseded by the name-only buttons for party moves, still used by other menus.)
-- **Miss wording.** Stat-lowering and status moves (Weaken, Slow, Blinding Silt, Guard
-  Break, Current Snare, Electric Touch, Scuba Stabbing, Flash Blast) now log
-  "You use Slow, but Angler evades!" instead of claiming the stat dropped.
-- **No running from bosses.** Run is shown but disabled ("No escape from a boss") in the
-  Tethys and maze Cordys fights. Previously Tethys hid it and Cordys allowed it.
-- **Evasion debuffs apply immediately.** Lowering Evasion now also cuts the target's
-  current Evasion pool, not only after their next turn.
-- **Bleed rule.** Only another Bleed move adds stacks (max 3 per fight); ordinary hits no
-  longer add a stack.
-- **Damage preview** handles the full-block case in the tutorial math text.
+## Battles
 
-## Moves and enemies
+The battle menu got a cleanup so players see less clutter and only find details when
+they want them.
 
-- **Cordys (maze rematch):** +3 to every stat (HP 78, STR 5, DEF 4, AGI 5, EVA 5, ACC 6).
-  Octo Stab and Electric Shooting each deal +2 flat damage.
-- **Current Snare** lowers Evasion by 1 (was Agility by 3).
-- **Move hint text:**
-  - Guard Break: "Lowers target's defense by 3"
-  - Exploit Opening: "A precise strike"
-  - Weaken / Slow: "Lowers defense" / "Lowers agility"
-  - Weaken Empowered / Slow Empowered: "Greatly lowers defense" / "Greatly lowers agility"
-- **Spell text:**
-  - Healing Current: "A strong current restores 10 HP." (hint "Restores 10 HP")
-  - Mending Current: "...restoring 8 HP."
-  - Tidal Revival: removed "Requires a Reef Plate."
+- **Cleaner move buttons.** Each button now shows only the move's name. The yellow
+  number in the top-right corner (the move's power) and the blue number in the
+  bottom-right corner (its oxygen cost) are still there.
+- **Details on hover.** Hovering over a move opens a box with everything you need to
+  know:
+  - who it targets
+  - how much damage it does
+  - how much it heals
+  - what effects it causes, like Bleed
+- **No more pausing mid-battle.** The pause screen during fights has been removed.
+- **Clearer misses.** Moves that weaken an enemy used to say "its agility drops" even
+  when the enemy dodged. Now a miss simply says "You use Slow, but the Angler evades!"
+- **No running from bosses.** Against Tethys and Cordys, the Run button is greyed out
+  and says "No escape from a boss."
+- **Bleed works more simply.** A wound only gets worse when you use another Bleed
+  move on it, and it can only stack up three times per fight.
+- **Lowering an enemy's Evasion works right away**, instead of waiting until the
+  enemy's next turn.
+
+## Bosses and moves
+
+- **Cordys is tougher.** Every one of his stats went up by 3, and two of his attacks
+  (Octo Stab and Electric Shooting) now hit a little harder.
+- **Current Snare**, one of Maxilani's moves, now makes an enemy easier to hit instead
+  of slowing it down.
+- **Clearer move descriptions.** Several moves were renamed in their descriptions to
+  make them easier to understand. For example, Weaken now says "Lowers defense" and
+  its upgraded version says "Greatly lowers defense."
+- **Clearer healing spells.** Their descriptions now state exactly how much health
+  they restore.
 
 ## Tutorial and help
 
-- **Bucky's tutorial turn** adds "This move has an Oxygen cost of 16 as shown in the
-  bottom right corner."
-- **Bleed help text** rewritten to the new stacking rule. Combat Help sections have
-  spacing between them.
-- **Combat Help** and every other overworld menu option are available in the maze.
-  Dev mode marks Saving as seen.
-- **New tutorial clips** installed (grapple and shockwave demos).
-- **Tutorial clip recorder:** `tools/record_tutorial_clip.gd`.
+- When it's Bucky's turn in the first tutorial battle, the game now points out that
+  his move costs 16 oxygen and shows where that number appears on the button.
+- The Bleed explanation in the help menu was rewritten to match the new rules. Its
+  sections are now spaced apart so they're easier to read.
+- The full help menu is now available inside the maze, not just in the open ocean.
+- New demo videos were added for the grapple and shockwave abilities.
 
 ## Saving
 
-- **Autosave before return to title**, with an "Autosaving..." indicator and
-  "Game will autosave first." on the confirm.
-- **Autosave before each boss:** Tethys on entering the lab; the puppets and Cordys on
-  their Yes prompt.
-- **"Save your progress." banner** on every save point. The white "Maze Save Point"
-  captions are removed.
+- **More autosaves.** The game now saves automatically:
+  - before returning to the title screen, with an "Autosaving…" message so players
+	know it's happening
+  - right before each boss fight
+- **Clearer save points.** Every save point now shows an orange "Save your progress."
+  banner. The extra white text that used to float above maze save points is gone.
 
-## Maze and world
+## The maze and the ocean
 
-- **Random fights throughout the maze**, like the overworld (R toggles). The strong room
-  is still a forced fight. Encounter rate 0.7.
-- **Maze objective line** in the bottom left removed.
-- **Ability key items** removed from the inventory list.
-- **Sonar pulse ring** while sonar is on, centred on Maxilani's body.
-- **Whirlpool particle column** (`game/whirlpool_column.gd`, `Whirlpool.column_visual`).
-  A bottom particle bounces around the suction area; upper layers trail it, scaled
-  1 + (1 - height ratio). `_delay_for()` is still a stub (returns 0), so the column
-  currently moves as one stack.
-- **Draft passages WIP** (`maze_draft_passages.gd`): `_current_whirlpool()` is in progress
-  and not called yet. Its unfinished lines are commented out so the project compiles.
+- **Surprise fights in the maze.** Random enemy encounters can now happen anywhere in
+  the maze, just like in the open ocean. One special room still always has a fight.
+- **Less clutter on screen.** The objective text in the bottom-left corner of the maze
+  was removed. Ability-unlocking key items no longer fill up the inventory list.
+- **Sonar effect.** When Maxilani's sonar is on, a ring now pulses outward from her
+  body.
+- **Whirlpools are unchanged for now.** A new swirling-particle look for whirlpools
+  was started, but it's switched off until it's finished.
 
-## Dev mode
+## Tools for testing (not visible to players)
 
-- **Teleport** (`game/dev_teleport.gd`, dev mode only):
-  - G opens a list of named places plus a clickable top-down map (wheel zooms,
-    right-drag pans).
-  - T jumps to where the camera is aiming.
-  - Includes a Tethys unlock entry.
-- **Return To Title** fixed in dev mode.
+- **Teleport.** In developer mode, testers can press G to open a map and jump to any
+  spot, or press T to jump to wherever the camera is pointing. This makes it much
+  faster to test any part of the game.
+- **Return to title** now works in developer mode.
+- Notes in the code were shortened to make it easier for the team to work with.
 
-## Code
+---
 
-- Comments shortened across the codebase.
-- Tests updated for the new rules and text: `encounters`, `campaign_goals`,
-  `maze_review_route`, `maze_checkpoint_presentation`, `embedded_maze`,
-  `glassgoat_combat`, `marc_status_contract`, `item_site_clearing`,
-  `sonar_encounter_friction`, `tutorial_win_handoff`, `maze_special_sites`,
-  `combat_quick_read`, `glassgoat_discord_followup`, `prologue_combat`.
+## Still to decide
 
-## Known test failures
-
-- `maze_cordys`: the scripted level-5 party now loses to the buffed Cordys. This is a
-  balance signal, left failing on purpose.
-- Already failing before these changes (also fail on a clean checkout):
-  - `maze_review_route`
-  - `maze_checkpoint_presentation` ("real entrance did not reach maze")
-  - `sonar_encounter_friction` FR-2
-  - `optional_training`
-  - `maze_relic_consumers`
-  - `tutorial_loss_choice`
-
-## Open questions
-
-- Remove the "a hit always deals at least 1" rule? If so, the 5-point full-absorb rule
-  becomes redundant and the tutorial's Electric Touch (1 - 1) would deal 0.
-- Should Weaken/Slow Empowered actually lower more than the base moves (both are 2 today)?
+- **Should every hit always do at least 1 damage?** Today a hit always does at least
+  1. Removing that rule would let heavily armored enemies shrug off weak attacks
+  entirely, and one early tutorial attack would then do no damage.
+- **Should the "upgraded" weakening moves actually be stronger?** Right now Weaken and
+  Slow do the same amount whether or not they're upgraded.
+- **Is Cordys now too hard?** In our automated test fight, the party now loses to him.
+  He may need a small adjustment.

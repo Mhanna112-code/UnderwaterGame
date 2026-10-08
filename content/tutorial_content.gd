@@ -13,7 +13,7 @@ const GENERAL_PAGES: Array[Dictionary] = [
 	},
 	{
 		"title": "Dodging: Accuracy vs. Evasion",
-		"body": "A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). In this case, the attacker has equal accuracy to the defender's evasion, so the attack will miss. Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn and you may have nothing left to dodge with later in the same turn.",
+		"body": "A hit lands only if the attacker's (left stats panel's ACC number) is strictly greater than the defender's current Evasion (right stats panel's EVA number). Evasion is a pool that a successful dodge spends down by however much Accuracy it just beat, and it only refills at the start of that combatant's own next turn. Get baited into dodging early in a turn and you may have nothing left to dodge with later in the same turn.",
 	},
 	{
 		"title": "Every Other Stat",
@@ -110,7 +110,7 @@ static var ABILITY_BLURBS := {
 # Must match content/combat_moves.gd's SCUBA array.
 const FIRST_BATTLE_MOVE_NOTES := {
 	"Electric Touch": "ATTACK move - 1x Strength damage, and it also lowers the target's Evasion by 1 for the rest of the fight. A good opener: everything you throw after this lands more easily.",
-	"Scuba Stabbing": "ATTACK move - 1x Strength damage plus Bleed (1 + Strength) that keeps ticking after the hit. Use it when you want damage spread over several turns instead of one big number.",
+	"Scuba Stabbing": "ATTACK move - 1x Strength damage plus 1 Bleed that keeps ticking after the hit. Use it when you want damage spread over several turns instead of one big number.",
 	"Flash Blast": "UTILITY move - no damage at all. Hits every enemy with Blindness 2 (lowers Agility, Accuracy, AND Defense) for as many turns as your own Accuracy. For making a whole group easier to dodge, not for ending a fight.",
 	"Multiple Knee Combo": "ATTACK move - 1x Strength damage to every enemy, but -1 Accuracy/Evasion on yourself until your next turn. Worth it against several weak targets; riskier against one hard hitter.",
 	"Axe Kick": "ATTACK move - your hardest single hit (Strength + Accuracy damage), but it drops your own Evasion by 3 until your next turn, so you're an easier target right after. Use it when you can afford that trade.",
