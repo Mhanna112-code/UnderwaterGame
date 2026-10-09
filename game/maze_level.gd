@@ -665,17 +665,18 @@ func _update_announce(dt: float) -> void:
 	_refresh_announcement_visibility()
 
 func _announcement_readable() -> bool:
-	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
-	var map_open := map != null and map.main_map != null and map.main_map.visible
-	return maze_active and $HUD.visible and not any_modal_open() and not _battling and not map_open
+	# The open nav map sits in the top-right corner, so announcements stay readable;
+	# only its first-open lesson (a paused popup) hides them.
+	var popup := get_node_or_null("/root/CharacterAbilityPopup")
+	var lesson := popup.get_node_or_null("%AbilityExplanationPanel") as Control if popup != null else null
+	var lesson_open := lesson != null and lesson.is_visible_in_tree()
+	return maze_active and $HUD.visible and not any_modal_open() and not _battling and not lesson_open
 
 func _refresh_announcement_visibility() -> void:
 	Whirlpool.refresh_in(self)
 	# Hide World's HP/O2 HUD while a maze reading/battle owner is active.
 	if world != null and maze_active:
-		var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
-		var map_open := map != null and map.main_map != null and map.main_map.visible
-		world.get_node("HUD").visible = not _battling and not any_modal_open() and not map_open
+		world.get_node("HUD").visible = not _battling and not any_modal_open()
 	var captions_allowed := _announcement_readable()
 	var notice_visible := _banner != null and _banner_timer > 0.0 and captions_allowed
 	if _banner != null:
@@ -1081,8 +1082,33 @@ func whirlpool_activity() -> int:
 		return Whirlpool.Activity.SUSPENDED
 	return Whirlpool.Activity.EXPLORING
 
+# A real menu/prompt that shouldn't stack on the open nav map. Unlike
+# any_modal_open(), wall rotation (_wall_riders) doesn't count: rotating walls
+# is done from the map itself.
+func _menu_over_map() -> bool:
+	return (_save_menu != null and _save_menu.visible) or _checkpoint_saving \
+		or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() \
+		or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) \
+		or (_cordys_prompt != null and is_instance_valid(_cordys_prompt)) \
+		or (draft_passages != null and draft_passages.modal_open()) \
+		or (special_sites != null and special_sites.modal_open())
+
+# Green cone over the active diver, as in the overworld (World owns the mesh and
+# hides it on entering the maze). Hidden while choosing a swap target, aiming,
+# battling or in a menu.
+func _update_active_cursor() -> void:
+	if world == null or world.get("_active_cursor") == null:
+		return
+	var cursor := world._active_cursor as MeshInstance3D
+	var selecting := target_selector != null and target_selector.selecting
+	var show := maze_active and _diver != null and not _battling and not aiming \
+		and not selecting and not any_modal_open()
+	cursor.visible = show
+	if show:
+		cursor.global_position = _diver.global_position + Vector3.UP * (_diver.height * 0.5 + 0.45)
+
 func any_modal_open() -> bool:
-	return _wall_riders.busy() or (_save_menu != null and _save_menu.visible) or _checkpoint_saving or (inventory_menu != null and inventory_menu.visible) or switch_modal_open() or poster_modal_open() or (_puppet_prompt != null and is_instance_valid(_puppet_prompt)) or (_cordys_prompt != null and is_instance_valid(_cordys_prompt)) or (draft_passages != null and draft_passages.modal_open()) or (special_sites != null and special_sites.modal_open())
+	return _wall_riders.busy() or _menu_over_map()
 
 func _open_poster(poster: MazePoster) -> void:
 	if any_modal_open():
@@ -2663,7 +2689,10 @@ func _update_lever_ui() -> void:
 		var close_line := "[Esc]  close the map\n          (also releases the levers)" if on_lever else "[Esc] or [L]  close the map"
 		_lever_map_controls.text = "WALLS\n  [Left] / [Right]  select\n  [Enter]  rotate\nCURRENTS\n  [Ctrl] + [Left] / [Right]  select\n  [Ctrl] + [E]  rotate\n" + close_line
 		_lever_map_controls.size = Vector2.ZERO   # shrink to the text
-		_lever_map_controls.position = Vector2(536, 76)
+		# Left of the top-right map.
+		var nav := $HUD.get_node_or_null("MazeMiniMap") as MazeMiniMap
+		var map_left := nav.main_map.position.x if nav != null else get_viewport().get_visible_rect().size.x
+		_lever_map_controls.position = Vector2(map_left - _lever_map_controls.get_combined_minimum_size().x - 12.0, 76)
 	var minimap := $HUD.get_node_or_null("MazeMiniMap") as MazeMiniMap
 	if minimap == null:
 		return
@@ -3961,8 +3990,11 @@ func _physics_process(dt: float) -> void:
 	_update_lever_ui()
 	_update_world_hud()
 	var nav := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
-	if nav != null and nav.main_map.visible and not can_open_nav_map():
+	# Close the map when its diver leaves the map area, or when a menu (P save,
+	# Esc inventory...) opens: those now reach normal play with the map up.
+	if nav != null and nav.main_map.visible and (not can_open_nav_map() or _menu_over_map()):
 		nav.main_map.visible = false
+	_update_active_cursor()
 	_update_sonar_vision()
 	_update_puppet_patrol(dt)
 	_update_cordys_station()
@@ -4114,15 +4146,18 @@ func _unhandled_input(e: InputEvent) -> void:
 			_announce("Random encounters %s." % ("on" if random_encounters_enabled else "off"))
 			get_viewport().set_input_as_handled()
 		return
-	# The overview map owns its keys first.
+	# The open map only fills the top-right corner. MazeMiniMap consumes its own
+	# keys (L, E/Enter, arrows, Ctrl+E) first; Esc closes it here, and everything
+	# else (mouse look, sonar, swap, Tab, aim...) falls through to normal play.
 	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
-	if map != null and map.main_map != null and map.main_map.visible:
-		# Esc closes the map.
+	# (Not while choosing a swap target: Esc cancels that first.)
+	if map != null and map.main_map != null and map.main_map.visible \
+			and not (target_selector != null and target_selector.selecting):
 		if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo \
 				and (e as InputEventKey).keycode == KEY_ESCAPE:
 			map.main_map.visible = false
 			get_viewport().set_input_as_handled()
-		return
+			return
 	# A swap choice is an exclusive owner too.
 	if target_selector != null and target_selector.selecting and not _battling and not any_modal_open():
 		if e is InputEventKey and (e as InputEventKey).pressed and not (e as InputEventKey).echo:
@@ -4245,10 +4280,9 @@ func _aim_dir() -> Vector3:
 	return Vector3(sin(_yaw) * cos(_pitch), -sin(_pitch), cos(_yaw) * cos(_pitch))
 
 func _aim_blocked() -> bool:
-	var map := get_node_or_null("HUD/MazeMiniMap") as MazeMiniMap
+	# The open nav map doesn't block aiming: it only fills the top-right corner.
 	return not maze_active or _battling or any_modal_open() or _chest_reward_pending \
-		or _gate_cutscene or _cordys_reveal or not _moving_wall_sets.is_empty() or _free_map_open \
-		or (map != null and map.main_map != null and map.main_map.visible)
+		or _gate_cutscene or _cordys_reveal or not _moving_wall_sets.is_empty() or _free_map_open
 
 func _start_aim() -> void:
 	aiming = true
@@ -4408,25 +4442,12 @@ func _build_area_9_11_13_barrier() -> void:
 	add_child(body)
 	body.global_position = Vector3((east_x + end_x) * 0.5, _floor_top_y + BARRIER_HEIGHT * 0.5, stub.global_position.z)
 
-# Fences around the start (west of Box12, and south from the start wall behind the hallway),
-# leaving the way to the dome open.
+# Fences along the poster wall's line (behind the hallway), leaving the way to
+# the dome open. The old StartBarrierNorth/West (between the dome exit and the
+# wall nearest the dome) and StartBarrierSouth (across the area beside the
+# poster wall) were removed; Box8DomeBarrier still keeps the dome side closed.
 func _build_start_area_barriers() -> void:
-	var w3 := _wall_geometry($CurrentWall3 as CSGBox3D)
-	var w3_west: Vector3 = w3["negative_end"] if (w3["negative_end"] as Vector3).x < (w3["positive_end"] as Vector3).x else w3["positive_end"]
-	var b12 := $CSGBox3D12 as CSGBox3D
-	var b12_x := b12.global_position.x - b12.size.z * 0.5
-	var line9_z := ($CSGBox3D9 as CSGBox3D).global_position.z
 	var t := 1.0
-	_spawn_barrier("StartBarrierNorth", Vector3((w3_west.x + b12_x) * 0.5, 0, line9_z), Vector3(b12_x - w3_west.x + t, 0, t))
-	_spawn_barrier("StartBarrierWest", Vector3(w3_west.x - t * 0.5, 0, (line9_z + w3_west.z) * 0.5), Vector3(t, 0, absf(w3_west.z - line9_z) + t))
-	# South of the start wall to the level's edge.
-	var start := _wall_geometry($CSGBox3D as CSGBox3D)
-	var start_west: Vector3 = start["negative_end"] if (start["negative_end"] as Vector3).x < (start["positive_end"] as Vector3).x else start["positive_end"]
-	var far_z := start_west.z
-	for p in _collect_bounds_points():
-		far_z = maxf(far_z, p.z)
-	far_z += _PERIMETER_MARGIN
-	_spawn_barrier("StartBarrierSouth", Vector3(start_west.x - t * 0.5, 0, (start_west.z + far_z) * 0.5), Vector3(t, 0, far_z - start_west.z))
 	# Stays south of the lab-side entry gap; don't fence the whole west side.
 	var end_wall := get_node_or_null("HallwayEndWall") as CSGBox3D
 	if end_wall != null:

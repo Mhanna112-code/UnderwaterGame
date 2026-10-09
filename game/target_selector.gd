@@ -102,7 +102,7 @@ func _process(_dt: float) -> void:
 		return
 	var lift := 2.5
 	if target is Diver:
-		lift = (target as Diver).height + 0.6
+		lift = (target as Diver).height * 0.5 + 0.5   # origin is mid-body
 	cursor.visible = true
 	cursor.global_position = target.global_position + Vector3.UP * lift
 

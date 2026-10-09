@@ -1128,10 +1128,10 @@ func _build_map_help() -> void:
 	_map_help_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_help_label.add_theme_font_size_override("normal_font_size", 16)
 	_map_help_label.add_theme_color_override("default_color", Color(0.92, 0.97, 1.0))
-	_map_help_label.text = "%s / %s  Select walls   ·   %s  Rotate\n%s + %s / %s  Select currents\n%s  Move current   ·   %s  Encounters" % [
+	_map_help_label.text = "%s / %s  Select walls   ·   %s  Rotate\n%s + %s / %s  Select currents\n%s  Move current" % [
 		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"),
 		Slot._badge("Ctrl"), Slot._badge("Left"), Slot._badge("Right"),
-		Slot._badge("Ctrl+E"), Slot._badge("R"),
+		Slot._badge("Ctrl+E"),
 	]
 	_map_help.add_child(_map_help_label)
 	main_map.get_parent().add_child(_map_help)
@@ -1157,19 +1157,17 @@ func _show_intro_once() -> void:
 		return
 	intro_seen = true
 	var pages: Array[Dictionary] = [{"title": "Maze Navigation", "body":
-		"The map shows places you have discovered. Red circles mark hidden items revealed by Sonar. %s / %s select hallway walls; %s rotates them. %s + %s / %s select currents; %s moves the selected current. %s toggles encounters; %s closes the map." % [
+		"The map shows places you have discovered. Red circles mark hidden items revealed by Sonar. %s / %s select hallway walls; %s rotates them. %s + %s / %s select currents; %s moves the selected current. %s closes the map." % [
 		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("E"), Slot._badge("Ctrl"),
-		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("Ctrl+E"), Slot._badge("R"), Slot._badge("L")], "slot": null}]
+		Slot._badge("Left"), Slot._badge("Right"), Slot._badge("Ctrl+E"), Slot._badge("L")], "slot": null}]
 	popup.call("open", pages, maze_level)
 
 func _refresh_map_copy() -> void:
 	if main_map == null:
 		return
-	# The overview hides the exploration controls and radar.
+	# The map takes the radar's top-right corner; the rest of the HUD
+	# (controls, diver bars, encounter toggle) stays visible.
 	visible = not main_map.visible
-	var exploration := get_parent().get_node_or_null("MazeExplorationControls") as Control
-	if exploration != null:
-		exploration.visible = not main_map.visible
 	_layout_overview()
 	var title := main_map.get_node_or_null("MazeMapTitle") as Label
 	if title != null:
@@ -1183,36 +1181,51 @@ func _refresh_map_copy() -> void:
 			_map_help.visible = main_map.visible and ordinary
 			# MazeLevel owns goal visibility via main_map.visibility_changed.
 
+# Top-right, where the radar sits, so the left and centre HUD stay visible:
+# map in the corner, controls help under it, legend to its left.
 func _layout_overview() -> void:
 	if _map_help == null:
 		return
 	var viewport := get_viewport_rect().size
-	main_map.position = Vector2(18, 16)
 	_refresh_side_legend()
 	var side_by_side := viewport.x >= 700
-	var width := minf(MAIN_MAP_SIZE, viewport.x - (252.0 if side_by_side else 36.0))
+	const EDGE := 10.0
+	var width := minf(460.0, viewport.x * 0.36) if side_by_side else minf(MAIN_MAP_SIZE, viewport.x - 2.0 * EDGE)
 	var last_separator := "\n" if width < 400 else "   ·   "
 	var wall_copy := "Walls" if width < 400 else "Select walls"
 	var current_copy := "Currents" if width < 400 else "Select currents"
-	var help_copy := "%s / %s  %s   ·   %s  Rotate\n%s + %s / %s  %s\n%s  Move current%s%s  Encounters" % [
-		Slot._badge("Left"), Slot._badge("Right"), wall_copy, Slot._badge("E"),
+	var help_copy := "%s / %s  %s%s%s  Rotate\n%s + %s / %s  %s\n%s  Move current" % [
+		Slot._badge("Left"), Slot._badge("Right"), wall_copy, last_separator, Slot._badge("E"),
 		Slot._badge("Ctrl"), Slot._badge("Left"), Slot._badge("Right"), current_copy,
-		Slot._badge("Ctrl+E"), last_separator, Slot._badge("R"),
+		Slot._badge("Ctrl+E"),
 	]
 	if _map_help_label.text != help_copy:
 		_map_help_label.text = help_copy
 	# Fixed height: measuring a zero-width RichTextLabel here reports a stale wrap.
-	var help_height := 144.0 if width < 400 else 112.0
+	var help_height := 112.0 if width < 400 else 88.0
 	_map_help.size = Vector2(width, help_height)
-	var legend_height := minf(58 + _legend_kinds.size() * 30, 128 if not side_by_side else viewport.y - 32)
-	var height := minf(MAIN_MAP_SIZE, viewport.y - 34 - help_height - (legend_height + 6 if not side_by_side else 0))
+	var legend_height := minf(58 + _legend_kinds.size() * 30, viewport.y - 160.0 if side_by_side else 128.0)
+	# Narrow screens: the map is full width, so it starts below the exploration controls.
+	var exploration := get_parent().get_node_or_null("MazeExplorationControls") as Control
+	var top := EDGE
+	if not side_by_side and exploration != null and main_map.visible:
+		exploration.offset_right = -EDGE
+		top = exploration.position.y + exploration.get_combined_minimum_size().y + 6.0
+	var height := minf(MAIN_MAP_SIZE, viewport.y - top - EDGE - 6.0 - help_height - (legend_height + 6 if not side_by_side else 0))
 	var desired := Vector2(width, maxf(160.0, height))
 	if not main_map.size.is_equal_approx(desired):
 		main_map.size = desired
 		_main_map_bounds_computed = false
+	main_map.position = Vector2(viewport.x - EDGE - width, top)
+	# Wide screens: exploration controls wrap left of whatever owns the top-right,
+	# the open map (and its legend) or the radar (-180, as built in MazeLevel).
+	if exploration != null and not main_map.visible:
+		exploration.offset_right = -180.0
+	elif side_by_side and exploration != null:
+		exploration.offset_right = main_map.position.x - 216.0 - 12.0 - viewport.x
 	_map_help.position = main_map.position + Vector2(0, main_map.size.y + 6)
-	_side_legend.position = main_map.position + Vector2(main_map.size.x + 6, 0) if side_by_side else _map_help.position + Vector2(0, help_height + 6)
 	_side_legend.size = Vector2(210 if side_by_side else width, legend_height)
+	_side_legend.position = main_map.position - Vector2(_side_legend.size.x + 6, 0) if side_by_side else _map_help.position + Vector2(0, help_height + 6)
 	var title := main_map.get_node("MazeMapTitle") as Label
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.size = Vector2(width - 32, 38)
@@ -1250,6 +1263,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			main_map.queue_redraw()
 			# Layout happens synchronously before the intro popup pauses processing.
 			_show_intro_once()
+			if maze_level != null:
+				maze_level._refresh_announcement_visibility()   # hide notices under the lesson
 		get_viewport().set_input_as_handled()
 	elif main_map.visible and keycode == KEY_E and key_event.ctrl_pressed:
 		_rotate_selected_current()

@@ -73,21 +73,32 @@ func _enter(selected: int) -> MazeLevel:
 
 func _map_checkpoint(maze: MazeLevel) -> void:
 	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	# The map only fills the top-right corner: normal play keys still work, but a
+	# menu never stacks on top of it (opening one closes the map).
 	await _key(KEY_L)
 	_expect(map.main_map.visible, "INT-06 L did not open real overview")
 	await _key(KEY_P)
-	_expect(map.main_map.visible and not maze._save_menu.visible,
-		"INT-06 P stacks checkpoint menu onto open maze map")
+	_expect(maze._save_menu.visible and not map.main_map.visible,
+		"INT-06 P with the map open must open the checkpoint menu and close the map")
 	await _key(KEY_ESCAPE)
-	_expect(map.main_map.visible and not maze.inventory_menu.visible,
-		"INT-06 Esc stacks inventory onto open maze map")
+	_expect(not maze._save_menu.visible and not maze.inventory_menu.visible,
+		"INT-06 closing the checkpoint menu also opened inventory")
+	await _key(KEY_L)
+	_expect(map.main_map.visible, "INT-06 L did not reopen the overview")
+	await _key(KEY_ESCAPE)
+	_expect(not map.main_map.visible and not maze.inventory_menu.visible,
+		"INT-06 Esc must close the map without opening inventory")
+	await _key(KEY_L)
 	var active := maze.active
 	await _key(KEY_TAB)
-	_expect(maze.active == active, "INT-06 map Tab steals active diver")
-	await _key(KEY_F)
-	_expect(not maze.target_selector.selecting and maze.divers[active].can_use_ability(),
-		"CTL-3 map F leaks exploration ability through overview ownership")
-	await _key(KEY_L)
+	_expect(maze.active != active, "INT-06 Tab must still switch divers with the map open")
+	# Back to the original diver: the later cases expect it.
+	for _i in maze.divers.size():
+		if maze.active == active:
+			break
+		await _key(KEY_TAB)
+	if map.main_map.visible:
+		await _key(KEY_L)
 	_expect(not map.main_map.visible, "INT-06 map cannot relinquish ownership with L")
 	print("MAZE INPUT CASE|active=", active, "|owner=map")
 

@@ -4058,7 +4058,7 @@ func _sync_overlay_hud() -> void:
 		return
 	var covered := (inventory_menu != null and inventory_menu.visible) \
 		or (save_point_menu != null and save_point_menu.visible) \
-		or _maze_nav_map_open() or _maze_menu_open()
+		or _maze_menu_open()   # the maze nav map no longer covers the HUD
 	for wrap in [hp_bar.get_parent(), oxygen_bar.get_parent() if oxygen_bar != null else null, _party_bars_box]:
 		if wrap != null and is_instance_valid(wrap):
 			(wrap as CanvasItem).visible = not covered
@@ -4168,7 +4168,7 @@ func _update_active_cursor() -> void:
 		return
 	var d: Diver = divers[active]
 	_active_cursor.visible = true
-	_active_cursor.global_position = d.global_position + Vector3.UP * (d.height + 0.5)
+	_active_cursor.global_position = d.global_position + Vector3.UP * (d.height * 0.5 + 0.45)   # origin is mid-body
 
 # Brief extra flash on top of the value drop.
 func _flash_hp_bar() -> void:
