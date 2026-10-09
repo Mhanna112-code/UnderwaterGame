@@ -12,9 +12,15 @@ const DEFINITIONS := [
 const CLEARANCE := 2.2
 const RADIUS := 4.0
 const SONAR_RADIUS := 14.0
-# Same window as the maze minimap's red circle (MiniMap.within_marker_height):
-# a site that isn't on the minimap can't trigger.
-const HEIGHT := MiniMap.MARKER_HEIGHT_RANGE
+# Sites sit ON the maze floor, but a diver's origin is mid-body (~1 above the
+# floor when touching it), so the overworld's +/-1.5 marker window only fired
+# when hugging the floor. Maze sites count from just below the floor up to
+# SITE_RISE above it (same reach as the draft passages). The maze map's site
+# circle uses the same test, so a site that isn't on the map can't trigger.
+const SITE_RISE := 4.0
+
+static func within_site_height(diver_y: float, site_y: float) -> bool:
+	return diver_y >= site_y - 0.5 and diver_y <= site_y + SITE_RISE
 var maze: MazeLevel
 var initialized := false
 var sites: Array[Dictionary] = []
@@ -139,7 +145,7 @@ func update() -> void:
 	var inside: Dictionary = {}
 	for site in sites:
 		var point := _point(site)
-		if not site.consumed and absf(at.y - point.y) <= HEIGHT \
+		if not site.consumed and within_site_height(at.y, point.y) \
 			and Vector2(at.x, at.z).distance_to(Vector2(point.x, point.z)) <= RADIUS:
 			inside = site
 			break
@@ -150,8 +156,9 @@ func update() -> void:
 	if _inside_id == String(inside.id) or maze._battling or maze.any_modal_open() \
 		or maze._chest_reward_pending or maze._gate_cutscene or not maze._moving_wall_sets.is_empty():
 		return
-	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
-	if map.main_map.visible or maze.target_selector.selecting:
+	# The open nav map no longer blocks this (it only fills a corner; the
+	# site's prompt closes it like any menu).
+	if maze.target_selector.selecting:
 		return
 	# Sonar may reveal through a wall, but entering its open water matters.
 	var eye := at + Vector3.UP * actor.height * 0.4

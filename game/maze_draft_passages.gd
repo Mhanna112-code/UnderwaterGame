@@ -42,12 +42,8 @@ func setup(owner_maze: MazeLevel) -> void:
 		Vector3(end_cap.size.z + REACH * 2.0, 2.0, WIDTH))
 	_streaks(Vector3(end_cap.global_position.x + break_side * (end_cap.size.z * 0.5 + 1.2), maze._floor_top_y + 0.5, outgoing_z),
 		Vector3(-break_side, -0.35, 0).normalized())
-	var box7 := maze.get_node("CSGBox3D7") as CSGBox3D
-	var closer := maze.get_node("Wall10Closer") as CSGBox3D
-	var west := box7.global_position.x + box7.size.z * 0.5
-	var east := end_cap.global_position.x + end_cap.size.z * 0.5
-	if east > west:
-		maze._spawn_barrier("DraftNorthBarrier", Vector3((west + east) * 0.5, 0, closer.global_position.z), Vector3(east - west, 0, end_cap.size.z))
+	# No DraftNorthBarrier: that invisible fence blocked crossing over to the
+	# BreakRock (BR) current.
 	var targets := maze._walls_10_11_targets()
 	var wall11 := maze.get_node("CSGBox3D11") as CSGBox3D
 	var wall10_target: Vector3 = targets[1][1]
@@ -201,10 +197,10 @@ func update() -> void:
 		latched = false
 	if not box12_in_reach():
 		box12_latched = false
-	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	# The open nav map no longer blocks this: it only fills a corner, and opening
+	# the prompt closes it (MazeLevel._menu_over_map counts draft prompts).
 	if busy or maze._battling or maze.any_modal_open() or maze._chest_reward_pending \
 		or maze._gate_cutscene or not maze._moving_wall_sets.is_empty() \
-		or (map.main_map != null and map.main_map.visible) \
 		or (maze.target_selector != null and maze.target_selector.selecting):
 		return
 	if outgoing_in_reach() and not latched:
@@ -245,7 +241,7 @@ func _open_one_way_prompt(wall: CSGBox3D, z: float, side: float) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	maze._mouse_look = false
 	maze._diver.velocity = Vector3.ZERO
-	prompt = ConfirmPromptModal.new("A draft leads under the wall. Explore the other side?")
+	prompt = ConfirmPromptModal.new("A draft leads under the wall. Explore the other side?", "Yes", "No")
 	prompt.answered.connect(func(yes: bool) -> void:
 		prompt = null
 		if yes and maze.maze_active and (outgoing_in_reach() if wall == end_cap else box12_in_reach()):

@@ -700,8 +700,11 @@ func _make_caption(top: float, bottom: float, font_size: int, color: Color) -> L
 	_responsive_captions.append(label)
 	if not get_viewport().size_changed.is_connected(_resize_captions):
 		get_viewport().size_changed.connect(_resize_captions)
-	label.offset_top = top
-	label.offset_bottom = bottom
+	# Designed offsets; _resize_caption() lifts them above the diver bars.
+	label.set_meta("caption_top", top)
+	label.set_meta("caption_bottom", bottom)
+	label.offset_top = top - _caption_lift
+	label.offset_bottom = bottom - _caption_lift
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -721,6 +724,32 @@ func _resize_caption(label: Label) -> void:
 	var half_width := minf(320.0, maxf(1.0, (get_viewport().get_visible_rect().size.x - 32.0) * 0.5))
 	label.offset_left = -half_width
 	label.offset_right = half_width
+	if label.has_meta("caption_top"):
+		label.offset_top = float(label.get_meta("caption_top")) - _caption_lift
+		label.offset_bottom = float(label.get_meta("caption_bottom")) - _caption_lift
+
+# The bottom-centre captions (orange notices, "Press E", encounter status) were
+# laid out for an empty bottom edge, but World's active-diver O2/HP bars sit
+# there. Lift the whole stack so its lowest line (designed bottom -62) ends 8px
+# above those bars. Updated each frame; captions only move when it changes.
+var _caption_lift := 0.0
+const CAPTION_STACK_BOTTOM := -62.0
+
+func _update_caption_lift() -> void:
+	var lift := 0.0
+	var world_hud := world.get_node_or_null("HUD") as CanvasLayer if world != null else null
+	if world_hud != null and world_hud.visible and world.get("hp_bar") != null:
+		var top := INF
+		for bar in [world.hp_bar, world.oxygen_bar]:
+			var wrap := (bar as Control).get_parent() as Control if bar != null else null
+			if wrap != null and wrap.is_visible_in_tree():
+				top = minf(top, wrap.get_global_rect().position.y)
+		if top < INF:
+			var bars_offset := top - 8.0 - get_viewport().get_visible_rect().size.y
+			lift = maxf(0.0, CAPTION_STACK_BOTTOM - bars_offset)
+	if not is_equal_approx(lift, _caption_lift):
+		_caption_lift = lift
+		_resize_captions()
 
 # --- Random encounters (strong-enemy room only) ---
 # Only the active diver's rolls inside the room start a battle. Enemy stats
@@ -960,6 +989,19 @@ func _diver_near_switch() -> bool:
 	var b := _diver.global_position
 	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z)) <= SWITCH_REACH
 
+# True while "Press E to interact/open" would show: something E acts on is in
+# reach. The open nav map checks this so E interacts before it rotates walls.
+func interact_available() -> bool:
+	if _interact_cooldown or _diver == null:
+		return false
+	var poster := _poster_in_reach()
+	if not _poster_beats_switch(poster):
+		poster = null
+	return (_diver_near_switch() and not _switch_puzzle_done()) or poster != null \
+		or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) \
+		or _secret_entrance_in_reach() or _vortex_chest_in_reach() or _map_chest_in_reach() \
+		or _split_rock_in_reach()
+
 # "Press E to interact" while next to the switch.
 func _update_room_switch() -> void:
 	var poster := _poster_in_reach()
@@ -968,11 +1010,9 @@ func _update_room_switch() -> void:
 	for p in _posters:
 		p.set_highlight(p == poster)
 	var at_chest := _vortex_chest_in_reach() or _map_chest_in_reach()
-	var near := (_diver_near_switch() and not _switch_puzzle_done()) or poster != null or (_free_lever_in_reach() != null and _lever_held_by(_diver) == null) or _secret_entrance_in_reach() or at_chest or _split_rock_in_reach()
 	if _interact_cooldown and (_banner == null or _banner_timer <= 0.0):
 		_interact_cooldown = false
-	if _interact_cooldown:
-		near = false
+	var near := interact_available()
 	if _switch_prompt == null:
 		if not near:
 			return
@@ -3174,6 +3214,16 @@ func _sweep_divers_with_moving_walls() -> void:
 	_wall_riders.update()
 	var still_moving: Dictionary = {}
 	for set_name in _moving_wall_nodes:
+		# Centre of the set's walls: a wall's inner face is the one facing it
+		# (into the corridor between a hall's two walls).
+		var set_center := Vector3.ZERO
+		var set_count := 0
+		for other in _moving_wall_nodes[set_name]:
+			if is_instance_valid(other):
+				set_center += (other as Node3D).global_position
+				set_count += 1
+		if set_count > 0:
+			set_center /= float(set_count)
 		for w in _moving_wall_nodes[set_name]:
 			if not is_instance_valid(w):
 				continue
@@ -3196,14 +3246,24 @@ func _sweep_divers_with_moving_walls() -> void:
 				var local := xf.affine_inverse() * d.global_position
 				if absf(local.x) > half.x + r or absf(local.z) > half.z + r or absf(local.y) > half.y + d.height * 0.5:
 					continue
-				# Push out on the side the wall moves toward, else the nearer side.
+				# Which face the diver is on, and which way that face is moving.
 				var motion := xf * local - last * local
 				var across := xf.basis.z.normalized()
-				var side := signf(motion.dot(across))
-				if absf(motion.dot(across)) < 0.001:
-					side = signf(local.z) if local.z != 0.0 else 1.0
+				var diver_side := signf(local.z) if local.z != 0.0 else 1.0
+				var moving_side := signf(motion.dot(across))
+				if absf(motion.dot(across)) >= 0.001 and moving_side != diver_side:
+					continue   # the wall is moving away from this diver: leave them be
+				var side := diver_side
 				var pushed := Vector3(local.x, local.y, side * (half.z + r))
 				var target := xf * pushed
+				# Only the inner face (towards the set's centre / the corridor
+				# between the walls) carries divers. On the outer face, a wall
+				# moving into a diver just pushes them clear, without riding.
+				var inner_local := xf.affine_inverse() * set_center
+				var inner_side := signf(inner_local.z) if set_count > 1 and absf(inner_local.z) > 0.01 else 0.0
+				if inner_side != 0.0 and side != inner_side:
+					d.global_position = Vector3(target.x, d.global_position.y, target.z)
+					continue
 				if _wall_riders.capture(d, wall, pushed,
 					wall.get_parent().global_transform * (_wall_motion_targets[wall] as Transform3D)):
 					d.global_position = Vector3(target.x, d.global_position.y, target.z)
@@ -3986,6 +4046,7 @@ func _physics_process(dt: float) -> void:
 				d.swim(_player_dir(), _player_rise(), dt)
 			else:
 				d.swim(Vector3.ZERO, 0.0, dt)
+	_update_caption_lift()
 	_update_room_switch()
 	_update_lever_ui()
 	_update_world_hud()
@@ -4565,12 +4626,8 @@ func _build_wall_10_11_extras() -> void:
 	rock.position = spot
 	rock.broken.connect(_on_secret_rock_broken.bind("potion", spot + Vector3(0, 0.6, 0)))
 	add_child(rock)
-	var gc: Dictionary = _wall_geometry(wall_b)
-	var west := maxf(gc.negative_end.x, gc.positive_end.x)
-	var east := _wall_11_joint.x - wall_b.size.z * 0.5
-	if east > west + 0.5:
-		var barrier := _spawn_barrier("Wall10LineBarrier", Vector3((west + east) * 0.5, 0, wall_b.global_position.z), Vector3(east - west, 0, wall_b.size.z))
-		_walls_10_11_home_barriers.append(barrier.get_child(0) as CollisionShape3D)
+	# No Wall10LineBarrier: that invisible fence along wall 10's line blocked
+	# crossing over to the BreakRock (BR) current.
 	_update_state_barriers()
 
 # --- Progress gate (switch puzzle) ---
@@ -5032,7 +5089,7 @@ func map_points_of_interest() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if special_sites != null:
 		for site in special_sites.points_of_interest():
-			if _diver == null or MiniMap.within_marker_height(_diver.global_position.y, (site.pos as Vector3).y):
+			if _diver == null or special_sites.within_site_height(_diver.global_position.y, (site.pos as Vector3).y):
 				out.append(site)
 	for p in _posters:
 		out.append({"id": String(p.name), "kind": "poster", "pos": p.global_position, "radius": 7.0, "done": p.seen, "texture": p.portrait})
@@ -5482,9 +5539,9 @@ func _return_to_campaign_world() -> void:
 	if _campaign_exit_pending or not can_capture_campaign_snapshot() \
 		or (target_selector != null and target_selector.selecting):
 		return
+	# Leaving the maze closes the nav map rather than being blocked by it.
 	var minimap := get_node("HUD/MazeMiniMap") as MazeMiniMap
-	if minimap.main_map.visible:
-		return
+	minimap.main_map.visible = false
 	campaign_session.capture_party(divers, active)
 	campaign_session.inventory = inventory
 	campaign_session.maze_snapshot = campaign_snapshot()
