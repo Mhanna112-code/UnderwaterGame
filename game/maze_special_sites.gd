@@ -140,8 +140,7 @@ func update() -> void:
 	if actor.passive_id == "sonar" and actor.sonar_active:
 		for site in sites:
 			if not site.consumed and not site.revealed and at.distance_to(_point(site)) <= SONAR_RADIUS:
-				site.revealed = true
-				maze._announce("Sonar found something guarded nearby.")
+				site.revealed = true   # shown on the map; no announcement
 	var inside: Dictionary = {}
 	for site in sites:
 		var point := _point(site)
