@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": [".claude/static_server.js"],
       "port": 8781
+    },
+    {
+      "name": "playtest-platform",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/march/projects/playtest-platform", "run", "dev"],
+      "port": 3000
     }
   ]
 }

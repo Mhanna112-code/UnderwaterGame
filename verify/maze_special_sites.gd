@@ -199,10 +199,9 @@ func _outcome_cases() -> void:
 			_expect(chooser.visible and paused, "SITE-4 R-off fails chooser for " + outcome)
 			chooser.diver_chosen.emit(actor.model_name)
 			await process_frame
-			if outcome == "downed":
-				_expect(not maze._battling and not chooser.visible and not paused and actor.stats.hp == 0,
-					"SITE-4 downed choice creates a battle, grants revival or traps pause")
-			else:
+			# Downed divers may enter; losing returns them still downed.
+			var result: String = "lost" if outcome == "downed" else outcome
+			if true:
 				var battle := maze._battle
 				_expect(battle != null and battle.special_encounter and battle.guardian_encounter
 					and battle.encounter_source == "maze_special" and battle.party.size() == 1
@@ -215,15 +214,15 @@ func _outcome_cases() -> void:
 				# a combat win. Minigame completion is verified by separate gates.
 				actor.stats.hp = 1
 				actor.stats.oxygen = 2
-				battle.finished.emit(outcome)
+				battle.finished.emit(result)
 				await process_frame
 				await _settle()
-				_expect(actor.stats == stats and actor.stats.hp == (actor.stats.hp_max if outcome == "won" else hp)
-					and is_equal_approx(actor.stats.oxygen, actor.stats.oxygen_max if outcome == "won" else oxygen),
+				_expect(actor.stats == stats and actor.stats.hp == (actor.stats.hp_max if result == "won" else hp)
+					and is_equal_approx(actor.stats.oxygen, actor.stats.oxygen_max if result == "won" else oxygen),
 					"SITE-4 result changes actor/resource identity or authored win/loss policy")
-				_expect(int(maze.inventory.get("accuracy_up", 0)) == quantity + (1 if outcome == "won" else 0),
+				_expect(int(maze.inventory.get("accuracy_up", 0)) == quantity + (1 if result == "won" else 0),
 					"SITE-3 result loses or duplicates reward")
-				_expect(maze.campaign_snapshot().special_sites[0].consumed == (outcome == "won"),
+				_expect(maze.campaign_snapshot().special_sites[0].consumed == (result == "won"),
 					"SITE-3 outcome loses consumed state")
 				_expect(not maze._battling and not paused and not maze._game_over.visible,
 					"SITE-4 special result traps ordinary game over/input")

@@ -174,6 +174,7 @@ func contains_point(point: Vector3) -> bool:
 
 func set_maze_active(on: bool) -> void:
 	if not on:
+		_end_ambush_reveal()
 		_cancel_aim()
 		_cancel_wall_motion()
 		Whirlpool.cancel_in(self)
@@ -236,9 +237,10 @@ func _build_item_rocks() -> void:
 			continue
 		var rock := CrackedWall.new()
 		rock.span = Vector3(1.1, 1.1, 1.1)
-		rock.disguised_as_scenery_rock = true
-		rock.position = marker.global_position
-		rock.broken.connect(_on_item_rock_broken.bind(marker.name, marker.global_position))
+		rock.sphere_shaped = true   # brown
+		var spot := _spread_secret_rock(marker.global_position)
+		rock.position = spot
+		rock.broken.connect(_on_item_rock_broken.bind(marker.name, spot))
 		add_child(rock)
 		_secret_room_rocks.append(rock)
 
@@ -646,14 +648,22 @@ var _announcement_revision := 0
 # While orange text is up, "Press E to interact" is hidden and E does nothing.
 var _interact_cooldown := false
 
-func _announce(text: String, seconds := 4.0) -> void:
+func _ensure_banner() -> void:
 	if _banner == null:
 		_banner = _make_caption(-170.0, -130.0, 20, Color(1.0, 0.6, 0.45))
+		Whirlpool.register_banner_owner(self)
+
+func _announce(text: String, seconds := 4.0) -> void:
+	_ensure_banner()
 	_announcements.push(text, seconds)
 	_announcement_revision += 1
 	_banner.text = _announcements.current_text()
 	_banner_timer = _announcements.seconds_left()
 	_refresh_announcement_visibility()
+
+# Whirlpool asks this so its warning waits for the banner.
+func announcement_banner_showing() -> bool:
+	return _banner != null and _banner.is_visible_in_tree()
 
 func _update_announce(dt: float) -> void:
 	if _banner == null:
@@ -776,8 +786,51 @@ func _on_diver_encounter(d: Diver) -> void:
 	if random_encounters_enabled:
 		_start_battle("random")
 
-# kind: "strong", "secret_boss" or "main_boss".
-func _start_battle(kind := "strong") -> void:
+# Ambush rock: the hidden enemies swim into view (the overworld's random
+# encounter reveal) with the banner up, then the boosted fight starts.
+const AMBUSH_TEXT := "Something was hiding in the rock!"
+var _ambush_reveal: RandomEncounterReveal
+
+func _begin_ambush_reveal() -> void:
+	if not maze_active or _battling or _chest_reward_pending or any_modal_open() or is_instance_valid(_ambush_reveal):
+		return
+	var selected := Battle.select_ordinary_enemies((divers[0] as Diver).stats.level)
+	_cancel_aim()
+	for d in divers:
+		d.velocity = Vector3.ZERO
+	# Shown immediately; queued announcements only tick during exploration.
+	_ensure_banner()
+	_banner.text = AMBUSH_TEXT
+	_banner.visible = true
+	var reveal := RandomEncounterReveal.new()
+	reveal.enemy_ids = selected
+	reveal.camera = $Camera3D as Camera3D
+	_ambush_reveal = reveal
+	# Freeze exploration while the enemies appear (the reveal runs while paused).
+	get_tree().paused = true
+	reveal.finished.connect(func() -> void:
+		if _ambush_reveal != reveal:
+			return
+		_end_ambush_reveal()
+		_start_battle("ambush", selected)
+	, CONNECT_ONE_SHOT)
+	add_child(reveal)
+
+func _end_ambush_reveal() -> void:
+	if not is_instance_valid(_ambush_reveal):
+		return
+	_ambush_reveal.set_process(false)
+	_ambush_reveal.restore_camera()
+	_ambush_reveal.queue_free()
+	_ambush_reveal = null
+	get_tree().paused = false
+	if _banner != null:
+		_banner.text = _announcements.current_text()
+	_refresh_announcement_visibility()
+
+# kind: "strong", "secret_boss" or "main_boss". revealed_enemy_ids: the
+# roster an ambush reveal already showed.
+func _start_battle(kind := "strong", revealed_enemy_ids: Array[String] = []) -> void:
 	if not maze_active or _battling or _chest_reward_pending:
 		return
 	_cancel_aim()
@@ -806,7 +859,7 @@ func _start_battle(kind := "strong") -> void:
 				route_state.set_octopus_state("in_progress")
 				route_state.set_encounter_source("maze_cordys")
 		"ambush":
-			_announce("Something was hiding in the rock!")
+			pass   # the reveal already showed "Something was hiding in the rock!"
 		"special":
 			_announce("A guarded item challenge begins.")
 		"random":
@@ -814,6 +867,7 @@ func _start_battle(kind := "strong") -> void:
 		_:
 			_announce("Strong enemies emerge from the murk!")
 	_battle.party_source = divers
+	_battle.ordinary_enemy_ids = revealed_enemy_ids.duplicate()
 	if kind == "special":
 		special_sites.configure_battle(_battle)
 		if route_state != null:
@@ -1898,20 +1952,82 @@ func _build_secret_item_rocks() -> void:
 			continue
 		var rock := CrackedWall.new()
 		rock.span = Vector3(1.1, 1.1, 1.1)
-		rock.disguised_as_scenery_rock = true
-		rock.position = marker.global_position
+		rock.sphere_shaped = true   # brown
+		var spot := _spread_secret_rock(marker.global_position)
+		rock.position = spot
 		var reward: String = SECRET_ITEM_ROCKS[marker_name]
 		rock.set_meta("reward", reward)   # "ambush" rocks get no red circle
-		rock.broken.connect(_on_secret_rock_broken.bind(reward, marker.global_position))
+		rock.broken.connect(_on_secret_rock_broken.bind(reward, spot))
 		add_child(rock)
 		_secret_room_rocks.append(rock)
+
+# Pushes a rock marker away from the rocks' middle (XZ) so they sit further apart.
+# A push that would cross a wall or end within SECRET_ROCK_CLEARANCE of one is
+# shortened back toward the marker until it's clear.
+const SECRET_ROCK_SPREAD := 1.4
+const SECRET_ROCK_CLEARANCE := 0.9   # rock radius 0.5 plus visible air
+func _spread_secret_rock(spot: Vector3) -> Vector3:
+	var markers_xz := Vector2.ZERO
+	var count := 0
+	for node in get_tree().get_nodes_in_group("ItemRock"):
+		markers_xz += Vector2((node as Node3D).global_position.x, (node as Node3D).global_position.z)
+		count += 1
+	for marker_name in SECRET_ITEM_ROCKS:
+		var m := get_node_or_null(String(marker_name)) as Node3D
+		if m != null:
+			markers_xz += Vector2(m.global_position.x, m.global_position.z)
+			count += 1
+	if count < 2:
+		return spot
+	var mid := markers_xz / count
+	var boxes: Array[CSGBox3D] = []
+	for node in find_children("*", "CSGBox3D", true, false):
+		var box := node as CSGBox3D
+		if box.use_collision and box.is_visible_in_tree():
+			boxes.append(box)
+	var to := Vector3(mid.x + (spot.x - mid.x) * SECRET_ROCK_SPREAD, spot.y, mid.y + (spot.z - mid.y) * SECRET_ROCK_SPREAD)
+	# Stop short of the first wall in the way, then step off any wall face it's near.
+	var at := spot
+	var samples := maxi(1, ceili(spot.distance_to(to) / 0.25))
+	for s in range(1, samples + 1):
+		var next := spot.lerp(to, float(s) / samples)
+		if _rock_clearance_push(next, boxes, 0.0) != Vector3.ZERO:
+			break
+		at = next
+	for i in 4:
+		var push := _rock_clearance_push(at, boxes, SECRET_ROCK_CLEARANCE)
+		if push == Vector3.ZERO:
+			break
+		at += push
+	return at
+
+# Horizontal push that moves `at` `clearance` off the nearest face of the first
+# box it's within `clearance` of (ZERO when clear). Floors and ceilings only
+# count if the 0.7-tall rock would touch them, and never push.
+func _rock_clearance_push(at: Vector3, boxes: Array[CSGBox3D], clearance: float) -> Vector3:
+	for box in boxes:
+		var xf := box.global_transform
+		var local := xf.affine_inverse() * at
+		var half := box.size * 0.5
+		var gap := local.abs() - half
+		if gap.y >= 0.35 or gap.x >= clearance or gap.z >= clearance:
+			continue
+		# Out through the local X or Z face, whichever is closer.
+		var target := local
+		if gap.x > gap.z:
+			target.x = signf(local.x if local.x != 0.0 else 1.0) * (half.x + clearance)
+		else:
+			target.z = signf(local.z if local.z != 0.0 else 1.0) * (half.z + clearance)
+		var push := xf * target - at
+		push.y = 0.0
+		return push if push.length() > 0.001 else Vector3(0.001, 0, 0)
+	return Vector3.ZERO
 
 # A broken rock springs an ambush or leaves an ItemOrb.
 func _on_secret_rock_broken(reward: String, spot: Vector3) -> void:
 	_note_broken_rock(spot)
 	if reward == "ambush":
-		if not _battling and not any_modal_open():
-			_start_battle("ambush")
+		_begin_ambush_reveal()
 		return
 	_spawn_secret_reward_orb(reward, spot)
 

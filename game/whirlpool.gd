@@ -47,8 +47,33 @@ static var _battle_running := false
 
 static func set_battle_running(on: bool) -> void:
 	_battle_running = on
-	if is_instance_valid(_warning_caption):
-		_warning_caption.visible = not _warning_whirlpools.is_empty() and not on
+	_apply_caption_visibility()
+
+# Owners (World, the maze) with an announcement banner. The warning waits while
+# any of them reports its banner up, so the two never overlap.
+static var _banner_owners: Array[WeakRef] = []
+
+static func register_banner_owner(owner: Object) -> void:
+	_banner_owners.append(weakref(owner))
+
+static func _any_banner_showing() -> bool:
+	var showing := false
+	for i in range(_banner_owners.size() - 1, -1, -1):
+		var owner: Object = _banner_owners[i].get_ref()
+		if owner == null:
+			_banner_owners.remove_at(i)
+		elif bool(owner.call("announcement_banner_showing")):
+			showing = true
+	return showing
+
+static func _apply_caption_visibility() -> void:
+	if not is_instance_valid(_warning_caption):
+		return
+	_warning_caption.visible = not _warning_whirlpools.is_empty() and not _battle_running and not _any_banner_showing()
+	# Free the whole warning canvas when empty.
+	var layer := _warning_caption.get_parent() as CanvasLayer
+	if layer != null:
+		layer.visible = _warning_caption.visible
 static var _warning_whirlpools: Dictionary = {}   # Whirlpool -> true while a diver is inside its warning radius
 var _divers_in_warning: Dictionary = {}           # Diver -> true
 # Optional: returns true when something (e.g. a current) carries the diver past suction.
@@ -428,11 +453,7 @@ func _update_warning_caption() -> void:
 		if _warning_whirlpools.is_empty() or not is_inside_tree():
 			return
 		_build_warning_caption()
-	_warning_caption.visible = not _warning_whirlpools.is_empty() and not _battle_running
-	# Free the whole warning canvas when empty.
-	var layer := _warning_caption.get_parent() as CanvasLayer
-	if layer != null:
-		layer.visible = _warning_caption.visible
+	_apply_caption_visibility()
 
 func _build_warning_caption() -> void:
 	var layer := CanvasLayer.new()

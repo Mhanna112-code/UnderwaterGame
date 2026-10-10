@@ -183,9 +183,9 @@ func _choose(model_name: String) -> void:
 	for actor in maze.divers:
 		if actor.model_name == model_name:
 			chosen = actor
-	if chosen == null or chosen.stats.hp <= 0:
+	# Downed divers may enter too; finish() returns them downed if they don't win.
+	if chosen == null:
 		cancel()
-		maze._announce("That diver needs recovery before entering a special encounter.")
 		return
 	_chosen = chosen
 	_pre_hp = chosen.stats.hp
@@ -216,7 +216,6 @@ func finish(result: String) -> void:
 	else:
 		_chosen.stats.hp = _pre_hp
 		_chosen.stats.oxygen = _pre_oxygen
-		maze._announce("The guardian holds its ground. Come back and try again.")
 	_chosen = null
 	_pending = {}
 	maze._mouse_look = _was_mouse_look

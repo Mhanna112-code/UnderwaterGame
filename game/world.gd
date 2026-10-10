@@ -1189,6 +1189,7 @@ func _ready() -> void:
 	banner.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(banner)
+	Whirlpool.register_banner_owner(self)
 	_build_route_objective_hud()
 	maze_route_guide = preload("res://game/maze_route_guide.gd").new()
 	$HUD.add_child(maze_route_guide)
@@ -3211,6 +3212,10 @@ func _update_aim_marker() -> void:
 	_aim_marker_mat.albedo_color = c
 	_aim_marker_mat.emission = c
 	_aim_marker_mat.emission_energy_multiplier = 1.6 if on_target else 0.7
+
+# Whirlpool asks this so its warning waits for the banner.
+func announcement_banner_showing() -> bool:
+	return banner != null and banner.is_visible_in_tree() and not banner.text.is_empty()
 
 # Fade the banner (exploration only).
 func _update_banner(dt: float) -> void:
