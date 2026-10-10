@@ -3641,6 +3641,7 @@ static func _rotate_left(dir: WaterCurrent.Direction) -> WaterCurrent.Direction:
 func _setup_whirlpool() -> void:
 	var whirlpool := Whirlpool.new()
 	whirlpool.position = Vector3(35.99, -4.12, 71.67) + coordinate_origin
+	whirlpool.upright_visual = true
 	whirlpool.reset_to = $DiverEntry.position
 	whirlpool.warned.connect(_on_whirlpool_warned)
 	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
@@ -3749,6 +3750,9 @@ func _setup_corridor_4_whirlpool() -> void:
 	whirlpool.pull_radius = whirlpool.suction_radius + 4.0
 	whirlpool.pull_speed = 4.0
 	whirlpool.bypass = func() -> bool: return _currents_by_corridor.has(corridor)
+	whirlpool.upright_visual = true
+	# Ring just fits between the corridor walls.
+	whirlpool.upright_ring_radius = _gap_width_between(walls[0], walls[1]) * 0.5 - 0.1
 	whirlpool.warned.connect(_on_whirlpool_warned)
 	whirlpool.diver_sucked_in.connect(_on_diver_sucked_in)
 	add_child(whirlpool)
@@ -3767,6 +3771,8 @@ func _place_corridor_4_whirlpool() -> void:
 	var floor_y: float = ($DiverEntry as Node3D).global_position.y
 	var spot := back + into * (_corridor_4_whirlpool.suction_radius + 0.5)
 	_corridor_4_whirlpool.global_position = Vector3(spot.x, floor_y, spot.z)
+	_corridor_4_whirlpool.set_upright_facing(into)   # hole faces down the corridor
+	_corridor_4_whirlpool.set_upright_floor(_floor_top_y)
 	var reset := start - into * 1.5
 	# Return point is outside the pull zone for every party capsule.
 	var largest_radius := 0.0

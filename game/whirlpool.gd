@@ -35,6 +35,14 @@ signal diver_sucked_in(d: Diver, amount: int)
 # Bouncing particle column inside the suction area (whirlpool_column.gd).
 # Off for now: work in progress, whirlpools keep their original look.
 @export var column_visual := false
+# Stand the ring on edge (hole facing upright_facing) instead of flat. Visual
+# only: suction, pull and warning zones are unchanged.
+@export var upright_visual := false
+@export var upright_facing := Vector3.FORWARD
+# > 0: the upright ring's outer radius (e.g. to fit a corridor); else from suction_radius.
+@export var upright_ring_radius := 0.0
+var _upright_pivot: Node3D
+var _upright_ring: TorusMesh
 const DEEP_SHAFT_DEPTH := 9.0
 
 var armed := true
@@ -124,7 +132,8 @@ func _ready() -> void:
 
 	_build_visual()
 
-# Floor-aligned current ring; an upright torus would block the grapple aim view.
+# Floor-aligned current ring by default (an upright torus can block the grapple
+# aim view); upright_visual stands it on edge.
 func _build_visual() -> void:
 	var mesh_inst := MeshInstance3D.new()
 	mesh_inst.name = "WhirlpoolVisual"
@@ -165,7 +174,22 @@ func _build_visual() -> void:
 				arm.position = Vector3(cos(angle) * r, 0.08, sin(angle) * r)
 				arm.rotation.y = -angle - PI * 0.35
 				mesh_inst.add_child(arm)
-	add_child(mesh_inst)
+	if upright_visual:
+		# Pivot stands the ring up with its bottom at this node's height; the
+		# mesh keeps spinning about its own (now horizontal) axis.
+		if upright_ring_radius > 0.0:
+			ring.outer_radius = upright_ring_radius
+			ring.inner_radius = upright_ring_radius * 0.3 / 0.95
+		_upright_ring = ring
+		_upright_pivot = Node3D.new()
+		_upright_pivot.name = "UprightPivot"
+		_upright_pivot.position.y = ring.outer_radius
+		add_child(_upright_pivot)
+		mesh_inst.position = Vector3.ZERO
+		_upright_pivot.add_child(mesh_inst)
+		set_upright_facing(upright_facing)
+	else:
+		add_child(mesh_inst)
 
 	var tw := create_tween().set_loops()
 	tw.tween_property(mesh_inst, "rotation:y", TAU, 4.0).from(0.0)
@@ -175,6 +199,21 @@ func _build_visual() -> void:
 		tw.set_speed_scale(2.0)
 		_build_deep_shaft()
 		_build_down_current()
+
+# Horizontal direction the upright ring's hole faces.
+func set_upright_facing(dir: Vector3) -> void:
+	dir.y = 0.0
+	if dir.length() < 0.001:
+		return
+	upright_facing = dir.normalized()
+	if _upright_pivot != null:
+		# Rx stands the ring up (its axis Y -> Z), Ry aims that axis along dir.
+		_upright_pivot.rotation = Vector3(PI * 0.5, atan2(upright_facing.x, upright_facing.z), 0.0)
+
+# Rests the upright ring's bottom on the floor at global height floor_y.
+func set_upright_floor(floor_y: float) -> void:
+	if _upright_pivot != null:
+		_upright_pivot.global_position.y = floor_y + _upright_ring.outer_radius
 
 func _build_deep_shaft() -> void:
 	var tube := CylinderMesh.new()

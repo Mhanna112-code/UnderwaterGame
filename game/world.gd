@@ -1408,6 +1408,19 @@ func _start_dev_mode() -> void:
 	_announce("DEV MODE: everything unlocked. G = teleport menu, T = jump to aim. No player save is written.")
 	if OS.get_cmdline_user_args().has("--tethys-front"):
 		call_deferred("_dev_spawn_tethys_front")
+	elif OS.get_cmdline_user_args().has("--whirlpool-front"):
+		call_deferred("_dev_spawn_whirlpool_front")
+
+# --whirlpool-front: at the maze corridor 4 whirlpool's return point (just
+# outside its pull), facing it.
+func _dev_spawn_whirlpool_front() -> void:
+	var w := embedded_maze._corridor_4_whirlpool as Whirlpool
+	if w == null:
+		return
+	var at := w.reset_to
+	at.y = embedded_maze._floor_top_y + 1.2
+	var to_w := w.global_position - at
+	dev_teleport(at, true, "the corridor 4 whirlpool", atan2(to_w.x, to_w.z))
 
 # --tethys-front: same as the G menu's Tethys entry (lab unlocked, 7 units
 # outside its door), facing the door. Swim in to start the cutscene and fight.
