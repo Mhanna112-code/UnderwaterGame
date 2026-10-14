@@ -66,6 +66,13 @@ The prior tutorial/browser receipts still apply to their identified source;
 this source-only restoration has not been exported. Miguel requested that the
 auto-build agent handle the public Web build after the merge.
 
+The complete isolated tutorial/save regression runner finished with exit 0 on
+restoration source `5bf6f19`. The retained log includes success/timeout/Help,
+real skip/completion/items/loss/Retry/Exit, embedded practice, four separate
+prepare/cold Load pairs, normal beam handoff, full curriculum and ability return.
+No maze source, guidance or test oracle was edited by this restoration; existing
+embedded checks were rerun unchanged as integration regression coverage.
+
 Final headless escape regression additionally observes the On cue actually
 changing contrast, no duplicate objective/badge during it, and normal objective
 and encounter status returning after expiry. Actual R updates the cue without

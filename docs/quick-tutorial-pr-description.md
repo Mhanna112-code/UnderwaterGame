@@ -12,6 +12,8 @@ Respond to the playtester who declined to play because the tutorial was too long
 - Includes PR 101's compact exploration HUD and complete-card maze-caption reservation in this combined review branch. Neither PR has been merged into main by this work.
 - Restores essential World teaching: nearby intact reward rocks explain items, Tab/Bucky and F/Shockwave; the entrance blockade names the same action. The current Shallows fallback yields to a nearby rock and resumes after leaving/breaking it. Successful Run shows a three-second R/off/recovery cue, never forces encounters Off and never waits indefinitely for input. No new maze changes are included in this restoration.
 
+Restoration source `5bf6f19` passes the actual rock/blockade/Run checks and three-size rendered inspection. The complete isolated tutorial/save regression runner also exits 0 on this source; retained receipt: `restored-guidance-tutorial-regression.log`. The reminder's first narrow capture was obscured by the minimap despite functional green; that failed image is retained alongside the repaired, inspected captures. This is native verification of the new cues, not a new browser/export claim.
+
 ## Evidence and retained failures
 
 `docs/evidence/quick-tutorial-oct14/`: real failures retained for the missing battle reference, long starter caption, clipped reference Close, and replay healing earned resources. Focused fixes pass the corresponding checks. Starter pass and natural-dodge-timeout pass; retained five-move lesson reaches a real victory; reference tested headless and rendered at three viewport sizes and both prior pause states; optional practice entry/Skip preserves party/inventory.
