@@ -131,6 +131,12 @@ func _full_lesson(fight: Battle) -> void:
 			print("LESSON|", state)
 			last_state = state
 		if fight._tutorial_awaiting_enter:
+			# QT16: the full lesson explicitly teaches green ACC gain. A
+			# neutral-colored frozen preview would contradict that explanation.
+			if fight._tutorial_caption.text.begins_with("Precise Tap temporarily boosts"):
+				var accuracy_label := fight._player_stats_ui.values.ACC as Label
+				if accuracy_label.get_theme_color("font_color") != Battle.STAT_COLOR_UP:
+					findings.append("QT16: Precise Tap narration has a neutral/wrong ACC preview color")
 			if OS.get_cmdline_user_args().has("--help-steps") and not helped.has(fight._tutorial_step):
 				helped[fight._tutorial_step] = true
 				await _full_help(fight)

@@ -23,8 +23,8 @@ IO boundaries: Godot scene construction/import, animation/tween scheduling, QTE 
 | QT7 | Reference clips at narrow width or unpauses its parent incorrectly | High; existing TutorialBook fixed 560px and unconditional unpause | Generated viewport/paused-owner decision table and Escape | Responsive reference passes; native screenshots inspected |
 | QT8 | Definitions describe obsolete math/costs | Medium; shared text predates newer formulas and Sonar | Contract examples plus content review against real rules | Exposed definitions updated; Sonar stale-cost suspicion retracted |
 | QT9 | Shortened lesson skips live timing dodge or stalls after success/timeout | High; script length and enemy counter share finale conditions | Actual QTE success and natural timeout through real result | Both outcomes pass; Full QTE retained/rendered |
-| QT10 | Mid-step skip revives stale menus or leaves waiting coroutines | High; hover/caption/QTE await unrelated signals | Skip decision table at each actual input state | 235 World/249 maze checks pass; initial Retry classification repaired |
-| QT11 | New state causes cold Load to replay videos or force full training | High; existing milestone migrations already regressed | Real serialized save/load with opening/training states | Separate native processes pass won/Skip/legacy downed; browser pending |
+| QT10 | Mid-step skip revives stale menus or leaves waiting coroutines | High; hover/caption/QTE await unrelated signals | Skip decision table at each actual input state | 274 World/288 maze checks pass with original-effect markers; initial Retry classification repaired |
+| QT11 | New state causes cold Load to replay videos or force full training | High; existing milestone migrations already regressed | Real serialized save/load with opening/training states | Native processes pass completion/Skip/legacy downed/fidelity; earned browser manual checkpoint reload also passes |
 
 ## Test design and self critique
 
@@ -51,4 +51,6 @@ QT14: real browser Help worked in the prologue, but the guided starter's own cap
 
 QT12: a fixed-width result popup put Retry/Exit offscreen at 360x480; repaired responsive popup passes 64 rendered/action checks. QT13: a functional short lesson initially collapsed the 3D stage to zero at 360x640; compact caption/menu/status presentation now passes wide/narrow actual-action captures. The implementation resize loop was caught and fixed, not masked with a higher memory limit. Native screenshots were visually inspected.
 
-Detailed current evidence is in docs/quick-tutorial-overnight-plan.md. Browser input/IndexedDB, a complete fresh opening and final scoped clean visual round remain pending. Special-encounter replay is outside the new quick/full resource-isolation claim.
+QT16 preventive oracle: inspection raised a possible mismatch between the Full Precise Tap caption's green Accuracy explanation and its highlighted preview. An actual rendered five-stage run confirms the ACC value uses `STAT_COLOR_UP`; the suspected defect is retracted, not recorded as a repaired failure. `tutorial_win_handoff.gd` now asserts that color during the real caption so a future neutral preview cannot pass on text/geometry alone.
+
+Final-source fresh browser opening/short completion, earned IndexedDB manual-checkpoint inspection, cold manual Load, optional choices/Skip, shared Help and narrow scrolling have passed. The final scoped visual round has no additional observed tutorial/help defect. A full browser Full victory and full campaign acceptance remain unverified. Detailed evidence and retained background-document pointer-lock rejections are documented in docs/quick-tutorial-overnight-plan.md. Special-encounter replay is outside the new quick/full resource-isolation claim.

@@ -1,0 +1,34 @@
+[    6365ms] [LOG] Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[    8744ms] [LOG] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[    9414ms] [LOG] Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support. @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[   10686ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[   10688ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[   10689ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  252047ms] [LOG] PROLOGUE_PHASE|opening_video @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  286417ms] [LOG] PROLOGUE_PHASE|opening_handoff @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  292667ms] [LOG] PROLOGUE_PHASE|spawn_exploration @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  292717ms] [LOG] PROLOGUE_PHASE|octopus_introduction @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  317818ms] [LOG] PROLOGUE_PHASE|octopus_reveal @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  319273ms] [LOG] PROLOGUE_PHASE|octopus_response @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  427705ms] [LOG] PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[] @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  433753ms] [LOG] PROLOGUE_PHASE|scripted_defeat @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  434518ms] [LOG] PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2 @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  743983ms] [LOG] PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[] @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  748161ms] [LOG] PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1 @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  774129ms] [LOG] PROLOGUE_HIT|move=Guard Bash|damage=7|hit=true|hp=989|effects=[] @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  777744ms] [LOG] PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0 @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  781905ms] [LOG] PROLOGUE_PHASE|octopus_aftermath @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  788267ms] [LOG] PROLOGUE_PHASE|recovery @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  812441ms] [LOG] PROLOGUE_PHASE|complete @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  959626ms] [LOG] Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  960062ms] [LOG] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  960395ms] [LOG] Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support. @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  961564ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  961566ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[  961567ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[ 1022999ms] [LOG] PROLOGUE_PHASE|complete @ https://underwatergame-4s0dabz1y-immortaldemongods-projects.vercel.app/index.js:451
+[ 1107098ms] The root document of this element is not valid for pointer lock.
+[ 1107173ms] The root document of this element is not valid for pointer lock.
+[ 1107350ms] The root document of this element is not valid for pointer lock.
+[ 1107495ms] The root document of this element is not valid for pointer lock.
+[ 1107658ms] The root document of this element is not valid for pointer lock.

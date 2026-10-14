@@ -1,0 +1,42 @@
+Retrieving project…
+Deploying immortaldemongods-projects/underwatergame
+Uploading [--------------------] (0.0B/3.2KB)
+Uploading [================----] (2.7KB/3.2KB)
+Uploading [====================] (3.2KB/3.2KB)
+Inspect: https://vercel.com/immortaldemongods-projects/underwatergame/CnpqygmpkrgKKgt2yEX74zWQE2dq [2s]
+Preview: https://underwatergame-csqy8a6e4-immortaldemongods-projects.vercel.app [2s]
+Building...
+Building...
+Building: Running build in Cleveland, USA (East) – cle1
+Building: Build machine configuration: 4 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Previous build caches not available.
+Building: Downloading 12 deployment files...
+Building: Running "vercel build"
+Building: Vercel CLI 62.7.0
+Building: Build Completed in /vercel/output [414ms]
+Building: Deploying outputs...
+[2K[1A[2K[GPreview: https://underwatergame-csqy8a6e4-immortaldemongods-projects.vercel.app [9s]
+Completing...
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_CnpqygmpkrgKKgt2yEX74zWQE2dq",
+    "url": "https://underwatergame-csqy8a6e4-immortaldemongods-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/immortaldemongods-projects/underwatergame/CnpqygmpkrgKKgt2yEX74zWQE2dq",
+    "readyState": "READY",
+    "target": null,
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_CnpqygmpkrgKKgt2yEX74zWQE2dq"
+  },
+  "message": "Deployment underwatergame-csqy8a6e4-immortaldemongods-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel inspect underwatergame-csqy8a6e4-immortaldemongods-projects.vercel.app --cwd /Users/tomriddle1/underwater-pr103-preview.GvR6A3 --scope immortaldemongods-projects",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod --cwd /Users/tomriddle1/underwater-pr103-preview.GvR6A3 --scope immortaldemongods-projects",
+      "when": "Promote to production"
+    }
+  ]
+}
