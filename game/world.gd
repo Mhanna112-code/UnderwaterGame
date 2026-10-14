@@ -3431,6 +3431,10 @@ func _on_battle_finished(result: String) -> void:
 		special_encounter_left = true
 	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
 	var route_blocker_id := _active_route_blocker_id
+	# Cleanup must precede every result-driven checkpoint, not trail it by
+	# a queued frame. Practice still owns temporary stats here; restoring its
+	# original campaign members below retains their prior earned state.
+	battle.clear_battle_effects()
 	battle.queue_free()
 	battle = null
 	battling = false
@@ -3594,6 +3598,7 @@ func _on_battle_finished(result: String) -> void:
 # the tutorial-loss playtest, which never goes through _on_battle_finished().
 func _free_lingering_test_battle() -> void:
 	if battle != null:
+		battle.clear_battle_effects()
 		battle.queue_free()
 		battle = null
 		battling = false

@@ -466,6 +466,13 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	remove_from_group("battle")
 	Whirlpool.set_battle_running(not get_tree().get_nodes_in_group("battle").is_empty())
+	clear_battle_effects()
+
+func clear_battle_effects() -> void:
+	# World may write a checkpoint in the result signal, before deferred
+	# queue_free() reaches _exit_tree. End the same effects synchronously;
+	# keep teardown idempotent for skips, practice restore and scene exits.
+	_revert_temp_buffs()
 	# Battle-only effects end here.
 	for entry in party:
 		var stats := entry.stats as CombatantStats

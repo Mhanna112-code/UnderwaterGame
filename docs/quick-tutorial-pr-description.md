@@ -21,11 +21,13 @@ Expanded checks: 235 actual World skip cases/checks and 249 maze-return checks; 
 
 Visual checks caught a zero-height narrow battle stage and offscreen Retry/Exit buttons despite functional passes. Final native starter, reference and responsive recovery screenshots have been inspected; wide/narrow starter and reference checks, 64 result-popup checks and Full QTE success/miss layout pass. The fresh combined focused runner and browser acceptance remain pending.
 
-Fresh review preview: https://underwatergame-pr103-quick-tutorial.vercel.app/ . Review steps: https://underwatergame-pr103-quick-tutorial.vercel.app/review.html . Exported gameplay source is `a75cfb39fd69a071d3857ff04501e1364554920b`, Godot 4.7.1; public build metadata identifies the source and pack. Anonymous HTTP access succeeds. This is a separate fresh export, not the repository's stale `docs/` game bundle. Real-browser and final scoped acceptance are still pending.
+Fresh review preview: https://underwatergame-pr103-quick-tutorial.vercel.app/ . Review steps: https://underwatergame-pr103-quick-tutorial.vercel.app/review.html . Exported gameplay source is `2308333212e4c2e0042d659a39b16ac5b75e0532`, Godot 4.7.1. Anonymous access succeeds and the served PCK hash matches the local export (`b97a2067…`). The latest export includes persistent guided Combat Help (H), with native H/Escape/Enter and lesson-wait preservation checks. This is not the repository's stale `docs/` bundle. Real-browser and final scoped acceptance are still pending.
 
 ## Before ready for review
 
-- Finish the second combined focused regression round on the final source. Expanded native skips, actual completion/loss/item/retry/exit, beam handoff and separate native-process cold loads have passed individually.
+Latest discovered persistence repair is being finalized: the real browser's first-course manual checkpoint captured ended Bleed/Evasion before deferred Battle teardown, while a later autosave was clean. Native red/green and cold-load evidence prove the repair by running existing cleanup before result serialization. Original replay effects and existing checkpoint fidelity are preserved; no blanket effect-wipe migration was kept. The refreshed preview must include this local repair before acceptance.
+
+- Finish the third combined focused regression round, now including guided Help. Two earlier rounds passed. Expanded native skips, actual completion/loss/item/retry/exit, beam handoff and separate-process cold loads have also passed individually.
 - Visually verify the final compact Full reading/preview repairs after the full curriculum exposed additional clipping at 720x480 and 360x640; retained long-script tests now select Full explicitly.
 - Exact-source Web preview, real browser interaction/storage, readable narrow/wide screenshots and a fresh full scoped visual-audit round with no observed defects.
 - Re-fetch relevant Marc changes before final delivery.

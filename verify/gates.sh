@@ -77,6 +77,20 @@ run() {
 
 # Public runner probes exercise log/exit handling without importing the
 # wrapper into a second script or starting every gameplay gate.
+cold_tutorial_roundtrip() {
+	local trace status slot
+	trace="$(mktemp "${TMPDIR:-/tmp}/underwater-tutorial-cold.XXXXXX")"
+	"$TIMEOUT_BIN" "$GATE_TIMEOUT_SECONDS" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_cold_load.gd -- "$@" >"$trace" 2>&1
+	status=$?
+	cat "$trace"
+	if [ "$status" -ne 0 ] || rg -q 'ERROR:|SCRIPT ERROR:' "$trace"; then
+		return 1
+	fi
+	slot="$(rg '^COLD_SLOT\|' "$trace" | tail -n 1 | cut -d'|' -f2)"
+	case "$slot" in ""|*[!0-9]*) return 1 ;; esac
+	"$TIMEOUT_BIN" "$GATE_TIMEOUT_SECONDS" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_cold_load.gd -- "--slot=$slot"
+}
+
 case "${1:-}" in
 	--quick-tutorial-only)
 		# Legacy scene verifiers can use slots 0/1/2. Require a separate
@@ -93,6 +107,10 @@ case "${1:-}" in
 		run "actual adversarial practice defeat, Retry and Exit" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd -- --loss
 		run "embedded maze practice return" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd -- --maze
 		run "initial loss result plumbing and voluntary lesson milestones" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_loss_choice.gd
+		run "real missed-dodge checkpoint effects and separate-process cold Load" cold_tutorial_roundtrip
+		run "visible Skip and separate-process cold Load" cold_tutorial_roundtrip --skip
+		run "downed legacy starter and separate-process cold Load" cold_tutorial_roundtrip --downed-starter
+		run "existing valid checkpoint resource fidelity" cold_tutorial_roundtrip --legacy-ended-effects
 		run "result actions remain reachable" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_result_layout.gd
 		run "normal W beam entry and saved quick completion" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_win_handoff.gd -- --world-lesson
 		run "retained full interactive curriculum and live stat Help" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_win_handoff.gd -- --full-lesson --help-steps

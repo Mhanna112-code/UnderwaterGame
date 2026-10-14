@@ -18,6 +18,8 @@ func _run() -> void:
 			slot = int(arg.trim_prefix("--slot="))
 	if slot >= 730000 and slot < 930000:
 		await _cold_load(slot)
+	elif OS.get_cmdline_user_args().has("--legacy-ended-effects"):
+		await _legacy_effects()
 	else:
 		await _prepare()
 	for failure in failures:
@@ -86,6 +88,10 @@ func _prepare() -> void:
 	var route := SaveManager.read_slot(slot).get("route_state", {}) as Dictionary
 	if not route.get("prologue_complete", false) or not route.get("tutorial_complete", false):
 		failures.append("QT11: actual starter did not save independent completion milestones")
+	for member in SaveManager.read_slot(slot).get("divers", []):
+		var stats := member.stats as Dictionary
+		if not (stats.get("statuses", {}) as Dictionary).is_empty() or int(stats.get("evasion_current", stats.evasion)) != int(stats.evasion):
+			failures.append("QT15: manual starter checkpoint captured battle effects before deferred scene cleanup")
 	if failures.is_empty():
 		var witness := FileAccess.open("user://quick_tutorial_cold_%d.json" % slot, FileAccess.WRITE)
 		witness.store_string(JSON.stringify({"slot": slot, "mode": expected}))
@@ -97,6 +103,7 @@ func _cold_load(slot: int) -> void:
 	if not FileAccess.file_exists(witness_path):
 		failures.append("QT11: no owned prepare witness; refuse to touch this slot")
 		return
+	var witness := JSON.parse_string(FileAccess.get_file_as_string(witness_path)) as Dictionary
 	if not await world._on_title_load_game(slot):
 		failures.append("QT11: cold Load rejected the completed starter save")
 		return
@@ -108,6 +115,14 @@ func _cold_load(slot: int) -> void:
 		failures.append("QT11: cold Load reopened training/combat or retained its control lock")
 	if world.route_state.prologue_phase != "complete" or not world.get_node("HUD").visible:
 		failures.append("QT11: cold Load did not return directly to the exploration UI")
+	if witness.get("mode") == "legacy_resource_fidelity":
+		var stats: CombatantStats = world.divers[1].stats
+		if stats.status_level("bleed") != 2 or stats.evasion_current != 0 or stats.hp != 7 or stats.oxygen != 53:
+			failures.append("QT15: cleanup fix must not reinterpret older valid checkpoint resources")
+	else:
+		for diver in world.divers:
+			if not (diver.stats.statuses as Dictionary).is_empty() or diver.stats.evasion_current != diver.stats.effective_evasion():
+				failures.append("QT15: cold Load restored ended tutorial effects or spent Evasion")
 	var position_before := (world.divers[world.active] as Diver).position
 	_key(KEY_W, true)
 	await create_timer(0.6).timeout
@@ -118,6 +133,35 @@ func _cold_load(slot: int) -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveManager.slot_path(slot)))
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(witness_path))
 		print("COLD_RESUMED|", slot, "|movable=true|no_opening=true|no_training=true")
+
+func _legacy_effects() -> void:
+	var slot := 830000 + Time.get_ticks_msec() % 100000
+	while SaveManager.slot_exists(slot):
+		slot += 1
+	world.route_state.prologue_complete = true
+	world.route_state.opening_video_seen = true
+	world.route_state.tutorial_complete = true
+	world.route_state.normalize_prologue_phase()
+	world.random_encounters_enabled = false
+	var member := world.divers[1] as Diver
+	member.stats.hp = 7
+	member.stats.oxygen = 53
+	member.stats.add_status("bleed", 2)
+	member.stats.evasion_current = 0
+	SaveManager.write_slot(slot, world._serialize_state())
+	var bytes_before := FileAccess.get_file_as_bytes(SaveManager.slot_path(slot))
+	await world._on_title_load_game(slot)
+	if member.stats.status_level("bleed") != 2 or member.stats.evasion_current != 0:
+		failures.append("QT15: valid legacy checkpoint effects were silently erased")
+	if member.stats.hp != 7 or member.stats.oxygen != 53:
+		failures.append("QT15: effect normalization must not heal earned HP/Oxygen")
+	if FileAccess.get_file_as_bytes(SaveManager.slot_path(slot)) != bytes_before:
+		failures.append("QT15: loading legacy effects rewrote the source checkpoint")
+	if failures.is_empty():
+		var witness := FileAccess.open("user://quick_tutorial_cold_%d.json" % slot, FileAccess.WRITE)
+		witness.store_string(JSON.stringify({"slot": slot, "mode": "legacy_resource_fidelity"}))
+		witness.close()
+		print("COLD_SLOT|", slot, "|mode=legacy_resource_fidelity|hp=7|oxygen=53")
 
 func _key(code: Key, pressed: bool) -> void:
 	var event := InputEventKey.new()

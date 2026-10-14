@@ -43,6 +43,10 @@ func _run() -> void:
 		(world.divers[index] as Diver).stats.hp = mini(7 - index, (world.divers[index] as Diver).stats.hp_max)
 		(world.divers[index] as Diver).stats.oxygen = 53 + index
 	(world.divers[0] as Diver).toggle_sonar()
+	# Valid older checkpoints preserve effects; optional practice must not
+	# clear their original resources while cleaning its borrowed fight.
+	(world.divers[1] as Diver).stats.add_status("bleed", 2, 2)
+	(world.divers[1] as Diver).stats.temporary_modifiers = {"accuracy": 1, "evasion": 0}
 	_expect(world._write_save() == OK, "QT6 fixture could not write its own checkpoint")
 	var saved := FileAccess.get_file_as_bytes(checkpoint_path)
 	# Load the recovered fixture through the real title path. Merely closing
@@ -82,6 +86,7 @@ func _run() -> void:
 func _case(profile: String, phase: String, saved: PackedByteArray) -> void:
 	_used_practice_item = false
 	var resources := []
+	var effects := []
 	# The checkpoint has crossed JSON: its numeric values may be floats.
 	# Compare against the actual loaded inventory, not a differently typed literal.
 	var inventory_before := world.inventory.duplicate(true)
@@ -89,6 +94,7 @@ func _case(profile: String, phase: String, saved: PackedByteArray) -> void:
 	for diver in world.divers:
 		var stats: CombatantStats = diver.stats
 		resources.append([stats.hp, stats.oxygen, stats.xp, stats.evasion_current])
+		effects.append([stats.statuses.duplicate(true), stats.temporary_modifiers.duplicate(true)])
 		members.append((diver as Diver).campaign_member_state())
 	world.inventory_menu.open()
 	await process_frame
@@ -162,6 +168,7 @@ func _case(profile: String, phase: String, saved: PackedByteArray) -> void:
 	for index in members.size():
 		var diver := world.divers[index] as Diver
 		_expect(diver.stats == members[index].stats, "QT6: original earned stats not restored after %s/%s" % [profile, phase])
+		_expect(diver.stats.statuses == effects[index][0] and diver.stats.temporary_modifiers == effects[index][1], "QT6/QT15: practice cleanup erased original campaign effects")
 		_expect([diver.stats.hp, diver.stats.oxygen, diver.stats.xp, diver.stats.evasion_current] == resources[index], "QT6: restored resources changed after %s/%s" % [profile, phase])
 		if [diver.stats.hp, diver.stats.oxygen, diver.stats.xp, diver.stats.evasion_current] != resources[index]:
 			print("PRACTICE_RESOURCE_DIAGNOSTIC|", index, "|expected=", resources[index], "|actual=", [diver.stats.hp, diver.stats.oxygen, diver.stats.xp, diver.stats.evasion_current])

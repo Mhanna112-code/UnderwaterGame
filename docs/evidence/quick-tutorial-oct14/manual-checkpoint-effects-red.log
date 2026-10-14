@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+ERROR: QT15: manual starter checkpoint captured battle effects before deferred scene cleanup
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_cold_load.gd:24)
+       [1] _prepare (res://verify/tutorial_cold_load.gd:93)
+TUTORIAL COLD LOAD|failures=1
