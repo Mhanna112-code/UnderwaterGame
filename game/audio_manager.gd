@@ -144,16 +144,6 @@ func play_victory_music() -> void:
 func play_game_over_music() -> void:
 	play_music_once("game_over", GAME_OVER)
 
-func play_prologue_exploration_music() -> void:
-	play_authored_music_sequence("prologue_exploration", null, EXPLORATION_LOOP, -7.0, -7.0)
-
-func play_prologue_battle_music() -> void:
-	play_authored_music_sequence("prologue_battle", BATTLE_INTRO, BATTLE_LOOP, 0.0, -7.0)
-
-func play_prologue_victory_music() -> void:
-	# Quiet cue; World fades it locally, never the Music bus.
-	play_authored_music_sequence("prologue_victory", VICTORY_CANDIDATE_INTRO, VICTORY_LOOP, -9.0, -9.0)
-
 func play_cordys_music() -> void:
 	play_authored_music_sequence("cordys", FINAL_BOSS_INTRO, FINAL_BOSS_LOOP, -1.0, -4.5)
 

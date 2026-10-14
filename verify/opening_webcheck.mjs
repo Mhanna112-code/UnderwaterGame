@@ -166,70 +166,18 @@ try {
   await shot('02-mermaid');
   await waitPhase('spawn_exploration');
   if (timestamps.spawn_exploration - timestamps.opening_video < 33000) throw new Error('Mermaid opening was shortened instead of completing playback');
+  // OPEN-042: no free swim and no Angler. The Cordys introduction follows the
+  // opening directly, and swimming/looking under it starts nothing.
+  await waitPhase('octopus_introduction', 5000);
+  if (timestamps.octopus_introduction - timestamps.spawn_exploration > 2000) throw new Error('OPEN-042 Cordys introduction did not follow the opening directly');
   if (process.env.OPENING_IDLE_RECHECK === '1') {
-    await page.waitForTimeout(15000);
-    await shot('02a-idle-world');
-    if (phases.includes('angler')) throw new Error('OPEN-035 Angler started before any swimming');
-    for (const key of ['ArrowRight', 'ArrowLeft']) {
+    for (const key of ['w', 'ArrowRight', 'ArrowLeft']) {
       await page.keyboard.down(key);
       await page.waitForTimeout(800);
       await page.keyboard.up(key);
     }
-    if (phases.includes('angler')) throw new Error('OPEN-035 looking around started the Angler');
-    deliberateIdleMs = Date.now() - timestamps.spawn_exploration;
+    if (phases.includes('octopus_reveal')) throw new Error('OPEN-042 input under the introduction skipped to Cordys');
   }
-  // Keep keydown adjacent to the real handoff. A screenshot readback here
-  // can consume several seconds and hide the actual movement interval.
-  await page.keyboard.down('w');
-  freeSwimKeydown = Date.now();
-  if (phases.includes('angler')) throw new Error('OPEN-035 encounter started before swimming input');
-  await waitPhase('angler', 12000);
-  await page.keyboard.up('w');
-  freeSwimMs = timestamps.angler - freeSwimKeydown;
-  if (freeSwimMs < 4000) throw new Error('OPEN-035 actual swimming interrupts before four seconds');
-  // Wall time alone cannot prove displacement under renderer slowdown.
-  // Native displacement plus the dedicated continuous browser recording prove
-  // actual swimming; this complete-flow gate pins the minimum and two-minute cap.
-  await page.waitForTimeout(700);
-  await shot('03-angler');
-  await attack('03a-angler');
-
-  // ANGLE-003: first real Electric Touch deals 1, not a guaranteed kill.
-  // Wait for an actual next-turn Attack menu, then use its ordinary move.
-  await page.waitForTimeout(1800);
-  await shot('03b-nonlethal-angler');
-  if (phases.includes('octopus_introduction')) throw new Error('ANGLE-003 Electric Touch still forced an opening one-shot');
-  const nextTurnDeadline = Date.now() + 18000;
-  let nextTurnReady = false;
-  while (!nextTurnReady && Date.now() < nextTurnDeadline) {
-    await shot('03c-next-turn');
-    const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03c-next-turn.png')], { encoding: 'utf8' }));
-    nextTurnReady = rows.some(row => /Pick a move/i.test(row.text));
-    if (!nextTurnReady) await page.waitForTimeout(500);
-  }
-  if (!nextTurnReady) throw new Error('ANGLE-003 nonlethal attack did not return usable next-turn controls');
-  await attack('03d-second-angler-action');
-  await waitPhase('angler_victory', 12000);
-  await page.waitForTimeout(350);
-  await shot('03e-victory-beat');
-  let bridgeRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03e-victory-beat.png')], { encoding: 'utf8' }));
-  if (!bridgeRows.some(row => /^Victory$/i.test(row.text.trim())) || !bridgeRows.some(row => /Angler.*defeated/i.test(row.text))) throw new Error('VICT-001 real Angler kill has no readable victory beat');
-  await waitPhase('octopus_notice', 5000);
-  await page.waitForTimeout(350);
-  await shot('03f-victory-noticed');
-  bridgeRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03f-victory-noticed.png')], { encoding: 'utf8' }));
-  if (!bridgeRows.some(row => /victory.*not gone unnoticed/i.test(row.text))) throw new Error('VICT-002 victory-to-threat connection unreadable');
-  await waitPhase('octopus_omen', 5000);
-  await page.waitForTimeout(350);
-  await shot('03g-something-stirs');
-  bridgeRows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [path.join(output, '03g-something-stirs.png')], { encoding: 'utf8' }));
-  if (!bridgeRows.some(row => /Something stirs in the deep/i.test(row.text))) throw new Error('VICT-002 suspense omen unreadable');
-  await waitPhase('octopus_introduction', 5000);
-  sourcePresentationEvents = await page.evaluate(() => window.underwaterPresentationEvents);
-  const sourceTimes = Object.fromEntries(sourcePresentationEvents.filter(event => event.line.startsWith('PROLOGUE_PHASE|')).map(event => [event.line.split('|')[1], event.time]));
-  if (['angler_victory', 'octopus_notice', 'octopus_omen', 'octopus_introduction'].some(phase => !sourceTimes[phase])) throw new Error('Missing browser-source phase timing oracle');
-  const bridgeMs = sourceTimes.octopus_introduction - sourceTimes.angler_victory;
-  if (bridgeMs < 5500 || bridgeMs > 7500 || sourceTimes.octopus_notice - sourceTimes.angler_victory < 2000 || sourceTimes.octopus_omen - sourceTimes.octopus_notice < 1700 || sourceTimes.octopus_introduction - sourceTimes.octopus_omen < 1700) throw new Error('VICT-002 victory/suspense bridge is abrupt or overlong: ' + bridgeMs);
   await page.waitForTimeout(6000);
   await shot('04-octopus-introduction');
   await waitPhase('octopus_response');
@@ -325,7 +273,7 @@ try {
   engagedSeconds = elapsedSeconds - deliberateIdleMs / 1000;
   postControlVerificationSeconds = elapsedSeconds - controlReturnedSeconds;
   console.log(`Normal browser New Game to control: ${controlReturnedSeconds}s; engaged=${engagedControlSeconds}s; deliberate idle/look=${deliberateIdleMs / 1000}s; post-control screenshot/OCR=${postControlVerificationSeconds}s; raw through verification=${elapsedSeconds}s`);
-  const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'angler', 'angler_victory', 'octopus_notice', 'octopus_omen', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
+  const expected = ['opening_video', 'opening_handoff', 'spawn_exploration', 'octopus_introduction', 'octopus_reveal', 'octopus_response', 'scripted_defeat', 'octopus_aftermath', 'recovery', 'complete'];
   if (phases.join(',') !== expected.join(',')) throw new Error('Unexpected/duplicate public journey phases');
   if (process.env.OPENING_ESCAPE_RECHECK === '1') {
     // ESC-001/002/005: natural swimming rolls, actual Run and actual R input.

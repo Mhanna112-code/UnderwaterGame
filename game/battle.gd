@@ -13,7 +13,6 @@ const BOSS_LAB_SCENE := preload("res://art/deep_zone/Broken_Office.fbx")
 const PrologueOctopusScript := preload("res://game/prologue_octopus.gd")
 
 signal finished(result: String)     # "won", "fled", or "lost"
-signal prologue_angler_defeated
 signal prologue_phase_changed(phase: String)
 signal prologue_strike_resolved(move_name: String, target_name: String, result: Dictionary)
 # Emitted once a party actor has stepped in, faced its target and started its
@@ -65,10 +64,8 @@ const PUPPET_WAVES := [
 var _puppet_wave := 0
 var _puppet_completed_xp := 0
 
-# Dedicated first-run fight: real attacks only, one fragile Angler, and a pause
-# at defeat so World can reveal Cordys. Never mutates shared Angler tuning.
-var prologue_angler_encounter := false
-var _prologue_angler_interrupted := false
+# Dedicated first-run fight (encounter_source "prologue_octopus"): the party
+# faces Cordys straight after the cinematic introduction, with no grunt first.
 var prologue_octopus_encounter := false
 var _prologue_response_resolved := false
 var _prologue_strike_index := 0
@@ -329,9 +326,12 @@ var _qte_success := false
 # Cleared by Enter in _unhandled_input() to release _tutorial_show_step()'s wait loop.
 var _tutorial_awaiting_enter := false
 var _tutorial_continue_btn: Button
-# Set only by an explicit tutorial skip, separate from _busy.
+# Set only by an explicit skip (tutorial, or dev mode), separate from _busy.
 var _skip_tutorial_requested := false
 const SKIP_TUTORIAL_TEXT := "Skipping the tutorial fight."
+const DEV_SKIP_TEXT := "Dev mode: skipping the fight."
+# The one log line allowed through once a skip starts.
+var _skip_line := SKIP_TUTORIAL_TEXT
 
 # Subset of a spell def read by _register_stat_effects(), keyed by its move-menu name.
 func _spell_preview_move(def: Dictionary, spell_id: String) -> Dictionary:
@@ -429,7 +429,7 @@ func _unlock_bonus() -> float:
 	return UNLOCK_BONUS_SOME
 
 func _with_unlock_bonus(s: CombatantStats) -> CombatantStats:
-	if tutorial_encounter or prologue_angler_encounter or s == null:
+	if tutorial_encounter or s == null:
 		return s
 	var k := 1.0 + _unlock_bonus()
 	s.hp_max = int(round(float(s.hp_max) * k))
@@ -469,6 +469,7 @@ func _ready() -> void:
 				_register_stat_effects(_spell_preview_move(SpellTree.SPELL_TREES[model_name][branch][spell_id], String(spell_id)))
 
 	layer = 10
+	prologue_octopus_encounter = encounter_source == "prologue_octopus"
 	if encounter_source == "maze_puppets":
 		ordinary_enemy_ids.assign(PUPPET_WAVES[0])
 	_build_party()
@@ -485,6 +486,8 @@ func _ready() -> void:
 			_begin_boss_encounter()
 	elif encounter_source == "maze_cordys":
 		_begin_campaign_cordys()
+	elif prologue_octopus_encounter:
+		_begin_prologue_octopus()
 	else:
 		var intro := encounter_intro_override if not encounter_intro_override.is_empty() else encounter_intro(enemies)
 		# Only a real item reward may promise an item; authored intros and
@@ -825,28 +828,11 @@ func _begin_campaign_cordys() -> void:
 	actor.play("idle")
 	_advance_turn()
 
-# Replaces only the fallen enemy and its card; stage, party and UI stay.
-func reveal_prologue_octopus() -> void:
-	if prologue_octopus_encounter:
-		return
-	_busy = true
-	_audio_call(&"fade_music_out", [0.15])
-	# Short hold before the reveal; the film already built anticipation.
-	await get_tree().create_timer(0.25).timeout
-	prologue_angler_encounter = false
-	prologue_octopus_encounter = true
-	encounter_source = "prologue_octopus"
-	for old_enemy in enemies:
-		if old_enemy.has("actor") and is_instance_valid(old_enemy.actor):
-			(old_enemy.actor as Node).queue_free()
-		if old_enemy.has("card") and is_instance_valid(old_enemy.card):
-			(old_enemy.card as Control).queue_free()
-	enemies.clear()
-	_clear_all_stat_preview()
-	_selected_move_panel.visible = false
-	(_player_stats_ui.panel as Control).visible = false
+# Opening Cordys stage: compact grounded party, dark water and a rim light.
+# Built with the stage so the first rendered frame already frames Cordys.
+func _build_prologue_octopus(vp: SubViewport) -> void:
 	var cordys := PrologueOctopusScript.new() as Node3D
-	_stage_vp.add_child(cordys)
+	vp.add_child(cordys)
 	cordys.position = Vector3(3.6, 0.0, -0.6)
 	var party_center := Vector3.ZERO
 	for index in range(party.size()):
@@ -871,15 +857,12 @@ func reveal_prologue_octopus() -> void:
 	stats.defense = 0
 	stats.immune_to_stat_loss = true   # bosses shrug off stat-lowering effects
 	stats.fill()
-	var enemy := {
+	enemies.append({
 		"kind": "enemy", "stats": stats, "display_name": "Cordys",
 		"actor": cordys, "home_pos": cordys.position,
 		"home_rot": cordys.rotation.y, "xp_reward": 0,
-	}
-	enemies.append(enemy)
-	_build_overhead_bar(enemy)
-	_refresh_all_bars()
-	for child in _stage_vp.get_children():
+	})
+	for child in vp.get_children():
 		if child is WorldEnvironment:
 			var environment := (child as WorldEnvironment).environment
 			environment.background_color = Color("06151f")
@@ -889,16 +872,30 @@ func reveal_prologue_octopus() -> void:
 	rim.rotation_degrees = Vector3(-25.0, 150.0, 0.0)
 	rim.light_color = Color("9cbfff")
 	rim.light_energy = 1.35
-	_stage_vp.add_child(rim)
+	vp.add_child(rim)
+	_frame_stage_camera()
+
+# The cinematic introduction hands straight to Cordys's reveal; the party then
+# answers first.
+func _begin_prologue_octopus() -> void:
+	_busy = true
+	_set_all_buttons(false)
+	_selected_move_panel.visible = false
+	(_player_stats_ui.panel as Control).visible = false
+	# No Run/Items in this scripted fight, even greyed out during the reveal.
+	run_btn.visible = false
+	items_btn.visible = false
+	var cordys := enemies[0].actor as Node3D
 	_audio_call(&"play_cordys_music")
 	_log("Cordys.")
-	_frame_stage_camera()
 	var reveal_length := float(cordys.call("play", "reveal"))
 	await get_tree().create_timer(maxf(1.1, reveal_length)).timeout
+	if not is_instance_valid(cordys):
+		return
 	cordys.call("play", "idle")
 	prologue_phase_changed.emit("octopus_response")
 	_queue.clear()
-	_queue.append(enemy)
+	_queue.append(enemies[0])
 	_acting = party[0]
 	_refresh_queue_row()
 	_start_party_turn(_acting)
@@ -984,10 +981,6 @@ func _top_of(a: Node3D) -> Vector3:
 
 func _bottom_of(a: Node3D) -> Vector3:
 	return a.global_position + Vector3(0.0, float(a.call("foot_offset")), 0.0)
-
-func get_battlefield_texture() -> Texture2D:
-	# Read-only presentation for an interstitial; exclude stale combat controls.
-	return _stage_vp.get_texture() if is_instance_valid(_stage_vp) else null
 
 # Stage-viewport projection scaled/offset into CanvasLayer pixels; falls back
 # to the stage centre when there's no camera or the point is behind it.
@@ -1140,6 +1133,9 @@ func _build_stage() -> void:
 	# Enemies: random count, stats rolled near the party's current average.
 	var lvl := int((party[0].stats as CombatantStats).level) if not party.is_empty() else 1
 	var ref_stats := _party_average_stats()
+	if prologue_octopus_encounter:
+		_build_prologue_octopus(vp)
+		return
 	if encounter_source == "maze_cordys":
 		var cordys := CampaignCordys.new()
 		cordys.position = Vector3(4.5, 0.0, -1.0)
@@ -1164,11 +1160,11 @@ func _build_stage() -> void:
 		ref_stats.hp_max = maxi(1, int(round(float(ref_stats.hp_max) * 0.5)))
 		ref_stats.defense = int(round(float(ref_stats.defense) * 0.5))
 	# Special and tutorial encounters are always one diver vs one grunt.
-	var use_revealed_roster := not ordinary_enemy_ids.is_empty() and not (boss_encounter or special_encounter or tutorial_encounter or prologue_angler_encounter or guardian_encounter)
+	var use_revealed_roster := not ordinary_enemy_ids.is_empty() and not (boss_encounter or special_encounter or tutorial_encounter or guardian_encounter)
 	var count := 1
 	if use_revealed_roster:
 		count = ordinary_enemy_ids.size()
-	elif not (boss_encounter or special_encounter or tutorial_encounter or prologue_angler_encounter):
+	elif not (boss_encounter or special_encounter or tutorial_encounter):
 		count = ordinary_enemy_count_for_roll(lvl, randf(), guardian_encounter)
 	if boss_encounter:
 		var boss := TethysBoss.new()
@@ -1209,7 +1205,7 @@ func _build_ordinary_enemy_wave(vp: SubViewport, enemy_z: float, lvl: int, ref_s
 		if use_revealed_roster:
 			g = actor_for_enemy_id(ordinary_enemy_ids[i])
 		else:
-			g = actor_for_enemy_id("angler") if tutorial_encounter or prologue_angler_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
+			g = actor_for_enemy_id("angler") if tutorial_encounter else (_guardian_actor() if guardian_encounter else _ordinary_actor())
 		# Special encounters use a deeper lane. Lab blockers get a distinct lane so
 		# they don't interleave with the party row.
 		var enemy_x := _spread(i, count, 2.3) + 0.6
@@ -1235,10 +1231,6 @@ func _build_ordinary_enemy_wave(vp: SubViewport, enemy_z: float, lvl: int, ref_s
 		party_centre /= maxf(1.0, float(party_actor_count))
 		g.face_toward(party_centre)
 		var st: CombatantStats = _with_unlock_bonus(g.make_stats(ref_stats, lvl))
-		if prologue_angler_encounter:
-			# Shorter fight only; keep the species' other stats.
-			st.hp_max = 3
-			st.fill()
 		if encounter_source == "maze_puppets" and _puppet_wave == 0:
 			# First wave only: every puppet has the same fixed HP; other stats stay per species.
 			st.hp_max = PUPPET_HP
@@ -1273,31 +1265,13 @@ func _build_ordinary_enemy_wave(vp: SubViewport, enemy_z: float, lvl: int, ref_s
 	# Tutorials: no knockouts during the guided part.
 	if tutorial_encounter:
 		_set_tutorial_guard(true)
-	_apply_dev_statuses()
 	_frame_stage_camera()
 
 # Set by whoever starts the fight (World or the maze) when --dev is on.
 var dev_mode := false
 
-# Dev mode (--dev): every status on every combatant in ordinary fights (never
-# bosses or scripted fights). Level 1, 9 turns (Stun: 1).
-const DEV_STATUSES := [["blindness", 1, 9], ["stun", 1, 1], ["evasion_down", 1, 9],
-	["defense_down", 1, 9], ["bleed", 1, 0], ["poison", 1, 9]]
-
-func _apply_dev_statuses() -> void:
-	if not dev_mode and (world == null or not bool(world.get("dev_mode"))):
-		return
-	if boss_encounter or encounter_source in ["maze_cordys", "maze_puppets", "lab_boss", "prologue_octopus"] \
-		or tutorial_encounter or special_encounter or guardian_encounter \
-		or prologue_angler_encounter or prologue_octopus_encounter:
-		return
-	for entry in party + enemies:
-		var s := (entry as Dictionary).get("stats") as CombatantStats
-		if s == null or s.hp <= 0:
-			continue
-		for st in DEV_STATUSES:
-			s.add_status(String(st[0]), int(st[1]), int(st[2]))
-		_refresh_bar(entry)
+func _is_dev() -> bool:
+	return dev_mode or (world != null and bool(world.get("dev_mode")))
 
 const TUTORIAL_ENEMY_HP := 10
 const TUTORIAL_ENEMY_DEFENSE := 3
@@ -1892,6 +1866,13 @@ func _build_ui() -> void:
 		_skip_tutorial_flash_tween.set_loops()
 		_skip_tutorial_flash_tween.tween_property(skip_tutorial_btn, "modulate", Color(1.0, 0.45, 0.35), 0.5)
 		_skip_tutorial_flash_tween.tween_property(skip_tutorial_btn, "modulate", Color.WHITE, 0.5)
+	elif _is_dev() and not prologue_octopus_encounter:
+		# Dev mode: the same slot ends any other fight as a win (no XP), so
+		# rewards and boss progress still happen. The scripted prologue fight is excluded.
+		skip_tutorial_btn = _menu_button("Skip Fight (Dev)", "")
+		skip_tutorial_btn.focus_mode = Control.FOCUS_NONE
+		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed.bind("won", DEV_SKIP_TEXT))
+		_place_skip_tutorial_btn_last(main_menu)
 
 	_selected_move_panel = PanelContainer.new()
 	# IGNORE: visible for the rest of the fight, including minigames.
@@ -2035,7 +2016,7 @@ func _fit_panel_height() -> void:
 					_stage_container.offset_top = maxf(_stage_container.offset_top, card.get_global_rect().end.y + 8.0)
 
 func _uses_narrow_info_band() -> bool:
-	return get_viewport().get_visible_rect().size.y <= 500.0 and not (tutorial_encounter or special_encounter or prologue_angler_encounter or prologue_octopus_encounter or boss_encounter)
+	return get_viewport().get_visible_rect().size.y <= 500.0 and not (tutorial_encounter or special_encounter or prologue_octopus_encounter or boss_encounter)
 
 # Widen the party flow into rows when a tall bottom panel would cover the
 # stacked cards; stops before the enemy column. Uses minimum sizes because
@@ -2582,7 +2563,7 @@ func _clear_support_preview() -> void:
 
 func _log(text: String) -> void:
 	# Once skipped, only the skip line shows; an interrupted step can't overwrite it.
-	if _skip_tutorial_requested and text != SKIP_TUTORIAL_TEXT:
+	if _skip_tutorial_requested and text != _skip_line:
 		return
 	log_label.clear()
 	log_label.add_text(text)
@@ -2960,18 +2941,6 @@ func _advance_turn() -> void:
 		_tutorial_caption.visible = false
 		call_deferred("_fit_panel_height")
 	if _living(enemies).is_empty():
-		if prologue_angler_encounter:
-			if not _prologue_angler_interrupted:
-				_prologue_angler_interrupted = true
-				_busy = true
-				_set_all_buttons(false)
-				main_menu.visible = false
-				move_menu.visible = false
-				item_menu.visible = false
-				target_menu.visible = false
-				_log("The Angler falls. The water goes still.")
-				prologue_angler_defeated.emit()
-			return
 		if encounter_source == "maze_puppets":
 			# A mutual knockout is not permission to progress/reward a wave.
 			if _living(party).is_empty():
@@ -3174,7 +3143,7 @@ func _start_party_turn(actor: Dictionary) -> void:
 		_intro_hold = ""
 	_log(turn_text)
 	_set_all_buttons(true)
-	if prologue_angler_encounter or prologue_octopus_encounter:
+	if prologue_octopus_encounter:
 		run_btn.visible = false
 		items_btn.visible = false
 	# Run stays disabled for the whole tutorial fight.
@@ -5028,7 +4997,7 @@ func _do_enemy_turn(actor: Dictionary, forced_target: Dictionary = {}) -> void:
 				return
 
 	var enemy_actor := actor.actor as Goblin
-	var scripted_turn := not forced_target.is_empty() or tutorial_encounter or prologue_angler_encounter
+	var scripted_turn := not forced_target.is_empty() or tutorial_encounter
 	# Outside scripted fights: take a guaranteed kill, never target a DoT-doomed diver.
 	var lethal := {} if scripted_turn else lethal_enemy_choice(actor.stats as CombatantStats, enemy_actor.available_moves(), alive_party)
 	var decision: Dictionary
@@ -5499,13 +5468,15 @@ func _lose() -> void:
 	_revert_temp_buffs()
 	finished.emit("lost")
 
-func _on_skip_tutorial_pressed() -> void:
+# result "skipped" (tutorial) or "won" (dev-mode skip of any other fight).
+func _on_skip_tutorial_pressed(result := "skipped", line := SKIP_TUTORIAL_TEXT) -> void:
 	# Works mid-step too (the button is only clickable when skipping is allowed);
 	# the interrupted step's coroutine is muted by the _skip_tutorial_requested
 	# guards in _log, _process, _advance_turn, _win and _lose.
 	if _skip_tutorial_requested:
 		return
 	_skip_tutorial_requested = true
+	_skip_line = line
 	_busy = true
 	_tutorial_awaiting_enter = false
 	_set_all_buttons(false)
@@ -5521,10 +5492,10 @@ func _on_skip_tutorial_pressed() -> void:
 	_selected_move_panel.visible = false
 	(_player_stats_ui.panel as Control).visible = false
 	(_enemy_stats_ui.panel as Control).visible = false
-	_log(SKIP_TUTORIAL_TEXT)
+	_log(line)
 	await get_tree().create_timer(_log_read_delay()).timeout
 	_revert_temp_buffs()
-	finished.emit("skipped")
+	finished.emit(result)
 
 # Bosses (Tethys, Cordys) can't be run from; Run shows but stays disabled.
 func _no_escape() -> bool:

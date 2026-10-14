@@ -33,24 +33,25 @@ func _run() -> void:
 		var revealed_camera := world.cam.global_transform
 		while world.route_state.prologue_phase == "opening_handoff" and Time.get_ticks_msec() < deadline:
 			await process_frame
-		_expect(not paused and world.get_node("HUD").visible, "TITLE-002 title does not restore visible controls and world input")
+		# The title hands straight to the Cordys introduction: no free swim.
+		_expect(world.get_node("HUD").visible, "TITLE-002 title does not restore the visible HUD")
+		_expect(world.route_state.prologue_phase == "octopus_introduction" and get_first_node_in_group("prologue_cinematic") != null,
+			"TITLE-002 title did not hand to the Cordys introduction (phase %s)" % world.route_state.prologue_phase)
 		_expect(world.route_state.opening_video_seen and not world.route_state.prologue_complete, "TITLE-006 title corrupts durable milestones")
 		for frame in range(3):
 			await physics_frame
 		_expect(revealed_camera.origin.distance_to(world.cam.global_position) < 0.03 and revealed_camera.basis.is_equal_approx(world.cam.global_basis), "TITLE-007 camera zooms/reorients after the title reveal")
-		await create_timer(1.0).timeout
-		_expect(not world.battling, "TITLE-002 input time during title banks premature combat")
-		var started := Time.get_ticks_msec()
 		_key(KEY_W, true)
-		var displacement := 0.0
-		while not world.battling and Time.get_ticks_msec() - started < 10000:
-			await physics_frame
-			displacement = maxf(displacement, origin.distance_to(diver.position))
+		await create_timer(1.0).timeout
 		_key(KEY_W, false)
-		var elapsed := (Time.get_ticks_msec() - started) / 1000.0
-		print("TITLE_WORLD|swimming_seconds=%.3f|displacement_m=%.3f" % [elapsed, displacement])
-		_expect(displacement > 3.0 and elapsed >= 4.0 and elapsed < 9.0, "TITLE-002 real swimming is blocked, premature or stalled")
-		_expect(world.route_state.encounter_source == "prologue_angler", "TITLE-002 title starts wrong encounter")
+		_expect(not world.battling and diver.position.is_equal_approx(origin), "TITLE-002 swimming under the Cordys introduction moves/fights")
+		var movie := get_first_node_in_group("prologue_cinematic")
+		if movie != null:
+			movie.call("pause_introduction_for_test")
+			await process_frame
+		_expect(world.battling and world.battle != null and world.route_state.encounter_source == "prologue_octopus", "TITLE-002 introduction starts wrong encounter")
+		if world.battle != null:
+			_expect(world.battle.enemies.size() == 1 and String(world.battle.enemies[0].display_name) == "Cordys", "TITLE-002 prologue battle is not Cordys alone")
 	world.queue_free()
 	await process_frame
 	paused = false
