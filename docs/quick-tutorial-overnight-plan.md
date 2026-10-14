@@ -2,7 +2,7 @@
 
 ## Current status (morning review candidate)
 
-Draft PR [#103](https://github.com/Mhanna112-code/UnderwaterGame/pull/103), gameplay/export source `bda7ff68634d1a4557e7849538d9e599f61530f4`. Fresh [playtest](https://underwatergame-pr103-quick-tutorial.vercel.app/) and [review guide](https://underwatergame-pr103-quick-tutorial.vercel.app/review.html) are reachable anonymously. Hosted PCK SHA256 `606dd91965fb5b02d8a42530aedcd6cf870211fb44fe49f2337ae46d1509c99b` matches the local export (126,226,636 bytes). Canonical production and main are unchanged.
+Ready-for-review PR [#103](https://github.com/Mhanna112-code/UnderwaterGame/pull/103), gameplay/export source `bda7ff68634d1a4557e7849538d9e599f61530f4`. Fresh [playtest](https://underwatergame-pr103-quick-tutorial.vercel.app/) and [review guide](https://underwatergame-pr103-quick-tutorial.vercel.app/review.html) are reachable anonymously. Hosted PCK SHA256 `606dd91965fb5b02d8a42530aedcd6cf870211fb44fe49f2337ae46d1509c99b` matches the local export (126,226,636 bytes). Canonical production and main are unchanged.
 
 Four combined focused native rounds passed. Final-source legacy downed-party cold preparation and separate-process Load also passed. Individual real-action skips, actual Quick/Full completion and temporary item use, adversarial damage-driven loss/Retry/Exit, embedded-maze return, separate-process native cold Load, shared stat-reference ownership and optional ability camera return have passed. Rendered inspection caught and repaired additional compact-layout failures; final compact Full captures passed, with highlighted numeric teaching retained in scrollable pages.
 
