@@ -1878,12 +1878,25 @@ func _build_ui() -> void:
 	# (_place_skip_tutorial_btn_last()). No hint: it wouldn't fit.
 	if tutorial_encounter:
 		_tutorial_action_row = HFlowContainer.new()
+		_tutorial_action_row.add_theme_constant_override("h_separation", 12)
 		col.add_child(_tutorial_action_row)
 		skip_tutorial_btn = _menu_button("Skip Tutorial", "")
+		skip_tutorial_btn.custom_minimum_size.x = 140
 		# No focus, so Enter (caption continue) can't trigger a skip.
 		skip_tutorial_btn.focus_mode = Control.FOCUS_NONE
 		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
 		_place_skip_tutorial_btn_last(main_menu)
+		combat_help_btn.reparent(_tutorial_action_row)
+		combat_help_btn.text = "Combat Help (H)"
+		combat_help_btn.custom_minimum_size.x = 156
+		# Caption Enter must continue the lesson after closing Help, not reopen
+		# the focused button. H keeps Help directly keyboard-accessible.
+		combat_help_btn.focus_mode = Control.FOCUS_NONE
+		var help_shortcut := Shortcut.new()
+		var help_key := InputEventKey.new()
+		help_key.keycode = KEY_H
+		help_shortcut.events = [help_key]
+		combat_help_btn.shortcut = help_shortcut
 		# Flashes all tutorial; separate from _tutorial_flash_tween.
 		_skip_tutorial_flash_tween = create_tween()
 		_skip_tutorial_flash_tween.set_loops()
@@ -2240,7 +2253,7 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	# Long optional pages still show their stat-preview panels, but reading
 	# must not stack inactive move/target menus beyond a small window. The
 	# scrollable text preserves every authored explanation and its highlights.
-	var compact_full := tutorial_encounter and not special_encounter and not is_quick_tutorial() and (get_viewport().get_visible_rect().size.x < 900.0 or get_viewport().get_visible_rect().size.y <= 500.0)
+	var compact_full := tutorial_encounter and not special_encounter and not is_quick_tutorial() and (get_viewport().get_visible_rect().size.x < 600.0 or get_viewport().get_visible_rect().size.y <= 500.0)
 	var saved_menus := {}
 	if compact_full:
 		for menu in [main_menu, move_menu, item_menu, target_menu]:
@@ -2296,7 +2309,7 @@ var _caption_focus_height := 0.0     # tallest panel height seen during focus
 
 func _caption_focus_controls() -> Array:
 	return [_levelup_caption, _selected_move_panel, (_player_stats_ui.panel as Control).get_parent(),
-		main_menu, move_menu, item_menu, target_menu, attack_btn, run_btn, items_btn, combat_help_btn]
+		main_menu, move_menu, item_menu, target_menu, attack_btn, run_btn, items_btn]
 
 func _enter_caption_focus() -> void:
 	if _caption_focus:
@@ -3303,6 +3316,8 @@ func _play_special_encounter_intro() -> void:
 		run_btn.disabled = true
 
 func _process(_delta: float) -> void:
+	if tutorial_encounter and combat_help_btn != null:
+		combat_help_btn.disabled = not _can_open_combat_reference()
 	# An interrupted tutorial step may still set a caption or open a menu.
 	if _skip_tutorial_requested:
 		_tutorial_caption.visible = false
@@ -3319,7 +3334,7 @@ func _process(_delta: float) -> void:
 		# Optional numeric teaching already has the highlighted attacker and
 		# enemy panels below. Do not draw duplicate overhead cards over the
 		# compressed stage or clip them behind the reading pane.
-		var focused_numbers := tutorial_encounter and not special_encounter and not is_quick_tutorial() and _tutorial_caption.visible and (get_viewport().get_visible_rect().size.x < 900.0 or get_viewport().get_visible_rect().size.y <= 500.0)
+		var focused_numbers := tutorial_encounter and not special_encounter and not is_quick_tutorial() and _tutorial_caption.visible and (get_viewport().get_visible_rect().size.x < 600.0 or get_viewport().get_visible_rect().size.y <= 500.0)
 		_party_status_column.visible = not focused_numbers
 		_enemy_status_column.visible = not focused_numbers
 		# Also hidden between back-to-back captions (Continue stays up until the
@@ -5686,8 +5701,11 @@ func _on_run() -> void:
 	_advance_turn()
 
 func _open_combat_reference() -> void:
-	if not _busy and not _qte_active and not _tutorial_awaiting_enter:
+	if _can_open_combat_reference() and not combat_reference.visible:
 		combat_reference.open()
+
+func _can_open_combat_reference() -> bool:
+	return not _skip_tutorial_requested and not _qte_active and ((not _busy and not _tutorial_awaiting_enter) or (tutorial_encounter and _tutorial_awaiting_enter))
 
 func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled

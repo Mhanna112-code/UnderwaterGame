@@ -8,11 +8,13 @@ var qtes := 0
 var captions := 0
 var results: Array[String] = []
 var _captured := {}
+var _help_verified := {}
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	root.size = Vector2i(1280, 720)
 	if OS.get_cmdline_user_args().has("--narrow"):
 		root.size = Vector2i(360, 640)
 	elif OS.get_cmdline_user_args().has("--short-window"):
@@ -57,7 +59,7 @@ func _run() -> void:
 				prior_caption = text
 				if text.split(" ", false).size() > 60:
 					failures.append("QT1: starter still blocks play with a long lecture caption")
-			if fight._tutorial_continue_btn.is_visible_in_tree():
+			if fight._tutorial_continue_btn.is_visible_in_tree() and not OS.get_cmdline_user_args().has("--help-steps"):
 				fight._tutorial_continue_btn.emit_signal("pressed")
 			else:
 				var enter := InputEventKey.new()
@@ -100,6 +102,14 @@ func _run() -> void:
 	quit(0 if failures.is_empty() else 1)
 
 func _capture(fight: Battle, beat: String) -> void:
+	if OS.get_cmdline_user_args().has("--help-steps") and beat == "dodge" and not _help_verified.has(beat):
+		_help_verified[beat] = true
+		await process_frame
+		if not fight.combat_help_btn.disabled or fight.combat_reference.visible or paused:
+			failures.append("QT14: Help must stay disabled during the live timing action")
+	if OS.get_cmdline_user_args().has("--help-steps") and not _help_verified.has(beat) and beat != "dodge":
+		_help_verified[beat] = true
+		await _help_at_step(fight, beat)
 	if not OS.get_cmdline_user_args().has("--capture") or _captured.has(beat):
 		return
 	_captured[beat] = true
@@ -116,3 +126,39 @@ func _capture(fight: Battle, beat: String) -> void:
 	var image := root.get_texture().get_image()
 	var label := "narrow" if OS.get_cmdline_user_args().has("--narrow") else ("short" if OS.get_cmdline_user_args().has("--short-window") else "wide")
 	image.save_png("res://docs/evidence/quick-tutorial-oct14/starter-%s-%s.png" % [label, beat])
+
+func _help_at_step(fight: Battle, beat: String) -> void:
+	var help := fight.combat_help_btn
+	if not help.is_visible_in_tree() or help.disabled:
+		failures.append("QT14: starter mentions Combat Help but hides/disables it at %s" % beat)
+		return
+	var step := fight._tutorial_step
+	var awaiting := fight._tutorial_awaiting_enter
+	var actor := fight._acting
+	var queue := fight._queue.duplicate()
+	var resources := []
+	for entry in fight.party:
+		resources.append([entry.stats.hp, entry.stats.oxygen, entry.stats.evasion_current])
+	if beat == "instruction":
+		var key := InputEventKey.new()
+		key.keycode = KEY_H
+		key.pressed = true
+		Input.parse_input_event(key)
+	else:
+		help.emit_signal("pressed")
+	await process_frame
+	await process_frame
+	if not fight.combat_reference.visible or not paused:
+		failures.append("QT14: visible tutorial Help does not open its real reference at %s" % beat)
+		return
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	Input.parse_input_event(escape)
+	await process_frame
+	if fight.combat_reference.visible or paused or fight._tutorial_step != step or fight._tutorial_awaiting_enter != awaiting or fight._acting != actor or fight._queue != queue:
+		failures.append("QT14: Help changed the tutorial wait/turn or failed to release ownership at %s" % beat)
+	for index in fight.party.size():
+		var stats: CombatantStats = fight.party[index].stats
+		if [stats.hp, stats.oxygen, stats.evasion_current] != resources[index]:
+			failures.append("QT14: tutorial reference changed combat resources")

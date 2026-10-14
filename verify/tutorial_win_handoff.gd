@@ -124,12 +124,16 @@ func _full_lesson(fight: Battle) -> void:
 	var deadline := Time.get_ticks_msec() + 180000
 	var last_state := ""
 	var captured := {}
+	var helped := {}
 	while results.is_empty() and Time.get_ticks_msec() < deadline:
 		var state := "%d|%s|%s|%s" % [fight._tutorial_step, fight._current_log_text(), fight._tutorial_caption.text, fight._tutorial_awaiting_enter]
 		if state != last_state:
 			print("LESSON|", state)
 			last_state = state
 		if fight._tutorial_awaiting_enter:
+			if OS.get_cmdline_user_args().has("--help-steps") and not helped.has(fight._tutorial_step):
+				helped[fight._tutorial_step] = true
+				await _full_help(fight)
 			var capture_key := "%d-caption" % fight._tutorial_step
 			if OS.get_cmdline_user_args().has("--capture") and not captured.has(capture_key) and DisplayServer.get_name() != "headless":
 				captured[capture_key] = true
@@ -202,6 +206,24 @@ func _full_lesson(fight: Battle) -> void:
 	await process_frame
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	quit(0 if findings.is_empty() else 1)
+
+func _full_help(fight: Battle) -> void:
+	var step := fight._tutorial_step
+	var actor := fight._acting
+	var queue := fight._queue.duplicate()
+	if not fight.combat_help_btn.is_visible_in_tree() or fight.combat_help_btn.disabled:
+		findings.append("QT14: full lesson hides/disables Help at stage %d" % step)
+		return
+	fight.combat_help_btn.emit_signal("pressed")
+	await process_frame
+	await process_frame
+	if not fight.combat_reference.visible or not paused:
+		findings.append("QT14: Full Help failed to open its real reference")
+		return
+	_press_key(KEY_ESCAPE)
+	await process_frame
+	if paused or fight.combat_reference.visible or fight._tutorial_step != step or not fight._tutorial_awaiting_enter or fight._acting != actor or fight._queue != queue:
+		findings.append("QT14: Full Help consumed a lesson wait/turn or retained pause")
 
 func _swim(pressed: bool) -> void:
 	var event := InputEventKey.new()

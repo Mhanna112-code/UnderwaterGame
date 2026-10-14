@@ -86,6 +86,7 @@ case "${1:-}" in
 		[ "$fails" -eq 0 ] || exit "$fails"
 		run "quick real move and dodge" "$GODOT" --headless --path "$QA_PATH" --script verify/quick_combat_lesson.gd
 		run "quick natural dodge timeout" "$GODOT" --headless --path "$QA_PATH" --script verify/quick_combat_lesson.gd -- --miss-dodge
+		run "guided Help and H/Enter preserve the real lesson wait" "$GODOT" --headless --path "$QA_PATH" --script verify/quick_combat_lesson.gd -- --help-steps
 		run "Battle and Inventory definitions and pause ownership" "$GODOT" --headless --path "$QA_PATH" --script verify/quick_tutorial.gd
 		run "real skip phase matrix" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd
 		run "real quick/full victory and temporary item use" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd -- --complete --use-item
@@ -94,7 +95,7 @@ case "${1:-}" in
 		run "initial loss result plumbing and voluntary lesson milestones" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_loss_choice.gd
 		run "result actions remain reachable" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_result_layout.gd
 		run "normal W beam entry and saved quick completion" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_win_handoff.gd -- --world-lesson
-		run "retained full interactive curriculum" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_win_handoff.gd -- --full-lesson
+		run "retained full interactive curriculum and live stat Help" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_win_handoff.gd -- --full-lesson --help-steps
 		run "explicit World Abilities and camera handoff" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_camera_handoff.gd
 		run "live full lesson QTE" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_qte.gd
 		run "starter Skip releases play without mandatory carousel" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip.gd

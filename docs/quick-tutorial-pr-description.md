@@ -21,13 +21,12 @@ Expanded checks: 235 actual World skip cases/checks and 249 maze-return checks; 
 
 Visual checks caught a zero-height narrow battle stage and offscreen Retry/Exit buttons despite functional passes. Final native starter, reference and responsive recovery screenshots have been inspected; wide/narrow starter and reference checks, 64 result-popup checks and Full QTE success/miss layout pass. The fresh combined focused runner and browser acceptance remain pending.
 
-**No updated tutorial Web preview has been published yet.** Any automatic deployment of the repository's existing `docs/` export does not prove these source changes are playable. A fresh exact-source preview remains an acceptance gate.
+Fresh review preview: https://underwatergame-pr103-quick-tutorial.vercel.app/ . Review steps: https://underwatergame-pr103-quick-tutorial.vercel.app/review.html . Exported gameplay source is `a75cfb39fd69a071d3857ff04501e1364554920b`, Godot 4.7.1; public build metadata identifies the source and pack. Anonymous HTTP access succeeds. This is a separate fresh export, not the repository's stale `docs/` game bundle. Real-browser and final scoped acceptance are still pending.
 
 ## Before ready for review
 
-- Expanded skip/callback, practice win/loss/item isolation, normal beam handoff, cold-save/reload and embedded-maze tests.
-- Reconcile applicable old tests with explicit quick/full profiles without weakening their behavioral oracles.
-- Complete regression checks after the PR 101 HUD integration.
+- Finish the second combined focused regression round on the final source. Expanded native skips, actual completion/loss/item/retry/exit, beam handoff and separate native-process cold loads have passed individually.
+- Visually verify the final compact Full reading/preview repairs after the full curriculum exposed additional clipping at 720x480 and 360x640; retained long-script tests now select Full explicitly.
 - Exact-source Web preview, real browser interaction/storage, readable narrow/wide screenshots and a fresh full scoped visual-audit round with no observed defects.
 - Re-fetch relevant Marc changes before final delivery.
 

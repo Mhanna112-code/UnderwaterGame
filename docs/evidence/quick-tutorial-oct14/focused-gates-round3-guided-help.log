@@ -1,0 +1,78 @@
+
+=== tutorial QA save isolation ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TUTORIAL_QA_DIRECTORY|/Users/tomriddle1/Library/Application Support/UnderwaterGameQA/quick-tutorial-oct14
+
+=== quick real move and dodge ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STARTER_CAPTION|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.
+Press  Space ,  Enter , or click Continue
+QUICK COMBAT LESSON|moves=1|qtes=1|captions=3|results=["won"]|failures=0
+
+=== quick natural dodge timeout ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STARTER_CAPTION|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.
+Press  Space ,  Enter , or click Continue
+QUICK COMBAT LESSON|moves=1|qtes=1|captions=3|results=["won"]|failures=0
+
+=== guided Help and H/Enter preserve the real lesson wait ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STARTER_CAPTION|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.
+Press  Space ,  Enter , or click Continue
+QUICK COMBAT LESSON|moves=1|qtes=1|captions=3|results=["won"]|failures=0
+
+=== Battle and Inventory definitions and pause ownership ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+QUICK TUTORIAL REFERENCE: 0 failure(s)
+
+=== real skip phase matrix ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+SKIP_CASE|quick|intro|results=["skipped"]
+SKIP_CASE|quick|move|results=["skipped"]
+SKIP_CASE|quick|target|results=["skipped"]
+SKIP_CASE|quick|dodge_instruction|results=["skipped"]
+SKIP_CASE|quick|live_dodge|results=["skipped"]
+SKIP_CASE|quick|finish|results=["skipped"]
+SKIP_CASE|full|intro|results=["skipped"]
+SKIP_CASE|full|move|results=["skipped"]
+SKIP_CASE|full|target|results=["skipped"]
+SKIP_CASE|full|dodge_instruction|results=["skipped"]
+SKIP_CASE|full|live_dodge|results=["skipped"]
+SKIP_CASE|full|finish|results=["skipped"]
+SKIP_CASE|full|hover_caption|results=["skipped"]
+TUTORIAL SKIP LIFECYCLE|checks=235|failures=0
+
+=== real quick/full victory and temporary item use ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+SKIP_CASE|quick|complete|results=["won"]
+SKIP_CASE|full|complete|results=["won"]
+TUTORIAL SKIP LIFECYCLE|checks=34|failures=0
+
+=== actual adversarial practice defeat, Retry and Exit ===

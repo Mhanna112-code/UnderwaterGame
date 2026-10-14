@@ -45,6 +45,8 @@ QT4 was caught against main (absent Battle Help). QT7 was caught during implemen
 
 ## Expanded wave findings
 
+QT14: real browser Help worked in the prologue, but the guided starter's own caption mentioned Help while hiding its containing main menu. Reproduced by `quick_combat_lesson.gd --help-steps` at its live instruction. Help now has a persistent tutorial action beside Skip, with H access and no focused-button Enter trap. Reference open/Escape must preserve step, narration wait, actor, queue and HP/O2/EVA. Disable it during live QTE/attack rather than pausing an action partway. Native help-phase and compact rendered checks pass; keyboard H/Enter and final-source regression/browser confirmation remain separate checks.
+
 QT12: a fixed-width result popup put Retry/Exit offscreen at 360x480; repaired responsive popup passes 64 rendered/action checks. QT13: a functional short lesson initially collapsed the 3D stage to zero at 360x640; compact caption/menu/status presentation now passes wide/narrow actual-action captures. The implementation resize loop was caught and fixed, not masked with a higher memory limit. Native screenshots were visually inspected.
 
 Detailed current evidence is in docs/quick-tutorial-overnight-plan.md. Browser input/IndexedDB, a complete fresh opening and final scoped clean visual round remain pending. Special-encounter replay is outside the new quick/full resource-isolation claim.

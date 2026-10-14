@@ -1,5 +1,13 @@
 # Quick tutorial integration and morning review
 
+## Current status (04:06 a.m. Chicago)
+
+Draft PR [#103](https://github.com/Mhanna112-code/UnderwaterGame/pull/103), gameplay/export source `a75cfb39fd69a071d3857ff04501e1364554920b`. Fresh [playtest](https://underwatergame-pr103-quick-tutorial.vercel.app/) and [review guide](https://underwatergame-pr103-quick-tutorial.vercel.app/review.html) are reachable anonymously. Hosted PCK SHA256 matches the local export exactly. Canonical production and main are unchanged.
+
+Both combined focused native rounds passed. Final-source legacy downed-party cold preparation and separate-process Load also passed. Individual real-action skips, actual Quick/Full completion and temporary item use, adversarial damage-driven loss/Retry/Exit, embedded-maze return, separate-process native cold Load, shared stat-reference ownership and optional ability camera return have passed. Rendered inspection caught and repaired additional compact-layout failures; final compact Full captures passed, with highlighted numeric teaching retained in scrollable pages.
+
+The normal **fresh browser New Game** is currently being played in the isolated Playwright CLI session `uw-tutorial103`: title and real opening video rendered, followed by opening handoff and octopus cinematic, with no captured script/page errors so far. This is not yet proof of the full opening-to-training handoff, browser cold Load, real browser optional Full/Help, or a complete final clean visual-audit round. Keep PR draft until those gates finish. Earlier dated snapshots below are evidence history, not current acceptance status.
+
 ## Purpose and deadline
 
 Prepare a review PR by October 14, 2026, 11:00 a.m. America/Chicago. A playtester declined to play because the tutorial was too long. Miguel authorized a short tutorial based on the earlier review, the longer tutorial as an optional activity, and explanations of battle stats from both battle and inventory menus. Do not merge or promote to canonical production.
@@ -86,11 +94,11 @@ Optional practice initially changed all three earned divers' HP/O2 (`practice-re
 
 Sonar-cost text was rechecked: main's 3 O2 per 3 seconds matches the current Diver constants, so the earlier suspected stale-cost claim is retracted; do not change gameplay billing in this PR.
 
-No Web export, hosted browser acceptance or complete clean visual-audit round is claimed yet. Current implementation is a draft. Append dated source-specific evidence and failed checks here. A phase cannot be declared accepted while its required flow has an unresolved defect.
+At the initial 02:16 a.m. checkpoint, no Web export or browser acceptance existed. Current status is above; the evidence chronology below retains what was known at each stage. A phase cannot be declared accepted while its required flow has an unresolved defect.
 
 Combined-source checkpoints: `34a3eb5` includes main `2e183cc`, PR 101 `cbac781`, and tutorial code `cbc9e84`. `hud-integrated.log` passes 4,646 rendered checks. `combined-quick.log`, `combined-reference.log`, and `combined-practice.log` pass on the combined source. `normal-beam-handoff.log` enters the actual beacon via W swimming, resolves real attack/QTE input, returns to movable World without a mandatory carousel, and checks the stored opening/tutorial milestones. This is not yet a cold-reload or full fresh-opening test.
 
-Draft review PR: https://github.com/Mhanna112-code/UnderwaterGame/pull/103. It is not ready to merge. Any automatically generated preview of repository `docs/` must be treated as stale until this task explicitly publishes a fresh identified Web export.
+Draft review PR: https://github.com/Mhanna112-code/UnderwaterGame/pull/103. It is not ready to merge. Automatic previews of repository `docs/` remain stale; only the explicitly identified fresh PR 103 preview above contains this work.
 
 ## Expanded verification, 03:43 a.m. Chicago
 
@@ -112,6 +120,14 @@ The new focused gate runner is executing a combined fresh round. Native results 
 Last free-space check: 11,997,824 KiB available (about 11.4 GiB), above the 3 GiB stop. Continue checking before/after export.
 
 ## Next continuation
+
+Guided Help defect, approximately 04:20 a.m.: the real browser confirmed Battle Help in the prologue, but the starter's own caption mentioned a control hidden by its guided main-menu layout. New red `guided-help-red.log` proves that failure. Help is now a persistent tutorial action beside Skip, labelled `Combat Help (H)`, with direct H access and no Enter-focus trap. It is available in narration and choice waits, not during live QTE/attack. Native help-phase preservation, H/Escape/Enter, natural dodge timeout, compact 720x480/360x640 captures and a complete Full lesson with between-stage reference use pass. Source repair is local beyond `a75cfb3` and **must be pushed, exported and redeployed before final browser acceptance**. Existing preview is still explicitly `a75cfb3` until that refresh. Add QT14 to the final regression/audit round; do not call the previous two rounds final for the new repair.
+
+Browser session `uw-tutorial103` has genuinely played title/video/Cordys progression (no fixture seed or review flags). Battle Help opened via actual pointer and Escape returned to unchanged Maxilani/HP/turn. Actual Electric Touch and Precise Tap produced normal damage, followed by the scripted individual Cordys strikes. Currently Bucky's prologue move menu is being reviewed. Screenshots are under `output/playwright/`; `.playwright-cli/console-2026-10-14T08-59-41-425Z.log` records phases, actions and strikes. Browser console has no game errors so far. One CLI snippet syntax failure was a harness mismatch, corrected using the CLI's documented async page function; it did not change gameplay.
+
+Deployment checkpoint, 04:00 a.m.: code and first expanded evidence pushed as `a75cfb39fd69a071d3857ff04501e1364554920b`. Fresh export completed without captured engine/script errors. PCK is 126,226,284 bytes, SHA256 `d46ebf80924d87109f19c771daa8899c9fa6ed03c0dcfb901d46916beb3d228c`. Preview deployment `dpl_5cXr8mmcEYH6n8mgU9eW9HLugQ7i`, immutable URL `https://underwatergame-50nl3frvp-immortaldemongods-projects.vercel.app`, stable review alias `https://underwatergame-pr103-quick-tutorial.vercel.app/`. Alias assignment completed and anonymous HTTP/build-info returned 200. Served-pack hashing is running; canonical production was not changed. The staging build-info/review page explicitly says browser/final acceptance pending.
+
+Real browser opened with the Playwright skill's CLI wrapper, isolated named session `uw-tutorial103`; do not use or modify Miguel's Safari saves. Native verifiers still use the separate QA directory. Final-source combined runner `focused-gates-round2.log` is still running. Fresh Web input/storage and a complete normal opening/handoff are the next critical gates. Do not confuse earlier recovered-native fixtures with earned browser opening progression.
 
 Additional visual pass, approximately 04:00 a.m.: the first combined focused gate runner completed with exit 0 and no captured engine/script errors. Subsequent visual checks found a clipped full-lesson page at 720x480 and width overflow at 360x640. Long optional pages now use a scrollable reading area, temporarily hide inactive action menus, retain the highlighted numeric stat panels, and use a flowing stat comparison with width-appropriate wording. Duplicate overhead cards are suppressed while this compact numeric teaching pane is up, not during the actual QTE/combat. Short-window starter also needed compact cards and removal of its redundant small-window stat row; actual 720x480 short actions now pass with visible stage/controls. Failures remain in `full-short-window-audit.log`, `full-narrow-audit.log` and the successive short-window logs. Final-source Full captures, the second focused runner, and a reference-flow regression are running. **Do not declare a final clean round or release acceptance until these and browser checks finish.**
 
