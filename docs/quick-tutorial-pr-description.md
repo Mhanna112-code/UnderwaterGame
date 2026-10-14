@@ -31,6 +31,7 @@ The final scoped native/browser round finished with **no further observed tutori
 
 ## Limits and review decisions
 
+- **Subsequent human review found inherited guidance gaps:** the nearby Bucky/blockade and reward-rock prompts, post-Run R reminder, Shallows purpose and maze destination cues were removed in earlier main changes and remain absent here. Existing guidance tests partly assert that absence. The source/history audit, including weaker save-point and hallway cues, is retained in `docs/quick-tutorial-overnight-plan.md`. These have not been fixed; Miguel requested analysis first. The earlier clean tutorial/reference round is not acceptance of wider World/maze guidance.
 - Full five-stage victory/items/loss and embedded-maze practice are verified natively, not a complete real-browser Full playthrough or normal campaign traversal.
 - Safari, mobile hardware, Windows/Linux builds and full campaign/boss/balance acceptance remain unverified.
 - Human readability, engagement and preserved opening pacing still need Miguel's review. This PR does not rebalance combat or redesign the story.

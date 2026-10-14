@@ -4,6 +4,8 @@
 
 Ready-for-review PR [#103](https://github.com/Mhanna112-code/UnderwaterGame/pull/103), gameplay/export source `bda7ff68634d1a4557e7849538d9e599f61530f4`. Fresh [playtest](https://underwatergame-pr103-quick-tutorial.vercel.app/) and [review guide](https://underwatergame-pr103-quick-tutorial.vercel.app/review.html) are reachable anonymously. Hosted PCK SHA256 `606dd91965fb5b02d8a42530aedcd6cf870211fb44fe49f2337ae46d1509c99b` matches the local export (126,226,636 bytes). Canonical production and main are unchanged.
 
+**Later human review found unresolved inherited guidance gaps:** Bucky's blockade instruction, reward-rock discovery and the post-escape R reminder are absent; source/history audit also confirms lost Shallows purpose and maze destination/discovery cues. The earlier clean round covers the shortened lesson/reference only, not these wider guidance requirements. No gameplay restoration is authorized by Miguel's analysis-only request. See the review findings below before treating this candidate as merge-ready.
+
 Four combined focused native rounds passed. Final-source legacy downed-party cold preparation and separate-process Load also passed. Individual real-action skips, actual Quick/Full completion and temporary item use, adversarial damage-driven loss/Retry/Exit, embedded-maze return, separate-process native cold Load, shared stat-reference ownership and optional ability camera return have passed. Rendered inspection caught and repaired additional compact-layout failures; final compact Full captures passed, with highlighted numeric teaching retained in scrollable pages.
 
 Final-source **fresh browser New Game** completed in isolated session `uw-tutorial103-final`: real videos, three alternating party actions/Cordys strikes, recovery, W movement into the beam, short attack/target preview, live dodge naturally missed, and movable World return without a forced carousel. The earned manual checkpoint has completed opening/training flags, empty statuses and refilled EVA. A browser reload and the real **Slot 1 Save Point** button returned directly to movable World, not the opening. Inventory definitions, Quick/Full entry and Skip, optional World Abilities entry/close, and narrow Full reading/scrolling were exercised. No fixture save or review flag substituted for that route.
@@ -132,6 +134,27 @@ The console retains five Chromium pointer-lock rejections during the first rapid
 The last scoped round has no further observed tutorial/help defect. PR #103 may be marked ready for **review**, never merged automatically. Exact-source preview and hash are above. Storage at 06:04 a.m. was 11,516,036 KiB free (about 11 GiB), safely above the stop threshold. Final docs/evidence commits may advance the PR tip without changing exported gameplay; preserve that distinction in metadata and review text.
 
 Final review-page/metadata refresh: deployment `dpl_CnpqygmpkrgKKgt2yEX74zWQE2dq`, immutable `https://underwatergame-csqy8a6e4-immortaldemongods-projects.vercel.app/`, same verified `bda7ff6` gameplay/PCK carried unchanged. Only the review guide and acceptance status changed. Stable alias remains `https://underwatergame-pr103-quick-tutorial.vercel.app/`. The real-browser screenshots used the prior immutable URL with this exact PCK, not a separately rebuilt artifact.
+
+## Human guidance review findings
+
+Miguel reported being stranded at the blockade, recalled the already-implemented rock-loot prompt, and reported no encounter-toggle reminder after Run. He requested a systematic audit, not implementation. These are source/history findings on current main and #103; no new full campaign playthrough was claimed.
+
+| Guidance previously implemented | Current behavior and history |
+| --- | --- |
+| Blockade names Bucky, Shockwave and Tab | Removed in Marc's `dc9f8f7` (October 5); generic "Explore the mysterious blockade" does not teach the required action. |
+| Reward-rock proximity explains Tab/F/Shockwave and item rewards | Added in `17e4705`, removed with its proximity function in `dc9f8f7`. Sonar markers remain, but do not explain breaking rocks. |
+| Successful Run shows a three-second R reminder | Added in `7f9cb4a`, disconnected in Marc's `e572a55` (October 5). Component remains, but no production caller activates `show_after_escape`. |
+| Shallows explains growing stronger and the lab in deeper water | Replaced in `dc9f8f7` by generic blockade/deep-sea text. More specific RouteState wording still exists but is not used for the Shallows display. |
+| Maze goals guide map acquisition, relic and Cordys preparation | Marc's `b7e0df2` (October 6) explicitly empties/hides GoalLabel. Map controls and acquisition lesson remain; destination guidance does not. |
+| Maze Sonar announces a newly found guarded site | Marc's `7815f6b` (October 9) removes the notice; the site still reveals on the map. This is lost confirmation, not lost site functionality. |
+
+Three weakened/disconnected cues need separate consideration: `b7e0df2` replaces contextual save-point P/recovery labels with "Save your progress" while keeping the Saving lesson; our `0bba64f` permanently hides HUD/Controls, which still receives a specific hallway/map-use instruction (general map help survives); Marc's `4352503` removes the maze guardian's loss/retry message while retaining retryability. Do not attribute our hidden hallway surface to Marc or equate a relocated explanation with complete deletion.
+
+Tests were changed as well: `reward_rock_guidance.gd` now rejects the former breaking prompt, `escape_encounter_hint.gd` expects the reminder to stay invisible, and `campaign_goals.gd` requires an empty hidden maze goal. Passing those checks cannot prove preservation of Miguel's earlier guidance requirements. A future approved restoration must revise the contradictory oracles, not weaken them merely to obtain green output. Some removal comments say "on request"; Git does not establish who requested them.
+
+Still present in source: post-Tethys maze-ramp compass and lab payoff, Deep entry warning, World Abilities/Full training in Inventory, Saving lesson/replay, maze E interactions, map-acquisition instruction and danger prompts. Completed-puzzle exit signage still exists. The removed Angler/victory bridge and deliberately optional long instruction are separate design changes, not silently proposed reversions in this audit.
+
+PR #103 inherited the absent world prompts; making long teaching optional increases their discoverability impact. The overnight scoped audit missed this handoff gap. No source code, test oracle, production deployment or reviewed design decision was changed by this audit.
 
 ## Next continuation: read-only until the deadline
 
