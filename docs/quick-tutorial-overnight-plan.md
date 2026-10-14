@@ -71,13 +71,13 @@ Human readability and emotional engagement remain human acceptance, not outcomes
 
 | ID | Finding | Status | Next action |
 | --- | --- | --- | --- |
-| QT1 | Current startup invokes the full five-move script and long captions | Confirmed source; runtime baseline pending | Reproduce interaction count and port a short profile |
-| QT2 | Short/full lesson distinction from PR 88 is absent on latest main | Confirmed source | Separate profiles and preserve actual full practice |
-| QT3 | First normal tutorial completion automatically opens ability carousel | Confirmed source | Keep abilities explicitly available without mandatory interruption |
-| QT4 | No direct battle-menu stat reference | Confirmed source | Shared reference with pause/focus ownership |
-| QT5 | Ability replay hidden until previously seen | Confirmed source | Make optional help discoverable independently |
-| QT6 | Tutorial replay heals the actual party and writes a save after practice | Confirmed source; impact audit pending | Verify and isolate replay resources/checkpoints |
-| QT7 | Existing TutorialBook has fixed 560px width and unconditional unpause | Confirmed source | Do not use it unchanged as battle reference on narrow screens |
+| QT1 | Original startup invoked the full five-move script and long captions | Reproduced and repaired; actual quick/beam checks pass | Browser interaction/readability audit |
+| QT2 | Short/full lesson distinction from PR 88 was absent | Restored; actual full five-stage victory passes | Explicit Inventory full selection/return |
+| QT3 | First normal tutorial completion automatically opened ability carousel | Removed for short; real beam release passes | Cold Load and normal-browser confirmation |
+| QT4 | No direct battle-menu stat reference | Repaired; rendered ownership checks pass | Real browser Help interaction |
+| QT5 | Ability replay hidden until previously seen | Source guard removed | Fresh World/maze Inventory choice tests |
+| QT6 | Tutorial replay healed the actual party and wrote a save after practice | Reproduced; temporary resource transaction passes entry/Skip | Win/loss/item/save/maze expanded matrix |
+| QT7 | Existing TutorialBook has fixed 560px width and unconditional unpause | Battle uses a separate responsive owner; clipping defect caught/repaired | Fresh complete visual-audit round |
 | QT8 | Historical glossary treats all damage as base power plus Strength; O2 lacks its own stat entry | Repaired shared text; readability audit pending | Compare exposed text with runtime rules |
 
 Initial runtime progress (02:16 a.m. Chicago): missing Battle stat Help reproduced in `reference-red.log`; a real >100-word starter caption reproduced in `lesson-red.log`. Headless and rendered reference checks pass at 1280x720, 720x480 and 360x640, including prior pause ownership, Escape and unchanged queue/resources. A first layout repair was required after `reference-layout-failure.log` exposed Close beyond the viewport. The starter completes one real attack and one QTE with three brief confirmations, including natural missed-dodge timeout. The full lesson completes all five actual stages and a real enemy defeat (`full-lesson.log`).
@@ -87,6 +87,10 @@ Optional practice initially changed all three earned divers' HP/O2 (`practice-re
 Sonar-cost text was rechecked: main's 3 O2 per 3 seconds matches the current Diver constants, so the earlier suspected stale-cost claim is retracted; do not change gameplay billing in this PR.
 
 No Web export, hosted browser acceptance or complete clean visual-audit round is claimed yet. Current implementation is a draft. Append dated source-specific evidence and failed checks here. A phase cannot be declared accepted while its required flow has an unresolved defect.
+
+Combined-source checkpoints: `34a3eb5` includes main `2e183cc`, PR 101 `cbac781`, and tutorial code `cbc9e84`. `hud-integrated.log` passes 4,646 rendered checks. `combined-quick.log`, `combined-reference.log`, and `combined-practice.log` pass on the combined source. `normal-beam-handoff.log` enters the actual beacon via W swimming, resolves real attack/QTE input, returns to movable World without a mandatory carousel, and checks the stored opening/tutorial milestones. This is not yet a cold-reload or full fresh-opening test.
+
+Draft review PR: https://github.com/Mhanna112-code/UnderwaterGame/pull/103. It is not ready to merge. Any automatically generated preview of repository `docs/` must be treated as stale until this task explicitly publishes a fresh identified Web export.
 
 ## Next continuation
 

@@ -1,0 +1,25 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+TRAINING_ENTRY|position=(0.0, 2.0, 6.0)|beam=(0.0, 6.0, 10.0)
+LESSON|0|Maxilani's turn.|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|0|Maxilani's turn.|Select the Angler to attack. Electric Touch lowers its Evasion, making later hits easier to land.|false
+LESSON|0|Electric Touch shocks the target for 1.  EVA -1|Select the Angler to attack. Electric Touch lowers its Evasion, making later hits easier to land.|false
+LESSON|1|Electric Touch shocks the target for 1.  EVA -1|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|1|Electric Touch shocks the target for 1.  EVA -1|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|false
+LESSON|1|Angler uses Bite: Bucky QTE dodge.|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|false
+LESSON|1|Angler uses Bite: Bucky QTE dodge.|Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|false
+LESSON|1|Angler uses Bite: Bucky QTE dodge.|Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+FULL_LESSON_RESULT|["won"]

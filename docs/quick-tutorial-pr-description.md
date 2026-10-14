@@ -15,6 +15,10 @@ Respond to the playtester who declined to play because the tutorial was too long
 
 `docs/evidence/quick-tutorial-oct14/`: real failures retained for the missing battle reference, long starter caption, clipped reference Close, and replay healing earned resources. Focused fixes pass the corresponding checks. Starter pass and natural-dodge-timeout pass; retained five-move lesson reaches a real victory; reference tested headless and rendered at three viewport sizes and both prior pause states; optional practice entry/Skip preserves party/inventory.
 
+After combining PR 101, 4,646 rendered HUD checks and the quick/reference/isolation tests pass. The normal beacon route also passes actual W swimming into training, real attack/QTE input, movable World return and stored opening/tutorial milestones.
+
+**No updated tutorial Web preview has been published yet.** Any automatic deployment of the repository's existing `docs/` export does not prove these source changes are playable. A fresh exact-source preview remains an acceptance gate.
+
 ## Before ready for review
 
 - Expanded skip/callback, practice win/loss/item isolation, normal beam handoff, cold-save/reload and embedded-maze tests.
