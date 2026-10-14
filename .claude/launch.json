@@ -4,13 +4,20 @@
     {
       "name": "underwater-game-web-export",
       "runtimeExecutable": "node",
-      "runtimeArgs": [".claude/static_server.js"],
+      "runtimeArgs": [
+        ".claude/static_server.js"
+      ],
       "port": 8781
     },
     {
       "name": "playtest-platform",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "C:/Users/march/projects/playtest-platform", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/march/projects/playtest-platform",
+        "run",
+        "dev:local"
+      ],
       "port": 3000
     }
   ]
