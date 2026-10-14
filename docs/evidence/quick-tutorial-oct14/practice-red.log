@@ -1,0 +1,19 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+ERROR: QT6: starting optional training mutated the earned diver's resources
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_practice_isolation.gd:53)
+ERROR: QT6: starting optional training mutated the earned diver's resources
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_practice_isolation.gd:53)
+ERROR: QT6: starting optional training mutated the earned diver's resources
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_practice_isolation.gd:53)
+TUTORIAL PRACTICE ISOLATION: 3 failure(s)

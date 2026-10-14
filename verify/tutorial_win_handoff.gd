@@ -40,6 +40,9 @@ func _run() -> void:
 	await process_frame
 	var fight := Battle.new()
 	fight.tutorial_encounter = true
+	# This verifier's long-lesson mode explicitly opts into the retained full
+	# script. The normal starter is covered by quick_combat_lesson.gd instead.
+	fight.tutorial_profile = Battle.TUTORIAL_PROFILE_FULL
 	fight.party_source = sources
 	root.add_child(fight)
 	await process_frame

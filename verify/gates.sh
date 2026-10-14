@@ -111,6 +111,10 @@ prepare_godot_classes() {
 }
 
 run "Godot class cache: can direct gates resolve project scripts" prepare_godot_classes
+run "quick starter: does one real move and one live dodge finish without a lecture" "$GODOT" --headless --path . --script verify/quick_combat_lesson.gd
+run "quick starter missed dodge: does natural timeout still return to play" "$GODOT" --headless --path . --script verify/quick_combat_lesson.gd -- --miss-dodge
+run "combat reference: do Battle and Inventory expose all stats without advancing combat or losing pause ownership" "$GODOT" --headless --path . --script verify/quick_tutorial.gd
+run "optional practice isolation: does real entry and Skip preserve earned party resources and inventory" "$GODOT" --headless --path . --script verify/tutorial_practice_isolation.gd
 run "Marc autosaves: do safe World/maze saves preserve manual checkpoints and rejected writes" "$GODOT" --headless --path . --script verify/marc_autosaves.gd
 run "Latest save recovery: do title and World/maze death recovery prefer newest valid snapshots with manual fallback" "$GODOT" --headless --path . --script verify/latest_save_recovery.gd
 run "Marc recovery/hall/title: do all three real pads accept P and latest lanes/autosave rows exist" "$GODOT" --headless --path . --script verify/marc_maze_recovery_hall.gd

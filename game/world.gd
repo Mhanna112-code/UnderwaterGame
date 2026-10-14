@@ -26,6 +26,9 @@ var random_encounter_reveal: RandomEncounterReveal
 var _first_encounter_done := false
 # Which tutorial fight opened the loss popup (special vs. first combat).
 var _tutorial_loss_was_special := false
+var _last_tutorial_profile := Battle.TUTORIAL_PROFILE_QUICK
+var _tutorial_practice: TutorialPractice
+var _tutorial_loss_was_practice := false
 # Test seam: skip the opening crawl.
 var skip_intro_for_test := false
 # Dev/test: skip the scripted first fight (--skip-tutorial or ?skip_tutorial=1).
@@ -3348,7 +3351,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 	focus_camera_on(target, 1.1)
 
 # reward_item "" means an ordinary fight with no reward.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = []) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = [], tutorial_profile: String = Battle.TUTORIAL_PROFILE_QUICK) -> void:
 	for diver in divers:
 		diver.exploration_paused = true
 	_cancel_random_encounter_reveal()
@@ -3399,6 +3402,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	if route_state.encounter_source == "prologue_octopus":
 		battle.prologue_phase_changed.connect(_on_prologue_phase_changed)
 	battle.tutorial_encounter = tutorial
+	battle.tutorial_profile = tutorial_profile
+	if tutorial and not special:
+		_last_tutorial_profile = tutorial_profile
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text
 	battle.finished.connect(_on_battle_finished)
@@ -3415,6 +3421,8 @@ func _on_battle_finished(result: String) -> void:
 		(diver as Diver).reset_passives_after_battle()
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	var was_quick_tutorial := battle.is_quick_tutorial()
+	var was_practice := _tutorial_practice != null
 	if was_special:
 		special_encounter_left = true
 	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
@@ -3422,6 +3430,21 @@ func _on_battle_finished(result: String) -> void:
 	battle.queue_free()
 	battle = null
 	battling = false
+	if was_practice:
+		inventory = _tutorial_practice.restore()
+		_tutorial_practice = null
+		_pending_reward_item = ""
+		_update_hp_bar()
+		_update_oxygen_bar()
+		_update_hud()
+		_audio_call(&"play_exploration_music")
+		if result == "lost":
+			_tutorial_loss_was_practice = true
+			_tutorial_loss_was_special = false
+			tutorial_result_popup.open("Practice ended", "Your party, items and save are unchanged. Retry the lesson or return to exploring.")
+		else:
+			_announce("Practice complete. Your party and items are unchanged.")
+		return
 	# Restore exploration music once Battle releases the screen. A normal loss
 	# goes to _show_game_over() below.
 	match result:
@@ -3556,7 +3579,7 @@ func _on_battle_finished(result: String) -> void:
 		_write_save()
 		# First time only: Combat Help replays don't repeat the onboarding
 		# (it stays available from the Esc menu's Character Abilities button).
-		if not ability_popups_seen:
+		if not ability_popups_seen and not was_quick_tutorial:
 			call_deferred("_show_ability_popups")
 
 # Heal and return to the overworld. Freeing `battle` here matters only for
@@ -3569,6 +3592,9 @@ func _free_lingering_test_battle() -> void:
 
 func _on_tutorial_loss_exit() -> void:
 	_free_lingering_test_battle()
+	if _tutorial_loss_was_practice:
+		_tutorial_loss_was_practice = false
+		return
 	for d in divers:
 		var s: CombatantStats = (d as Diver).stats
 		s.hp = s.hp_max
@@ -3610,10 +3636,11 @@ func _open_tutorial_loss_playtest_popup() -> void:
 
 func _on_tutorial_loss_retry() -> void:
 	_free_lingering_test_battle()
+	_tutorial_loss_was_practice = false
 	if _tutorial_loss_was_special:
 		_replay_special_encounter_tutorial()
 	else:
-		_replay_tutorial_battle()
+		_replay_tutorial_battle(_last_tutorial_profile)
 
 # Retry of the first special encounter: relaunch the forced solo Maxilani
 # fight with the same item/enemy, healing her first.
@@ -3635,14 +3662,14 @@ func _replay_special_encounter_tutorial(item_id: String = "", enemy_id: String =
 
 # The single tutorial fight definition (Retry and Combat Help replay).
 # Heals first.
-func _replay_tutorial_battle() -> void:
-	for d in divers:
-		var s: CombatantStats = (d as Diver).stats
-		s.hp = s.hp_max
-		s.oxygen = s.oxygen_max
+func _replay_tutorial_battle(profile: String = Battle.TUTORIAL_PROFILE_FULL) -> void:
+	if battling or _tutorial_practice != null:
+		return
+	_tutorial_practice = TutorialPractice.new()
+	inventory = _tutorial_practice.begin(divers, inventory)
 	_update_hp_bar()
 	_update_oxygen_bar()
-	_start_battle("", false, "angler", divers, false, true)
+	_start_battle("", false, "angler", divers, false, true, "", false, [], profile)
 
 # Key items go to party-wide key_items; anything else to the shared inventory.
 func _grant_reward_item(item_id: String) -> void:
@@ -3682,6 +3709,8 @@ func _build_diver_slots() -> void:
 
 # _diver_slots live outside the tree, so free them explicitly.
 func _exit_tree() -> void:
+	if _tutorial_practice != null:
+		inventory = _tutorial_practice.restore()
 	_cancel_random_encounter_reveal()
 	for slot_value in _diver_slots:
 		var slot := slot_value as Slot

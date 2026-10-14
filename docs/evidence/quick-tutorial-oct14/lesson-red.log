@@ -1,0 +1,11 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STARTER_CAPTION|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+Press  Space ,  Enter , or click Continue
+ERROR: QT1: starter still blocks play with a long lecture caption
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/quick_combat_lesson.gd:82)
+QUICK COMBAT LESSON|moves=0|qtes=0|captions=2|results=[]|failures=1
