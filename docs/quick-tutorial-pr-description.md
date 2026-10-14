@@ -9,6 +9,7 @@ Respond to the playtester who declined to play because the tutorial was too long
 - Battle > Combat Help opens the shared stat/effect/status reference. Escape returns to the same actor/menu without spending a turn or changing resources; prior pause/focus is retained.
 - Optional replay borrows temporary combat resources/inventory rather than healing the earned party or saving a practice state.
 - Preserve current main's video/Cordys opening, actual combat formulas, maze/lab progression, rewards, audio settings and other Marc changes.
+- Includes PR 101's compact exploration HUD and complete-card maze-caption reservation in this combined review branch. Neither PR has been merged into main by this work.
 
 ## Evidence so far
 
@@ -18,7 +19,7 @@ Respond to the playtester who declined to play because the tutorial was too long
 
 - Expanded skip/callback, practice win/loss/item isolation, normal beam handoff, cold-save/reload and embedded-maze tests.
 - Reconcile applicable old tests with explicit quick/full profiles without weakening their behavioral oracles.
-- Integrate the reviewed PR 101 HUD in this review branch and rerun its regression checks.
+- Complete regression checks after the PR 101 HUD integration.
 - Exact-source Web preview, real browser interaction/storage, readable narrow/wide screenshots and a fresh full scoped visual-audit round with no observed defects.
 - Re-fetch relevant Marc changes before final delivery.
 

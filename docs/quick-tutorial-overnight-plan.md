@@ -8,6 +8,7 @@ Worktree: `/Users/tomriddle1/underwatergame-quick-tutorial-oct14`.
 Branch: `feature/quick-tutorial-oct14`.
 Starting main: `2e183cc` (PR 102 merged).
 PR 101 inspected head: `cbac7813a1451ef97ef038fd902a9dda8eb3ae04`.
+Local combined integration commit: `2b65b82` (tutorial implementation `cbc9e84` plus PR 101). Main and PR 101 remain unmerged by this work.
 Hourly thread follow-up: `tutorial-integration-review-overnight`, expires at the deadline.
 
 The old blocked campaign goal and its historical attachment are not the objective for this new request. Do not resume the old global campaign integration or re-open its settled design questions.
@@ -86,6 +87,12 @@ Optional practice initially changed all three earned divers' HP/O2 (`practice-re
 Sonar-cost text was rechecked: main's 3 O2 per 3 seconds matches the current Diver constants, so the earlier suspected stale-cost claim is retracted; do not change gameplay billing in this PR.
 
 No Web export, hosted browser acceptance or complete clean visual-audit round is claimed yet. Current implementation is a draft. Append dated source-specific evidence and failed checks here. A phase cannot be declared accepted while its required flow has an unresolved defect.
+
+## Next continuation
+
+Start with the completed/pending `hud-integrated.log` and re-run quick/reference/isolation on the combined source. Expand practice outcomes and old-save/normal-beam paths. Retained legacy tutorial verifiers sometimes implicitly expect the long script or mandatory ability carousel; explicitly select Full for long-script tests, or replace only obsolete starter expectations with stronger real short-route assertions. In particular, audit `tutorial_qte.gd`, `tutorial_camera_handoff.gd` and loss/exit tests rather than hiding their failures.
+
+Then retain wide/narrow actual rendered captures, visually inspect them, export only once the critical handoff/persistence/input paths are accepted, and publish an identified review-only Vercel preview. Read the relevant deployment/verification skills before deploying. Do not publish any existing `docs/` Web bundle as if it contains these changes. The old campaign goal is still separate; the active overnight continuation is this saved plan and thread heartbeat.
 
 ## Handoff rule
 
