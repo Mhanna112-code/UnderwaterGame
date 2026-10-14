@@ -1,38 +1,9 @@
 class_name SwirlRoom
 extends Node3D
 
-# A room full of invisible rocks circling its centre in rings. (Variable
-# names still say "sphere" in places - each rock is one orbiting body.)
-#
-# The room is divided into a 3D grid the same way left_maze_secret_wall.gd's
-# FlowField does it (cell_radius / cell_diameter, a `cells` list built by
-# init_maze_grid() via init_cell()): columns across and rows along, one
-# cell_diameter apart, and layers from floor to ceiling one LAYER_SPACING
-# apart. The grid's layers set the heights the spheres orbit at.
-#
-# In each layer the spheres sit on concentric rings around the room's centre:
-# the innermost ring at CLEAR_RADIUS (leaving open space around the key in
-# the middle), then one ring every cell_diameter further out, as many as fit
-# inside the walls - so the gaps between rings are all the same. Along each
-# ring the spheres are evenly spaced, about RING_SPACING apart, at the same
-# angles in every layer (and bobbing in step), so each lower sphere stays
-# lined up under the ones above it, in columns. Each
-# sphere keeps its radius and circles the centre at the same speed as every
-# other sphere, so inner rings go round faster, like a whirlpool. They bob
-# gently around their layer's height as they go.
-#
-# A sphere that touches a diver hurts it (HIT_DAMAGE, never below 1 HP),
-# flashes it (Diver.flash_damage()'s flicker plus a red tint) and knocks it
-# back - away from the sphere and along the sphere's orbit - sliding to a
-# stop (moved with collision, so it can't be shoved through a wall). A diver
-# can't be hit again for HIT_COOLDOWN seconds. MazeLevel calls hit_divers()
-# every physics frame; hits happen whether or not the spheres are visible.
-#
-# The rocks are invisible unless `set_revealed(true)` - MazeLevel does that
-# while active Maxilani has her Q sonar on and she's inside
-# the room. They're lumpy low-poly rocks in the maze's scenery-rock colours,
-# each turned and sized a little differently, with a faint cyan sonar rim.
-# `positions()` is what the minimap draws as red circles either way.
+# Room of invisible rocks orbiting its centre in concentric rings per grid layer, aligned in columns.
+# Touching one damages (never below 1 HP), flashes and knocks back the diver; MazeLevel calls hit_divers() each frame.
+# Rocks render only while set_revealed(true) (Maxilani's sonar in the room); positions() feeds the minimap.
 
 const ROCK_RADIUS := 0.45       # for hits; the rocks themselves vary 0.8x-1.2x
 const BOB_HEIGHT := 0.3
@@ -91,9 +62,7 @@ func _ready() -> void:
 func init_cell(world_pos: Vector3, grid_index: int) -> void:
 	cells.append({"cellPos": world_pos, "cell_index": grid_index})
 
-# Divides the room into equal cubes cell_diameter on a side - as many as fit
-# along each axis - centred in the room so the leftover gap is split evenly
-# between the two walls on each side.
+# Equal cubes of cell_diameter, centred so leftover space splits evenly.
 func init_maze_grid() -> void:
 	cells.clear()
 	var extent := room_max - room_min
@@ -112,10 +81,7 @@ func init_maze_grid() -> void:
 func cell_index(i: int, j: int, k: int) -> int:
 	return (k * layers + j) * cols + i
 
-# Rings every cell_diameter from CLEAR_RADIUS out to the walls; on each ring,
-# spheres evenly spaced about RING_SPACING apart. Every layer uses the same
-# angles and bob timing, so the layers stack into aligned columns. Each ring
-# is turned a little against the one inside it so they don't line up in spokes.
+# Rings every cell_diameter from CLEAR_RADIUS out; same angles per layer, each ring offset to avoid spokes.
 func _build_rings() -> void:
 	var max_radius := minf(room_max.x - center.x, room_max.z - center.z) - WALL_MARGIN - ROCK_RADIUS
 	ring_radii.clear()
@@ -157,9 +123,7 @@ func _build_multimesh() -> void:
 	mat.emission_enabled = true
 	mat.emission = Color(0.15, 0.55, 0.65)
 	mat.emission_energy_multiplier = 0.35
-	# Sonar exposes hazards, but rocks between the chase camera and the diver
-	# must not become an opaque curtain over the eye/chest. Presentation only:
-	# positions(), contact damage and knockback retain every nearby rock.
+	# Fade rocks near the camera so they don't hide the diver; gameplay still uses every rock.
 	mat.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
 	mat.distance_fade_min_distance = 4.0
 	mat.distance_fade_max_distance = 7.0
@@ -176,7 +140,7 @@ func _build_multimesh() -> void:
 func _physics_process(delta: float) -> void:
 	_time += delta
 	for k in _radius.size():
-		# Same speed along every ring, so the angle turns faster on the inner ones.
+		# Constant linear speed, so inner rings turn faster.
 		_angle[k] = wrapf(_angle[k] + ORBIT_SPEED / _radius[k] * delta, 0.0, TAU)
 	if _mm.visible:
 		var mm := _mm.multimesh
@@ -233,7 +197,7 @@ func _hit(diver: Diver, k: int, p: Vector3) -> void:
 	_tint_red(diver)
 	diver_hit.emit(diver)
 
-# A red tint over the diver's model while it flickers.
+# Red tint over the diver's model while it flickers.
 func _tint_red(diver: Diver) -> void:
 	if diver.model == null:
 		return

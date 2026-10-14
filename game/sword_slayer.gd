@@ -1,13 +1,10 @@
-# Second one-time laboratory blocker. The delivered rig exposes the same three
-# attack takes as the authored Swordfish Duelist, so it reuses that proven move
-# catalogue while owning distinct identity, model, and provisional tuning.
+# Second one-time lab blocker; reuses the Swordfish Duelist move catalogue with its own model and tuning.
 class_name SwordSlayer
 extends Goblin
 
 const SWORD_SLAYER_SRC := preload("res://art/deep_zone/Sword_Slayer.fbx")
 
-# Faster than Bomb Bot, but less armoured. These values are a deterministic
-# first-pass baseline to be revised only after measured whole-route playtests.
+# Faster but less armoured than Bomb Bot; first-pass values pending playtests.
 const SWORD_SLAYER_STATS := {
 	"hp": 14, "strength": 3, "defense": 2, "agility": 5,
 	"evasion": 3, "accuracy": 3,

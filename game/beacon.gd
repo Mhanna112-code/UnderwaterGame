@@ -1,12 +1,5 @@
-# One waypoint on a route.
-#
-# A post with a lamp, planted on the seabed between two sites. Spacing is set
-# in content/sites.gd to stay inside what the fog lets you see, so from any
-# beacon you can see the next one or two and following them is the whole of
-# navigation. No compass, no arrow on the HUD, no words.
-#
-# The colour is the only legend there is: amber and breathing means this is
-# the way onward, dim green means a road already walked.
+# One route waypoint: a lamp post between sites, spaced within fog range (content/sites.gd).
+# Amber pulsing = the way onward; dim green = already walked.
 class_name Beacon
 extends Node3D
 

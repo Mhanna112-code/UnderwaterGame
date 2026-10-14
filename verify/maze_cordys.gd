@@ -106,7 +106,7 @@ func _choose(battle: Battle, move: String, target: String) -> bool:
 	chosen.pressed.emit()
 	await process_frame
 	for button in battle.target_buttons:
-		if (button as Button).text.begins_with(target) and not (button as Button).disabled:
+		if ((button as Button).text.begins_with(target) or (button as Button).text.begins_with("Whole party")) and not (button as Button).disabled:
 			(button as Button).pressed.emit()
 			return true
 	return false

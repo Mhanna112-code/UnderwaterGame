@@ -1,7 +1,5 @@
-# Version-one maze snapshots used standalone coordinates before embedding.
-# Marc's embedded layout translates the authored children, NOT the root:
-# walls, party positions, rewards and rotation homes therefore share one
-# translated frame. Keep that frame explicit at the durable boundary.
+# Rebases maze snapshots between the legacy standalone origin and the embedded frame.
+# The embedded layout translates children, not the root, so walls, party, rewards and homes share one frame.
 class_name MazeCoordinateFrame
 extends RefCounted
 
@@ -9,9 +7,7 @@ static func valid_origin(value: Variant) -> bool:
 	return value is Array and value.size() == 3 and value.all(func(n: Variant) -> bool:
 		return typeof(n) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(n)) and absf(float(n)) <= 1e8)
 
-# Returns an independent validated snapshot, or {} without mutating source.
-# Missing metadata is the legacy standalone origin. Sizes, directions, yaw,
-# discovery IDs, key counts and campaign progress are never translated.
+# Returns a validated copy, or {}; missing metadata means legacy origin. Only positions are translated.
 static func rebase(source: Dictionary, destination: Vector3) -> Dictionary:
 	var target := [destination.x, destination.y, destination.z]
 	if not valid_origin(target) or not CampaignCheckpoint.valid_maze(source):

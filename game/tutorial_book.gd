@@ -1,14 +1,5 @@
-# A paged tutorial overlay - one topic per page, Prev/Next to move between
-# them, Close to dismiss. Content-agnostic: pass whatever `pages` array you
-# want (see content/tutorial_content.gd's GENERAL_PAGES for the shape:
-# [{"title": String, "body": String}, ...]) rather than this class owning
-# any particular tutorial's wording, so the same book can show the new-game
-# walkthrough, a reopened "Help" screen, or a future topic-specific one
-# with no changes here.
-#
-# Same paused-but-interactive shape as TitleScreen/SpecialEncounterPrompt -
-# process_mode ALWAYS so input still works while get_tree().paused freezes
-# the world underneath.
+# Paged tutorial overlay; callers pass [{"title", "body"}, ...] pages (see TutorialContent.GENERAL_PAGES).
+# process_mode ALWAYS so it works while the tree is paused.
 class_name TutorialBook
 extends Control
 
@@ -28,10 +19,7 @@ var _x_close_btn: Button
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	# PRESET_FULL_RECT anchors alone leave offsets at zero, which for a
-	# runtime-built Control parented directly under a CanvasLayer (nothing
-	# above it to inherit a size from) collapses the whole rect to (0, 0) -
-	# same fix special_encounter_prompt.gd/title_screen.gd already needed.
+	# Anchors alone leave a runtime Control under a CanvasLayer at size zero.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
@@ -91,21 +79,14 @@ func _ready() -> void:
 	_close_btn.pressed.connect(_on_close_pressed)
 	button_row.add_child(_close_btn)
 
-	# Always-available exit independent of which page you're on - the
-	# Prev/Next/Close row (above) already dismisses via Close, but a corner
-	# X reads as the universal "get me out of this modal" control everyone
-	# already expects, same job as _on_close_pressed() either way.
+	# Corner X close button, same as Close.
 	_x_close_btn = Button.new()
 	_x_close_btn.text = "×"
 	var x_btn_size := Vector2(36, 36)
 	_x_close_btn.custom_minimum_size = x_btn_size
 	_x_close_btn.add_theme_font_size_override("font_size", 20)
 	_x_close_btn.pressed.connect(_on_close_pressed)
-	# Explicit anchors/offsets from a fixed size, not
-	# set_anchors_and_offsets_preset()'s PRESET_MODE_MINSIZE - see
-	# character_ability_popup.gd's own corner X for why that undershoots
-	# (it measures get_combined_minimum_size() before add_child(), so
-	# before the size/font overrides just above have actually taken).
+	# Fixed-size anchors; PRESET_MODE_MINSIZE measures before the overrides apply.
 	var x_inset := 16.0
 	_x_close_btn.anchor_left = 1.0
 	_x_close_btn.anchor_right = 1.0
@@ -117,8 +98,7 @@ func _ready() -> void:
 	_x_close_btn.offset_bottom = x_inset + x_btn_size.y
 	add_child(_x_close_btn)
 
-# `pages` must have at least one entry - callers own the content, this just
-# renders whatever's handed to it.
+# `pages` must have at least one entry.
 func open(pages: Array[Dictionary]) -> void:
 	if pages.is_empty():
 		return
@@ -135,15 +115,10 @@ func _refresh() -> void:
 	_title_label.text = String(page.get("title", ""))
 	_body_label.text = String(page.get("body", ""))
 	_prev_btn.disabled = _index <= 0
-	# "Next" carries you forward right up to the last page, where only
-	# Close is left - no dead click on a "Next" that has nowhere to go.
+	# Next hides on the last page, leaving only Close.
 	_next_btn.visible = _index < _pages.size() - 1
 
-# Pulses whichever button actually moves the player forward right now -
-# Next on every page but the last, Close once Next has hidden itself (see
-# _refresh() above) - so there's always exactly one flashing button
-# pointing at "what to press next", same sine-pulse shape as [pulse] BBCode
-# text elsewhere (pulse_text_effect.gd) rather than a second effect system.
+# Pulses the button that advances: Next, or Close on the last page.
 func _process(_delta: float) -> void:
 	if not visible:
 		return

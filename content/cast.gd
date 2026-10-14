@@ -1,28 +1,16 @@
-# Which rigged file each diver arrives in, and what that character's motions
-# are actually called inside it.
-#
-# Glass_Goat's deliveries come one character per file, and all three share a
-# single 132 bone rig, so every file contains EVERY character's animations and
-# only ONE character's mesh. That is the whole reason this table exists: match
-# a clip on "idle" alone and the scuba diver gets handed the brass suit's
-# stance. Every entry names a clip family, and the family picks the clip.
-#
-# Nothing here is guessed. Every clip name below was read out of the imported
-# files, and verify/clips.gd fails the build if any of them stops resolving.
+# Which rigged file each diver uses and what its clips are called.
+# Every file shares one rig and holds all characters' clips, so clips are matched by family.
+# Clip names were read from the imported files; verify/clips.gd fails the build if one stops resolving.
 class_name Cast
 extends RefCounted
 
-# Keyed by model_name, which is the identifier the rest of the game already
-# uses for a diver (diver.gd's model_name, battle.gd's BASE_MOVES, spell_tree's
-# per-character branches). One name, one meaning, everywhere.
+# Keyed by model_name, the diver identifier used across the game.
 const ALL := {
 	"Staff_Diver": {
 		"family": "Scuba",
 		"file": "res://art/characters/Scuba_Rigged.fbx",
 		"spell_animations": "res://art/characters/spell_animations/maxilani.res",
-		# The staff is skinned to the same rig and swims with her, so it is
-		# part of the character and not a prop parked nearby. Hiding it is
-		# what left it floating on its own beside her (#26).
+		# The staff is skinned to the same rig; hiding it left it floating beside her.
 		"carries": ["Staff_Lantern"],
 	},
 	"Prototype_1(1910)": {
@@ -39,38 +27,16 @@ const ALL := {
 	},
 }
 
-# Player-facing identity lives beside the rig identity so exploration and
-# combat cannot drift into separate nickname tables. Glassgoat confirmed
-# Maxilani and Musashi in the meeting, then supplied Bucky as the Proto5
-# pilot's name in the September combat follow-up.
+# Player-facing names, kept beside the rig identity so all scenes share them.
 const DISPLAY_NAMES := {
 	"Staff_Diver": "Maxilani",
 	"Prototype_1(1910)": "Musashi",
 	"Prototype_V(1922)": "Bucky",
 }
 
-# Motion names the game asks for, resolved per family.
-#
-# Returned WITHOUT the rig prefix. Each delivery names its armature node
-# differently (rig, rig_001, rig_002), so a clip is "rig_002|Scuba_(Idle)1(Loop)"
-# in one file and "rig|Scuba_(Idle)1(Loop)" in another. Diver.resolve() matches
-# on the part after the bar, so this table never has to care which file it is.
-#
-# Held motions ship as Start / Mid (Loop) / End, and all three get used. The
-# loop is what holds the state; the Start and End are the way in and out of it.
-# Playing only the loop is what Glass_Goat spotted on the first build: the
-# diver went from standing to swimming and back with nothing in between, and
-# he had animated those transitions specifically.
-#
-# Playing only the Start is the opposite mistake, and it is what "the animation
-# does not work" looked like before that: it runs once and drops the character
-# back to a rest pose.
-#
-# The irregular entries are not typos. Proto5 has no (Win) clips at all, so it
-# celebrates with the thumbs up it does have, and its heavy hit reaction is
-# called Strong_Hit where the other two say Heavy_Hit. Scuba's win loop is
-# (Mid2)(Loop), not (Mid)(Loop). Those three were wrong in the first draft of
-# this table and only surfaced once verify/clips.gd asked the files directly.
+# Motion names per family, without the rig prefix (Diver.resolve() matches after the "|").
+# Held motions ship as Start / Mid (Loop) / End; all three are played.
+# Irregular names are intentional: Proto5 has no (Win) clips and uses Strong_Hit; Scuba's win loop is (Mid2)(Loop).
 const MOTIONS := {
 	"Scuba": {
 		"idle": "Scuba_(Idle)1(Loop)",
@@ -107,19 +73,14 @@ const MOTIONS := {
 	},
 }
 
-# Which swing belongs to which move, by the move's own name in battle.gd's
-# BASE_MOVES and in spell_tree.gd. A move with no entry here is not a bug and
-# does not need one: FALLBACK_ATTACK gives every family a swing that always
-# plays, so a spell added tomorrow animates on the day it is added instead of
-# standing still until somebody remembers this file.
+# Move name -> swing clip; unmapped moves use FALLBACK_ATTACK.
 const ABILITY_CLIPS := {
-	# Staff_Diver / Scuba: Group_StatsV2's authored kit.
+	# Staff_Diver / Scuba
 	"Electric Touch": "Scuba_(Attack)Eletric1",
 	"Scuba Stabbing": "Scuba_(Attack)Stab1",
 	"Flash Blast": "Scuba_(Attack)Flash1",
 	"Multiple Knee Combo": "Scuba_(Attack)Double_Knee1",
 	"Axe Kick": "Scuba_(Attack)Axe_Kick1",
-	# Animation-only October delivery: preserve the complete working FBXs.
 	# The delivered Swift Slash is the spell tree's Swift Strike.
 	"Swift Strike": "Scuba_(Attack) Swift Slash",
 	"Riptide Slash": "Scuba_(Attack) Riptide Slash",
@@ -149,12 +110,7 @@ const FALLBACK_ATTACK := {
 static func knows(model_name: String) -> bool:
 	return ALL.has(model_name)
 
-# Falls back rather than returning nothing, because every caller here is on
-# a path that has to produce a diver, and a diver wearing the wrong model is
-# at least visible. It says so loudly, though: a silent fallback would show
-# the scuba diver in place of a character somebody just added and look like
-# an art bug rather than a missing table entry. verify/clips.gd fails the
-# build before this can happen at runtime.
+# Falls back to a visible model, but warns loudly; verify/clips.gd catches this at build time.
 static func entry(model_name: String) -> Dictionary:
 	if not ALL.has(model_name):
 		push_error("Cast has no entry for '%s', falling back to Staff_Diver" % model_name)
@@ -180,13 +136,11 @@ static func motion(model_name: String, name: String) -> String:
 	var m: Dictionary = MOTIONS.get(family(model_name), {}) as Dictionary
 	return String(m.get(name, ""))
 
-# The clip for a named move. Falls back to the family's default swing so an
-# unmapped move still animates rather than freezing mid turn.
+# Falls back to the family's default swing so unmapped moves still animate.
 static func ability(model_name: String, move_name: String) -> String:
 	var fam := family(model_name)
 	var want := String(ABILITY_CLIPS.get(move_name, ""))
-	# A move name maps to one family's clip. If a Staff_Diver spell somehow
-	# names a Proto5 swing, the family's own fallback is still correct.
+	# Only accept a clip from this diver's own family.
 	if want != "" and want.begins_with(fam + "_"):
 		return want
 	return String(FALLBACK_ATTACK.get(fam, ""))

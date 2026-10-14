@@ -10,10 +10,15 @@ signal answered(yes: bool)
 const PANEL_SIZE := Vector2(560, 210)
 
 var message := ""
+var yes_text := "Yes (Y)"
+var no_text := "No (N)"
 var _done := false
 
-func _init(text: String) -> void:
+# Button labels are optional; Y/N/Esc keep working whatever they say.
+func _init(text: String, yes_label := "Yes (Y)", no_label := "No (N)") -> void:
 	message = text
+	yes_text = yes_label
+	no_text = no_label
 
 func _ready() -> void:
 	layer = 90   # above the HUD captions, below CharacterAbilityPopup (100)
@@ -47,7 +52,7 @@ func _ready() -> void:
 	panel.add_child(label)
 
 	var yes := Button.new()
-	yes.text = "Yes (Y)"
+	yes.text = yes_text
 	yes.add_theme_font_size_override("font_size", 20)
 	yes.size = Vector2(150, 44)
 	yes.position = Vector2(PANEL_SIZE.x * 0.5 - 170, PANEL_SIZE.y - 68)
@@ -55,7 +60,7 @@ func _ready() -> void:
 	panel.add_child(yes)
 
 	var no := Button.new()
-	no.text = "No (N)"
+	no.text = no_text
 	no.add_theme_font_size_override("font_size", 20)
 	no.size = Vector2(150, 44)
 	no.position = Vector2(PANEL_SIZE.x * 0.5 + 20, PANEL_SIZE.y - 68)
@@ -66,8 +71,7 @@ func _ready() -> void:
 	no.grab_focus.call_deferred()   # the safe choice is the default
 
 func _layout_panel(panel: Panel, label: Label, yes: Button, no: Button) -> void:
-	# Draft questions also appear in narrow playtest windows. Keep both
-	# choices inside the panel instead of clipping the fixed 560px layout.
+	# Keep both buttons inside the panel on narrow windows.
 	var viewport := get_viewport().get_visible_rect().size
 	var width := minf(PANEL_SIZE.x, maxf(240.0, viewport.x - 32.0))
 	var height := minf(PANEL_SIZE.y, maxf(180.0, viewport.y - 32.0))

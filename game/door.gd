@@ -1,15 +1,8 @@
-# One sliding door panel in front of a single lock plate lane (see
-# world.gd's _build_highway) - blocks that lane solid until open() is
-# called, which world.gd's _check_gap_puzzle only does once all three
-# plates are occupied at once, all three doors together. Doesn't know
-# about LockPlate or the puzzle at all, just "solid until told to open" -
-# same arm's-length shape as CrackedWall/GrappleAnchor.
+# Sliding door panel blocking one lock-plate lane until open() is called.
 class_name Door
 extends StaticBody3D
 
-# x = thickness (thin, like a real door), y = height, z = width across
-# one lane slice - oriented to block forward travel along +x, the
-# corridor's own direction.
+# x = thickness, y = height, z = lane width; blocks travel along +x.
 @export var span := Vector3(0.4, 6.0, 2.3)
 
 var _shape: CollisionShape3D
@@ -37,7 +30,7 @@ func _ready() -> void:
 	var door_scene := preload("res://game/Door.fbx")
 	var door_instance := door_scene.instantiate()
 	add_child(door_instance)
-	var mesh_instance := find_mesh_instance(door_instance)  # from the recursive search I gave earlier
+	var mesh_instance := find_mesh_instance(door_instance)
 	print(mesh_instance.get_aabb().size)
 	_shape = CollisionShape3D.new()
 	var col := BoxShape3D.new()
@@ -45,10 +38,7 @@ func _ready() -> void:
 	_shape.shape = col
 	add_child(_shape)
 
-# Collision drops the instant this is called - opening is a game-state
-# fact, not something that should wait on the slide animation to look
-# right before it's actually true. The upward slide on top is purely
-# cosmetic.
+# Collision drops immediately; the slide is cosmetic.
 func open() -> void:
 	if _opened:
 		return

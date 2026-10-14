@@ -1,9 +1,7 @@
 class_name DeepZoneLayout
 extends RefCounted
 
-# Shared spatial contract for the route beyond the existing ability puzzle.
-# World placement, collision gates, encounter policy, and review tools read
-# these values rather than growing separate coordinate lists.
+# Shared coordinates for the route beyond the ability puzzle, read by placement, gates, encounters and tools.
 const WORLD_MIN_X := -60.0
 const WORLD_MAX_X := 230.0
 const WORLD_HALF_Z := 60.0
@@ -18,8 +16,7 @@ const LAB := Vector3(175.0, 2.0, 16.0)
 # Rest stop inside the lab cave corridor: past Sword Slayer's exit volume
 # (x<=151) and short of the lab entry trigger (x>=171).
 const LAB_SAVE_POINT := Vector3(163.0, 2.0, 16.0)
-# The approach is beyond the laboratory, not an exit at the shallow blockade.
-# Location is not a victory gate: explorers may reach it around the lab route.
+# Maze approach beyond the lab; reaching it is not a victory gate.
 const MAZE_TRANSITION := Vector3(215.0, 2.0, 16.0)
 const MAZE_ORIGIN := Vector3(300.0, 0.0, 20.76271)
 const MAZE_APPROACH_HALF_WIDTH := 4.0
@@ -59,15 +56,12 @@ func maze_route() -> PackedVector3Array:
 func zone_for_position(position: Vector3) -> String:
 	return "deep" if position.x >= DEEP_START_X else "shallows"
 
-# One shared 0..1 measure of how far the player has descended into the authored
-# deep-water route. World lighting/fog and verification both consume this
-# instead of maintaining unrelated visual thresholds.
+# 0..1 descent depth, shared by lighting/fog and verification.
 func depth_factor_for_position(position: Vector3) -> float:
 	return clampf(inverse_lerp(DEEP_START_X, LAB.x, position.x), 0.0, 1.0)
 
 func allows_random_encounter(position: Vector3) -> bool:
-	# Random enemies belong in explorable open water, not on top of the
-	# authored progression beats or inside either transition approach.
+	# Keep random enemies off progression beats and transition approaches.
 	for area_value in _protected_areas():
 		var area := area_value as Dictionary
 		if _horizontal_distance(position, area.center as Vector3) <= float(area.radius):

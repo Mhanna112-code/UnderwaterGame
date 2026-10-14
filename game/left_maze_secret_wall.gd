@@ -1,22 +1,9 @@
 extends Node3D
 class_name FlowField
 
-# The level inside the maze's left secret wall, seen from the side.
-# CSGBox3D16 (ceiling) and CSGBox3D17 (floor) are flat slabs running along
-# the level; the space between them is the level, a vertical plane. The
-# camera looks across it so "right" on screen is along the slabs.
-#
-# - A grid of cells fills the space between the two slabs (init_maze_grid).
-# - Each cell gets a whirlpool velocity: swirling around the middle of the
-#   two slabs and draining toward it (calculate_whirlpool_center).
-# - A hidden object spawns at every cell centre and follows that flow. Near
-#   the centre it switches to "passing" and shoots straight through, so the
-#   objects keep looping through the middle instead of settling into circles.
-# - The minimap (top right) shows the objects as red circles, the whirlpool
-#   centre as a white ring, and the diver as a green dot.
-# - The diver starts by the left end (closed off by a start wall), with a
-#   flashing arrow saying to move right. Reaching the far right end, or Esc,
-#   goes back to the maze.
+# Side-view level inside the maze's left secret wall, between ceiling slab CSGBox3D16 and floor slab CSGBox3D17.
+# A cell grid holds a whirlpool flow field; hidden objects follow it and shoot through the core, shown on the minimap.
+# The diver starts at the walled left end; reaching the right end, or Esc, returns to the maze.
 
 const MAZE_SCENE := "res://game/maze_level.tscn"
 
@@ -32,10 +19,7 @@ var rows := 0            # cells from slab to slab
 @onready var w17 := $CSGBox3D17 as CSGBox3D
 @onready var center := (w16.global_position + w17.global_position) * 0.5
 
-# The level's own directions, taken from the slabs so it keeps working if
-# the slabs are moved or turned: `along` runs the length of the slabs (screen
-# right), `across` goes from the ceiling (16) to the floor (17), and
-# `normal` points out of the level, away from the camera.
+# Level axes from the slabs: `along` (screen right), `across` (ceiling to floor), `normal` (away from camera).
 var along := Vector3.ZERO
 var across := Vector3.ZERO
 var normal := Vector3.ZERO
@@ -109,8 +93,7 @@ func init_maze_grid() -> void:
 			var world_pos := grid_origin + along * (i + 0.5) * cell_diameter + across * (j + 0.5) * cell_diameter
 			init_cell(world_pos, j * cols + i)
 
-# A world position's place in the level: x = distance along the slabs from
-# the start, y = distance down from the ceiling.
+# Level coords: x = distance along the slabs, y = distance down from the ceiling.
 func plane_uv(world: Vector3) -> Vector2:
 	var local := world - grid_origin
 	return Vector2(local.dot(along), local.dot(across))
@@ -120,9 +103,7 @@ func uv_to_world(uv: Vector2) -> Vector3:
 
 # --- Whirlpool field -------------------------------------------------------------
 
-# Cell i's whirlpool velocity: swirling around `center` and draining toward
-# it, flattened into the level's plane. Swirl rises inside the core and falls
-# off outside it (a Rankine vortex), so the very middle is calm.
+# Rankine-vortex swirl plus drain toward `center`, flattened into the level plane.
 func calculate_whirlpool_center(i: int) -> void:
 	var pos: Vector3 = cells[i]["cellPos"]
 	var to_center := center - pos
@@ -131,14 +112,12 @@ func calculate_whirlpool_center(i: int) -> void:
 	var inward := to_center / r if r > 0.001 else Vector3.ZERO
 	var tangent := normal.cross(inward) * spin_sign
 	var swirl := vortex_strength * (r / core_radius if r < core_radius else core_radius / r)
-	# The pull keeps growing all the way in (capped right at the middle), so
-	# objects can't just circle the core - they get dragged through it.
+	# Drain grows toward the middle so objects get dragged through the core.
 	var drain := drain_strength * core_radius / maxf(r, 0.75)
 	cells[i]["dist"] = r
 	cells[i]["velocity"] = tangent * swirl
 
-# The flow at any point in the level, blended between the four nearest cell
-# centres so objects don't jerk as they cross cell edges.
+# Bilinear blend of the four nearest cells' velocities.
 func velocity_at(world: Vector3) -> Vector3:
 	var uv := plane_uv(world) / cell_diameter - Vector2(0.5, 0.5)
 	var x0 := clampi(int(floor(uv.x)), 0, cols - 1)
@@ -155,8 +134,7 @@ func velocity_at(world: Vector3) -> Vector3:
 
 # --- Hidden objects ----------------------------------------------------------------
 
-# One hidden object at every cell centre. They're plain data (no nodes): hidden
-# in 3D anyway, and the minimap draws them straight from these arrays.
+# Plain data, not nodes; the minimap draws them from these arrays.
 func spawn_swirlers() -> void:
 	swirl_pos.clear()
 	swirl_vel.clear()
@@ -197,8 +175,7 @@ func _update_swirlers(delta: float) -> void:
 		swirl_pos[k] = uv_to_world(uv)
 		swirl_vel[k] = vel
 
-# Closes the level's left (start) end: a wall from the ceiling slab down to
-# the floor slab, across the slabs' full width.
+# Wall closing the start end, slab to slab.
 func _build_start_wall() -> void:
 	var wall := CSGBox3D.new()
 	wall.name = "SecretWallStart"
@@ -330,8 +307,7 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	if diver != null:
 		var cam := $Camera3D as Camera3D
-		# Follow the diver along the level, but stay level with the centre
-		# so the whole height between the slabs stays in view.
+		# Follow along the level but stay level with the centre.
 		var want := diver.global_position - normal * CAMERA_DISTANCE
 		want += across * (plane_uv(center).y - plane_uv(diver.global_position).y)
 		cam.global_position = cam.global_position.lerp(want, clampf(delta * 4.0, 0.0, 1.0))

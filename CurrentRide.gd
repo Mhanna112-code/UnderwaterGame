@@ -9,6 +9,21 @@ extends Path3D
 # + sonar diver). Spawned by _spawn_maxilani() at the start of _ready().
 var diver: Diver
 
+"""
+func _corner_player() -> void:
+	maximize_open_space_around_player()
+	
+best_reward_points = 0
+best_cell = 
+func maximize_open_space_around_player():
+	grid_zones = generate_grid_zones_around_enemy
+	for cells in grid_zones:
+		cell_reward_points = 
+		if cell_reward_points > :
+			
+		minimize_distance_player
+	enemy.distance_to()
+"""
 # Makes Maxilani, adds her to the scene (next to this path, not under it, so
 # she doesn't move if the path node is moved) at the path's first point.
 func _spawn_maxilani() -> void:
@@ -77,9 +92,81 @@ var _spawn_timer := 2.0
 var _bars: Array[Dictionary] = []   # {"node": StaticBody3D, "end": distance along the path}
 var _hit_cooldown := 0.0
 
+"""
+func draw_spline_line():
+	Line2D lineCen = Line2D.new()
+	lineCen.position = start_trigger.position
+	lineCen.rotation = randf(0, PI/2)
+	points = get_line_camera_intersections(lineCen, camera, camera.get_viewport())
+	var lineCen := Line2D.new()
+
+	lineCen.position = start_trigger.position
+	lineCen.rotation = randf_range(0.0, PI / 2.0)
+
+	lineCen.add_point(points[0])
+	lineCen.add_point(points[1])
+"""
+
+func get_line_camera_intersections(
+		line: Line2D,
+		camera: Camera2D,
+		viewport_size: Vector2
+	) -> Array[Vector2]:
+
+	var points: Array[Vector2] = []
+
+	# Camera view rectangle in world coordinates
+	var top_left = (
+		camera.get_screen_center_position()
+		- viewport_size * 0.5 / camera.zoom
+	)
+
+	var top_right = top_left + Vector2(
+		viewport_size.x / camera.zoom.x,
+		0
+	)
+
+	var bottom_left = top_left + Vector2(
+		0,
+		viewport_size.y / camera.zoom.y
+	)
+
+	var bottom_right = top_left + Vector2(
+		viewport_size.x / camera.zoom.x,
+		viewport_size.y / camera.zoom.y
+	)
+
+	# Four edges
+	var edges = [
+		[top_left, top_right],       # top
+		[top_right, bottom_right],   # right
+		[bottom_right, bottom_left], # bottom
+		[bottom_left, top_left]      # left
+	]
+
+	var a = line.global_position + line.points[0]
+	var b = line.global_position + line.points[1]
+
+	for edge in edges:
+		var c: Vector2 = edge[0]
+		var d: Vector2 = edge[1]
+
+		var intersection = Geometry2D.segment_intersects_segment(
+			a,
+			b,
+			c,
+			d
+		)
+
+		if intersection != null:
+			points.append(intersection)
+
+	return points
+
 # Returns false (and builds nothing) if there isn't room for a whole bar
 # before the path's end - the caller just tries again next frame.
 func spawn_and_extrude_cliffs() -> bool:
+	
 	var length := curve.get_baked_length()
 	var bar_length := TRIGGER_SPEED * DODGE_SECONDS
 	var start := trigger_progress + SPAWN_AHEAD

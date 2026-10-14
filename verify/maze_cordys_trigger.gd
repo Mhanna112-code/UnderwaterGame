@@ -17,6 +17,9 @@ func _run() -> void:
 		while diver.stats.level < 5:
 			diver.stats.gain_xp(10)
 		SpellTree.learn_all_available(diver, [])
+	# Cordys only leaves his cave once his puppets are beaten.
+	maze._remove_boss_trigger("secret_boss")
+	maze._set_cordys_out(true)
 	var station := maze._boss_triggers.get("main_boss") as Node3D
 	if station == null:
 		findings.append("INT-15 no authored finale station")
@@ -84,8 +87,8 @@ func _run() -> void:
 					findings.append("INT-16 actual finale victory left boss music in exploration")
 				if maze.route_state.octopus_state != "defeated" or maze.route_state.tethys_state != "locked" or maze.route_state.bomb_bot_state != "available" or maze.route_state.sword_slayer_state != "available":
 					findings.append("INT-15 real Cordys win did not update independent campaign boss state")
-				if snapshot.boss_triggers.has("main_boss") or not snapshot.boss_triggers.has("secret_boss"):
-					findings.append("INT-15 actual win did not complete Cordys independently of puppets")
+				if snapshot.boss_triggers.has("main_boss"):
+					findings.append("INT-15 actual win did not complete Cordys")
 				var restored := (load("res://game/maze_level.tscn") as PackedScene).instantiate() as MazeLevel
 				root.add_child(restored)
 				await process_frame
@@ -128,7 +131,7 @@ func _choose(battle: Battle, move: String, target: String) -> bool:
 	chosen.pressed.emit()
 	await process_frame
 	for button in battle.target_buttons:
-		if (button as Button).text.begins_with(target) and not (button as Button).disabled:
+		if ((button as Button).text.begins_with(target) or (button as Button).text.begins_with("Whole party")) and not (button as Button).disabled:
 			(button as Button).pressed.emit()
 			return true
 	return false

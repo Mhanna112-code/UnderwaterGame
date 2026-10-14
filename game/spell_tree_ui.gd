@@ -1,31 +1,5 @@
-# Scaffolding for the spell-tree screen: three columns (one per
-# SpellTree.branches() entry), a button per spell in that branch, spent
-# points and unmet requirements just disable the button rather than
-# hiding it - seeing what you can't afford/haven't unlocked yet is part of
-# planning which branch to spend on next. Hovering a button shows its
-# description via Godot's own tooltip (Button.tooltip_text) rather than a
-# hand-built popup - it's exactly what that property is for.
-#
-# Every diver has their own tree now (see SpellTree.SPELL_TREES), so the
-# columns can't be built once in _ready() and reused - open_for() rebuilds
-# them fresh for whichever diver's tree is being viewed. Branch order is
-# still fixed (SpellTree.BRANCH_ORDER) so the screen doesn't reshuffle
-# left-to-right depending on whose tree is open.
-#
-# Rebuilds its buttons from scratch on every _refresh() rather than
-# tracking diffs, same tradeoff MiniMap's _draw() makes - simpler to get
-# right than incremental updates.
-#
-# Reached only through SavePointMenu now, never directly - back_pressed is
-# how it hands control back to the save-point menu's root instead of just
-# hiding itself, so the player lands back on Save/Learn Spells, not out of
-# the save-point flow entirely.
-#
-# THIS IS SCAFFOLDING, not the finished screen: no tree-line connectors
-# between prerequisite spells (columns just list every node in the branch
-# top to bottom), no icons. Good enough to prove the data/gating work
-# end-to-end; the visual layer is a later pass once real spell content
-# exists to look at.
+# Spell-tree screen (scaffolding): one column per branch in BRANCH_ORDER, unaffordable spells disabled not hidden.
+# Rebuilt per diver in open_for(); reached only via SavePointMenu, returning through back_pressed.
 class_name SpellTreeUI
 extends Control
 
@@ -33,14 +7,15 @@ signal back_pressed
 
 var diver: Diver
 
-# Placeholder until game/quest_manager.gd exists - passed through to
-# SpellTree.can_learn()/learn() exactly like a real key-item list would be,
-# so wiring in the real one later is a one-line change here, not a
-# rewrite of this screen.
+# Placeholder until a real key-item source exists.
 var key_items: Array = []
 
 var _title_label: Label
 var _points_label: Label
+var _level_label: Label
+var _xp_bar: ProgressBar
+var _xp_label: Label
+var _points_pulse: Tween
 var _columns_box: HBoxContainer
 var _branch_columns: Dictionary = {}   # branch name -> VBoxContainer
 
@@ -49,11 +24,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	# The spell tree is a full-screen decision surface, so it intentionally
-	# hides world HUD text instead of allowing it to overlap the tree header.
+	# Full-screen and opaque so world HUD text can't overlap it.
 	bg.color = Color(0.02, 0.05, 0.08, 1.0)
-	# The opaque backdrop provides contrast only; it must not consume the
-	# clicks intended for the actual spell buttons above it.
+	# Backdrop must not eat clicks meant for the spell buttons.
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -79,10 +52,41 @@ func _ready() -> void:
 	_title_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
 	root.add_child(_title_label)
 
+	# Level, XP to the next level, and Spell Points (pulses while unspent).
+	var progress_row := HBoxContainer.new()
+	progress_row.add_theme_constant_override("separation", 14)
+	root.add_child(progress_row)
+	_level_label = Label.new()
+	_level_label.add_theme_font_size_override("font_size", 22)
+	_level_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.25))
+	_level_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	progress_row.add_child(_level_label)
+	_xp_bar = ProgressBar.new()
+	_xp_bar.custom_minimum_size = Vector2(240, 14)
+	_xp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_xp_bar.show_percentage = false
+	var xp_fill := StyleBoxFlat.new()
+	xp_fill.bg_color = Color(1.0, 0.8, 0.25)
+	xp_fill.set_corner_radius_all(3)
+	_xp_bar.add_theme_stylebox_override("fill", xp_fill)
+	var xp_track := StyleBoxFlat.new()
+	xp_track.bg_color = Color(0.16, 0.22, 0.27)
+	xp_track.set_corner_radius_all(3)
+	_xp_bar.add_theme_stylebox_override("background", xp_track)
+	progress_row.add_child(_xp_bar)
+	_xp_label = Label.new()
+	_xp_label.add_theme_font_size_override("font_size", 18)
+	_xp_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
+	_xp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	progress_row.add_child(_xp_label)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(24, 0)
+	progress_row.add_child(gap)
 	_points_label = Label.new()
 	_points_label.add_theme_font_size_override("font_size", 24)
 	_points_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
-	root.add_child(_points_label)
+	_points_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	progress_row.add_child(_points_label)
 
 	var hint := Label.new()
 	hint.text = "Hover a spell for details. Click to learn it."
@@ -105,11 +109,7 @@ func close() -> void:
 	visible = false
 	diver = null
 
-# Rebuilt every open_for() rather than once in _ready(), since which
-# branches/spells exist depends on diver.model_name now (see
-# SpellTree.SPELL_TREES) - a screen built for one diver's tree can't just
-# be relabeled for another's, the columns themselves need different
-# spells in them.
+# Columns depend on the diver's tree, so they're rebuilt per open_for().
 func _rebuild_columns() -> void:
 	for child in _columns_box.get_children():
 		child.queue_free()
@@ -132,11 +132,28 @@ func _rebuild_columns() -> void:
 func _refresh() -> void:
 	if diver == null:
 		return
-	_points_label.text = "Spell Points: %d" % diver.stats.spell_points
+	var s := diver.stats
+	var maxed := s.level >= CombatantStats.MAX_LEVEL
+	_level_label.text = "Lv %d%s" % [s.level, " (max)" if maxed else ""]
+	_xp_bar.max_value = s.xp_to_next
+	_xp_bar.value = s.xp_to_next if maxed else s.xp
+	_xp_label.text = "MAX" if maxed else "%d / %d XP" % [s.xp, s.xp_to_next]
+	_points_label.text = "Spell Points: %d" % s.spell_points
+	# Gold pulse while points are waiting to be spent.
+	if _points_pulse != null and _points_pulse.is_valid():
+		_points_pulse.kill()
+	_points_label.modulate = Color.WHITE
+	if s.spell_points > 0:
+		_points_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+		_points_pulse = _points_label.create_tween().set_loops()
+		_points_pulse.tween_property(_points_label, "modulate:a", 0.45, 0.6)
+		_points_pulse.tween_property(_points_label, "modulate:a", 1.0, 0.6)
+	else:
+		_points_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
 
 	for branch in SpellTree.branches(diver.model_name):
 		var col: VBoxContainer = _branch_columns[branch]
-		# First child is the header Label - only clear buttons below it.
+		# Keep the header Label (first child).
 		for child in col.get_children():
 			if child is Button:
 				child.queue_free()

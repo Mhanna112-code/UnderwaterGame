@@ -1,9 +1,4 @@
-# The cast, laid out. Open the project and this is the main scene: every
-# model from the FBX spread along X, floor-aligned, slowly turning, with the
-# measured height printed under each one.
-#
-# The FBX arrives with all four models stacked at the origin, so "load the
-# models" and "look at the models" are not the same job.
+# Model lineup scene: every FBX model spread along X, floor-aligned and turning, with measured size labels.
 extends Node3D
 
 const SRC := preload("res://art/characters/divers.glb")
@@ -24,25 +19,21 @@ func _ready() -> void:
 		var mi: MeshInstance3D = m
 		mi.get_parent().remove_child(mi)
 		pivot.add_child(mi)
-		# drop each model onto the floor: they arrive centred on their own
-		# origin, which is not the same as standing on y=0
+		# Models arrive centred on their origin; drop them onto y=0.
 		var box: AABB = _world_aabb(mi)
 		pivot.position = Vector3(x, -box.position.y, 0.0)
 		turners.append(pivot)
-		# label the whole box, not the height: the lantern is a 1.79m staff
-		# lying flat, and "0.12 m" was a true number about the wrong axis
+		# Label the full box size, not just height (the lantern lies flat).
 		_label(String(m.name), box.size, x, box.size.y)
 		x += gap
 	src.queue_free()
 	_frame_camera(models.size(), gap)
 
-# put the whole cast in shot instead of trusting a hand-placed camera: add a
-# model and the framing follows
+# Frame the whole cast automatically.
 func _frame_camera(n: int, gap: float) -> void:
 	var cam: Camera3D = $Camera3D
 	var span: float = maxf(gap * float(n - 1) + 2.0, 4.0)
-	# fov is VERTICAL. Sizing a horizontal lineup against it pushed the
-	# camera nearly twice as far back as it needed to be.
+	# fov is vertical; size the horizontal lineup accordingly.
 	var vp: Vector2 = Vector2(get_viewport().get_visible_rect().size)
 	var aspect: float = vp.x / maxf(1.0, vp.y)
 	var htan: float = tan(deg_to_rad(cam.fov * 0.5)) * aspect

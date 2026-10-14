@@ -9,19 +9,14 @@ func _run() -> void:
 	root.add_child(world)
 	await process_frame
 	await world._on_title_new_game(918302)
-	var swim := InputEventKey.new()
-	swim.keycode = KEY_W
-	swim.physical_keycode = KEY_W
-	swim.pressed = true
-	Input.parse_input_event(swim)
+	# The Cordys introduction follows the opening directly; skip to its end.
+	var movie := get_first_node_in_group("prologue_cinematic")
+	if movie != null:
+		movie.call("pause_introduction_for_test")
 	var deadline := Time.get_ticks_msec() + 10000
-	while not world.battling and Time.get_ticks_msec() < deadline:
-		await physics_frame
-	swim.pressed = false
-	Input.parse_input_event(swim)
-	await process_frame
+	while world.route_state.prologue_phase != "octopus_response" and Time.get_ticks_msec() < deadline:
+		await process_frame
 	var fight := world.battle
-	await fight.reveal_prologue_octopus()
 	await create_timer(0.2).timeout
 	await RenderingServer.frame_post_draw
 	print("camera=", fight._stage_cam.global_position, " bounds=", fight.enemies[0].actor.visual_bounds(), " body=", fight.enemies[0].actor.current_pose_bounds())

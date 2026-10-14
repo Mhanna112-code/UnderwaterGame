@@ -7,6 +7,7 @@
 #   instead of one of the three safe durable milestones.
 # - OPEN-013: prologue encounter sources are rejected or contaminate campaign
 #   Octopus state.
+# - OPEN-042: the retired prologue Angler source/phases are still accepted.
 #
 # Usage: godot --headless --path . --script verify/opening_prologue_state.gd
 extends SceneTree
@@ -75,12 +76,19 @@ func _test_phase_signal(route: RouteState) -> void:
 
 func _test_encounter_sources(route: RouteState) -> void:
 	var original_octopus: String = String(route.octopus_state)
-	for source in ["prologue_angler", "prologue_octopus"]:
-		route.set_encounter_source(source)
-		if route.encounter_source != source:
-			findings.append("OPEN-013 semantic encounter source rejected: %s" % source)
-		if route.octopus_state != original_octopus:
-			findings.append("OPEN-013 prologue source mutated campaign Octopus state")
+	route.set_encounter_source("prologue_octopus")
+	if route.encounter_source != "prologue_octopus":
+		findings.append("OPEN-013 semantic encounter source rejected: prologue_octopus")
+	if route.octopus_state != original_octopus:
+		findings.append("OPEN-013 prologue source mutated campaign Octopus state")
+	# OPEN-042: the retired prologue Angler source and phases are gone; an old
+	# save naming the source falls back to an ordinary one.
+	route.set_encounter_source("prologue_angler")
+	if route.encounter_source != "random":
+		findings.append("OPEN-042 retired prologue_angler source is still accepted")
+	for phase in ["angler", "angler_victory", "octopus_notice", "octopus_omen"]:
+		if RouteState.PROLOGUE_PHASES.has(phase):
+			findings.append("OPEN-042 retired prologue phase is still public: %s" % phase)
 
 func _test_old_save_migration() -> void:
 	var restored := RouteState.new()

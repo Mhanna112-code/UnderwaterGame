@@ -1,27 +1,12 @@
-# Shown by World when a random encounter rolls into a special encounter for
-# a revealed key item (see world.gd's _on_encounter_triggered()/
-# _offer_special_encounter()) - two screens, only one visible at a time:
-#   confirm: explains the stakes (special ability needed, a timed
-#     challenge, real treasure, no permadeath) with Enter/Not Now.
-#   select: a rotating carousel of the three divers - 3D model preview,
-#     name, ability - Left/Right to cycle, Enter to commit to that diver,
-#     Back returns to confirm.
-# Same paused-but-interactive shape as TitleScreen/GameOverScreen -
-# process_mode ALWAYS so input still works while get_tree().paused
-# freezes the world underneath.
+# Special encounter prompt: confirm screen (stakes) then a diver carousel (Left/Right, Enter, Back).
+# process_mode ALWAYS so it works while the tree is paused.
 class_name SpecialEncounterPrompt
 extends Control
 
 signal diver_chosen(model_name: String)
 signal cancelled
 
-# MODIFIED: the blurb text moved to content/tutorial_content.gd
-# (ABILITY_BLURBS), shared with the general Esc-menu reference carousel so
-# the wording can't drift apart between the two. The demo-media paths used
-# to be shared the same way (ABILITY_MEDIA), but this carousel now reads
-# its own SPECIAL_ENCOUNTER_MEDIA table instead - same idea as battle.gd's
-# in-fight tutorial demo frame, which reads that same table (see content/
-# tutorial_content.gd's own comment on why the two were split apart).
+# Blurbs come from tutorial_content.gd; media from its SPECIAL_ENCOUNTER_MEDIA table.
 const ROSTER := ["Staff_Diver", "Prototype_1(1910)", "Prototype_V(1922)"]
 
 var _mode := "confirm"
@@ -32,7 +17,7 @@ var _select_panel: Control
 var _preview_vp: SubViewport
 var _preview_diver: Diver
 var _name_label: Label
-var _ability_label: Label
+var _ability_label: RichTextLabel
 var _media_frame: PanelContainer
 var _confirm_column: VBoxContainer
 var _select_column: VBoxContainer
@@ -42,12 +27,7 @@ var _preview_container: SubViewportContainer
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	# set_anchors_preset() alone leaves offsets at their default zero, which
-	# for a runtime-built Control parented directly under a CanvasLayer (no
-	# parent Control to inherit a size from) collapses the whole rect to
-	# (0, 0) - everything nested inside then renders pinned to the top-left
-	# corner instead of filling the screen. Same bug title_screen.gd hit;
-	# set_anchors_and_offsets_preset() is the fix there too.
+	# Offsets too, or a Control under a CanvasLayer collapses to (0, 0).
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
@@ -121,11 +101,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_confirm_panel() -> Control:
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# MODIFIED (added): CenterContainer centers based on its child's own
-	# minimum size, but a child without an explicit shrink size flag can
-	# still end up laid out against the top-left corner instead of centered
-	# - this popup was doing exactly that in practice. Forcing shrink-center
-	# on both axes here is the standard fix.
+	# Shrink-center so the popup actually centers.
 	center.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	center.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -193,13 +169,7 @@ func _build_select_panel() -> Control:
 	heading.add_theme_color_override("font_color", Color(0.6, 0.7, 0.75))
 	col.add_child(heading)
 
-	# Responsive preview/video grid; carousel arrows live in their own row.
-	# The preview
-	# itself is a small SubViewport with its own camera and one live Diver
-	# instance, same recipe battle.gd's own stage uses (SubViewportContainer
-	# + SubViewport + Camera3D + Diver.new()), just facing the camera
-	# instead of facing away (battle's party puppets show their backs to
-	# the camera on purpose - a showcase screen wants the opposite).
+	# Responsive preview/video grid; the preview is a SubViewport with a live Diver facing the camera.
 	var row := GridContainer.new()
 	_showcase = row
 	row.columns = 2
@@ -223,20 +193,13 @@ func _build_select_panel() -> Control:
 	_preview_vp.size = Vector2i(280, 260)
 	_preview_vp.transparent_bg = true
 	_preview_vp.disable_3d = false
-	# Keep the carousel's review model isolated from the live overworld. A
-	# SubViewport shares its parent's World3D by default, which made nearby
-	# divers, guardians and scenery appear stacked inside this preview.
+	# Own World3D so overworld nodes don't appear in the preview.
 	_preview_vp.own_world_3d = true
 	preview_container.add_child(_preview_vp)
 
 	var cam := Camera3D.new()
 	cam.fov = 55.0
-	# look_at_from_position(), not position + look_at() - this whole panel
-	# is still an orphan subtree at this point (returned by this function,
-	# only added to the live tree by _ready()'s caller afterward), and
-	# look_at() needs global_transform, which doesn't resolve until a node
-	# is actually inside the tree. look_at_from_position() sets both
-	# position and orientation in one call without that requirement.
+	# look_at_from_position() works before the node is in the tree; look_at() doesn't.
 	cam.look_at_from_position(Vector3(0.0, 1.2, 3.2), Vector3(0.0, 1.0, 0.0), Vector3.UP)
 	_preview_vp.add_child(cam)
 
@@ -244,12 +207,7 @@ func _build_select_panel() -> Control:
 	light.rotation_degrees = Vector3(-40, -30, 0)
 	_preview_vp.add_child(light)
 
-	# MODIFIED (added): a demo clip/image slot right beside the 3D preview -
-	# "next to the portrait" rather than a separate screen the player has
-	# to leave the carousel to see. Rebuilt per diver in _refresh_media()
-	# the same way _preview_diver is rebuilt per diver in
-	# _refresh_carousel(), since which ability (and so which clip) is
-	# showing changes with _carousel_index.
+	# Demo clip/image slot beside the preview, rebuilt per diver in _refresh_media().
 	_media_frame = PanelContainer.new()
 	_media_frame.custom_minimum_size = TutorialContent.VIDEO_FRAME_SIZE
 	var media_bg := StyleBoxFlat.new()
@@ -276,12 +234,14 @@ func _build_select_panel() -> Control:
 	carousel_controls.add_child(_name_label)
 	carousel_controls.add_child(right_btn)
 
-	_ability_label = Label.new()
-	_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_ability_label.add_theme_color_override("font_color", Color(0.6, 0.85, 0.7))
-	# MODIFIED (added): ABILITY_BLURBS grew from a short one-liner into an
-	# actual tutorial sentence - without autowrap this would just run off
-	# the edges of the screen instead of wrapping under the diver preview.
+	# RichTextLabel so the controls show as key tiles (Slot._badge()).
+	_ability_label = RichTextLabel.new()
+	_ability_label.bbcode_enabled = true
+	_ability_label.fit_content = true
+	_ability_label.scroll_active = false
+	_ability_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ability_label.add_theme_color_override("default_color", Color(0.6, 0.85, 0.7))
+	# Autowrap: blurbs are full sentences.
 	_ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_ability_label.custom_minimum_size = Vector2.ZERO
 	col.add_child(_ability_label)
@@ -315,11 +275,7 @@ func _on_back_pressed() -> void:
 	_select_panel.visible = false
 	_confirm_panel.visible = true
 
-# Rebuilds the preview Diver from scratch on every cycle rather than
-# swapping model_name on a persistent one - Diver._build_stats()/model
-# setup all run from _ready(), so a fresh instance is the reliable way to
-# get a clean model swap instead of fighting whatever a live Diver
-# assumes only happens once.
+# Rebuild the preview Diver each cycle; model setup only runs in _ready().
 func _refresh_carousel() -> void:
 	if _preview_diver != null and is_instance_valid(_preview_diver):
 		_preview_diver.queue_free()
@@ -328,37 +284,15 @@ func _refresh_carousel() -> void:
 	_preview_diver.model_name = model_name
 	_preview_diver.can_be_selected = false
 	_preview_vp.add_child(_preview_diver)
-	_preview_diver.rotation.y = PI   # faces the camera - the opposite of battle's party puppets on purpose
+	_preview_diver.rotation.y = PI  # faces the camera
 
-	# MODIFIED: was its own local {model_name: display_name} dict, duplicating
-	# (and drifting from - it still said "Mermaid"/"Diver Boy"/"Marine Man"
-	# after Cast.DISPLAY_NAMES moved to Maxilani/Musashi/Mech Pilot) the one
-	# real source of truth. Cast.display_name() is what battle.gd's own
-	# _display() already defers to - one name, one meaning, everywhere.
 	_name_label.text = Cast.display_name(model_name)
 	var ability_id := String(Diver.BASE_STATS.get(model_name, {}).get("ability", ""))
-	_ability_label.text = String(TutorialContent.ABILITY_BLURBS.get(ability_id, ""))
+	_ability_label.text = "[center]%s[/center]" % String(TutorialContent.ABILITY_BLURBS.get(ability_id, ""))
 	_refresh_media(ability_id)
 
-# Swaps in whatever demo clip/image exists for `ability_id` - a still image
-# loads straight into a TextureRect; a .ogv loads into a VideoStreamPlayer
-# and loops by replaying on `finished` rather than relying on any built-in
-# loop flag.
-# MODIFIED (fixed): this never got the same fix character_ability_popup.gd's
-# own copy of this same loading logic did (see its "Fix tutorial clip aspect
-# ratio and oversized media frame" commit) - expand was never set true (a
-# VideoStreamPlayer with expand false renders at the source video's native
-# resolution, ignoring the PRESET_FULL_RECT anchors entirely, which is what
-# actually blew the whole carousel out to fill most of the screen the moment
-# a real swap_demo.ogv existed to test this against) and there was no
-# AspectRatioContainer, so a 16:9 source stretched to whatever raw shape
-# _media_frame happened to be. Also: `player.stream = load(path)` reused
-# Godot's cached VideoStreamTheora resource across every _refresh_media()
-# call this carousel makes (Left/Right cycling calls it once per diver, and
-# switching back to the same diver again re-hits the cache) - a fresh
-# VideoStreamTheora.new() per call is what character_ability_popup.gd's own
-# version does instead, avoiding one decoder's playback state leaking
-# between players that all point at the same cached resource.
+# Loads the demo clip/image for `ability_id`. Videos get expand + AspectRatioContainer, a fresh
+# VideoStreamTheora per call (no shared decoder state), and loop by replaying on `finished`.
 func _refresh_media(ability_id: String) -> void:
 	for child in _media_frame.get_children():
 		child.queue_free()
@@ -377,11 +311,7 @@ func _refresh_media(ability_id: String) -> void:
 			aspect.add_child(player)
 			player.finished.connect(player.play)
 			_media_frame.add_child(aspect)
-			# Deferred, not autoplay=true - same reasoning as character_
-			# ability_popup.gd's own player: starting Theora decode the
-			# instant this frame's still mid-build (or the tree's mid-pause
-			# transition from world.gd opening this popup) risks contending
-			# with that instead of showing a small clip cleanly.
+			# Deferred start so Theora decode doesn't contend with the build/pause transition.
 			player.call_deferred("play")
 			return
 		var tex := load(path) as Texture2D

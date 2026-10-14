@@ -1,5 +1,10 @@
 extends SceneTree
-## FR-1: real elapsed-time navigation must not exhaust the combat tank.
+## FR-1: Sonar bills Diver.SONAR_OXYGEN_PER_TICK every SONAR_DRAIN_INTERVAL
+## seconds of real elapsed time, independent of frame rate.
+const BUDGET_SECONDS := 30.0
+
+func _expected_use(seconds: float) -> float:
+	return floorf(seconds / Diver.SONAR_DRAIN_INTERVAL + 0.0001) * Diver.SONAR_OXYGEN_PER_TICK
 var findings: Array[String] = []
 
 func _initialize() -> void:
@@ -12,12 +17,13 @@ func _run() -> void:
 	diver.stats = CombatantStats.new()
 	diver.passive_id = "sonar"
 	diver.toggle_sonar()
-	for tick in 1200:
+	for tick in int(BUDGET_SECONDS * 10.0):
 		diver._physics_process(0.1)
 	var used := 100.0 - diver.stats.oxygen
-	_expect(used >= 19.0 and used <= 21.0 and diver.sonar_active,
-		"FR-1 two-minute Sonar navigation depleted %.1f Oxygen instead of about 20" % used)
-	print("SONAR BUDGET|seconds=120|used=", used, "|active=", diver.sonar_active)
+	var expected := _expected_use(BUDGET_SECONDS)
+	_expect(absf(used - expected) <= Diver.SONAR_OXYGEN_PER_TICK and diver.sonar_active,
+		"FR-1 %.0f s of Sonar used %.1f Oxygen instead of about %.0f" % [BUDGET_SECONDS, used, expected])
+	print("SONAR BUDGET|seconds=", BUDGET_SECONDS, "|used=", used, "|active=", diver.sonar_active)
 	diver.free()
 	if findings.is_empty():
 		_budget_cases()
@@ -37,12 +43,12 @@ func _budget_cases() -> void:
 		actor.stats = CombatantStats.new()
 		actor.passive_id = "sonar"
 		actor.toggle_sonar()
-		var remaining := 120.0
+		var remaining := BUDGET_SECONDS
 		while remaining > 0.0000001:
 			var dt := minf(remaining, rng.randf_range(0.016, 2.5))
 			actor._physics_process(dt)
 			remaining -= dt
-		_expect(actor.stats.oxygen >= 79.0 and actor.stats.oxygen <= 81.0,
+		_expect(absf((100.0 - actor.stats.oxygen) - _expected_use(BUDGET_SECONDS)) <= Diver.SONAR_OXYGEN_PER_TICK,
 			"FR-1 billing depends on elapsed frame partitions: " + str(actor.stats.oxygen))
 		var before := actor.stats.oxygen
 		actor.exploration_paused = true
@@ -56,24 +62,24 @@ func _budget_cases() -> void:
 		_expect(not actor.toggle_sonar(), "FR-4 zero-Oxygen Sonar falsely enables")
 		actor.stats.oxygen = 0.5
 		actor.toggle_sonar()
-		actor._physics_process(6.1)
+		actor._physics_process(Diver.SONAR_DRAIN_INTERVAL + 0.1)
 		_expect(actor.stats.oxygen == 0.0 and not actor.sonar_active, "FR-4 depletion goes negative or leaves Sonar falsely on")
 		actor.free()
 	var original := Diver.new()
 	original.stats = CombatantStats.new()
 	original.passive_id = "sonar"
 	original.toggle_sonar()
-	original._physics_process(3.5)
+	original._physics_process(Diver.SONAR_DRAIN_INTERVAL * 0.6)
 	var session := CampaignSession.new()
 	session.capture_party([original], 0)
 	var restored := Diver.new()
 	restored.passive_id = "sonar"
 	session.restore_party([restored])
 	_expect(restored.stats == original.stats, "FR-4 campaign Sonar handoff replaced the shared combat resource")
-	restored._physics_process(2.4)
+	restored._physics_process(Diver.SONAR_DRAIN_INTERVAL * 0.4 - 0.1)
 	_expect(restored.stats.oxygen == 100.0, "FR-4 handoff immediately charges a saved partial interval")
 	restored._physics_process(0.2)
-	_expect(restored.stats.oxygen == 99.0, "FR-4 handoff resets the saved interval or bills twice")
+	_expect(restored.stats.oxygen == 100.0 - Diver.SONAR_OXYGEN_PER_TICK, "FR-4 handoff resets the saved interval or bills twice")
 	original.free()
 	restored.free()
 	print("SONAR TIME PARTITIONS|generated=48|paused_off_zero=true|partial_interval_handoff=true")
@@ -96,8 +102,9 @@ func _world_site() -> void:
 	onboarding.open_for_world(world)
 	onboarding.advance_page()
 	var page := onboarding.current_page_data()
-	_expect(page.get("sonar_oxygen_per_tick") == 1 and page.get("sonar_tick_seconds") == 6
-		and "1 O2 every 6 seconds" in String(page.body)
+	var cost_text := "%.0f O2 every %.0f seconds" % [Diver.SONAR_OXYGEN_PER_TICK, Diver.SONAR_DRAIN_INTERVAL]
+	_expect(page.get("sonar_oxygen_per_tick") == Diver.SONAR_OXYGEN_PER_TICK and page.get("sonar_tick_seconds") == Diver.SONAR_DRAIN_INTERVAL
+		and cost_text in String(page.body)
 		and "Red dots are visible only while Sonar is on" in String(page.body)
 		and "guarded sites still work" in String(page.body), "FR-5 actual onboarding retains old drain/access rules")
 	onboarding.dismiss()

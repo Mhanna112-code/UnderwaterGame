@@ -45,7 +45,7 @@ const expect = (ok, message) => { if (!ok) throw Error(message); };
 const capture = async name => {
   const file = path.join(output, name + '.png');
   await page.screenshot({ path: file });
-  const rows = JSON.parse(execFileSync('/tmp/underwater-screen-ocr', [file], { encoding: 'utf8' }));
+  const rows = JSON.parse(execFileSync(process.env.HUD_OCR || './output/playwright/screen-ocr', [file], { encoding: 'utf8' }));
   observations.push({ name, text: rows.map(row => row.text).join('\n') });
   return rows;
 };
@@ -73,9 +73,9 @@ try {
   while (!logs.some(row => row.includes('PROLOGUE_PHASE|opening_video')) && Date.now() < bootDeadline) await page.waitForTimeout(200);
   expect(logs.some(row => row.includes('PROLOGUE_PHASE|opening_video')), 'Normal New Game did not acknowledge checkpoint/opening');
   while (!logs.some(row => row.includes('PROLOGUE_PHASE|spawn_exploration')) && Date.now() < bootDeadline) await page.waitForTimeout(200);
-  expect(logs.some(row => row.includes('PROLOGUE_PHASE|spawn_exploration')), 'Normal opening movie did not reveal exploration');
+  expect(logs.some(row => row.includes('PROLOGUE_PHASE|spawn_exploration')), 'Normal opening movie did not hand off to the prologue');
   await page.waitForTimeout(500);
-  await capture('normal-new-game-hud');
+  await capture('normal-new-game-prologue');
   await page.evaluate(async record => {
     const db = await new Promise((resolve, reject) => { const r = indexedDB.open(record.database); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
     await new Promise((resolve, reject) => {

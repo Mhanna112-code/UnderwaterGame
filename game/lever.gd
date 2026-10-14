@@ -1,24 +1,14 @@
-# A physical switch a diver pulls by swimming up to it and pressing E -
-# same walk-up-and-press shape as save_point.gd's P, not an ambient-touch
-# trigger like item_guardian.gd/cracked_wall.gd, since a lever is something
-# you might swim past several times before deciding to actually use.
-#
-# Doesn't know what pulling it should DO - only that it WAS pulled
-# (`pulled` signal, current position in `is_up`) - same ability-agnostic
-# split ItemGuardian/GrappleAnchor already use elsewhere, so wiring a pair
-# of these to a gate, a current, or a hallway swing is whatever scene adds
-# them's job, not this class's.
+# Switch a diver pulls by swimming up and pressing E.
+# Only reports the pull (`pulled`, `is_up`); the owning scene decides what it does.
 class_name Lever
 extends Area3D
 
 signal pulled(is_up: bool)
 
 @export var is_up := true
-# false: the scene adding this lever drives pull() itself (MazeLevel's dome
-# levers), so this lever ignores E on its own.
+# false: the owning scene calls pull() itself; E is ignored.
 @export var handles_input := true
-# false: the handle stays green whichever way it's thrown (the dome levers
-# show their state with a separate red/green light instead).
+# false: the handle stays green (state is shown elsewhere).
 @export var color_by_state := true
 
 var _handle: MeshInstance3D
@@ -26,9 +16,7 @@ var _handle_mat: StandardMaterial3D
 var _diver_in_range: Diver = null
 
 func _ready() -> void:
-	# Divers sit on collision layer 2 (see diver.gd) - an Area3D's default
-	# collision_mask only watches layer 1, so without this a diver could
-	# swim straight through without ever being noticed.
+	# Divers are on collision layer 2.
 	collision_mask = 2
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
@@ -46,9 +34,7 @@ func _ready() -> void:
 	base.material_override = base_mat
 	add_child(base)
 
-	# The handle pivots at the base's top, not its own center - rotating a
-	# mesh whose geometry runs straight UP from that pivot is what makes it
-	# read as "swinging on a hinge" rather than "spinning in place".
+	# Pivot at the base's top so the handle swings on a hinge.
 	var pivot := Node3D.new()
 	pivot.position.y = 0.5
 	base.add_child(pivot)
@@ -59,7 +45,7 @@ func _ready() -> void:
 	handle_mesh.bottom_radius = 0.065
 	handle_mesh.height = 0.8
 	_handle.mesh = handle_mesh
-	_handle.position.y = 0.4   # half the handle's own height, so it extends UP from the pivot, not through it
+	_handle.position.y = 0.4   # extends up from the pivot
 	_handle_mat = StandardMaterial3D.new()
 	_handle_mat.emission_enabled = true
 	_handle_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -87,12 +73,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not handles_input or _diver_in_range == null or not is_instance_valid(_diver_in_range):
 		return
 	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_E:
-		# E already means "use your diver's special ability" everywhere a
-		# real World exists (world.gd's own _unhandled_input) - marking
-		# this handled keeps a lever pull from ALSO firing whichever
-		# ability the diver standing here happens to have, the same
-		# swallow-the-event fix intro_crawl.gd's own E handler needed for
-		# the same reason.
+		# Consume E so it doesn't also fire the diver's ability.
 		get_viewport().set_input_as_handled()
 		pull()
 

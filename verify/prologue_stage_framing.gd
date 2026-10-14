@@ -20,11 +20,11 @@ func _run() -> void:
 		sources.append(diver)
 	var fight := Battle.new()
 	fight.party_source = sources
-	fight.prologue_angler_encounter = true
+	fight.encounter_source = "prologue_octopus"
 	root.add_child(fight)
 	await process_frame
 	await process_frame
-	await fight.reveal_prologue_octopus()
+	await _wait_cordys_turn(fight)
 	await create_timer(0.1).timeout
 	var actor := fight.enemies[0].actor as PrologueOctopus
 	var low := Vector2(INF, INF)
@@ -81,3 +81,10 @@ func _check_attack_views(actor: PrologueOctopus, fight: Battle, size: Vector2) -
 			print("Cordys pose %s %.1f screen bounds %s %s" % [key, fraction_value, pose_low, pose_high])
 			if pose_low.x < 0.0 or pose_high.x > size.x or pose_low.y < 0.0 or pose_high.y > size.y:
 				findings.append("OPEN-012 %s %.1f clips the moving silhouette" % [key, fraction_value])
+
+# The prologue Battle stages Cordys itself; wait for his reveal to hand the
+# party its first turn.
+func _wait_cordys_turn(fight: Battle) -> void:
+	var deadline := Time.get_ticks_msec() + 10000
+	while fight.attack_btn.disabled and Time.get_ticks_msec() < deadline:
+		await process_frame

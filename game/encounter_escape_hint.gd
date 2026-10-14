@@ -9,8 +9,7 @@ var _style: StyleBoxFlat
 
 func _ready() -> void:
 	name = "EscapeEncounterHint"
-	# Expire even if the player immediately opens a paused menu. No pending
-	# timer/tween can resurrect a retired cue or extend its deadline.
+	# Keep expiring while menus pause the tree; nothing can extend the deadline.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_style = StyleBoxFlat.new()

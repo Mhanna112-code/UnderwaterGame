@@ -1,20 +1,8 @@
 class_name SwitchMinigameModal
 extends CanvasLayer
 
-# Opened by pressing E at the strong-enemy room's black switch box. A large
-# centred panel (room for a minigame) with three parallel vertical white
-# lines. One random portrait from each diver's pool appears in a row at the
-# panel's top right, spaced the same as the lines, then each tweens across
-# onto its line, then begin_travel() sets them all moving down their lines
-# toward the big numbers 1-3 under the lines. Lines the player draws between
-# two vertical lines snap into straight rungs; a portrait travelling down
-# that reaches a rung's end on its line crosses the rung to the other line
-# and carries on down from there (each rung once per portrait). A portrait
-# coming down onto a portrait already settled at the bottom of its line
-# bumps into it, rises clear, moves over to the nearest free line and keeps
-# going down there. E starts it again (retry_requested), Esc closes it. The tree
-# isn't paused - MazeLevel freezes itself while this is open instead, so its
-# _input() can still see mouse presses (see contains_screen_point()).
+# Strong-room switch-box minigame: portraits travel down three lines, crossing player-drawn rungs.
+# E retries, Esc closes. Tree isn't paused; MazeLevel freezes itself so its _input() still sees the mouse.
 
 signal closed
 signal retry_requested                # E: start the puzzle again
@@ -40,10 +28,7 @@ const SNAP_DISTANCE := 45.0                  # px from a line's centre that coun
 const REJECT_COLOR := Color(1.0, 0.25, 0.25)  # flash for a line drawn too close to another
 const MIN_RUNG_GAP := 40.0     # px: rung ends on the same line must be at least this far apart
 const CROSS_SPEED := 160.0     # px/s along a rung
-# A portrait coming down a line whose bottom is already taken bumps into
-# the settled portrait (its foot this far above the line's bottom), then
-# rises to DETOUR_CLEARANCE above that portrait's top and moves across to
-# the nearest free line at that height (see _detour_to_free_lane()).
+# Bump distance above a settled portrait; the newcomer rises DETOUR_CLEARANCE and detours to a free line.
 const BUMP_STEP := 70.0
 const DETOUR_CLEARANCE := 10.0
 
@@ -91,20 +76,15 @@ var lane: Array[int] = [0, 1, 2]
 var _crossing: Array[bool] = [false, false, false]
 var _settled: Array[bool] = [false, false, false]
 var _used_rungs: Array = [[], [], []]
-# The line the mouse is drawing right now (null when not drawing), and every
-# drawn line that snapped straight across between two vertical lines:
-# {"node": Line2D, "from": line index, "to": line index, "from_y": y, "to_y": y}
-# (panel space, from/to in the order they were drawn).
+# The line being drawn (null if none) and snapped rungs:
+# {"node": Line2D, "from", "to", "from_y", "to_y"} in panel space.
 var _drawing_line: Line2D
 var _rung_layer: Control   # drawn lines go here, under the portraits
 var rungs: Array[Dictionary] = []
-# Set by MazeLevel before this enters the tree: each diver's portrait (the
-# same picture as their wall poster; null = a random one), and the clues
-# from the posters already looked at: [{"texture", "number"}] - listed down
-# the left side, portrait then the number it has to end up on.
+# Set by MazeLevel before entering the tree: portraits (null = random) and clues
+# [{"texture", "number"}] listed down the left side.
 var portrait_textures: Array = []
-# Optional: the lane (0-2) each diver's portrait starts in - MazeLevel picks
-# them so every portrait starts in a wrong lane. Empty = lane i for diver i.
+# Optional starting lane per diver (MazeLevel picks wrong lanes); empty = lane i.
 var start_lanes: Array = []
 var clue_entries: Array = []
 var _result_label: Label
@@ -163,8 +143,7 @@ func _ready() -> void:
 	_rung_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_rung_layer)
 
-	# Portraits: a row at the top right, the same spacing as the lines,
-	# the rightmost one START_RIGHT_MARGIN in from the panel's right edge.
+	# Portraits start in a row at the top right, spaced like the lines.
 	var row_right_x := PANEL_SIZE.x - START_RIGHT_MARGIN - PORTRAIT_SIZE.x * 0.5
 	if start_lanes.size() == 3:
 		for i in 3:
@@ -232,9 +211,7 @@ func _build_clues() -> void:
 		row.add_child(number)
 		box.add_child(row)
 
-# Shown once every portrait has settled.
-# `placed`: for each portrait, whether it ended on its right lane - a green
-# check or a red X goes beside each one.
+# Shown once all portraits settle; `placed` gives a check or X per portrait.
 func show_result(correct: bool, placed: Array = []) -> void:
 	_result_label.text = "Correct!" if correct else "Not quite... (E to try again, Esc to close)"
 	_result_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.45) if correct else Color(1.0, 0.4, 0.4))
@@ -274,8 +251,7 @@ func _slide_onto_lines() -> void:
 func contains_screen_point(point: Vector2) -> bool:
 	return panel.get_global_rect().has_point(point)
 
-# Left click on the modal: start a new line with just that first point.
-# `point` is a viewport position (InputEventMouseButton.position).
+# Left click starts a new line; `point` is a viewport position.
 func begin_lines_drawing(point: Vector2) -> void:
 	clear_drawing_line()
 	if not contains_screen_point(point):
@@ -289,8 +265,7 @@ func begin_lines_drawing(point: Vector2) -> void:
 	_drawing_line.add_point(_to_panel(point))
 	_rung_layer.add_child(_drawing_line)
 
-# Left button still held and the mouse moved: add a point at the new mouse
-# position. Leaving the modal clears the line and its points.
+# Drag adds points; leaving the modal clears the line.
 func continue_lines_drawing(point: Vector2) -> void:
 	if _drawing_line == null:
 		return
@@ -300,12 +275,8 @@ func continue_lines_drawing(point: Vector2) -> void:
 	_drawing_line.add_point(_to_panel(point))
 
 
-# Left button released. If the line starts near one vertical line and ends
-# near the next one, with both ends within the lines' height, it's replaced
-# by a straight line locked onto those two lines at the same heights, and
-# kept in `rungs`. A longer line (past both, or across more than one gap)
-# goes between the two neighbouring lines whose middle is nearest its
-# centre, straight across at the centre's height. Otherwise it's cleared.
+# On release: a line from one vertical line to the next snaps into a straight rung. A longer line
+# snaps between the lines nearest its ends (or centre if short); otherwise it's cleared.
 func finish_lines_drawing() -> void:
 	if _drawing_line == null:
 		return
@@ -316,12 +287,7 @@ func finish_lines_drawing() -> void:
 	var from_y := start.y
 	var to_y := end.y
 	if from == -1 or to == -1 or from == to:
-		# Not neatly from one line to another (overshooting, or an end in
-		# between lines): if it's long enough to mean something, each end goes
-		# to its nearest line - which can be two lanes apart. Too short to
-		# reach two different lines, its centre decides instead: straight
-		# across between whichever two neighbouring lines have their middle
-		# closest to it.
+		# Not neatly line-to-line: long lines snap each end to its nearest line, short ones use the centre.
 		var centre := (start + end) * 0.5
 		var gap := line_xs[1] - line_xs[0]
 		if absf(end.x - start.x) < gap * 0.6 or centre.y < LINE_TOP or centre.y > _line_bottom():
@@ -429,24 +395,21 @@ func _line_bottom() -> float:
 func begin_travel() -> void:
 	traveling = true
 
-# The y of a portrait's bottom-centre - the point that runs along the lines
-# and rungs.
+# Portrait bottom-centre: the point that runs along lines and rungs.
 func _foot_y(i: int) -> float:
 	return portraits[i].position.y + PORTRAIT_SIZE.y
 
 func _set_foot(i: int, foot: Vector2) -> void:
 	portraits[i].position = foot - Vector2(PORTRAIT_SIZE.x * 0.5, PORTRAIT_SIZE.y)
 
-# Whether another portrait has already settled at the bottom of portrait
-# i's line.
+# Whether another portrait has settled at the bottom of portrait i's line.
 func _lane_taken(i: int) -> bool:
 	for j in portraits.size():
 		if j != i and _settled[j] and lane[j] == lane[i]:
 			return true
 	return false
 
-# The line nearest portrait i's with no other portrait on it (ties go to
-# the right), or -1 if every line has someone.
+# Nearest free line to portrait i (ties go right), or -1.
 func _nearest_free_lane(i: int) -> int:
 	var best := -1
 	for l in line_xs.size():
@@ -460,8 +423,7 @@ func _nearest_free_lane(i: int) -> int:
 			best = l
 	return best
 
-# The nearest rung end on portrait i's line strictly below its foot, that it
-# hasn't crossed yet. {} if none.
+# Nearest uncrossed rung end below portrait i's foot on its line, or {}.
 func _next_rung(i: int) -> Dictionary:
 	var best := {}
 	var best_y := INF
@@ -489,8 +451,7 @@ func _process(dt: float) -> void:
 		var taken := _lane_taken(i)
 		var stop := _line_bottom() - BUMP_STEP if taken else _line_bottom()
 		var target := stop if rung.is_empty() else minf(_rung_y_on(rung, lane[i]), stop)
-		# A portrait that crossed onto a taken line below the bump point
-		# reacts where it is rather than moving back up first.
+		# Crossed onto a taken line below the bump point: react in place.
 		target = maxf(target, _foot_y(i))
 		var foot := minf(_foot_y(i) + TRAVEL_SPEED * dt, target)
 		_set_foot(i, Vector2(line_xs[lane[i]], foot))
@@ -507,9 +468,7 @@ func _process(dt: float) -> void:
 		traveling = false
 		all_arrived.emit()
 
-# Portrait i has bumped into the portrait settled at the bottom of its line:
-# it rises clear of that portrait, moves across to the nearest free line,
-# and is then free to carry on down (and take rungs) there.
+# Bumped: rise clear, move to the nearest free line, then carry on down.
 func _detour_to_free_lane(i: int) -> void:
 	var free := _nearest_free_lane(i)
 	if free == -1:

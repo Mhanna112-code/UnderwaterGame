@@ -25,8 +25,13 @@ IO: frame/resize events and rendering only; no disk/network/randomness in HUD.
 | HUD-3: HUD paints through pause/save/battle or steals mouse input | Old owners separately hide resources and controls | Actual Escape/save/battle transition plus all information-node mouse filters | Pending |
 | HUD-4: smaller windows overlap panels/map or clip text | Fixed initial placements and runtime container minimums | Generated viewport geometry and public label bounds; native/browser screenshots | Pending |
 | HUD-5: redesign removes existing abilities/controls or encounter state | Mockup initially omitted arrow keys; late-game has F/Q/R/Esc | Real input switching/Q/R and context hint inspection; rendered browser OCR | Pending |
+| HUD-6: maze captions reserve a meter row and paint over the full resource card; opening the map hides resources | Shared bar aliases now point inside a taller card; old branch treats map as a modal | Rendered maze notice/card intersection at four viewports, including 360x480; actual L map input preserves resources and main's hidden objective | Captured regression, awaiting rerun |
 
 Each invariant checks visible output rather than helper calls or exact node layout.
+HUD-6 observes the production announcement and complete visible cards after
+entering the embedded maze. It fails for stable overlapping geometry and permits
+changes to container nesting. The four sizes cover desktop, landscape, portrait,
+and the short portrait case; HUD-4 additionally generates viewport sizes.
 Text checks identify actor, resource and controls; cosmetic spacing is not pinned.
 Resource fixtures are declared UI-only setups, not claims of earned gameplay.
 
@@ -48,8 +53,12 @@ card widths. Resource checks caught ProgressBar's integer rounding of fractional
 Oxygen; continuous meters now use a zero step. Narrow rendered inspection caught
 the orange message painting over controls; its actual wrapped height is reserved.
 
-Native HUD acceptance: 20 viewports x three selections, 4,448 checks, clean.
-Native rendered 1280x720/960x540/720x480/360x640: clean; inspected 1280 and 360.
-Existing pause-menu suite: clean. Campaign goals: 40 generated cases, zero
-findings; shared maze resources and modal/map ownership retained. Browser and
-canonical artifact acceptance remain pending at this runtime commit.
+October 14 integration against main `2e183cc`: fresh Godot 4.7.1 import clean.
+Rendered HUD acceptance: generated viewport/resource cases and real input,
+4,646 checks, clean. HUD-6 first failed at 360x480 because the announcement
+overlapped PartyStatus; full-card reservation and wrapped caption placement fixed
+it. Inspected wide/narrow World and 360x480 maze images. Actual L map leaves
+resource cards visible; main's intentionally removed maze objective stays hidden.
+Focused maze input, current prologue, pause presentation and actual Run-return
+checks clean. No gameplay/balance/full-campaign or target-OS claim.
+Browser verification is recorded separately with the exported PCK hash.

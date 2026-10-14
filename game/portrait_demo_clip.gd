@@ -1,15 +1,8 @@
 class_name PortraitDemoClip
 extends Control
 
-# A looping "video" of the portrait minigame for the explainer popup, drawn
-# live rather than played from a file: three portraits in the wrong lanes,
-# a cursor drawing two lines between the lanes (by hand, wobbly - they snap
-# straight when let go), then the portraits dropping one after another.
-# A line only carries a portrait over if the line was started in the lane
-# that portrait is in (the arrowhead shows which way it goes); a portrait
-# that meets the other end of a line carries straight on. One landing on a
-# lane that's taken moves over to the nearest free one, as in the real
-# puzzle. Runs while the tree is paused (the popup pauses it).
+# Live-drawn looping demo of the portrait minigame for the explainer popup.
+# Portraits follow lines started in their lane and shift to the nearest free lane; runs while paused.
 
 const LOOP := 10.0
 const DRAW_1 := Vector2(0.6, 1.5)    # [start, end] of drawing the first line
@@ -48,9 +41,7 @@ func _bottom() -> float:
 func _rungs() -> Array:
 	return [[0, 1, lerpf(_top(), _bottom(), 0.35)], [1, 2, lerpf(_top(), _bottom(), 0.62)]]
 
-# Each portrait's path, dropped one after another: down its lane, over on
-# every line started in the lane it's in, then onto the nearest free lane
-# if its own is already taken at the bottom.
+# Each portrait's path: down its lane, across lines started there, then to the nearest free lane.
 func _build_routes() -> void:
 	_routes.clear()
 	_routes_size = size
@@ -88,8 +79,7 @@ func _along(pts: PackedVector2Array, f: float) -> Vector2:
 		want -= seg
 	return pts[pts.size() - 1]
 
-# A shaky, slanted hand-drawn stroke from a to b (u from 0 to 1); `n` makes
-# each line wobble differently.
+# Wobbly hand-drawn stroke from a to b; `n` varies the wobble.
 func _hand_point(a: Vector2, b: Vector2, u: float, n: int) -> Vector2:
 	var slant := (u - 0.5) * (10.0 if n == 0 else -12.0)
 	var wobble := sin(u * TAU * 1.5 + n) * 4.0
@@ -104,8 +94,7 @@ func _draw() -> void:
 		var x := _lane_x(i)
 		draw_line(Vector2(x, _top()), Vector2(x, _bottom()), LINE_COLOR, 2.0)
 		draw_string(font, Vector2(x - 5, size.y - 6), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, LINE_COLOR)
-	# The two lines: drawn by hand, then snapping straight with an arrowhead
-	# on the end it leads to.
+	# Lines drawn by hand, then snapping straight with an arrowhead.
 	var cursor := Vector2(-100, -100)
 	var rungs := _rungs()
 	for n in 2:

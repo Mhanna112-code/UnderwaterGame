@@ -14,6 +14,10 @@ func _run() -> void:
 	root.add_child(maze)
 	current_scene = maze
 	await process_frame
+	# Station checks are for Cordys out of his cave (after the puppets).
+	maze._remove_boss_trigger("secret_boss")
+	maze._set_cordys_out(true)
+	await process_frame
 	var actors := maze.find_children("*", "PrologueOctopus", true, false)
 	_expect(actors.size() == 1, "CS-1 main room has no single visible stationed Cordys")
 	if actors.size() != 1:

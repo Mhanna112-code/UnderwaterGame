@@ -203,6 +203,15 @@ func _run() -> void:
 	# Exercise the production enemy-turn path for all six moves. Inflate HP
 	# only inside this gate so the party survives long enough to observe the
 	# complete deterministic animation cycle.
+	# No self-heal: next_move never returns Tidal Mending, even when hurt.
+	var boss_stats := battle.enemies[0].stats as CombatantStats
+	boss_stats.hp = boss_stats.hp_max - 20
+	for _i in 12:
+		_expect(String(battle_boss.next_move(boss_stats).get("effect", "")) != "self_heal",
+			"TETHYS: rolled a self-heal")
+	battle_boss._move_index = 0   # keep the cycle check below starting at Double Scratch
+	boss_stats.hp = boss_stats.hp_max
+
 	var started_clips: Array[String] = []
 	battle_boss.anim.animation_started.connect(func(name: StringName) -> void: started_clips.append(String(name)))
 	(battle.enemies[0].stats as CombatantStats).accuracy = 99

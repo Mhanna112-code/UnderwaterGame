@@ -1,19 +1,5 @@
-# A circular overhead readout centered on whichever diver is active,
-# redrawn from scratch every frame via _draw() rather than managed as a
-# pile of repositioned child nodes - circles, a rotated arrow, and
-# variable-length wall lines are all one draw call each this way, and
-# nothing needs to be created/destroyed as walls come in and out of range.
-#
-# Holds a reference to world.gd itself rather than copies of its data -
-# divers/_wall_pieces live there and change over time (new walls could
-# be built later, divers move every frame); reading them live means this
-# never needs to be told to refresh, it just always reflects however the
-# world actually looks right now. Each _wall_pieces entry carries its own
-# "revealed" flag (fog of war): World's own detection area
-# (_update_wall_visibility(), sized to this exact view_radius - see
-# _build_wall_sight_area()) is what actually reveals a piece, this just
-# reads whether that's happened yet before drawing it - see
-# _draw_lines_at_overlapping_areas().
+# Circular overhead map centred on the active diver, redrawn every frame in _draw().
+# Reads World's divers/_wall_pieces live; only pieces World has marked "revealed" are drawn.
 class_name MiniMap
 extends Control
 
@@ -46,11 +32,7 @@ func _draw() -> void:
 
 	for i in range(divers.size()):
 		var d: Diver = divers[i]
-		# A point can't be partially clipped like a wall segment can - it's
-		# either within view_radius or it isn't, so this is a plain cull
-		# rather than a geometric clip. The active diver is always at
-		# distance 0 from itself (it *is* center), so this can only ever
-		# skip one of the other two.
+		# Plain cull for points; the active diver is always at the centre.
 		if i != active and center.distance_to(d.global_position) > view_radius:
 			continue
 		var p := _project(d.global_position, center, px_per_unit, mid)
@@ -62,10 +44,7 @@ func _draw() -> void:
 
 	_draw_key_item_markers(center, r, px_per_unit, mid)
 
-# Draws only the wall PIECES World's own detection area has actually
-# found (see World._wall_pieces/_update_wall_visibility()) - not whole
-# walls, so a long corridor lights up gradually as you swim its length
-# rather than all at once the moment any part of it is found.
+# Draws only revealed wall pieces, so corridors appear gradually.
 func _draw_lines_at_overlapping_areas(center: Vector3, px_per_unit: float, mid: Vector2) -> void:
 	for piece in world._wall_pieces:
 		if not bool(piece.revealed):
@@ -83,37 +62,15 @@ func _draw_lines_at_overlapping_areas(center: Vector3, px_per_unit: float, mid: 
 			Color(0.6, 0.64, 0.68, 0.9), 2.0
 		)
 
-# One pulsing red marker per key-item zone (ItemGuardian.spots()) sonar has
-# ever revealed (World.revealed_key_items) that hasn't been claimed yet
-# (World.key_items) - a dot at its real position if that's within
-# view_radius of the map center, otherwise a small arrow pinned to the
-# rim and pointing toward it, so a revealed item never just disappears
-# for being far away (the plain-cull the diver dots above use would do
-# exactly that). Drawn after the diver dots, on top, since a revealed
-# item is more actionable information than a background NPC diver.
-#
-# Only actually drawn while sonar is currently ON, though
-# (_sonar_currently_active() below) - revealed_key_items is permanent
-# memory (an id never leaves it just because sonar turned off), but the
-# minimap markers themselves are meant to read as "sonar is showing you
-# this right now," not "sonar has ever shown you this" - toggling off
-# hides both the dot and the arrow immediately, toggling back on brings
-# back whatever's already been revealed with no re-ping needed.
+# Revealed, unclaimed key items pulse red: a dot in range, else a rim arrow. Shown only while sonar is on.
 const MARKER_PULSE_SPEED := 3.0
-# Every red circle (item rocks, item/special encounters, maze hidden objects)
-# only shows while the diver is within this many metres above or below it -
-# roughly five feet - so swimming far over or under one hides it.
+# Red markers show only within this vertical distance (metres) of the diver.
 const MARKER_HEIGHT_RANGE := 1.5
 
 static func within_marker_height(viewer_y: float, marker_y: float) -> bool:
 	return absf(viewer_y - marker_y) <= MARKER_HEIGHT_RANGE
 
-# Sonar lives on whichever Diver has passive_id == "sonar" (Maxilani), not
-# necessarily divers[active] - sonar_active persists on her own instance
-# even after TAB-switching to someone else, since _physics_process() runs
-# on every diver node independently regardless of which one's currently
-# steered. So this has to search for her rather than just checking
-# world.divers[world.active].
+# Sonar lives on the diver with passive_id "sonar", not necessarily the active one.
 func _sonar_currently_active() -> bool:
 	for d in world.divers:
 		if (d as Diver).passive_id == "sonar":
@@ -137,23 +94,14 @@ func _draw_key_item_markers(center: Vector3, r: float, px_per_unit: float, mid: 
 		var rel := Vector2(pos.x, pos.z) - Vector2(center.x, center.z)
 		var dist: float = maxf(rel.length(), 0.01)   # guards the /dist normalize below
 		if dist <= view_radius:
-			# Same two sizes as maze_mini_map.gd and the Sonar ability page:
-			# Every item encounter (special minigame or regular item fight) is
-			# the larger outlined circle; small solid circles are item rocks.
+			# Item encounters are the larger circle; item rocks are small solid circles.
 			draw_circle(mid + rel * px_per_unit, 5.5, marker_color)
 			draw_arc(mid + rel * px_per_unit, 5.5, 0.0, TAU, 20, Color(1.0, 0.75, 0.75, pulse), 1.2)
 		else:
-			# RESTORED: this branch had gone missing, leaving
-			# _draw_marker_arrow() defined but never called - an
-			# out-of-range revealed item drew nothing at all instead of
-			# the rim arrow the comment above already promised.
 			var dir := rel / dist
 			_draw_marker_arrow(mid + dir * (r - 8.0), dir, marker_color)
 
-# Unbroken breakable rocks that hold an item (the random-drop rocks and the
-# airborne key-item rocks - not the ambush rocks), as the same small 3.5 px
-# red circle the maze uses for its sonar rocks. Sonar-gated like every other
-# red marker here; only drawn inside the minimap's own radius.
+# Unbroken item-holding rocks (not ambush rocks), sonar-gated, in-radius only.
 func _draw_item_rock_markers(center: Vector3, px_per_unit: float, mid: Vector2, color: Color) -> void:
 	for id in world._cracked_walls:
 		if not String(id).begins_with("rock_") or id in World.ROCK_AMBUSH_IDS:
@@ -167,10 +115,7 @@ func _draw_item_rock_markers(center: Vector3, px_per_unit: float, mid: Vector2, 
 		if rel.length() <= view_radius:
 			draw_circle(mid + rel * px_per_unit, 3.5, color)
 
-# Same small-triangle shape _draw_arrow() below uses for the active
-# diver, just parameterized on color/facing instead of hardcoded green
-# and diver-sized - this one's a rim-pinned pointer toward an
-# out-of-range key item, not a "this is you" marker.
+# Rim-pinned arrow toward an out-of-range key item.
 func _draw_marker_arrow(p: Vector2, facing: Vector2, color: Color) -> void:
 	var side := Vector2(-facing.y, facing.x)
 	var tip := p + facing * 5.0
@@ -181,15 +126,7 @@ func _draw_marker_arrow(p: Vector2, facing: Vector2, color: Color) -> void:
 func _project(pos: Vector3, center: Vector3, px_per_unit: float, mid: Vector2) -> Vector2:
 	return mid + Vector2(pos.x - center.x, pos.z - center.z) * px_per_unit
 
-# Solves for the portion of segment rel_a->rel_b (both already relative to
-# the map's center, in world units) that actually lies within radius of
-# the origin - [] if none of it does. Standard line/circle clip:
-# parametrize the segment as rel_a + t*(rel_b - rel_a), t in [0, 1], and
-# solve |point|^2 == radius^2 for t. That's a quadratic in t, and because
-# a circle's interior is convex, the set of t where the point is inside
-# is always a single contiguous range [t1, t2] (possibly empty or
-# reversed if the line never reaches the circle) - clamping that range to
-# the segment's own [0, 1] gives exactly the visible sub-segment.
+# Clips segment rel_a->rel_b to the circle of `radius` at the origin; [] if outside.
 func _clip_to_circle(rel_a: Vector2, rel_b: Vector2, radius: float) -> Array:
 	var d: Vector2 = rel_b - rel_a
 	var dd: float = d.dot(d)
@@ -209,8 +146,7 @@ func _clip_to_circle(rel_a: Vector2, rel_b: Vector2, radius: float) -> Array:
 		return []   # in-circle range and segment range don't overlap
 	return [rel_a + d * lo, rel_a + d * hi]
 
-# The active diver reads as an arrow, not a circle, so facing is visible
-# at a glance - the other two are interchangeable dots, this one is "you."
+# The active diver is an arrow so its facing is visible.
 func _draw_arrow(p: Vector2, facing: Vector2) -> void:
 	if facing.length() < 0.01:
 		facing = Vector2(0, -1)

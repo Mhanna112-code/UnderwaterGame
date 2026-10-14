@@ -1,17 +1,5 @@
-# Shown once at game start (World._ready(), see _show_title_screen()) and
-# again any time the player backs all the way out of a run (GameOverScreen's
-# "Return to Title", which reloads the whole scene - see world.gd). The
-# world underneath is already fully built by the time this shows (divers,
-# terrain, HUD all exist) - this just sits on top and keeps the SceneTree
-# paused until a slot's been chosen, same "everything's real, just frozen"
-# approach as InventoryMenu/SavePointMenu use during their own screens,
-# except this one needs process_mode ALWAYS since the whole point is
-# staying interactive while paused.
-#
-# Two root screens: "main" (New Game / Load Game) and "slots" (three slot
-# buttons + Back) - "slots" serves both actions, just with different
-# button behavior/labels depending on _pending_action, so there's one
-# picker instead of two near-identical ones.
+# Title overlay over the already-built world; keeps the tree paused (process_mode ALWAYS).
+# Screens: "main" (New/Load) and "slots", which serves both actions via _pending_action.
 class_name TitleScreen
 extends Control
 
@@ -44,17 +32,10 @@ var _blocker_playtest_available := false
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	# PRESET_FULL_RECT anchors alone preserve this Control's initial zero-size
-	# offsets. That leaves the CenterContainer with a (0, 0) parent rectangle,
-	# collapsing the title and both actions into the upper-left corner. Reset
-	# anchors and offsets together so this runtime-built overlay owns the full
-	# viewport at every supported resolution.
+	# Reset offsets too, or the overlay collapses to (0, 0).
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	# Glass_Goat's finished cover is the title surface itself, not a loading
-	# splash or a detached promotional image. KEEP_ASPECT_COVERED prevents
-	# stretching at non-16:9 resolutions; the art may crop at the edges but its
-	# proportions never change.
+	# Cover art as the title surface; KEEP_ASPECT_COVERED may crop but never stretches.
 	var cover := TextureRect.new()
 	cover.name = "CoverArt"
 	cover.texture = COVER_ART
@@ -64,8 +45,7 @@ func _ready() -> void:
 	cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(cover)
 
-	# Keep the illustration visible while giving the title and buttons a stable
-	# contrast floor across its darkest and brightest areas.
+	# Contrast floor for the title and buttons over the art.
 	var shade := ColorRect.new()
 	shade.name = "ReadabilityShade"
 	shade.color = Color(0.01, 0.025, 0.055, 0.28)
@@ -152,43 +132,31 @@ func show_load_error(message: String) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_refresh()
 
-# Kept out of the ordinary title flow. World enables this only for the
-# dedicated ?boss=1 review URL (or the matching command-line test flag), so
-# PR #54's normal New/Load presentation remains exactly the one already
-# reviewed while Glassgoat gets a one-click route to his boss.
+# Opt-in review routes, enabled only by query/command-line flags.
 func enable_boss_playtest() -> void:
 	_boss_playtest_available = true
 	if visible and _mode == "main":
 		_refresh()
 
-# Like the boss route above, this is opt-in review plumbing rather than part
-# of the ordinary New/Load flow. It lets a reviewer reach the guardian chooser
-# and all three ability minigames without first navigating the full map.
+# Review route to the guardian chooser and ability minigames.
 func enable_special_playtest() -> void:
 	_special_playtest_available = true
 	if visible and _mode == "main":
 		_refresh()
 
-# Same opt-in review plumbing, for testing spells without the level/save-
-# point/key-item grind normally required to reach one. See World's own
-# _on_title_spell_playtest() for what this route actually sets up.
+# Review route for testing spells (see World._on_title_spell_playtest()).
 func enable_spell_playtest() -> void:
 	_spell_playtest_available = true
 	if visible and _mode == "main":
 		_refresh()
 
-# Same opt-in review plumbing again - jumps straight into a fresh game
-# with World's own scripted first fight skipped entirely (see World.
-# skip_tutorial_for_test/_on_title_skip_tutorial()), for testing anything
-# past that fight without walking to the light beam and fighting through
-# it every single session.
+# Review route: fresh game with the scripted first fight skipped.
 func enable_skip_tutorial() -> void:
 	_skip_tutorial_available = true
 	if visible and _mode == "main":
 		_refresh()
 
-# Query-only Bomb Bot review entry. This is supplementary verification
-# plumbing; the production feature remains reachable through normal travel.
+# Query-only Bomb Bot review entry.
 func enable_blocker_playtest() -> void:
 	_blocker_playtest_available = true
 	if visible and _mode == "main":
@@ -277,9 +245,7 @@ func _refresh_main() -> void:
 		_wire_menu_button(skip_btn, &"play_ui_start_game")
 		_list.add_child(skip_btn)
 
-	# A first-time player has exactly one meaningful action. Do not present a
-	# dead Load Game path (followed by three disabled slots) until a save
-	# actually exists.
+	# No Load Game until a save exists.
 	if not _has_any_save():
 		return
 	var load_btn := Button.new()
@@ -292,9 +258,7 @@ func _refresh_main() -> void:
 	_list.add_child(load_btn)
 
 func _on_new_game_pressed() -> void:
-	# With no prior run there is nothing useful to distinguish three empty
-	# slots. One click starts in slot 0; once saves exist, the slot picker is
-	# retained so players can choose an empty slot or intentionally overwrite.
+	# No saves: start in slot 0 directly; otherwise show the slot picker.
 	if not _has_any_save():
 		_audio_call(&"play_ui_start_game")
 		new_game_chosen.emit(0)
@@ -304,9 +268,7 @@ func _on_new_game_pressed() -> void:
 
 func _has_any_save() -> bool:
 	for slot in range(SaveManager.SLOT_COUNT):
-		# A corrupt/empty file is treated as an empty slot everywhere else in
-		# this screen, so it must not resurrect a Load Game action with no
-		# enabled destination.
+		# Corrupt/empty files count as empty slots.
 		if not SaveManager.read_slot(slot).is_empty() or not SaveManager.read_autosave(slot).is_empty():
 			return true
 	return false
@@ -316,12 +278,7 @@ func _open_slots(action: String) -> void:
 	_mode = "slots"
 	_refresh()
 
-# New Game: every slot is pickable - an occupied one just gets an
-# "(overwrite)" warning in its label rather than being blocked, since
-# there's no reason to force a player to hunt for an empty slot if they
-# want to restart in the one they've already been using.
-# Load Game: only occupied slots are enabled - nothing to load from an
-# empty one.
+# New Game: every slot pickable (occupied ones warn "overwrite"). Load Game: only occupied slots.
 func _refresh_slots() -> void:
 	var heading := Label.new()
 	heading.text = "New Game - choose a slot" if _pending_action == "new" else "Load Game"
@@ -379,8 +336,35 @@ func _refresh_slots() -> void:
 
 func _wire_menu_button(button: Button, press_sound: StringName = &"") -> void:
 	button.mouse_entered.connect(_on_menu_button_hover.bind(button))
+	# No white focus border on the selected button - it flashes white instead.
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.focus_entered.connect(_start_select_flash.bind(button))
+	button.focus_exited.connect(_stop_select_flash.bind(button))
 	if not press_sound.is_empty():
 		button.pressed.connect(_audio_call.bind(press_sound))
+
+const SELECT_FLASH_ALPHA := 0.32
+const SELECT_FLASH_HALF_PERIOD := 0.45
+
+# The selected (focused) button pulses with a white overlay.
+func _start_select_flash(button: Button) -> void:
+	_stop_select_flash(button)
+	var flash := ColorRect.new()
+	flash.name = "SelectFlash"
+	flash.color = Color(1, 1, 1, 0)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	button.add_child(flash)
+	var tw := flash.create_tween().set_loops()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)  # runs while paused
+	tw.tween_property(flash, "color:a", SELECT_FLASH_ALPHA, SELECT_FLASH_HALF_PERIOD).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(flash, "color:a", 0.0, SELECT_FLASH_HALF_PERIOD).set_trans(Tween.TRANS_SINE)
+
+func _stop_select_flash(button: Button) -> void:
+	var flash := button.get_node_or_null("SelectFlash")
+	if flash != null:
+		button.remove_child(flash)
+		flash.queue_free()
 
 func _on_menu_button_hover(button: Button) -> void:
 	if not button.disabled:
@@ -391,9 +375,7 @@ func _audio_call(method: StringName) -> void:
 	if owner != null:
 		owner.call(method)
 
-# A one-line readout of a save's party, just enough to tell slots apart at
-# a glance - the diver order matches World.CAST, so index 0 is always
-# Maxilani regardless of who's "active" in the save.
+# One-line party summary; order matches World.CAST.
 func _summarize(data: Dictionary) -> String:
 	var divers_data: Variant = data.get("divers", [])
 	if not divers_data is Array or divers_data.is_empty() or not divers_data[0] is Dictionary:

@@ -1,27 +1,10 @@
-# The actual teeth behind "a gap you must grapple (or swap) across": in a
-# swimming game, an empty floor isn't a barrier - nothing stops a diver
-# from just swimming over or through it in 3D. This replaces a plain
-# instant-reset hazard with something that reads as a real place: a warned
-# approach, a suction pull you can't swim against once caught, then the
-# consequence - not just "bump an invisible wall and pop back."
-#
-# Two concentric zones, not one:
-#   - warning_radius: crossing in announces the danger once, resets so it
-#     can fire again if you leave and come back. Doesn't touch the diver.
-#   - suction_radius: crossing in actually catches them - movement locks
-#     (set_suction_locked, same mechanism grapple's own pull tween uses),
-#     they're pulled to the whirlpool's center over pull_duration, then
-#     swept back to reset_to, docked HP (floored, never a knockout, same
-#     policy as before), and flashed.
-# Mid-grapple divers are exempt at the suction radius (the intended
-# crossing method shouldn't itself trigger the hazard it's supposed to
-# bypass) - there's no equivalent check needed for swap, since swap moves
-# a diver in a single instant frame rather than passing through space.
+# Whirlpool hazard guarding a grapple/swap gap: warning_radius announces it,
+# suction_radius locks the diver, spirals them in, then returns them to reset_to with HP docked (never a knockout).
+# Mid-grapple divers are exempt from suction.
 class_name Whirlpool
 extends Node3D
 
-# Reading retains the pending catch; leaving exploration retires it before
-# another owner uses the same actors/resources. Owners expose this contract.
+# Reading retains the pending catch; leaving exploration retires it.
 enum Activity { EXPLORING, SUSPENDED, INACTIVE }
 
 signal warned
@@ -34,32 +17,37 @@ signal diver_sucked_in(d: Diver, amount: int)
 @export var suction_radius := 3.0
 # > 0: the suction zone is a cylinder this tall (can't be swum over).
 @export var suction_height := 0.0
-# Divers within pull_radius (horizontally) get dragged toward the centre at
-# up to pull_speed, strongest close in. 0 = no drag.
+# Horizontal drag toward the centre at up to pull_speed, strongest close in. 0 = none.
 @export var pull_radius := 0.0
 @export var pull_speed := 0.0
 @export var pull_duration := 1.4
-# The pull is a spiral: this many turns around the centre on the way in,
-# the diver spinning and rolling as they go, sinking this far as they reach
-# it ("spun down").
+# Spiral pull: turns around the centre, sinking as the diver reaches it.
 @export var spin_turns := 2.0
 @export var sink_depth := 2.2
 @export var vanish_duration := 0.35
 @export var deep_hole_radius := 0.0
-# World corridor whirlpool: draw the ring down on the seafloor (world y≈0) as
-# a solid, brightly lit swirl with visible arms, instead of a 72%-opacity disc
-# floating at swim height that read as faded. On the floor it still stays out
-# of the grapple sightline that the flat ring was introduced to protect.
+# Spit the diver out beside the whirlpool (random spot on the side they came
+# from, clear of walls and every whirlpool's pull) instead of at reset_to.
+# reset_to stays the fallback when no nearby spot is clear.
+@export var return_nearby := true
+# Draw the swirl on the seafloor (y≈0), clear of the grapple sightline.
 @export var floor_visual := false
+# Bouncing particle column inside the suction area (whirlpool_column.gd).
+# Off for now: work in progress, whirlpools keep their original look.
+@export var column_visual := false
+# Stand the ring on edge (hole facing upright_facing) instead of flat. Visual
+# only: suction, pull and warning zones are unchanged.
+@export var upright_visual := false
+@export var upright_facing := Vector3.FORWARD
+# > 0: the upright ring's outer radius (e.g. to fit a corridor); else from suction_radius.
+@export var upright_ring_radius := 0.0
+var _upright_pivot: Node3D
+var _upright_ring: TorusMesh
 const DEEP_SHAFT_DEPTH := 9.0
 
 var armed := true
 
-# "Danger: Whirlpool ahead" - one shared orange caption at the bottom centre
-# of the screen (World's banner style, one line above it), shown for as long as a
-# diver is inside ANY whirlpool's warning_radius and hidden once none is.
-# Owned by the whirlpools themselves so it behaves the same in every scene
-# (the opening blockade, the maze, ...).
+# Shared bottom-centre caption, shown while a diver is inside any whirlpool's warning_radius.
 const WARNING_TEXT := "Danger: Whirlpool ahead"
 const WARNING_COLOR := Color(1.0, 0.6, 0.45)
 static var _warning_caption: Label
@@ -67,16 +55,39 @@ static var _battle_running := false
 
 static func set_battle_running(on: bool) -> void:
 	_battle_running = on
-	if is_instance_valid(_warning_caption):
-		_warning_caption.visible = not _warning_whirlpools.is_empty() and not on
+	_apply_caption_visibility()
+
+# Owners (World, the maze) with an announcement banner. The warning waits while
+# any of them reports its banner up, so the two never overlap.
+static var _banner_owners: Array[WeakRef] = []
+
+static func register_banner_owner(owner: Object) -> void:
+	_banner_owners.append(weakref(owner))
+
+static func _any_banner_showing() -> bool:
+	var showing := false
+	for i in range(_banner_owners.size() - 1, -1, -1):
+		var owner: Object = _banner_owners[i].get_ref()
+		if owner == null:
+			_banner_owners.remove_at(i)
+		elif bool(owner.call("announcement_banner_showing")):
+			showing = true
+	return showing
+
+static func _apply_caption_visibility() -> void:
+	if not is_instance_valid(_warning_caption):
+		return
+	_warning_caption.visible = not _warning_whirlpools.is_empty() and not _battle_running and not _any_banner_showing()
+	# Free the whole warning canvas when empty.
+	var layer := _warning_caption.get_parent() as CanvasLayer
+	if layer != null:
+		layer.visible = _warning_caption.visible
 static var _warning_whirlpools: Dictionary = {}   # Whirlpool -> true while a diver is inside its warning radius
 var _divers_in_warning: Dictionary = {}           # Diver -> true
-# Optional: returns true when something (e.g. a current running through
-# this whirlpool) carries the diver past it, so suction doesn't catch them.
+# Optional: returns true when something (e.g. a current) carries the diver past suction.
 var bypass: Callable
 var _warned_now := false
-# The actors are shared with World, not children of this hazard. A Tween
-# disappearing with its owner must not leave its movement/model lock behind.
+# Actors are shared with World; a tween dying with this node must not leave its lock behind.
 var _motions: Dictionary = {} # instance ID -> weak actor and owned motion
 var _released: Dictionary = {} # returned actor waits to leave the core
 var _return_boxes: Array[Dictionary] = []
@@ -84,8 +95,7 @@ var _activity := Activity.EXPLORING
 
 func _ready() -> void:
 	add_to_group("whirlpool_hazards")
-	# Watch ownership even while a lesson pauses the tree or the embedded
-	# subtree is disabled. Physical effects still require EXPLORING below.
+	# Watch ownership while paused; physical effects still require EXPLORING.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var warn_area := Area3D.new()
 	var warn_shape := CollisionShape3D.new()
@@ -93,10 +103,7 @@ func _ready() -> void:
 	warn_col.radius = warning_radius
 	warn_shape.shape = warn_col
 	warn_area.add_child(warn_shape)
-	# Divers sit on collision layer 2 (see diver.gd - they don't collide
-	# with each other, only the environment on layer 1). An Area3D's
-	# default collision_mask only watches layer 1, so without this it
-	# would never notice a diver at all.
+	# Divers are on collision layer 2.
 	warn_area.collision_mask = 2
 	warn_area.body_entered.connect(_on_warning_entered)
 	warn_area.body_exited.connect(_on_warning_exited)
@@ -117,14 +124,16 @@ func _ready() -> void:
 	suck_area.collision_mask = 2
 	suck_area.body_entered.connect(_on_suction_entered)
 	add_child(suck_area)
+	if column_visual:
+		var column := preload("res://game/whirlpool_column.gd").new()
+		column.name = "WhirlpoolColumn"
+		column.setup(suck_shape.shape)
+		suck_area.add_child(column)
 
 	_build_visual()
 
-# A low, luminous current ring over the void. TorusMesh is already built in
-# the XZ plane; rotating it 90 degrees stood it upright like an opaque tire
-# across the corridor and hid the far Grapple target from the required aim
-# view. Keep it floor-aligned so it marks the suction area without becoming
-# a wall.
+# Floor-aligned current ring by default (an upright torus can block the grapple
+# aim view); upright_visual stands it on edge.
 func _build_visual() -> void:
 	var mesh_inst := MeshInstance3D.new()
 	mesh_inst.name = "WhirlpoolVisual"
@@ -146,8 +155,7 @@ func _build_visual() -> void:
 		mat.albedo_color = Color(0.05, 0.42, 0.55, 0.95)
 		mat.emission = Color(0.1, 0.6, 0.75)
 		mat.emission_energy_multiplier = 1.4
-		# A torus is rotationally symmetric, so spinning it alone looks still.
-		# Three curved-looking arms make the rotation readable.
+		# Arms make the symmetric torus's rotation visible.
 		var arm_mat := StandardMaterial3D.new()
 		arm_mat.albedo_color = Color(0.7, 0.95, 1.0)
 		arm_mat.emission_enabled = true
@@ -166,7 +174,22 @@ func _build_visual() -> void:
 				arm.position = Vector3(cos(angle) * r, 0.08, sin(angle) * r)
 				arm.rotation.y = -angle - PI * 0.35
 				mesh_inst.add_child(arm)
-	add_child(mesh_inst)
+	if upright_visual:
+		# Pivot stands the ring up with its bottom at this node's height; the
+		# mesh keeps spinning about its own (now horizontal) axis.
+		if upright_ring_radius > 0.0:
+			ring.outer_radius = upright_ring_radius
+			ring.inner_radius = upright_ring_radius * 0.3 / 0.95
+		_upright_ring = ring
+		_upright_pivot = Node3D.new()
+		_upright_pivot.name = "UprightPivot"
+		_upright_pivot.position.y = ring.outer_radius
+		add_child(_upright_pivot)
+		mesh_inst.position = Vector3.ZERO
+		_upright_pivot.add_child(mesh_inst)
+		set_upright_facing(upright_facing)
+	else:
+		add_child(mesh_inst)
 
 	var tw := create_tween().set_loops()
 	tw.tween_property(mesh_inst, "rotation:y", TAU, 4.0).from(0.0)
@@ -176,6 +199,21 @@ func _build_visual() -> void:
 		tw.set_speed_scale(2.0)
 		_build_deep_shaft()
 		_build_down_current()
+
+# Horizontal direction the upright ring's hole faces.
+func set_upright_facing(dir: Vector3) -> void:
+	dir.y = 0.0
+	if dir.length() < 0.001:
+		return
+	upright_facing = dir.normalized()
+	if _upright_pivot != null:
+		# Rx stands the ring up (its axis Y -> Z), Ry aims that axis along dir.
+		_upright_pivot.rotation = Vector3(PI * 0.5, atan2(upright_facing.x, upright_facing.z), 0.0)
+
+# Rests the upright ring's bottom on the floor at global height floor_y.
+func set_upright_floor(floor_y: float) -> void:
+	if _upright_pivot != null:
+		_upright_pivot.global_position.y = floor_y + _upright_ring.outer_radius
 
 func _build_deep_shaft() -> void:
 	var tube := CylinderMesh.new()
@@ -194,8 +232,7 @@ func _build_deep_shaft() -> void:
 	shaft.position.y = -DEEP_SHAFT_DEPTH * 0.5
 	add_child(shaft)
 
-# The current: pale streaks circling in from just around the hole and
-# pouring down into it, spiralling as they go.
+# Pale streaks spiralling down into the hole.
 func _build_down_current() -> void:
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
@@ -343,6 +380,55 @@ func _restore_actor(actor: Diver, record: Dictionary) -> void:
 	actor.velocity = Vector3.ZERO
 	actor.set_suction_locked(bool(record.locked))
 
+# A clear spot just outside this whirlpool's reach, on the half the diver came
+# from (so a whirlpool guarding a gap never lands you across it). Null if none.
+func _nearby_landing(actor: Diver, came_from: Vector3) -> Variant:
+	var reach := maxf(maxf(suction_radius, pull_radius), deep_hole_radius) + actor.radius + 1.0
+	var away := came_from - global_position
+	away.y = 0.0
+	var base_angle := atan2(away.z, away.x) if away.length() > 0.05 else randf() * TAU
+	var centre := Vector3(global_position.x, came_from.y, global_position.z)
+	var space := get_world_3d().direct_space_state
+	_refresh_return_boxes()
+	for attempt in 32:
+		var angle := base_angle + randf_range(-1.2, 1.2)
+		var at := centre + Vector3(cos(angle), 0.0, sin(angle)) * (reach + randf_range(0.0, 1.5) + float(attempt) * 0.05)
+		# Same room: nothing solid between the whirlpool and the spot.
+		var ray := PhysicsRayQueryParameters3D.create(centre, at, 1)
+		ray.exclude = [actor.get_rid()]
+		if not space.intersect_ray(ray).is_empty():
+			continue
+		if _inside_any_whirlpool(at, actor.radius):
+			continue
+		if _fits_at(actor, at):
+			return at
+	return null
+
+# True when `at` is within any whirlpool's suction, pull or hole (this one included).
+func _inside_any_whirlpool(at: Vector3, margin: float) -> bool:
+	for hazard in get_tree().get_nodes_in_group("whirlpool_hazards"):
+		var w := hazard as Whirlpool
+		var reach := maxf(maxf(w.suction_radius, w.pull_radius), w.deep_hole_radius) + margin + 0.3
+		if Vector2(at.x - w.global_position.x, at.z - w.global_position.z).length() < reach:
+			return true
+	return false
+
+# The diver's capsule fits at `at` without touching solids or being buried in a wall box.
+func _fits_at(actor: Diver, at: Vector3) -> bool:
+	var collision: CollisionShape3D
+	for child in actor.get_children():
+		if child is CollisionShape3D:
+			collision = child
+			break
+	if collision == null:
+		return false
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = collision.shape
+	query.collision_mask = 1
+	query.exclude = [actor.get_rid()]
+	query.transform = Transform3D(actor.global_basis, at) * collision.transform
+	return not _buried_in_box(query.transform.origin, actor) and actor.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
 func _clear_return(actor: Diver, preferred: Vector3) -> Variant:
 	var collision: CollisionShape3D
 	for child in actor.get_children():
@@ -357,8 +443,7 @@ func _clear_return(actor: Diver, preferred: Vector3) -> Variant:
 	query.exclude = [actor.get_rid()]
 	var space := actor.get_world_3d().direct_space_state
 	_refresh_return_boxes()
-	# Recheck the departure rather than trusting old clearance after walls
-	# move. If blocked, prefer the authored reset and nearby clear water.
+	# Recheck clearance; if blocked, prefer reset_to and nearby clear water.
 	for origin in [preferred, reset_to]:
 		for ring in range(21):
 			for angle in range(1 if ring == 0 else 16):
@@ -373,8 +458,7 @@ func _refresh_return_boxes() -> void:
 	if scene == null:
 		return
 	var boxes := scene.find_children("*", "CSGBox3D", true, false)
-	# An exiting maze's children can already be off-tree. Use the last live
-	# geometry rather than querying their unavailable global transforms.
+	# An exiting maze's children may be off-tree; reuse the last live geometry.
 	if boxes.any(func(box: Node) -> bool: return not box.is_inside_tree()):
 		return
 	_return_boxes.clear()
@@ -385,8 +469,7 @@ func _refresh_return_boxes() -> void:
 		_return_boxes.append({"inverse": box.global_transform.affine_inverse(), "half": box.size * 0.5})
 
 func _buried_in_box(center: Vector3, actor: Diver) -> bool:
-	# Concave CSG triangles miss a capsule wholly inside a solid box. Validate
-	# its rounded volume too, not only surface intersections.
+	# Concave CSG misses a capsule wholly inside a box; test its volume too.
 	var segment := maxf(actor.height * 0.5 - actor.radius, 0.0)
 	for box in _return_boxes:
 		var at: Vector3 = (box.inverse as Transform3D) * center
@@ -409,12 +492,7 @@ func _update_warning_caption() -> void:
 		if _warning_whirlpools.is_empty() or not is_inside_tree():
 			return
 		_build_warning_caption()
-	_warning_caption.visible = not _warning_whirlpools.is_empty() and not _battle_running
-	# Relinquish the whole warning canvas when it has nothing to display,
-	# not merely the child text. This layer has no other UI owner.
-	var layer := _warning_caption.get_parent() as CanvasLayer
-	if layer != null:
-		layer.visible = _warning_caption.visible
+	_apply_caption_visibility()
 
 func _build_warning_caption() -> void:
 	var layer := CanvasLayer.new()
@@ -424,8 +502,7 @@ func _build_warning_caption() -> void:
 	label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	label.offset_left = -320.0
 	label.offset_right = 320.0
-	# One line above World's banner slot (-170..-130), so an announcement
-	# shown at the same time doesn't draw on top of this.
+	# One line above World's banner slot (-170..-130).
 	label.offset_top = -210.0
 	label.offset_bottom = -172.0
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -434,13 +511,11 @@ func _build_warning_caption() -> void:
 	label.add_theme_color_override("font_color", WARNING_COLOR)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(label)
-	# On the scene root so it outlives any one whirlpool; hidden whenever no
-	# whirlpool has a diver nearby.
+	# On the scene root so it outlives any one whirlpool.
 	get_tree().root.add_child.call_deferred(layer)
 	_warning_caption = label
 
-# The drag toward the centre, and a catch for anyone who ends up inside the
-# suction zone without "entering" it (e.g. it was bypassed when they did).
+# Drag toward the centre, and catch anyone already inside the suction zone.
 func _physics_process(dt: float) -> void:
 	refresh_activity()
 	if busy():
@@ -507,9 +582,7 @@ func _within_radius(d: Diver, zone_radius: float, zone_height: float) -> bool:
 		return Vector2(maxf(horizontal - zone_radius, 0.0), vertical).length_squared() <= d.radius * d.radius
 	return Vector2(horizontal, vertical).length_squared() <= pow(zone_radius + d.radius, 2)
 
-# Warning/suction shapes can reach into a neighbouring corridor. Marc's
-# authored contract only drags/catches a diver with open water to the
-# centre at their own height; the floor below is not an obstruction.
+# Only drag/catch a diver with open water to the centre at their own height.
 func _in_open_water_with(d: Diver) -> bool:
 	var centre := Vector3(global_position.x, d.global_position.y, global_position.z)
 	var query := PhysicsRayQueryParameters3D.create(d.global_position, centre, 1)
@@ -517,10 +590,7 @@ func _in_open_water_with(d: Diver) -> bool:
 	query.hit_from_inside = true
 	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
-# Three visible beats, not one instant swap: pulled in (physically, the
-# whole approach), vanish at the center (caught), then reappear at
-# reset_to already flashing - "sucked in" as a real sequence rather than
-# a hit that just teleports you.
+# Pulled in, vanish at the centre, reappear at reset_to flashing.
 func _pull_in(d: Diver) -> void:
 	_refresh_return_boxes()
 	var id := d.get_instance_id()
@@ -563,25 +633,24 @@ func _pull_in(d: Diver) -> void:
 		if not is_instance_valid(actor):
 			_motions.erase(id)
 			return
-		var landing: Variant = _clear_return(actor, reset_to)
+		var landing: Variant = _nearby_landing(actor, record.start) if return_nearby else null
+		if landing == null:
+			landing = _clear_return(actor, reset_to)
 		if landing == null:
 			_cancel_motion(id)
 			return
 		var before: int = actor.stats.hp
 		var dmg: int = randi_range(damage_min, damage_max)
-		# A scare for a living diver, not a free resurrection of a downed
-		# party member. Report real nonnegative loss, including at1/0HP.
+		# Never revives a downed diver; floors living divers at 1 HP.
 		actor.stats.hp = maxi(1, before - maxi(dmg, 0)) if before > 0 else 0
 		var lost: int = before - actor.stats.hp
 		actor.global_position = landing
 		_restore_actor(actor, record)
 		_motions.erase(id)
-		# Let an overlapping returned actor actually leave the core before
-		# owning it again. Authored returns belong outside the outer pull zone,
-		# not an immunity lane through the obstacle. Never start an idle loop of
-		# catches while the completion flash is still playing.
+		# Let the returned actor leave the core before it can be caught again.
 		_released[id] = weakref(actor)
 		if lost > 0 and bool(record.visible):
 			actor.flash_damage()
+			BattleFx.flash(actor, BattleFx.DAMAGE_RED)   # red tint, as in battle
 		diver_sucked_in.emit(actor, lost)
 	)

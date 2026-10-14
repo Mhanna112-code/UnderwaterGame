@@ -1,7 +1,4 @@
-# Shown by World._show_game_over() the instant a battle ends "lost" (see
-# _on_battle_finished()), instead of the old silent auto-restore. Same
-# paused-but-interactive shape as TitleScreen - process_mode ALWAYS so its
-# recovery buttons still work while get_tree().paused freezes everything else.
+# Defeat screen shown when a battle is lost; process_mode ALWAYS so buttons work while paused.
 class_name GameOverScreen
 extends Control
 
@@ -9,13 +6,12 @@ signal restart_chosen
 signal continue_chosen
 signal title_chosen
 
+var _continue_btn: Button
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	# Like TitleScreen, this is created directly under a CanvasLayer. Anchors
-	# alone preserve the runtime Control's initial zero-sized offsets; reset
-	# both so CenterContainer receives the real viewport instead of bunching
-	# the defeat message and buttons into the upper-left corner.
+	# Reset offsets too, or the content collapses into the top-left corner.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
@@ -40,18 +36,17 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.45))
 	col.add_child(title)
 
-	var continue_btn := Button.new()
+	var continue_btn := TooltipButton.new()
+	_continue_btn = continue_btn
 	continue_btn.name = "ContinueLatestSave"
-	continue_btn.text = "Continue from Latest Save"
+	continue_btn.text = "Continue from Last Autosave"
 	continue_btn.custom_minimum_size = Vector2(0, 44)
-	continue_btn.tooltip_text = "Use the newest valid autosave or manual checkpoint."
 	continue_btn.pressed.connect(func() -> void: continue_chosen.emit())
 	col.add_child(continue_btn)
 
 	var restart_btn := Button.new()
 	restart_btn.name = "RestartSavePoint"
 	restart_btn.text = "Restart from Save Point"
-	restart_btn.tooltip_text = "Return to the manual checkpoint, even if an autosave is newer."
 	restart_btn.custom_minimum_size = Vector2(0, 44)
 	restart_btn.pressed.connect(func() -> void: restart_chosen.emit())
 	col.add_child(restart_btn)
@@ -64,7 +59,11 @@ func _ready() -> void:
 	resized.connect(func() -> void:
 		col.custom_minimum_size.x = minf(360, maxf(180, get_viewport_rect().size.x - 40)))
 
-func open() -> void:
+# `autosave_info`: tooltip for the first option (divers' levels and how long
+# ago the autosave was made); empty for none.
+func open(autosave_info := "") -> void:
+	if _continue_btn != null:
+		_continue_btn.tooltip_text = autosave_info
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 

@@ -27,21 +27,11 @@ func _run() -> void:
 	world.title_screen.new_game_chosen.emit(slot)
 	await create_timer(8.0).timeout
 	_capture("02-video.png")
-	await _wait_phase("spawn_exploration", 40.0)
-	await _settle()
-	_capture("03-quiet-spawn.png")
-	# Press physical W, not a teleport/private trigger shortcut.
-	var forward := InputEventKey.new()
-	forward.physical_keycode = KEY_W
-	forward.keycode = KEY_W
-	forward.pressed = true
-	Input.parse_input_event(forward)
-	await _wait_phase("angler", 10.0)
-	forward.pressed = false
-	Input.parse_input_event(forward)
-	await _settle()
-	_capture("04-angler.png")
-	await _attack("05-angler-move.png", "06-angler-target.png", "Axe Kick")
+	# End of the opening video: its title card over the handoff.
+	await _wait_phase("opening_handoff", 120.0)
+	await create_timer(1.2).timeout
+	_capture("03-opening-title.png")
+	# No free swim and no Angler: the Cordys introduction follows directly.
 	await _wait_phase("octopus_introduction", 10.0)
 	await create_timer(8.0).timeout
 	_capture("06b-cordys-introduction.png")

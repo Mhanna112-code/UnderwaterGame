@@ -210,7 +210,7 @@ func _choose(battle: Battle, name: String, target_name: String = "") -> bool:
 	if not target_name.is_empty():
 		target = null
 		for candidate in battle.target_buttons:
-			if (candidate as Button).text.begins_with(target_name) and not (candidate as Button).disabled:
+			if ((candidate as Button).text.begins_with(target_name) or (candidate as Button).text.begins_with("Whole party")) and not (candidate as Button).disabled:
 				target = candidate as Button
 		if target == null:
 			return false

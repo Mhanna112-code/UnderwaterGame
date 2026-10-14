@@ -1,39 +1,17 @@
-# The dive site as a GRAPH: places, and the routes between them.
-#
-# Marc's condition on encounters was that they happen at dedicated locations
-# you swim to, because otherwise the 3D terrain does no work. This is that,
-# as data. Adding an area is an entry here and nothing else: no scene to
-# edit, and verify/sites.gd re-checks the whole map every time one changes.
-#
-# The coordinates are not chosen by eye. Each one was checked against the
-# actual level geometry for a site-sized clearing (the middle and ten points
-# around the rim, all clear) and for an unobstructed line from the anchor.
-# 317 positions on this map qualify; these are two of them, far enough apart
-# that their berms cannot touch.
-#
-# Navigation is diegetic. Dark water limits sight to roughly 25m, so instead
-# of fighting that with a compass or an arrow on the HUD, the route between
-# two sites is a line of lit beacons spaced inside visible range. You can
-# always see the next one or two, and following them IS the navigation.
-# Amber and pulsing means the way onward, dim green means a road already
-# walked. That is the entire legend and it needs no words.
+# The dive site as a graph of places and routes; verify/sites.gd re-checks it.
+# Coordinates were probed against level geometry for clear site rings and anchor lines of sight.
+# Routes are lit beacon trails within fog range: amber pulsing = onward, dim green = walked.
 class_name Sites
 extends RefCounted
 
-# how far apart beacons sit. Must stay under what the fog lets you see, or
-# the trail has gaps and the player is lost between them; verify/sites.gd
-# fails if this ever drifts past the budget.
+# Must stay under fog visibility range; verify/sites.gd enforces it.
 const BEACON_SPACING := 9.0
 const SIGHT_BUDGET := 14.0
 
 const ALL := [
 	{
 		"id": "anchor", "kind": "anchor",
-		# 6.5 rather than the 8.0 this had on the branch it came from. The
-		# party spawns here and Marc's opening geometry sits closer in on
-		# this map: at 8.0 and at 7.0 there is rock through the rim, at 144
-		# degrees. Probed at the exact angles verify/sites.gd samples rather
-		# than nudged down until a screenshot looked right.
+		# 6.5, not larger: rock intrudes on the rim at 7.0+ (probed at verify/sites.gd's angles).
 		"at": Vector3(0.0, 2.0, 0.0), "radius": 6.5,
 		"links": ["shallows"],
 	},
@@ -52,16 +30,7 @@ const ALL := [
 		"item": "reef_plate", "look": "salvage", "enemy": "swordfish_duelist",
 		"links": [],
 	},
-	# Special-encounter sites - not on anyone's "links" chain (no beacon
-	# trail leads here, same as every other guarded site - see
-	# _check_no_loot_signposts() in verify/sites.gd). Sonar can help locate
-	# them, but entering their radius starts the encounter directly.
-	# "special": true is what routes these through the solo diver-ability
-	# minigame (World._offer_special_encounter()) instead of a plain fight -
-	# shallows/trench above stay plain fights on purpose (key items, not
-	# minigames). Reward is a battle-only stat tonic (Items.ITEMS'
-	# attack_up/defense_up), not a key item, so there is no capstone-spell
-	# gate riding on either of these.
+	# Special-encounter sites: no beacon trail; entering the radius starts the solo minigame.
 	{
 		"id": "reef", "kind": "combat",
 		"at": Vector3(-45.0, 2.6, 15.0), "radius": 9.0,
@@ -76,15 +45,12 @@ const ALL := [
 		"special": true,
 		"links": [],
 	},
-	# Two more special encounters on the Deep Zone road to Tethys. "deep" marks
-	# them as past the entrance blockade: verify/sites.gd's straight-line-from-
-	# the-anchor rule can't apply there, since the corridor walls sit between.
+	# Deep Zone special sites; "deep" exempts them from the anchor line-of-sight check.
 	{
 		# open water just north of the Deep hub, before the lab cave
 		"id": "deep_vents", "kind": "combat",
 		"at": Vector3(84.0, 2.6, 32.0), "radius": 7.0,
-		# Replayable special sites hand out the common boosts; Focus Tonic and
-		# Slipstream Oil stay rare (two of each in the game, all one-time).
+		# Replayable sites give common boosts; Focus Tonic and Slipstream Oil stay rare.
 		"item": "attack_up", "look": "vent_shrine", "enemy": "angler",
 		"special": true, "deep": true,
 		"links": [],
@@ -109,16 +75,7 @@ static func by_id(id: String) -> Dictionary:
 static func start() -> Dictionary:
 	return ALL[0] as Dictionary
 
-# Which item is guarded here, for the combat sites. One list, so the site,
-# sonar, and the minimap cannot disagree about where a thing is. See
-# ItemGuardian.spots(). "look" identifies what's guarded in writeups/logs,
-# not a placed object (no on-screen guardian model exists any more). Two
-# sites with the same thing on them is two of the same fetch quest wearing
-# one coat of paint, which is exactly how it read in the build: verify/
-# sites.gd fails if any two guarded sites share a look. "special" routes a
-# site through the solo-diver ability minigame (World._offer_special_
-# encounter()) instead of a plain fight - see World._try_trigger_item_site()
-# for where this actually gets read.
+# Guarded items per combat site, shared by site, sonar and minimap (see ItemGuardian.spots()).
 static func guarded() -> Array:
 	var out: Array = []
 	for s in ALL:
@@ -164,8 +121,7 @@ static func _chain(a: Dictionary, b: Dictionary) -> Array:
 		out.append(p + dir * t)
 	return out
 
-# reachable from the anchor by following links, which is the only definition
-# of "the player can get there" that means anything
+# Sites reachable from the anchor by following links.
 static func reachable() -> Array:
 	var seen: Array = [String(start().id)]
 	var queue: Array = [String(start().id)]

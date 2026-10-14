@@ -32,6 +32,7 @@ func _run() -> void:
 		findings.append("HUD-1: expected two visible active-diver meters, got %d" % meters)
 	if findings.is_empty():
 		await _verify_resources_and_layout(world)
+		await _verify_maze_captions(world)
 		await _verify_owners(world)
 	world.queue_free()
 	await process_frame
@@ -124,6 +125,40 @@ func _verify_resources_and_layout(world: World) -> void:
 		_expect(guide.is_visible_in_tree(), "HUD-4 earned post-lab guidance disappeared")
 		for panel in [world.exploration_hud.active_panel, world.exploration_hud.party_panel, world.hud, world.minimap, world.route_objective_panel]:
 			_expect(not guide.get_global_rect().intersects(panel.get_global_rect()), "HUD-4 post-lab compass covers %s at %s: guide=%s panel=%s" % [panel.name, shape, guide.get_global_rect(), panel.get_global_rect()])
+
+func _verify_maze_captions(world: World) -> void:
+	# Declared UI fixture: move the shared party into the real embedded maze.
+	world.route_state.prologue_complete = true
+	world.route_state.deep_warning_seen = true
+	world.route_state.set_zone("deep")
+	var maze := world.embedded_maze
+	for actor in world.divers:
+		actor.global_position = maze.entrance_point() + Vector3(3, 1.8, 0)
+		actor.velocity = Vector3.ZERO
+	maze.random_encounters_enabled = false
+	maze.room_encounters_enabled = false
+	await _settle()
+	_expect(maze.maze_active, "HUD-6 maze caption fixture never entered real maze")
+	for shape in [Vector2i(1280, 720), Vector2i(720, 480), Vector2i(360, 640), Vector2i(360, 480)]:
+		root.size = shape
+		maze._announce("Recovered the map. Follow the passage to the checkpoint.", 60.0)
+		await _settle()
+		_expect(maze._banner.is_visible_in_tree(), "HUD-6 maze announcement disappeared")
+		for panel in [world.exploration_hud.active_panel, world.exploration_hud.party_panel]:
+			_expect(not maze._banner.get_global_rect().intersects(panel.get_global_rect()), "HUD-6 maze caption overlaps full resource card at %s: %s" % [shape, panel.name])
+		_expect(not (maze.get_node("HUD/GoalLabel") as CanvasItem).is_visible_in_tree(), "HUD-6 integration restored main's removed maze objective")
+		if not captures.is_empty():
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png(captures.path_join("maze-%dx%d.png" % [shape.x, shape.y]))
+	maze.key_items.append("maze_nav_map")
+	var map := maze.get_node("HUD/MazeMiniMap") as MazeMiniMap
+	map.intro_seen = true
+	await _tap(KEY_L)
+	_expect(map.main_map.visible and world.exploration_hud.is_visible_in_tree(), "HUD-6 open maze map hides resource cards")
+	await _tap(KEY_L)
+	for actor in world.divers:
+		actor.global_position = Vector3(30, 3, 30)
+	await _settle()
 
 func _verify_owners(world: World) -> void:
 	await _tap(KEY_ESCAPE)

@@ -29,8 +29,8 @@ func _run() -> void:
 		findings.append("maze review route replaced the shared party or retained the World camera")
 	if world.embedded_maze != null and world.embedded_maze.maze_active:
 		var goal := world.embedded_maze.get_node("HUD/GoalLabel") as Label
-		if not goal.is_visible_in_tree() or not goal.text.to_lower().contains("control room"):
-			findings.append("GOAL-6 real diagnostic maze flag leaves the active entrance without its destination")
+		if goal.is_visible_in_tree() or goal.text != "":
+			findings.append("GOAL-6 maze shows an objective line (removed on request)")
 		if world.route_state.prologue_complete or world.route_state.lab_state != "locked" \
 			or world.embedded_maze.key_items.has("maze_nav_map"):
 			findings.append("GOAL-6 diagnostic destination falsely grants opening, laboratory or map progression")

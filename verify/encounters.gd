@@ -107,8 +107,8 @@ func _report_encounter_rate() -> void:
 		mean_check, d.encounter_chance * 100.0, between])
 	if not is_equal_approx(d.min_encounter_distance, 8.0) \
 		or not is_equal_approx(d.max_encounter_distance, 16.0) \
-		or not is_equal_approx(d.encounter_chance, 0.5):
-		findings.append("ENCOUNTER TUNING IGNORED: Marc's tested 8-16 m / 50%% values were replaced with %.0f-%.0f m / %.0f%%" % [
+		or not is_equal_approx(d.encounter_chance, 0.7):
+		findings.append("ENCOUNTER TUNING IGNORED: the requested 8-16 m / 70%% values were replaced with %.0f-%.0f m / %.0f%%" % [
 			d.min_encounter_distance, d.max_encounter_distance, d.encounter_chance * 100.0])
 
 # A spot in clear water you cannot reach is not a destination. The first

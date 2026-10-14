@@ -8,7 +8,6 @@ var findings: Array[String] = []
 var policy := "skilled"
 var run_seed := 64000
 var recovery_policy := "none"
-var opening_contract := "retained-angler"
 var special_policy := "reject-unsupported"
 var special_return_count := 0
 var special_decline_count := 0
@@ -30,8 +29,6 @@ func _initialize() -> void:
 			run_seed = int(arg.trim_prefix("--seed="))
 		if arg.begins_with("--recovery="):
 			recovery_policy = arg.trim_prefix("--recovery=")
-		if arg.begins_with("--opening-contract="):
-			opening_contract = arg.trim_prefix("--opening-contract=")
 		if arg.begins_with("--special-policy="):
 			special_policy = arg.trim_prefix("--special-policy=")
 	call_deferred("_run")
@@ -41,8 +38,6 @@ func _run() -> void:
 		findings.append("EARN observer: unsupported policy")
 	if recovery_policy not in ["none", "existing-save-point", "existing-save-point-safe-return"]:
 		findings.append("EARN observer: unsupported recovery policy")
-	if opening_contract not in ["retained-angler", "observe-current-cordys"]:
-		findings.append("EARN observer: unsupported opening contract")
 	if special_policy not in ["reject-unsupported", "miss-and-return"]:
 		findings.append("EARN observer: unsupported special policy")
 	for file in _owned_paths():
@@ -64,36 +59,21 @@ func _run() -> void:
 			"EARN-1 New Game starts with supplied progression")
 	owned_slot = true
 	world.title_screen.new_game_chosen.emit(SLOT)
+	# The opening video and Cordys introduction hand straight to the opening
+	# Cordys battle: no free swim and no Angler first.
 	var deadline := Time.get_ticks_msec() + 150000
-	while world.route_state.prologue_phase != "spawn_exploration" and Time.get_ticks_msec() < deadline:
+	while world.battle == null and Time.get_ticks_msec() < deadline:
 		await _ack_visible_reading()
 		await process_frame
-	_expect(world.route_state.prologue_phase == "spawn_exploration", "EARN-3 real opening never released quiet swimming")
+	_expect(world.route_state.opening_video_seen and world.battle != null and world.route_state.encounter_source == "prologue_octopus",
+		"EARN-3 real opening and Cordys introduction never started the opening Cordys battle")
 	if not findings.is_empty():
 		await _finish()
 		return
 	print("EARN NEW GAME|policy=%s|strategy=%s|recovery=%s|special_policy=%s|seed=%d|real_opening_seen=%s" % [policy, STRATEGY_REVISION, recovery_policy, special_policy, run_seed, world.route_state.opening_video_seen])
-	await _hold(KEY_W, true)
-	deadline = Time.get_ticks_msec() + 20000
-	while world.battle == null and Time.get_ticks_msec() < deadline:
-		await physics_frame
-	await _hold(KEY_W, false)
-	_expect(world.battle != null and world.route_state.encounter_source == "prologue_angler", "EARN-1 actual swim did not trigger initial Angler")
-	# Encounter-source labels can be transient during a direct boss handoff.
-	# Observe the actual visible roster; a Cordys-only opener must not count
-	# as the explicitly retained initial Angler merely because dispatch still
-	# used the old prologue_angler source for one frame.
-	if world.battle != null:
-		var roster := world.battle.enemies.map(func(e: Dictionary) -> String: return String(e.display_name))
-		print("EARN INITIAL ROSTER|actual=%s|required_initial_angler=true|opening_contract=%s" % [roster, opening_contract])
-		if opening_contract == "retained-angler":
-			_expect(roster == ["Angler"], "EARN-1 initial Angler missing; actual opening roster: " + str(roster))
-		else:
-			# Explicit exploratory observer, never acceptance of this opener.
-			# Keep the default failing contract intact while measuring real
-			# downstream earned combat on Marc's currently published design.
-			_expect(roster == ["Cordys"], "EARN observer: current-Cordys observation saw an unexpected opening roster: " + str(roster))
-			print("EARN OPENING OBSERVATION|required_angler_missing=true|opening_approved=false|not_campaign_acceptance=true")
+	var roster := world.battle.enemies.map(func(e: Dictionary) -> String: return String(e.display_name))
+	print("EARN INITIAL ROSTER|actual=%s" % [roster])
+	_expect(roster == ["Cordys"], "EARN-1 opening battle is not Cordys alone; actual roster: " + str(roster))
 	if not findings.is_empty():
 		await _finish()
 		return
@@ -297,7 +277,7 @@ func _choice(battle: Battle) -> Dictionary:
 	var enemy := battle.enemies.filter(func(e: Dictionary) -> bool: return e.stats.hp > 0)[0] as Dictionary
 	var move := "Scuba Stabbing" if who == "Staff_Diver" else "Precise Tap" if who == "Prototype_1(1910)" else "Guard Bash"
 	var target := String(enemy.display_name)
-	if battle.prologue_angler_encounter or battle.prologue_octopus_encounter:
+	if battle.prologue_octopus_encounter:
 		return {"move": move, "target": target}
 	if policy == "skilled":
 		if who == "Staff_Diver":
@@ -634,5 +614,5 @@ func _finish() -> void:
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	for finding in findings:
 		print("FINDING " + finding)
-	print("EARNED LAB-FIRST SLICE: " + ("clean (not full campaign; opening contract=%s)" % opening_contract if findings.is_empty() else "failed"))
+	print("EARNED LAB-FIRST SLICE: " + ("clean (not full campaign)" if findings.is_empty() else "failed"))
 	quit(0 if findings.is_empty() else 1)

@@ -99,27 +99,27 @@ func _test_electric_touch_strips_evasion() -> void:
 	var target := _stats(10, 1, 0, 1, 2, 0)
 	var result := CombatRules.resolve(scuba, target, _move("Electric Touch"))
 	_expect(result.damage == 1, "ELECTRIC TOUCH FORMULA WRONG: it deals Scuba's Strength")
-	_expect(target.evasion == 0 and target.evasion_current == 0,
-		"ELECTRIC TOUCH EFFECT MISSING: it lowers target evasion by Scuba's Accuracy")
+	_expect(target.evasion == 1 and target.evasion_current == 1,
+		"ELECTRIC TOUCH EFFECT WRONG: it lowers target evasion by a flat 1")
 
 func _test_stabbing_applies_and_ticks_bleed() -> void:
 	var scuba := _stats(10, 1, 0, 3, 3, 3)
 	var target := _stats(10, 1, 0, 1, 0, 0)
 	var result := CombatRules.resolve(scuba, target, _move("Scuba Stabbing"))
-	_expect(result.damage == 1 and target.status_level("bleed") == 2,
-		"SCUBA STABBING EFFECT MISSING: Strength damage must apply 1+Strength bleed")
+	_expect(result.damage == 1 and target.status_level("bleed") == 1,
+		"SCUBA STABBING EFFECT MISSING: Strength damage must apply a flat 1 Bleed")
 	CombatRules.resolve(scuba, target, {"name": "Follow-up", "formula": {"strength": 1}, "effects": []})
-	_expect(target.status_level("bleed") == 3,
-		"BLEED DOES NOT BUILD: later damaging hits must add one stack to an already bleeding target")
+	_expect(target.status_level("bleed") == 1,
+		"BLEED BUILT FROM A PLAIN HIT: only another Bleed move may add stacks")
 	var tick := target.end_turn()
-	_expect(tick.bleed_damage == 3 and target.hp == 5,
-		"BLEED TICK WRONG: three bleed must deal three damage after two one-damage hits")
+	_expect(tick.bleed_damage == 1 and target.hp == 7,
+		"BLEED TICK WRONG: one bleed must deal one damage after two one-damage hits")
 	# Marc's authored move uses battle-persistent Bleed, matching enemies.
 	_expect(target.status_turns("bleed") == 0,
 		"BLEED DURATION WRONG: Stabbing must not invent a three-turn timer")
 	target.end_turn()
 	target.end_turn()
-	_expect(target.status_level("bleed") == 3,
+	_expect(target.status_level("bleed") == 1,
 		"BLEED LOST: authored Stabbing must persist beyond three turns")
 
 func _test_flash_blast_applies_timed_blindness() -> void:
@@ -147,8 +147,8 @@ func _test_all_target_self_cost_is_paid_once() -> void:
 	var move := _move("Multiple Knee Combo")
 	CombatRules.resolve(scuba, first, move, true)
 	CombatRules.resolve(scuba, second, move, false)
-	_expect(scuba.effective_accuracy() == 2 and scuba.effective_evasion() == 2,
-		"ALL-TARGET COST MULTIPLIED: Multiple Knee Combo's -1 ACC/EVA applies once, not once per foe")
+	_expect(scuba.effective_accuracy() == 3 and scuba.effective_evasion() == 2,
+		"ALL-TARGET COST MULTIPLIED: Multiple Knee Combo's -1 EVA applies once, not once per foe")
 
 # Angler's Flash Blast (content/enemy_moves.gd) is the first move to use this
 # status - a timed Evasion debuff shaped exactly like Blindness above, just
@@ -197,7 +197,8 @@ func _test_stun_status_blocks_a_whole_turn_and_expires() -> void:
 # expiry. Reapplying it increases the stack while keeping the persistent
 # duration contract shared by Scuba Stabbing and Angler Bite.
 func _test_bleed_persists_and_stacks_until_fight_end() -> void:
-	var target := _stats(10, 1, 0, 1, 0, 0)
+	# Enough HP to survive the ticks: going down clears statuses.
+	var target := _stats(20, 1, 0, 1, 0, 0)
 	target.add_status("bleed", 2)
 	target.end_turn()
 	_expect(target.status_level("bleed") == 2 and target.status_turns("bleed") == 0,

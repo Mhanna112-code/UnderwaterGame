@@ -1,10 +1,8 @@
 class_name BrowserCheckpoint
 extends RefCounted
 
-## FileAccess success on web proves only the in-memory filesystem write.
-## Godot's asynchronous IndexedDB sync logs errors without returning them to
-## the writer. Read back the durable bytes before acknowledging a checkpoint.
-## This never writes IndexedDB independently of Godot.
+## On web, FileAccess success only means the in-memory write; IndexedDB sync errors aren't reported.
+## Reads back the durable bytes before acknowledging a checkpoint (never writes IndexedDB itself).
 signal checked(success: bool)
 
 const CHECKER := """
@@ -60,11 +58,9 @@ static func confirm_slot(slot: int, autosave := false) -> Error:
 	if not OS.is_userfs_persistent():
 		return ERR_UNAVAILABLE
 	var owner := BrowserCheckpoint.new()
-	# Retain both references until callback: dropping them would lose the
-	# callback and leave recovery waiting forever.
+	# Keep both references until the callback fires, or it is lost.
 	var callback := JavaScriptBridge.create_callback(owner._on_checked)
-	# eval returns scalar/buffer values, not arbitrary JS objects. Install the
-	# stateless interface and obtain it through the supported object bridge.
+	# eval can't return JS objects; install the interface and fetch it via the object bridge.
 	JavaScriptBridge.eval(CHECKER, true)
 	var bridge := JavaScriptBridge.get_interface("UnderwaterCheckpoint")
 	if bridge == null:

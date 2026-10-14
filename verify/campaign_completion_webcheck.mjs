@@ -190,7 +190,7 @@ try {
   await page.waitForTimeout(5000);
   if (laboratory) {
     const payoff = (await capture('laboratory-payoff')).map(row => row.text).join('\n');
-    expect(/Computer recovered/i.test(payoff) && /controlling/i.test(payoff) && /ramp/i.test(payoff), 'LAB-W2 missing computer/controller/ramp payoff');
+    expect(/Computer recovered/i.test(payoff) && /influenced/i.test(payoff) && /ramp/i.test(payoff), 'LAB-W2 missing computer/controller/ramp payoff');
     committed = await readSlot();
     const saved = JSON.parse(committed);
     expect(saved.route_state.lab_state === 'cleared' && saved.route_state.tethys_state === 'defeated'

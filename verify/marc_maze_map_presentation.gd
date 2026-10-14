@@ -44,14 +44,18 @@ func _run() -> void:
 		var legend := maze.get_node("HUD/MazeMapSideLegend") as Control
 		var title := map.main_map.get_node("MazeMapTitle") as Label
 		_expect(map.main_map.visible and help.visible, "MAP-5 actual L did not open map and instructions")
-		_expect(not map.visible and not maze.get_node("HUD/MazeExplorationControls").visible,
-			"MAP-5 exploration controls/radar draw through the overview")
+		# The map replaces the radar in the top-right corner; exploration controls stay visible.
+		_expect(not map.visible and maze.get_node("HUD/MazeExplorationControls").visible,
+			"MAP-5 map must replace the radar and keep the exploration controls visible")
+		_expect(not diagram.intersects((maze.get_node("HUD/MazeExplorationControls") as Control).get_global_rect()),
+			"MAP-5 map covers the exploration controls at " + str(shape))
 		_expect(bounds.encloses(diagram) and bounds.encloses(help.get_global_rect()), "MAP-5 map/help outside viewport at " + str(shape))
 		_expect(not diagram.intersects(help.get_global_rect()), "MAP-5 help covers maze diagram at " + str(shape))
 		_expect(bounds.encloses(legend.get_global_rect()) and diagram.encloses(title.get_global_rect()), "MAP-5 legend/title clipped at " + str(shape))
 		_expect(not diagram.intersects(legend.get_global_rect()) and not help.get_global_rect().intersects(legend.get_global_rect()), "MAP-5 external discovery legend covers map/help at " + str(shape))
 		_expect(copy.get_content_width() <= copy.size.x + 1 and copy.get_content_height() <= copy.size.y + 1, "MAP-5 help text overflows its panel at " + str(shape))
-		_expect(copy.get_parsed_text().contains("Ctrl") and copy.get_parsed_text().contains("Encounters"), "MAP-5 help omits current/encounter keys")
+		# Encounters (R) live in the always-visible exploration controls, not the map help.
+		_expect(copy.get_parsed_text().contains("Ctrl") and not copy.get_parsed_text().contains("Encounters"), "MAP-5 help omits current keys or still lists encounters")
 		_expect(copy.get_parsed_text().contains("Left") and copy.get_parsed_text().contains("Right")
 			and not copy.get_parsed_text().contains("←") and not copy.get_parsed_text().contains("→"),
 			"MAP-8 help relies on nonportable arrow glyphs instead of named keys")

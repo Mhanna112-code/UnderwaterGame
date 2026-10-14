@@ -1,13 +1,8 @@
 class_name MazePoster
 extends Node3D
 
-# A paper poster stuck flat on a wall: one diver portrait with scribbly
-# "handwriting" lines underneath, and a blinking red light just below it to
-# show it can be interacted with. Its +Z faces out of the wall. The artwork
-# is built by build_art() - rendered once into a SubViewport for the 3D
-# poster, and built again full size by PosterModal, from the same seed so
-# both show the same scribbles. MazeLevel lights it while the diver is in
-# reach and opens a PosterModal (with its `number`) on E.
+# Wall poster (diver portrait + scribbles, blinking light); +Z faces out. build_art() is shared with
+# PosterModal via the same seed. MazeLevel lights it in reach and opens the modal on E.
 
 const POSTER_SIZE := Vector2(1.2, 1.6)   # metres
 const ART_BASE := Vector2(300, 400)      # build_art()'s layout units
@@ -118,10 +113,7 @@ func facing() -> Vector3:
 	f.y = 0.0
 	return f.normalized()
 
-# The poster artwork at `art_size`: aged paper, two strips of tape, the
-# portrait in a frame, and rows of wavy ink scribbles under it (unless
-# `scribbles` is false). Layout is in ART_BASE units scaled to art_size's
-# width; the paper fills art_size; `seed` fixes the scribbles.
+# Poster artwork at `art_size` in ART_BASE units; `seed` fixes the scribbles.
 static func build_art(art_size: Vector2, portrait_tex: Texture2D, seed: int, scribbles := true) -> Control:
 	var k := art_size.x / ART_BASE.x
 	var root := Control.new()

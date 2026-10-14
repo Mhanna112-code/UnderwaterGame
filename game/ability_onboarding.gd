@@ -1,12 +1,4 @@
-# A short, first-free-play walkthrough. It intentionally sits after the
-# combat tutorial rather than inside it: the player has just learned a battle
-# and now needs to understand how to move, switch divers, and use the three
-# exploration verbs without a wall of text competing with the fight.
-#
-# This is a runtime-built Control like TutorialBook/TitleScreen, not a global
-# autoload. World owns the one instance and opens it after a tutorial result,
-# which keeps lifecycle, pause state, and test setup local to the scene that
-# owns the party and the actual ability bindings.
+# First-free-play walkthrough of movement, diver switching and abilities, opened by World after the tutorial.
 class_name AbilityOnboarding
 extends Control
 
@@ -101,9 +93,7 @@ func _ready() -> void:
 	actions.add_child(_close)
 	call_deferred("_layout_panel")
 
-# The supplied World is the source of player-facing names and ability data.
-# Pages remain data instead of hardcoded child-tree strings so verification can
-# compare the tutorial claim with the implementation that actually runs.
+# Pages are built from World data so verification can compare them with the real bindings.
 func open_for_world(world: World) -> void:
 	_world = world
 	_pages = _pages_for_world(world)
@@ -136,9 +126,7 @@ func dismiss() -> void:
 		return
 	visible = false
 	get_tree().paused = false
-	# Keep a visible cursor after a reading UI closes. The next world click
-	# deliberately captures it for mouse-look; no modal-close key can fire an
-	# exploration ability through the world underneath.
+	# Keep the cursor visible; the next world click captures it, so no close key fires an ability.
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if _world != null:
 		_world.mouse_look = false
@@ -176,7 +164,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "world-controls",
 			"title": "You are in control",
-			"body": "[color=#79c7e8]WASD[/color] swims in the direction the camera faces. Move the [color=#79c7e8]mouse[/color] or use the arrow keys to look around. [color=#79c7e8]TAB[/color] switches the active diver. Each diver brings a different way through the world.",
+			"body": "[bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] WASD [/color][/outline_size][/outline_color][/bgcolor] swims in the direction the camera faces. Move the [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] mouse [/color][/outline_size][/outline_color][/bgcolor] or use the arrow keys to look around. [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] TAB [/color][/outline_size][/outline_color][/bgcolor] switches the active diver. Each diver brings a different way through the world.",
 			"keys": ["WASD  Swim", "Mouse / arrows  Look", "TAB  Switch diver"],
 			"ability_id": "",
 			"passive_id": "",
@@ -186,7 +174,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "swap-sonar",
 			"title": "%s · Swap and Sonar" % maxilani,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]F[/color] to choose a teammate, then [color=#79c7e8]Space / Enter[/color] to swap places. Swap uses no Oxygen. Press [color=#79c7e8]Q[/color] when %s is active to show nearby red-dot sites. Sonar costs [color=#79c7e8]%.0f O2 every %.0f seconds[/color]. Red dots are visible only while Sonar is on. [color=#79c7e8]R[/color] switches random fights off; guarded sites still work." % [maxilani, maxilani, Diver.SONAR_OXYGEN_PER_TICK, Diver.SONAR_DRAIN_INTERVAL],
+			"body": "Switch to %s with [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] TAB [/color][/outline_size][/outline_color][/bgcolor]. Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] F [/color][/outline_size][/outline_color][/bgcolor] to choose a teammate, then [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space / Enter [/color][/outline_size][/outline_color][/bgcolor] to swap places. Swap uses no Oxygen. Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Q [/color][/outline_size][/outline_color][/bgcolor] when %s is active to show nearby red-dot sites. Sonar costs [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] %.0f O2 every %.0f seconds [/color][/outline_size][/outline_color][/bgcolor]. Red dots are visible only while Sonar is on. [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] R [/color][/outline_size][/outline_color][/bgcolor] switches random fights off; guarded sites still work." % [maxilani, maxilani, Diver.SONAR_OXYGEN_PER_TICK, Diver.SONAR_DRAIN_INTERVAL],
 			"keys": ["TAB  %s" % maxilani, "F  Swap", "A / D or Arrows  Choose", "Space / Enter  Confirm", "Q  Sonar"],
 			"ability_id": "swap",
 			"passive_id": "sonar",
@@ -198,7 +186,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "grapple",
 			"title": "%s · Grapple" % musashi,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color]. Press [color=#79c7e8]F[/color] to enter aim mode, then [color=#79c7e8]left-click[/color] a golden target. Anchors pull you toward them; floating light items reel toward you. [color=#79c7e8]Right-click[/color] or Escape cancels. Grapple uses no Oxygen; misses can be retried immediately." % musashi,
+			"body": "Switch to %s with [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] TAB [/color][/outline_size][/outline_color][/bgcolor]. Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] F [/color][/outline_size][/outline_color][/bgcolor] to enter aim mode, then [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] left-click [/color][/outline_size][/outline_color][/bgcolor] a golden target. Anchors pull you toward them; floating light items reel toward you. [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Right-click [/color][/outline_size][/outline_color][/bgcolor] or Escape cancels. Grapple uses no Oxygen; misses can be retried immediately." % musashi,
 			"keys": ["TAB  %s" % musashi, "F  Aim", "Left click  Fire", "Right click  Cancel"],
 			"ability_id": "grapple",
 			"passive_id": "",
@@ -208,7 +196,7 @@ func _pages_for_world(world: World) -> Array[Dictionary]:
 		{
 			"id": "shockwave",
 			"title": "%s · Shockwave" % bucky,
-			"body": "Switch to %s with [color=#79c7e8]TAB[/color], then press [color=#79c7e8]F[/color] to send a shockwave in every direction. It breaks nearby objects built to respond to it, including route blockades. Shockwave has a short cooldown and costs [color=#79c7e8]12 oxygen[/color]." % bucky,
+			"body": "Switch to %s with [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] TAB [/color][/outline_size][/outline_color][/bgcolor], then press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] F [/color][/outline_size][/outline_color][/bgcolor] to send a shockwave in every direction. It breaks nearby objects built to respond to it, including route blockades. Shockwave has a short cooldown and costs [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] 12 oxygen [/color][/outline_size][/outline_color][/bgcolor]." % bucky,
 			"keys": ["TAB  %s" % bucky, "F  Shockwave"],
 			"ability_id": "shockwave",
 			"passive_id": "",
