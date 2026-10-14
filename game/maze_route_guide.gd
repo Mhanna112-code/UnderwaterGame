@@ -17,8 +17,8 @@ func _ready() -> void:
 	style.set_corner_radius_all(12)
 	style.content_margin_left = 12
 	style.content_margin_right = 16
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
 	add_theme_stylebox_override("panel", style)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE

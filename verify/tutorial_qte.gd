@@ -26,7 +26,12 @@ func _run() -> void:
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(3)
+	world.title_screen.close()
+	world.get_node("HUD").visible = true
+	paused = false
+	world.route_state.prologue_complete = true
+	world.route_state.opening_video_seen = true
+	world.route_state.normalize_prologue_phase()
 	# This gate builds its own real Battle immediately below.  A new World
 	# starts its map tutorial at the light beam on its next update, so letting
 	# that second battle launch would race two live tutorial coroutines against
@@ -56,6 +61,7 @@ func _run() -> void:
 	battle.party_source = world.divers
 	battle.world = world
 	battle.tutorial_encounter = true
+	battle.tutorial_profile = Battle.TUTORIAL_PROFILE_FULL
 	battle._tutorial_step = battle._TUTORIAL_SCRIPT.size()
 	battle._tutorial_enemy_turns = 0
 	battle._tutorial_finale_shown = false

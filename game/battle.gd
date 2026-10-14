@@ -74,6 +74,12 @@ var _prologue_strike_index := 0
 # through one scripted move per stage (see _apply_tutorial_move_gate()) and
 # forces one QTE (_tutorial_prep_enemy_turn()); the outcome is still real.
 var tutorial_encounter := false
+const TUTORIAL_PROFILE_QUICK := "quick"
+const TUTORIAL_PROFILE_FULL := "full"
+var tutorial_profile := TUTORIAL_PROFILE_QUICK
+const QUICK_TUTORIAL_SCRIPT: Array[Dictionary] = [
+	{"party_index": 0, "move": "Electric Touch"},
+]
 # Tutorial stages as (party index, forced move) pairs; stages 3-4 revisit
 # Musashi and Maxilani, so stage index != party index.
 const _TUTORIAL_SCRIPT: Array[Dictionary] = [
@@ -87,6 +93,12 @@ const _TUTORIAL_SCRIPT: Array[Dictionary] = [
 # (_is_tutorial_scripted_turn()); other turns play out normally.
 var _tutorial_step := 0
 var _tutorial_enemy_turns := 0
+
+func active_tutorial_script() -> Array[Dictionary]:
+	return QUICK_TUTORIAL_SCRIPT if is_quick_tutorial() else _TUTORIAL_SCRIPT
+
+func is_quick_tutorial() -> bool:
+	return tutorial_encounter and not special_encounter and tutorial_profile == TUTORIAL_PROFILE_QUICK
 # One-shot guard for the "Defeat the enemy!" prompt.
 var _tutorial_finale_shown := false
 # One-shot guard for the first special encounter's finale. Can't reuse the
@@ -270,6 +282,9 @@ var run_btn: Button
 # Tutorial-only; Run is disabled in the tutorial, so this is the early exit.
 # Ends like "Exit to World" on a loss (World._on_battle_finished "skipped").
 var skip_tutorial_btn: Button
+var _tutorial_action_row: HFlowContainer
+var combat_help_btn: Button
+var combat_reference: CombatReference
 var items_btn: Button
 var back_btn: Button
 var item_back_btn: Button
@@ -451,6 +466,13 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	remove_from_group("battle")
 	Whirlpool.set_battle_running(not get_tree().get_nodes_in_group("battle").is_empty())
+	clear_battle_effects()
+
+func clear_battle_effects() -> void:
+	# World may write a checkpoint in the result signal, before deferred
+	# queue_free() reaches _exit_tree. End the same effects synchronously;
+	# keep teardown idempotent for skips, practice restore and scene exits.
+	_revert_temp_buffs()
 	# Battle-only effects end here.
 	for entry in party:
 		var stats := entry.stats as CombatantStats
@@ -1852,15 +1874,36 @@ func _build_ui() -> void:
 	items_btn = _menu_button("Items", "")
 	items_btn.pressed.connect(_show_items)
 	main_menu.add_child(items_btn)
+	combat_help_btn = _menu_button("Combat Help", "Stats and effects")
+	combat_help_btn.name = "CombatHelpButton"
+	combat_help_btn.pressed.connect(_open_combat_reference)
+	main_menu.add_child(combat_help_btn)
+	combat_reference = CombatReference.new()
+	add_child(combat_reference)
 
 	# Reparented as the last button of whichever menu is visible
 	# (_place_skip_tutorial_btn_last()). No hint: it wouldn't fit.
 	if tutorial_encounter:
+		_tutorial_action_row = HFlowContainer.new()
+		_tutorial_action_row.add_theme_constant_override("h_separation", 12)
+		col.add_child(_tutorial_action_row)
 		skip_tutorial_btn = _menu_button("Skip Tutorial", "")
+		skip_tutorial_btn.custom_minimum_size.x = 140
 		# No focus, so Enter (caption continue) can't trigger a skip.
 		skip_tutorial_btn.focus_mode = Control.FOCUS_NONE
 		skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
 		_place_skip_tutorial_btn_last(main_menu)
+		combat_help_btn.reparent(_tutorial_action_row)
+		combat_help_btn.text = "Combat Help (H)"
+		combat_help_btn.custom_minimum_size.x = 156
+		# Caption Enter must continue the lesson after closing Help, not reopen
+		# the focused button. H keeps Help directly keyboard-accessible.
+		combat_help_btn.focus_mode = Control.FOCUS_NONE
+		var help_shortcut := Shortcut.new()
+		var help_key := InputEventKey.new()
+		help_key.keycode = KEY_H
+		help_shortcut.events = [help_key]
+		combat_help_btn.shortcut = help_shortcut
 		# Flashes all tutorial; separate from _tutorial_flash_tween.
 		_skip_tutorial_flash_tween = create_tween()
 		_skip_tutorial_flash_tween.set_loops()
@@ -1894,8 +1937,11 @@ func _build_ui() -> void:
 	_selected_move_power.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	selected_move_row.add_child(_selected_move_power)
 
-	var stats_row := HBoxContainer.new()
+	var narrow_stats := get_viewport().get_visible_rect().size.x < 600.0
+	var stats_row := HFlowContainer.new()
 	stats_row.add_theme_constant_override("separation", 12)
+	stats_row.add_theme_constant_override("h_separation", 12)
+	stats_row.add_theme_constant_override("v_separation", 6)
 	col.add_child(stats_row)
 	_player_stats_ui = create_stats_panel("You")
 	stats_row.add_child(_player_stats_ui.panel as Control)
@@ -1915,6 +1961,10 @@ func _build_ui() -> void:
 	_enemy_stats_ui = create_stats_panel("Enemy")
 	(_enemy_stats_ui.panel as Control).visible = false
 	stats_row.add_child(_enemy_stats_ui.panel as Control)
+	if narrow_stats:
+		# Keep the two actual stat panels adjacent; MISS may flow below rather
+		# than forcing the entire HUD wider than a phone-sized viewport.
+		stats_row.move_child(_miss_label, stats_row.get_child_count() - 1)
 	# The MISS sign belongs to the enemy panel: hide it whenever that hides.
 	(_enemy_stats_ui.panel as Control).visibility_changed.connect(func() -> void:
 		if not (_enemy_stats_ui.panel as Control).visible:
@@ -1972,11 +2022,16 @@ func _build_ui() -> void:
 # Sizes _bottom_panel to its visible content (hidden children don't count).
 # Always call deferred: minimum size is stale until containers re-sort.
 func _fit_panel_height() -> void:
+	if _miss_label != null:
+		var stats_row := _miss_label.get_parent()
+		var miss_index := stats_row.get_child_count() - 1 if get_viewport().get_visible_rect().size.x < 600.0 else 1
+		if _miss_label.get_index() != miss_index:
+			stats_row.move_child(_miss_label, miss_index)
 	# Re-apply status-band widths on resize. Compact cards use "t" for turns
 	# (full wording in the tooltip).
 	for entry in party + enemies:
 		if entry.has("hp_bar"):
-			var width := 72.0 if _uses_narrow_info_band() else float(OVERHEAD_BAR_WIDTH)
+			var width := 36.0 if _compact_starter_cards() else (72.0 if _uses_narrow_info_band() else float(OVERHEAD_BAR_WIDTH))
 			(entry.hp_bar as ProgressBar).custom_minimum_size.x = width
 			if entry.has("oxygen_bar"):
 				(entry.oxygen_bar as ProgressBar).custom_minimum_size.x = width
@@ -2008,7 +2063,7 @@ func _fit_panel_height() -> void:
 		_stage_container.offset_bottom = _bottom_panel.offset_top
 		# And starts below the turn bar.
 		_stage_container.offset_top = _queue_bar.size.y if _queue_bar != null else 0.0
-		if _uses_narrow_info_band() and _busy:
+		if _compact_starter_cards() or (_uses_narrow_info_band() and _busy):
 			# Keep spell effects below the compact party row.
 			for entry in party:
 				var card := entry.card as Control
@@ -2017,6 +2072,10 @@ func _fit_panel_height() -> void:
 
 func _uses_narrow_info_band() -> bool:
 	return get_viewport().get_visible_rect().size.y <= 500.0 and not (tutorial_encounter or special_encounter or prologue_octopus_encounter or boss_encounter)
+
+func _compact_starter_cards() -> bool:
+	var viewport := get_viewport().get_visible_rect().size
+	return is_quick_tutorial() and (viewport.x < 600.0 or viewport.y <= 500.0)
 
 # Widen the party flow into rows when a tall bottom panel would cover the
 # stacked cards; stops before the enemy column. Uses minimum sizes because
@@ -2035,7 +2094,18 @@ func _fit_party_status_cards_above_panel() -> void:
 	var panel_top := get_viewport().get_visible_rect().size.y + _bottom_panel.offset_top
 	var normal_right := 12.0 + STATUS_COLUMN_WIDTH
 	var expanded_right := maxf(normal_right, get_viewport().get_visible_rect().size.x - STATUS_COLUMN_WIDTH - 24.0)
-	_party_status_column.offset_right = expanded_right if _uses_narrow_info_band() or _party_status_column.offset_top + vertical_height > panel_top else normal_right
+	var right := expanded_right if _uses_narrow_info_band() or _party_status_column.offset_top + vertical_height > panel_top else normal_right
+	if _compact_starter_cards():
+		right = get_viewport().get_visible_rect().size.x - 12.0
+	_party_status_column.offset_right = right
+	if _compact_starter_cards():
+		var cards_bottom := _party_status_column.offset_top
+		for child in _party_status_column.get_children():
+			if child is Control and (child as Control).visible:
+				cards_bottom = maxf(cards_bottom, (child as Control).get_global_rect().end.y)
+		_enemy_status_column.offset_top = cards_bottom + 8.0
+	else:
+		_enemy_status_column.offset_top = _party_status_column.offset_top
 
 # Name plus a one-line tradeoff hint on the button.
 # `hint_bbcode` (optional) draws the hint line in colour instead of `hint`.
@@ -2082,6 +2152,10 @@ func _menu_button(title: String, hint: String, hint_bbcode := "") -> Button:
 func _place_skip_tutorial_btn_last(menu: Container) -> void:
 	if skip_tutorial_btn == null:
 		return
+	# A persistent tutorial action must survive menus being hidden for enemy
+	# turns, captions and the final Return beat. Dev skipping keeps its old slot.
+	if tutorial_encounter and _tutorial_action_row != null:
+		menu = _tutorial_action_row
 	if skip_tutorial_btn.get_parent() != menu:
 		if skip_tutorial_btn.get_parent() != null:
 			skip_tutorial_btn.get_parent().remove_child(skip_tutorial_btn)
@@ -2181,8 +2255,24 @@ func _on_qte_timeout() -> void:
 # `on_layout_ready` runs after _fit_panel_height() has resized the panel, so
 # highlight boxes land on the new row positions.
 func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -> void:
+	if get_viewport().get_visible_rect().size.x < 600.0:
+		text = text.replace("right panel", "enemy panel").replace("left panel", "attacker panel").replace("in the middle", "in the preview")
+	# Long optional pages still show their stat-preview panels, but reading
+	# must not stack inactive move/target menus beyond a small window. The
+	# scrollable text preserves every authored explanation and its highlights.
+	var compact_full := tutorial_encounter and not special_encounter and not is_quick_tutorial() and (get_viewport().get_visible_rect().size.x < 600.0 or get_viewport().get_visible_rect().size.y <= 500.0)
+	var saved_menus := {}
+	if compact_full:
+		for menu in [main_menu, move_menu, item_menu, target_menu]:
+			saved_menus[menu] = (menu as Control).visible
+			(menu as Control).visible = false
+		_tutorial_caption.fit_content = false
+		_tutorial_caption.scroll_active = true
+		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_STOP
+		_tutorial_caption.custom_minimum_size.y = minf(140, get_viewport().get_visible_rect().size.y * 0.25)
+		_tutorial_caption.scroll_to_line(0)
 	# Special tutorial: only caption, Continue and Skip while pages turn.
-	if special_encounter and tutorial_encounter:
+	if (special_encounter and tutorial_encounter) or is_quick_tutorial():
 		_enter_caption_focus()
 	# Hidden by default outside tutorials (e.g. the QTE warning).
 	_tutorial_caption.visible = true
@@ -2206,6 +2296,14 @@ func _tutorial_show_step(text: String, on_layout_ready: Callable = Callable()) -
 	# Skip Tutorial released this wait; don't continue the interrupted narration.
 	if _skip_tutorial_requested:
 		return
+	if compact_full:
+		for menu in saved_menus:
+			(menu as Control).visible = saved_menus[menu]
+		_tutorial_caption.fit_content = true
+		_tutorial_caption.scroll_active = false
+		_tutorial_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_tutorial_caption.custom_minimum_size.y = 0
+		call_deferred("_fit_panel_height")
 
 var _caption_step_serial := 0
 
@@ -2218,7 +2316,7 @@ var _caption_focus_height := 0.0     # tallest panel height seen during focus
 
 func _caption_focus_controls() -> Array:
 	return [_levelup_caption, _selected_move_panel, (_player_stats_ui.panel as Control).get_parent(),
-		move_menu, item_menu, target_menu, attack_btn, run_btn, items_btn]
+		main_menu, move_menu, item_menu, target_menu, attack_btn, run_btn, items_btn]
 
 func _enter_caption_focus() -> void:
 	if _caption_focus:
@@ -2235,13 +2333,13 @@ func _enter_caption_focus() -> void:
 	rows_h += ((_player_stats_ui.panel as Control).get_parent() as Control).get_combined_minimum_size().y
 	rows_h += 2.0 * col.get_theme_constant("separation")
 	rows_h += margin.get_theme_constant("margin_top") + margin.get_theme_constant("margin_bottom")
-	_caption_focus_height = maxf(-_bottom_panel.offset_top, rows_h + 12.0)
+	_caption_focus_height = minf(300.0, get_viewport().get_visible_rect().size.y - 240.0) if is_quick_tutorial() else maxf(-_bottom_panel.offset_top, rows_h + 12.0)
 	_caption_focus_saved.clear()
 	for c in _caption_focus_controls():
 		_caption_focus_saved[c] = (c as Control).visible
 		(c as Control).visible = false
-	# Skip Tutorial lives in main_menu, so the row stays with just that button.
-	main_menu.visible = true
+	# Skip has its own persistent row, outside the hidden action menus.
+	main_menu.visible = false
 	_place_skip_tutorial_btn_last(main_menu)
 	log_label.visible = false
 	_caption_focus = true
@@ -2460,13 +2558,20 @@ func _refresh_bar(entry: Dictionary) -> void:
 	(entry.hp_bar as ProgressBar).max_value = s.hp_max
 	(entry.hp_bar as ProgressBar).value = s.hp
 	var txt := "%d / %d" % [s.hp, s.hp_max]
-	if String(entry.kind) == "party":
+	if String(entry.kind) == "party" and not _compact_starter_cards():
 		txt += "   Lv %d" % s.level
 	(entry.hp_label as Label).text = txt
+	var value_font_size := 10 if _compact_starter_cards() else OVERHEAD_VALUE_FONT_SIZE
+	if (entry.hp_label as Label).get_theme_font_size("font_size") != value_font_size:
+		(entry.hp_label as Label).add_theme_font_size_override("font_size", value_font_size)
 	if entry.has("oxygen_bar"):
 		(entry.oxygen_bar as ProgressBar).max_value = s.oxygen_max
 		(entry.oxygen_bar as ProgressBar).value = s.oxygen
-		(entry.oxygen_label as Label).text = "%d / %d O2" % [int(s.oxygen), int(s.oxygen_max)]
+		(entry.oxygen_label as Label).text = "%d O2" % int(s.oxygen) if _compact_starter_cards() else "%d / %d O2" % [int(s.oxygen), int(s.oxygen_max)]
+		if (entry.oxygen_label as Label).get_theme_font_size("font_size") != value_font_size:
+			(entry.oxygen_label as Label).add_theme_font_size_override("font_size", value_font_size)
+	if entry.has("xp_bar"):
+		(entry.xp_bar as Control).visible = not _compact_starter_cards()
 	if entry.has("xp_bar") and not bool(entry.get("xp_animating", false)):
 		var xp_bar := entry.xp_bar as ProgressBar
 		var maxed := s.level >= CombatantStats.MAX_LEVEL
@@ -2915,17 +3020,20 @@ func _build_queue_chip(entry: Dictionary, index: int) -> Control:
 func _advance_turn() -> void:
 	if _skip_tutorial_requested:
 		return
+	if is_quick_tutorial() and _tutorial_step >= 1 and _tutorial_enemy_turns >= 1:
+		_finish_quick_tutorial()
+		return
 	# The attacking diver's turn is over: drop their move/damage line.
 	_hide_move_damage_line()
 	# After all scripted moves and the QTE turn, show "Defeat the enemy!" once,
 	# then continue into the real fight checks below.
-	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= _TUTORIAL_SCRIPT.size() and _tutorial_enemy_turns >= 1:
+	if tutorial_encounter and not _tutorial_finale_shown and _tutorial_step >= active_tutorial_script().size() and _tutorial_enemy_turns >= 1:
 		_tutorial_finale_shown = true
 		if not special_encounter:
 			_set_tutorial_guard(false)   # the real fight starts here
 		_set_all_buttons(false)
 		await _tutorial_show_step("Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.")
-		await _tutorial_show_step("Winning won't grant any XP or rewards in this case but makes for good practice. A loss just sends the party back to the overworld to regroup, fully healed.")
+		await _tutorial_show_step("This lesson grants no XP or rewards. Optional practice leaves your campaign party, items and checkpoint unchanged. After a loss you can Retry or return to exploring.")
 		# Clear the lesson caption/Continue for the rest of the fight.
 		_tutorial_caption.text = ""
 		_tutorial_caption.visible = false
@@ -2961,6 +3069,11 @@ func _advance_turn() -> void:
 	# sits in _queue so others keep their order.
 	var forced_index := _tutorial_party_index_for_step(_tutorial_step) if tutorial_encounter else -1
 	var forced_actor := {}
+	# The quick lesson teaches one player action followed by one enemy dodge,
+	# rather than asking the other two divers to attack before the instruction.
+	if is_quick_tutorial() and _tutorial_step >= 1 and _tutorial_enemy_turns == 0:
+		forced_actor = _living(enemies)[0]
+		_queue.erase(forced_actor)
 	if forced_index >= 0:
 		var forced: Dictionary = party[forced_index]
 		if _living(party).has(forced) and _queue.has(forced):
@@ -3008,6 +3121,22 @@ func _advance_turn() -> void:
 	else:
 		_start_party_turn(_acting)
 
+func _finish_quick_tutorial() -> void:
+	if _tutorial_finale_shown:
+		return
+	_tutorial_finale_shown = true
+	_busy = true
+	_set_all_buttons(false)
+	for menu in [main_menu, move_menu, item_menu, target_menu]:
+		(menu as Control).visible = false
+	await _tutorial_show_step("Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.")
+	if _skip_tutorial_requested:
+		return
+	_set_tutorial_guard(false)
+	_revert_temp_buffs()
+	# Practice completion, not a campaign kill: no XP, item or stat awards.
+	finished.emit("won")
+
 # Tutorial enemy turn: guarantees a QTE (via _tutorial_force_next_qte) after
 # explaining it. Returns the chosen target, passed to _do_enemy_turn() as
 # forced_target, or {} once the scripted turns are done.
@@ -3020,6 +3149,12 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 	if alive_party.is_empty():
 		return {}
 	var target: Dictionary = _pick_enemy_target(alive_party)
+	if is_quick_tutorial():
+		(target.stats as CombatantStats).evasion_current = 0
+		_tutorial_force_next_qte = true
+		await _tutorial_show_step("Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.")
+		_tutorial_caption.visible = false
+		return target
 	if special_encounter:
 		# Special encounter turns run a minigame, not the QTE, so explain that instead.
 		# Shown only on the first teaching turn.
@@ -3106,9 +3241,10 @@ func _tutorial_prep_enemy_turn() -> Dictionary:
 
 # Party index for stage `step`, or -1 past the end / missing from the party.
 func _tutorial_party_index_for_step(step: int) -> int:
-	if step < 0 or step >= _TUTORIAL_SCRIPT.size():
+	var script := active_tutorial_script()
+	if step < 0 or step >= script.size():
 		return -1
-	var idx := int(_TUTORIAL_SCRIPT[step].get("party_index", -1))
+	var idx := int(script[step].get("party_index", -1))
 	return idx if idx < party.size() else -1
 
 # True only on the current stage's diver's turn, while the script runs.
@@ -3187,6 +3323,8 @@ func _play_special_encounter_intro() -> void:
 		run_btn.disabled = true
 
 func _process(_delta: float) -> void:
+	if tutorial_encounter and combat_help_btn != null:
+		combat_help_btn.disabled = not _can_open_combat_reference()
 	# An interrupted tutorial step may still set a caption or open a menu.
 	if _skip_tutorial_requested:
 		_tutorial_caption.visible = false
@@ -3200,10 +3338,19 @@ func _process(_delta: float) -> void:
 		_exit_caption_focus()
 	# Reconcile the log's caption gate with our Continue action.
 	if is_instance_valid(log_label):
+		# Optional numeric teaching already has the highlighted attacker and
+		# enemy panels below. Do not draw duplicate overhead cards over the
+		# compressed stage or clip them behind the reading pane.
+		var focused_numbers := tutorial_encounter and not special_encounter and not is_quick_tutorial() and _tutorial_caption.visible and (get_viewport().get_visible_rect().size.x < 600.0 or get_viewport().get_visible_rect().size.y <= 500.0)
+		_party_status_column.visible = not focused_numbers
+		_enemy_status_column.visible = not focused_numbers
 		# Also hidden between back-to-back captions (Continue stays up until the
 		# deferred _hide_continue_if_idle), or the log blinks in for a frame and
 		# the panel jumps up and down.
-		var show_log := not (_tutorial_awaiting_enter or (_tutorial_caption.visible and _tutorial_continue_btn.visible))
+		var guided_choice := is_quick_tutorial() and _tutorial_caption.visible and _is_tutorial_scripted_turn(_acting)
+		if guided_choice and _compact_starter_cards() and not _tutorial_awaiting_enter:
+			(_player_stats_ui.panel as Control).get_parent().visible = false
+		var show_log := not (_tutorial_awaiting_enter or (_tutorial_caption.visible and _tutorial_continue_btn.visible) or guided_choice)
 		if log_label.visible != show_log:
 			log_label.visible = show_log
 			call_deferred("_fit_panel_height")
@@ -3320,6 +3467,9 @@ func _first_fight_prompt() -> void:
 	if _first_fight_prompt_shown:
 		return
 	_first_fight_prompt_shown = true
+	if is_quick_tutorial():
+		await _tutorial_show_step("Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.")
+		return
 	if special_encounter:
 		await _tutorial_show_step("Welcome to your first special encounter! By fighting special encounters, you can gain items that give you temporary stat boosting perks for other battles.")
 		if _skip_tutorial_requested:
@@ -3338,6 +3488,8 @@ func _first_fight_prompt() -> void:
 # One-shot: boxes the turn-order bar, explains turn order and combat basics,
 # waits for Enter, then removes the highlight.
 func _explain_turn_order() -> void:
+	if is_quick_tutorial():
+		return
 	_turn_order_highlight = _highlight_box(_turn_order_highlight, _queue_bar)
 	var combat_basics := TutorialContent.page_body("Combat Basics")
 	var turn_order_line := "Turn order is shown from first at left to last at right in the turn order bar at the top."
@@ -3379,9 +3531,10 @@ func _apply_tutorial_move_gate() -> void:
 	if move_buttons.is_empty():
 		return
 	var moves := _moves_for(_acting)
+	var script := active_tutorial_script()
 	var forced_name := String(
-		(_TUTORIAL_SCRIPT[_tutorial_step] as Dictionary).get("move", "")
-	) if _tutorial_step < _TUTORIAL_SCRIPT.size() else ""
+		(script[_tutorial_step] as Dictionary).get("move", "")
+	) if _tutorial_step < script.size() else ""
 	var move_index := 0
 	for i in range(moves.size()):
 		if String((moves[i] as Dictionary).name) == forced_name:
@@ -3391,6 +3544,13 @@ func _apply_tutorial_move_gate() -> void:
 	var note := String(TutorialContent.FIRST_BATTLE_MOVE_NOTES.get(String(mv.name), ""))
 	var btn := move_buttons[move_index] as Button
 	_scroll_move_into_view(move_index)
+	if is_quick_tutorial() or get_viewport().get_visible_rect().size.x < 900.0:
+		for i in move_buttons.size():
+			(move_buttons[i] as Button).visible = i == move_index
+		_move_scroll_box.visible = false
+		back_btn.visible = false
+		if _compact_starter_cards():
+			(_player_stats_ui.panel as Control).get_parent().visible = false
 	_tutorial_flash_tween = create_tween()
 	_tutorial_flash_tween.set_loops()
 	_tutorial_flash_tween.tween_property(btn, "modulate", Color(1.0, 0.85, 0.25), 0.4)
@@ -3902,6 +4062,11 @@ func _on_move_chosen(mv: Dictionary) -> void:
 # Two beats: wait for a hover on the flashing (hover-only) enemy button, then
 # show the ACC/EVA comparison and wait for Enter.
 func _explain_dodging(enemy: Dictionary) -> void:
+	if is_quick_tutorial():
+		target_back_btn.visible = false
+		_tutorial_caption.text = "Select the Angler to attack. Electric Touch lowers its Evasion, making later hits easier to land."
+		call_deferred("_fit_panel_height")
+		return
 	for b in target_buttons:
 		(b as Button).disabled = true
 	target_back_btn.disabled = true
@@ -4174,6 +4339,8 @@ func _explain_flash_blast(enemy: Dictionary) -> void:
 
 # After the first move resolves: boxes party[0]'s and enemies[0]'s status cards.
 func _explain_other_stats() -> void:
+	if is_quick_tutorial():
+		return
 	var player_card: PanelContainer = (party[0].card as PanelContainer) if not party.is_empty() else null
 	var enemy_card: PanelContainer = (enemies[0].card as PanelContainer) if not enemies.is_empty() else null
 	# Battle-specific callout added here; the shared TutorialContent page is also shown outside fights.
@@ -4631,6 +4798,8 @@ func _restore_enemy_idle(entry: Dictionary) -> void:
 		entry.actor.call("play", "idle")
 
 func _resolve_party_move(mv: Dictionary, target: Dictionary) -> void:
+	if is_quick_tutorial():
+		_tutorial_caption.visible = false
 	if target.is_empty():
 		_advance_turn()
 		return
@@ -5538,14 +5707,22 @@ func _on_run() -> void:
 	_finish_actor_turn(_acting)
 	_advance_turn()
 
+func _open_combat_reference() -> void:
+	if _can_open_combat_reference() and not combat_reference.visible:
+		combat_reference.open()
+
+func _can_open_combat_reference() -> bool:
+	return not _skip_tutorial_requested and not _qte_active and ((not _busy and not _tutorial_awaiting_enter) or (tutorial_encounter and _tutorial_awaiting_enter))
+
 func _set_all_buttons(enabled: bool) -> void:
 	attack_btn.disabled = not enabled
 	run_btn.disabled = not enabled or _no_escape()
 	if skip_tutorial_btn != null:
 		# Skip stays available during the special encounter's intro captions.
-		var can_skip_during_intro := special_encounter and tutorial_encounter and not _skip_tutorial_requested
+		var can_skip_during_intro := tutorial_encounter and not _skip_tutorial_requested
 		skip_tutorial_btn.disabled = not enabled and not can_skip_during_intro
 	items_btn.disabled = not enabled
+	combat_help_btn.disabled = not enabled
 	back_btn.disabled = not enabled
 	item_back_btn.disabled = not enabled
 	target_back_btn.disabled = not enabled

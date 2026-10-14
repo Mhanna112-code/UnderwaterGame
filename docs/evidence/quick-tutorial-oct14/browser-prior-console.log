@@ -1,0 +1,32 @@
+[    5910ms] [LOG] Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[    8505ms] [LOG] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[    9782ms] [LOG] Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support. @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[   10902ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[   10903ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[   10904ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  186923ms] [LOG] PROLOGUE_PHASE|opening_video @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  220940ms] [LOG] PROLOGUE_PHASE|opening_handoff @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  225850ms] [LOG] PROLOGUE_PHASE|spawn_exploration @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  225901ms] [LOG] PROLOGUE_PHASE|octopus_introduction @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  250949ms] [LOG] PROLOGUE_PHASE|octopus_reveal @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  252411ms] [LOG] PROLOGUE_PHASE|octopus_response @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  460611ms] [LOG] PROLOGUE_HIT|move=Electric Touch|damage=1|hit=true|hp=999|effects=[] @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  466362ms] [LOG] PROLOGUE_PHASE|scripted_defeat @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[  467134ms] [LOG] PROLOGUE_STRIKE|move=Octo Stab|target=Maxilani|damage=80|hit=true|hp=0|living=2 @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 1083222ms] [LOG] PROLOGUE_HIT|move=Precise Tap|damage=3|hit=true|hp=996|effects=[] @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 1087427ms] [LOG] PROLOGUE_STRIKE|move=Head Bash|target=Musashi|damage=78|hit=true|hp=0|living=1 @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 1554912ms] [LOG] PROLOGUE_HIT|move=Guard Bash|damage=9|hit=true|hp=987|effects=[] @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 1558549ms] [LOG] PROLOGUE_STRIKE|move=Electric Shooting|target=Bucky|damage=76|hit=true|hp=0|living=0 @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 1562714ms] [LOG] PROLOGUE_PHASE|octopus_aftermath @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 1569074ms] [LOG] PROLOGUE_PHASE|recovery @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 1757652ms] [LOG] PROLOGUE_PHASE|complete @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2103185ms] [LOG] Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2103502ms] [LOG] OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2103805ms] [LOG] Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support. @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2104919ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2104920ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2104921ms] [LOG] (0.03911, 0.017409, 0.065218) @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2264176ms] [LOG] PROLOGUE_PHASE|complete @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 2264245ms] [LOG] CHECKPOINT_LATEST_LOADED|slot=0|autosave=false @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 5061635ms] [LOG] RANDOM_REVEAL|enemies=frilled_shark,frilled_shark,swordfish_duelist|duration=1.5 @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451
+[ 5062989ms] [LOG] RANDOM_COMBAT|enemies=frilled_shark,frilled_shark,swordfish_duelist @ https://underwatergame-pr103-quick-tutorial.vercel.app/index.js:451

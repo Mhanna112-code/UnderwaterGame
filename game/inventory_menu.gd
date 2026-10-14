@@ -426,6 +426,12 @@ func _on_replay_tutorial_pressed() -> void:
 		close()
 		w.call("_replay_tutorial_battle")
 
+func _on_quick_tutorial_pressed() -> void:
+	var w := _help_world()
+	if w != null:
+		close()
+		w.call("_replay_tutorial_battle", Battle.TUTORIAL_PROFILE_QUICK)
+
 # Replays the Maxilani special-encounter lesson; never grants the guarded item.
 func _on_character_abilities_pressed() -> void:
 	close()
@@ -679,14 +685,22 @@ func _refresh_help() -> void:
 	_hint.text = "Stats, effects, and status conditions"
 	var w := _help_world()
 	if w != null:
+		var quick_btn := Button.new()
+		quick_btn.name = "QuickCombatPractice"
+		quick_btn.text = "Quick Combat Practice"
+		quick_btn.custom_minimum_size = Vector2(0, 40)
+		quick_btn.pressed.connect(_on_quick_tutorial_pressed)
+		_list.add_child(quick_btn)
 		var replay_btn := Button.new()
-		replay_btn.text = "Replay Tutorial Fight"
+		replay_btn.name = "FullCombatLesson"
+		replay_btn.text = "Full Combat Lesson (Optional)"
 		replay_btn.custom_minimum_size = Vector2(0, 40)
 		replay_btn.pressed.connect(_on_replay_tutorial_pressed)
 		_list.add_child(replay_btn)
-		if bool(w.get("ability_popups_seen")):
+		if w.has_method("_show_ability_popups"):
 			var abilities_btn := Button.new()
-			abilities_btn.text = "Character Abilities"
+			abilities_btn.name = "WorldAbilities"
+			abilities_btn.text = "World Abilities"
 			abilities_btn.custom_minimum_size = Vector2(0, 40)
 			abilities_btn.pressed.connect(_on_character_abilities_pressed)
 			_list.add_child(abilities_btn)

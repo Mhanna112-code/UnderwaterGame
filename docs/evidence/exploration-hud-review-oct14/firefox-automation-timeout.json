@@ -1,0 +1,14 @@
+{
+  "target": "output/playwright/preview",
+  "browser": "firefox",
+  "headed": false,
+  "source_commit": "67028c477382e14de9ccc53caf75b12d7e3949de",
+  "pck_sha256": "820f706c191bc16921a50fa8a8c918d75e264e6af00cc9b9a67d71193590db79",
+  "logs": [],
+  "observations": [],
+  "findings": [
+    "TimeoutError: page.screenshot: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n"
+  ],
+  "errors": [],
+  "scope": "Declared fresh-profile injured-party checkpoint, ordinary cold Load, real TAB/Q/R/F/Escape/F1, viewport resize, real random encounter and Run/death recovery. Not earned campaign, balance, or native-target launch verification."
+}

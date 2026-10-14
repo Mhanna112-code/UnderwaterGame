@@ -1,0 +1,91 @@
+{
+  "target": "output/playwright/preview",
+  "source_commit": "67028c477382e14de9ccc53caf75b12d7e3949de",
+  "pck_sha256": "820f706c191bc16921a50fa8a8c918d75e264e6af00cc9b9a67d71193590db79",
+  "logs": [
+    "PROLOGUE_PHASE|complete",
+    "CHECKPOINT_LATEST_LOADED|slot=0|autosave=false",
+    "RANDOM_COMBAT|enemies=swordfish_duelist,angler,swordfish_duelist"
+  ],
+  "observations": [
+    {
+      "name": "fresh-title-0",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "load-title-0",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "load-menu",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "load-slot",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "world-1280x720",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 4/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "world-960x540",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 4/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani ACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "world-720x480",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10 Oxygen 53%\nHP 4/10 Oxygen 31%\nExplore the mysterious blockade.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani ACTIVE\nHealth 8/10\nOxygen 72/100\n• Random encounters: OFF"
+    },
+    {
+      "name": "world-360x640",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nOxygen 53%\nHP 4/10\nOxygen 31%\n-Random encounters: OFF\nExplore the mysterious blockade.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "musashi-active",
+      "text": "Maxilani\nBucky\nTAB Switch diver\nHP 8/10\nHP 4/10\nOxygen 72%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Grapple\nR: Toggle encounters • Esc: Menu • F1: Guide\nMusashi\nHealth 6/10\nOxygen 53/100\nACTIVE"
+    },
+    {
+      "name": "grapple-aim",
+      "text": "Maxilani\nBucky\nTAB Switch diver\nHP 8/10\nOxygen 72%\nHP 4/10\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\n-\nAiming Grapple\nLeft click: fire • Right click: cancel\nMusashi\nHealth 6/10\nOxygen 53/100\nACTIVE"
+    },
+    {
+      "name": "bucky-active",
+      "text": "Maxilani\nMusashi\nTAB Switch diver\nHP 8/10\nOxygen 72%\nHP 6/10\nOxygen 53%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Shockwave\nR: Toggle encounters • Esc: Menu • F1: Guide\nBucky\nACTIVE\nHealth 4/10\nOxygen 31/100"
+    },
+    {
+      "name": "sonar-on",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 4/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nSonar on.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar On\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "pause-menu",
+      "text": "PAUSED • Esc to resume\nInventory\nItems\nParty Spells\nCombat Help\nUse any available items on any party members.\nNo items yet\nAudio\nMain Menu"
+    },
+    {
+      "name": "guide-open",
+      "text": "1 / 5\nCombat Basics\nA fight is turns, one combatant at a time, fastest Agility going first each\nround. On your turn: Attack (use a base move, or any spell you've\nlearned), Items (use one on any living party member to heal or boost\ntheir stats), or Run (leave the fight - not guaranteed to work). The queue\nbar across the top shows the coming order.\n< Back\nNext >\nClose"
+    },
+    {
+      "name": "guide-close",
+      "text": "1 / 5\nCombat Basics\nA fight is turns, one combatant at a time, fastest Agility going first each\nround. On your turn: Attack (use a base move, or any spell you've\nlearned), Items (use one on any living party member to heal or boost\ntheir stats), or Run (leave the fight - not guaranteed to work). The queue\nbar across the top shows the coming order.\n< Back\nNext >\nClose"
+    },
+    {
+      "name": "encounters-on",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 4/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: ON\nSonar off.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nHealth 8/10\nOxygen 72/100\nACTIVE"
+    },
+    {
+      "name": "swimming-leg-1",
+      "text": "NOW\nSwordfish Duelist 1\nNext\nSwordfish Duelist 3\nMaxilani\nMusashi\nAngler 2\nBucky\nMaxilani\nSwordfish Duelist 1\n8/10 Lv 1\n72 / 100 02\n8 / 8\nEVA 4/4\nAngler 2\nEVA 3/3\nMusashi\n5/5\n6/10\nLv 1\n53 / 100 02\nEVA 1/1\nSwordfish Duelist 3\nEVA 2/2\nBucky\n8 / 8\nEVA 4/4\n4/10 Lv1\n31 / 10002\nEVA 0/0\nEnemies block the way!\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "actual-random-battle",
+      "text": "NOW\nSwordfish Duelist 1\nNext\nSwordfish Duelist 3\nMaxilani\nMusashi\nAngler 2\nBucky\nMaxilani\nSwordfish Duelist 1\n8/10 Lv 1\n72 / 100 02\n8 / 8\nEVA 4/4\nAngler 2\nEVA 3/3\nMusashi\n5/5\n6/10\nLv 1\n53 / 100 02\nEVA 1/1\nSwordfish Duelist 3\nEVA 2/2\nBucky\n8 / 8\nEVA 4/4\n1/10 Lv 1\n31 / 10002\nEVA 0/0\nSwordfish Duelist 1 uses Triple Combo: Bucky -1/-1/-1.\nYou\nSTR\nACC\nDEF\nEVA"
+    }
+  ],
+  "findings": [
+    "Error: Battle controls were not visible"
+  ],
+  "errors": [
+    "WrongDocumentError: The root document of this element is not valid for pointer lock.|last capture=musashi-active"
+  ],
+  "scope": "Declared fresh-profile injured-party checkpoint, ordinary cold Load, real TAB/Q/R/F/Escape/F1, viewport resize, real random encounter and Run/death recovery. Not earned campaign, balance, or native-target launch verification."
+}

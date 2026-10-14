@@ -6,6 +6,7 @@ var help_label: Label
 var _elapsed := 0.0
 var _enabled := true
 var _style: StyleBoxFlat
+var _map_bottom := 166.0
 
 func _ready() -> void:
 	name = "EscapeEncounterHint"
@@ -28,14 +29,14 @@ func _ready() -> void:
 	add_child(rows)
 	setting_label = Label.new()
 	setting_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	setting_label.add_theme_font_size_override("font_size", 22)
+	setting_label.add_theme_font_size_override("font_size", 20)
 	setting_label.add_theme_color_override("font_color", Color(0.84, 1.0, 1.0))
 	setting_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rows.add_child(setting_label)
 	help_label = Label.new()
 	help_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	help_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help_label.add_theme_font_size_override("font_size", 16)
+	help_label.add_theme_font_size_override("font_size", 14)
 	help_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rows.add_child(help_label)
 	get_viewport().size_changed.connect(_layout)
@@ -58,6 +59,12 @@ func dismiss() -> void:
 	visible = false
 	modulate = Color.WHITE
 
+func set_map_bottom(bottom: float) -> void:
+	if is_equal_approx(_map_bottom, bottom):
+		return
+	_map_bottom = bottom
+	_layout()
+
 func _process(dt: float) -> void:
 	if not visible:
 		return
@@ -78,6 +85,7 @@ func _layout() -> void:
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	offset_left = (viewport_size.x - width) * 0.5
 	offset_right = offset_left + width
-	# Below the objective (118px) AND minimap (166px), not over either.
-	offset_top = 174.0
-	offset_bottom = 256.0
+	# World's narrow minimap is lower than the old fixed 166px baseline.
+	# During this brief reminder World yields its redundant objective/badge.
+	offset_top = maxf(174.0, _map_bottom + 8.0)
+	offset_bottom = offset_top + 64.0

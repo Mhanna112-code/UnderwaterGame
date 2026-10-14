@@ -59,15 +59,19 @@ static func page_body(title: String) -> String:
 const STAT_GLOSSARY: Array[Dictionary] = [
 	{
 		"title": "HP",
-		"body": "Health. A fight ends the instant either every party member or every enemy reaches 0.",
+		"body": "Health. At 0 HP a diver is down and cannot fight. Revive spells, save points, or a level-up can bring them back. You lose when every party member is down; you win when every enemy is down.",
+	},
+	{
+		"title": "Oxygen (O2)",
+		"body": "Spent by moves with an O2 cost. Free moves remain available at 0 O2. Save points refill the party's Oxygen. The cost is shown on each move before you choose it.",
 	},
 	{
 		"title": "Strength (STR)",
-		"body": "Added to a move's base power for its raw damage number, before the target's Defense reduces it.",
+		"body": "Helps determine an attack's raw damage. Some moves use Strength alone; others combine different stats. Hover a move for its formula and a target for the actual predicted damage.",
 	},
 	{
 		"title": "Defense (DEF)",
-		"body": "Subtracted from an incoming hit's raw damage (base power plus the attacker's Strength) before it reaches HP.",
+		"body": "Reduces incoming raw damage before it reaches HP, unless a move ignores Defense. A damaging hit usually deals at least 1; Defense more than 5 above raw damage can block it completely.",
 	},
 	{
 		"title": "Agility (AGI)",
@@ -75,7 +79,7 @@ const STAT_GLOSSARY: Array[Dictionary] = [
 	},
 	{
 		"title": "Accuracy (ACC)",
-		"body": "A hit lands only if it's strictly greater than the defender's current Evasion.",
+		"body": "The attacker's Accuracy plus the move's ACC modifier must be strictly greater than the target's current Evasion to hit. A tie is a dodge, not a hit.",
 	},
 	{
 		"title": "Evasion (EVA)",

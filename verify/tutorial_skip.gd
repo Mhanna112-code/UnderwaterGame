@@ -14,7 +14,14 @@ func _run() -> void:
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(3)
+	world.title_screen.close()
+	world.get_node("HUD").visible = true
+	paused = false
+	world.route_state.prologue_complete = true
+	world.route_state.opening_video_seen = true
+	world.route_state.normalize_prologue_phase()
+	world._first_encounter_started = true
+	world._intro_active = false
 	await process_frame
 	world._start_battle("", false, "angler", world.divers, false, true)
 	await process_frame
@@ -36,18 +43,14 @@ func _run() -> void:
 			if stats.hp != stats.hp_max or stats.oxygen != stats.oxygen_max:
 				findings.append("SKIP DID NOT FULLY RESTORE PARTY")
 				break
-		# Skip is an exit from the combat lesson, not from learning the world
-		# controls. The current handoff is the CharacterAbilityPopup autoload,
-		# and it must dismiss back to the same playable state.
+		# Short starter releases play immediately. World controls remain an
+		# explicit Inventory choice, exercised by tutorial_camera_handoff.gd.
 		var popup := root.get_node_or_null("CharacterAbilityPopup")
 		var panel := popup.find_child("AbilityExplanationPanel", true, false) as Control if popup != null else null
-		if panel == null or not panel.visible:
-			findings.append("SKIP DID NOT OPEN WORLD-CONTROL HANDOFF")
-		else:
-			popup.call("_close")
-			await process_frame
-			if paused:
-				findings.append("SKIP HANDOFF LEFT THE TREE PAUSED AFTER DISMISS")
+		if panel != null and panel.visible:
+			findings.append("SKIP FORCED THE OPTIONAL WORLD-CONTROL WALKTHROUGH")
+		if paused or not world.route_state.tutorial_complete:
+			findings.append("SKIP DID NOT PERSISTENTLY RELEASE NORMAL PLAY")
 
 	for finding in findings:
 		push_error(finding)

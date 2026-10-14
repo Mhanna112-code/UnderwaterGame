@@ -1,0 +1,79 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+LESSON|0|Maxilani's turn.|While exploring the deep, random encounters like this one with deep sea enemies can occur at any time.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+FULL_LAYOUT|stage=0|stage_height=14.0|continue=[P: (12.0, 154.0), S: (180.0, 40.0)]
+LESSON|0|Maxilani's turn.|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|A fight is turns, one combatant at a time, fastest Agility going first each round. On your turn: Attack (use a base move, or any spell you've learned), Items (use one on any living party member to heal or boost their stats), or Run (leave the fight - not guaranteed to work). The queue bar across the top shows the coming order. Turn order is shown from first at left to last at right in the turn order bar at the top. Turn order is decided by Agility - whoever has the highest goes first. If a move changes someone's Agility, the turn order always updates right away to reflect it.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|0|Maxilani's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|0|Maxilani's turn.|When it connects, Electric Touch lowers Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|When it connects, Electric Touch lowers Angler's Evasion - that's why its EVA number is shown in [color=e65959]red[/color], with the white (-1) next to it showing exactly how much. A stat shown in [color=e65959]red[/color] means its total went down; a stat shown in [color=66e666]green[/color] means its total went up.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|false
+LESSON|0|Maxilani's turn.|Electric Touch's own power is 0. This raw power number is shown in yellow at the top-right of its attack menu button before any stats are added. Add Maxilani's Strength, then subtract Angler's Defense (1 - 3 = -2, but a hit always deals at least 1), and this attack would deal 1 damage if it hit.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|0|Maxilani's turn.|Click the highlighted Angler to attack.|false
+LESSON|0|Electric Touch shocks the target for 1.  EVA -1|Click the highlighted Angler to attack.|false
+LESSON|0|Electric Touch shocks the target for 1.  EVA -1|Your party's HP is shown in the highlighted purple boxes in the status panels with your party's on the top left and enemies on the top right. HP (health points) red bars end the fight when either all party members or all enemies reach 0. The blue bar underneath each health bar is oxygen which is consumed to cast certain attacks.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|1|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|1|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|1|Musashi's turn.|Precise Tap temporarily boosts Musashi's Accuracy stat for this one turn, making the attack much harder to dodge - that's why its ACC number is shown in [color=66e666]green[/color], with the white (+X) next to it showing the increase.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+FULL_LAYOUT|stage=1|stage_height=20.0|continue=[P: (12.0, 183.0), S: (180.0, 40.0)]
+LESSON|1|Musashi's turn.|The yellow line above your stats shows Precise Tap and 0: the damage it will actually deal to Angler. Everything is already factored in - the move's power, Musashi's STR and Angler's DEF - so you don't have to work it out yourself. It appears whenever you hover over a target.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|1|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|2|You land a precise tap for 0.|Click the highlighted Angler to attack.|false
+LESSON|2|Bucky's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy. This move has an Oxygen cost of 16 as shown in the bottom right corner.|false
+LESSON|2|Bucky's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|2|Bucky's turn.|If the enemy's Evasion (EVA, right panel) is greater than or equal to the attacker's Accuracy (ACC, left panel), the enemy evades and the attack misses. Here Bucky's Accuracy is 1 and Angler's Evasion is 2, so this attack will miss, shown by MISS in the middle. Each dodge spends the enemy's Evasion down by the Accuracy it beat, and it only refills at the start of that enemy's own next turn.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+FULL_LAYOUT|stage=2|stage_height=0.0|continue=[P: (12.0, 183.0), S: (180.0, 40.0)]
+LESSON|2|Bucky's turn.|Crushing Haymaker hits hard and costs 16 Oxygen, but Bucky's low Accuracy lets enemies dodge it while they have Evasion left. Electric Touch lowers an enemy's Evasion for the rest of the fight. Exhaust that pool first, then a heavy swing can connect.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|2|Bucky's turn.|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Click the highlighted Angler to attack.|false
+LESSON|3|You wind up and crush it - Angler evades!|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+FULL_LAYOUT|stage=3|stage_height=99.0|continue=[P: (12.0, 262.0), S: (180.0, 40.0)]
+LESSON|3|You wind up and crush it - Angler evades!||false
+LESSON|3|Angler uses Bite: Musashi QTE dodge.||false
+LESSON|3|Musashi's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|3|Musashi's turn.|Hover over the enemy you want to attack to see the stat comparison.|false
+LESSON|3|Musashi's turn.|Weaken deals no damage at all - its power is 0, so there's nothing to subtract from Angler's HP. What it does instead is lower their Defense, which is why its DEF number is shown in [color=e65959]red[/color], with the white (-2) next to it. Some moves only ever affect an enemy's stats like this, with no damage of their own, but they're worth using to weaken enemies for greater party hits.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|3|Musashi's turn.|Click the highlighted Angler to attack.|false
+LESSON|4|You strike a nerve - its defense drops on Angler by 2.|Click the highlighted Angler to attack.|false
+LESSON|4|Maxilani's turn.|Choose the [color=yellow]highlighted[/color] attack move against the enemy.|false
+LESSON|4|Maxilani's turn.|Hover over the highlighted button to see what Flash Blast does.|false
+LESSON|4|Maxilani's turn.|Flash Blast deals no damage either, same as Weaken. Instead it hits every enemy at once with a status called Blindness, which lowers Agility, Accuracy, and Defense all by the same amount at once. That's why the enemy's ACC and DEF numbers are both shown in [color=e65959]red[/color] here: lower Accuracy means their own attacks miss more, and lower Defense means your hits deal more damage to them. Flash Blast subtracts 2 from all three, for as many turns as Maxilani's own Accuracy. Blindness is only one of several status conditions moves can inflict. Hover over any attack that names one on its own button (like Scuba Stabbing's Bleed) to see exactly what it does, or find full details on all of them, including ones not shown in this fight, from the Combat Help tab of the Esc menu out in the world.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+FULL_LAYOUT|stage=4|stage_height=0.0|continue=[P: (12.0, 183.0), S: (180.0, 40.0)]
+LESSON|4|Maxilani's turn.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler Blindness 2.|Click the highlighted All enemies to attack.|false
+LESSON|5|Flash Blast: Angler Blindness 2.|Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|false
+LESSON|5|Flash Blast: Angler Blindness 2.|Now defeat the enemy for real to finish the lesson! Winning a battle awards XP to your whole party, not just whoever fought including anyone who went down during the fight, who gains XP the same as everyone else. Gain enough XP and a diver levels up, which refills their HP and Oxygen even if they went down. Otherwise a downed diver needs a Revive spell to get back on their feet. Leveling up doesn't change your combat stats but instead lets the divers gain new abilities.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+FULL_LAYOUT|stage=5|stage_height=42.0|continue=[P: (12.0, 274.0), S: (180.0, 40.0)]
+LESSON|5|Flash Blast: Angler Blindness 2.|This lesson grants no XP or rewards. Optional practice leaves your campaign party, items and checkpoint unchanged. After a loss you can Retry or return to exploring.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+LESSON|5|Bucky's turn.||false
+LESSON|5|You bash it with your guard for 8.||false
+LESSON|5|You bash it with your guard for 8.|Sometimes during an enemy's attack, a Quick Time Event shows up:|true
+LESSON|5|You bash it with your guard for 8.||false
+LESSON|5|Angler uses Bite: Maxilani QTE dodge.||false
+LESSON|5|Maxilani's turn.||false
+LESSON|5|Electric Touch shocks the target for 1.  EVA -1||false
+LESSON|5|The enemies back off, beaten.||false
+LESSON|5|The enemies back off, beaten.|You have defeated your first enemy! In this case you won't gain XP.
+[font_size=18][pulse]Press [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Space [/color][/outline_size][/outline_color][/bgcolor], [bgcolor=#1a1a1e][outline_color=#000000][outline_size=8][color=#ffffff] Enter [/color][/outline_size][/outline_color][/bgcolor], or click Continue[/pulse][/font_size]|true
+FULL_LESSON_RESULT|["won"]
+ERROR: QT VISUAL: full stage 4 clips its caption or Continue
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _full_lesson (res://verify/tutorial_win_handoff.gd:196)

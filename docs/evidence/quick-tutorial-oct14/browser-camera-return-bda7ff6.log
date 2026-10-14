@@ -1,0 +1,6 @@
+### Result
+{"focused":true,"locked":true}
+### Ran Playwright code
+```js
+await (async (page) => { await page.keyboard.press("Escape"); await page.waitForTimeout(150); await page.mouse.click(600,430); await page.waitForTimeout(300); const lock=await page.evaluate(()=>({focused:document.hasFocus(),locked:!!document.pointerLockElement})); await page.mouse.move(710,430); await page.waitForTimeout(300); await page.screenshot({path:"output/playwright/pr103-final-camera-return.png"}); await page.keyboard.press("Escape"); await page.waitForTimeout(200); return lock; })(page);
+```

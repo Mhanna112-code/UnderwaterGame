@@ -1,0 +1,7 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+ERROR: QT4: live battle action menu has no Combat Help entry
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/quick_tutorial.gd:41)
+QUICK TUTORIAL REFERENCE: 1 failure(s)

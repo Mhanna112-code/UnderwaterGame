@@ -1,0 +1,20 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+SKIP_CASE|quick|intro|results=["skipped"]
+SKIP_CASE|quick|move|results=["skipped"]
+SKIP_CASE|quick|target|results=["skipped"]
+SKIP_CASE|quick|dodge_instruction|results=["skipped"]
+SKIP_CASE|quick|live_dodge|results=["skipped"]
+SKIP_CASE|quick|finish|results=["skipped"]
+SKIP_CASE|full|intro|results=["skipped"]
+SKIP_CASE|full|move|results=["skipped"]
+SKIP_CASE|full|target|results=["skipped"]
+SKIP_CASE|full|dodge_instruction|results=["skipped"]
+SKIP_CASE|full|live_dodge|results=["skipped"]
+SKIP_CASE|full|finish|results=["skipped"]
+SKIP_CASE|full|hover_caption|results=["skipped"]
+TUTORIAL SKIP LIFECYCLE|checks=274|failures=0

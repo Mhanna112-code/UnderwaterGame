@@ -9,6 +9,8 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has("--narrow"):
+		root.size = Vector2i(360, 640)
 	if OS.get_cmdline_user_args().has("--world-lesson"):
 		world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
 		root.add_child(world)
@@ -40,6 +42,9 @@ func _run() -> void:
 	await process_frame
 	var fight := Battle.new()
 	fight.tutorial_encounter = true
+	# This verifier's long-lesson mode explicitly opts into the retained full
+	# script. The normal starter is covered by quick_combat_lesson.gd instead.
+	fight.tutorial_profile = Battle.TUTORIAL_PROFILE_FULL
 	fight.party_source = sources
 	root.add_child(fight)
 	await process_frame
@@ -118,12 +123,31 @@ func _full_lesson(fight: Battle) -> void:
 	fight.finished.connect(func(result: String) -> void: results.append(result))
 	var deadline := Time.get_ticks_msec() + 180000
 	var last_state := ""
+	var captured := {}
+	var helped := {}
 	while results.is_empty() and Time.get_ticks_msec() < deadline:
 		var state := "%d|%s|%s|%s" % [fight._tutorial_step, fight._current_log_text(), fight._tutorial_caption.text, fight._tutorial_awaiting_enter]
 		if state != last_state:
 			print("LESSON|", state)
 			last_state = state
 		if fight._tutorial_awaiting_enter:
+			# QT16: the full lesson explicitly teaches green ACC gain. A
+			# neutral-colored frozen preview would contradict that explanation.
+			if fight._tutorial_caption.text.begins_with("Precise Tap temporarily boosts"):
+				var accuracy_label := fight._player_stats_ui.values.ACC as Label
+				if accuracy_label.get_theme_color("font_color") != Battle.STAT_COLOR_UP:
+					findings.append("QT16: Precise Tap narration has a neutral/wrong ACC preview color")
+			if OS.get_cmdline_user_args().has("--help-steps") and not helped.has(fight._tutorial_step):
+				helped[fight._tutorial_step] = true
+				await _full_help(fight)
+			var capture_key := "%d-caption" % fight._tutorial_step
+			if OS.get_cmdline_user_args().has("--capture") and not captured.has(capture_key) and DisplayServer.get_name() != "headless":
+				captured[capture_key] = true
+				await RenderingServer.frame_post_draw
+				print("FULL_LAYOUT|stage=", fight._tutorial_step, "|stage_height=", fight._stage_container.size.y, "|continue=", fight._tutorial_continue_btn.get_global_rect())
+				if not root.get_visible_rect().encloses(fight._tutorial_continue_btn.get_global_rect()) or not root.get_visible_rect().encloses(fight._tutorial_caption.get_global_rect()):
+					findings.append("QT VISUAL: full stage %d clips its caption or Continue" % fight._tutorial_step)
+				root.get_texture().get_image().save_png("res://docs/evidence/quick-tutorial-oct14/full-%dx%d-%s.png" % [root.size.x, root.size.y, capture_key])
 			if fight._tutorial_continue_btn.is_visible_in_tree():
 				fight._tutorial_continue_btn.emit_signal("pressed")
 			else:
@@ -188,6 +212,24 @@ func _full_lesson(fight: Battle) -> void:
 	await process_frame
 	root.get_node("GameAudio").release_streams_for_shutdown()
 	quit(0 if findings.is_empty() else 1)
+
+func _full_help(fight: Battle) -> void:
+	var step := fight._tutorial_step
+	var actor := fight._acting
+	var queue := fight._queue.duplicate()
+	if not fight.combat_help_btn.is_visible_in_tree() or fight.combat_help_btn.disabled:
+		findings.append("QT14: full lesson hides/disables Help at stage %d" % step)
+		return
+	fight.combat_help_btn.emit_signal("pressed")
+	await process_frame
+	await process_frame
+	if not fight.combat_reference.visible or not paused:
+		findings.append("QT14: Full Help failed to open its real reference")
+		return
+	_press_key(KEY_ESCAPE)
+	await process_frame
+	if paused or fight.combat_reference.visible or fight._tutorial_step != step or not fight._tutorial_awaiting_enter or fight._acting != actor or fight._queue != queue:
+		findings.append("QT14: Full Help consumed a lesson wait/turn or retained pause")
 
 func _swim(pressed: bool) -> void:
 	var event := InputEventKey.new()

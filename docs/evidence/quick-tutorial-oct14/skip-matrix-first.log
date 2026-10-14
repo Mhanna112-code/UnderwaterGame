@@ -1,0 +1,18 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+(0.03911, 0.017409, 0.065218)
+PROLOGUE_PHASE|complete
+SKIP_CASE|quick|intro|results=["skipped"]
+ERROR: QT5: optional quick is not reachable in Inventory
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_skip_lifecycle.gd:53)
+       [1] _case (res://verify/tutorial_skip_lifecycle.gd:109)
+ERROR: QT6: restored resources changed after quick/intro
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/tutorial_skip_lifecycle.gd:53)
+       [1] _case (res://verify/tutorial_skip_lifecycle.gd:109)
+TUTORIAL SKIP LIFECYCLE|checks=19|failures=2

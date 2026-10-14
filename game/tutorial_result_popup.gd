@@ -24,11 +24,6 @@ func _ready() -> void:
 	add_child(dim)
 
 	_panel = PanelContainer.new()
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.offset_left = -220.0
-	_panel.offset_top = -110.0
-	_panel.offset_right = 220.0
-	_panel.offset_bottom = 110.0
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.05, 0.08, 0.22)
 	style.border_color = Color.WHITE
@@ -49,18 +44,25 @@ func _ready() -> void:
 	margin.add_child(col)
 
 	_title = Label.new()
+	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_title.add_theme_font_size_override("font_size", 20)
 	_title.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	col.add_child(_title)
 
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size.y = 40
+	col.add_child(scroll)
 	_body = Label.new()
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body.add_theme_color_override("font_color", Color(0.8, 0.88, 0.9))
-	col.add_child(_body)
+	scroll.add_child(_body)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 8)
 	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(row)
 
@@ -75,12 +77,24 @@ func _ready() -> void:
 	exit_btn.custom_minimum_size = Vector2(140, 40)
 	exit_btn.pressed.connect(_on_exit_pressed)
 	row.add_child(exit_btn)
+	resized.connect(_sync_layout)
+	get_viewport().size_changed.connect(_sync_layout)
+	_panel.minimum_size_changed.connect(func() -> void: _sync_layout.call_deferred())
+	_sync_layout()
+
+func _sync_layout() -> void:
+	if _panel == null:
+		return
+	var available := get_viewport_rect().size
+	_panel.size = Vector2(minf(440, maxf(0, available.x - 24)), minf(320, maxf(0, available.y - 24)))
+	_panel.position = (available - _panel.size) * 0.5
 
 func open(title: String, body: String) -> void:
 	_title.text = title
 	_body.text = body
 	visible = true
 	get_tree().paused = true
+	_sync_layout()
 
 func _close() -> void:
 	visible = false

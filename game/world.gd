@@ -26,6 +26,10 @@ var random_encounter_reveal: RandomEncounterReveal
 var _first_encounter_done := false
 # Which tutorial fight opened the loss popup (special vs. first combat).
 var _tutorial_loss_was_special := false
+var _last_tutorial_profile := Battle.TUTORIAL_PROFILE_QUICK
+var _tutorial_practice: TutorialPractice
+var _tutorial_loss_was_practice := false
+var _practice_completes_initial_training := false
 # Test seam: skip the opening crawl.
 var skip_intro_for_test := false
 # Dev/test: skip the scripted first fight (--skip-tutorial or ?skip_tutorial=1).
@@ -1146,6 +1150,7 @@ func _ready() -> void:
 	hud = $HUD/Controls
 	# HUD elements must not eat mouse input meant for minigames.
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_theme_stylebox_override("normal", preload("res://game/exploration_hud.gd").panel_style())
 	banner = Label.new()
 	banner.name = "Banner"
 	# Bottom-center, just above the HP/oxygen bars.
@@ -1440,12 +1445,8 @@ var _maze_hidden_hud: Array[CanvasItem] = []
 
 func _maze_hud_keep() -> Array:
 	var keep: Array = []
-	if hp_bar != null:
-		keep.append(hp_bar.get_parent())
-	if oxygen_bar != null:
-		keep.append(oxygen_bar.get_parent())
-	if _party_bars_box != null:
-		keep.append(_party_bars_box)
+	if exploration_hud != null:
+		keep.append(exploration_hud)
 	return keep
 
 func _apply_maze_hud(on: bool) -> void:
@@ -2394,7 +2395,7 @@ func _update_maze_route_guide() -> void:
 		# Aim just inside the real maze boundary, not at the ramp mouth.
 		var ramp := Vector3(embedded_maze.embedded_bounds.position.x + 1, 2, DeepZoneLayoutScript.MAZE_TRANSITION.z)
 		maze_route_guide.update_bearing(cam, (divers[active] as Diver).global_position,
-			ramp, maxf(route_objective_panel.get_rect().end.y, hud.get_rect().end.y))
+			ramp, maxf(route_objective_panel.get_rect().end.y, exploration_hud.party_panel.get_rect().end.y))
 
 func _update_route_zone() -> void:
 	if not route_state.prologue_complete or divers.is_empty():
@@ -2838,6 +2839,12 @@ func _start_first_encounter(d: Diver) -> void:
 	_transitioning_to_encounter = false
 	_intro_active = false
 	_camera_look_override = null
+	# A legacy recovered save can have a downed Maxilani and unfinished
+	# training. Regroup before teaching her move, just as this one-time
+	# lesson already regroups on completion. Otherwise stage zero can never
+	# offer Electric Touch. Optional replays use isolated resources instead.
+	for diver in divers:
+		(diver as Diver).stats.fill()
 	# All three divers join the tutorial (CAST order matters for its script).
 	_start_battle("", false, "angler", divers, false, true)
 
@@ -3348,7 +3355,7 @@ func _on_diver_swapped(target: Diver, d: Diver) -> void:
 	focus_camera_on(target, 1.1)
 
 # reward_item "" means an ordinary fight with no reward.
-func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = []) -> void:
+func _start_battle(reward_item: String = "", boss_encounter: bool = false, guardian_enemy_id: String = "angler", custom_party: Array = [], special: bool = false, tutorial: bool = false, intro_text: String = "", authored_enemy: bool = false, revealed_enemy_ids: Array[String] = [], tutorial_profile: String = Battle.TUTORIAL_PROFILE_QUICK) -> void:
 	for diver in divers:
 		diver.exploration_paused = true
 	_cancel_random_encounter_reveal()
@@ -3399,6 +3406,9 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	if route_state.encounter_source == "prologue_octopus":
 		battle.prologue_phase_changed.connect(_on_prologue_phase_changed)
 	battle.tutorial_encounter = tutorial
+	battle.tutorial_profile = tutorial_profile
+	if tutorial and not special:
+		_last_tutorial_profile = tutorial_profile
 	battle.reward_item_on_win = reward_item
 	battle.encounter_intro_override = intro_text
 	battle.finished.connect(_on_battle_finished)
@@ -3415,13 +3425,38 @@ func _on_battle_finished(result: String) -> void:
 		(diver as Diver).reset_passives_after_battle()
 	var was_special := battle.special_encounter
 	var was_tutorial := battle.tutorial_encounter
+	var was_quick_tutorial := battle.is_quick_tutorial()
+	var was_practice := _tutorial_practice != null
 	if was_special:
 		special_encounter_left = true
 	var was_lab_boss := battle.boss_encounter and battle.encounter_source == "lab_boss"
 	var route_blocker_id := _active_route_blocker_id
+	# Cleanup must precede every result-driven checkpoint, not trail it by
+	# a queued frame. Practice still owns temporary stats here; restoring its
+	# original campaign members below retains their prior earned state.
+	battle.clear_battle_effects()
 	battle.queue_free()
 	battle = null
 	battling = false
+	if was_practice:
+		inventory = _tutorial_practice.restore()
+		_tutorial_practice = null
+		_pending_reward_item = ""
+		_update_hp_bar()
+		_update_oxygen_bar()
+		_update_hud()
+		_audio_call(&"play_exploration_music")
+		if result == "lost":
+			_tutorial_loss_was_practice = true
+			_tutorial_loss_was_special = false
+			tutorial_result_popup.open("Practice ended", "Your party, items and save are unchanged. Retry the lesson or return to exploring.")
+		else:
+			if _practice_completes_initial_training and result in ["won", "skipped"]:
+				_complete_initial_training()
+				_write_save()
+			_announce("Practice complete. Your party and items are unchanged.")
+		_practice_completes_initial_training = false
+		return
 	# Restore exploration music once Battle releases the screen. A normal loss
 	# goes to _show_game_over() below.
 	match result:
@@ -3433,7 +3468,7 @@ func _on_battle_finished(result: String) -> void:
 	if was_tutorial and not was_special:
 		_first_encounter_done = true
 		if result in ["won", "skipped"]:
-			route_state.tutorial_complete = true
+			_complete_initial_training()
 		# The intro beam's job is done once the tutorial fight ends.
 		if route_state.tutorial_complete and is_instance_valid(light_beam):
 			light_beam.queue_free()
@@ -3517,7 +3552,9 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 		"fled":
 			_announce("You successfully ran away.")
-			# The HUD badge by the HP bar already shows the encounters setting.
+			# Essential recovery teaching, not just a static status badge.
+			# The cue expires after three seconds even if R is never pressed.
+			escape_encounter_hint.show_after_escape(random_encounters_enabled)
 		"skipped":
 			# In-battle "Skip Tutorial": same recovery as a loss's "Exit to World".
 			for d in divers:
@@ -3556,19 +3593,34 @@ func _on_battle_finished(result: String) -> void:
 		_write_save()
 		# First time only: Combat Help replays don't repeat the onboarding
 		# (it stays available from the Esc menu's Character Abilities button).
-		if not ability_popups_seen:
+		if not ability_popups_seen and not was_quick_tutorial:
 			call_deferred("_show_ability_popups")
 
 # Heal and return to the overworld. Freeing `battle` here matters only for
 # the tutorial-loss playtest, which never goes through _on_battle_finished().
 func _free_lingering_test_battle() -> void:
 	if battle != null:
+		battle.clear_battle_effects()
 		battle.queue_free()
 		battle = null
 		battling = false
 
+func _complete_initial_training() -> void:
+	route_state.tutorial_complete = true
+	_first_encounter_started = true
+	_first_encounter_done = true
+	_intro_active = false
+	if is_instance_valid(light_beam):
+		light_beam.queue_free()
+		light_beam = null
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+
 func _on_tutorial_loss_exit() -> void:
 	_free_lingering_test_battle()
+	if _tutorial_loss_was_practice:
+		_tutorial_loss_was_practice = false
+		return
 	for d in divers:
 		var s: CombatantStats = (d as Diver).stats
 		s.hp = s.hp_max
@@ -3581,13 +3633,8 @@ func _on_tutorial_loss_exit() -> void:
 	_special_encounter_diver = null
 	# Not after the first special encounter (see _on_battle_finished()).
 	if not _tutorial_loss_was_special:
-		_first_encounter_started = false
-		for i in range(divers.size()):
-			(divers[i] as Diver).position = CAST[i].at as Vector3
-		_build_forced_tutorial_beam()
+		_complete_initial_training()
 		_write_save()
-		if not ability_popups_seen:
-			call_deferred("_show_ability_popups")
 
 # --tutorial-loss-playtest entry: straight to the real tutorial loss popup.
 func _show_tutorial_loss_playtest() -> void:
@@ -3610,10 +3657,16 @@ func _open_tutorial_loss_playtest_popup() -> void:
 
 func _on_tutorial_loss_retry() -> void:
 	_free_lingering_test_battle()
+	var was_practice := _tutorial_loss_was_practice
+	_tutorial_loss_was_practice = false
 	if _tutorial_loss_was_special:
 		_replay_special_encounter_tutorial()
+	elif was_practice:
+		_replay_tutorial_battle(_last_tutorial_profile)
 	else:
-		_replay_tutorial_battle()
+		for diver in divers:
+			(diver as Diver).stats.fill()
+		_start_battle("", false, "angler", divers, false, true, "", false, [], _last_tutorial_profile)
 
 # Retry of the first special encounter: relaunch the forced solo Maxilani
 # fight with the same item/enemy, healing her first.
@@ -3634,15 +3687,16 @@ func _replay_special_encounter_tutorial(item_id: String = "", enemy_id: String =
 	_start_battle(item_id, false, enemy_id, [maxilani], true, true)
 
 # The single tutorial fight definition (Retry and Combat Help replay).
-# Heals first.
-func _replay_tutorial_battle() -> void:
-	for d in divers:
-		var s: CombatantStats = (d as Diver).stats
-		s.hp = s.hp_max
-		s.oxygen = s.oxygen_max
+# Uses temporary full resources; never heals the earned campaign party.
+func _replay_tutorial_battle(profile: String = Battle.TUTORIAL_PROFILE_FULL) -> void:
+	if battling or _tutorial_practice != null:
+		return
+	_tutorial_practice = TutorialPractice.new()
+	_practice_completes_initial_training = not route_state.tutorial_complete
+	inventory = _tutorial_practice.begin(divers, inventory)
 	_update_hp_bar()
 	_update_oxygen_bar()
-	_start_battle("", false, "angler", divers, false, true)
+	_start_battle("", false, "angler", divers, false, true, "", false, [], profile)
 
 # Key items go to party-wide key_items; anything else to the shared inventory.
 func _grant_reward_item(item_id: String) -> void:
@@ -3682,6 +3736,8 @@ func _build_diver_slots() -> void:
 
 # _diver_slots live outside the tree, so free them explicitly.
 func _exit_tree() -> void:
+	if _tutorial_practice != null:
+		inventory = _tutorial_practice.restore()
 	_cancel_random_encounter_reveal()
 	for slot_value in _diver_slots:
 		var slot := slot_value as Slot
@@ -3769,17 +3825,35 @@ func _build_route_objective_hud() -> void:
 	route_objective_panel.add_child(route_objective_label)
 
 func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
-	# Keep text out of the minimap's 166 px top-right corner.
+	# Wide desktop: controls and active resources share the bottom band.
+	# Narrow windows stack them; the minimap moves below the compact party.
 	var compact := viewport_size.x < 600.0
-	var right_limit := maxf(160.0 if compact else 304.0, viewport_size.x - 176.0)
+	minimap.offset_top = 112.0 if compact else 10.0
+	minimap.offset_bottom = minimap.offset_top + 156.0
+	if is_instance_valid(escape_encounter_hint):
+		escape_encounter_hint.set_map_bottom(minimap.get_global_rect().end.y)
+	if exploration_hud != null:
+		exploration_hud.layout_for(viewport_size, minimap.get_global_rect(), _controls_text_bottom())
 	hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	var controls_width := 440.0 if viewport_size.x >= 1280 else viewport_size.x - 32.0
 	hud.offset_left = 16.0
-	hud.offset_top = 12.0
-	hud.offset_right = right_limit
-	hud.offset_bottom = 166.0 if compact else 68.0
+	hud.offset_right = 16.0 + controls_width
 	hud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hud.add_theme_font_size_override("font_size", 14 if viewport_size.x < 900.0 else 16)
-
+	hud.add_theme_font_size_override("font_size", 12 if compact else 13)
+	var bottom := viewport_size.y - (16.0 if viewport_size.x >= 1280 else 120.0)
+	var text_height := maxf(44.0, hud.get_minimum_size().y)
+	hud.offset_top = bottom - text_height
+	hud.offset_bottom = bottom
+	# Orange messages use their actual wrapped height, above the controls/card
+	# band rather than spilling through it at narrow browser sizes.
+	banner.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	var banner_width := minf(640.0, viewport_size.x - 32.0)
+	banner.offset_left = (viewport_size.x - banner_width) * 0.5
+	banner.offset_right = banner.offset_left + banner_width
+	banner.add_theme_font_size_override("font_size", 14 if compact else 20)
+	var banner_bottom := (hud.offset_top if hud.visible else viewport_size.y - 108.0) - 10.0
+	banner.offset_top = banner_bottom - maxf(28.0, banner.get_minimum_size().y)
+	banner.offset_bottom = banner_bottom
 	_layout_route_objective_panel()
 
 # Guidance panel: centred, clear of the minimap and the side bars.
@@ -3789,15 +3863,16 @@ func _layout_route_objective_panel() -> void:
 	var viewport_size := get_viewport().get_visible_rect().size
 	var compact := viewport_size.x < 600.0
 	var right_limit := maxf(160.0 if compact else 304.0, viewport_size.x - 176.0)
+	route_objective_label.add_theme_font_size_override("font_size", 14 if compact else 19)
 	var panel_width := viewport_size.x - 32.0 if compact else minf(570.0, maxf(288.0, right_limit - 32.0))
 	var panel_left := clampf(
 		(viewport_size.x - panel_width) * 0.5,
 		16.0,
 		maxf(16.0, right_limit - panel_width)
 	)
-	var panel_top := maxf(176.0, _controls_text_bottom() + 8.0) if compact else 74.0
+	var panel_top := maxf(302.0, _controls_text_bottom() + 8.0) if compact else 16.0
 	if _party_bars_box != null and _party_bars_box.is_visible_in_tree():
-		var bars := _party_bars_box.get_global_rect()
+		var bars: Rect2 = exploration_hud.party_panel.get_global_rect()
 		var bars_right := bars.end.x + 12.0
 		if panel_left < bars_right:
 			if right_limit - bars_right >= 280.0:
@@ -3850,14 +3925,38 @@ func _refresh_world_guidance() -> void:
 			text = route_state.exploration_goal("deep")
 		elif not route_state.tutorial_complete:
 			text = ""   # the tutorial's light-beam arrow owns guidance
+		elif _near_reward_rock(position):
+			# Essential at the point of use, not buried in optional teaching.
+			# The ordinary Shallows objective resumes on leaving/breaking it.
+			if (divers[active] as Diver).ability_id == "shockwave":
+				text = "Break this rock for items: (F) Shockwave."
+			else:
+				text = "Break rocks for items: (TAB) Bucky, (F) Shockwave."
+		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
+			# Essential contextual teaching: optional help cannot tell a new
+			# player what to do at this otherwise unexplained physical gate.
+			text = "(TAB) Bucky. (F) Shockwave breaks the wall."
 		elif position.x < PUZZLE_DOORS_X:
 			# Until the party is through the ringed lock-plate doors.
 			text = "Explore the mysterious blockade."
 		else:
 			text = "Explore the deep sea."
 	route_objective_label.text = text
-	route_objective_panel.visible = text != ""
+	# The three-second escape instruction temporarily owns this reading area.
+	# Restore the unchanged local/fallback objective as soon as it expires.
+	route_objective_panel.visible = text != "" and not (is_instance_valid(escape_encounter_hint) and escape_encounter_hint.visible)
 	_layout_route_objective_panel()
+
+func _near_reward_rock(position: Vector3) -> bool:
+	# Real intact loot rocks only; never imply scenery/ambushes grant items.
+	# Full 3D proximity avoids instructions for rocks far below the diver.
+	for id in _cracked_walls:
+		if not String(id).begins_with("rock_") or id in ROCK_AMBUSH_IDS:
+			continue
+		var rock := _cracked_walls[id] as CrackedWall
+		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and position.distance_to(rock.global_position) <= Diver.SHOCKWAVE_RADIUS:
+			return true
+	return false
 
 
 func _update_hud() -> void:
@@ -3874,20 +3973,18 @@ func _update_hud() -> void:
 		return
 	var d: Diver = divers[active]
 	if not route_state.prologue_complete:
-		hud.text = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look" % _display_name(d.model_name)
+		hud.text = "WASD  Swim · SPACE / SHIFT  Depth\nMouse / Arrow keys  Look"
 		return
-	var narrow := get_viewport().get_visible_rect().size.x < 900.0
-	var line := ""
-	if narrow:
-		line = "%s · WASD swim · SPACE/SHIFT depth\nmouse/arrows look · TAB diver" % _display_name(d.model_name)
-	else:
-		line = "%s\nWASD swim · SPACE/SHIFT depth · mouse/arrows look · TAB diver" % _display_name(d.model_name)
+	var line := "WASD  Swim · SPACE / SHIFT  Depth\nMouse / Arrow keys  Look"
 	if d.ability_id != "":
-		line += (" · F:%s" if narrow else "  ·  F: %s") % String(d.ability_id).capitalize()
-	# Only for the diver that has the sonar passive.
+		line += "\nF: %s" % String(d.ability_id).capitalize()
+	# Only shows for whichever diver actually has the passive (see
+	# _toggle_sonar()'s own passive_id check) - same "only mention it if
+	# it'd do something" rule the F: hint above already follows for
+	# ability_id.
 	if d.passive_id == "sonar":
-		line += (" · Q:Sonar %s" if narrow else "  ·  Q: Sonar (%s)") % ("On" if d.sonar_active else "Off")
-	line += (" · R:Random %s" if narrow else "  ·  R: Random Encounters (%s)") % ("On" if random_encounters_enabled else "Off")
+		line += " · Q: Sonar %s" % ("On" if d.sonar_active else "Off")
+	line += "\nR: Toggle encounters · Esc: Menu · F1: Guide"
 	hud.text = line
 
 # Active diver's HP bar during exploration, styled like Battle's bars.
@@ -3899,157 +3996,77 @@ var _hp_bar_mat: StyleBoxFlat
 const WORLD_HUD_LABEL_FONT_SIZE := 14
 
 func _build_hp_bar() -> void:
-	var wrap := VBoxContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	wrap.offset_top = -56.0
-	wrap.offset_bottom = -10.0
-	wrap.add_theme_constant_override("separation", 4)
-	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	# Informational; must not eat minigame mouse input.
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(wrap)
+	exploration_hud = preload("res://game/exploration_hud.gd").new()
+	$HUD.add_child(exploration_hud)
+	hp_bar = exploration_hud.hp_bar
+	hp_bar_label = exploration_hud.hp_label
+	_hp_bar_mat = exploration_hud.health_fill
 
-	hp_bar = ProgressBar.new()
-	hp_bar.custom_minimum_size = Vector2(220, 20)
-	hp_bar.show_percentage = false
-	hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# IGNORE doesn't cascade to children.
-	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hp_bar_mat = StyleBoxFlat.new()
-	_hp_bar_mat.bg_color = Color(0.78, 0.15, 0.15)
-	hp_bar.add_theme_stylebox_override("fill", _hp_bar_mat)
-	wrap.add_child(hp_bar)
-
-	# Blue Random Encounters On/Off badge, a child of the HP bar on its left.
-	encounter_indicator = PanelContainer.new()
-	encounter_indicator.name = "EncounterIndicator"
-	encounter_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	encounter_indicator.anchor_left = 0.0
-	encounter_indicator.anchor_right = 0.0
-	encounter_indicator.anchor_top = 0.5
-	encounter_indicator.anchor_bottom = 0.5
-	encounter_indicator.offset_left = -8.0
-	encounter_indicator.offset_right = -8.0
-	encounter_indicator.offset_top = -11.0
-	encounter_indicator.offset_bottom = 11.0
-	encounter_indicator.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	encounter_indicator.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_encounter_indicator_style = StyleBoxFlat.new()
-	_encounter_indicator_style.set_corner_radius_all(4)
-	_encounter_indicator_style.set_border_width_all(1)
-	_encounter_indicator_style.content_margin_left = 7.0
-	_encounter_indicator_style.content_margin_right = 7.0
-	_encounter_indicator_style.content_margin_top = 1.0
-	_encounter_indicator_style.content_margin_bottom = 1.0
-	encounter_indicator.add_theme_stylebox_override("panel", _encounter_indicator_style)
-	encounter_indicator_label = Label.new()
-	encounter_indicator_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	encounter_indicator_label.add_theme_font_size_override("font_size", 12)
-	encounter_indicator.add_child(encounter_indicator_label)
-	hp_bar.add_child(encounter_indicator)
-	_update_encounter_indicator()
-
-	hp_bar_label = Label.new()
-	hp_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hp_bar_label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
-	wrap.add_child(hp_bar_label)
-
-var encounter_indicator: PanelContainer
-var encounter_indicator_label: Label
-var _encounter_indicator_style: StyleBoxFlat
-var _encounter_indicator_state := ""
-
-# Bright when on, dim when off; shorter label on narrow screens.
-func _update_encounter_indicator() -> void:
-	if encounter_indicator == null:
-		return
-	var narrow := get_viewport().get_visible_rect().size.x < 640.0
-	var state := "%s|%s" % [random_encounters_enabled, narrow]
-	if state == _encounter_indicator_state:
-		return
-	_encounter_indicator_state = state
-	var on := random_encounters_enabled
-	encounter_indicator_label.text = ("Enc %s" if narrow else "Random Encounters: %s") % ("ON" if on else "OFF")
-	_encounter_indicator_style.bg_color = Color(0.13, 0.42, 0.85, 0.92) if on else Color(0.08, 0.14, 0.26, 0.85)
-	_encounter_indicator_style.border_color = Color(0.55, 0.78, 1.0) if on else Color(0.25, 0.36, 0.55)
-	encounter_indicator_label.add_theme_color_override("font_color", Color.WHITE if on else Color(0.55, 0.65, 0.8))
-
-# Non-active divers' HP/O2 down the left edge; rebuilt on TAB.
+var exploration_hud: Control
+var oxygen_bar: ProgressBar
+var oxygen_bar_label: Label
+# Kept as the shared maze-caption geometry seam; these are numeric rows now.
 var _party_bars_box: VBoxContainer
-var _party_bar_rows: Array[Dictionary] = []
+
+# Consumers reserve the painted cards rather than an inner meter row.
+func exploration_resource_rects() -> Array[Rect2]:
+	var bounds: Array[Rect2] = []
+	if exploration_hud != null:
+		for card in [exploration_hud.active_panel, exploration_hud.party_panel]:
+			if card != null and card.is_visible_in_tree():
+				bounds.append(card.get_global_rect())
+	return bounds
+
+func _build_oxygen_bar() -> void:
+	oxygen_bar = exploration_hud.oxygen_bar
+	oxygen_bar_label = exploration_hud.oxygen_label
 
 func _build_party_bars() -> void:
-	_party_bars_box = VBoxContainer.new()
-	_party_bars_box.name = "PartyBars"
-	_party_bars_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_party_bars_box.add_theme_constant_override("separation", 14)
-	_party_bars_box.position = Vector2(16.0, 76.0)
-	$HUD.add_child(_party_bars_box)
-	for i in range(divers.size()):
-		# Same shape and look as the active diver's bottom-centre pair: the O2
-		# bar with its "O2   x / y" label, then the HP bar with "Name   x / y".
-		var row := VBoxContainer.new()
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 4)
-		var o2 := _party_bar(Color(0.25, 0.65, 0.85), 14.0)
-		row.add_child(o2)
-		var o2_label := _party_bar_label()
-		row.add_child(o2_label)
-		var hp := _party_bar(Color(0.78, 0.15, 0.15), 20.0)
-		row.add_child(hp)
-		var hp_label := _party_bar_label()
-		row.add_child(hp_label)
-		_party_bars_box.add_child(row)
-		_party_bar_rows.append({"row": row, "hp": hp, "hp_label": hp_label, "o2": o2, "o2_label": o2_label})
+	_party_bars_box = exploration_hud.party_rows
+	_refresh_exploration_hud()
 
-func _party_bar(fill_color: Color, height: float) -> ProgressBar:
-	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(220.0, height)
-	bar.show_percentage = false
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = fill_color
-	bar.add_theme_stylebox_override("fill", fill)
-	return bar
+func _refresh_exploration_hud() -> void:
+	if exploration_hud == null or divers.is_empty():
+		return
+	var party: Array[Dictionary] = []
+	for actor in divers:
+		var d := actor as Diver
+		party.append({"name": _display_name(d.model_name), "stats": d.stats})
+	exploration_hud.refresh(party, active, random_encounters_enabled, _first_encounter_done)
 
-func _party_bar_label() -> Label:
-	var label := Label.new()
-	label.custom_minimum_size.x = 220.0
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
-	return label
-
-# Bottom of the top-left controls text (maze's or the world's wrapped label).
+# Only the maze still has top-left controls. World controls have moved to the
+# bottom-left; counting that bottom edge as a top margin would bury goals.
 func _controls_text_bottom() -> float:
 	if embedded_maze != null and embedded_maze.maze_active:
 		var block := embedded_maze.get_node_or_null("HUD/MazeExplorationControls") as Control
-		if block != null:
-			var bottom := block.get_global_rect().end.y
-			for child in block.get_children():
-				if child is Control and (child as Control).visible:
-					bottom = maxf(bottom, (child as Control).get_global_rect().end.y)
-			return bottom
-	if hud == null or not hud.visible:
-		return 0.0
-	var lines := maxi(1, hud.get_line_count())
-	var spacing := float(hud.get_theme_constant("line_spacing"))
-	var text_height := lines * hud.get_line_height() + maxi(0, lines - 1) * spacing
-	return hud.global_position.y + maxf(text_height, 0.0)
+		if block != null and block.is_visible_in_tree():
+			return block.get_global_rect().end.y
+	return 0.0
 
-# Bars hide while a full-screen surface is open.
+# Exclusive screens own their input and pixels, including paused frames.
+# World/Battle mechanics are unchanged; no exploration resources paint over combat.
 func _sync_overlay_hud() -> void:
-	if not is_inside_tree() or hp_bar == null:
+	if not is_inside_tree() or exploration_hud == null:
 		return
-	var covered := (inventory_menu != null and inventory_menu.visible) \
+	var maze_on := embedded_maze != null and embedded_maze.maze_active
+	var covered := get_tree().paused or battling or is_instance_valid(random_encounter_reveal) \
+		or (maze_on and embedded_maze._battling) \
+		or (inventory_menu != null and inventory_menu.visible) \
 		or (save_point_menu != null and save_point_menu.visible) \
-		or _maze_menu_open()   # the maze nav map no longer covers the HUD
-	for wrap in [hp_bar.get_parent(), oxygen_bar.get_parent() if oxygen_bar != null else null, _party_bars_box]:
-		if wrap != null and is_instance_valid(wrap):
-			(wrap as CanvasItem).visible = not covered
+		or _maze_menu_open() # The maze map leaves resource HUD visible.
+	exploration_hud.visible = not covered
+	exploration_hud.encounter_label.visible = not maze_on and not (is_instance_valid(escape_encounter_hint) and escape_encounter_hint.visible)
+	hud.visible = not covered and not maze_on
+	minimap.visible = not covered and not maze_on
+	banner.visible = not covered and not maze_on
+	if covered:
+		route_objective_panel.visible = false
+	if not covered:
+		_refresh_exploration_hud()
+		_layout_world_hud_for_size(get_viewport().get_visible_rect().size)
+		if not maze_on:
+			_refresh_world_guidance()
 
-# The maze runs its own Esc inventory menu and save menu instances.
 func _maze_menu_open() -> bool:
 	if embedded_maze == null or not embedded_maze.maze_active:
 		return false
@@ -4063,72 +4080,11 @@ func _maze_nav_map_open() -> bool:
 	var nav := embedded_maze.get_node_or_null("HUD/MazeMiniMap")
 	return nav != null and nav.get("main_map") != null and (nav.main_map as Control).visible
 
-func _update_party_bars() -> void:
-	if _party_bars_box == null:
-		return
-	# Follow the controls text down if it wraps.
-	_party_bars_box.position.y = maxf(76.0, _controls_text_bottom() + 10.0)
-	for i in range(_party_bar_rows.size()):
-		var row := _party_bar_rows[i]
-		var d := divers[i] as Diver
-		(row.row as Control).visible = i != active
-		if i == active:
-			continue
-		var hp := row.hp as ProgressBar
-		hp.max_value = d.stats.hp_max
-		hp.value = d.stats.hp
-		(row.hp_label as Label).text = "%s   %d / %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max]
-		var o2 := row.o2 as ProgressBar
-		o2.max_value = d.stats.oxygen_max
-		o2.value = d.stats.oxygen
-		(row.o2_label as Label).text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
-
 func _update_hp_bar() -> void:
-	_update_encounter_indicator()
-	_update_party_bars()
-	var d: Diver = divers[active]
-	hp_bar.max_value = d.stats.hp_max
-	hp_bar.value = d.stats.hp
-	hp_bar_label.text = "%s   %d / %d" % [_display_name(d.model_name), d.stats.hp, d.stats.hp_max]
-
-# O2 bar above the HP bar, updated every physics frame.
-var oxygen_bar: ProgressBar
-var oxygen_bar_label: Label
-
-func _build_oxygen_bar() -> void:
-	var wrap := VBoxContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	# 40px band with an 8px gap above the HP bar.
-	wrap.offset_top = -104.0
-	wrap.offset_bottom = -64.0
-	wrap.add_theme_constant_override("separation", 4)
-	wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	# Informational; must not eat mouse input.
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(wrap)
-
-	oxygen_bar = ProgressBar.new()
-	oxygen_bar.custom_minimum_size = Vector2(220, 14)
-	oxygen_bar.show_percentage = false
-	oxygen_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# IGNORE doesn't cascade to children.
-	oxygen_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mat := StyleBoxFlat.new()
-	mat.bg_color = Color(0.25, 0.65, 0.85)
-	oxygen_bar.add_theme_stylebox_override("fill", mat)
-	wrap.add_child(oxygen_bar)
-
-	oxygen_bar_label = Label.new()
-	oxygen_bar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	oxygen_bar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	oxygen_bar_label.add_theme_font_size_override("font_size", WORLD_HUD_LABEL_FONT_SIZE)
-	wrap.add_child(oxygen_bar_label)
+	_refresh_exploration_hud()
 
 func _update_oxygen_bar() -> void:
-	var d: Diver = divers[active]
-	oxygen_bar.max_value = d.stats.oxygen_max
-	oxygen_bar.value = d.stats.oxygen
-	oxygen_bar_label.text = "O2   %d / %d" % [int(d.stats.oxygen), int(d.stats.oxygen_max)]
+	_refresh_exploration_hud()
 
 # Green cone marking the active diver (same shape as TargetSelector's cursor).
 func _build_active_cursor() -> void:
@@ -4160,7 +4116,7 @@ func _update_active_cursor() -> void:
 func _flash_hp_bar() -> void:
 	var tw := create_tween()
 	tw.tween_property(_hp_bar_mat, "bg_color", Color(1.0, 0.9, 0.85), 0.1)
-	tw.tween_property(_hp_bar_mat, "bg_color", Color(0.78, 0.15, 0.15), 0.3)
+	tw.tween_property(_hp_bar_mat, "bg_color", Color(0.96, 0.43, 0.36), 0.3)
 
 func _find(n: Node, nm: String) -> MeshInstance3D:
 	if n is MeshInstance3D and String(n.name) == nm:

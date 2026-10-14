@@ -1,0 +1,44 @@
+Retrieving project…
+Deploying immortaldemongods-projects/underwatergame
+Uploading [--------------------] (0.0B/120.4MB)
+Uploading [=====---------------] (30.1MB/120.4MB)
+Uploading [==========----------] (60.2MB/120.4MB)
+Uploading [===============-----] (90.3MB/120.4MB)
+Uploading [====================] (120.4MB/120.4MB)
+Inspect: https://vercel.com/immortaldemongods-projects/underwatergame/B4TTbep9JN1ZUYF9VycckZTzTu37 [10s]
+Preview: https://underwatergame-omsqsy1a7-immortaldemongods-projects.vercel.app [10s]
+Building...
+Building: Running build in Cleveland, USA (East) – cle1
+Building: Build machine configuration: 4 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Previous build caches not available.
+Building: Downloading 12 deployment files...
+Building: Downloading 12 deployment files...
+Building: Running "vercel build"
+Building: Vercel CLI 62.7.0
+Building: Build Completed in /vercel/output [398ms]
+Building: Deploying outputs...
+[2K[1A[2K[GPreview: https://underwatergame-omsqsy1a7-immortaldemongods-projects.vercel.app [18s]
+Completing...
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_B4TTbep9JN1ZUYF9VycckZTzTu37",
+    "url": "https://underwatergame-omsqsy1a7-immortaldemongods-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/immortaldemongods-projects/underwatergame/B4TTbep9JN1ZUYF9VycckZTzTu37",
+    "readyState": "READY",
+    "target": null,
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_B4TTbep9JN1ZUYF9VycckZTzTu37"
+  },
+  "message": "Deployment underwatergame-omsqsy1a7-immortaldemongods-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel inspect underwatergame-omsqsy1a7-immortaldemongods-projects.vercel.app --cwd /Users/tomriddle1/underwater-pr103-preview.GvR6A3 --scope immortaldemongods-projects",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod --cwd /Users/tomriddle1/underwater-pr103-preview.GvR6A3 --scope immortaldemongods-projects",
+      "when": "Promote to production"
+    }
+  ]
+}

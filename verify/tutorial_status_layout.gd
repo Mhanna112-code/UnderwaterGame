@@ -31,11 +31,16 @@ func _run() -> void:
 	world.title_screen.close()
 	world.get_node("HUD").visible = true
 	paused = false
+	world.route_state.prologue_complete = true
+	world.route_state.opening_video_seen = true
+	world.route_state.normalize_prologue_phase()
 	await process_frame
 	world._first_encounter_started = true
 	world._intro_active = false
 	world._transitioning_to_encounter = false
-	world._start_battle("", false, "angler", world.divers, false, true)
+	# This regression specifically targets the long optional Combat Basics
+	# page. The starter intentionally does not show that page anymore.
+	world._start_battle("", false, "angler", world.divers, false, true, "", false, [], Battle.TUTORIAL_PROFILE_FULL)
 
 	var deadline := Time.get_ticks_msec() + TIMEOUT_MS
 	while (world.battle == null or not world.battle._tutorial_awaiting_enter) and Time.get_ticks_msec() < deadline:
@@ -86,7 +91,10 @@ func _check_visible_cards(battle: Battle) -> void:
 	var viewport_rect := Rect2(Vector2.ZERO, root.get_visible_rect().size)
 	var panel_top := battle._bottom_panel.get_global_rect().position.y
 	var card_rects: Array[Rect2] = []
+	var living_cards := 0
 	for entry in battle.party + battle.enemies:
+		if (entry.stats as CombatantStats).hp > 0:
+			living_cards += 1
 		var card := entry.get("card") as Control
 		if card == null or not card.is_visible_in_tree():
 			continue
@@ -102,6 +110,8 @@ func _check_visible_cards(battle: Battle) -> void:
 			findings.append("STATUS CARD OUTSIDE VIEWPORT: %s rect %s in %s" % [name, str(rect), str(viewport_rect)])
 		if rect.end.y > panel_top + 0.5:
 			findings.append("STATUS CARD COVERED BY CAPTION HUD: %s ends at y=%.1f but panel starts at y=%.1f" % [name, rect.end.y, panel_top])
+	if card_rects.size() != living_cards:
+		findings.append("STATUS CARDS HIDDEN: a wide/tall lesson cannot pass by hiding its living combatants")
 	for left_index in range(card_rects.size()):
 		for right_index in range(left_index + 1, card_rects.size()):
 			if card_rects[left_index].intersects(card_rects[right_index], true):
