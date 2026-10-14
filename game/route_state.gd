@@ -14,6 +14,7 @@ const OCTOPUS_UNAVAILABLE := "unavailable"
 const ENCOUNTER_RANDOM := "random"
 const PROLOGUE_PHASE_TITLE := "title"
 const PROLOGUE_PHASE_OPENING_VIDEO := "opening_video"
+# Opening seen, Cordys not yet met: the octopus introduction plays next.
 const PROLOGUE_PHASE_SPAWN_EXPLORATION := "spawn_exploration"
 const PROLOGUE_PHASE_COMPLETE := "complete"
 
@@ -25,7 +26,7 @@ const MAZE_DOOR_STATES := ["locked", "available", "entered"]
 const OCTOPUS_STATES := ["unavailable", "available", "in_progress", "defeated"]
 const ENCOUNTER_SOURCES := [
 	"random", "lab_blocker", "lab_boss", "maze_door",
-	"prologue_angler", "prologue_octopus",
+	"prologue_octopus",
 	"maze_puppets", "maze_cordys", "maze_special",
 ]
 const PROLOGUE_PHASES := [
@@ -33,10 +34,6 @@ const PROLOGUE_PHASES := [
 	"opening_video",
 	"opening_handoff",
 	"spawn_exploration",
-	"angler",
-	"angler_victory",
-	"octopus_notice",
-	"octopus_omen",
 	"octopus_introduction",
 	"octopus_reveal",
 	"octopus_response",

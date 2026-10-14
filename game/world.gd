@@ -91,7 +91,6 @@ const DeepZoneLayoutScript := preload("res://content/deep_zone_layout.gd")
 const DeepZoneEnvironmentScript := preload("res://game/deep_zone_environment.gd")
 const LabVideoCutsceneScript := preload("res://game/lab_video_cutscene.gd")
 const OpeningVideoScript := preload("res://game/opening_video.gd")
-const OpeningTriggerScript := preload("res://game/opening_prologue_trigger.gd")
 const PrologueRecoveryScript := preload("res://game/prologue_recovery.gd")
 const CampaignCompletionScript := preload("res://game/campaign_completion.gd")
 const PrologueCinematicScript := preload("res://game/prologue_cinematic.gd")
@@ -331,8 +330,6 @@ func _tick_autosave(dt: float) -> void:
 
 # Authored progression state; saved in the same atomic checkpoint.
 var route_state := RouteState.new()
-var _prologue_trigger := OpeningTriggerScript.new()
-var _prologue_spawn_delay := 0.0
 var _prologue_cinematic: CanvasLayer
 var deep_zone_layout := DeepZoneLayoutScript.new()
 var deep_zone_environment: DeepZoneEnvironment
@@ -661,13 +658,16 @@ func _on_title_new_game(slot: int) -> void:
 		JavaScriptBridge.force_fs_sync()
 	title_screen.close()
 	await _play_opening_if_needed()
-	_begin_quiet_spawn_if_needed()
 	$HUD.visible = true
 	get_tree().paused = false
-	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
-	var audio := get_node_or_null("/root/GameAudio")
-	if audio != null:
-		audio.fade_music_in(0.35)
+	if not route_state.prologue_complete:
+		# The cinematic owns pause and music until the Cordys battle takes over.
+		_begin_prologue_cordys_if_needed()
+	else:
+		_audio_call(&"play_exploration_music")
+		var audio := get_node_or_null("/root/GameAudio")
+		if audio != null:
+			audio.fade_music_in(0.35)
 	# Skip-tutorial route: show ability popups here since no first fight runs.
 	if skip_tutorial_for_test:
 		call_deferred("_show_ability_popups")
@@ -723,10 +723,13 @@ func _on_title_load_game(slot: int, from_autosave := false, latest := false) -> 
 	if _campaign_session != null:
 		_campaign_session.selected_slot = slot
 	await _play_opening_if_needed()
-	_begin_quiet_spawn_if_needed()
 	$HUD.visible = true
 	get_tree().paused = false
-	_audio_call(&"play_prologue_exploration_music" if not route_state.prologue_complete else &"play_exploration_music")
+	if not route_state.prologue_complete:
+		# A run saved before Cordys resumes at his introduction.
+		_begin_prologue_cordys_if_needed()
+		return true
+	_audio_call(&"play_exploration_music")
 	if route_state.octopus_state == "defeated":
 		_show_campaign_completion(true)
 		return true
@@ -769,49 +772,18 @@ func _play_opening_if_needed() -> bool:
 	_write_save()
 	return successful
 
-func _begin_quiet_spawn_if_needed() -> void:
-	if route_state.prologue_complete:
+# After the opening (or when loading a run saved before Cordys), the octopus
+# cinematic introduction hands straight into the opening Cordys battle.
+func _begin_prologue_cordys_if_needed() -> void:
+	if route_state.prologue_complete or battling or is_instance_valid(_prologue_cinematic):
 		return
 	_intro_active = false
 	_camera_look_override = null
 	_announcements.clear()
 	banner.text = ""
 	route_state.set_objective("")
-	route_state.set_prologue_phase("spawn_exploration")
-	_prologue_spawn_delay = 0.35
-	_prologue_trigger.reset((divers[active] as Diver).position)
-
-func _update_prologue_trigger(dt: float) -> void:
-	if route_state.prologue_complete or route_state.prologue_phase != "spawn_exploration" or battling:
-		return
-	if _prologue_spawn_delay > 0.0:
-		_prologue_spawn_delay = maxf(0.0, _prologue_spawn_delay - dt)
-		return
-	# Start the Angler only after real swimming, not on reveal.
-	var swimming := _player_dir().length_squared() > 0.0 and not target_selector.selecting and not _transitioning_to_encounter
-	if _prologue_trigger.update((divers[active] as Diver).position, dt, swimming):
-		route_state.set_prologue_phase("angler")
-		route_state.set_encounter_source("prologue_angler")
-		_start_battle("", false, "angler", divers, false, false, "An Angler darts out of the murk.", true)
-
-func _on_prologue_angler_defeated() -> void:
-	if route_state.prologue_phase != "angler" or not is_instance_valid(battle) or not battle.prologue_angler_encounter:
-		return
-	route_state.set_prologue_phase("angler_victory")
-	_audio_call(&"play_prologue_victory_music")
-	var bridge := preload("res://game/prologue_victory_bridge.gd").new()
-	bridge.battlefield_texture = battle.get_battlefield_texture()
-	bridge.beat_changed.connect(func(beat: String) -> void:
-		match beat:
-			"notice":
-				route_state.set_prologue_phase("octopus_notice")
-				_audio_call(&"fade_music_out")
-			"omen":
-				route_state.set_prologue_phase("octopus_omen")
-	)
-	title_layer.add_child(bridge)
-	await bridge.completed
-	# Retire the music owner before the movie starts.
+	route_state.set_prologue_phase(RouteState.PROLOGUE_PHASE_SPAWN_EXPLORATION)
+	# Retire any music owner before the movie starts.
 	_audio_call(&"stop_music")
 	route_state.set_encounter_source("prologue_octopus")
 	route_state.set_prologue_phase("octopus_introduction")
@@ -820,7 +792,7 @@ func _on_prologue_angler_defeated() -> void:
 	await _prologue_cinematic.introduction_finished
 	get_tree().paused = false
 	route_state.set_prologue_phase("octopus_reveal")
-	battle.reveal_prologue_octopus()
+	_start_battle()
 
 func _report_prologue_phase(phase: String) -> void:
 	print("PROLOGUE_PHASE|" + phase)
@@ -1345,7 +1317,7 @@ func _ready() -> void:
 # Set by _start_dev_mode(): hides the objective line at the top of the screen.
 var _dev_mode := false
 
-# Set by _start_dev_mode() (--dev). Battle reads it to show every status.
+# Set by _start_dev_mode() (--dev). Battle reads it to offer Skip Fight (Dev).
 var dev_mode := false
 
 func _start_dev_mode() -> void:
@@ -2387,7 +2359,6 @@ func _physics_process(dt: float) -> void:
 	_update_active_cursor()
 	_update_banner(dt)
 	if not route_state.prologue_complete:
-		_update_prologue_trigger(dt)
 		return
 	_try_trigger_item_site(divers[active] as Diver)
 	_update_save_point_prompt()
@@ -3387,9 +3358,8 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	Whirlpool.refresh_in(self)
 	if boss_encounter:
 		_audio_call(&"play_tethys_music")
-	elif route_state.encounter_source == "prologue_angler":
-		_audio_call(&"play_prologue_battle_music")
-	else:
+	elif route_state.encounter_source != "prologue_octopus":
+		# The opening Cordys battle starts his own cue at the reveal.
 		_audio_call(&"play_battle_music")
 	inventory_menu.close()   # shouldn't be open during a battle
 	_pending_reward_item = reward_item
@@ -3426,9 +3396,7 @@ func _start_battle(reward_item: String = "", boss_encounter: bool = false, guard
 	battle.guardian_encounter = (reward_item != "" or authored_enemy) and not boss_encounter
 	battle.guardian_enemy_id = guardian_enemy_id
 	battle.encounter_source = route_state.encounter_source
-	battle.prologue_angler_encounter = route_state.encounter_source == "prologue_angler"
-	if battle.prologue_angler_encounter:
-		battle.prologue_angler_defeated.connect(_on_prologue_angler_defeated)
+	if route_state.encounter_source == "prologue_octopus":
 		battle.prologue_phase_changed.connect(_on_prologue_phase_changed)
 	battle.tutorial_encounter = tutorial
 	battle.reward_item_on_win = reward_item

@@ -137,10 +137,7 @@ run "Marc status layout: do all six multi-status cards fit through actual viewpo
 run "opening migration: do all durable milestones normalize interrupted phases" "$GODOT" --headless --path . --script verify/opening_prologue_state.gd
 run "opening video: are production and lab policies independent" "$GODOT" --headless --path . --script verify/opening_video.gd
 run "opening video persistence: do success and decoder failure restore safely" "$GODOT" --headless --path . --script verify/opening_video_world.gd
-run "opening trigger: does only actual horizontal swimming start once, without banking idle time" "$GODOT" --headless --path . --script verify/opening_prologue_trigger.gd
-run "opening free swim: do idle and camera-only stay free before four seconds of real swimming" "$GODOT" --headless --path . --script verify/opening_prologue_free_swim.gd
-run "opening world: are authored encounters protected and real-input reachable" "$GODOT" --headless --path . --script verify/opening_prologue_world.gd
-run "opening Angler: do normal damage/miss/utility choices and real defeat preserve ordinary rules and rewards" "$GODOT" --headless --path . --script verify/prologue_angler.gd
+run "opening world: does the Cordys introduction hand straight to the Cordys battle, with no Angler or free swim, for New Game and pre-Cordys loads" "$GODOT" --headless --path . --script verify/opening_prologue_world.gd
 run "opening Cordys: do actual stats, move effects and survivor outcomes remain real" "$GODOT" --headless --path . --script verify/prologue_combat.gd
 run "opening Cordys: does the skinned actor preserve authored poses and facing" "$GODOT" --headless --path . --script verify/prologue_octopus.gd
 run "opening mix: do cue envelopes preserve user preferences" "$GODOT" --headless --path . --script verify/prologue_audio_envelope.gd

@@ -1,5 +1,6 @@
-# OPEN-011/013/014/015/016: real combat-button journey must interrupt victory,
-# register normal stat-based damage, defeat and recover without campaign/reward leaks.
+# OPEN-011/013/014/015/016: real combat-button journey from the Cordys
+# introduction straight into his battle (no Angler, no free swim) must register
+# normal stat-based damage, defeat and recover without campaign/reward leaks.
 extends SceneTree
 
 const SLOT := 918299
@@ -48,41 +49,28 @@ func _run() -> void:
 	# OPEN-040: even if the player disabled encounters during the opening,
 	# completed recovery must deliberately enable ordinary exploration.
 	world.random_encounters_enabled = false
-	# Engage the actual swimming input, not the removed idle fallback or a
-	# private trigger/time jump. Keep the rest of this combat/save journey intact.
-	var swim := InputEventKey.new()
-	swim.keycode = KEY_W
-	swim.physical_keycode = KEY_W
-	swim.pressed = true
-	Input.parse_input_event(swim)
-	await _wait_phase(world, "angler", 10.0)
-	swim.pressed = false
-	Input.parse_input_event(swim)
-	await process_frame
-	if world.battle == null:
-		findings.append("OPEN-011 journey failed to start Angler")
-		await _finish(world)
-		return
-	var original := world.battle
-	var campaign_state: String = world.route_state.octopus_state
-	# Genuine weak moves need not kill. Drive the real next-turn buttons,
-	# including enemy retaliation, until actual Angler defeat interrupts.
-	var angler_elapsed := 0.0
-	while world.route_state.prologue_phase == "angler" and angler_elapsed < 35.0:
-		if original.attack_btn.is_visible_in_tree() and not original.attack_btn.disabled:
-			await _attack(original)
-		await create_timer(0.1).timeout
-		angler_elapsed += 0.1
+	# OPEN-042: the opening hands straight to the Cordys introduction; there
+	# is no free swim and no Angler fight before him.
 	await _wait_phase(world, "octopus_introduction", 12.0)
+	_expect(world.battle == null, "OPEN-042 a battle started before the Cordys introduction")
 	var movie := await _wait_movie()
 	_expect(movie != null, "OPEN-023 Cordys introduction has no movie owner")
 	if movie != null:
 		_expect(root.get_node("GameAudio").get_music_state().phase == "stopped", "OPEN-005 music overlaps Cordys introduction")
 		movie.pause_introduction_for_test()
+	await process_frame
+	var original := world.battle
+	if original == null:
+		findings.append("OPEN-011 Cordys introduction did not start the Cordys battle")
+		await _finish(world)
+		return
+	_expect(original.prologue_octopus_encounter and original.enemies.size() == 1 and String(original.enemies[0].display_name) == "Cordys",
+		"OPEN-042 prologue battle did not open on Cordys alone")
+	var campaign_state: String = world.route_state.octopus_state
 	await _wait_phase(world, "octopus_response", 12.0)
 	_expect(world.battle == original, "OPEN-011 Cordys did not retain the same Battle owner")
 	if world.route_state.prologue_phase != "octopus_response":
-		findings.append("OPEN-011 Angler victory never became a playable Cordys response; phase=%s" % world.route_state.prologue_phase)
+		findings.append("OPEN-011 Cordys reveal never became a playable response; phase=%s" % world.route_state.prologue_phase)
 		await _finish(world)
 		return
 	_expect(original.enemies.size() == 1 and String(original.enemies[0].display_name) == "Cordys", "OPEN-012 Cordys actor/state absent")
@@ -153,7 +141,7 @@ func _run() -> void:
 		_expect(diver.stats.xp == 0 and diver.stats.spell_points == 0 and diver.known_spells.is_empty(), "OPEN-010 prologue granted progression")
 	var save := SaveManager.read_slot(SLOT)
 	_expect((save.get("route_state", {}) as Dictionary).get("prologue_complete", false), "OPEN-016 recovery save milestone missing")
-	var expected_phases: Array[String] = ["spawn_exploration", "angler", "angler_victory", "octopus_notice", "octopus_omen", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"]
+	var expected_phases: Array[String] = ["spawn_exploration", "octopus_introduction", "octopus_reveal", "octopus_response", "scripted_defeat", "octopus_aftermath", "recovery", "complete"]
 	if fallback_case or save_failure_case:
 		expected_phases.push_front("opening_video")
 	_expect(phases == expected_phases, "OPEN-002 public phases missing/duplicated: %s" % [phases])
@@ -164,7 +152,7 @@ func _run() -> void:
 	# would not prove that the opening handoff unlocked the production signal.
 	(world.divers[world.active] as Diver).encounter_triggered.emit()
 	await _wait_ordinary_battle(world)
-	_expect(world.battle != null and not world.battle.prologue_angler_encounter and not world.battle.prologue_octopus_encounter, "OPEN-018 ignoring training leaves ordinary encounters locked")
+	_expect(world.battle != null and not world.battle.prologue_octopus_encounter, "OPEN-018 ignoring training leaves ordinary encounters locked")
 	# OPEN-027: a later ordinary defeat must not rewind the completed opening.
 	# The fast characterization emits the result boundary; --opening-real-loss
 	# and --opening-training-loss instead run real enemy damage/defeat. Both

@@ -27,7 +27,23 @@ func _run() -> void:
 	_expect(audio.get_music_state().phase == "stopped", "AUTOPLAY: cold title started music before player interaction")
 
 	await world._on_title_new_game(TEST_SLOT)
-	_expect(audio.get_music_state().cue_id == "prologue_exploration" and audio.get_music_state().phase == "loop", "WORLD: incomplete prologue did not start the quieter exploration cue")
+	_expect(audio.get_music_state().phase == "stopped", "PROLOGUE: music plays over the Cordys introduction")
+	var movie := get_first_node_in_group("prologue_cinematic")
+	_expect(movie != null, "PROLOGUE: New Game did not go to the Cordys introduction")
+	if movie != null:
+		movie.call("pause_introduction_for_test")
+		await process_frame
+		_expect(audio.get_music_state().cue_id == "cordys", "PROLOGUE: Cordys battle did not start his cue straight after the introduction")
+	world.queue_free()
+	await process_frame
+	paused = false
+
+	# Ordinary exploration/battle/boss cues on a run past the prologue.
+	world = packed.instantiate() as World
+	root.add_child(world)
+	await process_frame
+	await world._on_title_skip_tutorial(TEST_SLOT)
+	_expect(audio.get_music_state().cue_id == "exploration" and audio.get_music_state().phase == "loop", "WORLD: completed prologue did not start the exploration cue")
 
 	world._start_battle()
 	await process_frame

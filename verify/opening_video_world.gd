@@ -50,8 +50,11 @@ func _test_successful_viewing() -> void:
 	await process_frame
 	_expect(loaded.opening_video == null,
 		"OPEN-002 completed opening replayed after Load Game")
-	_expect(not paused and loaded.get_node("HUD").visible,
-		"OPEN-002 completed opening did not restore controllable world")
+	# OPEN-042: with the opening done but Cordys not yet met, Load resumes at
+	# the Cordys introduction (which owns pause) with the HUD ready behind it.
+	_expect(loaded.get_node("HUD").visible and loaded.route_state.prologue_phase == "octopus_introduction"
+		and get_first_node_in_group("prologue_cinematic") != null,
+		"OPEN-002 completed opening did not resume at the Cordys introduction")
 	loaded.queue_free()
 	await process_frame
 	paused = false

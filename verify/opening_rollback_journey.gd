@@ -1,45 +1,31 @@
-# OPEN-044: restoring the swimming/Angler entry must still reach saved recovery
-# and not replay combat on fresh title Load. Movies only are fast-forwarded;
-# all damage, enemy death and player choices use the existing real buttons.
+# OPEN-044: the opening's Cordys introduction must lead straight into the
+# Cordys battle, reach saved recovery and not replay combat on fresh title
+# Load. Movies only are fast-forwarded; all damage and player choices use the
+# existing real buttons.
 extends "res://verify/opening_prologue_journey.gd"
 
 func _run() -> void:
 	var world := await _fresh_opening_world()
 	world.skip_intro_for_test = true
 	await world._on_title_new_game(SLOT)
-	var swim := InputEventKey.new()
-	swim.keycode = KEY_W
-	swim.physical_keycode = KEY_W
-	swim.pressed = true
-	Input.parse_input_event(swim)
-	await _wait_phase(world, "angler", 10.0)
-	swim.pressed = false
-	Input.parse_input_event(swim)
-	await process_frame
-	if world.battle == null or world.route_state.prologue_phase != "angler":
-		findings.append("OPEN-044 movement did not start actual Angler combat")
-		await _finish(world)
-		return
-	var original := world.battle
-	_expect(original.enemies.size() == 1 and String(original.enemies[0].display_name) == "Angler", "OPEN-043 initial roster is not Angler")
-	var deadline := Time.get_ticks_msec() + 45000
-	var angler_actions := 0
-	while world.route_state.prologue_phase == "angler" and Time.get_ticks_msec() < deadline:
-		if original.attack_btn.is_visible_in_tree() and not original.attack_btn.disabled:
-			await _attack(original)
-			angler_actions += 1
-		await create_timer(0.1).timeout
-	await _wait_phase(world, "octopus_introduction", 15.0)
-	_expect(angler_actions > 0 and (original.enemies[0].stats as CombatantStats).hp == 0, "OPEN-044 Cordys introduction did not follow an actual Angler defeat")
+	await _wait_phase(world, "octopus_introduction", 10.0)
+	_expect(world.battle == null, "OPEN-044 a battle (Angler) started before the Cordys introduction")
 	var movie := await _wait_movie()
 	if movie == null:
-		findings.append("OPEN-044 Angler victory did not reach the existing later movie")
+		findings.append("OPEN-044 the opening did not reach the Cordys introduction movie")
 		await _finish(world)
 		return
 	movie.pause_introduction_for_test()
+	await process_frame
+	var original := world.battle
+	if original == null:
+		findings.append("OPEN-044 the Cordys introduction did not start the Cordys battle")
+		await _finish(world)
+		return
+	_expect(original.enemies.size() == 1 and String(original.enemies[0].display_name) == "Cordys", "OPEN-043 initial roster is not Cordys alone")
 	await _wait_phase(world, "octopus_response", 15.0)
-	_expect(world.battle == original and String(original.enemies[0].display_name) == "Cordys", "OPEN-044 later Cordys interruption lost the existing Battle owner")
-	deadline = Time.get_ticks_msec() + 60000
+	_expect(world.battle == original, "OPEN-044 Cordys reveal lost the existing Battle owner")
+	var deadline := Time.get_ticks_msec() + 60000
 	var cordys_actions := 0
 	while world.route_state.prologue_phase != "octopus_aftermath" and Time.get_ticks_msec() < deadline:
 		if original.attack_btn.is_visible_in_tree() and not original.attack_btn.disabled:
@@ -71,7 +57,7 @@ func _run() -> void:
 	await create_timer(2.0).timeout
 	_expect(loaded.route_state.prologue_complete and loaded.route_state.prologue_phase == "complete", "OPEN-044 title Load lost completed recovery")
 	_expect(not loaded.battling and get_nodes_in_group("opening_video").is_empty() and get_nodes_in_group("prologue_cinematic").is_empty(), "OPEN-044 title Load replayed opening movies or boss combat")
-	print("OPENING_ROLLBACK_JOURNEY|angler_actions=%d|cordys_actions=%d|completed_load=%s" % [angler_actions, cordys_actions, str(loaded.route_state.prologue_complete)])
+	print("OPENING_ROLLBACK_JOURNEY|cordys_actions=%d|completed_load=%s" % [cordys_actions, str(loaded.route_state.prologue_complete)])
 	await _finish(loaded)
 
 func _fresh_opening_world() -> World:

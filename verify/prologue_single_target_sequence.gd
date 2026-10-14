@@ -20,12 +20,12 @@ func _run() -> void:
 		root.add_child(diver)
 		sources.append(diver)
 	var fight := Battle.new()
-	fight.prologue_angler_encounter = true
+	fight.encounter_source = "prologue_octopus"
 	fight.party_source = sources
 	root.add_child(fight)
 	await process_frame
 	await process_frame
-	await fight.reveal_prologue_octopus()
+	await _wait_cordys_turn(fight)
 	var outcomes: Array[String] = []
 	fight.finished.connect(func(outcome: String) -> void: outcomes.append(outcome))
 	var before := _hp(fight)
@@ -107,3 +107,10 @@ func _hp(fight: Battle) -> Array[int]:
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		findings.append(message)
+
+# The prologue Battle stages Cordys itself; wait for his reveal to hand the
+# party its first turn.
+func _wait_cordys_turn(fight: Battle) -> void:
+	var deadline := Time.get_ticks_msec() + 10000
+	while fight.attack_btn.disabled and Time.get_ticks_msec() < deadline:
+		await process_frame

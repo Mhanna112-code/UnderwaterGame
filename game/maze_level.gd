@@ -784,14 +784,15 @@ func _on_diver_encounter(d: Diver) -> void:
 	# Everywhere else in the maze: ordinary random fights, like the overworld,
 	# switched by R.
 	if random_encounters_enabled:
-		_start_battle("random")
+		_begin_ambush_reveal("random")
 
-# Ambush rock: the hidden enemies swim into view (the overworld's random
-# encounter reveal) with the banner up, then the boosted fight starts.
+# Ambush rock and ordinary random fights: the enemies swim into view (the
+# overworld's random encounter reveal) with the banner up, then the fight starts.
 const AMBUSH_TEXT := "Something was hiding in the rock!"
 var _ambush_reveal: RandomEncounterReveal
 
-func _begin_ambush_reveal() -> void:
+# kind: "ambush" (boosted rock fight) or "random" (ordinary fight).
+func _begin_ambush_reveal(kind := "ambush") -> void:
 	if not maze_active or _battling or _chest_reward_pending or any_modal_open() or is_instance_valid(_ambush_reveal):
 		return
 	var selected := Battle.select_ordinary_enemies((divers[0] as Diver).stats.level)
@@ -800,7 +801,11 @@ func _begin_ambush_reveal() -> void:
 		d.velocity = Vector3.ZERO
 	# Shown immediately; queued announcements only tick during exploration.
 	_ensure_banner()
-	_banner.text = AMBUSH_TEXT
+	if kind == "random":
+		# Same wording as the overworld's random encounters.
+		_banner.text = "Enemies emerge from the murk!" if selected.size() > 1 else "An enemy emerges from the murk!"
+	else:
+		_banner.text = AMBUSH_TEXT
 	_banner.visible = true
 	var reveal := RandomEncounterReveal.new()
 	reveal.enemy_ids = selected
@@ -812,7 +817,7 @@ func _begin_ambush_reveal() -> void:
 		if _ambush_reveal != reveal:
 			return
 		_end_ambush_reveal()
-		_start_battle("ambush", selected)
+		_start_battle(kind, selected)
 	, CONNECT_ONE_SHOT)
 	add_child(reveal)
 
@@ -863,7 +868,7 @@ func _start_battle(kind := "strong", revealed_enemy_ids: Array[String] = []) -> 
 		"special":
 			_announce("A guarded item challenge begins.")
 		"random":
-			pass   # ordinary fight: no banner, no boost (the battle intro says it)
+			pass   # ordinary fight, no boost: the reveal already showed "...emerge from the murk!"
 		_:
 			_announce("Strong enemies emerge from the murk!")
 	_battle.party_source = divers

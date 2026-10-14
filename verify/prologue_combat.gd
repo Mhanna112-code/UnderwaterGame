@@ -15,12 +15,12 @@ func _run() -> void:
 		sources.append(diver)
 	await process_frame
 	var fight := Battle.new()
-	fight.prologue_angler_encounter = true
+	fight.encounter_source = "prologue_octopus"
 	fight.party_source = sources
 	root.add_child(fight)
 	await process_frame
 	await process_frame
-	await fight.reveal_prologue_octopus()
+	await _wait_cordys_turn(fight)
 	var outcomes: Array[String] = []
 	fight.finished.connect(func(value: String) -> void: outcomes.append(value))
 	# A high-HP fixture catches an unconditional death disguised as a huge hit.
@@ -77,11 +77,11 @@ func _expect(condition: bool, message: String) -> void:
 func _retaliation_rule_witnesses() -> void:
 	for scenario in ["evasion", "defense"]:
 		var fight := Battle.new()
-		fight.prologue_angler_encounter = true
+		fight.encounter_source = "prologue_octopus"
 		root.add_child(fight)
 		await process_frame
 		await process_frame
-		await fight.reveal_prologue_octopus()
+		await _wait_cordys_turn(fight)
 		var stats := fight.party[0].stats as CombatantStats
 		if scenario == "evasion":
 			stats.evasion = 30
@@ -143,11 +143,11 @@ func _choice_matrix() -> void:
 			boss.status_level("blindness"), actor.temporary_modifiers.accuracy, actor.temporary_modifiers.evasion])
 	for row in cases:
 		var fight := Battle.new()
-		fight.prologue_angler_encounter = true
+		fight.encounter_source = "prologue_octopus"
 		root.add_child(fight)
 		await process_frame
 		await process_frame
-		await fight.reveal_prologue_octopus()
+		await _wait_cordys_turn(fight)
 		var actor := fight.party[0].stats as CombatantStats
 		var boss := fight.enemies[0].stats as CombatantStats
 		actor.strength = row[1]
@@ -185,4 +185,11 @@ func _choice_matrix() -> void:
 				_expect(boss.hp == 1000 - row[5] - row[6], "OPEN-037 Bleed did not tick on Cordys's turn")
 			print("CHOICE|", row[0], "|STR=", row[1], "|ACC=", row[2], "|DEF=", row[3], "|EVA=", row[4], "|", observed)
 		fight.queue_free()
+		await process_frame
+
+# The prologue Battle stages Cordys itself; wait for his reveal to hand the
+# party its first turn.
+func _wait_cordys_turn(fight: Battle) -> void:
+	var deadline := Time.get_ticks_msec() + 10000
+	while fight.attack_btn.disabled and Time.get_ticks_msec() < deadline:
 		await process_frame
