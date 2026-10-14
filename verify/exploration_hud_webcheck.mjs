@@ -1,7 +1,7 @@
 // HUD-2/3/4/5: real Title Load from a declared fresh-profile HUD fixture,
 // actual TAB/Q/R/F/Escape/F1 and ordinary swimming into random combat.
 // Fixture resources/milestones are NOT earned campaign/balance evidence.
-import { chromium } from 'playwright';
+import { chromium, firefox } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
@@ -33,10 +33,11 @@ fixture.divers.forEach((d, i) => {
   d.position = [30 + i * 2, 3, 30]; d.sonar_active = false;
   d.stats.hp = [8, 6, 4][i]; d.stats.oxygen = [72, 53, 31][i];
 });
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=metal', '--ignore-gpu-blocklist'] });
+const browserEngine = process.env.HUD_BROWSER === 'firefox' ? firefox : chromium;
+const browser = await browserEngine.launch({ headless: process.env.HUD_HEADED !== '1', args: browserEngine === chromium ? ['--use-gl=angle', '--use-angle=metal', '--ignore-gpu-blocklist'] : [] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errors = [], findings = [], observations = [], logs = [];
-page.on('pageerror', error => errors.push(String(error)));
+page.on('pageerror', error => errors.push(`${error.stack || error}|last capture=${observations.at(-1)?.name}`));
 page.on('console', message => {
   if (/PROLOGUE_PHASE|RANDOM_COMBAT|CHECKPOINT_/.test(message.text())) logs.push(message.text());
   if (message.type() === 'error' || /SCRIPT ERROR:|^ERROR:/.test(message.text())) errors.push(message.text());
@@ -68,25 +69,25 @@ const text = async name => (await capture(name)).map(row => row.text).join('\n')
 try {
   if (process.env.EXPECTED_SOURCE_SHA) expect(metadata.source_commit === process.env.EXPECTED_SOURCE_SHA, 'Stale source identity');
   await page.goto(url, { waitUntil: 'load' }); await title('fresh-title');
-  await click(/^New Game$/, 'new-game');
-  const bootDeadline = Date.now() + 60000;
-  while (!logs.some(row => row.includes('PROLOGUE_PHASE|opening_video')) && Date.now() < bootDeadline) await page.waitForTimeout(200);
-  expect(logs.some(row => row.includes('PROLOGUE_PHASE|opening_video')), 'Normal New Game did not acknowledge checkpoint/opening');
-  while (!logs.some(row => row.includes('PROLOGUE_PHASE|spawn_exploration')) && Date.now() < bootDeadline) await page.waitForTimeout(200);
-  expect(logs.some(row => row.includes('PROLOGUE_PHASE|spawn_exploration')), 'Normal opening movie did not hand off to the prologue');
-  await page.waitForTimeout(500);
-  await capture('normal-new-game-prologue');
+  await page.bringToFront();
+  // Install the declared HUD fixture while the title owns input. The current
+  // prologue has its own integration test; this observer starts at cold Load.
   await page.evaluate(async record => {
     const db = await new Promise((resolve, reject) => { const r = indexedDB.open(record.database); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
     await new Promise((resolve, reject) => {
       const tx = db.transaction('FILE_DATA', 'readwrite');
-      tx.objectStore('FILE_DATA').put({ timestamp: new Date(), mode: 33206, contents: new TextEncoder().encode(JSON.stringify(record.data)) }, record.key);
+      const files = tx.objectStore('FILE_DATA');
+      // A fresh title has not created saves/ yet. IDBFS needs its directory
+      // record as well as the file when it reconstructs the cold filesystem.
+      files.put({ timestamp: new Date(), mode: 16877 }, record.key.slice(0, record.key.lastIndexOf('/')));
+      files.put({ timestamp: new Date(), mode: 33206, contents: new TextEncoder().encode(JSON.stringify(record.data)) }, record.key);
       tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
     }); db.close();
   }, record);
   await page.reload(); await title('load-title');
   await click(/^Load Game$/, 'load-menu');
   await click(/^Slot 1.*Latest save$/i, 'load-slot'); await page.waitForTimeout(1500);
+  await page.bringToFront();
   for (const [width, height] of [[1280, 720], [960, 540], [720, 480], [360, 640]]) {
     await page.setViewportSize({ width, height }); await page.waitForTimeout(650);
     const screen = await text(`world-${width}x${height}`);
@@ -127,7 +128,13 @@ try {
     await capture('swimming-leg-' + leg);
   }
   expect(logs.some(row => row.includes('RANDOM_COMBAT')), 'Ordinary swimming never triggered real random battle');
-  await page.waitForTimeout(2400);
+  // The swim-in reveal and roster intro precede the player's turn.
+  const menuDeadline = Date.now() + 15000;
+  let ready = false;
+  while (!ready && Date.now() < menuDeadline) {
+    ready = /Attack|Run|Items/.test(await text('battle-menu-wait'));
+    if (!ready) await page.waitForTimeout(500);
+  }
   const battle = await text('actual-random-battle');
   expect(!/Random encounters:|TAB\s+Switch diver|WASD\s+Swim/.test(battle), 'HUD-3 exploration HUD remains on actual battle screen');
   expect(/Attack|Run|Items/.test(battle), 'Battle controls were not visible');
@@ -147,7 +154,7 @@ try {
 } catch (error) { findings.push(String(error)); }
 finally {
   await browser.close(); if (server) server.close();
-  fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ target, source_commit: metadata.source_commit, pck_sha256: metadata.pck_sha256, logs, observations, findings, errors, scope: 'Declared fresh-profile injured-party checkpoint, ordinary cold Load, real TAB/Q/R/F/Escape/F1, viewport resize, real random encounter and Run/death recovery. Not earned campaign, balance, or native-target launch verification.' }, null, 2));
+  fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ target, browser: browserEngine === firefox ? 'firefox' : 'chromium', headed: process.env.HUD_HEADED === '1', source_commit: metadata.source_commit, pck_sha256: metadata.pck_sha256, logs, observations, findings, errors, scope: 'Declared fresh-profile injured-party checkpoint, ordinary cold Load, real TAB/Q/R/F/Escape/F1, viewport resize, real random encounter and Run/death recovery. Not earned campaign, balance, or native-target launch verification.' }, null, 2));
 }
 console.log(findings.length ? 'EXPLORATION HUD WEB: failed' : 'EXPLORATION HUD WEB: clean');
 process.exit(findings.length ? 1 : 0);

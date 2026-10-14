@@ -1,0 +1,127 @@
+{
+  "target": "output/playwright/preview",
+  "source_commit": "67028c477382e14de9ccc53caf75b12d7e3949de",
+  "pck_sha256": "820f706c191bc16921a50fa8a8c918d75e264e6af00cc9b9a67d71193590db79",
+  "logs": [
+    "PROLOGUE_PHASE|opening_video",
+    "PROLOGUE_PHASE|opening_handoff",
+    "PROLOGUE_PHASE|spawn_exploration",
+    "PROLOGUE_PHASE|octopus_introduction",
+    "PROLOGUE_PHASE|complete",
+    "CHECKPOINT_LATEST_LOADED|slot=0|autosave=false",
+    "RANDOM_COMBAT|enemies=angler,frilled_shark,swordfish_duelist"
+  ],
+  "observations": [
+    {
+      "name": "fresh-title-0",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "new-game",
+      "text": "Underwater\nNew Game"
+    },
+    {
+      "name": "normal-new-game-prologue",
+      "text": "Humans\nSkip Cutscene"
+    },
+    {
+      "name": "load-title-0",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "load-menu",
+      "text": "Underwater\nNew Game\nLoad Game"
+    },
+    {
+      "name": "load-slot",
+      "text": "Underwater\nLoad Game\nSlot 1 - Lv 1 party - Latest save\nSlot 1 Save Point - Lv 1 party\nSlot 1 Autosave - Empty\nSlot 2 - Empty\nSlot 2 Save Point - Empty\nSlot 2 Autosave - Empty\nSlot 3 - Empty\nSlot 3 Save Point - Empty\nSlot 3 Autosave - Empty\n< Back"
+    },
+    {
+      "name": "world-1280x720",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 4/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "world-960x540",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nOxygen 53%\nHP 4/10\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani ACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "world-720x480",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10 Oxygen 53%\nHP 4/10\nOxygen 31%\nExplore the mysterious blockade.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani ACTIVE\nHealth 8/10\nOxygen 72/100\n• Random encounters: OFF"
+    },
+    {
+      "name": "world-360x640",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nOxygen 53%\nHP 4/10\nOxygen 31%\nRandom encounters: OFF\nExplore the mysterious blockade.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "musashi-active",
+      "text": "Maxilani\nBucky\nTAB Switch diver\nHP 8/10\nHP 4/10\nOxygen 72%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Grapple\nR: Toggle encounters • Esc: Menu • F1: Guide\nMusashi\nHealth 6/10\nOxygen 53/100\nACTIVE"
+    },
+    {
+      "name": "grapple-aim",
+      "text": "Maxilani\nBucky\nTAB Switch diver\nHP 8/10\nOxygen 72%\nHP 4/10\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\n-\nAiming Grapple\nLeft click: fire • Right click: cancel\nMusashi\nHealth 6/10\nOxygen 53/100\nACTIVE"
+    },
+    {
+      "name": "bucky-active",
+      "text": "Maxilani\nMusashi\nTAB Switch diver\nHP 8/10\nOxygen 72%\nHP 6/10\nOxygen 53%\nExplore the mysterious blockade.\n• Random encounters: OFF\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Shockwave\nR: Toggle encounters • Esc: Menu • F1: Guide\nBucky\nACTIVE\nHealth 4/10\nOxygen 31/100"
+    },
+    {
+      "name": "sonar-on",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 4/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: OFF\nSonar on.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar On\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "pause-menu",
+      "text": "PAUSED • Esc to resume\nInventory\nItems\nParty Spells\nCombat Help\nUse any available items on any party members.\nNo items yet\nAudio\nMain Menu"
+    },
+    {
+      "name": "guide-open",
+      "text": "1 / 5\nCombat Basics\nA fight is turns, one combatant at a time, fastest Agility going first each\nround. On your turn: Attack (use a base move, or any spell you've\nlearned), Items (use one on any living party member to heal or boost\ntheir stats), or Run (leave the fight - not guaranteed to work). The queue\nbar across the top shows the coming order.\n< Back\nNext >\nClose"
+    },
+    {
+      "name": "guide-close",
+      "text": "1 / 5\nCombat Basics\nA fight is turns, one combatant at a time, fastest Agility going first each\nround. On your turn: Attack (use a base move, or any spell you've\nlearned), Items (use one on any living party member to heal or boost\ntheir stats), or Run (leave the fight - not guaranteed to work). The queue\nbar across the top shows the coming order.\n< Back\nNext >\nClose"
+    },
+    {
+      "name": "encounters-on",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 4/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: ON\nSonar off.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nHealth 8/10\nOxygen 72/100\nACTIVE"
+    },
+    {
+      "name": "swimming-leg-1",
+      "text": "NOW\nSwordfish Duelist 3\nNext\nMaxilani\nMusashi\nAngler 1\nBucky\nFrilled Shark 2\nMaxilani\nAngler 1\n8/10 LV 1\n72 / 100 02\n5/5\nEVA 1/1\nFrilled Shark 2\nEVA 3/3\nMusashi\n5/5\n6/10\nLv 1\n53 / 100 02\nEVA 2/2\nSwordfish Duelist 3\nEVA 2/2\nBucky\n8/8\nEVA 4/4\n4/10 Lv1\n31 / 100 02\nEVA 0/0\nEnemies block the way!\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "actual-random-battle",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nAngler 1\nBucky\nFrilled Shark 2\nMaxilani\n8/10 Lv 1\n72 / 100 02\nEVA 3/3\nMusashi\n6/10\nLv 1\n53 / 100 02\nEVA 2/2\nBucky\nEVA 0/0\n3/10 Lv 1\n31 / 100 02\nDefense Down 1(3\nturns left)\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\nAngler 1\n5/5\nEVA 1/1\nFrilled Shark 2\n5/5\nEVA 212\nSwordfish Duelist 3\n8/8\nEVA 4/4"
+    },
+    {
+      "name": "battle-return-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nAngler 1\nBucky\nFrilled Shark 2\nMaxilani\n8/10 Lv 1\n72 / 100 02\nEVA 3/3\nMusashi\n6/10\nLv 1\n53 / 100 02\nEVA 2/2\nBucky\nEVA 0/0\n3/10 Lv 1\n31 / 100 02\nDefense Down 1(3\nturns left)\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\nAngler 1\n5/5\nEVA 1/1\nFrilled Shark 2\n5/5\nEVA 212\nSwordfish Duelist 3\n8/8\nEVA 4/4"
+    },
+    {
+      "name": "run-attempt-0",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nAngler 1\nBucky\nFrilled Shark 2\nMaxilani\n8/10 Lv 1\n72 / 100 02\nEVA 3/3\nMusashi\n6/10\nLv 1\n53 / 100 02\nEVA 2/2\nBucky\nEVA 0/0\n3/10 Lv 1\n31 / 100 02\nDefense Down 1(3\nturns left)\nMaxilani's turn.\nAttack\nPick a move\nRun\nMight not escape\nItems\nYou\nSTR\nACC\nDEF\nEVA\nAngler 1\n5/5\nEVA 1/1\nFrilled Shark 2\n5/5\nEVA 212\nSwordfish Duelist 3\n8/8\nEVA 4/4"
+    },
+    {
+      "name": "battle-return-1",
+      "text": "NOW\nMaxilani\nNext\nMusashi\nAngler 1\nBucky\nFrilled Shark 2\nMaxilani\nAngler 1\n8/10 Lv 1\n72 / 100 02\n5/5\nEVA 1/1\nFrilled Shark 2\nEVA 3/3\nMusashi\n5/5\n6/10\nLv 1\n53 / 100 02\nEVA 2/2\nSwordfish Duelist 3\n8/8\nEVA 2/2\nBucky\nEVA 4/4\nEVA 0/0\n3/10 Lv 1\n31 / 100 02\nDefense Down 1(3\nturns left)\nThe party breaks off and swims for it.\nYou\nSTR\nACC\nDEF\nEVA"
+    },
+    {
+      "name": "battle-return-2",
+      "text": ""
+    },
+    {
+      "name": "battle-return-3",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 3/10\nOxygen 53%\nOxygen 31%\nExplore the mysterious blockade.\n• Random encounters: ON\nYou successfully ran away.\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    },
+    {
+      "name": "returned-world",
+      "text": "Musashi\nBucky\nTAB Switch diver\nHP 6/10\nHP 3/10\nOxygen 53%\nOxygen 31%\nDanger: Whirlpool ahead\nWASD Swim • SPACE / SHIFT Depth\nMouse / Arrow keys Look\nF: Swap • Q: Sonar Off\nR: Toggle encounters • Esc: Menu • F1: Guide\nExplore the mysterious blockade.\n• Random encounters: ON\nMaxilani\nACTIVE\nHealth 8/10\nOxygen 72/100"
+    }
+  ],
+  "findings": [
+    "Error: WrongDocumentError: The root document of this element is not valid for pointer lock."
+  ],
+  "errors": [
+    "WrongDocumentError: The root document of this element is not valid for pointer lock."
+  ],
+  "scope": "Declared fresh-profile injured-party checkpoint, ordinary cold Load, real TAB/Q/R/F/Escape/F1, viewport resize, real random encounter and Run/death recovery. Not earned campaign, balance, or native-target launch verification."
+}

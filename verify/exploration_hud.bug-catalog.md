@@ -62,3 +62,9 @@ resource cards visible; main's intentionally removed maze objective stays hidden
 Focused maze input, current prologue, pause presentation and actual Run-return
 checks clean. No gameplay/balance/full-campaign or target-OS claim.
 Browser verification is recorded separately with the exported PCK hash.
+Normal hosted Firefox 158: title, rendered playtest, TAB/F/R/Q/swimming and
+Escape menu ownership observed. No Godot script/pointer-lock errors observed.
+The headless Chromium pointer-lock failure reproduces on a minimal button/canvas
+without game code; browser automation screenshot timeouts remain failed evidence.
+Two file-URL security errors appeared when Firefox developer tools opened and
+are recorded in the hosted observation; no blanket clean-console claim.
