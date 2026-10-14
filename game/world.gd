@@ -3552,7 +3552,9 @@ func _on_battle_finished(result: String) -> void:
 				_update_oxygen_bar()
 		"fled":
 			_announce("You successfully ran away.")
-			# The HUD badge by the HP bar already shows the encounters setting.
+			# Essential recovery teaching, not just a static status badge.
+			# The cue expires after three seconds even if R is never pressed.
+			escape_encounter_hint.show_after_escape(random_encounters_enabled)
 		"skipped":
 			# In-battle "Skip Tutorial": same recovery as a loss's "Exit to World".
 			for d in divers:
@@ -3828,6 +3830,8 @@ func _layout_world_hud_for_size(viewport_size: Vector2) -> void:
 	var compact := viewport_size.x < 600.0
 	minimap.offset_top = 112.0 if compact else 10.0
 	minimap.offset_bottom = minimap.offset_top + 156.0
+	if is_instance_valid(escape_encounter_hint):
+		escape_encounter_hint.set_map_bottom(minimap.get_global_rect().end.y)
 	if exploration_hud != null:
 		exploration_hud.layout_for(viewport_size, minimap.get_global_rect(), _controls_text_bottom())
 	hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -3921,14 +3925,38 @@ func _refresh_world_guidance() -> void:
 			text = route_state.exploration_goal("deep")
 		elif not route_state.tutorial_complete:
 			text = ""   # the tutorial's light-beam arrow owns guidance
+		elif _near_reward_rock(position):
+			# Essential at the point of use, not buried in optional teaching.
+			# The ordinary Shallows objective resumes on leaving/breaking it.
+			if (divers[active] as Diver).ability_id == "shockwave":
+				text = "Break this rock for items: (F) Shockwave."
+			else:
+				text = "Break rocks for items: (TAB) Bucky, (F) Shockwave."
+		elif _cracked_walls.has("entrance_blockade") and _puzzle_hint_bounds.has_point(position):
+			# Essential contextual teaching: optional help cannot tell a new
+			# player what to do at this otherwise unexplained physical gate.
+			text = "(TAB) Bucky. (F) Shockwave breaks the wall."
 		elif position.x < PUZZLE_DOORS_X:
 			# Until the party is through the ringed lock-plate doors.
 			text = "Explore the mysterious blockade."
 		else:
 			text = "Explore the deep sea."
 	route_objective_label.text = text
-	route_objective_panel.visible = text != ""
+	# The three-second escape instruction temporarily owns this reading area.
+	# Restore the unchanged local/fallback objective as soon as it expires.
+	route_objective_panel.visible = text != "" and not (is_instance_valid(escape_encounter_hint) and escape_encounter_hint.visible)
 	_layout_route_objective_panel()
+
+func _near_reward_rock(position: Vector3) -> bool:
+	# Real intact loot rocks only; never imply scenery/ambushes grant items.
+	# Full 3D proximity avoids instructions for rocks far below the diver.
+	for id in _cracked_walls:
+		if not String(id).begins_with("rock_") or id in ROCK_AMBUSH_IDS:
+			continue
+		var rock := _cracked_walls[id] as CrackedWall
+		if is_instance_valid(rock) and not rock.is_queued_for_deletion() and position.distance_to(rock.global_position) <= Diver.SHOCKWAVE_RADIUS:
+			return true
+	return false
 
 
 func _update_hud() -> void:
@@ -4027,7 +4055,7 @@ func _sync_overlay_hud() -> void:
 		or (save_point_menu != null and save_point_menu.visible) \
 		or _maze_menu_open() # The maze map leaves resource HUD visible.
 	exploration_hud.visible = not covered
-	exploration_hud.encounter_label.visible = not maze_on
+	exploration_hud.encounter_label.visible = not maze_on and not (is_instance_valid(escape_encounter_hint) and escape_encounter_hint.visible)
 	hud.visible = not covered and not maze_on
 	minimap.visible = not covered and not maze_on
 	banner.visible = not covered and not maze_on

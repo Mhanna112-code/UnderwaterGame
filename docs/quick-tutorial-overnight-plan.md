@@ -1,20 +1,24 @@
 # Quick tutorial integration and morning review
 
-## Current status (morning review candidate)
+## Current status (authorized merge preparation)
+
+**October 14 human authorization supersedes the earlier review-only/no-merge instruction:** restore the nearby reward-rock and blockade teaching and the three-second successful-Run reminder, then merge PR #103 to main. Leave canonical production to the auto-build agent. Do not change maze guidance or any maze system as part of this restoration.
+
+These three prompts are **essential product requirements, not optional polish**. Without point-of-use instructions, a new player has no reason to know that Bucky breaks walls/rocks, that rocks contain items, or that R can suspend random encounters while returning to recovery. Optional training does not replace this contextual teaching. Preserve the current Shallows objective verbatim; nearby intact reward rocks temporarily take priority, and leaving/breaking them restores that objective.
 
 Ready-for-review PR [#103](https://github.com/Mhanna112-code/UnderwaterGame/pull/103), gameplay/export source `bda7ff68634d1a4557e7849538d9e599f61530f4`. Fresh [playtest](https://underwatergame-pr103-quick-tutorial.vercel.app/) and [review guide](https://underwatergame-pr103-quick-tutorial.vercel.app/review.html) are reachable anonymously. Hosted PCK SHA256 `606dd91965fb5b02d8a42530aedcd6cf870211fb44fe49f2337ae46d1509c99b` matches the local export (126,226,636 bytes). Canonical production and main are unchanged.
 
-**Later human review found unresolved inherited guidance gaps:** Bucky's blockade instruction, reward-rock discovery and the post-escape R reminder are absent; source/history audit also confirms lost Shallows purpose and maze destination/discovery cues. The earlier clean round covers the shortened lesson/reference only, not these wider guidance requirements. No gameplay restoration is authorized by Miguel's analysis-only request. See the review findings below before treating this candidate as merge-ready.
+**Follow-up restoration:** Bucky/Tab/F/Shockwave blockade guidance, nearby rock action/reward guidance, and the three-second post-Run reminder are restored in source. Real-action red/green receipts and rendered inspection are recorded in `verify/restored_world_guidance.bug-catalog.md`. Narrow-window inspection caught the cue behind the minimap; it now follows the actual map bounds, temporarily yields the redundant objective/status badge, and expires without requiring R. The historical audit below remains evidence of the earlier removal, not a claim these three prompts remain absent. Shallows wording and maze guidance are intentionally unchanged. The existing `bda7ff6` preview does **not** contain this new source restoration; the auto-build agent owns the next public export.
 
 Four combined focused native rounds passed. Final-source legacy downed-party cold preparation and separate-process Load also passed. Individual real-action skips, actual Quick/Full completion and temporary item use, adversarial damage-driven loss/Retry/Exit, embedded-maze return, separate-process native cold Load, shared stat-reference ownership and optional ability camera return have passed. Rendered inspection caught and repaired additional compact-layout failures; final compact Full captures passed, with highlighted numeric teaching retained in scrollable pages.
 
 Final-source **fresh browser New Game** completed in isolated session `uw-tutorial103-final`: real videos, three alternating party actions/Cordys strikes, recovery, W movement into the beam, short attack/target preview, live dodge naturally missed, and movable World return without a forced carousel. The earned manual checkpoint has completed opening/training flags, empty statuses and refilled EVA. A browser reload and the real **Slot 1 Save Point** button returned directly to movable World, not the opening. Inventory definitions, Quick/Full entry and Skip, optional World Abilities entry/close, and narrow Full reading/scrolling were exercised. No fixture save or review flag substituted for that route.
 
-The final scoped native/browser visual round finished without another observed tutorial/help defect. **This is ready for Miguel's review, not merged or approved by him.** Full five-stage victory, loss, items and embedded-maze replay were verified natively; a complete optional Full victory in a real browser, Safari/mobile-device behavior, and a full campaign/boss/balance playthrough remain unverified. Human readability and the emotional pacing of the preserved opening remain review decisions. Earlier dated snapshots below are evidence history, not current acceptance status. Export source remains `bda7ff6`; subsequent documentation/test-only commits do not change the deployed gameplay.
+The earlier scoped native/browser visual round finished without another observed tutorial/help defect. **Miguel subsequently authorized the focused guidance restoration and main merge.** Full five-stage victory, loss, items and embedded-maze replay were verified natively; a complete optional Full victory in a real browser, Safari/mobile-device behavior, and a full campaign/boss/balance playthrough remain unverified. Human readability and the emotional pacing of the preserved opening remain review decisions. Earlier dated snapshots below are evidence history, not current acceptance status. Export source remains `bda7ff6`; the new guidance source has not been exported by this task.
 
 ## Purpose and deadline
 
-Prepare a review PR by October 14, 2026, 11:00 a.m. America/Chicago. A playtester declined to play because the tutorial was too long. Miguel authorized a short tutorial based on the earlier review, the longer tutorial as an optional activity, and explanations of battle stats from both battle and inventory menus. Do not merge or promote to canonical production.
+Prepare a review PR by October 14, 2026, 11:00 a.m. America/Chicago. A playtester declined to play because the tutorial was too long. Miguel authorized a short tutorial based on the earlier review, the longer tutorial as an optional activity, and explanations of battle stats from both battle and inventory menus. The original no-merge instruction is superseded by the current explicit merge authorization above; canonical production remains delegated to the auto-build agent.
 
 Worktree: `/Users/tomriddle1/underwatergame-quick-tutorial-oct14`.
 Branch: `feature/quick-tutorial-oct14`.
@@ -135,7 +139,7 @@ The last scoped round has no further observed tutorial/help defect. PR #103 may 
 
 Final review-page/metadata refresh: deployment `dpl_CnpqygmpkrgKKgt2yEX74zWQE2dq`, immutable `https://underwatergame-csqy8a6e4-immortaldemongods-projects.vercel.app/`, same verified `bda7ff6` gameplay/PCK carried unchanged. Only the review guide and acceptance status changed. Stable alias remains `https://underwatergame-pr103-quick-tutorial.vercel.app/`. The real-browser screenshots used the prior immutable URL with this exact PCK, not a separately rebuilt artifact.
 
-## Human guidance review findings
+## Historical human guidance review findings (before authorized restoration)
 
 Miguel reported being stranded at the blockade, recalled the already-implemented rock-loot prompt, and reported no encounter-toggle reminder after Run. He requested a systematic audit, not implementation. These are source/history findings on current main and #103; no new full campaign playthrough was claimed.
 
@@ -156,9 +160,9 @@ Still present in source: post-Tethys maze-ramp compass and lab payoff, Deep entr
 
 PR #103 inherited the absent world prompts; making long teaching optional increases their discoverability impact. The overnight scoped audit missed this handoff gap. No source code, test oracle, production deployment or reviewed design decision was changed by this audit.
 
-## Next continuation: read-only until the deadline
+## Next continuation: finish the authorized source merge
 
-Implementation and the scoped acceptance round are complete. Do not resume the old campaign goal or continue polishing unrelated systems. Until October 14 at 11 a.m. Chicago, only check available disk space, relevant main/Marc branch movement, and whether the PR/review preview remain reachable. If relevant upstream changes appear, report their exact SHA/scope before claiming this candidate includes them. Stay quiet for unchanged checks. At the deadline report actual PR/link/source, evidence limitations and available storage; do not merge or update production.
+Complete the restored-guidance checks and the existing tutorial/save regression gate, inspect the staged diff and latest upstream, then merge PR #103 using its exact verified head. Do not resume the old campaign goal, change maze guidance or deploy production. Record actual merge/source, passing evidence, retained failures, unverified paths and disk space. Leave the public export to the auto-build agent as Miguel requested.
 
 ## Historical implementation snapshots (superseded)
 

@@ -32,10 +32,8 @@ func _run() -> void:
 	await _hold(KEY_W, 1.1)
 	_expect(diver.global_position.distance_to(Vector3(6, 1, -7)) < 3.0, "ROCK-1 actual W did not reach early reward rock: %s" % diver.global_position)
 	var text := world.route_objective_label.text.to_lower()
-	# The "Break rocks for items" prompt was removed on request; reward rocks
-	# are now signposted only by their Sonar minimap marker.
-	_expect(not ("break" in text and "rock" in text),
-		"ROCK-1 removed rock-loot prompt is still shown near an early reward rock: " + text)
+	_expect(world.route_objective_panel.visible and "bucky" in text and "tab" in text and "(f)" in text and "shockwave" in text and "item" in text,
+		"RESTORE-2 nearby reward rock lacks switch/action/reward instruction: " + text)
 	if OS.get_cmdline_user_args().has("--extended"):
 		await _extended()
 	await _finish()
@@ -51,12 +49,14 @@ func _extended() -> void:
 			diver.global_position = rock.global_position + offset
 			diver.velocity = Vector3.ZERO
 			await _frames(3)
-			_expect(not _loot_hint(), "ROCK-2 removed rock-loot prompt reappeared at %s" % diver.global_position)
+			_expect(_loot_hint() and "TAB" in world.route_objective_label.text and "Bucky" in world.route_objective_label.text,
+				"RESTORE-2 nearby intact reward rock lacks actionable teaching at %s" % diver.global_position)
 	for point in [Vector3(6, 12, -7), Vector3(-30, 2, 30), Vector3(-38, 19, -30), Vector3(10, 19, 46)]:
 		diver.global_position = point
 		diver.velocity = Vector3.ZERO
 		await _frames(3)
 		_expect(not _loot_hint(), "ROCK-2 distant/high/scenery/ambush location promises rock loot")
+		_expect("Explore the" in world.route_objective_label.text, "RESTORE-2 leaving a rock lost the preserved Shallows fallback")
 	diver.global_position = Vector3(6, 2, -9)
 	await _frames(3)
 	var completed := world._serialize_state()
@@ -69,8 +69,14 @@ func _extended() -> void:
 	world.title_screen.load_game_chosen.emit(SLOT)
 	await _frames(3)
 	_expect(not world.route_objective_panel.visible, "ROCK-2 item prompt interrupts unfinished prologue")
+	world.queue_free()
+	await process_frame
+	world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	root.add_child(world)
+	current_scene = world
+	await process_frame
 	_expect(SaveManager.write_slot(SLOT, completed) == OK, "ROCK-2 completed fixture write failed")
-	world.title_screen.load_game_chosen.emit(SLOT)
+	await world._on_title_load_game(SLOT)
 	await _frames(3)
 	await _capture()
 	# Inactive diver's proximity cannot leak into the selected one's guidance.
@@ -79,7 +85,8 @@ func _extended() -> void:
 	(world.divers[2] as Diver).global_position = Vector3(6, 2, -12)
 	await _hold(KEY_TAB, 0.05)
 	await _hold(KEY_W, 1.1)
-	_expect(not _loot_hint(), "ROCK-3 removed rock-loot prompt reappeared for active Bucky")
+	_expect(_loot_hint() and "(F)" in world.route_objective_label.text and not "TAB" in world.route_objective_label.text,
+		"RESTORE-2 selected Bucky lacks the direct F reward-rock instruction")
 	var inventory_before := 0
 	for count in world.inventory.values():
 		inventory_before += int(count)

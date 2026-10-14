@@ -51,6 +51,7 @@ func _puzzle() -> void:
 	await _hold(KEY_W, 0.55)
 	_expect(world.route_objective_panel.visible and "bucky" in world.route_objective_label.text.to_lower() and "wall" in world.route_objective_label.text.to_lower(), "OPEN-044 touching puzzle entrance has no short Bucky/wall instruction")
 	_expect("(TAB)" in world.route_objective_label.text, "OPEN-049 Bucky/wall hint omits parenthesized TAB switching key")
+	_expect("(F)" in world.route_objective_label.text and "Shockwave" in world.route_objective_label.text, "RESTORE-1 blockade omits the actual F action")
 	await _capture("puzzle")
 	# Leave without breaking it, then return; the hint is proximity, not a latch.
 	await _hold(KEY_S, 1.2)
@@ -120,8 +121,17 @@ func _spatial_cases() -> void:
 	await process_frame
 	await process_frame
 	_expect(not world.route_objective_panel.visible, "OPEN-045 room hint interrupts unfinished opener")
+	# The incomplete checkpoint legitimately starts its opening asynchronously.
+	# Do not load the completed fixture over that live cinematic and then
+	# mistake its input lock for a failed F interaction at the blockade.
+	world.queue_free()
+	await process_frame
+	world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
+	root.add_child(world)
+	current_scene = world
+	await process_frame
 	SaveManager.write_slot(SLOT, completed)
-	world.title_screen.load_game_chosen.emit(SLOT)
+	await world._on_title_load_game(SLOT)
 	await process_frame
 	await process_frame
 

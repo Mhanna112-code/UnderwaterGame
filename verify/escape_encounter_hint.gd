@@ -35,15 +35,53 @@ func _run() -> void:
 		var o2_before: Array = world.divers.map(func(d): return d.stats.oxygen)
 		seed(_run_seed(true))
 		fight.run_btn.pressed.emit()
-		await create_timer(Battle.LOG_READ_DELAY + 0.5).timeout
+		var deadline := Time.get_ticks_msec() + 12000
+		while world.battling and Time.get_ticks_msec() < deadline:
+			await process_frame
 		_expect(not world.battling, "ESC-001 actual successful Run failed to return to world")
 		var cue := world.get_node_or_null("HUD/EscapeEncounterHint") as Control
-		# The post-escape cue was removed on request: escaping shows only the
-		# "You successfully ran away." notice; the HP-bar badge shows R.
-		_expect(cue == null or not cue.is_visible_in_tree(), "ESC-001 removed post-escape encounter cue still appears")
+		_expect(cue != null and cue.is_visible_in_tree(), "RESTORE-3 successful Run has no three-second R teaching cue")
+		if cue != null and cue.visible:
+			_expect("R:" in cue.setting_label.text and "off" in cue.help_label.text.to_lower(), "RESTORE-3 escape cue does not teach R/off/recovery")
+			_expect(_ignores_pointer(cue), "ESC-006 escape cue blocks normal mouse input")
+			await _capture("restored-live")
+			var initial_style: Color = cue.get_theme_stylebox("panel").bg_color
+			await create_timer(0.2).timeout
+			_expect(cue.visible and cue.get_theme_stylebox("panel").bg_color != initial_style, "ESC-005 On reminder never visibly pulses")
+			_expect(not world.route_objective_panel.visible and not world.exploration_hud.encounter_label.visible, "ESC-007 duplicate World guidance competes with reminder")
 		_expect(world.random_encounters_enabled, "ESC-003 escape forced encounters Off")
 		_expect(hp_before == world.divers.map(func(d): return d.stats.hp), "ESC-003 escape healed/damaged party")
 		_expect(o2_before == world.divers.map(func(d): return d.stats.oxygen), "ESC-003 escape changed Oxygen")
+		await create_timer(3.1).timeout
+		await process_frame
+		_expect(cue == null or not cue.visible, "ESC-002 untouched On cue flashes beyond three seconds")
+		_expect(world.route_objective_panel.visible and world.exploration_hud.encounter_label.visible, "ESC-007 normal World guidance fails to return after reminder")
+		# Component timer boundary already proved activated by real Run above.
+		# Here real R must update the text without restarting that deadline.
+		cue.show_after_escape(true)
+		await create_timer(1.9).timeout
+		await _key(KEY_R)
+		_expect(not world.random_encounters_enabled and "Off" in cue.setting_label.text, "ESC-005 real R failed to update setting/cue")
+		var off_style: Color = cue.get_theme_stylebox("panel").bg_color
+		await create_timer(0.3).timeout
+		_expect(cue.visible and cue.get_theme_stylebox("panel").bg_color == off_style, "ESC-005 Off cue still pulses or ended prematurely")
+		await create_timer(0.95).timeout
+		_expect(not cue.visible, "ESC-005 real R restarted the three-second deadline")
+		(world.divers[world.active] as Diver).encounter_triggered.emit()
+		await process_frame
+		_expect(not world.battling and not is_instance_valid(world.random_encounter_reveal), "ESC-003 actual encounter starts despite R Off")
+		await _key(KEY_R)
+		(world.divers[world.active] as Diver).encounter_triggered.emit()
+		var failed_fight := await _wait_for_encounter(world)
+		if failed_fight != null:
+			await _wait_for_run(failed_fight)
+			seed(_run_seed(false))
+			failed_fight.run_btn.pressed.emit()
+			await create_timer(0.5).timeout
+			_expect(world.battling and not cue.visible, "ESC-004 failed real Run shows an escape reminder")
+			await _wait_for_run(failed_fight)
+		else:
+			findings.append("ESC-004 failed-Run fixture did not reach real combat")
 	# Separate public-component cases, not a fabricated World escape result.
 	# Already-Off and paused-menu expiry share the same absolute deadline.
 	var isolated := preload("res://game/encounter_escape_hint.gd").new()
@@ -113,8 +151,15 @@ func _ignores_pointer(node: Node) -> bool:
 	return true
 
 func _capture(view: String) -> void:
-	if OS.get_cmdline_user_args().has("--capture"):
+	if OS.get_cmdline_user_args().has("--capture") and DisplayServer.get_name() != "headless":
 		await process_frame
+		await RenderingServer.frame_post_draw
+		var hint := current_scene.get_node("HUD/EscapeEncounterHint") as Control
+		_expect(hint.is_visible_in_tree() and root.get_visible_rect().encloses(hint.get_global_rect()), "ESC-007 live reminder is hidden/clipped")
+		var world := current_scene as World
+		for other in [world.minimap, world.hud, world.exploration_hud.active_panel, world.exploration_hud.party_panel]:
+			if (other as Control).is_visible_in_tree():
+				_expect(not hint.get_global_rect().intersects((other as Control).get_global_rect()), "ESC-007 reminder overlaps %s at %s" % [other.name, root.size])
 		root.get_texture().get_image().save_png("/tmp/escape-cue-%s-%dx%d.png" % [view, root.size.x, root.size.y])
 
 func _expect(condition: bool, message: String) -> void:

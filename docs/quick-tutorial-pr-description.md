@@ -10,6 +10,7 @@ Respond to the playtester who declined to play because the tutorial was too long
 - Optional Quick/Full combat practice borrows temporary resources/inventory rather than healing the earned party or saving a practice state. Separate special-minigame replay is not covered by this new isolation claim.
 - Preserve current main's video/Cordys opening, actual combat formulas, maze/lab progression, rewards, audio settings and other Marc changes.
 - Includes PR 101's compact exploration HUD and complete-card maze-caption reservation in this combined review branch. Neither PR has been merged into main by this work.
+- Restores essential World teaching: nearby intact reward rocks explain items, Tab/Bucky and F/Shockwave; the entrance blockade names the same action. The current Shallows fallback yields to a nearby rock and resumes after leaving/breaking it. Successful Run shows a three-second R/off/recovery cue, never forces encounters Off and never waits indefinitely for input. No new maze changes are included in this restoration.
 
 ## Evidence and retained failures
 
@@ -21,7 +22,7 @@ Expanded checks with original-effect markers: **274 World skip / 288 maze / 40 Q
 
 Visual checks caught a zero-height narrow battle stage and offscreen Retry/Exit buttons despite functional passes. Final native starter/reference/Full/recovery screenshots were inspected; four combined focused rounds, six reference cases, 64 result-popup checks, unchanged 48 embedded-checkpoint cases and checkpoint IO pass. Full QTE success/miss and live Help preserve the lesson. A suspected Precise Tap preview-color mismatch was retracted after a real rendered five-stage run; a new assertion pins the intended green ACC value.
 
-[Playtest](https://underwatergame-pr103-quick-tutorial.vercel.app/) · [Review steps](https://underwatergame-pr103-quick-tutorial.vercel.app/review.html) · [Exact-source metadata](https://underwatergame-pr103-quick-tutorial.vercel.app/build-info.json). Exported gameplay source is **`bda7ff68634d1a4557e7849538d9e599f61530f4`**, Godot 4.7.1. Subsequent commits are test/documentation-only. Anonymous access succeeds and served PCK SHA256 `606dd91965fb5b02d8a42530aedcd6cf870211fb44fe49f2337ae46d1509c99b` matches the local export. This is not the repository's stale `docs/` bundle.
+[Earlier tutorial playtest](https://underwatergame-pr103-quick-tutorial.vercel.app/) · [Review steps](https://underwatergame-pr103-quick-tutorial.vercel.app/review.html) · [Exact-source metadata](https://underwatergame-pr103-quick-tutorial.vercel.app/build-info.json). Exported gameplay source is **`bda7ff68634d1a4557e7849538d9e599f61530f4`**, Godot 4.7.1. This preview predates the newly restored World prompts/reminder; do not use it to judge those fixes. Anonymous access succeeds and served PCK SHA256 `606dd91965fb5b02d8a42530aedcd6cf870211fb44fe49f2337ae46d1509c99b` matches that earlier export. Miguel explicitly delegated the next public build to the auto-build agent; this task merges source only.
 
 ## Real-browser and final scoped audit
 
@@ -31,10 +32,10 @@ The final scoped native/browser round finished with **no further observed tutori
 
 ## Limits and review decisions
 
-- **Subsequent human review found inherited guidance gaps:** the nearby Bucky/blockade and reward-rock prompts, post-Run R reminder, Shallows purpose and maze destination cues were removed in earlier main changes and remain absent here. Existing guidance tests partly assert that absence. The source/history audit, including weaker save-point and hallway cues, is retained in `docs/quick-tutorial-overnight-plan.md`. These have not been fixed; Miguel requested analysis first. The earlier clean tutorial/reference round is not acceptance of wider World/maze guidance.
+- **Human review found inherited guidance gaps, then authorized three focused repairs:** blockade, reward-rock and post-Run teaching are restored. The saved plan/catalog explicitly marks them essential for new-player discovery. Original failed receipts are retained; actual action/reward/Load, timer/R/failed-Run and rendered layout checks cover the restoration. Earlier scoped tutorial acceptance is not full campaign acceptance. Current Shallows wording and all maze guidance remain as previously reviewed.
 - Full five-stage victory/items/loss and embedded-maze practice are verified natively, not a complete real-browser Full playthrough or normal campaign traversal.
 - Safari, mobile hardware, Windows/Linux builds and full campaign/boss/balance acceptance remain unverified.
 - Human readability, engagement and preserved opening pacing still need Miguel's review. This PR does not rebalance combat or redesign the story.
 - Special-encounter replay is outside the new Quick/Full resource-isolation claim.
 
-Latest upstream fetch found no new main/Marc HUD commits. Implementation is stopped; hourly disk/upstream checks continue until October 14, 11 a.m. Chicago. Main and canonical production are unchanged. Ledger: `docs/quick-tutorial-overnight-plan.md`. Stop immediately below 3 GiB disk space.
+Miguel explicitly authorized merging this PR after the focused restoration and regression checks. Canonical production is delegated to the auto-build agent, not deployed by this task. Ledger: `docs/quick-tutorial-overnight-plan.md`; restoration catalog: `verify/restored_world_guidance.bug-catalog.md`. Stop immediately below 3 GiB disk space.
