@@ -1,0 +1,28 @@
+{
+  "observed_at": "2026-10-14T06:34:23Z",
+  "url": "https://underwatergame-hi1tmcdfx-immortaldemongods-projects.vercel.app/?spell_playtest=1",
+  "browser": "Firefox 158, normal desktop tab; native UI observation",
+  "source_commit": "67028c477382e14de9ccc53caf75b12d7e3949de",
+  "pck_sha256": "820f706c191bc16921a50fa8a8c918d75e264e6af00cc9b9a67d71193590db79",
+  "hosted_pck_download_hash_matched": true,
+  "observed": [
+    "Underwater title with New Game and Play Spell Test",
+    "Play Spell Test reaches rendered World and compact HUD",
+    "R changes encounter badge ON to OFF",
+    "TAB selects Musashi; active card and numeric teammates update",
+    "F enters Grapple aim with crosshair and context instructions",
+    "Escape releases browser pointer capture, cancels aim, then opens inventory",
+    "Inventory hides exploration HUD; closing it restores the HUD",
+    "TAB returns to Maxilani; Sonar uses Oxygen (100 to 94); Q-off notice and hint update",
+    "Held W swims in the rendered World"
+  ],
+  "godot_script_errors_observed": [],
+  "pointer_lock_errors_observed": [],
+  "other_console_errors": [
+    "Security Error: vercel.live feedback frame may not load or link to file:///.",
+    "Security Error: preview document may not load or link to file:///."
+  ],
+  "other_error_context": "Both file-URL messages appeared at 01:34:23 CDT while developer tools opened, alongside CSS warnings. They are retained and not treated as a clean all-console result. No file:/// reference was found in the exported loader/HTML/worklets.",
+  "warnings": ["WASM try instruction deprecation", "AudioContext awaiting user gesture", "WebGL buffer-read pipeline stalls", "third-party cookie partitioning", "CSS compatibility warnings"],
+  "limitations": "Normal Firefox title/gameplay/control observation, not the full automated browser suite, campaign playtest, or Windows/Linux boot test. Headless and other automation failures retained separately."
+}

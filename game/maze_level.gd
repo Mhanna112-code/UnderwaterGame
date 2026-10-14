@@ -691,6 +691,8 @@ func _refresh_announcement_visibility() -> void:
 	var notice_visible := _banner != null and _banner_timer > 0.0 and captions_allowed
 	if _banner != null:
 		_banner.visible = notice_visible
+		if notice_visible:
+			_resize_caption(_banner)
 	# Only one of status/goal and announcement owns the bottom area at a time.
 	var controls := get_node_or_null("HUD/Controls") as CanvasItem
 	if controls != null:
@@ -737,6 +739,24 @@ func _resize_caption(label: Label) -> void:
 	if label.has_meta("caption_top"):
 		label.offset_top = float(label.get_meta("caption_top")) - _caption_lift
 		label.offset_bottom = float(label.get_meta("caption_bottom")) - _caption_lift
+	# The compact HUD has full cards, not just meter rows. On short windows
+	# the historical caption position also collides with the teammate card.
+	if world != null and world.exploration_hud != null:
+		var size := get_viewport().get_visible_rect().size
+		label.add_theme_font_size_override("font_size", 14 if size.x < 600 else 20)
+		var height := maxf(24.0, label.get_minimum_size().y)
+		var bottom := size.y + label.offset_bottom
+		var cards := world.exploration_resource_rects()
+		for card in cards:
+			if card.position.y > size.y * 0.5:
+				bottom = minf(bottom, card.position.y - 8.0)
+		var rect := Rect2(size.x * 0.5 + label.offset_left, bottom - height, half_width * 2, height)
+		for card in cards:
+			if rect.intersects(card):
+				# Use the free band directly above the active card.
+				bottom = world.exploration_hud.active_panel.get_global_rect().position.y - 8.0
+		label.offset_bottom = bottom - size.y
+		label.offset_top = label.offset_bottom - height
 
 # The bottom-centre captions (orange notices, "Press E", encounter status) were
 # laid out for an empty bottom edge, but World's active-diver O2/HP bars sit
@@ -750,10 +770,8 @@ func _update_caption_lift() -> void:
 	var world_hud := world.get_node_or_null("HUD") as CanvasLayer if world != null else null
 	if world_hud != null and world_hud.visible and world.get("hp_bar") != null:
 		var top := INF
-		for bar in [world.hp_bar, world.oxygen_bar]:
-			var wrap := (bar as Control).get_parent() as Control if bar != null else null
-			if wrap != null and wrap.is_visible_in_tree():
-				top = minf(top, wrap.get_global_rect().position.y)
+		if world.exploration_hud != null and world.exploration_hud.active_panel.is_visible_in_tree():
+			top = world.exploration_hud.active_panel.get_global_rect().position.y
 		if top < INF:
 			var bars_offset := top - 8.0 - get_viewport().get_visible_rect().size.y
 			lift = maxf(0.0, CAPTION_STACK_BOTTOM - bars_offset)
@@ -2976,9 +2994,8 @@ func _layout_destination_label(goal: Label) -> void:
 	var viewport_size := get_viewport().get_visible_rect().size
 	var bottom := -16.0
 	if host != null:
-		for bar in [host.hp_bar, host.oxygen_bar]:
-			if bar != null and bar.is_visible_in_tree():
-				bottom = minf(bottom, (bar.get_parent() as Control).get_global_rect().position.y - viewport_size.y - 12.0)
+		if host.exploration_hud != null and host.exploration_hud.active_panel.is_visible_in_tree():
+			bottom = minf(bottom, host.exploration_hud.active_panel.get_global_rect().position.y - viewport_size.y - 12.0)
 	goal.offset_left = 16.0
 	goal.offset_right = -16.0
 	goal.offset_bottom = bottom
