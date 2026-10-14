@@ -36,7 +36,12 @@ func _exercise(label: String, hit_zone: bool, viewport: Vector2) -> void:
 	root.add_child(world)
 	await process_frame
 	await process_frame
-	world.title_screen.new_game_chosen.emit(98)
+	world.title_screen.close()
+	world.get_node("HUD").visible = true
+	paused = false
+	world.route_state.prologue_complete = true
+	world.route_state.opening_video_seen = true
+	world.route_state.normalize_prologue_phase()
 	world._first_encounter_started = true
 	world._intro_active = false
 	world._transitioning_to_encounter = false
@@ -49,6 +54,7 @@ func _exercise(label: String, hit_zone: bool, viewport: Vector2) -> void:
 	battle.party_source = world.divers
 	battle.world = world
 	battle.tutorial_encounter = true
+	battle.tutorial_profile = Battle.TUTORIAL_PROFILE_FULL
 	battle._tutorial_step = battle._TUTORIAL_SCRIPT.size()
 	battle._tutorial_enemy_turns = 0
 	world.add_child(battle)

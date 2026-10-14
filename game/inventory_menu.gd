@@ -699,6 +699,7 @@ func _refresh_help() -> void:
 		_list.add_child(replay_btn)
 		if w.has_method("_show_ability_popups"):
 			var abilities_btn := Button.new()
+			abilities_btn.name = "WorldAbilities"
 			abilities_btn.text = "World Abilities"
 			abilities_btn.custom_minimum_size = Vector2(0, 40)
 			abilities_btn.pressed.connect(_on_character_abilities_pressed)

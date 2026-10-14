@@ -78,6 +78,27 @@ run() {
 # Public runner probes exercise log/exit handling without importing the
 # wrapper into a second script or starting every gameplay gate.
 case "${1:-}" in
+	--quick-tutorial-only)
+		# Legacy scene verifiers can use slots 0/1/2. Require a separate
+		# project config/user directory, never a flag that deletes player saves.
+		QA_PATH="${TUTORIAL_QA_PATH:?Set TUTORIAL_QA_PATH to the isolated QA project}"
+		run "tutorial QA save isolation" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_qa_directory.gd
+		[ "$fails" -eq 0 ] || exit "$fails"
+		run "quick real move and dodge" "$GODOT" --headless --path "$QA_PATH" --script verify/quick_combat_lesson.gd
+		run "quick natural dodge timeout" "$GODOT" --headless --path "$QA_PATH" --script verify/quick_combat_lesson.gd -- --miss-dodge
+		run "Battle and Inventory definitions and pause ownership" "$GODOT" --headless --path "$QA_PATH" --script verify/quick_tutorial.gd
+		run "real skip phase matrix" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd
+		run "real quick/full victory and temporary item use" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd -- --complete --use-item
+		run "actual adversarial practice defeat, Retry and Exit" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd -- --loss
+		run "embedded maze practice return" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip_lifecycle.gd -- --maze
+		run "initial loss result plumbing and voluntary lesson milestones" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_loss_choice.gd
+		run "result actions remain reachable" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_result_layout.gd
+		run "normal W beam entry and saved quick completion" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_win_handoff.gd -- --world-lesson
+		run "retained full interactive curriculum" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_win_handoff.gd -- --full-lesson
+		run "explicit World Abilities and camera handoff" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_camera_handoff.gd
+		run "live full lesson QTE" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_qte.gd
+		run "starter Skip releases play without mandatory carousel" "$GODOT" --headless --path "$QA_PATH" --script verify/tutorial_skip.gd
+		exit "$fails" ;;
 	--probe-engine-error)
 		run "expected engine ERROR witness" /bin/echo 'ERROR: Lambda capture at index 0 was freed.'
 		exit "$fails" ;;

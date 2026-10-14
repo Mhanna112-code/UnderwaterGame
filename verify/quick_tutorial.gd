@@ -77,6 +77,9 @@ func _reference_contract(fight: Battle, help: Button) -> void:
 			if close != null and not root.get_visible_rect().encloses(close.get_global_rect()):
 				print("REFERENCE_CLIP|viewport=", root.get_visible_rect(), "|close=", close.get_global_rect(), "|panel=", reference.get("_panel").get_global_rect())
 			_expect(close != null and root.get_visible_rect().encloses(close.get_global_rect()), "QT7: Close is outside the viewport")
+			if OS.get_cmdline_user_args().has("--capture") and not prior_pause and DisplayServer.get_name() != "headless":
+				await RenderingServer.frame_post_draw
+				root.get_texture().get_image().save_png("res://docs/evidence/quick-tutorial-oct14/reference-%dx%d.png" % [viewport.x, viewport.y])
 			var text := ""
 			for node in reference.find_children("*", "Label", true, false):
 				text += (node as Label).text + "\n"

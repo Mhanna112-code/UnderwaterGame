@@ -19,7 +19,14 @@ func _run() -> void:
 	await process_frame
 	# Enter by the public title-screen signal, rather than clearing paused by
 	# hand. This makes the test exercise the same world state a player reaches.
-	world.title_screen.new_game_chosen.emit(1)
+	world.title_screen.close()
+	world.get_node("HUD").visible = true
+	paused = false
+	world.route_state.prologue_complete = true
+	world.route_state.opening_video_seen = true
+	world.route_state.normalize_prologue_phase()
+	world._first_encounter_started = true
+	world._intro_active = false
 	await process_frame
 	await process_frame
 	# Reach the popup through the production tutorial-end path. The visible Skip
@@ -37,9 +44,7 @@ func _run() -> void:
 	battle.finished.connect(func(result): battle_result = String(result))
 	var deadline := Time.get_ticks_msec() + 15000
 	while battle_result == "" and Time.get_ticks_msec() < deadline:
-		if world.battle != null and world.battle._tutorial_awaiting_enter:
-			world.battle._tutorial_awaiting_enter = false
-		if world.battle != null and not world.battle._busy \
+		if world.battle != null \
 				and world.battle.skip_tutorial_btn != null and not world.battle.skip_tutorial_btn.disabled:
 			world.battle.skip_tutorial_btn.emit_signal("pressed")
 		await process_frame
@@ -48,6 +53,17 @@ func _run() -> void:
 		_finish(world)
 		return
 	await process_frame
+	await process_frame
+	_expect(not paused, "SHORT HANDOFF: starter forced a second modal")
+	# The long world walkthrough is now an explicit real Inventory action.
+	world.inventory_menu.open()
+	await process_frame
+	world.inventory_menu._help_tab.emit_signal("pressed")
+	await process_frame
+	var ability_choice := world.inventory_menu.find_child("WorldAbilities", true, false) as Button
+	_expect(ability_choice != null and ability_choice.is_visible_in_tree(), "OPTIONAL ABILITIES: missing Inventory entry")
+	if ability_choice != null:
+		ability_choice.emit_signal("pressed")
 	await process_frame
 
 	var popup := root.get_node_or_null("CharacterAbilityPopup") as Control

@@ -1,0 +1,12 @@
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M1
+
+STARTER_LAYOUT|instruction|viewport=(720.0, 480.0)|stage_height=82.0
+STARTER_CAPTION|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+Press  Space ,  Enter , or click Continue
+STARTER_LAYOUT|move|viewport=(720.0, 480.0)|stage_height=71.0
+ERROR: QT VISUAL: move collapses the visible battle stage
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _run (res://verify/quick_combat_lesson.gd:91)
+QUICK COMBAT LESSON|moves=0|qtes=0|captions=1|results=[]|failures=1

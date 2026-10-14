@@ -7,11 +7,16 @@ var moves := 0
 var qtes := 0
 var captions := 0
 var results: Array[String] = []
+var _captured := {}
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has("--narrow"):
+		root.size = Vector2i(360, 640)
+	elif OS.get_cmdline_user_args().has("--short-window"):
+		root.size = Vector2i(720, 480)
 	var sources: Array[Diver] = []
 	for model_name in Cast.model_names():
 		var diver := Diver.new()
@@ -29,6 +34,7 @@ func _run() -> void:
 	var deadline := Time.get_ticks_msec() + 65000
 	while results.is_empty() and failures.is_empty() and Time.get_ticks_msec() < deadline:
 		if fight._qte_active:
+			await _capture(fight, "dodge")
 			if not was_qte:
 				qtes += 1
 			was_qte = true
@@ -44,6 +50,7 @@ func _run() -> void:
 			was_qte = false
 		if fight._tutorial_awaiting_enter:
 			var text := fight._tutorial_caption.get_parsed_text()
+			await _capture(fight, "finish" if text.begins_with("Practice complete") else "instruction")
 			if text != prior_caption:
 				captions += 1
 				print("STARTER_CAPTION|", text)
@@ -58,12 +65,14 @@ func _run() -> void:
 				enter.keycode = KEY_ENTER
 				Input.parse_input_event(enter)
 		elif fight.target_menu.visible and not fight.target_buttons.is_empty():
+			await _capture(fight, "target")
 			var target := fight.target_buttons[0] as Button
 			if target.disabled or target.button_mask == 0:
 				target.emit_signal("mouse_entered")
 			else:
 				target.emit_signal("pressed")
 		elif not fight._busy and fight.move_menu.visible:
+			await _capture(fight, "move")
 			for choice in fight.move_buttons:
 				if (choice as Button).is_visible_in_tree() and not choice.disabled:
 					(choice as Button).emit_signal("pressed")
@@ -89,3 +98,21 @@ func _run() -> void:
 	if audio != null:
 		audio.release_streams_for_shutdown()
 	quit(0 if failures.is_empty() else 1)
+
+func _capture(fight: Battle, beat: String) -> void:
+	if not OS.get_cmdline_user_args().has("--capture") or _captured.has(beat):
+		return
+	_captured[beat] = true
+	if DisplayServer.get_name() == "headless":
+		failures.append("QT VISUAL: captures need a real renderer")
+		return
+	await RenderingServer.frame_post_draw
+	var viewport := root.get_visible_rect()
+	print("STARTER_LAYOUT|", beat, "|viewport=", viewport.size, "|stage_height=", fight._stage_container.size.y)
+	if fight._stage_container.size.y < 80:
+		failures.append("QT VISUAL: %s collapses the visible battle stage" % beat)
+	if not viewport.encloses(fight.skip_tutorial_btn.get_global_rect()):
+		failures.append("QT VISUAL: %s clips Skip Tutorial" % beat)
+	var image := root.get_texture().get_image()
+	var label := "narrow" if OS.get_cmdline_user_args().has("--narrow") else ("short" if OS.get_cmdline_user_args().has("--short-window") else "wide")
+	image.save_png("res://docs/evidence/quick-tutorial-oct14/starter-%s-%s.png" % [label, beat])

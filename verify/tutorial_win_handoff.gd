@@ -9,6 +9,8 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has("--narrow"):
+		root.size = Vector2i(360, 640)
 	if OS.get_cmdline_user_args().has("--world-lesson"):
 		world = (load("res://game/world.tscn") as PackedScene).instantiate() as World
 		root.add_child(world)
@@ -121,12 +123,21 @@ func _full_lesson(fight: Battle) -> void:
 	fight.finished.connect(func(result: String) -> void: results.append(result))
 	var deadline := Time.get_ticks_msec() + 180000
 	var last_state := ""
+	var captured := {}
 	while results.is_empty() and Time.get_ticks_msec() < deadline:
 		var state := "%d|%s|%s|%s" % [fight._tutorial_step, fight._current_log_text(), fight._tutorial_caption.text, fight._tutorial_awaiting_enter]
 		if state != last_state:
 			print("LESSON|", state)
 			last_state = state
 		if fight._tutorial_awaiting_enter:
+			var capture_key := "%d-caption" % fight._tutorial_step
+			if OS.get_cmdline_user_args().has("--capture") and not captured.has(capture_key) and DisplayServer.get_name() != "headless":
+				captured[capture_key] = true
+				await RenderingServer.frame_post_draw
+				print("FULL_LAYOUT|stage=", fight._tutorial_step, "|stage_height=", fight._stage_container.size.y, "|continue=", fight._tutorial_continue_btn.get_global_rect())
+				if not root.get_visible_rect().encloses(fight._tutorial_continue_btn.get_global_rect()) or not root.get_visible_rect().encloses(fight._tutorial_caption.get_global_rect()):
+					findings.append("QT VISUAL: full stage %d clips its caption or Continue" % fight._tutorial_step)
+				root.get_texture().get_image().save_png("res://docs/evidence/quick-tutorial-oct14/full-%dx%d-%s.png" % [root.size.x, root.size.y, capture_key])
 			if fight._tutorial_continue_btn.is_visible_in_tree():
 				fight._tutorial_continue_btn.emit_signal("pressed")
 			else:

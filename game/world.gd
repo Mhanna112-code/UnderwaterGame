@@ -29,6 +29,7 @@ var _tutorial_loss_was_special := false
 var _last_tutorial_profile := Battle.TUTORIAL_PROFILE_QUICK
 var _tutorial_practice: TutorialPractice
 var _tutorial_loss_was_practice := false
+var _practice_completes_initial_training := false
 # Test seam: skip the opening crawl.
 var skip_intro_for_test := false
 # Dev/test: skip the scripted first fight (--skip-tutorial or ?skip_tutorial=1).
@@ -2838,6 +2839,12 @@ func _start_first_encounter(d: Diver) -> void:
 	_transitioning_to_encounter = false
 	_intro_active = false
 	_camera_look_override = null
+	# A legacy recovered save can have a downed Maxilani and unfinished
+	# training. Regroup before teaching her move, just as this one-time
+	# lesson already regroups on completion. Otherwise stage zero can never
+	# offer Electric Touch. Optional replays use isolated resources instead.
+	for diver in divers:
+		(diver as Diver).stats.fill()
 	# All three divers join the tutorial (CAST order matters for its script).
 	_start_battle("", false, "angler", divers, false, true)
 
@@ -3440,7 +3447,11 @@ func _on_battle_finished(result: String) -> void:
 			_tutorial_loss_was_special = false
 			tutorial_result_popup.open("Practice ended", "Your party, items and save are unchanged. Retry the lesson or return to exploring.")
 		else:
+			if _practice_completes_initial_training and result in ["won", "skipped"]:
+				_complete_initial_training()
+				_write_save()
 			_announce("Practice complete. Your party and items are unchanged.")
+		_practice_completes_initial_training = false
 		return
 	# Restore exploration music once Battle releases the screen. A normal loss
 	# goes to _show_game_over() below.
@@ -3453,7 +3464,7 @@ func _on_battle_finished(result: String) -> void:
 	if was_tutorial and not was_special:
 		_first_encounter_done = true
 		if result in ["won", "skipped"]:
-			route_state.tutorial_complete = true
+			_complete_initial_training()
 		# The intro beam's job is done once the tutorial fight ends.
 		if route_state.tutorial_complete and is_instance_valid(light_beam):
 			light_beam.queue_free()
@@ -3587,6 +3598,17 @@ func _free_lingering_test_battle() -> void:
 		battle = null
 		battling = false
 
+func _complete_initial_training() -> void:
+	route_state.tutorial_complete = true
+	_first_encounter_started = true
+	_first_encounter_done = true
+	_intro_active = false
+	if is_instance_valid(light_beam):
+		light_beam.queue_free()
+		light_beam = null
+	if is_instance_valid(_intro_arrow):
+		_intro_arrow.visible = false
+
 func _on_tutorial_loss_exit() -> void:
 	_free_lingering_test_battle()
 	if _tutorial_loss_was_practice:
@@ -3604,13 +3626,8 @@ func _on_tutorial_loss_exit() -> void:
 	_special_encounter_diver = null
 	# Not after the first special encounter (see _on_battle_finished()).
 	if not _tutorial_loss_was_special:
-		_first_encounter_started = false
-		for i in range(divers.size()):
-			(divers[i] as Diver).position = CAST[i].at as Vector3
-		_build_forced_tutorial_beam()
+		_complete_initial_training()
 		_write_save()
-		if not ability_popups_seen:
-			call_deferred("_show_ability_popups")
 
 # --tutorial-loss-playtest entry: straight to the real tutorial loss popup.
 func _show_tutorial_loss_playtest() -> void:
@@ -3633,11 +3650,16 @@ func _open_tutorial_loss_playtest_popup() -> void:
 
 func _on_tutorial_loss_retry() -> void:
 	_free_lingering_test_battle()
+	var was_practice := _tutorial_loss_was_practice
 	_tutorial_loss_was_practice = false
 	if _tutorial_loss_was_special:
 		_replay_special_encounter_tutorial()
-	else:
+	elif was_practice:
 		_replay_tutorial_battle(_last_tutorial_profile)
+	else:
+		for diver in divers:
+			(diver as Diver).stats.fill()
+		_start_battle("", false, "angler", divers, false, true, "", false, [], _last_tutorial_profile)
 
 # Retry of the first special encounter: relaunch the forced solo Maxilani
 # fight with the same item/enemy, healing her first.
@@ -3658,11 +3680,12 @@ func _replay_special_encounter_tutorial(item_id: String = "", enemy_id: String =
 	_start_battle(item_id, false, enemy_id, [maxilani], true, true)
 
 # The single tutorial fight definition (Retry and Combat Help replay).
-# Heals first.
+# Uses temporary full resources; never heals the earned campaign party.
 func _replay_tutorial_battle(profile: String = Battle.TUTORIAL_PROFILE_FULL) -> void:
 	if battling or _tutorial_practice != null:
 		return
 	_tutorial_practice = TutorialPractice.new()
+	_practice_completes_initial_training = not route_state.tutorial_complete
 	inventory = _tutorial_practice.begin(divers, inventory)
 	_update_hp_bar()
 	_update_oxygen_bar()

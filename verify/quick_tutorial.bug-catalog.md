@@ -14,17 +14,17 @@ IO boundaries: Godot scene construction/import, animation/tween scheduling, QTE 
 
 | ID | Failure mode | Blast radius and plausibility | Cheapest useful test | Status |
 | --- | --- | --- | --- | --- |
-| QT1 | Startup still requires all five move lessons and long narration | High; single fixed script supplies every tutorial | Live quick completion with action/QTE count | Source confirmed; reproduction pending |
-| QT2 | Full lesson is removed or a prose guide is mislabeled interactive | High; selective port can discard older stages | Explicit full choice, real five-move completion | Pending |
-| QT3 | Completing/skipping quick lesson launches a mandatory ability carousel | High; current World unconditionally defers first-time popups | Real short result to unpaused World, optional ability button | Source confirmed |
-| QT4 | Player cannot inspect stat definitions during combat | High; no menu action exists | Real Battle Help button to readable reference | First red test pending |
-| QT5 | World abilities remain hidden until previously seen | Medium; inventory button has seen-state guard | Inventory choices on a fresh recovered run | Source confirmed |
-| QT6 | Practice heals earned party or saves its transient resources | High; replay and finish mutate real resources | Earned-party resource/save round trip for each outcome | Impact investigation pending |
-| QT7 | Reference clips at narrow width or unpauses its parent incorrectly | High; existing TutorialBook fixed 560px and unconditional unpause | Generated viewport/paused-owner decision table and Escape | Pending |
-| QT8 | Definitions describe obsolete math/costs | Medium; shared text predates newer formulas and Sonar | Contract examples plus content review against real rules | Source confirmed |
-| QT9 | Shortened lesson skips live timing dodge or stalls after success/timeout | High; script length and enemy counter share finale conditions | Actual QTE success and natural timeout through real result | Pending |
-| QT10 | Mid-step skip revives stale menus or leaves waiting coroutines | High; hover/caption/QTE await unrelated signals | Skip decision table at each actual input state | Pending |
-| QT11 | New state causes cold Load to replay videos or force full training | High; existing milestone migrations already regressed | Real serialized save/load with opening/training states | Pending |
+| QT1 | Startup still requires all five move lessons and long narration | High; single fixed script supplies every tutorial | Live quick completion with action/QTE count | Reproduced/repaired; native completion passes |
+| QT2 | Full lesson is removed or a prose guide is mislabeled interactive | High; selective port can discard older stages | Explicit full choice, real five-move completion | Actual Inventory full completion passes |
+| QT3 | Completing/skipping quick lesson launches a mandatory ability carousel | High; current World unconditionally defers first-time popups | Real short result to unpaused World, optional ability button | Short/Skip/initial-loss/optional abilities native checks pass |
+| QT4 | Player cannot inspect stat definitions during combat | High; no menu action exists | Real Battle Help button to readable reference | Red retained; rendered six-case matrix passes |
+| QT5 | World abilities remain hidden until previously seen | Medium; inventory button has seen-state guard | Inventory choices on a fresh recovered run | Explicit optional ability action/camera handoff passes |
+| QT6 | Practice heals earned party or saves its transient resources | High; replay and finish mutate real resources | Earned-party resource/save round trip for each outcome | Quick/full entry, Skip, win/item, actual loss/Retry/Exit pass |
+| QT7 | Reference clips at narrow width or unpauses its parent incorrectly | High; existing TutorialBook fixed 560px and unconditional unpause | Generated viewport/paused-owner decision table and Escape | Responsive reference passes; native screenshots inspected |
+| QT8 | Definitions describe obsolete math/costs | Medium; shared text predates newer formulas and Sonar | Contract examples plus content review against real rules | Exposed definitions updated; Sonar stale-cost suspicion retracted |
+| QT9 | Shortened lesson skips live timing dodge or stalls after success/timeout | High; script length and enemy counter share finale conditions | Actual QTE success and natural timeout through real result | Both outcomes pass; Full QTE retained/rendered |
+| QT10 | Mid-step skip revives stale menus or leaves waiting coroutines | High; hover/caption/QTE await unrelated signals | Skip decision table at each actual input state | 235 World/249 maze checks pass; initial Retry classification repaired |
+| QT11 | New state causes cold Load to replay videos or force full training | High; existing milestone migrations already regressed | Real serialized save/load with opening/training states | Separate native processes pass won/Skip/legacy downed; browser pending |
 
 ## Test design and self critique
 
@@ -42,3 +42,9 @@ Then add one test at a time for QT1/QT9, QT2, QT3/QT5, QT6/QT11 and QT10. Each f
 ## Post write evaluation
 
 QT4 was caught against main (absent Battle Help). QT7 was caught during implementation (Close below the viewport from stale wrapped-text minimum size). QT1 was caught against the original >100-word caption. QT6 was caught against optional entry mutating all three earned party members' HP/O2. Focused headless reference/quick/practice tests and rendered reference tests now pass. Full lesson's real five-stage victory passed. These are bounded component/scene checks, not hosted-browser or full campaign acceptance. Remaining matrix cases stay pending.
+
+## Expanded wave findings
+
+QT12: a fixed-width result popup put Retry/Exit offscreen at 360x480; repaired responsive popup passes 64 rendered/action checks. QT13: a functional short lesson initially collapsed the 3D stage to zero at 360x640; compact caption/menu/status presentation now passes wide/narrow actual-action captures. The implementation resize loop was caught and fixed, not masked with a higher memory limit. Native screenshots were visually inspected.
+
+Detailed current evidence is in docs/quick-tutorial-overnight-plan.md. Browser input/IndexedDB, a complete fresh opening and final scoped clean visual round remain pending. Special-encounter replay is outside the new quick/full resource-isolation claim.

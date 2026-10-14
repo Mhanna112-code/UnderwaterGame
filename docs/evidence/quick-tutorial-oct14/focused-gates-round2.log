@@ -1,0 +1,34 @@
+
+=== tutorial QA save isolation ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+TUTORIAL_QA_DIRECTORY|/Users/tomriddle1/Library/Application Support/UnderwaterGameQA/quick-tutorial-oct14
+
+=== quick real move and dodge ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STARTER_CAPTION|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.
+Press  Space ,  Enter , or click Continue
+QUICK COMBAT LESSON|moves=1|qtes=1|captions=3|results=["won"]|failures=0
+
+=== quick natural dodge timeout ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+STARTER_CAPTION|Choose Electric Touch, then select the Angler. Hover a target to preview damage. Combat Help explains the stats; Skip Tutorial returns you to the world.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Dodge: press X when the white bar reaches the red zone. Miss it and the attack lands normally.
+Press  Space ,  Enter , or click Continue
+STARTER_CAPTION|Practice complete. The Angler retreats. Find the full lesson and World Abilities in Esc > Combat Help whenever you want them.
+Press  Space ,  Enter , or click Continue
+QUICK COMBAT LESSON|moves=1|qtes=1|captions=3|results=["won"]|failures=0
+
+=== Battle and Inventory definitions and pause ownership ===
+Godot Engine v4.7.1.stable.official.a13da4feb - https://godotengine.org
+
+QUICK TUTORIAL REFERENCE: 0 failure(s)
+
+=== real skip phase matrix ===
